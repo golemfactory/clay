@@ -379,6 +379,7 @@ class DockerManager(DockerConfigManager):
             for line in f:
                 if line:
                     images.append(line.split())
+
         return images
 
     @staticmethod

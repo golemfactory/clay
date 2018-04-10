@@ -14,8 +14,10 @@ from semantic_version import Version
 import golem
 from golem.core import common
 from golem.core.async import AsyncRequest, async_run
+from golem.core.idgenerator import check_id_seed
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.utils import decode_hex
 from .taskbase import TaskHeader
 
 logger = logging.getLogger('golem.task.taskkeeper')
@@ -40,6 +42,10 @@ def comp_task_info_keeping_timeout(subtask_timeout: int, resource_size: int,
     resource_timeout *= num_of_res_transfers_needed
     return common.timeout_to_deadline(subtask_timeout + verification_timeout
                                       + resource_timeout)
+
+
+class WrongOwnerException(Exception):
+    pass
 
 
 class CompTaskInfo:
@@ -180,10 +186,16 @@ class CompTaskKeeper:
 
     def check_comp_task_def(self, comp_task_def):
         task = self.active_tasks[comp_task_def['task_id']]
-
+        key_id = self.get_node_for_task_id(comp_task_def['task_id'])
         not_accepted_message = "Cannot accept subtask %s for task %s. %s"
         log_args = [comp_task_def['subtask_id'], comp_task_def['task_id']]
 
+        if not check_id_seed(comp_task_def['subtask_id'],
+                             decode_hex(key_id)):
+            logger.info(not_accepted_message, *log_args, "Subtask id was not "
+                                                         "generated from "
+                                                         "requestor's key.")
+            return False
         if not task.requests > 0:
             logger.info(not_accepted_message, *log_args,
                         "Request for this task was not send.")
@@ -437,6 +449,8 @@ class TaskHeaderKeeper:
         """
         try:
             id_ = th_dict_repr["task_id"]
+            task_owner_id = th_dict_repr["task_owner_key_id"]
+            self.check_owner(id_, task_owner_id)
             update = id_ in list(self.task_headers.keys())
 
             self.check_correct(th_dict_repr)
@@ -462,7 +476,7 @@ class TaskHeaderKeeper:
                                                       self.support_status[id_])
 
             return True
-        except (KeyError, TypeError) as err:
+        except (KeyError, TypeError, WrongOwnerException) as err:
             logger.warning("Wrong task header received: {}".format(err))
             return False
 
@@ -487,6 +501,12 @@ class TaskHeaderKeeper:
         is_correct, err = self.is_correct(th_dict_repr)
         if not is_correct:
             raise TypeError(err)
+
+    @staticmethod
+    def check_owner(task_id, owner_id):
+        if not check_id_seed(task_id, decode_hex(owner_id)):
+            raise WrongOwnerException("Task_id %s doesn't suit to task "
+                                      "owner %s", task_id, owner_id)
 
     def _get_tasks_by_owner_set(self, owner_key_id):
         if owner_key_id not in self.tasks_by_owner:

@@ -1,4 +1,5 @@
 import ctypes
+
 import os
 import shutil
 
@@ -124,9 +125,9 @@ def common_dir(arr, ign_case=None):
     return _format(s)
 
 
-def find_file_with_ext(directory, extensions):
+def find_file_with_ext(directory, extensions) -> str:
     """ Return first file with one of the given extension from directory.
-    :param str directory: name of the directory
+    :param directory: name of the directory
     :param list extensions: list of acceptable extensions (with dot,
                             ie. ".png", ".txt")
     :return str: name of the first file wich extension is in
@@ -137,6 +138,7 @@ def find_file_with_ext(directory, extensions):
             _, ext = os.path.splitext(name)
             if ext.lower() in extensions:
                 return os.path.join(root, name)
+    raise RuntimeError('Not found')
 
 
 def outer_dir_path(path):
