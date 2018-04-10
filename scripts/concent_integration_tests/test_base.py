@@ -4,9 +4,9 @@ import unittest
 from golem_messages import message
 from golem_messages.shortcuts import dump, load
 
-from .base import ConcentBaseTest
-
 from tests.factories import messages as msg_factories
+
+from .base import ConcentBaseTest
 
 
 class ConcentBaseTestTest(ConcentBaseTest, unittest.TestCase):
