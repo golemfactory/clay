@@ -974,8 +974,9 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
         msg = self._prepare_report_computed_task(
             task_to_compute__concent_enabled=False)
 
-        self.ts.task_manager.task_result_manager.pull_package = \
-            self._create_pull_package(False)
+        with patch('golem.network.concent.helpers.history.add'):
+            self.ts.task_manager.task_result_manager.pull_package = \
+                self._create_pull_package(False)
 
         self.ts._react_to_report_computed_task(msg)
         assert self.ts.task_server.reject_result.called
