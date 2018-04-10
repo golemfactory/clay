@@ -6,9 +6,10 @@ from threading import Lock
 
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
-from golem.core.simpleauth import SimpleAuth
+from golem.core.idgenerator import generate_id
 from golem.network.p2p.node import Node
 from golem.task.taskbase import Task, TaskHeader, ResultType
+from golem.utils import encode_hex
 
 
 class DummyTaskParameters(object):
@@ -35,6 +36,7 @@ class DummyTaskParameters(object):
         self.difficulty = difficulty
 
 
+# pylint: disable=too-many-locals
 class DummyTask(Task):
     """
     :type resource_parts: dict[str,list[str]]: maps a resource file
@@ -48,16 +50,16 @@ class DummyTask(Task):
 
     ENVIRONMENT_NAME = "DUMMY"
 
-    def __init__(self, client_id, params, num_subtasks):
+    def __init__(self, client_id, params, num_subtasks, public_key):
         """Creates a new dummy task
         :param string client_id: client id
         :param DummyTaskParameters params: task parameters
         1024 hashes on average
         """
-        task_id = str(SimpleAuth.generate_uuid())
+        task_id = generate_id(public_key)
         owner_address = ''
         owner_port = 0
-        owner_key_id = ''
+        owner_key_id = encode_hex(public_key)
         environment = self.ENVIRONMENT_NAME
         header = TaskHeader(
             client_id, task_id,

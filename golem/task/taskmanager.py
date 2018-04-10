@@ -63,13 +63,12 @@ class TaskManager(TaskEventListener):
     def __init__(
             self, node_name, node, keys_auth, listen_address="",
             listen_port=0, root_path="res", use_distributed_resources=True,
-            tasks_dir="tasks", task_persistence=True):
+            tasks_dir="tasks", task_persistence=True,
+            apps_manager=AppsManager(False)):
         super().__init__()
 
-        self.apps_manager = AppsManager()
-        self.apps_manager.load_apps()
-
-        apps = list(self.apps_manager.apps.values())
+        self.apps_manager = apps_manager
+        apps = list(apps_manager.apps.values())
         task_types = [app.task_type_info() for app in apps]
         self.task_types = {t.name.lower(): t for t in task_types}
 
@@ -687,7 +686,7 @@ class TaskManager(TaskEventListener):
             proportion = (ts.elapsed_time / ts.progress)
             ts.remaining_time = proportion - ts.elapsed_time
         else:
-            ts.remaining_time = -0.0
+            ts.remaining_time = None
 
         t.update_task_state(ts)
 
@@ -721,11 +720,11 @@ class TaskManager(TaskEventListener):
 
         task_type_name = task.task_definition.task_type.lower()
         task_type = self.task_types[task_type_name]
-        state = self.tasks_states.get(task.header.task_id)
+        state = self.query_task_state(task.header.task_id)
         timeout = task.task_definition.full_task_timeout
 
         dictionary = {
-            'duration': max(timeout - state.remaining_time, 0),
+            'duration': max(timeout - (state.remaining_time or 0), 0),
             # single=True retrieves one preview file. If rendering frames,
             # it's the preview of the most recently computed frame.
             'preview': task_type.get_preview(task, single=True)

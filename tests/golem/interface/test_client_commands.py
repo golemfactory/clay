@@ -385,8 +385,9 @@ class TestTasks(TempDirFixture):
 
         cls.n_tasks = len(cls.tasks)
         cls.n_subtasks = len(cls.subtasks)
-        cls.get_tasks = lambda s, _id: cls.tasks[0] if _id else cls.tasks
-        cls.get_subtasks = lambda s, x: cls.subtasks
+        cls.get_tasks = lambda s, _id: dict(cls.tasks[0]) if _id \
+            else [dict(t) for t in cls.tasks]
+        cls.get_subtasks = lambda s, x: [dict(s) for s in cls.subtasks]
         cls.get_unsupport_reasons = lambda s, x: cls.reasons
 
     def setUp(self):
@@ -496,7 +497,7 @@ class TestTasks(TempDirFixture):
             assert isinstance(all_tasks, CommandResult)
 
             assert one_task == {
-                'time_remaining': 1,
+                'time_remaining': '0:00:01',
                 'status': 'waiting',
                 'subtasks': 3,
                 'id': '745c1d01',
@@ -504,8 +505,24 @@ class TestTasks(TempDirFixture):
             }
 
             assert all_tasks.data[1][0] == [
-                '745c1d01', '1', '3', 'waiting', '1.00 %'
+                '745c1d01', '0:00:01', '3', 'waiting', '1.00 %'
             ]
+
+            self.client.get_tasks = lambda _: {
+                'time_remaining': None,
+                'status': 'XXX',
+                'substasks': 1,
+                'id': 'XXX',
+                'progress': 0
+            }
+            task = tasks.show('XXX', None)
+            self.assertDictEqual(task, {
+                'time_remaining': '???',
+                'status': 'XXX',
+                'substasks': 1,
+                'id': 'XXX',
+                'progress': '0.00 %'
+            })
 
     def test_subtasks(self):
         client = self.client
@@ -516,7 +533,7 @@ class TestTasks(TempDirFixture):
             subtasks = tasks.subtasks('745c1d01', None)
             assert isinstance(subtasks, CommandResult)
             assert subtasks.data[1][0] == [
-                'node_1', 'subtask_1', '9', 'waiting', '1.00 %'
+                'node_1', 'subtask_1', '0:00:09', 'waiting', '1.00 %'
             ]
 
     def test_unsupport(self):

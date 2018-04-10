@@ -181,7 +181,8 @@ def config_logging(suffix='', datadir=None, loglevel=None):
 
     for handler in LOGGING.get('handlers', {}).values():
         if loglevel:
-            handler['level'] = loglevel
+            if 'Sentry' not in handler['class']:
+                handler['level'] = loglevel
         if 'filename' in handler:
             handler['filename'] %= {
                 'logdir': str(logdir_path),
