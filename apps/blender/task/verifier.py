@@ -206,8 +206,10 @@ class BlenderVerifier(FrameRenderingVerifier):
                         "Scene %s \n"
                         "requestor %r\n"
                         "provider %r",
-                        self.subtask_info['subtask_id'], no, metric['SSIM_normal'],
-                        metric['PSNR'], self.subtask_info['scene_file'], self.subtask_info['owner'],
+                        self.subtask_info['subtask_id'],
+                        no, metric['SSIM_normal'],
+                        metric['PSNR'], self.subtask_info['scene_file'],
+                        self.subtask_info['owner'],
                         self.subtask_info['node_id'])
             avg_corr += metric['imgCorr']
             avg_ssim += metric['SSIM_normal']

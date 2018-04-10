@@ -8,9 +8,8 @@ def enable_sentry_logger(value):
     talkback_value = bool(value)
     logger_root = logging.getLogger()
     try:
-        sentry_handler = [
-            h for h in logger_root.handlers if h.name == 'sentry'
-                                               or h.name == 'sentry-metrics']
+        sentry_handler = [h for h in logger_root.handlers if h.name == 'sentry'
+                          or h.name == 'sentry-metrics']
         for handler in sentry_handler:
             msg_part = 'Enabling' if talkback_value else 'Disabling'
             logger.info('%s talkback %r service', msg_part, handler.name)

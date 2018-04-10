@@ -26,9 +26,6 @@ class SwitchedSentryHandler(SentryHandler):
 
 
 class SentryMetricsFilter(logging.Filter):
-
+    # pylint: disable=R0903
     def filter(self, record):
-        if record.getMessage().startswith('METRIC'):
-            return True
-        else:
-            return False
+        return record.getMessage().startswith('METRIC')

@@ -73,7 +73,7 @@ LOGGING = {
     },
     'root': {
         'level': 'WARNING',
-        'handlers': ['console', 'file', 'error-file', 'sentry', 'sentry-metrics'],
+        'handlers': ['console', 'file', 'error-file', 'sentry', 'sentry-metrics'],  # noqa pylint: disable=line-too-long
         'filters': [],
     },
     'loggers': {
