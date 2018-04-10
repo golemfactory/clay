@@ -124,6 +124,8 @@ class TestGenerateCrops(TempDirFixture):
     def test_good_image(self):
         d = Deferred()
 
+        self.subtask_info['owner'] = 'deadbeef'
+
         def success(*args, **kwargs):
             # pylint: disable=unused-argument
             d.callback(True)

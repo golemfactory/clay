@@ -81,7 +81,7 @@ class BlenderCropper:
         #  BoundBox2D border = cam->border.clamp();
         #  params.full_x = (int)(border.left * (float)width);
         #
-        #  NOTE BLENDER IS USING FLOATS Vgit stALUES
+        #  NOTE BLENDER IS USING FLOATS VALUES
         #  that means single precision 4 bytes floats, python is not
         #  it is using double precision values. Here numpy is used to emulate
         #  that loss of precision when assigning double to float.
@@ -176,6 +176,9 @@ class BlenderCropper:
             ctd['deadline'] = timeout_to_deadline(
                 subtask_info['subtask_timeout'])
             return ctd
+
+        logger.info("Values for crop %r left=%r, right=%r, top=%r, bottom=%r",
+                    crop_number, minx, maxx, miny, maxy)
 
         script_src = generate_blender_crop_file(
             resolution=(verify_ctx.subtask_info['res_x'],
