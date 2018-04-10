@@ -65,6 +65,7 @@ setup(
         ]),
         (path.normpath('../../golem/apps'), [
             path.normpath('apps/registered.ini'),
+            path.normpath('apps/registered_test.ini'),
             path.normpath('apps/images.ini')
         ]),
         (path.normpath('../../golem/apps/rendering/benchmark/minilight'), [

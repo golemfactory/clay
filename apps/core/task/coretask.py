@@ -15,6 +15,7 @@ from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
+from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.core.simpleserializer import CBORSerializer
 from golem.docker.environment import DockerEnvironment
 from golem.network.p2p.node import Node
@@ -179,22 +180,10 @@ class CoreTask(Task):
 
     @staticmethod
     def create_task_id(public_key: bytes) -> str:
-        """
-        seeds top 48 bits from given public key as node in generated uuid1
-
-        :param bytes public_key: `KeysAuth.public_key`
-        :returns: string uuid1 based on timestamp and given key
-        """
-        return str(uuid.uuid1(node=int.from_bytes(public_key[:6], 'big')))
+        return generate_id(public_key)
 
     def create_subtask_id(self) -> str:
-        """
-        seeds low 48 bits from task_id as node in generated uuid1
-
-        :returns: uuid1 based on timestamp and task_id
-        """
-        task_uuid = uuid.UUID(self.header.task_id)
-        return str(uuid.uuid1(node=task_uuid.node))
+        return generate_new_id_from_id(self.header.task_id)
 
     def is_docker_task(self):
         return len(self.docker_images or ()) > 0

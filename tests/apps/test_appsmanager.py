@@ -11,8 +11,8 @@ class TestAppsManager(TestCase):
 
     @staticmethod
     def _get_loaded_app_manger():
-        app_manager = AppsManager()
-        app_manager.load_apps()
+        app_manager = AppsManager(False)
+        app_manager.load_all_apps()
         return app_manager
 
     def test_get_env_list(self):

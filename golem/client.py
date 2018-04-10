@@ -18,6 +18,7 @@ from twisted.internet.defer import (
     Deferred)
 
 import golem
+from apps.appsmanager import AppsManager
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL, AppConfig)
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
@@ -98,9 +99,11 @@ class Client(HardwarePresetsMixin):
             use_concent: bool = False,
             start_geth: bool = False,
             start_geth_port: Optional[int] = None,
-            geth_address: Optional[str] = None) -> None:
+            geth_address: Optional[str] = None,
+            apps_manager: AppsManager = AppsManager(False)) -> None:
 
         self.mainnet = mainnet
+        self.apps_manager = apps_manager
         self.datadir = datadir
         self.__lock_datadir()
         self.lock = Lock()
@@ -306,7 +309,9 @@ class Client(HardwarePresetsMixin):
             self,
             use_ipv6=self.config_desc.use_ipv6,
             use_docker_manager=self.use_docker_manager,
-            task_archiver=self.task_archiver)
+            task_archiver=self.task_archiver,
+            apps_manager=self.apps_manager
+        )
 
         monitoring_publisher_service = MonitoringPublisherService(
             self.task_server,

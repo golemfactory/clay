@@ -1,5 +1,6 @@
 import logging
 from os import path
+import sys
 
 from typing import Set, Any
 from ethereum.utils import denoms
@@ -95,7 +96,7 @@ class AppConfig:
     @classmethod
     def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME, mainnet=False):
 
-        if not mainnet:
+        if not mainnet and 'pytest' not in sys.modules:
             global ENABLE_TALKBACK
             ENABLE_TALKBACK = 1
 
