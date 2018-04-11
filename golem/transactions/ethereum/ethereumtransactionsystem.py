@@ -9,6 +9,7 @@ from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.transactions.ethereum.ethereumincomeskeeper \
     import EthereumIncomesKeeper
+from golem.transactions.ethereum.exceptions import NotEnoughFunds
 from golem.transactions.transactionsystem import TransactionSystem
 
 log = logging.getLogger('golem.pay')
@@ -108,9 +109,7 @@ class EthereumTransactionSystem(TransactionSystem):
         if currency == 'ETH':
             eth = pp._eth_available()  # pylint: disable=W0212
             if amount > eth - lock:
-                val = (eth - lock) / denoms.ether
-                raise ValueError('Not enough ETH available. {} available '
-                                 'for withdrawal.'.format(val))
+                raise NotEnoughFunds(amount, eth - lock, currency)
             log.info(
                 "Withdrawing %f ETH to %s",
                 amount / denoms.ether,
@@ -121,9 +120,7 @@ class EthereumTransactionSystem(TransactionSystem):
         if currency == 'GNT':
             total_gnt = pp._gnt_available()  # pylint: disable=W0212
             if amount > total_gnt - lock:
-                val = (total_gnt - lock) / denoms.ether
-                raise ValueError('Not enough GNT available. {} available '
-                                 'for withdrawal'.format(val))
+                raise NotEnoughFunds(amount, total_gnt - lock, currency)
             gnt = self._sci.get_gnt_balance(self._sci.get_eth_address())
             gntb = total_gnt - gnt
 
