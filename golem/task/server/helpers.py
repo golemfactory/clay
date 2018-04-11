@@ -44,16 +44,15 @@ def computed_task_reported(
 
     # Pepare callbacks for received resources
     def on_success(extracted_pkg, *_args, **_kwargs):
-        logger.debug("Task result extracted %r",
-                     extracted_pkg.__dict__)
-        task_server.verify_results(
-            report_computed_task=report_computed_task,
-            extracted_package=extracted_pkg,
-        )
+        logger.debug("Task result extracted %r", extracted_pkg.__dict__)
 
         concent_service.cancel_task_message(
             report_computed_task.subtask_id,
             'ForceGetTaskResult',
+        )
+        task_server.verify_results(
+            report_computed_task=report_computed_task,
+            extracted_package=extracted_pkg,
         )
         after_success()
 
