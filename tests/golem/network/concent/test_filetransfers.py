@@ -51,7 +51,7 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
             'Authorization': 'Golem ' + base64.b64encode(
                 file_transfer_token.serialize()).decode(),
             'Concent-Client-Public-Key': base64.b64encode(
-                self.keys_auth.public_key)
+                self.keys_auth.public_key).decode(),
         }
 
     def tearDown(self):
