@@ -527,7 +527,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task_header_keeper=self.task_server.task_keeper,
         )
         self.send(returned_msg)
-        if not isinstance(returned_msg, message.concents.AckReportComputedTask):
+        if not isinstance(returned_msg, message.tasks.AckReportComputedTask):
             self.dropped()
             return
 
@@ -897,9 +897,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.WaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
 
             # Concent messages
-            message.AckReportComputedTask.TYPE:
+            message.tasks.AckReportComputedTask.TYPE:
                 self._react_to_ack_report_computed_task,
-            message.RejectReportComputedTask.TYPE:
+            message.tasks.RejectReportComputedTask.TYPE:
                 self._react_to_reject_report_computed_task,
         })
 

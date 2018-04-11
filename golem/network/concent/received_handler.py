@@ -191,7 +191,7 @@ class TaskServerMessageHandler():
             returned_msg,
         )
 
-        if isinstance(returned_msg, message.concents.RejectReportComputedTask):
+        if isinstance(returned_msg, message.tasks.RejectReportComputedTask):
             return
 
         self.task_server.receive_subtask_computation_time(

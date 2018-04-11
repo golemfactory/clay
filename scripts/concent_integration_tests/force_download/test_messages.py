@@ -5,11 +5,10 @@ import time
 
 import unittest
 
+from golem_messages import factories as msg_factories
 from golem_messages.message import concents as concent_msg
 
 from golem.network.concent import client
-
-from tests.factories import messages as msg_factories
 
 from ..base import ConcentBaseTest
 
@@ -20,19 +19,19 @@ logger = logging.getLogger(__name__)
 class ForceGetTaskResultTest(ConcentBaseTest, unittest.TestCase):
 
     def test_send(self):
-        fgtr = msg_factories.ForceGetTaskResult()
+        fgtr = msg_factories.concents.ForceGetTaskResultFactory()
         response = self._send_to_concent(fgtr)
         msg = self._load_response(response)
         self.assertIsInstance(msg, concent_msg.AckForceGetTaskResult)
-        self.assertSameMessage(msg.force_get_task_result, fgtr)
+        self.assertEqual(msg.force_get_task_result, fgtr)
 
     def test_send_fail_timeout(self):
         past_deadline = calendar.timegm(time.gmtime()) -\
                         int(datetime.timedelta(days=1).total_seconds())
-        ttc = msg_factories.TaskToCompute(
+        ttc = msg_factories.tasks.TaskToComputeFactory(
             compute_task_def__deadline=past_deadline
         )
-        fgtr = msg_factories.ForceGetTaskResult(
+        fgtr = msg_factories.concents.ForceGetTaskResultFactory(
             report_computed_task__task_to_compute=ttc
         )
 
@@ -43,14 +42,16 @@ class ForceGetTaskResultTest(ConcentBaseTest, unittest.TestCase):
                          msg.REASON.AcceptanceTimeLimitExceeded)
 
     def test_send_duplicate(self):
-        rct = msg_factories.ReportComputedTask()
-        fgtr1 = msg_factories.ForceGetTaskResult(report_computed_task=rct)
+        rct = msg_factories.tasks.ReportComputedTaskFactory()
+        fgtr1 = msg_factories.concents.ForceGetTaskResultFactory(
+            report_computed_task=rct)
 
         response = self._send_to_concent(fgtr1)
         msg = self._load_response(response)
         self.assertIsInstance(msg, concent_msg.AckForceGetTaskResult)
 
-        fgtr2 = msg_factories.ForceGetTaskResult(report_computed_task=rct)
+        fgtr2 = msg_factories.concents.ForceGetTaskResultFactory(
+            report_computed_task=rct)
 
         response = self._send_to_concent(fgtr2)
         msg = self._load_response(response)
@@ -59,7 +60,7 @@ class ForceGetTaskResultTest(ConcentBaseTest, unittest.TestCase):
 
     def test_provider_receive(self):
         provider_key = self.op_keys.raw_pubkey
-        fgtr = msg_factories.ForceGetTaskResult()
+        fgtr = msg_factories.concents.ForceGetTaskResultFactory()
 
         fgtr.report_computed_task.task_to_compute.provider_public_key = \
             provider_key

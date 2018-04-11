@@ -8,7 +8,8 @@ import datetime
 import unittest.mock as mock
 
 from freezegun import freeze_time
-from golem_messages.message import concents
+from golem_messages import factories
+from golem_messages import message
 
 from golem import testutils
 from golem.core import keysauth
@@ -16,10 +17,9 @@ from golem.network import history
 from golem.task import taskbase
 from golem.task import tasksession
 from golem.task import taskstate
-from tests import factories
 
 
-reject_reasons = concents.RejectReportComputedTask.REASON
+reject_reasons = message.tasks.RejectReportComputedTask.REASON
 
 # pylint: disable=protected-access
 
@@ -35,7 +35,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
                 password='password',
             )
         self.task_session.key_id = "KEY_ID"
-        self.msg = factories.messages.ReportComputedTask()
+        self.msg = factories.tasks.ReportComputedTaskFactory()
         self.now = datetime.datetime.utcnow()
         now_ts = calendar.timegm(self.now.utctimetuple())
         self.msg.task_to_compute.compute_task_def['deadline'] = now_ts + 60
@@ -64,7 +64,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
     def assert_reject_reason(self, send_mock, reason, **kwargs):
         send_mock.assert_called_once_with(mock.ANY)
         msg = send_mock.call_args[0][0]
-        self.assertIsInstance(msg, concents.RejectReportComputedTask)
+        self.assertIsInstance(msg, message.tasks.RejectReportComputedTask)
         self.assertEqual(msg.subtask_id, self.msg.subtask_id)
         self.assertEqual(msg.task_to_compute, self.msg.task_to_compute)
         self.assertEqual(msg.reason, reason)
@@ -117,7 +117,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.assertEqual(send_mock.call_count, 1)
         concent_call = send_mock.call_args_list[0]
         ack_msg = concent_call[0][0]
-        self.assertIsInstance(ack_msg, concents.AckReportComputedTask)
+        self.assertIsInstance(ack_msg, message.tasks.AckReportComputedTask)
 
     @mock.patch('golem.network.history.MessageHistoryService.get_sync')
     @mock.patch('golem.task.tasksession.TaskSession.send')
@@ -140,7 +140,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
     def test_cannot_compute_task_received(self, send_mock, get_mock):
         "Reject if CannotComputeTask received"
         get_mock.return_value = unwanted_msg = \
-            factories.messages.CannotComputeTask(
+            factories.tasks.CannotComputeTaskFactory(
                 subtask_id=self.msg.subtask_id,
                 task_to_compute=self.msg.task_to_compute,
             )
@@ -154,7 +154,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
     @mock.patch('golem.task.tasksession.TaskSession.send')
     def test_task_failure_received(self, send_mock):
         "Reject if TaskFailure received"
-        unwanted_msg = factories.messages.TaskFailure(
+        unwanted_msg = factories.tasks.TaskFailureFactory(
             subtask_id=self.msg.subtask_id,
             task_to_compute=self.msg.task_to_compute,
         )
@@ -186,6 +186,6 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.assertEqual(send_mock.call_count, 1)
         concent_call = send_mock.call_args_list[0]
         ack_msg = concent_call[0][0]
-        self.assertIsInstance(ack_msg, concents.AckReportComputedTask)
+        self.assertIsInstance(ack_msg, message.tasks.AckReportComputedTask)
         self.assertEqual(ack_msg.subtask_id, self.msg.subtask_id)
         self.assertEqual(ack_msg.task_to_compute, self.msg.task_to_compute)
