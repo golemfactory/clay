@@ -9,7 +9,7 @@ from golem.network import history
 from golem.network.concent import helpers as concent_helpers
 from golem.network.concent.handlers_library import library
 from golem.task import taskserver
-from golem.task.server import resources as task_server_resources
+from golem.task.server import helpers as task_server_helpers
 
 from .filetransfers import ConcentFiletransferService
 
@@ -203,7 +203,7 @@ class TaskServerMessageHandler():
             "After AckReportComputedTask. Starting verification of %r",
             report_computed_task,
         )
-        task_server_resources.computed_task_reported(
+        task_server_helpers.computed_task_reported(
             task_server=self.task_server,
             report_computed_task=report_computed_task,
         )

@@ -19,7 +19,7 @@ from golem.network.p2p import node as p2p_node
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
-from golem.task.server import resources as task_server_resources
+from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import ResultType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
@@ -551,7 +551,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
             self.dropped()
 
-        task_server_resources.computed_task_reported(
+        task_server_helpers.computed_task_reported(
             task_server=self.task_server,
             report_computed_task=msg,
             after_success=after_success,
