@@ -1,4 +1,5 @@
-# pylint: disable=protected-access
+# pylint: disable=protected-access,no-self-use
+import datetime
 import gc
 import importlib
 import unittest
@@ -154,8 +155,17 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
 
     @mock.patch("golem.task.taskserver.TaskServer"
                 ".receive_subtask_computation_time")
+    @mock.patch(
+        "golem_messages.helpers.maximum_download_time",
+        return_value=datetime.timedelta(seconds=10),
+    )
+    @mock.patch(
+        "golem.task.result.resultmanager.EncryptedResultPackageManager"
+        ".pull_package")
     def test_verdict_report_computed_task(
             self,
+            pull_mock,
+            _mdt_mock,
             rsct_mock):
         msg = msg_factories.VerdictReportComputedTask()
         library.interpret(msg)
@@ -168,13 +178,19 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
             msg.ack_report_computed_task.subtask_id,
             rct.computation_time,
         )
+        pull_mock.assert_called()
 
     @mock.patch("golem.task.taskserver.TaskServer"
                 ".receive_subtask_computation_time")
-    @mock.patch("golem.task.taskserver.TaskServer.get_result")
+    @mock.patch("golem.task.taskserver.TaskServer.verify_results")
+    @mock.patch(
+        "golem_messages.helpers.maximum_download_time",
+        return_value=datetime.timedelta(seconds=10),
+    )
     def test_verdict_report_computed_task_invalid_sig(
             self,
-            get_mock,
+            _mdt_mock,
+            verify_mock,
             rsct_mock):
         self.client.keys_auth.ecc.verify.side_effect = \
             msg_exceptions.InvalidSignature
@@ -185,14 +201,14 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
             inputb=ttc_from_ack.get_short_hash(),
             sig=ttc_from_ack.sig)
         rsct_mock.assert_not_called()
-        get_mock.assert_not_called()
+        verify_mock.assert_not_called()
 
     @mock.patch("golem.task.taskserver.TaskServer"
                 ".receive_subtask_computation_time")
-    @mock.patch("golem.task.taskserver.TaskServer.get_result")
+    @mock.patch("golem.task.taskserver.TaskServer.verify_results")
     def test_verdict_report_computed_task_diff_ttc(
             self,
-            get_mock,
+            verify_mock,
             rsct_mock):
         msg = msg_factories.VerdictReportComputedTask()
         msg.ack_report_computed_task.task_to_compute = \
@@ -203,12 +219,23 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
         )
         library.interpret(msg)
         rsct_mock.assert_not_called()
-        get_mock.assert_not_called()
+        verify_mock.assert_not_called()
 
     @mock.patch(
         "golem.network.concent.helpers.process_report_computed_task"
     )
-    def test_force_report_computed_task(self, helper_mock):
+    @mock.patch(
+        "golem_messages.helpers.maximum_download_time",
+        return_value=datetime.timedelta(seconds=10),
+    )
+    @mock.patch(
+        "golem.task.result.resultmanager.EncryptedResultPackageManager"
+        ".pull_package")
+    def test_force_report_computed_task(
+            self,
+            pull_mock,
+            _mdt_mock,
+            helper_mock):
         msg = msg_factories.ForceReportComputedTask()
         helper_mock.return_value = returned_msg = object()
         library.interpret(msg)
@@ -218,9 +245,10 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
             task_header_keeper=mock.ANY,
         )
         self.task_server.client.concent_service.submit_task_message \
-            .assert_called_once_with(
+            .assert_any_call(
                 msg.report_computed_task.subtask_id,
                 returned_msg)
+        pull_mock.assert_called()
 
     @mock.patch('golem.task.taskmanager.TaskManager.task_computation_failure')
     def test_force_get_task_result_failed(self, tcf):

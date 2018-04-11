@@ -9,7 +9,7 @@ import requests
 from requests import HTTPError
 from twisted.internet.defer import Deferred
 
-from golem_messages.helpers import maximum_download_time
+from golem_messages import helpers as msg_helpers
 
 from golem.core.async import AsyncHTTPRequest
 from golem.resource.client import IClient, ClientOptions
@@ -91,7 +91,10 @@ class HyperdriveClient(IClient):
 
         if client_options:
             size = client_options.get(cls.CLIENT_ID, cls.VERSION, 'size')
-            timeout = maximum_download_time(size).seconds if size else None
+            if size:
+                timeout = msg_helpers.maximum_download_time(size).seconds
+            else:
+                timeout = None
             peers = client_options.peers
 
         return dict(
