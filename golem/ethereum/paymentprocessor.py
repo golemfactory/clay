@@ -384,3 +384,15 @@ class PaymentProcessor(LoopingCallService):
     def stop(self):
         self.sendout(0)
         super().stop()
+
+    def sync(self) -> None:
+        log.info("Synchronizing balances")
+        self._sci.wait_until_synchronized()
+        while True:
+            self.eth_balance(True)
+            self.gnt_balance(True)
+            if self.balance_known():
+                log.info("Balances synchronized")
+                return
+            log.info("Waiting for initial GNT/ETH balances...")
+            time.sleep(1)

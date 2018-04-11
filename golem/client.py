@@ -245,9 +245,8 @@ class Client(HardwarePresetsMixin):
         )
         self._publish(Task.evt_task_status, kwargs['task_id'])
 
-    # TODO: re-enable. issue #2398
     def sync(self):
-        pass
+        self.transaction_system.sync()
 
     @report_calls(Component.client, 'start', stage=Stage.pre)
     def start(self):
