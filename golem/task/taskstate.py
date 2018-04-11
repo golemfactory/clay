@@ -49,6 +49,7 @@ class SubtaskState(object):
         self.time_started = 0
         self.deadline = 0
         self.extra_data = {}
+        # FIXME: subtask_rem_time is always equal 0 (#2562)
         self.subtask_rem_time = 0
         self.subtask_status = ""
         self.value = 0

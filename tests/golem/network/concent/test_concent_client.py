@@ -120,7 +120,7 @@ class TestSendToConcent(TestCase):
         )
 
 
-@mock.patch('requests.get')
+@mock.patch('requests.post')
 class TestReceiveFromConcent(TestCase):
     def setUp(self):
         self.msg = msg_factories.ForceReportComputedTask()

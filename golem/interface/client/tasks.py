@@ -1,34 +1,13 @@
+from datetime import timedelta
 import json
 import re
 from typing import Any, Optional
 
-from apps.appsmanager import AppsManager
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.deferred import sync_wait
-from golem.interface.client.logic import AppLogic
 from golem.interface.command import doc, group, command, Argument, CommandResult
-from golem.resource.dirmanager import DirManager
 
 CREATE_TASK_TIMEOUT = 300  # s
-
-
-class CommandAppLogic(AppLogic):
-
-    def __init__(self, client, datadir):
-        super(CommandAppLogic, self).__init__()
-
-        self.node_name = sync_wait(client.get_node_name())
-        self.datadir = datadir
-        self.dir_manager = DirManager(self.datadir)
-
-    @staticmethod
-    def instantiate(client, datadir):
-        logic = CommandAppLogic(client, datadir)
-        apps_manager = AppsManager()
-        apps_manager.load_apps()
-        for app in list(apps_manager.apps.values()):
-            logic.register_new_task_type(app.task_type_info())
-        return logic
 
 
 @group(help="Manage tasks")
@@ -36,9 +15,9 @@ class Tasks:
 
     client = None  # type: 'golem.rpc.session.Client'
 
-    task_table_headers = ['id', 'remaining',
+    task_table_headers = ['id', 'ETA',
                           'subtasks', 'status', 'completion']
-    subtask_table_headers = ['node', 'id', 'remaining', 'status', 'completion']
+    subtask_table_headers = ['node', 'id', 'ETA', 'status', 'completion']
     unsupport_reasons_table_headers = ['reason', 'no of tasks',
                                        'avg for all tasks']
 
@@ -88,7 +67,7 @@ class Tasks:
             for task in result or []:
                 values.append([
                     task['id'],
-                    str(task['time_remaining']),
+                    Tasks.__format_seconds(task['time_remaining']),
                     str(task['subtasks']),
                     task['status'],
                     Tasks.__progress_str(task['progress'])
@@ -98,6 +77,8 @@ class Tasks:
                                             sort=sort)
 
         if isinstance(result, dict):
+            result['time_remaining'] = \
+                Tasks.__format_seconds(result['time_remaining'])
             result['progress'] = Tasks.__progress_str(result['progress'])
 
         return result
@@ -114,7 +95,7 @@ class Tasks:
                 values.append([
                     subtask['node_name'],
                     subtask['subtask_id'],
-                    str(subtask['time_remaining']),
+                    Tasks.__format_seconds(subtask['time_remaining']),
                     subtask['status'],
                     Tasks.__progress_str(subtask['progress'])
                 ])
@@ -168,6 +149,14 @@ class Tasks:
         values = [[r['reason'], r['ntasks'], r['avg']] for r in result]
         return CommandResult.to_tabular(Tasks.unsupport_reasons_table_headers,
                                         values)
+
+    @staticmethod
+    def __format_seconds(seconds: float) -> str:
+        try:
+            delta = timedelta(seconds=int(seconds))
+            return str(delta)
+        except TypeError:
+            return '???'
 
     @staticmethod
     def __dump_dict(dictionary: dict, outfile: Optional[str]) -> None:
