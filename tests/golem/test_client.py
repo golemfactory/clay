@@ -203,6 +203,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth._private_key = "a" * 32
         with patch('golem.client.EthereumTransactionSystem') as ets:
             ets.return_value = ets
+            ets.return_value.eth_base_for_batch_payment.return_value = 0
             self.client = Client(
                 datadir=self.path,
                 app_config=Mock(),

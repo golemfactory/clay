@@ -74,6 +74,7 @@ class FundsLocker(LoopingCallService):
         for task_lock in self.task_lock.values():
             gnt += task_lock.gnt_lock()
             eth += task_lock.eth_lock()
+        eth += self.transaction_system.eth_base_for_batch_payment()
         return gnt, eth
 
     def remove_old(self):

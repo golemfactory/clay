@@ -2,7 +2,7 @@ import logging
 from typing import List
 
 from ethereum.utils import privtoaddr, denoms
-from eth_utils import encode_hex
+from eth_utils import encode_hex, is_address
 
 from golem_sci import new_sci, chains
 from golem.ethereum.node import NodeProcess
@@ -73,8 +73,10 @@ class EthereumTransactionSystem(TransactionSystem):
         return gnt, av_gnt, eth, last_gnt_update, last_eth_update
 
     def eth_for_batch_payment(self, num_payments):
-        return self.payment_processor.ETH_BATCH_PAYMENT_BASE + \
-            self.payment_processor.ETH_PER_PAYMENT * num_payments
+        return self.payment_processor.ETH_PER_PAYMENT * num_payments
+
+    def eth_base_for_batch_payment(self):
+        return self.payment_processor.ETH_BATCH_PAYMENT_BASE
 
     def get_withdraw_gas_cost(self, amount: int, currency: str) -> int:
         gas_price = self._sci.get_current_gas_price()
@@ -99,6 +101,9 @@ class EthereumTransactionSystem(TransactionSystem):
             destination: str,
             currency: str,
             lock: int = 0) -> List[str]:
+        if not is_address(destination):
+            raise ValueError("{} is not valid ETH address".format(destination))
+
         pp = self.payment_processor
         if currency == 'ETH':
             eth = pp._eth_available()  # pylint: disable=W0212

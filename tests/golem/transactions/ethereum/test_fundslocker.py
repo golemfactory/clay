@@ -14,6 +14,7 @@ class TestFundsLocker(TempDirFixture):
         super().setUp()
         self.ts = mock.MagicMock()
         self.ts.eth_for_batch_payment.return_value = 13000
+        self.ts.eth_base_for_batch_payment.return_value = 3000
         val = 100000
         time_ = time.time()
         self.ts.get_balance.return_value = val, val, val, time_, time_
@@ -80,7 +81,7 @@ class TestFundsLocker(TempDirFixture):
         task.header.subtask_timeout = 3000
         fl.lock_funds(task)
         gnt, eth = fl.sum_locks()
-        assert eth == 13000 * 4
+        assert eth == 13000 * 4 + 3000
         val1 = compute_subtask_value(320, 360) * 10
         val2 = compute_subtask_value(140, 3600) * 7
         val3 = compute_subtask_value(10, 60) * 4
