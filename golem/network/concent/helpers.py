@@ -128,6 +128,5 @@ def process_report_computed_task(
     # Verification passed, will send ACK
 
     return message.tasks.AckReportComputedTask(
-        subtask_id=msg.subtask_id,
-        task_to_compute=msg.task_to_compute,
+        report_computed_task=msg
     )

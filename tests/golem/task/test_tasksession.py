@@ -157,6 +157,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             ['compute_task_def', ctd],
             ['package_hash', 'sha1:' + task_state.package_hash],
             ['concent_enabled', use_concent],
+
+            # @todo should be addressed in @jivan's TTC.price update
+            ['price', None],
         ]
         self.assertCountEqual(ms.slots(), expected)
         ts2.task_manager.get_next_subtask.return_value = (ctd, True, False)
@@ -191,6 +194,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         wtr = WaitingTaskResultFactory()
 
         get_mock.return_value = msg_factories.tasks.TaskToComputeFactory(
+            compute_task_def__subtask_id=wtr.subtask_id,
             compute_task_def__task_id=wtr.task_id,
             compute_task_def__deadline=calendar.timegm(time.gmtime()) + 3600,
         )
@@ -640,11 +644,19 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         cancel = session.concent_service.cancel_task_message
 
+        ttc = msg_factories.tasks.TaskToComputeFactory(
+            compute_task_def__subtask_id=subtask_id,
+            compute_task_def__task_id=task_id,
+        )
+
+        rct = msg_factories.tasks.ReportComputedTaskFactory(
+            task_to_compute=ttc)
+
         msg_ack = message.tasks.AckReportComputedTask(
-            subtask_id=subtask_id
+            report_computed_task=rct
         )
         msg_rej = message.tasks.RejectReportComputedTask(
-            subtask_id=subtask_id,
+            task_to_compute=ttc
         )
 
         # Subtask is not known
@@ -660,7 +672,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # Subtask is known
         with patch("golem.task.tasksession.get_task_message") as get_mock:
-            get_mock.return_value = msg_factories.ReportComputedTask()
+            get_mock.return_value = rct
             session._react_to_ack_report_computed_task(msg_ack)
             session.concent_service.submit_task_message.assert_called_once_with(
                 subtask_id=msg_ack.subtask_id,
@@ -955,7 +967,7 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
 
     def _prepare_report_computed_task(self, **kwargs):
         return msg_factories.tasks.ReportComputedTaskFactory(
-            subtask_id=self.subtask_id,
+            task_to_compute__compute_task_def__subtask_id=self.subtask_id,
             task_to_compute__compute_task_def__task_id=self.task_id,
             **kwargs,
         )

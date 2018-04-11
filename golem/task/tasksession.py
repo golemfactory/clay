@@ -283,7 +283,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                                                             self.address)
 
         report_computed_task = message.ReportComputedTask(
-            subtask_id=task_result.subtask_id,
+            task_to_compute=task_to_compute,
             result_type=task_result.result_type,
             computation_time=task_result.computing_time,
             node_name=node_name,
@@ -299,8 +299,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             secret=task_result.result_secret,
             options=client_options.__dict__,
         )
-
-        report_computed_task.task_to_compute = task_to_compute
 
         history.add(
             msg=report_computed_task,
