@@ -129,7 +129,7 @@ function install_dependencies()
         source /etc/os-release
         sudo add-apt-repository \
             "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-            echo $UBUNTU_CODENAME \
+            $(echo $UBUNTU_CODENAME) \
             stable"
     fi
 
