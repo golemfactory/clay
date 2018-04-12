@@ -1,14 +1,14 @@
+import collections
 import logging
 import sys
 import time
 import uuid
 import json
-from collections import Iterable
 from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
 from threading import Lock, Thread
-from typing import Dict, Hashable, Optional, Union, List
+from typing import Dict, Hashable, Optional, Union, List, Iterable
 
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -59,8 +59,9 @@ from golem.resource.resource import get_resources_for_task, ResourceType
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.task import taskpreset
 from golem.task.taskarchiver import TaskArchiver
+from golem.task.taskbase import Task as TaskBase
 from golem.task.taskserver import TaskServer
-from golem.task.taskstate import TaskTestStatus
+from golem.task.taskstate import TaskTestStatus, SubtaskStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
@@ -487,7 +488,7 @@ class Client(HardwarePresetsMixin):
         self.diag_service.stop()
 
     def connect(self, socket_address):
-        if isinstance(socket_address, Iterable):
+        if isinstance(socket_address, collections.Iterable):
             socket_address = SocketAddress(
                 socket_address[0],
                 int(socket_address[1])
@@ -683,6 +684,43 @@ class Client(HardwarePresetsMixin):
         del task_dict['id']
 
         return self.create_task(task_dict)
+
+    def restart_subtasks_from_task(
+            self, task_id: str, subtask_ids: Iterable[str]):
+
+        assert isinstance(self.task_server, TaskServer)
+        task_manager = self.task_server.task_manager
+
+        try:
+            task_manager.put_task_in_restarted_state(task_id, clear_tmp=False)
+            old_task = task_manager.tasks[task_id]
+            finished_subtask_ids = set(
+                sub_id for sub_id, sub in old_task.subtasks_given.items()
+                if sub['status'] == SubtaskStatus.finished
+            )
+            subtask_ids_to_copy = finished_subtask_ids - set(subtask_ids)
+        except task_manager.AlreadyRestartedError:
+            logger.error('Task already restarted: %r', task_id)
+            return None
+        except KeyError:
+            logger.error('Task not found: %r', task_id)
+            return None
+
+        task_dict = deepcopy(task_manager.get_task_definition_dict(old_task))
+        del task_dict['id']
+
+        def copy_results(task: TaskBase):
+            task_manager.copy_results(
+                old_task_id=task_id,
+                new_task_id=task.header.task_id,
+                subtask_ids_to_copy=subtask_ids_to_copy
+            )
+
+        deferred = self.enqueue_new_task(task_dict)
+
+        deferred.addCallbacks(
+            copy_results,
+            lambda err: logger.error('Task creation failed: %r', err))
 
     def restart_frame_subtasks(self, task_id, frame):
         self.task_server.task_manager.restart_frame_subtasks(task_id, frame)
