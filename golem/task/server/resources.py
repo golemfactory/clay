@@ -104,6 +104,7 @@ class TaskResourcesMixin:
 
         task_keeper = getattr(self, 'task_keeper')
         resource_manager = self._get_resource_manager()
+        options: Optional[HyperdriveClientOptions] = None
 
         def _filter_options(_options):
             result = None
@@ -122,7 +123,6 @@ class TaskResourcesMixin:
             except (AttributeError, TypeError) as exc:
                 logger.warning('Failed to deserialized received hyperg '
                                'connection options: %r', exc)
-                options = None
         else:
             options = received_options
 
