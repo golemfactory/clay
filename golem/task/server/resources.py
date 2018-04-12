@@ -104,19 +104,29 @@ class TaskResourcesMixin:
 
         task_keeper = getattr(self, 'task_keeper')
         resource_manager = self._get_resource_manager()
-        options = None
+
+        def _filter_options(_options):
+            result = None
+
+            try:
+                result = _options.filtered(verify_peer=self._verify_peer)
+            except Exception as _exc:  # pylint: disable=broad-except
+                logger.warning('Failed to filter received hyperg connection'
+                               'options; falling back to defaults: %r', _exc)
+
+            return result or resource_manager.build_client_options()
 
         if isinstance(received_options, dict):
             try:
                 options = HyperdriveClientOptions(**received_options)
-                options = options.filtered(verify_peer=self._verify_peer)
-            except (AttributeError, TypeError):
+            except (AttributeError, TypeError) as exc:
+                logger.warning('Failed to deserialized received hyperg '
+                               'connection options: %r', exc)
                 options = None
+        else:
+            options = received_options
 
-        elif isinstance(received_options, HyperdriveClientOptions):
-            options = received_options.filtered(verify_peer=self._verify_peer)
-
-        options = options or resource_manager.build_client_options()
+        options = _filter_options(options)
         task_header = task_keeper.task_headers.get(task_id)
 
         if task_header:

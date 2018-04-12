@@ -59,7 +59,7 @@ class ClientOptions(object):
 
         self.client_id = client_id
         self.version = version
-        self.options = options
+        self.options = options or dict()
 
     def get(self, client_id, version, option):
         if self.client_id != client_id:
