@@ -963,6 +963,9 @@ class TaskServer(
         })
 
 
+# TODO: https://github.com/golemfactory/golem/issues/2633
+#       and remove linter switch offs
+# pylint: disable=too-many-arguments, too-many-locals
 class WaitingTaskResult(object):
     def __init__(self, task_id, subtask_id, result, result_type,
                  last_sending_trial, delay_time, owner_address, owner_port,
@@ -987,6 +990,7 @@ class WaitingTaskResult(object):
         self.result_size = result_size
 
         self.already_sending = False
+# pylint: enable=too-many-arguments, too-many-locals
 
 
 class WaitingTaskFailure(object):
