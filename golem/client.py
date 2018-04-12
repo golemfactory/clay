@@ -245,6 +245,7 @@ class Client(HardwarePresetsMixin):
         )
         self._publish(Task.evt_task_status, kwargs['task_id'])
 
+    @report_calls(Component.client, 'sync')
     def sync(self):
         self.transaction_system.sync()
 
