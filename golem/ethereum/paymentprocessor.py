@@ -51,7 +51,7 @@ class PaymentProcessor(LoopingCallService):
     # Minimal number of confirmations before we treat transactions as done
     REQUIRED_CONFIRMATIONS = 12
 
-    CLOSURE_TIME_DELAY = 10
+    CLOSURE_TIME_DELAY = 2
 
     def __init__(self,
                  sci,
@@ -97,7 +97,8 @@ class PaymentProcessor(LoopingCallService):
             gnt_balance = self._sci.get_gnt_balance(
                 self._sci.get_eth_address())
             if gnt_balance is not None:
-                self.__gnt_balance = gnt_balance
+                self.__gnt_balance = \
+                    gnt_balance + self._gnt_converter.get_gate_balance()
             else:
                 log.warning("Failed to retrieve GNT balance")
 
@@ -220,11 +221,9 @@ class PaymentProcessor(LoopingCallService):
                 log.info('Waiting for GNT-GNTB conversion')
                 return False
 
-            closure_time = now - self.CLOSURE_TIME_DELAY
-
             payments_count = self.__get_next_batch(
                 self._awaiting.copy(),
-                closure_time,
+                now - self.CLOSURE_TIME_DELAY,
             )
             if payments_count < len(self._awaiting) and self.__gnt_balance:
                 log.info(
@@ -241,7 +240,15 @@ class PaymentProcessor(LoopingCallService):
         value = sum([p.value for p in payments])
         log.info("Batch payments value: {:.6f}".format(value / denoms.ether))
 
-        tx_hash = self._sci.batch_transfer(payments, closure_time)
+        closure_time = payments[-1].processed_ts
+        try:
+            tx_hash = self._sci.batch_transfer(payments, closure_time)
+        except Exception as e:
+            log.warning("Exception while sending batch transfer {}".format(e))
+            with self._awaiting_lock:
+                self._awaiting.update(payments)
+            return False
+
         with Payment._meta.database.transaction():
             for payment in payments:
                 payment.status = PaymentStatus.sent

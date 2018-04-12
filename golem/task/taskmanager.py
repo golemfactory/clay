@@ -234,7 +234,7 @@ class TaskManager(TaskEventListener):
                     self.tasks_states[task_id] = state
 
                     for sub in state.subtask_states.values():
-                        self.subtask2task_mapping[sub.subtask_id] = task
+                        self.subtask2task_mapping[sub.subtask_id] = task_id
 
                     logger.debug('TASK %s RESTORED from %r', task_id, path)
                 except (pickle.UnpicklingError, EOFError, ImportError,
