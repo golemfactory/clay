@@ -1,11 +1,13 @@
 # pylint: disable=protected-access,no-self-use
 import datetime
 import gc
+import factory
 import importlib
 import unittest
 import unittest.mock as mock
 
 from golem_messages import exceptions as msg_exceptions
+from golem_messages import factories as msg_factories
 from golem_messages import message
 
 from golem import testutils
@@ -15,9 +17,13 @@ from golem.network import history
 from golem.network.concent import received_handler
 from golem.network.concent.handlers_library import library
 from golem.network.concent.filetransfers import ConcentFiletransferService
-from tests.factories import messages as msg_factories
+
 from tests.factories import taskserver as taskserver_factories
 from tests.factories.resultpackage import ExtractedPackageFactory
+
+
+def ttc_from_arct(arct: message.tasks.AckReportComputedTask):
+    return arct.report_computed_task.task_to_compute
 
 
 class RegisterHandlersTestCase(unittest.TestCase):
@@ -44,10 +50,12 @@ class RegisterHandlersTestCase(unittest.TestCase):
 
 @mock.patch("golem.network.history.add")
 class TestOnForceReportComputedTaskResponse(unittest.TestCase):
+
     def setUp(self):
-        self.msg = msg_factories.ForceReportComputedTaskResponse()
+        self.msg = msg_factories.concents.\
+            ForceReportComputedTaskResponseFactory()
         self.reasons = message.concents.ForceReportComputedTaskResponse.REASON
-        ttc = self.msg.ack_report_computed_task.task_to_compute
+        ttc = ttc_from_arct(self.msg.ack_report_computed_task)
         self.call_response = mock.call(
             msg=self.msg,
             node_id=ttc.requestor_id,
@@ -75,7 +83,7 @@ class TestOnForceReportComputedTaskResponse(unittest.TestCase):
         self.msg.reason = self.reasons.ConcentAck
         self.msg.reject_report_computed_task = None
         library.interpret(self.msg)
-        ttc = self.msg.ack_report_computed_task.task_to_compute
+        ttc = ttc_from_arct(self.msg.ack_report_computed_task)
         call_inner = mock.call(
             msg=self.msg.ack_report_computed_task,
             node_id=ttc.requestor_id,
@@ -92,7 +100,7 @@ class TestOnForceReportComputedTaskResponse(unittest.TestCase):
         self.msg.reason = self.reasons.AckFromRequestor
         self.msg.reject_report_computed_task = None
         library.interpret(self.msg)
-        ttc = self.msg.ack_report_computed_task.task_to_compute
+        ttc = ttc_from_arct(self.msg.ack_report_computed_task)
         self.assertEqual(add_mock.call_count, 2)
         call_inner = mock.call(
             msg=self.msg.ack_report_computed_task,
@@ -148,7 +156,7 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
 
     @mock.patch("golem.network.concent.received_handler.logger.warning")
     def test_concent_service_refused(self, logger_mock):
-        msg = msg_factories.ServiceRefused()
+        msg = msg_factories.concents.ServiceRefusedFactory()
         library.interpret(msg)
         self.assertIn('Concent service (%s) refused',
                       logger_mock.call_args[0][0])
@@ -167,7 +175,7 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
             pull_mock,
             _mdt_mock,
             rsct_mock):
-        msg = msg_factories.VerdictReportComputedTask()
+        msg = msg_factories.concents.VerdictReportComputedTaskFactory()
         library.interpret(msg)
         self.assertEqual(
             self.client.keys_auth.ecc.verify.call_count,
@@ -194,9 +202,9 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
             rsct_mock):
         self.client.keys_auth.ecc.verify.side_effect = \
             msg_exceptions.InvalidSignature
-        msg = msg_factories.VerdictReportComputedTask()
+        msg = msg_factories.concents.VerdictReportComputedTaskFactory()
         library.interpret(msg)
-        ttc_from_ack = msg.ack_report_computed_task.task_to_compute
+        ttc_from_ack = ttc_from_arct(msg.ack_report_computed_task)
         self.client.keys_auth.ecc.verify.assert_called_once_with(
             inputb=ttc_from_ack.get_short_hash(),
             sig=ttc_from_ack.sig)
@@ -210,11 +218,11 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
             self,
             verify_mock,
             rsct_mock):
-        msg = msg_factories.VerdictReportComputedTask()
-        msg.ack_report_computed_task.task_to_compute = \
-            msg_factories.TaskToCompute()
+        msg = msg_factories.concents.VerdictReportComputedTaskFactory()
+        msg.ack_report_computed_task.report_computed_task.task_to_compute = \
+            msg_factories.tasks.TaskToComputeFactory()
         self.assertNotEqual(
-            msg.ack_report_computed_task.task_to_compute,
+            ttc_from_arct(msg.ack_report_computed_task),
             msg.force_report_computed_task.report_computed_task.task_to_compute,
         )
         library.interpret(msg)
@@ -236,7 +244,7 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
             pull_mock,
             _mdt_mock,
             helper_mock):
-        msg = msg_factories.ForceReportComputedTask()
+        msg = msg_factories.concents.ForceReportComputedTaskFactory()
         helper_mock.return_value = returned_msg = object()
         library.interpret(msg)
         helper_mock.assert_called_once_with(
@@ -252,7 +260,7 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
 
     @mock.patch('golem.task.taskmanager.TaskManager.task_computation_failure')
     def test_force_get_task_result_failed(self, tcf):
-        fgtrf = msg_factories.ForceGetTaskResultFailed()
+        fgtrf = msg_factories.concents.ForceGetTaskResultFailedFactory()
         library.interpret(fgtrf)
 
         msg = history.MessageHistoryService.get_sync_as_message(
@@ -282,8 +290,8 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
             self,
             accepted_mock,
             add_mock):
-        msg = msg_factories.ForceSubtaskResultsResponse()
-        msg.subtask_results_rejected = None
+        msg = msg_factories.concents.\
+            ForceSubtaskResultsResponseFactory.with_accepted()
         library.interpret(msg)
         accepted_mock.assert_called_once_with(
             subtask_id=msg.subtask_id,
@@ -302,8 +310,8 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
             self,
             rejected_mock,
             add_mock):
-        msg = msg_factories.ForceSubtaskResultsResponse()
-        msg.subtask_results_accepted = None
+        msg = msg_factories.concents.\
+            ForceSubtaskResultsResponseFactory.with_rejected()
         library.interpret(msg)
         rejected_mock.assert_called_once_with(
             subtask_id=msg.subtask_id,
@@ -317,8 +325,9 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
 
     @mock.patch('golem.task.taskmanager.TaskManager.task_computation_failure')
     def test_fgtr_service_refused(self, tcf):
-        fgtr = msg_factories.ForceGetTaskResult()
-        sr = msg_factories.ServiceRefused(subtask_id=fgtr.subtask_id)
+        fgtr = msg_factories.concents.ForceGetTaskResultFactory()
+        sr = msg_factories.concents.ServiceRefusedFactory(
+            task_to_compute__compute_task_def__subtask_id=fgtr.subtask_id)
         library.interpret(sr, response_to=fgtr)
         tcf.assert_called_once_with(
             fgtr.subtask_id,
@@ -326,7 +335,7 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
 
     @mock.patch('golem.task.taskmanager.TaskManager.task_computation_failure')
     def test_force_get_task_result_rejected(self, tcf):
-        fgtrr = msg_factories.ForceGetTaskResultRejected()
+        fgtrr = msg_factories.concents.ForceGetTaskResultRejectedFactory()
         library.interpret(fgtrr, response_to=fgtrr.force_get_task_result)
         tcf.assert_called_once_with(
             fgtrr.subtask_id,
@@ -335,7 +344,7 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
 
     @mock.patch('golem.network.concent.received_handler.logger.debug')
     def test_ack_force_get_task_result(self, log):
-        afgtr = msg_factories.AckForceGetTaskResult()
+        afgtr = msg_factories.concents.AckForceGetTaskResultFactory()
         library.interpret(afgtr, response_to=afgtr.force_get_task_result)
         self.assertEqual(log.call_count, 1)
 
@@ -364,15 +373,15 @@ class FiletransfersTestBase(TaskServerMessageHandlerTestBase):
 
 
 class FileTransferTokenTests:
-    MSG_FACTORY: msg_factories.factory.Factory
+    MSG_FACTORY: factory.Factory
 
     def setUp(self):
         super().setUp()  # noqa: pylint:disable=no-member
 
         self.wtr = taskserver_factories.WaitingTaskResultFactory(
             result_path=self.path)
-        self.rct = msg_factories.ReportComputedTask(
-            subtask_id=self.wtr.subtask_id)
+        self.rct = msg_factories.tasks.ReportComputedTaskFactory(
+            task_to_compute__compute_task_def__subtask_id=self.wtr.subtask_id)
 
     def _get_correct_message(self):
         return self.MSG_FACTORY(
@@ -403,7 +412,7 @@ class FileTransferTokenTests:
 
 class ForceGetTaskResultUploadTest(FileTransferTokenTests,  # noqa pylint:disable=too-many-ancestors
                                    FiletransfersTestBase):
-    MSG_FACTORY = msg_factories.ForceGetTaskResultUploadFactory
+    MSG_FACTORY = msg_factories.concents.ForceGetTaskResultUploadFactory
 
     def _get_message_ftt_wrong_type(self):
         return self.MSG_FACTORY(file_transfer_token__download=True,
@@ -470,7 +479,7 @@ class ForceGetTaskResultUploadTest(FileTransferTokenTests,  # noqa pylint:disabl
 
 class ForceGetTaskResultDownloadTest(FileTransferTokenTests,  # noqa pylint:disable=too-many-ancestors
                                      FiletransfersTestBase):
-    MSG_FACTORY = msg_factories.ForceGetTaskResultDownloadFactory
+    MSG_FACTORY = msg_factories.concents.ForceGetTaskResultDownloadFactory
 
     def _get_message_ftt_wrong_type(self):
         return self.MSG_FACTORY(file_transfer_token__download=False,

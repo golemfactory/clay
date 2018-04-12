@@ -284,7 +284,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                                                             self.address)
 
         report_computed_task = message.ReportComputedTask(
-            subtask_id=task_result.subtask_id,
+            task_to_compute=task_to_compute,
             result_type=task_result.result_type,
             computation_time=task_result.computing_time,
             node_name=node_name,
@@ -300,8 +300,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             secret=task_result.result_secret,
             options=client_options.__dict__,
         )
-
-        report_computed_task.task_to_compute = task_to_compute
 
         history.add(
             msg=report_computed_task,
@@ -528,7 +526,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task_header_keeper=self.task_server.task_keeper,
         )
         self.send(returned_msg)
-        if not isinstance(returned_msg, message.concents.AckReportComputedTask):
+        if not isinstance(returned_msg, message.tasks.AckReportComputedTask):
             self.dropped()
             return
 
@@ -855,9 +853,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.WaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
 
             # Concent messages
-            message.AckReportComputedTask.TYPE:
+            message.tasks.AckReportComputedTask.TYPE:
                 self._react_to_ack_report_computed_task,
-            message.RejectReportComputedTask.TYPE:
+            message.tasks.RejectReportComputedTask.TYPE:
                 self._react_to_reject_report_computed_task,
         })
 
