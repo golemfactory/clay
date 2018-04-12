@@ -9,6 +9,7 @@ from golem.network import history
 from golem.network.concent import helpers as concent_helpers
 from golem.network.concent.handlers_library import library
 from golem.task import taskserver
+from golem.task.server import helpers as task_server_helpers
 
 from .filetransfers import ConcentFiletransferService
 
@@ -171,9 +172,8 @@ class TaskServerMessageHandler():
             .force_report_computed_task \
             .report_computed_task
 
-        self.task_server.receive_subtask_computation_time(
-            rct.subtask_id,
-            rct.computation_time,
+        self._after_ack_report_computed_task(
+            report_computed_task=rct,
         )
 
     @handler_for(message.concents.ForceReportComputedTask)
@@ -198,9 +198,18 @@ class TaskServerMessageHandler():
         if isinstance(returned_msg, message.tasks.RejectReportComputedTask):
             return
 
-        self.task_server.receive_subtask_computation_time(
-            rct.subtask_id,
-            rct.computation_time,
+        self._after_ack_report_computed_task(
+            report_computed_task=rct,
+        )
+
+    def _after_ack_report_computed_task(self, report_computed_task):
+        logger.info(
+            "After AckReportComputedTask. Starting verification of %r",
+            report_computed_task,
+        )
+        task_server_helpers.computed_task_reported(
+            task_server=self.task_server,
+            report_computed_task=report_computed_task,
         )
 
     @handler_for(message.concents.ForceGetTaskResultFailed)
