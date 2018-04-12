@@ -32,6 +32,7 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 from golem.utils import encode_hex
 
+from tests.factories import messages as msg_factories
 from tests.factories.resultpackage import ExtractedPackageFactory
 from tests.factories.messages import ReportComputedTask
 
@@ -211,15 +212,14 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         assert ts.request_task()
         subtask_id = generate_new_id_from_id(task_id)
         subtask_id2 = generate_new_id_from_id(task_id)
-        self.assertTrue(ts.send_results(subtask_id, task_id, results, 40))
+        self.assertTrue(ts.send_results(subtask_id, task_id, results))
         ts.client.transaction_system.incomes_keeper.expect.reset_mock()
-        self.assertTrue(ts.send_results(subtask_id2, task_id, results, 40))
+        self.assertTrue(ts.send_results(subtask_id2, task_id, results))
         wtr = ts.results_to_send[subtask_id]
         self.assertIsInstance(wtr, WaitingTaskResult)
         self.assertEqual(wtr.subtask_id, subtask_id)
         self.assertEqual(wtr.result, "")
         self.assertEqual(wtr.result_type, ResultType.DATA)
-        self.assertEqual(wtr.computing_time, 40)
         self.assertEqual(wtr.last_sending_trial, 0)
         self.assertEqual(wtr.delay_time, 0)
         self.assertEqual(wtr.owner_address, "10.10.10.10")
@@ -246,7 +246,9 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
         ctd['subtask_id'] = subtask_id
-        ts.task_manager.comp_task_keeper.receive_subtask(ctd)
+        ttc = msg_factories.TaskToCompute(price=1)
+        ttc.compute_task_def = ctd
+        ts.task_manager.comp_task_keeper.receive_subtask(ttc)
         model.Income.create(
             sender_node=keys_auth.public_key,
             task=ctd['task_id'],
@@ -748,7 +750,6 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         ts = self.ts
         ts.task_manager.listen_port = 1111
         ts.task_manager.listen_address = "10.10.10.10"
-        ts.receive_subtask_computation_time("xxyyzz", 1031)
 
         task_mock = get_mock_task("xyz", "xxyyzz")
         task_mock.get_trust_mod.return_value = ts.max_trust
@@ -771,13 +772,8 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
             1000, 10,
             5, 10, 2,
             "10.10.10.10")
-        ts.receive_subtask_computation_time("xxyyzz", 1031)
-        self.assertEqual(ts.task_manager.tasks_states[task_id].subtask_states[
-            "xxyyzz"].computation_time, 1031)
         expected_value = ceil(1031 * 1010 / 3600)
-        task_state = ts.task_manager.tasks_states[task_id]
-        self.assertEqual(task_state.subtask_states["xxyyzz"].value,
-                         expected_value)
+        ts.task_manager.set_subtask_value("xxyyzz", expected_value)
         account_info = Mock()
         account_info.key_id = "key"
         prev_calls = trust.COMPUTED.increase.call_count
@@ -796,7 +792,6 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         ts = self.ts
         ts.task_manager.listen_address = "10.10.10.10"
         ts.task_manager.listen_port = 1111
-        ts.receive_subtask_computation_time("xxyyzz", 1031)
 
         extra_data = Mock()
         extra_data.ctd = ComputeTaskDef()
@@ -816,7 +811,6 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
             "DEF", "DEF", task_id, 1000, 10, 5, 10, 2, "10.10.10.10")
 
-        ts.receive_subtask_computation_time("xxyyzz", 1031)
         account_info = Mock()
         account_info.key_id = "key"
         account_info.eth_account = Mock()

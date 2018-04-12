@@ -46,6 +46,7 @@ class TaskToCompute(factory.Factory):
         lambda: cryptography.ECCx(None).raw_pubkey)
     requestor_public_key = factory.LazyFunction(
         lambda: cryptography.ECCx(None).raw_pubkey)
+    price = factory.Faker('random_int', min=1, max=10*5)
 
     @classmethod
     def _create(cls, *args, **kwargs):

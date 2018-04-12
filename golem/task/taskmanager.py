@@ -18,7 +18,7 @@ from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task
-from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
+from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     SubtaskState, Operation, TaskOp, SubtaskOp, OtherOp
@@ -371,7 +371,7 @@ class TaskManager(TaskEventListener):
 
         self.subtask2task_mapping[ctd['subtask_id']] = task_id
         self.__add_subtask_to_tasks_states(
-            node_name, node_id, price, ctd, address,
+            node_name, node_id, ctd, address,
         )
         self.notice_task_updated(task_id,
                                  subtask_id=ctd['subtask_id'],
@@ -416,19 +416,13 @@ class TaskManager(TaskEventListener):
         subtask_state = self.tasks_states[task].subtask_states[subtask_id]
         return subtask_state.computer.node_id
 
-    def set_value(self, task_id, subtask_id, value):
-        if not isinstance(value, int):
-            raise TypeError("Incorrect 'value' type: {}. Should be int"
-                            .format(type(value)))
-        task_state = self.tasks_states.get(task_id)
-        if task_state is None:
-            logger.warning("This is not my task {}".format(task_id))
-            return
-        subtask_state = task_state.subtask_states.get(subtask_id)
-        if subtask_state is None:
-            logger.warning("This is not my subtask {}".format(subtask_id))
-            return
-        subtask_state.value = value
+    @handle_subtask_key_error
+    def set_subtask_value(self, subtask_id: str, price: int) -> None:
+        """Set price for a subtask"""
+        task_id = self.subtask2task_mapping[subtask_id]
+
+        ss = self.tasks_states[task_id].subtask_states[subtask_id]
+        ss.value = price
 
     @handle_subtask_key_error
     def get_value(self, subtask_id):
@@ -770,37 +764,6 @@ class TaskManager(TaskEventListener):
         task_type = self.task_types[task_type_name]
         return task_type.get_preview(task, single=single)
 
-    @handle_subtask_key_error
-    def set_computation_time(self, subtask_id, computation_time):
-        """
-        Set computation time for subtask and also compute and set new value
-        based on saved price for this subtask
-        :param str subtask_id: subtask which was computed in given
-                               computation_time
-        :param float computation_time: how long does it take to compute
-        this task = max timeout
-
-        :return:
-        """
-        task_id = self.subtask2task_mapping[subtask_id]
-
-        # Max computation time should be in range [0;timeout]
-        timeout = self.tasks[task_id].task_definition.subtask_timeout
-        if computation_time > timeout:
-            logger.warning(
-                'Received computation time (%r) for subtask %r exceeds subtask '
-                'timeout (%r)', computation_time, subtask_id, timeout)
-            computation_time = timeout
-        if computation_time < 0:
-            logger.warning(
-                'Received computation time (%r) for subtask %r is lower than 0',
-                computation_time, subtask_id)
-            computation_time = 0
-
-        ss = self.tasks_states[task_id].subtask_states[subtask_id]
-        ss.computation_time = computation_time
-        ss.value = compute_subtask_value(ss.computer.price, computation_time)
-
     def add_comp_task_request(self, theader, price):
         """ Add a header of a task which this node may try to compute """
         self.comp_task_keeper.add_request(theader, price)
@@ -821,11 +784,11 @@ class TaskManager(TaskEventListener):
             logger.exception("Cannot estimate price, wrong params")
             return None
 
-    def __add_subtask_to_tasks_states(self, node_name, node_id, comp_price,
+    def __add_subtask_to_tasks_states(self, node_name, node_id,
                                       ctd, address):
 
-        logger.debug('add_subtask_to_tasks_states(%r, %r, %r, %r, %r)',
-                     node_name, node_id, comp_price, ctd, address)
+        logger.debug('add_subtask_to_tasks_states(%r, %r, %r, %r)',
+                     node_name, node_id, ctd, address)
 
         price = self.tasks[ctd['task_id']].header.max_price
 

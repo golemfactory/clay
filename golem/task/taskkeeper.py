@@ -51,12 +51,27 @@ class WrongOwnerException(Exception):
 class CompTaskInfo:
     def __init__(self, header: TaskHeader, price: int):
         self.header = header
+        self._price, self.subtask_price = 0, 0  # lints and typing
         self.price = price
         self.requests = 1
         self.subtasks = {}
         # TODO Add concent communication timeout. Issue #2406
         self.keeping_deadline = comp_task_info_keeping_timeout(
             self.header.subtask_timeout, self.header.resource_size)
+
+    @property
+    def price(self) -> int:
+        return self._price
+
+    @price.setter
+    def price(self, value: int):
+        self._price = value
+        # subtask_price is total amount that will be payed
+        # for subtask of this task
+        self.subtask_price = compute_subtask_value(
+            value,
+            self.header.subtask_timeout,
+        )
 
     def __repr__(self):
         return "<CompTaskInfo(%r, %r) reqs: %r>" % (
@@ -148,12 +163,8 @@ class CompTaskKeeper:
         self.subtask_to_task.update(subtask_to_task)
 
     def add_request(self, theader: TaskHeader, price: int):
+        # price is task_header.max_price
         logger.debug('CT.add_request()')
-        if not isinstance(price, int):
-            raise TypeError(
-                "Incorrect 'price' type: {}."
-                " Should be int or long".format(type(price))
-            )
         if price < 0:
             raise ValueError("Price should be greater or equal zero")
         task_id = theader.task_id
@@ -172,15 +183,28 @@ class CompTaskKeeper:
         return self.active_tasks[task_id].header
 
     @handle_key_error
-    def receive_subtask(self, comp_task_def):
+    def receive_subtask(self, task_to_compute: message.TaskToCompute):
+        comp_task_def = task_to_compute.compute_task_def
         logger.debug('CT.receive_subtask()')
         if not self.check_comp_task_def(comp_task_def):
             return False
-        task = self.active_tasks[comp_task_def['task_id']]
-        task.requests -= 1
-        task.subtasks[comp_task_def['subtask_id']] = comp_task_def
-        self.subtask_to_task[comp_task_def['subtask_id']] =\
-            comp_task_def['task_id']
+        comp_task_info: CompTaskInfo = self.active_tasks[
+            task_to_compute.task_id
+        ]
+        if task_to_compute.price != comp_task_info.subtask_price:
+            logger.info(
+                "Can't accept subtask %r for %r."
+                " %r<TTC.price> != %r<CTI.subtask_price>",
+                task_to_compute.subtask_id,
+                task_to_compute.task_id,
+                task_to_compute.price,
+                comp_task_info.subtask_price,
+            )
+            return False
+        comp_task_info.requests -= 1
+        comp_task_info.subtasks[task_to_compute.subtask_id] = comp_task_def
+        self.subtask_to_task[task_to_compute.subtask_id] =\
+            task_to_compute.task_id
         self.dump()
         return True
 
@@ -220,15 +244,9 @@ class CompTaskKeeper:
         return self.active_tasks[task_id].header.task_owner_key_id
 
     @handle_key_error
-    def get_value(self, task_id, computing_time):
-        price = self.active_tasks[task_id].price
-
-        if not isinstance(price, int):
-            raise TypeError(
-                "Incorrect 'price' type: {}."
-                " Should be int or long".format(type(price))
-            )
-        return compute_subtask_value(price, computing_time)
+    def get_value(self, task_id: str) -> int:
+        comp_task_info: CompTaskInfo = self.active_tasks[task_id]
+        return comp_task_info.subtask_price
 
     def check_task_owner_by_subtask(self, task_owner_key_id, subtask_id):
         task_id = self.subtask_to_task.get(subtask_id)

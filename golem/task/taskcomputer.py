@@ -211,7 +211,6 @@ class TaskComputer(object):
                 subtask_id,
                 subtask['task_id'],
                 task_thread.result,
-                work_time_to_be_paid,
             )
             dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=True, value=work_time_to_be_paid)
 
