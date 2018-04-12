@@ -1,12 +1,12 @@
-from golem_messages.message import ComputeTaskDef
 import random
-import uuid
 from os import path
 from threading import Lock
 
+from golem_messages.message import ComputeTaskDef
+
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
-from golem.core.idgenerator import generate_id
+from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.network.p2p.node import Node
 from golem.task.taskbase import Task, TaskHeader, ResultType
 from golem.utils import encode_hex
@@ -154,7 +154,7 @@ class DummyTask(Task):
         :rtype: ComputeTaskDef"""
 
         # create new subtask_id
-        subtask_id = str(uuid.uuid4())
+        subtask_id = generate_new_id_from_id(self.header.task_id)
 
         with self._lock:
             # check if a task has been assigned to this node
@@ -194,7 +194,7 @@ class DummyTask(Task):
     def verify_subtask(self, subtask_id):
         result = self.subtask_results[subtask_id]
 
-        if len(result) != self.task_params.result_size:
+        if not result or len(result) != self.task_params.result_size:
             return False
 
         if self.task_params.difficulty == 0:
