@@ -91,7 +91,6 @@ class Client(HardwarePresetsMixin):
             app_config: AppConfig,
             config_desc: ClientConfigDescriptor,
             keys_auth: KeysAuth,
-            database: Database,
             mainnet: bool = False,
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
@@ -121,7 +120,6 @@ class Client(HardwarePresetsMixin):
             self.config_desc.node_name,
             datadir
         )
-        self.db = database
 
         # Hardware configuration
         HardwarePresets.initialize(self.datadir)
@@ -512,8 +510,6 @@ class Client(HardwarePresetsMixin):
 
         dispatcher.send(signal='golem.monitor', event='shutdown')
 
-        if self.db:
-            self.db.close()
         self._unlock_datadir()
 
     def enqueue_new_task(self, task_dict):
