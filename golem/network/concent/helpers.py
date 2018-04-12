@@ -57,7 +57,6 @@ def process_report_computed_task(
             kwargs,
         )
         reject_msg = message.tasks.RejectReportComputedTask(
-            subtask_id=msg.subtask_id,
             reason=reason,
             task_to_compute=msg.task_to_compute,
             **kwargs,

@@ -38,7 +38,8 @@ def on_force_report_computed_task_response(msg, **_):
     if msg.reject_report_computed_task:
         node_id = msg.reject_report_computed_task.task_to_compute.requestor_id
     elif msg.ack_report_computed_task:
-        node_id = msg.ack_report_computed_task.task_to_compute.requestor_id
+        node_id = msg.ack_report_computed_task.\
+            report_computed_task.task_to_compute.requestor_id
     else:
         logger.warning("Can't determine node_id from %r. Assuming None", msg)
         node_id = None
@@ -136,9 +137,12 @@ class TaskServerMessageHandler():
 
         logger.warning("[CONCENT] Received verdict: %s", msg)
 
+        # @todo such verification/validation should be part of `golem-messages`
+        # https://github.com/golemfactory/golem-messages/issues/192
+
         # Verify TaskToCompute signature
         ttcs_tuple = (
-            msg.ack_report_computed_task.task_to_compute,
+            msg.ack_report_computed_task.report_computed_task.task_to_compute,
             msg.force_report_computed_task.report_computed_task.task_to_compute,
         )
         for ttc in ttcs_tuple:

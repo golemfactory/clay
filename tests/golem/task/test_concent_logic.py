@@ -188,4 +188,4 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         ack_msg = concent_call[0][0]
         self.assertIsInstance(ack_msg, message.tasks.AckReportComputedTask)
         self.assertEqual(ack_msg.subtask_id, self.msg.subtask_id)
-        self.assertEqual(ack_msg.task_to_compute, self.msg.task_to_compute)
+        self.assertEqual(ack_msg.report_computed_task, self.msg)
