@@ -14,7 +14,7 @@ class ConcentBaseTestTest(ConcentBaseTest, unittest.TestCase):
         provider_keys = self._fake_keys()
         concent_keys = self._fake_keys()
 
-        rct = msg_factories.tasks.ReportComputedTask()
+        rct = msg_factories.tasks.ReportComputedTaskFactory()
 
         dump(rct, provider_keys.raw_privkey, requestor_keys.raw_pubkey)
 

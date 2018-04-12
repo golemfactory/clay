@@ -240,12 +240,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         get_mock.side_effect = history.MessageNotFound
 
         with patch(
-                'golem.network.concent.helpers'
-                '.process_report_computed_task',
-                return_value=msg_factories.tasks.
-                AckReportComputedTaskFactory()
+            'golem.network.concent.helpers.process_report_computed_task',
+            return_value=msg_factories.tasks.AckReportComputedTaskFactory()
         ):
             ts2.interpret(rct)
+
         ts2.task_server.receive_subtask_computation_time.assert_called_with(
             wtr.subtask_id, wtr.computing_time)
         wtr.result_type = "UNKNOWN"
