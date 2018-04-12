@@ -208,7 +208,7 @@ class TaskServer(
 
         return None
 
-    def send_results(self, subtask_id, task_id, result, computing_time):
+    def send_results(self, subtask_id, task_id, result):
 
         if 'data' not in result or 'result_type' not in result:
             raise AttributeError("Wrong result format")
@@ -216,8 +216,7 @@ class TaskServer(
         header = self.task_keeper.task_headers[task_id]
 
         if subtask_id not in self.results_to_send:
-            value = self.task_manager.comp_task_keeper.get_value(
-                task_id, computing_time)
+            value = self.task_manager.comp_task_keeper.get_value(task_id)
             self.client.transaction_system.incomes_keeper.expect(
                 sender_node_id=header.task_owner_key_id,
                 subtask_id=subtask_id,
@@ -232,7 +231,6 @@ class TaskServer(
                 subtask_id=subtask_id,
                 result=result['data'],
                 result_type=result['result_type'],
-                computing_time=computing_time,
                 last_sending_trial=last_sending_trial,
                 delay_time=delay_time,
                 owner_address=header.task_owner_address,
@@ -545,9 +543,6 @@ class TaskServer(
 
     def quit(self):
         self.task_computer.quit()
-
-    def receive_subtask_computation_time(self, subtask_id, computation_time):
-        self.task_manager.set_computation_time(subtask_id, computation_time)
 
     def remove_responses(self, conn_id):
         self.response_list.pop(conn_id, None)
@@ -969,14 +964,13 @@ class TaskServer(
 
 
 class WaitingTaskResult(object):
-    def __init__(self, task_id, subtask_id, result, result_type, computing_time,
+    def __init__(self, task_id, subtask_id, result, result_type,
                  last_sending_trial, delay_time, owner_address, owner_port,
                  owner_key_id, owner, result_path=None, result_hash=None,
                  result_secret=None, package_sha1=None, result_size=None):
 
         self.task_id = task_id
         self.subtask_id = subtask_id
-        self.computing_time = computing_time
         self.last_sending_trial = last_sending_trial
         self.delay_time = delay_time
         self.owner_address = owner_address

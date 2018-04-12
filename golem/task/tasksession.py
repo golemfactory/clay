@@ -19,6 +19,7 @@ from golem.network.p2p import node as p2p_node
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
+from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import ResultType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
@@ -286,7 +287,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         report_computed_task = message.ReportComputedTask(
             subtask_id=task_result.subtask_id,
             result_type=task_result.result_type,
-            computation_time=task_result.computing_time,
+            # https://github.com/golemfactory/golem-messages/issues/189
+            computation_time=0,  # TODO: remove field from messages
             node_name=node_name,
             address=address,
             port=port,
@@ -429,6 +431,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         elif ctd:
             task = self.task_manager.tasks[ctd['task_id']]
             task_state = self.task_manager.tasks_states[ctd['task_id']]
+            price = taskkeeper.compute_subtask_value(
+                task.header.max_price,
+                task.header.subtask_timeout,
+            )
             msg = message.tasks.TaskToCompute(
                 compute_task_def=ctd,
                 requestor_id=task.header.task_owner.key,
@@ -441,6 +447,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 # for now, we're assuming the Concent
                 # is always in use
                 concent_enabled=self.concent_service.enabled,
+                price=price,
+            )
+            self.task_manager.set_subtask_value(
+                subtask_id=msg.subtask_id,
+                price=price,
             )
             history.add(
                 msg=msg,
@@ -471,7 +482,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
         if self._check_ctd_params(ctd)\
                 and self._set_env_params(ctd)\
-                and self.task_manager.comp_task_keeper.receive_subtask(ctd):
+                and self.task_manager.comp_task_keeper.receive_subtask(msg):
             self.task_server.add_task_session(
                 ctd['subtask_id'], self
             )

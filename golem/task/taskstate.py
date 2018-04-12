@@ -56,7 +56,6 @@ class SubtaskState(object):
         self.stdout = ""
         self.stderr = ""
         self.results = []
-        self.computation_time = 0
 
         self.computer = ComputerState()
 

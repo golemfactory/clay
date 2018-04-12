@@ -14,10 +14,6 @@ def computed_task_reported(
     task_manager = task_server.task_manager
     concent_service = task_server.client.concent_service
 
-    task_server.receive_subtask_computation_time(
-        report_computed_task.subtask_id,
-        report_computed_task.computation_time
-    )
     task = task_manager.tasks.get(report_computed_task.task_id, None)
     output_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
     client_options = task_server.get_download_options(
