@@ -170,7 +170,6 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
             self.client.keys_auth.ecc.verify.call_count,
             2,
         )
-        rct = msg.force_report_computed_task.report_computed_task
         pull_mock.assert_called()
 
     @mock.patch("golem.task.taskserver.TaskServer.verify_results")
