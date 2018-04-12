@@ -151,7 +151,7 @@ class TaskResourcesMixin:
         return resource_manager.build_client_options(peers=peers)
 
     def _verify_peer(self, ip_address, _port):
-        is_accessible = self._is_address_accessible  # noqa # pylint: disable=no-member
+        is_accessible = self.is_address_in_network  # noqa # pylint: disable=no-member
 
         # Make an exception for localhost (local tests)
         if ip_address in ['127.0.0.1', '::1']:
