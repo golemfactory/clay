@@ -50,6 +50,7 @@ class TaskResourcesMixin:
         states = dict(self.task_manager.tasks_states)
 
         for task_id, task_state in states.items():
+            # There is a single zip package to restore
             files = [task_state.package_path]
 
             logger.info("Restoring task '%s' resources", task_id)

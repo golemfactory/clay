@@ -218,11 +218,17 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             assert any("RESTORE TASKS" in log for log in log.output)
 
             for task, task_id in zip(tasks, task_ids):
-                restored_task = fresh_tm.tasks[task.header.task_id]
+                assert task.header.task_id == task_id
+
+                restored_task = fresh_tm.tasks[task_id]
+                restored_state = fresh_tm.tasks_states[task_id]
+                original_state = temp_tm.tasks_states[task_id]
+
                 assert any(
                     "TASK %s RESTORED" % task_id in log for log in log.output)
                 # check some task's properties...
-                assert restored_task.header.task_id == task.header.task_id
+                assert restored_task.header.task_id == task_id
+                assert original_state.__dict__ == restored_state.__dict__
 
     def test_remove_wrong_task_during_restore(self):
         broken_pickle_file = self.tm.tasks_dir / "broken.pickle"
