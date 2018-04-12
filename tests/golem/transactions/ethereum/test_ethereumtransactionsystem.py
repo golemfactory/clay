@@ -8,6 +8,7 @@ from golem.tools.testwithdatabase import TestWithDatabase
 from golem.transactions.ethereum.ethereumtransactionsystem import (
     EthereumTransactionSystem
 )
+from golem.transactions.ethereum.exceptions import NotEnoughFunds
 
 PRIV_KEY = '07' * 32
 
@@ -161,11 +162,11 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             ets.withdraw(1, 'asd', 'ETH')
 
         # Not enough GNT
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotEnoughFunds):
             ets.withdraw(gnt_balance + gntb_balance + 1, destination, 'GNT')
 
         # Not enough ETH
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotEnoughFunds):
             ets.withdraw(eth_balance + 1, destination, 'ETH')
 
         # Enough GNT
@@ -206,7 +207,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         sci.reset_mock()
 
         # Not enough ETH with lock
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotEnoughFunds):
             ets.withdraw(eth_balance - 3, destination, 'ETH', 4)
         sci.reset_mock()
 
@@ -222,6 +223,6 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         sci.reset_mock()
 
         # Not enough GNT with lock
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotEnoughFunds):
             ets.withdraw(gnt_balance + gntb_balance - 1, destination, 'GNT', 2)
         sci.reset_mock()
