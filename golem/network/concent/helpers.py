@@ -72,6 +72,10 @@ def process_report_computed_task(
     if privtoaddr(ecc.get_privkey()) == decode_hex(msg.eth_account):
         logger.warning('Prevented self payment: %r', msg)
         return _reject(None)
+    # Prevent payments to zero address. Same as above.
+    if decode_hex(msg.eth_account) == b'\x00' * 20:
+        logger.warning('Prevented payment to zero address: %r', msg)
+        return _reject(None)
 
     reject_reasons = message.tasks.RejectReportComputedTask.REASON
     now_ts = calendar.timegm(time.gmtime())

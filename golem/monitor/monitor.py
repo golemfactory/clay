@@ -2,6 +2,7 @@ import logging
 import queue
 import threading
 import time
+from typing import Optional, Dict
 from urllib.parse import urljoin
 
 import requests
@@ -80,6 +81,8 @@ class SystemMonitor(object):
         if event != 'listening':
             return
         result = self.ping_request(ports)
+        if not result:
+            return
 
         if not result['success']:
             for port_status in result['port_statuses']:
@@ -98,7 +101,7 @@ class SystemMonitor(object):
                 time_diff=result['time_diff']
             )
 
-    def ping_request(self, ports):
+    def ping_request(self, ports) -> Optional[Dict]:
         timeout = 2.5  # seconds
         try:
             response = requests.post(
@@ -112,8 +115,9 @@ class SystemMonitor(object):
             result = response.json()
             log.debug('Ping result: %r', result)
             return result
-        except requests.ConnectionError:
-            log.exception('Ping connection error')
+        except (requests.RequestException, ValueError):
+            log.exception('Ping error')
+            return None
 
     @log_error()
     def dispatch_listener(self, sender, signal, event='default', **kwargs):
