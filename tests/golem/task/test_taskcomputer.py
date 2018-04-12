@@ -161,8 +161,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertEqual(args[0], "xxyyzz")
         self.assertEqual(args[1], "xyz")
         self.assertEqual(args[2]["data"], 10000)
-        self.assertGreater(args[3], 0)
-        self.assertLess(args[3], 10)
 
         ctd['subtask_id'] = "aabbcc"
         ctd['src_code'] = "raise Exception('some exception')"
