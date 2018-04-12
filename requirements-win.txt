@@ -1,0 +1,6 @@
+--extra-index-url https://builds.golem.network
+pyethash==0.1.23
+pyreadline==2.1
+pyvbox==1.3.2
+pywin32==223
+vboxapi==5.1.26
