@@ -548,10 +548,12 @@ class Client(HardwarePresetsMixin):
             _resources.addCallbacks(task_created, error)
 
         def task_created(resource_server_result):
-            resource_manager_result, package_hash = resource_server_result
+            resource_manager_result, package_path, package_hash = \
+                resource_server_result
 
             try:
                 task_state = task_manager.tasks_states[task_id]
+                task_state.package_path = package_path
                 task_state.package_hash = package_hash
                 task_state.resource_hash = resource_manager_result[0]
             except Exception as exc:  # pylint: disable=broad-except
