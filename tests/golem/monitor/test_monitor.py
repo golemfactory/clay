@@ -146,6 +146,37 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
             },
             timeout=mock.ANY,
         )
+        dispatcher.disconnect(listener, signal='golem.p2p')
+
+    @mock.patch('requests.post')
+    def test_ping_connection_error(self, post_mock: mock.MagicMock):
+        post_mock.side_effect = requests.ConnectionError()
+
+        def listener(event, *_, **__):
+            if event != 'listening':
+                self.fail()
+        dispatcher.connect(listener, signal='golem.p2p')
+
+        dispatcher.send(
+            signal='golem.p2p',
+            event='listening',
+            ports=[])
+        dispatcher.disconnect(listener, signal='golem.p2p')
+
+    @mock.patch('requests.post')
+    def test_ping_json_decode_error(self, post_mock: mock.MagicMock):
+        post_mock().json.side_effect = json.JSONDecodeError('fail', '', 0)
+
+        def listener(event, *_, **__):
+            if event != 'listening':
+                self.fail()
+        dispatcher.connect(listener, signal='golem.p2p')
+
+        dispatcher.send(
+            signal='golem.p2p',
+            event='listening',
+            ports=[])
+        dispatcher.disconnect(listener, signal='golem.p2p')
 
     @mock.patch('requests.post')
     def test_ping_request_port_unreachable(self, post_mock):

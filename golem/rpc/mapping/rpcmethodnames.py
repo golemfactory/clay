@@ -88,9 +88,8 @@ CORE_METHOD_MAP = dict(
     withdraw=               'pay.withdraw',
     get_withdraw_gas_cost=  'pay.withdraw.gas_cost',
 
-    quit=                   'ui.quit',
     resume=                 'ui.start',
-    pause=                  'ui.stop'
+    pause=                  'ui.stop',
 )
 
 NODE_METHOD_MAP = dict(
@@ -99,5 +98,7 @@ NODE_METHOD_MAP = dict(
     is_mainnet=             'golem.mainnet',
     are_terms_accepted=     'golem.terms',
     accept_terms=           'golem.terms.accept',
-    show_terms=             'golme.terms.show',
+    show_terms=             'golem.terms.show',
+
+    quit=                   'ui.quit',
 )
