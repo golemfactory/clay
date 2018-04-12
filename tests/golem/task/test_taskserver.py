@@ -947,4 +947,3 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         self.ts._restore_resources.assert_called_with(
             [task_state.package_path], task_id, task_state.resource_hash
         )
-
