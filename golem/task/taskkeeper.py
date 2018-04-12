@@ -51,7 +51,7 @@ class WrongOwnerException(Exception):
 class CompTaskInfo:
     def __init__(self, header: TaskHeader, price: int):
         self.header = header
-        self._price, self.subtask_price = None, None
+        self._price, self.subtask_price = 0, 0  # lints and typing
         self.price = price
         self.requests = 1
         self.subtasks = {}
@@ -60,7 +60,7 @@ class CompTaskInfo:
             self.header.subtask_timeout, self.header.resource_size)
 
     @property
-    def price(self):
+    def price(self) -> int:
         return self._price
 
     @price.setter
