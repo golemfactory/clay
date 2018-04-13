@@ -192,6 +192,27 @@ class Tasks:
         if 'id' in dictionary:
             print("Warning: discarding the UUID from the preset")
 
+        subtasks = dictionary.get('subtasks', 0)
+        options = dictionary.get('options', {})
+        optimize_total = bool(options.get('optimize_total', False))
+        if subtasks and not optimize_total:
+            computed_subtasks = sync_wait(
+                Tasks.client.get_subtasks_count(
+                    total_subtasks=subtasks,
+                    optimize_total=False,
+                    use_frames=options.get('frame_count', 1) > 1,
+                    frames=[None]*options.get('frame_count', 1),
+                ),
+                CREATE_TASK_TIMEOUT,
+            )
+            if computed_subtasks != subtasks:
+                raise ValueError(
+                    "Subtasks count {:d} is invalid."
+                    " Maybe use {:d} instead?".format(
+                        subtasks,
+                        computed_subtasks,
+                    )
+                )
         deferred = Tasks.client.create_task(dictionary)
         return sync_wait(deferred, CREATE_TASK_TIMEOUT)
 

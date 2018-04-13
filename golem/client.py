@@ -17,6 +17,7 @@ from twisted.internet.defer import (
     gatherResults,
     Deferred)
 
+from apps.rendering.task import framerenderingtask
 import golem
 from apps.appsmanager import AppsManager
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
@@ -548,10 +549,12 @@ class Client(HardwarePresetsMixin):
             _resources.addCallbacks(task_created, error)
 
         def task_created(resource_server_result):
-            resource_manager_result, package_hash = resource_server_result
+            resource_manager_result, package_path, package_hash = \
+                resource_server_result
 
             try:
                 task_state = task_manager.tasks_states[task_id]
+                task_state.package_path = package_path
                 task_state.package_hash = package_hash
                 task_state.resource_hash = resource_manager_result[0]
             except Exception as exc:  # pylint: disable=broad-except
@@ -904,6 +907,22 @@ class Client(HardwarePresetsMixin):
         if cost is None:
             return 0.0
         return cost
+
+    # It's defined here only for RPC exposure in
+    # golem.rpc.mapping.rpcmethodnames
+    def get_subtasks_count(  # pylint: disable=no-self-use
+            self,
+            total_subtasks: int,
+            optimize_total: bool,
+            use_frames: bool,
+            frames: list):
+        """Returns computed number of subtasks, before task creation."""
+        return framerenderingtask.calculate_subtasks_count(
+            total_subtasks=total_subtasks,
+            optimize_total=optimize_total,
+            use_frames=use_frames,
+            frames=frames,
+        )
 
     def get_computing_trust(self, node_id):
         if self.use_ranking():
