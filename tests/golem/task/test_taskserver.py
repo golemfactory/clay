@@ -681,6 +681,26 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
             to_hyperg_peer('1.2.3.4', 3282),
         ]
 
+    def test_download_options_errors(self, *_):
+        built_options = Mock()
+        rm = Mock(build_client_options=Mock(return_value=built_options))
+        self.ts._get_resource_manager = Mock(return_value=rm)
+
+        assert self.ts.get_download_options(
+            received_options=None,
+            task_id='task_id'
+        ) is built_options
+
+        assert self.ts.get_download_options(
+            received_options={'options': {'peers': ['Invalid']}},
+            task_id='task_id'
+        ) is built_options
+
+        assert self.ts.get_download_options(
+            received_options=Mock(filtered=Mock(side_effect=Exception)),
+            task_id='task_id'
+        ) is built_options
+
     def test_pause_and_resume(self, *_):
         from apps.core.task.coretask import CoreTask
 
