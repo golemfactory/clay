@@ -72,7 +72,7 @@ LOGGING = {
             'propagate': True,
         },
         'golem': {
-            'level': 'INFO',
+            'level': 'WARNING',
             'propagate': True,
         },
         'golem.client': {
@@ -124,6 +124,10 @@ LOGGING = {
             'propagate': True,
         },
         'golem.token': {
+            'level': 'INFO',
+            'propagate': True,
+        },
+        'golem.transactions': {
             'level': 'INFO',
             'propagate': True,
         },

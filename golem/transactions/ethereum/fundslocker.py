@@ -102,7 +102,8 @@ class FundsLocker(LoopingCallService):
                                  self.dump_path)
                 return
         for task in self.task_lock.values():
-            logger.info('Restoring old tasks locks: %r %r %r', task.task_id, task.gnt_lock(), task.eth_lock())
+            logger.info('Restoring old tasks locks: %r %r %r', task.task_id,
+                        task.gnt_lock(), task.eth_lock())
             task.transaction_system = self.transaction_system
 
     def dump_locks(self):
@@ -114,7 +115,7 @@ class FundsLocker(LoopingCallService):
     def remove_subtask(self, task_id):
         task_lock = self.task_lock.get(task_id)
         if task_lock is None:
-            logger.info("I can't remove payment lock for subtask from task"
+            logger.warning("I can't remove payment lock for subtask from task"
                            "%r: unkown task.", task_id)
             return
         logger.info('Removing subtask lock for task %r', task_id)
