@@ -1,2 +1,2 @@
--r requirements-test.txt
-mypy
+mypy==0.580
+typed-ast==1.1.0
