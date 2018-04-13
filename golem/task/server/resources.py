@@ -112,7 +112,7 @@ class TaskResourcesMixin:
             try:
                 result = _options.filtered(verify_peer=self._verify_peer)
             except Exception as _exc:  # pylint: disable=broad-except
-                logger.warning('Failed to filter received hyperg connection'
+                logger.warning('Failed to filter received hyperg connection '
                                'options; falling back to defaults: %r', _exc)
 
             return result or resource_manager.build_client_options()
@@ -121,7 +121,7 @@ class TaskResourcesMixin:
             try:
                 options = HyperdriveClientOptions(**received_options)
             except (AttributeError, TypeError) as exc:
-                logger.warning('Failed to deserialized received hyperg '
+                logger.warning('Failed to deserialize received hyperg '
                                'connection options: %r', exc)
         else:
             options = received_options
