@@ -33,7 +33,6 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 from golem.utils import encode_hex
 
-from tests.factories import messages as msg_factories
 from tests.factories.resultpackage import ExtractedPackageFactory
 
 
@@ -246,7 +245,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
         ctd['subtask_id'] = subtask_id
-        ttc = msg_factories.TaskToCompute(price=1)
+        ttc = msg_factories.tasks.TaskToComputeFactory(price=1)
         ttc.compute_task_def = ctd
         ts.task_manager.comp_task_keeper.receive_subtask(ttc)
         model.Income.create(

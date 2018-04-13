@@ -1,10 +1,12 @@
 from datetime import datetime
-from golem_messages.message import ComputeTaskDef
 from pathlib import Path
 import random
 import time
 from unittest import TestCase
 import unittest.mock as mock
+
+from golem_messages import factories as msg_factories
+from golem_messages.message import ComputeTaskDef
 
 import golem
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
@@ -21,7 +23,6 @@ from golem.testutils import PEP8MixIn
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.utils import encode_hex
-from tests.factories import messages as msg_factories
 
 
 def async_run(request, success=None, error=None):
@@ -532,7 +533,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
                 price_bid,
                 header.subtask_timeout,
             )
-            ttc = msg_factories.TaskToCompute(price=price)
+            ttc = msg_factories.tasks.TaskToComputeFactory(price=price)
             ttc.compute_task_def = ctd
             self.assertTrue(ctk.receive_subtask(ttc))
             test_subtasks_ids.append(ctd['subtask_id'])
@@ -603,7 +604,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         self.assertEqual(ctk.get_value(thread.task_id), 1)
 
         ctd = ComputeTaskDef()
-        ttc = msg_factories.TaskToCompute(price=0)
+        ttc = msg_factories.tasks.TaskToComputeFactory(price=0)
         ttc.compute_task_def = ctd
         with self.assertLogs(logger, level="WARNING"):
             self.assertFalse(ctk.receive_subtask(ttc))
@@ -632,7 +633,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             price_bid,
             th.subtask_timeout,
         )
-        ttc = msg_factories.TaskToCompute(price=price)
+        ttc = msg_factories.tasks.TaskToComputeFactory(price=price)
         ttc.compute_task_def = ctd
         self.assertTrue(ctk.receive_subtask(ttc))
         assert ctk.active_tasks[task_id].requests == 0
