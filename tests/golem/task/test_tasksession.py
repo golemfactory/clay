@@ -330,14 +330,17 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         # then
         self.assertTrue(ts.send.called)
 
-    @patch('golem.task.tasksession.get_task_message', Mock())
-    def test_result_received(self):
+    @patch('golem.task.tasksession.get_task_message')
+    def test_result_received(self, get_msg_mock):
         conn = Mock()
         ts = TaskSession(conn)
         ts.task_server = Mock()
         ts.task_manager = Mock()
         ts.task_manager.verify_subtask.return_value = True
         subtask_id = "xxyyzz"
+        get_msg_mock.return_value = msg_factories.ReportComputedTask(
+            subtask_id=subtask_id,
+        )
 
         def finished():
             if not ts.task_manager.verify_subtask(subtask_id):
@@ -345,8 +348,10 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 ts.dropped()
                 return
 
-            payment = ts.task_server.accept_result(subtask_id,
-                                                   ts.result_owner)
+            payment = ts.task_server.accept_result(
+                subtask_id,
+                ts.get_result_owner(subtask_id),
+            )
             ts.send(factories.messages.SubtaskResultsAcceptedFactory(
                 task_to_compute__compute_task_def__subtask_id=subtask_id,
                 payment_ts=payment.processed_ts))
@@ -886,7 +891,8 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_session.task_manager.computed_task_received = \
             computed_task_received
 
-        ttc = factories.messages.TaskToCompute()
+        rct = factories.messages.ReportComputedTask()
+        ttc = rct.task_to_compute
         extra_data = dict(
             result=pickle.dumps({'stdout': 'xyz'}),
             result_type=ResultType.DATA,
@@ -895,8 +901,12 @@ class SubtaskResultsAcceptedTest(TestCase):
 
         self.task_session.send = Mock()
 
+        history_dict = {
+            'TaskToCompute': ttc,
+            'ReportComputedTask': rct,
+        }
         with patch('golem.task.tasksession.get_task_message',
-                   Mock(return_value=ttc)):
+                   side_effect=lambda mcn, *_: history_dict[mcn]):
             self.task_session.result_received(extra_data)
 
         assert self.task_session.send.called
@@ -976,7 +986,8 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
             self.ts.task_manager.task_result_manager.pull_package = \
                 self._create_pull_package(False)
 
-        self.ts._react_to_report_computed_task(msg)
+        with patch('golem.task.tasksession.get_task_message', return_value=msg):
+            self.ts._react_to_report_computed_task(msg)
         assert self.ts.task_server.reject_result.called
         assert self.ts.task_manager.task_computation_failure.called
 
