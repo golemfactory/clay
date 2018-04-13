@@ -65,7 +65,8 @@ class BaseResourceServer(object):
         _result.addErrback(self._add_task_error)
 
         _deferred = self.resource_manager.add_task([pkg_path], task_id)
-        _deferred.addCallback(lambda r: _result.callback((r, pkg_sha1)))
+        _deferred.addCallback(lambda r: _result.callback((r, pkg_path,
+                                                          pkg_sha1)))
         _deferred.addErrback(_result.errback)
 
         return _result

@@ -577,7 +577,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         def add_task(*_args):
             resource_manager_result = 'res_hash', ['res_file_1']
-            result = resource_manager_result, 'package_hash'
+            result = resource_manager_result, 'res_file_1', 'package_hash'
             return done_deferred(result)
 
         self.client.resource_server = Mock(
@@ -1093,7 +1093,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         def add_task(*_args):
             resource_manager_result = 'res_hash', ['res_file_1']
-            result = resource_manager_result, 'package_hash'
+            result = resource_manager_result, 'res_file_1', 'package_hash'
             return done_deferred(result)
 
         c = self.client

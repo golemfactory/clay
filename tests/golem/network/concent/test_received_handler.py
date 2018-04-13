@@ -161,8 +161,6 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
         self.assertIn('Concent service (%s) refused',
                       logger_mock.call_args[0][0])
 
-    @mock.patch("golem.task.taskserver.TaskServer"
-                ".receive_subtask_computation_time")
     @mock.patch(
         "golem_messages.helpers.maximum_download_time",
         return_value=datetime.timedelta(seconds=10),
@@ -173,23 +171,15 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
     def test_verdict_report_computed_task(
             self,
             pull_mock,
-            _mdt_mock,
-            rsct_mock):
+            _mdt_mock):
         msg = msg_factories.concents.VerdictReportComputedTaskFactory()
         library.interpret(msg)
         self.assertEqual(
             self.client.keys_auth.ecc.verify.call_count,
             2,
         )
-        rct = msg.force_report_computed_task.report_computed_task
-        rsct_mock.assert_called_once_with(
-            msg.ack_report_computed_task.subtask_id,
-            rct.computation_time,
-        )
         pull_mock.assert_called()
 
-    @mock.patch("golem.task.taskserver.TaskServer"
-                ".receive_subtask_computation_time")
     @mock.patch("golem.task.taskserver.TaskServer.verify_results")
     @mock.patch(
         "golem_messages.helpers.maximum_download_time",
@@ -198,8 +188,7 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
     def test_verdict_report_computed_task_invalid_sig(
             self,
             _mdt_mock,
-            verify_mock,
-            rsct_mock):
+            verify_mock):
         self.client.keys_auth.ecc.verify.side_effect = \
             msg_exceptions.InvalidSignature
         msg = msg_factories.concents.VerdictReportComputedTaskFactory()
@@ -208,16 +197,12 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
         self.client.keys_auth.ecc.verify.assert_called_once_with(
             inputb=ttc_from_ack.get_short_hash(),
             sig=ttc_from_ack.sig)
-        rsct_mock.assert_not_called()
         verify_mock.assert_not_called()
 
-    @mock.patch("golem.task.taskserver.TaskServer"
-                ".receive_subtask_computation_time")
     @mock.patch("golem.task.taskserver.TaskServer.verify_results")
     def test_verdict_report_computed_task_diff_ttc(
             self,
-            verify_mock,
-            rsct_mock):
+            verify_mock):
         msg = msg_factories.concents.VerdictReportComputedTaskFactory()
         msg.ack_report_computed_task.report_computed_task.task_to_compute = \
             msg_factories.tasks.TaskToComputeFactory()
@@ -226,7 +211,6 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
             msg.force_report_computed_task.report_computed_task.task_to_compute,
         )
         library.interpret(msg)
-        rsct_mock.assert_not_called()
         verify_mock.assert_not_called()
 
     @mock.patch(
