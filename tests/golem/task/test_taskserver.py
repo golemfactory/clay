@@ -930,6 +930,22 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         assert self.ts.task_manager.notify_update_task.call_count == \
             self.task_count
 
+    def test_restore_resources_call(self, *_):
+        self._create_tasks(self.ts, 1)
+
+        task_states = self.ts.task_manager.tasks_states
+        task_id = next(iter(task_states.keys()))
+        task_state = next(iter(task_states.values()))
+        task_state.package_path = os.path.join(self.path, task_id + '.bin')
+        task_state.resource_hash = str(uuid.uuid4())
+
+        self.ts._restore_resources = Mock()
+        self.ts.restore_resources()
+
+        self.ts._restore_resources.assert_called_with(
+            [task_state.package_path], task_id, task_state.resource_hash
+        )
+
 
 class TaskVerificationResultTest(TaskServerTestBase):
 
