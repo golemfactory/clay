@@ -60,7 +60,7 @@ class FundsLocker(LoopingCallService):
         _, gnt, eth, _, _ = self.transaction_system.get_balance()
         lock_gnt, lock_eth = self.sum_locks()
         logger.info('Locking funds for task: %r %r %r', task_id, lock_gnt,
-                    lock_eth )
+                    lock_eth)
         if tfl.gnt_lock() > gnt - lock_gnt:
             raise NotEnoughFunds(tfl.gnt_lock(), gnt - lock_gnt)
 
