@@ -11,7 +11,7 @@ MONITOR_CONFIG = {
 
 # so that the queue will not get filled up
 MONITOR_CONFIG['SENDER_THREAD_TIMEOUT'] = max(
-    12,
+    60,
     MONITOR_CONFIG['REQUEST_TIMEOUT']
 )
 

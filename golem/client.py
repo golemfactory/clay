@@ -318,7 +318,7 @@ class Client(HardwarePresetsMixin):
             self.task_server,
             interval_seconds=max(
                 int(self.config_desc.node_snapshot_interval),
-                1))
+                60))
         monitoring_publisher_service.start()
         self._services.append(monitoring_publisher_service)
 
