@@ -62,6 +62,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.sci.get_gntb_balance.return_value = 0
         self.sci.get_eth_address.return_value = self.addr
         self.sci.get_gate_address.return_value = None
+        self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE
         # FIXME: PaymentProcessor should be started and stopped! #2455
         self.pp = PaymentProcessor(self.sci)
         self.pp._loopingCall.clock = Clock()  # Disable looping call.
@@ -145,7 +146,8 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.pp.add(p)
         assert self.pp._gnt_reserved() == gnt_value
         assert self.pp._gnt_available() == balance_gntb - gnt_value
-        eth_reserved = self.pp.ETH_BATCH_PAYMENT_BASE + self.pp.ETH_PER_PAYMENT
+        eth_reserved = \
+            self.pp.ETH_BATCH_PAYMENT_BASE + self.pp.get_gas_cost_per_payment()
         assert self.pp._eth_reserved() == eth_reserved
         eth_available = balance_eth - eth_reserved
         assert self.pp._eth_available() == eth_available
@@ -165,7 +167,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.pp.monitor_progress()
         balance_eth_after_sendout = balance_eth - \
             self.pp.ETH_BATCH_PAYMENT_BASE - \
-            1 * self.pp.ETH_PER_PAYMENT
+            1 * self.pp.get_gas_cost_per_payment()
         self.sci.get_eth_balance.return_value = balance_eth_after_sendout
         assert len(inprogress) == 1
         assert tx_hash in inprogress
@@ -356,6 +358,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.GAS_PER_PAYMENT = 1
         self.sci.GAS_PRICE = 20
         self.sci.get_gate_address.return_value = None
+        self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE
 
         self.tx_hash = '0xdead'
         self.sci.batch_transfer.return_value = self.tx_hash
