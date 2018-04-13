@@ -358,7 +358,7 @@ while [[ $# -ge 1 ]]; do
         LOCAL_PACKAGE="$2"
         shift # past argument
         ;;
-        -u|--uipackage)
+        -u|--ui)
         if [[ ! -f "$2" ]]; then
             help_message
             exit 1
