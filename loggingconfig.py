@@ -72,7 +72,7 @@ LOGGING = {
             'propagate': True,
         },
         'golem': {
-            'level': 'WARNING',
+            'level': 'INFO',
             'propagate': True,
         },
         'golem.client': {
