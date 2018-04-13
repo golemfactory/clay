@@ -51,7 +51,9 @@ class TaskResourcesMixin:
 
         for task_id, task_state in states.items():
             # There is a single zip package to restore
-            files = [task_state.package_path]
+            # 'package_path' does not exist in version pre 0.15.1
+            package_path = getattr(task_state, 'package_path', None)
+            files = [package_path] if package_path else None
 
             logger.info("Restoring task '%s' resources", task_id)
             logger.debug("%r", files)
