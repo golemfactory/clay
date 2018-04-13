@@ -34,7 +34,6 @@ PyYAML>=3.12
 crossbar==17.12.1
 txaio==2.8.2
 pydispatcher
-Crypto
 scrypt
 packaging
 semantic_version
