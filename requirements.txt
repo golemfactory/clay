@@ -37,7 +37,7 @@ html2text==2018.1.9
 humanize==0.5.1
 hyperframe==5.1.0
 hyperlink==18.0.0
-idna==2.6
+idna==2.5
 incremental==17.5.0
 ipaddress==1.0.19
 Jinja2==2.10
