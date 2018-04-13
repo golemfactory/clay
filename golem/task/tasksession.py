@@ -19,6 +19,8 @@ from golem.network.p2p import node as p2p_node
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
+from golem.task import taskkeeper
+from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import ResultType
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
@@ -285,7 +287,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         report_computed_task = message.ReportComputedTask(
             subtask_id=task_result.subtask_id,
             result_type=task_result.result_type,
-            computation_time=task_result.computing_time,
+            # https://github.com/golemfactory/golem-messages/issues/189
+            computation_time=0,  # TODO: remove field from messages
             node_name=node_name,
             address=address,
             port=port,
@@ -428,6 +431,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         elif ctd:
             task = self.task_manager.tasks[ctd['task_id']]
             task_state = self.task_manager.tasks_states[ctd['task_id']]
+            price = taskkeeper.compute_subtask_value(
+                task.header.max_price,
+                task.header.subtask_timeout,
+            )
             msg = message.tasks.TaskToCompute(
                 compute_task_def=ctd,
                 requestor_id=task.header.task_owner.key,
@@ -440,6 +447,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 # for now, we're assuming the Concent
                 # is always in use
                 concent_enabled=self.concent_service.enabled,
+                price=price,
+            )
+            self.task_manager.set_subtask_value(
+                subtask_id=msg.subtask_id,
+                price=price,
             )
             history.add(
                 msg=msg,
@@ -470,7 +482,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
         if self._check_ctd_params(ctd)\
                 and self._set_env_params(ctd)\
-                and self.task_manager.comp_task_keeper.receive_subtask(ctd):
+                and self.task_manager.comp_task_keeper.receive_subtask(msg):
             self.task_server.add_task_session(
                 ctd['subtask_id'], self
             )
@@ -531,9 +543,30 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.dropped()
             return
 
-        self.task_server.receive_subtask_computation_time(
-            subtask_id,
-            msg.computation_time
+        def after_success():
+            self.disconnect(message.Disconnect.REASON.NoMoreMessages)
+
+        def after_error():
+            if msg.task_to_compute.concent_enabled:
+                return
+            # in case of resources failure, if we're not using the Concent
+            # we're immediately sending a rejection message to the Provider
+            self._reject_subtask_result(
+                subtask_id,
+                reason=message.tasks.SubtaskResultsRejected.REASON
+                .ResourcesFailure
+            )
+            self.task_manager.task_computation_failure(
+                subtask_id,
+                'Error downloading task result'
+            )
+            self.dropped()
+
+        task_server_helpers.computed_task_reported(
+            task_server=self.task_server,
+            report_computed_task=msg,
+            after_success=after_success,
+            after_error=after_error,
         )
 
         self.result_owner = EthAccountInfo(
@@ -543,75 +576,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.eth_account
         )
 
-        task_id = self.task_manager.subtask2task_mapping.get(subtask_id, None)
-        task = self.task_manager.tasks.get(task_id, None)
-        output_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
-
-        client_options = self.task_server.get_download_options(msg.options,
-                                                               task_id)
         logger.debug(
-            "Task result hash received: %r from %r:%r (options: %r)",
+            "Task result hash received: %r from %r:%r",
             msg.multihash,
             self.address,
             self.port,
-            client_options
-        )
-
-        fgtr = message.concents.ForceGetTaskResult(
-            report_computed_task=msg
-        )
-
-        def on_success(extracted_pkg, *args, **kwargs):
-            extra_data = extracted_pkg.to_extra_data()
-            logger.debug("Task result extracted %r",
-                         extracted_pkg.__dict__)
-            self.result_received(extra_data)
-            self.concent_service.cancel_task_message(
-                msg.subtask_id, 'ForceGetTaskResult')
-
-        def on_error(exc, *args, **kwargs):
-            logger.warning("Task result error: %s (%s)", subtask_id,
-                           exc or "unspecified")
-
-            if not msg.task_to_compute.concent_enabled:
-                # in case of resources failure, if we're not using the Concent
-                # we're immediately sending a rejection message to the Provider
-                self._reject_subtask_result(
-                    subtask_id,
-                    reason=message.tasks.SubtaskResultsRejected.REASON
-                    .ResourcesFailure
-                )
-
-                self.task_manager.task_computation_failure(
-                    subtask_id,
-                    'Error downloading task result'
-                )
-            else:
-                # otherwise, we're resorting to mediation through the Concent
-                # to obtain the task results
-                logger.debug('[CONCENT] sending ForceGetTaskResult: %s', fgtr)
-                self.concent_service.submit_task_message(subtask_id, fgtr)
-
-            self.dropped()
-
-        # submit a delayed `ForceGetTaskResult` to the Concent
-        # in case the download exceeds the maximum allowable download time.
-        # however, if it succeeds, the message will get cancelled
-        # in the success handler
-
-        self.concent_service.submit_task_message(
-            subtask_id, fgtr, msg_helpers.maximum_download_time(msg.size))
-
-        self.task_manager.task_result_incoming(subtask_id)
-        self.task_manager.task_result_manager.pull_package(
-            msg.multihash,
-            task_id,
-            subtask_id,
-            msg.secret,
-            success=on_success,
-            error=on_error,
-            client_options=client_options,
-            output_dir=output_dir
         )
 
     def _react_to_get_resource(self, msg):

@@ -1,6 +1,5 @@
 import logging
 from typing import Iterable, Optional, Union
-
 import requests
 
 from golem.core.hostaddress import ip_address_private

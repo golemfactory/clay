@@ -157,6 +157,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             ['compute_task_def', ctd],
             ['package_hash', 'sha1:' + task_state.package_hash],
             ['concent_enabled', use_concent],
+            ['price', 0],
         ]
         self.assertCountEqual(ms.slots(), expected)
         ts2.task_manager.get_next_subtask.return_value = (ctd, True, False)
@@ -202,7 +203,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertIsInstance(rct, message.ReportComputedTask)
         self.assertEqual(rct.subtask_id, wtr.subtask_id)
         self.assertEqual(rct.result_type, ResultType.DATA)
-        self.assertEqual(rct.computation_time, wtr.computing_time)
         self.assertEqual(rct.node_name, "ABC")
         self.assertEqual(rct.address, wtr.owner_address)
         self.assertEqual(rct.port, wtr.owner_port)
@@ -240,8 +240,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 '.process_report_computed_task',
                 return_value=msg_factories.AckReportComputedTask()):
             ts2.interpret(rct)
-        ts2.task_server.receive_subtask_computation_time.assert_called_with(
-            wtr.subtask_id, wtr.computing_time)
         wtr.result_type = "UNKNOWN"
         with self.assertLogs(logger, level="ERROR"):
             ts.send_report_computed_task(
@@ -475,7 +473,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         __reset_mocks()
         env.get_source_code.return_value = "print 'Hello world'"
         ts._react_to_task_to_compute(msg)
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_called_with(ctd)
+        ts.task_manager.comp_task_keeper.receive_subtask.assert_called_with(msg)
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)
         ts.task_computer.task_given.assert_called_with(ctd)
@@ -964,7 +962,7 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
             self._create_pull_package(True)
 
         self.ts._react_to_report_computed_task(msg)
-        self.assertTrue(self.ts.result_received.called)
+        self.assertTrue(self.ts.task_server.verify_results.called)
 
         cancel = self.ts.concent_service.cancel_task_message
         self.assert_concent_cancel(
@@ -974,8 +972,9 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
         msg = self._prepare_report_computed_task(
             task_to_compute__concent_enabled=False)
 
-        self.ts.task_manager.task_result_manager.pull_package = \
-            self._create_pull_package(False)
+        with patch('golem.network.concent.helpers.history.add'):
+            self.ts.task_manager.task_result_manager.pull_package = \
+                self._create_pull_package(False)
 
         self.ts._react_to_report_computed_task(msg)
         assert self.ts.task_server.reject_result.called
