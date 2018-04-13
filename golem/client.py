@@ -17,6 +17,7 @@ from twisted.internet.defer import (
     gatherResults,
     Deferred)
 
+from apps.rendering.task import framerenderingtask
 import golem
 from apps.appsmanager import AppsManager
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
@@ -906,6 +907,22 @@ class Client(HardwarePresetsMixin):
         if cost is None:
             return 0.0
         return cost
+
+    # It's defined here only for RPC exposure in
+    # golem.rpc.mapping.rpcmethodnames
+    def get_subtasks_count(  # pylint: disable=no-self-use
+            self,
+            total_subtasks: int,
+            optimize_total: bool,
+            use_frames: bool,
+            frames: list):
+        """Returns computed number of subtasks, before task creation."""
+        return framerenderingtask.calculate_subtasks_count(
+            total_subtasks=total_subtasks,
+            optimize_total=optimize_total,
+            use_frames=use_frames,
+            frames=frames,
+        )
 
     def get_computing_trust(self, node_id):
         if self.use_ranking():

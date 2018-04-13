@@ -16,6 +16,7 @@ from apps.rendering.resources.utils import handle_image_error, handle_none
 from apps.rendering.task.renderingtask import (RenderingTask,
                                                RenderingTaskBuilder,
                                                PREVIEW_EXT)
+from apps.rendering.task.renderingtaskstate import RendererDefaults
 from apps.rendering.task.verifier import FrameRenderingVerifier
 from golem.core.common import update_dict, to_unicode
 from golem.task.taskbase import ResultType
@@ -24,6 +25,51 @@ from golem.task.taskstate import SubtaskStatus, TaskStatus, SubtaskState
 logger = logging.getLogger("apps.rendering")
 
 DEFAULT_PADDING = 4
+
+
+def calculate_subtasks_count_with_frames(
+        total_subtasks: int,
+        frames: list) -> int:
+    num_frames = len(frames)
+    est_f: float
+    if total_subtasks > num_frames:
+        est_f = math.floor(total_subtasks / num_frames) * num_frames
+        est = int(est_f)
+        if est != total_subtasks:
+            logger.warning("Too many subtasks for this task. %s "
+                           "subtasks will be used", est)
+        return est
+
+    est_f = num_frames / math.ceil(num_frames / total_subtasks)
+    est = int(math.ceil(est_f))
+    if est != total_subtasks:
+        logger.warning("Too many subtasks for this task. %s "
+                       "subtasks will be used.", est)
+
+    return est
+
+
+def calculate_subtasks_count(
+        total_subtasks: int,
+        optimize_total: bool,
+        use_frames: bool,
+        frames: list) -> int:
+    defaults = RendererDefaults()
+    if optimize_total or not total_subtasks:
+        if use_frames:
+            return len(frames)
+        return defaults.default_subtasks
+
+    if use_frames:
+        return calculate_subtasks_count_with_frames(
+            total_subtasks=total_subtasks,
+            frames=frames,
+        )
+
+    total = total_subtasks
+    if defaults.min_subtasks <= total <= defaults.max_subtasks:
+        return total
+    return defaults.default_subtasks
 
 
 class FrameRendererOptions(Options):
@@ -454,38 +500,12 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
                                                         root_path, dir_manager)
 
     def _calculate_total(self, defaults):
-        if self.task_definition.optimize_total or \
-           not self.task_definition.total_subtasks:
-            if self.task_definition.options.use_frames:
-                return len(self.task_definition.options.frames)
-            else:
-                return defaults.default_subtasks
-
-        if self.task_definition.options.use_frames:
-            num_frames = len(self.task_definition.options.frames)
-            if self.task_definition.total_subtasks > num_frames:
-                est = math.floor(self.task_definition.total_subtasks /
-                                 num_frames) * num_frames
-                est = int(est)
-                if est != self.task_definition.total_subtasks:
-                    logger.warning("Too many subtasks for this task. %s "
-                                   "subtasks will be used", est)
-                return est
-
-            est = num_frames / math.ceil(num_frames /
-                                         self.task_definition.total_subtasks)
-            est = int(math.ceil(est))
-            if est != self.task_definition.total_subtasks:
-                logger.warning("Too many subtasks for this task. %s "
-                               "subtasks will be used.", est)
-
-            return est
-
-        total = self.task_definition.total_subtasks
-        if defaults.min_subtasks <= total <= defaults.max_subtasks:
-            return total
-        else:
-            return defaults.default_subtasks
+        return calculate_subtasks_count(
+            total_subtasks=self.task_definition.total_subtasks,
+            optimize_total=self.task_definition.optimize_total,
+            use_frames=self.task_definition.options.use_frames,
+            frames=self.task_definition.options.frames,
+        )
 
     @classmethod
     def build_dictionary(cls, definition):
