@@ -223,10 +223,14 @@ class ResourceHandshakeSessionMixin:
 
     def _share_handshake_nonce(self, key_id):
         handshake = self._get_handshake(key_id)
+
         options = self.task_server.get_share_options(handshake.nonce,
                                                      self.address)
+        options.timeout = self.HANDSHAKE_TIMEOUT
+
         deferred = self.resource_manager.add_file(handshake.file,
                                                   self.NONCE_TASK,
+                                                  client_options=options,
                                                   async_=True)
         deferred.addCallbacks(
             lambda res: self._nonce_shared(key_id, res, options),
