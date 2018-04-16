@@ -1,7 +1,8 @@
 import json
 import logging
+import math
 from ipaddress import AddressValueError, ip_address
-from typing import Optional, Dict, Tuple, List, Iterable, Callable
+from typing import Optional, Dict, Tuple, List, Iterable, Callable, Union
 
 import collections
 
@@ -24,6 +25,12 @@ DEFAULT_UPLOAD_RATE = int(384 / 8)  # kBps = kbps / 8
 
 def to_hyperg_peer(host: str, port: int) -> Dict[str, Tuple[str, int]]:
     return {'TCP': (host, port)}
+
+
+def round_timeout(value: Optional[Union[int, float]]) -> Optional[int]:
+    if not isinstance(value, (int, float)):
+        return None
+    return int(math.ceil(value))
 
 
 class HyperdriveClient(IClient):
@@ -68,7 +75,7 @@ class HyperdriveClient(IClient):
             command='upload',
             id=kwargs.get('id'),
             files=files,
-            timeout=timeout
+            timeout=round_timeout(timeout)
         )
         return response['hash']
 
@@ -78,7 +85,7 @@ class HyperdriveClient(IClient):
             command='upload',
             id=kwargs.get('id'),
             hash=content_hash,
-            timeout=timeout
+            timeout=round_timeout(timeout)
         )
         return response['hash']
 
@@ -150,7 +157,7 @@ class HyperdriveAsyncClient(HyperdriveClient):
             command='upload',
             id=kwargs.get('id'),
             files=files,
-            timeout=timeout
+            timeout=round_timeout(timeout)
         )
 
         return self._async_request(
@@ -164,7 +171,7 @@ class HyperdriveAsyncClient(HyperdriveClient):
             command='upload',
             id=kwargs.get('id'),
             hash=content_hash,
-            timeout=timeout
+            timeout=round_timeout(timeout)
         )
 
         return self._async_request(
