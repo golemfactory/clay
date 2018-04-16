@@ -16,6 +16,9 @@ class TestEnvironmentsManager(unittest.TestCase):
         self.env1.get_id = lambda: "Env1"
         self.env2.get_id = lambda: "Env2"
         self.env3.get_id = lambda: "Env3"
+        self.env1.source_code_required = False
+        self.env2.source_code_required = False
+        self.env3.source_code_required = False
         self.em.add_environment("type1", self.env1)
         self.em.add_environment("type2", self.env2)
         self.em.add_environment("type3", self.env3)
@@ -25,10 +28,10 @@ class TestEnvironmentsManager(unittest.TestCase):
         self.assertEqual(self.env2, self.em.get_environment_by_id("Env2"))
         self.assertEqual(self.env3, self.em.get_environment_by_id("Env3"))
 
-    def test_get_environment_by_task_type(self):
+    def test_get_environment_for_task(self):
         self.assertEqual(self.env1,
-                         self.em.get_environment_by_task_type("type1"))
+                         self.em.get_environment_for_task("type1", []))
         self.assertEqual(self.env2,
-                         self.em.get_environment_by_task_type("type2"))
+                         self.em.get_environment_for_task("type2", []))
         self.assertEqual(self.env3,
-                         self.em.get_environment_by_task_type("type3"))
+                         self.em.get_environment_for_task("type3", []))

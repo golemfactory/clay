@@ -29,7 +29,7 @@ class TestLocalComputer(TestDirFixture):
 
     def test_computer(self):
         em = mock.Mock()
-        em.get_environment_by_task_type.return_value = BlenderEnvironment()
+        em.get_environment_for_task.return_value = BlenderEnvironment()
         files = self.additional_dir_content([1])
         lc = LocalComputer(root_path=self.path,
                            environments_manager=em,

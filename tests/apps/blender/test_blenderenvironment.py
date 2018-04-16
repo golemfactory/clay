@@ -15,7 +15,6 @@ class BlenderEnvTest(DatabaseFixture, PEP8MixIn):
         """Basic environment test."""
         env = BlenderEnvironment()
         self.assertTrue(env.check_support())
-        self.assertTrue(env.check_software())
 
     def test_get_performance(self):
         """Changing estimated performance in ClientConfigDescriptor."""
@@ -24,7 +23,7 @@ class BlenderEnvTest(DatabaseFixture, PEP8MixIn):
         assert result == 0.0
 
         fake_performance = 2345.2
-        p = Performance(environment_id=BlenderEnvironment.get_id(),
+        p = Performance(environment_id=env.get_id(),
                         value=fake_performance)
         p.save()
         result = env.get_performance()

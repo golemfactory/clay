@@ -4,6 +4,7 @@ import tempfile
 
 import time
 
+from apps.rendering.task.rendering_engine_requirement import RenderingEngine
 from golem.core import common
 from golem.docker.image import DockerImage
 from golem.resource import dirmanager
@@ -29,15 +30,6 @@ BLENDER_SETUP_FILE = dirmanager.find_task_script(
     'blender_setup.py')
 
 
-def _prepare_blender():
-    if not os.path.isfile(BLENDER_BINARY_PATH):
-        img = DockerImage(BLENDER_IMAGE_REP, tag=BLENDER_IMAGE_TAG)
-        img.extract_path(DOCKER_BLENDER_PATH, BLENDER_DIR)
-        # run blender with predefined task in order to load in
-        # kernel modules for GPU. Must be done outside of firejail
-        _init_gpu_blender()
-
-
 def _init_gpu_blender():
     cmd = [
         BLENDER_BINARY_PATH,
@@ -52,15 +44,17 @@ def _init_gpu_blender():
         raise Exception('Failed to initialize blender with GPU support')
 
 
+
 class BlenderFirejailTaskThread(TaskThread):
 
     # pylint: disable=too-many-arguments
     def __init__(self, task_computer, subtask_id, script_dir, src_code,
                  extra_data, short_desc, res_path, tmp_path, timeout,
-                 check_mem=False) -> None:
+                 rendering_engine: RenderingEngine, check_mem=False) -> None:
 
         super().__init__(task_computer, subtask_id, script_dir, src_code,
                          extra_data, short_desc, res_path, tmp_path, timeout)
+        self.rendering_engine = rendering_engine
         self.mc = None
         self.check_mem = check_mem
         self.work_dir = os.path.join(self.tmp_path, "work")
@@ -68,7 +62,7 @@ class BlenderFirejailTaskThread(TaskThread):
 
     def run(self):
         try:
-            _prepare_blender()
+            self._prepare_blender()
             # don't charge for the time it takes to prepare blender env
             self.start_time = time.time()
             self._prepare_dirs()
@@ -123,7 +117,7 @@ class BlenderFirejailTaskThread(TaskThread):
             "-F", output_format,
             "-t", str(os.cpu_count()),
             "-f", str(frame),
-            "--", "GPU"
+            "--", f'GPU={self.rendering_engine.name}'
         ]
         return cmd
 
@@ -139,6 +133,15 @@ class BlenderFirejailTaskThread(TaskThread):
         blender_script_path = self._get_script_path()
         with open(blender_script_path, "w") as script_file:
             script_file.write(self.extra_data['script_src'])
+
+    def _prepare_blender(self):
+        if not os.path.isfile(BLENDER_BINARY_PATH):
+            img = DockerImage(BLENDER_IMAGE_REP, tag=BLENDER_IMAGE_TAG)
+            img.extract_path(DOCKER_BLENDER_PATH, BLENDER_DIR)
+            # run blender with predefined task in order to load in
+            # kernel modules for CUDA GPU. Must be done outside of firejail
+            if self.rendering_engine == RenderingEngine.CUDA:
+                _init_gpu_blender()
 
     def _get_script_path(self):
         return os.path.join(self.work_dir, SCRIPT_FILE_NAME)

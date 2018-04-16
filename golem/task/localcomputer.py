@@ -182,8 +182,9 @@ class LocalComputer:
     def _get_task_thread(self, ctd: ComputeTaskDef) -> TaskThread:
         environment = self.environment
         if self.environments_manager:
+            # TODO No requirements checks for local computer?
             environment = self.environments_manager\
-                .get_environment_by_task_type(ctd['task_type'])
+                .get_environment_for_task(ctd['task_type'], [])
         if not environment:
             task_type = ctd['task_type']
             logger.error('No environment found for running task of type %s'

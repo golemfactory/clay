@@ -23,7 +23,7 @@ class RendererDefaults(TaskDefaults):
 
 class RenderingTaskDefinition(TaskDefinition):
     def __init__(self):
-        TaskDefinition.__init__(self)
+        super().__init__()
         self.resolution = [0, 0]
         self.renderer = None
         self.options = None

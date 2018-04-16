@@ -40,11 +40,13 @@ class ShowInformation(bpy.types.Operator):
         return {"FINISHED"}
 
 uses_gpu = False
-if 'GPU' in argv:
+gpu = next((x for x in argv if x.startswith('GPU=')), 'GPU=NONE')
+_, engine = gpu.split('=')
+if engine in ['CUDA', 'OPENCL']:
     context = bpy.context
     context.scene.cycles.device = 'GPU'
     cycles_pref = bpy.context.user_preferences.addons['cycles'].preferences
-    device_types_by_preference = ['CUDA', 'OPENCL', 'NONE']
+    device_types_by_preference = [engine, 'NONE']
     present_dev_types = [dt[0] for dt in cycles_pref.get_device_types(context)]
     for device_type in device_types_by_preference:
         if device_type in present_dev_types:
@@ -52,7 +54,7 @@ if 'GPU' in argv:
             break
     for dev in cycles_pref.devices:
         dev.use = True
-    uses_gpu = cycles_pref.compute_device_type in ['CUDA', 'OPENCL']
+    uses_gpu = cycles_pref.compute_device_type == engine
 
 bpy.utils.register_class(EngineWarning)
 engine = bpy.context.scene.render.engine

@@ -5,9 +5,9 @@ class DummyTestEnvironment(Environment):
     def __init__(self):
         super().__init__()
         self.source_code_required = True
+        self.accept_tasks = True
 
-    @classmethod
-    def get_id(cls):
+    def get_id(self):
         return "TEST_ENVIRONMENT"
 
     # pylint: disable=arguments-differ

@@ -1,10 +1,10 @@
 from unittest import TestCase
 
-from golem.network.p2p.node import Node
-from golem.task.taskarchiver import TaskArchiver, Archive, ArchTask, TimeInterval
-from golem.environments.environment import SupportStatus, UnsupportReason
-from golem.task.taskbase import TaskHeader
 from golem.core.common import timeout_to_deadline, datetime_to_timestamp
+from golem.network.p2p.node import Node
+from golem.task.taskarchiver import TaskArchiver
+from golem.task.taskbase import TaskHeader
+from golem.task.taskkeeper import SupportStatus, UnsupportReason
 import time
 import pytz
 from datetime import datetime, timedelta
@@ -16,10 +16,6 @@ class TestTaskArchiver(TestCase):
         self.ssok = SupportStatus.ok()
         self.ssem = SupportStatus.err(
             {UnsupportReason.ENVIRONMENT_MISSING: "env1"})
-        self.sseu = SupportStatus.err(
-            {UnsupportReason.ENVIRONMENT_UNSUPPORTED: "env2"})
-        self.ssenat = SupportStatus.err(
-            {UnsupportReason.ENVIRONMENT_NOT_ACCEPTING_TASKS: "env3"})
         self.ssmp = SupportStatus.err(
             {UnsupportReason.MAX_PRICE: "0"})
         self.ssav = SupportStatus.err(

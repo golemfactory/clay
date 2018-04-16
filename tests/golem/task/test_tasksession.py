@@ -442,7 +442,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         env.docker_images = [DockerImage("dockerix/xii", tag="323")]
         env.allow_custom_source_code = False
         env.get_source_code.return_value = None
-        ts.task_server.get_environment_by_task_type.return_value = env
+        ts.task_server.get_environment_for_task.return_value = env
 
         reasons = message.CannotComputeTask.REASON
 
@@ -554,7 +554,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # No environment available -> failure
         __reset_mocks()
-        ts.task_server.get_environment_by_task_type.return_value = None
+        ts.task_server.get_environment_for_task.return_value = None
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
         ))
@@ -572,7 +572,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             DockerImage("dockerix/xiii")
         ])
         de.source_code_required = True
-        ts.task_server.get_environment_by_task_type.return_value = de
+        ts.task_server.get_environment_for_task.return_value = de
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
         ))

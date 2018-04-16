@@ -91,7 +91,7 @@ class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
         print(type(ctd))
 
         environments_manager = Mock()
-        environments_manager.get_environment_by_task_type.return_value = \
+        environments_manager.get_environment_for_task.return_value = \
             DummyTaskEnvironment()
         computer = LocalComputer(
             root_path=self.tempdir,
@@ -133,7 +133,7 @@ class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
         task = self._get_test_task()
 
         env_manager = Mock()
-        env_manager.get_environment_by_task_type.return_value = \
+        env_manager.get_environment_for_task.return_value = \
             DummyTaskEnvironment()
         computer = TaskTester(task, env_manager, self.tempdir, Mock(), Mock())
         computer.run()

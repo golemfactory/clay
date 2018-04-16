@@ -10,16 +10,17 @@ from ethereum.utils import denoms
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.core.task.verifier import CoreVerifier, VerificationQueue
-from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
+from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode,\
     string_to_timeout
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
 from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.core.simpleserializer import CBORSerializer
-from golem.docker.environment import DockerEnvironment
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
+from golem.task.requirement import RequirementRegistry
+
+from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType,\
     TaskTypeInfo
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
@@ -128,11 +129,12 @@ class CoreTask(Task):
             task_type=task_definition.task_type,
             task_id=task_definition.task_id,
             task_owner=owner,
+            requirements=task_definition.requirements,
             deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
             resource_size=self.resource_size,
             estimated_memory=task_definition.estimated_memory,
-            max_price=task_definition.max_price,
+            max_price=task_definition.max_price
         )
 
         Task.__init__(self, th, src_code, task_definition)
@@ -593,6 +595,8 @@ class CoreTaskBuilder(TaskBuilder):
         definition.subtask_timeout = string_to_timeout(
             dictionary['subtask_timeout'])
         definition.output_file = cls.get_output_path(dictionary, definition)
+        reqs = dictionary.get('requirements', {})
+        definition.requirements = RequirementRegistry.from_dict(reqs)
 
         return definition
 

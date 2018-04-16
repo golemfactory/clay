@@ -112,7 +112,7 @@ class TestDockerLuxrenderTask(
         ctd = task.query_extra_data(10000).ctd
         # act
         env_manager = Mock()
-        env_manager.get_environment_by_task_type.return_value = \
+        env_manager.get_environment_for_task.return_value = \
             LuxRenderEnvironment()
         computer = LocalComputer(
             root_path=self.tempdir,
@@ -157,7 +157,7 @@ class TestDockerLuxrenderTask(
         task = self._get_test_task()
 
         env_manager = Mock()
-        env_manager.get_environment_by_task_type.return_value = \
+        env_manager.get_environment_for_task.return_value = \
             LuxRenderEnvironment()
         computer = TaskTester(task, env_manager, self.tempdir, Mock(), Mock())
         computer.run()

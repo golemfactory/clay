@@ -18,7 +18,7 @@ class TestDummyEnvironment(DatabaseFixture):
         assert result == 0.0
 
         perf = 1234.5
-        p = Performance(environment_id=DummyTaskEnvironment.get_id(),
+        p = Performance(environment_id=env.get_id(),
                         value=perf)
         p.save()
         result = env.get_performance()

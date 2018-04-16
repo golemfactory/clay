@@ -1,12 +1,13 @@
 import abc
 import logging
 import time
-from typing import List, Type
+from typing import List, Type, Optional
 
 from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
 import golem
 from golem.core.simpleserializer import CBORSerializer, DictSerializer
 from golem.network.p2p.node import Node
+from golem.task.requirement import RequirementRegistry
 from golem.task.taskstate import TaskState
 
 logger = logging.getLogger("golem.task")
@@ -20,12 +21,14 @@ class TaskTypeInfo(object):
                  definition: Type[TaskDefinition],
                  defaults: TaskDefaults,
                  options: Type[Options],
-                 task_builder_type: 'Type[TaskBuilder]'):
+                 task_builder_type: 'Type[TaskBuilder]') -> None:
         self.name = name
         self.defaults = defaults
         self.options = options
         self.definition = definition
         self.task_builder_type = task_builder_type
+        # list of supported requirement classes ids
+        self.requirementTypes: List[str] = []
 
 
 # TODO change types to enums - for now it gets
@@ -39,13 +42,14 @@ class ResultType(object): # class ResultType(Enum):
 
 
 class TaskHeader(object):
-    """ Task header describe general information about task as an request and is propagated in the
-        network as an offer for computing nodes
-    """
+    """ Task header describe general information about task as an request and
+    is propagated in the network as an offer for computing nodes"""
+
     def __init__(self,  # pylint: disable=too-many-arguments
                  task_id: str,
                  task_type: str,
                  task_owner: Node,
+                 requirements: Optional[List] = None,
                  deadline=0.0,
                  subtask_timeout=0.0,
                  resource_size=0,
@@ -67,6 +71,7 @@ class TaskHeader(object):
         self.subtask_timeout = subtask_timeout
         self.resource_size = resource_size
         self.task_type = task_type
+        self.requirements = requirements or []
         self.estimated_memory = estimated_memory
         self.min_version = min_version
         self.max_price = max_price
@@ -79,15 +84,19 @@ class TaskHeader(object):
         return self.dict_to_binary(self.to_dict())
 
     def to_dict(self):
-        return DictSerializer.dump(self, typed=False)
+        serialized = DictSerializer.dump(self, typed=False)
+        serialized['requirements'] = RequirementRegistry.to_dict(
+            self.requirements)
+        return serialized
 
     @staticmethod
     def from_dict(dictionary):
         th = DictSerializer.load(dictionary, as_class=TaskHeader)
         th.last_checking = time.time()
-
-        if isinstance(th.task_owner, dict):
-            th.task_owner = Node.from_dict(th.task_owner)
+        reqs = getattr(th, 'requirements', {})
+        th.requirements = RequirementRegistry.from_dict(reqs)
+        owner = getattr(th, 'task_owner', {})
+        th.task_owner = Node.from_dict(owner)
         return th
 
     @classmethod

@@ -126,6 +126,9 @@ class TaskManager(TaskEventListener):
     def get_task_manager_root(self):
         return self.root_path
 
+    def get_task_requirements(self, task_id):
+        return self.comp_task_keeper.get_task_requirements(task_id)
+
     def create_task(self, dictionary, minimal=False):
         type_name = dictionary['type'].lower()
         task_type = self.task_types[type_name]

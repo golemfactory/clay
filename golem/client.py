@@ -1129,7 +1129,7 @@ class Client(HardwarePresetsMixin):
         logger.info('Running benchmarks ...')
         deferred = Deferred()
 
-        if env_id != DefaultEnvironment.get_id():
+        if env_id != DefaultEnvironment.DEFAULT_ID:
             benchmark_manager = self.task_server.benchmark_manager
             benchmark_manager.run_benchmark_for_env_id(env_id,
                                                        deferred.callback,
@@ -1137,7 +1137,6 @@ class Client(HardwarePresetsMixin):
             result = yield deferred
             returnValue(result)
         else:
-
             kwargs = {'func': DefaultEnvironment.run_default_benchmark,
                       'callback': deferred.callback,
                       'errback': deferred.errback,

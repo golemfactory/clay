@@ -14,8 +14,8 @@ from twisted.internet.defer import inlineCallbacks
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
-from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.p2p import node as p2p_node
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
@@ -34,7 +34,7 @@ from .result.resultmanager import ExtractedPackage
 from .server import resources
 from .server import concent
 from .taskcomputer import TaskComputer
-from .taskkeeper import TaskHeaderKeeper
+from .taskkeeper import TaskHeaderKeeper, SupportStatus, UnsupportReason
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
 
@@ -152,9 +152,9 @@ class TaskServer(
         super().resume()
         CoreTask.VERIFICATION_QUEUE.resume()
 
-    def get_environment_by_task_type(self, task_type):
+    def get_environment_for_task(self, task_type, requirements):
         manager = self.task_keeper.environments_manager
-        return manager.get_environment_by_task_type(task_type)
+        return manager.get_environment_for_task(task_type, requirements)
 
     # This method chooses random task from the network to compute on our machine
     def request_task(self):
@@ -162,7 +162,8 @@ class TaskServer(
         if theader is None:
             return None
         try:
-            env = self.get_environment_by_task_type(theader.task_type)
+            env = self.get_environment_for_task(theader.task_type,
+                                                theader.requirements)
             if env is not None:
                 performance = env.get_performance()
             else:

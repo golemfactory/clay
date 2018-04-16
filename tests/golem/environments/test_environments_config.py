@@ -7,7 +7,7 @@ from tests.golem.environments.test_environment_class import DummyTestEnvironment
 class TestEnvironmentsConfig(TestDirFixture):
 
     def test_load_config(self):
-        envs = {"test-env": ("Test Env", True)}
+        envs = [("Test Env", True)]
         config = EnvironmentsConfig.load_config(envs, self.path)
         assert config
 
@@ -18,8 +18,8 @@ class TestEnvironmentsConfig(TestDirFixture):
 
     def test_load_config_manager(self):
         mgr = EnvironmentsManager()
-        mgr.add_environment(DummyTestEnvironment.get_id(),
-                            DummyTestEnvironment())
+        env = DummyTestEnvironment()
+        mgr.add_environment(env.get_id(), env)
         mgr.load_config(self.path)
         assert mgr.env_config
 

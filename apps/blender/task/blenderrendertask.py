@@ -18,6 +18,8 @@ from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import \
     RenderingTaskCollector
 from apps.rendering.resources.utils import handle_image_error, handle_none
+from apps.rendering.task.rendering_engine_requirement import \
+    RenderingEngineRequirement
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, \
     FrameRenderingTaskBuilder, FrameRendererOptions
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, PREVIEW_Y
@@ -124,7 +126,7 @@ class PreviewUpdater(object):
 
 
 class BlenderTaskTypeInfo(CoreTaskTypeInfo):
-    """ Blender App descryption that can be used by interface to define
+    """ Blender App description that can be used by interface to define
     parameters and task build
     """
     def __init__(self):
@@ -136,6 +138,7 @@ class BlenderTaskTypeInfo(CoreTaskTypeInfo):
 
         self.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
         self.output_file_ext = ["blend"]
+        self.requirementTypes = [RenderingEngineRequirement.get_id()]
 
     @classmethod
     def get_preview(cls, task, single=False):
@@ -572,7 +575,7 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._put_collected_files_together(os.path.join(self.tmp_dir, output_file_name),
                                                list(self.collected_file_names.values()), "paste")
-            
+
     def mark_part_on_preview(self, part, img_task, color, preview_updater, frame_index=0):
         lower = preview_updater.get_offset(part)
         upper = preview_updater.get_offset(part + 1)

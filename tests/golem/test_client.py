@@ -16,10 +16,13 @@ from twisted.internet.defer import Deferred
 import golem
 from apps.appsmanager import AppsManager
 from apps.blender.dockerenvironment.blenderenvironment import BlenderEnvironment
+from apps.blender.firejailenvironment.environment import FirejailEnvironment
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from apps.lux.luxenvironment import LuxRenderEnvironment
+from apps.rendering.task.rendering_engine_requirement import \
+    RenderingEngineSupport, RenderingEngine
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
@@ -942,6 +945,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             )
 
         client.environments_manager.load_all_envs(None, False)
+        client.environments_manager.load_config(self.path)
 
         client.sync = Mock()
         client.p2pservice = Mock(peers={})
@@ -1156,20 +1160,20 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         with self.assertRaises(Exception):
             sync_wait(self.client.run_benchmark(str(uuid.uuid4())))
 
-        sync_wait(self.client.run_benchmark(BlenderEnvironment.get_id()))
+        sync_wait(self.client.run_benchmark(BlenderEnvironment().get_id()))
 
         assert benchmark_manager.run_benchmark.call_count == 1
         assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
                           BlenderBenchmark)
 
-        sync_wait(self.client.run_benchmark(LuxRenderEnvironment.get_id()))
+        sync_wait(self.client.run_benchmark(LuxRenderEnvironment().get_id()))
 
         assert benchmark_manager.run_benchmark.call_count == 2
         assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
                           LuxBenchmark)
 
         result = sync_wait(self.client.run_benchmark(
-            DefaultEnvironment.get_id()))
+            DefaultEnvironment.DEFAULT_ID))
         assert result > 100.0
         assert benchmark_manager.run_benchmark.call_count == 2
 
@@ -1182,7 +1186,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 patch("golem.docker.job.DockerJob.__init__",
                       side_effect=raise_exc), \
                 self.assertRaisesRegex(Exception, 'Test exception'):
-            sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
+            sync_wait(self.client.run_benchmark(
+                DummyTaskEnvironment().get_id()))
 
     @patch("golem.task.benchmarkmanager.BenchmarkRunner")
     def test_run_benchmarks(self, br_mock, *_):
@@ -1429,11 +1434,17 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertEqual(self.client.node.port_statuses.get(port), "timeout")
 
     def test_get_performance_values(self, *_):
+        blender_cuda_env = FirejailEnvironment(
+            RenderingEngineSupport(RenderingEngine.CUDA))
+        blender_opencl_env = FirejailEnvironment(
+            RenderingEngineSupport(RenderingEngine.OPENCL))
         expected_perf = {
-            DefaultEnvironment.get_id(): 0.0,
-            DummyTaskEnvironment.get_id(): 0.0,
-            LuxRenderEnvironment.get_id(): 0.0,
-            BlenderEnvironment.get_id(): 0.0,
+            DefaultEnvironment.DEFAULT_ID: 0.0,
+            DummyTaskEnvironment().get_id(): 0.0,
+            LuxRenderEnvironment().get_id(): 0.0,
+            BlenderEnvironment().get_id(): 0.0,
+            blender_cuda_env.get_id(): 0.0,
+            blender_opencl_env.get_id(): 0.0,
         }
         assert self.client.get_performance_values() == expected_perf
 

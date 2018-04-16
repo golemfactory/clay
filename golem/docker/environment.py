@@ -5,8 +5,7 @@ import enforce
 
 from golem.docker.image import DockerImage
 from golem.docker.task_thread import DockerTaskThread
-from golem.environments.environment import (Environment, SupportStatus,
-                                            UnsupportReason)
+from golem.environments.environment import Environment
 from golem.resource.dirmanager import find_task_script
 
 
@@ -34,17 +33,9 @@ class DockerEnvironment(Environment):
         if self.SHORT_DESCRIPTION:
             self.short_description = self.SHORT_DESCRIPTION
 
-    def check_docker_images(self) -> SupportStatus:
-        if any(img.is_available() for img in self.docker_images):
-            return SupportStatus.ok()
-
-        return SupportStatus.err({UnsupportReason.ENVIRONMENT_UNSUPPORTED: {
-            'env_id': self.get_id(),
-            'docker_images_missing_any': self.docker_images,
-        }})
-
-    def check_support(self) -> SupportStatus:
-        return self.check_docker_images().join(Environment.check_support(self))
+    def _check_software(self):
+        return super()._check_software() \
+               and any(img.is_available() for img in self.docker_images)
 
     def description(self):
         descr = Environment.description(self)
@@ -79,34 +70,33 @@ class DockerEnvironment(Environment):
 
     @property
     @abc.abstractmethod
-    def DOCKER_IMAGE(cls):
+    def DOCKER_IMAGE(self):
         pass
 
     @property
     @abc.abstractmethod
-    def DOCKER_TAG(cls):
+    def DOCKER_TAG(self):
         pass
 
     @property
     @abc.abstractmethod
-    def ENV_ID(cls):
+    def ENV_ID(self):
         pass
 
     @property
     @abc.abstractmethod
-    def APP_DIR(cls):
+    def APP_DIR(self):
         pass
 
     @property
     @abc.abstractmethod
-    def SCRIPT_NAME(cls):
+    def SCRIPT_NAME(self):
         pass
 
     @property
     @abc.abstractmethod
-    def SHORT_DESCRIPTION(cls):
+    def SHORT_DESCRIPTION(self):
         pass
 
-    @classmethod
-    def get_id(cls):
-        return cls.ENV_ID
+    def get_id(self):
+        return self.ENV_ID

@@ -853,7 +853,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return True
 
     def _set_env_params(self, ctd):
-        env = self.task_server.get_environment_by_task_type(ctd['task_type'])
+        task_type = ctd['task_type']
+        requirements = self.task_manager.get_task_requirements(ctd['task_id'])
+        env = self.task_server.get_environment_for_task(task_type, requirements)
         reasons = message.CannotComputeTask.REASON
         if not env:
             self.err_msg = reasons.WrongEnvironment

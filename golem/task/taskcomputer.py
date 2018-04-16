@@ -351,14 +351,14 @@ class TaskComputer(object):
                        src_code, extra_data, short_desc, subtask_deadline):
         task_id = self.assigned_subtasks[subtask_id]['task_id']
         task_header = self.task_server.task_keeper.task_headers.get(task_id)
-        environment = self.task_server.get_environment_by_task_type(task_type)
-
         if not task_header:
             logger.warning("Subtask '%s' of task '%s' cannot be computed: "
                            "task header has been unexpectedly removed",
                            subtask_id, task_id)
             return self.session_closed()
 
+        environment = self.task_server.get_environment_for_task(
+            task_type, task_header.requirements)
         deadline = min(task_header.deadline, subtask_deadline)
         task_timeout = deadline_to_timeout(deadline)
 

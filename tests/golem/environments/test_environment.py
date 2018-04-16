@@ -13,7 +13,7 @@ class EnvTest(DatabaseFixture, PEP8MixIn):
     def test_get_performance(self):
         env = DummyTestEnvironment()
         perf_value = 6666.6
-        perf = Performance(environment_id=DummyTestEnvironment.get_id(),
+        perf = Performance(environment_id=env.get_id(),
                            value=perf_value)
         perf.save()
         result = env.get_performance()
@@ -35,9 +35,9 @@ class EnvTest(DatabaseFixture, PEP8MixIn):
 
     def test_check_software(self):
         env = DummyTestEnvironment()
-        assert not env.check_software()
+        assert not env._check_software()  # pylint: disable=protected-access
         env.allow_custom_source_code = True
-        assert env.check_software()
+        assert env._check_software()  # pylint: disable=protected-access
         env.allow_custom_source_code = False
 
         file_name = path.join(self.path, "mainprogramfile")
@@ -46,9 +46,13 @@ class EnvTest(DatabaseFixture, PEP8MixIn):
         with open(file_name, 'w') as f:
             f.write("PROGRAM CODE")
 
-        assert env.check_software()
+        assert env._check_software()  # pylint: disable=protected-access
 
     def test_run_default_benchmark(self):
-        assert DummyTestEnvironment.get_performance() == 0.0
-        assert DummyTestEnvironment.run_default_benchmark(save=True) > 0.0
-        assert DummyTestEnvironment.get_performance() > 0.0
+        env = DummyTestEnvironment()
+        self.assertEqual(env.get_performance(), 0.0)
+        self.assertGreater(
+            DummyTestEnvironment.run_default_benchmark(
+                save=True, env_id=env.get_id()),
+            0.0)
+        self.assertGreater(env.get_performance(), 0.0)

@@ -16,7 +16,6 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.core.keysauth import KeysAuth
-from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient, to_hyperg_peer
 from golem.network.p2p.node import Node
@@ -25,6 +24,7 @@ from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import tasksession
 from golem.task.taskbase import TaskHeader, ResultType
+from golem.task.taskkeeper import SupportStatus, UnsupportReason
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.task.tasksession import TaskSession
@@ -55,6 +55,7 @@ def get_example_task_header(key_id):
         "estimated_memory": 3 * 1024,
         "signature": None,
         "min_version": golem.__version__,
+        "requirements": {}
     }
 
 

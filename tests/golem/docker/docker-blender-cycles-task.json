@@ -28,6 +28,7 @@
   "estimated_memory":0,
   "full_task_timeout":14400,
   "task_type":"Blender",
+  "requirements": [],
   "main_program_file":"$GOLEM_DIR/apps/blender/dockerenvironment/resources/scripts/docker_blendertask.py",
   "subtask_timeout":1200,
   "total_subtasks":6,

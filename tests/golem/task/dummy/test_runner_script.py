@@ -88,8 +88,8 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
         client = runner.run_computing_node(self.path,
                                            SocketAddress("127.0.0.1", 40102))
         self.assertIsNotNone(
-            client.environments_manager.get_environment_by_task_type(
-                task.DummyTask.TASK_TYPE))
+            client.environments_manager.get_environment_for_task(
+                task.DummyTask.TASK_TYPE, []))
         self.assertTrue(mock_reactor.run.called)
         self.assertTrue(mock_config_logging.called)
         client.quit()

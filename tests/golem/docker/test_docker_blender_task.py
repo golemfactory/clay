@@ -49,7 +49,7 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
     def _run_docker_test_task(self, render_task, timeout=60*5):
         render_task.deadline = timeout_to_deadline(timeout)
         envs_manager = Mock()
-        envs_manager.get_environment_by_task_type.return_value = \
+        envs_manager.get_environment_for_task.return_value = \
             BlenderEnvironment()
         task_computer = TaskTester(render_task, envs_manager, self.path,
                                    Mock(), Mock())
@@ -59,12 +59,9 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
 
     def _run_docker_local_comp_task(self, render_task, timeout=60*5):
         render_task.deadline = timeout_to_deadline(timeout)
-        env_manager = Mock()
-        env_manager.get_environment_by_task_type.return_value = \
-            BlenderEnvironment()
         local_computer = LocalComputer(
             root_path=self.tempdir,
-            environments_manager=env_manager,
+            environment=BlenderEnvironment(),
             success_callback=Mock(),
             error_callback=Mock(),
             get_compute_task_def=render_task.query_extra_data_for_test_task,
@@ -172,7 +169,7 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
     def test_blender_scene_file_error(self):
         task = self._get_test_task()
         # Replace scene file with some other, non-blender file:
-        task.main_scene_file = 'nonexisting'
+        task.main_scene_file = path.join(get_golem_path(), "golem", "node.py")
         task_thread = self._run_task(task)
         self.assertIsInstance(task_thread, DockerTaskThread)
         self.assertIsInstance(task_thread.error_msg, str)

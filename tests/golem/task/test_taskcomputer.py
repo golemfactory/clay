@@ -130,7 +130,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd['deadline'] = timeout_to_deadline(10)
 
         task_server = self.task_server
-        task_server.get_environment_by_task_type.return_value = None
+        task_server.get_environment_for_task.return_value = None
         task_server.task_keeper.task_headers = {
             ctd['subtask_id']: mock.Mock(
                 subtask_timeout=5,
@@ -161,7 +161,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_server.send_task_failed.assert_called_with(
             "xxyyzz", "xyz", "Dummy task not supported")
 
-        task_server.get_environment_by_task_type.return_value = \
+        task_server.get_environment_for_task.return_value = \
             PyTaskEnvironment()
         tc.task_given(ctd)
         assert tc.task_resource_collected("xyz")
@@ -297,7 +297,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_computer.task_server.task_keeper.task_headers = {
             task_id: None
         }
-        task_computer.task_server.get_environment_by_task_type.return_value = \
+        task_computer.task_server.get_environment_for_task.return_value = \
             PyTaskEnvironment()
 
         args = (task_computer, subtask_id)

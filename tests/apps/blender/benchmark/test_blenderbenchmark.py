@@ -64,7 +64,7 @@ class TestBenchmarkRunner(testutils.TempDirFixture):
         error = mock.MagicMock()
 
         env_manager = mock.Mock()
-        env_manager.get_environment_by_task_type.return_value = \
+        env_manager.get_environment_for_task.return_value = \
             BlenderEnvironment()
         br = BenchmarkRunner(task, env_manager, self.path, success, error,
                              benchmark)

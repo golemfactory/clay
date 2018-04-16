@@ -18,7 +18,7 @@ class TestLuxRenderEnvironment(DatabaseFixture, PEP8MixIn):
     def test_get_performance(self):
         env = LuxRenderEnvironment()
         perf_value = 1234.5
-        perf = Performance(environment_id=LuxRenderEnvironment.get_id(),
+        perf = Performance(environment_id=env.get_id(),
                            value=perf_value)
         perf.save()
         result = env.get_performance()
