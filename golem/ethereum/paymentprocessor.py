@@ -379,7 +379,6 @@ class PaymentProcessor(LoopingCallService):
 
             self.monitor_progress()
             self.sendout()
-            self._send_balance_snapshot()
 
     def stop(self):
         self.sendout(0)
