@@ -4,13 +4,13 @@ import unittest
 
 import mock
 
+from golem_messages.factories.concents import FileTransferTokenFactory
 from golem_messages.message.concents import FileTransferToken
 
 from golem import testutils
 from golem.core import keysauth
 from golem.network.concent import filetransfers
 from tests.factories.concent import ConcentFileRequestFactory
-from tests.factories.messages import FileTransferTokenFactory
 
 
 class ConcentFileRequestTest(unittest.TestCase):

@@ -6,6 +6,7 @@ from math import ceil
 from unittest.mock import Mock, MagicMock, patch
 
 from golem_messages.message import ComputeTaskDef
+from golem_messages import factories as msg_factories
 from requests import HTTPError
 
 import golem
@@ -32,9 +33,7 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 from golem.utils import encode_hex
 
-from tests.factories import messages as msg_factories
 from tests.factories.resultpackage import ExtractedPackageFactory
-from tests.factories.messages import ReportComputedTask
 
 
 def get_example_task_header(key_id):
@@ -246,7 +245,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
         ctd['subtask_id'] = subtask_id
-        ttc = msg_factories.TaskToCompute(price=1)
+        ttc = msg_factories.tasks.TaskToComputeFactory(price=1)
         ttc.compute_task_def = ctd
         ts.task_manager.comp_task_keeper.receive_subtask(ttc)
         model.Income.create(
@@ -994,7 +993,8 @@ class TaskVerificationResultTest(TaskServerTestBase):
     @patch('golem.task.taskserver.TaskServer.get_socket_addresses',
            Mock(return_value=[Mock()]))
     def test_verify_results(self, *_):
-        rct = ReportComputedTask(node_info=self.ts.node.to_dict())
+        rct = msg_factories.tasks.ReportComputedTaskFactory(
+            node_info=self.ts.node.to_dict())
         extracted_package = ExtractedPackageFactory()
         self.ts.verify_results(rct, extracted_package)
         pc = list(self.ts.pending_connections.values())[0]

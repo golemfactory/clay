@@ -17,8 +17,8 @@ from golem.utils import decode_hex
 logger = logging.getLogger(__name__)
 
 RESPONSE_FOR_RCT = typing.Union[
-    message.concents.RejectReportComputedTask,
-    message.concents.AckReportComputedTask,
+    message.tasks.RejectReportComputedTask,
+    message.tasks.AckReportComputedTask,
 ]
 
 
@@ -56,8 +56,7 @@ def process_report_computed_task(
             reason,
             kwargs,
         )
-        reject_msg = message.concents.RejectReportComputedTask(
-            subtask_id=msg.subtask_id,
+        reject_msg = message.tasks.RejectReportComputedTask(
             reason=reason,
             task_to_compute=msg.task_to_compute,
             **kwargs,
@@ -78,7 +77,7 @@ def process_report_computed_task(
         logger.warning('Prevented payment to zero address: %r', msg)
         return _reject(None)
 
-    reject_reasons = message.concents.RejectReportComputedTask.REASON
+    reject_reasons = message.tasks.RejectReportComputedTask.REASON
     now_ts = calendar.timegm(time.gmtime())
     task_id = msg.task_to_compute.compute_task_def['task_id']
 
@@ -131,7 +130,6 @@ def process_report_computed_task(
 
     # Verification passed, will send ACK
 
-    return message.concents.AckReportComputedTask(
-        subtask_id=msg.subtask_id,
-        task_to_compute=msg.task_to_compute,
+    return message.tasks.AckReportComputedTask(
+        report_computed_task=msg
     )

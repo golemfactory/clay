@@ -10,6 +10,7 @@ import uuid
 from unittest import TestCase
 from unittest.mock import patch, ANY, Mock, MagicMock
 
+from golem_messages import factories as msg_factories
 from golem_messages import message
 
 from golem import model, testutils
@@ -29,7 +30,6 @@ from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.assertlogs import LogTestCase
 from tests import factories
-from tests.factories import messages as msg_factories
 from tests.factories.taskserver import WaitingTaskResultFactory
 
 
@@ -191,7 +191,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_server.get_node_name.return_value = "ABC"
         wtr = WaitingTaskResultFactory()
 
-        get_mock.return_value = factories.messages.TaskToCompute(
+        get_mock.return_value = msg_factories.tasks.TaskToComputeFactory(
+            compute_task_def__subtask_id=wtr.subtask_id,
             compute_task_def__task_id=wtr.task_id,
             compute_task_def__deadline=calendar.timegm(time.gmtime()) + 3600,
         )
@@ -236,9 +237,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         get_mock.side_effect = history.MessageNotFound
 
         with patch(
-                'golem.network.concent.helpers'
-                '.process_report_computed_task',
-                return_value=msg_factories.AckReportComputedTask()):
+            'golem.network.concent.helpers.process_report_computed_task',
+            return_value=msg_factories.tasks.AckReportComputedTaskFactory()
+        ):
             ts2.interpret(rct)
         wtr.result_type = "UNKNOWN"
         with self.assertLogs(logger, level="ERROR"):
@@ -338,9 +339,10 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_manager = Mock()
         ts.task_manager.verify_subtask.return_value = True
         subtask_id = "xxyyzz"
-        get_msg_mock.return_value = msg_factories.ReportComputedTask(
-            subtask_id=subtask_id,
-        )
+        get_msg_mock.return_value = msg_factories \
+            .tasks.ReportComputedTaskFactory(
+                subtask_id=subtask_id,
+            )
 
         def finished():
             if not ts.task_manager.verify_subtask(subtask_id):
@@ -352,7 +354,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 subtask_id,
                 ts.get_result_owner(subtask_id),
             )
-            ts.send(factories.messages.SubtaskResultsAcceptedFactory(
+            ts.send(msg_factories.tasks.SubtaskResultsAcceptedFactory(
                 task_to_compute__compute_task_def__subtask_id=subtask_id,
                 payment_ts=payment.processed_ts))
             ts.dropped()
@@ -408,7 +410,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
     @patch('golem.task.tasksession.TaskSession.dropped')
     def _test_result_rejected(self, dropped_mock, key_id="ABC", called=True):
-        msg = factories.messages.SubtaskResultsRejected()
+        msg = msg_factories.tasks.SubtaskResultsRejectedFactory()
         ctk = self.task_session.task_manager.comp_task_keeper
         ctk.get_node_for_task_id.return_value = "ABC"
         self.task_session.key_id = key_id
@@ -641,11 +643,19 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         cancel = session.concent_service.cancel_task_message
 
-        msg_ack = message.AckReportComputedTask(
-            subtask_id=subtask_id
+        ttc = msg_factories.tasks.TaskToComputeFactory(
+            compute_task_def__subtask_id=subtask_id,
+            compute_task_def__task_id=task_id,
         )
-        msg_rej = message.RejectReportComputedTask(
-            subtask_id=subtask_id,
+
+        rct = msg_factories.tasks.ReportComputedTaskFactory(
+            task_to_compute=ttc)
+
+        msg_ack = message.tasks.AckReportComputedTask(
+            report_computed_task=rct
+        )
+        msg_rej = message.tasks.RejectReportComputedTask(
+            task_to_compute=ttc
         )
 
         # Subtask is not known
@@ -661,7 +671,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # Subtask is known
         with patch("golem.task.tasksession.get_task_message") as get_mock:
-            get_mock.return_value = msg_factories.ReportComputedTask()
+            get_mock.return_value = rct
             session._react_to_ack_report_computed_task(msg_ack)
             session.concent_service.submit_task_message.assert_called_once_with(
                 subtask_id=msg_ack.subtask_id,
@@ -835,7 +845,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
 
 class GetTaskMessageTest(TestCase):
     def test_get_task_message(self):
-        msg = factories.messages.TaskToCompute()
+        msg = msg_factories.tasks.TaskToComputeFactory()
         with patch('golem.task.tasksession.history'
                    '.MessageHistoryService.get_sync_as_message',
                    Mock(return_value=msg)):
@@ -864,7 +874,7 @@ class SubtaskResultsAcceptedTest(TestCase):
 
     def _test__react_to_subtask_result_accepted(self, key_id="ABC",
                                                 called=True):
-        sra = factories.messages.SubtaskResultsAcceptedFactory()
+        sra = msg_factories.tasks.SubtaskResultsAcceptedFactory()
         ctk = self.task_session.task_manager.comp_task_keeper
         ctk.get_node_for_task_id.return_value = "ABC"
         self.task_session.key_id = key_id
@@ -891,7 +901,7 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_session.task_manager.computed_task_received = \
             computed_task_received
 
-        rct = factories.messages.ReportComputedTask()
+        rct = msg_factories.tasks.ReportComputedTaskFactory()
         ttc = rct.task_to_compute
         extra_data = dict(
             result=pickle.dumps({'stdout': 'xyz'}),
@@ -960,8 +970,8 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
         self.addCleanup(gsam.stop)
 
     def _prepare_report_computed_task(self, **kwargs):
-        return factories.messages.ReportComputedTask(
-            subtask_id=self.subtask_id,
+        return msg_factories.tasks.ReportComputedTaskFactory(
+            task_to_compute__compute_task_def__subtask_id=self.subtask_id,
             task_to_compute__compute_task_def__task_id=self.task_id,
             **kwargs,
         )

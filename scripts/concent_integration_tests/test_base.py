@@ -2,9 +2,8 @@ import pickle
 import unittest
 
 from golem_messages import message
+from golem_messages import factories as msg_factories
 from golem_messages.shortcuts import dump, load
-
-from tests.factories import messages as msg_factories
 
 from .base import ConcentBaseTest
 
@@ -15,7 +14,7 @@ class ConcentBaseTestTest(ConcentBaseTest, unittest.TestCase):
         provider_keys = self._fake_keys()
         concent_keys = self._fake_keys()
 
-        rct = msg_factories.ReportComputedTask()
+        rct = msg_factories.tasks.ReportComputedTaskFactory()
 
         dump(rct, provider_keys.raw_privkey, requestor_keys.raw_pubkey)
 
@@ -49,8 +48,6 @@ class ConcentBaseTestTest(ConcentBaseTest, unittest.TestCase):
             concent_keys.raw_pubkey
         )
 
-        self.assertSameMessage(frct_requestor_rcv.report_computed_task,
-                               stored_rct)
-
-        self.assertNotSameMessage(frct_requestor_rcv, stored_frct)
+        self.assertEqual(frct_requestor_rcv.report_computed_task, stored_rct)
+        self.assertNotEqual(frct_requestor_rcv, stored_frct)
         self.assertSamePayload(frct_requestor_rcv, stored_frct)

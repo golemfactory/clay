@@ -10,6 +10,7 @@ from unittest import mock
 
 import faker
 
+from golem_messages import factories as msg_factories
 from golem_messages.message import concents as concent_msg
 
 from golem.core.simplehash import SimpleHash
@@ -17,8 +18,6 @@ from golem.network.concent import client
 from golem.network.concent.filetransfers import (
     ConcentFiletransferService, ConcentFileRequest
 )
-
-from tests.factories import messages as msg_factories
 
 from ..base import ConcentBaseTest
 
@@ -56,12 +55,13 @@ class ForceGetTaskResultFiletransferTest(ConcentBaseTest, unittest.TestCase):
         logger.debug('Provider key: %s',
                      base64.b64encode(provider_keys.raw_pubkey).decode())
 
-        rct = msg_factories.ReportComputedTask(
+        rct = msg_factories.tasks.ReportComputedTaskFactory(
             task_to_compute__provider_public_key=self.op_keys.raw_pubkey,
             size=self.size,
             package_hash=self.hash
         )
-        fgtr = msg_factories.ForceGetTaskResult(report_computed_task=rct)
+        fgtr = msg_factories.concents.ForceGetTaskResultFactory(
+            report_computed_task=rct)
         self._send_to_concent(
             fgtr, other_party_public_key=provider_keys.raw_pubkey)
 

@@ -8,15 +8,12 @@ from eth_utils import encode_hex
 from golem_messages import message
 from golem_messages import shortcuts as msg_shortcuts
 from golem_messages.cryptography import ECCx
+from golem_messages.factories.tasks import ReportComputedTaskFactory
 
 from golem import testutils
 from golem.core.keysauth import KeysAuth
 
 from golem.network.concent import helpers
-
-from tests.factories.messages import (
-    ReportComputedTask as ReportComputedTaskFactory
-)
 
 
 class VerifyMessageSignatureTest(testutils.TempDirFixture, TestCase):
@@ -67,7 +64,7 @@ class HelpersTest(TestCase):
         msg.eth_account = encode_hex(addr)
 
         res = helpers.process_report_computed_task(msg, ecc, mock.Mock())
-        assert isinstance(res, message.concents.RejectReportComputedTask)
+        self.assertIsInstance(res, message.tasks.RejectReportComputedTask)
 
     def test_payment_to_zero(self):
         ecc = mock.Mock()
@@ -76,4 +73,4 @@ class HelpersTest(TestCase):
         msg.eth_account = '0x' + 40 * '0'
 
         res = helpers.process_report_computed_task(msg, ecc, mock.Mock())
-        assert isinstance(res, message.concents.RejectReportComputedTask)
+        assert isinstance(res, message.tasks.RejectReportComputedTask)
