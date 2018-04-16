@@ -39,5 +39,6 @@ class SendTest(ConcentBaseTest, unittest.TestCase):
 
 class ReceiveTest(ConcentBaseTest, unittest.TestCase):
     def test_receive(self):
-        content = client.receive_from_concent(self.pub_key)
+        content = client.receive_from_concent(
+            signing_key=self.priv_key, public_key=self.pub_key)
         self.assertIsNone(content)

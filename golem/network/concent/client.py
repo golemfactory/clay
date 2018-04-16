@@ -126,13 +126,18 @@ def send_to_concent(
     return response.content or None
 
 
-def receive_from_concent(public_key) -> typing.Optional[bytes]:
+def receive_from_concent(signing_key, public_key) -> typing.Optional[bytes]:
     concent_receive_url = urljoin(variables.CONCENT_URL, '/api/v1/receive/')
     headers = {
         'Content-Type': 'application/octet-stream',
         'Concent-Client-Public-Key': base64.standard_b64encode(public_key),
         'X-Golem-Messages': golem_messages.__version__,
     }
+    authorization_msg = message.concents.ClientAuthorization(
+        client_public_key=public_key,
+    )
+    data = golem_messages.dump(
+        authorization_msg, signing_key, variables.CONCENT_PUBKEY)
     try:
         logger.debug(
             'receive_from_concent(): GET %r hdr: %r',
@@ -141,6 +146,7 @@ def receive_from_concent(public_key) -> typing.Optional[bytes]:
         )
         response = requests.post(
             concent_receive_url,
+            data=data,
             headers=headers,
         )
     except requests.exceptions.RequestException as e:
@@ -333,7 +339,10 @@ class ConcentClientService(threading.Thread):
             return
 
         try:
-            res = receive_from_concent(self.keys_auth.public_key)
+            res = receive_from_concent(
+                signing_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
+                public_key=self.keys_auth.public_key,
+            )
         except exceptions.ConcentError as e:
             logger.warning("Can't receive message from Concent: %s", e)
             self._grace_sleep()

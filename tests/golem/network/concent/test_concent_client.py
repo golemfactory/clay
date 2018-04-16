@@ -135,6 +135,7 @@ class TestReceiveFromConcent(TestCase):
         response.status_code = 200
         get_mock.return_value = response
         result = client.receive_from_concent(
+            signing_key=self.private_key,
             public_key=self.public_key,
         )
         self.assertIsNone(result)
@@ -147,6 +148,7 @@ class TestReceiveFromConcent(TestCase):
         response.status_code = 200
         get_mock.return_value = response
         result = client.receive_from_concent(
+            signing_key=self.private_key,
             public_key=self.public_key,
         )
         self.assertIs(result, content)
@@ -155,6 +157,7 @@ class TestReceiveFromConcent(TestCase):
         get_mock.side_effect = RequestException
         with self.assertRaises(exceptions.ConcentUnavailableError):
             client.receive_from_concent(
+                signing_key=self.private_key,
                 public_key=self.public_key,
             )
 
@@ -165,6 +168,7 @@ class TestReceiveFromConcent(TestCase):
         response = requests.Response()
         get_mock.return_value = response
         client.receive_from_concent(
+            signing_key=self.private_key,
             public_key=self.public_key,
         )
         verify_mock.assert_called_once_with(response)
@@ -296,7 +300,8 @@ class TestConcentClientService(testutils.TempDirFixture):
         receive_mock.return_value = content = object()
         self.concent_service.receive()
         receive_mock.assert_called_once_with(
-            self.concent_service.keys_auth.public_key,
+            signing_key=self.concent_service.keys_auth._private_key,
+            public_key=self.concent_service.keys_auth.public_key,
         )
         react_mock.assert_called_once_with(content)
 
@@ -316,7 +321,8 @@ class TestConcentClientService(testutils.TempDirFixture):
                                    *_):
         receive_mock.side_effect = exceptions.ConcentError
         self.concent_service.receive()
-        receive_mock.assert_called_once_with(mock.ANY)
+        receive_mock.assert_called_once_with(
+            signing_key=mock.ANY, public_key=mock.ANY)
         sleep_mock.assert_called_once_with()
         react_mock.assert_not_called()
 
@@ -336,7 +342,8 @@ class TestConcentClientService(testutils.TempDirFixture):
                                *_):
         receive_mock.side_effect = Exception
         self.concent_service.receive()
-        receive_mock.assert_called_once_with(mock.ANY)
+        receive_mock.assert_called_once_with(
+            signing_key=mock.ANY, public_key=mock.ANY)
         sleep_mock.assert_called_once_with()
         react_mock.assert_not_called()
 
