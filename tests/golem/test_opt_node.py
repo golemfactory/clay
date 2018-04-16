@@ -13,6 +13,7 @@ from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
 from golem.tools.testwithdatabase import TestWithDatabase
 from golemapp import start, Node
+from tests.golem.config.utils import mock_config
 
 
 @ci_skip
@@ -246,12 +247,15 @@ class TestNode(TestWithDatabase):
 
     @patch('golemapp.Node')
     def test_mainnet_should_be_passed_to_node(self, mock_node, *_):
+
         # given
         args = self.args + ['--mainnet']
 
         # when
         runner = CliRunner()
-        return_value = runner.invoke(start, args)
+
+        with mock_config():
+            return_value = runner.invoke(start, args)
 
         # then
         assert return_value.exit_code == 0
@@ -270,13 +274,14 @@ class TestNode(TestWithDatabase):
     @patch('golem.node.Client')
     def test_mainnet_should_be_passed_to_client(self, mock_client, *_):
         # when
-        node = Node(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=Mock(),
-            mainnet=True)
+        with mock_config():
+            node = Node(
+                datadir=self.path,
+                app_config=Mock(),
+                config_desc=Mock(),
+                mainnet=True)
 
-        node._client_factory(None)
+            node._client_factory(None)
 
         # then
         mock_client.assert_called_with(datadir=self.path,

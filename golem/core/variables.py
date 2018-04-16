@@ -50,16 +50,20 @@ class PROTOCOL_CONST(object):
     https://docs.python.org/3/faq/programming.html#how-do-i-share-global-variables-across-modules # noqa
     https://bytes.com/topic/python/answers/19859-accessing-updating-global-variables-among-several-modules # noqa
     """
-    ID: ClassVar[str] = '26'
+    NUM: ClassVar[int] = 26
+    POSTFIX: ClassVar[str] = ''
+    ID: ClassVar[str] = str(NUM) + POSTFIX
 
     @staticmethod
-    def patch_protocol_id(ctx, param, value):
+    def patch_protocol_id(ctx=None, param=None, value=None):
         """
         Used during golem startup for changing the protocol id
         """
+
         del ctx, param
         if value:
-            PROTOCOL_CONST.ID = value
+            PROTOCOL_CONST.NUM = int(value)
+            PROTOCOL_CONST.ID = str(PROTOCOL_CONST.NUM) + PROTOCOL_CONST.POSTFIX
 
 
 #################
