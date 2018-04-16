@@ -65,7 +65,10 @@ class ForceGetTaskResultFiletransferTest(ConcentBaseTest, unittest.TestCase):
         self._send_to_concent(
             fgtr, other_party_public_key=provider_keys.raw_pubkey)
 
-        response = client.receive_from_concent(provider_keys.raw_pubkey)
+        response = client.receive_from_concent(
+            signing_key=provider_keys.raw_privkey,
+            public_key=provider_keys.raw_pubkey
+        )
         return self._load_response(
             response, priv_key=provider_keys.raw_privkey)
 
@@ -98,7 +101,9 @@ class ForceGetTaskResultFiletransferTest(ConcentBaseTest, unittest.TestCase):
 
         self.assertEqual(upload_response.status_code, 200)
 
-        fgtrd = self._load_response(client.receive_from_concent(self.pub_key))
+        fgtrd = self._load_response(
+            client.receive_from_concent(self.priv_key, self.pub_key)
+        )
         self.assertIsInstance(fgtrd, concent_msg.ForceGetTaskResultDownload)
         self.assertEqual(fgtrd.subtask_id, fgtru.subtask_id)
         self.assertSamePayload(

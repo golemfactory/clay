@@ -72,7 +72,8 @@ class ForceGetTaskResultTest(ConcentBaseTest, unittest.TestCase):
         )
         self.assertIsInstance(ack, concent_msg.AckForceGetTaskResult)
         fgtru = self._load_response(
-            client.receive_from_concent(provider_key),
+            client.receive_from_concent(
+                self.op_keys.raw_privkey, provider_key),
             priv_key=self.op_keys.raw_privkey
         )
         self.assertIsInstance(fgtru, concent_msg.ForceGetTaskResultUpload)
