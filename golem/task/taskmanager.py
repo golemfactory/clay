@@ -383,7 +383,8 @@ class TaskManager(TaskEventListener):
                                  op=SubtaskOp.ASSIGNED)
         return ctd, False, extra_data.should_wait
 
-    def copy_results(self, old_task_id, new_task_id, subtask_ids_to_copy):
+    def copy_results(  # pylint: disable=too-many-locals
+            self, old_task_id, new_task_id, subtask_ids_to_copy):
         try:
             old_task = self.tasks[old_task_id]
             new_task = self.tasks[new_task_id]
@@ -410,6 +411,7 @@ class TaskManager(TaskEventListener):
                 node_name=None,
                 node_id=None,
                 address=None,
+                comp_price=0,
                 ctd=extra_data.ctd)
 
         old_tmp_dir = Path(old_task.tmp_dir)

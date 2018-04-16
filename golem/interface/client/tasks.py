@@ -1,3 +1,5 @@
+# pylint: disable=no-self-use,redefined-builtin
+
 from datetime import timedelta
 import json
 import re

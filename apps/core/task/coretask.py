@@ -503,13 +503,13 @@ class CoreTask(Task):
         client.start()
         return AcceptClientVerdict.ACCEPTED
 
-    def copy_subtask_results(self, subtask_id, old_subtask, results):
+    def copy_subtask_results(self, subtask_id, old_subtask_info, results):
         new_subtask = self.subtasks_given[subtask_id]
 
-        new_subtask['node_id'] = old_subtask['node_id']
-        new_subtask['perf'] = old_subtask['perf']
+        new_subtask['node_id'] = old_subtask_info['node_id']
+        new_subtask['perf'] = old_subtask_info['perf']
         new_subtask['ctd']['performance'] = \
-            old_subtask['ctd']['performance']
+            old_subtask_info['ctd']['performance']
 
         self._accept_client(new_subtask['node_id'])
         self.result_incoming(subtask_id)
