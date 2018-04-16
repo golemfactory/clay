@@ -43,12 +43,13 @@ class TaskResourcesMixin:
         return resource_manager.to_wire(resources)
 
     def restore_resources(self) -> None:
+        task_manager = getattr(self, 'task_manager')
 
-        if not self.task_manager.task_persistence:
+        if not task_manager.task_persistence:
             return
 
-        states = dict(self.task_manager.tasks_states)
-        tasks = dict(self.task_manager.tasks)
+        states = dict(task_manager.tasks_states)
+        tasks = dict(task_manager.tasks)
 
         for task_id, task_state in states.items():
             # 'package_path' does not exist in version pre 0.15.1
@@ -63,11 +64,12 @@ class TaskResourcesMixin:
                         task_id, timeout)
             logger.debug("%r", files)
 
-            self._restore_resources(files, task_id, task_state.resource_hash,
-                                    timeout)
+            self._restore_resources(files, task_id,
+                                    resource_hash=task_state.resource_hash,
+                                    timeout=timeout)
 
     def _restore_resources(self,
-                           files: Iterable[str],
+                           files: Optional[Iterable[str]],
                            task_id: str,
                            resource_hash: Optional[str] = None,
                            timeout: Optional[int] = None):
@@ -148,7 +150,7 @@ class TaskResourcesMixin:
         return options
 
     def get_share_options(self, task_id: str,  # noqa # pylint: disable=unused-argument
-                          address: str) -> HyperdriveClientOptions:
+                          address: Optional[str]) -> HyperdriveClientOptions:
         """
         Builds share options with a list of peers in HyperG format.
         If the given address is a private one, put the list of private addresses
