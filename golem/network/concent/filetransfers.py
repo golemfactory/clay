@@ -112,6 +112,7 @@ class ConcentFiletransferService(LoopingCallService):
         return {
             'Authorization': 'Golem ' + auth_key,
             'Concent-Client-Public-Key': client_key,
+            'Content-Type': 'application/octet-stream',
         }
 
     def upload(self, request: ConcentFileRequest):
