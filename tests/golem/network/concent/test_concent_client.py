@@ -12,6 +12,7 @@ import golem_messages
 import golem_messages.cryptography
 import golem_messages.exceptions
 from golem_messages import message
+from golem_messages import factories as msg_factories
 from golem_messages.constants import (
     DEFAULT_MSG_LIFETIME, MSG_LIFETIMES
 )
@@ -21,8 +22,6 @@ from golem.core import keysauth
 from golem.core import variables
 from golem.network.concent import client
 from golem.network.concent import exceptions
-
-from tests.factories import messages as msg_factories
 
 logger = logging.getLogger(__name__)
 
@@ -52,7 +51,7 @@ class TestVerifyResponse(TestCase):
 @mock.patch('requests.post')
 class TestSendToConcent(TestCase):
     def setUp(self):
-        self.msg = msg_factories.ForceReportComputedTask()
+        self.msg = msg_factories.concents.ForceReportComputedTaskFactory()
         node_keys = golem_messages.cryptography.ECCx(None)
         self.private_key = node_keys.raw_privkey
         self.public_key = node_keys.raw_pubkey
@@ -123,7 +122,7 @@ class TestSendToConcent(TestCase):
 @mock.patch('requests.post')
 class TestReceiveFromConcent(TestCase):
     def setUp(self):
-        self.msg = msg_factories.ForceReportComputedTask()
+        self.msg = msg_factories.concents.ForceReportComputedTaskFactory()
         node_keys = golem_messages.cryptography.ECCx(None)
         self.private_key = node_keys.raw_privkey
         self.public_key = node_keys.raw_pubkey
