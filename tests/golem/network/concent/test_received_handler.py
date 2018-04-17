@@ -1,11 +1,11 @@
 # pylint: disable=protected-access,no-self-use
 import datetime
 import gc
-import factory
 import importlib
 import unittest
 import unittest.mock as mock
 
+import factory
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import factories as msg_factories
 from golem_messages import message
@@ -540,3 +540,39 @@ class ForceGetTaskResultDownloadTest(FileTransferTokenTests,  # noqa pylint:disa
             "Concent results extraction failure: %r, %s",
             fgtrd.subtask_id, exception
         )
+
+
+class ForceSubtaskResultsTestCase(TaskServerMessageHandlerTestBase):
+    def setUp(self):
+        super().setUp()
+        self.msg = msg_factories.concents.ForceSubtaskResultsFactory()
+
+    @mock.patch('golem.network.history.get')
+    @mock.patch(
+        'golem.network.concent.received_handler'
+        '.TaskServerMessageHandler.'
+        '_after_ack_report_computed_task')
+    def test_no_sra_nor_srr(self, last_resort_mock, get_mock):
+        get_mock.return_value = None
+        library.interpret(self.msg)
+        last_resort_mock.assert_called_once_with(
+            report_computed_task=self.msg
+            .ack_report_computed_task
+            .report_computed_task,
+        )
+
+    @mock.patch('golem.network.history.get')
+    @mock.patch(
+        'golem.network.concent.received_handler'
+        '.TaskServerMessageHandler.'
+        '_after_ack_report_computed_task')
+    def test_positive_path(self, last_resort_mock, get_mock):
+        get_mock.return_value = msg_factories \
+            .tasks \
+            .SubtaskResultsAcceptedFactory()
+        library.interpret(self.msg)
+        last_resort_mock.assert_not_called()
+        self.task_server.client.concent_service.submit_task_message \
+            .assert_called_once_with(
+                get_mock().subtask_id,
+                mock.ANY)

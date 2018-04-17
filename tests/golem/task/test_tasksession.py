@@ -363,7 +363,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             # the result is explicitly serialized using cPickle
             result=pickle.dumps({'stdout': 'xyz'}),
             result_type=None,
-            subtask_id='xxyyzz'
+            subtask_id=subtask_id,
         )
 
         ts.result_received(extra_data)

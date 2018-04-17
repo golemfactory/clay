@@ -7,6 +7,7 @@ import threading
 import time
 from functools import reduce, wraps
 from typing import List
+from typing import Optional
 
 from golem_messages import message
 from peewee import (PeeweeException, DataError, ProgrammingError,
@@ -322,6 +323,24 @@ def add(msg: message.base.Message,
         local_role,
         remote_role,
     )
+
+
+def get(message_class_name: str, task_id: str, subtask_id: str)\
+        -> Optional[message.Message]:
+    try:
+        return MessageHistoryService.get_sync_as_message(
+            task=task_id,
+            subtask=subtask_id,
+            msg_cls=message_class_name,
+        )
+    except MessageNotFound:
+        logger.warning(
+            "%s message not found for task %r, subtask %r",
+            message_class_name,
+            task_id,
+            subtask_id,
+        )
+        return None
 
 
 ##############
