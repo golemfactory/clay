@@ -52,7 +52,7 @@ install:
   - ps: $HyperdriveProcess = Start-Process hyperg -PassThru
 
     # pip
-  - pip install --disable-pip-version-check --user --upgrade pip
+  - pip install --disable-pip-version-check --user --upgrade pip<10
 
   # virtualenv
   - pip install virtualenv
