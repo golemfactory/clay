@@ -574,7 +574,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             result = 'package_path', 'package_sha1'
             return done_deferred(result)
 
-        def add_task(*_args):
+        def add_task(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
             result = resource_manager_result, 'res_file_1', 'package_hash'
             return done_deferred(result)
@@ -1090,7 +1090,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             result = 'package_path', 'package_sha1'
             return done_deferred(result)
 
-        def add_task(*_args):
+        def add_task(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
             result = resource_manager_result, 'res_file_1', 'package_hash'
             return done_deferred(result)

@@ -97,6 +97,18 @@ class ClientOptions(object):
             self.options = dict()
         self.options['peers'] = value
 
+    @property
+    def timeout(self) -> Optional[int]:
+        if isinstance(self.options, dict):
+            return self.options.get('timeout')
+        return None
+
+    @timeout.setter
+    def timeout(self, value: Optional[int]) -> None:
+        if not isinstance(self.options, dict):
+            self.options = dict()
+        self.options['timeout'] = value
+
     def clone(self):
         return self.__class__(
             self.client_id,

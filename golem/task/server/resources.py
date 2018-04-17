@@ -3,11 +3,11 @@ from typing import Iterable, Optional, Union
 
 import requests
 
+from golem.core.common import deadline_to_timeout
 from golem.core.hostaddress import ip_address_private
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     to_hyperg_peer
-from golem.resource import resource
 from golem.resource.hyperdrive import resource as hpd_resource
 
 
@@ -43,38 +43,52 @@ class TaskResourcesMixin:
         return resource_manager.to_wire(resources)
 
     def restore_resources(self) -> None:
+        task_manager = getattr(self, 'task_manager')
 
-        if not self.task_manager.task_persistence:
+        if not task_manager.task_persistence:
             return
 
-        states = dict(self.task_manager.tasks_states)
+        states = dict(task_manager.tasks_states)
+        tasks = dict(task_manager.tasks)
 
         for task_id, task_state in states.items():
-            # There is a single zip package to restore
             # 'package_path' does not exist in version pre 0.15.1
             package_path = getattr(task_state, 'package_path', None)
+            # There is a single zip package to restore
             files = [package_path] if package_path else None
+            # Calculate timeout
+            task = tasks[task_id]
+            timeout = deadline_to_timeout(task.header.deadline)
 
-            logger.info("Restoring task '%s' resources", task_id)
+            logger.info("Restoring task '%s' resources (timeout: %r s)",
+                        task_id, timeout)
             logger.debug("%r", files)
-            self._restore_resources(files, task_id, task_state.resource_hash)
+
+            self._restore_resources(files, task_id,
+                                    resource_hash=task_state.resource_hash,
+                                    timeout=timeout)
 
     def _restore_resources(self,
-                           files: Iterable[str],
+                           files: Optional[Iterable[str]],
                            task_id: str,
-                           resource_hash: Optional[str] = None):
+                           resource_hash: Optional[str] = None,
+                           timeout: Optional[int] = None):
 
         resource_manager = self._get_resource_manager()
 
+        options = self.get_share_options(task_id, None)
+        options.timeout = timeout
+
         try:
             resource_hash, _ = resource_manager.add_task(
-                files, task_id, resource_hash=resource_hash, async_=False
+                files, task_id, resource_hash=resource_hash,
+                client_options=options, async_=False
             )
         except ConnectionError as exc:
             self._restore_resources_error(task_id, exc)
         except (hpd_resource.ResourceError, requests.HTTPError) as exc:
             if resource_hash:
-                return self._restore_resources(files, task_id)
+                return self._restore_resources(files, task_id, timeout=timeout)
             self._restore_resources_error(task_id, exc)
         else:
             task_state = self.task_manager.tasks_states[task_id]
@@ -136,7 +150,7 @@ class TaskResourcesMixin:
         return options
 
     def get_share_options(self, task_id: str,  # noqa # pylint: disable=unused-argument
-                          address: str) -> HyperdriveClientOptions:
+                          address: Optional[str]) -> HyperdriveClientOptions:
         """
         Builds share options with a list of peers in HyperG format.
         If the given address is a private one, put the list of private addresses

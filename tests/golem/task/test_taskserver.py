@@ -6,6 +6,7 @@ from math import ceil
 from unittest.mock import Mock, MagicMock, patch
 
 from golem_messages.message import ComputeTaskDef
+from mock import ANY
 from requests import HTTPError
 
 import golem
@@ -860,6 +861,11 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         for parent in self.__class__.__bases__:
             parent.setUp(self)
 
+        self.node = Mock(prv_addr='10.0.0.2', prv_port=40102,
+                         pub_addr='1.2.3.4', pub_port=40102,
+                         hyperg_prv_port=3282, hyperg_pub_port=3282,
+                         prv_addresses=['10.0.0.2'],)
+
         self.resource_manager = Mock(
             add_task=Mock(side_effect=lambda *a, **b: ([], "a1b2c3"))
         )
@@ -867,7 +873,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
             self.ts = TaskServer(
-                node=Mock(),
+                node=self.node,
                 config_desc=ClientConfigDescriptor(),
                 client=self.client,
                 use_docker_manager=False,
@@ -889,6 +895,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         for _ in range(count):
             task_id = str(uuid.uuid4())
             task = Mock()
+            task.header.deadline = 2524608000
             task.get_resources.return_value = []
             task_server.task_manager.tasks[task_id] = task
             task_server.task_manager.tasks_states[task_id] = TaskState()
@@ -965,5 +972,6 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         self.ts.restore_resources()
 
         self.ts._restore_resources.assert_called_with(
-            [task_state.package_path], task_id, task_state.resource_hash
+            [task_state.package_path], task_id,
+            resource_hash=task_state.resource_hash, timeout=ANY
         )
