@@ -18,12 +18,12 @@ class SendTest(ConcentBaseTest, unittest.TestCase):
 
         logger.debug("Sending FRCT: %s", msg)
 
-        response = self._send_to_concent(msg)
+        response = self.send_to_concent(msg)
 
         self.assertIsNone(
             response,
             msg="Expected nothing, got %s" % (
-                self._load_response(response) if response else None
+                self.load_response(response) if response else None
             )
         )
 
@@ -31,7 +31,7 @@ class SendTest(ConcentBaseTest, unittest.TestCase):
         msg = msg_factories.concents.ForceReportComputedTaskFactory()
         keys = cryptography.ECCx(None)
         with self.assertRaises(ConcentRequestError) as context:
-            self._send_to_concent(msg, keys.raw_privkey)
+            self.send_to_concent(msg, keys.raw_privkey)
 
         self.assertIn('Failed to decode a Golem Message',
                       context.exception.args[0])

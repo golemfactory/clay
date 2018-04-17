@@ -33,8 +33,9 @@ class ConcentBaseTest:
     def pub_key(self):
         return self.keys.raw_pubkey
 
-    def _send_to_concent(
-            self, msg: Message,
+    def send_to_concent(
+            self,
+            msg: Message,
             signing_key=None,
             public_key=None,
             other_party_public_key=None):
@@ -45,7 +46,16 @@ class ConcentBaseTest:
             other_party_public_key=other_party_public_key,
         )
 
-    def _load_response(self, response, priv_key=None):
+    def receive_from_concent(
+            self,
+            signing_key=None,
+            public_key=None):
+        return client.receive_from_concent(
+            signing_key=signing_key or self.priv_key,
+            public_key=public_key or self.pub_key,
+        )
+
+    def load_response(self, response, priv_key=None):
         return golem_messages.load(
             response,
             priv_key or self.priv_key,

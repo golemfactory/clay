@@ -1,7 +1,4 @@
-import calendar
-import datetime
 import logging
-import time
 
 import unittest
 
@@ -20,23 +17,19 @@ class ForceGetTaskResultTest(ConcentBaseTest, unittest.TestCase):
 
     def test_send(self):
         fgtr = msg_factories.concents.ForceGetTaskResultFactory()
-        response = self._send_to_concent(fgtr)
-        msg = self._load_response(response)
+        response = self.send_to_concent(fgtr)
+        msg = self.load_response(response)
         self.assertIsInstance(msg, concent_msg.AckForceGetTaskResult)
         self.assertEqual(msg.force_get_task_result, fgtr)
 
     def test_send_fail_timeout(self):
-        past_deadline = calendar.timegm(time.gmtime()) -\
-                        int(datetime.timedelta(days=1).total_seconds())
-        ttc = msg_factories.tasks.TaskToComputeFactory(
-            compute_task_def__deadline=past_deadline
-        )
+        ttc = msg_factories.tasks.TaskToComputeFactory.past_deadline()
         fgtr = msg_factories.concents.ForceGetTaskResultFactory(
             report_computed_task__task_to_compute=ttc
         )
 
-        response = self._send_to_concent(fgtr)
-        msg = self._load_response(response)
+        response = self.send_to_concent(fgtr)
+        msg = self.load_response(response)
         self.assertIsInstance(msg, concent_msg.ForceGetTaskResultRejected)
         self.assertEqual(msg.reason,
                          msg.REASON.AcceptanceTimeLimitExceeded)
@@ -46,15 +39,15 @@ class ForceGetTaskResultTest(ConcentBaseTest, unittest.TestCase):
         fgtr1 = msg_factories.concents.ForceGetTaskResultFactory(
             report_computed_task=rct)
 
-        response = self._send_to_concent(fgtr1)
-        msg = self._load_response(response)
+        response = self.send_to_concent(fgtr1)
+        msg = self.load_response(response)
         self.assertIsInstance(msg, concent_msg.AckForceGetTaskResult)
 
         fgtr2 = msg_factories.concents.ForceGetTaskResultFactory(
             report_computed_task=rct)
 
-        response = self._send_to_concent(fgtr2)
-        msg = self._load_response(response)
+        response = self.send_to_concent(fgtr2)
+        msg = self.load_response(response)
         self.assertIsInstance(msg, concent_msg.ServiceRefused)
         self.assertEqual(msg.reason, msg.REASON.DuplicateRequest)
 
@@ -67,11 +60,11 @@ class ForceGetTaskResultTest(ConcentBaseTest, unittest.TestCase):
 
         logger.debug("requestor sent ForceGetTaskResult: %s", fgtr)
 
-        ack = self._load_response(
-            self._send_to_concent(fgtr, other_party_public_key=provider_key)
+        ack = self.load_response(
+            self.send_to_concent(fgtr, other_party_public_key=provider_key)
         )
         self.assertIsInstance(ack, concent_msg.AckForceGetTaskResult)
-        fgtru = self._load_response(
+        fgtru = self.load_response(
             client.receive_from_concent(
                 self.op_keys.raw_privkey, provider_key),
             priv_key=self.op_keys.raw_privkey
