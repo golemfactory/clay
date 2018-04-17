@@ -989,38 +989,28 @@ class Client(HardwarePresetsMixin):
         )
 
     def get_res_dirs(self):
-        return {"total computed files": self.get_computed_files_dir(),
-                "total received files": self.get_received_files_dir(),
-                "total distributed files": self.get_distributed_files_dir()}
+        return {"total received data": self.get_received_files_dir(),
+                "total distributed data": self.get_distributed_files_dir()}
 
     def get_res_dirs_sizes(self):
         return {str(name): str(du(d))
                 for name, d in list(self.get_res_dirs().items())}
 
     def get_res_dir(self, dir_type):
-        if dir_type == DirectoryType.COMPUTED:
-            return self.get_computed_files_dir()
-        elif dir_type == DirectoryType.DISTRIBUTED:
+        if dir_type == DirectoryType.DISTRIBUTED:
             return self.get_distributed_files_dir()
         elif dir_type == DirectoryType.RECEIVED:
             return self.get_received_files_dir()
         raise Exception("Unknown dir type: {}".format(dir_type))
 
-    def get_computed_files_dir(self):
-        return self.task_server and str(self.task_server.get_task_computer_root())
-
     def get_received_files_dir(self):
-        return self.task_server and \
-               str(self.task_server.task_manager.get_task_manager_root())
+        return str(self.task_server.task_manager.get_task_manager_root())
 
     def get_distributed_files_dir(self):
-        return self.resource_server and \
-               str(self.resource_server.get_distributed_resource_root())
+        return str(self.resource_server.get_distributed_resource_root())
 
     def clear_dir(self, dir_type, older_than_seconds: int = 0):
-        if dir_type == DirectoryType.COMPUTED:
-            return self.remove_computed_files(older_than_seconds)
-        elif dir_type == DirectoryType.DISTRIBUTED:
+        if dir_type == DirectoryType.DISTRIBUTED:
             return self.remove_distributed_files(older_than_seconds)
         elif dir_type == DirectoryType.RECEIVED:
             return self.remove_received_files(older_than_seconds)

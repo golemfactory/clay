@@ -182,13 +182,14 @@ def free_partition_space(directory):
 
 
 def du(path):
-    """Imitates bash "du -h <path>" command behaviour. Returns the estimated
+    """Imitates bash "du -sh <path>" command behaviour. Returns the estimated
        size of this directory
     :param str path: path to directory which size should be measured
-    :return str: directory size in human readable format (eg. 1 Mb) or "-1"
+    :return str: directory size in human readable format (eg. 6.5M) or "-1"
                  if an error occurs.
     """
     try:
+        logger.debug('du -sh %r', path)
         return subprocess.check_output(['du', '-sh', path]).decode().split()[0]
     except (ValueError, OSError, subprocess.CalledProcessError):
         try:

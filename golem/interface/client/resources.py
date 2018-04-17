@@ -36,7 +36,6 @@ class Resources(object):
         clear = Resources.client.clear_dir
 
         if provider:
-            sync_wait(clear(DirectoryType.RECEIVED), timeout=None)
-            return sync_wait(clear(DirectoryType.COMPUTED), timeout=None)
+            return sync_wait(clear(DirectoryType.RECEIVED), timeout=None)
         elif requestor:
             return sync_wait(clear(DirectoryType.DISTRIBUTED), timeout=None)
