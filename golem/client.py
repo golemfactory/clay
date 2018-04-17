@@ -246,9 +246,9 @@ class Client(HardwarePresetsMixin):
         )
         self._publish(Task.evt_task_status, kwargs['task_id'])
 
-    # TODO: re-enable. issue #2398
+    @report_calls(Component.client, 'sync')
     def sync(self):
-        pass
+        self.transaction_system.sync()
 
     @report_calls(Component.client, 'start', stage=Stage.pre)
     def start(self):
@@ -318,7 +318,7 @@ class Client(HardwarePresetsMixin):
             self.task_server,
             interval_seconds=max(
                 int(self.config_desc.node_snapshot_interval),
-                1))
+                60))
         monitoring_publisher_service.start()
         self._services.append(monitoring_publisher_service)
 

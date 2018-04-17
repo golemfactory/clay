@@ -181,7 +181,7 @@ class RenderingTask(CoreTask):
                "{}".format(arg),
                "{}".format(self.res_x),
                "{}".format(self.res_y),
-               format_cmd_line_path(output_file_name)] + [format_cmd_line_path(f) for f in files]
+               output_file_name] + [f for f in files]
         exec_cmd(cmd)
 
     def _get_next_task(self):

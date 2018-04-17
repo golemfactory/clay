@@ -56,6 +56,9 @@ class EthereumTransactionSystem(TransactionSystem):
         self._sci.stop()
         self._node.stop()
 
+    def sync(self) -> None:
+        self.payment_processor.sync()
+
     def add_payment_info(self, *args, **kwargs):
         payment = super().add_payment_info(*args, **kwargs)
         self.payment_processor.add(payment)
