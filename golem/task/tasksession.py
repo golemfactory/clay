@@ -53,20 +53,16 @@ def get_task_message(message_class_name, task_id, subtask_id, log_prefix=None):
     if log_prefix:
         log_prefix = '%s ' % log_prefix
 
-    try:
-        return history.MessageHistoryService.get_sync_as_message(
-            task=task_id,
-            subtask=subtask_id,
-            msg_cls=message_class_name,
-        )
-    except history.MessageNotFound:
-        logger.warning(
+    msg = history.get(message_class_name, task_id, subtask_id)
+    if msg is None:
+        logger.debug(
             '%s%s message not found for task %r, subtask: %r',
             log_prefix or '',
             message_class_name,
             task_id,
             subtask_id,
         )
+    return msg
 
 
 class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
@@ -207,10 +203,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self.get_result_owner(subtask_id),
             )
 
-            self.send(message.tasks.SubtaskResultsAccepted(
+            response_msg = message.tasks.SubtaskResultsAccepted(
                 task_to_compute=task_to_compute,
                 payment_ts=payment.processed_ts
-            ))
+            )
+            self.send(response_msg)
+            history.add(
+                response_msg,
+                node_id=task_to_compute.provider_id,
+                local_role=Actor.Requestor,
+                remote_role=Actor.Provider,
+            )
             self.dropped()
 
         self.task_manager.computed_task_received(
@@ -390,10 +393,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             subtask_id,
         )
 
-        self.send(message.tasks.SubtaskResultsRejected(
+        response_msg = message.tasks.SubtaskResultsRejected(
             report_computed_task=report_computed_task,
             reason=reason,
-        ))
+        )
+        self.send(response_msg)
+        history.add(
+            response_msg,
+            node_id=report_computed_task.task_to_compute.provider_id,
+            local_role=Actor.Requestor,
+            remote_role=Actor.Provider,
+        )
 
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
