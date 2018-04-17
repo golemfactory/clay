@@ -1,13 +1,13 @@
 import ctypes
-
+import logging
 import os
 import shutil
-
 import subprocess
 
 from golem.core.common import is_windows
-
 from golem.tools import memoryhelper
+
+logger = logging.getLogger(__name__)
 
 
 def copy_file_tree(src, dst, exclude=None):
@@ -189,17 +189,15 @@ def du(path):
                  if an error occurs.
     """
     try:
-        size, _ = subprocess.check_output(['du', '-sh', path]).split()
-        unit = dict(K='kB', B='B').get(size[-1], str(size[-1]) + 'B')
-        return "{} {}".format(float(size[:-1]), unit)
+        logger.warning('duuu %r', path)
+        return subprocess.check_output(['du', '-sh', path]).decode().split()[0]
     except (ValueError, OSError, subprocess.CalledProcessError):
         try:
             size = int(get_dir_size(path))
         except OSError as err:
-            import logging
-            logging.getLogger('golem.core')\
-                .info("Can't open dir {}: {}".format(path, str(err)))
+            logger.info("Can't open dir {}: {}".format(path, str(err)))
             return "-1"
+
     human_readable_size, idx = memoryhelper.dir_size_to_display(size)
     return "{} {}".format(
         human_readable_size,

@@ -22,7 +22,8 @@ class Resources(object):
 
     @doc("Show information on used resources")
     def show(self):
-        return sync_wait(Resources.client.get_res_dirs_sizes(), timeout=None)
+        res = sync_wait(Resources.client.get_res_dirs_sizes(), timeout=None)
+        return CommandResult.to_tabular(list(res.keys()), [list(res.values())])
 
     @command(arguments=(provider, requestor),
              help="Clear provider / requestor resources")

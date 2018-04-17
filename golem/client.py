@@ -989,9 +989,9 @@ class Client(HardwarePresetsMixin):
         )
 
     def get_res_dirs(self):
-        return {"computing": self.get_computed_files_dir(),
-                "received": self.get_received_files_dir(),
-                "distributed": self.get_distributed_files_dir()}
+        return {"total computed files": self.get_computed_files_dir(),
+                "total received files": self.get_received_files_dir(),
+                "total distributed files": self.get_distributed_files_dir()}
 
     def get_res_dirs_sizes(self):
         return {str(name): str(du(d))
@@ -1007,13 +1007,15 @@ class Client(HardwarePresetsMixin):
         raise Exception("Unknown dir type: {}".format(dir_type))
 
     def get_computed_files_dir(self):
-        return str(self.task_server.get_task_computer_root())
+        return self.task_server and str(self.task_server.get_task_computer_root())
 
     def get_received_files_dir(self):
-        return str(self.task_server.task_manager.get_task_manager_root())
+        return self.task_server and \
+               str(self.task_server.task_manager.get_task_manager_root())
 
     def get_distributed_files_dir(self):
-        return str(self.resource_server.get_distributed_resource_root())
+        return self.resource_server and \
+               str(self.resource_server.get_distributed_resource_root())
 
     def clear_dir(self, dir_type, older_than_seconds: int = 0):
         if dir_type == DirectoryType.COMPUTED:
