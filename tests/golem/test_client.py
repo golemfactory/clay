@@ -912,7 +912,7 @@ def make_mock_payment_processor(sci, eth=100, gnt=100):
     pp.ETH_BATCH_PAYMENT_BASE = sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
 
     val = pp.ETH_BATCH_PAYMENT_BASE + pp.ETH_PER_PAYMENT * 10
-    pp.eth_for_batch_payment.return_value = val
+    pp.get_gas_cost_per_payment.return_value = val
 
     pp.gnt_balance.return_value = gnt * denoms.ether, time.time()
     pp.eth_balance.return_value = eth * denoms.ether, time.time()

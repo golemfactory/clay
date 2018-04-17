@@ -98,7 +98,7 @@ def create_client(datadir):
 
 def _configure_mock_payment_processor(pp):
     pp.ETH_BATCH_PAYMENT_BASE = 0.01 * denoms.ether
-    pp.ETH_PER_PAYMENT = 0.001 * denoms.ether
+    pp.get_gas_cost_per_payment.return_value = 0.001 * denoms.ether
     pp.gnt_balance.return_value = 5000 * denoms.ether, time.time()
     pp.eth_balance.return_value = 300 * denoms.ether, time.time()
     pp._eth_available.return_value = 5000 * denoms.ether
