@@ -516,7 +516,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
 
         task_id = "test_{}".format(uuid.uuid4())
         msg = message.RemoveTask(task_id=task_id)
-        msg.serialize(sign_func=keys_auth.sign)
+        msg.serialize(keys_auth._private_key)
         assert keys_auth.verify(msg.sig, msg.get_short_hash(), keys_auth.key_id)
         return msg, task_id, previous_ka
 

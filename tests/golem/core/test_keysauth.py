@@ -207,7 +207,7 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         self.assertEqual(ek.key_id, loaded_k)
         self.assertTrue(ek.verify(loaded_s, loaded_d, ek.public_key))
 
-        dumped_l = msg.serialize(ek.sign, lambda x: x)
+        dumped_l = msg.serialize(ek._private_key, lambda x: x)
         loaded_l = message.Message.deserialize(dumped_l, lambda x: x)
 
         self.assertEqual(msg.get_short_hash(), loaded_l.get_short_hash())
