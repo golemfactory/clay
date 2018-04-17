@@ -333,13 +333,13 @@ def record_history(local_role, remote_role):
 
         @wraps(func)
         def wrapper(self, msg, *args, **kwargs):
-            result = func(self, msg, *args, **kwargs)
             add(
                 msg=msg,
                 node_id=self.key_id,
                 local_role=local_role,
                 remote_role=remote_role,
             )
+            result = func(self, msg, *args, **kwargs)
             return result
         return wrapper
     return decorator

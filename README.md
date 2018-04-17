@@ -32,7 +32,7 @@ All released packages are located [here](https://github.com/golemfactory/golem/r
 
 Documentation for using app is here: https://docs.golem.network/
 
-The most common problems are described in section 10: https://docs.golem.network/10-troubleshooting.html
+The most common problems are described in section 9: https://golem.network/documentation/09-common-issues-troubleshooting/
 
 ## Warning
 
