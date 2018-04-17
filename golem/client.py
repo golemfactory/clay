@@ -488,7 +488,7 @@ class Client(HardwarePresetsMixin):
 
     def stop_monitor(self):
         logger.debug("Stopping monitor ...")
-        self.monitor.shut_down()
+        self.monitor.stop()
         self.diag_service.stop()
 
     def connect(self, socket_address):

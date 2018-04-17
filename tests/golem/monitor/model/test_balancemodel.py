@@ -16,7 +16,8 @@ class TestBalanceModel(MonitorTestBaseClass):
         gnt_balance = random.randint(1, 10 ** 20)
         gntb_balance = random.randint(1, 10 ** 20)
 
-        with mock.patch('golem.monitor.monitor.SenderThread.send') as send:
+        with mock.patch('golem.monitor.monitor.SenderThread.process') \
+                as process:
             dispatcher.send(
                 signal='golem.monitor',
                 event='balance_snapshot',
@@ -25,8 +26,8 @@ class TestBalanceModel(MonitorTestBaseClass):
                 gntb_balance=gntb_balance
             )
 
-            send.assert_called_once()
-            result = send.call_args[0][0]
+            process.assert_called_once()
+            result = process.call_args[1]['msg']
             self.assertIsInstance(result, BalanceModel)
             self.assertEqual(result.type, 'Balance')
             self.assertEqual(result.eth_balance, eth_balance)
@@ -36,7 +37,8 @@ class TestBalanceModel(MonitorTestBaseClass):
     def test_channel_disabled(self):
         self.monitor.send_payment_info = False
 
-        with mock.patch('golem.monitor.monitor.SenderThread.send') as send:
+        with mock.patch('golem.monitor.monitor.SenderThread.process') \
+                as process:
             dispatcher.send(
                 signal='golem.monitor',
                 event='balance_snapshot',
@@ -44,4 +46,4 @@ class TestBalanceModel(MonitorTestBaseClass):
                 gnt_balance=0,
                 gntb_balance=0
             )
-            send.assert_not_called()
+            process.assert_not_called()

@@ -10,8 +10,8 @@ from golem.monitorconfig import MONITOR_CONFIG
 
 def meta_data():
     client_mock = mock.MagicMock()
-    client_mock.cliid = str(uuid4())
-    client_mock.sessid = str(uuid4())
+    client_mock.get_key_id.return_value = str(uuid4())
+    client_mock.session_id = str(uuid4())
     client_mock.config_desc = ClientConfigDescriptor()
     client_mock.mainnet = False
     return NodeMetadataModel(client_mock, sys.platform, 'app_version')

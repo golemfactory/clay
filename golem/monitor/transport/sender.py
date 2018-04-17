@@ -7,6 +7,6 @@ class DefaultJSONSender(object):
         self.transport = DefaultHttpSender(host, timeout)
         self.proto = DefaultProto(proto_ver)
 
-    def send(self, o):
+    def send(self, o, host: str = '', url_path: str = ''):
         msg = self.proto.prepare_json_message(o.dict_repr())
-        return self.transport.post_json(msg)
+        return self.transport.post_json(msg, host, url_path)

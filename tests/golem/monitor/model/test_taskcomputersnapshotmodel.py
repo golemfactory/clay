@@ -15,14 +15,15 @@ class TestTaskComputerSnapshotModel(MonitorTestBaseClass):
         computer_mock.compute_tasks = compute_tasks = random.random() > 0.5
         computer_mock.assigned_subtasks = assigned_subtasks = dict((x, None) for x in range(100))
 
-        with mock.patch('golem.monitor.monitor.SenderThread.send') as mock_send:
+        with mock.patch('golem.monitor.monitor.SenderThread.process') \
+                as mock_send:
             dispatcher.send(
                 signal='golem.monitor',
                 event='task_computer_snapshot',
                 task_computer=computer_mock,
             )
             self.assertEqual(mock_send.call_count, 1)
-            result = mock_send.call_args[0][0].dict_repr()
+            result = mock_send.call_args[1]['msg'].dict_repr()
             for key in ('cliid', 'sessid', 'timestamp'):
                 del result[key]
             self.maxDiff = None
