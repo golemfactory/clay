@@ -30,7 +30,9 @@ def to_hyperg_peer(host: str, port: int) -> Dict[str, Tuple[str, int]]:
 def round_timeout(value: Optional[Union[int, float]]) -> Optional[int]:
     if not isinstance(value, (int, float)):
         return None
-    return int(math.ceil(value))
+
+    value_int = int(math.ceil(value))
+    return value_int if value_int > 0 else None
 
 
 class HyperdriveClient(IClient):
