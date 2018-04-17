@@ -251,6 +251,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self._reactor.addSystemEventTrigger("before", "shutdown",
                                             self.client.quit)
 
+        methods = object_method_map(self.client, CORE_METHOD_MAP)
+        self.rpc_session.add_methods(methods)
+
         self.client.set_rpc_publisher(self._rpc_publisher)
 
         async_run(AsyncRequest(self._run),
@@ -261,10 +264,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
             self._stop_on_error("client", "Client is not available")
             return
 
-        if not self.rpc_session:
-            self._stop_on_error("rpc", "RPC session is not available")
-            return
-
         self._setup_apps()
         self.client.sync()
 
@@ -272,9 +271,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
             self.client.start()
             for peer in self._peers:
                 self.client.connect(peer)
-
-            methods = object_method_map(self.client, CORE_METHOD_MAP)
-            self.rpc_session.add_methods(methods)
         except SystemExit:
             self._reactor.callFromThread(self._reactor.stop)
 
