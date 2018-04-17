@@ -327,6 +327,8 @@ def add(msg: message.base.Message,
 
 def get(message_class_name: str, task_id: str, subtask_id: str)\
         -> Optional[message.Message]:
+    #  FIXME: Use node_id in queries
+    #         https://github.com/golemfactory/golem/issues/2670
     try:
         return MessageHistoryService.get_sync_as_message(
             task=task_id,
