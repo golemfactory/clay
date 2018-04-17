@@ -189,7 +189,6 @@ def du(path):
                  if an error occurs.
     """
     try:
-        logger.warning('duuu %r', path)
         return subprocess.check_output(['du', '-sh', path]).decode().split()[0]
     except (ValueError, OSError, subprocess.CalledProcessError):
         try:
