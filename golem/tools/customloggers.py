@@ -1,3 +1,4 @@
+import logging
 from raven.handlers.logging import SentryHandler
 
 DEFAULT_SENTRY_ENABLED = False
@@ -22,3 +23,9 @@ class SwitchedSentryHandler(SentryHandler):
             self.enabled = bool(value)
         except Exception:   # pylint: disable=broad-except
             self.enabled = DEFAULT_SENTRY_ENABLED
+
+
+class SentryMetricsFilter(logging.Filter):
+    # pylint: disable=R0903
+    def filter(self, record):
+        return record.getMessage().startswith('METRIC')
