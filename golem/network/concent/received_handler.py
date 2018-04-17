@@ -104,7 +104,7 @@ def on_subtask_results_settled(msg, **_):
     """End of UC3. Nothing can be done after this point.
     I'm either a Provider or Requestor
     """
-    logger.warning("[CONCENT] End of UC3 by %r", msg)
+    logger.warning("[CONCENT] End of Force Accept scenario by %r", msg)
 
 
 class TaskServerMessageHandler():
