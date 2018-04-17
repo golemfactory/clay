@@ -61,6 +61,7 @@ CORE_METHOD_MAP = dict(
     delete_task=            'comp.task.delete',
     abort_task=             'comp.task.abort',
     restart_task=           'comp.task.restart',
+    get_subtasks_count = 'comp.task.subtasks_count',
 
     get_subtasks=           'comp.task.subtasks',
     get_subtasks_borders=   'comp.task.subtasks.borders',

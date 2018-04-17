@@ -681,6 +681,26 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
             to_hyperg_peer('1.2.3.4', 3282),
         ]
 
+    def test_download_options_errors(self, *_):
+        built_options = Mock()
+        rm = Mock(build_client_options=Mock(return_value=built_options))
+        self.ts._get_resource_manager = Mock(return_value=rm)
+
+        assert self.ts.get_download_options(
+            received_options=None,
+            task_id='task_id'
+        ) is built_options
+
+        assert self.ts.get_download_options(
+            received_options={'options': {'peers': ['Invalid']}},
+            task_id='task_id'
+        ) is built_options
+
+        assert self.ts.get_download_options(
+            received_options=Mock(filtered=Mock(side_effect=Exception)),
+            task_id='task_id'
+        ) is built_options
+
     def test_pause_and_resume(self, *_):
         from apps.core.task.coretask import CoreTask
 
@@ -931,3 +951,19 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         assert not self.ts.task_manager.delete_task.called
         assert self.ts.task_manager.notify_update_task.call_count == \
             self.task_count
+
+    def test_restore_resources_call(self, *_):
+        self._create_tasks(self.ts, 1)
+
+        task_states = self.ts.task_manager.tasks_states
+        task_id = next(iter(task_states.keys()))
+        task_state = next(iter(task_states.values()))
+        task_state.package_path = os.path.join(self.path, task_id + '.bin')
+        task_state.resource_hash = str(uuid.uuid4())
+
+        self.ts._restore_resources = Mock()
+        self.ts.restore_resources()
+
+        self.ts._restore_resources.assert_called_with(
+            [task_state.package_path], task_id, task_state.resource_hash
+        )

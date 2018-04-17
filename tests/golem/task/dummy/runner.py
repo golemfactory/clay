@@ -143,10 +143,14 @@ def run_requesting_node(datadir, num_subtasks=3):
     def report_status():
         while True:
             time.sleep(1)
-            if task.finished_computation():
+            if not task.finished_computation():
+                continue
+            if task.verify_task():
                 report("Task finished")
-                shutdown()
-                return
+            else:
+                report("Task failed")
+            shutdown()
+            return
 
     reactor.callInThread(report_status)
     reactor.run()
@@ -212,7 +216,7 @@ def run_computing_node(datadir, peer_address, fail_after=None):
 
 
 # Global var set by a thread monitoring the status of the requestor node
-task_finished = False
+task_result = None
 
 
 def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
@@ -276,19 +280,24 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
     all_procs = computing_procs + [requesting_proc]
     task_finished_status = format_msg(
         "REQUESTOR", requesting_proc.pid, "Task finished")
+    task_failed_status = format_msg(
+        "REQUESTOR", requesting_proc.pid, "Task failed")
 
-    global task_finished
-    task_finished = False
+    global task_result
+    task_result = None
 
     def monitor_subprocess(proc):
-        global task_finished
+        global task_result
+
         while proc.returncode is None:
             line = proc.stdout.readline().strip()
             if line:
                 line = line.decode('utf-8')
                 print(line)
             if line == task_finished_status:
-                task_finished = True
+                task_result = True
+            elif line == task_failed_status:
+                task_result = False
 
     monitor_threads = [Thread(target=monitor_subprocess,
                               name="monitor {}".format(p.pid),
@@ -301,7 +310,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
 
     # Wait until timeout elapses or the task is computed
     try:
-        while not task_finished:
+        while task_result is None:
             if time.time() - start_time > timeout:
                 return "Computation timed out"
             # Check if all subprocesses are alive
@@ -310,6 +319,9 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
                     return "Node exited with return code {}".format(
                         proc.returncode)
             time.sleep(1)
+
+        if not task_result:
+            return "Task computation failed"
         return None
     finally:
         print("Stopping nodes...")
