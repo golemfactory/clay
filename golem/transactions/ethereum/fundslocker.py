@@ -7,7 +7,7 @@ from golem.core.variables import PAYMENT_DEADLINE
 from golem.task.taskkeeper import compute_subtask_value
 from golem.transactions.ethereum.exceptions import NotEnoughFunds
 
-logger = logging.getLogger("golem")
+logger = logging.getLogger(__name__)
 
 
 class TaskFundsLock():
@@ -59,6 +59,8 @@ class FundsLocker(LoopingCallService):
         tfl = TaskFundsLock(task, self.transaction_system)
         _, gnt, eth, _, _ = self.transaction_system.get_balance()
         lock_gnt, lock_eth = self.sum_locks()
+        logger.info('Locking funds for task: %r %r %r', task_id, lock_gnt,
+                    lock_eth)
         if tfl.gnt_lock() > gnt - lock_gnt:
             raise NotEnoughFunds(tfl.gnt_lock(), gnt - lock_gnt)
 
@@ -100,6 +102,8 @@ class FundsLocker(LoopingCallService):
                                  self.dump_path)
                 return
         for task in self.task_lock.values():
+            logger.info('Restoring old tasks locks: %r %r %r', task.task_id,
+                        task.gnt_lock(), task.eth_lock())
             task.transaction_system = self.transaction_system
 
     def dump_locks(self):
@@ -114,6 +118,7 @@ class FundsLocker(LoopingCallService):
             logger.warning("I can't remove payment lock for subtask from task"
                            "%r: unkown task.", task_id)
             return
+        logger.info('Removing subtask lock for task %r', task_id)
         task_lock.num_tasks -= 1
         self.dump_locks()
 
@@ -123,5 +128,6 @@ class FundsLocker(LoopingCallService):
             logger.warning("I can't remove payment lock from task"
                            "%r: unkown task.", task_id)
             return
+        logger.info('Removing task lock %r', task_id)
         del self.task_lock[task_id]
         self.dump_locks()

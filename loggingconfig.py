@@ -137,6 +137,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'golem.transactions': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'twisted': {
             'level': 'WARNING',
             'propagate': True,
