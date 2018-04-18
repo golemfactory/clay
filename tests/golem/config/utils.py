@@ -2,7 +2,7 @@ import importlib
 import os
 import sys
 from contextlib import contextmanager
-from typing import Optional
+from typing import Optional, Generator
 from unittest import mock
 
 from golem_sci.chains import MAINNET
@@ -14,7 +14,7 @@ CONFIG_MODULE = 'golem.config.active'
 
 
 @contextmanager
-def mock_config(net: Optional[str] = None) -> None:
+def mock_config(net: Optional[str] = None) -> Generator:
 
     protocol_const = mock.Mock(ID=PROTOCOL_CONST.ID,
                                NUM=PROTOCOL_CONST.NUM,
@@ -24,12 +24,12 @@ def mock_config(net: Optional[str] = None) -> None:
         if net:
             config_module = importlib.import_module(CONFIG_MODULE)
             _load_config(net, config_module)
-            config_module.PROTOCOL_CONST = protocol_const
+            setattr(config_module, 'PROTOCOL_CONST', protocol_const)
         yield
 
 
 @contextmanager
-def _patch_environment(net):
+def _patch_environment(net) -> Generator:
 
     os_environ = dict(os.environ)
     os_environ.update({ENVIRONMENT_VARIABLE: net})
