@@ -35,6 +35,8 @@ from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.rpceventnames import UI, Environment
 from golem.task.taskbase import Task
+from golem.task.taskcomputer import TaskComputer
+from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     TaskTestStatus
@@ -724,6 +726,157 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.delete_task = Mock()
         self.client.clean_old_tasks()
         self.client.delete_task.assert_called_once_with('old_task')
+
+
+class TestRestartSubtasksFromTask(TestWithDatabase, TestWithReactor):
+
+    class TestError(Exception):
+        pass
+
+    def setUp(self):
+        super().setUp()
+
+        self.task_manager = MagicMock(spec=TaskManager)
+        self.task_manager.AlreadyRestartedError = self.TestError
+
+        with patch('golem.client.EthereumTransactionSystem'):
+            self.client = Client(
+                datadir=self.path,
+                app_config=Mock(),
+                config_desc=ClientConfigDescriptor(),
+                keys_auth=Mock(),
+                database=Mock(),
+                connect_to_known_hosts=False,
+                use_docker_manager=False,
+                use_monitor=False
+            )
+        self.client.task_server = MagicMock(spec=TaskServer)
+        self.client.task_server.task_manager = self.task_manager
+        self.client.task_server.task_computer = MagicMock(spec=TaskComputer)
+
+    def tearDown(self):
+        self.client.quit()
+        super().tearDown()
+
+    def _test_error_in_logs(self, error_msg):
+        with patch.object(self.client, 'enqueue_new_task') as enqueue, \
+                patch('golem.client.logger') as logger:
+            self.client.restart_subtasks_from_task('task_id', [])
+            self.task_manager.put_task_in_restarted_state\
+                .assert_called_once_with('task_id', clear_tmp=False)
+            enqueue.assert_not_called()
+            logger.error.assert_called_once()
+            self.assertIn(error_msg, logger.error.call_args[0][0])
+
+    def test_already_restarted(self):
+        self.task_manager.put_task_in_restarted_state.side_effect = \
+            self.TestError
+        self._test_error_in_logs('Task already restarted')
+
+    def test_task_not_found(self):
+        self.task_manager.tasks = {}
+        self._test_error_in_logs('Task not found')
+
+    def _test_subtask_ids_to_copy(self, subtasks, ids_to_restart, expected_ids):
+        self.task_manager.tasks = {
+            'task_id': Mock(subtasks_given={
+                subtask['id']: subtask for subtask in subtasks
+            })
+        }
+        self.task_manager.get_task_definition_dict.return_value = {
+            'id': 'task_id'
+        }
+        new_task = MagicMock()
+        new_task.header.task_id = 'new_task_id'
+
+        with patch.object(self.client, 'enqueue_new_task') as enqueue:
+            deferred = Deferred()
+            enqueue.return_value = deferred
+            self.client.restart_subtasks_from_task('task_id', ids_to_restart)
+            deferred.callback(new_task)
+
+            self.task_manager.copy_results.assert_called_once_with(
+                old_task_id='task_id',
+                new_task_id='new_task_id',
+                subtask_ids_to_copy=expected_ids
+            )
+
+    def test_finished_subtask_copied(self):
+        subtask = {
+            'id': 'subtask_id',
+            'status': SubtaskStatus.finished
+        }
+        self._test_subtask_ids_to_copy([subtask], [], {subtask['id']})
+
+    def test_finished_subtask_not_copied(self):
+        """
+        Finished subtask should not be copied if it is provided explicitly
+        as one to be restarted
+        """
+        subtask = {
+            'id': 'subtask_id',
+            'status': SubtaskStatus.finished
+        }
+        self._test_subtask_ids_to_copy(
+            [subtask], [subtask['id']], set())
+
+    def test_failed_subtask_not_copied(self):
+        subtask = {
+            'id': 'subtask_id',
+            'status': SubtaskStatus.failure
+        }
+        self._test_subtask_ids_to_copy([subtask], [], set())
+
+    def test_restarted_subtask_not_copied(self):
+        subtask = {
+            'id': 'subtask_id',
+            'status': SubtaskStatus.restarted
+        }
+        self._test_subtask_ids_to_copy([subtask], [], set())
+
+    def test_multiple_subtasks_proper_copied(self):
+        subtasks = [{
+            'id': 'subtask_id1',
+            'status': SubtaskStatus.finished
+        }, {
+            'id': 'subtask_id2',
+            'status': SubtaskStatus.finished
+        }, {
+            'id': 'subtask_id3',
+            'status': SubtaskStatus.finished
+        }, {
+            'id': 'subtask_id4',
+            'status': SubtaskStatus.restarted
+        }, {
+            'id': 'subtask_id5',
+            'status': SubtaskStatus.failure
+        }]
+        self._test_subtask_ids_to_copy(
+            subtasks, ['subtask_id3'], {'subtask_id1', 'subtask_id2'})
+
+    def test_invalid_subtask_ids_ignored(self):
+        subtask = {
+            'id': 'subtask_id',
+            'status': SubtaskStatus.finished
+        }
+        self._test_subtask_ids_to_copy(
+            [subtask], ['invalid_id1', 'invalid_id2'], {subtask['id']})
+
+    @patch('golem.client.logger')
+    def test_error_in_enqueue(self, logger):
+        self.task_manager.tasks = {
+            'task_id': Mock(subtasks_given={})
+        }
+        self.task_manager.get_task_definition_dict.return_value = {
+            'id': 'task_id'
+        }
+        with patch.object(self.client, 'enqueue_new_task') as enqueue:
+            deferred = Deferred()
+            enqueue.return_value = deferred
+            self.client.restart_subtasks_from_task('task_id', [])
+            deferred.errback(self.TestError())
+            logger.error.assert_called_once()
+            self.assertIn('Task creation failed', logger.error.call_args[0][0])
 
 
 class TestDoWorkService(TestWithReactor):

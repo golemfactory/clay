@@ -14,6 +14,7 @@ from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ResultType, TaskEventListener
+from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
@@ -562,6 +563,67 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert ctd['performance'] == perf_index
         assert ctd['working_directory'] == working_directory
         assert ctd['docker_images'] == c.docker_images
+
+    @patch('os.path.isfile')
+    @patch('os.remove')
+    @patch('os.rename')
+    def test_copy_subtask_results(self, rename_mock: MagicMock, *_):
+
+        task = self._get_core_task()
+        task.subtasks_given['new_subtask_id'] = {
+            'ctd': {
+                'task_id': 'new_task_id',
+                'subtask_id': 'new_subtask_id'
+            },
+            'status': SubtaskStatus.starting
+        }
+        old_subtask_info = {
+            'node_id': 'node_id',
+            'perf': 'perf',
+            'ctd': {
+                'task_id': 'old_task_id',
+                'subtask_id': 'old_subtask_id',
+                'performance': 'performance'
+            },
+            'status': SubtaskStatus.finished
+        }
+
+        result_path = '/tmp/task_id/new_subtask_id/result'
+        target_result_path = os.path.join('/tmp/task_id', 'result')
+        stdout_path = '/tmp/task_id/new_subtask_id/stdout.log'
+        stderr_path = '/tmp/task_id/new_subtask_id/stderr.log'
+        results = [result_path, stdout_path, stderr_path]
+
+        task.copy_subtask_results(
+            subtask_id='new_subtask_id',
+            old_subtask_info=old_subtask_info,
+            results=results
+        )
+
+        self.assertEqual(
+            task.subtasks_given['new_subtask_id'], {
+                'node_id': 'node_id',
+                'perf': 'perf',
+                'ctd': {
+                    'task_id': 'new_task_id',
+                    'subtask_id': 'new_subtask_id',
+                    'performance': 'performance'
+                },
+                'status': SubtaskStatus.finished
+            })
+
+        task_client = task.counting_nodes.get('node_id')
+        self.assertIsInstance(task_client, TaskClient)
+        self.assertEqual(task_client.node_id, 'node_id')
+        self.assertEqual(task_client.started(), 1)
+        self.assertEqual(task_client.finishing(), 1)
+
+        rename_mock.assert_called_once_with(result_path, target_result_path)
+
+        self.assertEqual(task.stdout.get('new_subtask_id'), stdout_path)
+        self.assertEqual(task.stderr.get('new_subtask_id'), stderr_path)
+        self.assertEqual(
+            task.results.get('new_subtask_id'), [target_result_path])
 
 
 class TestLogKeyError(LogTestCase):
