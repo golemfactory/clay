@@ -66,7 +66,6 @@ class TestSendToConcent(TestCase):
         client.send_to_concent(
             msg=self.msg,
             signing_key=self.private_key,
-            public_key=self.public_key,
         )
         api_send_url = urllib.parse.urljoin(
             variables.CONCENT_URL,
@@ -84,7 +83,6 @@ class TestSendToConcent(TestCase):
             client.send_to_concent(
                 msg=self.msg,
                 signing_key=self.private_key,
-                public_key=self.public_key,
             )
 
         self.assertEqual(post_mock.call_count, 1)
@@ -96,7 +94,6 @@ class TestSendToConcent(TestCase):
         client.send_to_concent(
             msg=self.msg,
             signing_key=self.private_key,
-            public_key=self.public_key,
         )
         verify_mock.assert_called_once_with(response)
 
@@ -111,7 +108,6 @@ class TestSendToConcent(TestCase):
             client.send_to_concent(
                 msg=self.msg,
                 signing_key=self.private_key,
-                public_key=self.public_key,
             )
         self.assertEqual(
             self.msg.timestamp,

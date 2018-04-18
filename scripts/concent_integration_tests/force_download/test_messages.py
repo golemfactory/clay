@@ -5,70 +5,58 @@ import unittest
 from golem_messages import factories as msg_factories
 from golem_messages.message import concents as concent_msg
 
-from golem.network.concent import client
-
-from ..base import ConcentBaseTest
+from .base import ForceDownloadBaseTest
 
 
 logger = logging.getLogger(__name__)
 
 
-class ForceGetTaskResultTest(ConcentBaseTest, unittest.TestCase):
+class ForceGetTaskResultTest(ForceDownloadBaseTest, unittest.TestCase):
 
     def test_send(self):
-        fgtr = msg_factories.concents.ForceGetTaskResultFactory()
-        response = self.send_to_concent(fgtr)
-        msg = self.load_response(response)
+        fgtr = self.get_fgtr()
+        response = self.requestor_send(fgtr)
+        msg = self.requestor_load_response(response)
         self.assertIsInstance(msg, concent_msg.AckForceGetTaskResult)
         self.assertEqual(msg.force_get_task_result, fgtr)
 
     def test_send_fail_timeout(self):
-        ttc = msg_factories.tasks.TaskToComputeFactory.past_deadline()
-        fgtr = msg_factories.concents.ForceGetTaskResultFactory(
-            report_computed_task__task_to_compute=ttc
+        ttc = msg_factories.tasks.TaskToComputeFactory.past_deadline(
+            **self.gen_ttc_kwargs(),
         )
-
-        response = self.send_to_concent(fgtr)
-        msg = self.load_response(response)
+        fgtr = msg_factories.concents.ForceGetTaskResultFactory(
+            report_computed_task__task_to_compute=ttc,
+            **self.gen_rtc_kwargs('report_computed_task__'),
+        )
+        response = self.requestor_send(fgtr)
+        msg = self.requestor_load_response(response)
         self.assertIsInstance(msg, concent_msg.ForceGetTaskResultRejected)
         self.assertEqual(msg.reason,
                          msg.REASON.AcceptanceTimeLimitExceeded)
 
     def test_send_duplicate(self):
-        rct = msg_factories.tasks.ReportComputedTaskFactory()
-        fgtr1 = msg_factories.concents.ForceGetTaskResultFactory(
-            report_computed_task=rct)
-
-        response = self.send_to_concent(fgtr1)
-        msg = self.load_response(response)
+        fgtr1 = self.get_fgtr()
+        response = self.requestor_send(fgtr1)
+        msg = self.requestor_load_response(response)
         self.assertIsInstance(msg, concent_msg.AckForceGetTaskResult)
 
         fgtr2 = msg_factories.concents.ForceGetTaskResultFactory(
-            report_computed_task=rct)
+            report_computed_task=fgtr1.report_computed_task)
 
-        response = self.send_to_concent(fgtr2)
-        msg = self.load_response(response)
+        response = self.requestor_send(fgtr2)
+        msg = self.requestor_load_response(response)
         self.assertIsInstance(msg, concent_msg.ServiceRefused)
         self.assertEqual(msg.reason, msg.REASON.DuplicateRequest)
 
     def test_provider_receive(self):
-        provider_key = self.op_keys.raw_pubkey
-        fgtr = msg_factories.concents.ForceGetTaskResultFactory()
-
-        fgtr.report_computed_task.task_to_compute.provider_public_key = \
-            provider_key
-
+        fgtr = self.get_fgtr()
         logger.debug("requestor sent ForceGetTaskResult: %s", fgtr)
 
-        ack = self.load_response(
-            self.send_to_concent(fgtr, other_party_public_key=provider_key)
+        ack = self.requestor_load_response(
+            self.requestor_send(fgtr)
         )
         self.assertIsInstance(ack, concent_msg.AckForceGetTaskResult)
-        fgtru = self.load_response(
-            client.receive_from_concent(
-                self.op_keys.raw_privkey, provider_key),
-            priv_key=self.op_keys.raw_privkey
-        )
+        fgtru = self.provider_receive()
         self.assertIsInstance(fgtru, concent_msg.ForceGetTaskResultUpload)
         self.assertSamePayload(fgtru.force_get_task_result, fgtr)
 
@@ -79,6 +67,6 @@ class ForceGetTaskResultTest(ConcentBaseTest, unittest.TestCase):
         self.assertFttCorrect(
             ftt,
             subtask_id=fgtr.subtask_id,
-            client_key=provider_key,
+            client_key=self.provider_pub_key,
             operation=ftt.Operation.upload
         )

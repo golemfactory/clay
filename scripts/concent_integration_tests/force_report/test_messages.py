@@ -12,49 +12,16 @@ logger = logging.getLogger(__name__)
 
 class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
 
-    def provider_send(self, msg):
-        logger.debug("Provider sends %s" % msg)
-        return self.send_to_concent(
-            msg, other_party_public_key=self.op_keys.raw_pubkey
+    def get_frct(self, **kwargs):
+        return msg_factories.concents.ForceReportComputedTaskFactory(
+            **self.gen_rtc_kwargs('report_computed_task__'),
+            **self.gen_ttc_kwargs('report_computed_task__task_to_compute__'),
+            **kwargs,
         )
-
-    def requestor_send(self, msg):
-        logger.debug("Requestor sends %s" % msg)
-        return self.send_to_concent(
-            msg,
-            signing_key=self.op_keys.raw_privkey,
-            public_key=self.op_keys.raw_pubkey,
-            other_party_public_key=self.keys.raw_pubkey,
-        )
-
-    def provider_receive(self):
-        response = self.receive_from_concent()
-        if not response:
-            logger.debug("Provider got empty response")
-            return None
-
-        msg = self.load_response(response)
-        logger.debug("Provider receives %s" % msg)
-        return msg
-
-    def requestor_receive(self):
-        response = self.receive_from_concent(
-            signing_key=self.op_keys.raw_privkey,
-            public_key=self.op_keys.raw_pubkey
-        )
-        if not response:
-            logger.debug("Requestor got empty response")
-            return None
-
-        msg = self.load_response(
-            response, priv_key=self.op_keys.raw_privkey
-        )
-        logger.debug("Requestor receives %s" % msg)
-        return msg
 
     def test_send(self):
-        frct = msg_factories.concents.ForceReportComputedTaskFactory()
-        response = self.send_to_concent(frct)
+        frct = self.get_frct()
+        response = self.provider_send(frct)
         self.assertIsNone(response)
 
     def test_provider_insufficient_funds(self):
@@ -63,21 +30,26 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
         pass
 
     def test_task_timeout(self):
-        ttc = msg_factories.tasks.TaskToComputeFactory.past_deadline()
-        frct = msg_factories.concents.ForceGetTaskResultFactory(
-            report_computed_task__task_to_compute=ttc
+        ttc = msg_factories.tasks.TaskToComputeFactory.past_deadline(
+            **self.gen_ttc_kwargs(),
         )
-        response = self.send_to_concent(frct)
-        msg = self.load_response(response)
-        self.assertIsInstance(msg, message.concents.ForceGetTaskResultRejected)
+        frct = msg_factories.concents.ForceReportComputedTaskFactory(
+            report_computed_task__task_to_compute=ttc,
+            **self.gen_rtc_kwargs('report_computed_task__'),
+        )
+        response = self.provider_send(frct)
+        msg = self.provider_load_response(response)
+        self.assertIsInstance(
+            msg,
+            message.concents.ForceReportComputedTaskResponse)
         self.assertEqual(
             msg.reason,
-            message.concents.ForceGetTaskResultRejected.
-                REASON.AcceptanceTimeLimitExceeded
+            message.concents.ForceReportComputedTaskResponse.
+            REASON.SubtaskTimeout
         )
 
     def test_requestor_receive(self):
-        frct = msg_factories.concents.ForceReportComputedTaskFactory()
+        frct = self.get_frct()
         self.provider_send(frct)
         frct_rcv = self.requestor_receive()
         self.assertEqual(frct.report_computed_task,
@@ -93,7 +65,7 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
     ###
 
     def test_ack_rct(self):
-        frct = msg_factories.concents.ForceReportComputedTaskFactory()
+        frct = self.get_frct()
         self.provider_send(frct)
         frct_rcv = self.requestor_receive()
 
@@ -111,22 +83,27 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
         arct_rcv = frct_response.ack_report_computed_task
         self.assertIsInstance(
             arct_rcv, message.tasks.AckReportComputedTask)
-        arct_rcv.verify_signature(self.keys.raw_pubkey)
+        arct_rcv.verify_signature(self.requestor_pub_key)
 
     def test_reject_rct_timeout(self):
-        frct = msg_factories.concents.ForceReportComputedTaskFactory()
+        frct = self.get_frct()
         self.provider_send(frct)
         frct_rcv = self.requestor_receive()
 
         rrct = message.tasks.RejectReportComputedTask(
             task_to_compute=frct_rcv.report_computed_task.task_to_compute,
             reason=message.tasks.RejectReportComputedTask.
-                REASON.SubtaskTimeLimitExceeded
+            REASON.SubtaskTimeLimitExceeded
         )
 
         response = self.requestor_send(rrct)
-        raise Exception(response)  # @todo need to figure out what exactly happens here
+        raise Exception(response)
+        # @todo need to figure out what exactly happens here
 
     def test_reject_rct_cannot_compute_task(self):
-        raise Exception()
-    
+        pass
+        # @todo
+
+    def test_reject_rct_task_failure(self):
+        pass
+        # @todo
