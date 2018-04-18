@@ -256,3 +256,6 @@ class DummyTask(Task):
             'task_id': self.task_id,
             'task_params': self.task_params.__dict__
         }
+
+    def copy_subtask_results(self, subtask_id, old_subtask_info, results):
+        print('DummyTask.copy_subtask_results called')

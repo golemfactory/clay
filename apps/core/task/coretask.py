@@ -2,7 +2,6 @@ import abc
 import decimal
 import logging
 import os
-import uuid
 from enum import Enum
 from typing import Type
 
@@ -504,6 +503,24 @@ class CoreTask(Task):
 
         client.start()
         return AcceptClientVerdict.ACCEPTED
+
+    def copy_subtask_results(self, subtask_id, old_subtask_info, results):
+        new_subtask = self.subtasks_given[subtask_id]
+
+        new_subtask['node_id'] = old_subtask_info['node_id']
+        new_subtask['perf'] = old_subtask_info['perf']
+        new_subtask['ctd']['performance'] = \
+            old_subtask_info['ctd']['performance']
+
+        self._accept_client(new_subtask['node_id'])
+        self.result_incoming(subtask_id)
+        self.interpret_task_results(
+            subtask_id=subtask_id,
+            task_results=results,
+            result_type=ResultType.FILES)
+        self.accept_results(
+            subtask_id=subtask_id,
+            result_files=self.results[subtask_id])
 
 
 def accepting(query_extra_data_func):
