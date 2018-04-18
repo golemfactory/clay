@@ -884,7 +884,6 @@ class TestResourceCleanerService(TestWithReactor):
             older_than_seconds=older_than_seconds)
         service._run()
 
-        c.remove_computed_files.assert_called_with(older_than_seconds)
         c.remove_distributed_files.assert_called_with(older_than_seconds)
         c.remove_received_files.assert_called_with(older_than_seconds)
 

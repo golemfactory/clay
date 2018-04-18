@@ -1016,11 +1016,6 @@ class Client(HardwarePresetsMixin):
             return self.remove_received_files(older_than_seconds)
         raise Exception("Unknown dir type: {}".format(dir_type))
 
-    def remove_computed_files(self, older_than_seconds: int = 0):
-        dir_manager = DirManager(self.datadir)
-        dir_manager.clear_dir(
-            self.get_computed_files_dir(), older_than_seconds)
-
     def remove_distributed_files(self, older_than_seconds: int = 0):
         dir_manager = DirManager(self.datadir)
         dir_manager.clear_dir(self.get_distributed_files_dir(),
@@ -1358,7 +1353,6 @@ class ResourceCleanerService(LoopingCallService):
     def _run(self):
         # TODO: is any synchronization needed here? golemcli has none.
         # Issue #2432
-        self._client.remove_computed_files(self.older_than_seconds)
         self._client.remove_distributed_files(self.older_than_seconds)
         self._client.remove_received_files(self.older_than_seconds)
 
