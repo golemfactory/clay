@@ -26,6 +26,7 @@ from golem.task.acl import get_acl
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
+from golem.task.taskstate import TaskOp
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 from .server import resources
 from .server import concent
@@ -115,6 +116,11 @@ class TaskServer(
         dispatcher.connect(
             self.income_listener,
             signal='golem.income'
+        )
+
+        dispatcher.connect(
+            self.finished_task_listener,
+            signal='golem.taskmanager'
         )
 
     def sync_network(self):
@@ -461,6 +467,15 @@ class TaskServer(
             self.increase_trust_payment(task_id)
         elif event in ['rejected', 'overdue']:
             self.decrease_trust_payment(task_id)
+
+    def finished_task_listener(self, event='default', task_id=None, op=None,
+                               **_kwargs):
+        if not (event == 'task_status_updated'
+                and op == TaskOp.FINISHED
+                and self.client.p2pservice):
+            return
+
+        self.client.p2pservice.remove_task(task_id)
 
     def increase_trust_payment(self, task_id):
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(

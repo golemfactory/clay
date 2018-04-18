@@ -28,7 +28,7 @@ from golem.task.taskbase import TaskHeader, ResultType
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.task.tasksession import TaskSession
-from golem.task.taskstate import TaskState
+from golem.task.taskstate import TaskState, TaskOp
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 from golem.utils import encode_hex
@@ -975,3 +975,23 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
             [task_state.package_path], task_id,
             resource_hash=task_state.resource_hash, timeout=ANY
         )
+
+    def test_finished_task_listener(self, *_):
+        self.ts.client = Mock()
+        remove_task = self.ts.client.p2pservice.remove_task
+
+        values = dict(TaskOp.__members__)
+        values.pop('FINISHED')
+
+        for value in values:
+            self.ts.finished_task_listener(op=value)
+            assert not remove_task.called
+
+        for value in values:
+            self.ts.finished_task_listener(event='task_status_updated',
+                                           op=value)
+            assert not remove_task.called
+
+        self.ts.finished_task_listener(event='task_status_updated',
+                                       op=TaskOp.FINISHED)
+        assert remove_task.called
