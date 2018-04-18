@@ -1,6 +1,6 @@
 from typing import Dict, Any
 import getpass
-from zxcvbn import zxcvbn
+import zxcvbn
 
 from decimal import Decimal
 from ethereum.utils import denoms
@@ -74,8 +74,8 @@ class Account:
 
             # Check password score, same library and settings used on electron
             account_name = getpass.getuser() or ''
-            result = zxcvbn(pswd, user_inputs=['Golem', account_name])
-            print(result['score'])
+            result = zxcvbn.zxcvbn(pswd, user_inputs=['Golem', account_name])
+            # print(result['score'])
             if result['score'] < MIN_SCORE:
                 return "Password is not strong enough. " \
                     "Please use capitals, numbers and special characters."

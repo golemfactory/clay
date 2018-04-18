@@ -39,7 +39,7 @@ def assert_client_method(instance, name):
 
 class TestAccount(unittest.TestCase):
 
-    def test(self):
+    def test_show(self):
 
         node = dict(node_name='node1', key='deadbeef')
 
@@ -70,6 +70,69 @@ class TestAccount(unittest.TestCase):
                     'total_balance': '3.000000 GNT'
                 },
             }
+
+    @patch('getpass.getuser', return_value="John")
+    @patch('zxcvbn.zxcvbn', return_value={'score': 2})
+    @patch('getpass.getpass', return_value="deadbeef")
+    def test_unlock_new(self, mock_pass, mock_zxcvbn, mock_getuser):
+
+        client = Mock()
+        client.key_exists.return_value = False
+
+        with client_ctx(Account, client):
+            result = Account().unlock()
+            assert result == "Account unlock success"
+            assert mock_pass.call_count == 2
+            mock_getuser.assert_called_once()
+            mock_zxcvbn.assert_called_once_with("deadbeef", user_inputs=["Golem", "John"])
+            client.set_password.assert_called_once_with("deadbeef")
+
+    @patch('getpass.getpass', return_value="abc")
+    def test_unlock_new_short_error(self, mock_pass):
+
+        client = Mock()
+        client.key_exists.return_value = False
+
+        with client_ctx(Account, client):
+            result = Account().unlock()
+            assert result == "Password is too short, minimum is 5"
+            mock_pass.assert_called_once()
+            client.set_password.assert_not_called()
+
+    @patch('zxcvbn.zxcvbn', return_value={'score': 1})
+    @patch('getpass.getpass', return_value="deadbeef")
+    @patch('getpass.getuser', return_value="John")
+    def test_unlock_new_strength_error(self, mock_getuser, mock_pass, mock_zxcvbn):
+
+        client = Mock()
+        client.key_exists.return_value = False
+
+        with client_ctx(Account, client):
+            result = Account().unlock()
+            assert result == "Password is not strong enough. " \
+                    "Please use capitals, numbers and special characters."
+            mock_pass.assert_called_once()
+            mock_getuser.assert_called_once()
+            mock_zxcvbn.assert_called_once_with("deadbeef", user_inputs=["Golem", "John"])
+            client.set_password.assert_not_called()
+
+
+
+    @patch('zxcvbn.zxcvbn', return_value={'score': 1})
+    @patch('getpass.getpass', return_value="deadbeef")
+    @patch('getpass.getuser', return_value="John")
+    def test_unlock_old(self, mock_getuser, mock_pass, mock_zxcvbn):
+
+        client = Mock()
+        client.key_exists.return_value = True
+
+        with client_ctx(Account, client):
+            result = Account().unlock()
+            assert result == "Account unlock success"
+            mock_pass.assert_called_once()
+            mock_getuser.assert_not_called()
+            mock_zxcvbn.assert_not_called()
+            client.set_password.assert_called_once_with("deadbeef")
 
 
 class TestEnvironments(unittest.TestCase):
