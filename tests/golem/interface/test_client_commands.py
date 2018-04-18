@@ -302,14 +302,17 @@ class TestResources(unittest.TestCase):
 
     def test_show(self):
         dirs = dict(
-            example_1='100MB',
-            example_2='200MB', )
+            sth='100M',
+            sample='200M', )
 
         client = self.client
         client.get_res_dirs_sizes.return_value = dirs
 
         with client_ctx(Resources, client):
-            assert Resources().show() == dirs
+            result = Resources().show()
+            assert isinstance(result, CommandResult)
+            assert result.type == CommandResult.TABULAR
+            assert result.data == (['sth', 'sample'], [['100M', '200M']])
 
     def test_clear_none(self):
         client = self.client
@@ -328,7 +331,7 @@ class TestResources(unittest.TestCase):
             res = Resources()
             res.clear(provider=True, requestor=False)
 
-            assert len(client.clear_dir.mock_calls) == 2
+            assert len(client.clear_dir.mock_calls) == 1
 
     def test_clear_requestor(self):
         client = self.client
@@ -344,7 +347,7 @@ class TestResources(unittest.TestCase):
             res = Resources()
             res.clear(provider=True, requestor=True)
 
-            assert len(client.clear_dir.mock_calls) == 2
+            assert len(client.clear_dir.mock_calls) == 1
 
 
 def _has_subtask(id):

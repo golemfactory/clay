@@ -299,12 +299,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.resource_server.get_distributed_resource_root.return_value = \
             unique_dir()
 
-        d = c.get_computed_files_dir()
-        self.assertIn(self.path, d)
-        self.additional_dir_content([3], d)
-        c.remove_computed_files()
-        self.assertEqual(os.listdir(d), [])
-
         d = c.get_distributed_files_dir()
         self.assertIn(self.path, os.path.normpath(d))  # normpath for mingw
         self.additional_dir_content([3], d)
@@ -890,7 +884,6 @@ class TestResourceCleanerService(TestWithReactor):
             older_than_seconds=older_than_seconds)
         service._run()
 
-        c.remove_computed_files.assert_called_with(older_than_seconds)
         c.remove_distributed_files.assert_called_with(older_than_seconds)
         c.remove_received_files.assert_called_with(older_than_seconds)
 
@@ -997,7 +990,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         res_dirs = c.get_res_dirs()
 
         self.assertIsInstance(res_dirs, dict)
-        self.assertTrue(len(res_dirs) == 3)
+        self.assertTrue(len(res_dirs) == 2)
 
         for key, value in list(res_dirs.items()):
             self.assertIsInstance(key, str)
