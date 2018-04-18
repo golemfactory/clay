@@ -81,7 +81,7 @@ class ConcentBaseTest:
 
         self.assertEqual(
             client_key,
-            base64.standard_b64decode(ftt.authorized_client_public_key)
+            ftt.authorized_client_public_key
         )
         self.assertGreater(
             ftt.token_expiration_deadline,

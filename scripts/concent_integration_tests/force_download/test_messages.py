@@ -75,6 +75,7 @@ class ForceGetTaskResultTest(ConcentBaseTest, unittest.TestCase):
         logger.debug("provider received ForceGetTaskResultUpload: %s", fgtru)
 
         ftt = fgtru.file_transfer_token
+        logger.debug("Received FTT %s", ftt)
         self.assertFttCorrect(
             ftt,
             subtask_id=fgtr.subtask_id,
