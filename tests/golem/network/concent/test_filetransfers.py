@@ -180,6 +180,7 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
         upload_address = ftt.storage_cluster_address + 'upload/'
         headers = self._mock_get_auth_headers(ftt)
         headers['Concent-Upload-Path'] = ftt.files[0].get('path')
+        headers['Content-Type'] = 'application/octet-stream'
 
         self.cfs.upload(request)
 

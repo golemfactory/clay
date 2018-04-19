@@ -622,7 +622,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         sess = TaskSession(conn)
         sess.send = lambda m: db.append_bytes(
-            m.serialize(lambda x: b'\000' * 65),
+            m.serialize(),
         )
         sess._can_send = lambda *_: True
         sess.request_resource(str(uuid.uuid4()))

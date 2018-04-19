@@ -66,7 +66,6 @@ class TestSendToConcent(TestCase):
         client.send_to_concent(
             msg=self.msg,
             signing_key=self.private_key,
-            public_key=self.public_key,
         )
         api_send_url = urllib.parse.urljoin(
             variables.CONCENT_URL,
@@ -84,7 +83,6 @@ class TestSendToConcent(TestCase):
             client.send_to_concent(
                 msg=self.msg,
                 signing_key=self.private_key,
-                public_key=self.public_key,
             )
 
         self.assertEqual(post_mock.call_count, 1)
@@ -96,7 +94,6 @@ class TestSendToConcent(TestCase):
         client.send_to_concent(
             msg=self.msg,
             signing_key=self.private_key,
-            public_key=self.public_key,
         )
         verify_mock.assert_called_once_with(response)
 
@@ -111,7 +108,6 @@ class TestSendToConcent(TestCase):
             client.send_to_concent(
                 msg=self.msg,
                 signing_key=self.private_key,
-                public_key=self.public_key,
             )
         self.assertEqual(
             self.msg.timestamp,
@@ -244,10 +240,10 @@ class TestConcentClientService(testutils.TempDirFixture):
         with mock.patch(mock_path) as sleep_mock:
             self.concent_service._loop()
             sleep_mock.assert_called_once_with()
+
         send_mock.assert_called_once_with(
             self.msg,
             self.concent_service.keys_auth._private_key,
-            self.concent_service.keys_auth.public_key,
         )
 
         assert not self.concent_service._delayed
@@ -288,7 +284,6 @@ class TestConcentClientService(testutils.TempDirFixture):
         send_mock.assert_called_once_with(
             self.msg,
             self.concent_service.keys_auth._private_key,
-            self.concent_service.keys_auth.public_key,
         )
         react_mock.assert_called_once_with(data, response_to=self.msg)
 

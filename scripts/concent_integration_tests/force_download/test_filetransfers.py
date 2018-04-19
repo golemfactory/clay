@@ -1,4 +1,3 @@
-import base64
 import binascii
 import filecmp
 import logging
@@ -10,22 +9,22 @@ from unittest import mock
 
 import faker
 
-from golem_messages import factories as msg_factories
 from golem_messages.message import concents as concent_msg
 
 from golem.core.simplehash import SimpleHash
-from golem.network.concent import client
 from golem.network.concent.filetransfers import (
     ConcentFiletransferService, ConcentFileRequest
 )
 
-from ..base import ConcentBaseTest
+from .base import ForceDownloadBaseTest
 
 
 logger = logging.getLogger(__name__)
 
 
-class ForceGetTaskResultFiletransferTest(ConcentBaseTest, unittest.TestCase):
+class ForceGetTaskResultFiletransferTest(ForceDownloadBaseTest,
+                                         unittest.TestCase):
+
     def setUp(self):
         super().setUp()
         file = tempfile.NamedTemporaryFile(delete=False)
@@ -35,9 +34,9 @@ class ForceGetTaskResultFiletransferTest(ConcentBaseTest, unittest.TestCase):
         self.addCleanup(os.unlink, self.filename)
 
         self.provider_cfts = ConcentFiletransferService(
-            keys_auth=mock.Mock(public_key=self.op_keys.raw_pubkey))
+            keys_auth=mock.Mock(public_key=self.provider_pub_key))
         self.requestor_cfts = ConcentFiletransferService(
-            keys_auth=mock.Mock(public_key=self.keys.raw_pubkey))
+            keys_auth=mock.Mock(public_key=self.requestor_pub_key))
 
     @property
     def size(self):
@@ -50,27 +49,12 @@ class ForceGetTaskResultFiletransferTest(ConcentBaseTest, unittest.TestCase):
         ).decode()
 
     def get_fgtru(self):
-        provider_keys = self.op_keys
-
-        logger.debug('Provider key: %s',
-                     base64.b64encode(provider_keys.raw_pubkey).decode())
-
-        rct = msg_factories.tasks.ReportComputedTaskFactory(
-            task_to_compute__provider_public_key=self.op_keys.raw_pubkey,
-            size=self.size,
-            package_hash=self.hash
+        fgtr = self.get_fgtr(
+            report_computed_task__size=self.size,
+            report_computed_task__package_hash=self.hash
         )
-        fgtr = msg_factories.concents.ForceGetTaskResultFactory(
-            report_computed_task=rct)
-        self._send_to_concent(
-            fgtr, other_party_public_key=provider_keys.raw_pubkey)
-
-        response = client.receive_from_concent(
-            signing_key=provider_keys.raw_privkey,
-            public_key=provider_keys.raw_pubkey
-        )
-        return self._load_response(
-            response, priv_key=provider_keys.raw_privkey)
+        self.requestor_send(fgtr)
+        return self.provider_receive()
 
     @staticmethod
     def _log_concent_response(response):
@@ -101,9 +85,7 @@ class ForceGetTaskResultFiletransferTest(ConcentBaseTest, unittest.TestCase):
 
         self.assertEqual(upload_response.status_code, 200)
 
-        fgtrd = self._load_response(
-            client.receive_from_concent(self.priv_key, self.pub_key)
-        )
+        fgtrd = self.provider_receive()
         self.assertIsInstance(fgtrd, concent_msg.ForceGetTaskResultDownload)
         self.assertEqual(fgtrd.subtask_id, fgtru.subtask_id)
         self.assertSamePayload(
@@ -113,7 +95,7 @@ class ForceGetTaskResultFiletransferTest(ConcentBaseTest, unittest.TestCase):
         self.assertFttCorrect(
             ftt,
             subtask_id=fgtru.subtask_id,
-            client_key=self.pub_key,
+            client_key=self.requestor_pub_key,
             operation=ftt.Operation.download
         )
 

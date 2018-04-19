@@ -119,7 +119,8 @@ class ConcentFiletransferService(LoopingCallService):
         ftt = request.file_transfer_token
         headers = self._get_auth_headers(ftt)
         headers.update({
-            'Concent-Upload-Path': ftt.files[0].get('path')
+            'Concent-Upload-Path': ftt.files[0].get('path'),
+            'Content-Type': 'application/octet-stream',
         })
 
         logger.debug("Uploading file '%s' to '%s' using %s",

@@ -1,4 +1,5 @@
 import base64
+import logging
 import calendar
 import time
 
@@ -14,6 +15,9 @@ from golem.network.concent import client
 from golem.core import variables
 
 
+logger = logging.getLogger(__name__)
+
+
 class ConcentBaseTest:
     # pylint:disable=no-member
 
@@ -22,35 +26,100 @@ class ConcentBaseTest:
         return cryptography.ECCx(None)
 
     def setUp(self):
-        self.keys = self._fake_keys()
-        self.op_keys = self._fake_keys()
+        self.provider_keys = self._fake_keys()
+        self.requestor_keys = self._fake_keys()
+        logger.debug('Provider key: %s',
+                     base64.b64encode(self.provider_pub_key).decode())
+        logger.debug('Requestor key: %s',
+                     base64.b64encode(self.requestor_pub_key).decode())
 
     @property
-    def priv_key(self):
-        return self.keys.raw_privkey
+    def provider_priv_key(self):
+        return self.provider_keys.raw_privkey
 
     @property
-    def pub_key(self):
-        return self.keys.raw_pubkey
+    def provider_pub_key(self):
+        return self.provider_keys.raw_pubkey
 
-    def _send_to_concent(
-            self, msg: Message,
-            signing_key=None,
-            public_key=None,
-            other_party_public_key=None):
+    @property
+    def requestor_priv_key(self):
+        return self.requestor_keys.raw_privkey
+
+    @property
+    def requestor_pub_key(self):
+        return self.requestor_keys.raw_pubkey
+
+    def gen_ttc_kwargs(self, prefix=''):
+        kwargs = {
+            'sign__privkey': self.requestor_priv_key,
+            'requestor_public_key': self.requestor_pub_key,
+            'provider_public_key': self.provider_pub_key,
+        }
+        return {prefix + k: v for k, v in kwargs.items()}
+
+    def gen_rtc_kwargs(self, prefix=''):
+        kwargs = {'sign__privkey': self.provider_priv_key}
+        return {prefix + k: v for k, v in kwargs.items()}
+
+    def send_to_concent(self, msg: Message, signing_key=None):
         return client.send_to_concent(
             msg,
-            signing_key or self.priv_key,
-            public_key or self.pub_key,
-            other_party_public_key=other_party_public_key,
+            signing_key=signing_key or self.provider_priv_key,
         )
 
-    def _load_response(self, response, priv_key=None):
-        return golem_messages.load(
-            response,
-            priv_key or self.priv_key,
-            variables.CONCENT_PUBKEY,
+    def receive_from_concent(self, signing_key=None, public_key=None):
+        return client.receive_from_concent(
+            signing_key=signing_key or self.provider_priv_key,
+            public_key=public_key or self.provider_pub_key,
         )
+
+    def provider_send(self, msg):
+        logger.debug("Provider sends %s", msg)
+        return self.send_to_concent(
+            msg,
+            signing_key=self.provider_keys.raw_privkey
+        )
+
+    def requestor_send(self, msg):
+        logger.debug("Requestor sends %s", msg)
+        return self.send_to_concent(
+            msg,
+            signing_key=self.requestor_keys.raw_privkey
+        )
+
+    def provider_receive(self):
+        response = self.receive_from_concent()
+        if not response:
+            logger.debug("Provider got empty response")
+            return None
+
+        msg = self.provider_load_response(response)
+        logger.debug("Provider receives %s", msg)
+        return msg
+
+    def requestor_receive(self):
+        response = self.receive_from_concent(
+            signing_key=self.requestor_keys.raw_privkey,
+            public_key=self.requestor_keys.raw_pubkey
+        )
+        if not response:
+            logger.debug("Requestor got empty response")
+            return None
+
+        msg = self.requestor_load_response(response)
+        logger.debug("Requestor receives %s", msg)
+        return msg
+
+    @staticmethod
+    def _load_response(response, priv_key):
+        return golem_messages.load(
+            response, priv_key, variables.CONCENT_PUBKEY)
+
+    def provider_load_response(self, response):
+        return self._load_response(response, self.provider_priv_key)
+
+    def requestor_load_response(self, response):
+        return self._load_response(response, self.requestor_priv_key)
 
     def assertSamePayload(self, msg1, msg2):
         dump1 = serializer.dumps(msg1.slots())
@@ -71,7 +140,7 @@ class ConcentBaseTest:
 
         self.assertEqual(
             client_key,
-            base64.standard_b64decode(ftt.authorized_client_public_key)
+            ftt.authorized_client_public_key
         )
         self.assertGreater(
             ftt.token_expiration_deadline,
