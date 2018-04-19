@@ -240,10 +240,10 @@ class TestConcentClientService(testutils.TempDirFixture):
         with mock.patch(mock_path) as sleep_mock:
             self.concent_service._loop()
             sleep_mock.assert_called_once_with()
+
         send_mock.assert_called_once_with(
             self.msg,
             self.concent_service.keys_auth._private_key,
-            self.concent_service.keys_auth.public_key,
         )
 
         assert not self.concent_service._delayed
@@ -284,7 +284,6 @@ class TestConcentClientService(testutils.TempDirFixture):
         send_mock.assert_called_once_with(
             self.msg,
             self.concent_service.keys_auth._private_key,
-            self.concent_service.keys_auth.public_key,
         )
         react_mock.assert_called_once_with(data, response_to=self.msg)
 
