@@ -3,7 +3,6 @@ import filecmp
 import logging
 import os
 import tempfile
-import time
 import shutil
 import unittest
 from unittest import mock

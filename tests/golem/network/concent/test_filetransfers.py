@@ -50,8 +50,6 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
         return {
             'Authorization': 'Golem ' + base64.b64encode(
                 file_transfer_token.serialize()).decode(),
-            'Concent-Client-Public-Key': base64.b64encode(
-                self.keys_auth.public_key).decode(),
         }
 
     def tearDown(self):
@@ -188,6 +186,7 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
 
         args, kwargs = requests_mock.call_args
         self.assertEqual(args, (upload_address, ))
+        self.assertIsNotNone(kwargs.get('headers').pop('Concent-Auth'))
         self.assertEqual(kwargs.get('headers'), headers)
 
     @mock.patch('golem.network.concent.filetransfers.requests.get')
@@ -201,7 +200,7 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
             file_transfer_token=ftt,
         )
 
-        download_address = ftt.storage_cluster_address + 'download' + \
+        download_address = ftt.storage_cluster_address + 'download/' + \
             ftt.files[0].get('path')
 
         self.cfs.download(request)
@@ -210,5 +209,8 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
 
         args, kwargs = requests_mock.call_args
         self.assertEqual(args, (download_address, ))
+        self.assertIsNotNone(kwargs.get('headers').pop('Concent-Auth'))
         self.assertEqual(
-            kwargs.get('headers'), self._mock_get_auth_headers(ftt))
+            kwargs.get('headers'),
+            self._mock_get_auth_headers(ftt)
+        )
