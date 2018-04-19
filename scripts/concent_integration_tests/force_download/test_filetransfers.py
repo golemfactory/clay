@@ -3,6 +3,7 @@ import filecmp
 import logging
 import os
 import tempfile
+import time
 import shutil
 import unittest
 from unittest import mock
@@ -34,9 +35,17 @@ class ForceGetTaskResultFiletransferTest(ForceDownloadBaseTest,
         self.addCleanup(os.unlink, self.filename)
 
         self.provider_cfts = ConcentFiletransferService(
-            keys_auth=mock.Mock(public_key=self.provider_pub_key))
+            keys_auth=mock.Mock(
+                public_key=self.provider_pub_key,
+                _private_key=self.provider_priv_key
+            )
+        )
         self.requestor_cfts = ConcentFiletransferService(
-            keys_auth=mock.Mock(public_key=self.requestor_pub_key))
+            keys_auth=mock.Mock(
+                public_key=self.requestor_pub_key,
+                _private_key=self.requestor_priv_key
+            )
+        )
 
     @property
     def size(self):
@@ -85,7 +94,7 @@ class ForceGetTaskResultFiletransferTest(ForceDownloadBaseTest,
 
         self.assertEqual(upload_response.status_code, 200)
 
-        fgtrd = self.provider_receive()
+        fgtrd = self.requestor_receive()
         self.assertIsInstance(fgtrd, concent_msg.ForceGetTaskResultDownload)
         self.assertEqual(fgtrd.subtask_id, fgtru.subtask_id)
         self.assertSamePayload(
