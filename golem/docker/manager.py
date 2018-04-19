@@ -87,7 +87,7 @@ class DockerManager(DockerConfigManager):
     @report_calls(Component.docker, 'instance.check')
     def check_environment(self):
         if self._env_checked:
-            return True
+            return bool(self.docker_machine)
 
         if is_windows():
             import pythoncom
