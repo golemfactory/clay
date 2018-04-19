@@ -272,6 +272,10 @@ class ResourceHandshakeSessionMixin:
 
     def _nonce_downloaded(self, key_id, files):
         handshake = self._get_handshake(key_id)
+        if not handshake:
+            logger.debug('Resource handshake: nonce downloaded after '
+                         'handshake failure with peer %r', key_id)
+            return
 
         try:
             path = files[0]
