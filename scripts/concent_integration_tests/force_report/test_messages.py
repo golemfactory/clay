@@ -4,6 +4,8 @@ import unittest
 from golem_messages import factories as msg_factories
 from golem_messages import message
 
+from golem.core import variables
+
 from ..base import ConcentBaseTest
 
 
@@ -97,13 +99,71 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
         )
 
         response = self.requestor_send(rrct)
-        raise Exception(response)
-        # @todo need to figure out what exactly happens here
+
+        # @todo ensure that `None` is the correct response here
+        # I have a feeling it should be `VerdictReportComputedTask`
+
+        self.assertIsNone(response)
+
+        frct_response = self.provider_receive()
+        self.assertIsInstance(
+            frct_response, message.concents.ForceReportComputedTaskResponse)
+
+        arct_rcv = frct_response.ack_report_computed_task
+        self.assertIsInstance(arct_rcv, message.tasks.AckReportComputedTask)
+        arct_rcv.verify_signature(variables.CONCENT_PUBKEY)
+        self.assertEqual(arct_rcv.report_computed_task,
+                         frct.report_computed_task)
+
+    def send_and_verify_received_reject(self, rrct):
+        response = self.requestor_send(rrct)
+        self.assertIsNone(response)
+
+        frct_response = self.provider_receive()
+        self.assertIsInstance(
+            frct_response, message.concents.ForceReportComputedTaskResponse)
+
+        rrct_rcv = frct_response.reject_report_computed_task
+        rrct_rcv.verify_signature(self.requestor_pub_key)
+        self.assertEqual(rrct_rcv, rrct)
 
     def test_reject_rct_cannot_compute_task(self):
-        pass
-        # @todo
+        frct = self.get_frct()
+        self.provider_send(frct)
+        frct_rcv = self.requestor_receive()
+
+        ttc = frct.report_computed_task.task_to_compute  # noqa pylint:disable=no-member
+        cct = msg_factories.tasks.CannotComputeTaskFactory(
+            task_to_compute=ttc,
+            subtask_id=ttc.subtask_id,
+            sign__privkey=self.provider_priv_key,
+        )
+
+        rrct = message.tasks.RejectReportComputedTask(
+            task_to_compute=frct_rcv.report_computed_task.task_to_compute,
+            cannot_compute_task=cct,
+            reason=message.tasks.RejectReportComputedTask.
+            REASON.GotMessageCannotComputeTask,
+        )
+        self.send_and_verify_received_reject(rrct)
 
     def test_reject_rct_task_failure(self):
-        pass
-        # @todo
+        frct = self.get_frct()
+        self.provider_send(frct)
+        frct_rcv = self.requestor_receive()
+
+        ttc = frct.report_computed_task.task_to_compute  # noqa pylint:disable=no-member
+        tf = msg_factories.tasks.TaskFailureFactory(
+            task_to_compute=ttc,
+            subtask_id=ttc.subtask_id,
+            sign__privkey=self.provider_priv_key,
+        )
+
+        rrct = message.tasks.RejectReportComputedTask(
+            task_to_compute=frct_rcv.report_computed_task.task_to_compute,
+            task_failure=tf,
+            reason=message.tasks.RejectReportComputedTask.
+            REASON.GotMessageTaskFailure,
+        )
+
+        self.send_and_verify_received_reject(rrct)
