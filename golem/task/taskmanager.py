@@ -807,10 +807,9 @@ class TaskManager(TaskEventListener):
         task_type_name = task.task_definition.task_type.lower()
         task_type = self.task_types[task_type_name]
         state = self.query_task_state(task.header.task_id)
-        timeout = task.task_definition.full_task_timeout
 
         dictionary = {
-            'duration': max(timeout - (state.remaining_time or 0), 0),
+            'duration': state.elapsed_time,
             # single=True retrieves one preview file. If rendering frames,
             # it's the preview of the most recently computed frame.
             'preview': task_type.get_preview(task, single=True)
