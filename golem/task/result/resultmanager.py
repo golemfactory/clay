@@ -4,6 +4,7 @@ import abc
 import os
 
 from golem.core.async import AsyncRequest, async_run
+from golem.core.deferred import sync_wait
 from golem.core.fileencrypt import FileEncryptor
 from .resultpackage import EncryptingTaskResultPackager, ExtractedPackage
 
@@ -53,21 +54,24 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
         if os.path.exists(file_path):
             os.remove(file_path)
 
-        def package_downloaded(*args, **kwargs):
+        def package_downloaded(*_args, **_kwargs):
             request = AsyncRequest(self.extract, file_path,
                                    output_dir=output_dir,
                                    key_or_secret=key_or_secret)
             async_run(request, package_extracted, error)
 
-        def package_extracted(extracted_pkg, *args, **kwargs):
+        def package_extracted(extracted_pkg, *_args, **_kwargs):
             success(extracted_pkg, content_hash, task_id, subtask_id)
 
         resource = content_hash, [file_name]
-        self.resource_manager.pull_resource(resource, task_id,
-                                            client_options=client_options,
-                                            success=package_downloaded,
-                                            error=error,
-                                            async_=async_)
+        self.resource_manager.pull_resource(
+            resource, task_id,
+            client_options=client_options,
+            async_=async_
+        ).addCallbacks(
+            package_downloaded,
+            lambda t: error(*t)
+        )
 
     def create(self, node, task_result, key_or_secret=None):
         if not key_or_secret:
@@ -87,8 +91,10 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
         size = os.path.getsize(path)
 
         self.resource_manager.add_file(path, task_result.task_id)
-        for resource in self.resource_manager.get_resources(
-                task_result.task_id):
+        resources = sync_wait(self.resource_manager.get_resources(
+            task_result.task_id))
+
+        for resource in resources:
             if file_name in resource.files:
                 return resource.hash, file_path, sha1, size
 

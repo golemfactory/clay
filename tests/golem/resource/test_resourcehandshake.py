@@ -170,8 +170,15 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
 
     def test_react_to_resource_handshake_start_download_failure(self, *_):
         session = MockTaskSession(self.tempdir, successful_downloads=False)
+
+        def mock_pull(*_args, **_kwargs):
+            deferred = Deferred()
+            deferred.errback((Exception('Test exception'), None, None))
+            return deferred
+
         session._start_handshake = Mock()
         session._handshake_error = Mock()
+        session.resource_manager.pull_resource = Mock(side_effect=mock_pull)
 
         msg = message.ResourceHandshakeStart(resource=str(uuid.uuid4()))
         handshake = ResourceHandshake(self.key_id)
@@ -437,6 +444,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         assert session._is_peer_blocked(key_id)
 
 
+@patch('golem.task.taskmanager.get_resource_manager_proxy')
 @patch('twisted.internet.reactor', create=True)
 @patch('twisted.internet.task', create=True)
 class TestResourceHandshakeShare(DatabaseFixture):
@@ -661,12 +669,14 @@ class MockTaskSession(ResourceHandshakeSessionMixin):
         )
 
 
-def _pull_resource(self, entry, task_id, success, error, **kwargs):
+def _pull_resource(self, entry, task_id, **kwargs):
     if not self.successful_downloads:
-        return error(RuntimeError('Test exception'))
+        deferred = Deferred()
+        deferred.errback(RuntimeError('Test exception'))
+        return deferred
 
     kwargs['async_'] = False
-    return self.pull_resource_org(entry, task_id, success, error, **kwargs)
+    return self.pull_resource_org(entry, task_id, **kwargs)
 
 
 def _add_file(self, path, task_id, **kwargs):

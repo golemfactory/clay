@@ -78,15 +78,22 @@ class TaskServerTestBase(LogTestCase,
         super().setUp()
         random.seed()
         self.ccd = ClientConfigDescriptor()
-        with patch(
-                'golem.network.concent.handlers_library.HandlersLibrary'
-                '.register_handler',):
-            self.ts = TaskServer(
-                node=Node(),
-                config_desc=self.ccd,
-                client=self.client,
-                use_docker_manager=False,
-            )
+
+        resource_manager = Mock(
+            storage=Mock(get_path=lambda *x: x[1]),
+        )
+
+        with patch('golem.network.concent.handlers_library.HandlersLibrary'
+                   '.register_handler'):
+            with patch('golem.task.taskmanager.get_resource_manager_proxy',
+                       return_value=resource_manager):
+                self.ts = TaskServer(
+                    node=Node(),
+                    config_desc=self.ccd,
+                    client=self.client,
+                    use_docker_manager=False,
+                )
+                self.ts.create_and_set_result_package = Mock()
 
     def tearDown(self):
         LogTestCase.tearDown(self)

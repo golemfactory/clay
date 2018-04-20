@@ -6,7 +6,9 @@ from functools import partial
 from twisted.internet.defer import Deferred
 
 from golem.core.fileshelper import common_dir
-from golem.network.hyperdrive.client import HyperdriveAsyncClient
+from golem.network.hyperdrive.client import HyperdriveAsyncClient, \
+    HyperdriveClientOptions
+from golem.resource.base.resourcesmanager import IResourceManager
 from golem.resource.client import ClientHandler, DummyClient
 from golem.resource.hyperdrive.resource import Resource, ResourceStorage, \
     ResourceError
@@ -72,10 +74,9 @@ def log_error(msg, exc):
     return exc
 
 
-class HyperdriveResourceManager(ClientHandler):
+class HyperdriveResourceManager(ClientHandler, IResourceManager):
 
-    def __init__(self, dir_manager, daemon_address=None, config=None,
-                 resource_dir_method=None):
+    def __init__(self, dir_manager, config=None, resource_dir_method=None):
 
         super().__init__(config)
 
@@ -84,7 +85,7 @@ class HyperdriveResourceManager(ClientHandler):
                                        dir_manager.get_task_resource_dir)
 
     @staticmethod
-    def build_client_options(peers=None, **kwargs):
+    def build_client_options(peers=None, **kwargs) -> HyperdriveClientOptions:
         return HyperdriveAsyncClient.build_options(peers=peers, **kwargs)
 
     @staticmethod
@@ -269,17 +270,17 @@ class HyperdriveResourceManager(ClientHandler):
                                     .format(resource.path, resource.hash))
             logger.warning("Resource does not exist: %r", resource.path)
 
-    def pull_resource(self, entry, task_id,
-                      success, error,
-                      client=None, client_options=None, async_=True):
+    def pull_resource(self, entry, task_id, client_options=None, async_=True):
 
+        deferred = Deferred()
         resource_path = self.storage.get_path('', task_id)
         resource = Resource(resource_hash=entry[0], task_id=task_id,
                             files=entry[1], path=resource_path)
 
         if resource.files and self.storage.exists(resource):
-            success(entry, resource.files, task_id)
-            return
+            result = entry, resource.files, task_id
+            deferred.callback(result)
+            return deferred
 
         def success_wrapper(response, **_):
             logger.debug("Resource manager: %s (%s) downloaded",
@@ -287,36 +288,40 @@ class HyperdriveResourceManager(ClientHandler):
 
             self._cache_resource(resource)
             files = self._parse_pull_response(response, task_id)
-            success(entry, files, task_id)
+
+            result_ = entry, files, task_id
+            deferred.callback(result_)
 
         def error_wrapper(exception, **_):
             logger.warning("Resource manager: error downloading %s (%s): %s",
                            resource.path, resource.hash, exception)
-            error(exception, entry, task_id)
+
+            result_ = exception, entry, task_id
+            deferred.errback(result_)
 
         path = self.storage.get_path(resource.path, task_id)
         local = self.storage.cache.get_by_hash(resource.hash)
+
         os.makedirs(path, exist_ok=True)
 
         if local:
             try:
                 self.storage.copy(local.path, resource.path, task_id)
-                success_wrapper(entry)
+                deferred.callback((entry, ))
             except Exception as exc:
-                error_wrapper(exc)
+                deferred.errback((exc, ))
         else:
             self._pull(resource, task_id,
                        success=success_wrapper,
                        error=error_wrapper,
-                       client=client,
                        client_options=client_options,
                        async_=async_)
 
-    def _pull(self, resource: Resource, task_id: str,
-              success, error,
-              client=None, client_options=None, async_=True):
+        return deferred
 
-        client = client or self.client
+    def _pull(self, resource: Resource, task_id: str,
+              success, error, client_options=None, async_=True):
+
         kwargs = dict(
             content_hash=resource.hash,
             filename=self.storage.relative_path(resource.path, task_id),
@@ -325,11 +330,11 @@ class HyperdriveResourceManager(ClientHandler):
         )
 
         if async_:
-            deferred = self._retry_async(client.get_async, **kwargs)
+            deferred = self._retry_async(self.client.get_async, **kwargs)
             deferred.addCallbacks(success, error)
         else:
             try:
-                success(self._retry(client.get, **kwargs))
+                success(self._retry(self.client.get, **kwargs))
             except Exception as e:
                 error(e)
 

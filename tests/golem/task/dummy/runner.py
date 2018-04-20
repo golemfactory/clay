@@ -6,19 +6,18 @@ difficulty is configurable, see comments in DummyTaskParameters.
 import atexit
 import logging
 import os
+import sys
 from os import path
 import pathlib
 import re
 import shutil
 import subprocess
-import sys
 import tempfile
 import time
 from unittest import mock
 from threading import Thread
 
 from ethereum.utils import denoms
-from twisted.internet import reactor
 
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -57,6 +56,12 @@ def report(msg):
 def override_ip_info(*_, **__):
     from golem.network.stun.pystun import OpenInternet
     return OpenInternet, '1.2.3.4', 40102
+
+
+def stop_reactor():
+    from twisted.internet import reactor
+    if reactor.running:
+        reactor.callFromThread(reactor.stop)
 
 
 def create_client(datadir):
@@ -110,7 +115,7 @@ def run_requesting_node(datadir, num_subtasks=3):
 
     def shutdown():
         client and client.quit()
-        reactor.running and reactor.callFromThread(reactor.stop)
+        stop_reactor()
         logging.shutdown()
         if os.path.exists(datadir):
             shutil.rmtree(datadir)
@@ -119,6 +124,9 @@ def run_requesting_node(datadir, num_subtasks=3):
 
     global node_kind
     node_kind = "REQUESTOR"
+
+    from golem.resource.process import start_resource_process
+    start_resource_process(datadir)
 
     start_time = time.time()
     report("Starting in {}".format(datadir))
@@ -152,6 +160,7 @@ def run_requesting_node(datadir, num_subtasks=3):
             shutdown()
             return
 
+    from twisted.internet import reactor
     reactor.callInThread(report_status)
     reactor.run()
     return client  # Used in tests, with mocked reactor
@@ -162,7 +171,7 @@ def run_computing_node(datadir, peer_address, fail_after=None):
 
     def shutdown():
         client and client.quit()
-        reactor.running and reactor.callFromThread(reactor.stop)
+        stop_reactor()
         logging.shutdown()
         if os.path.exists(datadir):
             shutil.rmtree(datadir)
@@ -171,6 +180,9 @@ def run_computing_node(datadir, peer_address, fail_after=None):
 
     global node_kind
     node_kind = "COMPUTER "
+
+    from golem.resource.process import start_resource_process
+    start_resource_process(datadir)
 
     start_time = time.time()
     report("Starting in {}".format(datadir))
@@ -205,11 +217,11 @@ def run_computing_node(datadir, peer_address, fail_after=None):
         while True:
             if fail_after and time.time() - t0 > fail_after:
                 report("Failure!")
-                reactor.callFromThread(reactor.stop)
                 shutdown()
                 return
             time.sleep(1)
 
+    from twisted.internet import reactor
     reactor.callInThread(report_status, fail_after)
     reactor.run()
     return client  # Used in tests, with mocked reactor

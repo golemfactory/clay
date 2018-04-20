@@ -3,12 +3,13 @@ from typing import Iterable, Optional, Union
 import requests
 
 from golem.core.common import deadline_to_timeout
+from golem.core.deferred import sync_wait
 from golem.core.hostaddress import ip_address_private
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     to_hyperg_peer
 from golem.resource.hyperdrive import resource as hpd_resource
-
+from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 
 logger = logging.getLogger(__name__)
 
@@ -38,8 +39,9 @@ class TaskResourcesMixin:
 
     def get_resources(self, task_id):
         resource_manager = self._get_resource_manager()
-        resources = resource_manager.get_resources(task_id)
-        return resource_manager.to_wire(resources)
+        resources = sync_wait(resource_manager.get_resources(task_id),
+                              timeout=None)
+        return HyperdriveResourceManager.to_wire(resources)
 
     def restore_resources(self) -> None:
         task_manager = getattr(self, 'task_manager')
@@ -79,10 +81,15 @@ class TaskResourcesMixin:
         options.timeout = timeout
 
         try:
-            resource_hash, _ = resource_manager.add_task(
+            deferred = resource_manager.add_task(
                 files, task_id, resource_hash=resource_hash,
-                client_options=options, async_=False
+                client_options=options,
             )
+            result = sync_wait(deferred, timeout=None)
+            if isinstance(result, Exception):
+                raise result
+
+            resource_hash, _ = result
         except ConnectionError as exc:
             self._restore_resources_error(task_id, exc)
         except (hpd_resource.ResourceError, requests.HTTPError) as exc:
@@ -160,7 +167,6 @@ class TaskResourcesMixin:
         """
 
         node = getattr(self, 'node')
-        resource_manager = self._get_resource_manager()
 
         # Create a list of private addresses
         prv_addresses = [node.prv_addr] + node.prv_addresses
@@ -173,7 +179,7 @@ class TaskResourcesMixin:
 
         peers.insert(-1 if prefer_prv else 0, pub_peer)
 
-        return resource_manager.build_client_options(peers=peers)
+        return HyperdriveResourceManager.build_client_options(peers=peers)
 
     def _verify_peer(self, ip_address, _port):
         is_accessible = self.is_address_in_network  # noqa # pylint: disable=no-member
