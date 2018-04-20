@@ -194,9 +194,9 @@ class TaskManager(TaskEventListener):
 
     def dump_task(self, task_id: str) -> None:
         logger.debug('DUMP TASK %r', task_id)
+        filepath = self._dump_filepath(task_id)
         try:
             data = self.tasks[task_id], self.tasks_states[task_id]
-            filepath = self._dump_filepath(task_id)
             logger.debug('DUMPING TASK %r', filepath)
             with filepath.open('wb') as f:
                 pickle.dump(data, f, protocol=2)
