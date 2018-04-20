@@ -678,18 +678,24 @@ class TaskManager(TaskEventListener):
         return tasks_progresses
 
     @handle_task_key_error
+    def assert_task_can_be_restarted(self, task_id: str) -> None:
+        task_state = self.tasks_states[task_id]
+        if task_state.status == TaskStatus.restarted:
+            raise self.AlreadyRestartedError()
+
+    @handle_task_key_error
     def put_task_in_restarted_state(self, task_id, clear_tmp=True):
         """
         When restarting task, it's put in a final state 'restarted' and
         a new one is created.
         """
-        task_state = self.tasks_states[task_id]
-        if task_state.status == TaskStatus.restarted:
-            raise self.AlreadyRestartedError()
+        self.assert_task_can_be_restarted(task_id)
         if clear_tmp:
             self.dir_manager.clear_temporary(task_id)
 
+        task_state = self.tasks_states[task_id]
         task_state.status = TaskStatus.restarted
+
         for ss in self.tasks_states[task_id].subtask_states.values():
             if ss.subtask_status != SubtaskStatus.failure:
                 ss.subtask_status = SubtaskStatus.restarted

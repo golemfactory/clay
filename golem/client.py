@@ -678,9 +678,9 @@ class Client(HardwarePresetsMixin):
         # Task state is changed to restarted and stays this way until it's
         # deleted from task manager.
         try:
-            task_manager.put_task_in_restarted_state(task_id)
+            task_manager.assert_task_can_be_restarted(task_id)
         except task_manager.AlreadyRestartedError:
-            return None
+            return False, 'Task already restarted'
 
         # Create new task that is a copy of the definition of the old one.
         # It has a new deadline and a new task id.
@@ -689,7 +689,11 @@ class Client(HardwarePresetsMixin):
                 task_manager.tasks[task_id]))
         del task_dict['id']
 
-        return self.create_task(task_dict)
+        success, msg = self.create_task(task_dict)
+        if success:
+            task_manager.put_task_in_restarted_state(task_id)
+
+        return success, msg
 
     def restart_subtasks_from_task(
             self, task_id: str, subtask_ids: Iterable[str]):
