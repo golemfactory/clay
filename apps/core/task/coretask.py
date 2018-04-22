@@ -221,7 +221,8 @@ class CoreTask(Task):
             subtask_id,
             self._deadline,
             verification_finished,
-            subtask_info=self.subtasks_given[subtask_id],
+            subtask_info={**self.subtasks_given[subtask_id],
+                          **{'owner': self.header.task_owner.key}},
             results=result_files,
             resources=self.task_resources,
             reference_data=self.get_reference_data()
