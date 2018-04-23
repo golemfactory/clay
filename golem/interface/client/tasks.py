@@ -90,6 +90,9 @@ class Tasks:
         deferred = Tasks.client.get_subtasks(id)
         result = sync_wait(deferred)
 
+        if isinstance(result, str):
+            return result
+
         if isinstance(result, list):
             for subtask in result:
                 values.append([
