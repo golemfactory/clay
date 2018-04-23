@@ -88,10 +88,10 @@ class Tasks:
         values = []
 
         deferred = Tasks.client.get_subtasks(id)
-        result = sync_wait(deferred)
+        result, error = sync_wait(deferred)
 
-        if isinstance(result, str):
-            return result
+        if error:
+            return error
 
         if isinstance(result, list):
             for subtask in result:
@@ -109,7 +109,10 @@ class Tasks:
     @command(argument=id_req, help="Restart a task")
     def restart(self, id):
         deferred = Tasks.client.restart_task(id)
-        return sync_wait(deferred)
+        ok, error = sync_wait(deferred)
+        if not ok:
+            return error
+        return None
 
     @command(argument=id_req, help="Abort a task")
     def abort(self, id):
@@ -230,7 +233,10 @@ class Subtasks:
     @command(argument=subtask_id, help="Show subtask details")
     def show(self, subtask_id):
         deferred = Subtasks.client.get_subtask(subtask_id)
-        return sync_wait(deferred)
+        result, error = sync_wait(deferred)
+        if error:
+            return error
+        return result
 
     @command(argument=subtask_id, help="Restart a subtask")
     def restart(self, subtask_id):
