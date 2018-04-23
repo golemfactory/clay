@@ -4,6 +4,7 @@ from os import path
 
 from apps.rendering.benchmark.minilight.src.minilight import make_perf_test
 
+import golem
 from golem.core.common import get_golem_path
 from golem.model import Performance
 
@@ -51,7 +52,8 @@ class UnsupportReason(enum.Enum):
     NETWORK_REQUEST = 'cannot_perform_network_request'
 
 
-class Environment():
+class Environment:
+    DEFAULT_BENCHMARK_FUNCTION = make_perf_test
 
     @classmethod
     def get_id(cls):
@@ -107,7 +109,9 @@ class Environment():
         :return float:
         """
         try:
-            perf = Performance.get(Performance.environment_id == cls.get_id())
+            perf = Performance.get(
+                Performance.environment_id == cls.get_id(),
+                Performance.golem_version == golem.__version__)
         except Performance.DoesNotExist:
             return 0.0
         return perf.value
@@ -130,7 +134,7 @@ class Environment():
                     desc += "\t * " + s + "\n"
                 desc += "\n"
         if self.long_description:
-            desc += "Additional informations:\n" + self.long_description
+            desc += "Additional information:\n" + self.long_description
         return desc
 
     def get_source_code(self):
@@ -142,7 +146,8 @@ class Environment():
     def run_default_benchmark(cls, num_cores=1, save=False):
         test_file = path.join(get_golem_path(), 'apps', 'rendering',
                               'benchmark', 'minilight', 'cornellbox.ml.txt')
-        estimated_performance = make_perf_test(test_file, num_cores=1)
+        estimated_performance = cls.DEFAULT_BENCHMARK_FUNCTION(
+            test_file, num_cores=num_cores)
         if save:
             Performance.update_or_create(cls.get_id(), estimated_performance)
         return estimated_performance

@@ -76,13 +76,12 @@ class TaskServer(
             apps_manager=apps_manager
         )
         benchmarks = self.task_manager.apps_manager.get_benchmarks()
-        self.benchmark_manager = BenchmarkManager(config_desc.node_name, self,
+        self.benchmark_manager = BenchmarkManager(config_desc, self,
                                                   client.datadir, benchmarks)
-        udmm = use_docker_manager
         self.task_computer = TaskComputer(
             config_desc.node_name,
             task_server=self,
-            use_docker_manager=udmm)
+            use_docker_manager=use_docker_manager)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.task_sessions = {}

@@ -1079,27 +1079,30 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         benchmark_manager = self.client.task_server.benchmark_manager
         benchmark_manager.run_benchmark = Mock()
         benchmark_manager.run_benchmark.side_effect = lambda b, tb, e, c, ec: \
-            c(True)
+            c(101)
 
         with self.assertRaises(Exception):
             sync_wait(self.client.run_benchmark(str(uuid.uuid4())))
 
-        sync_wait(self.client.run_benchmark(BlenderEnvironment.get_id()))
+        res = sync_wait(self.client.run_benchmark(BlenderEnvironment.get_id()))
+        self.assertEqual(101, res)
+        self.assertEqual(1, benchmark_manager.run_benchmark.call_count)
+        self.assertIsInstance(benchmark_manager.run_benchmark.call_args[0][0],
+                              BlenderBenchmark)
 
-        assert benchmark_manager.run_benchmark.call_count == 1
-        assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
-                          BlenderBenchmark)
+        res = sync_wait(
+            self.client.run_benchmark(LuxRenderEnvironment.get_id()))
+        self.assertEqual(101, res)
+        self.assertEqual(2, benchmark_manager.run_benchmark.call_count)
+        self.assertIsInstance(benchmark_manager.run_benchmark.call_args[0][0],
+                              LuxBenchmark)
 
-        sync_wait(self.client.run_benchmark(LuxRenderEnvironment.get_id()))
-
-        assert benchmark_manager.run_benchmark.call_count == 2
-        assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
-                          LuxBenchmark)
-
-        result = sync_wait(self.client.run_benchmark(
-            DefaultEnvironment.get_id()))
-        assert result > 100.0
-        assert benchmark_manager.run_benchmark.call_count == 2
+        benchmark_manager.run_default_benchmark = Mock()
+        benchmark_manager.run_default_benchmark.side_effect = \
+            lambda cb, error_cb: cb(101)
+        res = sync_wait(self.client.run_benchmark(DefaultEnvironment.get_id()))
+        self.assertEqual(101, res)
+        self.assertEqual(1, benchmark_manager.run_default_benchmark.call_count)
 
     def test_run_benchmark_fail(self, *_):
         from apps.dummy.dummyenvironment import DummyTaskEnvironment
@@ -1113,14 +1116,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                       side_effect=raise_exc), \
                 self.assertRaisesRegex(Exception, 'Test exception'):
             sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
-
-    @patch("golem.task.benchmarkmanager.BenchmarkRunner")
-    def test_run_benchmarks(self, br_mock, *_):
-        benchmark_manager = self.client.task_server.benchmark_manager
-        benchmark_manager.run_all_benchmarks()
-        f = br_mock.call_args[0][2]  # get success callback
-        f(1)
-        assert br_mock.call_count == 2
 
     def test_config_changed(self, *_):
         c = self.client

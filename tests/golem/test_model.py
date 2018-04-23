@@ -2,6 +2,7 @@ from datetime import datetime
 
 from peewee import IntegrityError
 
+import golem
 import golem.model as m
 from golem.network.p2p.node import Node
 from golem.testutils import DatabaseFixture
@@ -128,6 +129,7 @@ class TestPerformance(DatabaseFixture):
 
         perf.environment_id = "ENV1"
         perf.save()
+        self.assertEqual(golem.__version__, perf.golem_version)
 
         perf = m.Performance(environment_id="ENV2", value=138.18)
         perf.save()
@@ -137,8 +139,9 @@ class TestPerformance(DatabaseFixture):
         env2 = m.Performance.get(m.Performance.environment_id == "ENV2")
         assert env2.value == 138.18
 
-        # environment_id must be unique
-        perf3 = m.Performance(environment_id="ENV1", value=1472.11)
+        # (environment_id, golem_version) pair must be unique
+        perf3 = m.Performance(environment_id="ENV1",
+                              golem_version=golem.__version__, value=1472.11)
         with self.assertRaises(IntegrityError):
             perf3.save()
 
@@ -148,13 +151,17 @@ class TestPerformance(DatabaseFixture):
 
     def test_update_or_create(self):
         m.Performance.update_or_create("ENVX", 100)
-        env = m.Performance.get(m.Performance.environment_id == "ENVX")
-        assert env.value == 100
+        perf = m.Performance.get(m.Performance.environment_id == "ENVX")
+        self.assertEqual(100, perf.value)
+        self.assertEqual(golem.__version__, perf.golem_version)
         m.Performance.update_or_create("ENVX", 200)
-        env = m.Performance.get(m.Performance.environment_id == "ENVX")
-        assert env.value == 200
+        perf = m.Performance.get(m.Performance.environment_id == "ENVX")
+        self.assertEqual(200, perf.value)
+        self.assertEqual(golem.__version__, perf.golem_version)
         m.Performance.update_or_create("ENVXXX", 300)
-        env = m.Performance.get(m.Performance.environment_id == "ENVXXX")
-        assert env.value == 300
-        env = m.Performance.get(m.Performance.environment_id == "ENVX")
-        assert env.value == 200
+        perf = m.Performance.get(m.Performance.environment_id == "ENVXXX")
+        self.assertEqual(300, perf.value)
+        self.assertEqual(golem.__version__, perf.golem_version)
+        perf = m.Performance.get(m.Performance.environment_id == "ENVX")
+        self.assertEqual(200, perf.value)
+        self.assertEqual(golem.__version__, perf.golem_version)

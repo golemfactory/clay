@@ -14,8 +14,12 @@ from golem.core import variables
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor, SenderThread
 from golem.monitorconfig import MONITOR_CONFIG
+from golem.environments.environment import Environment
 from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats, \
     EMPTY_FINISHED_SUMMARY
+
+from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.lux.luxenvironment import LuxRenderEnvironment
 
 random = Random(__name__)
 
@@ -208,6 +212,23 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
             port=port,
             description='timeout'
         )
+
+    @mock.patch.object(SenderThread, 'send')
+    def test_benchmark_results_are_being_sent_on_signal(self, thread_send_mock):
+        dispatcher.send(
+            signal='golem.benchmarks',
+            event='benchmarks_results_published',
+            results={
+                BlenderEnvironment.ENV_ID: 111,
+                LuxRenderEnvironment.ENV_ID: 222,
+                Environment.get_id(): 333
+            }
+        )
+        self.assertEqual(1, thread_send_mock.call_count)
+        performance_model = thread_send_mock.call_args[0][0]
+        self.assertEqual(111, performance_model.estimated_blender_performance)
+        self.assertEqual(222, performance_model.estimated_lux_performance)
+        self.assertEqual(333, performance_model.estimated_performance)
 
     @mock.patch('requests.post')
     def test_ping_request_time_diff_too_big(self, post_mock):

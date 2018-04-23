@@ -1,11 +1,16 @@
-from copy import copy
 import logging
 import os
+from threading import Thread
 from typing import Union
+
+from pydispatch import dispatcher
 
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.task.coretaskstate import TaskDesc
-
+import golem
+from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.threads import callback_wrapper
+from golem.environments.environment import Environment as DefaultEnvironment
 from golem.model import Performance
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
@@ -15,18 +20,59 @@ logger = logging.getLogger(__name__)
 
 
 class BenchmarkManager(object):
-    def __init__(self, node_name, task_server, root_path, benchmarks=None):
+    def __init__(self, config_desc: ClientConfigDescriptor, task_server,
+                 root_path, benchmarks=None) -> None:
+        self.config_desc = config_desc
         self.benchmarks = benchmarks
-        self.node_name = node_name
         self.task_server = task_server
         self.dir_manager = DirManager(root_path)
+        if not self.benchmarks_needed():
+            current_results = self._get_current_results()
+            self._publish_results(current_results)
+
+    @staticmethod
+    def _get_current_results():
+        query = Performance.select().where(
+            Performance.golem_version == golem.__version__)
+        return {perf.environment_id: perf.value for perf in query}
+
+    @staticmethod
+    def _publish_results(results):
+        if results:
+            dispatcher.send(
+                signal='golem.benchmarks',
+                event='benchmarks_results_published',
+                results=results
+            )
+
+    def _get_all_benchmark_ids(self):
+        benchmark_ids = {DefaultEnvironment.get_id()}
+        if self.benchmarks:
+            benchmark_ids.update(self.benchmarks.keys())
+        return benchmark_ids
 
     def benchmarks_needed(self):
-        if self.benchmarks:
-            query = Performance.select(Performance.environment_id)
-            data = set(benchmark.environment_id for benchmark in query)
-            return not set(self.benchmarks.keys()).issubset(data)
-        return False
+        query = Performance.select(Performance.environment_id).where(
+            Performance.golem_version == golem.__version__)
+        data = set(benchmark.environment_id for benchmark in query)
+        all_benchmark_ids = self._get_all_benchmark_ids()
+        return not all_benchmark_ids.issubset(data)
+
+    def run_default_benchmark(self, callback, errback=None):
+
+        def wrapped_errback(err):
+            logger.error('Running default benchmark failed: %s', str(err))
+            if errback is not None:
+                errback(err)
+
+        kwargs = {
+            'func': DefaultEnvironment.run_default_benchmark,
+            'callback': callback,
+            'errback': wrapped_errback,
+            'num_cores': self.config_desc.num_cores,
+            'save': True
+        }
+        Thread(target=callback_wrapper, kwargs=kwargs).start()
 
     def run_benchmark(self, benchmark, task_builder, env_id, success=None,
                       error=None):
@@ -61,22 +107,31 @@ class BenchmarkManager(object):
         br.run()
 
     def run_all_benchmarks(self, success=None, error=None):
-        benchmarks_copy = copy(self.benchmarks)
-        self.run_benchmarks(benchmarks_copy, success, error)
+        all_benchmark_ids = self._get_all_benchmark_ids()
+        self.run_benchmarks(all_benchmark_ids, success, error)
 
-    def run_benchmarks(self, benchmarks, success=None, error=None):
-        env_id, (benchmark, builder_class) = benchmarks.popitem()
+    def run_benchmarks(self, benchmark_ids, success=None, error=None):
+        benchmark_ids_iter = iter(benchmark_ids)
+        results = {}
+        env_id = None
 
-        def on_success(performance):
-            if benchmarks:
-                self.run_benchmarks(benchmarks, success, error)
-            else:
+        # Next benchmark is run only if the previous one completed successfully
+        def _run(performance_value):
+            nonlocal env_id
+            if env_id is not None:
+                results[env_id] = performance_value
+            env_id = next(benchmark_ids_iter, None)
+            if env_id is None:
+                self._publish_results(results)
                 if success:
-                    success(performance)
+                    success(results)
+            else:
+                self.run_benchmark_for_env_id(env_id, _run, error)
 
-        self.run_benchmark(benchmark, builder_class, env_id, on_success, error)
+        _run(None)
 
-    def _validate_task_state(self, task_state):
+    @staticmethod
+    def _validate_task_state(task_state):
         td = task_state.definition
         if not os.path.exists(td.main_program_file):
             logger.error("Main program file does not exist: {}".format(
@@ -85,9 +140,12 @@ class BenchmarkManager(object):
         return True
 
     def run_benchmark_for_env_id(self, env_id, callback, errback):
-        benchmark_data = self.benchmarks.get(env_id)
-        if benchmark_data:
-            self.run_benchmark(benchmark_data[0], benchmark_data[1],
-                               env_id, callback, errback)
+        if env_id != DefaultEnvironment.get_id():
+            benchmark_data = self.benchmarks.get(env_id)
+            if benchmark_data:
+                self.run_benchmark(benchmark_data[0], benchmark_data[1],
+                                   env_id, callback, errback)
+            else:
+                raise Exception("Unknown environment: {}".format(env_id))
         else:
-            raise Exception("Unknown environment: {}".format(env_id))
+            self.run_default_benchmark(callback, errback)

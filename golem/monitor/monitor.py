@@ -58,24 +58,23 @@ class SystemMonitor(object):
         self.node_info = NodeInfoModel(meta_data.cliid, meta_data.sessid)
         self.config = monitor_config
         self.send_payment_info = send_payment_info
+        self.sender_thread = self.__create_sender_thread()
         dispatcher.connect(self.dispatch_listener, signal='golem.monitor')
         dispatcher.connect(self.p2p_listener, signal='golem.p2p')
+        dispatcher.connect(self.benchmarks_listener, signal='golem.benchmarks')
 
-    @property
-    def sender_thread(self):
-        if not hasattr(self, '_sender_thread'):
-            host = self.config['HOST']
-            request_timeout = self.config['REQUEST_TIMEOUT']
-            sender_thread_timeout = self.config['SENDER_THREAD_TIMEOUT']
-            proto_ver = self.config['PROTO_VERSION']
-            self._sender_thread = SenderThread(
-                self.node_info,
-                host,
-                request_timeout,
-                sender_thread_timeout,
-                proto_ver
-            )
-        return self._sender_thread
+    def __create_sender_thread(self):
+        host = self.config['HOST']
+        request_timeout = self.config['REQUEST_TIMEOUT']
+        sender_thread_timeout = self.config['SENDER_THREAD_TIMEOUT']
+        proto_ver = self.config['PROTO_VERSION']
+        return SenderThread(
+            self.node_info,
+            host,
+            request_timeout,
+            sender_thread_timeout,
+            proto_ver
+        )
 
     def p2p_listener(self, event='default', ports=None, *_, **__):
         if event != 'listening':
@@ -130,6 +129,15 @@ class SystemMonitor(object):
             return
         getattr(self, method_name)(**kwargs)
 
+    # pylint: disable=unused-argument
+    def benchmarks_listener(self, sender, signal, event, results, **_kwargs):
+        if event == 'benchmarks_results_published':
+            msg = statssnapshotmodel.PerformanceModel(
+                self.meta_data.cliid,
+                self.meta_data.sessid,
+                results)
+            self.sender_thread.send(msg)
+
     # Initialization
 
     def start(self):
@@ -138,6 +146,8 @@ class SystemMonitor(object):
     def shut_down(self):
         dispatcher.disconnect(self.dispatch_listener, signal='golem.monitor')
         dispatcher.disconnect(self.p2p_listener, signal='golem.p2p')
+        dispatcher.disconnect(
+            self.benchmarks_listener, signal='golem.benchmarks')
         self.sender_thread.join()
 
     # Public interface

@@ -1,3 +1,7 @@
+# pylint: disable=too-many-instance-attributes,too-few-public-methods
+from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.lux.luxenvironment import LuxRenderEnvironment
+from golem.environments.environment import Environment
 from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats
 from .modelbase import BasicModel
 
@@ -24,6 +28,17 @@ class VMSnapshotModel(BasicModel):
         self.vm_snapshot = vm_snapshot
 
 
+class PerformanceModel(BasicModel):
+    def __init__(self, cliid, sessid, benchmarks_results: dict) -> None:
+        super().__init__('Performance', cliid, sessid)
+        self.estimated_blender_performance = benchmarks_results.get(
+            BlenderEnvironment.ENV_ID, 0)
+        self.estimated_lux_performance = benchmarks_results.get(
+            LuxRenderEnvironment.ENV_ID, 0)
+        self.estimated_performance = benchmarks_results.get(
+            Environment.get_id(), 0)
+
+
 class P2PSnapshotModel(BasicModel):
     def __init__(self, cliid, sessid, p2p_snapshot):
         super(P2PSnapshotModel, self).__init__("P2PSnapshot", cliid, sessid)
@@ -42,7 +57,6 @@ class ComputationTime(BasicModel):
 
 
 class RequestorStatsModel(BasicModel):
-    # pylint: disable=too-many-instance-attributes,too-few-public-methods
     def __init__(self, meta_data: BasicModel, current_stats: CurrentStats,
                  finished_stats: FinishedTasksStats):
         super().__init__("RequestorStats", meta_data.cliid, meta_data.sessid)

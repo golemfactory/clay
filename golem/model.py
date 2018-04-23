@@ -15,6 +15,7 @@ from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
                     FloatField, IntegerField, Model, SmallIntegerField,
                     TextField, BlobField)
 
+import golem
 from golem.core.simpleserializer import DictSerializable
 from golem.database import GolemSqliteDatabase
 from golem.network.p2p.node import Node
@@ -380,21 +381,28 @@ class TaskPreset(BaseModel):
 
 class Performance(BaseModel):
     """ Keeps information about benchmark performance """
-    environment_id = CharField(null=False, index=True, unique=True)
+    environment_id = CharField(null=False)
+    golem_version = CharField(null=False, default=golem.__version__)
     value = FloatField(default=0.0)
 
     class Meta:
         database = db
+        indexes = (
+            (('environment_id', 'golem_version'), True),
+        )
 
     @classmethod
     def update_or_create(cls, env_id, performance):
         try:
-            perf = Performance.get(Performance.environment_id == env_id)
+            perf = Performance.get(Performance.environment_id == env_id,
+                                   golem_version=golem.__version__)
             perf.value = performance
-            perf.save()
+            perf.modified_date = datetime.datetime.now()
         except Performance.DoesNotExist:
-            perf = Performance(environment_id=env_id, value=performance)
-            perf.save()
+            perf = Performance(environment_id=env_id,
+                               golem_version=golem.__version__,
+                               value=performance)
+        perf.save()
 
 
 ##################
