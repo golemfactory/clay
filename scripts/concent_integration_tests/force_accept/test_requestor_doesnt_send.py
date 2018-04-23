@@ -11,6 +11,7 @@ from ..base import ConcentBaseTest
 
 
 reasons = message.concents.ForceSubtaskResultsRejected.REASON
+moment = datetime.timedelta(seconds=1)
 
 
 class RequestorDoesntSendTestCase(ConcentBaseTest, unittest.TestCase):
@@ -45,12 +46,12 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, unittest.TestCase):
 
     def test_provider_before_start(self):
         report_computed_task = msg_factories.tasks.ReportComputedTaskFactory()
-        start = datetime.datetime.utcnow() \
+        force_accept_window_begins_at = datetime.datetime.utcnow() \
             - helpers.subtask_verification_time(report_computed_task)
         msg_factories.helpers.override_timestamp(
             msg=report_computed_task.task_to_compute,
             timestamp=calendar.timegm(
-                (start - datetime.timedelta(1)).utctimetuple(),
+                (force_accept_window_begins_at + moment).utctimetuple(),
             ),
         )
         response = self.provider_send_force(
@@ -67,14 +68,14 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, unittest.TestCase):
 
     def test_provider_after_deadline(self):
         report_computed_task = msg_factories.tasks.ReportComputedTaskFactory()
-        stop = datetime.datetime.utcnow() - (
+        force_accept_window_ends_at = datetime.datetime.utcnow() - (
             helpers.subtask_verification_time(report_computed_task)
             + constants.FAT
         )
         msg_factories.helpers.override_timestamp(
             msg=report_computed_task.task_to_compute,
             timestamp=calendar.timegm(
-                (stop + datetime.timedelta(1)).utctimetuple(),
+                (force_accept_window_ends_at - moment).utctimetuple(),
             ),
         )
 
