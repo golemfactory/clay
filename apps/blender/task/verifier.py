@@ -207,9 +207,13 @@ class BlenderVerifier(FrameRenderingVerifier):
         avg_corr /= 3
         avg_ssim /= 3
 
-        # These are empirically measured values by CP and GG
-        w_ssim = 0.8
-        w_ssim_min = 0.6
+        # These are empirically measured, render on different machines can
+        # cause single pixels to change its intensity and cause deviation.
+        # We observe that in majority cases 0.990 is enough to count for this
+        # deviation, but there are exceptions, scenes like BMW which deviates
+        # more drops to 0.970 event that is indistinguishable for human.
+        w_ssim = 0.990
+        w_ssim_min = 0.970
 
         if avg_ssim > w_ssim:
             logger.info("Subtask %r verified with %r",
