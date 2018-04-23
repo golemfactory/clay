@@ -803,6 +803,7 @@ class Client(HardwarePresetsMixin):
     def get_subtasks(self, task_id: str) \
             -> Tuple[Optional[List[Dict]], Optional[str]]:
         try:
+            assert isinstance(self.task_server, TaskServer)
             subtasks = self.task_server.task_manager.get_subtasks_dict(task_id)
             return subtasks, None
         except KeyError:
@@ -818,6 +819,7 @@ class Client(HardwarePresetsMixin):
     def get_subtask(self, subtask_id: str) \
             -> Tuple[Optional[Dict], Optional[str]]:
         try:
+            assert isinstance(self.task_server, TaskServer)
             subtask = self.task_server.task_manager.get_subtask_dict(subtask_id)
             return subtask, None
         except KeyError:
