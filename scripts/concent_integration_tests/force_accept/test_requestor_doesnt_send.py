@@ -14,7 +14,7 @@ reasons = message.concents.ForceSubtaskResultsRejected.REASON
 
 
 class RequestorDoesntSendTestCase(ConcentBaseTest, unittest.TestCase):
-    """Requestor doesn;t send Ack/Reject of SubtaskResults"""
+    """Requestor doesn't send Ack/Reject of SubtaskResults"""
     def provider_send_force(self, **kwargs):
         fsr = msg_factories.concents.ForceSubtaskResultsFactory(
             **self.gen_rtc_kwargs(
