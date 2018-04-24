@@ -1,6 +1,5 @@
 import logging
 from typing import Iterable, Optional, Union
-
 import requests
 
 from golem.core.common import deadline_to_timeout

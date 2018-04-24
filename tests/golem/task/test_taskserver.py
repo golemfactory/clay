@@ -3,10 +3,10 @@ import random
 import uuid
 from collections import deque
 from math import ceil
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, MagicMock, patch, ANY
 
 from golem_messages.message import ComputeTaskDef
-from mock import ANY
+from golem_messages import factories as msg_factories
 from requests import HTTPError
 
 import golem
@@ -32,6 +32,8 @@ from golem.task.taskstate import TaskState, TaskOp
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 from golem.utils import encode_hex
+
+from tests.factories.resultpackage import ExtractedPackageFactory
 
 
 def get_example_task_header(key_id):
@@ -69,12 +71,11 @@ def get_mock_task(key_gen, subtask_id):
     return task_mock
 
 
-class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: disable=too-many-public-methods
-                     testutils.TestWithClient):
-
+class TaskServerTestBase(LogTestCase,
+                         testutils.DatabaseFixture,
+                         testutils.TestWithClient):
     def setUp(self):
-        for parent in self.__class__.__bases__:
-            parent.setUp(self)
+        super().setUp()
         random.seed()
         self.ccd = ClientConfigDescriptor()
         with patch(
@@ -94,6 +95,8 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         if hasattr(self, "ts") and self.ts:
             self.ts.quit()
 
+
+class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-public-methods
     @patch(
         'golem.network.concent.handlers_library.HandlersLibrary'
         '.register_handler',
@@ -208,15 +211,14 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         assert ts.request_task()
         subtask_id = generate_new_id_from_id(task_id)
         subtask_id2 = generate_new_id_from_id(task_id)
-        self.assertTrue(ts.send_results(subtask_id, task_id, results, 40))
+        self.assertTrue(ts.send_results(subtask_id, task_id, results))
         ts.client.transaction_system.incomes_keeper.expect.reset_mock()
-        self.assertTrue(ts.send_results(subtask_id2, task_id, results, 40))
+        self.assertTrue(ts.send_results(subtask_id2, task_id, results))
         wtr = ts.results_to_send[subtask_id]
         self.assertIsInstance(wtr, WaitingTaskResult)
         self.assertEqual(wtr.subtask_id, subtask_id)
         self.assertEqual(wtr.result, "")
         self.assertEqual(wtr.result_type, ResultType.DATA)
-        self.assertEqual(wtr.computing_time, 40)
         self.assertEqual(wtr.last_sending_trial, 0)
         self.assertEqual(wtr.delay_time, 0)
         self.assertEqual(wtr.owner_address, "10.10.10.10")
@@ -243,7 +245,9 @@ class TestTaskServer(LogTestCase, testutils.DatabaseFixture,  # noqa pylint: dis
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
         ctd['subtask_id'] = subtask_id
-        ts.task_manager.comp_task_keeper.receive_subtask(ctd)
+        ttc = msg_factories.tasks.TaskToComputeFactory(price=1)
+        ttc.compute_task_def = ctd
+        ts.task_manager.comp_task_keeper.receive_subtask(ttc)
         model.Income.create(
             sender_node=keys_auth.public_key,
             task=ctd['task_id'],
@@ -765,7 +769,6 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         ts = self.ts
         ts.task_manager.listen_port = 1111
         ts.task_manager.listen_address = "10.10.10.10"
-        ts.receive_subtask_computation_time("xxyyzz", 1031)
 
         task_mock = get_mock_task("xyz", "xxyyzz")
         task_mock.get_trust_mod.return_value = ts.max_trust
@@ -788,13 +791,8 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
             1000, 10,
             5, 10, 2,
             "10.10.10.10")
-        ts.receive_subtask_computation_time("xxyyzz", 1031)
-        self.assertEqual(ts.task_manager.tasks_states[task_id].subtask_states[
-            "xxyyzz"].computation_time, 1031)
         expected_value = ceil(1031 * 1010 / 3600)
-        task_state = ts.task_manager.tasks_states[task_id]
-        self.assertEqual(task_state.subtask_states["xxyyzz"].value,
-                         expected_value)
+        ts.task_manager.set_subtask_value("xxyyzz", expected_value)
         account_info = Mock()
         account_info.key_id = "key"
         prev_calls = trust.COMPUTED.increase.call_count
@@ -813,7 +811,6 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         ts = self.ts
         ts.task_manager.listen_address = "10.10.10.10"
         ts.task_manager.listen_port = 1111
-        ts.receive_subtask_computation_time("xxyyzz", 1031)
 
         extra_data = Mock()
         extra_data.ctd = ComputeTaskDef()
@@ -833,7 +830,6 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
             "DEF", "DEF", task_id, 1000, 10, 5, 10, 2, "10.10.10.10")
 
-        ts.receive_subtask_computation_time("xxyyzz", 1031)
         account_info = Mock()
         account_info.key_id = "key"
         account_info.eth_account = Mock()
@@ -995,3 +991,69 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         self.ts.finished_task_listener(event='task_status_updated',
                                        op=TaskOp.FINISHED)
         assert remove_task.called
+
+
+class TaskVerificationResultTest(TaskServerTestBase):
+
+    def setUp(self):
+        super().setUp()
+        self.conn_id = 'connid'
+        self.key_id = 'keyid'
+        self.conn_type = TASK_CONN_TYPES['task_verification_result']
+
+    @staticmethod
+    def _mock_session():
+        session = Mock()
+        session.address = "10.10.10.10"
+        session.port = 1020
+        return session
+
+    def test_connection_established(self):
+        session = self._mock_session()
+        extracted_package = ExtractedPackageFactory()
+        subtask_id = extracted_package.descriptor.subtask_id
+
+        self.ts.conn_established_for_type[self.conn_type](
+            session, self.conn_id, extracted_package, self.key_id
+        )
+        self.assertEqual(session.task_id, subtask_id)
+        self.assertEqual(session.key_id, self.key_id)
+        self.assertEqual(session.conn_id, self.conn_id)
+        self.assertEqual(self.ts.task_sessions[subtask_id], session)
+        result_received_call = session.result_received.call_args[0]
+        self.assertEqual(result_received_call[0].get('subtask_id'), subtask_id)
+
+    @patch('golem.task.taskserver.logger.warning')
+    def test_conection_failed(self, log_mock):
+        extracted_package = ExtractedPackageFactory()
+        subtask_id = extracted_package.descriptor.subtask_id
+        self.ts.conn_failure_for_type[self.conn_type](
+            self.conn_id, extracted_package, self.key_id
+        )
+        self.assertIn(
+            "Failed to establish a session", log_mock.call_args[0][0])
+        self.assertIn(subtask_id, log_mock.call_args[0][1])
+        self.assertIn(self.key_id, log_mock.call_args[0][2])
+
+    @patch('golem.task.taskserver.TaskServer._is_address_accessible',
+           Mock(return_value=True))
+    @patch('golem.task.taskserver.TaskServer.get_socket_addresses',
+           Mock(return_value=[Mock()]))
+    def test_verify_results(self, *_):
+        rct = msg_factories.tasks.ReportComputedTaskFactory(
+            node_info=self.ts.node.to_dict())
+        extracted_package = ExtractedPackageFactory()
+        self.ts.verify_results(rct, extracted_package)
+        pc = list(self.ts.pending_connections.values())[0]
+
+        self.assertEqual(
+            pc.established.func.__name__,
+            '__connection_for_task_verification_result_established')
+        self.assertEqual(
+            pc.failure.func.__name__,
+            '__connection_for_task_verification_result_failure',
+        )
+        self.assertEqual(
+            pc.final_failure.func.__name__,
+            '__connection_for_task_verification_result_failure',
+        )

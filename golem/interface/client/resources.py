@@ -22,7 +22,8 @@ class Resources(object):
 
     @doc("Show information on used resources")
     def show(self):
-        return sync_wait(Resources.client.get_res_dirs_sizes(), timeout=None)
+        res = sync_wait(Resources.client.get_res_dirs_sizes(), timeout=None)
+        return CommandResult.to_tabular(list(res.keys()), [list(res.values())])
 
     @command(arguments=(provider, requestor),
              help="Clear provider / requestor resources")
@@ -35,7 +36,6 @@ class Resources(object):
         clear = Resources.client.clear_dir
 
         if provider:
-            sync_wait(clear(DirectoryType.RECEIVED), timeout=None)
-            return sync_wait(clear(DirectoryType.COMPUTED), timeout=None)
+            return sync_wait(clear(DirectoryType.RECEIVED), timeout=None)
         elif requestor:
             return sync_wait(clear(DirectoryType.DISTRIBUTED), timeout=None)

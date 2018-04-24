@@ -1,10 +1,12 @@
 from datetime import datetime
-from golem_messages.message import ComputeTaskDef
 from pathlib import Path
 import random
 import time
 from unittest import TestCase
 import unittest.mock as mock
+
+from golem_messages import factories as msg_factories
+from golem_messages.message import ComputeTaskDef
 
 import golem
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
@@ -13,8 +15,8 @@ from golem.environments.environment import Environment, UnsupportReason,\
     SupportStatus
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.network.p2p.node import Node
+from golem.task import taskkeeper
 from golem.task.taskbase import TaskHeader
-from golem.task.taskkeeper import CompTaskInfo
 from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper,\
     CompSubtaskInfo, logger
 from golem.testutils import PEP8MixIn
@@ -520,13 +522,20 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             header.resource_size = 1
 
             test_headers.append(header)
-            ctk.add_request(header, int(random.random() * 100))
+            price_bid = int(random.random() * 100)
+            ctk.add_request(header, price_bid)
 
             ctd = ComputeTaskDef()
             ctd['task_id'] = header.task_id
             ctd['subtask_id'] = generate_new_id_from_id(header.task_id)
             ctd['deadline'] = timeout_to_deadline(header.subtask_timeout - 0.5)
-            self.assertTrue(ctk.receive_subtask(ctd))
+            price = taskkeeper.compute_subtask_value(
+                price_bid,
+                header.subtask_timeout,
+            )
+            ttc = msg_factories.tasks.TaskToComputeFactory(price=price)
+            ttc.compute_task_def = ctd
+            self.assertTrue(ctk.receive_subtask(ttc))
             test_subtasks_ids.append(ctd['subtask_id'])
         del ctk
 
@@ -579,11 +588,11 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         self.assertEqual(ctk.active_tasks["xyz"].requests, 2)
         self.assertEqual(ctk.active_tasks["xyz"].price, 7200)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
-        self.assertEqual(ctk.get_value("xyz", 1), 2)
+        self.assertEqual(ctk.get_value("xyz"), 240)
         header.task_id = "xyz2"
         ctk.add_request(header, 25000)
         self.assertEqual(ctk.active_tasks["xyz2"].price, 25000)
-        self.assertEqual(ctk.get_value("xyz2", 4.5), 32)
+        self.assertEqual(ctk.get_value("xyz2"), 834)
         header.task_id = "xyz"
         thread = get_task_header()
         thread.task_id = "qaz123WSX"
@@ -592,21 +601,17 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         with self.assertRaises(TypeError):
             ctk.add_request(thread, '1')
         ctk.add_request(thread, 12)
-        header = get_task_header()
-        header.task_id = "qwerty"
-        ctk.active_tasks["qwerty"] = CompTaskInfo(header, 12)
-        ctk.active_tasks["qwerty"].price = "abc"
-        with self.assertRaises(TypeError):
-            ctk.get_value('qwerty', 12)
-        self.assertEqual(ctk.get_value(thread.task_id, 600), 2)
+        self.assertEqual(ctk.get_value(thread.task_id), 1)
 
         ctd = ComputeTaskDef()
+        ttc = msg_factories.tasks.TaskToComputeFactory(price=0)
+        ttc.compute_task_def = ctd
         with self.assertLogs(logger, level="WARNING"):
-            self.assertFalse(ctk.receive_subtask(ctd))
+            self.assertFalse(ctk.receive_subtask(ttc))
         with self.assertLogs(logger, level="WARNING"):
             self.assertIsNone(ctk.get_node_for_task_id("abc"))
         with self.assertLogs(logger, level="WARNING"):
-            self.assertIsNone(ctk.get_value("abc", 10))
+            self.assertIsNone(ctk.get_value("abc"))
 
         with self.assertLogs(logger, level="WARNING"):
             ctk.request_failure("abc")
@@ -617,13 +622,20 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk = CompTaskKeeper(Path(self.path), False)
         th = get_task_header()
         task_id = th.task_id
-        ctk.add_request(th, 5)
+        price_bid = 5
+        ctk.add_request(th, price_bid)
         subtask_id = generate_new_id_from_id(task_id)
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
         ctd['subtask_id'] = subtask_id
         ctd['deadline'] = timeout_to_deadline(th.subtask_timeout - 1)
-        ctk.receive_subtask(ctd)
+        price = taskkeeper.compute_subtask_value(
+            price_bid,
+            th.subtask_timeout,
+        )
+        ttc = msg_factories.tasks.TaskToComputeFactory(price=price)
+        ttc.compute_task_def = ctd
+        self.assertTrue(ctk.receive_subtask(ttc))
         assert ctk.active_tasks[task_id].requests == 0
         assert ctk.subtask_to_task[subtask_id] == task_id
         assert ctk.check_task_owner_by_subtask(th.task_owner_key_id, subtask_id)
@@ -633,12 +645,14 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctd2 = ComputeTaskDef()
         ctd2['task_id'] = task_id
         ctd2['subtask_id'] = subtask_id2
-        ctk.receive_subtask(ctd2)
+        ttc.compute_task_def = ctd2
+        self.assertFalse(ctk.receive_subtask(ttc))
         assert ctk.active_tasks[task_id].requests == 0
         assert ctk.subtask_to_task.get(subtask_id2) is None
         assert ctk.subtask_to_task[subtask_id] == task_id
         ctk.active_tasks[task_id].requests = 1
-        ctk.receive_subtask(ctd)
+        ttc.compute_task_def = ctd
+        self.assertFalse(ctk.receive_subtask(ttc))
         assert ctk.active_tasks[task_id].requests == 1
 
     @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump')
@@ -671,20 +685,20 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             'subtask_id': subtask_id,
             'deadline': get_timestamp_utc() + 100,
         }
-        with self.assertLogs(logger, level="INFO") as l:
+        with self.assertLogs(logger, level="INFO") as logs:
             assert not ctk.check_comp_task_def(comp_task_def)
         assert 'Cannot accept subtask %s for task %s. ' \
                'Request for this task was not send.' % (subtask_id, task_id)\
-               in l.output[0]
+               in logs.output[0]
 
         ctk.active_tasks[task_id].requests = 1
         comp_task_def['deadline'] = 0
-        with self.assertLogs(logger, level="INFO") as l:
+        with self.assertLogs(logger, level="INFO") as logs:
             assert not ctk.check_comp_task_def(comp_task_def)
         assert 'Cannot accept subtask %s for task %s. ' \
                'Request for this task has wrong deadline 0' % (subtask_id,
                                                                task_id) \
-               in l.output[0]
+               in logs.output[0]
 
         comp_task_def['deadline'] = get_timestamp_utc() + 240
 
@@ -695,12 +709,12 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         assert ctk.check_comp_task_def(comp_task_def)
 
         ctk.active_tasks[task_id].subtasks[subtask_id] = comp_task_def
-        with self.assertLogs(logger, level="INFO") as l:
+        with self.assertLogs(logger, level="INFO") as logs:
             assert not ctk.check_comp_task_def(comp_task_def)
         assert 'Cannot accept subtask %s for task %s. ' \
                'Definition of this subtask was already received.' % (subtask_id,
                                                                      task_id) \
-               in l.output[0]
+               in logs.output[0]
 
         del ctk.active_tasks[task_id].subtasks[subtask_id]
         assert ctk.check_comp_task_def(comp_task_def)

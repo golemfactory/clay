@@ -337,21 +337,12 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             assert not paf.is_file()
 
     def test_get_and_set_value(self):
-        with self.assertLogs(logger, level="WARNING") as log:
-            self.tm.set_value("xyz", "xxyyzz", 13)
-        assert any("not my task" in log for log in log.output)
         with self.assertLogs(logger, level="WARNING"):
             self.tm.get_value("xxyyzz")
-
-        with self.assertLogs(logger, level="WARNING"):
-            self.tm.set_computation_time("xxyyzz", 12)
 
         task_mock = self._get_task_mock()
 
         self.tm.add_new_task(task_mock)
-        with self.assertLogs(logger, level="WARNING") as log:
-            self.tm.set_value("xyz", "xxyyzz", 13)
-        assert any("not my subtask" in log for log in log.output)
 
         self.tm.tasks_states["xyz"].status = self.tm.activeStatus[0]
         with patch('golem.task.taskbase.Task.needs_computation',
@@ -370,55 +361,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             self.assertIsInstance(subtask, ComputeTaskDef)
             self.assertFalse(wrong_task)
 
-        self.tm.set_value("xyz", "xxyyzz", 13)
+        self.tm.set_subtask_value("xxyyzz", 13)
         self.assertEqual(
             self.tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 13)
         self.assertEqual(self.tm.get_value("xxyyzz"), 13)
-
-    def _test_set_computation_time(
-            self, timeout, computation_time, expected_value, warning=None):
-        task_mock = self._get_task_mock()
-        self.tm.add_new_task(task_mock)
-        self.tm.tasks_states["xyz"].status = self.tm.activeStatus[0]
-        self.tm.tasks['xyz'].task_definition.subtask_timeout = timeout
-        with patch('golem.task.taskbase.Task.needs_computation',
-                   return_value=True):
-            subtask, _, _ = self.tm.get_next_subtask(
-                node_id="DEF",
-                node_name="DEF",
-                task_id="xyz",
-                estimated_performance=1000,
-                price=1,
-                max_resource_size=5,
-                max_memory_size=10,
-                num_cores=2,
-                address="10.10.10.10",
-            )
-
-        if warning:
-            with self.assertLogs(logger, level="WARNING") as log:
-                self.tm.set_computation_time("xxyyzz", computation_time)
-            self.assertIn(warning, ''.join(log.output))
-        else:
-            self.tm.set_computation_time("xxyyzz", computation_time)
-
-        self.assertEqual(
-            self.tm.tasks_states["xyz"].subtask_states["xxyyzz"].value,
-            expected_value)
-
-    def test_set_computation_time_ok(self):
-        self._test_set_computation_time(
-            timeout=4000, computation_time=3601, expected_value=1011)
-
-    def test_set_computation_time_too_big(self):
-        self._test_set_computation_time(
-            timeout=3601, computation_time=4000, expected_value=1011,
-            warning='exceeds subtask timeout')
-
-    def test_set_computation_time_too_small(self):
-        self._test_set_computation_time(
-            timeout=3601, computation_time=-1000, expected_value=0,
-            warning='lower than 0')
 
     def test_change_config(self):
         self.assertTrue(self.tm.use_distributed_resources)
@@ -879,8 +825,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.tm.add_new_task(t)
         with self.assertRaises(RuntimeError):
             self.tm.add_new_task(t)
-        with self.assertRaises(TypeError):
-            self.tm.set_value(task_id, subtask_id, "incorrect value")
         self.tm.key_id = None
         self.tm.listen_address = "not address"
         self.tm.listen_port = "not a port"
