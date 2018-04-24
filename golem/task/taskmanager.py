@@ -411,7 +411,6 @@ class TaskManager(TaskEventListener):
                 node_name=None,
                 node_id=None,
                 address=None,
-                comp_price=0,
                 ctd=extra_data.ctd)
 
         old_tmp_dir = Path(old_task.tmp_dir)
