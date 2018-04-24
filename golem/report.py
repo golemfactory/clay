@@ -1,8 +1,12 @@
 from contextlib import contextmanager
 from functools import wraps
+from typing import Any, ClassVar, Dict, Optional, Tuple
 
 from golem.core.common import to_unicode
+from golem.rpc.session import Publisher
 from golem.rpc.mapping.rpceventnames import Golem
+
+from twisted.internet.defer import Deferred, succeed
 
 
 class Stage(object):
@@ -29,11 +33,11 @@ class StatusPublisher(object):
     """
     Publishes method execution stages via RPC.
     """
-    _rpc_publisher = None
-    _last_status = dict()
+    _rpc_publisher: ClassVar[Optional[Publisher]] = None
+    _last_status: ClassVar[Dict[str, Tuple[str, str, Any]]] = dict()
 
     @classmethod
-    def publish(cls, component, method, stage, data=None):
+    def publish(cls, component, method, stage, data=None) -> Optional[Deferred]:
         """
         Convenience function for publishing the execution stage event.
 
@@ -43,7 +47,9 @@ class StatusPublisher(object):
         golem.report.Stage). Exceptions are always reported. If not specified,
         both 'pre' and 'post' are used.
         :param data: Payload (optional)
-        :return: None
+        :return: None if there's no rpc publisher; deferred
+                 autobahn.wamp.request.Publication on success or None if
+                 session is closing or there was an error
         """
         cls._last_status[to_unicode(component)] = (
             to_unicode(method),
@@ -52,16 +58,27 @@ class StatusPublisher(object):
         if cls._rpc_publisher:
             from twisted.internet import reactor
 
-            reactor.callFromThread(cls._rpc_publisher.publish,
-                                   Golem.evt_golem_status,
-                                   cls._last_status)
+            deferred = Deferred()
+
+            def _publish():
+                publish_deferred: Optional[Deferred] = \
+                    cls._rpc_publisher.publish(
+                        Golem.evt_golem_status,
+                        cls._last_status)
+                if publish_deferred is None:
+                    publish_deferred = succeed(None)
+                publish_deferred.chainDeferred(deferred)
+
+            reactor.callFromThread(_publish)
+            return deferred
+        return None
 
     @classmethod
     def last_status(cls):
         return cls._last_status
 
     @classmethod
-    def set_publisher(cls, rpc_publisher):
+    def set_publisher(cls, rpc_publisher: Publisher):
         cls._rpc_publisher = rpc_publisher
 
 

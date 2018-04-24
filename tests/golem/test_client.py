@@ -11,7 +11,7 @@ from unittest.mock import call, Mock, MagicMock, patch
 from ethereum.utils import denoms
 from freezegun import freeze_time
 from pydispatch import dispatcher
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, inlineCallbacks
 
 from apps.appsmanager import AppsManager
 from apps.dummy.task.dummytask import DummyTask
@@ -1348,16 +1348,17 @@ class TestClientRPCMethods(TestDatabaseWithReactor, LogTestCase):
         StatusPublisher.publish(component, *status)
         assert self.client.get_golem_status()[component] == status
 
+    @inlineCallbacks
     def test_golem_status_with_publisher(self, *_):
         component = 'component'
         status = 'method', 'stage', 'data'
 
         # status published, with rpc publisher
         StatusPublisher._rpc_publisher = Mock()
-        StatusPublisher.publish(component, *status)
+        deferred: Deferred = StatusPublisher.publish(component, *status)
         assert self.client.get_golem_status()[component] == status
 
-        time.sleep(0.01)
+        yield deferred
 
         assert StatusPublisher._rpc_publisher.publish.called
         call = StatusPublisher._rpc_publisher.publish.call_args
