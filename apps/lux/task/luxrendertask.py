@@ -17,7 +17,7 @@ from apps.core.task.coretaskstate import Options
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.lux.resources.scenefilereader import make_scene_analysis
-from apps.lux.task.verifier import LuxRenderVerifier
+from golem_verificator.lux_verifier import LuxRenderVerifier
 from apps.rendering.resources.imgrepr import load_img, blend, load_as_PILImgRepr
 from apps.rendering.resources.utils import handle_image_error
 from apps.rendering.task import renderingtask

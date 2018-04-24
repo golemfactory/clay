@@ -1,0 +1,14 @@
+{
+    "proto_ver": 1,
+    "data": {
+        "type": "TaskComputer",
+        "timestamp": 1523952235.111545,
+        "cliid": "861f97b704b8143dd32d02542a978fc1369cc3a6db593569012b065c6dd571b029ff0df43d9548dc575d0a3bf7fe76b033f55ecf47d783843ca7e17191fa1d3a",
+        "sessid": "adc11546-5fd1-4eed-b0d6-4357737dd7e9",
+        "waiting_for_task": null,
+        "counting_task": null,
+        "task_requested": false,
+        "compute_task": 1,
+        "assigned_subtasks": []
+    }
+}

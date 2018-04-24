@@ -12,7 +12,7 @@ from PIL import Image, ImageChops, ImageFile
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
-from apps.blender.task.verifier import BlenderVerifier
+from golem_verificator.blender_verifier import BlenderVerifier
 from apps.core.task import coretask
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_as_pil
