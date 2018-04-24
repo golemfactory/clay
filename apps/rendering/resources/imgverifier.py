@@ -4,7 +4,7 @@ import math
 
 from apps.rendering.resources.imgrepr import (ImgRepr, PILImgRepr)
 
-from golem.verification.verifier import SubtaskVerificationState
+from golem_verificator.verifier import SubtaskVerificationState
 
 from ssim import compute_ssim
 
