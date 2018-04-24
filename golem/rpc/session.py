@@ -1,8 +1,9 @@
 import logging
+from typing import Optional
 
 from autobahn.twisted import ApplicationSession
 from autobahn.twisted.websocket import WampWebSocketClientFactory
-from autobahn.wamp import ProtocolError
+from autobahn.wamp import Error as WampError, ProtocolError
 from autobahn.wamp import types
 from twisted.application.internet import ClientService, backoffPolicy
 from twisted.internet import ssl as twisted_ssl
@@ -236,13 +237,22 @@ class Publisher(object):
     def __init__(self, session):
         self.session = session
 
-    def publish(self, event_alias, *args, **kwargs):
+    def publish(self, event_alias, *args, **kwargs) -> Optional[Deferred]:
+        """
+        :return: deferred autobahn.wamp.request.Publication on success or None
+                 if session is closing or there's an error
+        """
         if self.session.is_open():
-            self.session.publish(str(event_alias), *args, **kwargs)
+            try:
+                return self.session.publish(str(event_alias), *args,
+                                            **kwargs)
+            except WampError as e:
+                logger.error("RPC: Cannot publish '%s', because %r",
+                             event_alias, e)
         elif not self.session.is_closing():
-            logger.warning("RPC: Cannot publish '{}', "
-                           "session is not yet established"
-                           .format(event_alias))
+            logger.warning("RPC: Cannot publish '%s', session is not yet "
+                           "established", event_alias)
+        return None
 
 
 def object_method_map(obj, method_map):
