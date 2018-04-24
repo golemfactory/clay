@@ -803,7 +803,7 @@ class TaskManager(TaskEventListener):
         ss.subtask_definition = ctd['short_description']
         ss.subtask_id = ctd['subtask_id']
         ss.extra_data = ctd['extra_data']
-        ss.subtask_status = TaskStatus.starting
+        ss.subtask_status = SubtaskStatus.starting
         ss.value = 0
 
         (self.tasks_states[ctd['task_id']].
