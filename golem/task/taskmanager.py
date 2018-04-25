@@ -520,9 +520,9 @@ class TaskManager(TaskEventListener):
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
         subtask_status = subtask_state.subtask_status
 
-        if not SubtaskStatus.is_computed(subtask_status):
+        if not subtask_status.is_computed():
             logger.warning("Result for subtask {} when subtask state is {}"
-                           .format(subtask_id, subtask_status))
+                           .format(subtask_id, subtask_status.value))
             self.notice_task_updated(task_id,
                                      subtask_id=subtask_id,
                                      op=OtherOp.UNEXPECTED)
@@ -585,9 +585,9 @@ class TaskManager(TaskEventListener):
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
         subtask_status = subtask_state.subtask_status
 
-        if not SubtaskStatus.is_computed(subtask_status):
+        if not subtask_status.is_computed():
             logger.warning("Result for subtask {} when subtask state is {}"
-                           .format(subtask_id, subtask_status))
+                           .format(subtask_id, subtask_status.value))
             self.notice_task_updated(task_id,
                                      subtask_id=subtask_id,
                                      op=OtherOp.UNEXPECTED)
@@ -641,7 +641,7 @@ class TaskManager(TaskEventListener):
                 self.notice_task_updated(th.task_id, op=TaskOp.TIMEOUT)
             ts = self.tasks_states[th.task_id]
             for s in list(ts.subtask_states.values()):
-                if SubtaskStatus.is_computed(s.subtask_status):
+                if s.subtask_status.is_computed():
                     if cur_time > s.deadline:
                         logger.info("Subtask {} dies".format(s.subtask_id))
                         s.subtask_status = SubtaskStatus.failure
@@ -893,7 +893,7 @@ class TaskManager(TaskEventListener):
         ss.subtask_definition = ctd['short_description']
         ss.subtask_id = ctd['subtask_id']
         ss.extra_data = ctd['extra_data']
-        ss.subtask_status = TaskStatus.starting
+        ss.subtask_status = SubtaskStatus.starting
         ss.value = 0
 
         (self.tasks_states[ctd['task_id']].

@@ -177,7 +177,7 @@ class TaskInfo:
 
         In other words, is its latest status in the list of finished.
         """
-        return TaskStatus.is_completed(self.latest_status)
+        return self.latest_status.is_completed()
 
     def has_task_failed(self) -> bool:
         """Has the task failed
@@ -410,7 +410,7 @@ class RequestorTaskStats:
             self.tasks[task_id].got_want_to_compute()
 
         elif op == TaskOp.RESTORED:
-            if TaskStatus.is_completed(task_state.status):
+            if task_state.status.is_completed():
                 logger.debug("Skipping completed task %r", task_id)
             else:
                 the_time = time.time()

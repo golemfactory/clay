@@ -153,7 +153,7 @@ class RenderingTask(CoreTask):
 
             subtasks_given = dict(self.subtasks_given)
             for sub in subtasks_given.values():
-                if SubtaskStatus.is_active(sub['status']):
+                if sub['status'].is_active():
                     self._mark_task_area(sub, img_task, sent_color)
                 if sub['status'] in [SubtaskStatus.failure,
                                      SubtaskStatus.restarted]:

@@ -10,7 +10,7 @@ from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
 from threading import Lock, Thread
-from typing import Dict, Hashable, Optional, Union, List, Iterable
+from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -671,7 +671,7 @@ class Client(HardwarePresetsMixin):
         logger.debug('Aborting task "%r" ...', task_id)
         self.task_server.task_manager.abort_task(task_id)
 
-    def restart_task(self, task_id):
+    def restart_task(self, task_id: str) -> Tuple[bool, Optional[str]]:
         logger.debug('Restarting task "%r" ...', task_id)
         task_manager = self.task_server.task_manager
 
@@ -680,15 +680,18 @@ class Client(HardwarePresetsMixin):
         try:
             task_manager.assert_task_can_be_restarted(task_id)
         except task_manager.AlreadyRestartedError:
-            return False, 'Task already restarted'
+            return False, "Task already restarted: '{}'".format(task_id)
 
         # Create new task that is a copy of the definition of the old one.
         # It has a new deadline and a new task id.
-        task_dict = deepcopy(
-            task_manager.get_task_definition_dict(
-                task_manager.tasks[task_id]))
-        del task_dict['id']
+        try:
+            task_dict = deepcopy(
+                task_manager.get_task_definition_dict(
+                    task_manager.tasks[task_id]))
+        except KeyError:
+            return False, "Task not found: '{}'".format(task_id)
 
+        task_dict.pop('id', None)
         success, msg = self.create_task(task_dict)
         if success:
             task_manager.put_task_in_restarted_state(task_id)
@@ -845,8 +848,14 @@ class Client(HardwarePresetsMixin):
             return self.task_server.task_manager.get_tasks_dict()
         return []
 
-    def get_subtasks(self, task_id):
-        return self.task_server.task_manager.get_subtasks_dict(task_id)
+    def get_subtasks(self, task_id: str) \
+            -> Tuple[Optional[List[Dict]], Optional[str]]:
+        try:
+            assert isinstance(self.task_server, TaskServer)
+            subtasks = self.task_server.task_manager.get_subtasks_dict(task_id)
+            return subtasks, None
+        except KeyError:
+            return None, "Task not found: '{}'".format(task_id)
 
     def get_subtasks_borders(self, task_id, part=1):
         return self.task_server.task_manager.get_subtasks_borders(task_id,
@@ -855,8 +864,14 @@ class Client(HardwarePresetsMixin):
     def get_subtasks_frames(self, task_id):
         return self.task_server.task_manager.get_output_states(task_id)
 
-    def get_subtask(self, subtask_id):
-        return self.task_server.task_manager.get_subtask_dict(subtask_id)
+    def get_subtask(self, subtask_id: str) \
+            -> Tuple[Optional[Dict], Optional[str]]:
+        try:
+            assert isinstance(self.task_server, TaskServer)
+            subtask = self.task_server.task_manager.get_subtask_dict(subtask_id)
+            return subtask, None
+        except KeyError:
+            return None, "Subtask not found: '{}'".format(subtask_id)
 
     def get_task_preview(self, task_id, single=False):
         return self.task_server.task_manager.get_task_preview(task_id,
