@@ -401,7 +401,7 @@ class Task(abc.ABC):
 
     @abc.abstractmethod
     def copy_subtask_results(
-            self, subtask_id: int, old_subtask_info: dict, results: List[str]) \
+            self, subtask_id: str, old_subtask_info: dict, results: List[str]) \
             -> None:
         """
         Copy results of a single subtask from another task

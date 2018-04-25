@@ -6,11 +6,13 @@ import shutil
 import time
 import uuid
 from pathlib import Path
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Iterable
 from zipfile import ZipFile
 
 from golem_messages.message import ComputeTaskDef
 from pydispatch import dispatcher
+from twisted.internet.defer import Deferred
+from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
@@ -383,8 +385,12 @@ class TaskManager(TaskEventListener):
                                  op=SubtaskOp.ASSIGNED)
         return ctd, False, extra_data.should_wait
 
-    def copy_results(  # pylint: disable=too-many-locals
-            self, old_task_id, new_task_id, subtask_ids_to_copy):
+    def copy_results(
+            self,
+            old_task_id: str,
+            new_task_id: str,
+            subtask_ids_to_copy: Iterable[str]) -> None:
+
         try:
             old_task = self.tasks[old_task_id]
             new_task = self.tasks[new_task_id]
@@ -396,7 +402,7 @@ class TaskManager(TaskEventListener):
                 old_task_id, new_task_id)
             return
 
-        # Map old new subtasks to old by 'start_task'
+        # Map new subtasks to old by 'start_task'
         subtasks_to_copy = {
             subtask['start_task']: subtask for subtask in
             map(lambda id_: old_task.subtasks_given[id_], subtask_ids_to_copy)
@@ -414,48 +420,73 @@ class TaskManager(TaskEventListener):
                 comp_price=0,
                 ctd=extra_data.ctd)
 
-        old_tmp_dir = Path(old_task.tmp_dir)
-        new_tmp_dir = Path(new_task.tmp_dir)
-
         for new_subtask_id, new_subtask in new_task.subtasks_given.items():
             old_subtask = subtasks_to_copy.get(new_subtask['start_task'])
 
             if old_subtask:  # Copy results from old subtask
-                old_subtask_id = old_subtask['subtask_id']
-
-                # TODO: Refactor this using package manager (?)
-                old_result_path = old_tmp_dir / '{}.{}.zip'.format(
-                    old_task_id, old_subtask_id)
-                new_result_path = new_tmp_dir / '{}.{}.zip'.format(
-                    new_task_id, new_subtask_id)
-                shutil.copy(old_result_path, new_result_path)
-
-                subtask_result_dir = new_tmp_dir / new_subtask_id
-                os.makedirs(subtask_result_dir)
-                with ZipFile(new_result_path, 'r') as zf:
-                    zf.extractall(subtask_result_dir)
-                    results = [
-                        str(subtask_result_dir / name)
-                        for name in zf.namelist()
-                        if name != '.package_desc']
-
-                new_task.copy_subtask_results(
-                    new_subtask_id, old_subtask, results)
-
-                new_subtask_state = \
-                    self.__set_subtask_state_finished(new_subtask_id)
-                old_subtask_state = self.tasks_states[old_task_id]\
-                    .subtask_states[old_subtask_id]
-                new_subtask_state.computer = \
-                    copy.deepcopy(old_subtask_state.computer)
-
-                self.notice_task_updated(
-                    task_id=new_task_id,
-                    subtask_id=new_subtask_id,
-                    op=SubtaskOp.FINISHED)
+                self._copy_subtask_results(
+                    old_task=old_task,
+                    new_task=new_task,
+                    old_subtask=old_subtask,
+                    new_subtask=new_subtask
+                )
 
             else:  # Restart subtask to get it computed
                 self.restart_subtask(new_subtask_id)
+
+    def _copy_subtask_results(
+            self,
+            old_task: CoreTask,
+            new_task: CoreTask,
+            old_subtask: dict,
+            new_subtask: dict) -> Deferred:
+
+        old_task_id = old_task.header.task_id
+        new_task_id = new_task.header.task_id
+        assert isinstance(old_task.tmp_dir, str)
+        assert isinstance(new_task.tmp_dir, str)
+        old_tmp_dir = Path(old_task.tmp_dir)
+        new_tmp_dir = Path(new_task.tmp_dir)
+        old_subtask_id = old_subtask['subtask_id']
+        new_subtask_id = new_subtask['subtask_id']
+
+        def copy_and_extract_zips():
+            # TODO: Refactor this using package manager (?)
+            old_result_path = old_tmp_dir / '{}.{}.zip'.format(
+                old_task_id, old_subtask_id)
+            new_result_path = new_tmp_dir / '{}.{}.zip'.format(
+                new_task_id, new_subtask_id)
+            shutil.copy(old_result_path, new_result_path)
+
+            subtask_result_dir = new_tmp_dir / new_subtask_id
+            os.makedirs(subtask_result_dir)
+            with ZipFile(new_result_path, 'r') as zf:
+                zf.extractall(subtask_result_dir)
+                return [
+                    str(subtask_result_dir / name)
+                    for name in zf.namelist()
+                    if name != '.package_desc'
+                ]
+
+        def after_results_extracted(results):
+            new_task.copy_subtask_results(
+                new_subtask_id, old_subtask, results)
+
+            new_subtask_state = \
+                self.__set_subtask_state_finished(new_subtask_id)
+            old_subtask_state = self.tasks_states[old_task_id] \
+                .subtask_states[old_subtask_id]
+            new_subtask_state.computer = \
+                copy.deepcopy(old_subtask_state.computer)
+
+            self.notice_task_updated(
+                task_id=new_task_id,
+                subtask_id=new_subtask_id,
+                op=SubtaskOp.FINISHED)
+
+        deferred = deferToThread(copy_and_extract_zips)
+        deferred.addCallback(after_results_extracted)
+        return deferred
 
     def get_tasks_headers(self):
         ret = []
