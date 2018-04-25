@@ -97,7 +97,8 @@ class Client(HardwarePresetsMixin):
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
-            use_concent: bool = False,
+            # SEE: golem.core.variables.CONCENT_CHOICES
+            concent_variant_name: str = 'disabled',
             start_geth: bool = False,
             start_geth_port: Optional[int] = None,
             geth_address: Optional[str] = None,
@@ -138,13 +139,13 @@ class Client(HardwarePresetsMixin):
 
         self.p2pservice = None
         self.diag_service = None
-        self.use_concent = use_concent
         self.concent_service = ConcentClientService(
-            enabled=self.use_concent,
+            variant_name=concent_variant_name,
             keys_auth=self.keys_auth,
         )
         self.concent_filetransfers = ConcentFiletransferService(
             keys_auth=self.keys_auth,
+            variant_name=concent_variant_name,
         )
 
         self.task_server = None

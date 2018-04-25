@@ -64,7 +64,8 @@ def verify_response(response: requests.Response) -> None:
 
 def send_to_concent(
         msg: message.Message,
-        signing_key) -> typing.Optional[bytes]:
+        signing_key,
+        variant: dict) -> typing.Optional[bytes]:
     """Sends a message to the concent server
 
     :return: Raw reply message, None or exception
@@ -89,9 +90,9 @@ def send_to_concent(
     msg.header = header
 
     logger.debug('send_to_concent(): Encrypting msg %r', msg)
-    data = golem_messages.dump(msg, signing_key, variables.CONCENT_PUBKEY)
+    data = golem_messages.dump(msg, signing_key, variant['pubkey'])
     logger.debug('send_to_concent(): data: %r', data)
-    concent_post_url = urljoin(variables.CONCENT_URL, '/api/v1/send/')
+    concent_post_url = urljoin(variant['url'], '/api/v1/send/')
     headers = {
         'Content-Type': 'application/octet-stream',
         'X-Golem-Messages': golem_messages.__version__,
@@ -115,8 +116,11 @@ def send_to_concent(
     return response.content or None
 
 
-def receive_from_concent(signing_key, public_key) -> typing.Optional[bytes]:
-    concent_receive_url = urljoin(variables.CONCENT_URL, '/api/v1/receive/')
+def receive_from_concent(
+        signing_key,
+        public_key,
+        variant: dict) -> typing.Optional[bytes]:
+    concent_receive_url = urljoin(variant['url'], '/api/v1/receive/')
     headers = {
         'Content-Type': 'application/octet-stream',
         'X-Golem-Messages': golem_messages.__version__,
@@ -125,7 +129,7 @@ def receive_from_concent(signing_key, public_key) -> typing.Optional[bytes]:
         client_public_key=public_key,
     )
     data = golem_messages.dump(
-        authorization_msg, signing_key, variables.CONCENT_PUBKEY)
+        authorization_msg, signing_key, variant['pubkey'])
     try:
         logger.debug(
             'receive_from_concent(): GET %r hdr: %r',
@@ -139,7 +143,7 @@ def receive_from_concent(signing_key, public_key) -> typing.Optional[bytes]:
         )
     except requests.exceptions.RequestException as e:
         raise exceptions.ConcentUnavailableError(
-            'Failed to receive_from_concent()',
+            'Failed to receive_from_concent() {}'.format(e),
         ) from e
 
     verify_response(response)
@@ -170,13 +174,12 @@ class ConcentClientService(threading.Thread):
     MAX_GRACE_TIME = 5 * 60  # s
     GRACE_FACTOR = 2  # n times on each failure
 
-    def __init__(self, keys_auth: keysauth.KeysAuth, enabled=True):
+    def __init__(self, keys_auth: keysauth.KeysAuth, variant_name='staging'):
         super().__init__(daemon=True)
 
         self.keys_auth = keys_auth
-        # self.private_key = private_key
-        # self.public_key = public_key
-        self.enabled = enabled
+        variant = variables.CONCENT_CHOICES[variant_name]
+        self.variant = variant
         self._stop_event = threading.Event()
 
         self._queue = queue.Queue()
@@ -184,6 +187,10 @@ class ConcentClientService(threading.Thread):
 
         self._delayed = dict()
         self.received_messages: queue.Queue = queue.Queue(maxsize=100)
+
+    @property
+    def enabled(self):
+        return None not in self.variant.values()
 
     def run(self) -> None:
         while not self._stop_event.isSet():
@@ -310,6 +317,7 @@ class ConcentClientService(threading.Thread):
             res = send_to_concent(
                 req['msg'],
                 self.keys_auth._private_key,  # pylint: disable=protected-access
+                variant=self.variant,
             )
         except exceptions.ConcentError as e:
             logger.info('send_to_concent error: %s', e)
@@ -329,6 +337,7 @@ class ConcentClientService(threading.Thread):
             res = receive_from_concent(
                 signing_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
                 public_key=self.keys_auth.public_key,
+                variant=self.variant,
             )
         except exceptions.ConcentError as e:
             logger.warning("Can't receive message from Concent: %s", e)
@@ -356,7 +365,7 @@ class ConcentClientService(threading.Thread):
             msg = golem_messages.load(
                 data,
                 self.keys_auth.ecc.raw_privkey,
-                variables.CONCENT_PUBKEY,
+                self.variant['pubkey'],
             )
         except golem_messages.exceptions.MessageError as e:
             logger.warning("Can't deserialize concent message %s:%r", e, data)

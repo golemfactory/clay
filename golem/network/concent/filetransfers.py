@@ -43,7 +43,9 @@ class ConcentFiletransferService(LoopingCallService):
 
     def __init__(self,
                  keys_auth: keysauth.KeysAuth,
-                 interval_seconds: int = 1) -> None:
+                 interval_seconds: int = 1,
+                 variant_name: str = 'dev') -> None:
+        self.variant = variables.CONCENT_CHOICES[variant_name]
         self.keys_auth = keys_auth
         self._transfers: queue.Queue = queue.Queue()
         super().__init__(interval_seconds=interval_seconds)
@@ -116,7 +118,7 @@ class ConcentFiletransferService(LoopingCallService):
                 ClientAuthorization(
                     client_public_key=self.keys_auth.public_key
                 ),
-                self.keys_auth._private_key, variables.CONCENT_PUBKEY  # noqa pylint:disable=protected-access
+                self.keys_auth._private_key, self.variant['pubkey']  # noqa pylint:disable=protected-access
             )
         ).decode()
 

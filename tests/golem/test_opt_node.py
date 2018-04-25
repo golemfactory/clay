@@ -89,7 +89,7 @@ class TestNode(TestWithDatabase):
                                        start_geth=False,
                                        start_geth_port=None,
                                        use_docker_manager=True,
-                                       use_concent=False,
+                                       concent_variant_name='disabled',
                                        use_monitor=False,
                                        apps_manager=ANY)
         self.assertEqual(
@@ -128,7 +128,7 @@ class TestNode(TestWithDatabase):
                                      peers=[],
                                      start_geth=False,
                                      start_geth_port=None,
-                                     use_concent=False,
+                                     concent_variant_name='test',
                                      use_monitor=True,
                                      password=None)
 
@@ -157,7 +157,7 @@ class TestNode(TestWithDatabase):
                                        start_geth=False,
                                        start_geth_port=None,
                                        use_docker_manager=True,
-                                       use_concent=False,
+                                       concent_variant_name='disabled',
                                        use_monitor=False,
                                        apps_manager=ANY)
 
@@ -214,7 +214,7 @@ class TestNode(TestWithDatabase):
                                      peers=[],
                                      start_geth=True,
                                      start_geth_port=None,
-                                     use_concent=False,
+                                     concent_variant_name='test',
                                      use_monitor=True,
                                      password=None)
 
@@ -240,7 +240,7 @@ class TestNode(TestWithDatabase):
                                        start_geth=True,
                                        start_geth_port=None,
                                        use_docker_manager=True,
-                                       use_concent=False,
+                                       concent_variant_name='disabled',
                                        use_monitor=False,
                                        apps_manager=ANY)
 
@@ -262,7 +262,7 @@ class TestNode(TestWithDatabase):
                                      peers=[],
                                      start_geth=False,
                                      start_geth_port=None,
-                                     use_concent=False,
+                                     concent_variant_name='disabled',
                                      use_monitor=True,
                                      password=None,
                                      mainnet=True)
@@ -288,7 +288,7 @@ class TestNode(TestWithDatabase):
                                        start_geth=False,
                                        start_geth_port=None,
                                        use_docker_manager=True,
-                                       use_concent=False,
+                                       concent_variant_name='disabled',
                                        use_monitor=False,
                                        mainnet=True,
                                        apps_manager=ANY)
@@ -329,7 +329,7 @@ class TestNode(TestWithDatabase):
                                      peers=[],
                                      start_geth=True,
                                      start_geth_port=port,
-                                     use_concent=False,
+                                     concent_variant_name='test',
                                      use_monitor=True,
                                      password=None)
 
@@ -359,7 +359,7 @@ class TestNode(TestWithDatabase):
                                        start_geth=True,
                                        start_geth_port=port,
                                        use_docker_manager=True,
-                                       use_concent=False,
+                                       concent_variant_name='disabled',
                                        use_monitor=False,
                                        apps_manager=ANY)
 
