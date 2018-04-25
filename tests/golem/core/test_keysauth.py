@@ -1,4 +1,5 @@
 import os
+import shutil
 import time
 from random import random, randint
 from unittest.mock import patch
@@ -87,7 +88,7 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
             ka = self._create_keysauth(lower_difficulty, priv_key)
             if not ka.is_difficult(req_difficulty):
                 break
-            os.rmdir(keys_dir)  # to enable keys regeneration
+            shutil.rmtree(keys_dir)  # to enable keys regeneration
 
         assert KeysAuth.get_difficulty(ka.key_id) >= lower_difficulty
         assert KeysAuth.get_difficulty(ka.key_id) < req_difficulty
