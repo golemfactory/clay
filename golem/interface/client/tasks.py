@@ -1,3 +1,5 @@
+# pylint: disable=no-self-use,redefined-builtin
+
 from datetime import timedelta
 import json
 import re
@@ -23,6 +25,7 @@ class Tasks:
 
     id_req = Argument('id', help="Task identifier")
     id_opt = Argument.extend(id_req, optional=True)
+    subtask_ids = Argument('subtask_ids', vargs=True, help="Subtask ids")
 
     sort_task = Argument(
         '--sort',
@@ -113,6 +116,12 @@ class Tasks:
         if not ok:
             return error
         return None
+
+    @command(arguments=(id_req, subtask_ids),
+             help="Restart given subtasks from a task")
+    def restart_subtasks(self, id, subtask_ids):
+        deferred = Tasks.client.restart_subtasks_from_task(id, subtask_ids)
+        return sync_wait(deferred)
 
     @command(argument=id_req, help="Abort a task")
     def abort(self, id):

@@ -267,8 +267,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_monitor=False
         )
         self.client.sync()
-        # TODO: assertTrue when re-enabled. issue #2398
-        self.assertFalse(self.client.transaction_system.sync.called)
+        self.assertTrue(self.client.transaction_system.sync.called)
 
     @patch('golem.client.EthereumTransactionSystem')
     def test_remove_resources(self, *_):
@@ -569,7 +568,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             result = 'package_path', 'package_sha1'
             return done_deferred(result)
 
-        def add_task(*_args):
+        def add_task(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
             result = resource_manager_result, 'res_file_1', 'package_hash'
             return done_deferred(result)
@@ -906,7 +905,7 @@ def make_mock_payment_processor(sci, eth=100, gnt=100):
     pp.ETH_BATCH_PAYMENT_BASE = sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
 
     val = pp.ETH_BATCH_PAYMENT_BASE + pp.ETH_PER_PAYMENT * 10
-    pp.eth_for_batch_payment.return_value = val
+    pp.get_gas_cost_per_payment.return_value = val
 
     pp.gnt_balance.return_value = gnt * denoms.ether, time.time()
     pp.eth_balance.return_value = eth * denoms.ether, time.time()
@@ -1084,7 +1083,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             result = 'package_path', 'package_sha1'
             return done_deferred(result)
 
-        def add_task(*_args):
+        def add_task(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
             result = resource_manager_result, 'res_file_1', 'package_hash'
             return done_deferred(result)

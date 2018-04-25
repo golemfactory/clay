@@ -50,6 +50,12 @@ TESTNET_SEEDS = [
 
 MAINNET_SEEDS = [
     ('seeds.golem.network', 40102),
+    ('0.seeds.golem.network', 40102),
+    ('1.seeds.golem.network', 40102),
+    ('2.seeds.golem.network', 40102),
+    ('3.seeds.golem.network', 40102),
+    ('4.seeds.golem.network', 40102),
+    ('5.seeds.golem.network', 40102),
 ]
 
 

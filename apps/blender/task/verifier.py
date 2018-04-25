@@ -22,7 +22,7 @@ logger = logging.getLogger("apps.blender")
 # pylint: disable=R0902
 class BlenderVerifier(FrameRenderingVerifier):
     DOCKER_NAME = "golemfactory/image_metrics"
-    DOCKER_TAG = '1.1'
+    DOCKER_TAG = '1.2'
 
     def __init__(self, callback: Callable) -> None:
         super().__init__(callback)
@@ -201,7 +201,16 @@ class BlenderVerifier(FrameRenderingVerifier):
     def make_verdict(self):
         avg_corr = 0
         avg_ssim = 0
-        for _, metric in self.metrics.items():
+        for no, metric in self.metrics.items():
+            logger.info("METRIC: Subtask: %r crop no: %r SSIM %r, PSNR: %r \n"
+                        "Scene %s \n"
+                        "requestor %r\n"
+                        "provider %r",
+                        self.subtask_info['subtask_id'],
+                        no, metric['SSIM_normal'],
+                        metric['PSNR'], self.subtask_info['scene_file'],
+                        self.subtask_info['owner'],
+                        self.subtask_info['node_id'])
             avg_corr += metric['imgCorr']
             avg_ssim += metric['SSIM_normal']
         avg_corr /= 3

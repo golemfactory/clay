@@ -1,14 +1,16 @@
+# pylint: disable=too-many-lines
+
+import collections
 import logging
 import sys
 import time
 import uuid
 import json
-from collections import Iterable
 from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
 from threading import Lock, Thread
-from typing import Dict, Hashable, Optional, Union, List, Tuple
+from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -25,7 +27,8 @@ from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.config.presets import HardwarePresetsMixin
 from golem.core.async import AsyncRequest, async_run
-from golem.core.common import get_timestamp_utc, to_unicode, string_to_timeout
+from golem.core.common import get_timestamp_utc, to_unicode, string_to_timeout,\
+    deadline_to_timeout
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import KeysAuth
@@ -59,8 +62,9 @@ from golem.resource.resource import get_resources_for_task, ResourceType
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.task import taskpreset
 from golem.task.taskarchiver import TaskArchiver
+from golem.task.taskbase import Task as TaskBase
 from golem.task.taskserver import TaskServer
-from golem.task.taskstate import TaskTestStatus
+from golem.task.taskstate import TaskTestStatus, SubtaskStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
@@ -246,9 +250,9 @@ class Client(HardwarePresetsMixin):
         )
         self._publish(Task.evt_task_status, kwargs['task_id'])
 
-    # TODO: re-enable. issue #2398
+    @report_calls(Component.client, 'sync')
     def sync(self):
-        pass
+        self.transaction_system.sync()
 
     @report_calls(Component.client, 'start', stage=Stage.pre)
     def start(self):
@@ -318,7 +322,7 @@ class Client(HardwarePresetsMixin):
             self.task_server,
             interval_seconds=max(
                 int(self.config_desc.node_snapshot_interval),
-                1))
+                60))
         monitoring_publisher_service.start()
         self._services.append(monitoring_publisher_service)
 
@@ -487,7 +491,7 @@ class Client(HardwarePresetsMixin):
         self.diag_service.stop()
 
     def connect(self, socket_address):
-        if isinstance(socket_address, Iterable):
+        if isinstance(socket_address, collections.Iterable):
             socket_address = SocketAddress(
                 socket_address[0],
                 int(socket_address[1])
@@ -543,9 +547,12 @@ class Client(HardwarePresetsMixin):
             task.header.resource_size = path.getsize(package_path)
             task_manager.add_new_task(task)
 
-            _resources = self.resource_server.add_task(package_path,
-                                                       package_sha1,
-                                                       task_id)
+            client_options = self.task_server.get_share_options(task_id, None)
+            client_options.timeout = deadline_to_timeout(task.header.deadline)
+
+            _resources = self.resource_server.add_task(
+                package_path, package_sha1, task_id,
+                client_options=client_options)
             _resources.addCallbacks(task_created, error)
 
         def task_created(resource_server_result):
@@ -671,7 +678,7 @@ class Client(HardwarePresetsMixin):
         # Task state is changed to restarted and stays this way until it's
         # deleted from task manager.
         try:
-            task_manager.put_task_in_restarted_state(task_id)
+            task_manager.assert_task_can_be_restarted(task_id)
         except task_manager.AlreadyRestartedError:
             return False, "Task already restarted: '{}'".format(task_id)
 
@@ -684,8 +691,49 @@ class Client(HardwarePresetsMixin):
         except KeyError:
             return False, "Task not found: '{}'".format(task_id)
 
+        task_dict.pop('id', None)
+        success, msg = self.create_task(task_dict)
+        if success:
+            task_manager.put_task_in_restarted_state(task_id)
+
+        return success, msg
+
+    def restart_subtasks_from_task(
+            self, task_id: str, subtask_ids: Iterable[str]):
+
+        assert isinstance(self.task_server, TaskServer)
+        task_manager = self.task_server.task_manager
+
+        try:
+            task_manager.put_task_in_restarted_state(task_id, clear_tmp=False)
+            old_task = task_manager.tasks[task_id]
+            finished_subtask_ids = set(
+                sub_id for sub_id, sub in old_task.subtasks_given.items()
+                if sub['status'] == SubtaskStatus.finished
+            )
+            subtask_ids_to_copy = finished_subtask_ids - set(subtask_ids)
+        except task_manager.AlreadyRestartedError:
+            logger.error('Task already restarted: %r', task_id)
+            return None
+        except KeyError:
+            logger.error('Task not found: %r', task_id)
+            return None
+
+        task_dict = deepcopy(task_manager.get_task_definition_dict(old_task))
         del task_dict['id']
-        return self.create_task(task_dict)
+
+        def copy_results(task: TaskBase):
+            task_manager.copy_results(
+                old_task_id=task_id,
+                new_task_id=task.header.task_id,
+                subtask_ids_to_copy=subtask_ids_to_copy
+            )
+
+        deferred = self.enqueue_new_task(task_dict)
+
+        deferred.addCallbacks(
+            copy_results,
+            lambda err: logger.error('Task creation failed: %r', err))
 
     def restart_frame_subtasks(self, task_id, frame):
         self.task_server.task_manager.restart_frame_subtasks(task_id, frame)
