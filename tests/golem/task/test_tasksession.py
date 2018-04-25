@@ -168,14 +168,14 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts2.task_manager.get_node_id_for_subtask.return_value = "DEF"
         ts2._react_to_cannot_compute_task(message.CannotComputeTask(
             reason=message.CannotComputeTask.REASON.WrongCTD,
-            subtask_id=None,
+            task_to_compute=None,
         ))
         assert ts2.task_manager.task_computation_failure.called
         ts2.task_manager.task_computation_failure.called = False
         ts2.task_manager.get_node_id_for_subtask.return_value = "___"
         ts2._react_to_cannot_compute_task(message.CannotComputeTask(
             reason=message.CannotComputeTask.REASON.WrongCTD,
-            subtask_id=None,
+            task_to_compute=None,
         ))
         assert not ts2.task_manager.task_computation_failure.called
 
@@ -655,7 +655,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             report_computed_task=rct
         )
         msg_rej = message.tasks.RejectReportComputedTask(
-            task_to_compute=ttc
+            attached_task_to_compute=ttc
         )
 
         # Subtask is not known

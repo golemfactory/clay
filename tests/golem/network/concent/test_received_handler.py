@@ -22,10 +22,6 @@ from tests.factories import taskserver as taskserver_factories
 from tests.factories.resultpackage import ExtractedPackageFactory
 
 
-def ttc_from_arct(arct: message.tasks.AckReportComputedTask):
-    return arct.report_computed_task.task_to_compute
-
-
 class RegisterHandlersTestCase(unittest.TestCase):
     def setUp(self):
         library._handlers = {}
@@ -48,17 +44,18 @@ class RegisterHandlersTestCase(unittest.TestCase):
         )
 
 
-@mock.patch("golem.network.history.add")
-class TestOnForceReportComputedTaskResponse(unittest.TestCase):
+class FrctResponseTestBase(unittest.TestCase):
+
+    def _get_frctr(self):
+        raise NotImplementedError()
 
     def setUp(self):
-        self.msg = msg_factories.concents.\
-            ForceReportComputedTaskResponseFactory()
+        self.msg = self._get_frctr()
         self.reasons = message.concents.ForceReportComputedTaskResponse.REASON
-        ttc = ttc_from_arct(self.msg.ack_report_computed_task)
+        ttc = self.msg.task_to_compute
         self.call_response = mock.call(
             msg=self.msg,
-            node_id=ttc.requestor_id,
+            node_id=ttc.requestor_id if ttc else None,
             local_role=Actor.Provider,
             remote_role=Actor.Concent,
         )
@@ -66,6 +63,12 @@ class TestOnForceReportComputedTaskResponse(unittest.TestCase):
 
     def tearDown(self):
         library._handlers = {}
+
+@mock.patch("golem.network.history.add")
+class TestOnForceReportComputedTaskResponsePlain(FrctResponseTestBase):
+    def _get_frctr(self):
+        return msg_factories.concents.\
+            ForceReportComputedTaskResponseFactory()
 
     def test_subtask_timeout(self, add_mock):
         self.msg.ack_report_computed_task = None
@@ -79,11 +82,17 @@ class TestOnForceReportComputedTaskResponse(unittest.TestCase):
             remote_role=Actor.Concent,
         )
 
+@mock.patch("golem.network.history.add")
+class TestOnForceReportComputedTaskResponseAck(FrctResponseTestBase):
+    def _get_frctr(self):
+        return msg_factories.concents.\
+            ForceReportComputedTaskResponseFactory.\
+            with_ack_report_computed_task()
+
     def test_concent_ack(self, add_mock):
         self.msg.reason = self.reasons.ConcentAck
-        self.msg.reject_report_computed_task = None
         library.interpret(self.msg)
-        ttc = ttc_from_arct(self.msg.ack_report_computed_task)
+        ttc = self.msg.task_to_compute
         call_inner = mock.call(
             msg=self.msg.ack_report_computed_task,
             node_id=ttc.requestor_id,
@@ -98,9 +107,8 @@ class TestOnForceReportComputedTaskResponse(unittest.TestCase):
 
     def test_ack_from_requestor(self, add_mock):
         self.msg.reason = self.reasons.AckFromRequestor
-        self.msg.reject_report_computed_task = None
         library.interpret(self.msg)
-        ttc = ttc_from_arct(self.msg.ack_report_computed_task)
+        ttc = self.msg.task_to_compute
         self.assertEqual(add_mock.call_count, 2)
         call_inner = mock.call(
             msg=self.msg.ack_report_computed_task,
@@ -113,11 +121,17 @@ class TestOnForceReportComputedTaskResponse(unittest.TestCase):
             call_inner,
         ])
 
+@mock.patch("golem.network.history.add")
+class TestOnForceReportComputedTaskResponseAck(FrctResponseTestBase):
+    def _get_frctr(self):
+        return msg_factories.concents. \
+            ForceReportComputedTaskResponseFactory. \
+            with_reject_report_computed_task()
+
     def test_reject_from_requestor(self, add_mock):
         self.msg.reason = self.reasons.RejectFromRequestor
-        self.msg.ack_report_computed_task = None
         library.interpret(self.msg)
-        ttc = self.msg.reject_report_computed_task.task_to_compute
+        ttc = self.msg.task_to_compute
         self.assertEqual(add_mock.call_count, 2)
         call_inner = mock.call(
             msg=self.msg.reject_report_computed_task,
@@ -193,7 +207,7 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
             msg_exceptions.InvalidSignature
         msg = msg_factories.concents.VerdictReportComputedTaskFactory()
         library.interpret(msg)
-        ttc_from_ack = ttc_from_arct(msg.ack_report_computed_task)
+        ttc_from_ack = msg.ack_report_computed_task.task_to_compute
         self.client.keys_auth.ecc.verify.assert_called_once_with(
             inputb=ttc_from_ack.get_short_hash(),
             sig=ttc_from_ack.sig)
@@ -207,8 +221,9 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
         msg.ack_report_computed_task.report_computed_task.task_to_compute = \
             msg_factories.tasks.TaskToComputeFactory()
         self.assertNotEqual(
-            ttc_from_arct(msg.ack_report_computed_task),
-            msg.force_report_computed_task.report_computed_task.task_to_compute,
+            msg.ack_report_computed_task.task_to_compute,
+            msg.force_report_computed_task.
+            report_computed_task.task_to_compute,
         )
         library.interpret(msg)
         verify_mock.assert_not_called()

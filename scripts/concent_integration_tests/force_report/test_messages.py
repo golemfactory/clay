@@ -93,7 +93,8 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
         frct_rcv = self.requestor_receive()
 
         rrct = message.tasks.RejectReportComputedTask(
-            task_to_compute=frct_rcv.report_computed_task.task_to_compute,
+            attached_task_to_compute=
+            frct_rcv.report_computed_task.task_to_compute,
             reason=message.tasks.RejectReportComputedTask.
             REASON.SubtaskTimeLimitExceeded
         )
@@ -140,7 +141,8 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
         )
 
         rrct = message.tasks.RejectReportComputedTask(
-            task_to_compute=frct_rcv.report_computed_task.task_to_compute,
+            attached_task_to_compute=
+            frct_rcv.report_computed_task.task_to_compute,
             cannot_compute_task=cct,
             reason=message.tasks.RejectReportComputedTask.
             REASON.GotMessageCannotComputeTask,
@@ -160,7 +162,8 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
         )
 
         rrct = message.tasks.RejectReportComputedTask(
-            task_to_compute=frct_rcv.report_computed_task.task_to_compute,
+            attached_task_to_compute=
+            frct_rcv.report_computed_task.task_to_compute,
             task_failure=tf,
             reason=message.tasks.RejectReportComputedTask.
             REASON.GotMessageTaskFailure,
