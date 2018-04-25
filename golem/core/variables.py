@@ -44,9 +44,6 @@ CONCENT_CHOICES = {
     },
 }
 
-# devel
-# CONCENT_URL = "http://devel.concent.golem.network"
-
 # Number of task headers transmitted per message
 TASK_HEADERS_LIMIT = 20
 KEY_DIFFICULTY = 14
