@@ -34,6 +34,7 @@ from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.rpceventnames import UI, Environment
+from golem.task.acl import Acl
 from golem.task.taskbase import Task
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
@@ -1433,6 +1434,12 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def test_get_performance_values(self, *_):
         expected_perf = {DefaultEnvironment.get_id(): 0.0}
         assert self.client.get_performance_values() == expected_perf
+
+    def test_block_node(self, *_):
+        self.client.task_server.acl = Mock(spec=Acl)
+        self.client.block_node('node_id')
+        self.client.task_server.acl.disallow.assert_called_once_with(
+            'node_id', persist=True)
 
     @classmethod
     def __new_incoming_peer(cls):
