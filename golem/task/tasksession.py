@@ -760,14 +760,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if report_computed_task is None:
             logger.warning(
                 '[CONCENT] Can`t delay send %r.'
-                ' ForceReportComputedTask not found; delay unknown',
+                ' ReportComputedTask not found; delay unknown',
                 delayed_forcing_msg,
             )
             return
         self.concent_service.submit_task_message(
             subtask_id=msg.subtask_id,
             msg=delayed_forcing_msg,
-            delay=msg_helpers.maximum_results_patience(report_computed_task),
+            delay=msg_helpers.subtask_verification_time(report_computed_task),
         )
 
     @history.provider_history
