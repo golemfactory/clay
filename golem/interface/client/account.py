@@ -29,13 +29,15 @@ class Account:
 
         balance = sync_wait(client.get_balance())
         if any(b is None for b in balance):
-            balance = 0, 0, 0
+            balance = 0, 0, 0, 0, 0
 
         gnt_balance, gnt_available, eth_balance = balance[:3]
         gnt_balance = float(gnt_balance)
         gnt_available = float(gnt_available)
         eth_balance = float(eth_balance)
         gnt_reserved = gnt_balance - gnt_available
+        gnt_locked = balance[3]
+        eth_locked = balance[4]
 
         return dict(
             node_name=node['node_name'],
@@ -47,7 +49,9 @@ class Account:
                 total_balance=_fmt(gnt_balance),
                 available_balance=_fmt(gnt_available),
                 reserved_balance=_fmt(gnt_reserved),
-                eth_balance=_fmt(eth_balance, unit="ETH")
+                eth_balance=_fmt(eth_balance, unit="ETH"),
+                gnt_locked=_fmt(gnt_locked),
+                eth_locked=_fmt(eth_locked, unit="ETH"),
             )
         )
 

@@ -1116,28 +1116,28 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def test_get_balance(self, *_):
         c = self.client
 
-        result = (None, None, None)
+        result = (None, None, None, None, None)
 
         c.transaction_system = Mock()
         c.transaction_system.get_balance.return_value = result
 
         balance = yield sync_wait(c.get_balance())
-        assert balance == (None, None, None)
+        assert balance == (None, None, None, None, None)
 
-        result = (None, 1, None)
+        result = (None, 1, None, None, None)
         c.transaction_system.get_balance.return_value = result
         balance = sync_wait(c.get_balance())
-        assert balance == (None, None, None)
+        assert balance == (None, None, None, None, None)
 
-        result = (1, 1, None)
+        result = (1, 1, None, None, None)
         c.transaction_system.get_balance.return_value = result
         balance = sync_wait(c.get_balance())
-        assert balance == ("1", "1", "None")
+        assert balance == ("1", "1", "None", "None", "None")
         assert all(isinstance(entry, str) for entry in balance)
 
         c.transaction_system = None
         balance = sync_wait(c.get_balance())
-        assert balance == (None, None, None)
+        assert balance == (None, None, None, None, None)
 
     def test_run_benchmark(self, *_):
         from apps.blender.blenderenvironment import BlenderEnvironment
