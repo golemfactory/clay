@@ -32,6 +32,10 @@ MAINNET_NODE_LIST = [
     'https://0.geth.golem.network:55555',
     'https://1.geth.golem.network:55555',
     'https://2.geth.golem.network:55555',
+    'https://geth.golem.network:2137',
+    'https://0.geth.golem.network:2137',
+    'https://1.geth.golem.network:2137',
+    'https://2.geth.golem.network:2137',
 ]
 
 
