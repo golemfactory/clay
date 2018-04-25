@@ -30,9 +30,6 @@ class Network(object):
         deferred = Network.client.connection_status()
         status = sync_wait(deferred)
 
-        if not status:
-            return "unknown"
-
         if not status['listening']:
             return "Application not listening, check config file."
 
@@ -41,8 +38,8 @@ class Network(object):
         if status['port_statuses']:
             port_statuses = ", ".join(
                 "{}: {}".format(port, port_status)
-                for port, port_status in self.node.port_statuses.items())
-            messages.append("Port {}.".format(port_statuses))
+                for port, port_status in status['port_statuses'].items())
+            messages.append("Port(s) {}.".format(port_statuses))
 
         if status['connected']:
             messages.append("Connected")
