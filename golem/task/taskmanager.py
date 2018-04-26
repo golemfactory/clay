@@ -308,7 +308,7 @@ class TaskManager(TaskEventListener):
             max_resource_size, max_memory_size, num_cores=0, address=""):
         """ Assign next subtask from task <task_id> to node with given
         id <node_id> and name. If subtask is assigned the function
-        is returning a tuple (
+        is returning a tuple
         :param node_id:
         :param node_name:
         :param task_id:
@@ -340,26 +340,15 @@ class TaskManager(TaskEventListener):
         if task.header.max_price < price:
             return None, False, False
 
-        def has_subtasks():
+        def needs_computation():
             if self.tasks_states[task_id].status not in self.activeStatus:
-                logger.debug('state no in activestatus')
+                logger.info('task is not active')
                 return False
             if not task.needs_computation():
-                logger.debug('not task.needs_computation')
+                logger.info('no more computation needed')
                 return False
-            if task.header.resource_size > (int(max_resource_size) * 1024):
-                logger.debug('resources size >')
-                return False
-            if task.header.estimated_memory > (int(max_memory_size) * 1024):
-                logger.debug('estimated memory >')
-                return False
-            return True
 
-        if not has_subtasks():
-            logger.info(
-                "Cannot get next task for estimated performance %r",
-                estimated_performance,
-            )
+        if not needs_computation():
             return None, False, False
 
         extra_data = task.query_extra_data(

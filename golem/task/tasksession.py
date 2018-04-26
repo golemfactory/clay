@@ -443,7 +443,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def _react_to_want_to_compute_task(self, msg):
         self.task_manager.got_wants_to_compute(msg.task_id, self.key_id,
                                                msg.node_name)
-        if self.task_server.should_accept_provider(self.key_id):
+        if self.task_server.should_accept_provider(
+                self.key_id, msg.task_id, msg.perf_index,
+                msg.max_resource_size, msg.max_memory_size, msg.num_cores):
 
             if self._handshake_required(self.key_id):
                 logger.warning('Cannot yet assign task for %r: resource '
