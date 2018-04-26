@@ -52,6 +52,8 @@ class PaymentProcessor(LoopingCallService):
     REQUIRED_CONFIRMATIONS = 12
 
     CLOSURE_TIME_DELAY = 2
+    # Don't try to use more than 75% of block gas limit
+    BLOCK_GAS_LIMIT_RATIO = 0.75
 
     def __init__(self,
                  sci,
@@ -194,13 +196,24 @@ class PaymentProcessor(LoopingCallService):
         eth_balance = eth_balance - self.ETH_BATCH_PAYMENT_BASE
         ind = 0
         eth_per_payment = self.get_gas_cost_per_payment()
+        gas_limit = \
+            self._sci.get_latest_block().gas_limit * self.BLOCK_GAS_LIMIT_RATIO
+        payees = set()
         for p in payments:
             if p.processed_ts > closure_time:
                 break
             gntb_balance -= p.value
-            eth_balance -= eth_per_payment
-            if gntb_balance < 0 or eth_balance < 0:
+            if gntb_balance < 0:
                 break
+
+            payees.add(p.payee)
+            if len(payees) * eth_per_payment > eth_balance:
+                break
+            gas = len(payees) * self._sci.GAS_PER_PAYMENT + \
+                self._sci.GAS_BATCH_PAYMENT_BASE
+            if gas > gas_limit:
+                break
+
             ind += 1
 
         # we need to take either all payments with given processed_ts or none
