@@ -13,8 +13,6 @@ from freezegun import freeze_time
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 
-from golem_sci.implementation import SCIImplementation as sci
-
 import golem
 from apps.appsmanager import AppsManager
 from apps.dummy.task.dummytask import DummyTask
@@ -77,11 +75,10 @@ def done_deferred(return_value=None):
 
 def make_mock_payment_processor(eth=100, gnt=100):
     pp = MagicMock(name="MockPaymentProcessor")
-    pp.ETH_PER_PAYMENT = sci.GAS_PRICE * sci.GAS_PER_PAYMENT
-    pp.ETH_BATCH_PAYMENT_BASE = sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
 
-    val = pp.ETH_BATCH_PAYMENT_BASE + pp.ETH_PER_PAYMENT * 10
-    pp.get_gas_cost_per_payment.return_value = val
+    pp.ETH_BATCH_PAYMENT_BASE = 0
+
+    pp.get_gas_cost_per_payment.return_value = 0
 
     pp.gnt_balance.return_value = gnt * denoms.ether, time.time()
     pp.eth_balance.return_value = eth * denoms.ether, time.time()
