@@ -138,7 +138,8 @@ class TaskServerMessageHandler():
             )
 
     @handler_for(message.concents.VerdictReportComputedTask)
-    def on_verdict_report_computed_task(self, msg, **_):
+    def on_verdict_report_computed_task(
+            self, msg: message.concents.VerdictReportComputedTask, **_):
         """Verdict is forced by Concent on Requestor
 
         Requestor should act as it had sent AckReportComputedTask by himself.
@@ -146,33 +147,14 @@ class TaskServerMessageHandler():
 
         logger.warning("[CONCENT] Received verdict: %s", msg)
 
-        # @todo such verification/validation should be part of `golem-messages`
-        # https://github.com/golemfactory/golem-messages/issues/192
-
-        # Verify TaskToCompute signature
-        ttcs_tuple = (
-            msg.ack_report_computed_task.report_computed_task.task_to_compute,
-            msg.force_report_computed_task.report_computed_task.task_to_compute,
-        )
-        for ttc in ttcs_tuple:
-            try:
-                self.task_server.keys_auth.ecc.verify(
-                    sig=ttc.sig,
-                    inputb=ttc.get_short_hash(),
-                )
-            except msg_exceptions.InvalidSignature:
-                logger.error(
-                    '[CONCENT] Received fake TaskToCompute from Concent: %s',
-                    msg,
-                )
-                return
-
-        # are all ttc equal?
-        if not ttcs_tuple.count(ttcs_tuple[0]) == len(ttcs_tuple):
+        try:
+            msg.is_valid()
+            msg.verify_owners(
+                requestor_public_key=self.task_server.keys_auth.raw_pubkey)
+        except msg_exceptions.ValidationError as e:
             logger.error(
-                '[CONCENT] Received differing TaskToCompute'
-                ' from Concent: %s',
-                msg,
+                '[CONCENT] Got corrupted TaskToCompute from Concent: %s (%s)',
+                msg, e
             )
             return
 
