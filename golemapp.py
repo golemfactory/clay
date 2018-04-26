@@ -254,7 +254,7 @@ def log_ethereum_chain(mainnet: bool):
 
 
 def log_concent_choice(concent: str):
-    value: dict = variables.CONCENT_CHOICES[concent]  # noqa (mypy)
+    value: dict = variables.CONCENT_CHOICES[concent]  # type: ignore
     if None in value.values():
         logger.info('Concent disabled')
         return
