@@ -1,11 +1,10 @@
 import functools
 import inspect
 import logging
-import time
 import uuid
 from abc import abstractmethod
-from threading import Thread
-from typing import Any, Tuple, Optional
+from types import FunctionType
+from typing import Any, Tuple, Optional, Dict
 
 from twisted.internet.defer import Deferred
 from twisted.python.failure import Failure
@@ -65,7 +64,9 @@ class ResourceManagerOptions:
 
     __slots__ = ('_key', '_data_dir', '_dir_manager_method_name')
 
-    def __init__(self, key: str, data_dir: str, dir_manager_method_name: str):
+    def __init__(self, key: str, data_dir: str,
+                 dir_manager_method_name: str) -> None:
+
         self._key = key
         self._data_dir = data_dir
         self._dir_manager_method_name = dir_manager_method_name
@@ -126,26 +127,22 @@ class ResourceManagerProxy(ThreadedService):
         self._receive()
 
     @abstractmethod
-    def _send(self, *args, **kwargs):
+    def _send(self, *args, **kwargs) -> Optional[Deferred]:
         pass
 
     def _receive(self) -> Tuple[Optional[str], Any]:
 
         try:
-            # 1 second probe to not block the thread for too long
+            # 0.5 second probe to not block the thread for too long
             if self.read_conn.poll(POLL_TIMEOUT):
-                response = self.read_conn.recv()
-            else:
-                return None, None
+                response, data = self.read_conn.recv()
+                return response, data
+        except TypeError as exc:
+            logger.error('Invalid response: %r', exc)
         except EOFError as exc:
             logger.debug('Inbound queue was closed on the remote end: %r', exc)
-            return None, None
 
-        if not isinstance(response, tuple) or len(response) != 2:
-            logger.error('Invalid response: %r', response)
-            return None, None
-
-        return response
+        return None, None
 
 
 class ResourceManagerProxyServer(ResourceManagerProxy, IResourceManager):
@@ -158,12 +155,14 @@ class ResourceManagerProxyServer(ResourceManagerProxy, IResourceManager):
         from golem.resource.hyperdrive.resource import ResourceStorage
 
         dir_manager = DirManager(data_dir)
+
+        self._requests: Dict[str, Deferred] = dict()
+        self._functions: Dict[str, FunctionType] = dict()
+
         self.storage = ResourceStorage(
             dir_manager,
             getattr(dir_manager, method_name)
         )
-        self.requests = dict()
-        self._functions = dict()
 
     def __getattribute__(self, item):
         if item in RESOURCE_MANAGER_METHODS:
@@ -172,14 +171,14 @@ class ResourceManagerProxyServer(ResourceManagerProxy, IResourceManager):
             return self._functions[item]
         return super().__getattribute__(item)
 
-    def _send(self, fn_name, *args, **kwargs) -> Deferred:
+    def _send(self, fn_name, *args, **kwargs):
 
         request_id = str(uuid.uuid4())
         request = request_id, (fn_name, args, kwargs)
 
         deferred = Deferred()
 
-        self.requests[request_id] = deferred
+        self._requests[request_id] = deferred
         self.write_conn.send(request)
 
         return deferred
@@ -190,11 +189,11 @@ class ResourceManagerProxyServer(ResourceManagerProxy, IResourceManager):
         if not request_id:
             return
 
-        if request_id not in self.requests:
+        if request_id not in self._requests:
             logger.error('Unknown request id: %r', request_id)
             return
 
-        deferred = self.requests.pop(request_id)
+        deferred = self._requests.pop(request_id)
 
         if isinstance(payload, Deferred):
             payload.chainDeferred(deferred)

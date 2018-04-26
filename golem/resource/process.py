@@ -1,14 +1,14 @@
 import os
 from abc import abstractmethod
 from multiprocessing import Pipe, Process
-from typing import Optional, Union, Tuple, List
+from typing import Optional, Union, Tuple, List, Dict
 
 from golem.core.service import IService
 from golem.resource.base.resourcesmanager import ResourceManagerProxyServer, \
     ResourceManagerProxyClient, ResourceManagerOptions
 
 
-class _ResourceManagerEntry:
+class _ResourceManagerEntry:  # pylint: disable=too-few-public-methods
 
     __slots__ = ('from_client_conn', 'to_server_conn',
                  'from_server_conn', 'to_client_conn',
@@ -48,7 +48,9 @@ class _ProcessService(IService):
         process.join()
 
     def running(self) -> bool:
-        return self._process and self._process.is_alive()
+        if self._process:
+            return self._process.is_alive()
+        return False
 
     @abstractmethod
     def _get_process_args(self) -> Union[Tuple, List]:
@@ -65,7 +67,7 @@ class _Process(_ProcessService):
         super().__init__()
 
         self._process = None
-        self._servers = dict()
+        self._servers: Dict[str, ResourceManagerProxyServer] = dict()
         self._entries = {options.key: _ResourceManagerEntry(options)
                          for options in resource_manager_options}
 
@@ -125,7 +127,7 @@ _instance = None
 
 
 def start_resource_process(data_dir) -> _Process:
-    global _instance
+    global _instance  # pylint: disable=global-statement
 
     if not _instance:
         _instance = _Process(
