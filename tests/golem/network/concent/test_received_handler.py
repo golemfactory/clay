@@ -12,6 +12,7 @@ from golem_messages import message
 
 from golem import testutils
 from golem.core import keysauth
+from golem.core import variables
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import received_handler
@@ -342,7 +343,8 @@ class FiletransfersTestBase(TaskServerMessageHandlerTestBase):
                 datadir=self.path,
                 private_key_name='priv_key',
                 password='password',
-            )
+            ),
+            variant=variables.CONCENT_CHOICES['dev'],
         )
 
         self.cft = self.client.concent_filetransfers

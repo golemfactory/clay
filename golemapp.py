@@ -186,7 +186,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         config_desc=config_desc,
         peers=peer,
         use_monitor=monitor,
-        concent_variant_name=concent,
+        concent_variant=variables.CONCENT_CHOICES[concent],
         mainnet=mainnet,
         start_geth=False,
         start_geth_port=None,
@@ -254,7 +254,7 @@ def log_ethereum_chain(mainnet: bool):
 
 
 def log_concent_choice(concent: str):
-    value = variables.CONCENT_CHOICES[concent]
+    value: dict = variables.CONCENT_CHOICES[concent]
     if None in value.values():
         logger.info('Concent disabled')
         return

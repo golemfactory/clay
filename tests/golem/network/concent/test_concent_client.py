@@ -67,7 +67,7 @@ class TestSendToConcent(TestCase):
         client.send_to_concent(
             msg=self.msg,
             signing_key=self.private_key,
-            variant=self.variant,
+            concent_variant=self.variant,
         )
         api_send_url = urllib.parse.urljoin(
             self.variant['url'],
@@ -85,7 +85,7 @@ class TestSendToConcent(TestCase):
             client.send_to_concent(
                 msg=self.msg,
                 signing_key=self.private_key,
-                variant=self.variant,
+                concent_variant=self.variant,
             )
 
         self.assertEqual(post_mock.call_count, 1)
@@ -97,7 +97,7 @@ class TestSendToConcent(TestCase):
         client.send_to_concent(
             msg=self.msg,
             signing_key=self.private_key,
-            variant=self.variant,
+            concent_variant=self.variant,
         )
         verify_mock.assert_called_once_with(response)
 
@@ -112,7 +112,7 @@ class TestSendToConcent(TestCase):
             client.send_to_concent(
                 msg=self.msg,
                 signing_key=self.private_key,
-                variant=self.variant,
+                concent_variant=self.variant,
             )
         self.assertEqual(
             self.msg.timestamp,
@@ -139,7 +139,7 @@ class TestReceiveFromConcent(TestCase):
         result = client.receive_from_concent(
             signing_key=self.private_key,
             public_key=self.public_key,
-            variant=self.variant,
+            concent_variant=self.variant,
         )
         self.assertIsNone(result)
 
@@ -153,7 +153,7 @@ class TestReceiveFromConcent(TestCase):
         result = client.receive_from_concent(
             signing_key=self.private_key,
             public_key=self.public_key,
-            variant=self.variant,
+            concent_variant=self.variant,
         )
         self.assertIs(result, content)
 
@@ -163,7 +163,7 @@ class TestReceiveFromConcent(TestCase):
             client.receive_from_concent(
                 signing_key=self.private_key,
                 public_key=self.public_key,
-                variant=self.variant,
+                concent_variant=self.variant,
             )
 
         self.assertEqual(get_mock.call_count, 1)
@@ -175,7 +175,7 @@ class TestReceiveFromConcent(TestCase):
         client.receive_from_concent(
             signing_key=self.private_key,
             public_key=self.public_key,
-            variant=self.variant,
+            concent_variant=self.variant,
         )
         verify_mock.assert_called_once_with(response)
 
@@ -193,7 +193,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         )
         self.concent_service = client.ConcentClientService(
             keys_auth=keys_auth,
-            variant_name='dev',
+            variant=variables.CONCENT_CHOICES['dev'],
         )
         self.msg = message.ForceReportComputedTask()
 
@@ -254,7 +254,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         send_mock.assert_called_once_with(
             self.msg,
             self.concent_service.keys_auth._private_key,
-            variant=self.concent_service.variant,
+            concent_variant=self.concent_service.variant,
         )
 
         assert not self.concent_service._delayed
@@ -295,7 +295,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         send_mock.assert_called_once_with(
             self.msg,
             self.concent_service.keys_auth._private_key,
-            variant=self.concent_service.variant,
+            concent_variant=self.concent_service.variant,
         )
         react_mock.assert_called_once_with(data, response_to=self.msg)
 
@@ -309,7 +309,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         receive_mock.assert_called_once_with(
             signing_key=self.concent_service.keys_auth._private_key,
             public_key=self.concent_service.keys_auth.public_key,
-            variant=self.concent_service.variant,
+            concent_variant=self.concent_service.variant,
         )
         react_mock.assert_called_once_with(content)
 
@@ -332,7 +332,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         receive_mock.assert_called_once_with(
             signing_key=mock.ANY,
             public_key=mock.ANY,
-            variant=self.concent_service.variant,
+            concent_variant=self.concent_service.variant,
         )
         sleep_mock.assert_called_once_with()
         react_mock.assert_not_called()
@@ -356,7 +356,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         receive_mock.assert_called_once_with(
             signing_key=mock.ANY,
             public_key=mock.ANY,
-            variant=mock.ANY,
+            concent_variant=mock.ANY,
         )
         sleep_mock.assert_called_once_with()
         react_mock.assert_not_called()
@@ -408,7 +408,7 @@ class ConcentCallLaterTestCase(testutils.TempDirFixture):
                 private_key_name='priv_key',
                 password='password',
             ),
-            variant_name='dev',
+            variant=variables.CONCENT_CHOICES['dev'],
         )
         self.msg = message.ForceReportComputedTask()
 

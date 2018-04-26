@@ -43,9 +43,10 @@ class ConcentFiletransferService(LoopingCallService):
 
     def __init__(self,
                  keys_auth: keysauth.KeysAuth,
-                 interval_seconds: int = 1,
-                 variant_name: str = 'dev') -> None:
-        self.variant = variables.CONCENT_CHOICES[variant_name]
+                 variant: dict,
+                 interval_seconds: int = 1,) -> None:
+        # SEE golem.core.variables.CONCENT_CHOICES
+        self.variant = variant
         self.keys_auth = keys_auth
         self._transfers: queue.Queue = queue.Queue()
         super().__init__(interval_seconds=interval_seconds)

@@ -24,6 +24,7 @@ from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL, AppConfig)
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.config.presets import HardwarePresetsMixin
+from golem.core import variables
 from golem.core.async import AsyncRequest, async_run
 from golem.core.common import get_timestamp_utc, to_unicode, string_to_timeout
 from golem.core.fileshelper import du
@@ -98,7 +99,7 @@ class Client(HardwarePresetsMixin):
             use_docker_manager: bool = True,
             use_monitor: bool = True,
             # SEE: golem.core.variables.CONCENT_CHOICES
-            concent_variant_name: str = 'disabled',
+            concent_variant: dict = variables.CONCENT_CHOICES['disabled'],
             start_geth: bool = False,
             start_geth_port: Optional[int] = None,
             geth_address: Optional[str] = None,
@@ -140,12 +141,12 @@ class Client(HardwarePresetsMixin):
         self.p2pservice = None
         self.diag_service = None
         self.concent_service = ConcentClientService(
-            variant_name=concent_variant_name,
+            variant=concent_variant,
             keys_auth=self.keys_auth,
         )
         self.concent_filetransfers = ConcentFiletransferService(
             keys_auth=self.keys_auth,
-            variant_name=concent_variant_name,
+            variant=concent_variant,
         )
 
         self.task_server = None
