@@ -10,6 +10,7 @@ from unittest.mock import Mock, patch, MagicMock
 from freezegun import freeze_time
 from golem_messages.message import ComputeTaskDef
 from pydispatch import dispatcher
+from twisted.internet.defer import fail
 from twisted.trial.unittest import TestCase as TwistedTestCase
 
 from apps.appsmanager import AppsManager
@@ -1136,6 +1137,37 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                 new_subtask=new_task.subtasks_given['new_subtask_id1']
             )
 
+    def test_copy_results_error_in_copying(self):
+        old_task = MagicMock(spec=CoreTask)
+        new_task = MagicMock(spec=CoreTask)
+        self.tm.tasks['old_task_id'] = old_task
+        self.tm.tasks['new_task_id'] = new_task
+        old_task.subtasks_given = {
+            'old_subtask_id': {
+                'id': 'old_subtask_id',
+                'start_task': 1
+            }
+        }
+        new_task.subtasks_given = {
+            'new_subtask_id': {
+                'id': 'new_subtask_id',
+                'start_task': 1
+            }
+        }
+        new_task.needs_computation.return_value = False
+
+        with patch.object(self.tm, 'restart_subtask') as restart, \
+                patch.object(self.tm, '_copy_subtask_results') as copy, \
+                patch('golem.task.taskmanager.logger') as logger:
+
+            copy.return_value = fail(OSError())
+            self.tm.copy_results(
+                'old_task_id', 'new_task_id', old_task.subtasks_given.keys())
+
+            copy.assert_called_once()
+            logger.error.assert_called_once()
+            restart.assert_called_once_with('new_subtask_id')
+
 
 class TestCopySubtaskResults(TwistedTestCase):
 
@@ -1243,36 +1275,6 @@ class TestCopySubtaskResults(TwistedTestCase):
             self.assertEqual(old_subtask_state.computer.price, 2000)
 
         patch.object(self.tm, 'notice_task_updated').start()
-        deferred = self.tm._copy_subtask_results(
-            old_task=old_task,
-            new_task=new_task,
-            old_subtask=old_subtask,
-            new_subtask=new_subtask
-        )
-        deferred.addCallback(verify)
-        return deferred
-
-    def test_copy_subtask_results_error(self):
-        old_task = MagicMock(spec=CoreTask)
-        new_task = MagicMock(spec=CoreTask)
-        old_task.header = MagicMock(task_id='old_task_id')
-        new_task.header = MagicMock(task_id='new_task_id')
-
-        old_task.tmp_dir = '/tmp/old_task/'
-        new_task.tmp_dir = '/tmp/new_task/'
-
-        old_subtask = {'subtask_id': 'old_subtask_id'}
-        new_subtask = {'subtask_id': 'new_subtask_id'}
-
-        self.shutil_mock.copy.side_effect = OSError
-        patch.object(self.tm, 'notice_task_updated').start()
-        logger_patch = patch('golem.task.taskmanager.logger')
-        logger_mock = logger_patch.start()
-        self.addCleanup(logger_patch.stop)
-
-        def verify(_):
-            logger_mock.error.assert_called_once()
-
         deferred = self.tm._copy_subtask_results(
             old_task=old_task,
             new_task=new_task,

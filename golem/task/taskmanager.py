@@ -5,6 +5,7 @@ import pickle
 import shutil
 import time
 import uuid
+from functools import partial
 from pathlib import Path
 from typing import Optional, Dict, List, Iterable
 from zipfile import ZipFile
@@ -419,16 +420,22 @@ class TaskManager(TaskEventListener):
                 address=None,
                 ctd=extra_data.ctd)
 
+        def handle_copy_error(subtask_id, error):
+            logger.error(
+                'Cannot copy result of subtask %r: %r', subtask_id, error)
+            self.restart_subtask(subtask_id)
+
         for new_subtask_id, new_subtask in new_task.subtasks_given.items():
             old_subtask = subtasks_to_copy.get(new_subtask['start_task'])
 
             if old_subtask:  # Copy results from old subtask
-                self._copy_subtask_results(
+                deferred = self._copy_subtask_results(
                     old_task=old_task,
                     new_task=new_task,
                     old_subtask=old_subtask,
                     new_subtask=new_subtask
                 )
+                deferred.addErrback(partial(handle_copy_error, new_subtask_id))
 
             else:  # Restart subtask to get it computed
                 self.restart_subtask(new_subtask_id)
@@ -485,9 +492,6 @@ class TaskManager(TaskEventListener):
 
         deferred = deferToThread(copy_and_extract_zips)
         deferred.addCallback(after_results_extracted)
-        deferred.addErrback(lambda err: logger.error(
-            'Cannot copy result from subtask %r to subtask %r: %r',
-            old_subtask_id, new_subtask_id, err))
         return deferred
 
     def get_tasks_headers(self):
