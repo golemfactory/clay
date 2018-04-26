@@ -1,4 +1,4 @@
-# pylint: disable=protected-access,no-self-use
+# pylint: disable=protected-access,no-self-use,no-member
 import datetime
 import gc
 import importlib
@@ -64,6 +64,7 @@ class FrctResponseTestBase(unittest.TestCase):
     def tearDown(self):
         library._handlers = {}
 
+
 @mock.patch("golem.network.history.add")
 class TestOnForceReportComputedTaskResponsePlain(FrctResponseTestBase):
     def _get_frctr(self):
@@ -81,6 +82,7 @@ class TestOnForceReportComputedTaskResponsePlain(FrctResponseTestBase):
             local_role=Actor.Provider,
             remote_role=Actor.Concent,
         )
+
 
 @mock.patch("golem.network.history.add")
 class TestOnForceReportComputedTaskResponseAck(FrctResponseTestBase):
@@ -121,8 +123,9 @@ class TestOnForceReportComputedTaskResponseAck(FrctResponseTestBase):
             call_inner,
         ])
 
+
 @mock.patch("golem.network.history.add")
-class TestOnForceReportComputedTaskResponseAck(FrctResponseTestBase):
+class TestOnForceReportComputedTaskResponseReject(FrctResponseTestBase):
     def _get_frctr(self):
         return msg_factories.concents. \
             ForceReportComputedTaskResponseFactory. \
