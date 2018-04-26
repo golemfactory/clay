@@ -17,6 +17,8 @@ datas = [
      'apps/blender/dockerenvironment/resources/scripts'),
     ('apps/blender/firejailenvironment/resources/scripts/blender_setup.py',
      'apps/blender/firejailenvironment/resources/scripts'),
+    ('apps/blender/firejailenvironment/resources/scripts/blender.profile.template',  # noqa pylint: disable=line-too-long
+     'apps/blender/firejailenvironment/resources/scripts'),
     ('apps/lux/resources/scripts/docker_luxtask.py',
      'apps/lux/resources/scripts/'),
     ('apps/lux/resources/scripts/docker_luxmerge.py',

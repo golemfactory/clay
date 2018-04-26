@@ -5,7 +5,7 @@ import tempfile
 import time
 
 from apps.rendering.task.rendering_engine_requirement import RenderingEngine
-from golem.core import common
+from golem.core.common import get_golem_path
 from golem.docker.image import DockerImage
 from golem.resource import dirmanager
 from golem.task.taskbase import ResultType
@@ -25,9 +25,11 @@ STDOUT_FILE = "stdout.log"
 STDERR_FILE = "stderr.log"
 
 BLENDER_SETUP_FILE = dirmanager.find_task_script(
-    os.path.join(common.get_golem_path(),
-                 'apps', 'blender', 'firejailenvironment'),
+    os.path.join(get_golem_path(), 'apps', 'blender', 'firejailenvironment'),
     'blender_setup.py')
+FIREJAIL_PROFILE_TEMPLATE_PATH = dirmanager.find_task_script(
+    os.path.join(get_golem_path(), 'apps', 'blender', 'firejailenvironment'),
+    'blender.profile.template')
 
 
 def _init_gpu_blender():
@@ -44,7 +46,6 @@ def _init_gpu_blender():
         raise Exception('Failed to initialize blender with GPU support')
 
 
-
 class BlenderFirejailTaskThread(TaskThread):
 
     # pylint: disable=too-many-arguments
@@ -59,6 +60,7 @@ class BlenderFirejailTaskThread(TaskThread):
         self.check_mem = check_mem
         self.work_dir = os.path.join(self.tmp_path, "work")
         self.output_dir = os.path.join(self.tmp_path, "output")
+        self.profile_path = os.path.join(self.tmp_path, 'blender.profile')
 
     def run(self):
         try:
@@ -67,6 +69,7 @@ class BlenderFirejailTaskThread(TaskThread):
             self.start_time = time.time()
             self._prepare_dirs()
             self._prepare_data()
+            self._prepare_firejail_profile()
             if self.check_mem:
                 self.mc = MemoryChecker()
                 self.mc.start()
@@ -74,8 +77,9 @@ class BlenderFirejailTaskThread(TaskThread):
             stderr_path = os.path.join(self.output_dir, STDERR_FILE)
             with open(stdout_path, "w") as out, open(stderr_path, "w") as err:
                 for frame in self.extra_data['frames']:
-                    cmd = self._format_blender_cmd(frame)
-                    p = subprocess.run([FIREJAIL_COMMAND] + cmd,
+                    blender_cmd = self._format_blender_cmd(frame)
+                    firejail_cmd = self._format_firejail_cmd()
+                    p = subprocess.run(firejail_cmd + blender_cmd,
                                        stdout=out,
                                        stderr=err)
                     p.check_returncode()
@@ -121,6 +125,12 @@ class BlenderFirejailTaskThread(TaskThread):
         ]
         return cmd
 
+    def _format_firejail_cmd(self):
+        return [
+            FIREJAIL_COMMAND,
+            f'--profile={self.profile_path}'
+        ]
+
     def _prepare_dirs(self):
         if not os.path.exists(self.work_dir):
             os.mkdir(self.work_dir)
@@ -133,6 +143,20 @@ class BlenderFirejailTaskThread(TaskThread):
         blender_script_path = self._get_script_path()
         with open(blender_script_path, "w") as script_file:
             script_file.write(self.extra_data['script_src'])
+
+    def _prepare_firejail_profile(self):
+        with open(FIREJAIL_PROFILE_TEMPLATE_PATH) as f:
+            template = f.read()
+
+        template %= {
+            'blender_dir': BLENDER_DIR,
+            'work_dir': self.work_dir,
+            'resources_dir': self.res_path,
+            'output_dir': self.output_dir
+        }
+
+        with open(self.profile_path, "w") as profile_file:
+            profile_file.write(template)
 
     def _prepare_blender(self):
         if not os.path.isfile(BLENDER_BINARY_PATH):

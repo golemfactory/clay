@@ -1,0 +1,78 @@
+# Firejail profile for blender
+# This file is overwritten after every install/update
+# Persistent local customizations
+include /etc/firejail/blender.local
+# Persistent global definitions
+include /etc/firejail/globals.local
+
+# Allow python3
+noblacklist ${PATH}/python3*
+noblacklist /usr/lib/python3*
+
+include /etc/firejail/disable-common.inc
+include /etc/firejail/disable-devel.inc
+include /etc/firejail/disable-interpreters.inc
+include /etc/firejail/disable-passwdmgr.inc
+include /etc/firejail/disable-programs.inc
+
+caps.drop all
+nodvd
+nonewprivs
+noroot
+notv
+seccomp
+shell none
+
+# disable internet access
+net none
+
+# background rendering shouldn't need sound
+nosound
+
+# needs video group
+# nogroups
+
+# background rendering shouldn't display anything
+x11 none
+
+# prevent program from browsing mounted volumes
+disable-mnt
+
+# limit access to unneccessary directories
+private-dev
+# blender is run from /tmp
+# blacklist /tmp
+blacklist /var
+noexec ${HOME}
+
+# amd gpu access
+noblacklist /sys/module
+whitelist /sys/module/amdgpu
+read-only /sys/module/amdgpu
+
+# limit commands
+private-bin bash
+
+#
+# Blender directories
+#
+
+# blender path
+whitelist %(blender_dir)s
+read-only %(blender_dir)s
+
+# input directory
+whitelist %(work_dir)s
+read-only %(work_dir)s
+noexec %(work_dir)s
+
+# resources directory
+whitelist %(resources_dir)s
+read-only %(resources_dir)s
+noexec %(resources_dir)s
+
+# output directory
+whitelist %(output_dir)s
+read-write %(output_dir)s
+noexec %(output_dir)s
+

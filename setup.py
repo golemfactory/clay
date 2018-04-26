@@ -81,7 +81,8 @@ setup(
             path.normpath('apps/blender/dockerenvironment/resources/scripts/docker_blendertask.py')  # noqa
         ]),
         (path.normpath('../../golem/apps/blender/firejailenvironment/resources/scripts'), [  # noqa
-            path.normpath('apps/blender/firejailenvironment/resources/scripts/blender_setup.py')  # noqa
+            path.normpath('apps/blender/firejailenvironment/resources/scripts/blender_setup.py'),  # noqa
+            path.normpath('apps/blender/firejailenvironment/resources/scripts/blender.profile.template')  # noqa
         ]),
         (path.normpath('../../golem/apps/lux/resources/scripts'), [
             path.normpath('apps/lux/resources/scripts/docker_luxtask.py'),
