@@ -11,6 +11,7 @@ from unittest.mock import Mock, patch
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core import variables
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.simpleserializer import DictSerializer
 from golem.docker.task_thread import DockerTaskThread
@@ -89,6 +90,7 @@ class DockerTaskTestCase(
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             use_docker_manager=False,
+            concent_variant=variables.CONCENT_CHOICES['disabled'],
         )
         with patch('golem.client.EthereumTransactionSystem'):
             self.node.client = self.node._client_factory(Mock())

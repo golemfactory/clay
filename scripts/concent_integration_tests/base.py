@@ -26,6 +26,7 @@ class ConcentBaseTest:
         return cryptography.ECCx(None)
 
     def setUp(self):
+        self.variant = variables.CONCENT_CHOICES['staging']
         self.provider_keys = self._fake_keys()
         self.requestor_keys = self._fake_keys()
         logger.debug('Provider key: %s',
@@ -65,12 +66,14 @@ class ConcentBaseTest:
         return client.send_to_concent(
             msg,
             signing_key=signing_key or self.provider_priv_key,
+            variant=self.variant,
         )
 
     def receive_from_concent(self, signing_key=None, public_key=None):
         return client.receive_from_concent(
             signing_key=signing_key or self.provider_priv_key,
             public_key=public_key or self.provider_pub_key,
+            variant=self.variant,
         )
 
     def provider_send(self, msg):
@@ -110,10 +113,9 @@ class ConcentBaseTest:
         logger.debug("Requestor receives %s", msg)
         return msg
 
-    @staticmethod
-    def _load_response(response, priv_key):
+    def _load_response(self, response, priv_key):
         return golem_messages.load(
-            response, priv_key, variables.CONCENT_PUBKEY)
+            response, priv_key, self.variant['pubkey'])
 
     def provider_load_response(self, response):
         return self._load_response(response, self.provider_priv_key)
