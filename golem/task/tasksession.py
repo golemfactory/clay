@@ -313,8 +313,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         report_computed_task = message.ReportComputedTask(
             task_to_compute=task_to_compute,
             result_type=task_result.result_type,
-            # https://github.com/golemfactory/golem-messages/issues/189
-            computation_time=0,  # TODO: remove field from messages
             node_name=node_name,
             address=address,
             port=port,
@@ -369,9 +367,24 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         :param str subtask_id:
         :param err_msg: error message that occurred during computation
         """
+
+        task_id = self._subtask_to_task(subtask_id, Actor.Provider)
+
+        task_to_compute = get_task_message(
+            'TaskToCompute',
+            task_id,
+            subtask_id,
+        )
+
+        if not task_to_compute:
+            logger.warning("Could not retrieve TaskToCompute"
+                           " for subtask_id: %s, task_id: %s",
+                           subtask_id, task_id)
+            return
+
         self.send(
             message.TaskFailure(
-                subtask_id=subtask_id,
+                task_to_compute=task_to_compute,
                 err=err_msg
             )
         )
@@ -521,7 +534,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 return
         self.send(
             message.CannotComputeTask(
-                subtask_id=ctd['subtask_id'],
+                task_to_compute=msg,
                 reason=self.err_msg
             )
         )
