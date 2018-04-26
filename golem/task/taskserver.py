@@ -579,28 +579,30 @@ class TaskServer(
             num_cores):  # noqa pylint: disable=unused-argument
 
         task = self.task_manager.tasks[task_id]
+        ids = f'provider_id: {node_id}, task_id: {task_id}'
 
         env = self.get_environment_by_id(task.header.environment)
         performance = env.get_performance() / 2
         if performance > int(perf_index):
             logger.info('insufficient provider performance index: '
-                        f'{estimated_performance} < {performance} / 2')
+                        f'{estimated_performance} < {performance} / 2; {ids}')
             return False
 
         if task.header.resource_size > (int(max_resource_size) * 1024):
             logger.info('insufficient provider disk size: '
-                        f'{max_resource_size} KiB')
+                        f'{max_resource_size} KiB; {ids}')
             return False
 
         if task.header.estimated_memory > (int(max_memory_size) * 1024):
             logger.info('insufficient provider memory size: '
-                        f'{max_memory_size} KiB')
+                        f'{max_memory_size} KiB; {ids}')
             return False
 
-        # TODO: where to find num cores needed by task
-        # if task.header.num_cores > num_cores:
-        #     logger.info('insufficient cores: '
-        #                 f'{num_cores}')
+        # num cores needed by task is not defined currently
+        # TODO: possible workaround: put it into `performance` tbl @ sqlite
+        # if env.get_num_cores() > num_cores:
+        #     logger.info('insufficient provider cores: '
+        #                 f'{num_cores}; {ids}')
         #     return False
 
         if not self.acl.is_allowed(node_id):
