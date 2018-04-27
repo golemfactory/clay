@@ -10,13 +10,17 @@ class TestAcl(TempDirFixture):
         assert acl._deny_deadlines == dict()
         assert acl.is_allowed("some node")
 
+    @property
+    def deny_list_path(self):
+        return self.new_path / DENY_LIST_NAME
+
     def test_file_empty(self):
-        (self.new_path / DENY_LIST_NAME).touch()
+        self.deny_list_path.touch()
         acl = get_acl(self.new_path)
         assert acl._deny_deadlines == dict()
 
     def test_deny(self):
-        (self.new_path / DENY_LIST_NAME).write_text(
+        self.deny_list_path.write_text(
             "Node1 \nNode2\nNode3\n\tNode4 ")
 
         acl = get_acl(self.new_path)
@@ -40,7 +44,7 @@ class TestAcl(TempDirFixture):
             assert "Node1" not in acl._deny_deadlines
 
     def test_allow(self):
-        (self.new_path / DENY_LIST_NAME).write_text(
+        self.deny_list_path.write_text(
             "{}\nNode1 \nNode2\nNode3\n\tNode4 ".format(ALL_EXCEPT_ALLOWED))
 
         acl = get_acl(self.new_path)
@@ -48,3 +52,28 @@ class TestAcl(TempDirFixture):
 
         assert acl.is_allowed("Node1")
         assert not acl.is_allowed("some other node")
+
+    def test_deny_disallow_persistence(self):
+        self.deny_list_path.touch()
+
+        acl = get_acl(self.new_path)
+        acl.disallow('node_id1', persist=True)
+        acl.disallow('node_id2', persist=True)
+        acl.disallow('node_id1', persist=True)
+
+        saved_nodes = self.deny_list_path.read_text().split()
+        self.assertEqual(sorted(saved_nodes), ['node_id1', 'node_id2'])
+
+    def test_allow_disallow_persistence(self):
+        self.deny_list_path.write_text('\n'.join((
+            ALL_EXCEPT_ALLOWED,
+            'node_id1',
+            'node_id2')))
+
+        acl = get_acl(self.new_path)
+        acl.disallow('node_id1', persist=True)
+        acl.disallow('node_id3', persist=True)
+        acl.disallow('node_id1', persist=True)
+
+        saved_nodes = self.deny_list_path.read_text().split()
+        self.assertEqual(sorted(saved_nodes), [ALL_EXCEPT_ALLOWED, 'node_id2'])
