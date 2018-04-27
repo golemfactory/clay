@@ -90,7 +90,8 @@ class TaskComputer(object):
         self.last_task_timeout_checking = None
         self.support_direct_computation = False
         # Should this node behave as provider and compute tasks?
-        self.compute_tasks = task_server.config_desc.accept_tasks
+        self.compute_tasks = task_server.config_desc.accept_tasks \
+            and not task_server.config_desc.in_shutdown
 
     def task_given(self, ctd):
         if ctd['subtask_id'] in self.assigned_subtasks:
@@ -274,7 +275,8 @@ class TaskComputer(object):
         self.task_request_frequency = config_desc.task_request_interval
         self.waiting_for_task_session_timeout = \
             config_desc.waiting_for_task_session_timeout
-        self.compute_tasks = config_desc.accept_tasks
+        self.compute_tasks = config_desc.accept_tasks \
+            and not config_desc.in_shutdown
         return self.change_docker_config(config_desc, run_benchmarks,
                                          in_background)
 

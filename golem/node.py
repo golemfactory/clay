@@ -93,7 +93,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
             start_geth=start_geth,
             start_geth_port=start_geth_port,
             geth_address=geth_address,
-            apps_manager=self.apps_manager
+            apps_manager=self.apps_manager,
+            task_finished_cb=self.check_shutdown
         )
 
         if password is not None:
@@ -204,6 +205,48 @@ class Node(object):  # pylint: disable=too-few-public-methods
     @staticmethod
     def show_terms():
         return TermsOfUse.show_terms()
+
+    def gracefull_shutdown(self):
+        # is in shutdown? turn off as toggle?
+        if self._config_desc.in_shutdown:
+            self.client.update_setting('in_shutdown', False)
+            logger.info('Turning off shutdown mode')
+            return
+
+        # is not providing nor requesting, normal shutdown
+        if not self._is_task_in_progress():
+            logger.info('Node not working, executing normal shutdown')
+            self.quit()
+            return
+
+        # configure in_shutdown
+        logger.info('Enabling shutdown mode, no more tasks can be started')
+        self.client.update_setting('in_shutdown', True)
+
+        # subscrive to events
+
+    def check_shutdown(self):
+        # is not in shutdown?
+        if not self._config_desc.in_shutdown:
+            logger.debug('Checking shutdown, no shutdown configure')
+            return
+
+        if self._is_task_in_progress():
+            logger.info('Shutdown checked, a task is still in progress')
+            return
+
+        logger.info('Node done with all tasks, shutting down')
+        self.quit()
+
+    def _is_task_in_progress(self):
+        task_server = self.client.task_server
+        task_requester_progress = task_server.task_manager.get_progresses()
+        if task_requester_progress:
+            logger.debug('_is_task_in_progress? requestor=%r', True)
+            return True
+        task_provider_progress = task_server.task_computer.assigned_subtasks
+        logger.debug('_is_task_in_progress? provider=%r, requestor=False', task_provider_progress)
+        return task_provider_progress
 
     def _check_terms(self) -> Optional[Deferred]:
         if not self.rpc_session:

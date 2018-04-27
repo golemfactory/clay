@@ -60,6 +60,7 @@ class ClientConfigDescriptor(object):
 
         self.accept_tasks = 1
         self.debug_third_party = 0
+        self.in_shutdown = 0
 
     def init_from_app_config(self, app_config):
         """Initializes config parameters based on the specified AppConfig
