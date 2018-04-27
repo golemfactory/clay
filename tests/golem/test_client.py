@@ -92,6 +92,8 @@ def make_mock_payment_processor(eth=100, gnt=100):
 )
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
+@patch('golem.transactions.ethereum.ethereumtransactionsystem.PaymentProcessor',
+       return_value=make_mock_payment_processor())
 class TestClient(TestWithDatabase, TestWithReactor):
     # FIXME: if we someday decide to run parallel tests,
     # this may completely break. Issue #2456
@@ -551,9 +553,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.client.async_run', mock_async_run)
     @patch('golem.network.concent.client.ConcentClientService.start')
     @patch('golem.client.SystemMonitor')
-    @patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-           'PaymentProcessor',
-           return_value=make_mock_payment_processor())
     @patch('golem.client.P2PService.connect_to_network')
     def test_restart_task(self, connect_to_network, *_):
         apps_manager = AppsManager(False)
@@ -918,7 +917,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
-                   '.register_handler', ):
+                   '.register_handler'), \
+                patch('golem.transactions.ethereum.ethereumtransactionsystem'
+                      '.PaymentProcessor',
+                      return_value=make_mock_payment_processor()):
             apps_manager = AppsManager(False)
             apps_manager.load_all_apps()
             client = Client(
@@ -1016,8 +1018,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.funds_locker.persist = False
         c.resource_server = Mock()
         c.task_server = Mock()
-        c.transaction_system.payment_processor = \
-            make_mock_payment_processor()
 
         task_header = Mock(
             max_price=1 * 10**18,
@@ -1100,8 +1100,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.resource_server.add_task = Mock(
             side_effect=add_task)
 
-        c.transaction_system.payment_processor = \
-            make_mock_payment_processor()
         deferred = c.enqueue_new_task(t_dict)
         task = sync_wait(deferred)
         assert isinstance(task, Task)
