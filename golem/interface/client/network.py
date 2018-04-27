@@ -12,6 +12,7 @@ class Network(object):
 
     ip_arg = Argument('ip', help='Remote IP address')
     port_arg = Argument('port_', help='Remote TCP port')
+    node_id = Argument('node_id', help='ID of a node')
 
     full_table = Argument(
         '--full',
@@ -51,6 +52,12 @@ class Network(object):
         deferred = Network.client.get_known_peers()
         peers = sync_wait(deferred) or []
         return self.__peers(peers, sort, full)
+
+    @command(argument=node_id, help="Block provider")
+    def block(self, node_id):
+        success, error = sync_wait(self.client.block_node(node_id))
+        if not success:
+            return error
 
     @staticmethod
     def __peers(peers, sort, full):

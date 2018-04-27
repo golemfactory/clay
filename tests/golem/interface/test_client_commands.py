@@ -162,6 +162,9 @@ class TestNetwork(unittest.TestCase):
         cls.n_clients = len(peer_info)
         cls.client = client
 
+    def tearDown(self):
+        self.client.reset_mock()
+
     def test_status(self):
 
         with client_ctx(Network, self.client):
@@ -206,6 +209,21 @@ class TestNetwork(unittest.TestCase):
             result_2 = net.dht(None, full=True)
 
             self.__assert_peer_result(result_1, result_2)
+
+    def test_block_success(self):
+        with client_ctx(Network, self.client):
+            self.client.block_node.return_value = True, None
+            network = Network()
+            network.block('node_id')
+            self.client.block_node.assert_called_once_with('node_id')
+
+    def test_block_error(self):
+        with client_ctx(Network, self.client):
+            self.client.block_node.return_value = False, 'error_msg'
+            network = Network()
+            result = network.block('node_id')
+            self.assertEqual(result, 'error_msg')
+            self.client.block_node.assert_called_once_with('node_id')
 
     def __assert_peer_result(self, result_1, result_2):
         self.assertEqual(result_1.data[1][0], [
