@@ -8,6 +8,7 @@ import datetime
 import unittest.mock as mock
 
 from freezegun import freeze_time
+from golem_messages import constants as msg_constants
 from golem_messages import factories
 from golem_messages import message
 
@@ -99,7 +100,8 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
     def test_task_deadline(self, send_mock):
         "Reject after task timeout"
         after_deadline = self.now \
-            + datetime.timedelta(hours=1, seconds=1)
+            + datetime.timedelta(hours=1, seconds=1) \
+            + (msg_constants.MTD * 2)  # TOLERANCE
         with freeze_time(after_deadline):
             self.task_session._react_to_report_computed_task(self.msg)
         self.assert_reject_reason(
@@ -125,7 +127,8 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         "Reject after subtask timeout"
         get_mock.return_value = []
         after_deadline = self.now \
-            + datetime.timedelta(minutes=1, seconds=1)
+            + datetime.timedelta(minutes=1, seconds=1) \
+            + (msg_constants.MTD * 2)  # TOLERANCE
         with freeze_time(after_deadline):
             self.task_session._react_to_report_computed_task(self.msg)
         self.assert_reject_reason(

@@ -5,6 +5,7 @@ import time
 import typing
 
 from ethereum.utils import privtoaddr
+from golem_messages import constants as msg_constants
 from golem_messages import cryptography
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
@@ -81,6 +82,10 @@ def process_report_computed_task(
     now_ts = calendar.timegm(time.gmtime())
     task_id = msg.task_to_compute.compute_task_def['task_id']
 
+    # SEE #2683 to see explanation about TOLERANCE
+    TOLERANCE = msg_constants.MTD * 2
+    tolerant_now_ts = now_ts - int(TOLERANCE.total_seconds())
+
     # Check task deadline
     try:
         task_header = task_header_keeper.task_headers[task_id]
@@ -91,11 +96,11 @@ def process_report_computed_task(
             task_id,
         )
         task_deadline = float('infinity')
-    if now_ts > task_deadline:
+    if tolerant_now_ts > task_deadline:
         return _reject(reject_reasons.TaskTimeLimitExceeded)
 
     # Check subtask deadline
-    if now_ts > msg.task_to_compute.compute_task_def['deadline']:
+    if tolerant_now_ts > msg.task_to_compute.compute_task_def['deadline']:
         return _reject(reject_reasons.SubtaskTimeLimitExceeded)
 
     get_msg = functools.partial(
