@@ -837,14 +837,20 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def _check_ctd_params(self, ctd):
         header = self.task_manager.comp_task_keeper.get_task_header(
             ctd['task_id'])
+        owner = header.task_owner
+
         reasons = message.CannotComputeTask.REASON
-        if header.task_owner_key_id != self.key_id\
-                or header.task_owner.key != self.key_id:
+        if owner.key != self.key_id:
             self.err_msg = reasons.WrongKey
             return False
-        if not tcpnetwork.SocketAddress.is_proper_address(
-                header.task_owner_address,
-                header.task_owner_port):
+
+        addresses = [
+            (owner.pub_addr, owner.pub_port),
+            (owner.prv_addr, owner.prv_port)
+        ]
+
+        if not any(tcpnetwork.SocketAddress.is_proper_address(addr, port)
+                   for addr, port in addresses):
             self.err_msg = reasons.WrongAddress
             return False
         return True
