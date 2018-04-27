@@ -8,6 +8,7 @@ import semantic_version
 from freezegun import freeze_time
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
+from golem_messages import factories as msg_factories
 
 from golem import testutils
 from golem.network.transport import tcpnetwork
@@ -15,7 +16,6 @@ from golem.network.transport.tcpnetwork import (SafeProtocol, SocketAddress,
                                                 MAX_MESSAGE_SIZE, TCPNetwork)
 from golem.network.transport.tcpnetwork_helpers import TCPConnectInfo
 from golem.tools.assertlogs import LogTestCase
-from tests.factories import messages as msg_factories
 from tests.factories import p2p as p2p_factories
 
 MagicMock = mock.MagicMock
@@ -67,7 +67,7 @@ class TestBasicProtocol(LogTestCase):
         self.assertEqual(load_mock.call_count, 0)
 
     def hello(self, version=str(gm_version)):
-        msg = msg_factories.Hello()
+        msg = msg_factories.base.HelloFactory()
         msg._version = version
         serialized = golem_messages.dump(msg, None, None)
         self.protocol.db.append_len_prefixed_bytes(serialized)

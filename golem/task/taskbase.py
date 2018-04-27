@@ -390,3 +390,12 @@ class Task(abc.ABC):
         :return list:
         """
         return []
+
+    @abc.abstractmethod
+    def copy_subtask_results(
+            self, subtask_id: int, old_subtask_info: dict, results: List[str]) \
+            -> None:
+        """
+        Copy results of a single subtask from another task
+        """
+        raise NotImplementedError()

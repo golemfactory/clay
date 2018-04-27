@@ -37,16 +37,25 @@ TASK_INTERVAL = 10
 PEERS_INTERVAL = 30
 FORWARD_INTERVAL = 2
 
-SEEDS = [
+TESTNET_SEEDS = [
     ('94.23.57.58', 40102),
     ('94.23.57.58', 40104),
     ('94.23.196.166', 40102),
     ('94.23.196.166', 40104),
     ('188.165.227.180', 40102),
     ('188.165.227.180', 40104),
-    # TODO: FOR BETA, replace with seeds.golem.network. issue GI #82
     ('seeds.test.golem.network', 40102),
     ('seeds.test.golem.network', 40104),
+]
+
+MAINNET_SEEDS = [
+    ('seeds.golem.network', 40102),
+    ('0.seeds.golem.network', 40102),
+    ('1.seeds.golem.network', 40102),
+    ('2.seeds.golem.network', 40102),
+    ('3.seeds.golem.network', 40102),
+    ('4.seeds.golem.network', 40102),
+    ('5.seeds.golem.network', 40102),
 ]
 
 
@@ -57,6 +66,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             node,
             config_desc,
             keys_auth,
+            mainnet=False,
             connect_to_known_hosts=True
     ):
         """Create new P2P Server. Listen on port for connections and
@@ -109,6 +119,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.free_peers = []  # peers to which we're not connected
         self.seeds = set()
         self.used_seeds = set()
+        self.bootstrap_seeds = MAINNET_SEEDS if mainnet else TESTNET_SEEDS
 
         self._peer_lock = Lock()
 
@@ -930,7 +941,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             known_hosts = KnownHosts.select().where(KnownHosts.is_seed)
 
         self.seeds = {(x.ip_address, x.port) for x in known_hosts if x.is_seed}
-        self.seeds.update(SEEDS)
+        self.seeds.update(self.bootstrap_seeds)
 
         ip_address = self.config_desc.seed_host
         port = self.config_desc.seed_port

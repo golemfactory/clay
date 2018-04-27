@@ -1,10 +1,19 @@
+import copy
 import logging
+import os
 import pickle
+import shutil
 import time
+import uuid
+from functools import partial
 from pathlib import Path
+from typing import Optional, Dict, List, Iterable
+from zipfile import ZipFile
 
 from golem_messages.message import ComputeTaskDef
 from pydispatch import dispatcher
+from twisted.internet.defer import Deferred
+from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
@@ -17,7 +26,7 @@ from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task
-from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
+from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     SubtaskState, Operation, TaskOp, SubtaskOp, OtherOp
@@ -62,13 +71,12 @@ class TaskManager(TaskEventListener):
     def __init__(
             self, node_name, node, keys_auth, listen_address="",
             listen_port=0, root_path="res", use_distributed_resources=True,
-            tasks_dir="tasks", task_persistence=True):
+            tasks_dir="tasks", task_persistence=True,
+            apps_manager=AppsManager(False)):
         super().__init__()
 
-        self.apps_manager = AppsManager()
-        self.apps_manager.load_apps()
-
-        apps = list(self.apps_manager.apps.values())
+        self.apps_manager = apps_manager
+        apps = list(apps_manager.apps.values())
         task_types = [app.task_type_info() for app in apps]
         self.task_types = {t.name.lower(): t for t in task_types}
 
@@ -185,9 +193,9 @@ class TaskManager(TaskEventListener):
 
     def dump_task(self, task_id: str) -> None:
         logger.debug('DUMP TASK %r', task_id)
+        filepath = self._dump_filepath(task_id)
         try:
             data = self.tasks[task_id], self.tasks_states[task_id]
-            filepath = self._dump_filepath(task_id)
             logger.debug('DUMPING TASK %r', filepath)
             with filepath.open('wb') as f:
                 pickle.dump(data, f, protocol=2)
@@ -230,7 +238,7 @@ class TaskManager(TaskEventListener):
                     self.tasks_states[task_id] = state
 
                     for sub in state.subtask_states.values():
-                        self.subtask2task_mapping[sub.subtask_id] = task
+                        self.subtask2task_mapping[sub.subtask_id] = task_id
 
                     logger.debug('TASK %s RESTORED from %r', task_id, path)
                 except (pickle.UnpicklingError, EOFError, ImportError,
@@ -367,12 +375,120 @@ class TaskManager(TaskEventListener):
 
         self.subtask2task_mapping[ctd['subtask_id']] = task_id
         self.__add_subtask_to_tasks_states(
-            node_name, node_id, price, ctd, address,
+            node_name, node_id, ctd, address,
         )
         self.notice_task_updated(task_id,
                                  subtask_id=ctd['subtask_id'],
                                  op=SubtaskOp.ASSIGNED)
         return ctd, False, extra_data.should_wait
+
+    def copy_results(
+            self,
+            old_task_id: str,
+            new_task_id: str,
+            subtask_ids_to_copy: Iterable[str]) -> None:
+
+        try:
+            old_task = self.tasks[old_task_id]
+            new_task = self.tasks[new_task_id]
+            assert isinstance(old_task, CoreTask)
+            assert isinstance(new_task, CoreTask)
+        except (KeyError, AssertionError):
+            logger.exception(
+                'Cannot copy results from task %r to %r',
+                old_task_id, new_task_id)
+            return
+
+        # Map new subtasks to old by 'start_task'
+        subtasks_to_copy = {
+            subtask['start_task']: subtask for subtask in
+            map(lambda id_: old_task.subtasks_given[id_], subtask_ids_to_copy)
+        }
+
+        # Generate all subtasks for the new task
+        while new_task.needs_computation():
+            extra_data = new_task.query_extra_data(0, node_id=str(uuid.uuid4()))
+            self.subtask2task_mapping[extra_data.ctd['subtask_id']] = \
+                new_task_id
+            self.__add_subtask_to_tasks_states(
+                node_name=None,
+                node_id=None,
+                address=None,
+                ctd=extra_data.ctd)
+
+        def handle_copy_error(subtask_id, error):
+            logger.error(
+                'Cannot copy result of subtask %r: %r', subtask_id, error)
+            self.restart_subtask(subtask_id)
+
+        for new_subtask_id, new_subtask in new_task.subtasks_given.items():
+            old_subtask = subtasks_to_copy.get(new_subtask['start_task'])
+
+            if old_subtask:  # Copy results from old subtask
+                deferred = self._copy_subtask_results(
+                    old_task=old_task,
+                    new_task=new_task,
+                    old_subtask=old_subtask,
+                    new_subtask=new_subtask
+                )
+                deferred.addErrback(partial(handle_copy_error, new_subtask_id))
+
+            else:  # Restart subtask to get it computed
+                self.restart_subtask(new_subtask_id)
+
+    def _copy_subtask_results(
+            self,
+            old_task: CoreTask,
+            new_task: CoreTask,
+            old_subtask: dict,
+            new_subtask: dict) -> Deferred:
+
+        old_task_id = old_task.header.task_id
+        new_task_id = new_task.header.task_id
+        assert isinstance(old_task.tmp_dir, str)
+        assert isinstance(new_task.tmp_dir, str)
+        old_tmp_dir = Path(old_task.tmp_dir)
+        new_tmp_dir = Path(new_task.tmp_dir)
+        old_subtask_id = old_subtask['subtask_id']
+        new_subtask_id = new_subtask['subtask_id']
+
+        def copy_and_extract_zips():
+            # TODO: Refactor this using package manager (?)
+            old_result_path = old_tmp_dir / '{}.{}.zip'.format(
+                old_task_id, old_subtask_id)
+            new_result_path = new_tmp_dir / '{}.{}.zip'.format(
+                new_task_id, new_subtask_id)
+            shutil.copy(old_result_path, new_result_path)
+
+            subtask_result_dir = new_tmp_dir / new_subtask_id
+            os.makedirs(subtask_result_dir)
+            with ZipFile(new_result_path, 'r') as zf:
+                zf.extractall(subtask_result_dir)
+                return [
+                    str(subtask_result_dir / name)
+                    for name in zf.namelist()
+                    if name != '.package_desc'
+                ]
+
+        def after_results_extracted(results):
+            new_task.copy_subtask_results(
+                new_subtask_id, old_subtask, results)
+
+            new_subtask_state = \
+                self.__set_subtask_state_finished(new_subtask_id)
+            old_subtask_state = self.tasks_states[old_task_id] \
+                .subtask_states[old_subtask_id]
+            new_subtask_state.computer = \
+                copy.deepcopy(old_subtask_state.computer)
+
+            self.notice_task_updated(
+                task_id=new_task_id,
+                subtask_id=new_subtask_id,
+                op=SubtaskOp.FINISHED)
+
+        deferred = deferToThread(copy_and_extract_zips)
+        deferred.addCallback(after_results_extracted)
+        return deferred
 
     def get_tasks_headers(self):
         ret = []
@@ -412,19 +528,13 @@ class TaskManager(TaskEventListener):
         subtask_state = self.tasks_states[task].subtask_states[subtask_id]
         return subtask_state.computer.node_id
 
-    def set_value(self, task_id, subtask_id, value):
-        if not isinstance(value, int):
-            raise TypeError("Incorrect 'value' type: {}. Should be int"
-                            .format(type(value)))
-        task_state = self.tasks_states.get(task_id)
-        if task_state is None:
-            logger.warning("This is not my task {}".format(task_id))
-            return
-        subtask_state = task_state.subtask_states.get(subtask_id)
-        if subtask_state is None:
-            logger.warning("This is not my subtask {}".format(subtask_id))
-            return
-        subtask_state.value = value
+    @handle_subtask_key_error
+    def set_subtask_value(self, subtask_id: str, price: int) -> None:
+        """Set price for a subtask"""
+        task_id = self.subtask2task_mapping[subtask_id]
+
+        ss = self.tasks_states[task_id].subtask_states[subtask_id]
+        ss.value = price
 
     @handle_subtask_key_error
     def get_value(self, subtask_id):
@@ -444,9 +554,9 @@ class TaskManager(TaskEventListener):
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
         subtask_status = subtask_state.subtask_status
 
-        if not SubtaskStatus.is_computed(subtask_status):
+        if not subtask_status.is_computed():
             logger.warning("Result for subtask {} when subtask state is {}"
-                           .format(subtask_id, subtask_status))
+                           .format(subtask_id, subtask_status.value))
             self.notice_task_updated(task_id,
                                      subtask_id=subtask_id,
                                      op=OtherOp.UNEXPECTED)
@@ -455,13 +565,7 @@ class TaskManager(TaskEventListener):
         subtask_state.subtask_status = SubtaskStatus.verifying
 
         def verification_finished():
-            ss = self.tasks_states[task_id].subtask_states[subtask_id]
-            ss.subtask_progress = 1.0
-            ss.subtask_rem_time = 0.0
-            ss.subtask_status = SubtaskStatus.finished
-            ss.stdout = self.tasks[task_id].get_stdout(subtask_id)
-            ss.stderr = self.tasks[task_id].get_stderr(subtask_id)
-            ss.results = self.tasks[task_id].get_results(subtask_id)
+            ss = self.__set_subtask_state_finished(subtask_id)
 
             if not self.tasks[task_id].verify_subtask(subtask_id):
                 logger.debug("Subtask %r not accepted\n", subtask_id)
@@ -497,15 +601,27 @@ class TaskManager(TaskEventListener):
         )
 
     @handle_subtask_key_error
+    def __set_subtask_state_finished(self, subtask_id: str) -> SubtaskState:
+        task_id = self.subtask2task_mapping[subtask_id]
+        ss = self.tasks_states[task_id].subtask_states[subtask_id]
+        ss.subtask_progress = 1.0
+        ss.subtask_rem_time = 0.0
+        ss.subtask_status = SubtaskStatus.finished
+        ss.stdout = self.tasks[task_id].get_stdout(subtask_id)
+        ss.stderr = self.tasks[task_id].get_stderr(subtask_id)
+        ss.results = self.tasks[task_id].get_results(subtask_id)
+        return ss
+
+    @handle_subtask_key_error
     def task_computation_failure(self, subtask_id, err):
         task_id = self.subtask2task_mapping[subtask_id]
 
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
         subtask_status = subtask_state.subtask_status
 
-        if not SubtaskStatus.is_computed(subtask_status):
+        if not subtask_status.is_computed():
             logger.warning("Result for subtask {} when subtask state is {}"
-                           .format(subtask_id, subtask_status))
+                           .format(subtask_id, subtask_status.value))
             self.notice_task_updated(task_id,
                                      subtask_id=subtask_id,
                                      op=OtherOp.UNEXPECTED)
@@ -559,7 +675,7 @@ class TaskManager(TaskEventListener):
                 self.notice_task_updated(th.task_id, op=TaskOp.TIMEOUT)
             ts = self.tasks_states[th.task_id]
             for s in list(ts.subtask_states.values()):
-                if SubtaskStatus.is_computed(s.subtask_status):
+                if s.subtask_status.is_computed():
                     if cur_time > s.deadline:
                         logger.info("Subtask {} dies".format(s.subtask_id))
                         s.subtask_status = SubtaskStatus.failure
@@ -589,17 +705,24 @@ class TaskManager(TaskEventListener):
         return tasks_progresses
 
     @handle_task_key_error
-    def put_task_in_restarted_state(self, task_id):
+    def assert_task_can_be_restarted(self, task_id: str) -> None:
+        task_state = self.tasks_states[task_id]
+        if task_state.status == TaskStatus.restarted:
+            raise self.AlreadyRestartedError()
+
+    @handle_task_key_error
+    def put_task_in_restarted_state(self, task_id, clear_tmp=True):
         """
         When restarting task, it's put in a final state 'restarted' and
         a new one is created.
         """
-        task_state = self.tasks_states[task_id]
-        if task_state.status == TaskStatus.restarted:
-            raise self.AlreadyRestartedError()
-        self.dir_manager.clear_temporary(task_id)
+        self.assert_task_can_be_restarted(task_id)
+        if clear_tmp:
+            self.dir_manager.clear_temporary(task_id)
 
+        task_state = self.tasks_states[task_id]
         task_state.status = TaskStatus.restarted
+
         for ss in self.tasks_states[task_id].subtask_states.values():
             if ss.subtask_status != SubtaskStatus.failure:
                 ss.subtask_status = SubtaskStatus.restarted
@@ -682,23 +805,25 @@ class TaskManager(TaskEventListener):
             proportion = (ts.elapsed_time / ts.progress)
             ts.remaining_time = proportion - ts.elapsed_time
         else:
-            ts.remaining_time = -0.0
+            ts.remaining_time = None
 
         t.update_task_state(ts)
 
         return ts
 
-    def get_subtasks(self, task_id):
+    def get_subtasks(self, task_id) -> Optional[List[str]]:
         """
         Get all subtasks related to given task id
         :param task_id: Task ID
         :return: list of all subtasks related with @task_id or None
                  if @task_id is not known
         """
-        if task_id not in self.tasks_states:
+        task_state = self.tasks_states.get(task_id)
+        if not task_state:
             return None
-        return [sub.subtask_id for sub in
-                list(self.tasks_states[task_id].subtask_states.values())]
+
+        subtask_states = list(task_state.subtask_states.values())
+        return [subtask_state.subtask_id for subtask_state in subtask_states]
 
     def change_config(self, root_path, use_distributed_resource_management):
         self.dir_manager = DirManager(root_path)
@@ -707,19 +832,17 @@ class TaskManager(TaskEventListener):
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]
 
-    def get_task_dict(self, task_id):
-        task = self.tasks[task_id]
-
-        if task is None:
-            return
+    def get_task_dict(self, task_id) -> Optional[Dict]:
+        task = self.tasks.get(task_id)
+        if not task:  # task might have been deleted after the request was made
+            return None
 
         task_type_name = task.task_definition.task_type.lower()
         task_type = self.task_types[task_type_name]
-        state = self.tasks_states.get(task.header.task_id)
-        timeout = task.task_definition.full_task_timeout
+        state = self.query_task_state(task.header.task_id)
 
         dictionary = {
-            'duration': max(timeout - state.remaining_time, 0),
+            'duration': state.elapsed_time,
             # single=True retrieves one preview file. If rendering frames,
             # it's the preview of the most recently computed frame.
             'preview': task_type.get_preview(task, single=True)
@@ -730,9 +853,11 @@ class TaskManager(TaskEventListener):
                            state.to_dictionary(),
                            self.get_task_definition_dict(task))
 
-    def get_tasks_dict(self):
-        return [self.get_task_dict(task_id) for task_id
-                in self.tasks.keys()]
+    def get_tasks_dict(self) -> List[Dict]:
+        task_ids = list(self.tasks.keys())
+        mapped = map(self.get_task_dict, task_ids)
+        filtered = filter(None, mapped)
+        return list(filtered)
 
     def get_subtask_dict(self, subtask_id):
         task_id = self.subtask2task_mapping[subtask_id]
@@ -763,23 +888,6 @@ class TaskManager(TaskEventListener):
         task_type = self.task_types[task_type_name]
         return task_type.get_preview(task, single=single)
 
-    @handle_subtask_key_error
-    def set_computation_time(self, subtask_id, computation_time):
-        """
-        Set computation time for subtask and also compute and set new value
-        based on saved price for this subtask
-        :param str subtask_id: subtask which was computed in given
-                               computation_time
-        :param float computation_time: how long does it take to compute
-        this task = max timeout
-
-        :return:
-        """
-        task_id = self.subtask2task_mapping[subtask_id]
-        ss = self.tasks_states[task_id].subtask_states[subtask_id]
-        ss.computation_time = computation_time
-        ss.value = compute_subtask_value(ss.computer.price, computation_time)
-
     def add_comp_task_request(self, theader, price):
         """ Add a header of a task which this node may try to compute """
         self.comp_task_keeper.add_request(theader, price)
@@ -800,11 +908,11 @@ class TaskManager(TaskEventListener):
             logger.exception("Cannot estimate price, wrong params")
             return None
 
-    def __add_subtask_to_tasks_states(self, node_name, node_id, comp_price,
+    def __add_subtask_to_tasks_states(self, node_name, node_id,
                                       ctd, address):
 
-        logger.debug('add_subtask_to_tasks_states(%r, %r, %r, %r, %r)',
-                     node_name, node_id, comp_price, ctd, address)
+        logger.debug('add_subtask_to_tasks_states(%r, %r, %r, %r)',
+                     node_name, node_id, ctd, address)
 
         price = self.tasks[ctd['task_id']].header.max_price
 
@@ -819,7 +927,7 @@ class TaskManager(TaskEventListener):
         ss.subtask_definition = ctd['short_description']
         ss.subtask_id = ctd['subtask_id']
         ss.extra_data = ctd['extra_data']
-        ss.subtask_status = TaskStatus.starting
+        ss.subtask_status = SubtaskStatus.starting
         ss.value = 0
 
         (self.tasks_states[ctd['task_id']].

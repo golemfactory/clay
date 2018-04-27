@@ -20,19 +20,32 @@ from golem.utils import tee_target
 log = logging.getLogger('golem.ethereum')
 
 
-NODE_LIST = [
+TESTNET_NODE_LIST = [
     'https://rinkeby.golem.network:55555',
     'http://188.165.227.180:55555',
     'http://94.23.17.170:55555',
     'http://94.23.57.58:55555',
 ]
 
+MAINNET_NODE_LIST = [
+    'https://geth.golem.network:55555',
+    'https://0.geth.golem.network:55555',
+    'https://1.geth.golem.network:55555',
+    'https://2.geth.golem.network:55555',
+    'https://geth.golem.network:2137',
+    'https://0.geth.golem.network:2137',
+    'https://1.geth.golem.network:2137',
+    'https://2.geth.golem.network:2137',
+]
+
 
 def get_public_nodes(mainnet: bool):
     """Returns public geth RPC addresses"""
     if mainnet:
-        raise Exception('Mainnet not supported yet')
-    addr_list = NODE_LIST[:]
+        addr_list = MAINNET_NODE_LIST[:]
+    else:
+        addr_list = TESTNET_NODE_LIST[:]
+
     random.shuffle(addr_list)
     return addr_list
 
@@ -58,7 +71,9 @@ class NodeProcess(object):
         self._mainnet = mainnet
         self.web3 = None  # web3 client interface
         self.provider_proxy = ProviderProxy()  # web3 ipc / rpc provider
-        self.addr_list = [addr] if addr else get_public_nodes(mainnet)
+
+        self.initial_addr_list = [addr] if addr else get_public_nodes(mainnet)
+        self.addr_list = None
 
         self.__ps = None  # child process
 
@@ -70,6 +85,9 @@ class NodeProcess(object):
         if self.__ps is not None:
             raise RuntimeError("Ethereum node already started by us")
 
+        if not self.addr_list:
+            self.addr_list = self.initial_addr_list.copy()
+
         if self.start_node:
             provider = self._create_local_ipc_provider(start_port)
         else:
@@ -78,20 +96,19 @@ class NodeProcess(object):
         self.provider_proxy.provider = provider
         self.web3 = Web3(self.provider_proxy)
 
-        middleware_builder = RemoteRPCErrorMiddlewareBuilder(
-            self._handle_remote_rpc_provider_failure)
-        self.web3.middleware_stack.add(middleware_builder.build)
-
         started = time.time()
         deadline = started + self.CONNECTION_TIMEOUT
 
         while not self.is_connected():
             if time.time() > deadline:
-                return self._start_timed_out(provider, start_port)
+                return self.start(start_port)
             time.sleep(0.1)
 
-        log.info("Connected to node in %ss", time.time() - started)
+        middleware_builder = RemoteRPCErrorMiddlewareBuilder(
+            self._handle_remote_rpc_provider_failure)
+        self.web3.middleware_stack.add(middleware_builder.build)
 
+        log.info("Connected to node in %ss", time.time() - started)
         return None
 
     @report_calls(Component.ethereum, 'node.stop')
@@ -115,12 +132,6 @@ class NodeProcess(object):
             return self.web3.isConnected()
         except AssertionError:  # thrown if not all required APIs are available
             return False
-
-    def _start_timed_out(self, provider, start_port):
-        if not self.start_node:
-            self.start_node = not self.addr_list
-            return self.start(start_port)
-        raise OSError("Cannot connect to geth: {}".format(provider))
 
     def _create_local_ipc_provider(self, start_port=None):  # noqa pylint: disable=too-many-locals
         chain = 'mainnet' if self._mainnet else 'rinkeby'
@@ -192,7 +203,6 @@ class NodeProcess(object):
     def _handle_remote_rpc_provider_failure(self, exc):
         from golem.core.async import async_run, AsyncRequest
         log.warning('GETH: reconnecting to another provider (%r)', exc)
-
         self.provider_proxy.provider = None
 
         request = AsyncRequest(self.start)

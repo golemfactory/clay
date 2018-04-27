@@ -22,7 +22,7 @@ logger = logging.getLogger("apps.blender")
 # pylint: disable=R0902
 class BlenderVerifier(FrameRenderingVerifier):
     DOCKER_NAME = "golemfactory/image_metrics"
-    DOCKER_TAG = '1.1'
+    DOCKER_TAG = '1.2'
 
     def __init__(self, callback: Callable) -> None:
         super().__init__(callback)
@@ -125,7 +125,8 @@ class BlenderVerifier(FrameRenderingVerifier):
             if self.wasFailure:
                 return
 
-        work_dir = verification_context.get_crop_path(crop_number)
+        work_dir = verification_context.get_crop_path(
+            crop_number+self.cropper.crop_counter)
         di = DockerImage(BlenderVerifier.DOCKER_NAME,
                          tag=BlenderVerifier.DOCKER_TAG)
 
@@ -200,7 +201,16 @@ class BlenderVerifier(FrameRenderingVerifier):
     def make_verdict(self):
         avg_corr = 0
         avg_ssim = 0
-        for _, metric in self.metrics.items():
+        for no, metric in self.metrics.items():
+            logger.info("METRIC: Subtask: %r crop no: %r SSIM %r, PSNR: %r \n"
+                        "Scene %s \n"
+                        "requestor %r\n"
+                        "provider %r",
+                        self.subtask_info['subtask_id'],
+                        no, metric['SSIM_normal'],
+                        metric['PSNR'], self.subtask_info['scene_file'],
+                        self.subtask_info['owner'],
+                        self.subtask_info['node_id'])
             avg_corr += metric['imgCorr']
             avg_ssim += metric['SSIM_normal']
         avg_corr /= 3
@@ -220,6 +230,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             self.additional_test = True
             logger.info("Performing additional verification for subtask %r ",
                         self.subtask_info['subtask_id'])
+            self.cropper.crop_counter = 3
             self.cropper.render_crops(self.computer, self.resources,
                                       self._crop_rendered,
                                       self._crop_render_failure,
@@ -228,8 +239,8 @@ class BlenderVerifier(FrameRenderingVerifier):
                                       (self.crops_size[0] + 0.01,
                                        self.crops_size[1] + 0.01))
         elif avg_ssim < w_ssim_min:
-            logger.info("Subtask %r NOT verified with %r",
-                        self.subtask_info['subtask_id'], avg_ssim)
+            logger.warning("Subtask %r NOT verified with %r",
+                           self.subtask_info['subtask_id'], avg_ssim)
             self.failure()
         else:
             logger.warning("Unexpected verification output for subtask %r,"

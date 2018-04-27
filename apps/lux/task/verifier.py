@@ -136,11 +136,14 @@ class LuxRenderVerifier(RenderingVerifier):
             return False
         result = self.computer.get_result()
         commonprefix = common_dir(result['data'])
-        flm = find_file_with_ext(commonprefix, [".flm"])
-        stderr = [x for x in result['data']
-                  if os.path.basename(x) == "stderr.log"]
 
-        if flm is None or not stderr:
+        try:
+            flm = find_file_with_ext(commonprefix, [".flm"])
+            stderr = [x for x in result['data']
+                      if os.path.basename(x) == "stderr.log"]
+            if not stderr:
+                raise RuntimeError
+        except RuntimeError:
             self.message = "No produre output produce in verification " \
                            "merging phase"
             return False

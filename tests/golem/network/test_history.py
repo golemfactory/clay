@@ -8,11 +8,11 @@ import unittest.mock as mock
 from faker import Faker
 from peewee import DataError, PeeweeException, IntegrityError
 
+from golem_messages import factories as msg_factories
+
 from golem.model import NetworkMessage, Actor
 from golem.network import history
 from golem.testutils import DatabaseFixture
-
-from tests.factories import messages as msg_factories
 
 fake = Faker()
 
@@ -259,7 +259,7 @@ class TestMessageHistoryService(DatabaseFixture):
 class TestAdd(unittest.TestCase):
     def setUp(self):
         self.service = history.MessageHistoryService().instance
-        self.msg = msg_factories.TaskToCompute()
+        self.msg = msg_factories.tasks.TaskToComputeFactory()
 
     def tearDown(self):
         super().tearDown()
@@ -319,7 +319,7 @@ class TestAdd(unittest.TestCase):
 
 class TestMessageToModel(unittest.TestCase):
     def setUp(self):
-        self.msg = msg_factories.TaskToCompute()
+        self.msg = msg_factories.tasks.TaskToComputeFactory()
 
     def test_basic(self):
         node_id = fake.binary(length=64)

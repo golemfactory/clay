@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import binascii
 import os
 import platform
 import sys
@@ -20,10 +21,11 @@ import golem.argsparser as argsparser  # noqa
 from golem.appconfig import AppConfig  # noqa
 from golem.clientconfigdescriptor import ClientConfigDescriptor, \
     ConfigApprover  # noqa
+from golem.core import variables  # noqa
 from golem.core.common import install_reactor  # noqa
 from golem.core.simpleenv import get_local_datadir  # noqa
-from golem.core.variables import PROTOCOL_CONST  # noqa
 from golem.node import Node  # noqa
+from golem.tools.talkback import enable_sentry_logger  # noqa
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
 
@@ -46,7 +48,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 
 @click.command()
 @click.option('--monitor/--nomonitor', default=True)
-@click.option('--concent/--noconcent', default=False)
+@click.option('--concent', type=click.Choice(variables.CONCENT_CHOICES))
 @click.option('--datadir', '-d',
               default=get_local_datadir('default'),
               type=click.Path(
@@ -54,7 +56,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
                   writable=True
               ))
 @click.option('--protocol_id', type=click.STRING,
-              callback=PROTOCOL_CONST.patch_protocol_id,
+              callback=variables.PROTOCOL_CONST.patch_protocol_id,
               is_eager=True,
               expose_value=False,
               help="Golem nodes will connect "
@@ -71,17 +73,21 @@ slogging.SManager.getLogger = monkey_patched_getLogger
               help="Connect with given peer")
 @click.option('--mainnet', is_flag=True, default=False,
               help='Whether to run on Ethereum mainnet')
-@click.option('--start-geth', is_flag=True, default=False, is_eager=True,
-              help="Start local geth node")
-@click.option('--start-geth-port', default=None, type=int,
-              callback=argsparser.enforce_start_geth_used, metavar="<port>",
-              help="Port number to be used by locally started geth node")
+# Local geth is currently experimental, see issue #2476
+# @click.option('--start-geth', is_flag=True, default=False, is_eager=True,
+#               help="Start local geth node")
+# @click.option('--start-geth-port', default=None, type=int,
+#               callback=argsparser.enforce_start_geth_used, metavar="<port>",
+#               help="Port number to be used by locally started geth node")
 @click.option('--geth-address', default=None, metavar="http://<host>:<port>",
               callback=argsparser.parse_http_addr,
               help="Connect with given geth node")
 @click.option('--password', default=None,
               help="Password to unlock Golem. This flag should be mostly used "
               "during development as it's not a safe way to provide password")
+@click.option('--accept-terms', is_flag=True, default=False,
+              help="Accept Golem terms of use. This is equivalent to calling "
+                   "`golemcli terms accept`")
 @click.option('--generate-rpc-cert', is_flag=True, default=False,
               help="Generate RPC certificate if they do not exist")
 @click.option('--version', '-v', is_flag=True, default=False,
@@ -111,8 +117,8 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--loglevel', expose_value=False)  # Crossbar specific level
 @click.option('--title', expose_value=False)
 def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
-          start_geth, start_geth_port, geth_address, password,
-          generate_rpc_cert, version, log_level, enable_talkback, m):
+          geth_address, password, accept_terms, generate_rpc_cert, version,
+          log_level, enable_talkback, m):
 
     freeze_support()
     delete_reactor()
@@ -126,7 +132,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     datadir = os.path.join(datadir, subdir)
     # We don't want different chains to talk to each other
     if not mainnet:
-        PROTOCOL_CONST.ID += '-testnet'
+        variables.PROTOCOL_CONST.ID += '-testnet'
 
     if generate_rpc_cert:
         generate_rpc_certificate(datadir)
@@ -137,49 +143,61 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     sys.modules['win32com.gen_py.pywintypes'] = None
     sys.modules['win32com.gen_py.pythoncom'] = None
 
-    app_config = AppConfig.load_config(datadir)
+    app_config = AppConfig.load_config(datadir, mainnet=mainnet)
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(app_config)
     config_desc = ConfigApprover(config_desc).approve()
-
-    if enable_talkback is None:
-        enable_talkback = bool(config_desc.enable_talkback)
 
     if rpc_address:
         config_desc.rpc_address = rpc_address.address
         config_desc.rpc_port = rpc_address.port
     if node_address:
         config_desc.node_address = node_address
+
     # Crossbar
     if m == 'crossbar.worker.process':
         start_crossbar_worker(m)
+        return
+
     # Golem headless
-    else:
-        install_reactor()
+    install_reactor()
 
-        from golem.core.common import config_logging
-        config_logging(datadir=datadir, loglevel=log_level,
-                       enable_talkback=enable_talkback)
+    from golem.core.common import config_logging
+    config_logging(datadir=datadir, loglevel=log_level)
 
-        log_golem_version()
-        log_platform_info()
-        log_ethereum_chain(mainnet)
+    if enable_talkback is None:
+        enable_talkback = bool(config_desc.enable_talkback)
+    enable_sentry_logger(enable_talkback)
 
-        node = Node(
-            datadir=datadir,
-            app_config=app_config,
-            config_desc=config_desc,
-            peers=peer,
-            use_monitor=monitor,
-            use_concent=concent,
-            mainnet=mainnet,
-            start_geth=start_geth,
-            start_geth_port=start_geth_port,
-            geth_address=geth_address,
-            password=password,
-        )
+    if concent is None:  # Default value
+        if mainnet:
+            concent = 'disabled'
+        else:
+            concent = 'test'
 
-        node.start()
+    log_golem_version()
+    log_platform_info()
+    log_ethereum_chain(mainnet)
+    log_concent_choice(concent)
+
+    node = Node(
+        datadir=datadir,
+        app_config=app_config,
+        config_desc=config_desc,
+        peers=peer,
+        use_monitor=monitor,
+        concent_variant=variables.CONCENT_CHOICES[concent],
+        mainnet=mainnet,
+        start_geth=False,
+        start_geth_port=None,
+        geth_address=geth_address,
+        password=password,
+    )
+
+    if accept_terms:
+        node.accept_terms()
+
+    node.start()
 
 
 def delete_reactor():
@@ -235,6 +253,18 @@ def log_ethereum_chain(mainnet: bool):
     logger.info("Ethereum chain: %s", chain)
 
 
+def log_concent_choice(concent: str):
+    value: dict = variables.CONCENT_CHOICES[concent]  # type: ignore
+    if None in value.values():
+        logger.info('Concent disabled')
+        return
+    logger.info('Concent url: %s', value['url'])
+    logger.info(
+        'Concent public key: %s',
+        binascii.hexlify(value['pubkey']).decode('ascii'),
+    )
+
+
 def generate_rpc_certificate(datadir: str):
     from golem.rpc.cert import CertificateManager
     from golem.rpc.common import CROSSBAR_DIR
@@ -249,4 +279,4 @@ def generate_rpc_certificate(datadir: str):
 
 
 if __name__ == '__main__':
-    start()
+    start()  # pylint: disable=no-value-for-parameter

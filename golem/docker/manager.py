@@ -86,6 +86,8 @@ class DockerManager(DockerConfigManager):
 
     @report_calls(Component.docker, 'instance.check')
     def check_environment(self):
+        if self._env_checked:
+            return bool(self.docker_machine)
 
         if is_windows():
             import pythoncom
@@ -150,8 +152,7 @@ class DockerManager(DockerConfigManager):
         return bool(self.docker_machine)
 
     def update_config(self, status_callback, done_callback, in_background=True):
-        if not self._env_checked:
-            self.check_environment()
+        self.check_environment()
 
         if in_background:
             thread = Thread(target=self._wait_for_tasks,
@@ -170,7 +171,8 @@ class DockerManager(DockerConfigManager):
             cpu_count = max(int(config_desc.num_cores), cpu_count)
 
         with self._try():
-            memory_size = int(config_desc.max_memory_size) // 1024
+            memory_size = max(int(config_desc.max_memory_size) // 1024,
+                              memory_size)
 
         with self._try():
             if config_desc.docker_machine_name:
@@ -224,8 +226,7 @@ class DockerManager(DockerConfigManager):
         :param in_background: Run the recovery process in a separate thread.
         :return:
         """
-        if not self._env_checked:
-            self.check_environment()
+        self.check_environment()
 
         if self.docker_machine:
             if in_background:
@@ -378,6 +379,7 @@ class DockerManager(DockerConfigManager):
             for line in f:
                 if line:
                     images.append(line.split())
+
         return images
 
     @staticmethod

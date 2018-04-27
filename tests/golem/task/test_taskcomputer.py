@@ -161,8 +161,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertEqual(args[0], "xxyyzz")
         self.assertEqual(args[1], "xyz")
         self.assertEqual(args[2]["data"], 10000)
-        self.assertGreater(args[3], 0)
-        self.assertLess(args[3], 10)
 
         ctd['subtask_id'] = "aabbcc"
         ctd['src_code'] = "raise Exception('some exception')"
@@ -372,10 +370,13 @@ class TestTaskMonitor(DatabaseFixture):
         from golem.monitor.monitor import SystemMonitor
         from golem.monitorconfig import MONITOR_CONFIG
         #  hold reference to avoid GC of monitor
+        client_mock = mock.MagicMock()
+        client_mock.cliid = 'CLIID'
+        client_mock.sessid = 'SESSID'
+        client_mock.config_desc = ClientConfigDescriptor()
+        client_mock.mainnet = False
         monitor = SystemMonitor(  # noqa pylint: disable=unused-variable
-            NodeMetadataModel(
-                "CLIID", "SESSID", "hackix", "3.1337",
-                ClientConfigDescriptor()),
+            NodeMetadataModel(client_mock, "hackix", "3.1337"),
             MONITOR_CONFIG)
         task_server = mock.MagicMock()
         task_server.config_desc = ClientConfigDescriptor()

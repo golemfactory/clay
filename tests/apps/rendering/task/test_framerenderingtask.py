@@ -9,6 +9,7 @@ from apps.rendering.resources.imgrepr import load_img, EXRImgRepr
 from apps.rendering.task.framerenderingtask import (get_frame_name, FrameRenderingTask,
                                                     FrameRenderingTaskBuilder,
                                                     FrameRendererOptions, logger)
+from apps.rendering.task.renderingtaskstate import RendererDefaults
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
@@ -37,7 +38,7 @@ class FrameRenderingTaskMock(FrameRenderingTask):
 
 
 class TestFrameRenderingTask(TestDirFixture, LogTestCase):
-    def _get_frame_task(self, use_frames=True):
+    def _get_frame_task(self, use_frames=True, num_tasks=3):
         files_ = self.additional_dir_content([3])
         rt = RenderingTaskDefinition()
         rt.options = FrameRendererOptions()
@@ -55,7 +56,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task = FrameRenderingTaskMock(files_[0],
                                       owner=Node(node_name="ABC"),
                                       task_definition=rt,
-                                      total_tasks=3,
+                                      total_tasks=num_tasks,
                                       root_path=self.path
                                       )
         dm = DirManager(self.path)
@@ -300,6 +301,19 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         assert isinstance(img_repr, EXRImgRepr)
         img_repr.close()
 
+    def test_get_subtask_for_multiple_subtask_per_frame(self):
+        task = self._get_frame_task(True, 18)
+        print(task.frames_subtasks)
+        assert task.get_subtasks(4) == {}
+        task.frames_subtasks["4"][0] = "abc"
+        task.frames_subtasks["4"][1] = "def"
+        task.subtasks_given["abc"] = {"ABC": 3}
+        task.subtasks_given["def"] = {"DEF": 4}
+        states = task.get_subtasks(4)
+        assert states["abc"].extra_data["ABC"] == 3
+        assert states["def"].extra_data["DEF"] == 4
+        assert len(states) == 2
+
 
 class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
     def test_calculate_total(self):
@@ -314,41 +328,37 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
                                             dir_manager=DirManager(self.path),
                                             task_definition=definition)
 
-        class Defaults(object):
-            def __init__(self, default_subtasks, min_subtasks, max_subtasks):
-                self.default_subtasks = default_subtasks
-                self.min_subtasks = min_subtasks
-                self.max_subtasks = max_subtasks
-
-        defaults = Defaults(13, 3, 33)
+        defaults = RendererDefaults()
+        # More subtasks than frames -> use frames count
         assert builder._calculate_total(defaults) == 6
 
         definition.options.use_frames = False
-        assert builder._calculate_total(defaults) == 13
+        # Optimize total to default
+        assert builder._calculate_total(defaults) == 20
 
         definition.optimize_total = False
+        # Don't optimize -> use total_subtasks
         assert builder._calculate_total(defaults) == 12
 
         definition.total_subtasks = None
-        assert builder._calculate_total(defaults) == 13
+        # total_subtasks unknown -> use default
+        assert builder._calculate_total(defaults) == 20
 
         definition.total_subtasks = 0
-        assert builder._calculate_total(defaults) == 13
+        # total_subtasks invalid -> use default
+        assert builder._calculate_total(defaults) == 20
 
         definition.total_subtasks = 1
-        assert builder._calculate_total(defaults) == 13
+        # total_subtasks min
+        assert builder._calculate_total(defaults) == 1
 
-        definition.total_subtasks = 2
-        assert builder._calculate_total(defaults) == 13
+        definition.total_subtasks = 51
+        # total_subtasks over max -> use default
+        assert builder._calculate_total(defaults) == 20
 
-        definition.total_subtasks = 3
-        assert builder._calculate_total(defaults) == 3
-
-        definition.total_subtasks = 34
-        assert builder._calculate_total(defaults) == 13
-
-        definition.total_subtasks = 33
-        assert builder._calculate_total(defaults) == 33
+        definition.total_subtasks = 50
+        # total_subtasks max
+        assert builder._calculate_total(defaults) == 50
 
         definition.options.use_frames = True
 

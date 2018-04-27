@@ -263,8 +263,8 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
             assert not args[0].endswith('.exe')
             exec_cmd.assert_called_with(
                 [ANY, arg, str(self.task.res_x), str(self.task.res_y),
-                 '"{}"'.format(output_file_name)] +
-                ['"{}"'.format(f) for f in files])
+                 "{}".format(output_file_name)] +
+                ["{}".format(f) for f in files])
 
     def test_get_outer_task(self):
         task = self.task
@@ -449,12 +449,7 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
 
     def test_get_output_path(self):
         td = TaskDefinition()
-        td.legacy = True
         td.task_name = "MY task"
-        tdict = {'options':  {'output_path': "/dir1/dir2/DEFOUTPUT_FILE.txt"}}
-        assert RenderingTaskBuilder.get_output_path(tdict, td) == \
-               "/dir1/dir2/DEFOUTPUT_FILE.txt"
-        td.legacy = False
         tdict = {'options': {'output_path': '/dir3/dir4', 'format': 'txt'}}
         assert RenderingTaskBuilder.get_output_path(tdict, td) == \
                path.join("/dir3/dir4", "MY task.txt")

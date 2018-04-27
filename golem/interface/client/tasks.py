@@ -1,34 +1,15 @@
+# pylint: disable=no-self-use,redefined-builtin
+
+from datetime import timedelta
 import json
 import re
 from typing import Any, Optional
 
-from apps.appsmanager import AppsManager
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.deferred import sync_wait
-from golem.interface.client.logic import AppLogic
 from golem.interface.command import doc, group, command, Argument, CommandResult
-from golem.resource.dirmanager import DirManager
 
 CREATE_TASK_TIMEOUT = 300  # s
-
-
-class CommandAppLogic(AppLogic):
-
-    def __init__(self, client, datadir):
-        super(CommandAppLogic, self).__init__()
-
-        self.node_name = sync_wait(client.get_node_name())
-        self.datadir = datadir
-        self.dir_manager = DirManager(self.datadir)
-
-    @staticmethod
-    def instantiate(client, datadir):
-        logic = CommandAppLogic(client, datadir)
-        apps_manager = AppsManager()
-        apps_manager.load_apps()
-        for app in list(apps_manager.apps.values()):
-            logic.register_new_task_type(app.task_type_info())
-        return logic
 
 
 @group(help="Manage tasks")
@@ -36,14 +17,15 @@ class Tasks:
 
     client = None  # type: 'golem.rpc.session.Client'
 
-    task_table_headers = ['id', 'remaining',
+    task_table_headers = ['id', 'ETA',
                           'subtasks', 'status', 'completion']
-    subtask_table_headers = ['node', 'id', 'remaining', 'status', 'completion']
+    subtask_table_headers = ['node', 'id', 'ETA', 'status', 'completion']
     unsupport_reasons_table_headers = ['reason', 'no of tasks',
                                        'avg for all tasks']
 
     id_req = Argument('id', help="Task identifier")
     id_opt = Argument.extend(id_req, optional=True)
+    subtask_ids = Argument('subtask_ids', vargs=True, help="Subtask ids")
 
     sort_task = Argument(
         '--sort',
@@ -88,7 +70,7 @@ class Tasks:
             for task in result or []:
                 values.append([
                     task['id'],
-                    str(task['time_remaining']),
+                    Tasks.__format_seconds(task['time_remaining']),
                     str(task['subtasks']),
                     task['status'],
                     Tasks.__progress_str(task['progress'])
@@ -98,6 +80,8 @@ class Tasks:
                                             sort=sort)
 
         if isinstance(result, dict):
+            result['time_remaining'] = \
+                Tasks.__format_seconds(result['time_remaining'])
             result['progress'] = Tasks.__progress_str(result['progress'])
 
         return result
@@ -107,14 +91,17 @@ class Tasks:
         values = []
 
         deferred = Tasks.client.get_subtasks(id)
-        result = sync_wait(deferred)
+        result, error = sync_wait(deferred)
+
+        if error:
+            return error
 
         if isinstance(result, list):
             for subtask in result:
                 values.append([
                     subtask['node_name'],
                     subtask['subtask_id'],
-                    str(subtask['time_remaining']),
+                    Tasks.__format_seconds(subtask['time_remaining']),
                     subtask['status'],
                     Tasks.__progress_str(subtask['progress'])
                 ])
@@ -125,6 +112,15 @@ class Tasks:
     @command(argument=id_req, help="Restart a task")
     def restart(self, id):
         deferred = Tasks.client.restart_task(id)
+        ok, error = sync_wait(deferred)
+        if not ok:
+            return error
+        return None
+
+    @command(arguments=(id_req, subtask_ids),
+             help="Restart given subtasks from a task")
+    def restart_subtasks(self, id, subtask_ids):
+        deferred = Tasks.client.restart_subtasks_from_task(id, subtask_ids)
         return sync_wait(deferred)
 
     @command(argument=id_req, help="Abort a task")
@@ -170,6 +166,14 @@ class Tasks:
                                         values)
 
     @staticmethod
+    def __format_seconds(seconds: float) -> str:
+        try:
+            delta = timedelta(seconds=int(seconds))
+            return str(delta)
+        except TypeError:
+            return '???'
+
+    @staticmethod
     def __dump_dict(dictionary: dict, outfile: Optional[str]) -> None:
         template_str = json.dumps(dictionary, indent=4)
         if outfile:
@@ -203,6 +207,27 @@ class Tasks:
         if 'id' in dictionary:
             print("Warning: discarding the UUID from the preset")
 
+        subtasks = dictionary.get('subtasks', 0)
+        options = dictionary.get('options', {})
+        optimize_total = bool(options.get('optimize_total', False))
+        if subtasks and not optimize_total:
+            computed_subtasks = sync_wait(
+                Tasks.client.get_subtasks_count(
+                    total_subtasks=subtasks,
+                    optimize_total=False,
+                    use_frames=options.get('frame_count', 1) > 1,
+                    frames=[None]*options.get('frame_count', 1),
+                ),
+                CREATE_TASK_TIMEOUT,
+            )
+            if computed_subtasks != subtasks:
+                raise ValueError(
+                    "Subtasks count {:d} is invalid."
+                    " Maybe use {:d} instead?".format(
+                        subtasks,
+                        computed_subtasks,
+                    )
+                )
         deferred = Tasks.client.create_task(dictionary)
         return sync_wait(deferred, CREATE_TASK_TIMEOUT)
 
@@ -217,7 +242,10 @@ class Subtasks:
     @command(argument=subtask_id, help="Show subtask details")
     def show(self, subtask_id):
         deferred = Subtasks.client.get_subtask(subtask_id)
-        return sync_wait(deferred)
+        result, error = sync_wait(deferred)
+        if error:
+            return error
+        return result
 
     @command(argument=subtask_id, help="Restart a subtask")
     def restart(self, subtask_id):

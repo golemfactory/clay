@@ -31,6 +31,14 @@ from tests.golem.task.dummy.task import DummyTask, DummyTaskParameters
 
 REQUESTING_NODE_KIND = "requestor"
 COMPUTING_NODE_KIND = "computer"
+LOGGING_DICT = {
+    'handlers': {
+        'console': {
+            'formatter': 'date',
+            'class': '',
+        }
+    }
+}
 
 logger = logging.getLogger(__name__)
 
@@ -61,6 +69,7 @@ def create_client(datadir):
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(app_config)
     config_desc.key_difficulty = 0
+    config_desc.use_upnp = False
 
     from golem.core.keysauth import KeysAuth
     with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
@@ -89,7 +98,7 @@ def create_client(datadir):
 
 def _configure_mock_payment_processor(pp):
     pp.ETH_BATCH_PAYMENT_BASE = 0.01 * denoms.ether
-    pp.ETH_PER_PAYMENT = 0.001 * denoms.ether
+    pp.get_gas_cost_per_payment.return_value = 0.001 * denoms.ether
     pp.gnt_balance.return_value = 5000 * denoms.ether, time.time()
     pp.eth_balance.return_value = 300 * denoms.ether, time.time()
     pp._eth_available.return_value = 5000 * denoms.ether
@@ -114,14 +123,16 @@ def run_requesting_node(datadir, num_subtasks=3):
     start_time = time.time()
     report("Starting in {}".format(datadir))
     from golem.core.common import config_logging
-    config_logging(datadir=datadir)
+    with mock.patch.dict('loggingconfig.LOGGING', LOGGING_DICT):
+        config_logging(datadir=datadir, loglevel="DEBUG")
     client = create_client(datadir)
     client.are_terms_accepted = lambda: True
     client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
 
     params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
-    task = DummyTask(client.get_node_name(), params, num_subtasks)
+    task = DummyTask(client.get_node_name(), params, num_subtasks,
+                     client.keys_auth.public_key)
     task.initialize(DirManager(datadir))
     client.enqueue_new_task(task)
 
@@ -132,10 +143,14 @@ def run_requesting_node(datadir, num_subtasks=3):
     def report_status():
         while True:
             time.sleep(1)
-            if task.finished_computation():
+            if not task.finished_computation():
+                continue
+            if task.verify_task():
                 report("Task finished")
-                shutdown()
-                return
+            else:
+                report("Task failed")
+            shutdown()
+            return
 
     reactor.callInThread(report_status)
     reactor.run()
@@ -160,7 +175,8 @@ def run_computing_node(datadir, peer_address, fail_after=None):
     start_time = time.time()
     report("Starting in {}".format(datadir))
     from golem.core.common import config_logging
-    config_logging(datadir=datadir)
+    with mock.patch.dict('loggingconfig.LOGGING', LOGGING_DICT):
+        config_logging(datadir=datadir, loglevel="DEBUG")
     client = create_client(datadir)
     client.are_terms_accepted = lambda: True
     client.start()
@@ -200,7 +216,7 @@ def run_computing_node(datadir, peer_address, fail_after=None):
 
 
 # Global var set by a thread monitoring the status of the requestor node
-task_finished = False
+task_result = None
 
 
 def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
@@ -264,19 +280,24 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
     all_procs = computing_procs + [requesting_proc]
     task_finished_status = format_msg(
         "REQUESTOR", requesting_proc.pid, "Task finished")
+    task_failed_status = format_msg(
+        "REQUESTOR", requesting_proc.pid, "Task failed")
 
-    global task_finished
-    task_finished = False
+    global task_result
+    task_result = None
 
     def monitor_subprocess(proc):
-        global task_finished
+        global task_result
+
         while proc.returncode is None:
             line = proc.stdout.readline().strip()
             if line:
                 line = line.decode('utf-8')
                 print(line)
             if line == task_finished_status:
-                task_finished = True
+                task_result = True
+            elif line == task_failed_status:
+                task_result = False
 
     monitor_threads = [Thread(target=monitor_subprocess,
                               name="monitor {}".format(p.pid),
@@ -289,7 +310,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
 
     # Wait until timeout elapses or the task is computed
     try:
-        while not task_finished:
+        while task_result is None:
             if time.time() - start_time > timeout:
                 return "Computation timed out"
             # Check if all subprocesses are alive
@@ -298,6 +319,9 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
                     return "Node exited with return code {}".format(
                         proc.returncode)
             time.sleep(1)
+
+        if not task_result:
+            return "Task computation failed"
         return None
     finally:
         print("Stopping nodes...")

@@ -5,7 +5,8 @@ from golem.core.common import timeout_to_deadline
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.task.taskkeeper import compute_subtask_value
 from golem.testutils import TempDirFixture
-from golem.transactions.ethereum.fundslocker import FundsLocker, TaskFundsLock
+from golem.transactions.ethereum.fundslocker import (logger, FundsLocker,
+                                                     TaskFundsLock)
 
 
 class TestFundsLocker(TempDirFixture):
@@ -13,6 +14,7 @@ class TestFundsLocker(TempDirFixture):
         super().setUp()
         self.ts = mock.MagicMock()
         self.ts.eth_for_batch_payment.return_value = 13000
+        self.ts.eth_base_for_batch_payment.return_value = 3000
         val = 100000
         time_ = time.time()
         self.ts.get_balance.return_value = val, val, val, time_, time_
@@ -79,7 +81,7 @@ class TestFundsLocker(TempDirFixture):
         task.header.subtask_timeout = 3000
         fl.lock_funds(task)
         gnt, eth = fl.sum_locks()
-        assert eth == 13000 * 4
+        assert eth == 13000 * 4 + 3000
         val1 = compute_subtask_value(320, 360) * 10
         val2 = compute_subtask_value(140, 3600) * 7
         val3 = compute_subtask_value(10, 60) * 4
@@ -90,31 +92,7 @@ class TestFundsLocker(TempDirFixture):
     def test_remove_old(self, time_mock):
         time_mock.time.return_value = time.time()
         fl = FundsLocker(self.ts, self.new_path)
-        task = mock.MagicMock()
-        task.header.task_id = "abc"
-        task.header.max_price = 320
-        task.total_tasks = 10
-        task.header.subtask_timeout = 360
-        task.header.deadline = timeout_to_deadline(0.5)
-        fl.lock_funds(task)
-        task.header.task_id = "def"
-        task.header.max_price = 140
-        task.total_tasks = 7
-        task.header.subtask_timeout = 3600
-        task.header.deadline = timeout_to_deadline(2)
-        fl.lock_funds(task)
-        task.header.task_id = "ghi"
-        task.header.max_price = 10
-        task.total_tasks = 4
-        task.header.subtask_timeout = 60
-        task.header.deadline = timeout_to_deadline(0.2)
-        fl.lock_funds(task)
-        task.header.task_id = "jkl"
-        task.header.max_price = 13
-        task.total_tasks = 1
-        task.header.subtask_timeout = 3000
-        task.header.deadline = timeout_to_deadline(3.5)
-        fl.lock_funds(task)
+        self._add_tasks(fl)
         time_mock.time.return_value += PAYMENT_DEADLINE + 1
         fl.remove_old()
         assert fl.task_lock.get("abc") is None
@@ -126,6 +104,19 @@ class TestFundsLocker(TempDirFixture):
         fl = FundsLocker(self.ts, self.new_path)
 
         # we should dump tasks after every lock
+        self._add_tasks(fl)
+
+        # new fund locker should restore tasks
+        fl2 = FundsLocker(self.ts, self.new_path)
+        assert len(fl2.task_lock) == 4
+        assert fl2.task_lock['abc'].price == 320
+        assert fl2.task_lock['def'].transaction_system == self.ts
+        assert fl2.task_lock['ghi'].eth_lock() == 13000
+        assert fl2.task_lock['jkl'].gnt_lock() == compute_subtask_value(13,
+                                                                        3000)
+
+    @staticmethod
+    def _add_tasks(fl):
         task = mock.MagicMock()
         task.header.task_id = "abc"
         task.header.max_price = 320
@@ -152,11 +143,31 @@ class TestFundsLocker(TempDirFixture):
         task.header.deadline = timeout_to_deadline(3.5)
         fl.lock_funds(task)
 
-        # new fund locker should restore tasks
-        fl2 = FundsLocker(self.ts, self.new_path)
-        assert len(fl2.task_lock) == 4
-        assert fl2.task_lock['abc'].price == 320
-        assert fl2.task_lock['def'].transaction_system == self.ts
-        assert fl2.task_lock['ghi'].eth_lock() == 13000
-        assert fl2.task_lock['jkl'].gnt_lock() == compute_subtask_value(13,
-                                                                        3000)
+    def test_remove_task(self):
+        fl = FundsLocker(self.ts, self.new_path)
+        self._add_tasks(fl)
+        assert fl.task_lock['ghi']
+        fl.remove_task('ghi')
+
+        assert fl.task_lock.get('jkl')
+        assert fl.task_lock.get('def')
+        assert fl.task_lock.get('abc')
+        assert fl.task_lock.get('ghi') is None
+
+        with self.assertLogs(logger, level="WARNING"):
+            fl.remove_task('ghi')
+
+        assert fl.task_lock.get('ghi') is None
+
+    def test_remove_subtask(self):
+        fl = FundsLocker(self.ts, self.new_path)
+        self._add_tasks(fl)
+        assert fl.task_lock.get("ghi")
+        assert fl.task_lock["ghi"].num_tasks == 4
+
+        fl.remove_subtask("ghi")
+        assert fl.task_lock.get("ghi")
+        assert fl.task_lock["ghi"].num_tasks == 3
+
+        with self.assertLogs(logger, level="WARNING"):
+            fl.remove_subtask("NONEXISTING")

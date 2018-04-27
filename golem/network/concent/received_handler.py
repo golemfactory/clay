@@ -9,6 +9,9 @@ from golem.network import history
 from golem.network.concent import helpers as concent_helpers
 from golem.network.concent.handlers_library import library
 from golem.task import taskserver
+from golem.task.server import helpers as task_server_helpers
+
+from .filetransfers import ConcentFiletransferService
 
 logger = logging.getLogger(__name__)
 
@@ -36,7 +39,8 @@ def on_force_report_computed_task_response(msg, **_):
     if msg.reject_report_computed_task:
         node_id = msg.reject_report_computed_task.task_to_compute.requestor_id
     elif msg.ack_report_computed_task:
-        node_id = msg.ack_report_computed_task.task_to_compute.requestor_id
+        node_id = msg.ack_report_computed_task.\
+            report_computed_task.task_to_compute.requestor_id
     else:
         logger.warning("Can't determine node_id from %r. Assuming None", msg)
         node_id = None
@@ -95,9 +99,17 @@ def on_force_subtask_results_rejected(msg):
     logger.warning("[CONCENT] %r", msg)
 
 
+@library.register_handler(message.concents.SubtaskResultsSettled)
+def on_subtask_results_settled(msg, **_):
+    """End of UC3. Nothing can be done after this point.
+    I'm either a Provider or Requestor
+    """
+    logger.warning("[CONCENT] End of Force Accept scenario by %r", msg)
+
+
 class TaskServerMessageHandler():
     """Container for received message handlers that require TaskServer."""
-    def __init__(self, task_server: taskserver.TaskServer):
+    def __init__(self, task_server: taskserver.TaskServer) -> None:
         self.task_server = task_server
         register_handlers(self)
 
@@ -106,7 +118,7 @@ class TaskServerMessageHandler():
         return self.task_server.client.concent_service
 
     @property
-    def concent_filetransfers(self):
+    def concent_filetransfers(self) -> ConcentFiletransferService:
         return self.task_server.client.concent_filetransfers
 
     @handler_for(message.concents.ServiceRefused)
@@ -134,9 +146,12 @@ class TaskServerMessageHandler():
 
         logger.warning("[CONCENT] Received verdict: %s", msg)
 
+        # @todo such verification/validation should be part of `golem-messages`
+        # https://github.com/golemfactory/golem-messages/issues/192
+
         # Verify TaskToCompute signature
         ttcs_tuple = (
-            msg.ack_report_computed_task.task_to_compute,
+            msg.ack_report_computed_task.report_computed_task.task_to_compute,
             msg.force_report_computed_task.report_computed_task.task_to_compute,
         )
         for ttc in ttcs_tuple:
@@ -165,9 +180,8 @@ class TaskServerMessageHandler():
             .force_report_computed_task \
             .report_computed_task
 
-        self.task_server.receive_subtask_computation_time(
-            rct.subtask_id,
-            rct.computation_time,
+        self._after_ack_report_computed_task(
+            report_computed_task=rct,
         )
 
     @handler_for(message.concents.ForceReportComputedTask)
@@ -189,12 +203,48 @@ class TaskServerMessageHandler():
             returned_msg,
         )
 
-        if isinstance(returned_msg, message.concents.RejectReportComputedTask):
+        if isinstance(returned_msg, message.tasks.RejectReportComputedTask):
             return
 
-        self.task_server.receive_subtask_computation_time(
-            rct.subtask_id,
-            rct.computation_time,
+        self._after_ack_report_computed_task(
+            report_computed_task=rct,
+        )
+
+    @handler_for(message.concents.ForceSubtaskResults)
+    def on_force_subtask_results(self, msg, **_):
+        """I'm a Requestor
+
+        Concent sends his own ForceSubtaskResults with AckReportComputedTask
+        provided by a provider.
+        """
+        sra = history.get('SubtaskResultsAccepted', msg.task_id, msg.subtask_id)
+        srr = history.get('SubtaskResultsRejected', msg.task_id, msg.subtask_id)
+        if not (sra or srr):
+            #  I can't remember verification results,
+            #  so try again and hope for the best
+            self._after_ack_report_computed_task(
+                report_computed_task=msg.ack_report_computed_task
+                .report_computed_task,
+            )
+            return
+
+        response_msg = message.concents.ForceSubtaskResultsResponse(
+            subtask_results_accepted=sra,
+            subtask_results_rejected=srr,
+        )
+        self.concent_service.submit_task_message(
+            response_msg.subtask_id,
+            response_msg,
+        )
+
+    def _after_ack_report_computed_task(self, report_computed_task):
+        logger.info(
+            "After AckReportComputedTask. Starting verification of %r",
+            report_computed_task,
+        )
+        task_server_helpers.computed_task_reported(
+            task_server=self.task_server,
+            report_computed_task=report_computed_task,
         )
 
     @handler_for(message.concents.ForceGetTaskResultFailed)
@@ -281,8 +331,13 @@ class TaskServerMessageHandler():
 
     # pylint:enable=no-self-use
 
+    @staticmethod
+    def _log_ftt_invalid(msg: message.base.Message):
+        logger.warning("File Transfer Token invalid in %r", msg)
+
     @handler_for(message.concents.ForceGetTaskResultUpload)
-    def on_force_get_task_result_upload(self, msg, **_):
+    def on_force_get_task_result_upload(
+            self, msg: message.concents.ForceGetTaskResultUpload, **_):
         """
         Concent requests an upload from a Provider
         """
@@ -291,7 +346,7 @@ class TaskServerMessageHandler():
 
         ftt = msg.file_transfer_token
         if not ftt or not ftt.is_upload:
-            logger.warning("File Transfer Token invalid: %r", msg.subtask_id)
+            self._log_ftt_invalid(msg)
             return
 
         wtr = self.task_server.results_to_send.get(msg.subtask_id, None)
@@ -309,4 +364,79 @@ class TaskServerMessageHandler():
                            msg.subtask_id, exc)
 
         self.concent_filetransfers.transfer(
-            wtr.result_path, ftt, success=success, error=error)
+            file_path=wtr.result_path,
+            file_transfer_token=ftt,
+            success=success,
+            error=error)
+
+    @handler_for(message.concents.ForceGetTaskResultDownload)
+    def on_force_get_task_results_download(
+            self, msg: message.concents.ForceGetTaskResultDownload, **_):
+        """
+        Concent informs the Requestor that the results are available for
+        download from the Concent.
+        """
+        logger.debug(
+            "Results available for download from the Concent, subtask: %r",
+            msg.subtask_id)
+
+        ftt = msg.file_transfer_token
+        if not ftt or not ftt.is_download:
+            self._log_ftt_invalid(msg)
+            return
+
+        # verify if the attached `ForceGetTaskResult` bears our
+        # (the requestor's) signature
+        fgtr = msg.force_get_task_result
+
+        if not fgtr or not concent_helpers.verify_message_signature(
+                fgtr, self.task_server.keys_auth.ecc):
+            logger.warning("ForceGetTaskResult invalid in %r", msg)
+            return
+
+        # everything okay, so we can proceed with download
+        # and should download succeed,
+        # we need to establish a session and proceed with the
+        # normal verification procedure the same way we would do,
+        # had we received the results from the Provider itself
+
+        rct = fgtr.report_computed_task
+
+        result_manager = self.task_server.task_manager.task_result_manager
+        _, file_path = result_manager.get_file_name_and_path(
+            rct.task_id, rct.subtask_id)
+
+        task = self.task_server.task_manager.tasks.get(rct.task_id, None)
+        output_dir = getattr(task, 'tmp_dir', None)
+
+        def success(response):
+            logger.debug("Concent results download sucessful: %r, %s",
+                         msg.subtask_id, response)
+
+            try:
+                extracted_package = result_manager.extract(
+                    file_path, output_dir, rct.secret)
+            except Exception as e:  # noqa pylint:disable=broad-except
+                logger.error("Concent results extraction failure: %r, %s",
+                             msg.subtask_id, e)
+                return
+
+            logger.debug("Task result extracted %r",
+                         extracted_package.__dict__)
+
+            # instantiate session and run the tasksession's reaction to
+            # received results
+            self.task_server.verify_results(
+                report_computed_task=rct,
+                extracted_package=extracted_package)
+
+        def error(exc):
+            logger.warning("Concent download failed: %r, %s",
+                           msg.subtask_id, exc)
+
+        self.concent_filetransfers.transfer(
+            file_path=file_path,
+            file_transfer_token=ftt,
+            success=success,
+            error=error,
+        )
