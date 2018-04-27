@@ -94,7 +94,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         # Sent payments
         self.assertEqual({}, self.pp._inprogress)
-        tx_hash = encode_hex(urandom(32))
+        tx_hash = '0x' + encode_hex(urandom(32))
         sent_payment = Payment.create(
             subtask='sent' + str(uuid.uuid4()),
             payee=payee,
