@@ -981,7 +981,9 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
         self.ts.task_manager.task_result_manager.pull_package = \
             self._create_pull_package(True)
 
-        self.ts._react_to_report_computed_task(msg)
+        with patch('golem.network.concent.helpers.process_report_computed_task',
+                   return_value=message.tasks.AckReportComputedTask()):
+            self.ts._react_to_report_computed_task(msg)
         self.assertTrue(self.ts.task_server.verify_results.called)
 
         cancel = self.ts.concent_service.cancel_task_message
@@ -997,7 +999,10 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
                 self._create_pull_package(False)
 
         with patch('golem.task.tasksession.get_task_message', return_value=msg):
-            self.ts._react_to_report_computed_task(msg)
+            with patch('golem.network.concent.helpers.'
+                       'process_report_computed_task',
+                       return_value=message.tasks.AckReportComputedTask()):
+                self.ts._react_to_report_computed_task(msg)
         assert self.ts.task_server.reject_result.called
         assert self.ts.task_manager.task_computation_failure.called
 
@@ -1008,7 +1013,9 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
         self.ts.task_manager.task_result_manager.pull_package = \
             self._create_pull_package(False)
 
-        self.ts._react_to_report_computed_task(msg)
+        with patch('golem.network.concent.helpers.process_report_computed_task',
+                   return_value=message.tasks.AckReportComputedTask()):
+            self.ts._react_to_report_computed_task(msg)
         stm = self.ts.concent_service.submit_task_message
         self.assertEqual(stm.call_count, 2)
 

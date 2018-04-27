@@ -10,7 +10,7 @@ from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 
 from golem.network import history
-from golem.task import taskkeeper
+from golem.task import taskmanager
 from golem.utils import decode_hex
 
 
@@ -48,7 +48,7 @@ def verify_message_signature(
 def process_report_computed_task(
         msg: message.tasks.ReportComputedTask,
         ecc: cryptography.ECCx,
-        task_header_keeper: taskkeeper.TaskHeaderKeeper) -> RESPONSE_FOR_RCT:
+        task_manager: taskmanager.TaskManager) -> RESPONSE_FOR_RCT:
 
     def _reject(reason, **kwargs):
         logger.debug(
@@ -83,7 +83,7 @@ def process_report_computed_task(
 
     # Check task deadline
     try:
-        task_header = task_header_keeper.task_headers[task_id]
+        task_header = task_manager.tasks[task_id].header
         task_deadline = task_header.deadline
     except KeyError:
         logger.info(

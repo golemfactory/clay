@@ -45,8 +45,10 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         task_id = self.msg.task_to_compute.compute_task_def['task_id']
         task_header = taskbase.TaskHeader(*(None,)*6)
         task_header.deadline = now_ts + 3600
-        self.task_session.task_server.task_keeper.task_headers = {
-            task_id: task_header,
+        task = mock.Mock()
+        task.header = task_header
+        self.task_session.task_manager.tasks = {
+            task_id: task,
         }
         self.task_session.task_manager.tasks_states = {}
         self.task_session.task_manager.tasks_states[task_id] = task_state = \
