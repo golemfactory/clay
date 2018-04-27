@@ -376,8 +376,9 @@ class LuxTask(renderingtask.RenderingTask):
     def after_test(self, results, tmp_dir):
         FLM_NOT_FOUND_MSG = "Flm file was not found, check scene."
         return_data = dict()
-        flm = find_file_with_ext(tmp_dir, [".flm"])
-        if flm is None:
+        try:
+            find_file_with_ext(tmp_dir, [".flm"])
+        except RuntimeError:
             return_data['warnings'] = FLM_NOT_FOUND_MSG
             logger.warning(return_data["warnings"])
         make_scene_analysis(self.scene_file_src, return_data)
@@ -582,8 +583,9 @@ class LuxTask(renderingtask.RenderingTask):
 
     def __final_img_ready(self, results, time_spent):
         commonprefix = common_dir(results['data'])
-        img = find_file_with_ext(commonprefix, ["." + self.output_format])
-        if img is None:
+        try:
+            img = find_file_with_ext(commonprefix, ["." + self.output_format])
+        except RuntimeError:
             # TODO Maybe we should try again? Issue #2430
             logger.error("No final file generated...")
         else:
@@ -615,8 +617,9 @@ class LuxTask(renderingtask.RenderingTask):
 
     def __final_flm_ready(self, results, time_spent):
         commonprefix = common_dir(results['data'])
-        flm = find_file_with_ext(commonprefix, [".flm"])
-        if flm is None:
+        try:
+            flm = find_file_with_ext(commonprefix, [".flm"])
+        except RuntimeError:
             self.__final_flm_failure("No flm file created")
             return
         shutil.copy(flm, os.path.dirname(self.output_file))

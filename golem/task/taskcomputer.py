@@ -1,4 +1,6 @@
 import logging
+from typing import Optional
+
 import os
 import time
 import uuid
@@ -64,7 +66,7 @@ class TaskComputer(object):
         self.waiting_deadline = None
 
         self.dir_manager = None
-        self.resource_manager = None
+        self.resource_manager: Optional[ResourcesManager] = None
         self.task_request_frequency = None
         # Is there a time limit after which we don't wait for task timeout
         # anymore
@@ -184,7 +186,6 @@ class TaskComputer(object):
                 self.task_server.task_keeper.task_headers[subtask['task_id']]
             work_time_to_be_paid = task_header.subtask_timeout
 
-
         except KeyError:
             logger.error("No subtask with id %r", subtask_id)
             return
@@ -210,7 +211,6 @@ class TaskComputer(object):
                 subtask_id,
                 subtask['task_id'],
                 task_thread.result,
-                work_time_to_be_paid,
             )
             dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=True, value=work_time_to_be_paid)
 
@@ -359,6 +359,10 @@ class TaskComputer(object):
 
         working_dir = self.assigned_subtasks[subtask_id]['working_directory']
         unique_str = str(uuid.uuid4())
+
+        logger.info("Starting computation of subtask %r (task: %r, deadline: "
+                    "%r, docker images: %r)", subtask_id, task_id, deadline,
+                    docker_images)
 
         self.reset(counting_task=task_id)
 

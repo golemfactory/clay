@@ -1,4 +1,5 @@
-from enum import Enum
+from enum import Enum, auto
+from typing import Optional
 
 from golem.core.common import to_unicode
 
@@ -17,6 +18,7 @@ class TaskState(object):
         self.subtask_states = {}
         self.resource_hash = None
         self.package_hash = None
+        self.package_path = None
         self.extra_data = {}
 
     def __repr__(self):
@@ -26,7 +28,7 @@ class TaskState(object):
         return {
             'time_started': self.time_started,
             'time_remaining': self.remaining_time,
-            'status': to_unicode(self.status)
+            'status': self.status.value
         }
 
 
@@ -49,13 +51,13 @@ class SubtaskState(object):
         self.time_started = 0
         self.deadline = 0
         self.extra_data = {}
+        # FIXME: subtask_rem_time is always equal 0 (#2562)
         self.subtask_rem_time = 0
-        self.subtask_status = ""
+        self.subtask_status: Optional[SubtaskStatus] = None
         self.value = 0
         self.stdout = ""
         self.stderr = ""
         self.results = []
-        self.computation_time = 0
 
         self.computer = ComputerState()
 
@@ -67,7 +69,7 @@ class SubtaskState(object):
             'node_performance': to_unicode(self.computer.performance),
             'node_ip_address': to_unicode(self.computer.ip_address),
             'node_port': self.computer.port,
-            'status': to_unicode(self.subtask_status),
+            'status': self.subtask_status.value,
             'progress': self.subtask_progress,
             'time_started': self.time_started,
             'time_remaining': self.subtask_rem_time,
@@ -78,7 +80,7 @@ class SubtaskState(object):
         }
 
 
-class TaskStatus(object):
+class TaskStatus(Enum):
     notStarted = "Not started"
     sending = "Sending"
     waiting = "Waiting"
@@ -89,12 +91,11 @@ class TaskStatus(object):
     timeout = "Timeout"
     restarted = "Restart"
 
-    @classmethod
-    def is_completed(cls, status):
-        return status in [cls.finished, cls.aborted, cls.timeout]
+    def is_completed(self) -> bool:
+        return self in [self.finished, self.aborted, self.timeout]
 
 
-class SubtaskStatus(object):
+class SubtaskStatus(Enum):
     starting = "Starting"
     downloading = "Downloading"
     verifying = "Verifying"
@@ -103,13 +104,11 @@ class SubtaskStatus(object):
     failure = "Failure"
     restarted = "Restart"
 
-    @classmethod
-    def is_computed(cls, status):
-        return status in [cls.starting, cls.downloading]
+    def is_computed(self) -> bool:
+        return self in [self.starting, self.downloading]
 
-    @classmethod
-    def is_active(cls, status):
-        return status in [cls.starting, cls.downloading, cls.verifying]
+    def is_active(self) -> bool:
+        return self in [self.starting, self.downloading, self.verifying]
 
 
 class TaskTestStatus(object):
@@ -119,54 +118,60 @@ class TaskTestStatus(object):
 
 
 class Operation(Enum):
-    def task_related(self) -> bool:  # pylint: disable=no-self-use
+    @staticmethod
+    def task_related() -> bool:
         return False
 
-    def subtask_related(self) -> bool:  # pylint: disable=no-self-use
+    @staticmethod
+    def subtask_related() -> bool:
         return False
 
-    def unnoteworthy(self) -> bool:  # pylint: disable=no-self-use
+    @staticmethod
+    def unnoteworthy() -> bool:
         return False
 
 
 class TaskOp(Operation):
     """Ops that result in storing of task level information"""
 
-    def task_related(self) -> bool:
+    @staticmethod
+    def task_related() -> bool:
         return True
 
-    WORK_OFFER_RECEIVED = object()
-    CREATED = object()
-    STARTED = object()
-    FINISHED = object()
-    NOT_ACCEPTED = object()
-    TIMEOUT = object()
-    RESTARTED = object()
-    ABORTED = object()
-    RESTORED = object()
+    WORK_OFFER_RECEIVED = auto()
+    CREATED = auto()
+    STARTED = auto()
+    FINISHED = auto()
+    NOT_ACCEPTED = auto()
+    TIMEOUT = auto()
+    RESTARTED = auto()
+    ABORTED = auto()
+    RESTORED = auto()
 
 
 class SubtaskOp(Operation):
     """Ops that result in storing of subtask level information;
     subtask_id needs to be set for them"""
 
-    def subtask_related(self) -> bool:
+    @staticmethod
+    def subtask_related() -> bool:
         return True
 
-    ASSIGNED = object()
-    RESULT_DOWNLOADING = object()
-    NOT_ACCEPTED = object()
-    FINISHED = object()
-    FAILED = object()
-    TIMEOUT = object()
-    RESTARTED = object()
+    ASSIGNED = auto()
+    RESULT_DOWNLOADING = auto()
+    NOT_ACCEPTED = auto()
+    FINISHED = auto()
+    FAILED = auto()
+    TIMEOUT = auto()
+    RESTARTED = auto()
 
 
 class OtherOp(Operation):
     """Ops that are not really interesting; for statistics anyway"""
 
-    def unnoteworthy(self) -> bool:
+    @staticmethod
+    def unnoteworthy() -> bool:
         return True
 
-    UNEXPECTED = object()
-    FRAME_RESTARTED = object()
+    UNEXPECTED = auto()
+    FRAME_RESTARTED = auto()

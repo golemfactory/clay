@@ -34,6 +34,8 @@ class CropContext:
 class BlenderCropper:
     MIN_CROP_RES = 8
     CROP_STEP = 0.01
+    CROPS_NO_FIRST = 3
+    CROPS_NO_SECOND = 6
 
     def __init__(self):
         self.crop_counter = 0
@@ -79,7 +81,7 @@ class BlenderCropper:
         #  BoundBox2D border = cam->border.clamp();
         #  params.full_x = (int)(border.left * (float)width);
         #
-        #  NOTE BLENDER IS USING FLOATS Vgit stALUES
+        #  NOTE BLENDER IS USING FLOATS VALUES
         #  that means single precision 4 bytes floats, python is not
         #  it is using double precision values. Here numpy is used to emulate
         #  that loss of precision when assigning double to float.
@@ -133,10 +135,9 @@ class BlenderCropper:
     # pylint: disable-msg=too-many-arguments
     def render_crops(self, computer, resources, crop_rendered,
                      crop_render_failure, subtask_info,
-                     num_crops=3,
+                     num_crops=CROPS_NO_FIRST,
                      crop_size=None):
         # pylint: disable=unused-argument
-
         crops_path = os.path.join(subtask_info['tmp_dir'],
                                   subtask_info['subtask_id'])
 
@@ -154,7 +155,6 @@ class BlenderCropper:
                                   'errback': crop_render_failure})
         self._render_one_crop(verify_ctx, self.crop_rendered,
                               crop_render_failure, self.crop_counter)
-        self.crop_counter += 1
         return self.crop_size
 
     # FIXME it would be better to make this subtask agnostic, pass only data
@@ -162,10 +162,10 @@ class BlenderCropper:
     # Issue # 2447
     # pylint: disable-msg=too-many-arguments
     # pylint: disable=R0914
-    @staticmethod
-    def _render_one_crop(verify_ctx, crop_rendered, crop_render_failure,
+    def _render_one_crop(self, verify_ctx, crop_rendered, crop_render_failure,
                          crop_number):
-        minx, maxx, miny, maxy = verify_ctx.crop_values[crop_number]
+        minx, maxx, miny, maxy = verify_ctx.crop_values[
+            crop_number - self.crop_counter]
 
         def generate_ctd(subtask_info, script_src):
             ctd = deepcopy(subtask_info['ctd'])
@@ -176,6 +176,9 @@ class BlenderCropper:
             ctd['deadline'] = timeout_to_deadline(
                 subtask_info['subtask_timeout'])
             return ctd
+
+        logger.info("Values for crop %r left=%r, right=%r, top=%r, bottom=%r",
+                    crop_number, minx, maxx, miny, maxy)
 
         script_src = generate_blender_crop_file(
             resolution=(verify_ctx.subtask_info['res_x'],
@@ -189,30 +192,36 @@ class BlenderCropper:
         verify_ctx.computer.start_computation(
             root_path=verify_ctx.get_crop_path(crop_number),
             success_callback=partial(crop_rendered,
-                                     verification_context=verify_ctx),
+                                     verification_context=verify_ctx,
+                                     crop_number=crop_number),
             error_callback=crop_render_failure,
             compute_task_def=ctd,
             resources=verify_ctx.resources,
             additional_resources=[]
         )
 
-    def crop_rendering_finished(self):
-        for i in range(1, 4):
+    def crop_rendering_finished(self, begin, end):
+        for i in range(begin, end):
             self.rendered_crops_results[i][2].success(
                 self.rendered_crops_results[i][0],
                 self.rendered_crops_results[i][1],
-                self.rendered_crops_results[i][2], i-1)
+                self.rendered_crops_results[i][2], i-self.crop_counter)
 
-    def crop_rendered(self, results, time_spend, verification_context):
-        self.rendered_crops_results[self.crop_counter] \
+    def crop_rendered(self, results, time_spend, verification_context,
+                      crop_number):
+        self.rendered_crops_results[crop_number] \
             = [results, time_spend, verification_context]
-        if self.crop_counter == 3:
-            self.crop_rendering_finished()
+        crop_number += 1
+        if crop_number == \
+                BlenderCropper.CROPS_NO_FIRST or crop_number == \
+                BlenderCropper.CROPS_NO_SECOND:
+            self.crop_rendering_finished(
+                crop_number-BlenderCropper.CROPS_NO_FIRST,
+                crop_number)
             return
 
         self._render_one_crop(verification_context, self.crop_rendered,
-                              verification_context.errback, self.crop_counter)
-        self.crop_counter += 1
+                              verification_context.errback, crop_number)
 
     @staticmethod
     def _random_split(min_, max_, size_):

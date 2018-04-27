@@ -14,8 +14,10 @@ from semantic_version import Version
 import golem
 from golem.core import common
 from golem.core.async import AsyncRequest, async_run
+from golem.core.idgenerator import check_id_seed
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.utils import decode_hex
 from .taskbase import TaskHeader
 
 logger = logging.getLogger('golem.task.taskkeeper')
@@ -42,15 +44,34 @@ def comp_task_info_keeping_timeout(subtask_timeout: int, resource_size: int,
                                       + resource_timeout)
 
 
+class WrongOwnerException(Exception):
+    pass
+
+
 class CompTaskInfo:
     def __init__(self, header: TaskHeader, price: int):
         self.header = header
+        self._price, self.subtask_price = 0, 0  # lints and typing
         self.price = price
         self.requests = 1
         self.subtasks = {}
         # TODO Add concent communication timeout. Issue #2406
         self.keeping_deadline = comp_task_info_keeping_timeout(
             self.header.subtask_timeout, self.header.resource_size)
+
+    @property
+    def price(self) -> int:
+        return self._price
+
+    @price.setter
+    def price(self, value: int):
+        self._price = value
+        # subtask_price is total amount that will be payed
+        # for subtask of this task
+        self.subtask_price = compute_subtask_value(
+            value,
+            self.header.subtask_timeout,
+        )
 
     def __repr__(self):
         return "<CompTaskInfo(%r, %r) reqs: %r>" % (
@@ -142,12 +163,8 @@ class CompTaskKeeper:
         self.subtask_to_task.update(subtask_to_task)
 
     def add_request(self, theader: TaskHeader, price: int):
+        # price is task_header.max_price
         logger.debug('CT.add_request()')
-        if not isinstance(price, int):
-            raise TypeError(
-                "Incorrect 'price' type: {}."
-                " Should be int or long".format(type(price))
-            )
         if price < 0:
             raise ValueError("Price should be greater or equal zero")
         task_id = theader.task_id
@@ -166,24 +183,43 @@ class CompTaskKeeper:
         return self.active_tasks[task_id].header
 
     @handle_key_error
-    def receive_subtask(self, comp_task_def):
+    def receive_subtask(self, task_to_compute: message.TaskToCompute):
+        comp_task_def = task_to_compute.compute_task_def
         logger.debug('CT.receive_subtask()')
         if not self.check_comp_task_def(comp_task_def):
             return False
-        task = self.active_tasks[comp_task_def['task_id']]
-        task.requests -= 1
-        task.subtasks[comp_task_def['subtask_id']] = comp_task_def
-        self.subtask_to_task[comp_task_def['subtask_id']] =\
-            comp_task_def['task_id']
+        comp_task_info: CompTaskInfo = self.active_tasks[
+            task_to_compute.task_id
+        ]
+        if task_to_compute.price != comp_task_info.subtask_price:
+            logger.info(
+                "Can't accept subtask %r for %r."
+                " %r<TTC.price> != %r<CTI.subtask_price>",
+                task_to_compute.subtask_id,
+                task_to_compute.task_id,
+                task_to_compute.price,
+                comp_task_info.subtask_price,
+            )
+            return False
+        comp_task_info.requests -= 1
+        comp_task_info.subtasks[task_to_compute.subtask_id] = comp_task_def
+        self.subtask_to_task[task_to_compute.subtask_id] =\
+            task_to_compute.task_id
         self.dump()
         return True
 
     def check_comp_task_def(self, comp_task_def):
         task = self.active_tasks[comp_task_def['task_id']]
-
+        key_id = self.get_node_for_task_id(comp_task_def['task_id'])
         not_accepted_message = "Cannot accept subtask %s for task %s. %s"
         log_args = [comp_task_def['subtask_id'], comp_task_def['task_id']]
 
+        if not check_id_seed(comp_task_def['subtask_id'],
+                             decode_hex(key_id)):
+            logger.info(not_accepted_message, *log_args, "Subtask id was not "
+                                                         "generated from "
+                                                         "requestor's key.")
+            return False
         if not task.requests > 0:
             logger.info(not_accepted_message, *log_args,
                         "Request for this task was not send.")
@@ -208,15 +244,9 @@ class CompTaskKeeper:
         return self.active_tasks[task_id].header.task_owner.key
 
     @handle_key_error
-    def get_value(self, task_id, computing_time):
-        price = self.active_tasks[task_id].price
-
-        if not isinstance(price, int):
-            raise TypeError(
-                "Incorrect 'price' type: {}."
-                " Should be int or long".format(type(price))
-            )
-        return compute_subtask_value(price, computing_time)
+    def get_value(self, task_id: str) -> int:
+        comp_task_info: CompTaskInfo = self.active_tasks[task_id]
+        return comp_task_info.subtask_price
 
     def check_task_owner_by_subtask(self, task_owner_key_id, subtask_id):
         task_id = self.subtask_to_task.get(subtask_id)
@@ -437,14 +467,16 @@ class TaskHeaderKeeper:
         """
         try:
             id_ = th_dict_repr["task_id"]
+            task_owner_id = th_dict_repr["task_owner"]["key"]
+            self.check_owner(id_, task_owner_id)
             update = id_ in list(self.task_headers.keys())
 
             self.check_correct(th_dict_repr)
 
             if id_ in list(self.removed_tasks.keys()):  # recent
-                logger.info("Received a task which has been already "
-                            "cancelled/removed/timeout/banned/etc "
-                            "Task id %s .", id_)
+                logger.debug("Received a task which has been already "
+                             "cancelled/removed/timeout/banned/etc "
+                             "Task id %s .", id_)
                 return True
 
             th = TaskHeader.from_dict(th_dict_repr)
@@ -462,7 +494,7 @@ class TaskHeaderKeeper:
                                                       self.support_status[id_])
 
             return True
-        except (KeyError, TypeError) as err:
+        except (KeyError, TypeError, WrongOwnerException) as err:
             logger.warning("Wrong task header received: {}".format(err))
             return False
 
@@ -487,6 +519,12 @@ class TaskHeaderKeeper:
         is_correct, err = self.is_correct(th_dict_repr)
         if not is_correct:
             raise TypeError(err)
+
+    @staticmethod
+    def check_owner(task_id, owner_id):
+        if not check_id_seed(task_id, decode_hex(owner_id)):
+            raise WrongOwnerException("Task_id %s doesn't suit to task "
+                                      "owner %s", task_id, owner_id)
 
     def _get_tasks_by_owner_set(self, owner_key_id):
         if owner_key_id not in self.tasks_by_owner:

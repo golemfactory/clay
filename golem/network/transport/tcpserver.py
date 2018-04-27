@@ -192,9 +192,12 @@ class PendingConnectionsServer(TCPServer):
         addr = socket_addr.address
         if ip_address_private(addr):
             logger.debug('_is_address_accessible(%r) PRIVATE', socket_addr)
-            return self._is_address_in_network(addr, self.ipv4_networks)
+            return self.is_address_in_network(addr)
         logger.debug('_is_address_accessible(%r) PUBLIC', socket_addr)
         return True
+
+    def is_address_in_network(self, addr: str) -> bool:
+        return self._is_address_in_network(addr, self.ipv4_networks)
 
     @staticmethod
     def _is_address_in_network(addr, networks):
@@ -245,10 +248,6 @@ class PendingConnectionsServer(TCPServer):
     @classmethod
     def _is_address_valid(cls, address: str, port: int) -> bool:
         try:
-            # FIXME: Where did None become 'None'? #2461
-            if address == 'None':
-                logger.debug('Got "None" as socket address. Skipping...')
-                return False
             return port > 0 and SocketAddress.is_proper_address(address, port)
         except TypeError:
             return False

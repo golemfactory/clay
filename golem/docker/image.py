@@ -1,4 +1,5 @@
 import logging
+import requests.exceptions
 
 from docker.errors import NotFound, APIError
 
@@ -47,4 +48,7 @@ class DockerImage(object):
             raise
         except ValueError:
             log.debug('DockerImage ValueError', exc_info=True)
+            return False
+        except requests.exceptions.ConnectionError:
+            log.debug("DockerImage Can't connect", exc_info=True)
             return False

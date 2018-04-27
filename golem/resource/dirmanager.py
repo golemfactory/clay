@@ -244,6 +244,5 @@ class DirManager(object):
 
 class DirectoryType(object):
 
-    COMPUTED = 0
     DISTRIBUTED = 1
     RECEIVED = 2

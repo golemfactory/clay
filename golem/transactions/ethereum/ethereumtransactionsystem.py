@@ -2,13 +2,14 @@ import logging
 from typing import List
 
 from ethereum.utils import privtoaddr, denoms
-from eth_utils import encode_hex
+from eth_utils import encode_hex, is_address
 
 from golem_sci import new_sci, chains
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.transactions.ethereum.ethereumincomeskeeper \
     import EthereumIncomesKeeper
+from golem.transactions.ethereum.exceptions import NotEnoughFunds
 from golem.transactions.transactionsystem import TransactionSystem
 
 log = logging.getLogger('golem.pay')
@@ -55,6 +56,9 @@ class EthereumTransactionSystem(TransactionSystem):
         self._sci.stop()
         self._node.stop()
 
+    def sync(self) -> None:
+        self.payment_processor.sync()
+
     def add_payment_info(self, *args, **kwargs):
         payment = super().add_payment_info(*args, **kwargs)
         self.payment_processor.add(payment)
@@ -72,20 +76,43 @@ class EthereumTransactionSystem(TransactionSystem):
         eth, last_eth_update = self.payment_processor.eth_balance()
         return gnt, av_gnt, eth, last_gnt_update, last_eth_update
 
-    def eth_for_batch_payment(self, num_payments):
-        return self.payment_processor.ETH_BATCH_PAYMENT_BASE + \
-            self.payment_processor.ETH_PER_PAYMENT * num_payments
+    def eth_for_batch_payment(self, num_payments: int) -> int:
+        return self.payment_processor.get_gas_cost_per_payment() * num_payments
+
+    def eth_base_for_batch_payment(self):
+        return self.payment_processor.ETH_BATCH_PAYMENT_BASE
+
+    def get_withdraw_gas_cost(self, amount: int, currency: str) -> int:
+        gas_price = self._sci.get_current_gas_price()
+        if currency == 'ETH':
+            return 21000 * gas_price
+        if currency == 'GNT':
+            total_gnt = \
+                self.payment_processor._gnt_available()  # pylint: disable=W0212
+            gnt = self._sci.get_gnt_balance(self._sci.get_eth_address())
+            gntb = total_gnt - gnt
+            if gnt >= amount:
+                return self._sci.GAS_GNT_TRANSFER * gas_price
+            if gntb >= amount:
+                return self._sci.GAS_WITHDRAW * gas_price
+            return (self._sci.GAS_GNT_TRANSFER + self._sci.GAS_WITHDRAW) \
+                * gas_price
+        raise ValueError('Unknown currency {}'.format(currency))
 
     def withdraw(
             self,
             amount: int,
             destination: str,
-            currency: str) -> List[str]:
+            currency: str,
+            lock: int = 0) -> List[str]:
+        if not is_address(destination):
+            raise ValueError("{} is not valid ETH address".format(destination))
+
         pp = self.payment_processor
         if currency == 'ETH':
             eth = pp._eth_available()  # pylint: disable=W0212
-            if amount > eth:
-                raise ValueError('Not enough ETH available')
+            if amount > eth - lock:
+                raise NotEnoughFunds(amount, eth - lock, currency)
             log.info(
                 "Withdrawing %f ETH to %s",
                 amount / denoms.ether,
@@ -95,8 +122,8 @@ class EthereumTransactionSystem(TransactionSystem):
 
         if currency == 'GNT':
             total_gnt = pp._gnt_available()  # pylint: disable=W0212
-            if amount > total_gnt:
-                raise ValueError('Not enough GNT available')
+            if amount > total_gnt - lock:
+                raise NotEnoughFunds(amount, total_gnt - lock, currency)
             gnt = self._sci.get_gnt_balance(self._sci.get_eth_address())
             gntb = total_gnt - gnt
 

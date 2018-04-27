@@ -1,4 +1,5 @@
 import os
+import shutil
 import time
 from random import random, randint
 from unittest.mock import patch
@@ -87,7 +88,7 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
             ka = self._create_keysauth(lower_difficulty, priv_key)
             if not ka.is_difficult(req_difficulty):
                 break
-            os.rmdir(keys_dir)  # to enable keys regeneration
+            shutil.rmtree(keys_dir)  # to enable keys regeneration
 
         assert KeysAuth.get_difficulty(ka.key_id) >= lower_difficulty
         assert KeysAuth.get_difficulty(ka.key_id) < req_difficulty
@@ -207,8 +208,10 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         self.assertEqual(ek.key_id, loaded_k)
         self.assertTrue(ek.verify(loaded_s, loaded_d, ek.public_key))
 
-        dumped_l = msg.serialize(ek.sign, lambda x: x)
-        loaded_l = message.Message.deserialize(dumped_l, lambda x: x)
+        dumped_l = msg.serialize(
+            sign_as=ek._private_key, encrypt_func=lambda x: x)
+        loaded_l = message.Message.deserialize(
+            dumped_l, decrypt_func=lambda x: x)
 
         self.assertEqual(msg.get_short_hash(), loaded_l.get_short_hash())
         self.assertTrue(ek.verify(msg.sig, msg.get_short_hash(), public_key))

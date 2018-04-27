@@ -51,12 +51,13 @@ class PaymentProcessor(LoopingCallService):
     # Minimal number of confirmations before we treat transactions as done
     REQUIRED_CONFIRMATIONS = 12
 
-    CLOSURE_TIME_DELAY = 10
+    CLOSURE_TIME_DELAY = 2
+    # Don't try to use more than 75% of block gas limit
+    BLOCK_GAS_LIMIT_RATIO = 0.75
 
     def __init__(self,
                  sci,
                  faucet=False) -> None:
-        self.ETH_PER_PAYMENT = sci.GAS_PRICE * sci.GAS_PER_PAYMENT
         self.ETH_BATCH_PAYMENT_BASE = \
             sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
         self._sci = sci
@@ -73,6 +74,7 @@ class PaymentProcessor(LoopingCallService):
         self.load_from_db()
         self._last_gnt_update = None
         self._last_eth_update = None
+        self._last_balance_log = 0
         super().__init__(13)
 
     def balance_known(self):
@@ -85,7 +87,6 @@ class PaymentProcessor(LoopingCallService):
             balance = self._sci.get_eth_balance(self._sci.get_eth_address())
             if balance is not None:
                 self.__eth_balance = balance
-                log.info("ETH: {}".format(self.__eth_balance / denoms.ether))
                 self._last_eth_update = time.mktime(
                     datetime.today().timetuple())
             else:
@@ -97,7 +98,8 @@ class PaymentProcessor(LoopingCallService):
             gnt_balance = self._sci.get_gnt_balance(
                 self._sci.get_eth_address())
             if gnt_balance is not None:
-                self.__gnt_balance = gnt_balance
+                self.__gnt_balance = \
+                    gnt_balance + self._gnt_converter.get_gate_balance()
             else:
                 log.warning("Failed to retrieve GNT balance")
 
@@ -110,11 +112,6 @@ class PaymentProcessor(LoopingCallService):
 
             if self.__gnt_balance is not None and \
                self.__gntb_balance is not None:
-                log.info(
-                    "GNT: %r GNTB: %r",
-                    self.__gnt_balance / denoms.ether,
-                    self.__gntb_balance / denoms.ether,
-                )
                 self._last_gnt_update = time.mktime(
                     datetime.today().timetuple())
 
@@ -135,6 +132,11 @@ class PaymentProcessor(LoopingCallService):
     def _gnt_available(self):
         gnt_balance, _ = self.gnt_balance()
         return gnt_balance - self.__gntb_reserved
+
+    def get_gas_cost_per_payment(self) -> int:
+        gas_price = \
+            min(self._sci.GAS_PRICE, 2 * self._sci.get_current_gas_price())
+        return gas_price * self._sci.GAS_PER_PAYMENT
 
     def load_from_db(self):
         with db.atomic():
@@ -170,14 +172,14 @@ class PaymentProcessor(LoopingCallService):
             self._awaiting.add(payment)
 
         self.__gntb_reserved += payment.value
-        self.__eth_reserved += self.ETH_PER_PAYMENT
+        self.__eth_reserved += self.get_gas_cost_per_payment()
 
         log.info("GNT: available {:.6f}, reserved {:.6f}".format(
             self._gnt_available() / denoms.ether,
             self.__gntb_reserved / denoms.ether))
 
-        if self.__gntb_balance is not None and self.__gnt_balance is not None:
-            if self.__gntb_reserved > self.__gntb_balance > 0:
+        if self.__gntb_balance is not None and (self.__gnt_balance or 0) > 0:
+            if self.__gntb_reserved > self.__gntb_balance:
                 if not self._gnt_converter.is_converting():
                     log.info(
                         'Will convert %f GNT to be ready for payments',
@@ -193,13 +195,25 @@ class PaymentProcessor(LoopingCallService):
         eth_balance, _ = self.eth_balance()
         eth_balance = eth_balance - self.ETH_BATCH_PAYMENT_BASE
         ind = 0
+        eth_per_payment = self.get_gas_cost_per_payment()
+        gas_limit = \
+            self._sci.get_latest_block().gas_limit * self.BLOCK_GAS_LIMIT_RATIO
+        payees = set()
         for p in payments:
             if p.processed_ts > closure_time:
                 break
             gntb_balance -= p.value
-            eth_balance -= self.ETH_PER_PAYMENT
-            if gntb_balance < 0 or eth_balance < 0:
+            if gntb_balance < 0:
                 break
+
+            payees.add(p.payee)
+            if len(payees) * eth_per_payment > eth_balance:
+                break
+            gas = len(payees) * self._sci.GAS_PER_PAYMENT + \
+                self._sci.GAS_BATCH_PAYMENT_BASE
+            if gas > gas_limit:
+                break
+
             ind += 1
 
         # we need to take either all payments with given processed_ts or none
@@ -225,11 +239,9 @@ class PaymentProcessor(LoopingCallService):
                 log.info('Waiting for GNT-GNTB conversion')
                 return False
 
-            closure_time = now - self.CLOSURE_TIME_DELAY
-
             payments_count = self.__get_next_batch(
                 self._awaiting.copy(),
-                closure_time,
+                now - self.CLOSURE_TIME_DELAY,
             )
             if payments_count < len(self._awaiting) and self.__gnt_balance:
                 log.info(
@@ -246,7 +258,15 @@ class PaymentProcessor(LoopingCallService):
         value = sum([p.value for p in payments])
         log.info("Batch payments value: {:.6f}".format(value / denoms.ether))
 
-        tx_hash = self._sci.batch_transfer(payments, closure_time)
+        closure_time = payments[-1].processed_ts
+        try:
+            tx_hash = self._sci.batch_transfer(payments, closure_time)
+        except Exception as e:
+            log.warning("Exception while sending batch transfer {}".format(e))
+            with self._awaiting_lock:
+                self._awaiting.update(payments)
+            return False
+
         with Payment._meta.database.transaction():
             for payment in payments:
                 payment.status = PaymentStatus.sent
@@ -262,7 +282,9 @@ class PaymentProcessor(LoopingCallService):
         # Remove from reserved, because we monitor the pending block.
         # TODO: Maybe we should only monitor the latest block? issue #2414
         self.__gntb_reserved -= value
-        self.__eth_reserved -= len(payments) * self.ETH_PER_PAYMENT
+        with self._awaiting_lock:
+            self.__eth_reserved = \
+                len(self._awaiting) * self.get_gas_cost_per_payment()
         return True
 
     def monitor_progress(self):
@@ -367,10 +389,29 @@ class PaymentProcessor(LoopingCallService):
         if self._sci.is_synchronized() and \
                 self.get_ether_from_faucet() and \
                 self.get_gnt_from_faucet():
+
+            if time.time() - self._last_balance_log > 60:
+                log.info("ETH: %.10f,  GNT: %.3f,  GNTB: %.3f",
+                         self.__eth_balance / denoms.ether,
+                         self.__gnt_balance / denoms.ether,
+                         self.__gntb_balance / denoms.ether)
+                self._last_balance_log = time.time()
+
             self.monitor_progress()
             self.sendout()
-            self._send_balance_snapshot()
 
     def stop(self):
         self.sendout(0)
         super().stop()
+
+    def sync(self) -> None:
+        log.info("Synchronizing balances")
+        self._sci.wait_until_synchronized()
+        while True:
+            self.eth_balance(True)
+            self.gnt_balance(True)
+            if self.balance_known():
+                log.info("Balances synchronized")
+                return
+            log.info("Waiting for initial GNT/ETH balances...")
+            time.sleep(1)

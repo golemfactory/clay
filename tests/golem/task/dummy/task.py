@@ -1,14 +1,15 @@
-from golem_messages.message import ComputeTaskDef
 import random
-import uuid
 from os import path
 from threading import Lock
 
+from golem_messages.message import ComputeTaskDef
+
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
-from golem.core.simpleauth import SimpleAuth
+from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.network.p2p.node import Node
 from golem.task.taskbase import Task, TaskHeader, ResultType
+from golem.utils import encode_hex
 
 
 class DummyTaskParameters(object):
@@ -35,6 +36,7 @@ class DummyTaskParameters(object):
         self.difficulty = difficulty
 
 
+# pylint: disable=too-many-locals
 class DummyTask(Task):
     """
     :type resource_parts: dict[str,list[str]]: maps a resource file
@@ -48,16 +50,16 @@ class DummyTask(Task):
 
     ENVIRONMENT_NAME = "DUMMY"
 
-    def __init__(self, client_id, params, num_subtasks):
+    def __init__(self, client_id, params, num_subtasks, public_key):
         """Creates a new dummy task
         :param string client_id: client id
         :param DummyTaskParameters params: task parameters
         1024 hashes on average
         """
-        task_id = str(SimpleAuth.generate_uuid())
+        task_id = generate_id(public_key)
         owner_address = ''
         owner_port = 0
-        owner_key_id = ''
+        owner_key_id = encode_hex(public_key)
         environment = self.ENVIRONMENT_NAME
         header = TaskHeader(
             task_id,
@@ -157,7 +159,7 @@ class DummyTask(Task):
         :rtype: ComputeTaskDef"""
 
         # create new subtask_id
-        subtask_id = str(uuid.uuid4())
+        subtask_id = generate_new_id_from_id(self.header.task_id)
 
         with self._lock:
             # check if a task has been assigned to this node
@@ -197,7 +199,7 @@ class DummyTask(Task):
     def verify_subtask(self, subtask_id):
         result = self.subtask_results[subtask_id]
 
-        if len(result) != self.task_params.result_size:
+        if not result or len(result) != self.task_params.result_size:
             return False
 
         if self.task_params.difficulty == 0:
@@ -259,3 +261,6 @@ class DummyTask(Task):
             'task_id': self.task_id,
             'task_params': self.task_params.__dict__
         }
+
+    def copy_subtask_results(self, subtask_id, old_subtask_info, results):
+        print('DummyTask.copy_subtask_results called')

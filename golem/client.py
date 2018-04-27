@@ -1,14 +1,16 @@
+# pylint: disable=too-many-lines
+
+import collections
 import logging
 import sys
 import time
 import uuid
 import json
-from collections import Iterable
 from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
 from threading import Lock, Thread
-from typing import Dict, Hashable, Optional, Union, List
+from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -17,13 +19,17 @@ from twisted.internet.defer import (
     gatherResults,
     Deferred)
 
+from apps.rendering.task import framerenderingtask
 import golem
+from apps.appsmanager import AppsManager
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL, AppConfig)
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.config.presets import HardwarePresetsMixin
+from golem.core import variables
 from golem.core.async import AsyncRequest, async_run
-from golem.core.common import get_timestamp_utc, to_unicode, string_to_timeout
+from golem.core.common import get_timestamp_utc, to_unicode, string_to_timeout,\
+    deadline_to_timeout
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import KeysAuth
@@ -57,13 +63,15 @@ from golem.resource.resource import get_resources_for_task, ResourceType
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.task import taskpreset
 from golem.task.taskarchiver import TaskArchiver
+from golem.task.taskbase import Task as TaskBase
 from golem.task.taskserver import TaskServer
-from golem.task.taskstate import TaskTestStatus
+from golem.task.taskstate import TaskTestStatus, SubtaskStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
 from golem.transactions.ethereum.fundslocker import FundsLocker
+from golem.tools.talkback import enable_sentry_logger
 
 logger = logging.getLogger(__name__)
 
@@ -94,12 +102,15 @@ class Client(HardwarePresetsMixin):
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
-            use_concent: bool = False,
+            # SEE: golem.core.variables.CONCENT_CHOICES
+            concent_variant: dict = variables.CONCENT_CHOICES['disabled'],
             start_geth: bool = False,
             start_geth_port: Optional[int] = None,
-            geth_address: Optional[str] = None) -> None:
+            geth_address: Optional[str] = None,
+            apps_manager: AppsManager = AppsManager(False)) -> None:
 
         self.mainnet = mainnet
+        self.apps_manager = apps_manager
         self.datadir = datadir
         self.__lock_datadir()
         self.lock = Lock()
@@ -133,13 +144,13 @@ class Client(HardwarePresetsMixin):
 
         self.p2pservice = None
         self.diag_service = None
-        self.use_concent = use_concent
         self.concent_service = ConcentClientService(
-            enabled=self.use_concent,
+            variant=concent_variant,
             keys_auth=self.keys_auth,
         )
         self.concent_filetransfers = ConcentFiletransferService(
             keys_auth=self.keys_auth,
+            variant=concent_variant,
         )
 
         self.task_server = None
@@ -194,6 +205,7 @@ class Client(HardwarePresetsMixin):
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = str(uuid.uuid4())
+        self.mainnet = mainnet
 
         dispatcher.connect(
             self.p2p_listener,
@@ -240,9 +252,9 @@ class Client(HardwarePresetsMixin):
         )
         self._publish(Task.evt_task_status, kwargs['task_id'])
 
-    # TODO: re-enable. issue #2398
+    @report_calls(Component.client, 'sync')
     def sync(self):
-        pass
+        self.transaction_system.sync()
 
     @report_calls(Component.client, 'start', stage=Stage.pre)
     def start(self):
@@ -294,6 +306,7 @@ class Client(HardwarePresetsMixin):
             self.node,
             self.config_desc,
             self.keys_auth,
+            self.mainnet,
             connect_to_known_hosts=self.connect_to_known_hosts
         )
 
@@ -303,13 +316,15 @@ class Client(HardwarePresetsMixin):
             self,
             use_ipv6=self.config_desc.use_ipv6,
             use_docker_manager=self.use_docker_manager,
-            task_archiver=self.task_archiver)
+            task_archiver=self.task_archiver,
+            apps_manager=self.apps_manager
+        )
 
         monitoring_publisher_service = MonitoringPublisherService(
             self.task_server,
             interval_seconds=max(
                 int(self.config_desc.node_snapshot_interval),
-                1))
+                60))
         monitoring_publisher_service.start()
         self._services.append(monitoring_publisher_service)
 
@@ -430,6 +445,7 @@ class Client(HardwarePresetsMixin):
         if self.port_mapper:
             self.port_mapper.quit()
 
+    @inlineCallbacks
     def pause(self):
         logger.info("Pausing ...")
         for service in self._services:
@@ -440,9 +456,10 @@ class Client(HardwarePresetsMixin):
             self.p2pservice.pause()
             self.p2pservice.disconnect()
         if self.task_server:
-            self.task_server.pause()
+            yield self.task_server.pause()
             self.task_server.disconnect()
             self.task_server.task_computer.quit()
+        logger.info("Paused")
 
     def resume(self):
         logger.info("Resuming ...")
@@ -455,6 +472,7 @@ class Client(HardwarePresetsMixin):
             self.p2pservice.connect_to_network()
         if self.task_server:
             self.task_server.resume()
+        logger.info("Resumed")
 
     def init_monitor(self):
         logger.debug("Starting monitor ...")
@@ -475,7 +493,7 @@ class Client(HardwarePresetsMixin):
         self.diag_service.stop()
 
     def connect(self, socket_address):
-        if isinstance(socket_address, Iterable):
+        if isinstance(socket_address, collections.Iterable):
             socket_address = SocketAddress(
                 socket_address[0],
                 int(socket_address[1])
@@ -531,16 +549,21 @@ class Client(HardwarePresetsMixin):
             task.header.resource_size = path.getsize(package_path)
             task_manager.add_new_task(task)
 
-            _resources = self.resource_server.add_task(package_path,
-                                                       package_sha1,
-                                                       task_id)
+            client_options = self.task_server.get_share_options(task_id, None)
+            client_options.timeout = deadline_to_timeout(task.header.deadline)
+
+            _resources = self.resource_server.add_task(
+                package_path, package_sha1, task_id,
+                client_options=client_options)
             _resources.addCallbacks(task_created, error)
 
         def task_created(resource_server_result):
-            resource_manager_result, package_hash = resource_server_result
+            resource_manager_result, package_path, package_hash = \
+                resource_server_result
 
             try:
                 task_state = task_manager.tasks_states[task_id]
+                task_state.package_path = package_path
                 task_state.package_hash = package_hash
                 task_state.resource_hash = resource_manager_result[0]
             except Exception as exc:  # pylint: disable=broad-except
@@ -636,37 +659,83 @@ class Client(HardwarePresetsMixin):
             return result
         return self.task_test_result
 
-    @inlineCallbacks
     def create_task(self, t_dict):
         try:
-            task = yield self.enqueue_new_task(t_dict)
-            return task.header.task_id
-        except Exception:
+            deferred = self.enqueue_new_task(t_dict)
+            deferred.addErrback(
+                lambda err: logger.error("Cannot create task: %r", err))
+            return True, ''
+        except Exception as ex:
             logger.exception("Cannot create task %r", t_dict)
+            return False, str(ex)
 
     def abort_task(self, task_id):
         logger.debug('Aborting task "%r" ...', task_id)
         self.task_server.task_manager.abort_task(task_id)
 
-    def restart_task(self, task_id):
+    def restart_task(self, task_id: str) -> Tuple[bool, Optional[str]]:
         logger.debug('Restarting task "%r" ...', task_id)
         task_manager = self.task_server.task_manager
 
         # Task state is changed to restarted and stays this way until it's
         # deleted from task manager.
         try:
-            task_manager.put_task_in_restarted_state(task_id)
+            task_manager.assert_task_can_be_restarted(task_id)
         except task_manager.AlreadyRestartedError:
-            return None
+            return False, "Task already restarted: '{}'".format(task_id)
 
         # Create new task that is a copy of the definition of the old one.
         # It has a new deadline and a new task id.
-        task_dict = deepcopy(
-            task_manager.get_task_definition_dict(
-                task_manager.tasks[task_id]))
+        try:
+            task_dict = deepcopy(
+                task_manager.get_task_definition_dict(
+                    task_manager.tasks[task_id]))
+        except KeyError:
+            return False, "Task not found: '{}'".format(task_id)
+
+        task_dict.pop('id', None)
+        success, msg = self.create_task(task_dict)
+        if success:
+            task_manager.put_task_in_restarted_state(task_id)
+
+        return success, msg
+
+    def restart_subtasks_from_task(
+            self, task_id: str, subtask_ids: Iterable[str]):
+
+        assert isinstance(self.task_server, TaskServer)
+        task_manager = self.task_server.task_manager
+
+        try:
+            task_manager.put_task_in_restarted_state(task_id, clear_tmp=False)
+            old_task = task_manager.tasks[task_id]
+            finished_subtask_ids = set(
+                sub_id for sub_id, sub in old_task.subtasks_given.items()
+                if sub['status'] == SubtaskStatus.finished
+            )
+            subtask_ids_to_copy = finished_subtask_ids - set(subtask_ids)
+        except task_manager.AlreadyRestartedError:
+            logger.error('Task already restarted: %r', task_id)
+            return None
+        except KeyError:
+            logger.error('Task not found: %r', task_id)
+            return None
+
+        task_dict = deepcopy(task_manager.get_task_definition_dict(old_task))
         del task_dict['id']
 
-        return self.create_task(task_dict)
+        def copy_results(task: TaskBase):
+            task_manager.copy_results(
+                old_task_id=task_id,
+                new_task_id=task.header.task_id,
+                subtask_ids_to_copy=subtask_ids_to_copy
+            )
+
+        deferred = self.enqueue_new_task(task_dict)
+
+        deferred.addCallbacks(
+            copy_results,
+            lambda err: logger.error('Task creation failed: %r', err))
 
     def restart_frame_subtasks(self, task_id, frame):
         self.task_server.task_manager.restart_frame_subtasks(task_id, frame)
@@ -679,6 +748,7 @@ class Client(HardwarePresetsMixin):
         self.remove_task_header(task_id)
         self.remove_task(task_id)
         self.task_server.task_manager.delete_task(task_id)
+        self.funds_locker.remove_task(task_id)
 
     def get_node(self):
         return self.node.to_dict()
@@ -780,8 +850,14 @@ class Client(HardwarePresetsMixin):
             return self.task_server.task_manager.get_tasks_dict()
         return []
 
-    def get_subtasks(self, task_id):
-        return self.task_server.task_manager.get_subtasks_dict(task_id)
+    def get_subtasks(self, task_id: str) \
+            -> Tuple[Optional[List[Dict]], Optional[str]]:
+        try:
+            assert isinstance(self.task_server, TaskServer)
+            subtasks = self.task_server.task_manager.get_subtasks_dict(task_id)
+            return subtasks, None
+        except KeyError:
+            return None, "Task not found: '{}'".format(task_id)
 
     def get_subtasks_borders(self, task_id, part=1):
         return self.task_server.task_manager.get_subtasks_borders(task_id,
@@ -790,8 +866,14 @@ class Client(HardwarePresetsMixin):
     def get_subtasks_frames(self, task_id):
         return self.task_server.task_manager.get_output_states(task_id)
 
-    def get_subtask(self, subtask_id):
-        return self.task_server.task_manager.get_subtask_dict(subtask_id)
+    def get_subtask(self, subtask_id: str) \
+            -> Tuple[Optional[Dict], Optional[str]]:
+        try:
+            assert isinstance(self.task_server, TaskServer)
+            subtask = self.task_server.task_manager.get_subtask_dict(subtask_id)
+            return subtask, None
+        except KeyError:
+            return None, "Subtask not found: '{}'".format(subtask_id)
 
     def get_task_preview(self, task_id, single=False):
         return self.task_server.task_manager.get_task_preview(task_id,
@@ -853,6 +935,14 @@ class Client(HardwarePresetsMixin):
     def get_incomes_list(self):
         return self.transaction_system.get_incoming_payments()
 
+    def get_withdraw_gas_cost(
+            self,
+            amount: Union[str, int],
+            currency: str) -> int:
+        if isinstance(amount, str):
+            amount = int(amount)
+        return self.transaction_system.get_withdraw_gas_cost(amount, currency)
+
     def withdraw(
             self,
             amount: Union[str, int],
@@ -863,8 +953,14 @@ class Client(HardwarePresetsMixin):
 
         if isinstance(amount, str):
             amount = int(amount)
+        gnt_lock, eth_lock = self.funds_locker.sum_locks()
+        if currency == 'GNT':
+            lock = gnt_lock
+        else:
+            lock = eth_lock
 
-        return self.transaction_system.withdraw(amount, destination, currency)
+        return self.transaction_system.withdraw(amount, destination, currency,
+                                                lock)
 
     def get_task_cost(self, task_id):
         """
@@ -876,6 +972,22 @@ class Client(HardwarePresetsMixin):
         if cost is None:
             return 0.0
         return cost
+
+    # It's defined here only for RPC exposure in
+    # golem.rpc.mapping.rpcmethodnames
+    def get_subtasks_count(  # pylint: disable=no-self-use
+            self,
+            total_subtasks: int,
+            optimize_total: bool,
+            use_frames: bool,
+            frames: list):
+        """Returns computed number of subtasks, before task creation."""
+        return framerenderingtask.calculate_subtasks_count(
+            total_subtasks=total_subtasks,
+            optimize_total=optimize_total,
+            use_frames=use_frames,
+            frames=frames,
+        )
 
     def get_computing_trust(self, node_id):
         if self.use_ranking():
@@ -942,25 +1054,19 @@ class Client(HardwarePresetsMixin):
         )
 
     def get_res_dirs(self):
-        return {"computing": self.get_computed_files_dir(),
-                "received": self.get_received_files_dir(),
-                "distributed": self.get_distributed_files_dir()}
+        return {"total received data": self.get_received_files_dir(),
+                "total distributed data": self.get_distributed_files_dir()}
 
     def get_res_dirs_sizes(self):
         return {str(name): str(du(d))
                 for name, d in list(self.get_res_dirs().items())}
 
     def get_res_dir(self, dir_type):
-        if dir_type == DirectoryType.COMPUTED:
-            return self.get_computed_files_dir()
-        elif dir_type == DirectoryType.DISTRIBUTED:
+        if dir_type == DirectoryType.DISTRIBUTED:
             return self.get_distributed_files_dir()
         elif dir_type == DirectoryType.RECEIVED:
             return self.get_received_files_dir()
         raise Exception("Unknown dir type: {}".format(dir_type))
-
-    def get_computed_files_dir(self):
-        return str(self.task_server.get_task_computer_root())
 
     def get_received_files_dir(self):
         return str(self.task_server.task_manager.get_task_manager_root())
@@ -969,18 +1075,11 @@ class Client(HardwarePresetsMixin):
         return str(self.resource_server.get_distributed_resource_root())
 
     def clear_dir(self, dir_type, older_than_seconds: int = 0):
-        if dir_type == DirectoryType.COMPUTED:
-            return self.remove_computed_files(older_than_seconds)
-        elif dir_type == DirectoryType.DISTRIBUTED:
+        if dir_type == DirectoryType.DISTRIBUTED:
             return self.remove_distributed_files(older_than_seconds)
         elif dir_type == DirectoryType.RECEIVED:
             return self.remove_received_files(older_than_seconds)
         raise Exception("Unknown dir type: {}".format(dir_type))
-
-    def remove_computed_files(self, older_than_seconds: int = 0):
-        dir_manager = DirManager(self.datadir)
-        dir_manager.clear_dir(
-            self.get_computed_files_dir(), older_than_seconds)
 
     def remove_distributed_files(self, older_than_seconds: int = 0):
         dir_manager = DirManager(self.datadir)
@@ -1112,11 +1211,9 @@ class Client(HardwarePresetsMixin):
 
     def __get_nodemetadatamodel(self):
         return NodeMetadataModel(
-            self.get_key_id(),
-            self.session_id,
-            sys.platform,
-            golem.__version__,
-            self.config_desc
+            client=self,
+            os=sys.platform,
+            ver=golem.__version__
         )
 
     def connection_status(self):
@@ -1196,18 +1293,7 @@ class Client(HardwarePresetsMixin):
 
     @staticmethod
     def enable_talkback(value):
-        talkback_value = bool(value)
-        logger_root = logging.getLogger()
-        try:
-            sentry_handler = [
-                h for h in logger_root.handlers if h.name == 'sentry'][0]
-            msg_part = 'Enabling' if talkback_value else 'Disabling'
-            logger.info('%s talkback service', msg_part)
-            sentry_handler.set_enabled(talkback_value)
-        except Exception as e:  # pylint: disable=broad-except
-            msg_part = 'enable' if talkback_value else 'disable'
-            logger.error(
-                'Cannot %s talkback. Error was: %s', msg_part, str(e))
+        enable_sentry_logger(value)
 
 
 class DoWorkService(LoopingCallService):
@@ -1332,7 +1418,6 @@ class ResourceCleanerService(LoopingCallService):
     def _run(self):
         # TODO: is any synchronization needed here? golemcli has none.
         # Issue #2432
-        self._client.remove_computed_files(self.older_than_seconds)
         self._client.remove_distributed_files(self.older_than_seconds)
         self._client.remove_received_files(self.older_than_seconds)
 

@@ -8,10 +8,15 @@ from collections import deque
 from pathlib import Path
 
 from golem_messages import message
+from pydispatch import dispatcher
+from twisted.internet.defer import inlineCallbacks
 
+from apps.appsmanager import AppsManager
+from apps.core.task.coretask import CoreTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.network.p2p import node as p2p_node
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
     TCPNetwork, SocketAddress, SafeProtocol)
@@ -22,13 +27,17 @@ from golem.task.acl import get_acl
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
+from golem.task.taskstate import TaskOp
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
+
+from .result.resultmanager import ExtractedPackage
 from .server import resources
 from .server import concent
 from .taskcomputer import TaskComputer
 from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
+
 
 logger = logging.getLogger('golem.task.taskserver')
 
@@ -44,7 +53,8 @@ class TaskServer(
                  client,
                  use_ipv6=False,
                  use_docker_manager=True,
-                 task_archiver=None):
+                 task_archiver=None,
+                 apps_manager=AppsManager(False)) -> None:
         self.client = client
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
@@ -62,7 +72,9 @@ class TaskServer(
             root_path=TaskServer.__get_task_manager_root(client.datadir),
             use_distributed_resources=config_desc.
             use_distributed_resource_management,
-            tasks_dir=os.path.join(client.datadir, 'tasks'))
+            tasks_dir=os.path.join(client.datadir, 'tasks'),
+            apps_manager=apps_manager
+        )
         benchmarks = self.task_manager.apps_manager.get_benchmarks()
         self.benchmark_manager = BenchmarkManager(config_desc.node_name, self,
                                                   client.datadir, benchmarks)
@@ -105,6 +117,16 @@ class TaskServer(
         self.concent_handler = \
             concent_received_handler.TaskServerMessageHandler(self)
 
+        dispatcher.connect(
+            self.income_listener,
+            signal='golem.income'
+        )
+
+        dispatcher.connect(
+            self.finished_task_listener,
+            signal='golem.taskmanager'
+        )
+
     def sync_network(self):
         super().sync_network(timeout=self.last_message_time_threshold)
         self._sync_pending()
@@ -121,6 +143,15 @@ class TaskServer(
             logger.debug('TASK SERVER TASKS DUMP: %r', self.task_manager.tasks)
             logger.debug('TASK SERVER TASKS STATES: %r',
                          self.task_manager.tasks_states)
+
+    @inlineCallbacks
+    def pause(self):
+        super().pause()
+        yield CoreTask.VERIFICATION_QUEUE.pause()
+
+    def resume(self):
+        super().resume()
+        CoreTask.VERIFICATION_QUEUE.resume()
 
     def get_environment_by_id(self, env_id):
         return self.task_keeper.environments_manager.get_environment_by_id(
@@ -182,7 +213,7 @@ class TaskServer(
 
         return None
 
-    def send_results(self, subtask_id, task_id, result, computing_time):
+    def send_results(self, subtask_id, task_id, result):
 
         if 'data' not in result or 'result_type' not in result:
             raise AttributeError("Wrong result format")
@@ -190,8 +221,7 @@ class TaskServer(
         header = self.task_keeper.task_headers[task_id]
 
         if subtask_id not in self.results_to_send:
-            value = self.task_manager.comp_task_keeper.get_value(
-                task_id, computing_time)
+            value = self.task_manager.comp_task_keeper.get_value(task_id)
             self.client.transaction_system.incomes_keeper.expect(
                 sender_node_id=header.task_owner.key,
                 subtask_id=subtask_id,
@@ -206,7 +236,6 @@ class TaskServer(
                 subtask_id=subtask_id,
                 result=result['data'],
                 result_type=result['result_type'],
-                computing_time=computing_time,
                 last_sending_trial=last_sending_trial,
                 delay_time=delay_time,
                 owner=header.task_owner)
@@ -364,20 +393,23 @@ class TaskServer(
         return os.path.join(self.client.datadir, "ComputerRes")
 
     def subtask_rejected(self, subtask_id):
-        logger.debug("Subtask {} result rejected".format(subtask_id))
+        """My (providers) results were rejected"""
+        logger.debug("Subtask %r result rejected", subtask_id)
         self.task_result_sent(subtask_id)
         task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(
             subtask_id)
-        if task_id is not None:
-            self.decrease_trust_payment(task_id)
-            # self.remove_task_header(task_id)
-            # TODO Inform transaction system and task manager about rejected
-            # subtask. Issue #2405
-        else:
-            logger.warning("Not my subtask rejected {}".format(subtask_id))
+        if task_id is None:
+            logger.warning("Not my subtask rejected %r", subtask_id)
+            return
+
+        self.client.transaction_system.incomes_keeper.reject(subtask_id)
+        # self.remove_task_header(task_id)
+        # TODO Inform transaction system and task manager about rejected
+        # subtask. Issue #2405
 
     def subtask_accepted(self, sender_node_id, subtask_id, accepted_ts):
-        logger.debug("Subtask {} result accepted".format(subtask_id))
+        """My (providers) results were accepted"""
+        logger.debug("Subtask %r result accepted", subtask_id)
         self.task_result_sent(subtask_id)
         self.client.transaction_system.incomes_keeper.update_awaiting(
             sender_node_id,
@@ -391,11 +423,6 @@ class TaskServer(
         node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
-
-    def get_result(self, rct_message):
-        logger.warning('Should get result for %r', rct_message)
-        # @todo: actually retrieve results from the provider based on
-        # the information in the `ReportComputedTask` message. issue #2411
 
     def accept_result(self, subtask_id, account_info: EthAccountInfo):
         mod = min(
@@ -422,6 +449,26 @@ class TaskServer(
         logger.debug('Result accepted for subtask: %s Created payment: %r',
                      subtask_id, payment)
         return payment
+
+    def income_listener(self, event='default', subtask_id=None, **_kwargs):
+        task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(
+            subtask_id)
+        if not task_id:
+            return
+
+        if event == 'confirmed':
+            self.increase_trust_payment(task_id)
+        elif event in ['rejected', 'overdue']:
+            self.decrease_trust_payment(task_id)
+
+    def finished_task_listener(self, event='default', task_id=None, op=None,
+                               **_kwargs):
+        if not (event == 'task_status_updated'
+                and op == TaskOp.FINISHED
+                and self.client.p2pservice):
+            return
+
+        self.client.p2pservice.remove_task(task_id)
 
     def increase_trust_payment(self, task_id):
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
@@ -504,9 +551,6 @@ class TaskServer(
 
     def quit(self):
         self.task_computer.quit()
-
-    def receive_subtask_computation_time(self, subtask_id, computation_time):
-        self.task_manager.set_computation_time(subtask_id, computation_time)
 
     def remove_responses(self, conn_id):
         self.response_list.pop(conn_id, None)
@@ -745,6 +789,31 @@ class TaskServer(
         args_, kwargs_ = args, kwargs  # avoid params name collision in logger
         logger.debug('Noop(%r, %r)', args_, kwargs_)
 
+    def __connection_for_task_verification_result_established(
+            self,
+            session: TaskSession,
+            conn_id,
+            extracted_package: ExtractedPackage,
+            key_id):
+
+        extra_data = extracted_package.to_extra_data()
+        self.new_session_prepare(
+            session=session,
+            subtask_id=extra_data.get('subtask_id'),
+            key_id=key_id,
+            conn_id=conn_id,
+        )
+
+        session.send_hello()
+        session.result_received(extra_data)
+
+    def __connection_for_task_verification_result_failure(  # noqa pylint:disable=no-self-use
+            self, _conn_id, extracted_package, key_id):
+        subtask_id = extracted_package.to_extra_data().get('subtask_id')
+        logger.warning("Failed to establish a session to deliver "
+                       "the verification result for %s to the provider %s",
+                       subtask_id, key_id)
+
     # SYNC METHODS
     #############################
     def __remove_old_tasks(self):
@@ -833,6 +902,26 @@ class TaskServer(
 
         self.failures_to_send.clear()
 
+    def verify_results(
+            self,
+            report_computed_task: message.tasks.ReportComputedTask,
+            extracted_package: ExtractedPackage) -> None:
+
+        kwargs = {
+            'extracted_package': extracted_package,
+            'key_id': report_computed_task.key_id,
+        }
+
+        node = p2p_node.Node.from_dict(report_computed_task.node_info)
+
+        self._add_pending_request(
+            TASK_CONN_TYPES['task_verification_result'],
+            node,
+            prv_port=node.prv_port,
+            pub_port=node.pub_port,
+            args=kwargs,
+        )
+
     # CONFIGURATION METHODS
     #############################
     @staticmethod
@@ -849,6 +938,8 @@ class TaskServer(
             self.__connection_for_task_failure_established,
             TASK_CONN_TYPES['start_session']:
             self.__connection_for_start_session_established,
+            TASK_CONN_TYPES['task_verification_result']:
+                self.__connection_for_task_verification_result_established,
         })
 
     def _set_conn_failure(self):
@@ -861,6 +952,8 @@ class TaskServer(
             self.__connection_for_task_failure_failure,
             TASK_CONN_TYPES['start_session']:
             self.__connection_for_start_session_failure,
+            TASK_CONN_TYPES['task_verification_result']:
+                self.__connection_for_task_verification_result_failure,
         })
 
     def _set_conn_final_failure(self):
@@ -873,18 +966,22 @@ class TaskServer(
             self.__connection_for_task_failure_final_failure,
             TASK_CONN_TYPES['start_session']:
             self.__connection_for_start_session_final_failure,
+            TASK_CONN_TYPES['task_verification_result']:
+                self.__connection_for_task_verification_result_failure,
         })
 
 
+# TODO: https://github.com/golemfactory/golem/issues/2633
+#       and remove linter switch offs
+# pylint: disable=too-many-arguments, too-many-locals
 class WaitingTaskResult(object):
-    def __init__(self, task_id, subtask_id, result, result_type, computing_time,
+    def __init__(self, task_id, subtask_id, result, result_type,
                  last_sending_trial, delay_time, owner, result_path=None,
                  result_hash=None, result_secret=None, package_sha1=None,
                  result_size=None):
 
         self.task_id = task_id
         self.subtask_id = subtask_id
-        self.computing_time = computing_time
         self.last_sending_trial = last_sending_trial
         self.delay_time = delay_time
         self.owner = owner
@@ -898,6 +995,7 @@ class WaitingTaskResult(object):
         self.result_size = result_size
 
         self.already_sending = False
+# pylint: enable=too-many-arguments, too-many-locals
 
 
 class WaitingTaskFailure(object):
@@ -915,6 +1013,7 @@ TASK_CONN_TYPES = {
     'task_result': 5,
     'task_failure': 6,
     'start_session': 7,
+    'task_verification_result': 8,
 }
 
 

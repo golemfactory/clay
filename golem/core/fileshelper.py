@@ -1,12 +1,13 @@
 import ctypes
+import logging
 import os
 import shutil
-
 import subprocess
 
 from golem.core.common import is_windows
-
 from golem.tools import memoryhelper
+
+logger = logging.getLogger(__name__)
 
 
 def copy_file_tree(src, dst, exclude=None):
@@ -124,9 +125,9 @@ def common_dir(arr, ign_case=None):
     return _format(s)
 
 
-def find_file_with_ext(directory, extensions):
+def find_file_with_ext(directory, extensions) -> str:
     """ Return first file with one of the given extension from directory.
-    :param str directory: name of the directory
+    :param directory: name of the directory
     :param list extensions: list of acceptable extensions (with dot,
                             ie. ".png", ".txt")
     :return str: name of the first file wich extension is in
@@ -137,6 +138,7 @@ def find_file_with_ext(directory, extensions):
             _, ext = os.path.splitext(name)
             if ext.lower() in extensions:
                 return os.path.join(root, name)
+    raise RuntimeError('Not found')
 
 
 def outer_dir_path(path):
@@ -180,24 +182,22 @@ def free_partition_space(directory):
 
 
 def du(path):
-    """Imitates bash "du -h <path>" command behaviour. Returns the estimated
+    """Imitates bash "du -sh <path>" command behaviour. Returns the estimated
        size of this directory
     :param str path: path to directory which size should be measured
-    :return str: directory size in human readable format (eg. 1 Mb) or "-1"
+    :return str: directory size in human readable format (eg. 6.5M) or "-1"
                  if an error occurs.
     """
     try:
-        size, _ = subprocess.check_output(['du', '-sh', path]).split()
-        unit = dict(K='kB', B='B').get(size[-1], str(size[-1]) + 'B')
-        return "{} {}".format(float(size[:-1]), unit)
+        logger.debug('du -sh %r', path)
+        return subprocess.check_output(['du', '-sh', path]).decode().split()[0]
     except (ValueError, OSError, subprocess.CalledProcessError):
         try:
             size = int(get_dir_size(path))
         except OSError as err:
-            import logging
-            logging.getLogger('golem.core')\
-                .info("Can't open dir {}: {}".format(path, str(err)))
+            logger.info("Can't open dir {}: {}".format(path, str(err)))
             return "-1"
+
     human_readable_size, idx = memoryhelper.dir_size_to_display(size)
     return "{} {}".format(
         human_readable_size,

@@ -2,7 +2,6 @@ import abc
 import decimal
 import logging
 import os
-import uuid
 from enum import Enum
 from typing import Type
 
@@ -15,6 +14,7 @@ from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
+from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.core.simpleserializer import CBORSerializer
 from golem.docker.environment import DockerEnvironment
 from golem.network.p2p.node import Node
@@ -181,22 +181,10 @@ class CoreTask(Task):
 
     @staticmethod
     def create_task_id(public_key: bytes) -> str:
-        """
-        seeds top 48 bits from given public key as node in generated uuid1
-
-        :param bytes public_key: `KeysAuth.public_key`
-        :returns: string uuid1 based on timestamp and given key
-        """
-        return str(uuid.uuid1(node=int.from_bytes(public_key[:6], 'big')))
+        return generate_id(public_key)
 
     def create_subtask_id(self) -> str:
-        """
-        seeds low 48 bits from task_id as node in generated uuid1
-
-        :returns: uuid1 based on timestamp and task_id
-        """
-        task_uuid = uuid.UUID(self.header.task_id)
-        return str(uuid.uuid1(node=task_uuid.node))
+        return generate_new_id_from_id(self.header.task_id)
 
     def is_docker_task(self):
         return len(self.docker_images or ()) > 0
@@ -234,7 +222,8 @@ class CoreTask(Task):
             subtask_id,
             self._deadline,
             verification_finished,
-            subtask_info=self.subtasks_given[subtask_id],
+            subtask_info={**self.subtasks_given[subtask_id],
+                          **{'owner': self.header.task_owner.key}},
             results=result_files,
             resources=self.task_resources,
             reference_data=self.get_reference_data()
@@ -299,7 +288,7 @@ class CoreTask(Task):
         was_failure_before = subtask_info['status'] in [SubtaskStatus.failure,
                                                         SubtaskStatus.resent]
 
-        if SubtaskStatus.is_active(subtask_info['status']):
+        if subtask_info['status'].is_active():
             # TODO Restarted tasks that were waiting for verification should
             # cancel it. Issue #2423
             self._mark_subtask_failed(subtask_id)
@@ -466,7 +455,7 @@ class CoreTask(Task):
     @handle_key_error
     def should_accept(self, subtask_id):
         status = self.subtasks_given[subtask_id]['status']
-        return SubtaskStatus.is_computed(status)
+        return status.is_computed()
 
     @staticmethod
     def _interpret_log(log):
@@ -516,6 +505,24 @@ class CoreTask(Task):
 
         client.start()
         return AcceptClientVerdict.ACCEPTED
+
+    def copy_subtask_results(self, subtask_id, old_subtask_info, results):
+        new_subtask = self.subtasks_given[subtask_id]
+
+        new_subtask['node_id'] = old_subtask_info['node_id']
+        new_subtask['perf'] = old_subtask_info['perf']
+        new_subtask['ctd']['performance'] = \
+            old_subtask_info['ctd']['performance']
+
+        self._accept_client(new_subtask['node_id'])
+        self.result_incoming(subtask_id)
+        self.interpret_task_results(
+            subtask_id=subtask_id,
+            task_results=results,
+            result_type=ResultType.FILES)
+        self.accept_results(
+            subtask_id=subtask_id,
+            result_files=self.results[subtask_id])
 
 
 def accepting(query_extra_data_func):
@@ -589,9 +596,6 @@ class CoreTaskBuilder(TaskBuilder):
         definition.total_subtasks = int(dictionary['subtasks'])
         definition.main_program_file = task_type.defaults.main_program_file
 
-        # FIXME: Backward compatibility only. Remove after upgrading GUI. #2450
-        definition.legacy = dictionary.get('legacy', False)
-
         return definition
 
     @classmethod
@@ -630,10 +634,6 @@ class CoreTaskBuilder(TaskBuilder):
     @classmethod
     def get_output_path(cls, dictionary, definition):
         options = dictionary['options']
-
-        # FIXME: Backward compatibility only. Remove after upgrading GUI. #2450
-        if definition.legacy:
-            return options['output_path']
 
         absolute_path = cls.get_nonexistant_path(
             options['output_path'],

@@ -119,6 +119,11 @@ def datetime_to_timestamp(then):
     return timegm(then.utctimetuple()) + then.microsecond / 1000000.0
 
 
+def datetime_to_timestamp_utc(then):
+    then_utc = then.astimezone(pytz.utc)
+    return datetime_to_timestamp(then_utc)
+
+
 def timeout_to_string(timeout):
     hours = int(timeout / 3600)
     timeout -= hours * 3600
@@ -163,8 +168,7 @@ class HandleAttributeError(HandleError):
         )
 
 
-def config_logging(suffix='', datadir=None, loglevel=None,
-                   enable_talkback=False):
+def config_logging(suffix='', datadir=None, loglevel=None):
     """Config logger"""
     try:
         from loggingconfig_local import LOGGING
@@ -177,7 +181,8 @@ def config_logging(suffix='', datadir=None, loglevel=None,
 
     for handler in LOGGING.get('handlers', {}).values():
         if loglevel:
-            handler['level'] = loglevel
+            if 'Sentry' not in handler['class']:
+                handler['level'] = loglevel
         if 'filename' in handler:
             handler['filename'] %= {
                 'logdir': str(logdir_path),
@@ -188,10 +193,6 @@ def config_logging(suffix='', datadir=None, loglevel=None,
         for _logger in LOGGING.get('loggers', {}).values():
             _logger['level'] = loglevel
         LOGGING['root']['level'] = loglevel
-
-    if enable_talkback:
-        if 'sentry' not in LOGGING['root']['handlers']:
-            LOGGING['root']['handlers'].append('sentry')
 
     try:
         if not os.path.exists(logdir_path):
