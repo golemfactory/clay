@@ -1,18 +1,18 @@
 import logging
 import os
 import shutil
+import stat
 from threading import Lock
 import time
-from typing import Callable
+from typing import Callable, Optional
 
 from golem_messages.message import ComputeTaskDef
 
 from golem.core.common import to_unicode
+from golem.core.fileshelper import common_dir
 from golem.docker.image import DockerImage
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
-from golem.resource.resource import (TaskResourceHeader, decompress_dir,
-                                     get_resources_for_task, ResourceType)
 
 logger = logging.getLogger("golem.task")
 
@@ -36,7 +36,7 @@ class LocalComputer:
         self.tmp_dir = None
         self.success = False
         self.lock = Lock()
-        self.tt = None
+        self.tt: Optional[DockerTaskThread] = None
         self.dir_manager = DirManager(root_path)
         self.compute_task_def = compute_task_def
         self.get_compute_task_def = get_compute_task_def
@@ -58,8 +58,8 @@ class LocalComputer:
     def run(self) -> None:
         try:
             self.start_time = time.time()
-            self.__prepare_tmp_dir()
-            self.__prepare_resources(self.resources)  # makes a copy
+            self._prepare_tmp_dir()
+            self._prepare_resources(self.resources)  # makes a copy
 
             if not self.compute_task_def:
                 ctd = self.get_compute_task_def()
@@ -117,18 +117,43 @@ class LocalComputer:
         except TypeError:
             logger.error("Cannot measure execution time")
 
-    def __prepare_resources(self, resources):
+    def _prepare_resources(self, resources):
         self.test_task_res_path = self.dir_manager.get_task_test_dir("")
 
+        def onerror(func, target_path, exc_info):
+            # Try to set write permissions
+            if not os.access(target_path, os.W_OK):
+                os.chmod(target_path, stat.S_IWUSR)
+                func(target_path)
+            else:
+                raise OSError('Cannot remove {}: {}'
+                              .format(target_path, exc_info))
+
         if os.path.exists(self.test_task_res_path):
-            shutil.rmtree(self.test_task_res_path, True)
+            shutil.rmtree(self.test_task_res_path, onerror=onerror)
 
         if resources:
-            if len(resources) == 1:
-                path = os.path.dirname(resources[0])
+            if len(resources) == 1 and os.path.isdir(resources[0]):
+                shutil.copytree(resources[0], self.test_task_res_path)
             else:
-                path = os.path.commonprefix(resources)
-            shutil.copytree(path, self.test_task_res_path)
+                # no trailing separator
+                if len(resources) == 1:
+                    base_dir = os.path.dirname(resources[0])
+                else:
+                    base_dir = common_dir(resources)
+
+                base_dir = os.path.normpath(base_dir)
+
+                for resource in filter(None, resources):
+                    norm_path = os.path.normpath(resource)
+
+                    sub_path = norm_path.replace(base_dir + os.path.sep, '', 1)
+                    sub_dir = os.path.dirname(sub_path)
+                    dst_dir = os.path.join(self.test_task_res_path, sub_dir)
+                    os.makedirs(dst_dir, exist_ok=True)
+
+                    name = os.path.basename(resource)
+                    shutil.copy2(resource, os.path.join(dst_dir, name))
 
         for res in self.additional_resources:
             if not os.path.exists(self.test_task_res_path):
@@ -137,7 +162,7 @@ class LocalComputer:
 
         return True
 
-    def __prepare_tmp_dir(self):
+    def _prepare_tmp_dir(self):
         self.tmp_dir = self.dir_manager.get_task_temporary_dir("")
         if os.path.exists(self.tmp_dir):
             shutil.rmtree(self.tmp_dir, True)

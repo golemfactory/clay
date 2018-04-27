@@ -516,7 +516,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
 
         task_id = "test_{}".format(uuid.uuid4())
         msg = message.RemoveTask(task_id=task_id)
-        msg.serialize(sign_func=keys_auth.sign)
+        msg.serialize(sign_as=keys_auth._private_key)
         assert keys_auth.verify(msg.sig, msg.get_short_hash(), keys_auth.key_id)
         return msg, task_id, previous_ka
 
@@ -531,7 +531,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         msg, task_id, previous_ka = \
             self._gen_data_for_test_react_to_remove_task()
         th_mock = MagicMock()
-        th_mock.task_owner_key_id = "UNKNOWNKEY"
+        th_mock.task_owner.key = "UNKNOWNKEY"
         task_server = self.peer_session.p2p_service.task_server
         task_server.task_keeper.task_headers[task_id] = th_mock
         with self.assertLogs(logger, level="INFO") as log:
@@ -546,7 +546,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             self._gen_data_for_test_react_to_remove_task()
         th_mock = MagicMock()
         keys_auth = self.peer_session.p2p_service.keys_auth
-        th_mock.task_owner_key_id = keys_auth.key_id
+        th_mock.task_owner.key = keys_auth.key_id
         task_server = self.peer_session.p2p_service.task_server
         task_server.task_keeper.task_headers[task_id] = th_mock
         msg.serialize()

@@ -151,8 +151,9 @@ class RenderingTask(CoreTask):
         with handle_image_error(logger), \
                 self._open_preview() as img_task:
 
-            for sub in self.subtasks_given.values():
-                if SubtaskStatus.is_active(sub['status']):
+            subtasks_given = dict(self.subtasks_given)
+            for sub in subtasks_given.values():
+                if sub['status'].is_active():
                     self._mark_task_area(sub, img_task, sent_color)
                 if sub['status'] in [SubtaskStatus.failure,
                                      SubtaskStatus.restarted]:
@@ -181,7 +182,7 @@ class RenderingTask(CoreTask):
                "{}".format(arg),
                "{}".format(self.res_x),
                "{}".format(self.res_y),
-               format_cmd_line_path(output_file_name)] + [format_cmd_line_path(f) for f in files]
+               output_file_name] + [f for f in files]
         exec_cmd(cmd)
 
     def _get_next_task(self):

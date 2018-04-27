@@ -8,6 +8,7 @@ import os
 
 from golem.core.fileencrypt import AESFileEncryptor
 from golem.core.fileshelper import common_dir, relative_path
+from golem.core.printable_object import PrintableObject
 from golem.core.simplehash import SimpleHash
 from golem.core.simpleserializer import CBORSerializer
 from golem.task.taskbase import ResultType
@@ -190,7 +191,7 @@ class EncryptingPackager(Packager):
         self._packager.write_cbor_file(obj, file_name, cbor_data)
 
 
-class TaskResultDescriptor(object):
+class TaskResultDescriptor(PrintableObject):  # noqa pylint:disable=too-few-public-methods
 
     def __init__(self, node, task_result):
         self.node_name = node.node_name
@@ -199,7 +200,6 @@ class TaskResultDescriptor(object):
         self.result_type = task_result.result_type
         self.task_id = task_result.task_id
         self.subtask_id = task_result.subtask_id
-        self.owner_key_id = task_result.owner_key_id
         self.owner = task_result.owner
 
 
@@ -234,7 +234,8 @@ class EncryptingTaskResultPackager(EncryptingPackager):
 
         try:
             with open(descriptor_path, 'rb') as src:
-                descriptor = CBORSerializer.loads(src.read())
+                descriptor: TaskResultDescriptor = \
+                    CBORSerializer.loads(src.read())
             os.remove(descriptor_path)
         except Exception as e:
             raise ValueError('Invalid package descriptor {}'.format(e))
@@ -272,7 +273,7 @@ class EncryptingTaskResultPackager(EncryptingPackager):
         return disk_files, cbor_files
 
 
-class ExtractedPackage:
+class ExtractedPackage(PrintableObject):  # noqa pylint:disable=too-few-public-methods
 
     def __init__(self, files=None, files_dir="", descriptor=None, result=None):
         self.files = files or []

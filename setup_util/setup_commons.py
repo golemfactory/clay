@@ -227,7 +227,7 @@ def parse_requirements(my_path):
     import re
     requirements = []
     dependency_links = []
-    for line in open(path.join(my_path, 'requirements.txt')):
+    for line in open(path.join(my_path, 'requirements_to-freeze.txt')):
         line = line.strip()
         if line.startswith('-') or line.startswith('#'):
             continue

@@ -162,6 +162,9 @@ class TestNetwork(unittest.TestCase):
         cls.n_clients = len(peer_info)
         cls.client = client
 
+    def tearDown(self):
+        self.client.reset_mock()
+
     def test_status(self):
 
         with client_ctx(Network, self.client):
@@ -206,6 +209,21 @@ class TestNetwork(unittest.TestCase):
             result_2 = net.dht(None, full=True)
 
             self.__assert_peer_result(result_1, result_2)
+
+    def test_block_success(self):
+        with client_ctx(Network, self.client):
+            self.client.block_node.return_value = True, None
+            network = Network()
+            network.block('node_id')
+            self.client.block_node.assert_called_once_with('node_id')
+
+    def test_block_error(self):
+        with client_ctx(Network, self.client):
+            self.client.block_node.return_value = False, 'error_msg'
+            network = Network()
+            result = network.block('node_id')
+            self.assertEqual(result, 'error_msg')
+            self.client.block_node.assert_called_once_with('node_id')
 
     def __assert_peer_result(self, result_1, result_2):
         self.assertEqual(result_1.data[1][0], [
@@ -302,14 +320,17 @@ class TestResources(unittest.TestCase):
 
     def test_show(self):
         dirs = dict(
-            example_1='100MB',
-            example_2='200MB', )
+            sth='100M',
+            sample='200M', )
 
         client = self.client
         client.get_res_dirs_sizes.return_value = dirs
 
         with client_ctx(Resources, client):
-            assert Resources().show() == dirs
+            result = Resources().show()
+            assert isinstance(result, CommandResult)
+            assert result.type == CommandResult.TABULAR
+            assert result.data == (['sth', 'sample'], [['100M', '200M']])
 
     def test_clear_none(self):
         client = self.client
@@ -328,7 +349,7 @@ class TestResources(unittest.TestCase):
             res = Resources()
             res.clear(provider=True, requestor=False)
 
-            assert len(client.clear_dir.mock_calls) == 2
+            assert len(client.clear_dir.mock_calls) == 1
 
     def test_clear_requestor(self):
         client = self.client
@@ -344,7 +365,7 @@ class TestResources(unittest.TestCase):
             res = Resources()
             res.clear(provider=True, requestor=True)
 
-            assert len(client.clear_dir.mock_calls) == 2
+            assert len(client.clear_dir.mock_calls) == 1
 
 
 def _has_subtask(id):
@@ -385,8 +406,9 @@ class TestTasks(TempDirFixture):
 
         cls.n_tasks = len(cls.tasks)
         cls.n_subtasks = len(cls.subtasks)
-        cls.get_tasks = lambda s, _id: cls.tasks[0] if _id else cls.tasks
-        cls.get_subtasks = lambda s, x: cls.subtasks
+        cls.get_tasks = lambda s, _id: dict(cls.tasks[0]) if _id \
+            else [dict(t) for t in cls.tasks]
+        cls.get_subtasks = lambda s, x: ([dict(s) for s in cls.subtasks], None)
         cls.get_unsupport_reasons = lambda s, x: cls.reasons
 
     def setUp(self):
@@ -412,14 +434,28 @@ class TestTasks(TempDirFixture):
         with client_ctx(Tasks, client):
             tasks = Tasks()
 
-            assert tasks.restart('valid')
-            client.restart_task.assert_called_with('valid')
             assert tasks.abort('valid')
             client.abort_task.assert_called_with('valid')
             assert tasks.delete('valid')
             client.delete_task.assert_called_with('valid')
             assert tasks.stats()
             client.get_task_stats.assert_called_with()
+
+    def test_restart_success(self):
+        with client_ctx(Tasks, self.client):
+            self.client.restart_task.return_value = True, 'whatever'
+            tasks = Tasks()
+            result = tasks.restart('task_id')
+            self.assertIsNone(result)
+            self.client.restart_task.assert_called_once_with('task_id')
+
+    def test_restart_error(self):
+        with client_ctx(Tasks, self.client):
+            self.client.restart_task.return_value = False, 'error'
+            tasks = Tasks()
+            result = tasks.restart('task_id')
+            self.assertEqual(result, 'error')
+            self.client.restart_task.assert_called_once_with('task_id')
 
     def test_create(self) -> None:
         client = self.client
@@ -496,7 +532,7 @@ class TestTasks(TempDirFixture):
             assert isinstance(all_tasks, CommandResult)
 
             assert one_task == {
-                'time_remaining': 1,
+                'time_remaining': '0:00:01',
                 'status': 'waiting',
                 'subtasks': 3,
                 'id': '745c1d01',
@@ -504,10 +540,26 @@ class TestTasks(TempDirFixture):
             }
 
             assert all_tasks.data[1][0] == [
-                '745c1d01', '1', '3', 'waiting', '1.00 %'
+                '745c1d01', '0:00:01', '3', 'waiting', '1.00 %'
             ]
 
-    def test_subtasks(self):
+            self.client.get_tasks = lambda _: {
+                'time_remaining': None,
+                'status': 'XXX',
+                'substasks': 1,
+                'id': 'XXX',
+                'progress': 0
+            }
+            task = tasks.show('XXX', None)
+            self.assertDictEqual(task, {
+                'time_remaining': '???',
+                'status': 'XXX',
+                'substasks': 1,
+                'id': 'XXX',
+                'progress': '0.00 %'
+            })
+
+    def test_subtasks_ok(self):
         client = self.client
 
         with client_ctx(Tasks, client):
@@ -516,8 +568,16 @@ class TestTasks(TempDirFixture):
             subtasks = tasks.subtasks('745c1d01', None)
             assert isinstance(subtasks, CommandResult)
             assert subtasks.data[1][0] == [
-                'node_1', 'subtask_1', '9', 'waiting', '1.00 %'
+                'node_1', 'subtask_1', '0:00:09', 'waiting', '1.00 %'
             ]
+
+    def test_subtasks_error(self):
+        with client_ctx(Tasks, self.client):
+            self.client.get_subtasks = Mock(return_value=(None, 'error'))
+            tasks = Tasks()
+            result = tasks.subtasks('task_id', None)
+            self.assertEqual(result, 'error')
+            self.client.get_subtasks.assert_called_once_with('task_id')
 
     def test_unsupport(self):
         client = self.client
@@ -547,17 +607,22 @@ class TestSubtasks(unittest.TestCase):
         self.client = Mock()
         self.client.__getattribute__ = assert_client_method
 
-    def test_show(self):
-        client = self.client
-
-        with client_ctx(Subtasks, client):
+    def test_show_ok(self):
+        with client_ctx(Subtasks, self.client):
+            subtask_dict = {'subtask_id': 'subtask_id'}
+            self.client.get_subtask.return_value = subtask_dict, None
             subtasks = Subtasks()
+            result = subtasks.show('subtask_id')
+            self.assertEqual(result, subtask_dict)
+            self.client.get_subtask.assert_called_with('subtask_id')
 
-            subtasks.show('valid')
-            client.get_subtask.assert_called_with('valid')
-
-            subtasks.show('invalid')
-            client.get_subtask.assert_called_with('invalid')
+    def test_show_error(self):
+        with client_ctx(Subtasks, self.client):
+            self.client.get_subtask.return_value = None, 'error'
+            subtasks = Subtasks()
+            result = subtasks.show('subtask_id')
+            self.assertEqual(result, 'error')
+            self.client.get_subtask.assert_called_with('subtask_id')
 
     def test_restart(self):
         client = self.client

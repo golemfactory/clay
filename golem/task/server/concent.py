@@ -6,6 +6,7 @@ from golem.network.concent.handlers_library import library
 
 logger = logging.getLogger(__name__)
 
+
 def process_messages_received_from_concent(concent_service):
     # Process first 50 messages only in one sync
     for _ in range(50):

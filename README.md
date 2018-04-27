@@ -14,7 +14,7 @@ between both roles).
 
 ## Installing and testing
 
-For Mac OS X (ver. 10.10 (Yosemite) or later) follow the installation instruction from [here](https://github.com/golemfactory/homebrew-golem).
+For Mac OS X (ver. 10.12 (Sierra) or later) follow the installation instruction from [here](https://github.com/golemfactory/homebrew-golem).
 For Ubuntu (16.04 or higher) download [script](https://raw.githubusercontent.com/golemfactory/golem/develop/Installer/Installer_Linux/install.sh), make it executable `chmod +x install.sh` and run `./install.sh`.
 For MS Windows 10 download the installer from [here](https://github.com/golemfactory/golem/releases/); when downloaded, just run `setup.exe`.
 
@@ -32,7 +32,7 @@ All released packages are located [here](https://github.com/golemfactory/golem/r
 
 Documentation for using app is here: https://docs.golem.network/
 
-The most common problems are described in section 10: https://docs.golem.network/10-troubleshooting.html
+The most common problems are described in section 9: https://golem.network/documentation/09-common-issues-troubleshooting/
 
 ## Warning
 

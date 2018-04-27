@@ -31,6 +31,7 @@ CORE_METHOD_MAP = dict(
     get_known_peers=        'net.peers.known',
     get_connected_peers=    'net.peers.connected',
 
+    block_node=             'net.peer.block',
     connect=                'net.peer.connect',
     connection_status=      'net.status',
 
@@ -61,6 +62,8 @@ CORE_METHOD_MAP = dict(
     delete_task=            'comp.task.delete',
     abort_task=             'comp.task.abort',
     restart_task=           'comp.task.restart',
+    get_subtasks_count = 'comp.task.subtasks_count',
+    restart_subtasks_from_task='comp.task.restart_subtasks',
 
     get_subtasks=           'comp.task.subtasks',
     get_subtasks_borders=   'comp.task.subtasks.borders',
@@ -88,9 +91,8 @@ CORE_METHOD_MAP = dict(
     withdraw=               'pay.withdraw',
     get_withdraw_gas_cost=  'pay.withdraw.gas_cost',
 
-    quit=                   'ui.quit',
     resume=                 'ui.start',
-    pause=                  'ui.stop'
+    pause=                  'ui.stop',
 )
 
 NODE_METHOD_MAP = dict(
@@ -99,5 +101,7 @@ NODE_METHOD_MAP = dict(
     is_mainnet=             'golem.mainnet',
     are_terms_accepted=     'golem.terms',
     accept_terms=           'golem.terms.accept',
-    show_terms=             'golme.terms.show',
+    show_terms=             'golem.terms.show',
+
+    quit=                   'ui.quit',
 )

@@ -8,6 +8,7 @@ from golem.tools.testwithdatabase import TestWithDatabase
 from golem.transactions.ethereum.ethereumtransactionsystem import (
     EthereumTransactionSystem
 )
+from golem.transactions.ethereum.exceptions import NotEnoughFunds
 
 PRIV_KEY = '07' * 32
 
@@ -148,7 +149,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         sci.transfer_eth.return_value = eth_tx
         sci.transfer_gnt.return_value = gnt_tx
         sci.convert_gntb_to_gnt.return_value = gntb_tx
-        destination = '0xdead'
+        destination = '0x' + 40 * 'd'
 
         ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 
@@ -156,12 +157,16 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         with self.assertRaises(ValueError):
             ets.withdraw(1, destination, 'asd')
 
+        # Invalid address
+        with self.assertRaisesRegex(ValueError, 'is not valid ETH address'):
+            ets.withdraw(1, 'asd', 'ETH')
+
         # Not enough GNT
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotEnoughFunds):
             ets.withdraw(gnt_balance + gntb_balance + 1, destination, 'GNT')
 
         # Not enough ETH
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotEnoughFunds):
             ets.withdraw(eth_balance + 1, destination, 'ETH')
 
         # Enough GNT
@@ -202,7 +207,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         sci.reset_mock()
 
         # Not enough ETH with lock
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotEnoughFunds):
             ets.withdraw(eth_balance - 3, destination, 'ETH', 4)
         sci.reset_mock()
 
@@ -218,6 +223,6 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         sci.reset_mock()
 
         # Not enough GNT with lock
-        with self.assertRaises(ValueError):
+        with self.assertRaises(NotEnoughFunds):
             ets.withdraw(gnt_balance + gntb_balance - 1, destination, 'GNT', 2)
         sci.reset_mock()

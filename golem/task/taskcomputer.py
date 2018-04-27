@@ -1,4 +1,6 @@
 import logging
+from typing import Optional
+
 import os
 import time
 import uuid
@@ -64,7 +66,7 @@ class TaskComputer(object):
         self.waiting_deadline = None
 
         self.dir_manager = None
-        self.resource_manager = None
+        self.resource_manager: Optional[ResourcesManager] = None
         self.task_request_frequency = None
         # Is there a time limit after which we don't wait for task timeout
         # anymore
@@ -209,7 +211,6 @@ class TaskComputer(object):
                 subtask_id,
                 subtask['task_id'],
                 task_thread.result,
-                work_time_to_be_paid,
             )
             dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=True, value=work_time_to_be_paid)
 

@@ -7,6 +7,7 @@ import threading
 import time
 from functools import reduce, wraps
 from typing import List
+from typing import Optional
 
 from golem_messages import message
 from peewee import (PeeweeException, DataError, ProgrammingError,
@@ -324,6 +325,26 @@ def add(msg: message.base.Message,
     )
 
 
+def get(message_class_name: str, task_id: str, subtask_id: str)\
+        -> Optional[message.Message]:
+    #  FIXME: Use node_id in queries
+    #         https://github.com/golemfactory/golem/issues/2670
+    try:
+        return MessageHistoryService.get_sync_as_message(
+            task=task_id,
+            subtask=subtask_id,
+            msg_cls=message_class_name,
+        )
+    except MessageNotFound:
+        logger.warning(
+            "%s message not found for task %r, subtask %r",
+            message_class_name,
+            task_id,
+            subtask_id,
+        )
+        return None
+
+
 ##############
 # DECORATORS #
 ##############
@@ -333,13 +354,13 @@ def record_history(local_role, remote_role):
 
         @wraps(func)
         def wrapper(self, msg, *args, **kwargs):
-            result = func(self, msg, *args, **kwargs)
             add(
                 msg=msg,
                 node_id=self.key_id,
                 local_role=local_role,
                 remote_role=remote_role,
             )
+            result = func(self, msg, *args, **kwargs)
             return result
         return wrapper
     return decorator

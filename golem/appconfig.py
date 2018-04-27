@@ -1,5 +1,6 @@
 import logging
 from os import path
+import sys
 
 from typing import Set, Any
 from ethereum.utils import denoms
@@ -63,8 +64,8 @@ FORWARDED_SESSION_REQUEST_TIMEOUT = 30
 CLEAN_RESOURES_OLDER_THAN_SECS = 3*24*60*60  # 3 days
 CLEAN_TASKS_OLDER_THAN_SECONDS = 3*24*60*60  # 3 days
 
-# Default max price per hour -- 5.0 GNT ~ 0.05 USD
-MAX_PRICE = int(5.0 * denoms.ether)
+# Default max price per hour
+MAX_PRICE = int(1.0 * denoms.ether)
 # Default min price per hour of computation to accept
 MIN_PRICE = MAX_PRICE // 10
 
@@ -95,7 +96,7 @@ class AppConfig:
     @classmethod
     def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME, mainnet=False):
 
-        if not mainnet:
+        if not mainnet and 'pytest' not in sys.modules:
             global ENABLE_TALKBACK
             ENABLE_TALKBACK = 1
 

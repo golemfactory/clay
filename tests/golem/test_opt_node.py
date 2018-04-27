@@ -1,5 +1,5 @@
 from os import path
-from unittest.mock import patch, Mock, ANY
+from unittest.mock import patch, Mock, ANY, MagicMock
 
 from click.testing import CliRunner
 import pytest
@@ -8,10 +8,14 @@ from twisted.internet.defer import Deferred
 import golem.argsparser as argsparser
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core import variables
+from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
 from golem.tools.testwithdatabase import TestWithDatabase
 from golemapp import start, Node
+
+concent_disabled = variables.CONCENT_CHOICES['disabled']
 
 
 @ci_skip
@@ -22,6 +26,18 @@ class TestNode(TestWithDatabase):
     def setUp(self):
         super(TestNode, self).setUp()
         self.args = ['--datadir', self.path]
+        config_desc = ClientConfigDescriptor()
+        config_desc.rpc_address = '127.0.0.1'
+        config_desc.rpc_port = 12345
+
+        self.node_kwargs = {
+            'datadir': self.path,
+            'app_config': Mock(),
+            'config_desc': config_desc,
+            'config_args': ClientConfigDescriptor(),
+            'use_docker_manager': True,
+            'concent_variant': concent_disabled,
+        }
 
     def tearDown(self):
         super(TestNode, self).tearDown()
@@ -64,26 +80,20 @@ class TestNode(TestWithDatabase):
 
     @patch('golem.node.Client')
     def test_cfg_and_keys_should_be_passed_to_client(self, mock_client, *_):
-        # given
-        cfg = ClientConfigDescriptor()
-        arg = ClientConfigDescriptor()
-        arg.node_address = '1.2.3.4'
-        keys_auth = object()
-
         # when
-        node = Node(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=cfg,
-            config_args=arg)
-
+        keys_auth = object()
+        node = Node(**self.node_kwargs)
         node._client_factory(keys_auth)
 
         # then
         mock_client.assert_called_with(datadir=self.path,
                                        app_config=ANY,
-                                       config_desc=cfg,
-                                       config_args=arg,
+                                       config_desc=self.node_kwargs[
+                                           'config_desc'
+                                       ],
+                                       config_args=self.node_kwargs[
+                                           'config_args'
+                                       ],
                                        keys_auth=keys_auth,
                                        database=ANY,
                                        mainnet=False,
@@ -91,10 +101,11 @@ class TestNode(TestWithDatabase):
                                        start_geth=False,
                                        start_geth_port=None,
                                        use_docker_manager=True,
-                                       use_concent=False,
-                                       use_monitor=False)
+                                       concent_variant=concent_disabled,
+                                       use_monitor=False,
+                                       apps_manager=ANY)
         self.assertEqual(
-            cfg.node_address,
+            self.node_kwargs['config_desc'].node_address,
             mock_client.mock_calls[0][2]['config_desc'].node_address,
         )
 
@@ -130,7 +141,9 @@ class TestNode(TestWithDatabase):
                                      peers=[],
                                      start_geth=False,
                                      start_geth_port=None,
-                                     use_concent=False,
+                                     concent_variant=variables.CONCENT_CHOICES[
+                                         'test'
+                                     ],
                                      use_monitor=True,
                                      password=None)
 
@@ -140,13 +153,7 @@ class TestNode(TestWithDatabase):
         geth_address = 'http://3.14.15.92:6535'
 
         # when
-        node = Node(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=Mock(),
-            config_args=Mock(),
-            geth_address=geth_address)
-
+        node = Node(**self.node_kwargs, geth_address=geth_address)
         node._client_factory(None)
 
         # then
@@ -161,8 +168,9 @@ class TestNode(TestWithDatabase):
                                        start_geth=False,
                                        start_geth_port=None,
                                        use_docker_manager=True,
-                                       use_concent=False,
-                                       use_monitor=False)
+                                       concent_variant=concent_disabled,
+                                       use_monitor=False,
+                                       apps_manager=ANY)
 
     def test_geth_address_wo_http_should_fail(self, *_):
         runner = CliRunner()
@@ -245,20 +253,14 @@ class TestNode(TestWithDatabase):
                                      peers=[],
                                      start_geth=True,
                                      start_geth_port=None,
-                                     use_concent=False,
+                                     concent_variant=concent_disabled,
                                      use_monitor=True,
                                      password=None)
 
     @patch('golem.node.Client')
     def test_start_geth_should_be_passed_to_client(self, mock_client, *_):
         # when
-        node = Node(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=Mock(),
-            config_args=Mock(),
-            start_geth=True)
-
+        node = Node(**self.node_kwargs, start_geth=True)
         node._client_factory(None)
 
         # then
@@ -273,8 +275,9 @@ class TestNode(TestWithDatabase):
                                        start_geth=True,
                                        start_geth_port=None,
                                        use_docker_manager=True,
-                                       use_concent=False,
-                                       use_monitor=False)
+                                       concent_variant=concent_disabled,
+                                       use_monitor=False,
+                                       apps_manager=ANY)
 
     @patch('golemapp.Node')
     def test_mainnet_should_be_passed_to_node(self, mock_node, *_):
@@ -295,7 +298,7 @@ class TestNode(TestWithDatabase):
                                      peers=[],
                                      start_geth=False,
                                      start_geth_port=None,
-                                     use_concent=False,
+                                     concent_variant=concent_disabled,
                                      use_monitor=True,
                                      password=None,
                                      mainnet=True)
@@ -303,13 +306,7 @@ class TestNode(TestWithDatabase):
     @patch('golem.node.Client')
     def test_mainnet_should_be_passed_to_client(self, mock_client, *_):
         # when
-        node = Node(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=Mock(),
-            config_args=Mock(),
-            mainnet=True)
-
+        node = Node(**self.node_kwargs, mainnet=True)
         node._client_factory(None)
 
         # then
@@ -323,9 +320,10 @@ class TestNode(TestWithDatabase):
                                        start_geth=False,
                                        start_geth_port=None,
                                        use_docker_manager=True,
-                                       use_concent=False,
+                                       concent_variant=concent_disabled,
                                        use_monitor=False,
-                                       mainnet=True)
+                                       mainnet=True,
+                                       apps_manager=ANY)
 
     @pytest.mark.skip('Issue #2476')
     def test_start_geth_port_wo_param_should_fail(self, *_):
@@ -364,7 +362,7 @@ class TestNode(TestWithDatabase):
                                      peers=[],
                                      start_geth=True,
                                      start_geth_port=port,
-                                     use_concent=False,
+                                     concent_variant=concent_disabled,
                                      use_monitor=True,
                                      password=None)
 
@@ -374,14 +372,9 @@ class TestNode(TestWithDatabase):
         port = 27182
 
         # when
-        node = Node(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=Mock(),
-            config_args=Mock(),
-            start_geth=True,
-            start_geth_port=port)
-
+        node = Node(**self.node_kwargs,
+                    start_geth=True,
+                    start_geth_port=port)
         node._client_factory(None)
 
         # then
@@ -396,55 +389,77 @@ class TestNode(TestWithDatabase):
                                        start_geth=True,
                                        start_geth_port=port,
                                        use_docker_manager=True,
-                                       use_concent=False,
-                                       use_monitor=False)
+                                       concent_variant=concent_disabled,
+                                       use_monitor=False,
+                                       apps_manager=ANY)
 
     @patch('golemapp.Node')
-    def test_single_peer(self, mock_node, *_):
-        mock_node.return_value = mock_node
-        addr1 = '10.30.10.216:40111'
+    def test_single_peer(self, mock_node: MagicMock, *_):
+        host, port = '10.30.10.216', 40111
 
         runner = CliRunner()
-        return_value = runner.invoke(start, self.args + ['--peer', addr1],
-                                     catch_exceptions=False)
-        self.assertEqual(return_value.exit_code, 0)
-        # TODO: check peer == [addr1]. issue: #2395
-
-    @patch('golemapp.Node')
-    def test_many_peers(self, mock_node, *_):
-        mock_node.return_value = mock_node
-        addr1 = '10.30.10.216:40111'
-        addr2 = '10.30.10.214:3333'
-
-        runner = CliRunner()
-        args = self.args + ['--peer', addr1, '--peer', addr2]
+        args = self.args + ['--peer', '{}:{}'.format(host, port)]
         return_value = runner.invoke(start, args, catch_exceptions=False)
 
         self.assertEqual(return_value.exit_code, 0)
-        # TODO: check peer == [addr1, addr2]. issue #2395
+        mock_node.assert_called_once()
+        peers = mock_node.call_args[1].get('peers')
+        self.assertEqual(peers, [SocketAddress(host, port)])
 
     @patch('golemapp.Node')
-    def test_bad_peer(self, *_):
+    def test_many_peers(self, mock_node: MagicMock, *_):
+        host1, port1 = '10.30.10.216', 40111
+        host2, port2 = '10.30.10.214', 3333
+
+        runner = CliRunner()
+        args = self.args + [
+            '--peer', '{}:{}'.format(host1, port1),
+            '--peer', '{}:{}'.format(host2, port2)
+        ]
+        return_value = runner.invoke(start, args, catch_exceptions=False)
+
+        self.assertEqual(return_value.exit_code, 0)
+        mock_node.assert_called_once()
+        peers = mock_node.call_args[1].get('peers')
+        self.assertEqual(peers, [
+            SocketAddress(host1, port1),
+            SocketAddress(host2, port2)
+        ])
+
+    @patch('golemapp.Node')
+    def test_bad_peer(self, mock_node: MagicMock, *_):
         addr1 = '10.30.10.216:40111'
+
         runner = CliRunner()
         args = self.args + ['--peer', addr1, '--peer', 'bla']
         return_value = runner.invoke(start, args, catch_exceptions=False)
+
         self.assertEqual(return_value.exit_code, 2)
         self.assertTrue('Invalid peer address' in return_value.output)
+        mock_node.assert_not_called()
 
     @patch('golemapp.Node')
-    def test_peers(self, mock_node, *_):
-        mock_node.return_value = mock_node
+    def test_peers(self, mock_node: MagicMock, *_):
+        host1, port1 = '10.30.10.216', 40111
+        host2, port2 = '2001:db8:85a3:8d3:1319:8a2e:370:7348', 443
+        host3, port3 = '::ffff:0:0:0', 96
+
         runner = CliRunner()
-        return_value = runner.invoke(
-            start, self.args + [
-                '--peer', '10.30.10.216:40111',
-                '--peer', '[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443',
-                '--peer', '[::ffff:0:0:0]:96'
-            ], catch_exceptions=False
-        )
+        args = self.args + [
+            '--peer', '{}:{}'.format(host1, port1),
+            '--peer', '[{}]:{}'.format(host2, port2),
+            '--peer', '[{}]:{}'.format(host3, port3)
+        ]
+        return_value = runner.invoke(start, args, catch_exceptions=False)
+
         self.assertEqual(return_value.exit_code, 0)
-        # TODO: check peer == [addrs...]. issue: #2395
+        mock_node.assert_called_once()
+        peers = mock_node.call_args[1].get('peers')
+        self.assertEqual(peers, [
+            SocketAddress(host1, port1),
+            SocketAddress(host2, port2),
+            SocketAddress(host3, port3)
+        ])
 
     @patch('golemapp.Node')
     def test_rpc_address(self, *_):
@@ -527,6 +542,23 @@ def set_keys_auth(obj):
     obj._keys_auth = Mock()
 
 
+def call_now(fn, *args, **kwargs):
+    fn(*args, **kwargs)
+
+
+class MockThread:
+
+    def __init__(self, target=None) -> None:
+        self._target = target
+
+    def start(self):
+        self._target()
+
+    @property
+    def target(self):
+        return self._target
+
+
 @patch('golem.node.Node._start_keys_auth', set_keys_auth)
 @patch('golem.node.Node._start_docker')
 @patch('golem.node.async_run', mock_async_run)
@@ -542,26 +574,30 @@ class TestOptNode(TempDirFixture):
         super().setUp()
         self.node = None
 
-    def tearDown(self):
-        if self.node.client:
-            self.node.client.quit()
-        if self.node._db:
-            self.node._db.close()
-        super().tearDown()
-
-    def test_start_rpc_router(self, reactor, *_):
-        # given
         config_desc = ClientConfigDescriptor()
         config_desc.rpc_address = '127.0.0.1'
         config_desc.rpc_port = 12345
 
-        # when
-        self.node = Node(datadir=self.path,
-                         app_config=Mock(),
-                         config_desc=config_desc,
-                         config_args=ClientConfigDescriptor(),
-                         use_docker_manager=False)
+        self.node_kwargs = {
+            'datadir': self.path,
+            'app_config': Mock(),
+            'config_desc': config_desc,
+            'config_args': ClientConfigDescriptor(),
+            'use_docker_manager': False,
+            'concent_variant': variables.CONCENT_CHOICES['disabled'],
+        }
 
+    def tearDown(self):
+        if self.node:
+            if self.node.client:
+                self.node.client.quit()
+            if self.node._db:
+                self.node._db.close()
+        super().tearDown()
+
+    def test_start_rpc_router(self, reactor, *_):
+        # when
+        self.node = Node(**self.node_kwargs)
         self.node._setup_client = Mock()
         self.node.start()
 
@@ -574,25 +610,18 @@ class TestOptNode(TempDirFixture):
 
     @patch('golem.client.EthereumTransactionSystem')
     def test_start_creates_client(self, _ets, reactor, mock_gather_results, *_):
-        # given
-        config_descriptor = ClientConfigDescriptor()
-
         mock_gather_results.return_value = mock_gather_results
         mock_gather_results.addCallbacks.side_effect = \
             lambda callback, _: callback([])
 
         # when
-        self.node = Node(datadir=self.path,
-                         app_config=Mock(),
-                         config_desc=config_descriptor,
-                         config_args=ClientConfigDescriptor(),
-                         use_docker_manager=False)
+        self.node = Node(**self.node_kwargs)
         self.node.start()
 
         # then
         assert self.node.client
         assert self.node.client.datadir == self.path
-        assert self.node.client.config_desc == config_descriptor
+        assert self.node.client.config_desc == self.node_kwargs['config_desc']
         assert reactor.addSystemEventTrigger.call_count == 2
         assert reactor.addSystemEventTrigger.call_args_list[0][0] == (
             'before', 'shutdown', self.node.rpc_router.stop)
@@ -620,11 +649,7 @@ class TestOptNode(TempDirFixture):
             lambda callback, _: callback(None)
 
         # when
-        self.node = Node(datadir=self.path,
-                         app_config=Mock(),
-                         config_desc=ClientConfigDescriptor(),
-                         config_args=ClientConfigDescriptor(),
-                         use_docker_manager=False)
+        self.node = Node(**self.node_kwargs)
         self.node.start()
 
         # then
@@ -656,12 +681,8 @@ class TestOptNode(TempDirFixture):
         )
 
         # when
-        self.node = Node(datadir=self.path,
-                         app_config=Mock(),
-                         config_desc=ClientConfigDescriptor(),
-                         config_args=ClientConfigDescriptor(),
-                         peers=parsed_peer,
-                         use_docker_manager=False)
+        self.node = Node(**self.node_kwargs,
+                         peers=parsed_peer)
 
         self.node._client_factory = Mock()
         self.node._setup_apps = Mock()
@@ -676,32 +697,19 @@ class TestOptNode(TempDirFixture):
         assert reactor.addSystemEventTrigger.call_count == 2
 
     def test_is_mainnet(self, *_):
-        self.node = Node(datadir=self.path,
-                         app_config=Mock(),
-                         config_desc=ClientConfigDescriptor(),
-                         config_args=ClientConfigDescriptor(),
-                         use_docker_manager=False)
+        self.node = Node(**self.node_kwargs)
         assert not self.node.is_mainnet()
 
     @patch('golem.node.Session')
     def test_start_session(self, *_):
-        self.node = Node(datadir=self.path,
-                         app_config=Mock(),
-                         config_desc=ClientConfigDescriptor(),
-                         config_args=ClientConfigDescriptor(),
-                         use_docker_manager=False)
-
+        self.node = Node(**self.node_kwargs)
         self.node.rpc_router = Mock()
 
         self.node._start_session()
         assert self.node.rpc_session.connect.called  # noqa # pylint: disable=no-member
 
     def test_start_session_failure(self, reactor, *_):
-        self.node = Node(datadir=self.path,
-                         app_config=Mock(),
-                         config_desc=ClientConfigDescriptor(),
-                         config_args=ClientConfigDescriptor(),
-                         use_docker_manager=False)
+        self.node = Node(**self.node_kwargs)
         self.node.rpc_router = None
 
         assert self.node._start_session() is None
@@ -711,11 +719,7 @@ class TestOptNode(TempDirFixture):
         import functools
         reactor.running = True
 
-        self.node = Node(datadir=self.path,
-                         app_config=Mock(),
-                         config_desc=ClientConfigDescriptor(),
-                         config_args=ClientConfigDescriptor(),
-                         use_docker_manager=False)
+        self.node = Node(**self.node_kwargs)
 
         error = self.node._error('any')
         assert not reactor.callFromThread.called
@@ -724,3 +728,33 @@ class TestOptNode(TempDirFixture):
         error_result = error('error message')
         assert reactor.callFromThread.called
         assert error_result is None
+
+    @patch('golem.node.Database')
+    @patch('threading.Thread', MockThread)
+    @patch('twisted.internet.reactor', create=True)
+    def test_quit_mock(self, reactor, *_):
+        reactor.running = False
+        reactor.callFromThread = call_now
+
+        node = Node.__new__(Node)
+
+        setattr(node, '_reactor', reactor)
+        setattr(node, 'client', None)
+
+        node.quit()
+
+        assert not node._reactor.stop.called
+
+    @patch('golem.node.Database')
+    @patch('threading.Thread', MockThread)
+    @patch('twisted.internet.reactor', create=True)
+    def test_quit(self, reactor, *_):
+        reactor.running = True
+
+        self.node = Node(**self.node_kwargs)
+        self.node.client = Mock()
+        self.node._reactor.callFromThread = call_now
+
+        self.node.quit()
+        assert self.node.client.quit.called
+        assert self.node._reactor.stop.called
