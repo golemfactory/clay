@@ -13,6 +13,10 @@ ETHEREUM_NODE_LIST = [
     'https://0.geth.golem.network:55555',
     'https://1.geth.golem.network:55555',
     'https://2.geth.golem.network:55555',
+    'https://geth.golem.network:2137',
+    'https://0.geth.golem.network:2137',
+    'https://1.geth.golem.network:2137',
+    'https://2.geth.golem.network:2137',
 ]
 
 ETHEREUM_CHAIN = MAINNET
@@ -22,6 +26,12 @@ ETHEREUM_FAUCET_ENABLED = False
 
 P2P_SEEDS = [
     ('seeds.golem.network', 40102),
+    ('0.seeds.golem.network', 40102),
+    ('1.seeds.golem.network', 40102),
+    ('2.seeds.golem.network', 40102),
+    ('3.seeds.golem.network', 40102),
+    ('4.seeds.golem.network', 40102),
+    ('5.seeds.golem.network', 40102),
 ]
 
 PROTOCOL_CONST.POSTFIX = ''
