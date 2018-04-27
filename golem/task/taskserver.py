@@ -569,23 +569,23 @@ class TaskServer(
     def remove_forwarded_session_request(self, key_id):
         return self.forwarded_session_requests.pop(key_id, None)
 
-    def should_accept_provider(
+    def should_accept_provider( # noqa pylint: disable=too-many-arguments
             self,
             node_id,
             task_id,
-            perf_index,
+            provider_perf,
             max_resource_size,
             max_memory_size,
-            num_cores):  # noqa pylint: disable=unused-argument
+            num_cores):
 
         task = self.task_manager.tasks[task_id]
         ids = f'provider_id: {node_id}, task_id: {task_id}'
 
         env = self.get_environment_by_id(task.header.environment)
-        performance = env.get_performance() / 2
-        if performance > int(perf_index):
-            logger.info('insufficient provider performance index: '
-                        f'{estimated_performance} < {performance} / 2; {ids}')
+        requestor_perf = env.get_performance()
+        if requestor_perf > int(provider_perf) * int(num_cores):
+            logger.info('insufficient provider performance: '
+                        f'{provider_perf} * {num_cores} < {requestor_perf}')
             return False
 
         if task.header.resource_size > (int(max_resource_size) * 1024):
@@ -598,18 +598,16 @@ class TaskServer(
                         f'{max_memory_size} KiB; {ids}')
             return False
 
-        # num cores needed by task is not defined currently
-        # TODO: possible workaround: put it into `performance` tbl @ sqlite
-        # if env.get_num_cores() > num_cores:
-        #     logger.info('insufficient provider cores: '
-        #                 f'{num_cores}; {ids}')
-        #     return False
-
         if not self.acl.is_allowed(node_id):
+            logger.info(f'node not allowed; {ids}')
             return False
+
         trust = self.get_computing_trust(node_id)
-        logger.debug("Computing trust level: {}".format(trust))
-        return trust >= self.config_desc.computing_trust
+        if trust < self.config_desc.computing_trust:
+            logger.info(f'insufficient provider trust level: {trust}; {ids}')
+            return False
+
+        return True
 
     def should_accept_requestor(self, node_id):
         if not self.acl.is_allowed(node_id):

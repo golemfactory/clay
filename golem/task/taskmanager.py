@@ -348,6 +348,7 @@ class TaskManager(TaskEventListener):
             if not task.needs_computation():
                 logger.info(f'no more computation needed; {ids}')
                 return False
+            return True
 
         if not needs_computation():
             return None, False, False
