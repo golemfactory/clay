@@ -464,11 +464,12 @@ class TaskServer(
     def finished_task_listener(self, event='default', task_id=None, op=None,
                                **_kwargs):
         if not (event == 'task_status_updated'
-                and op == TaskOp.FINISHED
                 and self.client.p2pservice):
             return
-
+        if not (op in [TaskOp.FINISHED, TaskOp.TIMEOUT]):
+            return
         self.client.p2pservice.remove_task(task_id)
+        self.client.funds_locker.remove_task(task_id)
 
     def increase_trust_payment(self, task_id):
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
