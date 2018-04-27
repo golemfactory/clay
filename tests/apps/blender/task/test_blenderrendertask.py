@@ -30,7 +30,7 @@ from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from apps.core.task.coretask import logger as logger_core
-from golem.verification.verifier import SubtaskVerificationState
+from golem_verificator.verifier import SubtaskVerificationState
 
 
 class TestBlenderDefaults(unittest.TestCase):
@@ -115,7 +115,7 @@ class TestBlenderFrameTask(TempDirFixture):
         self.assertEqual(len(self.bt.preview_task_file_path),
                          len(self.bt.frames))
 
-    @mock.patch('apps.core.task.verifier.deadline_to_timeout')
+    @mock.patch('golem_verificator.core_verifier.deadline_to_timeout')
     def test_computation_failed_or_finished(self, mock_dtt):
         mock_dtt.return_value = 1.0
         assert self.bt.total_tasks == 6
@@ -159,7 +159,7 @@ class TestBlenderFrameTask(TempDirFixture):
                 result)
 
         with mock.patch(
-                'apps.core.task.verifier.CoreVerifier.start_verification',
+                'golem_verificator.core_verifier.CoreVerifier.start_verification',
                 side_effect=verification_finished1):
             self.bt.computation_finished(extra_data3.ctd['subtask_id'], [file1],
                                          ResultType.FILES, lambda: None)
@@ -188,7 +188,7 @@ class TestBlenderFrameTask(TempDirFixture):
         img.close()
 
         with mock.patch(
-                'apps.core.task.verifier.CoreVerifier.start_verification',
+                'golem_verificator.core_verifier.CoreVerifier.start_verification',
                 side_effect=verification_finished2):
             self.bt.computation_finished(extra_data4.ctd['subtask_id'], [file2],
                                          ResultType.FILES, lambda: None)
