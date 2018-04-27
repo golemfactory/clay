@@ -82,7 +82,7 @@ def process_report_computed_task(
     now_ts = calendar.timegm(time.gmtime())
     task_id = msg.task_to_compute.compute_task_def['task_id']
 
-    # SEE #2683 to see explanation about TOLERANCE
+    # SEE #2683 for an explanation about TOLERANCE
     TOLERANCE = msg_constants.MTD * 2
     tolerant_now_ts = now_ts - int(TOLERANCE.total_seconds())
 
