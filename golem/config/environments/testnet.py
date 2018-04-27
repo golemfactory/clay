@@ -3,9 +3,15 @@ import os
 from golem_sci.chains import RINKEBY
 
 from golem.core.variables import PROTOCOL_CONST
-from . import TESTNET
+from . import TESTNET, CONCENT_ENVIRONMENT_VARIABLE
 
 IS_MAINNET = False
+
+# CONCENT
+
+os.environ[CONCENT_ENVIRONMENT_VARIABLE] = os.environ.get(
+    CONCENT_ENVIRONMENT_VARIABLE, 'test'
+)
 
 # ETH
 

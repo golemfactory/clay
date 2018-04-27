@@ -128,10 +128,10 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
 
     freeze_support()
     delete_reactor()
-    set_environment('mainnet' if mainnet else net)
+    set_environment('mainnet' if mainnet else net, concent)
 
     # Import active configuration after the environment has been set
-    from golem.config.active import ETHEREUM_CHAIN, IS_MAINNET
+    from golem.config.active import ETHEREUM_CHAIN, IS_MAINNET, CONCENT_VARIANT
 
     if version:
         print("GOLEM version: {}".format(golem.__version__))
@@ -192,7 +192,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         config_desc=config_desc,
         peers=peer,
         use_monitor=monitor,
-        concent_variant=variables.CONCENT_CHOICES[concent],
+        concent_variant=CONCENT_VARIANT,
         mainnet=IS_MAINNET,
         start_geth=False,
         start_geth_port=None,

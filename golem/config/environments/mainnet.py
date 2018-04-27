@@ -3,8 +3,15 @@ import os
 from golem_sci.chains import MAINNET
 
 from golem.core.variables import PROTOCOL_CONST
+from . import CONCENT_ENVIRONMENT_VARIABLE
 
 IS_MAINNET = True
+
+# CONCENT
+
+os.environ[CONCENT_ENVIRONMENT_VARIABLE] = os.environ.get(
+    CONCENT_ENVIRONMENT_VARIABLE, 'disabled'
+)
 
 # ETH
 
