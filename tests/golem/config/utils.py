@@ -7,7 +7,8 @@ from unittest import mock
 
 from golem_sci.chains import MAINNET
 
-from golem.config.environments import GOLEM_ENVIRONMENT_VARIABLE
+from golem.config.environments import GOLEM_ENVIRONMENT_VARIABLE, \
+    CONCENT_ENVIRONMENT_VARIABLE
 from golem.core.variables import PROTOCOL_CONST
 
 CONFIG_MODULE = 'golem.config.active'
@@ -33,6 +34,7 @@ def _patch_environment(net) -> Generator:
 
     os_environ = dict(os.environ)
     os_environ.update({GOLEM_ENVIRONMENT_VARIABLE: net})
+    os_environ.pop(CONCENT_ENVIRONMENT_VARIABLE, None)
 
     sys_modules = dict(sys.modules)
     sys.modules.pop(CONFIG_MODULE, None)
