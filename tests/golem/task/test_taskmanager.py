@@ -184,7 +184,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         defaults = DummyTaskDefaults()
         tdd = DummyTaskDefinition(defaults)
         dm = DirManager(self.path)
-        dtb = DummyTaskBuilder("MyNodeName", tdd, self.path, dm)
+        dtb = DummyTaskBuilder(Node(node_name="MyNode"), tdd, dm)
 
         dummy_task = dtb.build()
         header = self._get_task_header(task_id=task_id, timeout=120.0,
@@ -941,8 +941,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             state.extra_data = dict(result_preview=previews[i % 3])
             state.subtask_states = subtask_states
 
-            task = BlenderRenderTask(node_name='node',
-                                     task_definition=definition,
+            task = BlenderRenderTask(task_definition=definition,
+                                     owner=Node(node_name='node'),
                                      total_tasks=n,
                                      root_path=self.path)
             task.initialize(dirmanager.DirManager(self.path))

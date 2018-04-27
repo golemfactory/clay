@@ -5,6 +5,7 @@ from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefaults, \
     DummyTaskDefinition
 from apps.dummy.task.verifier import DummyTaskVerifier
+from golem.network.p2p.node import Node
 from golem.testutils import TempDirFixture
 
 
@@ -47,7 +48,7 @@ class TestDummyTaskVerifier(TempDirFixture):
 
         td = DummyTaskDefinition(dd)
         td.task_id = str(uuid.uuid4())
-        dt = DummyTask(3, "a", td, self.tempdir)
+        dt = DummyTask(3, td, self.tempdir, owner=Node())
         ver = DummyTaskVerifier(lambda: None)
         ed = dt.query_extra_data(perf_index=1.0)
         ver_opts = dt.subtasks_given[ed.ctd['subtask_id']]

@@ -96,10 +96,7 @@ class CoreTask(Task):
 
     def __init__(self,
                  task_definition: TaskDefinition,
-                 node_name: str,
-                 owner_address="",
-                 owner_port=0,
-                 owner_key_id="",
+                 owner: Node,
                  max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
                  resource_size=None,
                  root_path=None,
@@ -140,16 +137,10 @@ class CoreTask(Task):
         else:
             self.docker_images = None
 
-        task_owner = Node(
-            key=owner_key_id,
-            node_name=node_name,
-            pub_addr=owner_address,
-            pub_port=owner_port
-        )
         th = TaskHeader(
             task_id=task_definition.task_id,
             environment=self.environment.get_id(),
-            task_owner=task_owner,
+            task_owner=owner,
             deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
             resource_size=self.resource_size,
@@ -565,13 +556,12 @@ def accepting(query_extra_data_func):
 class CoreTaskBuilder(TaskBuilder):
     TASK_CLASS = CoreTask
 
-    # FIXME get the root path from dir_manager. Issue #2449
-    def __init__(self, node_name, task_definition, root_path, dir_manager):
+    def __init__(self, owner, task_definition, dir_manager):
         super(CoreTaskBuilder, self).__init__()
         self.task_definition = task_definition
-        self.node_name = node_name
-        self.root_path = root_path
+        self.root_path = dir_manager.root_path
         self.dir_manager = dir_manager
+        self.owner = owner
         self.src_code = ""
         self.environment = None
 
@@ -583,7 +573,7 @@ class CoreTaskBuilder(TaskBuilder):
     def get_task_kwargs(self, **kwargs):
         kwargs['total_tasks'] = int(self.task_definition.total_subtasks)
         kwargs["task_definition"] = self.task_definition
-        kwargs["node_name"] = self.node_name
+        kwargs["owner"] = self.owner
         kwargs["root_path"] = self.root_path
         return kwargs
 
