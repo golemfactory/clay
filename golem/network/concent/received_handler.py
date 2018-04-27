@@ -193,11 +193,11 @@ class TaskServerMessageHandler():
         """
         rct = msg.report_computed_task
 
-        returned_msg = concent_helpers.process_report_computed_task(
-            msg=rct,
-            ecc=self.task_server.keys_auth.ecc,
-            task_header_keeper=self.task_server.task_keeper,
-        )
+        returned_msg = concent_helpers \
+            .process_report_computed_task_no_time_check(
+                msg=rct,
+                ecc=self.task_server.keys_auth.ecc,
+            )
         self.concent_service.submit_task_message(
             rct.subtask_id,
             returned_msg,
