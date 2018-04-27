@@ -73,6 +73,20 @@ def done_deferred(return_value=None):
     return deferred
 
 
+def make_mock_payment_processor(eth=100, gnt=100):
+    pp = MagicMock(name="MockPaymentProcessor")
+
+    pp.ETH_BATCH_PAYMENT_BASE = 0
+
+    pp.get_gas_cost_per_payment.return_value = 0
+
+    pp.gnt_balance.return_value = gnt * denoms.ether, time.time()
+    pp.eth_balance.return_value = eth * denoms.ether, time.time()
+    pp._gnt_available.return_value = gnt * denoms.ether
+    pp._eth_available.return_value = eth * denoms.ether
+    return pp
+
+
 @patch(
     'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
 )
@@ -267,8 +281,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_monitor=False
         )
         self.client.sync()
-        # TODO: assertTrue when re-enabled. issue #2398
-        self.assertFalse(self.client.transaction_system.sync.called)
+        self.assertTrue(self.client.transaction_system.sync.called)
 
     @patch('golem.client.EthereumTransactionSystem')
     def test_remove_resources(self, *_):
@@ -298,12 +311,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.resource_server = Mock()
         c.resource_server.get_distributed_resource_root.return_value = \
             unique_dir()
-
-        d = c.get_computed_files_dir()
-        self.assertIn(self.path, d)
-        self.additional_dir_content([3], d)
-        c.remove_computed_files()
-        self.assertEqual(os.listdir(d), [])
 
         d = c.get_distributed_files_dir()
         self.assertIn(self.path, os.path.normpath(d))  # normpath for mingw
@@ -544,6 +551,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.client.async_run', mock_async_run)
     @patch('golem.network.concent.client.ConcentClientService.start')
     @patch('golem.client.SystemMonitor')
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+           'PaymentProcessor',
+           return_value=make_mock_payment_processor())
     @patch('golem.client.P2PService.connect_to_network')
     def test_restart_task(self, connect_to_network, *_):
         apps_manager = AppsManager(False)
@@ -561,10 +571,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             apps_manager=apps_manager
         )
 
-        sci = self.client.transaction_system._sci
-        pp = make_mock_payment_processor(sci)
-        self.client.transaction_system.payment_processor = pp
-
         deferred = Deferred()
         connect_to_network.side_effect = lambda *_: deferred.callback(True)
         self.client.are_terms_accepted = lambda: True
@@ -575,7 +581,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             result = 'package_path', 'package_sha1'
             return done_deferred(result)
 
-        def add_task(*_args):
+        def add_task(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
             result = resource_manager_result, 'res_file_1', 'package_hash'
             return done_deferred(result)
@@ -890,7 +896,6 @@ class TestResourceCleanerService(TestWithReactor):
             older_than_seconds=older_than_seconds)
         service._run()
 
-        c.remove_computed_files.assert_called_with(older_than_seconds)
         c.remove_distributed_files.assert_called_with(older_than_seconds)
         c.remove_received_files.assert_called_with(older_than_seconds)
 
@@ -905,21 +910,6 @@ class TestTaskCleanerService(TestWithReactor):
         )
         service._run()
         client.clean_old_tasks.assert_called_once()
-
-
-def make_mock_payment_processor(sci, eth=100, gnt=100):
-    pp = MagicMock()
-    pp.ETH_PER_PAYMENT = sci.GAS_PRICE * sci.GAS_PER_PAYMENT
-    pp.ETH_BATCH_PAYMENT_BASE = sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
-
-    val = pp.ETH_BATCH_PAYMENT_BASE + pp.ETH_PER_PAYMENT * 10
-    pp.eth_for_batch_payment.return_value = val
-
-    pp.gnt_balance.return_value = gnt * denoms.ether, time.time()
-    pp.eth_balance.return_value = eth * denoms.ether, time.time()
-    pp._gnt_available.return_value = gnt * denoms.ether
-    pp._eth_available.return_value = eth * denoms.ether
-    return pp
 
 
 @patch('signal.signal')
@@ -997,7 +987,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         res_dirs = c.get_res_dirs()
 
         self.assertIsInstance(res_dirs, dict)
-        self.assertTrue(len(res_dirs) == 3)
+        self.assertTrue(len(res_dirs) == 2)
 
         for key, value in list(res_dirs.items()):
             self.assertIsInstance(key, str)
@@ -1027,7 +1017,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.resource_server = Mock()
         c.task_server = Mock()
         c.transaction_system.payment_processor = \
-            make_mock_payment_processor(c.transaction_system._sci)
+            make_mock_payment_processor()
 
         task_header = Mock(
             max_price=1 * 10**18,
@@ -1091,7 +1081,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             result = 'package_path', 'package_sha1'
             return done_deferred(result)
 
-        def add_task(*_args):
+        def add_task(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
             result = resource_manager_result, 'res_file_1', 'package_hash'
             return done_deferred(result)
@@ -1111,7 +1101,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             side_effect=add_task)
 
         c.transaction_system.payment_processor = \
-            make_mock_payment_processor(c.transaction_system._sci)
+            make_mock_payment_processor()
         deferred = c.enqueue_new_task(t_dict)
         task = sync_wait(deferred)
         assert isinstance(task, Task)

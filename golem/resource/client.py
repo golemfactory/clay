@@ -59,7 +59,7 @@ class ClientOptions(object):
 
         self.client_id = client_id
         self.version = version
-        self.options = options
+        self.options = options or dict()
 
     def get(self, client_id, version, option):
         if self.client_id != client_id:
@@ -96,6 +96,18 @@ class ClientOptions(object):
         if not isinstance(self.options, dict):
             self.options = dict()
         self.options['peers'] = value
+
+    @property
+    def timeout(self) -> Optional[int]:
+        if isinstance(self.options, dict):
+            return self.options.get('timeout')
+        return None
+
+    @timeout.setter
+    def timeout(self, value: Optional[int]) -> None:
+        if not isinstance(self.options, dict):
+            self.options = dict()
+        self.options['timeout'] = value
 
     def clone(self):
         return self.__class__(

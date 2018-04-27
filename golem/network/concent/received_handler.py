@@ -99,6 +99,14 @@ def on_force_subtask_results_rejected(msg):
     logger.warning("[CONCENT] %r", msg)
 
 
+@library.register_handler(message.concents.SubtaskResultsSettled)
+def on_subtask_results_settled(msg, **_):
+    """End of UC3. Nothing can be done after this point.
+    I'm either a Provider or Requestor
+    """
+    logger.warning("[CONCENT] End of Force Accept scenario by %r", msg)
+
+
 class TaskServerMessageHandler():
     """Container for received message handlers that require TaskServer."""
     def __init__(self, task_server: taskserver.TaskServer) -> None:
@@ -200,6 +208,33 @@ class TaskServerMessageHandler():
 
         self._after_ack_report_computed_task(
             report_computed_task=rct,
+        )
+
+    @handler_for(message.concents.ForceSubtaskResults)
+    def on_force_subtask_results(self, msg, **_):
+        """I'm a Requestor
+
+        Concent sends his own ForceSubtaskResults with AckReportComputedTask
+        provided by a provider.
+        """
+        sra = history.get('SubtaskResultsAccepted', msg.task_id, msg.subtask_id)
+        srr = history.get('SubtaskResultsRejected', msg.task_id, msg.subtask_id)
+        if not (sra or srr):
+            #  I can't remember verification results,
+            #  so try again and hope for the best
+            self._after_ack_report_computed_task(
+                report_computed_task=msg.ack_report_computed_task
+                .report_computed_task,
+            )
+            return
+
+        response_msg = message.concents.ForceSubtaskResultsResponse(
+            subtask_results_accepted=sra,
+            subtask_results_rejected=srr,
+        )
+        self.concent_service.submit_task_message(
+            response_msg.subtask_id,
+            response_msg,
         )
 
     def _after_ack_report_computed_task(self, report_computed_task):

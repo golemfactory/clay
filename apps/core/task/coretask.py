@@ -2,7 +2,6 @@ import abc
 import decimal
 import logging
 import os
-import uuid
 from enum import Enum
 from typing import Type
 
@@ -221,7 +220,8 @@ class CoreTask(Task):
             subtask_id,
             self._deadline,
             verification_finished,
-            subtask_info=self.subtasks_given[subtask_id],
+            subtask_info={**self.subtasks_given[subtask_id],
+                          **{'owner': self.header.task_owner.key}},
             results=result_files,
             resources=self.task_resources,
             reference_data=self.get_reference_data()
@@ -286,7 +286,7 @@ class CoreTask(Task):
         was_failure_before = subtask_info['status'] in [SubtaskStatus.failure,
                                                         SubtaskStatus.resent]
 
-        if SubtaskStatus.is_active(subtask_info['status']):
+        if subtask_info['status'].is_active():
             # TODO Restarted tasks that were waiting for verification should
             # cancel it. Issue #2423
             self._mark_subtask_failed(subtask_id)
@@ -453,7 +453,7 @@ class CoreTask(Task):
     @handle_key_error
     def should_accept(self, subtask_id):
         status = self.subtasks_given[subtask_id]['status']
-        return SubtaskStatus.is_computed(status)
+        return status.is_computed()
 
     @staticmethod
     def _interpret_log(log):
@@ -503,6 +503,24 @@ class CoreTask(Task):
 
         client.start()
         return AcceptClientVerdict.ACCEPTED
+
+    def copy_subtask_results(self, subtask_id, old_subtask_info, results):
+        new_subtask = self.subtasks_given[subtask_id]
+
+        new_subtask['node_id'] = old_subtask_info['node_id']
+        new_subtask['perf'] = old_subtask_info['perf']
+        new_subtask['ctd']['performance'] = \
+            old_subtask_info['ctd']['performance']
+
+        self._accept_client(new_subtask['node_id'])
+        self.result_incoming(subtask_id)
+        self.interpret_task_results(
+            subtask_id=subtask_id,
+            task_results=results,
+            result_type=ResultType.FILES)
+        self.accept_results(
+            subtask_id=subtask_id,
+            result_files=self.results[subtask_id])
 
 
 def accepting(query_extra_data_func):

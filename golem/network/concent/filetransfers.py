@@ -5,9 +5,14 @@ import queue
 
 import requests
 
-from golem_messages.message.concents import FileTransferToken
+import golem_messages
+from golem_messages.message.concents import (
+    FileTransferToken, ClientAuthorization
+)
+
 
 from golem.core import keysauth
+from golem.core import variables
 from golem.core.service import LoopingCallService
 
 logger = logging.getLogger(__name__)
@@ -38,7 +43,10 @@ class ConcentFiletransferService(LoopingCallService):
 
     def __init__(self,
                  keys_auth: keysauth.KeysAuth,
-                 interval_seconds: int = 1) -> None:
+                 variant: dict,
+                 interval_seconds: int = 1,) -> None:
+        # SEE golem.core.variables.CONCENT_CHOICES
+        self.variant = variant
         self.keys_auth = keys_auth
         self._transfers: queue.Queue = queue.Queue()
         super().__init__(interval_seconds=interval_seconds)
@@ -100,18 +108,28 @@ class ConcentFiletransferService(LoopingCallService):
     def _get_download_uri(file_transfer_token: FileTransferToken):
         return '{}{}{}'.format(
             file_transfer_token.storage_cluster_address,
-            'download',
+            'download/',
             file_transfer_token.files[0].get('path')
         )
 
     def _get_auth_headers(self, file_transfer_token: FileTransferToken):
         auth_key = base64.b64encode(file_transfer_token.serialize()).decode()
-        client_key = base64.b64encode(self.keys_auth.public_key).decode()
-        logger.debug("Generating headers - ftt: %s, auth: %s, client: %s",
-                     file_transfer_token, auth_key, client_key)
+        auth_data = base64.b64encode(
+            golem_messages.dump(
+                ClientAuthorization(
+                    client_public_key=self.keys_auth.public_key
+                ),
+                self.keys_auth._private_key, self.variant['pubkey']  # noqa pylint:disable=protected-access
+            )
+        ).decode()
+
+        logger.debug(
+            "Generating headers - ftt: %s, auth: %s, concent_auth: %s",
+            file_transfer_token, auth_key, auth_data)
+
         return {
             'Authorization': 'Golem ' + auth_key,
-            'Concent-Client-Public-Key': client_key,
+            'Concent-Auth': auth_data,
         }
 
     def upload(self, request: ConcentFileRequest):
@@ -119,7 +137,8 @@ class ConcentFiletransferService(LoopingCallService):
         ftt = request.file_transfer_token
         headers = self._get_auth_headers(ftt)
         headers.update({
-            'Concent-Upload-Path': ftt.files[0].get('path')
+            'Concent-Upload-Path': ftt.files[0].get('path'),
+            'Content-Type': 'application/octet-stream',
         })
 
         logger.debug("Uploading file '%s' to '%s' using %s",

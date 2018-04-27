@@ -3,7 +3,7 @@ import random
 import uuid
 from collections import deque
 from math import ceil
-from unittest.mock import Mock, MagicMock, patch
+from unittest.mock import Mock, MagicMock, patch, ANY
 
 from golem_messages.message import ComputeTaskDef
 from golem_messages import factories as msg_factories
@@ -28,7 +28,7 @@ from golem.task.taskbase import TaskHeader, ResultType
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.task.tasksession import TaskSession
-from golem.task.taskstate import TaskState
+from golem.task.taskstate import TaskState, TaskOp
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 from golem.utils import encode_hex
@@ -686,6 +686,26 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             to_hyperg_peer('1.2.3.4', 3282),
         ]
 
+    def test_download_options_errors(self, *_):
+        built_options = Mock()
+        rm = Mock(build_client_options=Mock(return_value=built_options))
+        self.ts._get_resource_manager = Mock(return_value=rm)
+
+        assert self.ts.get_download_options(
+            received_options=None,
+            task_id='task_id'
+        ) is built_options
+
+        assert self.ts.get_download_options(
+            received_options={'options': {'peers': ['Invalid']}},
+            task_id='task_id'
+        ) is built_options
+
+        assert self.ts.get_download_options(
+            received_options=Mock(filtered=Mock(side_effect=Exception)),
+            task_id='task_id'
+        ) is built_options
+
     def test_pause_and_resume(self, *_):
         from apps.core.task.coretask import CoreTask
 
@@ -837,6 +857,11 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         for parent in self.__class__.__bases__:
             parent.setUp(self)
 
+        self.node = Mock(prv_addr='10.0.0.2', prv_port=40102,
+                         pub_addr='1.2.3.4', pub_port=40102,
+                         hyperg_prv_port=3282, hyperg_pub_port=3282,
+                         prv_addresses=['10.0.0.2'],)
+
         self.resource_manager = Mock(
             add_task=Mock(side_effect=lambda *a, **b: ([], "a1b2c3"))
         )
@@ -844,7 +869,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
             self.ts = TaskServer(
-                node=Mock(),
+                node=self.node,
                 config_desc=ClientConfigDescriptor(),
                 client=self.client,
                 use_docker_manager=False,
@@ -866,6 +891,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         for _ in range(count):
             task_id = str(uuid.uuid4())
             task = Mock()
+            task.header.deadline = 2524608000
             task.get_resources.return_value = []
             task_server.task_manager.tasks[task_id] = task
             task_server.task_manager.tasks_states[task_id] = TaskState()
@@ -942,8 +968,29 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         self.ts.restore_resources()
 
         self.ts._restore_resources.assert_called_with(
-            [task_state.package_path], task_id, task_state.resource_hash
+            [task_state.package_path], task_id,
+            resource_hash=task_state.resource_hash, timeout=ANY
         )
+
+    def test_finished_task_listener(self, *_):
+        self.ts.client = Mock()
+        remove_task = self.ts.client.p2pservice.remove_task
+
+        values = dict(TaskOp.__members__)
+        values.pop('FINISHED')
+
+        for value in values:
+            self.ts.finished_task_listener(op=value)
+            assert not remove_task.called
+
+        for value in values:
+            self.ts.finished_task_listener(event='task_status_updated',
+                                           op=value)
+            assert not remove_task.called
+
+        self.ts.finished_task_listener(event='task_status_updated',
+                                       op=TaskOp.FINISHED)
+        assert remove_task.called
 
 
 class TaskVerificationResultTest(TaskServerTestBase):
