@@ -593,25 +593,32 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         env = Mock()
         env.get_performance.return_value = requestor_perf
         ts.get_environment_by_id = Mock(return_value=env)
+        ids = f'provider_id: ABC, task_id: {task_id}'
 
         # then
+        with self.assertLogs(logger, level='INFO') as cm:
+            assert not ts.should_accept_provider("ABC", 'tid', 27.18, 1, 1, 7)
+            self.assertEqual(cm.output, [
+                f'INFO:{logger.name}:Cannot find task in my tasks: '
+                f'provider_id: ABC, task_id: tid'])
+
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider("ABC", task_id, 27.18, 1, 1, 7)
             self.assertEqual(cm.output, [
                 f'INFO:{logger.name}:insufficient provider performance: '
-                f'27.18 * 7 < {requestor_perf}'])
+                f'27.18 * 7 < {requestor_perf}; {ids}'])
 
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider("ABC", task_id, 99, 1.72, 1, 4)
             self.assertEqual(cm.output, [
                 f'INFO:{logger.name}:insufficient provider disk size:'
-                f' 1.72 KiB; provider_id: ABC, task_id: {task_id}'])
+                f' 1.72 KiB; {ids}'])
 
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider("ABC", task_id, 999, 3, 2.7, 1)
             self.assertEqual(cm.output, [
                 f'INFO:{logger.name}:insufficient provider memory size:'
-                f' 2.7 KiB; provider_id: ABC, task_id: {task_id}'])
+                f' 2.7 KiB; {ids}'])
 
         # given
         self.client.get_computing_trust = Mock(return_value=0.4)
@@ -631,7 +638,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             assert not ts.should_accept_provider("ABC", task_id, 99, 3, 4, 5)
             self.assertEqual(cm.output, [
                 f'INFO:{logger.name}:insufficient provider trust level:'
-                f' 0.4; provider_id: ABC, task_id: {task_id}'])
+                f' 0.4; {ids}'])
 
         # given
         ts.config_desc.computing_trust = 0.2
