@@ -120,7 +120,7 @@ class TestNode(TestWithDatabase):
 
     @patch('twisted.internet.reactor', create=True)
     @patch('golemapp.Node')
-    def test_geth_address_should_be_passed_to_node(self, mock_node, *_):
+    def test_geth_http_address_should_be_passed_to_node(self, mock_node, *_):
         geth_address = 'http://3.14.15.92:6535'
 
         runner = CliRunner()
@@ -142,10 +142,58 @@ class TestNode(TestWithDatabase):
                                      use_monitor=True,
                                      password=None)
 
+    @patch('twisted.internet.reactor', create=True)
+    @patch('golemapp.Node')
+    def test_geth_https_address_should_be_passed_to_node(self, mock_node, *_):
+        geth_address = 'https://3.14.15.92:6535'
+
+        runner = CliRunner()
+        args = self.args + ['--geth-address', geth_address]
+        return_value = runner.invoke(start, args, catch_exceptions=False)
+        self.assertEqual(return_value.exit_code, 0)
+
+        mock_node.assert_called_with(datadir=path.join(self.path, 'rinkeby'),
+                                     app_config=ANY,
+                                     config_desc=ANY,
+                                     mainnet=False,
+                                     geth_address=geth_address,
+                                     peers=[],
+                                     start_geth=False,
+                                     start_geth_port=None,
+                                     concent_variant=variables.CONCENT_CHOICES[
+                                         'test'
+                                     ],
+                                     use_monitor=True,
+                                     password=None)
+
     @patch('golem.node.Client')
-    def test_geth_address_should_be_passed_to_client(self, mock_client, *_):
+    def test_geth_http_address_should_be_passed_to_client(self, mock_client, *_):
         # given
         geth_address = 'http://3.14.15.92:6535'
+
+        # when
+        node = Node(**self.node_kwargs, geth_address=geth_address)
+        node._client_factory(None)
+
+        # then
+        mock_client.assert_called_with(datadir=self.path,
+                                       app_config=ANY,
+                                       config_desc=ANY,
+                                       keys_auth=None,
+                                       database=ANY,
+                                       mainnet=False,
+                                       geth_address=geth_address,
+                                       start_geth=False,
+                                       start_geth_port=None,
+                                       use_docker_manager=True,
+                                       concent_variant=concent_disabled,
+                                       use_monitor=False,
+                                       apps_manager=ANY)
+
+    @patch('golem.node.Client')
+    def test_geth_https_address_should_be_passed_to_client(self, mock_client, *_):
+        # given
+        geth_address = 'https://3.14.15.92:6535'
 
         # when
         node = Node(**self.node_kwargs, geth_address=geth_address)
@@ -173,17 +221,17 @@ class TestNode(TestWithDatabase):
         return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 2)
         self.assertIn('Invalid value for "--geth-address"', return_value.output)
-        self.assertIn('Address without http:// prefix', return_value.output)
+        self.assertIn('Address without http(s):// prefix', return_value.output)
         self.assertIn(geth_addr, return_value.output)
 
     def test_geth_address_w_wrong_prefix_should_fail(self, *_):
         runner = CliRunner()
-        geth_addr = 'https://3.14.15.92'
+        geth_addr = 'unknown://3.14.15.92'
         args = self.args + ['--geth-address', geth_addr]
         return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 2)
         self.assertIn('Invalid value for "--geth-address"', return_value.output)
-        self.assertIn('Address without http:// prefix', return_value.output)
+        self.assertIn('Address without http(s):// prefix', return_value.output)
         self.assertIn(geth_addr, return_value.output)
 
     def test_geth_address_wo_port_should_fail(self, *_):
