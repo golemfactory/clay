@@ -167,7 +167,8 @@ class TestNode(TestWithDatabase):
                                      password=None)
 
     @patch('golem.node.Client')
-    def test_geth_http_address_should_be_passed_to_client(self, mock_client, *_):
+    def test_geth_http_address_should_be_passed_to_client(
+            self, mock_client, *_):
         # given
         geth_address = 'http://3.14.15.92:6535'
 
@@ -191,7 +192,8 @@ class TestNode(TestWithDatabase):
                                        apps_manager=ANY)
 
     @patch('golem.node.Client')
-    def test_geth_https_address_should_be_passed_to_client(self, mock_client, *_):
+    def test_geth_https_address_should_be_passed_to_client(
+            self, mock_client, *_):
         # given
         geth_address = 'https://3.14.15.92:6535'
 
