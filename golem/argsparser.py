@@ -1,4 +1,5 @@
 import ipaddress
+from urllib.parse import urlparse
 
 import click
 
@@ -18,14 +19,16 @@ def parse_http_addr(ctx, param, value):
     del ctx, param
     if value:
         try:
-            http_prefix = 'http://'
-            if not value.startswith(http_prefix):
+            parsed_url = urlparse(value)
+            if parsed_url.scheme not in ['http', 'https']:
                 raise click.BadParameter(
-                    "Address without http:// prefix"
+                    "Address without http(s):// prefix "
                     "specified: {}".format(value))
-            SocketAddress.parse(value[len(http_prefix):])
+            SocketAddress.parse(
+                value.replace(parsed_url.scheme + '://', '')
+            )
             return value
-        except ipaddress.AddressValueError as e:
+        except (ValueError, ipaddress.AddressValueError) as e:
             raise click.BadParameter(
                 "Invalid network address specified: {}".format(e))
     return None
