@@ -580,7 +580,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         returned_msg = concent_helpers.process_report_computed_task(
             msg=msg,
             ecc=self.task_server.keys_auth.ecc,
-            task_header_keeper=self.task_server.task_keeper,
+            task_manager=self.task_manager,
         )
         self.send(returned_msg)
         if not isinstance(returned_msg, message.tasks.AckReportComputedTask):

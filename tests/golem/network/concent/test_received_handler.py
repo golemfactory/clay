@@ -253,7 +253,7 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
         helper_mock.assert_called_once_with(
             msg=msg.report_computed_task,
             ecc=mock.ANY,
-            task_header_keeper=mock.ANY,
+            task_manager=mock.ANY,
         )
         self.task_server.client.concent_service.submit_task_message \
             .assert_any_call(
