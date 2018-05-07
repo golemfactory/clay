@@ -9,6 +9,7 @@ from apps.dummy.task.dummytask import (
     DummyTaskBuilder,
     DummyTaskTypeInfo, DummyTask)
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition, DummyTaskOptions
+from golem.network.p2p.node import Node
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
@@ -21,7 +22,7 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
     def _get_new_dummy(self):
         td = DummyTaskDefinition(DummyTaskDefaults())
         td.task_id = str(uuid.uuid4())
-        dt = DummyTask(5, "node", td, "root/path", "", "", "")
+        dt = DummyTask(5, td, "root/path", Node())
         return dt, td
 
     def test_constants(self):

@@ -1,5 +1,6 @@
 import random
 import time
+import uuid
 import unittest
 import unittest.mock as mock
 from os import urandom
@@ -17,7 +18,7 @@ from golem.ethereum.paymentprocessor import (
     tETH_faucet_donate,
     PAYMENT_MAX_DELAY,
 )
-from golem.model import Payment, PaymentStatus
+from golem.model import Payment, PaymentStatus, PaymentDetails
 from golem.testutils import DatabaseFixture
 from golem.utils import encode_hex
 
@@ -72,6 +73,47 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.pp._gnt_converter = mock.Mock()
         self.pp._gnt_converter.is_converting.return_value = False
         self.pp._gnt_converter.get_gate_balance.return_value = 0
+
+    def test_load_from_db(self):
+        self.assertEqual([], self.pp._awaiting)
+
+        subtask_id = str(uuid.uuid4())
+        value = random.randint(1, 2**5)
+        payee = encode_hex(urandom(32))
+        payment = Payment.create(
+            subtask=subtask_id,
+            payee=payee,
+            value=value
+        )
+        self.pp.add(payment)
+
+        del self.pp._awaiting[:]
+        self.pp.load_from_db()
+        expected = [payment]
+        self.assertEqual(expected, self.pp._awaiting)
+
+        # Sent payments
+        self.assertEqual({}, self.pp._inprogress)
+        tx_hash = '0x' + encode_hex(urandom(32))
+        sent_payment = Payment.create(
+            subtask='sent' + str(uuid.uuid4()),
+            payee=payee,
+            value=value,
+            details=PaymentDetails(tx=tx_hash[2:]),
+            status=PaymentStatus.sent
+        )
+        sent_payment2 = Payment.create(
+            subtask='sent2' + str(uuid.uuid4()),
+            payee=payee,
+            value=value,
+            details=PaymentDetails(tx=tx_hash[2:]),
+            status=PaymentStatus.sent
+        )
+        self.pp.load_from_db()
+        expected = {
+            tx_hash: [sent_payment, sent_payment2],
+        }
+        self.assertEqual(expected, self.pp._inprogress)
 
     def test_eth_balance(self):
         expected_balance = random.randint(0, 2**128 - 1)

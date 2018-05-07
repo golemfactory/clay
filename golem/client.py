@@ -153,7 +153,7 @@ class Client(HardwarePresetsMixin):
             variant=concent_variant,
         )
 
-        self.task_server = None
+        self.task_server: Optional[TaskServer] = None
         self.port_mapper = None
 
         self.nodes_manager_client = None
@@ -1294,6 +1294,17 @@ class Client(HardwarePresetsMixin):
     @staticmethod
     def enable_talkback(value):
         enable_sentry_logger(value)
+
+    def block_node(self, node_id: str) -> Tuple[bool, Optional[str]]:
+        if self.task_server is not None:
+            try:
+                self.task_server.acl.disallow(node_id, persist=True)
+                return True, None
+
+            except Exception as e:  # pylint: disable=broad-except
+                return False, str(e)
+
+        return False, 'Client is not ready'
 
 
 class DoWorkService(LoopingCallService):
