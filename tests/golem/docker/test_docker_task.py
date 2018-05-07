@@ -15,6 +15,7 @@ from golem.core import variables
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.simpleserializer import DictSerializer
 from golem.docker.task_thread import DockerTaskThread
+from golem.network.p2p.node import Node as P2PNode
 from golem.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
@@ -67,9 +68,19 @@ class DockerTaskTestCase(
     def _get_test_task(self) -> Task:
         self.TASK_CLASS.VERIFICATION_QUEUE._reset()
         task_builder = self.TASK_BUILDER_CLASS(
-            node_name="0123456789abcdef",
+            owner=P2PNode(
+                node_name="0123456789abcdef",
+                key="0xdeadbeef",
+                prv_addr="10.0.0.10",
+                prv_port=40102,
+                pub_addr="1.2.3.4",
+                pub_port=40102,
+                p2p_prv_port=40102,
+                p2p_pub_port=40102,
+                hyperdrive_prv_port=3282,
+                hyperdrive_pub_port=3282,
+            ),
             task_definition=self._get_test_task_definition(),
-            root_path=self.tempdir,
             dir_manager=DirManager(self.tempdir)
         )
         task = task_builder.build()

@@ -11,7 +11,6 @@ from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 
 from golem.network import history
-from golem.task import taskkeeper
 from golem.utils import decode_hex
 
 
@@ -46,66 +45,67 @@ def verify_message_signature(
     return True
 
 
-def process_report_computed_task(
-        msg: message.tasks.ReportComputedTask,
-        ecc: cryptography.ECCx,
-        task_header_keeper: taskkeeper.TaskHeaderKeeper) -> RESPONSE_FOR_RCT:
-
-    def _reject(reason, **kwargs):
-        logger.debug(
-            '_react_to_computed_task._reject(%r, **%r)',
-            reason,
-            kwargs,
-        )
-        reject_msg = message.tasks.RejectReportComputedTask(
-            reason=reason,
-            attached_task_to_compute=msg.task_to_compute,
-            **kwargs,
-        )
-        return reject_msg
-
-    # Check msg.task_to_compute signature
-    if not verify_message_signature(msg.task_to_compute, ecc):
-        return _reject(None)
-
-    # Prevent self payments. This check deserve its own reject_reason but also
-    # it belongs ealier in the flow rather then here.
-    if privtoaddr(ecc.get_privkey()) == decode_hex(msg.eth_account):
-        logger.warning('Prevented self payment: %r', msg)
-        return _reject(None)
-    # Prevent payments to zero address. Same as above.
-    if decode_hex(msg.eth_account) == b'\x00' * 20:
-        logger.warning('Prevented payment to zero address: %r', msg)
-        return _reject(None)
-
-    reject_reasons = message.tasks.RejectReportComputedTask.REASON
+def verify_task_deadline(msg: message.base.Message) -> bool:
     now_ts = calendar.timegm(time.gmtime())
-    task_id = msg.task_to_compute.compute_task_def['task_id']
-
     # SEE #2683 for an explanation about TOLERANCE
     TOLERANCE = msg_constants.MTD * 2
     tolerant_now_ts = now_ts - int(TOLERANCE.total_seconds())
 
-    # Check task deadline
-    try:
-        task_header = task_header_keeper.task_headers[task_id]
-        task_deadline = task_header.deadline
-    except KeyError:
-        logger.info(
-            "TaskHeader for %r not found. Assuming infinite timeout.",
-            task_id,
-        )
-        task_deadline = float('infinity')
-    if tolerant_now_ts > task_deadline:
-        return _reject(reject_reasons.TaskTimeLimitExceeded)
-
     # Check subtask deadline
-    if tolerant_now_ts > msg.task_to_compute.compute_task_def['deadline']:
-        return _reject(reject_reasons.SubtaskTimeLimitExceeded)
+    return tolerant_now_ts <= msg.task_to_compute.compute_task_def['deadline']
+
+
+def verify_message_payment_address(
+        report_computed_task: message.tasks.ReportComputedTask,
+        ecc: cryptography.ECCx) -> bool:
+    # Prevent self payments. This check deserve its own reject_reason but also
+    # it belongs ealier in the flow rather then here.
+    if privtoaddr(ecc.get_privkey()) == decode_hex(
+            report_computed_task.eth_account):
+        logger.warning('Prevented self payment: %r', report_computed_task)
+        return False
+    # Prevent payments to zero address. Same as above.
+    if decode_hex(report_computed_task.eth_account) == b'\x00' * 20:
+        logger.warning(
+            'Prevented payment to zero address: %r',
+            report_computed_task,
+        )
+        return False
+    return True
+
+
+def prepare_reject_report_computed_task(task_to_compute, reason, **kwargs) \
+        -> message.tasks.RejectReportComputedTask:
+    logger.debug(
+        'prepare_reject_report_computed_task(%r, **%r)',
+        reason,
+        kwargs,
+    )
+    reject_msg = message.tasks.RejectReportComputedTask(
+        reason=reason,
+        attached_task_to_compute=task_to_compute,
+        **kwargs,
+    )
+    return reject_msg
+
+
+def process_report_computed_task_no_time_check(
+        msg: message.tasks.ReportComputedTask,
+        ecc: cryptography.ECCx) -> RESPONSE_FOR_RCT:
+    """Requestor can't reply with SubtaskTimeLimitExceeded to Concent #2682"""
+
+    reject_reasons = message.tasks.RejectReportComputedTask.REASON
+
+    # Check msg.task_to_compute signature
+    if not verify_message_signature(msg.task_to_compute, ecc):
+        return prepare_reject_report_computed_task(msg.task_to_compute, None)
+
+    if not verify_message_payment_address(report_computed_task=msg, ecc=ecc):
+        return prepare_reject_report_computed_task(msg.task_to_compute, None)
 
     get_msg = functools.partial(
         history.MessageHistoryService.get_sync_as_message,
-        task=task_id,
+        task=msg.task_id,
         subtask=msg.subtask_id,
     )
 
@@ -116,7 +116,8 @@ def process_report_computed_task(
     # CannotComputeTask received
     try:
         unwanted_msg = get_msg(msg_cls='CannotComputeTask')
-        return _reject(
+        return prepare_reject_report_computed_task(
+            msg.task_to_compute,
             reject_reasons.GotMessageCannotComputeTask,
             cannot_compute_task=unwanted_msg,
         )
@@ -126,7 +127,8 @@ def process_report_computed_task(
     # TaskFailure received
     try:
         unwanted_msg = get_msg(msg_cls='TaskFailure')
-        return _reject(
+        return prepare_reject_report_computed_task(
+            msg.task_to_compute,
             reject_reasons.GotMessageTaskFailure,
             task_failure=unwanted_msg,
         )
@@ -138,3 +140,19 @@ def process_report_computed_task(
     return message.tasks.AckReportComputedTask(
         report_computed_task=msg
     )
+
+
+def process_report_computed_task(
+        msg: message.tasks.ReportComputedTask,
+        ecc: cryptography.ECCx) -> RESPONSE_FOR_RCT:
+
+    reject_reasons = message.tasks.RejectReportComputedTask.REASON
+
+    # Check subtask deadline
+    if not verify_task_deadline(msg):
+        return prepare_reject_report_computed_task(
+            msg.task_to_compute,
+            reject_reasons.SubtaskTimeLimitExceeded,
+        )
+
+    return process_report_computed_task_no_time_check(msg=msg, ecc=ecc)

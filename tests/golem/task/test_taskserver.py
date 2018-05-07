@@ -39,15 +39,15 @@ from tests.factories.resultpackage import ExtractedPackageFactory
 def get_example_task_header(key_id):
     return {
         "task_id": generate_id(key_id),
-        "node_name": "ABC",
         "environment": "DEFAULT",
         "task_owner": dict(
+            key=encode_hex(key_id),
+            node_name="ABC",
             prv_port=40103,
-            prv_addr='10.0.0.10'
+            prv_addr='10.0.0.10',
+            pub_port=40103,
+            pub_addr='1.2.3.4'
         ),
-        "task_owner_port": 10101,
-        "task_owner_key_id": encode_hex(key_id),
-        "task_owner_address": "10.10.10.10",
         "deadline": timeout_to_deadline(1201),
         "subtask_timeout": 120,
         "max_price": 20,
@@ -121,19 +121,16 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.client.get_requesting_trust.return_value = 0.3
         self.assertIsInstance(ts, TaskServer)
         self.assertIsNone(ts.request_task())
-        n2 = Node()
-        n2.prv_addr = "10.10.10.10"
-        n2.port = 10101
+
         keys_auth = KeysAuth(self.path, 'prv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
-        task_header["task_owner"] = n2
         task_id = task_header["task_id"]
         ts.add_task_header(task_header)
         self.assertEqual(ts.request_task(), task_id)
         assert ts.remove_task_header(task_id)
 
         task_header = get_example_task_header(keys_auth.public_key)
-        task_header["task_owner_port"] = 0
+        task_header["task_owner"]["pub_port"] = 0
         task_id2 = task_header["task_id"]
         self.assertTrue(ts.add_task_header(task_header))
         self.assertIsNotNone(ts.task_keeper.task_headers[task_id2])
@@ -151,7 +148,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.config_desc.requesting_trust = 0.5
         task_header = get_example_task_header(keys_auth.public_key)
         task_id3 = task_header["task_id"]
-        task_header["task_owner"] = n2
         ts.add_task_header(task_header)
         self.assertIsNone(ts.request_task())
         tar.add_support_status.assert_called_with(
@@ -167,7 +163,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_header = get_example_task_header(keys_auth.public_key)
         task_id4 = task_header["task_id"]
         task_header["max_price"] = 1
-        task_header["task_owner"] = n2
         ts.add_task_header(task_header)
         self.assertIsNone(ts.request_task())
         tar.add_support_status.assert_called_with(
@@ -182,7 +177,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.acl.disallow(keys_auth.key_id)
         task_header = get_example_task_header(keys_auth.public_key)
         task_id5 = task_header["task_id"]
-        task_header["task_owner"] = n2
         ts.add_task_header(task_header)
         self.assertIsNone(ts.request_task())
         tar.add_support_status.assert_called_with(
@@ -199,11 +193,13 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         keys_auth = KeysAuth(self.path, 'priv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
         n = Node.from_dict(task_header['task_owner'])
+
         ts = self.ts
         ts._is_address_accessible = Mock(return_value=True)
         ts.verify_header_sig = lambda x: True
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         ts.client.get_requesting_trust.return_value = ts.max_trust
+
         results = {"data": "", "result_type": ResultType.DATA}
         task_header = get_example_task_header(keys_auth.public_key)
         task_id = task_header["task_id"]
@@ -221,9 +217,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertEqual(wtr.result_type, ResultType.DATA)
         self.assertEqual(wtr.last_sending_trial, 0)
         self.assertEqual(wtr.delay_time, 0)
-        self.assertEqual(wtr.owner_address, "10.10.10.10")
-        self.assertEqual(wtr.owner_port, 10101)
-        self.assertEqual(wtr.owner_key_id, keys_auth.key_id)
         self.assertEqual(wtr.owner, n)
         self.assertEqual(wtr.already_sending, False)
         incomes_keeper = ts.client.transaction_system.incomes_keeper
@@ -577,7 +570,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # Try sending mocked task_result
         wtr = MagicMock(
             owner=node,
-            owner_key_id='owner_key_id'
         )
         ts._add_pending_request(
             TASK_CONN_TYPES['task_result'],
