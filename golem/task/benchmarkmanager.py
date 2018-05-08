@@ -31,6 +31,8 @@ class BenchmarkManager(object):
     def run_benchmark(self, benchmark, task_builder, env_id, success=None,
                       error=None):
 
+        from golem.network.p2p.node import Node
+
         def success_callback(performance):
             Performance.update_or_create(env_id, performance)
             if success:
@@ -47,8 +49,8 @@ class BenchmarkManager(object):
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.task_definition
         self._validate_task_state(task_state)
-        builder = task_builder(self.node_name, task_state.definition,
-                               self.task_server.client.datadir,
+        builder = task_builder(Node(),
+                               task_state.definition,
                                self.dir_manager)
         t = Task.build_task(builder)
         br = BenchmarkRunner(t, self.task_server.client.datadir,

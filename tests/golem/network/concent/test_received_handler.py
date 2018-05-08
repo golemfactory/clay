@@ -253,7 +253,8 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
         verify_mock.assert_not_called()
 
     @mock.patch(
-        "golem.network.concent.helpers.process_report_computed_task"
+        "golem.network.concent.helpers"
+        ".process_report_computed_task_no_time_check"
     )
     @mock.patch(
         "golem_messages.helpers.maximum_download_time",
@@ -273,7 +274,6 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
         helper_mock.assert_called_once_with(
             msg=msg.report_computed_task,
             ecc=mock.ANY,
-            task_header_keeper=mock.ANY,
         )
         self.task_server.client.concent_service.submit_task_message \
             .assert_any_call(

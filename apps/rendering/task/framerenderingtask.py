@@ -488,16 +488,16 @@ def get_frame_name(output_name, ext, frame_num):
 class FrameRenderingTaskBuilder(RenderingTaskBuilder):
     TASK_CLASS = FrameRenderingTask
 
-    def __init__(self, node_name, task_definition, root_path, dir_manager):
+    def __init__(self, owner, task_definition, dir_manager):
         frames = task_definition.options.frames
 
         if isinstance(frames, str):
             task_definition = deepcopy(task_definition)
             task_definition.options.frames = self.string_to_frames(frames)
 
-        super(FrameRenderingTaskBuilder, self).__init__(node_name,
+        super(FrameRenderingTaskBuilder, self).__init__(owner,
                                                         task_definition,
-                                                        root_path, dir_manager)
+                                                        dir_manager)
 
     def _calculate_total(self, defaults):
         return calculate_subtasks_count(

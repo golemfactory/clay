@@ -63,7 +63,7 @@ class HelpersTest(TestCase):
         msg = mock.Mock()
         msg.eth_account = encode_hex(addr)
 
-        res = helpers.process_report_computed_task(msg, ecc, mock.Mock())
+        res = helpers.process_report_computed_task_no_time_check(msg, ecc, )
         self.assertIsInstance(res, message.tasks.RejectReportComputedTask)
 
     def test_payment_to_zero(self):
@@ -72,5 +72,5 @@ class HelpersTest(TestCase):
         msg = mock.Mock()
         msg.eth_account = '0x' + 40 * '0'
 
-        res = helpers.process_report_computed_task(msg, ecc, mock.Mock())
+        res = helpers.process_report_computed_task_no_time_check(msg, ecc, )
         assert isinstance(res, message.tasks.RejectReportComputedTask)

@@ -134,8 +134,7 @@ class TaskManager(TaskEventListener):
         definition = builder_type.build_definition(task_type, dictionary,
                                                    minimal)
         definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
-        builder = builder_type(self.node_name, definition, self.root_path,
-                               self.dir_manager)
+        builder = builder_type(self.node, definition, self.dir_manager)
 
         return Task.build_task(builder)
 
@@ -157,9 +156,6 @@ class TaskManager(TaskEventListener):
                                                self.listen_port):
             raise IOError("Incorrect socket address")
 
-        task.header.task_owner_address = self.listen_address
-        task.header.task_owner_port = self.listen_port
-        task.header.task_owner_key_id = self.key_id
         task.header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
 
