@@ -421,7 +421,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         srr = self._get_srr()
         self.__call_react_to_srr(srr)
         self.task_session.task_server.subtask_rejected.assert_called_once_with(
-            subtask_id=srr.report_computed_task.subtask_id)
+            subtask_id=srr.report_computed_task.subtask_id)  # noqa pylint:disable=no-member
 
     def test_result_rejected_with_wrong_key(self):
         srr = self._get_srr(key2='notmine')
@@ -917,7 +917,7 @@ class SubtaskResultsAcceptedTest(TestCase):
         extra_data = dict(
             result=pickle.dumps({'stdout': 'xyz'}),
             result_type=ResultType.DATA,
-            subtask_id=ttc.compute_task_def.get('subtask_id')
+            subtask_id=ttc.compute_task_def.get('subtask_id')  # noqa pylint:disable=no-member
         )
 
         self.task_session.send = Mock()
