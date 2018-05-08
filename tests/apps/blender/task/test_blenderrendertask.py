@@ -43,7 +43,6 @@ class TestBlenderDefaults(unittest.TestCase):
 
 class BlenderTaskInitTest(TempDirFixture, LogTestCase):
     def test_compositing(self):
-
         task_definition = RenderingTaskDefinition()
         task_definition.options = BlenderRendererOptions()
         task_definition.options.use_frames = True
@@ -160,7 +159,8 @@ class TestBlenderFrameTask(TempDirFixture):
                 result)
 
         with mock.patch(
-                'golem_verificator.core_verifier.CoreVerifier.start_verification',
+            'golem_verificator.core_verifier.CoreVerifier.'
+                'start_verification',
                 side_effect=verification_finished1):
             self.bt.computation_finished(extra_data3.ctd['subtask_id'], [file1],
                                          ResultType.FILES, lambda: None)
@@ -189,7 +189,8 @@ class TestBlenderFrameTask(TempDirFixture):
         img.close()
 
         with mock.patch(
-                'golem_verificator.core_verifier.CoreVerifier.start_verification',
+                'golem_verificator.core_verifier.CoreVerifier.'
+                'start_verification',
                 side_effect=verification_finished2):
             self.bt.computation_finished(extra_data4.ctd['subtask_id'], [file2],
                                          ResultType.FILES, lambda: None)
@@ -229,7 +230,7 @@ class TestBlenderFrameTask(TempDirFixture):
             exr.writePixels({'R': data, 'G': data, 'B': data,
                              'F': data, 'A': data})
             exr.close()
-            self.bt.frames_given["7"][i-1] = file1
+            self.bt.frames_given["7"][i - 1] = file1
         self.bt._put_frame_together(7, 2)
 
 
@@ -568,7 +569,6 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
                                                   node_name='node')
         assert extra_data.ctd is None
         assert not extra_data.should_wait
-
 
     def test_update_preview(self):
         bt = self.build_bt(300, 200, 10)

@@ -12,7 +12,6 @@ from PIL import Image, ImageChops, ImageFile
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
-from golem_verificator.blender_verifier import BlenderVerifier
 from apps.core.task import coretask
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_as_pil
@@ -28,6 +27,7 @@ from golem.core.common import to_unicode
 from golem.core.fileshelper import has_ext
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus, TaskStatus
+from golem_verificator.blender_verifier import BlenderVerifier
 
 # Allow loading truncated images.
 # https://github.com/golemfactory/golem/issues/2059
