@@ -2,7 +2,6 @@ import abc
 import decimal
 import logging
 import os
-import uuid
 from enum import Enum
 from typing import Type
 
@@ -97,10 +96,7 @@ class CoreTask(Task):
 
     def __init__(self,
                  task_definition: TaskDefinition,
-                 node_name: str,
-                 owner_address="",
-                 owner_port=0,
-                 owner_key_id="",
+                 owner: Node,
                  max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
                  resource_size=None,
                  root_path=None,
@@ -142,13 +138,9 @@ class CoreTask(Task):
             self.docker_images = None
 
         th = TaskHeader(
-            node_name=node_name,
             task_id=task_definition.task_id,
-            task_owner_address=owner_address,
-            task_owner_port=owner_port,
-            task_owner_key_id=owner_key_id,
             environment=self.environment.get_id(),
-            task_owner=Node(),
+            task_owner=owner,
             deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
             resource_size=self.resource_size,
@@ -221,7 +213,8 @@ class CoreTask(Task):
             subtask_id,
             self._deadline,
             verification_finished,
-            subtask_info=self.subtasks_given[subtask_id],
+            subtask_info={**self.subtasks_given[subtask_id],
+                          **{'owner': self.header.task_owner.key}},
             results=result_files,
             resources=self.task_resources,
             reference_data=self.get_reference_data()
@@ -286,7 +279,7 @@ class CoreTask(Task):
         was_failure_before = subtask_info['status'] in [SubtaskStatus.failure,
                                                         SubtaskStatus.resent]
 
-        if SubtaskStatus.is_active(subtask_info['status']):
+        if subtask_info['status'].is_active():
             # TODO Restarted tasks that were waiting for verification should
             # cancel it. Issue #2423
             self._mark_subtask_failed(subtask_id)
@@ -453,7 +446,7 @@ class CoreTask(Task):
     @handle_key_error
     def should_accept(self, subtask_id):
         status = self.subtasks_given[subtask_id]['status']
-        return SubtaskStatus.is_computed(status)
+        return status.is_computed()
 
     @staticmethod
     def _interpret_log(log):
@@ -504,6 +497,24 @@ class CoreTask(Task):
         client.start()
         return AcceptClientVerdict.ACCEPTED
 
+    def copy_subtask_results(self, subtask_id, old_subtask_info, results):
+        new_subtask = self.subtasks_given[subtask_id]
+
+        new_subtask['node_id'] = old_subtask_info['node_id']
+        new_subtask['perf'] = old_subtask_info['perf']
+        new_subtask['ctd']['performance'] = \
+            old_subtask_info['ctd']['performance']
+
+        self._accept_client(new_subtask['node_id'])
+        self.result_incoming(subtask_id)
+        self.interpret_task_results(
+            subtask_id=subtask_id,
+            task_results=results,
+            result_type=ResultType.FILES)
+        self.accept_results(
+            subtask_id=subtask_id,
+            result_files=self.results[subtask_id])
+
 
 def accepting(query_extra_data_func):
     """
@@ -545,13 +556,12 @@ def accepting(query_extra_data_func):
 class CoreTaskBuilder(TaskBuilder):
     TASK_CLASS = CoreTask
 
-    # FIXME get the root path from dir_manager. Issue #2449
-    def __init__(self, node_name, task_definition, root_path, dir_manager):
+    def __init__(self, owner, task_definition, dir_manager):
         super(CoreTaskBuilder, self).__init__()
         self.task_definition = task_definition
-        self.node_name = node_name
-        self.root_path = root_path
+        self.root_path = dir_manager.root_path
         self.dir_manager = dir_manager
+        self.owner = owner
         self.src_code = ""
         self.environment = None
 
@@ -563,7 +573,7 @@ class CoreTaskBuilder(TaskBuilder):
     def get_task_kwargs(self, **kwargs):
         kwargs['total_tasks'] = int(self.task_definition.total_subtasks)
         kwargs["task_definition"] = self.task_definition
-        kwargs["node_name"] = self.node_name
+        kwargs["owner"] = self.owner
         kwargs["root_path"] = self.root_path
         return kwargs
 

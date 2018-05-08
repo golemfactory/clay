@@ -9,6 +9,7 @@ from golem_messages.message.concents import FileTransferToken
 
 from golem import testutils
 from golem.core import keysauth
+from golem.core import variables
 from golem.network.concent import filetransfers
 from tests.factories.concent import ConcentFileRequestFactory
 
@@ -43,7 +44,8 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
             password='password',
         )
         self.cfs = filetransfers.ConcentFiletransferService(
-            keys_auth=self.keys_auth
+            keys_auth=self.keys_auth,
+            variant=variables.CONCENT_CHOICES['dev'],
         )
 
     def _mock_get_auth_headers(self, file_transfer_token: FileTransferToken):

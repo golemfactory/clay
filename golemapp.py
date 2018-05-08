@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import binascii
 import os
 import platform
 import sys
@@ -20,9 +21,9 @@ import golem.argsparser as argsparser  # noqa
 from golem.appconfig import AppConfig  # noqa
 from golem.clientconfigdescriptor import ClientConfigDescriptor, \
     ConfigApprover  # noqa
+from golem.core import variables  # noqa
 from golem.core.common import install_reactor  # noqa
 from golem.core.simpleenv import get_local_datadir  # noqa
-from golem.core.variables import PROTOCOL_CONST  # noqa
 from golem.node import Node  # noqa
 from golem.tools.talkback import enable_sentry_logger  # noqa
 
@@ -47,7 +48,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 
 @click.command()
 @click.option('--monitor/--nomonitor', default=True)
-@click.option('--concent/--noconcent', default=False)
+@click.option('--concent', type=click.Choice(variables.CONCENT_CHOICES))
 @click.option('--datadir', '-d',
               default=get_local_datadir('default'),
               type=click.Path(
@@ -55,7 +56,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
                   writable=True
               ))
 @click.option('--protocol_id', type=click.STRING,
-              callback=PROTOCOL_CONST.patch_protocol_id,
+              callback=variables.PROTOCOL_CONST.patch_protocol_id,
               is_eager=True,
               expose_value=False,
               help="Golem nodes will connect "
@@ -131,7 +132,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     datadir = os.path.join(datadir, subdir)
     # We don't want different chains to talk to each other
     if not mainnet:
-        PROTOCOL_CONST.ID += '-testnet'
+        variables.PROTOCOL_CONST.ID += '-testnet'
 
     if generate_rpc_cert:
         generate_rpc_certificate(datadir)
@@ -152,42 +153,51 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         config_desc.rpc_port = rpc_address.port
     if node_address:
         config_desc.node_address = node_address
+
     # Crossbar
     if m == 'crossbar.worker.process':
         start_crossbar_worker(m)
+        return
+
     # Golem headless
-    else:
-        install_reactor()
+    install_reactor()
 
-        from golem.core.common import config_logging
-        config_logging(datadir=datadir, loglevel=log_level)
+    from golem.core.common import config_logging
+    config_logging(datadir=datadir, loglevel=log_level)
 
-        if enable_talkback is None:
-            enable_talkback = bool(config_desc.enable_talkback)
-        enable_sentry_logger(enable_talkback)
+    if enable_talkback is None:
+        enable_talkback = bool(config_desc.enable_talkback)
+    enable_sentry_logger(enable_talkback)
 
-        log_golem_version()
-        log_platform_info()
-        log_ethereum_chain(mainnet)
+    if concent is None:  # Default value
+        if mainnet:
+            concent = 'disabled'
+        else:
+            concent = 'test'
 
-        node = Node(
-            datadir=datadir,
-            app_config=app_config,
-            config_desc=config_desc,
-            peers=peer,
-            use_monitor=monitor,
-            use_concent=concent,
-            mainnet=mainnet,
-            start_geth=False,
-            start_geth_port=None,
-            geth_address=geth_address,
-            password=password,
-        )
+    log_golem_version()
+    log_platform_info()
+    log_ethereum_chain(mainnet)
+    log_concent_choice(concent)
 
-        if accept_terms:
-            node.accept_terms()
+    node = Node(
+        datadir=datadir,
+        app_config=app_config,
+        config_desc=config_desc,
+        peers=peer,
+        use_monitor=monitor,
+        concent_variant=variables.CONCENT_CHOICES[concent],
+        mainnet=mainnet,
+        start_geth=False,
+        start_geth_port=None,
+        geth_address=geth_address,
+        password=password,
+    )
 
-        node.start()
+    if accept_terms:
+        node.accept_terms()
+
+    node.start()
 
 
 def delete_reactor():
@@ -243,6 +253,18 @@ def log_ethereum_chain(mainnet: bool):
     logger.info("Ethereum chain: %s", chain)
 
 
+def log_concent_choice(concent: str):
+    value: dict = variables.CONCENT_CHOICES[concent]  # type: ignore
+    if None in value.values():
+        logger.info('Concent disabled')
+        return
+    logger.info('Concent url: %s', value['url'])
+    logger.info(
+        'Concent public key: %s',
+        binascii.hexlify(value['pubkey']).decode('ascii'),
+    )
+
+
 def generate_rpc_certificate(datadir: str):
     from golem.rpc.cert import CertificateManager
     from golem.rpc.common import CROSSBAR_DIR
@@ -257,4 +279,4 @@ def generate_rpc_certificate(datadir: str):
 
 
 if __name__ == '__main__':
-    start()
+    start()  # pylint: disable=no-value-for-parameter

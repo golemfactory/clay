@@ -313,8 +313,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         report_computed_task = message.ReportComputedTask(
             task_to_compute=task_to_compute,
             result_type=task_result.result_type,
-            # https://github.com/golemfactory/golem-messages/issues/189
-            computation_time=0,  # TODO: remove field from messages
             node_name=node_name,
             address=address,
             port=port,
@@ -369,9 +367,24 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         :param str subtask_id:
         :param err_msg: error message that occurred during computation
         """
+
+        task_id = self._subtask_to_task(subtask_id, Actor.Provider)
+
+        task_to_compute = get_task_message(
+            'TaskToCompute',
+            task_id,
+            subtask_id,
+        )
+
+        if not task_to_compute:
+            logger.warning("Could not retrieve TaskToCompute"
+                           " for subtask_id: %s, task_id: %s",
+                           subtask_id, task_id)
+            return
+
         self.send(
             message.TaskFailure(
-                subtask_id=subtask_id,
+                task_to_compute=task_to_compute,
                 err=err_msg
             )
         )
@@ -521,7 +534,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 return
         self.send(
             message.CannotComputeTask(
-                subtask_id=ctd['subtask_id'],
+                task_to_compute=msg,
                 reason=self.err_msg
             )
         )
@@ -567,7 +580,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         returned_msg = concent_helpers.process_report_computed_task(
             msg=msg,
             ecc=self.task_server.keys_auth.ecc,
-            task_header_keeper=self.task_server.task_keeper,
         )
         self.send(returned_msg)
         if not isinstance(returned_msg, message.tasks.AckReportComputedTask):
@@ -760,14 +772,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if report_computed_task is None:
             logger.warning(
                 '[CONCENT] Can`t delay send %r.'
-                ' ForceReportComputedTask not found; delay unknown',
+                ' ReportComputedTask not found; delay unknown',
                 delayed_forcing_msg,
             )
             return
         self.concent_service.submit_task_message(
             subtask_id=msg.subtask_id,
             msg=delayed_forcing_msg,
-            delay=msg_helpers.maximum_results_patience(report_computed_task),
+            delay=msg_helpers.subtask_verification_time(report_computed_task),
         )
 
     @history.provider_history
@@ -824,14 +836,20 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def _check_ctd_params(self, ctd):
         header = self.task_manager.comp_task_keeper.get_task_header(
             ctd['task_id'])
+        owner = header.task_owner
+
         reasons = message.CannotComputeTask.REASON
-        if header.task_owner_key_id != self.key_id\
-                or header.task_owner.key != self.key_id:
+        if owner.key != self.key_id:
             self.err_msg = reasons.WrongKey
             return False
-        if not tcpnetwork.SocketAddress.is_proper_address(
-                header.task_owner_address,
-                header.task_owner_port):
+
+        addresses = [
+            (owner.pub_addr, owner.pub_port),
+            (owner.prv_addr, owner.prv_port)
+        ]
+
+        if not any(tcpnetwork.SocketAddress.is_proper_address(addr, port)
+                   for addr, port in addresses):
             self.err_msg = reasons.WrongAddress
             return False
         return True

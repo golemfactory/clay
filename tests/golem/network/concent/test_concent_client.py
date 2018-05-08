@@ -55,6 +55,7 @@ class TestSendToConcent(TestCase):
         node_keys = golem_messages.cryptography.ECCx(None)
         self.private_key = node_keys.raw_privkey
         self.public_key = node_keys.raw_pubkey
+        self.variant = variables.CONCENT_CHOICES['dev']
 
     def test_message(self, post_mock):
         response = requests.Response()
@@ -66,9 +67,10 @@ class TestSendToConcent(TestCase):
         client.send_to_concent(
             msg=self.msg,
             signing_key=self.private_key,
+            concent_variant=self.variant,
         )
         api_send_url = urllib.parse.urljoin(
-            variables.CONCENT_URL,
+            self.variant['url'],
             '/api/v1/send/'
         )
         post_mock.assert_called_once_with(
@@ -83,6 +85,7 @@ class TestSendToConcent(TestCase):
             client.send_to_concent(
                 msg=self.msg,
                 signing_key=self.private_key,
+                concent_variant=self.variant,
             )
 
         self.assertEqual(post_mock.call_count, 1)
@@ -94,6 +97,7 @@ class TestSendToConcent(TestCase):
         client.send_to_concent(
             msg=self.msg,
             signing_key=self.private_key,
+            concent_variant=self.variant,
         )
         verify_mock.assert_called_once_with(response)
 
@@ -108,6 +112,7 @@ class TestSendToConcent(TestCase):
             client.send_to_concent(
                 msg=self.msg,
                 signing_key=self.private_key,
+                concent_variant=self.variant,
             )
         self.assertEqual(
             self.msg.timestamp,
@@ -122,6 +127,7 @@ class TestReceiveFromConcent(TestCase):
         node_keys = golem_messages.cryptography.ECCx(None)
         self.private_key = node_keys.raw_privkey
         self.public_key = node_keys.raw_pubkey
+        self.variant = variables.CONCENT_CHOICES['dev']
 
     def test_empty_content(self, get_mock):
         response = requests.Response()
@@ -133,6 +139,7 @@ class TestReceiveFromConcent(TestCase):
         result = client.receive_from_concent(
             signing_key=self.private_key,
             public_key=self.public_key,
+            concent_variant=self.variant,
         )
         self.assertIsNone(result)
 
@@ -146,6 +153,7 @@ class TestReceiveFromConcent(TestCase):
         result = client.receive_from_concent(
             signing_key=self.private_key,
             public_key=self.public_key,
+            concent_variant=self.variant,
         )
         self.assertIs(result, content)
 
@@ -155,6 +163,7 @@ class TestReceiveFromConcent(TestCase):
             client.receive_from_concent(
                 signing_key=self.private_key,
                 public_key=self.public_key,
+                concent_variant=self.variant,
             )
 
         self.assertEqual(get_mock.call_count, 1)
@@ -166,6 +175,7 @@ class TestReceiveFromConcent(TestCase):
         client.receive_from_concent(
             signing_key=self.private_key,
             public_key=self.public_key,
+            concent_variant=self.variant,
         )
         verify_mock.assert_called_once_with(response)
 
@@ -183,7 +193,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         )
         self.concent_service = client.ConcentClientService(
             keys_auth=keys_auth,
-            enabled=True,
+            variant=variables.CONCENT_CHOICES['dev'],
         )
         self.msg = message.ForceReportComputedTask()
 
@@ -244,6 +254,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         send_mock.assert_called_once_with(
             self.msg,
             self.concent_service.keys_auth._private_key,
+            concent_variant=self.concent_service.variant,
         )
 
         assert not self.concent_service._delayed
@@ -284,6 +295,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         send_mock.assert_called_once_with(
             self.msg,
             self.concent_service.keys_auth._private_key,
+            concent_variant=self.concent_service.variant,
         )
         react_mock.assert_called_once_with(data, response_to=self.msg)
 
@@ -297,6 +309,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         receive_mock.assert_called_once_with(
             signing_key=self.concent_service.keys_auth._private_key,
             public_key=self.concent_service.keys_auth.public_key,
+            concent_variant=self.concent_service.variant,
         )
         react_mock.assert_called_once_with(content)
 
@@ -317,7 +330,10 @@ class TestConcentClientService(testutils.TempDirFixture):
         receive_mock.side_effect = exceptions.ConcentError
         self.concent_service.receive()
         receive_mock.assert_called_once_with(
-            signing_key=mock.ANY, public_key=mock.ANY)
+            signing_key=mock.ANY,
+            public_key=mock.ANY,
+            concent_variant=self.concent_service.variant,
+        )
         sleep_mock.assert_called_once_with()
         react_mock.assert_not_called()
 
@@ -338,7 +354,10 @@ class TestConcentClientService(testutils.TempDirFixture):
         receive_mock.side_effect = Exception
         self.concent_service.receive()
         receive_mock.assert_called_once_with(
-            signing_key=mock.ANY, public_key=mock.ANY)
+            signing_key=mock.ANY,
+            public_key=mock.ANY,
+            concent_variant=mock.ANY,
+        )
         sleep_mock.assert_called_once_with()
         react_mock.assert_not_called()
 
@@ -362,7 +381,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         load_mock.assert_called_once_with(
             data,
             self.concent_service.keys_auth._private_key,
-            variables.CONCENT_PUBKEY,
+            self.concent_service.variant['pubkey'],
         )
 
     @mock.patch('golem_messages.load')
@@ -376,7 +395,7 @@ class TestConcentClientService(testutils.TempDirFixture):
         load_mock.assert_called_once_with(
             data,
             self.concent_service.keys_auth._private_key,
-            variables.CONCENT_PUBKEY,
+            self.concent_service.variant['pubkey'],
         )
 
 
@@ -389,7 +408,7 @@ class ConcentCallLaterTestCase(testutils.TempDirFixture):
                 private_key_name='priv_key',
                 password='password',
             ),
-            enabled=True,
+            variant=variables.CONCENT_CHOICES['dev'],
         )
         self.msg = message.ForceReportComputedTask()
 

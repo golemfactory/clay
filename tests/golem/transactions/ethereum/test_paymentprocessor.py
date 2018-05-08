@@ -1,5 +1,6 @@
 import random
 import time
+import uuid
 import unittest
 import unittest.mock as mock
 from os import urandom
@@ -17,7 +18,7 @@ from golem.ethereum.paymentprocessor import (
     tETH_faucet_donate,
     PAYMENT_MAX_DELAY,
 )
-from golem.model import Payment, PaymentStatus
+from golem.model import Payment, PaymentStatus, PaymentDetails
 from golem.testutils import DatabaseFixture
 from golem.utils import encode_hex
 
@@ -62,12 +63,57 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.sci.get_gntb_balance.return_value = 0
         self.sci.get_eth_address.return_value = self.addr
         self.sci.get_gate_address.return_value = None
+        self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE
+        latest_block = mock.Mock()
+        latest_block.gas_limit = 10 ** 10
+        self.sci.get_latest_block.return_value = latest_block
         # FIXME: PaymentProcessor should be started and stopped! #2455
         self.pp = PaymentProcessor(self.sci)
         self.pp._loopingCall.clock = Clock()  # Disable looping call.
         self.pp._gnt_converter = mock.Mock()
         self.pp._gnt_converter.is_converting.return_value = False
         self.pp._gnt_converter.get_gate_balance.return_value = 0
+
+    def test_load_from_db(self):
+        self.assertEqual([], self.pp._awaiting)
+
+        subtask_id = str(uuid.uuid4())
+        value = random.randint(1, 2**5)
+        payee = encode_hex(urandom(32))
+        payment = Payment.create(
+            subtask=subtask_id,
+            payee=payee,
+            value=value
+        )
+        self.pp.add(payment)
+
+        del self.pp._awaiting[:]
+        self.pp.load_from_db()
+        expected = [payment]
+        self.assertEqual(expected, self.pp._awaiting)
+
+        # Sent payments
+        self.assertEqual({}, self.pp._inprogress)
+        tx_hash = '0x' + encode_hex(urandom(32))
+        sent_payment = Payment.create(
+            subtask='sent' + str(uuid.uuid4()),
+            payee=payee,
+            value=value,
+            details=PaymentDetails(tx=tx_hash[2:]),
+            status=PaymentStatus.sent
+        )
+        sent_payment2 = Payment.create(
+            subtask='sent2' + str(uuid.uuid4()),
+            payee=payee,
+            value=value,
+            details=PaymentDetails(tx=tx_hash[2:]),
+            status=PaymentStatus.sent
+        )
+        self.pp.load_from_db()
+        expected = {
+            tx_hash: [sent_payment, sent_payment2],
+        }
+        self.assertEqual(expected, self.pp._inprogress)
 
     def test_eth_balance(self):
         expected_balance = random.randint(0, 2**128 - 1)
@@ -145,7 +191,8 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.pp.add(p)
         assert self.pp._gnt_reserved() == gnt_value
         assert self.pp._gnt_available() == balance_gntb - gnt_value
-        eth_reserved = self.pp.ETH_BATCH_PAYMENT_BASE + self.pp.ETH_PER_PAYMENT
+        eth_reserved = \
+            self.pp.ETH_BATCH_PAYMENT_BASE + self.pp.get_gas_cost_per_payment()
         assert self.pp._eth_reserved() == eth_reserved
         eth_available = balance_eth - eth_reserved
         assert self.pp._eth_available() == eth_available
@@ -165,7 +212,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.pp.monitor_progress()
         balance_eth_after_sendout = balance_eth - \
             self.pp.ETH_BATCH_PAYMENT_BASE - \
-            1 * self.pp.ETH_PER_PAYMENT
+            1 * self.pp.get_gas_cost_per_payment()
         self.sci.get_eth_balance.return_value = balance_eth_after_sendout
         assert len(inprogress) == 1
         assert tx_hash in inprogress
@@ -356,6 +403,10 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.GAS_PER_PAYMENT = 1
         self.sci.GAS_PRICE = 20
         self.sci.get_gate_address.return_value = None
+        self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE
+        latest_block = mock.Mock()
+        latest_block.gas_limit = 10 ** 10
+        self.sci.get_latest_block.return_value = latest_block
 
         self.tx_hash = '0xdead'
         self.sci.batch_transfer.return_value = self.tx_hash
@@ -584,6 +635,27 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         with freeze_time(timestamp_to_datetime(ts)):
             self.pp.sendout(0)
             self.sci.batch_transfer.assert_called_once_with([p], ts)
+
+    def test_block_gas_limit(self):
+        self.sci.get_eth_balance.return_value = denoms.ether
+        self.sci.get_gnt_balance.return_value = 0
+        self.sci.get_gntb_balance.return_value = 1000 * denoms.ether
+        self.sci.get_latest_block.return_value.gas_limit = \
+            (self.sci.GAS_BATCH_PAYMENT_BASE + self.sci.GAS_PER_PAYMENT) /\
+            self.pp.BLOCK_GAS_LIMIT_RATIO
+        self.pp.CLOSURE_TIME_DELAY = 0
+
+        p1 = make_awaiting_payment(value=1, ts=1)
+        p2 = make_awaiting_payment(value=2, ts=2)
+        self.pp.add(p1)
+        self.pp.add(p2)
+
+        with freeze_time(timestamp_to_datetime(10000)):
+            self.pp.sendout(0)
+            self.sci.batch_transfer.assert_called_with(
+                [p1],
+                1)
+            self.sci.batch_transfer.reset_mock()
 
 
 class FaucetTest(unittest.TestCase):

@@ -31,6 +31,7 @@ CORE_METHOD_MAP = dict(
     get_known_peers=        'net.peers.known',
     get_connected_peers=    'net.peers.connected',
 
+    block_node=             'net.peer.block',
     connect=                'net.peer.connect',
     connection_status=      'net.status',
 
@@ -62,6 +63,7 @@ CORE_METHOD_MAP = dict(
     abort_task=             'comp.task.abort',
     restart_task=           'comp.task.restart',
     get_subtasks_count = 'comp.task.subtasks_count',
+    restart_subtasks_from_task='comp.task.restart_subtasks',
 
     get_subtasks=           'comp.task.subtasks',
     get_subtasks_borders=   'comp.task.subtasks.borders',
