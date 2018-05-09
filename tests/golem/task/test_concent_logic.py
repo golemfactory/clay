@@ -21,8 +21,64 @@ from golem.task import taskstate
 
 
 reject_reasons = message.tasks.RejectReportComputedTask.REASON
+cannot_reasons = message.tasks.CannotComputeTask.REASON
 
 # pylint: disable=protected-access
+
+
+@mock.patch("golem.task.tasksession.TaskSession._check_ctd_params",
+            return_value=True)
+@mock.patch("golem.task.tasksession.TaskSession.send")
+class TaskToComputeConcentTestCase(testutils.TempDirFixture):
+    def setUp(self):
+        super().setUp()
+        self.msg = factories.tasks.TaskToComputeFactory()
+        self.task_session = tasksession.TaskSession(mock.MagicMock())
+
+    def assert_accepted(self, send_mock):  # pylint: disable=no-self-use
+        send_mock.assert_not_called()
+
+    def assert_rejected(
+            self,
+            send_mock,
+            reason=cannot_reasons.ConcentRequired):
+        send_mock.assert_called_once_with(mock.ANY)
+        msg = send_mock.call_args[0][0]
+        self.assertIsInstance(msg, message.tasks.CannotComputeTask)
+        self.assertIs(
+            msg.reason,
+            reason,
+        )
+
+    def test_requestor_failed_to_concent(self, send_mock, *_):
+        self.task_session.concent_service.enabled = True
+        self.msg.concent_enabled = False
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_rejected(send_mock)
+
+    def test_requestor_concented(self, send_mock, *_):
+        self.task_session.concent_service.enabled = True
+        self.msg.concent_enabled = True
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_accepted(send_mock)
+
+    def test_provider_doesnt_want_concent(self, send_mock, *_):
+        self.task_session.concent_service.enabled = False
+        self.msg.concent_enabled = False
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_accepted(send_mock)
+
+    def test_provider_doesnt_want_concent_but_requestor_insists(
+            self,
+            send_mock,
+            *_):
+        self.task_session.concent_service.enabled = False
+        self.msg.concent_enabled = True
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_rejected(
+            send_mock,
+            reason=cannot_reasons.ConcentDisabled,
+        )
 
 
 class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
