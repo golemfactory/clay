@@ -9,6 +9,7 @@ import factory
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import factories as msg_factories
 from golem_messages import message
+from golem_messages import cryptography
 
 from golem import testutils
 from golem.core import keysauth
@@ -171,6 +172,34 @@ class TaskServerMessageHandlerTestBase(
 
 
 class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
+    def setUp(self):
+        super().setUp()
+        self.provider_keys = cryptography.ECCx(None)
+        self.concent_keys = cryptography.ECCx(None)
+        self.requestor_keys = cryptography.ECCx(None)
+        self.client.concent_variant = {
+            'pubkey': self.concent_keys.raw_pubkey
+        }
+        self.task_server.keys_auth.raw_pubkey = self.requestor_keys.raw_pubkey
+
+    def get_vrct(self):
+        ttc = msg_factories.tasks.TaskToComputeFactory(
+            requestor_public_key=self.requestor_keys.raw_pubkey,
+            provider_public_key=self.provider_keys.raw_pubkey,
+            sign__privkey=self.requestor_keys.raw_privkey,
+        )
+        frct = msg_factories.concents.ForceReportComputedTaskFactory(
+            report_computed_task__task_to_compute=ttc,
+            report_computed_task__sign__privkey=self.provider_keys.raw_privkey,
+            sign__privkey=self.provider_keys.raw_privkey,
+        )
+        msg = msg_factories.concents.VerdictReportComputedTaskFactory(
+            force_report_computed_task=frct,
+        )
+        msg.ack_report_computed_task.sign_message(
+            self.concent_keys.raw_privkey)
+        msg.sign_message(self.concent_keys.raw_privkey)
+        return msg
 
     @mock.patch("golem.network.concent.received_handler.logger.warning")
     def test_concent_service_refused(self, logger_mock):
@@ -190,12 +219,8 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
             self,
             pull_mock,
             _mdt_mock):
-        msg = msg_factories.concents.VerdictReportComputedTaskFactory()
+        msg = self.get_vrct()
         library.interpret(msg)
-        self.assertEqual(
-            self.client.keys_auth.ecc.verify.call_count,
-            2,
-        )
         pull_mock.assert_called()
 
     @mock.patch("golem.task.taskserver.TaskServer.verify_results")
@@ -207,14 +232,9 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
             self,
             _mdt_mock,
             verify_mock):
-        self.client.keys_auth.ecc.verify.side_effect = \
-            msg_exceptions.InvalidSignature
         msg = msg_factories.concents.VerdictReportComputedTaskFactory()
-        library.interpret(msg)
-        ttc_from_ack = msg.ack_report_computed_task.task_to_compute
-        self.client.keys_auth.ecc.verify.assert_called_once_with(
-            inputb=ttc_from_ack.get_short_hash(),
-            sig=ttc_from_ack.sig)
+        with self.assertRaises(msg_exceptions.OwnershipMismatch):
+            library.interpret(msg)
         verify_mock.assert_not_called()
 
     @mock.patch("golem.task.taskserver.TaskServer.verify_results")

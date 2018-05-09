@@ -401,29 +401,43 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         assert not ts.msgs_to_send
         assert conn.close.called
 
+    def _get_srr(self, key2=None, concent=False):
+        key1 = 'known'
+        key2 = key2 or key1
+        srr = msg_factories.tasks.SubtaskResultsRejectedFactory(
+            report_computed_task__task_to_compute__concent_enabled=concent
+        )
+        ctk = self.task_session.task_manager.comp_task_keeper
+        ctk.get_node_for_task_id.return_value = key1
+        self.task_session.key_id = key2
+        return srr
+
+    def __call_react_to_srr(self, srr):
+        with patch('golem.task.tasksession.TaskSession.dropped') as dropped:
+            self.task_session._react_to_subtask_results_rejected(srr)
+        dropped.assert_called_once_with()
+
     def test_result_rejected(self):
-        # pylint: disable=no-value-for-parameter
-        self._test_result_rejected()
+        srr = self._get_srr()
+        self.__call_react_to_srr(srr)
+        self.task_session.task_server.subtask_rejected.assert_called_once_with(
+            subtask_id=srr.report_computed_task.subtask_id)  # noqa pylint:disable=no-member
 
     def test_result_rejected_with_wrong_key(self):
-        # pylint: disable=no-value-for-parameter
-        self._test_result_rejected(key_id="ABC2", called=False)
+        srr = self._get_srr(key2='notmine')
+        self.__call_react_to_srr(srr)
+        self.task_session.task_server.subtask_rejected.assert_not_called()
 
-    @patch('golem.task.tasksession.TaskSession.dropped')
-    def _test_result_rejected(self, dropped_mock, key_id="ABC", called=True):
-        msg = msg_factories.tasks.SubtaskResultsRejectedFactory()
-        ctk = self.task_session.task_manager.comp_task_keeper
-        ctk.get_node_for_task_id.return_value = "ABC"
-        self.task_session.key_id = key_id
-        self.task_session._react_to_subtask_results_rejected(msg)
-        ts = self.task_session.task_server
-        if called:
-            ts.subtask_rejected.assert_called_once_with(
-                subtask_id=msg.report_computed_task.subtask_id,
-            )
-        else:
-            ts.subtask_rejected.assert_not_called()
-        dropped_mock.assert_called_once_with()
+    def test_result_rejected_with_concent(self):
+        srr = self._get_srr(concent=True)
+        self.__call_react_to_srr(srr)
+        stm = self.task_session.concent_service.submit_task_message
+        stm.assert_called()
+        kwargs = stm.call_args_list[0][1]
+        self.assertEqual(kwargs['subtask_id'], srr.subtask_id)
+        self.assertIsInstance(kwargs['msg'],
+                              message.concents.SubtaskResultsVerify)
+        self.assertEqual(kwargs['msg'].subtask_results_rejected, srr)
 
     # pylint: disable=too-many-statements
     def test_react_to_task_to_compute(self):
@@ -903,7 +917,7 @@ class SubtaskResultsAcceptedTest(TestCase):
         extra_data = dict(
             result=pickle.dumps({'stdout': 'xyz'}),
             result_type=ResultType.DATA,
-            subtask_id=ttc.compute_task_def.get('subtask_id')
+            subtask_id=ttc.compute_task_def.get('subtask_id')  # noqa pylint:disable=no-member
         )
 
         self.task_session.send = Mock()

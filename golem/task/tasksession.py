@@ -661,30 +661,49 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if not self.check_requestor_for_subtask(msg.subtask_id):
             self.dropped()
             return
+        self.concent_service.cancel_task_message(
+            msg.subtask_id,
+            'ForceSubtaskResults',
+        )
         self.task_server.subtask_accepted(
             self.key_id,
             msg.subtask_id,
             msg.payment_ts,
         )
-        self.concent_service.cancel_task_message(
-            msg.subtask_id,
-            'ForceSubtaskResults',
-        )
         self.dropped()
 
     @history.provider_history
-    def _react_to_subtask_results_rejected(self, msg):
+    def _react_to_subtask_results_rejected(
+            self, msg: message.tasks.SubtaskResultsRejected):
         subtask_id = msg.report_computed_task.subtask_id
         if not self.check_requestor_for_subtask(subtask_id):
             self.dropped()
             return
-        self.task_server.subtask_rejected(
-            subtask_id=subtask_id,
-        )
         self.concent_service.cancel_task_message(
             subtask_id,
             'ForceSubtaskResults',
         )
+
+        if msg.task_to_compute.concent_enabled:
+            # if the Concent is enabled for this subtask, as a provider,
+            # knowing that we had done a proper job of computing it,
+            # we are delegating the verification to the Concent so that
+            # we can be paid for this subtask despite the rejection
+
+            srv = message.concents.SubtaskResultsVerify(
+                subtask_results_rejected=msg
+            )
+
+            self.concent_service.submit_task_message(
+                subtask_id=msg.subtask_id,
+                msg=srv,
+            )
+
+        else:
+            self.task_server.subtask_rejected(
+                subtask_id=subtask_id,
+            )
+
         self.dropped()
 
     def _react_to_task_failure(self, msg):
