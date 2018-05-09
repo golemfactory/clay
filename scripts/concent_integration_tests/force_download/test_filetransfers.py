@@ -45,7 +45,7 @@ class ForceGetTaskResultFiletransferTest(ForceDownloadBaseTest,
                 public_key=self.requestor_pub_key,
                 _private_key=self.requestor_priv_key
             ),
-            variant = self.variant,
+            variant=self.variant,
         )
 
     @property

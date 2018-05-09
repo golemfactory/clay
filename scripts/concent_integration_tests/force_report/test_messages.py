@@ -131,7 +131,7 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
     def test_reject_rct_cannot_compute_task(self):
         frct = self.get_frct()
         self.provider_send(frct)
-        frct_rcv = self.requestor_receive()
+        self.requestor_receive()
 
         ttc = frct.report_computed_task.task_to_compute  # noqa pylint:disable=no-member
         cct = msg_factories.tasks.CannotComputeTaskFactory(
@@ -152,7 +152,7 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
     def test_reject_rct_task_failure(self):
         frct = self.get_frct()
         self.provider_send(frct)
-        frct_rcv = self.requestor_receive()
+        self.requestor_receive()
 
         ttc = frct.report_computed_task.task_to_compute  # noqa pylint:disable=no-member
         tf = msg_factories.tasks.TaskFailureFactory(
