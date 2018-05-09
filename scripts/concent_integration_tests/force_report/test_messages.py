@@ -136,17 +136,17 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
         ttc = frct.report_computed_task.task_to_compute  # noqa pylint:disable=no-member
         cct = msg_factories.tasks.CannotComputeTaskFactory(
             task_to_compute=ttc,
-            subtask_id=ttc.subtask_id,
             sign__privkey=self.provider_priv_key,
+            reason=message.tasks.CannotComputeTask.REASON.NoSourceCode,
         )
 
         rrct = message.tasks.RejectReportComputedTask(
-            attached_task_to_compute=frct_rcv.
-            report_computed_task.task_to_compute,
             cannot_compute_task=cct,
             reason=message.tasks.RejectReportComputedTask.
             REASON.GotMessageCannotComputeTask,
         )
+
+        self.assertEqual(rrct.task_to_compute, ttc)
         self.send_and_verify_received_reject(rrct)
 
     def test_reject_rct_task_failure(self):
@@ -157,16 +157,14 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
         ttc = frct.report_computed_task.task_to_compute  # noqa pylint:disable=no-member
         tf = msg_factories.tasks.TaskFailureFactory(
             task_to_compute=ttc,
-            subtask_id=ttc.subtask_id,
             sign__privkey=self.provider_priv_key,
         )
 
         rrct = message.tasks.RejectReportComputedTask(
-            attached_task_to_compute=frct_rcv.
-            report_computed_task.task_to_compute,
             task_failure=tf,
             reason=message.tasks.RejectReportComputedTask.
             REASON.GotMessageTaskFailure,
         )
 
+        self.assertEqual(rrct.task_to_compute, ttc)
         self.send_and_verify_received_reject(rrct)
