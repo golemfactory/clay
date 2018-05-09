@@ -21,7 +21,8 @@ cache:
 before_install:
   - brew update
   - brew upgrade python
-  - brew install openexr freeimage
+  - brew install openexr freeimage 
+  - brew switch ilmbase 2.1.0
 
   # geth
   - wget https://gethstore.blob.core.windows.net/builds/${GETH_VER}.tar.gz
