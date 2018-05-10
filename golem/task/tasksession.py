@@ -524,6 +524,27 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.task_computer.session_closed()
             self.dropped()
             return
+
+        def _cannot_compute(reason):
+            logger.debug("Cannot %r", reason)
+            self.send(
+                message.tasks.CannotComputeTask(
+                    task_to_compute=msg,
+                    reason=reason,
+                ),
+            )
+            self.task_computer.session_closed()
+            self.dropped()
+
+        reasons = message.CannotComputeTask.REASON
+
+        if self.concent_service.enabled and not msg.concent_enabled:
+            # Provider requires concent if it's enabed locally
+            _cannot_compute(reasons.ConcentRequired)
+            return
+        if not self.concent_service.enabled and msg.concent_enabled:
+            # We can't provide what requestors wants
+            _cannot_compute(reasons.ConcentDisabled)
         if self._check_ctd_params(ctd)\
                 and self._set_env_params(ctd)\
                 and self.task_manager.comp_task_keeper.receive_subtask(msg):
@@ -532,14 +553,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
             if self.task_computer.task_given(ctd):
                 return
-        self.send(
-            message.CannotComputeTask(
-                task_to_compute=msg,
-                reason=self.err_msg
-            )
-        )
-        self.task_computer.session_closed()
-        self.dropped()
+        _cannot_compute(self.err_msg)
 
     def _react_to_waiting_for_results(self, _):
         self.task_computer.session_closed()
