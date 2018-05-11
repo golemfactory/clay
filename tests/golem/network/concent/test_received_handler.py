@@ -165,6 +165,13 @@ class TaskServerMessageHandlerTestBase(
 
         self.cf_transfer = self.client.concent_filetransfers.transfer
 
+        self.provider_keys = cryptography.ECCx(None)
+        self.concent_keys = cryptography.ECCx(None)
+        self.requestor_keys = cryptography.ECCx(None)
+        self.client.concent_variant = {
+            'pubkey': self.concent_keys.raw_pubkey
+        }
+
     def tearDown(self):
         # Remove registered handlers
         del self.task_server
@@ -174,12 +181,6 @@ class TaskServerMessageHandlerTestBase(
 class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
     def setUp(self):
         super().setUp()
-        self.provider_keys = cryptography.ECCx(None)
-        self.concent_keys = cryptography.ECCx(None)
-        self.requestor_keys = cryptography.ECCx(None)
-        self.client.concent_variant = {
-            'pubkey': self.concent_keys.raw_pubkey
-        }
         self.task_server.keys_auth.raw_pubkey = self.requestor_keys.raw_pubkey
 
     def get_vrct(self):
@@ -505,9 +506,22 @@ class ForceGetTaskResultDownloadTest(FileTransferTokenTests,  # noqa pylint:disa
                                      FiletransfersTestBase):
     MSG_FACTORY = msg_factories.concents.ForceGetTaskResultDownloadFactory
 
+    def setUp(self):
+        super().setUp()
+        self.task_server.keys_auth.raw_pubkey = self.requestor_keys.raw_pubkey
+
     def _get_message_ftt_wrong_type(self):
         return self.MSG_FACTORY(file_transfer_token__download=False,
                                 file_transfer_token__upload=True)
+
+    def _get_correct_message(self):
+        msg = super()._get_correct_message()
+        msg.force_get_task_result.sign_message(
+            private_key=self.requestor_keys.raw_privkey)
+        self.assertTrue(
+            msg.force_get_task_result.verify_signature(
+                self.requestor_keys.raw_pubkey))
+        return msg
 
     def test_force_get_task_result_download(self):
         fgtrd = self._get_correct_message()

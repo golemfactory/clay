@@ -121,6 +121,25 @@ class TaskServerMessageHandler():
     def concent_filetransfers(self) -> ConcentFiletransferService:
         return self.task_server.client.concent_filetransfers
 
+    def is_ours(self,
+                parent_msg: message.base.Message,
+                child_msg_field: str):
+        """
+        verify if the attached message bears our signature
+
+        :param parent_msg: the message that contains our orignal message
+        :param child_msg_field: the field to check
+        :return: bool: whether the field is present and correct
+        """
+        child_msg = getattr(parent_msg, child_msg_field, None)
+
+        if not (child_msg and child_msg.verify_signature(
+                public_key=self.task_server.keys_auth.raw_pubkey)):
+            logger.warning("%s invalid in %r", child_msg_field, parent_msg)
+            return False
+
+        return True
+
     @handler_for(message.concents.ServiceRefused)
     def on_service_refused(self, msg,
                            response_to: message.Message = None):
@@ -320,6 +339,31 @@ class TaskServerMessageHandler():
     def _log_ftt_invalid(msg: message.base.Message):
         logger.warning("File Transfer Token invalid in %r", msg)
 
+    def _upload_results(self, subtask_id, ftt, files_offset=0):
+        wtr = self.task_server.results_to_send.get(subtask_id, None)
+        if not wtr:
+            logger.warning(
+                "Cannot find the subtask %r in the send queue", subtask_id)
+            return
+
+        def success(response):
+            logger.debug("Concent results upload sucessful: %r, %s",
+                         subtask_id, response)
+
+        def error(exc):
+            logger.warning("Concent upload failed: %r, %s",
+                           subtask_id, exc)
+
+        self.concent_filetransfers.transfer(
+            file_path=wtr.result_path,
+            file_transfer_token=ftt,
+            success=success,
+            error=error)
+
+    def _upload_task_resources(self, subtask_id, ftt, files_offset):
+        # @todo implement resources upload
+        pass
+
     @handler_for(message.concents.ForceGetTaskResultUpload)
     def on_force_get_task_result_upload(
             self, msg: message.concents.ForceGetTaskResultUpload, **_):
@@ -334,25 +378,7 @@ class TaskServerMessageHandler():
             self._log_ftt_invalid(msg)
             return
 
-        wtr = self.task_server.results_to_send.get(msg.subtask_id, None)
-        if not wtr:
-            logger.warning(
-                "Cannot find the subtask %r in the send queue", msg.subtask_id)
-            return
-
-        def success(response):
-            logger.debug("Concent results upload sucessful: %r, %s",
-                         msg.subtask_id, response)
-
-        def error(exc):
-            logger.warning("Concent upload failed: %r, %s",
-                           msg.subtask_id, exc)
-
-        self.concent_filetransfers.transfer(
-            file_path=wtr.result_path,
-            file_transfer_token=ftt,
-            success=success,
-            error=error)
+        self._upload_results(msg.subtask_id, ftt)
 
     @handler_for(message.concents.ForceGetTaskResultDownload)
     def on_force_get_task_results_download(
@@ -372,11 +398,7 @@ class TaskServerMessageHandler():
 
         # verify if the attached `ForceGetTaskResult` bears our
         # (the requestor's) signature
-        fgtr = msg.force_get_task_result
-
-        if not fgtr or not concent_helpers.verify_message_signature(
-                fgtr, self.task_server.keys_auth.ecc):
-            logger.warning("ForceGetTaskResult invalid in %r", msg)
+        if not self.is_ours(msg, 'force_get_task_result'):
             return
 
         # everything okay, so we can proceed with download
@@ -385,7 +407,7 @@ class TaskServerMessageHandler():
         # normal verification procedure the same way we would do,
         # had we received the results from the Provider itself
 
-        rct = fgtr.report_computed_task
+        rct = msg.force_get_task_result.report_computed_task
 
         result_manager = self.task_server.task_manager.task_result_manager
         _, file_path = result_manager.get_file_name_and_path(
@@ -425,3 +447,26 @@ class TaskServerMessageHandler():
             success=success,
             error=error,
         )
+
+    @handler_for(message.concents.AckSubtaskResultsVerify)
+    def on_ack_subtask_results_verify(
+            self, msg: message.concents.AckSubtaskResultsVerify, **_):
+        """
+        Concent acknowledges the reception of the `SubtaskResultsVerify`
+        message and grants upload access using the attached `FileTransferToken`
+        """
+
+        logger.debug(
+            "Results available for download from the Concent, subtask: %r",
+            msg.subtask_id)
+
+        ftt = msg.file_transfer_token
+        if not ftt or not ftt.is_upload:
+            self._log_ftt_invalid(msg)
+            return
+
+        if not self.is_ours(msg, 'subtask_results_verify'):
+            return
+
+        self._upload_task_resources(msg.subtask_id, ftt, 0)
+        self._upload_results(msg.subtask_id, ftt, 1)
