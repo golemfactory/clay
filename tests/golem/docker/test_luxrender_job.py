@@ -16,7 +16,7 @@ class TestLuxRenderDockerJob(TestDockerJob):
         return "golemfactory/luxrender"
 
     def _get_test_tag(self):
-        return "1.2"
+        return "1.3"
 
     def test_luxrender_job(self):
         app_dir = path.join(get_golem_path(), "apps", "lux")

@@ -33,7 +33,7 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
             task_server.client.datadir
         task_computer = TaskComputer("node", task_server,
                                      use_docker_manager=False)
-        image = DockerImage("golemfactory/base", tag="1.2")
+        image = DockerImage("golemfactory/base", tag="1.3")
 
         with self.assertRaises(AttributeError):
             DockerTaskThread(task_computer, "subtask_id", None,

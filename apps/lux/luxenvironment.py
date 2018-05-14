@@ -6,7 +6,7 @@ from golem.docker.environment import DockerEnvironment
 
 class LuxRenderEnvironment(DockerEnvironment):
     DOCKER_IMAGE = "golemfactory/luxrender"
-    DOCKER_TAG = "1.2"
+    DOCKER_TAG = "1.3"
     ENV_ID = "LUXRENDER"
     APP_DIR = path.join(get_golem_path(), 'apps', 'lux')
     SCRIPT_NAME = "docker_luxtask.py"
