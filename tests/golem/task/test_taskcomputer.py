@@ -10,6 +10,7 @@ from golem_messages.message import ComputeTaskDef
 from golem.client import ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
+from golem.monitor.test_helper import meta_data
 from golem.network.p2p.node import Node as P2PNode
 from golem.task.taskbase import ResultType
 from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
@@ -370,14 +371,8 @@ class TestTaskMonitor(DatabaseFixture):
         from golem.monitor.monitor import SystemMonitor
         from golem.monitorconfig import MONITOR_CONFIG
         #  hold reference to avoid GC of monitor
-        client_mock = mock.MagicMock()
-        client_mock.cliid = 'CLIID'
-        client_mock.sessid = 'SESSID'
-        client_mock.config_desc = ClientConfigDescriptor()
-        client_mock.mainnet = False
         monitor = SystemMonitor(  # noqa pylint: disable=unused-variable
-            NodeMetadataModel(client_mock, "hackix", "3.1337"),
-            MONITOR_CONFIG)
+            meta_data(), MONITOR_CONFIG)
         task_server = mock.MagicMock()
         task_server.config_desc = ClientConfigDescriptor()
         task = TaskComputer("ABC", task_server,

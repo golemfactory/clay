@@ -3,6 +3,7 @@ import time
 from unittest import mock, TestCase
 from urllib.parse import urljoin
 
+import sys
 from random import Random
 import requests
 from freezegun import freeze_time
@@ -11,8 +12,8 @@ from pydispatch import dispatcher
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core import variables
-from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor, SenderThread
+from golem.monitor.test_helper import meta_data
 from golem.monitorconfig import MONITOR_CONFIG
 from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats, \
     EMPTY_FINISHED_SUMMARY
@@ -26,17 +27,10 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
     )
 
     def setUp(self):
-        client_mock = mock.MagicMock()
-        client_mock.get_key_id = mock.MagicMock(return_value='cliid')
-        client_mock.session_id = 'sessid'
-        client_mock.config_desc = ClientConfigDescriptor()
-        client_mock.mainnet = False
-        meta_data = NodeMetadataModel(
-            client_mock, 'os', 'ver')
         config = MONITOR_CONFIG.copy()
         config['HOST'] = 'http://localhost/88881'
         config['SENDER_THREAD_TIMEOUT'] = 0.05
-        self.monitor = SystemMonitor(meta_data, config)
+        self.monitor = SystemMonitor(meta_data(), config)
         self.monitor.start()
 
     def tearDown(self):
@@ -60,14 +54,7 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
                 EMPTY_FINISHED_SUMMARY))
         ccd = ClientConfigDescriptor()
         ccd.node_name = "new node name"
-        client_mock = mock.MagicMock()
-        client_mock.cliid = 'CLIID'
-        client_mock.sessid = 'SESSID'
-        client_mock.config_desc = ccd
-        client_mock.mainnet = False
-        new_meta_data = NodeMetadataModel(
-            client_mock, "win32", "1.3")
-        self.monitor.on_config_update(new_meta_data)
+        self.monitor.on_config_update(meta_data())
         self.monitor.on_logout()
 
     def test_login_logout_messages(self):
@@ -95,15 +82,16 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
                         'metadata': {
                             'type': 'NodeMetadata',
                             'net': 'testnet',
+                            'concent': True,
                             'timestamp': mock.ANY,
-                            'cliid': 'cliid',
-                            'sessid': 'sessid',
-                            'os': 'os',
-                            'version': 'ver',
+                            'cliid': 'CLIID',
+                            'sessid': 'SESSID',
+                            'os': sys.platform,
+                            'version': 'app_version',
                             'settings': mock.ANY,
                         },
-                        'cliid': 'cliid',
-                        'sessid': 'sessid',
+                        'cliid': 'CLIID',
+                        'sessid': 'SESSID',
                         'timestamp': mock.ANY,
                     }
                 }

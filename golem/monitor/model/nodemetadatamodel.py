@@ -15,6 +15,7 @@ class NodeMetadataModel(BasicModel):
         self.settings = defaultserializer.serialize("ClientConfigDescriptor",
                                                     client.config_desc)
         self.net = 'mainnet' if client.mainnet else 'testnet'
+        self.concent = client.concent_service.enabled
 
 
 class NodeInfoModel(BasicModel):
