@@ -66,14 +66,14 @@ class ConcentBaseTest:
         return client.send_to_concent(
             msg,
             signing_key=signing_key or self.provider_priv_key,
-            variant=self.variant,
+            concent_variant=self.variant,
         )
 
     def receive_from_concent(self, signing_key=None, public_key=None):
         return client.receive_from_concent(
             signing_key=signing_key or self.provider_priv_key,
             public_key=public_key or self.provider_pub_key,
-            variant=self.variant,
+            concent_variant=self.variant,
         )
 
     def provider_send(self, msg):

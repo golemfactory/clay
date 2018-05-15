@@ -96,11 +96,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
     def _get_task_header(self, task_id, timeout, subtask_timeout):
         return TaskHeader(
-            node_name="test_node_%s" % (self.test_nonce,),
             task_id=task_id,
-            task_owner_address="task_owner_address_%s" % (self.test_nonce,),
-            task_owner_port="task_owner_port_%s" % (self.test_nonce,),
-            task_owner_key_id="task_owner_key_id_%s" % (self.test_nonce,),
+            task_owner=Mock(
+                key="task_owner_key_%s" % (self.test_nonce,),
+                node_name="test_node_%s" % (self.test_nonce,),
+                pub_addr="task_owner_address_%s" % (self.test_nonce,),
+                pub_port="task_owner_port_%s" % (self.test_nonce,),
+            ),
             environment="test_environ_%s" % (self.test_nonce,),
             resource_size=2 * 1024,
             estimated_memory=3 * 1024,
@@ -182,7 +184,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         defaults = DummyTaskDefaults()
         tdd = DummyTaskDefinition(defaults)
         dm = DirManager(self.path)
-        dtb = DummyTaskBuilder("MyNodeName", tdd, self.path, dm)
+        dtb = DummyTaskBuilder(Node(node_name="MyNode"), tdd, dm)
 
         dummy_task = dtb.build()
         header = self._get_task_header(task_id=task_id, timeout=120.0,
@@ -378,7 +380,11 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')
     def test_computed_task_received(self, dump_mock):
-        th = TaskHeader("ABC", "xyz", "10.10.10.10", 1024, "key_id", "DEFAULT")
+        owner = Node(node_name="ABC",
+                     pub_addr="10.10.10.10",
+                     pub_port=1024,
+                     key="key_id")
+        th = TaskHeader("xyz", "DEFAULT", owner)
         th.max_price = 50
 
         class TestTask(Task):
@@ -637,8 +643,12 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     def test_resource_send(self):
         from pydispatch import dispatcher
         self.tm.task_persistence = True
+        owner = Node(node_name="ABC",
+                     pub_addr="10.10.10.10",
+                     pub_port=1023,
+                     key="abcde")
         t = Task(
-            TaskHeader("ABC", "xyz", "10.10.10.10", 1023, "abcde", "DEFAULT"),
+            TaskHeader("xyz", "DEFAULT", owner),
             "print 'hello world'", None)
         listener_mock = Mock()
 
@@ -792,14 +802,14 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert len(borders) == 0
 
     def test_update_signatures(self):
+        # pylint: disable=abstract-class-instantiated
 
         node = Node(
             node_name="node", key="key_id", prv_addr="10.0.0.10",
             prv_port=40103, pub_addr="1.2.3.4", pub_port=40103,
             p2p_prv_port=40102, p2p_pub_port=40102
         )
-        task = Task(TaskHeader("node", "task_id", "1.2.3.4", 1234,
-                               "key_id", "environment", task_owner=node), '',
+        task = Task(TaskHeader("task_id", "environment", task_owner=node), '',
                     TaskDefinition())
 
         self.tm.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
@@ -931,8 +941,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             state.extra_data = dict(result_preview=previews[i % 3])
             state.subtask_states = subtask_states
 
-            task = BlenderRenderTask(node_name='node',
-                                     task_definition=definition,
+            task = BlenderRenderTask(task_definition=definition,
+                                     owner=Node(node_name='node'),
                                      total_tasks=n,
                                      root_path=self.path)
             task.initialize(dirmanager.DirManager(self.path))

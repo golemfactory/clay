@@ -12,6 +12,7 @@ from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.common import is_linux
 from golem.core.fileshelper import outer_dir_path
 from golem.core.simpleserializer import CBORSerializer
+from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ResultType, TaskEventListener
 from golem.task.taskstate import SubtaskStatus
@@ -52,8 +53,9 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         task_def = self._get_core_task_definition()
 
         # abstract class cannot be instantiated
+        # pylint: disable=abstract-class-instantiated
         with self.assertRaises(TypeError):
-            CoreTask(task_def, "node_name")
+            CoreTask(task_def, owner=Node(node_name="ABC"))
 
         class CoreTaskDeabstacted(CoreTask):
 
@@ -86,10 +88,12 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         task_def = TestCoreTask._get_core_task_definition()
         task = self.CoreTaskDeabstracted(
             task_definition=task_def,
-            node_name="ABC",
-            owner_address="10.10.10.10",
-            owner_port=123,
-            owner_key_id="key",
+            owner=Node(
+                node_name="ABC",
+                pub_addr="10.10.10.10",
+                pub_port=123,
+                key="key",
+            ),
             resource_size=1024
         )
         dm = DirManager(self.path)
@@ -604,15 +608,14 @@ class TestTaskTypeInfo(TestCase):
 class TestCoreTaskBuilder(TestCase):
 
     def _get_core_task_builder(self):
-        return CoreTaskBuilder("Node1", MagicMock(), "path", MagicMock())
+        return CoreTaskBuilder(MagicMock(), MagicMock(), MagicMock())
 
     def test_init(self):
         builder = self._get_core_task_builder()
         assert builder.TASK_CLASS == CoreTaskBuilder.TASK_CLASS
         assert builder.TASK_CLASS == CoreTask
         assert builder.task_definition is not None
-        assert builder.node_name == "Node1"
-        assert builder.root_path == "path"
+        assert builder.owner is not None
         assert isinstance(builder.dir_manager, MagicMock)
 
     def test_get_task_kwargs(self):
@@ -626,7 +629,7 @@ class TestCoreTaskBuilder(TestCase):
         assert kwargs["arg1"] == "arg1"
         assert kwargs["arg2"] == 1380
         assert kwargs["arg3"] == c
-        assert kwargs["node_name"] == "Node1"
+        assert kwargs["owner"] is not None
         assert isinstance(kwargs["task_definition"], MagicMock)
 
     def test_build(self):

@@ -4,7 +4,7 @@ import math
 
 from apps.rendering.resources.imgrepr import (ImgRepr, PILImgRepr)
 
-from golem.verification.verifier import SubtaskVerificationState
+from golem_verificator.verifier import SubtaskVerificationState
 
 from ssim import compute_ssim
 
@@ -13,9 +13,6 @@ logger = logging.getLogger("apps.rendering")
 
 class ImgStatistics(object):
     def __init__(self, base_img: ImgRepr, img: ImgRepr):
-        if not isinstance(base_img, ImgRepr) or not isinstance(img, ImgRepr):
-            raise TypeError("base_img and img must be ImgRepr")
-
         if base_img.get_size() != img.get_size():
             raise ValueError('base_img and img are of different sizes.')
 

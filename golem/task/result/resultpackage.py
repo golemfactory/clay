@@ -200,7 +200,6 @@ class TaskResultDescriptor(PrintableObject):  # noqa pylint:disable=too-few-publ
         self.result_type = task_result.result_type
         self.task_id = task_result.task_id
         self.subtask_id = task_result.subtask_id
-        self.owner_key_id = task_result.owner_key_id
         self.owner = task_result.owner
 
 
