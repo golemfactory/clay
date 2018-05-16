@@ -1,9 +1,9 @@
 import os
-from abc import abstractmethod
-from multiprocessing import Pipe, Process
+
+from multiprocessing import Pipe
 from typing import Optional, Union, Tuple, List, Dict
 
-from golem.core.service import IService
+from golem.core.service import ProcessService
 from golem.resource.base.resourcesmanager import ResourceManagerProxyServer, \
     ResourceManagerProxyClient, ResourceManagerOptions
 
@@ -22,54 +22,17 @@ class _ResourceManagerEntry:  # pylint: disable=too-few-public-methods
         self.from_server_conn, self.to_client_conn = Pipe(duplex=False)
 
 
-class _ProcessService(IService):
-
-    def __init__(self):
-        self._process: Optional[Process] = None
-
-    def start(self) -> None:
-        if self._process:
-            raise RuntimeError('process already spawned')
-
-        self._process = Process(
-            target=self._spawn,
-            args=self._get_process_args(),
-        )
-        self._process.daemon = True
-        self._process.start()
-
-    def stop(self) -> None:
-        if not self._process:
-            return
-
-        process = self._process
-        self._process = None
-        process.terminate()
-        process.join()
-
-    def running(self) -> bool:
-        if self._process:
-            return self._process.is_alive()
-        return False
-
-    @abstractmethod
-    def _get_process_args(self) -> Union[Tuple, List]:
-        pass
-
-    @classmethod
-    def _spawn(cls, *args) -> None:
-        pass
-
-
-class _Process(_ProcessService):
+class _Process(ProcessService):
 
     def __init__(self, *resource_manager_options) -> None:
         super().__init__()
 
         self._process = None
         self._servers: Dict[str, ResourceManagerProxyServer] = dict()
-        self._entries = {options.key: _ResourceManagerEntry(options)
-                         for options in resource_manager_options}
+        self._entries = {
+            options.key: _ResourceManagerEntry(options)
+            for options in resource_manager_options
+        }
 
     def server(self, key: str) -> ResourceManagerProxyServer:
 
@@ -89,7 +52,7 @@ class _Process(_ProcessService):
         server.start()
         return server
 
-    def _get_process_args(self) -> Union[Tuple, List]:
+    def _get_spawn_arguments(self) -> Union[Tuple, List]:
         return [
             (entry.resource_manager_options,
              entry.from_server_conn,
