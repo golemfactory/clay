@@ -62,7 +62,7 @@ class _AllowAcl(Acl):
         return node_id in self._allow_set
 
     def disallow(self, node_id: str,
-                 _timeout_seconds: int = 0,
+                 timeout_seconds: int = 0,
                  persist: bool = False) -> None:
         self._allow_set.discard(node_id)
 

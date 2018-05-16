@@ -27,7 +27,7 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, unittest.TestCase):
                 'task_to_compute__'),
             **kwargs,
         )
-        response = self.provider_send(fsr)
+        response = self.provider_load_response(self.provider_send(fsr))
         self.assertIn(
             type(response),
             [
@@ -132,7 +132,8 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, unittest.TestCase):
         )
 
     def test_requestor_responds_with_accept(self):
-        self.provider_send_force()
+        response = self.provider_send_force()
+        self.assertIsNone(response)
         fsr = self.requestor_receive()
         # Check providers signature
         self.assertTrue(

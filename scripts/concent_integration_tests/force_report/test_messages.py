@@ -4,8 +4,6 @@ import unittest
 from golem_messages import factories as msg_factories
 from golem_messages import message
 
-from golem.core import variables
-
 from ..base import ConcentBaseTest
 
 
@@ -112,7 +110,7 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
 
         arct_rcv = frct_response.ack_report_computed_task
         self.assertIsInstance(arct_rcv, message.tasks.AckReportComputedTask)
-        arct_rcv.verify_signature(variables.CONCENT_PUBKEY)
+        arct_rcv.verify_signature(self.variant['pubkey'])
         self.assertEqual(arct_rcv.report_computed_task,
                          frct.report_computed_task)
 
