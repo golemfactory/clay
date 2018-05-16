@@ -718,12 +718,10 @@ class TaskManager(TaskEventListener):
                     t.get_total_tasks(),
                     t.get_active_tasks(),
                     t.get_progress(),
-                    None,  # t.short_extra_data_repr(extra_data={})
+                    t.short_extra_data_repr(2200.0)
                 )  # FIXME in short_extra_data_repr should there be extra data
                 # Issue #2460
                 tasks_progresses[task_id] = ltss
-
-        logger.info('all progress %r', tasks_progresses)
 
         return tasks_progresses
 
@@ -1002,9 +1000,6 @@ class TaskManager(TaskEventListener):
             op=op,
         )
 
-        logger.info('taskOp %r', op)
-
         if self.finished_cb and persist and op \
                 and op.task_related() and op.is_completed():
-            logger.info('Finished_cb')
             self.finished_cb()
