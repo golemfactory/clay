@@ -1196,6 +1196,22 @@ class Client(HardwarePresetsMixin):
         return self.task_server.task_manager.get_estimated_cost(task_type,
                                                                 options)
 
+    def get_estimated_costs(
+            self,
+            task_type: str,
+            price: int,
+            subtask_time: int,
+            num_subtasks: int) -> Dict[str, int]:
+        return {
+            'GNT': self.task_server.task_manager.get_task_cost(
+                task_type,
+                price,
+                subtask_time,
+                num_subtasks,
+            ),
+            'ETH': self.transaction_system.eth_for_batch_payment(num_subtasks),
+        }
+
     def get_performance_values(self):
         return self.environments_manager.get_performance_values()
 

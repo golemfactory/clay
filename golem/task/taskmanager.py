@@ -26,7 +26,7 @@ from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task
-from golem.task.taskkeeper import CompTaskKeeper
+from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     SubtaskState, Operation, TaskOp, SubtaskOp, OtherOp
@@ -907,6 +907,14 @@ class TaskManager(TaskEventListener):
         except (KeyError, ValueError):
             logger.exception("Cannot estimate price, wrong params")
             return None
+
+    @staticmethod
+    def get_task_cost(
+            task_type: str,
+            price: int,
+            subtask_time: int,
+            num_subtasks: int) -> int:
+        return compute_subtask_value(price, subtask_time) * num_subtasks
 
     def __add_subtask_to_tasks_states(self, node_name, node_id,
                                       ctd, address):
