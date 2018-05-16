@@ -718,7 +718,7 @@ class TaskManager(TaskEventListener):
                     t.get_total_tasks(),
                     t.get_active_tasks(),
                     t.get_progress(),
-                    None, # t.short_extra_data_repr(extra_data={})
+                    None,  # t.short_extra_data_repr(extra_data={})
                 )  # FIXME in short_extra_data_repr should there be extra data
                 # Issue #2460
                 tasks_progresses[task_id] = ltss
@@ -815,8 +815,8 @@ class TaskManager(TaskEventListener):
 
         self.dir_manager.clear_temporary(task_id)
         self.remove_dump(task_id)
-        self.finished_cb()
-
+        if self.finished_cb:
+            self.finished_cb()
 
     @handle_task_key_error
     def query_task_state(self, task_id):
@@ -1004,6 +1004,7 @@ class TaskManager(TaskEventListener):
 
         logger.info('taskOp %r', op)
 
-        if persist and op and op.task_related() and op.is_completed():
+        if self.finished_cb and persist and op \
+                and op.task_related() and op.is_completed():
             logger.info('Finished_cb')
             self.finished_cb()

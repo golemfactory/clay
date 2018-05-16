@@ -704,9 +704,9 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             self.tm.check_timeouts()
             assert self.tm.tasks_states["qwe"].status == TaskStatus.timeout
             assert self.tm.tasks_states["qwe"].subtask_states[
-                       "qwerty"].subtask_status == SubtaskStatus.failure
-            checker([("qwe", None, TaskOp.TIMEOUT),
-                     ("qwe", "qwerty", SubtaskOp.TIMEOUT)])
+                "qwerty"].subtask_status == SubtaskStatus.failure
+            checker([("qwe", "qwerty", SubtaskOp.TIMEOUT),
+                     ("qwe", None, TaskOp.TIMEOUT)])
             del handler
 
     def test_task_event_listener(self):
