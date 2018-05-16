@@ -529,6 +529,9 @@ class Client(HardwarePresetsMixin):
         self._unlock_datadir()
 
     def enqueue_new_task(self, task_dict):
+        if self.config_desc.in_shutdown:
+            raise Exception('Can not enqueue tasks when shutdown is in progress, '
+                            'toggle shutdown mode off to create a new tasks.')
         task_manager = self.task_server.task_manager
         _result = Deferred()
 

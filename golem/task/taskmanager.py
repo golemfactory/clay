@@ -1004,5 +1004,6 @@ class TaskManager(TaskEventListener):
 
         logger.info('taskOp %r', op)
 
-        if op and TaskOp.is_completed(op):
+        if persist and op and op.task_related() and op.is_completed():
+            logger.info('Finished_cb')
             self.finished_cb()
