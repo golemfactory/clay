@@ -12,6 +12,7 @@ from pathlib import Path
 from threading import Lock, Thread
 from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
+from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -536,6 +537,14 @@ class Client(HardwarePresetsMixin):
 
         if self.transaction_system:
             self.funds_locker.lock_funds(task)
+            min_amount, opt_amount = msg_helpers.requestor_deposit_amount(
+                task.price,
+            )
+            # Could raise golem.transactions.ethereum.exceptions.NotEnoughFunds
+            self.transaction_system.concent_deposit(
+                required=min_amount,
+                expected=opt_amount,
+            )
 
         task_id = task.header.task_id
         logger.info('Enqueue new task "%r"', task_id)
