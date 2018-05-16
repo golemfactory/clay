@@ -85,9 +85,9 @@ class TaskManager(TaskEventListener):
         self.keys_auth = keys_auth
         self.key_id = keys_auth.key_id
 
-        self.tasks = {}  # type: Dict[str, Task]
-        self.tasks_states = {}  # type: Dict[str, TaskState]
-        self.subtask2task_mapping = {}  # type: Dict[str, str]
+        self.tasks: Dict[str, Task] = {}
+        self.tasks_states: Dict[str, TaskState] = {}
+        self.subtask2task_mapping: Dict[str, str] = {}
 
         self.listen_address = listen_address
         self.listen_port = listen_port
@@ -230,6 +230,8 @@ class TaskManager(TaskEventListener):
             task_id = None
             with path.open('rb') as f:
                 try:
+                    task: Task
+                    state: TaskState
                     task, state = pickle.load(f)
                     task.register_listener(self)
 
