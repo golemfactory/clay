@@ -41,7 +41,8 @@ class TaskComputer(object):
     lock = Lock()
     dir_lock = Lock()
 
-    def __init__(self, node_name, task_server, use_docker_manager=True) -> None:
+    def __init__(self, node_name, task_server, use_docker_manager=True,
+                 finished_cb=None) -> None:
         """ Create new task computer instance
         :param node_name:
         :param task_server:
@@ -92,6 +93,8 @@ class TaskComputer(object):
         # Should this node behave as provider and compute tasks?
         self.compute_tasks = task_server.config_desc.accept_tasks \
             and not task_server.config_desc.in_shutdown
+        self.finished_cb = finished_cb
+
 
     def task_given(self, ctd):
         if ctd['subtask_id'] in self.assigned_subtasks:
@@ -231,6 +234,8 @@ class TaskComputer(object):
                         success=was_success, value=work_time_to_be_paid)
 
         self.counting_task = None
+        if self.finished_cb:
+            self.finished_cb()
 
     def run(self):
         """ Main loop of task computer """
@@ -419,6 +424,9 @@ class TaskComputer(object):
                 "Host direct task not supported",
             )
             self.counting_task = None
+            if self.finished_cb:
+                self.finished_cb()
+
             return
 
         self.counting_thread = tt
