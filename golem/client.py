@@ -511,7 +511,8 @@ class Client(HardwarePresetsMixin):
         logger.info('Shutting down ...')
         self.stop()
 
-        self.transaction_system.stop()
+        if self.transaction_system:
+            self.transaction_system.stop()
         if self.diag_service:
             self.diag_service.unregister_all()
         if self.daemon_manager:
@@ -921,14 +922,22 @@ class Client(HardwarePresetsMixin):
 
     @inlineCallbacks
     def get_balance(self):
+        if not self.transaction_system:
+            return None
         gnt, av_gnt, eth, \
             last_gnt_update, \
             last_eth_update = yield self.transaction_system.get_balance()
         gnt_lock, eth_lock = self.funds_locker.sum_locks()
         if gnt is not None:
-            return str(gnt), str(av_gnt), str(eth), str(gnt_lock), \
-                   str(eth_lock), str(last_gnt_update), str(last_eth_update)
-        return None, None, None, None, None, None, None
+            return {'gnt': str(gnt),
+                    'av_gnt': str(av_gnt),
+                    'eth': str(eth),
+                    'gnt_lock': str(gnt_lock),
+                    'eth_lock': str(eth_lock),
+                    'last_gnt_update': str(last_gnt_update),
+                    'last_eth_update': str(last_eth_update)
+                    }
+        return None
 
     def get_payments_list(self):
         return self.transaction_system.get_payments_list()

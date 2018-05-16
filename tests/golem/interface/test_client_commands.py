@@ -49,13 +49,13 @@ class TestAccount(unittest.TestCase):
         client.get_computing_trust.return_value = .01
         client.get_requesting_trust.return_value = .02
         client.get_payment_address.return_value = 'f0f0f0ababab'
-        client.get_balance.return_value = (
-            3 * denoms.ether,
-            2 * denoms.ether,
-            denoms.ether,
-            0.01 * denoms.ether,
-            0.02 * denoms.ether
-        )
+        client.get_balance.return_value = {
+            'gnt': 3 * denoms.ether,
+            'av_gnt': 2 * denoms.ether,
+            'eth': denoms.ether,
+            'gnt_lock': 0.01 * denoms.ether,
+            'eth_lock': 0.02 * denoms.ether
+        }
 
         with client_ctx(Account, client):
             result = Account().info()
