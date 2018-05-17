@@ -233,6 +233,16 @@ class TaskManager(TaskEventListener):
                     task: Task
                     state: TaskState
                     task, state = pickle.load(f)
+
+                    # workaround #2768
+                    if isinstance(state.status, str):
+                        state.status = TaskStatus(state.status)
+                    subtask_state: SubtaskState
+                    for subtask_state in state.subtask_states.values():
+                        if isinstance(subtask_state.subtask_status, str):
+                            subtask_state.subtask_status = \
+                                SubtaskStatus(subtask_state.subtask_status)
+
                     task.register_listener(self)
 
                     task_id = task.header.task_id
