@@ -27,6 +27,11 @@ class PendingResource(object):
         self.client_options = client_options
         self.status = status
 
+    def compare_resource(self, other) -> bool:
+        return len(self.resource) == len(other) == 2 \
+            and self.resource[0] == other[0] \
+            and self.resource[1] == other[1]
+
 
 class BaseResourceServer(object):
 
@@ -113,7 +118,9 @@ class BaseResourceServer(object):
             pending_resources = self.pending_resources.get(task_id, [])
 
             for i, pending_resource in enumerate(pending_resources):
-                if pending_resource.resource == resource:
+                # resource might have been serialized with CBOR and contain
+                # lists instead of tuples; use a case-aware comparison function
+                if pending_resource.compare_resource(resource):
                     pending_resources.pop(i)
                     break
 
