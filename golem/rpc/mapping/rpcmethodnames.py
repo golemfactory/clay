@@ -31,6 +31,7 @@ CORE_METHOD_MAP = dict(
     get_known_peers=        'net.peers.known',
     get_connected_peers=    'net.peers.connected',
 
+    block_node=             'net.peer.block',
     connect=                'net.peer.connect',
     connection_status=      'net.status',
 
