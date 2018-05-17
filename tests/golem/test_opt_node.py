@@ -100,7 +100,8 @@ class TestNode(TestWithDatabase):
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
                                        use_monitor=False,
-                                       apps_manager=ANY)
+                                       apps_manager=ANY,
+                                       task_finished_cb=node.check_shutdown)
         self.assertEqual(
             self.node_kwargs['config_desc'].node_address,
             mock_client.mock_calls[0][2]['config_desc'].node_address,
@@ -164,7 +165,8 @@ class TestNode(TestWithDatabase):
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
                                        use_monitor=False,
-                                       apps_manager=ANY)
+                                       apps_manager=ANY,
+                                       task_finished_cb=node.check_shutdown)
 
     def test_geth_address_wo_http_should_fail(self, *_):
         runner = CliRunner()
@@ -241,7 +243,8 @@ class TestNode(TestWithDatabase):
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
                                        use_monitor=False,
-                                       apps_manager=ANY)
+                                       apps_manager=ANY,
+                                       task_finished_cb=node.check_shutdown)
 
     @patch('golem.node.Node')
     def test_mainnet_should_be_passed_to_node(self, mock_node, *_):
@@ -288,7 +291,8 @@ class TestNode(TestWithDatabase):
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
                                        use_monitor=False,
-                                       apps_manager=ANY)
+                                       apps_manager=ANY,
+                                       task_finished_cb=node.check_shutdown)
 
     @patch('golem.node.Node')
     def test_net_testnet_should_be_passed_to_node(self, mock_node, *_):
@@ -448,7 +452,8 @@ class TestNode(TestWithDatabase):
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
                                        use_monitor=False,
-                                       apps_manager=ANY)
+                                       apps_manager=ANY,
+                                       task_finished_cb=node.check_shutdown)
 
     @patch('golem.node.Node')
     def test_single_peer(self, mock_node: MagicMock, *_):
