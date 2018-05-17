@@ -36,8 +36,8 @@ def _patch_environment(net) -> Generator:
     os_environ.update({GOLEM_ENVIRONMENT_VARIABLE: net})
     os_environ.pop(CONCENT_ENVIRONMENT_VARIABLE, None)
 
-    sys_modules = dict(sys.modules)
     sys.modules.pop(CONFIG_MODULE, None)
+    sys_modules = dict(sys.modules)
 
     with mock.patch('os.environ', os_environ):
         with mock.patch('sys.modules', sys_modules):
