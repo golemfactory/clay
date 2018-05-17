@@ -25,8 +25,6 @@ class ResourceError(RuntimeError):
 
 class Resource:
 
-    __slots__ = ('hash', 'files', 'path', 'task_id')
-
     def __init__(self, resource_hash, task_id=None, files=None, path=None):
         self.hash = resource_hash
         self.task_id = task_id
