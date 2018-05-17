@@ -62,7 +62,7 @@ class IPCService(ThreadedService):
         self._write_conn = write_conn
 
     @abstractmethod
-    def send(self, key, *args, **kwargs) -> Optional[Deferred]:
+    def send(self, key: str, *args, **kwargs) -> Optional[Deferred]:
         pass
 
     @abstractmethod
@@ -117,16 +117,19 @@ class IPCService(ThreadedService):
 
 class IPCServerService(IPCService, metaclass=ABCMeta):
 
-    METHODS = set()
+    METHODS = set()  # collection of methods to proxify
 
     def __init__(self, read_conn, write_conn):
         super().__init__(read_conn, write_conn)
 
-        self._requests: Dict[str, Deferred] = dict()
-        self._functions: Dict[str, FunctionType] = dict()
+        self._requests: Dict[str, Deferred] = dict()  # deferred requests
+        self._functions: Dict[str, FunctionType] = dict()  # proxy functions
 
     def __getattribute__(self, item: str) -> Any:
-        """ Creates an IPC proxy method for all specified METHODS """
+        """
+        Create and return a proxy function for any method in METHODS;
+        return all other properties as-is.
+        """
 
         if item != 'METHODS' and item in self.METHODS:
             if item not in self._functions:
@@ -139,7 +142,7 @@ class IPCServerService(IPCService, metaclass=ABCMeta):
     def new_request_id():
         return str(uuid.uuid4())
 
-    def send(self, fn_name, *args, **kwargs) -> Optional[Deferred]:
+    def send(self, fn_name: str, *args, **kwargs) -> Optional[Deferred]:
 
         request_id = self.new_request_id()
         request = request_id, (fn_name, args, kwargs)
@@ -156,11 +159,11 @@ class IPCServerService(IPCService, metaclass=ABCMeta):
 
     def receive(self) -> None:
 
-        try:
-            data = super()._read()
-            if not data:
-                return
+        data = super()._read()
+        if not data:
+            return
 
+        try:
             request_id, response = data
         except TypeError as exc:
             self._on_error(exc)
@@ -180,6 +183,11 @@ class IPCServerService(IPCService, metaclass=ABCMeta):
 
         fn(response)
 
+    def _on_close(self, error: Optional[Exception] = None):
+        super()._on_close(error)
+
+        self._requests = dict()
+
 
 class IPCClientService(IPCService, metaclass=ABCMeta):
 
@@ -191,16 +199,17 @@ class IPCClientService(IPCService, metaclass=ABCMeta):
         super().__init__(read_conn, write_conn)
         self.proxy_object = proxy_object
 
-    def send(self, *args, **_kwargs) -> bool:
-        return super()._write(args[:2])
+    def send(self, key: str, *args, **_kwargs) -> bool:
+        response = key, args[0]
+        return super()._write(response)
 
     def receive(self) -> None:
 
-        try:
-            data = super()._read()
-            if not data:
-                return
+        data = super()._read()
+        if not data:
+            return
 
+        try:
             request_id, request = data
         except TypeError as exc:
             self._on_error(exc)
