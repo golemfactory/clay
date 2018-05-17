@@ -95,7 +95,6 @@ class TaskComputer(object):
             and not task_server.config_desc.in_shutdown
         self.finished_cb = finished_cb
 
-
     def task_given(self, ctd):
         if ctd['subtask_id'] in self.assigned_subtasks:
             return False
@@ -121,9 +120,13 @@ class TaskComputer(object):
                             "But I'm busy with another one. Ignoring.",
                             task_id)
                         return  # busy
-                    self.__compute_task(subtask_id, subtask['docker_images'],
-                                        subtask['src_code'], subtask['extra_data'],
-                                        subtask['short_description'], subtask['deadline'])
+                    self.__compute_task(
+                        subtask_id,
+                        subtask['docker_images'],
+                        subtask['src_code'],
+                        subtask['extra_data'],
+                        subtask['short_description'],
+                        subtask['deadline'])
                     self.waiting_for_task = None
                 return True
             else:
@@ -135,11 +138,17 @@ class TaskComputer(object):
             if subtask_id in self.assigned_subtasks:
                 subtask = self.assigned_subtasks[subtask_id]
                 if unpack_delta:
-                    self.task_server.unpack_delta(self.dir_manager.get_task_resource_dir(task_id), self.delta, task_id)
+                    rs_dir = self.dir_manager.get_task_resource_dir(task_id)
+                    self.task_server.unpack_delta(rs_dir, self.delta, task_id)
                 self.delta = None
                 self.last_task_timeout_checking = time.time()
-                self.__compute_task(subtask_id, subtask['docker_images'], subtask['src_code'], subtask['extra_data'],
-                                    subtask['short_description'], subtask['deadline'])
+                self.__compute_task(
+                    subtask_id,
+                    subtask['docker_images'],
+                    subtask['src_code'],
+                    subtask['extra_data'],
+                    subtask['short_description'],
+                    subtask['deadline'])
                 return True
             return False
 
@@ -163,11 +172,11 @@ class TaskComputer(object):
                 self.delta = delta
 
     def task_request_rejected(self, task_id, reason):
-        logger.info("Task {} request rejected: {}".format(task_id, reason))
+        logger.info("Task %r request rejected: %r", task_id, reason)
 
     def resource_request_rejected(self, subtask_id, reason):
-        logger.info("Task {} resource request rejected: {}".format(subtask_id,
-                                                                   reason))
+        logger.info("Task %r resource request rejected: %r",
+                    subtask_id, reason)
         self.assigned_subtasks.pop(subtask_id, None)
         self.reset()
 

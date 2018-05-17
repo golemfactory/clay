@@ -92,7 +92,8 @@ class TaskStatus(Enum):
     restarted = "Restart"
 
     def is_completed(self) -> bool:
-        return self in [self.finished, self.aborted, self.timeout, self.restarted]
+        return self in [self.finished, self.aborted,
+                        self.timeout, self.restarted]
 
 
 class SubtaskStatus(Enum):
@@ -132,6 +133,7 @@ class Operation(Enum):
 
     def is_completed(self) -> bool:
         pass
+
 
 class TaskOp(Operation):
     """Ops that result in storing of task level information"""
