@@ -1,15 +1,9 @@
-import functools
 import inspect
 import logging
-import uuid
-from abc import abstractmethod
-from types import FunctionType
-from typing import Any, Tuple, Optional, Dict
+from abc import ABCMeta
+from typing import Optional
 
-from twisted.internet.defer import Deferred
-from twisted.python.failure import Failure
-
-from golem.core.service import ThreadedService
+from golem.core.ipc import IPCService, IPCServerService, IPCClientService
 from golem.resource.client import ClientOptions
 
 logger = logging.getLogger(__name__)
@@ -54,50 +48,40 @@ class IResourceManager:
         pass
 
 
-RESOURCE_MANAGER_METHODS = [
+RESOURCE_MANAGER_METHODS = {
     method_name for method_name, _ in
     inspect.getmembers(IResourceManager, predicate=inspect.isfunction)
-]
+}
 
 
-class ResourceManagerOptions:
+class ResourceManagerOptions:  # pylint: disable=too-few-public-methods
 
-    __slots__ = ('_key', '_data_dir', '_dir_manager_method_name')
+    __slots__ = ('key', 'data_dir', 'dir_manager_method_name')
 
-    def __init__(self, key: str, data_dir: str,
+    def __init__(self,
+                 key: str,
+                 data_dir: str,
                  dir_manager_method_name: str) -> None:
 
-        self._key = key
-        self._data_dir = data_dir
-        self._dir_manager_method_name = dir_manager_method_name
-
-    @property
-    def key(self) -> str:
-        return self._key
-
-    @property
-    def data_dir(self) -> str:
-        return self._data_dir
-
-    @property
-    def dir_manager_method_name(self) -> str:
-        return self._dir_manager_method_name
+        self.key = key
+        self.data_dir = data_dir
+        self.dir_manager_method_name = dir_manager_method_name
 
 
 class ResourceManagerBuilder:
 
     def __init__(self, resource_manager_options):
-        self.resource_manager_options = resource_manager_options
+        self.options = resource_manager_options
 
     def build_dir_manager(self):
         from golem.resource.dirmanager import DirManager
-        return DirManager(self.resource_manager_options.data_dir)
+        return DirManager(self.options.data_dir)
 
     def build_resource_manager(self) -> IResourceManager:
         from golem.resource.hyperdrive.resourcesmanager import \
             HyperdriveResourceManager
 
-        method_name = self.resource_manager_options.dir_manager_method_name
+        method_name = self.options.dir_manager_method_name
         dir_manager = self.build_dir_manager()
         dir_manager_method = getattr(dir_manager, method_name)
 
@@ -107,14 +91,14 @@ class ResourceManagerBuilder:
         )
 
 
-class ResourceManagerProxy(ThreadedService):
+class _ResourceManagerProxy(IPCService, metaclass=ABCMeta):
 
     def __init__(self, read_conn, write_conn) -> None:
-        super().__init__()
-
-        self.read_conn = read_conn
-        self.write_conn = write_conn
+        super().__init__(read_conn, write_conn)
         self._reactor = None
+
+    def _loop(self):
+        self.receive()
 
     @property
     def reactor(self):
@@ -123,135 +107,35 @@ class ResourceManagerProxy(ThreadedService):
             self._reactor = reactor
         return self._reactor
 
-    def _loop(self):
-        self._receive()
+    def _on_error(self, error: Optional[Exception] = None):
+        super()._on_error(error)
+        logger.error('IPC error: %r', error)
 
-    @abstractmethod
-    def _send(self, *args, **kwargs) -> Optional[Deferred]:
-        pass
-
-    def _receive(self) -> Tuple[Optional[str], Any]:
-
-        try:
-            # 0.5 second probe to not block the thread for too long
-            if self.read_conn.poll(POLL_TIMEOUT):
-                response, data = self.read_conn.recv()
-                return response, data
-        except TypeError as exc:
-            logger.error('Invalid response: %r', exc)
-        except EOFError as exc:
-            logger.debug('Inbound queue was closed on the remote end: %r', exc)
-
-        return None, None
+    def _on_close(self, error: Optional[Exception] = None):
+        super()._on_close(error)
+        logger.warning('IPC connection closed: %r', error)
 
 
-class ResourceManagerProxyServer(ResourceManagerProxy, IResourceManager):
+class ResourceManagerProxyServer(IPCServerService, IResourceManager,
+                                 _ResourceManagerProxy):
+
+    METHODS = RESOURCE_MANAGER_METHODS
 
     def __init__(self, read_conn, write_conn, data_dir,
                  method_name='get_task_resource_dir') -> None:
+
         super().__init__(read_conn, write_conn)
 
         from golem.resource.dirmanager import DirManager
         from golem.resource.hyperdrive.resource import ResourceStorage
 
         dir_manager = DirManager(data_dir)
-
-        self._requests: Dict[str, Deferred] = dict()
-        self._functions: Dict[str, FunctionType] = dict()
-
         self.storage = ResourceStorage(
             dir_manager,
             getattr(dir_manager, method_name)
         )
 
-    def __getattribute__(self, item):
-        if item in RESOURCE_MANAGER_METHODS:
-            if item not in self._functions:
-                self._functions[item] = functools.partial(self._send, item)
-            return self._functions[item]
-        return super().__getattribute__(item)
 
-    def _send(self, fn_name, *args, **kwargs):
+class ResourceManagerProxyClient(IPCClientService, _ResourceManagerProxy):
 
-        request_id = str(uuid.uuid4())
-        request = request_id, (fn_name, args, kwargs)
-
-        deferred = Deferred()
-
-        self._requests[request_id] = deferred
-        self.write_conn.send(request)
-
-        return deferred
-
-    def _receive(self):
-
-        request_id, payload = super()._receive()
-        if not request_id:
-            return
-
-        if request_id not in self._requests:
-            logger.error('Unknown request id: %r', request_id)
-            return
-
-        deferred = self._requests.pop(request_id)
-
-        if isinstance(payload, Deferred):
-            payload.chainDeferred(deferred)
-            return
-
-        if isinstance(payload, (Exception, Failure)):
-            fn = deferred.errback
-        else:
-            fn = deferred.callback
-
-        fn(payload)
-
-
-class ResourceManagerProxyClient(ResourceManagerProxy):
-
-    def __init__(self, read_conn, write_conn, resource_manager) -> None:
-        super().__init__(read_conn, write_conn)
-        self.rcv_conn = read_conn
-        self.resource_manager = resource_manager
-
-    def _send(self, request_id, response):
-
-        try:
-            payload = request_id, response
-            self.write_conn.send(payload)
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.error('Cannot send a response for %r: %r',
-                         request_id, exc)
-
-    def _receive(self):
-
-        request_id, response = super()._receive()
-        if not request_id:
-            return
-
-        if not isinstance(response, tuple) or len(response) != 3:
-            logger.error('Invalid response: %r', response)
-            return
-
-        fn_name, args, kwargs = response
-        fn = getattr(self.resource_manager, fn_name, None)
-
-        if not (fn and isinstance(args, (list, tuple))):
-            logger.error('Invalid function call: %r (%r, %r)',
-                         fn_name, args, kwargs)
-            return
-
-        def done(result):
-            if isinstance(result, Deferred):
-                result.addBoth(lambda r: self._send(request_id, r))
-            else:
-                self._send(request_id, result)
-
-        def call():
-            try:
-                result = fn(*args, **kwargs)
-            except Exception as exc:  # pylint: disable=broad-except
-                result = exc
-            done(result)
-
-        self.reactor.callFromThread(call)
+    pass
