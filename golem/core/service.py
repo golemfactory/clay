@@ -1,7 +1,5 @@
 import logging
 from abc import ABC, abstractmethod
-from multiprocessing import Process
-from typing import Optional, Union, Tuple, List
 
 from golem.core.async import AsyncRequest, async_run
 
@@ -118,41 +116,4 @@ class ThreadedService(IService):
 
     @abstractmethod
     def _loop(self):
-        pass
-
-
-class ProcessService(IService):
-
-    def __init__(self):
-        self._process: Optional[Process] = None
-
-    def start(self) -> None:
-        if self._process:
-            raise RuntimeError('process already spawned')
-
-        self._process = Process(
-            target=self._spawn,
-            args=self._get_spawn_arguments(),
-        )
-        self._process.daemon = True
-        self._process.start()
-
-    def stop(self) -> None:
-        if not self._process:
-            return
-
-        process = self._process
-        self._process = None
-        process.terminate()
-        process.join()
-
-    def running(self) -> bool:
-        return self._process and self._process.is_alive()
-
-    @classmethod
-    def _spawn(cls, *args) -> None:
-        pass
-
-    @abstractmethod
-    def _get_spawn_arguments(self) -> Union[Tuple, List]:
         pass
