@@ -1339,6 +1339,22 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             task_id, single=False
         )
 
+    def test_task_stats(self, *_):
+        task_id = str(uuid.uuid4())
+        c = self.client
+
+        result = c.get_task_stats()
+        expected = {
+            'host_state': "Idle",
+            'in_network': 0,
+            'supported': 0,
+            'subtasks_computed': (0, 0),
+            'subtasks_with_errors': (0, 0),
+            'subtasks_with_timeout': (0, 0)
+        }
+
+        self.assertEqual(result, expected)
+
     def test_subtasks_borders(self, *_):
         task_id = str(uuid.uuid4())
         c = self.client
