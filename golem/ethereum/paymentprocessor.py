@@ -1,6 +1,7 @@
 import calendar
 import logging
 import time
+from collections import defaultdict
 from datetime import datetime
 from typing import Dict, List, Optional
 from threading import Lock
@@ -10,6 +11,7 @@ from ethereum.utils import normalize_address, denoms
 from pydispatch import dispatcher
 import requests
 
+import golem_sci
 from golem_sci.gntconverter import GNTConverter
 from golem.core.service import LoopingCallService
 from golem.core.variables import PAYMENT_DEADLINE
@@ -44,6 +46,16 @@ def tETH_faucet_donate(addr):
     amount = int(response['amount']) / denoms.ether
     log.info("Faucet: {:.6f} ETH on {}".format(amount, paydate))
     return True
+
+
+def _make_batch_payments(payments: List[Payment]) -> List[golem_sci.Payment]:
+    payees: defaultdict = defaultdict(lambda: 0)
+    for p in payments:
+        payees[p.payee] += p.value
+    res = []
+    for payee, amount in payees.items():
+        res.append(golem_sci.Payment('0x' + encode_hex(payee), amount))
+    return res
 
 
 # pylint: disable=too-many-instance-attributes
@@ -192,6 +204,8 @@ class PaymentProcessor(LoopingCallService):
             payments: List[Payment],
             closure_time: int) -> int:
         gntb_balance = self.__gntb_balance
+        if not gntb_balance:
+            return 0
         eth_balance, _ = self.eth_balance()
         eth_balance = eth_balance - self.ETH_BATCH_PAYMENT_BASE
         ind = 0
@@ -260,7 +274,10 @@ class PaymentProcessor(LoopingCallService):
 
         closure_time = payments[-1].processed_ts
         try:
-            tx_hash = self._sci.batch_transfer(payments, closure_time)
+            tx_hash = self._sci.batch_transfer(
+                _make_batch_payments(payments),
+                closure_time,
+            )
         except Exception as e:
             log.warning("Exception while sending batch transfer {}".format(e))
             with self._awaiting_lock:

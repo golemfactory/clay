@@ -159,6 +159,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             ['package_hash', 'sha1:' + task_state.package_hash],
             ['concent_enabled', use_concent],
             ['price', 0],
+            ['size', 0],
         ]
         self.assertCountEqual(ms.slots(), expected)
         ts2.task_manager.get_next_subtask.return_value = (ctd, True, False)

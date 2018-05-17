@@ -967,9 +967,11 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
     def test_finished_task_listener(self, *_):
         self.ts.client = Mock()
         remove_task = self.ts.client.p2pservice.remove_task
+        remove_task_funds_lock = self.ts.client.funds_locker.remove_task
 
         values = dict(TaskOp.__members__)
         values.pop('FINISHED')
+        values.pop('TIMEOUT')
 
         for value in values:
             self.ts.finished_task_listener(op=value)
@@ -983,6 +985,12 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         self.ts.finished_task_listener(event='task_status_updated',
                                        op=TaskOp.FINISHED)
         assert remove_task.called
+        assert remove_task_funds_lock.called
+
+        self.ts.finished_task_listener(event='task_status_updated',
+                                       op=TaskOp.TIMEOUT)
+        assert remove_task.call_count == 2
+        assert remove_task_funds_lock.call_count == 2
 
 
 class TaskVerificationResultTest(TaskServerTestBase):

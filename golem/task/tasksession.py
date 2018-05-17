@@ -492,6 +492,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 # is always in use
                 concent_enabled=self.concent_service.enabled,
                 price=price,
+                size=0,  # @todo issue #2769
             )
             self.task_manager.set_subtask_value(
                 subtask_id=msg.subtask_id,
