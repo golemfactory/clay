@@ -320,6 +320,7 @@ class BlenderRendererOptions(FrameRendererOptions):
         super(BlenderRendererOptions, self).__init__()
         self.environment = BlenderEnvironment()
         self.compositing = False
+        self.samples = 0
 
 
 class BlenderRenderTask(FrameRenderingTask):
@@ -327,6 +328,7 @@ class BlenderRenderTask(FrameRenderingTask):
     VERIFIER_CLASS = BlenderVerifier
 
     BLENDER_MIN_BOX = [8, 8]
+    BLENDER_MIN_SAMPLE = 5
 
     ################
     # Task methods #
@@ -340,6 +342,7 @@ class BlenderRenderTask(FrameRenderingTask):
 
         # https://github.com/golemfactory/golem/issues/2388
         self.compositing = False
+        self.samples = task_definition.options.samples
         return
 
         self.compositing = task_definition.options.compositing \
@@ -415,7 +418,8 @@ class BlenderRenderTask(FrameRenderingTask):
             resolution=(self.res_x, self.res_y),
             borders_x=(0.0, 1.0),
             borders_y=(min_y, max_y),
-            use_compositing=self.compositing
+            use_compositing=self.compositing,
+            samples=self.samples
         )
 
         extra_data = {"path_root": self.main_scene_dir,
@@ -438,6 +442,7 @@ class BlenderRenderTask(FrameRenderingTask):
         self.subtasks_given[subtask_id]['parts'] = parts
         self.subtasks_given[subtask_id]['res_x'] = self.res_x
         self.subtasks_given[subtask_id]['res_y'] = self.res_y
+        self.subtasks_given[subtask_id]['samples'] = self.samples
         self.subtasks_given[subtask_id]['use_frames'] = self.use_frames
         self.subtasks_given[subtask_id]['all_frames'] = self.frames
         self.subtasks_given[subtask_id]['crop_window'] = (0.0, 1.0, min_y,
@@ -490,7 +495,8 @@ class BlenderRenderTask(FrameRenderingTask):
             resolution=BlenderRenderTask.BLENDER_MIN_BOX,
             borders_x=(0.0, 1.0),
             borders_y=(0.0, 1.0),
-            use_compositing=False
+            use_compositing=False,
+            samples=BlenderRenderTask.BLENDER_MIN_SAMPLE
         )
 
         extra_data = {"path_root": self.main_scene_dir,
@@ -639,6 +645,7 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
 
         definition = parent.build_full_definition(task_type, dictionary)
         definition.options.compositing = options.get('compositing', False)
+        definition.options.samples = options.get('samples', 0)
         return definition
 
 

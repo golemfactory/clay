@@ -57,6 +57,10 @@ for scene in bpy.data.scenes:
     scene.render.border_min_y = %(border_min_y)r
     scene.render.border_max_y = %(border_max_y)r
     scene.render.use_compositing = bool(%(use_compositing)r)
+    if engine == "CYCLES":
+        samples = %(samples)d
+        if samples != 0:
+            scene.cycles.samples = samples
 
 #and check if additional files aren't missing
 bpy.ops.file.report_missing_files()
