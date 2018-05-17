@@ -537,15 +537,16 @@ class Client(HardwarePresetsMixin):
 
         if self.transaction_system:
             self.funds_locker.lock_funds(task)
+
+        if self.transaction_system and self.concent_service.enabled:
             min_amount, opt_amount = msg_helpers.requestor_deposit_amount(
                 task.price,
             )
-
-        if self.transaction_system and self.concent_service.enabled:
             # Could raise golem.transactions.ethereum.exceptions.NotEnoughFunds
             transaction_hash = self.transaction_system.concent_deposit(
                 required=min_amount,
                 expected=opt_amount,
+                reserved=task.price,
             )
         else:
             transaction_hash = None

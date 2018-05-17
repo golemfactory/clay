@@ -162,14 +162,16 @@ class EthereumTransactionSystem(TransactionSystem):
             account_address=self._sci.get_eth_address(),
         )
 
-    def concent_deposit(self, required: int, expected: int) -> str:
+    def concent_deposit(
+            self, required: int, expected: int, reserved: int) -> str:
         current = self.concent_balance()
         if current >= required:
-            return
+            return None
         required -= current
         expected -= current
         # TODO migrate funds from gnt to gntb
         gntb_balance = self._sci.get_gntb_balance(self._sci.get_eth_address())
+        gntb_balance -= reserved
         if gntb_balance < required:
             raise NotEnoughFunds(required, gntb_balance, 'GNTB')
         max_possible_amount = min(expected, gntb_balance)
