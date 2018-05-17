@@ -615,10 +615,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             'type': 'Dummy',
         }
 
-        with patch("golem_sci.implementation.SCIImplementation"
-                   ".deposit_payment") as dep:
-            created, error = self.client.create_task(task_dict)
-            dep.assert_called_once()
+        created, error = self.client.create_task(task_dict)
 
         assert created
         assert not error
@@ -626,10 +623,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         time.sleep(1)
         task_id = list(task_manager.tasks_states)[0]
 
-        with patch("golem_sci.implementation.SCIImplementation"
-                   ".deposit_payment") as dep:
-            created, error = sync_wait(self.client.restart_task(task_id))
-            dep.assert_called_once()
+        created, error = sync_wait(self.client.restart_task(task_id))
         assert created
         assert not error
         assert len(task_manager.tasks_states) == 2
@@ -1039,10 +1033,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             price=1000,
         )
 
-        with patch("golem_sci.implementation.SCIImplementation"
-                   ".deposit_payment") as dep:
-            c.enqueue_new_task(task)
-            dep.assert_called_once()
+        c.enqueue_new_task(task)
         assert not c.task_server.task_manager.create_task.called
         task_mock = MagicMock()
         task_mock.header.max_price = 1 * 10**18
@@ -1052,13 +1043,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_mock.get_price.return_value = price
         task_mock.price = 1000
         c.task_server.task_manager.create_task.return_value = task_mock
-        with patch("golem_sci.implementation.SCIImplementation"
-                   ".deposit_payment") as dep:
-            c.enqueue_new_task(dict(
-                max_price=1 * 10**18,
-                task_id=str(uuid.uuid4())
-            ))
-            dep.assert_called_once()
+        c.enqueue_new_task(dict(
+            max_price=1 * 10**18,
+            task_id=str(uuid.uuid4())
+        ))
         assert c.task_server.task_manager.create_task.called
         c.funds_locker.persist = True
 
@@ -1115,10 +1103,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.resource_server.add_task = Mock(
             side_effect=add_task)
 
-        with patch("golem_sci.implementation.SCIImplementation"
-                   ".deposit_payment") as dep:
-            deferred = c.enqueue_new_task(t_dict)
-            dep.assert_called_once()
+        deferred = c.enqueue_new_task(t_dict)
         task = sync_wait(deferred)
         assert isinstance(task, Task)
         assert task.header.task_id

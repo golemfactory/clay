@@ -158,16 +158,20 @@ class EthereumTransactionSystem(TransactionSystem):
         raise ValueError('Unknown currency {}'.format(currency))
 
     def concent_balance(self) -> int:
-        return self._sci.get_deposit_value(account_address=self._sci._address)  # noqa pylint: disable=protected-access
+        return self._sci.get_deposit_value(
+            account_address=self._sci.get_eth_address(),
+        )
 
-    def concent_deposit(self, required: int, expected: int) -> None:
+    def concent_deposit(self, required: int, expected: int) -> str:
         current = self.concent_balance()
         if current >= required:
             return
         required -= current
         expected -= current
-        gntb_balance = self.payment_processor._gnt_available()  # noqa pylint: disable=protected-access
+        # TODO migrate funds from gnt to gntb
+        gntb_balance = self._sci.get_gntb_balance(self._sci.get_eth_address())
         if gntb_balance < required:
             raise NotEnoughFunds(required, gntb_balance, 'GNTB')
         max_possible_amount = min(expected, gntb_balance)
-        self._sci.deposit_payment(max_possible_amount)
+        transaction_id = self._sci.deposit_payment(max_possible_amount)
+        return transaction_id
