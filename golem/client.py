@@ -1264,22 +1264,6 @@ class Client(HardwarePresetsMixin):
 
         return ' '.join(messages)
 
-    def get_status(self):
-        progress = self.task_server.task_computer.get_progresses()
-        if len(progress) > 0:
-            msg = "Computing {} subtask(s):".format(len(progress))
-            for k, v in list(progress.items()):
-                msg = "{} \n {} ({}%)\n".format(msg, k, v.get_progress() * 100)
-        elif self.config_desc.accept_tasks:
-            msg = "Waiting for tasks...\n"
-        else:
-            msg = "Not accepting tasks\n"
-
-        peers = self.p2pservice.get_peers()
-
-        msg += "Active peers in network: {}\n".format(len(peers))
-        return msg
-
     @staticmethod
     def get_golem_version():
         return golem.__version__

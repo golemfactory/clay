@@ -280,45 +280,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
                    keys_auth=Mock(),
                    database=Mock())
 
-    def test_get_status(self, *_):
-        self.client = Client(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=ClientConfigDescriptor(),
-            keys_auth=Mock(),
-            database=Mock(),
-            connect_to_known_hosts=False,
-            use_docker_manager=False,
-            use_monitor=False
-        )
-        c = self.client
-        c.task_server = MagicMock()
-        c.task_server.task_computer.get_progresses.return_value = {}
-        c.p2pservice = MagicMock()
-        c.p2pservice.get_peers.return_value = ["ABC", "DEF"]
-        c.transaction_system = MagicMock()
-        status = c.get_status()
-        self.assertIn("Waiting for tasks", status)
-        self.assertIn("Active peers in network: 2", status)
-        mock1 = MagicMock()
-        mock1.get_progress.return_value = 0.25
-        mock2 = MagicMock()
-        mock2.get_progress.return_value = 0.33
-        c.task_server.task_computer.get_progresses.return_value = \
-            {"id1": mock1, "id2": mock2}
-        c.p2pservice.get_peers.return_value = []
-        status = c.get_status()
-        self.assertIn("Computing 2 subtask(s)", status)
-        self.assertIn("id1 (25.0%)", status)
-        self.assertIn("id2 (33.0%)", status)
-        self.assertIn("Active peers in network: 0", status)
-        c.config_desc.accept_tasks = 0
-        status = c.get_status()
-        self.assertIn("Computing 2 subtask(s)", status)
-        c.task_server.task_computer.get_progresses.return_value = {}
-        status = c.get_status()
-        self.assertIn("Not accepting tasks", status)
-
     def test_quit(self, *_):
         self.client = Client(
             datadir=self.path,
