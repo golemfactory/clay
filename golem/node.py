@@ -206,24 +206,26 @@ class Node(object):  # pylint: disable=too-few-public-methods
     def show_terms():
         return TermsOfUse.show_terms()
 
-    def gracefull_shutdown(self):
-        # is in shutdown? turn off as toggle?
+    def graceful_shutdown(self):
+        # is in shutdown? turn off as toggle
         if self._config_desc.in_shutdown:
             self.client.update_setting('in_shutdown', False)
             logger.info('Turning off shutdown mode')
-            return
+            return 'off'
 
         # is not providing nor requesting, normal shutdown
         if not self._is_task_in_progress():
             logger.info('Node not working, executing normal shutdown')
             self.quit()
-            return
+            return 'quit'
 
         # configure in_shutdown
         logger.info('Enabling shutdown mode, no more tasks can be started')
         self.client.update_setting('in_shutdown', True)
 
-        # subscrive to events
+        # subscribe to events
+
+        return 'on'
 
     def check_shutdown(self):
         # is not in shutdown?
@@ -245,7 +247,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
             logger.debug('_is_task_in_progress? requestor=%r', True)
             return True
         task_provider_progress = task_server.task_computer.assigned_subtasks
-        logger.debug('_is_task_in_progress? provider=%r, requestor=False', task_provider_progress)
+        logger.debug('_is_task_in_progress? provider=%r, requestor=False',
+                     task_provider_progress)
         return task_provider_progress
 
     def _check_terms(self) -> Optional[Deferred]:
