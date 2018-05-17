@@ -195,8 +195,7 @@ def config_logging(suffix='', datadir=None, loglevel=None):
         LOGGING['root']['level'] = loglevel
 
     try:
-        if not os.path.exists(logdir_path):
-            os.makedirs(logdir_path)
+        os.makedirs(logdir_path, exist_ok=True)
 
         logging.config.dictConfig(LOGGING)
     except (ValueError, PermissionError) as e:
