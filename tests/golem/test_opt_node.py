@@ -293,6 +293,58 @@ class TestNode(TestWithDatabase):
                                        mainnet=True,
                                        apps_manager=ANY)
 
+    @patch('golemapp.Node')
+    def test_net_testnet_should_be_passed_to_node(self, mock_node, *_):
+
+        # given
+        args = self.args + ['--net', 'testnet']
+
+        # when
+        runner = CliRunner()
+
+        with mock_config():
+            return_value = runner.invoke(start, args)
+
+        # then
+        assert return_value.exit_code == 0
+        mock_node.assert_called_with(datadir=path.join(self.path, 'rinkeby'),
+                                     app_config=ANY,
+                                     config_desc=ANY,
+                                     geth_address=None,
+                                     peers=[],
+                                     start_geth=False,
+                                     start_geth_port=None,
+                                     concent_variant=concent_disabled,
+                                     use_monitor=True,
+                                     password=None,
+                                     mainnet=False)
+
+    @patch('golemapp.Node')
+    def test_net_mainnet_should_be_passed_to_node(self, mock_node, *_):
+
+        # given
+        args = self.args + ['--net', 'mainnet']
+
+        # when
+        runner = CliRunner()
+
+        with mock_config():
+            return_value = runner.invoke(start, args)
+
+        # then
+        assert return_value.exit_code == 0
+        mock_node.assert_called_with(datadir=path.join(self.path, 'mainnet'),
+                                     app_config=ANY,
+                                     config_desc=ANY,
+                                     geth_address=None,
+                                     peers=[],
+                                     start_geth=False,
+                                     start_geth_port=None,
+                                     concent_variant=concent_disabled,
+                                     use_monitor=True,
+                                     password=None,
+                                     mainnet=True)
+
     @pytest.mark.skip('Issue #2476')
     def test_start_geth_port_wo_param_should_fail(self, *_):
         runner = CliRunner()
