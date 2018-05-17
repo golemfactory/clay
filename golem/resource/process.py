@@ -3,7 +3,7 @@ import os
 from multiprocessing import Pipe
 from typing import Optional, Union, Tuple, List, Dict
 
-from golem.core.service import ProcessService
+from golem.core.ipc import ProcessService
 from golem.resource.base.resourcesmanager import ResourceManagerProxyServer, \
     ResourceManagerProxyClient, ResourceManagerOptions
 
@@ -24,8 +24,8 @@ class _ResourceManagerEntry:  # pylint: disable=too-few-public-methods
 
 class _Process(ProcessService):
 
-    def __init__(self, *resource_manager_options) -> None:
-        super().__init__()
+    def __init__(self, data_dir, *resource_manager_options) -> None:
+        super().__init__(data_dir)
 
         self._process = None
         self._servers: Dict[str, ResourceManagerProxyServer] = dict()
@@ -60,12 +60,12 @@ class _Process(ProcessService):
         ]
 
     @classmethod
-    def _spawn(cls, *multiple) -> None:
+    def _spawn(cls, data_dir, *multiple) -> None:
 
         from golem.core.common import install_reactor, config_logging
 
         reactor = install_reactor()
-        config_logging(suffix='resources')
+        config_logging(suffix='resources', datadir=data_dir)
 
         from golem.resource.base.resourcesmanager import \
             ResourceManagerBuilder
@@ -82,6 +82,7 @@ class _Process(ProcessService):
             )
 
             proxy.start()
+            reactor.addSystemEventTrigger('before', 'shutdown', proxy.stop)
 
         reactor.run()
 
@@ -94,6 +95,7 @@ def start_resource_process(data_dir) -> _Process:
 
     if not _instance:
         _instance = _Process(
+            data_dir,
             ResourceManagerOptions(
                 key='golem.client',
                 data_dir=os.path.join(data_dir, 'ComputerRes'),
