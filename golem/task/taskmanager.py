@@ -219,6 +219,21 @@ class TaskManager(TaskEventListener):
         except (FileNotFoundError, OSError) as e:
             logger.warning("Couldn't remove dump file: %s - %s", filepath, e)
 
+    @staticmethod
+    def _migrate_status_to_enum(state: TaskState) -> None:
+        """
+        This is a migration for data stored in pickles.
+        See #2768
+        """
+        if isinstance(state.status, str):
+            state.status = TaskStatus(state.status)
+
+        subtask_state: SubtaskState
+        for subtask_state in state.subtask_states.values():
+            if isinstance(subtask_state.subtask_status, str):
+                subtask_state.subtask_status = \
+                    SubtaskStatus(subtask_state.subtask_status)
+
     def restore_tasks(self) -> None:
         logger.debug('SEARCHING FOR TASKS TO RESTORE')
         broken_paths = set()
@@ -234,14 +249,7 @@ class TaskManager(TaskEventListener):
                     state: TaskState
                     task, state = pickle.load(f)
 
-                    # workaround #2768
-                    if isinstance(state.status, str):
-                        state.status = TaskStatus(state.status)
-                    subtask_state: SubtaskState
-                    for subtask_state in state.subtask_states.values():
-                        if isinstance(subtask_state.subtask_status, str):
-                            subtask_state.subtask_status = \
-                                SubtaskStatus(subtask_state.subtask_status)
+                    TaskManager._migrate_status_to_enum(state)
 
                     task.register_listener(self)
 
