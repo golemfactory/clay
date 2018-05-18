@@ -101,6 +101,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts = TaskSession(conn)
         ts._get_handshake = Mock(return_value={})
         ts.verified = True
+        ts.concent_service.enabled = use_concent = True
         ts.request_task("ABC", "xyz", 1030, 30, 3, 1, 8)
         mt = ts.conn.send_message.call_args[0][0]
         self.assertIsInstance(mt, message.WantToComputeTask)
@@ -112,6 +113,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertEqual(mt.max_memory_size, 1)
         self.assertEqual(mt.num_cores, 8)
         ts2 = TaskSession(conn)
+        ts2.concent_service.enabled = use_concent
         ts2.verified = True
         ts2.key_id = provider_key = "DEF"
         ts2.can_be_not_encrypted.append(mt.TYPE)
@@ -144,7 +146,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertIsInstance(ms, message.CannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
         ts2.task_server.should_accept_provider.return_value = True
-        ts2.concent_service.enabled = use_concent = True
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.TaskToCompute)
