@@ -163,7 +163,7 @@ class IPCServerService(IPCService, metaclass=ABCMeta):
     def receive(self) -> None:
 
         data: Optional[bytes] = super()._read()
-        if not isinstance(data, tuple):
+        if not isinstance(data, (list, tuple)):
             return
 
         try:
@@ -214,7 +214,7 @@ class IPCClientService(IPCService, metaclass=ABCMeta):
     def receive(self) -> None:
 
         data = super()._read()
-        if not isinstance(data, tuple):
+        if not isinstance(data, (list, tuple)):
             return
 
         try:
