@@ -1,5 +1,5 @@
 import logging
-from typing import List
+from typing import List, Optional
 
 from ethereum.utils import privtoaddr, denoms
 from eth_utils import encode_hex, is_address
@@ -163,7 +163,7 @@ class EthereumTransactionSystem(TransactionSystem):
         )
 
     def concent_deposit(
-            self, required: int, expected: int, reserved: int) -> str:
+            self, required: int, expected: int, reserved: int) -> Optional[str]:
         current = self.concent_balance()
         if current >= required:
             return None
