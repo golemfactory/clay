@@ -1,7 +1,7 @@
 import os
 
 from multiprocessing import Pipe
-from typing import Optional, Union, Tuple, List, Dict
+from typing import Optional, List, Dict
 
 from golem.core.ipc import ProcessService
 from golem.resource.base.resourcesmanager import ResourceManagerProxyServer, \
@@ -24,7 +24,7 @@ class _ResourceManagerEntry:  # pylint: disable=too-few-public-methods
 
 class _Process(ProcessService):
 
-    def __init__(self, data_dir, *resource_manager_options) -> None:
+    def __init__(self, data_dir: str, *resource_manager_options) -> None:
         super().__init__(data_dir)
 
         self._process = None
@@ -52,7 +52,7 @@ class _Process(ProcessService):
         server.start()
         return server
 
-    def _get_spawn_arguments(self) -> Union[Tuple, List]:
+    def _get_spawn_arguments(self) -> List:
         return [
             (entry.resource_manager_options,
              entry.from_server_conn,
@@ -60,7 +60,7 @@ class _Process(ProcessService):
         ]
 
     @classmethod
-    def _spawn(cls, data_dir, *multiple) -> None:
+    def _spawn(cls, data_dir: str, *multiple) -> None:
 
         from golem.core.common import install_reactor, config_logging
 

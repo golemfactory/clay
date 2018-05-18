@@ -1,7 +1,8 @@
 import inspect
 import logging
 from abc import ABCMeta
-from typing import Optional
+from multiprocessing.connection import Connection
+from typing import Optional, Any, Callable
 
 from golem.core.ipc import IPCService, IPCServerService, IPCClientService
 from golem.resource.client import ClientOptions
@@ -43,8 +44,7 @@ class IResourceManager:
     def get_resources(self, task_id):
         pass
 
-    def pull_resource(self, entry,  # pylint: disable=too-many-arguments
-                      task_id, client_options=None, async_=True):
+    def pull_resource(self, entry, task_id, client_options=None, async_=True):
         pass
 
 
@@ -70,7 +70,9 @@ class ResourceManagerOptions:  # pylint: disable=too-few-public-methods
 
 class ResourceManagerBuilder:
 
-    def __init__(self, resource_manager_options):
+    def __init__(self,
+                 resource_manager_options: ResourceManagerOptions) -> None:
+
         self.options = resource_manager_options
 
     def build_dir_manager(self):
@@ -81,24 +83,24 @@ class ResourceManagerBuilder:
         from golem.resource.hyperdrive.resourcesmanager import \
             HyperdriveResourceManager
 
-        method_name = self.options.dir_manager_method_name
         dir_manager = self.build_dir_manager()
-        dir_manager_method = getattr(dir_manager, method_name)
+        method_name = self.options.dir_manager_method_name
+        method = getattr(dir_manager, method_name)
 
         return HyperdriveResourceManager(
             dir_manager,
-            resource_dir_method=dir_manager_method,
+            resource_dir_method=method,
         )
 
 
 class _ResourceManagerProxy(IPCService, metaclass=ABCMeta):
 
-    def __init__(self, read_conn, write_conn) -> None:
+    def __init__(self,
+                 read_conn: Connection,
+                 write_conn: Connection) -> None:
+
         super().__init__(read_conn, write_conn)
         self._reactor = None
-
-    def _loop(self):
-        self.receive()
 
     @property
     def reactor(self):
@@ -107,22 +109,28 @@ class _ResourceManagerProxy(IPCService, metaclass=ABCMeta):
             self._reactor = reactor
         return self._reactor
 
-    def _on_error(self, error: Optional[Exception] = None):
+    def _loop(self):
+        self.receive()
+
+    def _on_error(self, error: Optional[Exception] = None) -> None:
         super()._on_error(error)
         logger.error('IPC error: %r', error)
 
-    def _on_close(self, error: Optional[Exception] = None):
+    def _on_close(self, error: Optional[Exception] = None) -> None:
         super()._on_close(error)
         logger.warning('IPC connection closed: %r', error)
 
 
-class ResourceManagerProxyServer(IPCServerService, IResourceManager,
+class ResourceManagerProxyServer(IPCServerService, IResourceManager,  # noqa # pylint: disable=too-many-ancestors
                                  _ResourceManagerProxy):
 
     METHODS = RESOURCE_MANAGER_METHODS
 
-    def __init__(self, read_conn, write_conn, data_dir,
-                 method_name='get_task_resource_dir') -> None:
+    def __init__(self,
+                 read_conn: Connection,
+                 write_conn: Connection,
+                 data_dir: str,
+                 method_name: str = 'get_task_resource_dir') -> None:
 
         super().__init__(read_conn, write_conn)
 
@@ -130,12 +138,12 @@ class ResourceManagerProxyServer(IPCServerService, IResourceManager,
         from golem.resource.hyperdrive.resource import ResourceStorage
 
         dir_manager = DirManager(data_dir)
-        self.storage = ResourceStorage(
-            dir_manager,
-            getattr(dir_manager, method_name)
-        )
+        method = getattr(dir_manager, method_name)
+
+        self.storage = ResourceStorage(dir_manager, method)
 
 
 class ResourceManagerProxyClient(IPCClientService, _ResourceManagerProxy):
 
-    pass
+    def _execute(self, fn: Callable) -> Any:
+        self.reactor.callFromThread(fn)

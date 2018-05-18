@@ -1,12 +1,12 @@
 import logging
-from abc import ABC, abstractmethod
+from abc import abstractmethod, ABCMeta
 
 from golem.core.async import AsyncRequest, async_run
 
 log = logging.getLogger("golem")
 
 
-class IService(ABC):
+class IService(metaclass=ABCMeta):
     """
     An interface of a Golem service.
     """
@@ -74,7 +74,7 @@ class LoopingCallService(IService):
         """ Implement this in the derived class."""
 
 
-class ThreadedService(IService):
+class ThreadedService(IService, metaclass=ABCMeta):
     """
     A prototype of Golem service -- an long running "thread" that performs
     some tasks in background and responds to request from users and other
