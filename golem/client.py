@@ -543,13 +543,11 @@ class Client(HardwarePresetsMixin):
                 task.price,
             )
             # Could raise golem.transactions.ethereum.exceptions.NotEnoughFunds
-            transaction_hash = self.transaction_system.concent_deposit(
+            self.transaction_system.concent_deposit(
                 required=min_amount,
                 expected=opt_amount,
                 reserved=task.price,
             )
-        else:
-            transaction_hash = None
 
         task_id = task.header.task_id
         logger.info('Enqueue new task "%r"', task_id)
@@ -585,22 +583,7 @@ class Client(HardwarePresetsMixin):
                 return
 
             request = AsyncRequest(task_manager.start_task, task_id)
-
-            if transaction_hash is None:
-                async_run(request, lambda _: _result.callback(task), error)
-                return
-
-            def on_receipt(receipt):
-                if not receipt.status:
-                    error("Blockchain transaction failed")
-                    return
-                async_run(request, lambda _: _result.callback(task), error)
-
-            self.transaction_system._sci.on_transaction_confirmed(
-                tx_hash=transaction_hash,
-                required_confs=6,
-                cb=on_receipt,
-            )
+            async_run(request, lambda _: _result.callback(task), error)
 
         def error(exception):
             logger.error("Task '%s' creation failed: %r", task_id, exception)
