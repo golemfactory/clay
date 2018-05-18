@@ -124,8 +124,9 @@ class CompTaskKeeper:
         tasks_path: to tasks directory
         """
         # information about tasks that this node wants to compute
-        self.active_tasks = {}
-        self.subtask_to_task = {}  # maps subtasks id to tasks id
+        self.active_tasks: typing.Dict[str, CompTaskInfo] = {}
+        # maps subtasks id to tasks id
+        self.subtask_to_task: typing.Dict[str, str] = {}
         if not tasks_path.is_dir():
             tasks_path.mkdir()
         self.dump_path = tasks_path / "comp_task_keeper.pickle"
@@ -241,7 +242,7 @@ class CompTaskKeeper:
 
     @handle_key_error
     def get_node_for_task_id(self, task_id):
-        return self.active_tasks[task_id].header.task_owner_key_id
+        return self.active_tasks[task_id].header.task_owner.key
 
     @handle_key_error
     def get_value(self, task_id: str) -> int:
@@ -251,7 +252,7 @@ class CompTaskKeeper:
     def check_task_owner_by_subtask(self, task_owner_key_id, subtask_id):
         task_id = self.subtask_to_task.get(subtask_id)
         task = self.active_tasks.get(task_id)
-        return task and task.header.task_owner_key_id == task_owner_key_id
+        return task and task.header.task_owner.key == task_owner_key_id
 
     @handle_key_error
     def request_failure(self, task_id):
@@ -467,7 +468,7 @@ class TaskHeaderKeeper:
         """
         try:
             id_ = th_dict_repr["task_id"]
-            task_owner_id = th_dict_repr["task_owner_key_id"]
+            task_owner_id = th_dict_repr["task_owner"]["key"]
             self.check_owner(id_, task_owner_id)
             update = id_ in list(self.task_headers.keys())
 
@@ -482,11 +483,11 @@ class TaskHeaderKeeper:
             th = TaskHeader.from_dict(th_dict_repr)
             self.task_headers[id_] = th
 
-            self._get_tasks_by_owner_set(th.task_owner_key_id).add(id_)
+            self._get_tasks_by_owner_set(th.task_owner.key).add(id_)
 
             self.update_supported_set(th_dict_repr, update)
 
-            self.check_max_tasks_per_owner(th.task_owner_key_id)
+            self.check_max_tasks_per_owner(th.task_owner.key)
 
             if self.task_archiver and id_ in self.task_headers:
                 self.task_archiver.add_task(th)
@@ -559,7 +560,7 @@ class TaskHeaderKeeper:
             return False
 
         if task_id in self.task_headers:
-            owner_key_id = self.task_headers[task_id].task_owner_key_id
+            owner_key_id = self.task_headers[task_id].task_owner.key
             del self.task_headers[task_id]
             if owner_key_id in self.tasks_by_owner:
                 self.tasks_by_owner[owner_key_id].discard(task_id)
@@ -577,7 +578,7 @@ class TaskHeaderKeeper:
         task = self.task_headers.get(task_id)
         if task is None:
             return None
-        return task.task_owner_key_id
+        return task.task_owner.key
 
     def get_task(self) -> TaskHeader:
         """ Returns random task from supported tasks that may be computed
@@ -594,7 +595,7 @@ class TaskHeaderKeeper:
             cur_time = common.get_timestamp_utc()
             if cur_time > t.deadline:
                 logger.warning("Task owned by %s dies, task_id: %s",
-                               t.task_owner_key_id, t.task_id)
+                               t.task_owner.key, t.task_id)
                 self.remove_task_header(t.task_id)
 
         for task_id, remove_time in list(self.removed_tasks.items()):

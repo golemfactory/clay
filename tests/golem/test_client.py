@@ -34,6 +34,7 @@ from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.rpceventnames import UI, Environment
+from golem.task.acl import Acl
 from golem.task.taskbase import Task
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
@@ -73,11 +74,27 @@ def done_deferred(return_value=None):
     return deferred
 
 
+def make_mock_payment_processor(eth=100, gnt=100):
+    pp = MagicMock(name="MockPaymentProcessor")
+
+    pp.ETH_BATCH_PAYMENT_BASE = 0
+
+    pp.get_gas_cost_per_payment.return_value = 0
+
+    pp.gnt_balance.return_value = gnt * denoms.ether, time.time()
+    pp.eth_balance.return_value = eth * denoms.ether, time.time()
+    pp._gnt_available.return_value = gnt * denoms.ether
+    pp._eth_available.return_value = eth * denoms.ether
+    return pp
+
+
 @patch(
     'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
 )
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
+@patch('golem.transactions.ethereum.ethereumtransactionsystem.PaymentProcessor',
+       return_value=make_mock_payment_processor())
 class TestClient(TestWithDatabase, TestWithReactor):
     # FIXME: if we someday decide to run parallel tests,
     # this may completely break. Issue #2456
@@ -554,10 +571,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             apps_manager=apps_manager
         )
 
-        sci = self.client.transaction_system._sci
-        pp = make_mock_payment_processor(sci)
-        self.client.transaction_system.payment_processor = pp
-
         deferred = Deferred()
         connect_to_network.side_effect = lambda *_: deferred.callback(True)
         self.client.are_terms_accepted = lambda: True
@@ -899,28 +912,16 @@ class TestTaskCleanerService(TestWithReactor):
         client.clean_old_tasks.assert_called_once()
 
 
-def make_mock_payment_processor(sci, eth=100, gnt=100):
-    pp = MagicMock()
-    pp.ETH_PER_PAYMENT = sci.GAS_PRICE * sci.GAS_PER_PAYMENT
-    pp.ETH_BATCH_PAYMENT_BASE = sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
-
-    val = pp.ETH_BATCH_PAYMENT_BASE + pp.ETH_PER_PAYMENT * 10
-    pp.get_gas_cost_per_payment.return_value = val
-
-    pp.gnt_balance.return_value = gnt * denoms.ether, time.time()
-    pp.eth_balance.return_value = eth * denoms.ether, time.time()
-    pp._gnt_available.return_value = gnt * denoms.ether
-    pp._eth_available.return_value = eth * denoms.ether
-    return pp
-
-
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
-                   '.register_handler', ):
+                   '.register_handler'), \
+                patch('golem.transactions.ethereum.ethereumtransactionsystem'
+                      '.PaymentProcessor',
+                      return_value=make_mock_payment_processor()):
             apps_manager = AppsManager(False)
             apps_manager.load_all_apps()
             client = Client(
@@ -1018,8 +1019,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.funds_locker.persist = False
         c.resource_server = Mock()
         c.task_server = Mock()
-        c.transaction_system.payment_processor = \
-            make_mock_payment_processor(c.transaction_system._sci)
 
         task_header = Mock(
             max_price=1 * 10**18,
@@ -1102,8 +1101,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.resource_server.add_task = Mock(
             side_effect=add_task)
 
-        c.transaction_system.payment_processor = \
-            make_mock_payment_processor(c.transaction_system._sci)
         deferred = c.enqueue_new_task(t_dict)
         task = sync_wait(deferred)
         assert isinstance(task, Task)
@@ -1266,7 +1263,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertEqual(c.task_test_result, None)
 
     def test_create_task(self, *_):
-        t = DummyTask(total_tasks=10, node_name="node_name",
+        t = DummyTask(total_tasks=10, owner=Node(node_name="node_name"),
                       task_definition=DummyTaskDefinition())
 
         c = self.client
@@ -1433,6 +1430,12 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     def test_get_performance_values(self, *_):
         expected_perf = {DefaultEnvironment.get_id(): 0.0}
         assert self.client.get_performance_values() == expected_perf
+
+    def test_block_node(self, *_):
+        self.client.task_server.acl = Mock(spec=Acl)
+        self.client.block_node('node_id')
+        self.client.task_server.acl.disallow.assert_called_once_with(
+            'node_id', persist=True)
 
     @classmethod
     def __new_incoming_peer(cls):

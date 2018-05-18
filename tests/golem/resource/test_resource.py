@@ -76,6 +76,7 @@ class TestGetTaskResources(TempDirFixture):
         return task_definition
 
     def _get_core_task(self):
+        from golem.network.p2p.node import Node
         task_def = self._get_core_task_definition()
 
         class CoreTaskDeabstacted(CoreTask):
@@ -92,11 +93,13 @@ class TestGetTaskResources(TempDirFixture):
                 pass
 
         task = CoreTaskDeabstacted(
+            owner=Node(
+                node_name="ABC",
+                pub_addr="10.10.10.10",
+                pub_port=123,
+                key="key",
+            ),
             task_definition=task_def,
-            node_name="ABC",
-            owner_address="10.10.10.10",
-            owner_port=123,
-            owner_key_id="key",
             resource_size=1024
         )
         dm = DirManager(self.path)

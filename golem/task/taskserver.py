@@ -169,7 +169,7 @@ class TaskServer(
             else:
                 performance = 0.0
 
-            supported = self.should_accept_requestor(theader.task_owner_key_id)
+            supported = self.should_accept_requestor(theader.task_owner.key)
             if self.config_desc.min_price > theader.max_price:
                 supported = supported.join(SupportStatus.err({
                     UnsupportReason.MAX_PRICE: theader.max_price}))
@@ -180,7 +180,7 @@ class TaskServer(
                     theader=theader, price=price)
                 args = {
                     'node_name': self.config_desc.node_name,
-                    'key_id': theader.task_owner_key_id,
+                    'key_id': theader.task_owner.key,
                     'task_id': theader.task_id,
                     'estimated_performance': performance,
                     'price': self.config_desc.min_price,
@@ -188,14 +188,13 @@ class TaskServer(
                     'max_memory_size': self.config_desc.max_memory_size,
                     'num_cores': self.config_desc.num_cores
                 }
-                node = theader.task_owner
-                port = theader.task_owner_port  # FIXME: seems redundant. #109
 
+                node = theader.task_owner
                 added = self._add_pending_request(
                     TASK_CONN_TYPES['task_request'],
                     node,
-                    prv_port=port or node.prv_port,
-                    pub_port=port or node.pub_port,
+                    prv_port=node.prv_port,
+                    pub_port=node.pub_port,
                     args=args
                 )
                 if added:
@@ -224,7 +223,7 @@ class TaskServer(
         if subtask_id not in self.results_to_send:
             value = self.task_manager.comp_task_keeper.get_value(task_id)
             self.client.transaction_system.incomes_keeper.expect(
-                sender_node_id=header.task_owner_key_id,
+                sender_node_id=header.task_owner.key,
                 subtask_id=subtask_id,
                 value=value,
             )
@@ -239,15 +238,12 @@ class TaskServer(
                 result_type=result['result_type'],
                 last_sending_trial=last_sending_trial,
                 delay_time=delay_time,
-                owner_address=header.task_owner_address,
-                owner_port=header.task_owner_port,
-                owner_key_id=header.task_owner_key_id,
                 owner=header.task_owner)
 
             self.create_and_set_result_package(wtr)
             self.results_to_send[subtask_id] = wtr
 
-            Trust.REQUESTED.increase(header.task_owner_key_id)
+            Trust.REQUESTED.increase(header.task_owner.key)
         else:
             raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
 
@@ -267,15 +263,12 @@ class TaskServer(
         header = self.task_keeper.task_headers[task_id]
 
         if subtask_id not in self.failures_to_send:
-            Trust.REQUESTED.decrease(header.task_owner_key_id)
+            Trust.REQUESTED.decrease(header.task_owner.key)
 
             self.failures_to_send[subtask_id] = WaitingTaskFailure(
                 task_id=task_id,
                 subtask_id=subtask_id,
                 err_msg=err_msg,
-                owner_address=header.task_owner_address,
-                owner_port=header.task_owner_port,
-                owner_key_id=header.task_owner_key_id,
                 owner=header.task_owner)
 
     def new_connection(self, session):
@@ -311,7 +304,7 @@ class TaskServer(
                 raise Exception("Invalid signature")
 
             task_id = th_dict_repr["task_id"]
-            key_id = th_dict_repr["task_owner_key_id"]
+            key_id = th_dict_repr["task_owner"]["key"]
             task_ids = list(self.task_manager.tasks.keys())
             new_sig = True
 
@@ -330,7 +323,7 @@ class TaskServer(
     def verify_header_sig(self, th_dict_repr):
         _bin = TaskHeader.dict_to_binary(th_dict_repr)
         _sig = th_dict_repr["signature"]
-        _key = th_dict_repr["task_owner_key_id"]
+        _key = th_dict_repr["task_owner"]["key"]
         return self.verify_sig(_sig, _bin, _key)
 
     def remove_task_header(self, task_id) -> bool:
@@ -471,11 +464,12 @@ class TaskServer(
     def finished_task_listener(self, event='default', task_id=None, op=None,
                                **_kwargs):
         if not (event == 'task_status_updated'
-                and op == TaskOp.FINISHED
                 and self.client.p2pservice):
             return
-
+        if not (op in [TaskOp.FINISHED, TaskOp.TIMEOUT]):
+            return
         self.client.p2pservice.remove_task(task_id)
+        self.client.funds_locker.remove_task(task_id)
 
     def increase_trust_payment(self, task_id):
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
@@ -665,7 +659,7 @@ class TaskServer(
         self.new_session_prepare(
             session=session,
             subtask_id=waiting_task_result.subtask_id,
-            key_id=waiting_task_result.owner_key_id,
+            key_id=waiting_task_result.owner.key,
             conn_id=conn_id,
         )
 
@@ -681,13 +675,13 @@ class TaskServer(
             self.__connection_for_task_result_established(
                 session, conn_id, waiting_task_result)
 
-        if waiting_task_result.owner_key_id in self.response_list:
+        if waiting_task_result.owner.key in self.response_list:
             self.response_list[conn_id].append(response)
         else:
             self.response_list[conn_id] = deque([response])
 
         self.client.want_to_start_task_session(
-            waiting_task_result.owner_key_id, self.node, conn_id)
+            waiting_task_result.owner.key, self.node, conn_id)
 
         pc = self.pending_connections.get(conn_id)
         if pc:
@@ -890,11 +884,11 @@ class TaskServer(
             session = self.task_sessions.get(subtask_id, None)
             if session:
                 self.__connection_for_task_failure_established(
-                    session, session.conn_id, wtf.owner_key_id, subtask_id,
+                    session, session.conn_id, wtf.owner.key, subtask_id,
                     wtf.err_msg)
             else:
                 args = {
-                    'key_id': wtf.owner_key_id,
+                    'key_id': wtf.owner.key,
                     'subtask_id': wtf.subtask_id,
                     'err_msg': wtf.err_msg
                 }
@@ -983,17 +977,14 @@ class TaskServer(
 # pylint: disable=too-many-arguments, too-many-locals
 class WaitingTaskResult(object):
     def __init__(self, task_id, subtask_id, result, result_type,
-                 last_sending_trial, delay_time, owner_address, owner_port,
-                 owner_key_id, owner, result_path=None, result_hash=None,
-                 result_secret=None, package_sha1=None, result_size=None):
+                 last_sending_trial, delay_time, owner, result_path=None,
+                 result_hash=None, result_secret=None, package_sha1=None,
+                 result_size=None):
 
         self.task_id = task_id
         self.subtask_id = subtask_id
         self.last_sending_trial = last_sending_trial
         self.delay_time = delay_time
-        self.owner_address = owner_address
-        self.owner_port = owner_port
-        self.owner_key_id = owner_key_id
         self.owner = owner
 
         self.result = result
@@ -1009,13 +1000,9 @@ class WaitingTaskResult(object):
 
 
 class WaitingTaskFailure(object):
-    def __init__(self, task_id, subtask_id, err_msg, owner_address, owner_port,
-                 owner_key_id, owner):
+    def __init__(self, task_id, subtask_id, err_msg, owner):
         self.task_id = task_id
         self.subtask_id = subtask_id
-        self.owner_address = owner_address
-        self.owner_port = owner_port
-        self.owner_key_id = owner_key_id
         self.owner = owner
         self.err_msg = err_msg
 
