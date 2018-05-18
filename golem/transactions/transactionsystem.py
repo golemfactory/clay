@@ -1,13 +1,14 @@
 from typing import List
 
 from golem.core.common import datetime_to_timestamp_utc, to_unicode
+from golem.core.service import LoopingCallService
 from golem.model import Payment, PaymentStatus, PaymentDetails
 
 from .paymentskeeper import PaymentsKeeper
 from .incomeskeeper import IncomesKeeper
 
 
-class TransactionSystem(object):
+class TransactionSystem(LoopingCallService):
     """ Transaction system.
     Keeps information about budget, expected payments, etc. """
 
@@ -25,6 +26,8 @@ class TransactionSystem(object):
 
         # Keeps information about received payments
         self.incomes_keeper = incomes_keeper
+
+        super().__init__(13)
 
     def add_payment_info(self, task_id, subtask_id, value, account_info):
         """ Add to payment keeper information about new payment for subtask.
