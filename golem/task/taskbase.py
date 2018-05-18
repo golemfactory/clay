@@ -188,7 +188,10 @@ class Task(abc.ABC):
     @property
     def subtask_price(self):
         from golem.task import taskkeeper
-        return taskkeeper.compute_subtask_value(self.header.max_price, self.header.subtask_timeout)
+        return taskkeeper.compute_subtask_value(
+            self.header.max_price,
+            self.header.subtask_timeout,
+        )
 
     def register_listener(self, listener):
         if not isinstance(listener, TaskEventListener):
