@@ -871,7 +871,7 @@ class TaskManager(TaskEventListener):
         if subtasks:
             return [subtask.to_dictionary() for subtask in subtasks.values()]
         else:
-            return None
+            return []
 
     def get_subtasks_borders(self, task_id, part=1):
         task = self.tasks[task_id]
