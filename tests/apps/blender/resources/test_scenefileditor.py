@@ -26,7 +26,7 @@ class TestSceneFileEditor(TempDirFixture):
         scenefileeditor.BLENDER_CROP_TEMPLATE_PATH = filepath
         try:
             result = scenefileeditor.generate_blender_crop_file(
-                resolution=(1,2),
+                resolution=(1, 2),
                 borders_x=(3.01, 3.02),
                 borders_y=(4.01, 4.02),
                 use_compositing=True,
@@ -45,8 +45,9 @@ True
         self.assertEqual(result, expected)
 
     def test_crop_file_generation_full(self):
-        """Mocks blender by providing bpy and tests wether generated script acted as expected."""
-        resolution = (1,2)
+        """Mocks blender by providing bpy and tests wether generated script
+         acted as expected."""
+        resolution = (1, 2)
         borders_x = (3.01, 3.02)
         borders_y = (4.01, 4.02)
         use_compositing = True
@@ -68,11 +69,11 @@ True
             'use_crop_to_border': True,
         }
         result = scenefileeditor.generate_blender_crop_file(
-                    resolution=resolution,
-                    borders_x=borders_x,
-                    borders_y=borders_y,
-                    use_compositing=use_compositing,
-                    samples=samples
+            resolution=resolution,
+            borders_x=borders_x,
+            borders_y=borders_y,
+            use_compositing=use_compositing,
+            samples=samples
         )
 
         scene_m = mock.MagicMock()
@@ -92,7 +93,9 @@ True
         for name in expected_attributes:
             expected = expected_attributes[name]
             value = getattr(scene_m.render, name)
-            self.assertEqual(value, expected, 'Value of scene.render.%s expected:%r got:%r' % (name, expected, value))
+            self.assertEqual(value, expected,
+                             'Value of scene.render.%s expected:%r got:%r' % (
+                                 name, expected, value))
 
         # test calls
         bpy_m.ops.render.render.assert_not_called()
