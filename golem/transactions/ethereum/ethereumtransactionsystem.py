@@ -169,11 +169,10 @@ class EthereumTransactionSystem(TransactionSystem):
             return None
         required -= current
         expected -= current
-        # TODO migrate funds from gnt to gntb
         gntb_balance = self._sci.get_gntb_balance(self._sci.get_eth_address())
         gntb_balance -= reserved
+        gntb_balance -= self.payment_processor.reserved_gntb
         if gntb_balance < required:
             raise NotEnoughFunds(required, gntb_balance, 'GNTB')
         max_possible_amount = min(expected, gntb_balance)
-        transaction_id = self._sci.deposit_payment(max_possible_amount)
-        return transaction_id
+        return self._sci.deposit_payment(max_possible_amount)  # tx_hash
