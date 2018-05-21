@@ -51,14 +51,18 @@ class IResourceManager:
 
 
 def _read_args_and_kwargs(entry):
-    spec = inspect.getfullargspec(entry[1])
+    signature = inspect.signature(entry[1])
+    parameters = signature.parameters
 
-    if spec.args and spec.args[0] == 'self':
-        args = spec.args[1:]
-    else:
-        args = spec.args
+    args, kwargs = [], []
 
-    return entry[0], (args, spec.kwonlyargs)
+    for param, props in parameters.items():
+        if props.default:
+            args.append(param)
+        else:
+            kwargs.append(param)
+
+    return entry[0], (args, kwargs)
 
 
 _RESOURCE_MANAGER_METHOD_SPECS = dict(map(
@@ -138,7 +142,7 @@ class _ResourceManagerProxy(IPCService, metaclass=ABCMeta):
 class ResourceManagerProxyServer(IPCServerService, IResourceManager,  # noqa # pylint: disable=too-many-ancestors
                                  _ResourceManagerProxy):
 
-    METHOD_MAP: Dict[str, Type] = {
+    REQ_MAP: Dict[str, Type] = {
         'add_file': AddFile,
         'add_files': AddFiles,
         'add_task': AddTask,
@@ -180,7 +184,7 @@ class ResourceManagerProxyServer(IPCServerService, IResourceManager,  # noqa # p
 
 class ResourceManagerProxyClient(IPCClientService, _ResourceManagerProxy):
 
-    METHOD_MAP: Dict[str, Type] = {
+    RES_MAP: Dict[str, Type] = {
         'add_file': Response,
         'add_files': Response,
         'add_task': Response,
@@ -188,14 +192,6 @@ class ResourceManagerProxyClient(IPCClientService, _ResourceManagerProxy):
         'get_resources': Resources,
         'pull_resource': Response
     }
-
-    def __init__(self,
-                 read_conn: Connection,
-                 write_conn: Connection,
-                 proxy_object: object) -> None:
-
-        super().__init__(read_conn, write_conn, proxy_object)
-        self._cls_to_fn = {v: k for k, v in self.METHOD_MAP.items()}
 
     def _build_error_msg(self,
                          request_id: bytes,

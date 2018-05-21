@@ -57,8 +57,8 @@ class IPCService(ThreadedService, metaclass=ABCMeta):
 
     POLL_TIMEOUT = 0.5  # s
 
-    MSG_MAP: Dict[str, Type] = dict()  # message name to msg class
-    METHOD_MAP: Dict[str, Type] = dict()  # function name to msg class
+    MSG_MAP: Dict[str, Type] = dict()  # msg name to msg class
+    REQ_MAP: Dict[str, Type] = dict()  # fn name to msg class
 
     def __init__(self,
                  read_conn: Connection,
@@ -66,7 +66,7 @@ class IPCService(ThreadedService, metaclass=ABCMeta):
                  serializer: Optional[IPCMessageSerializer] = None,
                  ) -> None:
 
-        super().__init__()
+        ThreadedService.__init__(self)
 
         self._read_conn = read_conn
         self._write_conn = write_conn
@@ -105,6 +105,7 @@ class IPCService(ThreadedService, metaclass=ABCMeta):
                 self._on_message(msg)
 
     def _build_msg(self,
+                   method_map: Dict[str, Type],
                    request_id: bytes,
                    fn_name: str,
                    *args,
@@ -124,7 +125,7 @@ class IPCService(ThreadedService, metaclass=ABCMeta):
         if fn_spec[1]:
             call_kwargs.update(kwargs)
 
-        msg_cls = self.METHOD_MAP[fn_name]
+        msg_cls = method_map[fn_name]
         return msg_cls(**call_kwargs)
 
     def _read(self, **options) -> object:
@@ -179,7 +180,7 @@ class IPCServerService(IPCService, metaclass=ABCMeta):
                  serializer: Optional[IPCMessageSerializer] = None,
                  ) -> None:
 
-        super().__init__(read_conn, write_conn, serializer=serializer)
+        IPCService.__init__(self, read_conn, write_conn, serializer=serializer)
 
         self._requests: Dict[bytes, Deferred] = dict()  # deferred requests
         self._functions: Dict[str, functools.partial] = dict()  # proxy funcs
@@ -190,7 +191,7 @@ class IPCServerService(IPCService, metaclass=ABCMeta):
         return all other properties as-is.
         """
 
-        if item != 'METHODS' and item in self.METHOD_MAP.keys():
+        if item != 'REQ_MAP' and item in self.REQ_MAP.keys():
             if item not in self._functions:
                 self._functions[item] = functools.partial(self._request, item)
             return self._functions[item]
@@ -200,7 +201,8 @@ class IPCServerService(IPCService, metaclass=ABCMeta):
     def _request(self, fn_name: str, *args, **kwargs) -> Deferred:
 
         request_id = os.urandom(16)
-        msg = self._build_msg(request_id, fn_name, *args, **kwargs)
+        msg = self._build_msg(self.REQ_MAP, request_id,
+                              fn_name, *args, **kwargs)
 
         deferred = Deferred()
 
@@ -236,6 +238,8 @@ class IPCServerService(IPCService, metaclass=ABCMeta):
 
 class IPCClientService(IPCService, metaclass=ABCMeta):
 
+    RES_MAP: Dict[str, Type] = dict()  # fn name to response msg class
+
     def __init__(self,
                  read_conn: Connection,
                  write_conn: Connection,
@@ -243,13 +247,13 @@ class IPCClientService(IPCService, metaclass=ABCMeta):
                  serializer: Optional[IPCMessageSerializer] = None,
                  ) -> None:
 
-        super().__init__(read_conn, write_conn, serializer=serializer)
+        IPCService.__init__(self, read_conn, write_conn, serializer=serializer)
         self.proxy_object = proxy_object
 
         self._cls_to_fn = {v: k for k, v
-                           in self.METHOD_MAP.items()}
+                           in self.REQ_MAP.items()}
         self._functions = {k: getattr(proxy_object, k) for k
-                           in self.METHOD_MAP.keys()}
+                           in self.REQ_MAP.keys()}
 
     @abstractmethod
     def _build_error_msg(self,
@@ -266,8 +270,8 @@ class IPCClientService(IPCService, metaclass=ABCMeta):
         if isinstance(result, (Exception, Failure)):
             msg = self._build_error_msg(request_id, fn_name, result)
         else:
-            msg = self._build_msg(request_id, fn_name, result)
-
+            msg = self._build_msg(self.RES_MAP, request_id,
+                                  fn_name, result)
         self._write(msg)
 
     def _on_request(self, msg: object) -> None:
