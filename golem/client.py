@@ -535,10 +535,9 @@ class Client(HardwarePresetsMixin):
         else:
             task = task_dict
 
-        if self.transaction_system:
-            self.funds_locker.lock_funds(task)
+        self.funds_locker.lock_funds(task)
 
-        if self.transaction_system and self.concent_service.enabled:
+        if self.concent_service.enabled:
             min_amount, opt_amount = msg_helpers.requestor_deposit_amount(
                 task.price,
             )
