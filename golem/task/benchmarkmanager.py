@@ -30,6 +30,7 @@ class BenchmarkManager(object):
 
     def run_benchmark(self, benchmark, task_builder, env_id, success=None,
                       error=None):
+        logger.info('running benchmark for %r', env_id)
 
         from golem.network.p2p.node import Node
 
@@ -58,17 +59,24 @@ class BenchmarkManager(object):
                              benchmark)
         br.run()
 
-    def run_all_benchmarks(self):
+    def run_all_benchmarks(self, success=None, error=None):
+        logger.info('running all benchmarks')
         benchmarks_copy = copy(self.benchmarks)
-        self.run_benchmarks(benchmarks_copy)
+        return self.run_benchmarks(benchmarks_copy, success, error)
 
-    def run_benchmarks(self, benchmarks):
-        # Next benchmark ran only if previous completed successfully
-        if not benchmarks:
-            return
+    def run_benchmarks(self, benchmarks, success=None, error=None):
         env_id, (benchmark, builder_class) = benchmarks.popitem()
-        self.run_benchmark(benchmark, builder_class, env_id,
-                           lambda _: self.run_benchmarks(benchmarks))
+
+        def on_success(performance):
+            if benchmarks:
+                logger.info('running further benchmarks', benchmarks)
+                self.run_benchmarks(benchmarks, success, error)
+            else:
+                if success:
+                    logger.info('running benchmarks success')
+                    success(performance)
+
+        self.run_benchmark(benchmark, builder_class, env_id, on_success, error)
 
     def _validate_task_state(self, task_state):
         td = task_state.definition

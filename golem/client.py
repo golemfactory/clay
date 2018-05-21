@@ -1126,7 +1126,7 @@ class Client(HardwarePresetsMixin):
 
     @inlineCallbacks
     def run_benchmark(self, env_id):
-        logger.info('Running benchmarks ...')
+        logger.info(f'Running benchmarks {env_id}...')
         deferred = Deferred()
 
         if env_id != DefaultEnvironment.get_id():
@@ -1264,13 +1264,23 @@ class Client(HardwarePresetsMixin):
     def get_golem_status():
         return StatusPublisher.last_status()
 
+    @inlineCallbacks
     def activate_hw_preset(self, name, run_benchmarks=False):
+        logger.info(f'activate_hw_preset {name}, {run_benchmarks}')
         HardwarePresets.update_config(name, self.config_desc)
         if hasattr(self, 'task_server') and self.task_server:
+            deferred = Deferred()
+            logger.info('activate_hw_preset 1')
             self.task_server.change_config(
                 self.config_desc,
-                run_benchmarks=run_benchmarks
+                run_benchmarks=run_benchmarks,
+                success=deferred.callback, error=deferred.errback
             )
+            logger.info('activate_hw_preset 2')
+
+            result = yield deferred
+            logger.info('hw_preset %r, %r', type(result), result)
+            returnValue(result)
 
     def __lock_datadir(self):
         if not path.exists(self.datadir):

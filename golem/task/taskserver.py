@@ -378,7 +378,9 @@ class TaskServer(
         if wtr:
             wtr.already_sending = False
 
-    def change_config(self, config_desc, run_benchmarks=False):
+    def change_config(self, config_desc, run_benchmarks=False,
+                      success=None, error=None):
+        logger.warning('change_config')
         PendingConnectionsServer.change_config(self, config_desc)
         self.config_desc = config_desc
         self.last_message_time_threshold = config_desc.task_session_timeout
@@ -386,7 +388,8 @@ class TaskServer(
             self.__get_task_manager_root(self.client.datadir),
             config_desc.use_distributed_resource_management)
         self.task_computer.change_config(
-            config_desc, run_benchmarks=run_benchmarks)
+            config_desc, run_benchmarks=run_benchmarks, success=success,
+            error=error)
         self.task_keeper.change_config(config_desc)
 
     def get_task_computer_root(self):
