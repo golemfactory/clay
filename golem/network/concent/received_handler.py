@@ -133,12 +133,15 @@ class TaskServerMessageHandler():
         """
         child_msg = getattr(parent_msg, child_msg_field, None)
 
-        if not (child_msg and child_msg.verify_signature(
-                public_key=self.task_server.keys_auth.raw_pubkey)):
-            logger.warning("%s invalid in %r", child_msg_field, parent_msg)
-            return False
+        if child_msg:
+            try:
+                return child_msg.verify_signature(
+                    public_key=self.task_server.keys_auth.raw_pubkey)
+            except msg_exceptions.InvalidSignature:
+                pass
 
-        return True
+        logger.warning("%s invalid in %r", child_msg_field, parent_msg)
+        return False
 
     @handler_for(message.concents.ServiceRefused)
     def on_service_refused(self, msg,

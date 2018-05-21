@@ -137,6 +137,7 @@ class TestWithClient(TempDirFixture):
         self.client = unittest.mock.Mock()
         self.client.datadir = os.path.join(self.path, "datadir")
 
+
 class PEP8MixIn(object):
     """A mix-in class that adds PEP-8 style conformance.
     To use it in your TestCase just add it to inheritance list like so:

@@ -17,6 +17,7 @@ from golem.core import variables
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import received_handler
+from golem.network.concent.received_handler import TaskServerMessageHandler
 from golem.network.concent.handlers_library import library
 from golem.network.concent.filetransfers import ConcentFiletransferService
 
@@ -176,6 +177,35 @@ class TaskServerMessageHandlerTestBase(
         # Remove registered handlers
         del self.task_server
         gc.collect()
+
+
+class IsOursTest(TaskServerMessageHandlerTestBase):
+    def setUp(self):
+        super().setUp()
+        self.task_server.keys_auth.raw_pubkey = self.provider_keys.raw_pubkey
+        with mock.patch(
+                'golem.network.concent.received_handler.register_handlers'):
+            self.tsmh = TaskServerMessageHandler(task_server=self.task_server)
+
+    def test_is_ours(self):
+        provider_priv_key=self.provider_keys.raw_privkey
+        msg = msg_factories.concents.AckSubtaskResultsVerifyFactory(
+            subtask_results_verify__sign__privkey=provider_priv_key
+        )
+        self.assertTrue(self.tsmh.is_ours(msg, 'subtask_results_verify'))
+
+    def test_not_is_ours_empty_child_msg(self):
+        msg = msg_factories.concents.AckSubtaskResultsVerifyFactory(
+            subtask_results_verify=None
+        )
+        self.assertFalse(self.tsmh.is_ours(msg, 'subtask_results_verify'))
+
+    def test_not_is_ours_sig_mismatch(self):
+        other_priv_key=self.concent_keys.raw_privkey
+        msg = msg_factories.concents.AckSubtaskResultsVerifyFactory(
+            subtask_results_verify__sign__privkey=other_priv_key
+        )
+        self.assertFalse(self.tsmh.is_ours(msg, 'subtask_results_verify'))
 
 
 class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):

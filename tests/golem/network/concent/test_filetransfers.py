@@ -4,7 +4,8 @@ import unittest
 
 import mock
 
-from golem_messages.factories.concents import FileTransferTokenFactory
+from golem_messages.factories.concents import (
+    FileTransferTokenFactory, FileInfoFactory)
 from golem_messages.message.concents import FileTransferToken
 
 from golem import testutils
@@ -26,12 +27,18 @@ class ConcentFileRequestTest(unittest.TestCase):
         def error():
             pass
 
+        category = FileTransferToken.FileInfo.Category.resources
+
         cfr = ConcentFileRequestFactory(
-            file_path=self.file_path, success=success, error=error)
+            file_path=self.file_path,
+            success=success, error=error,
+            file_category=category)
+
         self.assertIsInstance(cfr, filetransfers.ConcentFileRequest)
         self.assertIsInstance(cfr.file_transfer_token, FileTransferToken)
         self.assertEqual(cfr.success, success)
         self.assertEqual(cfr.error, error)
+        self.assertEqual(cfr.file_category, category)
 
 
 class ConcentFiletransferServiceTest(testutils.TempDirFixture):
@@ -78,11 +85,20 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
         self.assertIn('not started', log_mock.call_args[0][0])
 
     def test_transfer(self):
+        category = FileTransferToken.FileInfo.Category.resources
         ftt = FileTransferTokenFactory()
-        self.cfs.transfer('/less/important.txt', ftt)
+        self.cfs.transfer('/less/important.txt', ftt, file_category=category)
         request = self.cfs._transfers.get()
         self.assertIsInstance(request, filetransfers.ConcentFileRequest)
         self.assertEqual(request.file_transfer_token, ftt)
+        self.assertEqual(request.file_category, category)
+
+    def test_transfer_category_default(self):
+        ftt = FileTransferTokenFactory()
+        self.cfs.transfer('/less/important.txt', ftt)
+        request = self.cfs._transfers.get()
+        self.assertEqual(request.file_category,
+                         FileTransferToken.FileInfo.Category.results)
 
     @mock.patch('golem.network.concent.filetransfers.'
                 'ConcentFiletransferService.process')
@@ -164,11 +180,20 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
         with self.assertRaises(Exception):
             self.cfs.process(request)
 
+    @staticmethod
+    def _init_uploaded_file(path):
+        with open(path, 'w') as f:
+            f.write('meh')
+
+    @staticmethod
+    def _multiple_files_ftt():
+        category = FileTransferToken.FileInfo.Category.resources
+
+
     @mock.patch('golem.network.concent.filetransfers.requests.post')
     def test_upload(self, requests_mock):
         path = self.path + '/something.good'
-        with open(path, 'w') as f:
-            f.write('meh')
+        self._init_uploaded_file(path)
 
         ftt = FileTransferTokenFactory(upload=True)
 
@@ -190,6 +215,35 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
         self.assertEqual(args, (upload_address, ))
         self.assertIsNotNone(kwargs.get('headers').pop('Concent-Auth'))
         self.assertEqual(kwargs.get('headers'), headers)
+
+    @mock.patch('golem.network.concent.filetransfers.requests.post')
+    def test_upload_multiple_files(self, requests_mock):
+        path = self.path + '/obsta.cles'
+        self._init_uploaded_file(path)
+        category = FileTransferToken.FileInfo.Category.resources
+
+        ftt = FileTransferTokenFactory(
+            files=[
+                FileInfoFactory(
+                    category=FileTransferToken.FileInfo.Category.results),
+                FileInfoFactory(path=path, category=category),
+            ],
+            upload=True,
+        )
+
+        request = ConcentFileRequestFactory(
+            file_path=path,
+            file_transfer_token=ftt,
+            file_category=category,
+        )
+
+        self.cfs.upload(request)
+
+        requests_mock.assert_called_once()
+
+        _, kwargs = requests_mock.call_args
+        concent_upload_path = kwargs.get('headers').get('Concent-Upload-Path')
+        self.assertEqual(concent_upload_path, ftt.files[1].get('path'))
 
     @mock.patch('golem.network.concent.filetransfers.requests.get')
     def test_download(self, requests_mock):
@@ -216,3 +270,32 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
             kwargs.get('headers'),
             self._mock_get_auth_headers(ftt)
         )
+
+    @mock.patch('golem.network.concent.filetransfers.requests.get')
+    def test_download_multiple_files(self, requests_mock):
+        path = self.path + '/spanish.sahara'
+        category = FileTransferToken.FileInfo.Category.resources
+        ftt = FileTransferTokenFactory(
+            files=[
+                FileInfoFactory(
+                    category=FileTransferToken.FileInfo.Category.results),
+                FileInfoFactory(category=category),
+            ],
+            download=True,
+        )
+
+        request = ConcentFileRequestFactory(
+            file_path=path,
+            file_transfer_token=ftt,
+            file_category=category,
+        )
+
+        download_address = ftt.storage_cluster_address + 'download/' + \
+            ftt.files[1].get('path')
+
+        self.cfs.download(request)
+
+        requests_mock.assert_called_once()
+
+        args, kwargs = requests_mock.call_args
+        self.assertEqual(args, (download_address, ))
