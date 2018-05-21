@@ -23,11 +23,11 @@ DONATE_URL_TEMPLATE = "http://188.165.227.180:4000/donate/{}"
 
 def tETH_faucet_donate(addr: str):
     request = DONATE_URL_TEMPLATE.format(addr)
-    response = requests.get(request)
-    if response.status_code != 200:
-        log.error("tETH Faucet error code {}".format(response.status_code))
+    resp = requests.get(request)
+    if resp.status_code != 200:
+        log.error("tETH Faucet error code {}".format(resp.status_code))
         return False
-    response = response.json()
+    response = resp.json()
     if response['paydate'] == 0:
         log.warning("tETH Faucet warning {}".format(response['message']))
         return False
