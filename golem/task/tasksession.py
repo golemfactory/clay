@@ -441,6 +441,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     #########################
 
     def _react_to_want_to_compute_task(self, msg):
+        reasons = message.CannotAssignTask.REASON
+
+        if msg.concent_enabled and not self.concent_service.enabled:
+            self.send(
+                message.CannotAssignTask(
+                    task_id=msg.task_id,
+                    reason=reasons.ConcentDisabled,
+                )
+            )
+            self.dropped()
+            return
+
         self.task_manager.got_wants_to_compute(msg.task_id, self.key_id,
                                                msg.node_name)
         if self.task_server.should_accept_provider(self.key_id):
@@ -463,22 +475,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         else:
             ctd, wrong_task, wait = None, False, False
 
-        reasons = message.CannotAssignTask.REASON
         if wrong_task:
             self.send(
                 message.CannotAssignTask(
                     task_id=msg.task_id,
                     reason=reasons.NotMyTask,
-                )
-            )
-            self.dropped()
-            return
-
-        if msg.concent_enabled and not self.concent_service.enabled:
-            self.send(
-                message.CannotAssignTask(
-                    task_id=msg.task_id,
-                    reason=reasons.ConcentDisabled,
                 )
             )
             self.dropped()
