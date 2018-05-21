@@ -105,7 +105,7 @@ def _configure_mock_ets(ets):
     )
     ets.eth_for_batch_payment.return_value = 0.0001 * denoms.ether
     ets.eth_base_for_batch_payment.return_value = 0.001 * denoms.ether
-    ets.get_payment_address = '0x' + 40 * 'a'
+    ets.get_payment_address.return_value = '0x' + 40 * 'a'
 
 
 def run_requesting_node(datadir, num_subtasks=3):

@@ -33,29 +33,26 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
     @patch('golem.core.service.LoopingCallService.running',
            new_callable=PropertyMock)
     def test_stop(self, mock_is_service_running):
-        ets_pkg = 'golem.transactions.ethereum.ethereumtransactionsystem.'
-
-        def _init(self, *args, **kwargs):
-            self.rpcport = 65001
-            self._NodeProcess__ps = None
-            self.web3 = Mock()
-
         with patch('twisted.internet.task.LoopingCall.start'), \
                 patch('twisted.internet.task.LoopingCall.stop'), \
-                patch(ets_pkg + 'new_sci'), \
-                patch(ets_pkg + 'GNTConverter'), \
-                patch(ets_pkg + 'PaymentProcessor'), \
-                patch(ets_pkg + 'NodeProcess'):
+                patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                      'new_sci'), \
+                patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                      'GNTConverter'), \
+                patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                      'PaymentProcessor'), \
+                patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                      'NodeProcess'):
 
             mock_is_service_running.return_value = False
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-            e._node.start.assert_called_once_with(None)
+            e._node.start.assert_called_once_with(None)  # noqa pylint:disable=no-member
             e.start()
 
             mock_is_service_running.return_value = True
             e.stop()
-            e._node.stop.assert_called_once_with()
-            e.payment_processor.sendout.assert_called_once_with(0)
+            e._node.stop.assert_called_once_with()  # pylint:disable=no-member
+            e.payment_processor.sendout.assert_called_once_with(0)  # noqa pylint:disable=no-member
 
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.NodeProcess',
            Mock())
