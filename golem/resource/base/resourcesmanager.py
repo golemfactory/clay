@@ -2,10 +2,12 @@ import inspect
 import logging
 from abc import ABCMeta
 from multiprocessing.connection import Connection
-from typing import Optional, Any, Callable
+from typing import Optional, Any, Callable, Dict, Type, Tuple, List
 
-from golem.core.ipc import IPCService, IPCServerService, IPCClientService
+from golem.ipc.service import IPCService, IPCServerService, IPCClientService
 from golem.resource.client import ClientOptions
+from golem.resource.messages.ttypes import AddFile, AddFiles, AddTask, \
+    RemoveTask, GetResources, PullResource, Error, Response, Resources
 
 logger = logging.getLogger(__name__)
 
@@ -48,10 +50,21 @@ class IResourceManager:
         pass
 
 
-RESOURCE_MANAGER_METHODS = {
-    method_name for method_name, _ in
+def _read_args_and_kwargs(entry):
+    spec = inspect.getfullargspec(entry[1])
+
+    if spec.args and spec.args[0] == 'self':
+        args = spec.args[1:]
+    else:
+        args = spec.args
+
+    return entry[0], (args, spec.kwonlyargs)
+
+
+_RESOURCE_MANAGER_METHOD_SPECS = dict(map(
+    _read_args_and_kwargs,
     inspect.getmembers(IResourceManager, predicate=inspect.isfunction)
-}
+))
 
 
 class ResourceManagerOptions:  # pylint: disable=too-few-public-methods
@@ -109,9 +122,6 @@ class _ResourceManagerProxy(IPCService, metaclass=ABCMeta):
             self._reactor = reactor
         return self._reactor
 
-    def _loop(self):
-        self.receive()
-
     def _on_error(self, error: Optional[Exception] = None) -> None:
         super()._on_error(error)
         logger.error('IPC error: %r', error)
@@ -120,11 +130,22 @@ class _ResourceManagerProxy(IPCService, metaclass=ABCMeta):
         super()._on_close(error)
         logger.warning('IPC connection closed: %r', error)
 
+    def _get_method_spec(self, method_name: str) -> Tuple[Optional[List[str]],
+                                                          Optional[List[str]]]:
+        return _RESOURCE_MANAGER_METHOD_SPECS[method_name]
+
 
 class ResourceManagerProxyServer(IPCServerService, IResourceManager,  # noqa # pylint: disable=too-many-ancestors
                                  _ResourceManagerProxy):
 
-    METHODS = RESOURCE_MANAGER_METHODS
+    METHOD_MAP: Dict[str, Type] = {
+        'add_file': AddFile,
+        'add_files': AddFiles,
+        'add_task': AddTask,
+        'remove_task': RemoveTask,
+        'get_resources': GetResources,
+        'pull_resource': PullResource
+    }
 
     def __init__(self,
                  read_conn: Connection,
@@ -142,8 +163,53 @@ class ResourceManagerProxyServer(IPCServerService, IResourceManager,  # noqa # p
 
         self.storage = ResourceStorage(dir_manager, method)
 
+    def _on_message(self, msg: object) -> None:
+
+        if isinstance(msg, Response):
+            return self._on_response(msg.request_id, None)
+
+        elif isinstance(msg, Resources):
+            return self._on_response(msg.request_id, msg.resources)
+
+        elif isinstance(msg, Error):
+            return self._on_response(msg.request_id, Exception(msg.message))
+
+        else:
+            logger.error("Unknown message received: %r", msg)
+
 
 class ResourceManagerProxyClient(IPCClientService, _ResourceManagerProxy):
+
+    METHOD_MAP: Dict[str, Type] = {
+        'add_file': Response,
+        'add_files': Response,
+        'add_task': Response,
+        'remove_task': Response,
+        'get_resources': Resources,
+        'pull_resource': Response
+    }
+
+    def __init__(self,
+                 read_conn: Connection,
+                 write_conn: Connection,
+                 proxy_object: object) -> None:
+
+        super().__init__(read_conn, write_conn, proxy_object)
+        self._cls_to_fn = {v: k for k, v in self.METHOD_MAP.items()}
+
+    def _build_error_msg(self,
+                         request_id: bytes,
+                         fn_name: str,
+                         result: Any) -> object:
+
+        return Error(request_id, str(result))
+
+    def _on_message(self, msg: object) -> None:
+
+        if isinstance(msg, Error):
+            logger.error("Unexpected error message received: %r", msg)
+        else:
+            self._on_request(msg)
 
     def _execute(self, fn: Callable) -> Any:
         self.reactor.callFromThread(fn)

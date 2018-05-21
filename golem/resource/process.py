@@ -3,7 +3,7 @@ import os
 from multiprocessing import Pipe
 from typing import Optional, List, Dict
 
-from golem.core.ipc import ProcessService
+from golem.ipc.service import ProcessService
 from golem.resource.base.resourcesmanager import ResourceManagerProxyServer, \
     ResourceManagerProxyClient, ResourceManagerOptions
 
@@ -61,6 +61,7 @@ class _Process(ProcessService):
 
     @classmethod
     def _spawn(cls, data_dir: str, *multiple) -> None:
+        """ Called in a new process """
 
         from golem.core.common import install_reactor, config_logging
 
