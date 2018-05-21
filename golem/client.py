@@ -856,7 +856,7 @@ class Client(HardwarePresetsMixin):
             assert isinstance(self.task_server, TaskServer)
             subtasks = self.task_server.task_manager.get_subtasks_dict(task_id)
             if subtasks is None:
-                return dict(), None
+                return ()
             return subtasks, None
         except KeyError:
             return None, "Task not found: '{}'".format(task_id)
