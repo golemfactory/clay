@@ -56,10 +56,12 @@ class PaymentProcessor:
         self._inprogress: Dict[str, List[Payment]] = {}  # Sent transactions.
         self.load_from_db()
 
-    def get_reserved_eth(self) -> int:
+    @property
+    def reserved_eth(self) -> int:
         return self._eth_reserved + self.ETH_BATCH_PAYMENT_BASE
 
-    def get_reserved_gntb(self) -> int:
+    @property
+    def reserved_gntb(self) -> int:
         return self._gntb_reserved
 
     def get_gas_cost_per_payment(self) -> int:

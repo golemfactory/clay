@@ -106,7 +106,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.assertEqual(expected, self.pp._inprogress)
 
     def test_reserved_eth(self):
-        assert self.pp.get_reserved_eth() == \
+        assert self.pp.reserved_eth == \
             self.sci.GAS_BATCH_PAYMENT_BASE * self.sci.GAS_PRICE
 
     def test_add_invalid_payment_status(self):
@@ -132,16 +132,16 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.sci.get_gntb_balance.return_value = balance_gntb
         self.pp.CLOSURE_TIME_DELAY = 0
 
-        assert self.pp.get_reserved_gntb() == 0
-        assert self.pp.get_reserved_eth() == self.pp.ETH_BATCH_PAYMENT_BASE
+        assert self.pp.reserved_gntb == 0
+        assert self.pp.reserved_eth == self.pp.ETH_BATCH_PAYMENT_BASE
 
         gnt_value = 10**17
         p = Payment.create(subtask="p1", payee=urandom(20), value=gnt_value)
         self.pp.add(p)
-        assert self.pp.get_reserved_gntb() == gnt_value
+        assert self.pp.reserved_gntb == gnt_value
         eth_reserved = \
             self.pp.ETH_BATCH_PAYMENT_BASE + self.pp.get_gas_cost_per_payment()
-        assert self.pp.get_reserved_eth() == eth_reserved
+        assert self.pp.reserved_eth == eth_reserved
 
         tx_hash = '0xdead'
         self.sci.batch_transfer.return_value = tx_hash
@@ -163,13 +163,13 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert len(inprogress) == 1
         assert tx_hash in inprogress
         assert inprogress[tx_hash] == [p]
-        assert self.pp.get_reserved_gntb() == 0
-        assert self.pp.get_reserved_eth() == self.pp.ETH_BATCH_PAYMENT_BASE
+        assert self.pp.reserved_gntb == 0
+        assert self.pp.reserved_eth == self.pp.ETH_BATCH_PAYMENT_BASE
 
         self.pp.monitor_progress()
         assert len(inprogress) == 1
-        assert self.pp.get_reserved_gntb() == 0
-        assert self.pp.get_reserved_eth() == self.pp.ETH_BATCH_PAYMENT_BASE
+        assert self.pp.reserved_gntb == 0
+        assert self.pp.reserved_eth == self.pp.ETH_BATCH_PAYMENT_BASE
 
         tx_block_number = 1337
         self.sci.get_block_number.return_value = tx_block_number
@@ -193,7 +193,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.assertEqual(p.details.block_number, tx_block_number)
         self.assertEqual(p.details.block_hash, 64 * 'f')
         self.assertEqual(p.details.fee, 55001 * self.sci.GAS_PRICE)
-        self.assertEqual(self.pp.get_reserved_gntb(), 0)
+        self.assertEqual(self.pp.reserved_gntb, 0)
 
     def test_failed_transaction(self):
         inprogress = self.pp._inprogress
@@ -243,7 +243,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.assertEqual(p.details.block_number, tx_block_number)
         self.assertEqual(p.details.block_hash, 64 * 'f')
         self.assertEqual(p.details.fee, 55001 * self.sci.GAS_PRICE)
-        self.assertEqual(self.pp.get_reserved_gntb(), 0)
+        self.assertEqual(self.pp.reserved_gntb, 0)
 
     def test_payment_timestamp(self):
         self.sci.get_eth_balance.return_value = denoms.ether

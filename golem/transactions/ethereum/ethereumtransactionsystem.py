@@ -106,7 +106,7 @@ class EthereumTransactionSystem(TransactionSystem):
         if not self._balance_known():
             return None, None, None, None, None
         gnt_total = self._gnt_balance + self._gntb_balance
-        gnt_av = gnt_total - self.payment_processor.get_reserved_gntb()
+        gnt_av = gnt_total - self.payment_processor.reserved_gntb
         return gnt_total, gnt_av, self._eth_balance, \
             self._last_gnt_update, self._last_eth_update
 
@@ -143,7 +143,7 @@ class EthereumTransactionSystem(TransactionSystem):
 
         pp = self.payment_processor
         if currency == 'ETH':
-            eth = self._eth_balance - pp.get_reserved_eth()
+            eth = self._eth_balance - pp.reserved_eth
             if amount > eth - lock:
                 raise NotEnoughFunds(amount, eth - lock, currency)
             log.info(
