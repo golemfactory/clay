@@ -1,21 +1,46 @@
 import calendar
 import datetime
-import unittest
+import logging
 
 from golem_messages import constants
 from golem_messages import factories as msg_factories
 from golem_messages import helpers
 from golem_messages import message
 
+from golem import testutils
+from golem.transactions.ethereum import ethereumtransactionsystem as libets
+
 from ..base import ConcentBaseTest
 
 
 reasons = message.concents.ForceSubtaskResultsRejected.REASON
+logger = logging.getLogger(__name__)
 moment = datetime.timedelta(seconds=1)
 
 
-class RequestorDoesntSendTestCase(ConcentBaseTest, unittest.TestCase):
+class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.TempDirFixture):
     """Requestor doesn't send Ack/Reject of SubtaskResults"""
+    def setUp(self):
+        ConcentBaseTest.setUp(self)
+        testutils.TempDirFixture.setUp(self)
+        self.ets = libets.EthereumTransactionSystem(
+            datadir=self.tempdir,
+            node_priv_key=self.requestor_keys.raw_privkey,
+        )
+
+    def requestor_put_deposit(self, fsr: message.concents.ForceSubtaskResults):
+        amount, _ = helpers.requestor_deposit_amount(
+            # We'll use subtask price. Total number of subtasks is unknown
+            fsr.task_to_compute.price,
+        )
+        tx_hash = self.ets.concent_deposit(
+            required=amount,
+            expected=amount,
+            reserved=0,
+        )
+        logger.debug("Deposit tx_hash: %r", tx_hash)
+        return tx_hash
+
     def provider_send_force(self, **kwargs):
         fsr = msg_factories.concents.ForceSubtaskResultsFactory(
             **self.gen_rtc_kwargs(
@@ -27,6 +52,7 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, unittest.TestCase):
                 'task_to_compute__'),
             **kwargs,
         )
+        self.requestor_put_deposit(fsr)
         response = self.provider_load_response(self.provider_send(fsr))
         self.assertIn(
             type(response),
