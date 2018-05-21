@@ -2,13 +2,12 @@ import calendar
 import logging
 import time
 from collections import defaultdict
-from typing import Dict, List, Optional
+from typing import Dict, List
 from threading import Lock
 
 from sortedcontainers import SortedListWithKey
-from ethereum.utils import normalize_address, denoms
+from ethereum.utils import denoms
 from pydispatch import dispatcher
-import requests
 
 import golem_sci
 from golem.core.variables import PAYMENT_DEADLINE

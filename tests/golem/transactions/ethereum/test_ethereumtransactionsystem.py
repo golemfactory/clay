@@ -1,10 +1,10 @@
-import requests
 from os import urandom
 import unittest
 from unittest.mock import patch, Mock, ANY, PropertyMock
 
 from eth_utils import encode_hex
 import golem_sci
+import requests
 
 from golem import testutils
 from golem.tools.assertlogs import LogTestCase
@@ -33,7 +33,6 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
     @patch('golem.core.service.LoopingCallService.running',
            new_callable=PropertyMock)
     def test_stop(self, mock_is_service_running):
-        pkg = 'golem.ethereum.'
         ets_pkg = 'golem.transactions.ethereum.ethereumtransactionsystem.'
 
         def _init(self, *args, **kwargs):
@@ -46,17 +45,16 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
                 patch(ets_pkg + 'new_sci'), \
                 patch(ets_pkg + 'GNTConverter'), \
                 patch(ets_pkg + 'PaymentProcessor'), \
-                patch(pkg + 'node.NodeProcess.start'), \
-                patch(pkg + 'node.NodeProcess.stop'):
+                patch(ets_pkg + 'NodeProcess'):
 
             mock_is_service_running.return_value = False
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-            assert e._node.start.called
+            e._node.start.assert_called_once_with(None)
             e.start()
 
             mock_is_service_running.return_value = True
             e.stop()
-            assert e._node.stop.called
+            e._node.stop.assert_called_once_with()
             e.payment_processor.sendout.assert_called_once_with(0)
 
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.NodeProcess',

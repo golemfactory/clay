@@ -6,11 +6,10 @@ import unittest.mock as mock
 from os import urandom
 
 import golem_sci
+from golem_sci.interface import TransactionReceipt
 from eth_utils import encode_hex
 from ethereum.utils import denoms, privtoaddr
 from freezegun import freeze_time
-from golem_sci.interface import TransactionReceipt
-from twisted.internet.task import Clock
 
 from golem.core.common import timestamp_to_datetime
 from golem.ethereum.paymentprocessor import (

@@ -25,16 +25,16 @@ def tETH_faucet_donate(addr: str):
     request = DONATE_URL_TEMPLATE.format(addr)
     resp = requests.get(request)
     if resp.status_code != 200:
-        log.error("tETH Faucet error code {}".format(resp.status_code))
+        log.error("tETH Faucet error code %r", resp.status_code)
         return False
     response = resp.json()
     if response['paydate'] == 0:
-        log.warning("tETH Faucet warning {}".format(response['message']))
+        log.warning("tETH Faucet warning %r", response['message'])
         return False
     # The paydate is not actually very reliable, usually some day in the past.
     paydate = datetime.fromtimestamp(response['paydate'])
     amount = int(response['amount']) / denoms.ether
-    log.info("Faucet: {:.6f} ETH on {}".format(amount, paydate))
+    log.info("Faucet: %.6f ETH on %r", amount, paydate)
     return True
 
 
@@ -69,9 +69,9 @@ class EthereumTransactionSystem(TransactionSystem):
             incomes_keeper=EthereumIncomesKeeper(self._sci),
         )
 
-        self._eth_balance: Optional[int] = None
-        self._gnt_balance: Optional[int] = None
-        self._gntb_balance: Optional[int] = None
+        self._eth_balance: int = 0
+        self._gnt_balance: int = 0
+        self._gntb_balance: int = 0
         self._last_eth_update = None
         self._last_gnt_update = None
 
@@ -191,14 +191,16 @@ class EthereumTransactionSystem(TransactionSystem):
         raise ValueError('Unknown currency {}'.format(currency))
 
     def _get_ether_from_faucet(self) -> None:
-        if not self._faucet:
+        if not self._faucet or not self._balance_known():
             return
         if self._eth_balance < 0.01 * denoms.ether:
             log.info("Requesting tETH from faucet")
             tETH_faucet_donate(self._sci.get_eth_address())
 
     def _get_gnt_from_faucet(self) -> None:
-        if not self._faucet or self._eth_balance < 0.001 * denoms.ether:
+        if not self._faucet or not self._balance_known():
+            return
+        if self._eth_balance < 0.001 * denoms.ether:
             return
         if self._gnt_balance + self._gntb_balance < 100 * denoms.ether:
             log.info("Requesting GNT from faucet")
