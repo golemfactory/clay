@@ -489,7 +489,7 @@ class ForceGetTaskResultUploadTest(FileTransferTokenTests,  # noqa pylint:disabl
             self.cft._run()
 
         log_mock.assert_called_with(
-            "Concent upload failed: %r, %s",
+            "Concent results upload failed: %r, %s",
             fgtru.subtask_id,
             exception)
 

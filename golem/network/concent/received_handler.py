@@ -339,7 +339,7 @@ class TaskServerMessageHandler():
     def _log_ftt_invalid(msg: message.base.Message):
         logger.warning("File Transfer Token invalid in %r", msg)
 
-    def _upload_results(self, subtask_id, ftt, files_offset=0):
+    def _upload_results(self, subtask_id, ftt):
         wtr = self.task_server.results_to_send.get(subtask_id, None)
         if not wtr:
             logger.warning(
@@ -351,18 +351,42 @@ class TaskServerMessageHandler():
                          subtask_id, response)
 
         def error(exc):
-            logger.warning("Concent upload failed: %r, %s",
+            logger.warning("Concent results upload failed: %r, %s",
                            subtask_id, exc)
 
         self.concent_filetransfers.transfer(
             file_path=wtr.result_path,
             file_transfer_token=ftt,
             success=success,
-            error=error)
+            error=error,
+            file_category=message.concents.FileTransferToken.
+            FileInfo.Category.results
+        )
 
-    def _upload_task_resources(self, subtask_id, ftt, files_offset):
-        # @todo implement resources upload
-        pass
+    def _upload_task_resources(self, task_id, ftt):
+
+        package_paths = self.task_server.task_manager.comp_task_keeper\
+            .get_package_paths(task_id)
+
+        logger.info("Package paths: %s", package_paths)
+
+        def success(response):
+            logger.debug("Concent resources upload sucessful: %r, %s",
+                         task_id, response)
+
+        def error(exc):
+            logger.warning("Concent resources upload failed: %r, %s",
+                           task_id, exc)
+
+        self.concent_filetransfers.transfer(
+            # for now, assuming there's always one entry
+            file_path=package_paths[0],
+            file_transfer_token=ftt,
+            success=success,
+            error=error,
+            file_category=message.concents.FileTransferToken.
+            FileInfo.Category.resources
+        )
 
     @handler_for(message.concents.ForceGetTaskResultUpload)
     def on_force_get_task_result_upload(
@@ -468,5 +492,5 @@ class TaskServerMessageHandler():
         if not self.is_ours(msg, 'subtask_results_verify'):
             return
 
-        self._upload_task_resources(msg.subtask_id, ftt, 0)
-        self._upload_results(msg.subtask_id, ftt, 1)
+        self._upload_task_resources(msg.task_id, ftt)
+        self._upload_results(msg.subtask_id, ftt)

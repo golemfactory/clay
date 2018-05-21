@@ -74,7 +74,9 @@ def process_report_computed_task_no_time_check(
     reject_reasons = message.tasks.RejectReportComputedTask.REASON
 
     # Check msg.task_to_compute signature
-    if not msg.task_to_compute.verify_signature(ecc.raw_pubkey):
+    try:
+        msg.task_to_compute.verify_signature(ecc.raw_pubkey)
+    except msg_exceptions.InvalidSignature:
         return prepare_reject_report_computed_task(msg.task_to_compute, None)
 
     if not verify_message_payment_address(report_computed_task=msg, ecc=ecc):
