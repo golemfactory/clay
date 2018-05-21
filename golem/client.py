@@ -188,6 +188,7 @@ class Client(HardwarePresetsMixin):
             start_port=start_geth_port,
             address=geth_address,
         )
+        self.transaction_system.start()
 
         self.funds_locker = FundsLocker(self.transaction_system,
                                         Path(self.datadir))

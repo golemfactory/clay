@@ -190,7 +190,10 @@ class TaskComputer(object):
             logger.error("No subtask with id %r", subtask_id)
             return
 
+        was_success = False
+
         if task_thread.error or task_thread.error_msg:
+
             if "Task timed out" in task_thread.error_msg:
                 self.stats.increase_stat('tasks_with_timeout')
             else:
@@ -200,9 +203,11 @@ class TaskComputer(object):
                     subtask['task_id'],
                     task_thread.error_msg,
                 )
-            dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=False, value=work_time_to_be_paid)
 
-        elif task_thread.result and 'data' in task_thread.result and 'result_type' in task_thread.result:
+        elif task_thread.result \
+                and 'data' in task_thread.result \
+                and 'result_type' in task_thread.result:
+
             logger.info("Task %r computed, work_wall_clock_time %s",
                         subtask_id,
                         str(work_wall_clock_time))
@@ -212,7 +217,7 @@ class TaskComputer(object):
                 subtask['task_id'],
                 task_thread.result,
             )
-            dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=True, value=work_time_to_be_paid)
+            was_success = True
 
         else:
             self.stats.increase_stat('tasks_with_errors')
@@ -221,7 +226,10 @@ class TaskComputer(object):
                 subtask['task_id'],
                 "Wrong result format",
             )
-            dispatcher.send(signal='golem.monitor', event='computation_time_spent', success=False, value=work_time_to_be_paid)
+
+        dispatcher.send(signal='golem.monitor', event='computation_time_spent',
+                        success=was_success, value=work_time_to_be_paid)
+
         self.counting_task = None
 
     def run(self):

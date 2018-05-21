@@ -1,12 +1,17 @@
+from os import urandom
+import unittest
 from unittest.mock import patch, Mock, ANY, PropertyMock
 
+from eth_utils import encode_hex
 import golem_sci
+import requests
 
 from golem import testutils
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.transactions.ethereum.ethereumtransactionsystem import (
-    EthereumTransactionSystem
+    EthereumTransactionSystem,
+    tETH_faucet_donate,
 )
 from golem.transactions.ethereum.exceptions import NotEnoughFunds
 
@@ -17,12 +22,6 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
                                     testutils.PEP8MixIn):
     PEP8_FILES = ['golem/transactions/ethereum/ethereumtransactionsystem.py', ]
 
-    def test_init(self):
-        e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-        self.assertIsInstance(e, EthereumTransactionSystem)
-        assert isinstance(e.get_payment_address(), str)
-        e.stop()
-
     def test_invalid_private_key(self):
         with self.assertRaises(ValueError):
             EthereumTransactionSystem(self.tempdir, "not a private key")
@@ -30,47 +29,37 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
     def test_get_balance(self):
         e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
         assert e.get_balance() == (None, None, None, None, None)
-        e.stop()
 
     @patch('golem.core.service.LoopingCallService.running',
            new_callable=PropertyMock)
     def test_stop(self, mock_is_service_running):
-        pkg = 'golem.ethereum.'
-        new_sci_method_name = \
-            'golem.transactions.ethereum.ethereumtransactionsystem.new_sci'
-
-        def _init(self, *args, **kwargs):
-            self.rpcport = 65001
-            self._NodeProcess__ps = None
-            self.web3 = Mock()
-
         with patch('twisted.internet.task.LoopingCall.start'), \
                 patch('twisted.internet.task.LoopingCall.stop'), \
-                patch(new_sci_method_name), \
-                patch(pkg + 'node.NodeProcess.start'), \
-                patch(pkg + 'paymentprocessor.GNTConverter'), \
-                patch(pkg + 'node.NodeProcess.stop'):
+                patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                      'new_sci'), \
+                patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                      'GNTConverter'), \
+                patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                      'PaymentProcessor'), \
+                patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                      'NodeProcess'):
 
             mock_is_service_running.return_value = False
             e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-            assert e.payment_processor._loopingCall.start.called
-            assert e._node.start.called
-
-            mock_is_service_running.return_value = False
-            e.stop()
-            assert e._node.stop.called
-            assert not e.payment_processor._loopingCall.stop.called
+            e._node.start.assert_called_once_with(None)  # noqa pylint:disable=no-member
+            e.start()
 
             mock_is_service_running.return_value = True
             e.stop()
-            assert e.payment_processor._loopingCall.stop.called
+            e._node.stop.assert_called_once_with()  # pylint:disable=no-member
+            e.payment_processor.sendout.assert_called_once_with(0)  # noqa pylint:disable=no-member
 
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.NodeProcess',
            Mock())
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem.GNTConverter',
+           Mock())
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.new_sci')
-    @patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-           'PaymentProcessor')
-    def test_mainnet_flag(self, pp, new_sci):
+    def test_mainnet_flag(self, new_sci):
         EthereumTransactionSystem(self.tempdir, PRIV_KEY, False)
         new_sci.assert_called_once_with(
             ANY,
@@ -78,10 +67,8 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             ANY,
             golem_sci.chains.RINKEBY,
         )
-        pp.assert_called_once_with(sci=ANY, faucet=True)
 
         new_sci.reset_mock()
-        pp.reset_mock()
 
         EthereumTransactionSystem(self.tempdir, PRIV_KEY, True)
         new_sci.assert_called_once_with(
@@ -90,7 +77,6 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             ANY,
             golem_sci.chains.MAINNET,
         )
-        pp.assert_called_once_with(sci=ANY, faucet=False)
 
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.NodeProcess',
            Mock())
@@ -114,6 +100,8 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         sci.get_gntb_balance.return_value = gntb_balance
 
         ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        ets._faucet = False
+        ets._run()
 
         cost = ets.get_withdraw_gas_cost(eth_balance, 'ETH')
         assert cost == 21000 * gas_price
@@ -152,6 +140,8 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         destination = '0x' + 40 * 'd'
 
         ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        ets._faucet = False
+        ets._run()
 
         # Unknown currency
         with self.assertRaises(ValueError):
@@ -226,3 +216,35 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         with self.assertRaises(NotEnoughFunds):
             ets.withdraw(gnt_balance + gntb_balance - 1, destination, 'GNT', 2)
         sci.reset_mock()
+
+
+class FaucetTest(unittest.TestCase):
+
+    @patch('requests.get')
+    def test_error_code(self, get):
+        addr = encode_hex(urandom(20))
+        response = Mock(spec=requests.Response)
+        response.status_code = 500
+        get.return_value = response
+        assert tETH_faucet_donate(addr) is False
+
+    @patch('requests.get')
+    def test_error_msg(self, get):
+        addr = encode_hex(urandom(20))
+        response = Mock(spec=requests.Response)
+        response.status_code = 200
+        response.json.return_value = {'paydate': 0, 'message': "Ooops!"}
+        get.return_value = response
+        assert tETH_faucet_donate(addr) is False
+
+    @patch('requests.get')
+    def test_success(self, get):
+        addr = encode_hex(urandom(20))
+        response = Mock(spec=requests.Response)
+        response.status_code = 200
+        response.json.return_value = {'paydate': 1486605259,
+                                      'amount': 999999999999999}
+        get.return_value = response
+        assert tETH_faucet_donate(addr) is True
+        assert get.call_count == 1
+        assert addr in get.call_args[0][0]
