@@ -852,13 +852,13 @@ class Client(HardwarePresetsMixin):
         return []
 
     def get_subtasks(self, task_id: str) \
-            -> Tuple[Optional[List[Dict]], Optional[str]]:
+            -> Optional[List[Dict]]:
         try:
             assert isinstance(self.task_server, TaskServer)
             subtasks = self.task_server.task_manager.get_subtasks_dict(task_id)
-            return subtasks, None
+            return subtasks
         except KeyError:
-            return None, "Task not found: '{}'".format(task_id)
+            logger.info("Task not found: '{}'".format(task_id))
 
     def get_subtasks_borders(self, task_id, part=1):
         return self.task_server.task_manager.get_subtasks_borders(task_id,
@@ -868,13 +868,13 @@ class Client(HardwarePresetsMixin):
         return self.task_server.task_manager.get_output_states(task_id)
 
     def get_subtask(self, subtask_id: str) \
-            -> Tuple[Optional[Dict], Optional[str]]:
+            -> Optional[Dict]:
         try:
             assert isinstance(self.task_server, TaskServer)
             subtask = self.task_server.task_manager.get_subtask_dict(subtask_id)
-            return subtask, None
+            return subtask
         except KeyError:
-            return None, "Subtask not found: '{}'".format(subtask_id)
+            logger.info("Subtask not found: '{}'".format(subtask_id))
 
     def get_task_preview(self, task_id, single=False):
         return self.task_server.task_manager.get_task_preview(task_id,
