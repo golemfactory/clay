@@ -39,10 +39,11 @@ class ThriftMessageSerializer(IPCMessageSerializer):
                     msg_types: Optional[Dict[str, Any]] = None,
                     **_options) -> Any:
 
-        length, cls_name = self.deserialize_header(data)
+        offset, cls_name = self.deserialize_header(data)
+
         msg_type = msg_types[cls_name]
 
-        transport = TTransport.TMemoryBuffer(data[length:])
+        transport = TTransport.TMemoryBuffer(data[offset:])
         protocol = self.protocol_factory.getProtocol(transport)
 
         ret = msg_type()

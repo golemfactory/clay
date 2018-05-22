@@ -8,8 +8,6 @@ class IPCMessageSerializer(metaclass=ABCMeta):
     ENCODING = 'utf-8'
 
     FORMAT_LEN = '!I'
-    FORMAT_NAME = '{}s'
-
     LENGTH_LEN = struct.calcsize(FORMAT_LEN)
 
     @abstractmethod
@@ -21,19 +19,15 @@ class IPCMessageSerializer(metaclass=ABCMeta):
         pass
 
     def serialize_header(self, msg) -> bytes:
-
         name = bytes(msg.__class__.__name__, self.ENCODING)
-        name_len = len(name)
-
-        len_bytes = struct.pack(self.FORMAT_LEN, name_len)
-        name_bytes = struct.pack(self.FORMAT_NAME.format(name_len), name)
-
-        return len_bytes + name_bytes
+        len_bytes = struct.pack(self.FORMAT_LEN, len(name))
+        return len_bytes + name
 
     def deserialize_header(self, data: bytes) -> Tuple[int, str]:
+        len_slice = data[:self.LENGTH_LEN]
+        name_len: int = struct.unpack(self.FORMAT_LEN, len_slice)[0]
+        name_bytes: bytes = data[self.LENGTH_LEN:self.LENGTH_LEN + name_len]
 
-        name_len: int = struct.unpack(self.FORMAT_LEN, data[:self.LENGTH_LEN])
-        name_bytes: bytes = struct.unpack(self.FORMAT_NAME.format(name_len),
-                                          data[self.LENGTH_LEN:])
-
-        return name_len, name_bytes.decode(self.ENCODING)
+        offset = self.LENGTH_LEN + name_len
+        name = name_bytes.decode(self.ENCODING)
+        return offset, name
