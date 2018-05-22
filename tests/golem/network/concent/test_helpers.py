@@ -6,12 +6,7 @@ from ethereum.utils import privtoaddr
 from eth_utils import encode_hex
 
 from golem_messages import message
-from golem_messages import shortcuts as msg_shortcuts
 from golem_messages.cryptography import ECCx
-from golem_messages.factories.tasks import ReportComputedTaskFactory
-
-from golem import testutils
-from golem.core.keysauth import KeysAuth
 
 from golem.network.concent import helpers
 

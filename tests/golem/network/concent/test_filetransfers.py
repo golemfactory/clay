@@ -185,11 +185,6 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
         with open(path, 'w') as f:
             f.write('meh')
 
-    @staticmethod
-    def _multiple_files_ftt():
-        category = FileTransferToken.FileInfo.Category.resources
-
-
     @mock.patch('golem.network.concent.filetransfers.requests.post')
     def test_upload(self, requests_mock):
         path = self.path + '/something.good'
@@ -204,7 +199,7 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
 
         upload_address = ftt.storage_cluster_address + 'upload/'
         headers = self._mock_get_auth_headers(ftt)
-        headers['Concent-Upload-Path'] = ftt.files[0].get('path')
+        headers['Concent-Upload-Path'] = ftt.files[0].get('path')  # noqa pylint:disable=unsubscriptable-object
         headers['Content-Type'] = 'application/octet-stream'
 
         self.cfs.upload(request)
@@ -243,7 +238,7 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
 
         _, kwargs = requests_mock.call_args
         concent_upload_path = kwargs.get('headers').get('Concent-Upload-Path')
-        self.assertEqual(concent_upload_path, ftt.files[1].get('path'))
+        self.assertEqual(concent_upload_path, ftt.files[1].get('path'))  # noqa pylint:disable=unsubscriptable-object
 
     @mock.patch('golem.network.concent.filetransfers.requests.get')
     def test_download(self, requests_mock):
@@ -257,7 +252,7 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
         )
 
         download_address = ftt.storage_cluster_address + 'download/' + \
-            ftt.files[0].get('path')
+            ftt.files[0].get('path')  # noqa pylint:disable=unsubscriptable-object
 
         self.cfs.download(request)
 
@@ -291,11 +286,9 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
         )
 
         download_address = ftt.storage_cluster_address + 'download/' + \
-            ftt.files[1].get('path')
+            ftt.files[1].get('path')  # noqa pylint:disable=unsubscriptable-object
 
         self.cfs.download(request)
 
         requests_mock.assert_called_once()
-
-        args, kwargs = requests_mock.call_args
-        self.assertEqual(args, (download_address, ))
+        self.assertEqual(requests_mock.call_args[0], (download_address, ))

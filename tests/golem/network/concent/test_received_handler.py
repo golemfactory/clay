@@ -184,12 +184,12 @@ class IsOursTest(TaskServerMessageHandlerTestBase):
     def setUp(self):
         super().setUp()
         self.task_server.keys_auth.raw_pubkey = self.provider_keys.raw_pubkey
-        with mock.patch(
-                'golem.network.concent.received_handler.register_handlers'):
+        with mock.patch('golem.network.concent.'
+                        'received_handler.register_handlers'):
             self.tsmh = TaskServerMessageHandler(task_server=self.task_server)
 
     def test_is_ours(self):
-        provider_priv_key=self.provider_keys.raw_privkey
+        provider_priv_key = self.provider_keys.raw_privkey
         msg = msg_factories.concents.AckSubtaskResultsVerifyFactory(
             subtask_results_verify__sign__privkey=provider_priv_key
         )
@@ -202,7 +202,7 @@ class IsOursTest(TaskServerMessageHandlerTestBase):
         self.assertFalse(self.tsmh.is_ours(msg, 'subtask_results_verify'))
 
     def test_not_is_ours_sig_mismatch(self):
-        other_priv_key=self.concent_keys.raw_privkey
+        other_priv_key = self.concent_keys.raw_privkey
         msg = msg_factories.concents.AckSubtaskResultsVerifyFactory(
             subtask_results_verify__sign__privkey=other_priv_key
         )
@@ -439,7 +439,7 @@ class FiletransfersTestBase(TaskServerMessageHandlerTestBase):
         self.addCleanup(cft_patch.stop)
 
 
-class FileTransferTokenTestsBase:
+class FileTransferTokenTestsBase:  # noqa pylint:disable=too-few-public-methods
 
     def setUp(self):
         super().setUp()  # noqa: pylint:disable=no-member
@@ -679,7 +679,7 @@ class ForceSubtaskResultsTest(TaskServerMessageHandlerTestBase):
                 mock.ANY)
 
 
-class SubtaskResultsVerifyTest(FileTransferTokenTestsBase,
+class SubtaskResultsVerifyTest(FileTransferTokenTestsBase,  # noqa pylint:disable=too-many-ancestors
                                FiletransfersTestBase):
     def setUp(self):
         super().setUp()
