@@ -108,7 +108,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=(Mock(_private_key='a' * 32)),
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -122,7 +121,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=(Mock(_private_key='a' * 32)),
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -138,7 +136,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=keys_auth,
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False,
@@ -158,7 +155,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
                 app_config=Mock(),
                 config_desc=ClientConfigDescriptor(),
                 keys_auth=keys_auth,
-                database=Mock(),
                 connect_to_known_hosts=False,
                 use_docker_manager=False,
                 use_monitor=False,
@@ -177,7 +173,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
                 app_config=Mock(),
                 config_desc=ClientConfigDescriptor(),
                 keys_auth=keys_auth,
-                database=Mock(),
                 connect_to_known_hosts=False,
                 use_docker_manager=False,
                 use_monitor=False,
@@ -192,7 +187,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=(Mock(_private_key='a' * 32)),
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -208,7 +202,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=(Mock(_private_key='a' * 32)),
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -222,7 +215,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -265,7 +257,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -276,8 +267,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             Client(datadir=datadir,
                    app_config=Mock(),
                    config_desc=ClientConfigDescriptor(),
-                   keys_auth=Mock(),
-                   database=Mock())
+                   keys_auth=Mock())
 
     def test_get_status(self, *_):
         self.client = Client(
@@ -285,7 +275,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -324,7 +313,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            database=Mock(),
         )
         self.client.db = None
         self.client.quit()
@@ -335,7 +323,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=(Mock(key_id='a' * 64)),
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -349,7 +336,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -374,7 +360,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -417,7 +402,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=(Mock(key_id='a' * 64)),
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False
         )
@@ -449,7 +433,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(key_id='a' * 64),
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False
         )
@@ -486,7 +469,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             keys_auth=Mock(_private_key='a' * 32,
                            key_id='a' * 64,
                            public_key=b'a' * 128),
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             apps_manager=apps_manager
@@ -572,7 +554,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -589,7 +570,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -606,7 +586,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -629,7 +608,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
-            database=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -847,7 +825,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 keys_auth=Mock(_private_key='a' * 32,
                                key_id='a' * 64,
                                public_key=b'a' * 128),
-                database=Mock(),
                 connect_to_known_hosts=False,
                 use_docker_manager=False,
                 use_monitor=False,

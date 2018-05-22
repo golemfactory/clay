@@ -91,7 +91,6 @@ class TestNode(TestWithDatabase):
                                            'config_desc'
                                        ],
                                        keys_auth=keys_auth,
-                                       database=ANY,
                                        mainnet=False,
                                        geth_address=None,
                                        start_geth=False,
@@ -156,7 +155,6 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
-                                       database=ANY,
                                        mainnet=False,
                                        geth_address=geth_address,
                                        start_geth=False,
@@ -234,7 +232,6 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
-                                       database=ANY,
                                        mainnet=False,
                                        geth_address=None,
                                        start_geth=True,
@@ -278,7 +275,6 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
-                                       database=ANY,
                                        geth_address=None,
                                        start_geth=False,
                                        start_geth_port=None,
@@ -344,7 +340,6 @@ class TestNode(TestWithDatabase):
                                        app_config=ANY,
                                        config_desc=ANY,
                                        keys_auth=None,
-                                       database=ANY,
                                        mainnet=False,
                                        geth_address=None,
                                        start_geth=True,
@@ -689,7 +684,6 @@ class TestOptNode(TempDirFixture):
         assert reactor.callFromThread.called
         assert error_result is None
 
-    @patch('golem.node.Database')
     @patch('threading.Thread', MockThread)
     @patch('twisted.internet.reactor', create=True)
     def test_quit_mock(self, reactor, *_):
@@ -700,6 +694,7 @@ class TestOptNode(TempDirFixture):
 
         setattr(node, '_reactor', reactor)
         setattr(node, 'client', None)
+        setattr(node, '_db', Mock())
 
         node.quit()
 

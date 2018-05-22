@@ -67,7 +67,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         self._peers: List[SocketAddress] = peers or []
 
-        # Initialize database
         self._db = Database(
             db, fields=DB_FIELDS, models=DB_MODELS, db_dir=datadir)
 
@@ -80,7 +79,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
             app_config=app_config,
             config_desc=config_desc,
             keys_auth=keys_auth,
-            database=self._db,
             mainnet=mainnet,
             use_docker_manager=use_docker_manager,
             use_monitor=use_monitor,
@@ -119,6 +117,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             reactor = self._reactor
             if self.client:
                 self.client.quit()
+            self._db.close()
             if reactor.running:
                 reactor.callFromThread(reactor.stop)
 
