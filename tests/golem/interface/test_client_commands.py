@@ -576,7 +576,7 @@ class TestTasks(TempDirFixture):
             self.client.get_subtasks = Mock(return_value=None)
             tasks = Tasks()
             result = tasks.subtasks('task_id', None)
-            self.assertEqual(result, None)
+            self.assertEqual(result, 'No subtasks')
             self.client.get_subtasks.assert_called_once_with('task_id')
 
     def test_unsupport(self):
