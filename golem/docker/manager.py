@@ -146,7 +146,7 @@ class DockerManager(DockerConfigManager):
         except Exception as exc:
             logger.error("Docker: error pulling images: {}"
                          .format(exc))
-        self.build_images()
+            self.build_images()
 
         self._env_checked = True
         return bool(self.docker_machine)
