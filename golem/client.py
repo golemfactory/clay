@@ -10,7 +10,7 @@ from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
 from threading import Lock, Thread
-from typing import Dict, Hashable, Optional, Union, List, Iterable
+from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from pydispatch import dispatcher
 from twisted.internet.defer import (
