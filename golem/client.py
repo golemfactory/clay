@@ -10,7 +10,7 @@ from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
 from threading import Lock, Thread
-from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
+from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple, Any
 
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -850,8 +850,9 @@ class Client(HardwarePresetsMixin):
             return self.task_server.task_manager.get_tasks_dict()
         return []
 
-    def get_subtasks(self, task_id: str) \
-            -> Tuple[Optional[List[Dict]], Optional[str]]:
+    def get_subtasks(self, task_id: str) -> Tuple:
+            # -> Tuple[Optional[List[Dict]], Optional[str]]:
+            # FIXME #2803
         try:
             assert isinstance(self.task_server, TaskServer)
             subtasks = self.task_server.task_manager.get_subtasks_dict(task_id)

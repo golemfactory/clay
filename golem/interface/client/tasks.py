@@ -91,7 +91,10 @@ class Tasks:
         values = []
 
         deferred = Tasks.client.get_subtasks(id)
-        result, error = sync_wait(deferred)
+        results = sync_wait(deferred)
+        if len(results) == 0:
+            return "No subtasks created yet"
+        result, error = results
 
         if error:
             return error
