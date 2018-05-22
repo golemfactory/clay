@@ -127,7 +127,7 @@ class Environment():
         :return float:
         """
         if float(min_accepted) < 0:
-            raise Exception(f'minimal performance {min_accepted} must be '
+            raise Exception(f'minimal performance ({min_accepted}) must be '
                             'positive')
         Performance.update(min_accepted=min_accepted).where(
             Performance.environment_id == cls.get_id()).execute()

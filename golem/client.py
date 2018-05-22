@@ -10,7 +10,8 @@ from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
 from threading import Lock, Thread
-from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
+from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple, \
+    Generator
 
 from pydispatch import dispatcher
 from twisted.internet import defer
@@ -1205,20 +1206,19 @@ class Client(HardwarePresetsMixin):
 
     # TODO: hardcoded Blender just for 0.16.0
     @inlineCallbacks
-    def get_min_performance(self,
-                            env_id: str = BlenderEnvironment.get_id()) -> float:
+    def get_min_performance(self, env_id: str = BlenderEnvironment.get_id()) \
+            -> Generator[Deferred, float, float]:
         env = self.environments_manager.get_environment_by_id(env_id)
         result = yield defer.execute(env.get_min_accepted_performance)
-        returnValue(result)
+        return result
 
     # TODO: hardcoded Blender just for 0.16.0
     @inlineCallbacks
     def set_min_performance(self, min_accepted_performance: float,
                             env_id: str = BlenderEnvironment.get_id()):
         env = self.environments_manager.get_environment_by_id(env_id)
-        result = yield defer.execute(env.set_min_accepted_performance,
-                                     min_accepted_performance)
-        returnValue(result)
+        yield defer.execute(env.set_min_accepted_performance,
+                            min_accepted_performance)
 
     def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:
