@@ -2,12 +2,17 @@ import inspect
 import logging
 from abc import ABCMeta
 from multiprocessing.connection import Connection
-from typing import Optional, Any, Callable, Dict, Type, Tuple, List
+from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
-from golem.ipc.service import IPCService, IPCServerService, IPCClientService
-from golem.resource.client import ClientOptions
-from golem.resource.messages.ttypes import AddFile, AddFiles, AddTask, \
-    RemoveTask, GetResources, PullResource, Error, Response, Resources
+from golem.ipc.service import IPCClientService, IPCServerService, IPCService, \
+    RPCMixin
+from golem.resource.client import ClientOptions as ResourceClientOptions
+from golem.resource.messages.helpers import FROM_PYTHON_CONVERTERS, \
+    TO_PYTHON_CONVERTERS, build_added, build_empty, build_error, \
+    build_pull_resource, build_pulled, build_resources, to_py_pulled_entry, \
+    to_py_resource, to_py_resource_entry
+from golem.resource.messages.ttypes import AddFile, AddFiles, AddTask, Added, \
+    Empty, Error, GetResources, Pulled, RemoveTask, Resources, PullResource
 
 logger = logging.getLogger(__name__)
 
@@ -26,7 +31,7 @@ class IResourceManager:
         pass
 
     @staticmethod
-    def build_client_options(peers=None, **kwargs) -> ClientOptions:
+    def build_client_options(peers=None, **kwargs) -> ResourceClientOptions:
         pass
 
     def add_file(self, path, task_id, async_=False, client_options=None):
@@ -57,7 +62,9 @@ def _read_args_and_kwargs(entry):
     args, kwargs = [], []
 
     for param, props in parameters.items():
-        if props.default:
+        if param == 'self':
+            continue
+        elif props.default:
             args.append(param)
         else:
             kwargs.append(param)
@@ -96,7 +103,7 @@ class ResourceManagerBuilder:
         from golem.resource.dirmanager import DirManager
         return DirManager(self.options.data_dir)
 
-    def build_resource_manager(self) -> IResourceManager:
+    def build(self) -> IResourceManager:
         from golem.resource.hyperdrive.resourcesmanager import \
             HyperdriveResourceManager
 
@@ -110,46 +117,42 @@ class ResourceManagerBuilder:
         )
 
 
-class _ResourceManagerProxy(IPCService, metaclass=ABCMeta):
+class _ProxyMixin(RPCMixin, metaclass=ABCMeta):
 
-    def __init__(self,
-                 read_conn: Connection,
-                 write_conn: Connection) -> None:
+    MSG_NAMES: Dict[str, Union[Type, Callable]] = IPCService.build_message_map(
+        'golem.resource.messages.ttypes'
+    )
 
-        super().__init__(read_conn, write_conn)
-        self._reactor = None
-
-    @property
-    def reactor(self):
-        if not self._reactor:
-            from twisted.internet import reactor
-            self._reactor = reactor
-        return self._reactor
-
-    def _on_error(self, error: Optional[Exception] = None) -> None:
-        super()._on_error(error)
-        logger.error('IPC error: %r', error)
-
-    def _on_close(self, error: Optional[Exception] = None) -> None:
-        super()._on_close(error)
-        logger.warning('IPC connection closed: %r', error)
-
-    def _get_method_spec(self, method_name: str) -> Tuple[Optional[List[str]],
-                                                          Optional[List[str]]]:
-        return _RESOURCE_MANAGER_METHOD_SPECS[method_name]
-
-
-class ResourceManagerProxyServer(IPCServerService, IResourceManager,  # noqa # pylint: disable=too-many-ancestors
-                                 _ResourceManagerProxy):
-
-    REQ_MAP: Dict[str, Type] = {
+    REQ_MSG_BUILDERS: Dict[str, Union[Type, Callable]] = {
         'add_file': AddFile,
         'add_files': AddFiles,
         'add_task': AddTask,
         'remove_task': RemoveTask,
         'get_resources': GetResources,
-        'pull_resource': PullResource
+        'pull_resource': build_pull_resource,
     }
+
+    TO_PY: Dict[Type, Callable] = TO_PYTHON_CONVERTERS
+    FROM_PY: Dict[Type, Callable] = FROM_PYTHON_CONVERTERS
+
+    @property
+    def reactor(self):
+        if not getattr(self, '_reactor', None):
+            from twisted.internet import reactor
+            setattr(self, '_reactor', reactor)
+        return getattr(self, '_reactor')
+
+    def on_error(self, error: Optional[Exception] = None) -> None:
+        super().on_error(error)  # noqa pylint: disable=no-member
+        logger.error('IPC error: %r', error)
+
+    def on_close(self, error: Optional[Exception] = None) -> None:
+        super().on_close(error)  # noqa pylint: disable=no-member
+        logger.warning('IPC connection closed: %r', error)
+
+
+class ResourceManagerProxyClient(_ProxyMixin, IPCClientService,  # noqa # pylint: disable=too-many-ancestors
+                                 IResourceManager):
 
     def __init__(self,
                  read_conn: Connection,
@@ -157,7 +160,7 @@ class ResourceManagerProxyServer(IPCServerService, IResourceManager,  # noqa # p
                  data_dir: str,
                  method_name: str = 'get_task_resource_dir') -> None:
 
-        super().__init__(read_conn, write_conn)
+        IPCClientService.__init__(self, read_conn, write_conn)
 
         from golem.resource.dirmanager import DirManager
         from golem.resource.hyperdrive.resource import ResourceStorage
@@ -167,30 +170,53 @@ class ResourceManagerProxyServer(IPCServerService, IResourceManager,  # noqa # p
 
         self.storage = ResourceStorage(dir_manager, method)
 
-    def _on_message(self, msg: object) -> None:
+    def on_message(self, msg: object) -> None:
 
-        if isinstance(msg, Response):
-            return self._on_response(msg.request_id, None)
+        if isinstance(msg, Empty):
+            return self.on_response(msg.request_id, None)
+
+        elif isinstance(msg, Added):
+            resource_entry = to_py_resource_entry(msg.entry)
+            return self.on_response(msg.request_id, resource_entry)
+
+        elif isinstance(msg, Pulled):
+            pulled_entry = to_py_pulled_entry(msg.entry)
+            return self.on_response(msg.request_id, pulled_entry)
 
         elif isinstance(msg, Resources):
-            return self._on_response(msg.request_id, msg.resources)
+            resources = list(map(to_py_resource, msg.resources))
+            return self.on_response(msg.request_id, resources)
 
         elif isinstance(msg, Error):
-            return self._on_response(msg.request_id, Exception(msg.message))
+            return self.on_response(msg.request_id, Exception(msg.message))
 
-        else:
-            logger.error("Unknown message received: %r", msg)
+        err = Error(request_id=self._new_request_id(),
+                    message="Unknown msg {}".format(msg.__class__.__name__))
+        self._write(err)
+
+    def _get_method_spec(self, method_name: str) -> Tuple[Optional[List[str]],
+                                                          Optional[List[str]]]:
+        return _RESOURCE_MANAGER_METHOD_SPECS[method_name]
 
 
-class ResourceManagerProxyClient(IPCClientService, _ResourceManagerProxy):
+class ResourceManagerProxyServer(_ProxyMixin, IPCServerService):
 
-    RES_MAP: Dict[str, Type] = {
-        'add_file': Response,
-        'add_files': Response,
-        'add_task': Response,
-        'remove_task': Response,
-        'get_resources': Resources,
-        'pull_resource': Response
+    METHOD_MAP: Dict[Type, str] = {
+        AddFile: 'add_file',
+        AddFiles: 'add_files',
+        AddTask: 'add_task',
+        RemoveTask: 'remove_task',
+        GetResources: 'get_resources',
+        PullResource: 'pull_resource',
+    }
+
+    RES_MSG_BUILDERS: Dict[str, Callable] = {
+        'add_file': build_added,
+        'add_files': build_added,
+        'add_task': build_added,
+        'remove_task': build_empty,
+        'get_resources': build_resources,
+        'pull_resource': build_pulled
     }
 
     def _build_error_msg(self,
@@ -198,14 +224,18 @@ class ResourceManagerProxyClient(IPCClientService, _ResourceManagerProxy):
                          fn_name: str,
                          result: Any) -> object:
 
-        return Error(request_id, str(result))
+        return build_error(request_id, str(result))
 
-    def _on_message(self, msg: object) -> None:
+    def on_message(self, msg: object) -> None:
 
         if isinstance(msg, Error):
-            logger.error("Unexpected error message received: %r", msg)
-        else:
-            self._on_request(msg)
+            return logger.error("Unexpected error message received: %r", msg)
+
+        try:
+            self.on_request(msg)
+        except Exception as exc:  # pylint: disable=broad-except
+            error = build_error(self._new_request_id(), str(exc))
+            self._write(error)
 
     def _execute(self, fn: Callable) -> Any:
         self.reactor.callFromThread(fn)

@@ -1,10 +1,14 @@
 import functools
+import inspect
+import logging
 import os
+import sys
 
 from abc import abstractmethod, ABCMeta
 from multiprocessing import Process
 from multiprocessing.connection import Connection
-from typing import Optional, List, Any, Dict, Set, Callable, Type, Tuple
+from typing import Optional, List, Any, Dict, Callable, Type, Tuple, Union, \
+    Collection
 
 from twisted.internet.defer import Deferred
 from twisted.python.failure import Failure
@@ -12,6 +16,8 @@ from twisted.python.failure import Failure
 from golem.core.service import IService, ThreadedService
 from golem.ipc.serializer import IPCMessageSerializer
 from golem.ipc.serializer.thrift import ThriftMessageSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class ProcessService(IService):
@@ -57,8 +63,7 @@ class IPCService(ThreadedService, metaclass=ABCMeta):
 
     POLL_TIMEOUT = 0.5  # s
 
-    MSG_MAP: Dict[str, Type] = dict()  # msg name to msg class
-    REQ_MAP: Dict[str, Type] = dict()  # fn name to msg class
+    MSG_NAMES: Dict[str, Union[Type, Callable]] = dict()
 
     def __init__(self,
                  read_conn: Connection,
@@ -73,25 +78,31 @@ class IPCService(ThreadedService, metaclass=ABCMeta):
         self._serializer = serializer or self._default_serializer()
 
     @staticmethod
+    def build_message_map(module_name: str,
+                          excluded: str = 'thrift') -> Dict[str, Type]:
+        return {
+            name: cls for name, cls in inspect.getmembers(
+                sys.modules[module_name],
+                lambda cls: (inspect.isclass(cls)
+                             and not cls.__module__.startswith(excluded))
+            )
+        }
+
+    @staticmethod
     def _default_serializer() -> IPCMessageSerializer:
         return ThriftMessageSerializer()
 
     @abstractmethod
-    def _on_message(self, msg: object) -> None:
+    def on_message(self, msg: object) -> None:
         """ Handle messages """
 
     @abstractmethod
-    def _on_close(self, error: Optional[Exception] = None) -> None:
+    def on_close(self, error: Optional[Exception] = None) -> None:
         """ Handle connection closed event """
 
     @abstractmethod
-    def _on_error(self, error: Optional[Exception] = None) -> None:
+    def on_error(self, error: Optional[Exception] = None) -> None:
         """ Handle serialization and format error events """
-
-    @abstractmethod
-    def _get_method_spec(self, method_name: str) -> Tuple[Optional[List[str]],
-                                                          Optional[List[str]]]:
-        """ Return a (args, kwargs) tuple of function argument names """
 
     def _loop(self) -> None:
         """ Main service loop """
@@ -99,80 +110,85 @@ class IPCService(ThreadedService, metaclass=ABCMeta):
         try:
             msg: Optional[object] = self._read()
         except Exception as exc:  # pylint: disable=broad-except
-            self._on_error(exc)
+            self.on_error(exc)
         else:
             if msg:
-                self._on_message(msg)
-
-    def _build_msg(self,
-                   method_map: Dict[str, Type],
-                   request_id: bytes,
-                   fn_name: str,
-                   *args,
-                   **kwargs) -> object:
-
-        """ Build a message, basing on the fn_name and the method map """
-
-        fn_spec = self._get_method_spec(fn_name)
-        call_kwargs = {'request_id': request_id}
-
-        # positional arguments present in function def
-        if fn_spec[0]:
-            for i, arg in enumerate(fn_spec[0]):
-                call_kwargs[arg] = args[i]
-
-        # keyword arguments present in function def
-        if fn_spec[1]:
-            call_kwargs.update(kwargs)
-
-        msg_cls = method_map[fn_name]
-        return msg_cls(**call_kwargs)
+                self.on_message(msg)
 
     def _read(self, **options) -> object:
         """ Read and deserialize data from a pipe """
 
-        # Poll for data and read if any
+        # poll and read
         try:
             if self._read_conn.poll(self.POLL_TIMEOUT):
                 data = self._read_conn.recv_bytes()
             else:
                 return None
         except EOFError as exc:
-            self._on_close(exc)
+            self.on_close(exc)
             return None
 
-        # Deserialize data
+        # deserialize
         try:
             return self._serializer.deserialize(
                 data,
-                msg_types=self.MSG_MAP,
+                msg_types=self.MSG_NAMES,
                 **options
             )
         except Exception as exc:  # pylint: disable=broad-except
-            self._on_error(exc)
+            self.on_error(exc)
             return None
 
     def _write(self, msg: object, **options) -> bool:
         """ Serialize and write data to a pipe """
 
-        # Serialize data
+        # serialize
         try:
             serialized = self._serializer.serialize(msg, **options)
         except Exception as exc:  # pylint: disable=broad-except
-            self._on_error(exc)
+            self.on_error(exc)
             return False
 
-        # Send serialized data
+        # write
         try:
             self._write_conn.send_bytes(serialized)
         except EOFError as exc:
-            self._on_close(exc)
+            self.on_close(exc)
             return False
 
         return True
 
 
-class IPCServerService(IPCService, metaclass=ABCMeta):
+class RPCMixin(metaclass=ABCMeta):
+
+    REQ_MSG_BUILDERS: Dict[str, Union[Type, Callable]] = dict()
+    RES_MSG_BUILDERS: Dict[str, Union[Type, Callable]] = dict()
+
+    METHOD_MAP: Dict[Type, str] = dict()  # msg class to fn name
+
+    FROM_PY: Dict[Type, Callable] = dict()  # arg class converters
+    TO_PY: Dict[Type, Callable] = dict()  # arg class converters
+
+    @abstractmethod
+    def _build_msg(self,
+                   request_id: bytes,
+                   fn_name: str,
+                   *args,
+                   **kwargs) -> object:
+        """ Build a message """
+
+    @staticmethod
+    def _new_request_id() -> bytes:
+        return os.urandom(16)
+
+    @staticmethod
+    def _convert_types(source: Dict[str, Any],
+                       converters: Dict[Type, Callable]) -> Dict[str, Any]:
+
+        return _convert_dict(source, converters)
+
+
+class IPCClientService(IPCService, RPCMixin, metaclass=ABCMeta):
 
     def __init__(self,
                  read_conn: Connection,
@@ -191,18 +207,56 @@ class IPCServerService(IPCService, metaclass=ABCMeta):
         return all other properties as-is.
         """
 
-        if item != 'REQ_MAP' and item in self.REQ_MAP.keys():
+        if item != 'REQ_MSG_BUILDERS' and item in self.REQ_MSG_BUILDERS:
             if item not in self._functions:
                 self._functions[item] = functools.partial(self._request, item)
             return self._functions[item]
 
         return super().__getattribute__(item)
 
+    def on_close(self, error: Optional[Exception] = None) -> None:
+        super().on_close(error)
+        self._requests = dict()
+
+    def on_response(self, request_id: bytes, data: Any) -> None:
+
+        if request_id not in self._requests:
+            error = RuntimeError('Unknown request_id {} for response: {}'
+                                 .format(request_id, data))
+            return self.on_error(error)
+
+        deferred = self._requests.pop(request_id)
+
+        if isinstance(data, (Exception, Failure)):
+            fn = deferred.errback
+        else:
+            fn = deferred.callback
+
+        fn(data)
+
+    def _build_msg(self,
+                   request_id: bytes,
+                   fn_name: str,
+                   *args,
+                   **kwargs) -> object:
+
+        fn_args, _ = self._get_method_spec(fn_name)
+        call_kwargs = kwargs
+
+        # positional arguments from specification
+        for i, fn_arg in enumerate(fn_args or []):
+            if i == len(args):
+                break
+            call_kwargs[fn_arg] = args[i]
+
+        call_kwargs = self._convert_types(kwargs, self.FROM_PY)
+        msg_builder = self.REQ_MSG_BUILDERS[fn_name]
+        return msg_builder(request_id=request_id, **call_kwargs)
+
     def _request(self, fn_name: str, *args, **kwargs) -> Deferred:
 
-        request_id = os.urandom(16)
-        msg = self._build_msg(self.REQ_MAP, request_id,
-                              fn_name, *args, **kwargs)
+        request_id = self._new_request_id()
+        msg = self._build_msg(request_id, fn_name, *args, **kwargs)
 
         deferred = Deferred()
 
@@ -214,33 +268,15 @@ class IPCServerService(IPCService, metaclass=ABCMeta):
 
         return deferred
 
-    def _on_response(self, request_id: bytes, data: Any) -> None:
-
-        if request_id not in self._requests:
-            error = RuntimeError('Unknown request_id {} for response {}'
-                                 .format(request_id, data))
-            self._on_error(error)
-            return
-
-        deferred = self._requests.pop(request_id)
-
-        if isinstance(data, (Exception, Failure)):
-            fn = deferred.errback
-        else:
-            fn = deferred.callback
-
-        fn(data)
-
-    def _on_close(self, error: Optional[Exception] = None) -> None:
-        super()._on_close(error)
-        self._requests = dict()
+    @abstractmethod
+    def _get_method_spec(self, method_name: str) -> Tuple[Optional[List[str]],
+                                                          Optional[List[str]]]:
+        """ Return (args, kwargs) tuple of function arguments """
 
 
-class IPCClientService(IPCService, metaclass=ABCMeta):
+class IPCServerService(IPCService, RPCMixin, metaclass=ABCMeta):
 
-    RES_MAP: Dict[str, Type] = dict()  # fn name to response msg class
-
-    def __init__(self,
+    def __init__(self,  # noqa pylint: disable=too-many-arguments
                  read_conn: Connection,
                  write_conn: Connection,
                  proxy_object: object,
@@ -248,53 +284,17 @@ class IPCClientService(IPCService, metaclass=ABCMeta):
                  ) -> None:
 
         IPCService.__init__(self, read_conn, write_conn, serializer=serializer)
-        self.proxy_object = proxy_object
 
-        self._cls_to_fn = {v: k for k, v
-                           in self.REQ_MAP.items()}
+        # request fn name to method map
         self._functions = {k: getattr(proxy_object, k) for k
-                           in self.REQ_MAP.keys()}
+                           in self.REQ_MSG_BUILDERS.keys()}
 
-    @abstractmethod
-    def _build_error_msg(self,
-                         request_id: bytes,
-                         fn_name: str,
-                         result: Any) -> object:
-        pass
+    def on_request(self, msg: object) -> None:
 
-    def _respond(self,
-                 request_id: bytes,
-                 fn_name: str,
-                 result: Any) -> None:
+        properties = self._convert_types(msg.__dict__, self.TO_PY)
+        request_id = properties.pop('request_id')
 
-        if isinstance(result, (Exception, Failure)):
-            msg = self._build_error_msg(request_id, fn_name, result)
-        else:
-            msg = self._build_msg(self.RES_MAP, request_id,
-                                  fn_name, result)
-        self._write(msg)
-
-    def _on_request(self, msg: object) -> None:
-
-        fn_name = self._cls_to_fn[msg]
-        fn_spec = self._get_method_spec(fn_name)
-        request_id = getattr(msg, 'request_id')
-
-        # positional arguments present in function def
-        args = []
-
-        if fn_spec[0]:
-            for kwarg in fn_spec[0]:
-                args.append(getattr(msg, kwarg))
-
-        # keyword arguments present in function def
-        kwargs = {}
-
-        if fn_spec[1]:
-            for kwarg in fn_spec[1]:
-                kwargs[kwarg] = getattr(msg, kwarg)
-
-        # execute the call
+        fn_name = self.METHOD_MAP[msg.__class__]
         fn = self._functions[fn_name]
 
         def done(result):
@@ -305,13 +305,71 @@ class IPCClientService(IPCService, metaclass=ABCMeta):
 
         def call():
             try:
-                result = fn(*args, **kwargs)
+                result = fn(**properties)
             except Exception as exc:  # pylint: disable=broad-except
                 result = exc
             done(result)
 
+        logger.debug('IPC server call: %r(**%r)', fn_name, properties)
         self._execute(call)
+
+    def _build_msg(self,
+                   request_id: bytes,
+                   fn_name: str,
+                   *args,
+                   **kwargs) -> object:
+
+        msg_builder = self.RES_MSG_BUILDERS[fn_name]
+        return msg_builder(request_id, *args, **kwargs)
+
+    def _respond(self,
+                 request_id: bytes,
+                 fn_name: str,
+                 result: Any) -> None:
+
+        logger.debug('IPC server response: %r, %r, %r',
+                     request_id, fn_name, result)
+
+        if isinstance(result, (Exception, Failure)):
+            msg = self._build_error_msg(request_id, fn_name, result)
+        else:
+            msg = self._build_msg(request_id, fn_name, result)
+
+        self._write(msg)
+
+    @abstractmethod
+    def _build_error_msg(self,
+                         request_id: bytes,
+                         fn_name: str,
+                         result: Any) -> object:
+        pass
 
     @abstractmethod
     def _execute(self, fn: Callable) -> Any:
         """ Execute a function in a chosen context """
+
+
+def _convert_dict(src: Dict, converters: Dict[Type, Callable]):
+    result = {}
+
+    for k, v in src.items():
+
+        if isinstance(v, dict):
+            result[k] = _convert_dict(v, converters)
+        elif not isinstance(v, str) and isinstance(v, Collection):
+            result[k] = _convert_coll(v, converters)
+        elif v.__class__ in converters:
+            result[k] = converters[v.__class__](v)
+        else:
+            result[k] = v
+
+    return result
+
+
+def _convert_coll(src: Collection, converters: Dict[Type, Callable]):
+    return src.__class__([
+        converters[elem.__class__](elem) if elem.__class__ in converters
+        else elem
+        for elem in src
+    ])
+
