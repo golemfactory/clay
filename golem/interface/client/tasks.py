@@ -94,7 +94,7 @@ class Tasks:
         result = sync_wait(deferred)
 
         if result is None:
-            return None
+            return "No subtasks"
 
         if isinstance(result, list):
             for subtask in result:

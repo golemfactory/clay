@@ -868,13 +868,13 @@ class Client(HardwarePresetsMixin):
         return self.task_server.task_manager.get_output_states(task_id)
 
     def get_subtask(self, subtask_id: str) \
-            -> Optional[Dict]:
+            -> Tuple[Optional[Dict], Optional[str]]:
         try:
             assert isinstance(self.task_server, TaskServer)
             subtask = self.task_server.task_manager.get_subtask_dict(subtask_id)
-            return subtask
+            return subtask, None
         except KeyError:
-            logger.info("Subtask not found: '{}'".format(subtask_id))
+            return None, "Subtask not found: '{}'".format(subtask_id)
 
     def get_task_preview(self, task_id, single=False):
         return self.task_server.task_manager.get_task_preview(task_id,
