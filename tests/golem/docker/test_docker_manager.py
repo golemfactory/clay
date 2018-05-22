@@ -272,7 +272,7 @@ class TestDockerManager(unittest.TestCase):
             else:
                 return status_switch[0]
 
-        def done_cb():
+        def done_cb(_):
             pass
 
         config = MockConfig(0, 768, 512)
