@@ -62,7 +62,7 @@ class BenchmarkManager(object):
 
     def run_all_benchmarks(self, success=None, error=None):
         benchmarks_copy = copy(self.benchmarks)
-        return self.run_benchmarks(benchmarks_copy, success, error)
+        self.run_benchmarks(benchmarks_copy, success, error)
 
     def run_benchmarks(self, benchmarks, success=None, error=None):
         env_id, (benchmark, builder_class) = benchmarks.popitem()
