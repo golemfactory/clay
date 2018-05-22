@@ -140,7 +140,8 @@ class TaskServerMessageHandler():
             except msg_exceptions.InvalidSignature:
                 pass
 
-        logger.warning("%s invalid in %r", child_msg_field, parent_msg)
+        logger.warning("Signature invalid in %r.%s",
+                       child_msg_field, parent_msg)
         return False
 
     @handler_for(message.concents.ServiceRefused)
@@ -371,7 +372,13 @@ class TaskServerMessageHandler():
         package_paths = self.task_server.task_manager.comp_task_keeper\
             .get_package_paths(task_id)
 
-        logger.info("Package paths: %s", package_paths)
+        logger.debug("Package paths: %s", package_paths)
+
+        if not package_paths:
+            logger.warning("Cannot upload resources,"
+                           "package not found for task: %s",
+                           task_id)
+            return
 
         def success(response):
             logger.debug("Concent resources upload sucessful: %r, %s",

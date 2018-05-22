@@ -32,10 +32,12 @@ class ConcentFileRequest():  # noqa pylint:disable=too-few-public-methods
             FileTransferToken.FileInfo.Category.results
 
     def __repr__(self):
-        return '%s request: %r %r' % (
+        return '%s request - path: %r, ftt: %r, category: %r' % (
             self.file_transfer_token.operation.value,
             self.file_path,
-            self.file_transfer_token)
+            self.file_transfer_token,
+            self.file_category,
+        )
 
 
 class ConcentFiletransferService(LoopingCallService):

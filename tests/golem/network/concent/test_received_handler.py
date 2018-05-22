@@ -9,6 +9,7 @@ import factory
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import factories as msg_factories
 from golem_messages import message
+from golem_messages.message.concents import FileTransferToken
 from golem_messages import cryptography
 
 from golem import testutils
@@ -30,7 +31,7 @@ class RegisterHandlersTestCase(unittest.TestCase):
         library._handlers = {}
 
     def test_register_handlers(self):
-        class MyHandler():
+        class MyHandler:
             def not_a_handler(self, msg):
                 pass
 
@@ -438,8 +439,7 @@ class FiletransfersTestBase(TaskServerMessageHandlerTestBase):
         self.addCleanup(cft_patch.stop)
 
 
-class FileTransferTokenTests:
-    MSG_FACTORY: factory.Factory
+class FileTransferTokenTestsBase:
 
     def setUp(self):
         super().setUp()  # noqa: pylint:disable=no-member
@@ -447,7 +447,13 @@ class FileTransferTokenTests:
         self.wtr = taskserver_factories.WaitingTaskResultFactory(
             result_path=self.path)
         self.rct = msg_factories.tasks.ReportComputedTaskFactory(
-            task_to_compute__compute_task_def__subtask_id=self.wtr.subtask_id)
+            task_to_compute__compute_task_def__subtask_id=self.wtr.subtask_id,
+            task_to_compute__compute_task_def__task_id=self.wtr.task_id,
+        )
+
+
+class FileTransferTokenTests(FileTransferTokenTestsBase):
+    MSG_FACTORY: factory.Factory
 
     def _get_correct_message(self):
         return self.MSG_FACTORY(
@@ -637,7 +643,7 @@ class ForceGetTaskResultDownloadTest(FileTransferTokenTests,  # noqa pylint:disa
         )
 
 
-class ForceSubtaskResultsTestCase(TaskServerMessageHandlerTestBase):
+class ForceSubtaskResultsTest(TaskServerMessageHandlerTestBase):
     def setUp(self):
         super().setUp()
         self.msg = msg_factories.concents.ForceSubtaskResultsFactory()
@@ -673,4 +679,94 @@ class ForceSubtaskResultsTestCase(TaskServerMessageHandlerTestBase):
                 mock.ANY)
 
 
-# @todo add tests for `on_ack_subtask_results_verify`
+class SubtaskResultsVerifyTest(FileTransferTokenTestsBase,
+                               FiletransfersTestBase):
+    def setUp(self):
+        super().setUp()
+        self.task_server.keys_auth.raw_pubkey = self.provider_keys.raw_pubkey
+
+    def get_asrv(self, sign=True, **kwargs):
+        provider_privkey = self.provider_keys.raw_privkey
+        asrv_kwargs = {
+            'subtask_results_verify__'
+            'subtask_results_rejected__'
+            'report_computed_task': self.rct
+        }
+        if sign:
+            asrv_kwargs['subtask_results_verify__sign__privkey'] = \
+                provider_privkey
+
+        asrv_kwargs.update(kwargs)
+        return msg_factories.concents.AckSubtaskResultsVerifyFactory(
+            **asrv_kwargs
+        )
+
+    @mock.patch('golem.network.concent.filetransfers.'
+                'ConcentFiletransferService.upload')
+    def test_ack_subtask_results_verify(self, upload_mock):
+        self.task_server.results_to_send[self.wtr.subtask_id] = self.wtr
+        self.task_server.task_manager.comp_task_keeper.add_package_paths(
+            self.wtr.task_id, [self.path])
+        asrv = self.get_asrv()
+        library.interpret(asrv)
+        self.cft._run()
+        self.cft._run()
+        self.assertEqual(upload_mock.call_count, 2)
+        resources_call, results_call = upload_mock.call_args_list
+
+        self.assertEqual(resources_call[0][0].file_transfer_token,
+                         asrv.file_transfer_token)
+        self.assertEqual(resources_call[0][0].file_category,
+                         FileTransferToken.FileInfo.Category.resources)
+
+        self.assertEqual(results_call[0][0].file_transfer_token,
+                         asrv.file_transfer_token)
+        self.assertEqual(results_call[0][0].file_category,
+                         FileTransferToken.FileInfo.Category.results)
+
+    @mock.patch('golem.network.concent.received_handler.logger.warning')
+    def test_ack_subtask_results_verify_no_ftt(self, log_mock):
+        asrv = self.get_asrv(file_transfer_token=None)
+        library.interpret(asrv)
+        self.assertIn('File Transfer Token invalid', log_mock.call_args[0][0])
+
+    @mock.patch('golem.network.concent.received_handler.logger.warning')
+    def test_ack_subtask_results_verify_ftt_not_upload(self, log_mock):
+        asrv = self.get_asrv(
+            file_transfer_token__operation=FileTransferToken.Operation.download
+        )
+        library.interpret(asrv)
+        self.assertIn('File Transfer Token invalid', log_mock.call_args[0][0])
+
+    @mock.patch('golem.network.concent.received_handler.logger.warning')
+    def test_ack_subtask_results_verify_srv_not_ours(self, log_mock):
+        asrv = self.get_asrv(sign=False)
+        library.interpret(asrv)
+        self.assertIn('Signature invalid', log_mock.call_args[0][0])
+
+    @mock.patch('golem.network.concent.received_handler.logger.warning')
+    @mock.patch('golem.network.concent.filetransfers.'
+                'ConcentFiletransferService.upload')
+    def test_ack_subtask_results_verify_no_results(
+            self, upload_mock, log_mock):
+        self.task_server.task_manager.comp_task_keeper.add_package_paths(
+            self.wtr.task_id, [self.path])
+        asrv = self.get_asrv()
+        library.interpret(asrv)
+        self.cft._run()
+        self.cft._run()
+        self.assertEqual(upload_mock.call_count, 1)
+        self.assertIn('Cannot find the subtask', log_mock.call_args[0][0])
+
+    @mock.patch('golem.network.concent.received_handler.logger.warning')
+    @mock.patch('golem.network.concent.filetransfers.'
+                'ConcentFiletransferService.upload')
+    def test_ack_subtask_results_verify_no_resources(
+            self, upload_mock, log_mock):
+        self.task_server.results_to_send[self.wtr.subtask_id] = self.wtr
+        asrv = self.get_asrv()
+        library.interpret(asrv)
+        self.cft._run()
+        self.cft._run()
+        self.assertEqual(upload_mock.call_count, 1)
+        self.assertIn('Cannot upload resources', log_mock.call_args[0][0])
