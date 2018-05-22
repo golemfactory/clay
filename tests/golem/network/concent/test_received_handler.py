@@ -208,7 +208,16 @@ class IsOursTest(TaskServerMessageHandlerTestBase):
         self.assertFalse(self.tsmh.is_ours(msg, 'subtask_results_verify'))
 
 
-class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
+class ServiceRefusedTest(TaskServerMessageHandlerTestBase):
+    @mock.patch("golem.network.concent.received_handler.logger.warning")
+    def test_concent_service_refused(self, logger_mock):
+        msg = msg_factories.concents.ServiceRefusedFactory()
+        library.interpret(msg)
+        self.assertIn('Concent service (%s) refused',
+                      logger_mock.call_args[0][0])
+
+
+class VerdictReportComputedTaskFactory(TaskServerMessageHandlerTestBase):
     def setUp(self):
         super().setUp()
         self.task_server.keys_auth.raw_pubkey = self.requestor_keys.raw_pubkey
@@ -231,13 +240,6 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
             self.concent_keys.raw_privkey)
         msg.sign_message(self.concent_keys.raw_privkey)
         return msg
-
-    @mock.patch("golem.network.concent.received_handler.logger.warning")
-    def test_concent_service_refused(self, logger_mock):
-        msg = msg_factories.concents.ServiceRefusedFactory()
-        library.interpret(msg)
-        self.assertIn('Concent service (%s) refused',
-                      logger_mock.call_args[0][0])
 
     @mock.patch(
         "golem_messages.helpers.maximum_download_time",
@@ -283,6 +285,9 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
         library.interpret(msg)
         verify_mock.assert_not_called()
 
+
+class ForceReportComputedTaskTest(TaskServerMessageHandlerTestBase):
+
     @mock.patch(
         "golem.network.concent.helpers"
         ".process_report_computed_task_no_time_check"
@@ -312,6 +317,9 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
                 returned_msg)
         pull_mock.assert_called()
 
+
+class ForceGetTaskResultTest(TaskServerMessageHandlerTestBase):
+
     @mock.patch('golem.task.taskmanager.TaskManager.task_computation_failure')
     def test_force_get_task_result_failed(self, tcf):
         fgtrf = msg_factories.concents.ForceGetTaskResultFailedFactory()
@@ -328,6 +336,34 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
         tcf.assert_called_once_with(
             fgtrf.subtask_id,
             'Error downloading the task result through the Concent')
+
+    @mock.patch('golem.task.taskmanager.TaskManager.task_computation_failure')
+    def test_fgtr_service_refused(self, tcf):
+        fgtr = msg_factories.concents.ForceGetTaskResultFactory()
+        sr = msg_factories.concents.ServiceRefusedFactory(
+            task_to_compute__compute_task_def__subtask_id=fgtr.subtask_id)
+        library.interpret(sr, response_to=fgtr)
+        tcf.assert_called_once_with(
+            fgtr.subtask_id,
+            'Concent refused to assist in forced results download')
+
+    @mock.patch('golem.task.taskmanager.TaskManager.task_computation_failure')
+    def test_force_get_task_result_rejected(self, tcf):
+        fgtrr = msg_factories.concents.ForceGetTaskResultRejectedFactory()
+        library.interpret(fgtrr, response_to=fgtrr.force_get_task_result)
+        tcf.assert_called_once_with(
+            fgtrr.subtask_id,
+            'Concent claims ForceGetTaskResult no longer possible'
+        )
+
+    @mock.patch('golem.network.concent.received_handler.logger.debug')
+    def test_ack_force_get_task_result(self, log):
+        afgtr = msg_factories.concents.AckForceGetTaskResultFactory()
+        library.interpret(afgtr, response_to=afgtr.force_get_task_result)
+        self.assertEqual(log.call_count, 1)
+
+
+class ForceSubtaskResultsResponseTest(TaskServerMessageHandlerTestBase):
 
     def test_force_subtask_results_response_empty(self):
         msg = message.concents.ForceSubtaskResultsResponse()
@@ -376,31 +412,6 @@ class TaskServerMessageHandlerTest(TaskServerMessageHandlerTestBase):
             local_role=Actor.Provider,
             remote_role=Actor.Requestor,
         )
-
-    @mock.patch('golem.task.taskmanager.TaskManager.task_computation_failure')
-    def test_fgtr_service_refused(self, tcf):
-        fgtr = msg_factories.concents.ForceGetTaskResultFactory()
-        sr = msg_factories.concents.ServiceRefusedFactory(
-            task_to_compute__compute_task_def__subtask_id=fgtr.subtask_id)
-        library.interpret(sr, response_to=fgtr)
-        tcf.assert_called_once_with(
-            fgtr.subtask_id,
-            'Concent refused to assist in forced results download')
-
-    @mock.patch('golem.task.taskmanager.TaskManager.task_computation_failure')
-    def test_force_get_task_result_rejected(self, tcf):
-        fgtrr = msg_factories.concents.ForceGetTaskResultRejectedFactory()
-        library.interpret(fgtrr, response_to=fgtrr.force_get_task_result)
-        tcf.assert_called_once_with(
-            fgtrr.subtask_id,
-            'Concent claims ForceGetTaskResult no longer possible'
-        )
-
-    @mock.patch('golem.network.concent.received_handler.logger.debug')
-    def test_ack_force_get_task_result(self, log):
-        afgtr = msg_factories.concents.AckForceGetTaskResultFactory()
-        library.interpret(afgtr, response_to=afgtr.force_get_task_result)
-        self.assertEqual(log.call_count, 1)
 
 
 class FiletransfersTestBase(TaskServerMessageHandlerTestBase):
@@ -660,3 +671,6 @@ class ForceSubtaskResultsTestCase(TaskServerMessageHandlerTestBase):
             .assert_called_once_with(
                 get_mock().subtask_id,
                 mock.ANY)
+
+
+# @todo add tests for `on_ack_subtask_results_verify`
