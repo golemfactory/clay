@@ -1203,6 +1203,8 @@ class Client(HardwarePresetsMixin):
             price: int,
             subtask_time: int,
             num_subtasks: int) -> Dict[str, int]:
+        if self.task_server is None:
+            raise Exception('Cannot estimate costs')
         return {
             'GNT': self.task_server.task_manager.get_task_cost(
                 task_type,
