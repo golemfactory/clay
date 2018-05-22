@@ -30,11 +30,12 @@ class BenchmarkManager(object):
 
     def run_benchmark(self, benchmark, task_builder, env_id, success=None,
                       error=None):
-        logger.info('running benchmark for %r', env_id)
+        logger.info('Running benchmark for %s', env_id)
 
         from golem.network.p2p.node import Node
 
         def success_callback(performance):
+            logger.info('%s performance is %.2f', env_id, performance)
             Performance.update_or_create(env_id, performance)
             if success:
                 success(performance)
@@ -60,7 +61,6 @@ class BenchmarkManager(object):
         br.run()
 
     def run_all_benchmarks(self, success=None, error=None):
-        logger.info('running all benchmarks')
         benchmarks_copy = copy(self.benchmarks)
         return self.run_benchmarks(benchmarks_copy, success, error)
 
@@ -69,11 +69,9 @@ class BenchmarkManager(object):
 
         def on_success(performance):
             if benchmarks:
-                logger.info('running further benchmarks', benchmarks)
                 self.run_benchmarks(benchmarks, success, error)
             else:
                 if success:
-                    logger.info('running benchmarks success')
                     success(performance)
 
         self.run_benchmark(benchmark, builder_class, env_id, on_success, error)
@@ -92,4 +90,4 @@ class BenchmarkManager(object):
             self.run_benchmark(benchmark_data[0], benchmark_data[1],
                                env_id, callback, errback)
         else:
-            raise Exception("Unkown environment: {}".format(env_id))
+            raise Exception("Unknown environment: {}".format(env_id))

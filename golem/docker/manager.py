@@ -184,7 +184,7 @@ class DockerManager(DockerConfigManager):
             cpu_count=cpu_count
         )
 
-    def constrain(self, name, **params):
+    def constrain(self, name, **params) -> bool:
         constraints = self.hypervisor.constraints(name)
         diff = self._diff_constraints(constraints, params)
 
@@ -216,6 +216,8 @@ class DockerManager(DockerConfigManager):
 
             logger.info("DockerMachine: '{}' configuration unchanged"
                         .format(name))
+
+        return bool(diff)
 
     def recover_vm_connectivity(self, done_callback, in_background=True):
         """
@@ -398,8 +400,9 @@ class DockerManager(DockerConfigManager):
     def _wait_for_tasks(self, sb, cb):
         while sb():
             time.sleep(0.5)
-        self.constrain(self.docker_machine, **self._config)
-        cb()
+
+        config_differs = self.constrain(self.docker_machine, **self._config)
+        cb(config_differs)
 
     def _save_and_resume(self, cb):
         with self.hypervisor.recover_ctx(self.docker_machine):

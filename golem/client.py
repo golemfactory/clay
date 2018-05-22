@@ -10,7 +10,7 @@ from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
 from threading import Lock, Thread
-from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
+from typing import Dict, Hashable, Optional, Union, List, Iterable
 
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -1266,21 +1266,14 @@ class Client(HardwarePresetsMixin):
 
     @inlineCallbacks
     def activate_hw_preset(self, name, run_benchmarks=False):
-        logger.info(f'activate_hw_preset {name}, {run_benchmarks}')
         HardwarePresets.update_config(name, self.config_desc)
         if hasattr(self, 'task_server') and self.task_server:
-            deferred = Deferred()
-            logger.info('activate_hw_preset 1')
-            self.task_server.change_config(
-                self.config_desc,
-                run_benchmarks=run_benchmarks,
-                success=deferred.callback, error=deferred.errback
-            )
-            logger.info('activate_hw_preset 2')
+            deferred = self.task_server.change_config(
+                self.config_desc, run_benchmarks=run_benchmarks)
 
             result = yield deferred
-            logger.info('hw_preset %r, %r', type(result), result)
-            returnValue(result)
+            logger.info('change hw config result: %r', result)
+            returnValue(self.get_performance_values())
 
     def __lock_datadir(self):
         if not path.exists(self.datadir):
