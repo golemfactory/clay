@@ -90,7 +90,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
 
         size = os.path.getsize(path)
 
-        self.resource_manager.add_file(path, task_result.task_id)
+        self.resource_manager.add_file(path, task_result.task_id, async_=False)
         resources = sync_wait(self.resource_manager.get_resources(
             task_result.task_id))
 
