@@ -112,6 +112,26 @@ class Environment():
             return 0.0
         return perf.value
 
+    @classmethod
+    def get_min_accepted_performance(cls) -> float:
+        """ Return minimal accepted performance for the environment.
+        :return float:
+        """
+        perf = Performance.get(Performance.environment_id == cls.get_id())
+        # by default requestor will only accept providers stronger than himself
+        return perf.min_accepted if perf.min_accepted > 0 else perf.value
+
+    @classmethod
+    def set_min_accepted_performance(cls, min_accepted: float):
+        """ Sets minimal accepted performance for the environment.
+        :return float:
+        """
+        if float(min_accepted) < 0:
+            raise Exception(f'minimal performance {min_accepted} must be '
+                            'positive')
+        Performance.update(min_accepted=min_accepted).where(
+            Performance.environment_id == cls.get_id()).execute()
+
     def description(self):
         """ Return long description of this environment
         :return str:

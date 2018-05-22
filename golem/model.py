@@ -1,6 +1,7 @@
 import datetime
 import inspect
 import json
+import logging
 import pickle
 
 import peewee
@@ -23,6 +24,8 @@ from golem.utils import decode_hex, encode_hex
 
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
+
+logger = logging.getLogger(__name__)
 
 # TODO: migrate to golem.database. issue #2415
 db = GolemSqliteDatabase(None, threadlocals=True,
@@ -382,6 +385,7 @@ class Performance(BaseModel):
     """ Keeps information about benchmark performance """
     environment_id = CharField(null=False, index=True, unique=True)
     value = FloatField(default=0.0)
+    min_accepted = FloatField(default=0.0)
 
     class Meta:
         database = db

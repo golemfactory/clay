@@ -589,9 +589,9 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_id = task.header.task_id
         ts.task_manager.tasks[task_id] = task
 
-        requestor_perf = 314.15
+        min_accepted_perf = 77
         env = Mock()
-        env.get_performance.return_value = requestor_perf
+        env.get_min_accepted_performance.return_value = min_accepted_perf
         ts.get_environment_by_id = Mock(return_value=env)
         ids = f'provider_id: ABC, task_id: {task_id}'
 
@@ -606,7 +606,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             assert not ts.should_accept_provider("ABC", task_id, 27.18, 1, 1, 7)
             self.assertEqual(cm.output, [
                 f'INFO:{logger.name}:insufficient provider performance: '
-                f'27.18 * 7 < {requestor_perf}; {ids}'])
+                f'27.18 < {min_accepted_perf}; {ids}'])
 
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider("ABC", task_id, 99, 1.72, 1, 4)

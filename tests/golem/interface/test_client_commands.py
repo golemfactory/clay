@@ -83,6 +83,7 @@ class TestEnvironments(unittest.TestCase):
                 'supported': False,
                 'accepted': False,
                 'performance': 2000,
+                'min_accepted': 17,
                 'description': 'description 2'
             },
             {
@@ -90,6 +91,7 @@ class TestEnvironments(unittest.TestCase):
                 'supported': True,
                 'accepted': True,
                 'performance': 1000,
+                'min_accepted': 1777,
                 'description': 'description 1'
             },
         ]
@@ -118,8 +120,8 @@ class TestEnvironments(unittest.TestCase):
             assert isinstance(result_1, CommandResult)
             assert result_1.type == CommandResult.TABULAR
             assert result_1.data == (Environments.table_headers, [
-                ['env 2', 'False', 'False', '2000', 'description 2'],
-                ['env 1', 'True', 'True', '1000', 'description 1'],
+                ['env 2', 'False', 'False', '2000', '17', 'description 2'],
+                ['env 1', 'True', 'True', '1000', '1777', 'description 1'],
             ])
 
             result_2 = Environments().show(sort='name')

@@ -569,7 +569,7 @@ class TaskServer(
     def remove_forwarded_session_request(self, key_id):
         return self.forwarded_session_requests.pop(key_id, None)
 
-    def should_accept_provider( # noqa pylint: disable=too-many-arguments,too-many-return-statements
+    def should_accept_provider(  # noqa pylint: disable=too-many-arguments,too-many-return-statements,unused-argument
             self,
             node_id,
             task_id,
@@ -586,11 +586,11 @@ class TaskServer(
 
         task = self.task_manager.tasks[task_id]
         env = self.get_environment_by_id(task.header.environment)
-        requestor_perf = env.get_performance()
+        min_accepted_perf = env.get_min_accepted_performance()
 
-        if requestor_perf > int(provider_perf) * int(num_cores):
+        if min_accepted_perf > int(provider_perf):
             logger.info(f'insufficient provider performance: {provider_perf}'
-                        f' * {num_cores} < {requestor_perf}; {ids}')
+                        f' < {min_accepted_perf}; {ids}')
             return False
 
         if task.header.resource_size > (int(max_resource_size) * 1024):

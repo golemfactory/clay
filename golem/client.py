@@ -13,12 +13,14 @@ from threading import Lock, Thread
 from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from pydispatch import dispatcher
+from twisted.internet import defer
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
     gatherResults,
     Deferred)
 
+from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.rendering.task import framerenderingtask
 import golem
 from apps.appsmanager import AppsManager
@@ -1121,6 +1123,7 @@ class Client(HardwarePresetsMixin):
             'supported': bool(env.check_support()),
             'accepted': env.is_accepted(),
             'performance': env.get_performance(),
+            'min_accepted': env.get_min_accepted_performance(),
             'description': str(env.short_description)
         } for env in envs]
 
@@ -1199,6 +1202,23 @@ class Client(HardwarePresetsMixin):
 
     def get_performance_values(self):
         return self.environments_manager.get_performance_values()
+
+    # TODO: hardcoded Blender just for 0.16.0
+    @inlineCallbacks
+    def get_min_performance(self,
+                            env_id: str = BlenderEnvironment.get_id()) -> float:
+        env = self.environments_manager.get_environment_by_id(env_id)
+        result = yield defer.execute(env.get_min_accepted_performance)
+        returnValue(result)
+
+    # TODO: hardcoded Blender just for 0.16.0
+    @inlineCallbacks
+    def set_min_performance(self, min_accepted_performance: float,
+                            env_id: str = BlenderEnvironment.get_id()):
+        env = self.environments_manager.get_environment_by_id(env_id)
+        result = yield defer.execute(env.set_min_accepted_performance,
+                                     min_accepted_performance)
+        returnValue(result)
 
     def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:

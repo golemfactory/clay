@@ -83,6 +83,8 @@ CORE_METHOD_MAP = dict(
     disable_environment=    'comp.environment.disable',
     run_benchmark=          'comp.environment.benchmark',
     get_performance_values= 'comp.environment.performance',
+    get_min_performance=    'comp.environment.performance.min.get',
+    set_min_performance=    'comp.environment.performance.min',
 
     get_payment_address=    'pay.ident',
     get_balance=            'pay.balance',

@@ -1,14 +1,20 @@
 from golem.core.deferred import sync_wait
 from golem.interface.command import group, Argument, command, CommandResult
+from golem.rpc.session import Client
 
 
+# pylint: disable=no-self-use
 @group(name="envs", help="Manage environments")
 class Environments(object):
+    client: Client
 
     name = Argument('name', help="Environment name")
+    value = Argument(
+        'value',
+        help="Minimal accepted provider performance (> 0)")
 
     table_headers = ['name', 'supported', 'active', 'performance',
-                     'description']
+                     'min accept. perf.', 'description']
 
     sort = Argument(
         '--sort',
@@ -32,6 +38,7 @@ class Environments(object):
                 str(env['supported']),
                 str(env['accepted']),
                 str(env['performance']),
+                str(env['min_accepted']),
                 env['description']
             ])
 
@@ -52,3 +59,9 @@ class Environments(object):
     def recount(self, name):
         deferred = Environments.client.run_benchmark(name)
         return sync_wait(deferred, timeout=1800)
+
+    @command(arguments=[name, value],
+             help="Sets minimal performance for an environment")
+    def min_performance(self, name, value):
+        deferred = Environments.client.set_min_performance(value, name)
+        return sync_wait(deferred, timeout=10)
