@@ -85,73 +85,6 @@ class AddressEntry(object):
         return not (self == other)
 
 
-class ProtocolEntry(object):
-    """
-    Attributes:
-     - entries
-    """
-
-
-    def __init__(self, entries=None,):
-        self.entries = entries
-
-    def read(self, iprot):
-        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
-            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
-            return
-        iprot.readStructBegin()
-        while True:
-            (fname, ftype, fid) = iprot.readFieldBegin()
-            if ftype == TType.STOP:
-                break
-            if fid == 1:
-                if ftype == TType.LIST:
-                    self.entries = []
-                    (_etype3, _size0) = iprot.readListBegin()
-                    for _i4 in range(_size0):
-                        _elem5 = AddressEntry()
-                        _elem5.read(iprot)
-                        self.entries.append(_elem5)
-                    iprot.readListEnd()
-                else:
-                    iprot.skip(ftype)
-            else:
-                iprot.skip(ftype)
-            iprot.readFieldEnd()
-        iprot.readStructEnd()
-
-    def write(self, oprot):
-        if oprot._fast_encode is not None and self.thrift_spec is not None:
-            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
-            return
-        oprot.writeStructBegin('ProtocolEntry')
-        if self.entries is not None:
-            oprot.writeFieldBegin('entries', TType.LIST, 1)
-            oprot.writeListBegin(TType.STRUCT, len(self.entries))
-            for iter6 in self.entries:
-                iter6.write(oprot)
-            oprot.writeListEnd()
-            oprot.writeFieldEnd()
-        oprot.writeFieldStop()
-        oprot.writeStructEnd()
-
-    def validate(self):
-        if self.entries is None:
-            raise TProtocolException(message='Required field entries is unset!')
-        return
-
-    def __repr__(self):
-        L = ['%s=%r' % (key, value)
-             for key, value in self.__dict__.items()]
-        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
-
-    def __eq__(self, other):
-        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
-
-    def __ne__(self, other):
-        return not (self == other)
-
-
 class PeerEntry(object):
     """
     Attributes:
@@ -174,12 +107,12 @@ class PeerEntry(object):
             if fid == 1:
                 if ftype == TType.MAP:
                     self.entries = {}
-                    (_ktype8, _vtype9, _size7) = iprot.readMapBegin()
-                    for _i11 in range(_size7):
-                        _key12 = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
-                        _val13 = ProtocolEntry()
-                        _val13.read(iprot)
-                        self.entries[_key12] = _val13
+                    (_ktype1, _vtype2, _size0) = iprot.readMapBegin()
+                    for _i4 in range(_size0):
+                        _key5 = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                        _val6 = AddressEntry()
+                        _val6.read(iprot)
+                        self.entries[_key5] = _val6
                     iprot.readMapEnd()
                 else:
                     iprot.skip(ftype)
@@ -196,9 +129,9 @@ class PeerEntry(object):
         if self.entries is not None:
             oprot.writeFieldBegin('entries', TType.MAP, 1)
             oprot.writeMapBegin(TType.STRING, TType.STRUCT, len(self.entries))
-            for kiter14, viter15 in self.entries.items():
-                oprot.writeString(kiter14.encode('utf-8') if sys.version_info[0] == 2 else kiter14)
-                viter15.write(oprot)
+            for kiter7, viter8 in self.entries.items():
+                oprot.writeString(kiter7.encode('utf-8') if sys.version_info[0] == 2 else kiter7)
+                viter8.write(oprot)
             oprot.writeMapEnd()
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
@@ -221,17 +154,19 @@ class PeerEntry(object):
         return not (self == other)
 
 
-class OptionValue(object):
+class Option(object):
     """
     Attributes:
      - timeout
      - peers
+     - size
     """
 
 
-    def __init__(self, timeout=None, peers=None,):
+    def __init__(self, timeout=None, peers=None, size=None,):
         self.timeout = timeout
         self.peers = peers
+        self.size = size
 
     def read(self, iprot):
         if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
@@ -250,12 +185,17 @@ class OptionValue(object):
             elif fid == 2:
                 if ftype == TType.LIST:
                     self.peers = []
-                    (_etype19, _size16) = iprot.readListBegin()
-                    for _i20 in range(_size16):
-                        _elem21 = PeerEntry()
-                        _elem21.read(iprot)
-                        self.peers.append(_elem21)
+                    (_etype12, _size9) = iprot.readListBegin()
+                    for _i13 in range(_size9):
+                        _elem14 = PeerEntry()
+                        _elem14.read(iprot)
+                        self.peers.append(_elem14)
                     iprot.readListEnd()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 3:
+                if ftype == TType.I64:
+                    self.size = iprot.readI64()
                 else:
                     iprot.skip(ftype)
             else:
@@ -267,7 +207,7 @@ class OptionValue(object):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('OptionValue')
+        oprot.writeStructBegin('Option')
         if self.timeout is not None:
             oprot.writeFieldBegin('timeout', TType.DOUBLE, 1)
             oprot.writeDouble(self.timeout)
@@ -275,9 +215,13 @@ class OptionValue(object):
         if self.peers is not None:
             oprot.writeFieldBegin('peers', TType.LIST, 2)
             oprot.writeListBegin(TType.STRUCT, len(self.peers))
-            for iter22 in self.peers:
-                iter22.write(oprot)
+            for iter15 in self.peers:
+                iter15.write(oprot)
             oprot.writeListEnd()
+            oprot.writeFieldEnd()
+        if self.size is not None:
+            oprot.writeFieldBegin('size', TType.I64, 3)
+            oprot.writeI64(self.size)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -326,20 +270,19 @@ class ClientOptions(object):
                 else:
                     iprot.skip(ftype)
             elif fid == 2:
-                if ftype == TType.STRING:
-                    self.version = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                if ftype == TType.DOUBLE:
+                    self.version = iprot.readDouble()
                 else:
                     iprot.skip(ftype)
             elif fid == 3:
-                if ftype == TType.MAP:
-                    self.options = {}
-                    (_ktype24, _vtype25, _size23) = iprot.readMapBegin()
-                    for _i27 in range(_size23):
-                        _key28 = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
-                        _val29 = OptionValue()
-                        _val29.read(iprot)
-                        self.options[_key28] = _val29
-                    iprot.readMapEnd()
+                if ftype == TType.LIST:
+                    self.options = []
+                    (_etype19, _size16) = iprot.readListBegin()
+                    for _i20 in range(_size16):
+                        _elem21 = Option()
+                        _elem21.read(iprot)
+                        self.options.append(_elem21)
+                    iprot.readListEnd()
                 else:
                     iprot.skip(ftype)
             else:
@@ -357,16 +300,15 @@ class ClientOptions(object):
             oprot.writeString(self.client_id.encode('utf-8') if sys.version_info[0] == 2 else self.client_id)
             oprot.writeFieldEnd()
         if self.version is not None:
-            oprot.writeFieldBegin('version', TType.STRING, 2)
-            oprot.writeString(self.version.encode('utf-8') if sys.version_info[0] == 2 else self.version)
+            oprot.writeFieldBegin('version', TType.DOUBLE, 2)
+            oprot.writeDouble(self.version)
             oprot.writeFieldEnd()
         if self.options is not None:
-            oprot.writeFieldBegin('options', TType.MAP, 3)
-            oprot.writeMapBegin(TType.STRING, TType.STRUCT, len(self.options))
-            for kiter30, viter31 in self.options.items():
-                oprot.writeString(kiter30.encode('utf-8') if sys.version_info[0] == 2 else kiter30)
-                viter31.write(oprot)
-            oprot.writeMapEnd()
+            oprot.writeFieldBegin('options', TType.LIST, 3)
+            oprot.writeListBegin(TType.STRUCT, len(self.options))
+            for iter22 in self.options:
+                iter22.write(oprot)
+            oprot.writeListEnd()
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
         oprot.writeStructEnd()
@@ -393,15 +335,15 @@ class ClientOptions(object):
 class Resource(object):
     """
     Attributes:
-     - resource_hash
+     - hash
      - task_id
      - files
      - path
     """
 
 
-    def __init__(self, resource_hash=None, task_id=None, files=None, path=None,):
-        self.resource_hash = resource_hash
+    def __init__(self, hash=None, task_id=None, files=None, path=None,):
+        self.hash = hash
         self.task_id = task_id
         self.files = files
         self.path = path
@@ -417,7 +359,7 @@ class Resource(object):
                 break
             if fid == 1:
                 if ftype == TType.STRING:
-                    self.resource_hash = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                    self.hash = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
                 else:
                     iprot.skip(ftype)
             elif fid == 2:
@@ -428,10 +370,10 @@ class Resource(object):
             elif fid == 3:
                 if ftype == TType.LIST:
                     self.files = []
-                    (_etype35, _size32) = iprot.readListBegin()
-                    for _i36 in range(_size32):
-                        _elem37 = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
-                        self.files.append(_elem37)
+                    (_etype26, _size23) = iprot.readListBegin()
+                    for _i27 in range(_size23):
+                        _elem28 = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                        self.files.append(_elem28)
                     iprot.readListEnd()
                 else:
                     iprot.skip(ftype)
@@ -450,9 +392,9 @@ class Resource(object):
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
         oprot.writeStructBegin('Resource')
-        if self.resource_hash is not None:
-            oprot.writeFieldBegin('resource_hash', TType.STRING, 1)
-            oprot.writeString(self.resource_hash.encode('utf-8') if sys.version_info[0] == 2 else self.resource_hash)
+        if self.hash is not None:
+            oprot.writeFieldBegin('hash', TType.STRING, 1)
+            oprot.writeString(self.hash.encode('utf-8') if sys.version_info[0] == 2 else self.hash)
             oprot.writeFieldEnd()
         if self.task_id is not None:
             oprot.writeFieldBegin('task_id', TType.STRING, 2)
@@ -461,8 +403,8 @@ class Resource(object):
         if self.files is not None:
             oprot.writeFieldBegin('files', TType.LIST, 3)
             oprot.writeListBegin(TType.STRING, len(self.files))
-            for iter38 in self.files:
-                oprot.writeString(iter38.encode('utf-8') if sys.version_info[0] == 2 else iter38)
+            for iter29 in self.files:
+                oprot.writeString(iter29.encode('utf-8') if sys.version_info[0] == 2 else iter29)
             oprot.writeListEnd()
             oprot.writeFieldEnd()
         if self.path is not None:
@@ -473,8 +415,8 @@ class Resource(object):
         oprot.writeStructEnd()
 
     def validate(self):
-        if self.resource_hash is None:
-            raise TProtocolException(message='Required field resource_hash is unset!')
+        if self.hash is None:
+            raise TProtocolException(message='Required field hash is unset!')
         return
 
     def __repr__(self):
@@ -518,10 +460,10 @@ class ResourceEntry(object):
             elif fid == 2:
                 if ftype == TType.LIST:
                     self.files = []
-                    (_etype42, _size39) = iprot.readListBegin()
-                    for _i43 in range(_size39):
-                        _elem44 = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
-                        self.files.append(_elem44)
+                    (_etype33, _size30) = iprot.readListBegin()
+                    for _i34 in range(_size30):
+                        _elem35 = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                        self.files.append(_elem35)
                     iprot.readListEnd()
                 else:
                     iprot.skip(ftype)
@@ -542,8 +484,8 @@ class ResourceEntry(object):
         if self.files is not None:
             oprot.writeFieldBegin('files', TType.LIST, 2)
             oprot.writeListBegin(TType.STRING, len(self.files))
-            for iter45 in self.files:
-                oprot.writeString(iter45.encode('utf-8') if sys.version_info[0] == 2 else iter45)
+            for iter36 in self.files:
+                oprot.writeString(iter36.encode('utf-8') if sys.version_info[0] == 2 else iter36)
             oprot.writeListEnd()
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
@@ -552,8 +494,99 @@ class ResourceEntry(object):
     def validate(self):
         if self.resource_hash is None:
             raise TProtocolException(message='Required field resource_hash is unset!')
+        return
+
+    def __repr__(self):
+        L = ['%s=%r' % (key, value)
+             for key, value in self.__dict__.items()]
+        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not (self == other)
+
+
+class PulledEntry(object):
+    """
+    Attributes:
+     - entry
+     - files
+     - task_id
+    """
+
+
+    def __init__(self, entry=None, files=None, task_id=None,):
+        self.entry = entry
+        self.files = files
+        self.task_id = task_id
+
+    def read(self, iprot):
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            if fid == 1:
+                if ftype == TType.STRUCT:
+                    self.entry = ResourceEntry()
+                    self.entry.read(iprot)
+                else:
+                    iprot.skip(ftype)
+            elif fid == 2:
+                if ftype == TType.LIST:
+                    self.files = []
+                    (_etype40, _size37) = iprot.readListBegin()
+                    for _i41 in range(_size37):
+                        _elem42 = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                        self.files.append(_elem42)
+                    iprot.readListEnd()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 3:
+                if ftype == TType.STRING:
+                    self.task_id = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                else:
+                    iprot.skip(ftype)
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
+            return
+        oprot.writeStructBegin('PulledEntry')
+        if self.entry is not None:
+            oprot.writeFieldBegin('entry', TType.STRUCT, 1)
+            self.entry.write(oprot)
+            oprot.writeFieldEnd()
+        if self.files is not None:
+            oprot.writeFieldBegin('files', TType.LIST, 2)
+            oprot.writeListBegin(TType.STRING, len(self.files))
+            for iter43 in self.files:
+                oprot.writeString(iter43.encode('utf-8') if sys.version_info[0] == 2 else iter43)
+            oprot.writeListEnd()
+            oprot.writeFieldEnd()
+        if self.task_id is not None:
+            oprot.writeFieldBegin('task_id', TType.STRING, 3)
+            oprot.writeString(self.task_id.encode('utf-8') if sys.version_info[0] == 2 else self.task_id)
+            oprot.writeFieldEnd()
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        if self.entry is None:
+            raise TProtocolException(message='Required field entry is unset!')
         if self.files is None:
             raise TProtocolException(message='Required field files is unset!')
+        if self.task_id is None:
+            raise TProtocolException(message='Required field task_id is unset!')
         return
 
     def __repr__(self):
@@ -576,17 +609,15 @@ class AddFile(object):
      - request_id
      - path
      - task_id
-     - resource_hash
      - async_
      - client_options
     """
 
 
-    def __init__(self, request_id=None, path=None, task_id=None, resource_hash=None, async_=None, client_options=None,):
+    def __init__(self, request_id=None, path=None, task_id=None, async_=True, client_options=None,):
         self.request_id = request_id
         self.path = path
         self.task_id = task_id
-        self.resource_hash = resource_hash
         self.async_ = async_
         self.client_options = client_options
 
@@ -615,16 +646,11 @@ class AddFile(object):
                 else:
                     iprot.skip(ftype)
             elif fid == 4:
-                if ftype == TType.STRING:
-                    self.resource_hash = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
-                else:
-                    iprot.skip(ftype)
-            elif fid == 5:
                 if ftype == TType.BOOL:
                     self.async_ = iprot.readBool()
                 else:
                     iprot.skip(ftype)
-            elif fid == 6:
+            elif fid == 5:
                 if ftype == TType.STRUCT:
                     self.client_options = ClientOptions()
                     self.client_options.read(iprot)
@@ -652,16 +678,12 @@ class AddFile(object):
             oprot.writeFieldBegin('task_id', TType.STRING, 3)
             oprot.writeString(self.task_id.encode('utf-8') if sys.version_info[0] == 2 else self.task_id)
             oprot.writeFieldEnd()
-        if self.resource_hash is not None:
-            oprot.writeFieldBegin('resource_hash', TType.STRING, 4)
-            oprot.writeString(self.resource_hash.encode('utf-8') if sys.version_info[0] == 2 else self.resource_hash)
-            oprot.writeFieldEnd()
         if self.async_ is not None:
-            oprot.writeFieldBegin('async_', TType.BOOL, 5)
+            oprot.writeFieldBegin('async_', TType.BOOL, 4)
             oprot.writeBool(self.async_)
             oprot.writeFieldEnd()
         if self.client_options is not None:
-            oprot.writeFieldBegin('client_options', TType.STRUCT, 6)
+            oprot.writeFieldBegin('client_options', TType.STRUCT, 5)
             self.client_options.write(oprot)
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
@@ -700,7 +722,7 @@ class AddFiles(object):
     """
 
 
-    def __init__(self, request_id=None, files=None, task_id=None, resource_hash=None, async_=None, client_options=None,):
+    def __init__(self, request_id=None, files=None, task_id=None, resource_hash=None, async_=True, client_options=None,):
         self.request_id = request_id
         self.files = files
         self.task_id = task_id
@@ -725,10 +747,10 @@ class AddFiles(object):
             elif fid == 2:
                 if ftype == TType.LIST:
                     self.files = []
-                    (_etype49, _size46) = iprot.readListBegin()
-                    for _i50 in range(_size46):
-                        _elem51 = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
-                        self.files.append(_elem51)
+                    (_etype47, _size44) = iprot.readListBegin()
+                    for _i48 in range(_size44):
+                        _elem49 = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                        self.files.append(_elem49)
                     iprot.readListEnd()
                 else:
                     iprot.skip(ftype)
@@ -770,8 +792,8 @@ class AddFiles(object):
         if self.files is not None:
             oprot.writeFieldBegin('files', TType.LIST, 2)
             oprot.writeListBegin(TType.STRING, len(self.files))
-            for iter52 in self.files:
-                oprot.writeString(iter52.encode('utf-8') if sys.version_info[0] == 2 else iter52)
+            for iter50 in self.files:
+                oprot.writeString(iter50.encode('utf-8') if sys.version_info[0] == 2 else iter50)
             oprot.writeListEnd()
             oprot.writeFieldEnd()
         if self.task_id is not None:
@@ -826,7 +848,7 @@ class AddTask(object):
     """
 
 
-    def __init__(self, request_id=None, files=None, task_id=None, resource_hash=None, async_=None, client_options=None,):
+    def __init__(self, request_id=None, files=None, task_id=None, resource_hash=None, async_=True, client_options=None,):
         self.request_id = request_id
         self.files = files
         self.task_id = task_id
@@ -851,10 +873,10 @@ class AddTask(object):
             elif fid == 2:
                 if ftype == TType.LIST:
                     self.files = []
-                    (_etype56, _size53) = iprot.readListBegin()
-                    for _i57 in range(_size53):
-                        _elem58 = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
-                        self.files.append(_elem58)
+                    (_etype54, _size51) = iprot.readListBegin()
+                    for _i55 in range(_size51):
+                        _elem56 = iprot.readString().decode('utf-8') if sys.version_info[0] == 2 else iprot.readString()
+                        self.files.append(_elem56)
                     iprot.readListEnd()
                 else:
                     iprot.skip(ftype)
@@ -896,8 +918,8 @@ class AddTask(object):
         if self.files is not None:
             oprot.writeFieldBegin('files', TType.LIST, 2)
             oprot.writeListBegin(TType.STRING, len(self.files))
-            for iter59 in self.files:
-                oprot.writeString(iter59.encode('utf-8') if sys.version_info[0] == 2 else iter59)
+            for iter57 in self.files:
+                oprot.writeString(iter57.encode('utf-8') if sys.version_info[0] == 2 else iter57)
             oprot.writeListEnd()
             oprot.writeFieldEnd()
         if self.task_id is not None:
@@ -1093,7 +1115,7 @@ class PullResource(object):
     """
 
 
-    def __init__(self, request_id=None, entry=None, task_id=None, client_options=None, async_=None,):
+    def __init__(self, request_id=None, entry=None, task_id=None, client_options=None, async_=True,):
         self.request_id = request_id
         self.entry = entry
         self.task_id = task_id
@@ -1261,7 +1283,7 @@ class Error(object):
         return not (self == other)
 
 
-class Response(object):
+class Empty(object):
     """
     Attributes:
      - request_id
@@ -1294,7 +1316,7 @@ class Response(object):
         if oprot._fast_encode is not None and self.thrift_spec is not None:
             oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
             return
-        oprot.writeStructBegin('Response')
+        oprot.writeStructBegin('Empty')
         if self.request_id is not None:
             oprot.writeFieldBegin('request_id', TType.STRING, 1)
             oprot.writeBinary(self.request_id)
@@ -1305,6 +1327,78 @@ class Response(object):
     def validate(self):
         if self.request_id is None:
             raise TProtocolException(message='Required field request_id is unset!')
+        return
+
+    def __repr__(self):
+        L = ['%s=%r' % (key, value)
+             for key, value in self.__dict__.items()]
+        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not (self == other)
+
+
+class Added(object):
+    """
+    Attributes:
+     - request_id
+     - entry
+    """
+
+
+    def __init__(self, request_id=None, entry=None,):
+        self.request_id = request_id
+        self.entry = entry
+
+    def read(self, iprot):
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            if fid == 1:
+                if ftype == TType.STRING:
+                    self.request_id = iprot.readBinary()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 2:
+                if ftype == TType.STRUCT:
+                    self.entry = ResourceEntry()
+                    self.entry.read(iprot)
+                else:
+                    iprot.skip(ftype)
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
+            return
+        oprot.writeStructBegin('Added')
+        if self.request_id is not None:
+            oprot.writeFieldBegin('request_id', TType.STRING, 1)
+            oprot.writeBinary(self.request_id)
+            oprot.writeFieldEnd()
+        if self.entry is not None:
+            oprot.writeFieldBegin('entry', TType.STRUCT, 2)
+            self.entry.write(oprot)
+            oprot.writeFieldEnd()
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        if self.request_id is None:
+            raise TProtocolException(message='Required field request_id is unset!')
+        if self.entry is None:
+            raise TProtocolException(message='Required field entry is unset!')
         return
 
     def __repr__(self):
@@ -1348,11 +1442,11 @@ class Resources(object):
             elif fid == 2:
                 if ftype == TType.LIST:
                     self.resources = []
-                    (_etype63, _size60) = iprot.readListBegin()
-                    for _i64 in range(_size60):
-                        _elem65 = Resource()
-                        _elem65.read(iprot)
-                        self.resources.append(_elem65)
+                    (_etype61, _size58) = iprot.readListBegin()
+                    for _i62 in range(_size58):
+                        _elem63 = Resource()
+                        _elem63.read(iprot)
+                        self.resources.append(_elem63)
                     iprot.readListEnd()
                 else:
                     iprot.skip(ftype)
@@ -1373,8 +1467,8 @@ class Resources(object):
         if self.resources is not None:
             oprot.writeFieldBegin('resources', TType.LIST, 2)
             oprot.writeListBegin(TType.STRUCT, len(self.resources))
-            for iter66 in self.resources:
-                iter66.write(oprot)
+            for iter64 in self.resources:
+                iter64.write(oprot)
             oprot.writeListEnd()
             oprot.writeFieldEnd()
         oprot.writeFieldStop()
@@ -1397,39 +1491,107 @@ class Resources(object):
 
     def __ne__(self, other):
         return not (self == other)
+
+
+class Pulled(object):
+    """
+    Attributes:
+     - request_id
+     - entry
+    """
+
+
+    def __init__(self, request_id=None, entry=None,):
+        self.request_id = request_id
+        self.entry = entry
+
+    def read(self, iprot):
+        if iprot._fast_decode is not None and isinstance(iprot.trans, TTransport.CReadableTransport) and self.thrift_spec is not None:
+            iprot._fast_decode(self, iprot, [self.__class__, self.thrift_spec])
+            return
+        iprot.readStructBegin()
+        while True:
+            (fname, ftype, fid) = iprot.readFieldBegin()
+            if ftype == TType.STOP:
+                break
+            if fid == 1:
+                if ftype == TType.STRING:
+                    self.request_id = iprot.readBinary()
+                else:
+                    iprot.skip(ftype)
+            elif fid == 2:
+                if ftype == TType.STRUCT:
+                    self.entry = PulledEntry()
+                    self.entry.read(iprot)
+                else:
+                    iprot.skip(ftype)
+            else:
+                iprot.skip(ftype)
+            iprot.readFieldEnd()
+        iprot.readStructEnd()
+
+    def write(self, oprot):
+        if oprot._fast_encode is not None and self.thrift_spec is not None:
+            oprot.trans.write(oprot._fast_encode(self, [self.__class__, self.thrift_spec]))
+            return
+        oprot.writeStructBegin('Pulled')
+        if self.request_id is not None:
+            oprot.writeFieldBegin('request_id', TType.STRING, 1)
+            oprot.writeBinary(self.request_id)
+            oprot.writeFieldEnd()
+        if self.entry is not None:
+            oprot.writeFieldBegin('entry', TType.STRUCT, 2)
+            self.entry.write(oprot)
+            oprot.writeFieldEnd()
+        oprot.writeFieldStop()
+        oprot.writeStructEnd()
+
+    def validate(self):
+        if self.request_id is None:
+            raise TProtocolException(message='Required field request_id is unset!')
+        if self.entry is None:
+            raise TProtocolException(message='Required field entry is unset!')
+        return
+
+    def __repr__(self):
+        L = ['%s=%r' % (key, value)
+             for key, value in self.__dict__.items()]
+        return '%s(%s)' % (self.__class__.__name__, ', '.join(L))
+
+    def __eq__(self, other):
+        return isinstance(other, self.__class__) and self.__dict__ == other.__dict__
+
+    def __ne__(self, other):
+        return not (self == other)
 all_structs.append(AddressEntry)
 AddressEntry.thrift_spec = (
     None,  # 0
     (1, TType.STRING, 'host', 'UTF8', None, ),  # 1
     (2, TType.I32, 'port', None, None, ),  # 2
 )
-all_structs.append(ProtocolEntry)
-ProtocolEntry.thrift_spec = (
-    None,  # 0
-    (1, TType.LIST, 'entries', (TType.STRUCT, [AddressEntry, None], False), None, ),  # 1
-)
 all_structs.append(PeerEntry)
 PeerEntry.thrift_spec = (
     None,  # 0
-    (1, TType.MAP, 'entries', (TType.STRING, 'UTF8', TType.STRUCT, [ProtocolEntry, None], False), None, ),  # 1
+    (1, TType.MAP, 'entries', (TType.STRING, 'UTF8', TType.STRUCT, [AddressEntry, None], False), None, ),  # 1
 )
-all_structs.append(OptionValue)
-OptionValue.thrift_spec = (
+all_structs.append(Option)
+Option.thrift_spec = (
     None,  # 0
     (1, TType.DOUBLE, 'timeout', None, None, ),  # 1
     (2, TType.LIST, 'peers', (TType.STRUCT, [PeerEntry, None], False), None, ),  # 2
+    (3, TType.I64, 'size', None, None, ),  # 3
 )
 all_structs.append(ClientOptions)
 ClientOptions.thrift_spec = (
     None,  # 0
     (1, TType.STRING, 'client_id', 'UTF8', None, ),  # 1
-    (2, TType.STRING, 'version', 'UTF8', None, ),  # 2
-    (3, TType.MAP, 'options', (TType.STRING, 'UTF8', TType.STRUCT, [OptionValue, None], False), None, ),  # 3
+    (2, TType.DOUBLE, 'version', None, None, ),  # 2
+    (3, TType.LIST, 'options', (TType.STRUCT, [Option, None], False), None, ),  # 3
 )
 all_structs.append(Resource)
 Resource.thrift_spec = (
     None,  # 0
-    (1, TType.STRING, 'resource_hash', 'UTF8', None, ),  # 1
+    (1, TType.STRING, 'hash', 'UTF8', None, ),  # 1
     (2, TType.STRING, 'task_id', 'UTF8', None, ),  # 2
     (3, TType.LIST, 'files', (TType.STRING, 'UTF8', False), None, ),  # 3
     (4, TType.STRING, 'path', 'UTF8', None, ),  # 4
@@ -1440,15 +1602,21 @@ ResourceEntry.thrift_spec = (
     (1, TType.STRING, 'resource_hash', 'UTF8', None, ),  # 1
     (2, TType.LIST, 'files', (TType.STRING, 'UTF8', False), None, ),  # 2
 )
+all_structs.append(PulledEntry)
+PulledEntry.thrift_spec = (
+    None,  # 0
+    (1, TType.STRUCT, 'entry', [ResourceEntry, None], None, ),  # 1
+    (2, TType.LIST, 'files', (TType.STRING, 'UTF8', False), None, ),  # 2
+    (3, TType.STRING, 'task_id', 'UTF8', None, ),  # 3
+)
 all_structs.append(AddFile)
 AddFile.thrift_spec = (
     None,  # 0
     (1, TType.STRING, 'request_id', 'BINARY', None, ),  # 1
     (2, TType.STRING, 'path', 'UTF8', None, ),  # 2
     (3, TType.STRING, 'task_id', 'UTF8', None, ),  # 3
-    (4, TType.STRING, 'resource_hash', 'UTF8', None, ),  # 4
-    (5, TType.BOOL, 'async_', None, None, ),  # 5
-    (6, TType.STRUCT, 'client_options', [ClientOptions, None], None, ),  # 6
+    (4, TType.BOOL, 'async_', None, True, ),  # 4
+    (5, TType.STRUCT, 'client_options', [ClientOptions, None], None, ),  # 5
 )
 all_structs.append(AddFiles)
 AddFiles.thrift_spec = (
@@ -1457,7 +1625,7 @@ AddFiles.thrift_spec = (
     (2, TType.LIST, 'files', (TType.STRING, 'UTF8', False), None, ),  # 2
     (3, TType.STRING, 'task_id', 'UTF8', None, ),  # 3
     (4, TType.STRING, 'resource_hash', 'UTF8', None, ),  # 4
-    (5, TType.BOOL, 'async_', None, None, ),  # 5
+    (5, TType.BOOL, 'async_', None, True, ),  # 5
     (6, TType.STRUCT, 'client_options', [ClientOptions, None], None, ),  # 6
 )
 all_structs.append(AddTask)
@@ -1467,7 +1635,7 @@ AddTask.thrift_spec = (
     (2, TType.LIST, 'files', (TType.STRING, 'UTF8', False), None, ),  # 2
     (3, TType.STRING, 'task_id', 'UTF8', None, ),  # 3
     (4, TType.STRING, 'resource_hash', 'UTF8', None, ),  # 4
-    (5, TType.BOOL, 'async_', None, None, ),  # 5
+    (5, TType.BOOL, 'async_', None, True, ),  # 5
     (6, TType.STRUCT, 'client_options', [ClientOptions, None], None, ),  # 6
 )
 all_structs.append(RemoveTask)
@@ -1489,7 +1657,7 @@ PullResource.thrift_spec = (
     (2, TType.STRUCT, 'entry', [ResourceEntry, None], None, ),  # 2
     (3, TType.STRING, 'task_id', 'UTF8', None, ),  # 3
     (4, TType.STRUCT, 'client_options', [ClientOptions, None], None, ),  # 4
-    (5, TType.BOOL, 'async_', None, None, ),  # 5
+    (5, TType.BOOL, 'async_', None, True, ),  # 5
 )
 all_structs.append(Error)
 Error.thrift_spec = (
@@ -1497,16 +1665,28 @@ Error.thrift_spec = (
     (1, TType.STRING, 'request_id', 'BINARY', None, ),  # 1
     (2, TType.STRING, 'message', 'UTF8', None, ),  # 2
 )
-all_structs.append(Response)
-Response.thrift_spec = (
+all_structs.append(Empty)
+Empty.thrift_spec = (
     None,  # 0
     (1, TType.STRING, 'request_id', 'BINARY', None, ),  # 1
+)
+all_structs.append(Added)
+Added.thrift_spec = (
+    None,  # 0
+    (1, TType.STRING, 'request_id', 'BINARY', None, ),  # 1
+    (2, TType.STRUCT, 'entry', [ResourceEntry, None], None, ),  # 2
 )
 all_structs.append(Resources)
 Resources.thrift_spec = (
     None,  # 0
     (1, TType.STRING, 'request_id', 'BINARY', None, ),  # 1
     (2, TType.LIST, 'resources', (TType.STRUCT, [Resource, None], False), None, ),  # 2
+)
+all_structs.append(Pulled)
+Pulled.thrift_spec = (
+    None,  # 0
+    (1, TType.STRING, 'request_id', 'BINARY', None, ),  # 1
+    (2, TType.STRUCT, 'entry', [PulledEntry, None], None, ),  # 2
 )
 fix_spec(all_structs)
 del all_structs
