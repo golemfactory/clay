@@ -35,6 +35,7 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
             client_mock, 'os', 'ver')
         config = MONITOR_CONFIG.copy()
         config['HOST'] = 'http://localhost/88881'
+        config['PING_ME_HOSTS'] = [config['HOST']]
         config['SENDER_THREAD_TIMEOUT'] = 0.05
         self.monitor = SystemMonitor(meta_data, config)
         self.monitor.start()
@@ -139,7 +140,7 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
             event='listening',
             ports=[port])
         post_mock.assert_called_once_with(
-            urljoin(self.monitor.config['HOST'], 'ping-me'),
+            urljoin(self.monitor.config['PING_ME_HOSTS'][0], 'ping-me'),
             data={
                 'ports': [port],
                 'timestamp': time.time()
