@@ -93,7 +93,7 @@ class IPCService(ThreadedService, metaclass=ABCMeta):
         return ThriftMessageSerializer()
 
     @abstractmethod
-    def on_message(self, msg: object) -> None:
+    def on_message(self, request_id: bytes, msg: object) -> None:
         """ Handle messages """
 
     @abstractmethod
@@ -108,25 +108,26 @@ class IPCService(ThreadedService, metaclass=ABCMeta):
         """ Main service loop """
 
         try:
-            msg: Optional[object] = self._read()
+            request_id, msg = self._read()
         except Exception as exc:  # pylint: disable=broad-except
             self.on_error(exc)
         else:
             if msg:
-                self.on_message(msg)
+                self.on_message(request_id, msg)
 
-    def _read(self, **options) -> object:
+    def _read(self, **options) -> Tuple[Optional[bytes], Optional[object]]:
         """ Read and deserialize data from a pipe """
+        empty = None, None
 
         # poll and read
         try:
             if self._read_conn.poll(self.POLL_TIMEOUT):
                 data = self._read_conn.recv_bytes()
             else:
-                return None
+                return empty
         except EOFError as exc:
             self.on_close(exc)
-            return None
+            return empty
 
         # deserialize
         try:
@@ -137,7 +138,7 @@ class IPCService(ThreadedService, metaclass=ABCMeta):
             )
         except Exception as exc:  # pylint: disable=broad-except
             self.on_error(exc)
-            return None
+            return empty
 
     def _write(self, msg: object, **options) -> bool:
         """ Serialize and write data to a pipe """
@@ -171,7 +172,6 @@ class RPCMixin(metaclass=ABCMeta):
 
     @abstractmethod
     def _build_msg(self,
-                   request_id: bytes,
                    fn_name: str,
                    *args,
                    **kwargs) -> object:
@@ -235,7 +235,6 @@ class IPCClientService(IPCService, RPCMixin, metaclass=ABCMeta):
         fn(data)
 
     def _build_msg(self,
-                   request_id: bytes,
                    fn_name: str,
                    *args,
                    **kwargs) -> object:
@@ -251,16 +250,16 @@ class IPCClientService(IPCService, RPCMixin, metaclass=ABCMeta):
 
         call_kwargs = self._convert_types(kwargs, self.FROM_PY)
         msg_builder = self.REQ_MSG_BUILDERS[fn_name]
-        return msg_builder(request_id=request_id, **call_kwargs)
+        return msg_builder(**call_kwargs)
 
     def _request(self, fn_name: str, *args, **kwargs) -> Deferred:
 
         request_id = self._new_request_id()
-        msg = self._build_msg(request_id, fn_name, *args, **kwargs)
+        msg = self._build_msg(fn_name, *args, **kwargs)
 
         deferred = Deferred()
 
-        if self._write(msg):
+        if self._write(msg, request_id=request_id):
             self._requests[request_id] = deferred
         else:
             error = RuntimeError('Pipe write failed for call: {}'.format(msg))
@@ -289,11 +288,9 @@ class IPCServerService(IPCService, RPCMixin, metaclass=ABCMeta):
         self._functions = {k: getattr(proxy_object, k) for k
                            in self.REQ_MSG_BUILDERS.keys()}
 
-    def on_request(self, msg: object) -> None:
+    def on_request(self, request_id: bytes, msg: object) -> None:
 
         properties = self._convert_types(msg.__dict__, self.TO_PY)
-        request_id = properties.pop('request_id')
-
         fn_name = self.METHOD_MAP[msg.__class__]
         fn = self._functions[fn_name]
 
@@ -314,13 +311,12 @@ class IPCServerService(IPCService, RPCMixin, metaclass=ABCMeta):
         self._execute(call)
 
     def _build_msg(self,
-                   request_id: bytes,
                    fn_name: str,
                    *args,
                    **kwargs) -> object:
 
         msg_builder = self.RES_MSG_BUILDERS[fn_name]
-        return msg_builder(request_id, *args, **kwargs)
+        return msg_builder(*args, **kwargs)
 
     def _respond(self,
                  request_id: bytes,
@@ -331,15 +327,14 @@ class IPCServerService(IPCService, RPCMixin, metaclass=ABCMeta):
                      request_id, fn_name, result)
 
         if isinstance(result, (Exception, Failure)):
-            msg = self._build_error_msg(request_id, fn_name, result)
+            msg = self._build_error_msg(fn_name, result)
         else:
-            msg = self._build_msg(request_id, fn_name, result)
+            msg = self._build_msg(fn_name, result)
 
-        self._write(msg)
+        self._write(msg, request_id=request_id)
 
     @abstractmethod
     def _build_error_msg(self,
-                         request_id: bytes,
                          fn_name: str,
                          result: Any) -> object:
         pass

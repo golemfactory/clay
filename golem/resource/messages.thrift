@@ -48,73 +48,63 @@ struct PulledEntry {
  */
 
 struct AddFile {
-    1: required binary request_id,
-    2: required string path,
-    3: required string task_id,
+    1: required string path,
+    2: required string task_id,
+    3: optional bool async_ = true,
+    4: optional ClientOptions client_options
+}
+
+struct AddFiles {
+    1: required list<string> files,
+    2: required string task_id,
+    3: optional string resource_hash,
     4: optional bool async_ = true,
     5: optional ClientOptions client_options
 }
 
-struct AddFiles {
-    1: required binary request_id,
-    2: required list<string> files,
-    3: required string task_id,
-    4: optional string resource_hash,
-    5: optional bool async_ = true,
-    6: optional ClientOptions client_options
-}
-
 struct AddTask {
-    1: required binary request_id,
-    2: required list<string> files,
-    3: required string task_id,
-    4: optional string resource_hash,
-    5: optional bool async_ = true,
-    6: optional ClientOptions client_options
+    1: required list<string> files,
+    2: required string task_id,
+    3: optional string resource_hash,
+    4: optional bool async_ = true,
+    5: optional ClientOptions client_options
 }
 
 struct RemoveTask {
-    1: required binary request_id,
-    2: required string task_id
+    1: required string task_id
 }
 
 struct GetResources {
-    1: required binary request_id,
-    2: required string task_id
+    1: required string task_id
 }
 
 struct PullResource {
-    1: required binary request_id,
-    2: required ResourceEntry entry,
-    3: required string task_id,
-    4: optional ClientOptions client_options,
-    5: optional bool async_ = true
+    1: required ResourceEntry entry,
+    2: required string task_id,
+    3: optional ClientOptions client_options,
+    4: optional bool async_ = true
 }
 
 /**
  * Responses
  */
 
-struct Error {
-    1: required binary request_id,
-    2: optional string message
+struct Empty {
+
 }
 
-struct Empty {
-    1: required binary request_id
+struct Error {
+    1: optional string message
 }
 
 struct Added {
-    1: required binary request_id,
-    2: required ResourceEntry entry
+    1: required ResourceEntry entry
 }
 
 struct Resources {
-    1: required binary request_id,
-    2: required list<Resource> resources
+    1: required list<Resource> resources
 }
 
 struct Pulled {
-    1: required binary request_id,
-    2: required PulledEntry entry
+    1: required PulledEntry entry
 }

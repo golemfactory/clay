@@ -13,7 +13,7 @@ from golem.resource.messages.ttypes import PeerEntry, AddressEntry, \
 # Message builders
 ###
 
-def build_pull_resource(request_id: bytes, **kwargs) -> PullResource:
+def build_pull_resource(**kwargs) -> PullResource:
     converted = dict(kwargs)
 
     if 'entry' in kwargs:
@@ -24,28 +24,28 @@ def build_pull_resource(request_id: bytes, **kwargs) -> PullResource:
         converted['client_options'] = from_py_client_options(
             kwargs['client_options'])
 
-    return PullResource(request_id=request_id, **converted)
+    return PullResource(**converted)
 
 
-def build_added(request_id: bytes, result, *_args, **_kwargs) -> Added:
-    return Added(request_id=request_id, entry=from_py_resource_entry(result))
+def build_added(result, *_args, **_kwargs) -> Added:
+    return Added(entry=from_py_resource_entry(result))
 
 
-def build_pulled(request_id: bytes, result, *_args, **_kwargs) -> Pulled:
-    return Pulled(request_id=request_id, entry=from_py_pulled_entry(result))
+def build_pulled(result, *_args, **_kwargs) -> Pulled:
+    return Pulled(entry=from_py_pulled_entry(result))
 
 
-def build_resources(request_id: bytes, result, *_args, **_kwargs) -> Resources:
+def build_resources(result, *_args, **_kwargs) -> Resources:
     resources = list(map(from_py_resource, result))
-    return Resources(request_id=request_id, resources=resources)
+    return Resources(resources=resources)
 
 
-def build_empty(request_id: bytes, *_args, **_kwargs) -> Empty:
-    return Empty(request_id=request_id)
+def build_empty(*_args, **_kwargs) -> Empty:
+    return Empty()
 
 
-def build_error(request_id: bytes, message: str) -> Error:
-    return Error(request_id=request_id, message=message)
+def build_error(message: str) -> Error:
+    return Error(message=message)
 
 ###
 # Struct converters

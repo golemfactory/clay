@@ -1,4 +1,4 @@
-from typing import Any, Optional, Dict
+from typing import Any, Optional, Dict, Tuple
 
 from thrift.protocol import TBinaryProtocol
 from thrift.protocol.TProtocol import TProtocolFactory
@@ -22,6 +22,7 @@ class ThriftMessageSerializer(IPCMessageSerializer):
 
     def serialize(self,
                   msg: Any,
+                  request_id: bytes = b'',
                   **_options) -> bytes:
 
         msg.validate()
@@ -32,14 +33,14 @@ class ThriftMessageSerializer(IPCMessageSerializer):
         msg.write(protocol)
         serialized = transport.getvalue()
 
-        return self.serialize_header(msg) + serialized
+        return self.serialize_header(msg, request_id) + serialized
 
     def deserialize(self,
                     data: bytes,
                     msg_types: Optional[Dict[str, Any]] = None,
-                    **_options) -> Any:
+                    **_options) -> Tuple[bytes, object]:
 
-        offset, cls_name = self.deserialize_header(data)
+        request_id, offset, cls_name = self.deserialize_header(data)
 
         msg_type = msg_types[cls_name]
 
@@ -48,4 +49,4 @@ class ThriftMessageSerializer(IPCMessageSerializer):
 
         ret = msg_type()
         ret.read(protocol)
-        return ret
+        return request_id, ret

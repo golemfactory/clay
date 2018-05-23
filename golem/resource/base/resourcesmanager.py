@@ -170,29 +170,29 @@ class ResourceManagerProxyClient(_ProxyMixin, IPCClientService,  # noqa # pylint
 
         self.storage = ResourceStorage(dir_manager, method)
 
-    def on_message(self, msg: object) -> None:
+    def on_message(self, request_id: bytes, msg: object) -> None:
 
         if isinstance(msg, Empty):
-            return self.on_response(msg.request_id, None)
+            return self.on_response(request_id, None)
 
         elif isinstance(msg, Added):
             resource_entry = to_py_resource_entry(msg.entry)
-            return self.on_response(msg.request_id, resource_entry)
+            return self.on_response(request_id, resource_entry)
 
         elif isinstance(msg, Pulled):
             pulled_entry = to_py_pulled_entry(msg.entry)
-            return self.on_response(msg.request_id, pulled_entry)
+            return self.on_response(request_id, pulled_entry)
 
         elif isinstance(msg, Resources):
             resources = list(map(to_py_resource, msg.resources))
-            return self.on_response(msg.request_id, resources)
+            return self.on_response(request_id, resources)
 
         elif isinstance(msg, Error):
-            return self.on_response(msg.request_id, Exception(msg.message))
+            return self.on_response(request_id, Exception(msg.message))
 
-        err = Error(request_id=self._new_request_id(),
-                    message="Unknown msg {}".format(msg.__class__.__name__))
-        self._write(err)
+        msg_cls = msg.__class__.__name__
+        err = build_error("Unknown msg {}".format(msg_cls))
+        self._write(err, request_id=self._new_request_id())
 
     def _get_method_spec(self, method_name: str) -> Tuple[Optional[List[str]],
                                                           Optional[List[str]]]:
@@ -220,22 +220,21 @@ class ResourceManagerProxyServer(_ProxyMixin, IPCServerService):
     }
 
     def _build_error_msg(self,
-                         request_id: bytes,
-                         fn_name: str,
+                         _fn_name: str,
                          result: Any) -> object:
 
-        return build_error(request_id, str(result))
+        return build_error(str(result))
 
-    def on_message(self, msg: object) -> None:
+    def on_message(self, request_id: bytes, msg: object) -> None:
 
         if isinstance(msg, Error):
             return logger.error("Unexpected error message received: %r", msg)
 
         try:
-            self.on_request(msg)
+            self.on_request(request_id, msg)
         except Exception as exc:  # pylint: disable=broad-except
-            error = build_error(self._new_request_id(), str(exc))
-            self._write(error)
+            error = build_error(str(exc))
+            self._write(error, request_id=self._new_request_id())
 
     def _execute(self, fn: Callable) -> Any:
         self.reactor.callFromThread(fn)

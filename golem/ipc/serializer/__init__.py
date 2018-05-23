@@ -1,9 +1,13 @@
 import struct
 from abc import ABCMeta, abstractmethod
-from typing import Any, Tuple
+from typing import Tuple, Any
 
 
 class IPCMessageSerializer(metaclass=ABCMeta):
+
+    # Header:
+    # request_id_len | request_id (bytes) |
+    # msg_name_len | msg_name (str as bytes)
 
     ENCODING = 'utf-8'
 
@@ -11,23 +15,48 @@ class IPCMessageSerializer(metaclass=ABCMeta):
     LENGTH_LEN = struct.calcsize(FORMAT_LEN)
 
     @abstractmethod
-    def serialize(self, msg, **options) -> bytes:
+    def serialize(self,
+                  msg: Any,
+                  request_id: bytes = b'',
+                  **options) -> bytes:
         pass
 
     @abstractmethod
-    def deserialize(self, data: bytes, **options) -> Any:
+    def deserialize(self, data: bytes, **options) -> Tuple[bytes, object]:
         pass
 
-    def serialize_header(self, msg) -> bytes:
-        name = bytes(msg.__class__.__name__, self.ENCODING)
-        len_bytes = struct.pack(self.FORMAT_LEN, len(name))
-        return len_bytes + name
+    def serialize_header(self,
+                         msg: object,
+                         request_id: bytes) -> bytes:
 
-    def deserialize_header(self, data: bytes) -> Tuple[int, str]:
-        len_slice = data[:self.LENGTH_LEN]
-        name_len: int = struct.unpack(self.FORMAT_LEN, len_slice)[0]
-        name_bytes: bytes = data[self.LENGTH_LEN:self.LENGTH_LEN + name_len]
+        request_id_bytes = self._serialize_bytes(request_id)
+        name_bytes = self._serialize_str(msg.__class__.__name__)
 
-        offset = self.LENGTH_LEN + name_len
-        name = name_bytes.decode(self.ENCODING)
-        return offset, name
+        return request_id_bytes + name_bytes
+
+    def deserialize_header(self, buf: bytes) -> Tuple[bytes, int, str]:
+        request_id_offset, request_id = self._deserialize_bytes(buf)
+        name_offset, name = self._deserialize_str(buf[request_id_offset:])
+
+        offset = request_id_offset + name_offset
+        return request_id, offset, name
+
+    def _serialize_str(self, string: str) -> bytes:
+        str_bytes = bytes(string, self.ENCODING)
+        return self._serialize_bytes(str_bytes)
+
+    def _serialize_bytes(self, buf: bytes) -> bytes:
+        len_bytes = struct.pack(self.FORMAT_LEN, len(buf))
+        return len_bytes + buf
+
+    def _deserialize_str(self, buf: bytes) -> Tuple[int, str]:
+        offset, str_bytes = self._deserialize_bytes(buf)
+        return offset, str_bytes.decode(self.ENCODING)
+
+    def _deserialize_bytes(self, buf: bytes) -> Tuple[int, bytes]:
+        len_slice = buf[:self.LENGTH_LEN]
+        str_len: int = struct.unpack(self.FORMAT_LEN, len_slice)[0]
+        str_bytes: bytes = buf[self.LENGTH_LEN:self.LENGTH_LEN + str_len]
+
+        offset = self.LENGTH_LEN + str_len
+        return offset, str_bytes
