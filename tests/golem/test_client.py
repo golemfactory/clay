@@ -1265,6 +1265,13 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             task_id, single=False
         )
 
+    def test_subtasks(self, *_):
+        task_id = str(uuid.uuid4())
+        c = self.client
+        c.task_server.task_manager.tasks_states = {task_id: Mock(subtask_states=[])}
+        result = c.get_subtasks(task_id)
+        self.assertEqual(result, ())
+
     def test_subtasks_borders(self, *_):
         task_id = str(uuid.uuid4())
         c = self.client
