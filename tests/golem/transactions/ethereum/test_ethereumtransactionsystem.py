@@ -229,13 +229,12 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         )
         self.assertEqual(tx_hash, None)
 
-    @patch('golem_sci.implementation.SCIImplementation.get_gntb_balance')
     @patch('golem.transactions.ethereum.ethereumtransactionsystem'
            '.EthereumTransactionSystem.concent_balance')
-    def test_concent_deposit_not_enough(self, balance_mock, gntb_balance_mock):
+    def test_concent_deposit_not_enough(self, balance_mock):
         balance_mock.return_value = 0
-        gntb_balance_mock.return_value = 0
         ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        ets._gntb_balance = 0
         with self.assertRaises(NotEnoughFunds):
             ets.concent_deposit(
                 required=10,
@@ -244,16 +243,14 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             )
 
     @patch('golem_sci.implementation.SCIImplementation.deposit_payment')
-    @patch('golem_sci.implementation.SCIImplementation.get_gntb_balance')
     @patch('golem.transactions.ethereum.ethereumtransactionsystem'
            '.EthereumTransactionSystem.concent_balance')
-    def test_concent_deposit_done(
-            self, balance_mock, gntb_balance_mock, deposit_mock):
+    def test_concent_deposit_done(self, balance_mock, deposit_mock):
         balance_mock.return_value = 0
-        gntb_balance_mock.return_value = 20
         given_hash = object()
         deposit_mock.return_value = given_hash
         ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        ets._gntb_balance = 20
         tx_hash = ets.concent_deposit(
             required=10,
             expected=40,

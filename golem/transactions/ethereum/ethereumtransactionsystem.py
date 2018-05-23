@@ -202,7 +202,7 @@ class EthereumTransactionSystem(TransactionSystem):
             return None
         required -= current
         expected -= current
-        gntb_balance = self._sci.get_gntb_balance(self._sci.get_eth_address())
+        gntb_balance = self._gntb_balance
         gntb_balance -= reserved
         if gntb_balance < required:
             raise NotEnoughFunds(required, gntb_balance, 'GNTB')
