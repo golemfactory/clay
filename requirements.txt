@@ -29,8 +29,7 @@ eth-keys==0.1.0b4
 eth-tester==0.1.0b15
 eth-utils==0.7.4
 ethereum==1.6.1
-# Golem-Messages==2.9.0
--e git://github.com/golemfactory/golem-messages.git@b1ceeaa7abc575d63ad63117b81c609b63c94b13#egg=Golem-Messages
+Golem-Messages==2.9.2
 Golem-Smart-Contracts-Interface==1.1.0
 Golem-Verificator==1.0.5
 h2==3.0.1
