@@ -4,6 +4,7 @@ import time
 import uuid
 from random import Random
 from types import MethodType
+from unittest import mock
 from unittest import TestCase
 from unittest.mock import call, Mock, MagicMock, patch
 
@@ -12,10 +13,10 @@ from freezegun import freeze_time
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 
-import golem
 from apps.appsmanager import AppsManager
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
+import golem
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
@@ -959,12 +960,19 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_mock.get_price.return_value = price
         task_mock.price = 1000
         c.task_server.task_manager.create_task.return_value = task_mock
+        c.concent_service = Mock()
+        c.concent_service.enabled = True
         c.enqueue_new_task(dict(
             max_price=1 * 10**18,
             task_id=str(uuid.uuid4())
         ))
-        assert c.task_server.task_manager.create_task.called
         c.funds_locker.persist = True
+        assert c.task_server.task_manager.create_task.called
+        c.transaction_system.concent_deposit.assert_called_once_with(
+            required=mock.ANY,
+            expected=mock.ANY,
+            reserved=c.funds_locker.sum_locks()[0],
+        )
 
     @patch('golem.client.path')
     @patch('golem.client.async_run', side_effect=mock_async_run)

@@ -546,7 +546,7 @@ class Client(HardwarePresetsMixin):
             self.transaction_system.concent_deposit(
                 required=min_amount,
                 expected=opt_amount,
-                reserved=task.price,
+                reserved=self.funds_locker.sum_locks()[0],
             )
 
         task_id = task.header.task_id
