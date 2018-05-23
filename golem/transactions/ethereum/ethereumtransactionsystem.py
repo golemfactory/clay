@@ -208,7 +208,13 @@ class EthereumTransactionSystem(TransactionSystem):
         if gntb_balance < required:
             raise NotEnoughFunds(required, gntb_balance, 'GNTB')
         max_possible_amount = min(expected, gntb_balance)
-        return self._sci.deposit_payment(max_possible_amount)  # tx_hash
+        tx_hash = self._sci.deposit_payment(max_possible_amount)  # tx_hash
+        log.info(
+            "Requested concent deposit of %.6fGNT (tx: %r)",
+            max_possible_amount,
+            tx_hash,
+        )
+        return tx_hash
 
     def _get_ether_from_faucet(self) -> None:
         if not self._faucet or not self._balance_known():
