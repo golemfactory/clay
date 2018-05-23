@@ -192,9 +192,12 @@ class ConcentClientService(threading.Thread):
         return None not in self.variant.values()
 
     def run(self) -> None:
+        last_receive = 0
         while not self._stop_event.isSet():
             self._loop()
-            self.receive()
+            if time.time() - last_receive > 30:
+                last_receive = time.time()
+                self.receive()
             time.sleep(1)
 
     def stop(self) -> None:
