@@ -5,6 +5,7 @@ https://docs.google.com/document/d/1QMnamlNnKxichfPZvBDIcFm1q0uJHMHJPkCt24KElxc/
 """
 import calendar
 import datetime
+import unittest
 import unittest.mock as mock
 
 from freezegun import freeze_time
@@ -237,3 +238,53 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.assertIsInstance(ack_msg, message.tasks.AckReportComputedTask)
         self.assertEqual(ack_msg.subtask_id, self.msg.subtask_id)
         self.assertEqual(ack_msg.report_computed_task, self.msg)
+
+
+@mock.patch('golem.task.tasksession.TaskSession.send')
+class ReactToWantToComputeTaskTestCase(unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.msg = factories.tasks.WantToComputeTaskFactory()
+        self.task_session = tasksession.TaskSession(mock.MagicMock())
+
+    def assert_blocked(self, send_mock):
+        self.task_session._react_to_want_to_compute_task(self.msg)
+        cat_msg = send_mock.call_args_list[0][0][0]
+        self.assertIsInstance(cat_msg, message.tasks.CannotAssignTask)
+        self.assertIs(
+            cat_msg.reason,
+            message.tasks.CannotAssignTask.REASON.ConcentDisabled,
+        )
+        self.task_session.task_manager.got_want_to_compute.assert_not_called()
+
+    def assert_allowed(self, send_mock):
+        self.task_session.task_manager.get_next_subtask.return_value = (
+            None, True, True)
+        self.task_session._react_to_want_to_compute_task(self.msg)
+        send_mock.assert_called()
+        # ctd, wrong_task, wait
+        self.task_session.task_manager.get_next_subtask.assert_called_once()
+
+    def test_provider_with_concent_requestor_without_concent(
+            self, send_mock):
+        self.msg.concent_enabled = True
+        self.task_session.concent_service.enabled = False
+        self.assert_blocked(send_mock)
+
+    def test_provider_with_concent_requestor_with_concent(
+            self, send_mock):
+        self.msg.concent_enabled = True
+        self.task_session.concent_service.enabled = True
+        self.assert_allowed(send_mock)
+
+    def test_provider_without_concent_requestor_without_concent(
+            self, send_mock):
+        self.msg.concent_enabled = False
+        self.task_session.concent_service.enabled = False
+        self.assert_allowed(send_mock)
+
+    def test_provider_without_concent_requestor_with_concent(
+            self, send_mock):
+        self.msg.concent_enabled = False
+        self.task_session.concent_service.enabled = True
+        self.assert_allowed(send_mock)

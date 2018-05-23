@@ -1,7 +1,7 @@
 from datetime import datetime
 import logging
 import time
-from typing import List
+from typing import List, Optional
 
 from ethereum.utils import privtoaddr, denoms
 from eth_utils import encode_hex, is_address
@@ -121,15 +121,7 @@ class EthereumTransactionSystem(TransactionSystem):
         if currency == 'ETH':
             return 21000 * gas_price
         if currency == 'GNT':
-            total_gnt = self._gnt_balance + self._gntb_balance
-            gnt = self._sci.get_gnt_balance(self._sci.get_eth_address())
-            gntb = total_gnt - gnt
-            if gnt >= amount:
-                return self._sci.GAS_GNT_TRANSFER * gas_price
-            if gntb >= amount:
-                return self._sci.GAS_WITHDRAW * gas_price
-            return (self._sci.GAS_GNT_TRANSFER + self._sci.GAS_WITHDRAW) \
-                * gas_price
+            return self._sci.GAS_WITHDRAW * gas_price
         raise ValueError('Unknown currency {}'.format(currency))
 
     def withdraw(
@@ -154,41 +146,48 @@ class EthereumTransactionSystem(TransactionSystem):
             return [self._sci.transfer_eth(destination, amount)]
 
         if currency == 'GNT':
-            total_gnt = self._gnt_balance + self._gntb_balance
+            total_gnt = \
+                self._gnt_balance + self._gntb_balance - pp.reserved_gntb
             if amount > total_gnt - lock:
                 raise NotEnoughFunds(amount, total_gnt - lock, currency)
-            gnt = self._sci.get_gnt_balance(self._sci.get_eth_address())
-            gntb = total_gnt - gnt
-
-            if gnt >= amount:
-                log.info(
-                    "Withdrawing %f GNT to %s",
-                    amount / denoms.ether,
-                    destination,
-                )
-                return [self._sci.transfer_gnt(destination, amount)]
-
-            if gntb >= amount:
-                log.info(
-                    "Withdrawing %f GNTB to %s",
-                    amount / denoms.ether,
-                    destination,
-                )
-                return [self._sci.convert_gntb_to_gnt(destination, amount)]
-
+            # This can happen during unfinished GNT-GNTB conversion,
+            # so we should wait until it finishes
+            if amount > self._gntb_balance:
+                raise Exception('Cannot withdraw right now, '
+                                'background operations in progress')
             log.info(
-                "Withdrawing %f GNT and %f GNTB to %s",
-                gnt / denoms.ether,
-                (amount - gnt) / denoms.ether,
+                "Withdrawing %f GNTB to %s",
+                amount / denoms.ether,
                 destination,
             )
-            res = []
-            res.append(self._sci.transfer_gnt(destination, gnt))
-            amount -= gnt
-            res.append(self._sci.convert_gntb_to_gnt(destination, amount))
-            return res
+            return [self._sci.convert_gntb_to_gnt(destination, amount)]
 
         raise ValueError('Unknown currency {}'.format(currency))
+
+    def concent_balance(self) -> int:
+        return self._sci.get_deposit_value(
+            account_address=self._sci.get_eth_address(),
+        )
+
+    def concent_deposit(
+            self, required: int, expected: int, reserved: int) -> Optional[str]:
+        current = self.concent_balance()
+        if current >= required:
+            return None
+        required -= current
+        expected -= current
+        gntb_balance = self._gntb_balance
+        gntb_balance -= reserved
+        if gntb_balance < required:
+            raise NotEnoughFunds(required, gntb_balance, 'GNTB')
+        max_possible_amount = min(expected, gntb_balance)
+        tx_hash = self._sci.deposit_payment(max_possible_amount)  # tx_hash
+        log.info(
+            "Requested concent deposit of %.6fGNT (tx: %r)",
+            max_possible_amount,
+            tx_hash,
+        )
+        return tx_hash
 
     def _get_ether_from_faucet(self) -> None:
         if not self._faucet or not self._balance_known():

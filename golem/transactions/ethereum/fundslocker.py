@@ -4,24 +4,17 @@ import time
 
 from golem.core.service import LoopingCallService
 from golem.core.variables import PAYMENT_DEADLINE
-from golem.task.taskkeeper import compute_subtask_value
 from golem.transactions.ethereum.exceptions import NotEnoughFunds
 
 logger = logging.getLogger(__name__)
 
 
-class TaskFundsLock():
+class TaskFundsLock():  # pylint: disable=too-few-public-methods
     def __init__(self, task, transaction_system=None):
-        self.task_id = task.header.task_id
-        self.price = task.header.max_price
+        self.gnt_lock = task.price
         self.num_tasks = task.total_tasks
-        self.subtask_timeout = task.header.subtask_timeout
         self.task_deadline = task.header.deadline
         self.transaction_system = transaction_system
-
-    def gnt_lock(self):
-        price = compute_subtask_value(self.price, self.subtask_timeout)
-        return (self.num_tasks) * price
 
     def eth_lock(self):
         if self.transaction_system is None:
@@ -45,7 +38,7 @@ class FundsLocker(LoopingCallService):
         super().__init__(interval_seconds)
         self.task_lock = {}
         self.transaction_system = transaction_system
-        self.dump_path = datadir / "fundslock.pickle"
+        self.dump_path = datadir / "fundslockv1.pickle"
         self.persist = persist
         self.restore()
 
@@ -61,8 +54,8 @@ class FundsLocker(LoopingCallService):
         lock_gnt, lock_eth = self.sum_locks()
         logger.info('Locking funds for task: %r %r %r', task_id, lock_gnt,
                     lock_eth)
-        if tfl.gnt_lock() > gnt - lock_gnt:
-            raise NotEnoughFunds(tfl.gnt_lock(), gnt - lock_gnt)
+        if tfl.gnt_lock > gnt - lock_gnt:
+            raise NotEnoughFunds(tfl.gnt_lock, gnt - lock_gnt)
 
         if tfl.eth_lock() > eth - lock_eth:
             raise NotEnoughFunds(tfl.eth_lock(), eth - lock_eth,
@@ -74,16 +67,16 @@ class FundsLocker(LoopingCallService):
     def sum_locks(self):
         gnt, eth = 0, 0
         for task_lock in self.task_lock.values():
-            gnt += task_lock.gnt_lock()
+            gnt += task_lock.gnt_lock
             eth += task_lock.eth_lock()
         eth += self.transaction_system.eth_base_for_batch_payment()
         return gnt, eth
 
     def remove_old(self):
         time_ = time.time()
-        for task in list(self.task_lock.values()):
+        for task_id, task in list(self.task_lock.items()):
             if task.task_deadline + PAYMENT_DEADLINE < time_:
-                del self.task_lock[task.task_id]
+                del self.task_lock[task_id]
         self.dump_locks()
 
     def _run(self):
@@ -101,9 +94,9 @@ class FundsLocker(LoopingCallService):
                 logger.exception("Problem restoring dumpfile: %s",
                                  self.dump_path)
                 return
-        for task in self.task_lock.values():
-            logger.info('Restoring old tasks locks: %r %r %r', task.task_id,
-                        task.gnt_lock(), task.eth_lock())
+        for task_id, task in self.task_lock.items():
+            logger.info('Restoring old tasks locks: %r %r %r', task_id,
+                        task.gnt_lock, task.eth_lock())
             task.transaction_system = self.transaction_system
 
     def dump_locks(self):

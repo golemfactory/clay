@@ -92,28 +92,14 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         gas_price = 123
         sci.get_current_gas_price.return_value = gas_price
         new_sci.return_value = sci
-        eth_balance = 400
-        gnt_balance = 100
-        gntb_balance = 200
-        sci.get_eth_balance.return_value = eth_balance
-        sci.get_gnt_balance.return_value = gnt_balance
-        sci.get_gntb_balance.return_value = gntb_balance
 
         ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-        ets._faucet = False
-        ets._run()
 
-        cost = ets.get_withdraw_gas_cost(eth_balance, 'ETH')
+        cost = ets.get_withdraw_gas_cost(100, 'ETH')
         assert cost == 21000 * gas_price
 
-        cost = ets.get_withdraw_gas_cost(gnt_balance, 'GNT')
-        assert cost == sci.GAS_GNT_TRANSFER * gas_price
-
-        cost = ets.get_withdraw_gas_cost(gntb_balance, 'GNT')
+        cost = ets.get_withdraw_gas_cost(200, 'GNT')
         assert cost == sci.GAS_WITHDRAW * gas_price
-
-        cost = ets.get_withdraw_gas_cost(gntb_balance + gnt_balance, 'GNT')
-        assert cost == (sci.GAS_GNT_TRANSFER + sci.GAS_WITHDRAW) * gas_price
 
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.NodeProcess',
            Mock())
@@ -132,10 +118,8 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         sci.get_gnt_balance.return_value = gnt_balance
         sci.get_gntb_balance.return_value = gntb_balance
         eth_tx = '0xee'
-        gnt_tx = '0xbad'
         gntb_tx = '0xfad'
         sci.transfer_eth.return_value = eth_tx
-        sci.transfer_gnt.return_value = gnt_tx
         sci.convert_gntb_to_gnt.return_value = gntb_tx
         destination = '0x' + 40 * 'd'
 
@@ -159,12 +143,6 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         with self.assertRaises(NotEnoughFunds):
             ets.withdraw(eth_balance + 1, destination, 'ETH')
 
-        # Enough GNT
-        res = ets.withdraw(gnt_balance - 1, destination, 'GNT')
-        assert res == [gnt_tx]
-        sci.transfer_gnt.assert_called_once_with(destination, gnt_balance - 1)
-        sci.reset_mock()
-
         # Enough GNTB
         res = ets.withdraw(gntb_balance - 1, destination, 'GNT')
         assert res == [gntb_tx]
@@ -174,14 +152,9 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         )
         sci.reset_mock()
 
-        # Enough total GNT
-        res = ets.withdraw(gnt_balance + gntb_balance - 1, destination, 'GNT')
-        assert res == [gnt_tx, gntb_tx]
-        sci.transfer_gnt.assert_called_once_with(destination, gnt_balance)
-        sci.convert_gntb_to_gnt.assert_called_once_with(
-            destination,
-            gntb_balance - 1,
-        )
+        # Not enough GNTB
+        with self.assertRaisesRegex(Exception, 'background operations'):
+            ets.withdraw(gnt_balance + gntb_balance - 1, destination, 'GNT')
         sci.reset_mock()
 
         # Enough ETH
@@ -201,11 +174,8 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             ets.withdraw(eth_balance - 3, destination, 'ETH', 4)
         sci.reset_mock()
 
-        # Enough GNT with lock
-        res = ets.withdraw(gnt_balance + gntb_balance - 1, destination, 'GNT',
-                           1)
-        assert res == [gnt_tx, gntb_tx]
-        sci.transfer_gnt.assert_called_once_with(destination, gnt_balance)
+        # Enough GNTB with lock
+        res = ets.withdraw(gntb_balance - 1, destination, 'GNT', 1)
         sci.convert_gntb_to_gnt.assert_called_once_with(
             destination,
             gntb_balance - 1,
@@ -216,6 +186,48 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         with self.assertRaises(NotEnoughFunds):
             ets.withdraw(gnt_balance + gntb_balance - 1, destination, 'GNT', 2)
         sci.reset_mock()
+
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem'
+           '.EthereumTransactionSystem.concent_balance')
+    def test_concent_deposit_enough(self, balance_mock):
+        balance_mock.return_value = 10
+        ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        tx_hash = ets.concent_deposit(
+            required=10,
+            expected=40,
+            reserved=1,
+        )
+        self.assertEqual(tx_hash, None)
+
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem'
+           '.EthereumTransactionSystem.concent_balance')
+    def test_concent_deposit_not_enough(self, balance_mock):
+        balance_mock.return_value = 0
+        ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        ets._gntb_balance = 0
+        with self.assertRaises(NotEnoughFunds):
+            ets.concent_deposit(
+                required=10,
+                expected=40,
+                reserved=1,
+            )
+
+    @patch('golem_sci.implementation.SCIImplementation.deposit_payment')
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem'
+           '.EthereumTransactionSystem.concent_balance')
+    def test_concent_deposit_done(self, balance_mock, deposit_mock):
+        balance_mock.return_value = 0
+        given_hash = object()
+        deposit_mock.return_value = given_hash
+        ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        ets._gntb_balance = 20
+        tx_hash = ets.concent_deposit(
+            required=10,
+            expected=40,
+            reserved=1,
+        )
+        deposit_mock.assert_called_once_with(20-1)
+        self.assertEqual(tx_hash, given_hash)
 
 
 class FaucetTest(unittest.TestCase):
