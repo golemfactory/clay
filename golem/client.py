@@ -1,37 +1,36 @@
 # pylint: disable=too-many-lines
 
 import collections
+import json
 import logging
 import sys
 import time
 import uuid
-import json
 from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
 from threading import Lock, Thread
-from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple, \
-    Generator
+from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from pydispatch import dispatcher
-from twisted.internet import defer
 from twisted.internet.defer import (
     inlineCallbacks,
     returnValue,
     gatherResults,
     Deferred)
 
-from apps.blender.blenderenvironment import BlenderEnvironment
-from apps.rendering.task import framerenderingtask
 import golem
 from apps.appsmanager import AppsManager
+from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.rendering.task import framerenderingtask
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL, AppConfig)
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.config.presets import HardwarePresetsMixin
 from golem.core import variables
 from golem.core.async import AsyncRequest, async_run
-from golem.core.common import get_timestamp_utc, to_unicode, string_to_timeout,\
+from golem.core.common import get_timestamp_utc, to_unicode, \
+    string_to_timeout, \
     deadline_to_timeout
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
@@ -71,10 +70,10 @@ from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus, SubtaskStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
+from golem.tools.talkback import enable_sentry_logger
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
 from golem.transactions.ethereum.fundslocker import FundsLocker
-from golem.tools.talkback import enable_sentry_logger
 
 logger = logging.getLogger(__name__)
 
@@ -1205,20 +1204,16 @@ class Client(HardwarePresetsMixin):
         return self.environments_manager.get_performance_values()
 
     # TODO: hardcoded Blender just for 0.16.0
-    @inlineCallbacks
-    def get_min_performance(self, env_id: str = BlenderEnvironment.get_id()) \
-            -> Generator[Deferred, float, float]:
+    def get_min_performance(self,
+                            env_id: str = BlenderEnvironment.get_id()) -> float:
         env = self.environments_manager.get_environment_by_id(env_id)
-        result = yield defer.execute(env.get_min_accepted_performance)
-        return result
+        return env.get_min_accepted_performance()
 
     # TODO: hardcoded Blender just for 0.16.0
-    @inlineCallbacks
     def set_min_performance(self, min_accepted_performance: float,
                             env_id: str = BlenderEnvironment.get_id()):
         env = self.environments_manager.get_environment_by_id(env_id)
-        yield defer.execute(env.set_min_accepted_performance,
-                            min_accepted_performance)
+        env.set_min_accepted_performance(min_accepted_performance)
 
     def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:
