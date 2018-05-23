@@ -217,6 +217,51 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             ets.withdraw(gnt_balance + gntb_balance - 1, destination, 'GNT', 2)
         sci.reset_mock()
 
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem'
+           '.EthereumTransactionSystem.concent_balance')
+    def test_concent_deposit_enough(self, balance_mock):
+        balance_mock.return_value = 10
+        ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        tx_hash = ets.concent_deposit(
+            required=10,
+            expected=40,
+            reserved=1,
+        )
+        self.assertEqual(tx_hash, None)
+
+    @patch('golem_sci.implementation.SCIImplementation.get_gntb_balance')
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem'
+           '.EthereumTransactionSystem.concent_balance')
+    def test_concent_deposit_not_enough(self, balance_mock, gntb_balance_mock):
+        balance_mock.return_value = 0
+        gntb_balance_mock.return_value = 0
+        ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        with self.assertRaises(NotEnoughFunds):
+            ets.concent_deposit(
+                required=10,
+                expected=40,
+                reserved=1,
+            )
+
+    @patch('golem_sci.implementation.SCIImplementation.deposit_payment')
+    @patch('golem_sci.implementation.SCIImplementation.get_gntb_balance')
+    @patch('golem.transactions.ethereum.ethereumtransactionsystem'
+           '.EthereumTransactionSystem.concent_balance')
+    def test_concent_deposit_done(
+            self, balance_mock, gntb_balance_mock, deposit_mock):
+        balance_mock.return_value = 0
+        gntb_balance_mock.return_value = 20
+        given_hash = object()
+        deposit_mock.return_value = given_hash
+        ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        tx_hash = ets.concent_deposit(
+            required=10,
+            expected=40,
+            reserved=1,
+        )
+        deposit_mock.assert_called_once_with(20-1)
+        self.assertEqual(tx_hash, given_hash)
+
 
 class FaucetTest(unittest.TestCase):
 

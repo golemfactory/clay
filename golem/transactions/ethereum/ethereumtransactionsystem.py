@@ -204,7 +204,6 @@ class EthereumTransactionSystem(TransactionSystem):
         expected -= current
         gntb_balance = self._sci.get_gntb_balance(self._sci.get_eth_address())
         gntb_balance -= reserved
-        gntb_balance -= self.payment_processor.reserved_gntb
         if gntb_balance < required:
             raise NotEnoughFunds(required, gntb_balance, 'GNTB')
         max_possible_amount = min(expected, gntb_balance)
