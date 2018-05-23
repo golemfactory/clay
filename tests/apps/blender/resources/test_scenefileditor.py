@@ -79,7 +79,7 @@ True
         scene_m = mock.MagicMock()
         scene_m.render = mock.NonCallableMock()
         bpy_m = mock.MagicMock()
-        bpy_m.data.scenes = [scene_m]
+        bpy_m.context.scene = scene_m
         bpy_m.ops.render.render.return_value = None
         bpy_m.ops.file.report_missing_files.return_value = None
 
