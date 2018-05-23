@@ -21,7 +21,6 @@ from twisted.internet.defer import (
 
 import golem
 from apps.appsmanager import AppsManager
-from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.rendering.task import framerenderingtask
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL, AppConfig)
@@ -43,6 +42,7 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
+from golem.environments.performancemultiplier import PerformanceMultiplier
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -1203,17 +1203,13 @@ class Client(HardwarePresetsMixin):
     def get_performance_values(self):
         return self.environments_manager.get_performance_values()
 
-    # TODO: hardcoded Blender just for 0.16.0
-    def get_min_performance(self,
-                            env_id: str = BlenderEnvironment.get_id()) -> float:
-        env = self.environments_manager.get_environment_by_id(env_id)
-        return env.get_min_accepted_performance()
+    @staticmethod
+    def get_performance_mult() -> float:
+        return PerformanceMultiplier.get_percent()
 
-    # TODO: hardcoded Blender just for 0.16.0
-    def set_min_performance(self, min_accepted_performance: float,
-                            env_id: str = BlenderEnvironment.get_id()):
-        env = self.environments_manager.get_environment_by_id(env_id)
-        env.set_min_accepted_performance(min_accepted_performance)
+    @staticmethod
+    def set_performance_mult(percent: float):
+        PerformanceMultiplier.set_percent(percent)
 
     def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:

@@ -9,9 +9,7 @@ class Environments(object):
     client: Client
 
     name = Argument('name', help="Environment name")
-    value = Argument(
-        'value',
-        help="Minimal accepted provider performance (> 0)")
+    percent = Argument('percent', help="Percent from range [0, 1000]")
 
     table_headers = ['name', 'supported', 'active', 'performance',
                      'min accept. perf.', 'description']
@@ -60,8 +58,12 @@ class Environments(object):
         deferred = Environments.client.run_benchmark(name)
         return sync_wait(deferred, timeout=1800)
 
-    @command(arguments=[name, value],
-             help="Sets minimal performance for an environment")
-    def min_performance(self, name, value):
-        deferred = Environments.client.set_min_performance(value, name)
-        return sync_wait(deferred, timeout=10)
+    @command(argument=percent, help="Sets accepted performance multiplier")
+    def perf_mult_set(self, percent):
+        deferred = Environments.client.set_performance_mult(float(percent))
+        return sync_wait(deferred, timeout=3)
+
+    @command(help="Gets accepted performance multiplier")
+    def perf_mult(self):
+        deferred = Environments.client.get_performance_mult()
+        return sync_wait(deferred, timeout=3)

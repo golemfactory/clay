@@ -5,6 +5,7 @@ from os import path
 from apps.rendering.benchmark.minilight.src.minilight import make_perf_test
 
 from golem.core.common import get_golem_path
+from golem.environments.performancemultiplier import PerformanceMultiplier
 from golem.model import Performance
 
 
@@ -117,20 +118,8 @@ class Environment():
         """ Return minimal accepted performance for the environment.
         :return float:
         """
-        perf = Performance.get(Performance.environment_id == cls.get_id())
-        # by default requestor will only accept providers stronger than himself
-        return perf.min_accepted if perf.min_accepted > 0 else perf.value
-
-    @classmethod
-    def set_min_accepted_performance(cls, min_accepted: float):
-        """ Sets minimal accepted performance for the environment.
-        :return float:
-        """
-        if float(min_accepted) < 0:
-            raise Exception(f'minimal performance ({min_accepted}) must be '
-                            'positive')
-        Performance.update(min_accepted=min_accepted).where(
-            Performance.environment_id == cls.get_id()).execute()
+        return float(PerformanceMultiplier.get_percent() / 100.
+                     * cls.get_performance())
 
     def description(self):
         """ Return long description of this environment
