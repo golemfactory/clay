@@ -1,58 +1,95 @@
 from random import Random
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import patch, MagicMock
 
-from golem.task import masking
+import pytest
+
+from golem.task.masking import Mask
+from golem.task.taskbase import Task
 
 
-class TestGenMask(TestCase):
+class TestMask(TestCase):
 
-    def setUp(self):
-        self.random = Random(__name__)
+    NETWORK_SIZE = 1024
 
-    def test_gen_mask_wrong_key_size(self):
+    @staticmethod
+    def _get_test_key():
+        return Random(__name__).getrandbits(Mask.MASK_LEN)\
+            .to_bytes(Mask.KEY_SIZE, 'big')
+
+    @classmethod
+    def _get_test_network(cls):
+        return (cls._get_test_key() for _ in range(cls.NETWORK_SIZE))
+
+    def test_wrong_bits_num(self):
         with self.assertRaises(AssertionError):
-            masking.gen_mask(bits_num=1, key_size=-1)
-
-    def test_gen_mask_wrong_key_difficulty(self):
+            Mask(num_bits=-1)
         with self.assertRaises(AssertionError):
-            masking.gen_mask(bits_num=1, key_difficulty=-1)
-        with self.assertRaises(AssertionError):
-            masking.gen_mask(bits_num=1, key_size=1, key_difficulty=10)
+            Mask(num_bits=Mask.MASK_LEN + 1)
 
-    def test_gen_mask_wrong_bits_num(self):
-        with self.assertRaises(AssertionError):
-            masking.gen_mask(bits_num=-1)
-        with self.assertRaises(AssertionError):
-            masking.gen_mask(bits_num=10, key_size=1, key_difficulty=0)
+    @patch('golem.task.masking.random', new=Random(__name__))
+    def test_bits_num(self):
+        for i in range(Mask.MASK_LEN):
+            mask = Mask(num_bits=i)
+            self.assertEqual(mask.num_bits, i)
 
-    def test_gen_mask_leading_zeros(self):
-        with patch.object(masking, 'random', new=self.random):
-            for i in range(100):
-                m = masking.gen_mask(bits_num=64, key_size=64, key_difficulty=i)
-                bin_repr = format(m, '0512b')
-                self.assertEqual(bin_repr[:i], '0' * i)
+    @patch('golem.task.masking.random', new=Random(__name__))
+    def test_to_bin(self):
+        for i in range(Mask.MASK_LEN):
+            bin_repr = Mask(i).to_bin()
+            bits_num = sum(x == '1' for x in bin_repr)
+            self.assertEqual(bits_num, i)
 
-    def test_gen_mask_correct_bits_num(self):
-        with patch.object(masking, 'random', new=self.random):
-            for i in range(100):
-                m = masking.gen_mask(bits_num=i)
-                bin_repr = format(m, '0512b')
-                bits_num = sum(x == '1' for x in bin_repr)
-                self.assertEqual(bits_num, i)
+    @patch.object(Mask, 'KEY_SIZE', new=4)
+    @patch('golem.task.masking.random')
+    def test_to_bytes(self, random):
+        random.sample.return_value = range(8)
+        self.assertEqual(Mask(8).to_bytes(), b'\x00\x00\x00\xff')
+        random.sample.return_value = [10]
+        self.assertEqual(Mask(1).to_bytes(), b'\x00\x00\x04\x00')
 
+    @patch('golem.task.masking.random')
+    def test_to_int(self, random):
+        random.sample.return_value = range(8)
+        self.assertEqual(Mask(8).to_int(), 255)
+        random.sample.return_value = [10]
+        self.assertEqual(Mask(1).to_int(), 1024)
 
-class TestGetMaskForTask(TestCase):
+    @patch('golem.task.masking.random', new=Random(__name__))
+    def test_increase(self):
+        mask = Mask(0)
+        for i in range(Mask.MASK_LEN):
+            self.assertEqual(mask.num_bits, i)
+            mask.increase()
 
-    NETWORK_SIZE = 1000
+    @patch('golem.task.masking.random', new=Random(__name__))
+    def test_decrease(self):
+        mask = Mask(Mask.MASK_LEN)
+        for i in range(Mask.MASK_LEN):
+            self.assertEqual(mask.num_bits, Mask.MASK_LEN - i)
+            mask.decrease()
 
-    def setUp(self):
-        self.random = Random(__name__)
+    @patch('golem.task.masking.get_network_size', return_value=NETWORK_SIZE)
+    def test_get_mask_for_task(self, _):
+        task = MagicMock(spec=Task)
 
-    def _get_test_key(self, size=64, difficulty=14):
-        return self.random.getrandbits(size * 8 - difficulty)\
-            .to_bytes(size, 'big')
+        def _check(num_subtasks, exp_num_bits):
+            task.get_total_tasks.return_value = num_subtasks
+            mask = Mask.get_mask_for_task(task)
+            self.assertEqual(mask.num_bits, exp_num_bits)
 
-    def _get_network(self):
-        return (self._get_test_key() for _ in range(self.NETWORK_SIZE))
+        _check(1, 10)    # 1024 / 2**10 == 1
+        _check(16, 6)    # 1024 / 2**6  == 16
+        _check(80, 3)    # 1024 / 2**3 > 80 > 1024 / 2**4
+        _check(5000, 0)  # 5000 > 1024 / 2 ** 0
 
+    @pytest.mark.slow
+    @patch('golem.task.masking.random', new=Random(__name__))
+    @patch('golem.task.masking.get_network_size', return_value=NETWORK_SIZE)
+    def test_apply(self, _):
+        mask = Mask(5)
+        avg_nodes = sum(
+            sum(mask.apply(addr) for addr in self._get_test_network())
+            for _ in range(100)) / 100
+        self.assertAlmostEqual(avg_nodes, 32, delta=0.1)
+        # FIXME: It's failing!
