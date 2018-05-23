@@ -385,9 +385,9 @@ class TaskServer(
         self.task_manager.change_config(
             self.__get_task_manager_root(self.client.datadir),
             config_desc.use_distributed_resource_management)
-        self.task_computer.change_config(
-            config_desc, run_benchmarks=run_benchmarks)
         self.task_keeper.change_config(config_desc)
+        return self.task_computer.change_config(
+            config_desc, run_benchmarks=run_benchmarks)
 
     def get_task_computer_root(self):
         return os.path.join(self.client.datadir, "ComputerRes")
