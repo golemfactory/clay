@@ -12,6 +12,7 @@ from pathlib import Path
 from threading import Lock, Thread
 from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
+from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -535,8 +536,18 @@ class Client(HardwarePresetsMixin):
         else:
             task = task_dict
 
-        if self.transaction_system:
-            self.funds_locker.lock_funds(task)
+        self.funds_locker.lock_funds(task)
+
+        if self.concent_service.enabled:
+            min_amount, opt_amount = msg_helpers.requestor_deposit_amount(
+                task.price,
+            )
+            # Could raise golem.transactions.ethereum.exceptions.NotEnoughFunds
+            self.transaction_system.concent_deposit(
+                required=min_amount,
+                expected=opt_amount,
+                reserved=self.funds_locker.sum_locks()[0],
+            )
 
         task_id = task.header.task_id
         logger.info('Enqueue new task "%r"', task_id)
@@ -569,9 +580,10 @@ class Client(HardwarePresetsMixin):
                 task_state.resource_hash = resource_manager_result[0]
             except Exception as exc:  # pylint: disable=broad-except
                 error(exc)
-            else:
-                request = AsyncRequest(task_manager.start_task, task_id)
-                async_run(request, lambda _: _result.callback(task), error)
+                return
+
+            request = AsyncRequest(task_manager.start_task, task_id)
+            async_run(request, lambda _: _result.callback(task), error)
 
         def error(exception):
             logger.error("Task '%s' creation failed: %r", task_id, exception)

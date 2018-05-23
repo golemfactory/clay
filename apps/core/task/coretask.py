@@ -170,6 +170,10 @@ class CoreTask(Task):
         self.tmp_dir = None
         self.max_pending_client_results = max_pending_client_results
 
+    @property
+    def price(self) -> int:
+        return self.subtask_price * self.total_tasks
+
     @staticmethod
     def create_task_id(public_key: bytes) -> str:
         return generate_id(public_key)
