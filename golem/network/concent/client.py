@@ -18,6 +18,7 @@ from golem_messages.constants import (
 from golem import constants as gconst
 from golem import utils
 from golem.core import keysauth
+from golem.core import variables
 from golem.network.concent import exceptions
 from golem.network.concent.handlers_library import library
 
@@ -195,7 +196,7 @@ class ConcentClientService(threading.Thread):
         last_receive = 0
         while not self._stop_event.isSet():
             self._loop()
-            if time.time() - last_receive > 30:
+            if time.time() - last_receive > variables.CONCENT_PULL_INTERVAL:
                 last_receive = time.time()
                 self.receive()
             time.sleep(1)
