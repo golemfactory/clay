@@ -1126,7 +1126,6 @@ class Client(HardwarePresetsMixin):
 
     @inlineCallbacks
     def run_benchmark(self, env_id):
-        logger.info('Running benchmark for %s', env_id)
         deferred = Deferred()
 
         if env_id != DefaultEnvironment.get_id():
