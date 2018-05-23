@@ -24,7 +24,10 @@ def make_log_analyses(log_content, return_data):
     engine_type = find_engine_type(log_content)
     if engine_type:
         return_data['engine_type'] = to_unicode(engine_type)
-        return_data['samples'] = find_samples_for_scenes(log_content)
+        if engine_type == "CYCLES":
+            samples_pp = find_samples_for_scenes(log_content)
+            if samples_pp:
+                return_data['samples'] = samples_pp
 
 
 def find_samples_for_scenes(log_content):
