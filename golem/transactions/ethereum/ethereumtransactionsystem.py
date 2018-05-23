@@ -150,6 +150,8 @@ class EthereumTransactionSystem(TransactionSystem):
                 self._gnt_balance + self._gntb_balance - pp.reserved_gntb
             if amount > total_gnt - lock:
                 raise NotEnoughFunds(amount, total_gnt - lock, currency)
+            # This can happen during unfinished GNT-GNTB conversion,
+            # so we should wait until it finishes
             if amount > self._gntb_balance:
                 raise Exception('Cannot withdraw right now, '
                                 'background operations in progress')
