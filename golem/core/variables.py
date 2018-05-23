@@ -1,4 +1,7 @@
+import pathlib
 from typing import ClassVar
+
+from golem.core import common
 
 ####################
 #      CONST       #
@@ -24,6 +27,8 @@ MAX_CONNECT_SOCKET_ADDRESSES = 8
 DEFAULT_CONNECT_TO = '8.8.8.8'
 DEFAULT_CONNECT_TO_PORT = 80
 
+CONCENT_CERTIFICATES_DIR = pathlib.Path(common.get_golem_path()) \
+    / 'golem/network/concent/resources/ssl/certs'
 CONCENT_CHOICES = {
     'disabled': {'url': None, 'pubkey': None},
     'dev': {
@@ -35,8 +40,9 @@ CONCENT_CHOICES = {
         'pubkey': b'b\x9b>\xf3\xb3\xefW\x92\x93\xfeIW\xd1\n\xf0j\x91\t\xdf\x95\x84\x81b6C\xe8\xe0\xdb\\.P\x00;rZM\xafQI\xf7G\x95\xe3\xe3.h\x19\xf1\x0f\xfa\x8c\xed\x12:\x88\x8aK\x00C9 \xf0~P',  # noqa pylint: disable=line-too-long
     },
     'test': {
-        'url': 'http://test.concent.golem.network',
+        'url': 'https://test.concent.golem.network',
         'pubkey': b"\xf0\x08\xd9\x80V\t\xf3'B\x83\x8dT\xec\xa7s\x1d\xfdC\x92\xa8}GM\x94\x03F\xeaF\xd8\x05\xeaj\xd9p4|y\xef\x0b\xe0\x94\xb3@\xd2{\xf6\x90G \x7f4\x1d\x0f6\xcd\xba\xf8^\x02,;\x91\xdb\xcd",  # noqa pylint: disable=line-too-long
+        'certificate': str(CONCENT_CERTIFICATES_DIR / 'test.crt'),
     },
     'main': {
         'url': 'http://main.concent.golem.network',

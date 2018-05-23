@@ -61,6 +61,13 @@ def verify_response(response: requests.Response) -> None:
         )
 
 
+def ssl_kwargs(concent_variant: dict) -> dict:
+    """Returns additional ssl related kwargs for requests"""
+    if 'certificate' not in concent_variant:
+        return {}
+    return {'verify': concent_variant['certificate'], }
+
+
 def send_to_concent(
         msg: message.Message,
         signing_key,
@@ -106,6 +113,7 @@ def send_to_concent(
             concent_post_url,
             data=data,
             headers=headers,
+            **ssl_kwargs(concent_variant),
         )
     except requests.exceptions.RequestException as e:
         logger.warning('Concent RequestException %r', e)
@@ -139,6 +147,7 @@ def receive_from_concent(
             concent_receive_url,
             data=data,
             headers=headers,
+            **ssl_kwargs(concent_variant),
         )
     except requests.exceptions.RequestException as e:
         raise exceptions.ConcentUnavailableError(
