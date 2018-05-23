@@ -10,7 +10,6 @@ from multiprocessing import cpu_count
 import pytz
 
 from golem.core import simpleenv
-from golem.core.variables import REACTOR_THREAD_POOL_SIZE
 
 TIMEOUT_FORMAT = '{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
@@ -247,6 +246,7 @@ def install_reactor():
         kqreactor.install()
 
     from twisted.internet import reactor
+    from golem.core.variables import REACTOR_THREAD_POOL_SIZE
     reactor.suggestThreadPoolSize(REACTOR_THREAD_POOL_SIZE)
     return reactor
 
