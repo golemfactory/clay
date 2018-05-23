@@ -84,7 +84,8 @@ class TestAccount(unittest.TestCase):
             assert result == "Account unlock success"
             assert mock_pass.call_count == 2
             mock_getuser.assert_called_once()
-            mock_zxcvbn.assert_called_once_with("deadbeef", user_inputs=["Golem", "John"])
+            mock_zxcvbn.assert_called_once_with("deadbeef",
+                                                user_inputs=["Golem", "John"])
             client.set_password.assert_called_once_with("deadbeef")
 
     @patch('getpass.getpass', return_value="abc")
@@ -102,7 +103,8 @@ class TestAccount(unittest.TestCase):
     @patch('zxcvbn.zxcvbn', return_value={'score': 1})
     @patch('getpass.getpass', return_value="deadbeef")
     @patch('getpass.getuser', return_value="John")
-    def test_unlock_new_strength_error(self, mock_getuser, mock_pass, mock_zxcvbn):
+    def test_unlock_new_strength_error(self, mock_getuser, mock_pass,
+                                       mock_zxcvbn):
 
         client = Mock()
         client.key_exists.return_value = False
@@ -110,13 +112,12 @@ class TestAccount(unittest.TestCase):
         with client_ctx(Account, client):
             result = Account().unlock()
             assert result == "Password is not strong enough. " \
-                    "Please use capitals, numbers and special characters."
+                "Please use capitals, numbers and special characters."
             mock_pass.assert_called_once()
             mock_getuser.assert_called_once()
-            mock_zxcvbn.assert_called_once_with("deadbeef", user_inputs=["Golem", "John"])
+            mock_zxcvbn.assert_called_once_with("deadbeef",
+                                                user_inputs=["Golem", "John"])
             client.set_password.assert_not_called()
-
-
 
     @patch('zxcvbn.zxcvbn', return_value={'score': 1})
     @patch('getpass.getpass', return_value="deadbeef")
