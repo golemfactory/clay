@@ -121,15 +121,7 @@ class EthereumTransactionSystem(TransactionSystem):
         if currency == 'ETH':
             return 21000 * gas_price
         if currency == 'GNT':
-            total_gnt = self._gnt_balance + self._gntb_balance
-            gnt = self._sci.get_gnt_balance(self._sci.get_eth_address())
-            gntb = total_gnt - gnt
-            if gnt >= amount:
-                return self._sci.GAS_GNT_TRANSFER * gas_price
-            if gntb >= amount:
-                return self._sci.GAS_WITHDRAW * gas_price
-            return (self._sci.GAS_GNT_TRANSFER + self._sci.GAS_WITHDRAW) \
-                * gas_price
+            return self._sci.GAS_WITHDRAW * gas_price
         raise ValueError('Unknown currency {}'.format(currency))
 
     def withdraw(
@@ -154,39 +146,21 @@ class EthereumTransactionSystem(TransactionSystem):
             return [self._sci.transfer_eth(destination, amount)]
 
         if currency == 'GNT':
-            total_gnt = self._gnt_balance + self._gntb_balance
+            total_gnt = \
+                self._gnt_balance + self._gntb_balance - pp.reserved_gntb
             if amount > total_gnt - lock:
                 raise NotEnoughFunds(amount, total_gnt - lock, currency)
-            gnt = self._sci.get_gnt_balance(self._sci.get_eth_address())
-            gntb = total_gnt - gnt
-
-            if gnt >= amount:
-                log.info(
-                    "Withdrawing %f GNT to %s",
-                    amount / denoms.ether,
-                    destination,
-                )
-                return [self._sci.transfer_gnt(destination, amount)]
-
-            if gntb >= amount:
-                log.info(
-                    "Withdrawing %f GNTB to %s",
-                    amount / denoms.ether,
-                    destination,
-                )
-                return [self._sci.convert_gntb_to_gnt(destination, amount)]
-
+            # This can happen during unfinished GNT-GNTB conversion,
+            # so we should wait until it finishes
+            if amount > self._gntb_balance:
+                raise Exception('Cannot withdraw right now, '
+                                'background operations in progress')
             log.info(
-                "Withdrawing %f GNT and %f GNTB to %s",
-                gnt / denoms.ether,
-                (amount - gnt) / denoms.ether,
+                "Withdrawing %f GNTB to %s",
+                amount / denoms.ether,
                 destination,
             )
-            res = []
-            res.append(self._sci.transfer_gnt(destination, gnt))
-            amount -= gnt
-            res.append(self._sci.convert_gntb_to_gnt(destination, amount))
-            return res
+            return [self._sci.convert_gntb_to_gnt(destination, amount)]
 
         raise ValueError('Unknown currency {}'.format(currency))
 
