@@ -511,8 +511,7 @@ class Client(HardwarePresetsMixin):
         logger.info('Shutting down ...')
         self.stop()
 
-        if self.transaction_system:
-            self.transaction_system.stop()
+        self.transaction_system.stop()
         if self.diag_service:
             self.diag_service.unregister_all()
         if self.daemon_manager:
@@ -535,8 +534,7 @@ class Client(HardwarePresetsMixin):
         else:
             task = task_dict
 
-        if self.transaction_system:
-            self.funds_locker.lock_funds(task)
+        self.funds_locker.lock_funds(task)
 
         task_id = task.header.task_id
         logger.info('Enqueue new task "%r"', task_id)

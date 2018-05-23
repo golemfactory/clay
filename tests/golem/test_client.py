@@ -1141,10 +1141,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                            'last_eth_update': "None"}
         assert all(isinstance(entry, str) for entry in balance)
 
-        c.transaction_system = None
-        balance = sync_wait(c.get_balance())
-        assert balance is None
-
     def test_run_benchmark(self, *_):
         from apps.blender.blenderenvironment import BlenderEnvironment
         from apps.blender.benchmark.benchmark import BlenderBenchmark
