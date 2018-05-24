@@ -858,7 +858,7 @@ class Client(HardwarePresetsMixin):
             subtasks = self.task_server.task_manager.get_subtasks_dict(task_id)
             return subtasks
         except KeyError:
-            logger.info("Task not found: '{}'".format(task_id))
+            logger.info("Task not found: '%s'", task_id)
 
     def get_subtasks_borders(self, task_id, part=1):
         return self.task_server.task_manager.get_subtasks_borders(task_id,
