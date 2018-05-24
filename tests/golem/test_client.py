@@ -41,6 +41,7 @@ from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
+from tests.golem.config.utils import mock_config
 
 random = Random(__name__)
 
@@ -143,7 +144,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False,
-            mainnet=False,
         )
         with self.assertRaisesRegex(Exception, 'Withdrawals.*disabled'):
             self.client.withdraw('123', '0xdead', 'ETH')
@@ -151,22 +151,24 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_withdraw(self, *_):
         keys_auth = Mock()
         keys_auth._private_key = "a" * 32
-        with patch('golem.client.EthereumTransactionSystem') as ets:
-            ets.return_value = ets
-            ets.return_value.eth_base_for_batch_payment.return_value = 0
-            self.client = Client(
-                datadir=self.path,
-                app_config=Mock(),
-                config_desc=ClientConfigDescriptor(),
-                keys_auth=keys_auth,
-                database=Mock(),
-                connect_to_known_hosts=False,
-                use_docker_manager=False,
-                use_monitor=False,
-                mainnet=True,
-            )
-            self.client.withdraw('123', '0xdead', 'ETH')
-            ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH', 0)
+
+        # golem.client has already been imported
+        with patch('golem.client.IS_MAINNET', True):
+            with patch('golem.client.EthereumTransactionSystem') as ets:
+                ets.return_value = ets
+                ets.return_value.eth_base_for_batch_payment.return_value = 0
+                self.client = Client(
+                    datadir=self.path,
+                    app_config=Mock(),
+                    config_desc=ClientConfigDescriptor(),
+                    keys_auth=keys_auth,
+                    database=Mock(),
+                    connect_to_known_hosts=False,
+                    use_docker_manager=False,
+                    use_monitor=False,
+                )
+                self.client.withdraw('123', '0xdead', 'ETH')
+                ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH', 0)
 
     def test_get_withdraw_gas_cost(self, *_):
         keys_auth = Mock()
@@ -182,7 +184,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
                 connect_to_known_hosts=False,
                 use_docker_manager=False,
                 use_monitor=False,
-                mainnet=True,
             )
             self.client.get_withdraw_gas_cost('123', 'ETH')
             ets.get_withdraw_gas_cost.assert_called_once_with(123, 'ETH')
@@ -478,7 +479,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.client.SystemMonitor')
     @patch('golem.client.P2PService.connect_to_network')
     def test_restart_task(self, connect_to_network, *_):
-        apps_manager = AppsManager(False)
+        apps_manager = AppsManager()
         apps_manager.load_all_apps()
         self.client = Client(
             datadir=self.path,
@@ -839,7 +840,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                    '.register_handler'), \
                 patch('golem.client.EthereumTransactionSystem',
                       return_value=make_mock_ethereum_transaction_system()):
-            apps_manager = AppsManager(False)
+            apps_manager = AppsManager()
             apps_manager.load_all_apps()
             client = Client(
                 datadir=self.path,

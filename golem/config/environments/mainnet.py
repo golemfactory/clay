@@ -6,6 +6,12 @@ from golem.core.variables import PROTOCOL_CONST
 from . import CONCENT_ENVIRONMENT_VARIABLE
 
 IS_MAINNET = True
+ACTIVE_NET = MAINNET
+
+# CORE
+
+DATA_DIR = 'mainnet'
+ENABLE_TALKBACK = 0
 
 # CONCENT
 

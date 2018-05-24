@@ -10,6 +10,7 @@ import time
 
 from web3 import Web3, IPCProvider, HTTPProvider
 
+from golem.config.active import ETHEREUM_CHAIN, ETHEREUM_NODE_LIST, IS_MAINNET
 from golem.core.common import is_windows, DEVNULL, SUBPROCESS_STARTUP_INFO
 from golem.ethereum.web3.middleware import RemoteRPCErrorMiddlewareBuilder
 from golem.ethereum.web3.providers import ProviderProxy
@@ -20,32 +21,9 @@ from golem.utils import tee_target
 log = logging.getLogger('golem.ethereum')
 
 
-TESTNET_NODE_LIST = [
-    'https://rinkeby.golem.network:55555',
-    'http://188.165.227.180:55555',
-    'http://94.23.17.170:55555',
-    'http://94.23.57.58:55555',
-]
-
-MAINNET_NODE_LIST = [
-    'https://geth.golem.network:55555',
-    'https://0.geth.golem.network:55555',
-    'https://1.geth.golem.network:55555',
-    'https://2.geth.golem.network:55555',
-    'https://geth.golem.network:2137',
-    'https://0.geth.golem.network:2137',
-    'https://1.geth.golem.network:2137',
-    'https://2.geth.golem.network:2137',
-]
-
-
-def get_public_nodes(mainnet: bool):
+def get_public_nodes():
     """Returns public geth RPC addresses"""
-    if mainnet:
-        addr_list = MAINNET_NODE_LIST[:]
-    else:
-        addr_list = TESTNET_NODE_LIST[:]
-
+    addr_list = ETHEREUM_NODE_LIST[:]
     random.shuffle(addr_list)
     return addr_list
 
@@ -60,7 +38,7 @@ class NodeProcess(object):
         stdin=DEVNULL
     )
 
-    def __init__(self, datadir, mainnet=False, addr=None, start_node=False):
+    def __init__(self, datadir, addr=None, start_node=False):
         """
         :param datadir: working directory
         :param addr: address of a geth instance to connect with
@@ -68,11 +46,10 @@ class NodeProcess(object):
         """
         self.datadir = datadir
         self.start_node = start_node
-        self._mainnet = mainnet
         self.web3 = None  # web3 client interface
         self.provider_proxy = ProviderProxy()  # web3 ipc / rpc provider
 
-        self.initial_addr_list = [addr] if addr else get_public_nodes(mainnet)
+        self.initial_addr_list = [addr] if addr else get_public_nodes()
         self.addr_list = None
 
         self.__ps = None  # child process
@@ -134,7 +111,7 @@ class NodeProcess(object):
             return False
 
     def _create_local_ipc_provider(self, start_port=None):  # noqa pylint: disable=too-many-locals
-        chain = 'mainnet' if self._mainnet else 'rinkeby'
+        chain = ETHEREUM_CHAIN
         prog = self._find_geth()
 
         # Init geth datadir
@@ -167,7 +144,7 @@ class NodeProcess(object):
             '--nousb',
             '--verbosity', '3',
         ]
-        if not self._mainnet:
+        if not IS_MAINNET:
             args.append('--rinkeby')
 
         log.info("Starting Ethereum node: `{}`".format(" ".join(args)))

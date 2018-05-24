@@ -21,14 +21,12 @@ os.environ["PBR_VERSION"] = '3.1.1'
 import golem  # noqa
 import golem.argsparser as argsparser  # noqa
 
-from golem.appconfig import AppConfig  # noqa
 from golem.clientconfigdescriptor import ClientConfigDescriptor, \
     ConfigApprover  # noqa
 from golem.config.environments import set_environment  # noqa
 from golem.core import variables  # noqa
 from golem.core.common import install_reactor  # noqa
 from golem.core.simpleenv import get_local_datadir  # noqa
-from golem.node import Node  # noqa
 from golem.tools.talkback import enable_sentry_logger  # noqa
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
@@ -54,7 +52,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--monitor/--nomonitor', default=True)
 @click.option('--concent', type=click.Choice(variables.CONCENT_CHOICES))
 @click.option('--datadir', '-d',
-              default=get_local_datadir('default'),
+              default=None,
               type=click.Path(
                   file_okay=False,
                   writable=True
@@ -128,17 +126,25 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
 
     freeze_support()
     delete_reactor()
+
+    # Crossbar
+    if m == 'crossbar.worker.process':
+        start_crossbar_worker(m)
+        return
+
     set_environment('mainnet' if mainnet else net, concent)
 
-    # Import active configuration after the environment has been set
-    from golem.config.active import ETHEREUM_CHAIN, IS_MAINNET, CONCENT_VARIANT
+    # Import AFTER the active configuration has been set
+    from golem.config.active import CONCENT_VARIANT
+    from golem.appconfig import AppConfig
+    from golem.node import Node
 
     if version:
         print("GOLEM version: {}".format(golem.__version__))
         return 0
 
     # We should use different directories for different chains
-    datadir = os.path.join(datadir, ETHEREUM_CHAIN)
+    datadir = datadir or get_local_datadir('default')
 
     if generate_rpc_cert:
         generate_rpc_certificate(datadir)
@@ -149,7 +155,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     sys.modules['win32com.gen_py.pywintypes'] = None
     sys.modules['win32com.gen_py.pythoncom'] = None
 
-    app_config = AppConfig.load_config(datadir, mainnet=IS_MAINNET)
+    app_config = AppConfig.load_config(datadir)
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(app_config)
     config_desc = ConfigApprover(config_desc).approve()
@@ -159,11 +165,6 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         config_desc.rpc_port = rpc_address.port
     if node_address:
         config_desc.node_address = node_address
-
-    # Crossbar
-    if m == 'crossbar.worker.process':
-        start_crossbar_worker(m)
-        return
 
     # Golem headless
     install_reactor()
@@ -175,16 +176,10 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         enable_talkback = bool(config_desc.enable_talkback)
     enable_sentry_logger(enable_talkback)
 
-    if concent is None:  # Default value
-        if mainnet:
-            concent = 'disabled'
-        else:
-            concent = 'test'
-
     log_golem_version()
     log_platform_info()
     log_ethereum_chain()
-    log_concent_choice(concent)
+    log_concent_choice(CONCENT_VARIANT)
 
     node = Node(
         datadir=datadir,
@@ -193,7 +188,6 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         peers=peer,
         use_monitor=monitor,
         concent_variant=CONCENT_VARIANT,
-        mainnet=IS_MAINNET,
         start_geth=False,
         start_geth_port=None,
         geth_address=geth_address,
@@ -259,8 +253,7 @@ def log_ethereum_chain():
     logger.info("Ethereum chain: %s", ETHEREUM_CHAIN)
 
 
-def log_concent_choice(concent: str):
-    value: dict = variables.CONCENT_CHOICES[concent]  # type: ignore
+def log_concent_choice(value: dict):
     if None in value.values():
         logger.info('Concent disabled')
         return

@@ -54,7 +54,7 @@ class TaskServer(
                  use_ipv6=False,
                  use_docker_manager=True,
                  task_archiver=None,
-                 apps_manager=AppsManager(False)) -> None:
+                 apps_manager=AppsManager()) -> None:
         self.client = client
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc

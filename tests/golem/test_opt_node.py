@@ -1,4 +1,3 @@
-from os import path
 from unittest.mock import patch, Mock, ANY, MagicMock
 
 from click.testing import CliRunner
@@ -10,10 +9,11 @@ from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core import variables
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
+from golem.node import Node
 from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
 from golem.tools.testwithdatabase import TestWithDatabase
-from golemapp import start, Node
+from golemapp import start
 from tests.golem.config.utils import mock_config
 
 concent_disabled = variables.CONCENT_CHOICES['disabled']
@@ -58,7 +58,7 @@ class TestNode(TestWithDatabase):
         self.assertTrue(return_value.output.startswith('Error'))
 
     @patch('twisted.internet.reactor', create=True)
-    @patch('golemapp.Node')
+    @patch('golem.node.Node')
     def test_node_address_should_be_passed_to_node(self, mock_node, *_):
         node_address = '1.2.3.4'
 
@@ -93,7 +93,6 @@ class TestNode(TestWithDatabase):
                                        ],
                                        keys_auth=keys_auth,
                                        database=ANY,
-                                       mainnet=False,
                                        geth_address=None,
                                        start_geth=False,
                                        start_geth_port=None,
@@ -120,7 +119,7 @@ class TestNode(TestWithDatabase):
         self.assertIn('Error: --node-address', return_value.output)
 
     @patch('twisted.internet.reactor', create=True)
-    @patch('golemapp.Node')
+    @patch('golem.node.Node')
     def test_geth_address_should_be_passed_to_node(self, mock_node, *_):
         geth_address = 'http://3.14.15.92:6535'
 
@@ -129,10 +128,9 @@ class TestNode(TestWithDatabase):
         return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
 
-        mock_node.assert_called_with(datadir=path.join(self.path, 'rinkeby'),
+        mock_node.assert_called_with(datadir=self.path,
                                      app_config=ANY,
                                      config_desc=ANY,
-                                     mainnet=False,
                                      geth_address=geth_address,
                                      peers=[],
                                      start_geth=False,
@@ -158,7 +156,6 @@ class TestNode(TestWithDatabase):
                                        config_desc=ANY,
                                        keys_auth=None,
                                        database=ANY,
-                                       mainnet=False,
                                        geth_address=geth_address,
                                        start_geth=False,
                                        start_geth_port=None,
@@ -205,17 +202,16 @@ class TestNode(TestWithDatabase):
 
     @pytest.mark.skip('Issue #2476')
     @patch('twisted.internet.reactor', create=True)
-    @patch('golemapp.Node')
+    @patch('golem.node.Node')
     def test_start_geth_should_be_passed_to_node(self, mock_node, *_):
         runner = CliRunner()
         args = self.args + ['--start-geth']
         return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
 
-        mock_node.assert_called_with(datadir=path.join(self.path, 'rinkeby'),
+        mock_node.assert_called_with(datadir=self.path,
                                      app_config=ANY,
                                      config_desc=ANY,
-                                     mainnet=False,
                                      geth_address=None,
                                      peers=[],
                                      start_geth=True,
@@ -236,7 +232,6 @@ class TestNode(TestWithDatabase):
                                        config_desc=ANY,
                                        keys_auth=None,
                                        database=ANY,
-                                       mainnet=False,
                                        geth_address=None,
                                        start_geth=True,
                                        start_geth_port=None,
@@ -245,7 +240,7 @@ class TestNode(TestWithDatabase):
                                        use_monitor=False,
                                        apps_manager=ANY)
 
-    @patch('golemapp.Node')
+    @patch('golem.node.Node')
     def test_mainnet_should_be_passed_to_node(self, mock_node, *_):
 
         # given
@@ -259,7 +254,7 @@ class TestNode(TestWithDatabase):
 
         # then
         assert return_value.exit_code == 0
-        mock_node.assert_called_with(datadir=path.join(self.path, 'mainnet'),
+        mock_node.assert_called_with(datadir=self.path,
                                      app_config=ANY,
                                      config_desc=ANY,
                                      geth_address=None,
@@ -268,14 +263,13 @@ class TestNode(TestWithDatabase):
                                      start_geth_port=None,
                                      concent_variant=concent_disabled,
                                      use_monitor=True,
-                                     password=None,
-                                     mainnet=True)
+                                     password=None)
 
     @patch('golem.node.Client')
     def test_mainnet_should_be_passed_to_client(self, mock_client, *_):
         # when
         with mock_config():
-            node = Node(**self.node_kwargs, mainnet=True)
+            node = Node(**self.node_kwargs)
             node._client_factory(None)
 
         # then
@@ -290,10 +284,9 @@ class TestNode(TestWithDatabase):
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
                                        use_monitor=False,
-                                       mainnet=True,
                                        apps_manager=ANY)
 
-    @patch('golemapp.Node')
+    @patch('golem.node.Node')
     def test_net_testnet_should_be_passed_to_node(self, mock_node, *_):
 
         # given
@@ -305,9 +298,12 @@ class TestNode(TestWithDatabase):
         with mock_config():
             return_value = runner.invoke(start, args)
 
+            from golem.config.active import IS_MAINNET
+            assert IS_MAINNET is False
+
         # then
         assert return_value.exit_code == 0
-        mock_node.assert_called_with(datadir=path.join(self.path, 'rinkeby'),
+        mock_node.assert_called_with(datadir=self.path,
                                      app_config=ANY,
                                      config_desc=ANY,
                                      geth_address=None,
@@ -316,10 +312,9 @@ class TestNode(TestWithDatabase):
                                      start_geth_port=None,
                                      concent_variant=concent_disabled,
                                      use_monitor=True,
-                                     password=None,
-                                     mainnet=False)
+                                     password=None)
 
-    @patch('golemapp.Node')
+    @patch('golem.node.Node')
     def test_net_mainnet_should_be_passed_to_node(self, mock_node, *_):
 
         # given
@@ -331,9 +326,12 @@ class TestNode(TestWithDatabase):
         with mock_config():
             return_value = runner.invoke(start, args)
 
+            from golem.config.active import IS_MAINNET
+            assert IS_MAINNET is True
+
         # then
         assert return_value.exit_code == 0
-        mock_node.assert_called_with(datadir=path.join(self.path, 'mainnet'),
+        mock_node.assert_called_with(datadir=self.path,
                                      app_config=ANY,
                                      config_desc=ANY,
                                      geth_address=None,
@@ -342,8 +340,44 @@ class TestNode(TestWithDatabase):
                                      start_geth_port=None,
                                      concent_variant=concent_disabled,
                                      use_monitor=True,
-                                     password=None,
-                                     mainnet=True)
+                                     password=None)
+
+    @patch('golem.node.Node')
+    def test_config_change(self, *_):
+
+        def compare_config(module):
+
+            from golem.config import active
+
+            assert active.IS_MAINNET == module.IS_MAINNET
+            assert active.ACTIVE_NET == module.ACTIVE_NET
+            assert active.DATA_DIR == module.DATA_DIR
+            assert active.ETHEREUM_NODE_LIST == module.ETHEREUM_NODE_LIST
+            assert active.ETHEREUM_CHAIN == module.ETHEREUM_CHAIN
+            assert active.ETHEREUM_FAUCET_ENABLED == \
+                module.ETHEREUM_FAUCET_ENABLED
+            assert active.P2P_SEEDS == module.P2P_SEEDS
+            assert active.PROTOCOL_CONST.ID == module.PROTOCOL_CONST.ID
+            assert active.APP_MANAGER_CONFIG_FILES == \
+                module.APP_MANAGER_CONFIG_FILES
+
+        with mock_config():
+            args = self.args + ['--net', 'mainnet']
+
+            runner = CliRunner()
+            runner.invoke(start, args)
+
+            from golem.config.environments import mainnet
+            compare_config(mainnet)
+
+        with mock_config():
+            args = self.args + ['--net', 'testnet']
+
+            runner = CliRunner()
+            runner.invoke(start, args)
+
+            from golem.config.environments import testnet
+            compare_config(testnet)
 
     @pytest.mark.skip('Issue #2476')
     def test_start_geth_port_wo_param_should_fail(self, *_):
@@ -364,7 +398,7 @@ class TestNode(TestWithDatabase):
 
     @pytest.mark.skip('Issue #2476')
     @patch('twisted.internet.reactor', create=True)
-    @patch('golemapp.Node')
+    @patch('golem.node.Node')
     def test_start_geth_port_should_be_passed_to_node(self, mock_node, *_):
         port = 27182
 
@@ -373,10 +407,9 @@ class TestNode(TestWithDatabase):
         return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
 
-        mock_node.assert_called_with(datadir=path.join(self.path, 'rinkeby'),
+        mock_node.assert_called_with(datadir=self.path,
                                      app_config=ANY,
                                      config_desc=ANY,
-                                     mainnet=False,
                                      geth_address=None,
                                      peers=[],
                                      start_geth=True,
@@ -402,7 +435,6 @@ class TestNode(TestWithDatabase):
                                        config_desc=ANY,
                                        keys_auth=None,
                                        database=ANY,
-                                       mainnet=False,
                                        geth_address=None,
                                        start_geth=True,
                                        start_geth_port=port,
@@ -411,7 +443,7 @@ class TestNode(TestWithDatabase):
                                        use_monitor=False,
                                        apps_manager=ANY)
 
-    @patch('golemapp.Node')
+    @patch('golem.node.Node')
     def test_single_peer(self, mock_node: MagicMock, *_):
         host, port = '10.30.10.216', 40111
 
@@ -424,7 +456,7 @@ class TestNode(TestWithDatabase):
         peers = mock_node.call_args[1].get('peers')
         self.assertEqual(peers, [SocketAddress(host, port)])
 
-    @patch('golemapp.Node')
+    @patch('golem.node.Node')
     def test_many_peers(self, mock_node: MagicMock, *_):
         host1, port1 = '10.30.10.216', 40111
         host2, port2 = '10.30.10.214', 3333
@@ -444,7 +476,7 @@ class TestNode(TestWithDatabase):
             SocketAddress(host2, port2)
         ])
 
-    @patch('golemapp.Node')
+    @patch('golem.node.Node')
     def test_bad_peer(self, mock_node: MagicMock, *_):
         addr1 = '10.30.10.216:40111'
 
@@ -456,7 +488,7 @@ class TestNode(TestWithDatabase):
         self.assertTrue('Invalid peer address' in return_value.output)
         mock_node.assert_not_called()
 
-    @patch('golemapp.Node')
+    @patch('golem.node.Node')
     def test_peers(self, mock_node: MagicMock, *_):
         host1, port1 = '10.30.10.216', 40111
         host2, port2 = '2001:db8:85a3:8d3:1319:8a2e:370:7348', 443
@@ -479,7 +511,7 @@ class TestNode(TestWithDatabase):
             SocketAddress(host3, port3)
         ])
 
-    @patch('golemapp.Node')
+    @patch('golem.node.Node')
     def test_rpc_address(self, *_):
         runner = CliRunner()
 

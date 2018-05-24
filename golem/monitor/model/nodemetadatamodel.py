@@ -1,3 +1,4 @@
+from golem.config.active import ACTIVE_NET
 from golem.monitor.serialization import defaultserializer
 from .modelbase import BasicModel
 
@@ -14,7 +15,7 @@ class NodeMetadataModel(BasicModel):
         self.version = ver
         self.settings = defaultserializer.serialize("ClientConfigDescriptor",
                                                     client.config_desc)
-        self.net = 'mainnet' if client.mainnet else 'testnet'
+        self.net = ACTIVE_NET
 
 
 class NodeInfoModel(BasicModel):

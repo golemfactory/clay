@@ -10,4 +10,5 @@ def get_local_datadir(name):
         Usage should be avoid at all costs. It is always better to ask for
         a dir the upper layer (like Client instance).
         """
-    return os.path.join(appdirs.user_data_dir('golem'), name)
+    from golem.config.active import DATA_DIR
+    return os.path.join(appdirs.user_data_dir('golem'), name, DATA_DIR)

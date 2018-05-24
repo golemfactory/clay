@@ -7,8 +7,9 @@ from ethereum.utils import privtoaddr, denoms
 from eth_utils import encode_hex, is_address
 import requests
 
-from golem_sci import new_sci, chains
+from golem_sci import new_sci
 from golem_sci.gntconverter import GNTConverter
+from golem.config.active import ETHEREUM_CHAIN, ETHEREUM_FAUCET_ENABLED
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.transactions.ethereum.ethereumincomeskeeper \
@@ -41,7 +42,7 @@ def tETH_faucet_donate(addr: str):
 class EthereumTransactionSystem(TransactionSystem):
     """ Transaction system connected with Ethereum """
 
-    def __init__(self, datadir, node_priv_key, mainnet=False, start_geth=False,  # noqa pylint: disable=too-many-arguments
+    def __init__(self, datadir, node_priv_key, start_geth=False,  # noqa pylint: disable=too-many-arguments
                  start_port=None, address=None):
         """ Create new transaction system instance for node with given id
         :param node_priv_key str: node's private key for Ethereum account(32b)
@@ -53,16 +54,16 @@ class EthereumTransactionSystem(TransactionSystem):
             raise ValueError("not a valid private key")
         log.info("Node Ethereum address: %s", eth_addr)
 
-        self._node = NodeProcess(datadir, mainnet, start_geth, address)
+        self._node = NodeProcess(datadir, start_geth, address)
         self._node.start(start_port)
         self._sci = new_sci(
             self._node.web3,
             eth_addr,
             lambda tx: tx.sign(node_priv_key),
-            chains.MAINNET if mainnet else chains.RINKEBY,
+            ETHEREUM_CHAIN,
         )
         self._gnt_converter = GNTConverter(self._sci)
-        self._faucet = not mainnet
+        self._faucet = ETHEREUM_FAUCET_ENABLED
         self.payment_processor = PaymentProcessor(self._sci)
 
         super().__init__(
