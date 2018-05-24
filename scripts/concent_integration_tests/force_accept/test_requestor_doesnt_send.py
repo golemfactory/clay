@@ -1,6 +1,9 @@
+# pylint: disable=protected-access
 import calendar
 import datetime
 import logging
+import sys
+import time
 
 from golem_messages import constants
 from golem_messages import factories as msg_factories
@@ -18,17 +21,31 @@ logger = logging.getLogger(__name__)
 moment = datetime.timedelta(seconds=1)
 
 
-class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.TempDirFixture):
+class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
     """Requestor doesn't send Ack/Reject of SubtaskResults"""
     def setUp(self):
         ConcentBaseTest.setUp(self)
-        testutils.TempDirFixture.setUp(self)
+        testutils.DatabaseFixture.setUp(self)
         self.ets = libets.EthereumTransactionSystem(
             datadir=self.tempdir,
             node_priv_key=self.requestor_keys.raw_privkey,
         )
 
+    def wait_for_gntb(self):
+        sys.stderr.write('Waiting for GNTB...\n')
+        while self.ets._gntb_balance <= 0:
+            self.ets._run()
+            sys.stderr.write(
+                'Still waiting. GNT: {} GNTB: {} ETH: {}\n'.format(
+                    self.ets._gnt_balance,
+                    self.ets._gntb_balance,
+                    self.ets._eth_balance,
+                ),
+            )
+            time.sleep(10)
+
     def requestor_put_deposit(self, fsr: message.concents.ForceSubtaskResults):
+        self.wait_for_gntb()
         amount, _ = helpers.requestor_deposit_amount(
             # We'll use subtask price. Total number of subtasks is unknown
             fsr.task_to_compute.price,
