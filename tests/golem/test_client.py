@@ -41,7 +41,6 @@ from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
-from tests.golem.config.utils import mock_config
 
 random = Random(__name__)
 

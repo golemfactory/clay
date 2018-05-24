@@ -26,7 +26,6 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor, \
 from golem.config.environments import set_environment  # noqa
 from golem.core import variables  # noqa
 from golem.core.common import install_reactor  # noqa
-from golem.core.simpleenv import get_local_datadir  # noqa
 from golem.tools.talkback import enable_sentry_logger  # noqa
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
@@ -138,6 +137,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     from golem.config.active import CONCENT_VARIANT
     from golem.appconfig import AppConfig
     from golem.node import Node
+    from golem.core.simpleenv import get_local_datadir
 
     if version:
         print("GOLEM version: {}".format(golem.__version__))

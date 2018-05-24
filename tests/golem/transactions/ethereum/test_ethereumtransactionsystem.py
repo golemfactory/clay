@@ -14,7 +14,6 @@ from golem.transactions.ethereum.ethereumtransactionsystem import (
     tETH_faucet_donate,
 )
 from golem.transactions.ethereum.exceptions import NotEnoughFunds
-from tests.golem.config.utils import mock_config
 
 PRIV_KEY = '07' * 32
 
