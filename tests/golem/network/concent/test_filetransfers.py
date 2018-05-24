@@ -1,6 +1,5 @@
 import base64
 import queue
-import pathlib
 import unittest
 
 import mock
