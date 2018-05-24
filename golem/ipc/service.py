@@ -1,8 +1,8 @@
 import functools
 import inspect
 import logging
-import os
 import sys
+import uuid
 
 from abc import abstractmethod, ABCMeta
 from multiprocessing import Process
@@ -179,7 +179,7 @@ class RPCMixin(metaclass=ABCMeta):
 
     @staticmethod
     def _new_request_id() -> bytes:
-        return os.urandom(16)
+        return str(uuid.uuid4()).encode()
 
     @staticmethod
     def _convert_types(source: Dict[str, Any],
