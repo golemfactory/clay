@@ -35,6 +35,12 @@ ETHEREUM_NODE_LIST = [
 ETHEREUM_CHAIN = MAINNET
 ETHEREUM_FAUCET_ENABLED = False
 
+GETH_FLAGS = [
+
+]
+
+ENABLE_WITHDRAWALS = True
+
 # P2P
 
 P2P_SEEDS = [
@@ -55,3 +61,7 @@ PROTOCOL_CONST.patch_protocol_id(value=PROTOCOL_CONST.NUM)
 APP_MANAGER_CONFIG_FILES = [
     os.path.join('apps', 'registered.ini')
 ]
+
+# MONITOR
+
+SEND_PAYMENT_INFO = False

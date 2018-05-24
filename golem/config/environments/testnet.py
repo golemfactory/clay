@@ -31,6 +31,12 @@ ETHEREUM_NODE_LIST = [
 ETHEREUM_CHAIN = RINKEBY
 ETHEREUM_FAUCET_ENABLED = True
 
+GETH_FLAGS = [
+    '--rinkeby',
+]
+
+ENABLE_WITHDRAWALS = False
+
 # P2P
 
 P2P_SEEDS = [
@@ -53,3 +59,7 @@ APP_MANAGER_CONFIG_FILES = [
     os.path.join('apps', 'registered.ini'),
     os.path.join('apps', 'registered_test.ini')
 ]
+
+# MONITOR
+
+SEND_PAYMENT_INFO = True
