@@ -18,6 +18,7 @@ from golem_messages.constants import (
 from golem import constants as gconst
 from golem import utils
 from golem.core import keysauth
+from golem.core import variables
 from golem.network.concent import exceptions
 from golem.network.concent.handlers_library import library
 
@@ -59,6 +60,13 @@ def verify_response(response: requests.Response) -> None:
                 response.text
             )
         )
+
+
+def ssl_kwargs(concent_variant: dict) -> dict:
+    """Returns additional ssl related kwargs for requests"""
+    if 'certificate' not in concent_variant:
+        return {}
+    return {'verify': concent_variant['certificate'], }
 
 
 def send_to_concent(
@@ -106,6 +114,7 @@ def send_to_concent(
             concent_post_url,
             data=data,
             headers=headers,
+            **ssl_kwargs(concent_variant),
         )
     except requests.exceptions.RequestException as e:
         logger.warning('Concent RequestException %r', e)
@@ -139,6 +148,7 @@ def receive_from_concent(
             concent_receive_url,
             data=data,
             headers=headers,
+            **ssl_kwargs(concent_variant),
         )
     except requests.exceptions.RequestException as e:
         raise exceptions.ConcentUnavailableError(
@@ -192,9 +202,12 @@ class ConcentClientService(threading.Thread):
         return None not in self.variant.values()
 
     def run(self) -> None:
+        last_receive = 0.0
         while not self._stop_event.isSet():
             self._loop()
-            self.receive()
+            if time.time() - last_receive > variables.CONCENT_PULL_INTERVAL:
+                last_receive = time.time()
+                self.receive()
             time.sleep(1)
 
     def stop(self) -> None:

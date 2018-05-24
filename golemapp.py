@@ -163,7 +163,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     install_reactor()
 
     from golem.core.common import config_logging
-    config_logging(datadir=datadir, loglevel=log_level)
+    config_logging(datadir=datadir, loglevel=log_level, config_desc=config_desc)
 
     if enable_talkback is None:
         enable_talkback = bool(config_desc.enable_talkback)

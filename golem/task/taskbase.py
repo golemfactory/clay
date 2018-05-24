@@ -185,6 +185,14 @@ class Task(abc.ABC):
     def __repr__(self):
         return '<Task: %r>' % (self.header,)
 
+    @property
+    def subtask_price(self):
+        from golem.task import taskkeeper
+        return taskkeeper.compute_subtask_value(
+            self.header.max_price,
+            self.header.subtask_timeout,
+        )
+
     def register_listener(self, listener):
         if not isinstance(listener, TaskEventListener):
             raise TypeError("Incorrect 'listener' type: {}. Should be: TaskEventListener".format(type(listener)))

@@ -143,6 +143,10 @@ class DummyTask(Task):
     def get_tasks_left(self):
         return self.total_subtasks - len(self.subtask_results)
 
+    @property
+    def price(self) -> int:
+        return self.subtask_price * self.total_tasks
+
     def needs_computation(self):
         return len(self.subtask_data) < self.total_subtasks
 

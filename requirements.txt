@@ -31,7 +31,7 @@ eth-utils==0.7.4
 ethereum==1.6.1
 Golem-Messages==2.9.2
 Golem-Smart-Contracts-Interface==1.1.0
-Golem-Verificator==1.0.5
+Golem-Verificator==1.0.7
 h2==3.0.1
 hpack==3.0.0
 html2text==2018.1.9
@@ -114,3 +114,4 @@ web3==3.16.4
 websocket-client==0.47.0
 wrapt==1.10.11
 zope.interface==4.4.2
+zxcvbn-python==4.4.22

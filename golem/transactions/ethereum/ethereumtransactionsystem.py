@@ -1,7 +1,7 @@
 from datetime import datetime
 import logging
 import time
-from typing import List
+from typing import List, Optional
 
 from ethereum.utils import privtoaddr, denoms
 from eth_utils import encode_hex, is_address
@@ -163,6 +163,31 @@ class EthereumTransactionSystem(TransactionSystem):
             return [self._sci.convert_gntb_to_gnt(destination, amount)]
 
         raise ValueError('Unknown currency {}'.format(currency))
+
+    def concent_balance(self) -> int:
+        return self._sci.get_deposit_value(
+            account_address=self._sci.get_eth_address(),
+        )
+
+    def concent_deposit(
+            self, required: int, expected: int, reserved: int) -> Optional[str]:
+        current = self.concent_balance()
+        if current >= required:
+            return None
+        required -= current
+        expected -= current
+        gntb_balance = self._gntb_balance
+        gntb_balance -= reserved
+        if gntb_balance < required:
+            raise NotEnoughFunds(required, gntb_balance, 'GNTB')
+        max_possible_amount = min(expected, gntb_balance)
+        tx_hash = self._sci.deposit_payment(max_possible_amount)  # tx_hash
+        log.info(
+            "Requested concent deposit of %.6fGNT (tx: %r)",
+            max_possible_amount,
+            tx_hash,
+        )
+        return tx_hash
 
     def _get_ether_from_faucet(self) -> None:
         if not self._faucet or not self._balance_known():
