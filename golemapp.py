@@ -13,14 +13,18 @@ from cpuinfo import get_cpu_info
 from ethereum import slogging
 
 # Export pbr version for peewee_migrate user
+
 os.environ["PBR_VERSION"] = '3.1.1'
 
 # pylint: disable=wrong-import-position
+
 import golem  # noqa
 import golem.argsparser as argsparser  # noqa
+
 from golem.appconfig import AppConfig  # noqa
 from golem.clientconfigdescriptor import ClientConfigDescriptor, \
     ConfigApprover  # noqa
+from golem.config.environments import set_environment  # noqa
 from golem.core import variables  # noqa
 from golem.core.common import install_reactor  # noqa
 from golem.core.simpleenv import get_local_datadir  # noqa
@@ -72,7 +76,9 @@ slogging.SManager.getLogger = monkey_patched_getLogger
               callback=argsparser.parse_peer, metavar="<host>:<port>",
               help="Connect with given peer")
 @click.option('--mainnet', is_flag=True, default=False,
-              help='Whether to run on Ethereum mainnet')
+              help='Whether to run on Ethereum mainnet (shorthand '
+                   'for --net mainnet)')
+@click.option('--net', default=None, type=click.Choice(['mainnet', 'testnet']),)
 # Local geth is currently experimental, see issue #2476
 # @click.option('--start-geth', is_flag=True, default=False, is_eager=True,
 #               help="Start local geth node")
@@ -117,22 +123,22 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--loglevel', expose_value=False)  # Crossbar specific level
 @click.option('--title', expose_value=False)
 def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
-          geth_address, password, accept_terms, generate_rpc_cert, version,
+          net, geth_address, password, accept_terms, generate_rpc_cert, version,
           log_level, enable_talkback, m):
 
     freeze_support()
     delete_reactor()
+    set_environment('mainnet' if mainnet else net, concent)
+
+    # Import active configuration after the environment has been set
+    from golem.config.active import ETHEREUM_CHAIN, IS_MAINNET, CONCENT_VARIANT
 
     if version:
         print("GOLEM version: {}".format(golem.__version__))
         return 0
 
     # We should use different directories for different chains
-    subdir = 'mainnet' if mainnet else 'rinkeby'
-    datadir = os.path.join(datadir, subdir)
-    # We don't want different chains to talk to each other
-    if not mainnet:
-        variables.PROTOCOL_CONST.ID += '-testnet'
+    datadir = os.path.join(datadir, ETHEREUM_CHAIN)
 
     if generate_rpc_cert:
         generate_rpc_certificate(datadir)
@@ -143,7 +149,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     sys.modules['win32com.gen_py.pywintypes'] = None
     sys.modules['win32com.gen_py.pythoncom'] = None
 
-    app_config = AppConfig.load_config(datadir, mainnet=mainnet)
+    app_config = AppConfig.load_config(datadir, mainnet=IS_MAINNET)
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(app_config)
     config_desc = ConfigApprover(config_desc).approve()
@@ -177,7 +183,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
 
     log_golem_version()
     log_platform_info()
-    log_ethereum_chain(mainnet)
+    log_ethereum_chain()
     log_concent_choice(concent)
 
     node = Node(
@@ -186,8 +192,8 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         config_desc=config_desc,
         peers=peer,
         use_monitor=monitor,
-        concent_variant=variables.CONCENT_CHOICES[concent],
-        mainnet=mainnet,
+        concent_variant=CONCENT_VARIANT,
+        mainnet=IS_MAINNET,
         start_geth=False,
         start_geth_port=None,
         geth_address=geth_address,
@@ -248,9 +254,9 @@ def log_platform_info():
                 humanize.naturalsize(swapinfo.total, binary=True))
 
 
-def log_ethereum_chain(mainnet: bool):
-    chain = "mainnet" if mainnet else "rinkeby"
-    logger.info("Ethereum chain: %s", chain)
+def log_ethereum_chain():
+    from golem.config.active import ETHEREUM_CHAIN
+    logger.info("Ethereum chain: %s", ETHEREUM_CHAIN)
 
 
 def log_concent_choice(concent: str):
