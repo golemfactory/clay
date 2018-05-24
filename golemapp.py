@@ -144,7 +144,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         return 0
 
     # We should use different directories for different chains
-    datadir = datadir or get_local_datadir('default')
+    datadir = get_local_datadir('default', root_dir=datadir)
 
     if generate_rpc_cert:
         generate_rpc_certificate(datadir)

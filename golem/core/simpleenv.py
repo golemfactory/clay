@@ -1,9 +1,10 @@
 import os
+from typing import Optional
 
 import appdirs
 
 
-def get_local_datadir(name):
+def get_local_datadir(name: str, root_dir: Optional[str] = None) -> str:
     """ Helper function for datadir transition.
 
         It returns path to a data directory of given name in 'data' dir.
@@ -11,4 +12,7 @@ def get_local_datadir(name):
         a dir the upper layer (like Client instance).
         """
     from golem.config.active import DATA_DIR
-    return os.path.join(appdirs.user_data_dir('golem'), name, DATA_DIR)
+
+    if not root_dir:
+        root_dir = os.path.join(appdirs.user_data_dir('golem'), name)
+    return os.path.join(root_dir, DATA_DIR)
