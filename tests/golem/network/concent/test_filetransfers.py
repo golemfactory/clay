@@ -1,5 +1,6 @@
 import base64
 import queue
+import pathlib
 import unittest
 
 import mock
@@ -180,15 +181,14 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
         with self.assertRaises(Exception):
             self.cfs.process(request)
 
-    @staticmethod
-    def _init_uploaded_file(path):
-        with open(path, 'w') as f:
-            f.write('meh')
+    def _init_uploaded_file(self, filename: str):
+        file = (self.new_path / filename)
+        file.write_text('meh')
+        return str(file)
 
     @mock.patch('golem.network.concent.filetransfers.requests.post')
     def test_upload(self, requests_mock):
-        path = self.path + '/something.good'
-        self._init_uploaded_file(path)
+        path = self._init_uploaded_file('something.good')
 
         ftt = FileTransferTokenFactory(upload=True)
 
@@ -213,8 +213,7 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
 
     @mock.patch('golem.network.concent.filetransfers.requests.post')
     def test_upload_multiple_files(self, requests_mock):
-        path = self.path + '/obsta.cles'
-        self._init_uploaded_file(path)
+        path = self._init_uploaded_file('obsta.cles')
         category = FileTransferToken.FileInfo.Category.resources
 
         ftt = FileTransferTokenFactory(

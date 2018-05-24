@@ -123,7 +123,7 @@ class TaskServerMessageHandler():
 
     def is_ours(self,
                 parent_msg: message.base.Message,
-                child_msg_field: str):
+                child_msg_field: str) -> bool:
         """
         verify if the attached message bears our signature
 
@@ -343,7 +343,10 @@ class TaskServerMessageHandler():
     def _log_ftt_invalid(msg: message.base.Message):
         logger.warning("File Transfer Token invalid in %r", msg)
 
-    def _upload_results(self, subtask_id, ftt):
+    def _upload_results(
+            self,
+            subtask_id: str,
+            ftt: message.concents.FileTransferToken) -> None:
         wtr = self.task_server.results_to_send.get(subtask_id, None)
         if not wtr:
             logger.warning(
@@ -367,8 +370,10 @@ class TaskServerMessageHandler():
             FileInfo.Category.results
         )
 
-    def _upload_task_resources(self, task_id, ftt):
-
+    def _upload_task_resources(
+            self,
+            task_id: str,
+            ftt: message.concents.FileTransferToken) -> None:
         package_paths = self.task_server.task_manager.comp_task_keeper\
             .get_package_paths(task_id)
 
