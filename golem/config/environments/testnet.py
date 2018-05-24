@@ -6,7 +6,7 @@ from golem.core.variables import PROTOCOL_CONST
 from . import TESTNET, CONCENT_ENVIRONMENT_VARIABLE
 
 IS_MAINNET = False
-ACTIVE_NET = RINKEBY
+ACTIVE_NET = TESTNET
 
 # CORE
 
