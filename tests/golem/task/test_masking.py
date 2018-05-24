@@ -12,14 +12,15 @@ class TestMask(TestCase):
 
     NETWORK_SIZE = 1024
 
-    @staticmethod
-    def _get_test_key():
-        return Random(__name__).getrandbits(Mask.MASK_LEN)\
-            .to_bytes(Mask.KEY_SIZE, 'big')
+    def setUp(self):
+        self.random = Random(__name__)
 
-    @classmethod
-    def _get_test_network(cls):
-        return (cls._get_test_key() for _ in range(cls.NETWORK_SIZE))
+    def _get_test_key(self):
+        return self.random.getrandbits(Mask.MASK_LEN)\
+            .to_bytes(Mask.KEY_SIZE, 'big', signed=False)
+
+    def _get_test_network(self):
+        return (self._get_test_key() for _ in range(self.NETWORK_SIZE))
 
     def test_wrong_bits_num(self):
         with self.assertRaises(AssertionError):
@@ -87,9 +88,13 @@ class TestMask(TestCase):
     @patch('golem.task.masking.random', new=Random(__name__))
     @patch('golem.task.masking.get_network_size', return_value=NETWORK_SIZE)
     def test_apply(self, _):
-        mask = Mask(5)
-        avg_nodes = sum(
-            sum(mask.apply(addr) for addr in self._get_test_network())
-            for _ in range(100)) / 100
-        self.assertAlmostEqual(avg_nodes, 32, delta=0.1)
-        # FIXME: It's failing!
+        def _check(num_bits, exp_num_nodes):
+            mask = Mask(num_bits)
+            avg_nodes = sum(
+                sum(mask.apply(addr) for addr in self._get_test_network())
+                for _ in range(1000)) / 1000
+            self.assertAlmostEqual(avg_nodes, exp_num_nodes, delta=1)
+
+        _check(3, 128)
+        _check(5, 32)
+        _check(7, 8)
