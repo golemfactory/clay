@@ -12,7 +12,7 @@ class PerformanceMultiplier:
         """
         rows = GenericKeyValue.select(GenericKeyValue.value).where(
             GenericKeyValue.key == cls.DB_KEY)
-        return float(rows.get().value) if rows.count() == 1 else 0
+        return float(rows.get().value) if rows.count() == 1 else 100
 
     @classmethod
     def set_percent(cls, percent: float):
