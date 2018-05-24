@@ -57,3 +57,4 @@ Golem-Messages==2.9.1
 Golem-Smart-Contracts-Interface==1.1.0
 Golem-Verificator==1.0.7
 html2text==2018.1.9
+zxcvbn-python
