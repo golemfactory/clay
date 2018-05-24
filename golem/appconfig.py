@@ -36,6 +36,7 @@ USE_UPNP = 1
 ACCEPT_TASKS = 1
 SEND_PINGS = 1
 ENABLE_TALKBACK = 0
+DEBUG_THIRD_PARTY = 0
 
 PINGS_INTERVALS = 120
 GETTING_PEERS_INTERVAL = 4.0
@@ -147,7 +148,8 @@ class AppConfig:
             waiting_for_task_session_timeout=WAITING_FOR_TASK_SESSION_TIMEOUT,
             forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT,
             clean_resources_older_than_seconds=CLEAN_RESOURES_OLDER_THAN_SECS,
-            clean_tasks_older_than_seconds=CLEAN_TASKS_OLDER_THAN_SECONDS)
+            clean_tasks_older_than_seconds=CLEAN_TASKS_OLDER_THAN_SECONDS,
+            debug_third_party=DEBUG_THIRD_PARTY)
 
         cfg = SimpleConfig(node_config, cfg_file, keep_old=False)
         return AppConfig(cfg, cfg_file)

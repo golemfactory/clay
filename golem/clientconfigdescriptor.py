@@ -58,6 +58,7 @@ class ClientConfigDescriptor(object):
         self.max_price = 0
 
         self.accept_tasks = 1
+        self.debug_third_party = 0
 
     def init_from_app_config(self, app_config):
         """Initializes config parameters based on the specified AppConfig
