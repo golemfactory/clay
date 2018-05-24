@@ -12,6 +12,7 @@ from pathlib import Path
 from threading import Lock, Thread
 from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
+from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -187,6 +188,7 @@ class Client(HardwarePresetsMixin):
             start_port=start_geth_port,
             address=geth_address,
         )
+        self.transaction_system.start()
 
         self.funds_locker = FundsLocker(self.transaction_system,
                                         Path(self.datadir))
@@ -536,6 +538,17 @@ class Client(HardwarePresetsMixin):
 
         self.funds_locker.lock_funds(task)
 
+        if self.concent_service.enabled:
+            min_amount, opt_amount = msg_helpers.requestor_deposit_amount(
+                task.price,
+            )
+            # Could raise golem.transactions.ethereum.exceptions.NotEnoughFunds
+            self.transaction_system.concent_deposit(
+                required=min_amount,
+                expected=opt_amount,
+                reserved=self.funds_locker.sum_locks()[0],
+            )
+
         task_id = task.header.task_id
         logger.info('Enqueue new task "%r"', task_id)
         files = get_resources_for_task(resource_header=None,
@@ -567,9 +580,10 @@ class Client(HardwarePresetsMixin):
                 task_state.resource_hash = resource_manager_result[0]
             except Exception as exc:  # pylint: disable=broad-except
                 error(exc)
-            else:
-                request = AsyncRequest(task_manager.start_task, task_id)
-                async_run(request, lambda _: _result.callback(task), error)
+                return
+
+            request = AsyncRequest(task_manager.start_task, task_id)
+            async_run(request, lambda _: _result.callback(task), error)
 
         def error(exception):
             logger.error("Task '%s' creation failed: %r", task_id, exception)
@@ -920,8 +934,6 @@ class Client(HardwarePresetsMixin):
 
     @inlineCallbacks
     def get_balance(self):
-        if not self.transaction_system:
-            return None
         gnt, av_gnt, eth, \
             last_gnt_update, \
             last_eth_update = yield self.transaction_system.get_balance()
@@ -933,8 +945,7 @@ class Client(HardwarePresetsMixin):
                     'gnt_lock': str(gnt_lock),
                     'eth_lock': str(eth_lock),
                     'last_gnt_update': str(last_gnt_update),
-                    'last_eth_update': str(last_eth_update)
-                    }
+                    'last_eth_update': str(last_eth_update)}
         return None
 
     def get_payments_list(self):
@@ -1133,7 +1144,6 @@ class Client(HardwarePresetsMixin):
 
     @inlineCallbacks
     def run_benchmark(self, env_id):
-        logger.info('Running benchmarks ...')
         deferred = Deferred()
 
         if env_id != DefaultEnvironment.get_id():
@@ -1271,13 +1281,16 @@ class Client(HardwarePresetsMixin):
     def get_golem_status():
         return StatusPublisher.last_status()
 
+    @inlineCallbacks
     def activate_hw_preset(self, name, run_benchmarks=False):
         HardwarePresets.update_config(name, self.config_desc)
         if hasattr(self, 'task_server') and self.task_server:
-            self.task_server.change_config(
-                self.config_desc,
-                run_benchmarks=run_benchmarks
-            )
+            deferred = self.task_server.change_config(
+                self.config_desc, run_benchmarks=run_benchmarks)
+
+            result = yield deferred
+            logger.info('change hw config result: %r', result)
+            returnValue(self.get_performance_values())
 
     def __lock_datadir(self):
         if not path.exists(self.datadir):

@@ -124,8 +124,9 @@ class CompTaskKeeper:
         tasks_path: to tasks directory
         """
         # information about tasks that this node wants to compute
-        self.active_tasks = {}
-        self.subtask_to_task = {}  # maps subtasks id to tasks id
+        self.active_tasks: typing.Dict[str, CompTaskInfo] = {}
+        # maps subtasks id to tasks id
+        self.subtask_to_task: typing.Dict[str, str] = {}
         if not tasks_path.is_dir():
             tasks_path.mkdir()
         self.dump_path = tasks_path / "comp_task_keeper.pickle"

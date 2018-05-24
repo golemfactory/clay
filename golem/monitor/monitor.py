@@ -103,21 +103,23 @@ class SystemMonitor(object):
 
     def ping_request(self, ports) -> Optional[Dict]:
         timeout = 2.5  # seconds
-        try:
-            response = requests.post(
-                urljoin(self.config['HOST'], 'ping-me'),
-                data={
-                    'ports': ports,
-                    'timestamp': time.time()
-                },
-                timeout=timeout,
-            )
-            result = response.json()
-            log.debug('Ping result: %r', result)
-            return result
-        except (requests.RequestException, ValueError):
-            log.exception('Ping error')
-            return None
+
+        for host in self.config['PING_ME_HOSTS']:
+            try:
+                response = requests.post(
+                    urljoin(host, 'ping-me'),
+                    data={
+                        'ports': ports,
+                        'timestamp': time.time()
+                    },
+                    timeout=timeout,
+                )
+                result = response.json()
+                log.debug('Ping result: %r', result)
+                return result
+            except (requests.RequestException, ValueError):
+                log.exception('Ping error (%r)', host)
+        return None
 
     @log_error()
     def dispatch_listener(self, sender, signal, event='default', **kwargs):

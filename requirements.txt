@@ -29,9 +29,9 @@ eth-keys==0.1.0b4
 eth-tester==0.1.0b15
 eth-utils==0.7.4
 ethereum==1.6.1
-Golem-Messages==2.8.0
+Golem-Messages==2.9.1
 Golem-Smart-Contracts-Interface==1.1.0
-Golem-Verificator==1.0.3
+Golem-Verificator==1.0.7
 h2==3.0.1
 hpack==3.0.0
 html2text==2018.1.9
@@ -95,6 +95,7 @@ secp256k1==0.13.2
 semantic-version==2.6.0
 service-identity==17.0.0
 setproctitle==1.1.10
+setuptools==38.7.0
 shellescape==3.4.1
 shutilwhich==1.1.0
 six==1.10.0

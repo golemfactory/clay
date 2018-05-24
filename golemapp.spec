@@ -50,29 +50,12 @@ if is_windows:
 
     hidden_imports += ['vboxapi']
 
-def get_verificator_data_files():
-    import importlib
-    import importlib.util
-
-    data_files = []
-
-    spec = importlib.util.find_spec('golem_verificator')
-    verificator_path = spec.submodule_search_locations[0]
-    data_files.append((verificator_path + '/common/blendercrop.py.template',
-        'golem_verificator/common'))
-    data_files.append((verificator_path +
-        '/docker/blender/images/scripts/runner.py',
-        'golem_verificator/docker/blender/images/scripts'))
-
-    return data_files
-
 a = Analysis(['golemapp.py'],
              hookspath=['./scripts/pyinstaller/hooks'],
              hiddenimports=hidden_imports,
              pathex=[],
              binaries=binaries,
-             datas=tree('apps/lux/benchmark') + tree('apps/blender/benchmark') +
-                 get_verificator_data_files(),
+             datas=tree('apps/lux/benchmark') + tree('apps/blender/benchmark'),
              runtime_hooks=[],
              win_no_prefer_redirects=True,
              win_private_assemblies=True,
