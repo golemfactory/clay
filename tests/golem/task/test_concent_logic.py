@@ -288,3 +288,17 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         self.msg.concent_enabled = False
         self.task_session.concent_service.enabled = True
         self.assert_allowed(send_mock)
+
+    def test_concent_disabled_wtct_concent_flag_none(self, send_mock):
+        self.msg.concent_enabled = None
+        self.task_session.concent_service.enabled = False
+        self.task_session.task_manager.get_next_subtask.return_value = (
+            factories.tasks.ComputeTaskDefFactory(),
+            False,
+            True
+        )
+        self.task_session._react_to_want_to_compute_task(self.msg)
+        send_mock.assert_called()
+        ttc = send_mock.call_args_list[2][0][0]
+        self.assertIsInstance(ttc, message.tasks.TaskToCompute)
+        self.assertFalse(ttc.concent_enabled)
