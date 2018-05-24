@@ -449,6 +449,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_manager = MagicMock()
         ts.task_computer = Mock()
         ts.task_server = Mock()
+        ts.concent_service.enabled = False
         ts.send = Mock()
 
         env = Mock()
@@ -819,7 +820,8 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
     def test_send_report_computed_task_concent_success(self):
         wtr = factories.taskserver.WaitingTaskResultFactory(
             task_id=self.task_id, subtask_id=self.subtask_id, owner=self.n)
-        self._mock_task_to_compute(self.task_id, self.subtask_id, self.node_id)
+        self._mock_task_to_compute(self.task_id, self.subtask_id, self.node_id,
+                                   concent_enabled=True)
         self.ts.send_report_computed_task(
             wtr, wtr.owner.pub_addr, wtr.owner.pub_port, "0x00", self.n)
 
@@ -837,7 +839,8 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
             task_id=self.task_id, subtask_id=self.subtask_id, owner=self.n,
             result=result, result_type=ResultType.FILES
         )
-        self._mock_task_to_compute(self.task_id, self.subtask_id, self.node_id)
+        self._mock_task_to_compute(self.task_id, self.subtask_id, self.node_id,
+                                   concent_enabled=True)
 
         self.ts.send_report_computed_task(
             wtr, wtr.owner.pub_addr, wtr.owner.pub_port, "0x00", self.n)
