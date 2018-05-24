@@ -32,7 +32,7 @@ def make_log_analyses(log_content, return_data):
 
 def find_samples_for_scenes(log_content):
     samples = re.search("^Info: Samples: (.*)", log_content,
-                        re.MULTILINE | re.IGNORECASE)
+                        re.MULTILINE)
     if samples:
         return samples.group(1)
 
