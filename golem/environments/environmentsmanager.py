@@ -6,6 +6,7 @@ from importlib import import_module
 from shutil import copy
 from typing import Dict, List, Optional
 
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path
 from golem.environments.environmentsconfig import EnvironmentsConfig
 from .environment import Environment
@@ -93,6 +94,14 @@ class EnvironmentsManager(object):
             if hasattr(config_entries, getter_name):
                 getter_for_env = getattr(config_entries, getter_name)
                 env.accept_tasks = getter_for_env()
+
+    def change_config(self, config: ClientConfigDescriptor):
+        """ Notifies all environments about new client config. It's up to
+        each environment to dedice what to do with that information.
+        :param config:
+        """
+        for env in self.get_environments():
+            env.change_config(config)
 
     def add_environment(self, task_type: str, environment: Environment):
         """ Add new environment to the manager. Check if environment

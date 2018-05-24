@@ -261,6 +261,7 @@ class Client(HardwarePresetsMixin):
 
         logger.debug('Starting client services ...')
         self.environments_manager.load_config(self.datadir)
+        self.environments_manager.change_config(self.config_desc)
         self.concent_service.start()
         self.concent_filetransfers.start()
 
@@ -1015,6 +1016,7 @@ class Client(HardwarePresetsMixin):
         self.config_desc = self.config_approver.change_config(new_config_desc)
         self.upsert_hw_preset(HardwarePresets.from_config(self.config_desc))
 
+        self.environments_manager.change_config(self.config_desc)
         if self.p2pservice:
             self.p2pservice.change_config(self.config_desc)
         if self.task_server:

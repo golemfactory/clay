@@ -51,7 +51,8 @@ class BlenderFirejailTaskThread(TaskThread):
     # pylint: disable=too-many-arguments
     def __init__(self, task_computer, subtask_id, script_dir, src_code,
                  extra_data, short_desc, res_path, tmp_path, timeout,
-                 rendering_engine: RenderingEngine, check_mem=False) -> None:
+                 rendering_engine: RenderingEngine, memory_limit,
+                 cpu_num_cores_limit, check_mem=False) -> None:
 
         super().__init__(task_computer, subtask_id, script_dir, src_code,
                          extra_data, short_desc, res_path, tmp_path, timeout)
@@ -61,6 +62,8 @@ class BlenderFirejailTaskThread(TaskThread):
         self.work_dir = os.path.join(self.tmp_path, "work")
         self.output_dir = os.path.join(self.tmp_path, "output")
         self.profile_path = os.path.join(self.tmp_path, 'blender.profile')
+        self.memory_limit = memory_limit
+        self.cpu_num_cores_limit = cpu_num_cores_limit
 
     def run(self):
         try:
@@ -126,10 +129,17 @@ class BlenderFirejailTaskThread(TaskThread):
         return cmd
 
     def _format_firejail_cmd(self):
-        return [
+        command = [
             FIREJAIL_COMMAND,
             f'--profile={self.profile_path}'
         ]
+        if self.memory_limit:
+            memory_limit_in_bytes = int(self.memory_limit * 1024)
+            command.append(f'--rlimit-as={memory_limit_in_bytes}')
+        if self.cpu_num_cores_limit:
+            cpus = ','.join(str(i) for i in range(self.cpu_num_cores_limit))
+            command.append(f'--cpu={cpus}')
+        return command
 
     def _prepare_dirs(self):
         if not os.path.exists(self.work_dir):

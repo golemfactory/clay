@@ -4,6 +4,7 @@ from apps.blender.firejailenvironment.task_thread import \
     BlenderFirejailTaskThread
 from apps.rendering.task.rendering_engine_requirement import \
     RenderingEngineSupport, RenderingEngine
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.environments.environment import Environment
 
 
@@ -26,6 +27,12 @@ class FirejailEnvironment(Environment):
         super().__init__(**kwargs)
         self.rendering_engine_support = rendering_engine
         self.software.append("firejail")
+        self.memory_limit = None
+        self.cpu_num_cores_limit = None
+
+    def change_config(self, config: ClientConfigDescriptor):
+        self.memory_limit = config.max_memory_size
+        self.cpu_num_cores_limit = config.num_cores
 
     def get_supports(self):
         return super().get_supports() + [self.rendering_engine_support]
@@ -35,10 +42,14 @@ class FirejailEnvironment(Environment):
                         extra_data, task_timeout, working_dir, resource_dir,
                         temp_dir, **kwargs):
         rendering_engine = self.rendering_engine_support.engine
-        return BlenderFirejailTaskThread(taskcomputer, subtask_id, working_dir,
-                                         src_code, extra_data, short_desc,
-                                         resource_dir, temp_dir, task_timeout,
-                                         rendering_engine, **kwargs)
+        return BlenderFirejailTaskThread(
+            taskcomputer, subtask_id, working_dir,
+            src_code, extra_data, short_desc,
+            resource_dir, temp_dir, task_timeout,
+            rendering_engine,
+            memory_limit=self.memory_limit,
+            cpu_num_cores_limit=self.cpu_num_cores_limit,
+            **kwargs)
 
     def get_benchmark(self):
         return BlenderBenchmark(self), BlenderRenderTaskBuilder

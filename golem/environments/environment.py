@@ -4,6 +4,7 @@ from os import path
 from typing import List
 
 from apps.rendering.benchmark.minilight.src.minilight import make_perf_test
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 from golem.core.common import get_golem_path
 from golem.model import Performance
@@ -50,6 +51,12 @@ class Environment(ABC):
         self.allow_custom_source_code = False
         self.default_program_file = None
         self.source_code_required = False
+
+    def change_config(self, config: ClientConfigDescriptor):
+        """ Called to notify this environment about changes to client config.
+        :param config:
+        """
+        pass
 
     def _check_software(self):
         """ Check if required software is installed on this machine
