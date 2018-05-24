@@ -35,7 +35,6 @@ SEND_PEERS_NUM = 10
 USE_IP6 = 0
 USE_UPNP = 1
 ACCEPT_TASKS = 1
-IN_SHUTDOWN = 0
 SEND_PINGS = 1
 ENABLE_MONITOR = 1
 DEBUG_THIRD_PARTY = 0
@@ -125,8 +124,8 @@ class AppConfig:
             opt_peer_num=OPTIMAL_PEER_NUM,
             key_difficulty=KEY_DIFFICULTY,
             # flags
+            in_shutdown=0,
             accept_tasks=ACCEPT_TASKS,
-            in_shutdown=IN_SHUTDOWN,
             send_pings=SEND_PINGS,
             enable_talkback=ENABLE_TALKBACK,
             enable_monitor=ENABLE_MONITOR,
