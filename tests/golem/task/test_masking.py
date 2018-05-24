@@ -17,7 +17,7 @@ class TestMask(TestCase):
 
     def _get_test_key(self):
         return self.random.getrandbits(Mask.MASK_LEN)\
-            .to_bytes(Mask.KEY_SIZE, 'big', signed=False)
+            .to_bytes(Mask.MASK_LEN // 8, 'big', signed=False)
 
     def _get_test_network(self):
         return (self._get_test_key() for _ in range(self.NETWORK_SIZE))
@@ -41,7 +41,7 @@ class TestMask(TestCase):
             bits_num = sum(x == '1' for x in bin_repr)
             self.assertEqual(bits_num, i)
 
-    @patch.object(Mask, 'KEY_SIZE', new=4)
+    @patch.object(Mask, 'MASK_BYTES', new=4)
     @patch('golem.task.masking.random')
     def test_to_bytes(self, random):
         random.sample.return_value = range(8)
@@ -86,8 +86,7 @@ class TestMask(TestCase):
 
     @pytest.mark.slow
     @patch('golem.task.masking.random', new=Random(__name__))
-    @patch('golem.task.masking.get_network_size', return_value=NETWORK_SIZE)
-    def test_apply(self, _):
+    def test_apply(self):
         def _check(num_bits, exp_num_nodes):
             mask = Mask(num_bits)
             avg_nodes = sum(
@@ -95,6 +94,6 @@ class TestMask(TestCase):
                 for _ in range(1000)) / 1000
             self.assertAlmostEqual(avg_nodes, exp_num_nodes, delta=1)
 
-        _check(3, 128)
-        _check(5, 32)
-        _check(7, 8)
+        _check(3, 128)  # 1024 / 2**3 == 128
+        _check(5, 32)   # 1024 / 2**5 == 32
+        _check(7, 8)    # 1024 / 2**7 == 8
