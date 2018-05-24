@@ -167,7 +167,7 @@ class HandleAttributeError(HandleError):
         )
 
 
-def config_logging(suffix='', datadir=None, loglevel=None):
+def config_logging(suffix='', datadir=None, loglevel=None, config_desc=None):
     """Config logger"""
     try:
         from loggingconfig_local import LOGGING
@@ -192,6 +192,9 @@ def config_logging(suffix='', datadir=None, loglevel=None):
         for _logger in LOGGING.get('loggers', {}).values():
             _logger['level'] = loglevel
         LOGGING['root']['level'] = loglevel
+        if config_desc and not config_desc.debug_third_party:
+            LOGGING['loggers']['golem.rpc.crossbar']['level'] = 'WARNING'
+            LOGGING['loggers']['twisted']['level'] = 'WARNING'
 
     try:
         if not os.path.exists(logdir_path):
