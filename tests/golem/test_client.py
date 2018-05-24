@@ -153,7 +153,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         keys_auth._private_key = "a" * 32
 
         # golem.client has already been imported
-        with patch('golem.client.IS_MAINNET', True):
+        with patch('golem.client.ENABLE_WITHDRAWALS', True):
             with patch('golem.client.EthereumTransactionSystem') as ets:
                 ets.return_value = ets
                 ets.return_value.eth_base_for_batch_payment.return_value = 0

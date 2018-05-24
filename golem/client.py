@@ -26,7 +26,7 @@ from apps.appsmanager import AppsManager
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL, AppConfig)
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
-from golem.config.active import IS_MAINNET
+from golem.config.active import ENABLE_WITHDRAWALS, ACTIVE_NET
 from golem.config.presets import HardwarePresetsMixin
 from golem.core import variables
 from golem.core.async import AsyncRequest, async_run
@@ -475,8 +475,7 @@ class Client(HardwarePresetsMixin):
     def init_monitor(self):
         logger.debug("Starting monitor ...")
         metadata = self.__get_nodemetadatamodel()
-        self.monitor = SystemMonitor(
-            metadata, MONITOR_CONFIG, send_payment_info=(not IS_MAINNET))
+        self.monitor = SystemMonitor(metadata, MONITOR_CONFIG)
         self.monitor.start()
         self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
         self.diag_service.register(
@@ -957,8 +956,9 @@ class Client(HardwarePresetsMixin):
             amount: Union[str, int],
             destination: str,
             currency: str) -> List[str]:
-        if not IS_MAINNET:
-            raise Exception("Withdrawals are disabled on testnet")
+
+        if not ENABLE_WITHDRAWALS:
+            raise Exception("Withdrawals are disabled on {}".format(ACTIVE_NET))
 
         if isinstance(amount, str):
             amount = int(amount)

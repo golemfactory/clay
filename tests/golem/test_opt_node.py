@@ -345,21 +345,22 @@ class TestNode(TestWithDatabase):
     @patch('golem.node.Node')
     def test_config_change(self, *_):
 
-        def compare_config(module):
+        def compare_config(m):
+            from golem.config import active as a
 
-            from golem.config import active
-
-            assert active.IS_MAINNET == module.IS_MAINNET
-            assert active.ACTIVE_NET == module.ACTIVE_NET
-            assert active.DATA_DIR == module.DATA_DIR
-            assert active.ETHEREUM_NODE_LIST == module.ETHEREUM_NODE_LIST
-            assert active.ETHEREUM_CHAIN == module.ETHEREUM_CHAIN
-            assert active.ETHEREUM_FAUCET_ENABLED == \
-                module.ETHEREUM_FAUCET_ENABLED
-            assert active.P2P_SEEDS == module.P2P_SEEDS
-            assert active.PROTOCOL_CONST.ID == module.PROTOCOL_CONST.ID
-            assert active.APP_MANAGER_CONFIG_FILES == \
-                module.APP_MANAGER_CONFIG_FILES
+            assert a.IS_MAINNET == m.IS_MAINNET
+            assert a.ACTIVE_NET == m.ACTIVE_NET
+            assert a.DATA_DIR == m.DATA_DIR
+            assert a.ETHEREUM_NODE_LIST == m.ETHEREUM_NODE_LIST
+            assert a.ETHEREUM_CHAIN == m.ETHEREUM_CHAIN
+            assert a.ETHEREUM_FAUCET_ENABLED == m.ETHEREUM_FAUCET_ENABLED
+            assert a.GETH_FLAGS == m.GETH_FLAGS
+            assert a.ENABLE_WITHDRAWALS == m.ENABLE_WITHDRAWALS
+            assert a.P2P_SEEDS == m.P2P_SEEDS
+            assert a.PROTOCOL_CONST.ID == m.PROTOCOL_CONST.ID
+            assert a.APP_MANAGER_CONFIG_FILES == m.APP_MANAGER_CONFIG_FILES
+            assert a.SEND_PAYMENT_INFO_TO_MONITOR == \
+                m.SEND_PAYMENT_INFO_TO_MONITOR
 
         with mock_config():
             args = self.args + ['--net', 'mainnet']
