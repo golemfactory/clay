@@ -27,6 +27,11 @@ class PendingResource(object):
         self.client_options = client_options
         self.status = status
 
+    def compare_resource(self, other) -> bool:
+        return len(self.resource) == len(other) == 2 \
+            and self.resource[0] == other[0] \
+            and self.resource[1] == other[1]
+
 
 class BaseResourceServer(object):
 
@@ -113,7 +118,9 @@ class BaseResourceServer(object):
             pending_resources = self.pending_resources.get(task_id, [])
 
             for i, pending_resource in enumerate(pending_resources):
-                if pending_resource.resource == resource:
+                # resource might have been serialized with CBOR and contain
+                # lists instead of tuples; use a case-aware comparison function
+                if pending_resource.compare_resource(resource):
                     pending_resources.pop(i)
                     break
 
@@ -135,9 +142,10 @@ class BaseResourceServer(object):
                 self.resource_manager.pull_resource(
                     entry.resource, entry.task_id,
                     client_options=entry.client_options,
-                    success=self._download_success,
-                    error=self._download_error,
                     async_=async_
+                ).addCallbacks(
+                    lambda t: self._download_success(*t),
+                    lambda t: self._download_error(*t)
                 )
 
     def _download_success(self, resource, _, task_id):
@@ -162,7 +170,8 @@ class BaseResourceServer(object):
         def extract_packages(package_files):
             for package_file in package_files:
                 package_path = os.path.join(resource_dir, package_file)
-                logger.debug('Extracting task resource: %r', package_path)
+                logger.debug('Extracting task resource: %r to %r',
+                             package_path, resource_dir)
                 self.packager.extract(package_path, resource_dir)
 
         async_req = AsyncRequest(extract_packages, resource[1])

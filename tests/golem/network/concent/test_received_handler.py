@@ -156,9 +156,11 @@ class TaskServerMessageHandlerTestBase(
     def setUp(self):
         gc.collect()
         super().setUp()
-        self.task_server = taskserver_factories.TaskServer(
-            client=self.client,
-        )
+
+        with mock.patch('golem.task.taskmanager.get_resource_manager_proxy'):
+            self.task_server = taskserver_factories.TaskServer(
+                client=self.client,
+            )
         history.MessageHistoryService()
         # received_handler.TaskServerMessageHandler is instantiated
         # in TaskServer.__init__

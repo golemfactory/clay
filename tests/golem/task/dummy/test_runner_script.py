@@ -71,7 +71,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     @mock.patch("tests.golem.task.dummy.runner.atexit")
     @mock.patch("golem.core.common.config_logging")
     @mock.patch("golem.client.Client.enqueue_new_task")
-    @mock.patch("tests.golem.task.dummy.runner.reactor")
+    @mock.patch("twisted.internet.reactor", create=True)
     def test_run_requesting_node(self, mock_reactor,
                                  mock_enqueue_new_task,
                                  mock_config_logging, _):
@@ -82,7 +82,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
         client.quit()
 
     @mock.patch("tests.golem.task.dummy.runner.atexit")
-    @mock.patch("tests.golem.task.dummy.runner.reactor")
+    @mock.patch("twisted.internet.reactor", create=True)
     @mock.patch("golem.core.common.config_logging")
     def test_run_computing_node(self, mock_config_logging, mock_reactor, _):
         client = runner.run_computing_node(self.path,

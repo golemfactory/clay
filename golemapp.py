@@ -160,6 +160,9 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         return
 
     # Golem headless
+    from golem.resource.process import start_resource_process
+
+    start_resource_process(datadir)
     install_reactor()
 
     from golem.core.common import config_logging

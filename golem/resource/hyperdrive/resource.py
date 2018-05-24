@@ -25,8 +25,6 @@ class ResourceError(RuntimeError):
 
 class Resource:
 
-    __slots__ = ('hash', 'files', 'path', 'task_id')
-
     def __init__(self, resource_hash, task_id=None, files=None, path=None):
         self.hash = resource_hash
         self.task_id = task_id
@@ -135,7 +133,8 @@ class ResourceStorage(object):
         self.cache = ResourceCache()
 
     def get_dir(self, task_id):
-        return norm_path(self.resource_dir_method(task_id))
+        normed = norm_path(self.resource_dir_method(task_id))
+        return os.path.abspath(normed)
 
     def get_path(self, relative_file_path, task_id):
         resource_dir = self.get_dir(task_id)

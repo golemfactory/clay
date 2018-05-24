@@ -21,9 +21,8 @@ from golem.core.common import HandleKeyError, get_timestamp_utc, \
     to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.resource.process import get_resource_manager_proxy
 from golem.resource.dirmanager import DirManager
-from golem.resource.hyperdrive.resourcesmanager import \
-    HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task
 from golem.task.taskkeeper import CompTaskKeeper
@@ -101,10 +100,7 @@ class TaskManager(TaskEventListener):
         self.root_path = root_path
         self.dir_manager = DirManager(self.get_task_manager_root())
 
-        resource_manager = HyperdriveResourceManager(
-            self.dir_manager,
-            resource_dir_method=self.dir_manager.get_task_temporary_dir,
-        )
+        resource_manager = get_resource_manager_proxy(__name__)
         self.task_result_manager = EncryptedResultPackageManager(
             resource_manager
         )

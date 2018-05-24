@@ -732,9 +732,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.dropped()
 
     def _react_to_resource_list(self, msg):
-        resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
-        resources = resource_manager.from_wire(msg.resources)
+        from golem.resource.hyperdrive.resourcesmanager import \
+            HyperdriveResourceManager
 
+        resources = HyperdriveResourceManager.from_wire(msg.resources)
         client_options = self.task_server.get_download_options(msg.options,
                                                                self.task_id)
 

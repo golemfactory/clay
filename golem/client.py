@@ -57,9 +57,10 @@ from golem.network.upnp.mapper import PortMapperManager
 from golem.ranking.helper.trust import Trust
 from golem.ranking.ranking import Ranking
 from golem.report import Component, Stage, StatusPublisher, report_calls
+from golem.resource.process import get_resource_manager_proxy, \
+    stop_resource_process
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
-from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resource import get_resources_for_task, ResourceType
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.task import taskpreset
@@ -337,8 +338,6 @@ class Client(HardwarePresetsMixin):
         self.daemon_manager = HyperdriveDaemonManager(self.datadir)
         self.daemon_manager.start()
 
-        hyperdrive_addrs = self.daemon_manager.public_addresses(
-            self.node.pub_addr)
         hyperdrive_ports = self.daemon_manager.ports()
 
         self.node.hyperdrive_prv_port = next(iter(hyperdrive_ports))
@@ -348,10 +347,8 @@ class Client(HardwarePresetsMixin):
         if clean_tasks_older_than > 0:
             self.clean_old_tasks()
 
-        resource_manager = HyperdriveResourceManager(
-            dir_manager=dir_manager,
-            daemon_address=hyperdrive_addrs
-        )
+        resource_manager = get_resource_manager_proxy(__name__)
+
         self.resource_server = BaseResourceServer(
             resource_manager=resource_manager,
             dir_manager=dir_manager,
@@ -511,9 +508,11 @@ class Client(HardwarePresetsMixin):
     @report_calls(Component.client, 'quit', once=True)
     def quit(self):
         logger.info('Shutting down ...')
-        self.stop()
+        stop_resource_process()
 
+        self.stop()
         self.transaction_system.stop()
+
         if self.diag_service:
             self.diag_service.unregister_all()
         if self.daemon_manager:
