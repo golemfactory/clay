@@ -888,7 +888,8 @@ class TaskManager(TaskEventListener):
     def get_subtasks_dict(self, task_id):
         task_state = self.tasks_states[task_id]
         subtasks = task_state.subtask_states
-        return [subtask.to_dictionary() for subtask in subtasks.values()]
+        if subtasks:
+            return [subtask.to_dictionary() for subtask in subtasks.values()]
 
     def get_subtasks_borders(self, task_id, part=1):
         task = self.tasks[task_id]

@@ -476,7 +476,7 @@ class TestTasks(TempDirFixture):
         cls.n_subtasks = len(cls.subtasks)
         cls.get_tasks = lambda s, _id: dict(cls.tasks[0]) if _id \
             else [dict(t) for t in cls.tasks]
-        cls.get_subtasks = lambda s, x: ([dict(s) for s in cls.subtasks], None)
+        cls.get_subtasks = lambda s, x: [dict(s) for s in cls.subtasks]
         cls.get_unsupport_reasons = lambda s, x: cls.reasons
 
     def setUp(self):
@@ -641,10 +641,10 @@ class TestTasks(TempDirFixture):
 
     def test_subtasks_error(self):
         with client_ctx(Tasks, self.client):
-            self.client.get_subtasks = Mock(return_value=(None, 'error'))
+            self.client.get_subtasks = Mock(return_value=None)
             tasks = Tasks()
             result = tasks.subtasks('task_id', None)
-            self.assertEqual(result, 'error')
+            self.assertEqual(result, 'No subtasks')
             self.client.get_subtasks.assert_called_once_with('task_id')
 
     def test_unsupport(self):

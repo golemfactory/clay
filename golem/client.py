@@ -864,13 +864,13 @@ class Client(HardwarePresetsMixin):
         return []
 
     def get_subtasks(self, task_id: str) \
-            -> Tuple[Optional[List[Dict]], Optional[str]]:
+            -> Optional[List[Dict]]:
         try:
             assert isinstance(self.task_server, TaskServer)
             subtasks = self.task_server.task_manager.get_subtasks_dict(task_id)
-            return subtasks, None
+            return subtasks
         except KeyError:
-            return None, "Task not found: '{}'".format(task_id)
+            logger.info("Task not found: '%s'", task_id)
 
     def get_subtasks_borders(self, task_id, part=1):
         return self.task_server.task_manager.get_subtasks_borders(task_id,
