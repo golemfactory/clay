@@ -603,8 +603,9 @@ class TaskServer(
                         f'{max_memory_size} KiB; {ids}')
             return False
 
-        if not self.acl.is_allowed(node_id):
-            logger.info(f'node not allowed; {ids}')
+        allowed, reason = self.acl.is_allowed(node_id)
+        if not allowed:
+            logger.info(f'provider {reason}; {ids}')
             return False
 
         trust = self.get_computing_trust(node_id)

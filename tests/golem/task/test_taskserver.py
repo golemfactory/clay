@@ -651,7 +651,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider("ABC", task_id, 99, 3, 4, 5)
             self.assertEqual(cm.output, [
-                f'INFO:{logger.name}:node not allowed; '
+                f'INFO:{logger.name}:provider node is blacklisted; '
                 f'provider_id: ABC, task_id: {task_id}'])
 
     def test_should_accept_requestor(self, *_):
