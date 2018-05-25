@@ -1,9 +1,11 @@
-# pylint: disable=protected-access
+# pylint: disable=protected-access,no-member
 import calendar
 import datetime
 import logging
 import sys
+import threading
 import time
+import uuid
 
 from golem_messages import constants
 from golem_messages import factories as msg_factories
@@ -45,6 +47,7 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
             time.sleep(10)
 
     def requestor_put_deposit(self, fsr: message.concents.ForceSubtaskResults):
+        start = datetime.datetime.now()
         self.wait_for_gntb()
         amount, _ = helpers.requestor_deposit_amount(
             # We'll use subtask price. Total number of subtasks is unknown
@@ -55,11 +58,91 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
             expected=amount,
             reserved=0,
         )
-        logger.debug("Deposit tx_hash: %r", tx_hash)
+        sys.stderr.write("Deposit tx_hash: {}\n".format(tx_hash))
+        self.assertIsNotNone(tx_hash)
+        transaction_processed = threading.Event()
+
+        def _callback(receipt):
+            if not receipt.status:
+                raise RuntimeError("Deposit failed")
+            transaction_processed.set()
+
+        self.ets._sci.on_transaction_confirmed(
+            tx_hash=tx_hash,
+            required_confs=3,
+            cb=_callback,
+        )
+        while not transaction_processed.is_set():
+            sys.stderr.write('.')
+            sys.stderr.flush()
+            self.ets._sci._monitor_blockchain_single()
+            time.sleep(15)
+        sys.stderr.write("\nDeposit confirmed in {}\n".format(
+            datetime.datetime.now()-start))
         return tx_hash
 
-    def provider_send_force(self, **kwargs):
+    def prepare_report_computed_task(self, mode):
+        """Returns ReportComputedTask with open force acceptance window
+
+        Can be modified by delta
+        """
+
+        report_computed_task = msg_factories.tasks.ReportComputedTaskFactory(
+            **self.gen_rtc_kwargs(),
+            **self.gen_ttc_kwargs(
+                'task_to_compute__'),
+        )
+        # Difference between timestamp and deadline has to be constant
+        # because it's part of SVT formula
+        deadline_delta = 3600
+        report_computed_task.task_to_compute.compute_task_def['deadline'] = \
+            report_computed_task.task_to_compute.timestamp + deadline_delta
+        svt = helpers.subtask_verification_time(report_computed_task)
+        now = datetime.datetime.utcnow()
+        if mode == 'before':
+            # We're one moment before window opens
+            ttc_dt = now - svt + moment
+        elif mode == 'after':
+            # We're one moment after window closed
+            ttc_dt = now - svt - constants.FAT - moment
+        else:
+            # We're a the beginning of the window (moment after to be sure)
+            ttc_dt = now - svt - moment
+        ttc_timestamp = calendar.timegm(ttc_dt.utctimetuple())
+
+        msg_factories.helpers.override_timestamp(
+            msg=report_computed_task.task_to_compute,
+            timestamp=ttc_timestamp,
+        )
+        report_computed_task.task_to_compute.compute_task_def['deadline'] = \
+            report_computed_task.task_to_compute.timestamp + deadline_delta
+        # Sign again after timestamp modification
+        report_computed_task.task_to_compute.sig = None
+        report_computed_task.sig = None
+        report_computed_task.task_to_compute.sign_message(
+            self.requestor_priv_key,
+        )
+        report_computed_task.sign_message(self.provider_priv_key)
+        self.assertTrue(
+            report_computed_task.verify_owners(
+                provider_public_key=self.provider_pub_key,
+                requestor_public_key=self.requestor_pub_key,
+                concent_public_key=self.variant['pubkey'],
+            ),
+        )
+        print('*'*80)
+        print('TTC:', ttc_dt)
+        print('WINDOW: {} ---------- {}'.format(
+            ttc_dt+svt, ttc_dt+svt+constants.FAT))
+        print('NOW:', now)
+        print('*'*80)
+        return report_computed_task
+
+    def provider_send_force(
+            self, mode='within', **kwargs):
+        report_computed_task = self.prepare_report_computed_task(mode=mode)
         fsr = msg_factories.concents.ForceSubtaskResultsFactory(
+            ack_report_computed_task__report_computed_task=report_computed_task,
             **self.gen_rtc_kwargs(
                 'ack_report_computed_task__'
                 'report_computed_task__'),
@@ -67,8 +150,24 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
                 'ack_report_computed_task__'
                 'report_computed_task__'
                 'task_to_compute__'),
+            ack_report_computed_task__sign__privkey=self.requestor_priv_key,
             **kwargs,
+            sign__privkey=self.provider_priv_key,
         )
+        self.assertTrue(
+            fsr.validate_ownership_chain(
+                concent_public_key=self.variant['pubkey'],
+            ),
+        )
+        self.assertTrue(
+            fsr.verify_owners(
+                provider_public_key=self.provider_keys.raw_pubkey,
+                requestor_public_key=self.requestor_keys.raw_pubkey,
+                concent_public_key=self.variant['pubkey'],
+            ),
+        )
+        print(fsr)
+        fsr.sig = None  # Will be signed in send_to_concent()
         self.requestor_put_deposit(fsr)
         response = self.provider_load_response(self.provider_send(fsr))
         self.assertIn(
@@ -88,18 +187,7 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         pass
 
     def test_provider_before_start(self):
-        report_computed_task = msg_factories.tasks.ReportComputedTaskFactory()
-        force_accept_window_begins_at = datetime.datetime.utcnow() \
-            - helpers.subtask_verification_time(report_computed_task)
-        msg_factories.helpers.override_timestamp(
-            msg=report_computed_task.task_to_compute,
-            timestamp=calendar.timegm(
-                (force_accept_window_begins_at + moment).utctimetuple(),
-            ),
-        )
-        response = self.provider_send_force(
-            ack_report_computed_task__report_computed_task=report_computed_task,
-        )
+        response = self.provider_send_force(mode='before')
         self.assertIsInstance(
             response,
             message.concents.ForceSubtaskResultsRejected,
@@ -110,21 +198,7 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         )
 
     def test_provider_after_deadline(self):
-        report_computed_task = msg_factories.tasks.ReportComputedTaskFactory()
-        force_accept_window_ends_at = datetime.datetime.utcnow() - (
-            helpers.subtask_verification_time(report_computed_task)
-            + constants.FAT
-        )
-        msg_factories.helpers.override_timestamp(
-            msg=report_computed_task.task_to_compute,
-            timestamp=calendar.timegm(
-                (force_accept_window_ends_at - moment).utctimetuple(),
-            ),
-        )
-
-        response = self.provider_send_force(
-            ack_report_computed_task__report_computed_task=report_computed_task,
-        )
+        response = self.provider_send_force(mode='after')
         self.assertIsInstance(
             response,
             message.concents.ForceSubtaskResultsRejected,
@@ -135,9 +209,17 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         )
 
     def test_already_processed(self):
-        response = self.provider_send_force()
-        self.assertNotIsInstance(response, message.concents.ServiceRefused)
-        second_response = self.provider_send_force()
+        task_id = uuid.uuid1().bytes
+        subtask_id = uuid.uuid1().bytes
+        ctd_prefix = 'ack_report_computed_task__' \
+            'report_computed_task__' \
+            'task_to_compute__'
+        kwargs = {
+            ctd_prefix+'task_id': task_id,
+            ctd_prefix+'subtask_id': subtask_id,
+        }
+        self.assertIsNone(self.provider_send_force(**kwargs))
+        second_response = self.provider_send_force(**kwargs)
         self.assertIsInstance(second_response, message.concents.ServiceRefused)
 
     def test_no_response_from_requestor(self):
@@ -145,7 +227,7 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         pass
 
     def test_requestor_responds_with_invalid_accept(self):
-        self.provider_send_force()
+        self.assertIsNone(self.provider_send_force())
         fsrr = msg_factories.concents.ForceSubtaskResultsResponseFactory()
         fsrr.subtask_results_rejected = None
         response = self.requestor_send(fsrr)
@@ -160,7 +242,7 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         )
 
     def test_requestor_responds_with_invalid_reject(self):
-        self.provider_send_force()
+        self.assertIsNone(self.provider_send_force())
         fsrr = msg_factories.concents.ForceSubtaskResultsResponseFactory()
         fsrr.subtask_results_accepted = None
         response = self.requestor_send(fsrr)
@@ -175,8 +257,7 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         )
 
     def test_requestor_responds_with_accept(self):
-        response = self.provider_send_force()
-        self.assertIsNone(response)
+        self.assertIsNone(self.provider_send_force())
         fsr = self.requestor_receive()
         # Check providers signature
         self.assertTrue(
@@ -209,7 +290,7 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         self.assertEqual(received.subtask_results_accepted, accept_msg)
 
     def test_requestor_responds_with_reject(self):
-        self.provider_send_force()
+        self.assertIsNone(self.provider_send_force())
         fsr = self.requestor_receive()
         # Check providers signature
         self.assertTrue(
