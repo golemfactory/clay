@@ -126,9 +126,10 @@ function install_dependencies()
                     ca-certificates \
                     software-properties-common)
         wget -qO- https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+        source /etc/os-release
         sudo add-apt-repository \
             "deb [arch=amd64] https://download.docker.com/linux/ubuntu \
-            $(lsb_release -cs) \
+            $(echo $UBUNTU_CODENAME) \
             stable"
     fi
 
