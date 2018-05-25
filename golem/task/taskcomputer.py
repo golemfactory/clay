@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 import os
 import time
@@ -17,9 +17,12 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
-
 from golem.task.taskthread import TaskThread
 from golem.vm.vm import PythonProcVM, PythonTestVM
+
+if TYPE_CHECKING:
+    from .taskserver import TaskServer  # noqa pylint:disable=unused-import
+
 
 logger = logging.getLogger(__name__)
 
@@ -41,13 +44,8 @@ class TaskComputer(object):
     lock = Lock()
     dir_lock = Lock()
 
-    def __init__(self, node_name, task_server, use_docker_manager=True) -> None:
-        """ Create new task computer instance
-        :param node_name:
-        :param task_server:
-        :return:
-        """
-        self.node_name = node_name
+    def __init__(self, task_server: 'TaskServer', use_docker_manager=True) \
+            -> None:
         self.task_server = task_server
         # Id of the task that we're currently waiting for  for
         self.waiting_for_task = None

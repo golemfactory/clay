@@ -31,7 +31,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
     def test_init(self):
         task_server = self.task_server
-        tc = TaskComputer("ABC", task_server, use_docker_manager=False)
+        tc = TaskComputer(task_server, use_docker_manager=False)
         self.assertIsInstance(tc, TaskComputer)
 
     def test_run(self):
@@ -39,7 +39,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_server.config_desc.task_request_interval = 0.5
         task_server.config_desc.accept_tasks = True
         task_server.get_task_computer_root.return_value = self.path
-        tc = TaskComputer("ABC", task_server, use_docker_manager=False)
+        tc = TaskComputer(task_server, use_docker_manager=False)
         self.assertIsNone(tc.counting_task)
         self.assertIsNone(tc.counting_thread)
         self.assertIsNone(tc.waiting_for_task)
@@ -48,7 +48,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_server.request_task.assert_called_with()
         task_server.request_task = mock.MagicMock()
         task_server.config_desc.accept_tasks = False
-        tc2 = TaskComputer("DEF", task_server, use_docker_manager=False)
+        tc2 = TaskComputer(task_server, use_docker_manager=False)
         tc2.counting_task = None
         tc2.counting_thread = None
         tc2.waiting_for_task = None
@@ -81,7 +81,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
     def test_resource_failure(self):
         task_server = self.task_server
 
-        tc = TaskComputer("ABC", task_server, use_docker_manager=False)
+        tc = TaskComputer(task_server, use_docker_manager=False)
 
         task_id = 'xyz'
         subtask_id = 'xxyyzz'
@@ -123,7 +123,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             )
         }
 
-        tc = TaskComputer("ABC", task_server, use_docker_manager=False)
+        tc = TaskComputer(task_server, use_docker_manager=False)
 
         self.assertEqual(len(tc.assigned_subtasks), 0)
         tc.task_given(ctd)
@@ -220,7 +220,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
     def test_change_config(self):
         task_server = self.task_server
 
-        tc = TaskComputer("ABC", task_server, use_docker_manager=False)
+        tc = TaskComputer(task_server, use_docker_manager=False)
         tc.docker_manager = mock.Mock()
 
         tc.use_docker_manager = False
@@ -242,7 +242,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         client = mock.Mock()
         task_server = self.task_server
 
-        tc = TaskComputer("ABC", task_server, use_docker_manager=False)
+        tc = TaskComputer(task_server, use_docker_manager=False)
 
         tc.lock_config(True)
         tc.lock_config(False)
@@ -306,7 +306,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
     def test_request_rejected(self):
         task_server = self.task_server
-        tc = TaskComputer("ABC", task_server, use_docker_manager=False)
+        tc = TaskComputer(task_server, use_docker_manager=False)
         with self.assertLogs(logger, level="INFO"):
             tc.task_request_rejected("xyz", "my rejection reason")
 
@@ -317,7 +317,7 @@ class TestTaskThread(DatabaseFixture):
         ts = mock.MagicMock()
         ts.config_desc = ClientConfigDescriptor()
 
-        tc = TaskComputer("ABC", ts, use_docker_manager=False)
+        tc = TaskComputer(ts, use_docker_manager=False)
         tc.counting_task = True
         tc.waiting_for_task = None
         tt = self._new_task_thread(tc)
@@ -379,8 +379,7 @@ class TestTaskMonitor(DatabaseFixture):
             MONITOR_CONFIG)
         task_server = mock.MagicMock()
         task_server.config_desc = ClientConfigDescriptor()
-        task = TaskComputer("ABC", task_server,
-                            use_docker_manager=False)
+        task = TaskComputer(task_server, use_docker_manager=False)
 
         task_thread = mock.MagicMock()
         task_thread.start_time = time.time()
