@@ -88,7 +88,7 @@ class FrameState(object):
         self.started = None
 
     def serialize(self):
-        return self.status.name, self.started
+        return self.status, self.started
 
 
 class FrameRenderingTask(RenderingTask):
