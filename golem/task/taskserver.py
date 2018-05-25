@@ -616,9 +616,10 @@ class TaskServer(
         return True
 
     def should_accept_requestor(self, node_id):
-        if not self.acl.is_allowed(node_id):
-            return SupportStatus.err(
-                {UnsupportReason.DENY_LIST: node_id})
+        allowed, reason = self.acl.is_allowed(node_id)
+        if not allowed:
+            logger.info(f'requestor {reason}; {node_id}')
+            return SupportStatus.err({UnsupportReason.DENY_LIST: node_id})
         trust = self.client.get_requesting_trust(node_id)
         logger.debug("Requesting trust level: {}".format(trust))
         if trust >= self.config_desc.requesting_trust:

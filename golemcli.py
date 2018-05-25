@@ -11,7 +11,7 @@ from golem.rpc.common import CROSSBAR_HOST, CROSSBAR_PORT
 # Export pbr version for peewee_migrate user
 os.environ["PBR_VERSION"] = '3.1.1'
 
-# pylint: disable=wrong-import-position
+# pylint: disable=wrong-import-position, unused-import
 from golem.core.common import config_logging, install_reactor  # noqa
 from golem.interface.cli import CLI  # noqa
 from golem.interface.client import debug  # noqa
@@ -24,13 +24,6 @@ from golem.interface.client.settings import Settings  # noqa
 from golem.interface.client.tasks import Tasks, Subtasks  # noqa
 from golem.interface.client.terms import Terms  # noqa
 from golem.interface.websockets import WebSocketCLI  # noqa
-
-
-# prevent 'unused' warnings
-_ = {
-    Terms, Tasks, Subtasks, Network, Environments, Resources, Settings,
-    Account, incomes, payments, debug
-}
 
 
 def start():

@@ -43,7 +43,7 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.environments.performancemultiplier import PerformanceMultiplier
+from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -1216,11 +1216,11 @@ class Client(HardwarePresetsMixin):
 
     @staticmethod
     def get_performance_mult() -> float:
-        return PerformanceMultiplier.get_percent()
+        return MinPerformanceMultiplier.get()
 
     @staticmethod
-    def set_performance_mult(percent: float):
-        PerformanceMultiplier.set_percent(percent)
+    def set_performance_mult(multiplier: float):
+        MinPerformanceMultiplier.set(multiplier)
 
     def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:

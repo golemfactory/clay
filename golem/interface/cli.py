@@ -159,7 +159,8 @@ class CLI(object):
             sys.stderr.write("Formatter error: {}".format(exc))
 
         if result is None:
-            return "Completed in {}s".format(time.time() - started), output
+            return "Completed in {0:.2f} s".format(
+                time.time() - started), output
         return result, output
 
     def build(self):

@@ -1,4 +1,5 @@
 from golem.core.deferred import sync_wait
+from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.interface.command import group, Argument, command, CommandResult
 from golem.rpc.session import Client
 
@@ -9,7 +10,10 @@ class Environments(object):
     client: Client
 
     name = Argument('name', help="Environment name")
-    percent = Argument('percent', help="Percent from range [0, 1000]")
+    multiplier = Argument('multiplier',
+                          help='Multiplier; float value within range '
+                               f'[{MinPerformanceMultiplier.MIN},'
+                               f' {MinPerformanceMultiplier.MAX}]')
 
     table_headers = ['name', 'supported', 'active', 'performance',
                      'min accept. perf.', 'description']
@@ -58,12 +62,13 @@ class Environments(object):
         deferred = Environments.client.run_benchmark(name)
         return sync_wait(deferred, timeout=1800)
 
-    @command(argument=percent, help="Sets accepted performance multiplier")
-    def perf_mult_set(self, percent):
-        deferred = Environments.client.set_performance_mult(float(percent))
+    @command(argument=multiplier, help="Sets accepted performance multiplier")
+    def perf_mult_set(self, multiplier):
+        deferred = Environments.client.set_performance_mult(float(multiplier))
         return sync_wait(deferred, timeout=3)
 
     @command(help="Gets accepted performance multiplier")
     def perf_mult(self):
         deferred = Environments.client.get_performance_mult()
-        return sync_wait(deferred, timeout=3)
+        result = sync_wait(deferred, timeout=3)
+        return f'minimal performance multiplier is: {result}'
