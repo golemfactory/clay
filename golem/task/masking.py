@@ -5,8 +5,6 @@ import math
 import random
 from typing import Set, Type, TypeVar
 
-from golem.task.taskbase import Task
-
 M = TypeVar('M', bound='Mask')
 
 
@@ -45,9 +43,8 @@ class Mask:
         return self.apply_mask(self.to_int(), addr)
 
     @classmethod
-    def get_mask_for_task(cls: Type[M], task: Task) -> M:
-        network_size = get_network_size()
-        num_subtasks = task.get_total_tasks()
+    def get_mask_for_task(cls: Type[M], num_subtasks: int, network_size: int) \
+            -> M:
         num_bits = max(-int(math.log2(num_subtasks / network_size)), 0)
         return cls(num_bits)
 
@@ -55,8 +52,3 @@ class Mask:
     def apply_mask(mask: int, addr: bytes) -> bool:
         digest = sha256(addr).digest()
         return (int.from_bytes(digest, 'big', signed=False) & mask) == 0
-
-
-def get_network_size():
-    # TODO: Get a better estimate
-    return 500
