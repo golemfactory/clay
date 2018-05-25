@@ -274,7 +274,7 @@ class HyperdriveResourceManager(ClientHandler, IResourceManager):
 
         deferred = Deferred()
         resource_path = self.storage.get_path('', task_id)
-        resource = Resource(resource_hash=entry[0], task_id=task_id,
+        resource = Resource(hash=entry[0], task_id=task_id,
                             files=entry[1], path=resource_path)
 
         if resource.files and self.storage.exists(resource):

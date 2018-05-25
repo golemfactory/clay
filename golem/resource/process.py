@@ -3,9 +3,9 @@ import os
 from multiprocessing import Pipe
 from typing import Optional, List, Dict
 
-from golem.core.ipc import ProcessService
-from golem.resource.base.resourcesmanager import ResourceManagerProxyServer, \
-    ResourceManagerProxyClient, ResourceManagerOptions
+from golem.ipc.service import ProcessService
+from golem.resource.base.resourcesmanager import ResourceManagerProxyClient, \
+    ResourceManagerProxyServer, ResourceManagerOptions
 
 
 class _ResourceManagerEntry:  # pylint: disable=too-few-public-methods
@@ -28,22 +28,22 @@ class _Process(ProcessService):
         super().__init__(data_dir)
 
         self._process = None
-        self._servers: Dict[str, ResourceManagerProxyServer] = dict()
+        self._servers: Dict[str, ResourceManagerProxyClient] = dict()
         self._entries = {
             options.key: _ResourceManagerEntry(options)
             for options in resource_manager_options
         }
 
-    def server(self, key: str) -> ResourceManagerProxyServer:
+    def server(self, key: str) -> ResourceManagerProxyClient:
 
         server = self._servers.get(key)
         if server:
             return server
 
         entry = self._entries[key]
-        server = ResourceManagerProxyServer(
-            entry.from_client_conn,
-            entry.to_client_conn,
+        server = ResourceManagerProxyClient(
+            entry.from_server_conn,
+            entry.to_server_conn,
             entry.resource_manager_options.data_dir,
             entry.resource_manager_options.dir_manager_method_name
         )
@@ -55,12 +55,13 @@ class _Process(ProcessService):
     def _get_spawn_arguments(self) -> List:
         return [
             (entry.resource_manager_options,
-             entry.from_server_conn,
-             entry.to_server_conn) for entry in self._entries.values()
+             entry.from_client_conn,
+             entry.to_client_conn) for entry in self._entries.values()
         ]
 
     @classmethod
     def _spawn(cls, data_dir: str, *multiple) -> None:
+        """ Called in a new process """
 
         from golem.core.common import install_reactor, config_logging
 
@@ -74,8 +75,8 @@ class _Process(ProcessService):
             options, read_conn, write_conn = current
 
             builder = ResourceManagerBuilder(options)
-            resource_manager = builder.build_resource_manager()
-            proxy = ResourceManagerProxyClient(
+            resource_manager = builder.build()
+            proxy = ResourceManagerProxyServer(
                 read_conn,
                 write_conn,
                 resource_manager,
@@ -117,7 +118,7 @@ def stop_resource_process() -> None:
 
 
 def get_resource_manager_proxy(key: str) -> \
-        Optional[ResourceManagerProxyServer]:
+        Optional[ResourceManagerProxyClient]:
     if not _instance:
         return None
     return _instance.server(key)
