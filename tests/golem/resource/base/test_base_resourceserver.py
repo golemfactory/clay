@@ -22,6 +22,7 @@ class MockClient:
     def __init__(self):
         self.downloaded = None
         self.failed = None
+        self.task_server = mock.Mock()
 
     def task_resource_collected(self, *args, **kwargs):
         self.downloaded = True
