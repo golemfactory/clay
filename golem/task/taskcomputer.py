@@ -14,7 +14,7 @@ from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
-from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
+from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
 from golem.task.taskthread import TaskThread
@@ -48,7 +48,7 @@ class TaskComputer(object):
             -> None:
         self.task_server = task_server
         # Id of the task that we're currently waiting for  for
-        self.waiting_for_task = None
+        self.waiting_for_task: Optional[str] = None
         # Id of the task that we're currently computing
         self.counting_task = None
         # TaskThread
@@ -243,22 +243,19 @@ class TaskComputer(object):
                 if self.waiting_deadline < time.time():
                     self.reset()
 
-    def get_progresses(self):
-        ret = {}
+    def get_progress(self) -> Optional[ComputingSubtaskStateSnapshot]:
         if self.counting_thread is None:
-            return ret
+            return None
 
-        c = self.counting_thread
-        tcss = TaskChunkStateSnapshot(
-            c.get_subtask_id(),
-            0.0,
-            0.0,
-            c.get_progress(),
-            c.get_task_short_desc()
+        c: TaskThread = self.counting_thread
+        tcss = ComputingSubtaskStateSnapshot(
+            subtask_id=c.get_subtask_id(),
+            progress=c.get_progress(),
+            seconds_to_timeout=c.task_timeout,
+            running_time_seconds=(time.time() - c.start_time),
+            **c.extra_data,
         )
-        ret[c.subtask_id] = tcss
-
-        return ret
+        return tcss
 
     def change_config(self, config_desc, in_background=True,
                       run_benchmarks=False):

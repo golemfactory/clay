@@ -17,6 +17,7 @@ from golem.interface.client.debug import Debug
 from golem.interface.client.environments import Environments
 from golem.interface.client.network import Network
 from golem.interface.client.payments import incomes, payments
+from golem.interface.client.provider import provider_status
 from golem.interface.client.resources import Resources
 from golem.interface.client.settings import Settings, _virtual_mem, _cpu_count
 from golem.interface.client.tasks import Subtasks, Tasks
@@ -379,6 +380,24 @@ class TestPayments(unittest.TestCase):
                 '0.000000 GNT',
             ]
             assert result.data[1][0][4]
+
+
+class TestProvider(unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.client = Mock()
+        self.client.__getattribute__ = assert_client_method
+
+    def test_status(self):
+        status = {
+            'status': "I'm doing something",
+        }
+
+        self.client.get_provider_status.return_value = status
+
+        with client_ctx(provider_status, self.client):
+            result = provider_status()
+            assert result == status
 
 
 class TestResources(unittest.TestCase):

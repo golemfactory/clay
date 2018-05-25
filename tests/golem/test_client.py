@@ -28,6 +28,7 @@ from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
+from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
@@ -1280,6 +1281,90 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertTrue(
             c.connection_status().startswith("Application not listening")
         )
+
+    def test_provider_status_starting(self, *_):
+        # given
+        self.client.task_server = None
+
+        # when
+        status = self.client.get_provider_status()
+
+        # then
+        expected_status = {
+            'status': 'golem is starting',
+        }
+        assert status == expected_status
+
+    def test_provider_status_computing(self, *_):
+        # given
+        task_computer = Mock()
+        state_snapshot_dict = {
+            'subtask_id': str(uuid.uuid4()),
+            'progress': 0.0,
+            'seconds_to_timeout': 0.0,
+            'running_time_seconds': 0.0,
+            'outfilebasename': "Test Task",
+            'output_format': "PNG",
+            'scene_file': "/golem/resources/cube.blend",
+            'frames': [1],
+            'start_task': 1,
+            'end_task': 1,
+            'total_tasks': 1,
+        }
+        task_computer.get_progress.return_value = \
+            ComputingSubtaskStateSnapshot(**state_snapshot_dict)
+        self.client.task_server.task_computer = task_computer
+
+        # when
+        status = self.client.get_provider_status()
+
+        # then
+        state_snapshot_dict['scene_file'] = "cube.blend"
+        expected_status = {
+            'status': 'computing',
+            'subtask': state_snapshot_dict,
+        }
+        assert status == expected_status
+
+    def test_provider_status_waiting_for_task(self, *_):
+        # given
+        task_computer = Mock()
+        task_computer.get_progress.return_value = None
+        task_computer.waiting_for_task = str(uuid.uuid4())
+        self.client.task_server.task_computer = task_computer
+
+        # when
+        status = self.client.get_provider_status()
+
+        # then
+        expected_status = {
+            'status': 'waiting for task',
+            'task_id': task_computer.waiting_for_task,
+        }
+        assert status == expected_status
+
+    def test_provider_status_not_accepting_tasks(self, *_):
+        # given
+        self.client.config_desc.accept_tasks = False
+
+        # when
+        status = self.client.get_provider_status()
+
+        # then
+        expected_status = {
+            'status': 'not accepting tasks',
+        }
+        assert status == expected_status
+
+    def test_provider_status_idle(self, *_):
+        # when
+        status = self.client.get_provider_status()
+
+        # then
+        expected_status = {
+            'status': 'idle',
+        }
+        assert status == expected_status
 
     def test_golem_version(self, *_):
         assert self.client.get_golem_version() == golem.__version__

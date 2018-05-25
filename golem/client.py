@@ -10,7 +10,7 @@ from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
 from threading import Lock, Thread
-from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
+from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
@@ -45,6 +45,7 @@ from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
+from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -1263,6 +1264,42 @@ class Client(HardwarePresetsMixin):
                             "check seed parameters.")
 
         return ' '.join(messages)
+
+    def get_provider_status(self) -> Dict[str, Any]:
+        # golem is starting
+        if self.task_server is None:
+            return {
+                'status': 'golem is starting',
+            }
+
+        task_computer = self.task_server.task_computer
+
+        # computing
+        subtask_progress: Optional[ComputingSubtaskStateSnapshot] = \
+            task_computer.get_progress()
+        if subtask_progress is not None:
+            return {
+                'status': 'computing',
+                'subtask': subtask_progress.__dict__,
+            }
+
+        # trying to get subtask from task
+        waiting_for_task: Optional[str] = task_computer.waiting_for_task
+        if waiting_for_task is not None:
+            return {
+                'status': 'waiting for task',
+                'task_id': waiting_for_task,
+            }
+
+        # not accepting tasks
+        if not self.config_desc.accept_tasks:
+            return {
+                'status': 'not accepting tasks',
+            }
+
+        return {
+            'status': 'idle',
+        }
 
     @staticmethod
     def get_golem_version():
