@@ -609,8 +609,7 @@ class TaskHeaderKeeper:
 
     def get_task(self) -> typing.Optional[TaskHeader]:
         """ Returns random task from supported tasks that may be computed
-        :return TaskHeader|None: returns either None if there are no tasks
-                                 that this node may want to compute
+        :return: None if there are no tasks that this node may want to compute
         """
         if self.supported_tasks:
             tn = random.randrange(0, len(self.supported_tasks))
