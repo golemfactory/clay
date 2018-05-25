@@ -49,11 +49,13 @@ class TestAccount(unittest.TestCase):
         client.get_computing_trust.return_value = .01
         client.get_requesting_trust.return_value = .02
         client.get_payment_address.return_value = 'f0f0f0ababab'
-        client.get_balance.return_value = (
-            3 * denoms.ether,
-            2 * denoms.ether,
-            denoms.ether
-        )
+        client.get_balance.return_value = {
+            'gnt': 3 * denoms.ether,
+            'av_gnt': 2 * denoms.ether,
+            'eth': denoms.ether,
+            'gnt_lock': 0.01 * denoms.ether,
+            'eth_lock': 0.02 * denoms.ether
+        }
 
         with client_ctx(Account, client):
             result = Account().info()
@@ -67,7 +69,9 @@ class TestAccount(unittest.TestCase):
                     'eth_address': 'f0f0f0ababab',
                     'eth_balance': '1.000000 ETH',
                     'reserved_balance': '1.000000 GNT',
-                    'total_balance': '3.000000 GNT'
+                    'total_balance': '3.000000 GNT',
+                    'gnt_locked': '0.010000 GNT',
+                    'eth_locked': '0.020000 ETH'
                 },
             }
 
@@ -472,7 +476,7 @@ class TestTasks(TempDirFixture):
         cls.n_subtasks = len(cls.subtasks)
         cls.get_tasks = lambda s, _id: dict(cls.tasks[0]) if _id \
             else [dict(t) for t in cls.tasks]
-        cls.get_subtasks = lambda s, x: ([dict(s) for s in cls.subtasks], None)
+        cls.get_subtasks = lambda s, x: [dict(s) for s in cls.subtasks]
         cls.get_unsupport_reasons = lambda s, x: cls.reasons
 
     def setUp(self):
@@ -637,10 +641,10 @@ class TestTasks(TempDirFixture):
 
     def test_subtasks_error(self):
         with client_ctx(Tasks, self.client):
-            self.client.get_subtasks = Mock(return_value=(None, 'error'))
+            self.client.get_subtasks = Mock(return_value=None)
             tasks = Tasks()
             result = tasks.subtasks('task_id', None)
-            self.assertEqual(result, 'error')
+            self.assertEqual(result, 'No subtasks')
             self.client.get_subtasks.assert_called_once_with('task_id')
 
     def test_unsupport(self):

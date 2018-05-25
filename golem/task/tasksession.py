@@ -678,6 +678,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
             self.disconnect(message.Disconnect.REASON.BadProtocol)
             return
+
         if not self.check_requestor_for_subtask(msg.subtask_id):
             self.dropped()
             return

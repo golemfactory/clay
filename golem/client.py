@@ -864,13 +864,13 @@ class Client(HardwarePresetsMixin):
         return []
 
     def get_subtasks(self, task_id: str) \
-            -> Tuple[Optional[List[Dict]], Optional[str]]:
+            -> Optional[List[Dict]]:
         try:
             assert isinstance(self.task_server, TaskServer)
             subtasks = self.task_server.task_manager.get_subtasks_dict(task_id)
-            return subtasks, None
+            return subtasks
         except KeyError:
-            return None, "Task not found: '{}'".format(task_id)
+            logger.info("Task not found: '%s'", task_id)
 
     def get_subtasks_borders(self, task_id, part=1):
         return self.task_server.task_manager.get_subtasks_borders(task_id,
@@ -937,10 +937,16 @@ class Client(HardwarePresetsMixin):
         gnt, av_gnt, eth, \
             last_gnt_update, \
             last_eth_update = yield self.transaction_system.get_balance()
+        gnt_lock, eth_lock = self.funds_locker.sum_locks()
         if gnt is not None:
-            return str(gnt), str(av_gnt), str(eth), str(
-                last_gnt_update), str(last_eth_update)
-        return None, None, None, None, None
+            return {'gnt': str(gnt),
+                    'av_gnt': str(av_gnt),
+                    'eth': str(eth),
+                    'gnt_lock': str(gnt_lock),
+                    'eth_lock': str(eth_lock),
+                    'last_gnt_update': str(last_gnt_update),
+                    'last_eth_update': str(last_eth_update)}
+        return None
 
     def get_payments_list(self):
         return self.transaction_system.get_payments_list()

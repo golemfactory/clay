@@ -4,6 +4,7 @@
     "py/object":"apps.blender.task.blenderrendertask.BlenderRendererOptions",
     "use_frames":false,
     "compositing":false,
+    "samples":5,
     "environment":{
       "py/object":"apps.blender.blenderenvironment.BlenderEnvironment",
       "docker_images":[
