@@ -2,7 +2,7 @@ import time
 import logging
 import random
 import operator
-from collections import deque
+from collections import deque, Counter
 import math
 import itertools
 
@@ -189,6 +189,33 @@ class PeerKeeper(object):
         return sorted(
             self.buckets, key=operator.methodcaller('id_distance', key_num))
 
+    def get_estimated_network_size(self) -> int:
+        """
+        Get estimated network size
+        Based on https://gnunet.org/bartmsthesis p. 55
+        """
+        def depth(peer):
+            """ Get peer 'depth' i.e. number of common leading digits in binary
+            representations of peer's key and own key which is equivalent to the
+            position of the first '1' in (peer_key XOR own_key)"""
+            return format(
+                node_id_distance(peer, self.key_num),
+                '0%db' % self.k_size
+            ).find("1")
+
+        peers_depths = [depth(p) for b in self.buckets for p in b.peers]
+
+        # Aggregate peer distances
+        logical_buckets = Counter(peers_depths)
+        if not logical_buckets:
+            return 0
+
+        return sum(
+            num_peers * 2 ** (depth + 1)
+            for depth, num_peers in logical_buckets.items()
+            if num_peers < self.k
+        ) // len(logical_buckets)
+
     def __remove_old_expected_pongs(self):
         cur_time = time.time()
         for key, (replacement, time_) in list(self.expected_pongs.items()):
@@ -315,6 +342,10 @@ class KBucket(object):
             else:
                 upper.add_peer(peer)
         return lower, upper
+
+    @property
+    def num_peers(self) -> int:
+        return len(self.peers)
 
     def __str__(self):
         return "Bucket: {} - {} peers {}".format(

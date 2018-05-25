@@ -1,11 +1,10 @@
 from random import Random
 from unittest import TestCase
-from unittest.mock import patch, MagicMock
+from unittest.mock import patch
 
 import pytest
 
 from golem.task.masking import Mask
-from golem.task.taskbase import Task
 
 
 class TestMask(TestCase):
@@ -70,13 +69,9 @@ class TestMask(TestCase):
             self.assertEqual(mask.num_bits, Mask.MASK_LEN - i)
             mask.decrease()
 
-    @patch('golem.task.masking.get_network_size', return_value=NETWORK_SIZE)
-    def test_get_mask_for_task(self, _):
-        task = MagicMock(spec=Task)
-
+    def test_get_mask_for_task(self):
         def _check(num_subtasks, exp_num_bits):
-            task.get_total_tasks.return_value = num_subtasks
-            mask = Mask.get_mask_for_task(task)
+            mask = Mask.get_mask_for_task(num_subtasks, self.NETWORK_SIZE)
             self.assertEqual(mask.num_bits, exp_num_bits)
 
         _check(1, 10)    # 1024 / 2**10 == 1
