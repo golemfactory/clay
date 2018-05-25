@@ -291,11 +291,13 @@ class CompTaskKeeper:
 
         self.dump()
 
-    def add_package_paths(self, task_id: str, package_paths: list) -> None:
+    def add_package_paths(
+            self, task_id: str, package_paths: typing.List[str]) -> None:
         self.task_package_paths[task_id] = package_paths
         self.dump()
 
-    def get_package_paths(self, task_id: str) -> typing.Optional[list]:
+    def get_package_paths(
+            self, task_id: str) -> typing.Optional[typing.List[str]]:
         return self.task_package_paths.get(task_id, None)
 
 

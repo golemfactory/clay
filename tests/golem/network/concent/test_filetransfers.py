@@ -180,7 +180,7 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
         with self.assertRaises(Exception):
             self.cfs.process(request)
 
-    def _init_uploaded_file(self, filename: str):
+    def _init_uploaded_file(self, filename: str) -> str:
         file = (self.new_path / filename)
         file.write_text('meh')
         return str(file)
