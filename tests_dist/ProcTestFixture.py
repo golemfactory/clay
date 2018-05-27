@@ -13,7 +13,7 @@ def _empty_stream(_out, _in):
 
 class ProcTestFixture(unittest.TestCase):
 
-    def do_magic(self, config, args, exp_err, exp_out):
+    def do_magic(self, opts, args, exp_err, exp_out):
 
         exit_code = None
         log_err = []
@@ -21,7 +21,7 @@ class ProcTestFixture(unittest.TestCase):
         
         proc = subprocess.Popen(
             args,
-            cwd='dist/' + config["dist_dir"],
+            cwd=opts['cwd'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE)
 
@@ -35,7 +35,7 @@ class ProcTestFixture(unittest.TestCase):
             _empty_stream(log_out, proc.stdout)
 
             # check logs for next assert
-            while len(log_err) > check_err_log:
+            while len(log_err) > check_err_log and len(exp_err) > check_err_exp:
                 if exp_err:
                     cur_err = log_err[check_err_log]
                     if cur_err == exp_err[check_err_exp]:
@@ -43,7 +43,7 @@ class ProcTestFixture(unittest.TestCase):
                         check_err_exp+=1
                 check_err_log+=1
 
-            while len(log_out) > check_out_log:
+            while len(log_out) > check_out_log and len(exp_out) > check_out_exp:
                 print("DEBUG: Checking log line: " + str(check_out_log))
                 if exp_out:
                     cur_out = log_out[check_out_log]

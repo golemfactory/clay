@@ -19,7 +19,10 @@ class TestVersion(ProcTestFixture):
             'GOLEM version: ' + config['version']
         ]
 
-        exit_code, log_err, log_out = self.do_magic(config, args, exp_err, exp_out)
+        opts = {
+            'cwd': 'dist/' + config["dist_dir"]
+        }
+        exit_code, log_err, log_out = self.do_magic(opts, args, exp_err, exp_out)
 
         print("DEBUG: OUT:" + str(len(log_out)))
         print(log_out)
