@@ -252,11 +252,8 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
             response,
             message.concents.ServiceRefused,
         )
-        received = self.provider_receive()
-        self.assertIsInstance(
-            received,
-            None,
-        )
+        with self.assertRaises(concent_exceptions.ConcentRequestError):
+            self.provider_receive()
 
     def test_requestor_responds_with_invalid_reject(self):
         self.assertIsNone(self.provider_send_force())
@@ -276,7 +273,7 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         # Check providers signature
         self.assertTrue(
             fsr.ack_report_computed_task.verify_signature(
-                self.provider_pub_key,
+                self.requestor_pub_key,
             ),
         )
         accept_msg = msg_factories.tasks.SubtaskResultsAcceptedFactory(
@@ -306,10 +303,11 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
     def test_requestor_responds_with_reject(self):
         self.assertIsNone(self.provider_send_force())
         fsr = self.requestor_receive()
-        # Check providers signature
         self.assertTrue(
-            fsr.ack_report_computed_task.verify_signature(
-                self.provider_pub_key,
+            fsr.verify_owners(
+                provider_public_key=self.provider_pub_key,
+                requestor_public_key=self.requestor_pub_key,
+                concent_public_key=self.variant['pubkey'],
             ),
         )
         reject_msg = msg_factories.tasks.SubtaskResultsRejectedFactory(
@@ -319,6 +317,13 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
             .task_to_compute,
         )
         reject_msg.sign_message(self.requestor_priv_key)
+        self.assertTrue(
+            reject_msg.verify_owners(
+                provider_public_key=self.provider_pub_key,
+                requestor_public_key=self.requestor_pub_key,
+                concent_public_key=self.variant['pubkey'],
+            ),
+        )
         fsrr = message.concents.ForceSubtaskResultsResponse(
             subtask_results_rejected=reject_msg,
         )
