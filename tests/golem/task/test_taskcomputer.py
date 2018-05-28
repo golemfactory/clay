@@ -374,7 +374,6 @@ class TestTaskMonitor(DatabaseFixture):
         client_mock.cliid = 'CLIID'
         client_mock.sessid = 'SESSID'
         client_mock.config_desc = ClientConfigDescriptor()
-        client_mock.mainnet = False
         monitor = SystemMonitor(  # noqa pylint: disable=unused-variable
             NodeMetadataModel(client_mock, "hackix", "3.1337"),
             MONITOR_CONFIG)

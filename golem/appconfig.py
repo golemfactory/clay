@@ -5,6 +5,7 @@ import sys
 from typing import Set, Any
 from ethereum.utils import denoms
 
+from golem.config.active import ENABLE_TALKBACK
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
 from golem.core.variables import KEY_DIFFICULTY
@@ -35,7 +36,6 @@ USE_IP6 = 0
 USE_UPNP = 1
 ACCEPT_TASKS = 1
 SEND_PINGS = 1
-ENABLE_TALKBACK = 0
 DEBUG_THIRD_PARTY = 0
 
 PINGS_INTERVALS = 120
@@ -95,11 +95,11 @@ class AppConfig:
     __loaded_configs = set()  # type: Set[Any]
 
     @classmethod
-    def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME, mainnet=False):
+    def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME):
 
-        if not mainnet and 'pytest' not in sys.modules:
-            global ENABLE_TALKBACK
-            ENABLE_TALKBACK = 1
+        if ENABLE_TALKBACK and 'pytest' in sys.modules:
+            from golem.config import active
+            active.ENABLE_TALKBACK = 0
 
         cfg_file = path.join(datadir, cfg_file_name)
         if cfg_file in cls.__loaded_configs:

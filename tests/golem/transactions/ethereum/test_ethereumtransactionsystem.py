@@ -60,23 +60,28 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
            Mock())
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.new_sci')
     def test_mainnet_flag(self, new_sci):
-        EthereumTransactionSystem(self.tempdir, PRIV_KEY, False)
-        new_sci.assert_called_once_with(
-            ANY,
-            ANY,
-            ANY,
-            golem_sci.chains.RINKEBY,
-        )
+
+        with patch('golem.transactions.ethereum.ethereumtransactionsystem'
+                   '.ETHEREUM_CHAIN', 'rinkeby'):
+            EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+            new_sci.assert_called_once_with(
+                ANY,
+                ANY,
+                ANY,
+                golem_sci.chains.RINKEBY,
+            )
 
         new_sci.reset_mock()
 
-        EthereumTransactionSystem(self.tempdir, PRIV_KEY, True)
-        new_sci.assert_called_once_with(
-            ANY,
-            ANY,
-            ANY,
-            golem_sci.chains.MAINNET,
-        )
+        with patch('golem.transactions.ethereum.ethereumtransactionsystem'
+                   '.ETHEREUM_CHAIN', 'mainnet'):
+            EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+            new_sci.assert_called_once_with(
+                ANY,
+                ANY,
+                ANY,
+                golem_sci.chains.MAINNET,
+            )
 
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.NodeProcess',
            Mock())

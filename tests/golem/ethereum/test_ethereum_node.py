@@ -5,8 +5,7 @@ from unittest.mock import patch, Mock
 from ethereum.transactions import Transaction
 from ethereum.utils import zpad
 
-from golem.ethereum.node import log, NodeProcess, \
-    TESTNET_NODE_LIST, get_public_nodes
+from golem.ethereum.node import log, NodeProcess
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.utils import encode_hex
@@ -54,13 +53,6 @@ class EthereumNodeTest(TempDirFixture, LogTestCase, PEP8MixIn):
 
 
 class TestPublicNodeList(TempDirFixture):
-
-    def test_builtin_public_nodes(self):
-        with patch('requests.get', lambda *_: None):
-            public_nodes = get_public_nodes(mainnet=False)
-
-        assert public_nodes is not TESTNET_NODE_LIST
-        assert all(n in TESTNET_NODE_LIST for n in public_nodes)
 
     def test_node_start(self):
         node = NodeProcess(self.tempdir)
@@ -159,9 +151,3 @@ class EthereumClientNodeTest(TempDirFixture):
 
         entries = client.get_filter_changes(filter_id)
         assert not entries
-
-    def test_different_nodes(self):
-        mainnet_nodes = get_public_nodes(mainnet=True)
-        testnet_nodes = get_public_nodes(mainnet=False)
-        assert all(n not in mainnet_nodes for n in testnet_nodes)
-        assert all(n not in testnet_nodes for n in mainnet_nodes)

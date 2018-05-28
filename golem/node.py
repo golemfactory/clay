@@ -10,6 +10,7 @@ from apps.appsmanager import AppsManager
 from golem.appconfig import AppConfig
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.config.active import IS_MAINNET
 from golem.core.deferred import chain_function
 from golem.core.keysauth import KeysAuth, WrongPassword
 from golem.core.async import async_run, AsyncRequest
@@ -41,7 +42,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  concent_variant: dict,
                  peers: Optional[List[SocketAddress]] = None,
                  use_monitor: bool = False,
-                 mainnet: bool = False,
                  use_docker_manager: bool = True,
                  start_geth: bool = False,
                  start_geth_port: Optional[int] = None,
@@ -55,7 +55,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         self._reactor = reactor
         self._config_desc = config_desc
-        self._mainnet = mainnet
         self._datadir = datadir
         self._use_docker_manager = use_docker_manager
 
@@ -73,7 +72,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         self.client: Optional[Client] = None
 
-        self.apps_manager = AppsManager(self._mainnet)
+        self.apps_manager = AppsManager()
 
         self._client_factory = lambda keys_auth: Client(
             datadir=datadir,
@@ -81,7 +80,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
             config_desc=config_desc,
             keys_auth=keys_auth,
             database=self._db,
-            mainnet=mainnet,
             use_docker_manager=use_docker_manager,
             use_monitor=use_monitor,
             concent_variant=concent_variant,
@@ -145,7 +143,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
         return KeysAuth.key_exists(self._datadir, PRIVATE_KEY)
 
     def is_mainnet(self) -> bool:
-        return self._mainnet
+        return IS_MAINNET
 
     def _start_rpc(self) -> Deferred:
         self.rpc_router = rpc = CrossbarRouter(

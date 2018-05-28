@@ -15,7 +15,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         "golemapp.py",
     ]
 
-    @mock.patch('golemapp.Node')
+    @mock.patch('golem.node.Node')
     def test_start_node(self, node_class):
         runner = CliRunner()
         runner.invoke(start, ['--datadir', self.path], catch_exceptions=False)
@@ -43,8 +43,8 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
                 assert '-u' not in sys.argv
 
     @mock.patch('golem.core.common.config_logging')
-    @mock.patch('golemapp.AppConfig')
-    @mock.patch('golemapp.Node')
+    @mock.patch('golem.appconfig.AppConfig')
+    @mock.patch('golem.node.Node')
     def test_patch_protocol_id(self, node_class, *_):
         runner = CliRunner()
         custom_id = '123456'
@@ -83,7 +83,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         )
         assert cert_manager.generate_if_needed.called
 
-    @mock.patch('golemapp.Node')
+    @mock.patch('golem.node.Node')
     def test_accept_terms(self, node_cls):
         runner = CliRunner()
         runner.invoke(

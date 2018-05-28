@@ -8,6 +8,7 @@ from urllib.parse import urljoin
 import requests
 from pydispatch import dispatcher
 
+from golem.config.active import SEND_PAYMENT_INFO_TO_MONITOR
 from golem.core import variables
 from golem.decorators import log_error
 from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats
@@ -52,12 +53,11 @@ class SenderThread(threading.Thread):
 class SystemMonitor(object):
     def __init__(self,
                  meta_data: NodeMetadataModel,
-                 monitor_config: dict,
-                 send_payment_info: bool = True) -> None:
+                 monitor_config: dict) -> None:
         self.meta_data = meta_data
         self.node_info = NodeInfoModel(meta_data.cliid, meta_data.sessid)
         self.config = monitor_config
-        self.send_payment_info = send_payment_info
+        self.send_payment_info = SEND_PAYMENT_INFO_TO_MONITOR
         dispatcher.connect(self.dispatch_listener, signal='golem.monitor')
         dispatcher.connect(self.p2p_listener, signal='golem.p2p')
 
