@@ -43,6 +43,16 @@ LOGGING_DICT = {
 logger = logging.getLogger(__name__)
 
 
+class DummyEnvironment(Environment):
+    @classmethod
+    def get_id(cls):
+        return DummyTask.ENVIRONMENT_NAME
+
+    def __init__(self):
+        super(DummyEnvironment, self).__init__()
+        self.allow_custom_main_program_file = True
+
+
 def format_msg(kind, pid, msg):
     return "[{} {:>5}] {}".format(kind, pid, msg)
 
@@ -133,6 +143,9 @@ def run_requesting_node(datadir, num_subtasks=3):
     client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
 
+    dummy_env = DummyEnvironment()
+    client.environments_manager.add_environment(dummy_env)
+
     params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
     task = DummyTask(client.get_node_name(), params, num_subtasks,
                      client.keys_auth.public_key)
@@ -185,15 +198,6 @@ def run_computing_node(datadir, peer_address, fail_after=None):
     client.start()
     client.task_server.task_computer.support_direct_computation = True
     report("Started in {:.1f} s".format(time.time() - start_time))
-
-    class DummyEnvironment(Environment):
-        @classmethod
-        def get_id(cls):
-            return DummyTask.ENVIRONMENT_NAME
-
-        def __init__(self):
-            super(DummyEnvironment, self).__init__()
-            self.allow_custom_main_program_file = True
 
     dummy_env = DummyEnvironment()
     dummy_env.accept_tasks = True

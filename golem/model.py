@@ -382,6 +382,7 @@ class Performance(BaseModel):
     """ Keeps information about benchmark performance """
     environment_id = CharField(null=False, index=True, unique=True)
     value = FloatField(default=0.0)
+    min_accepted_step = FloatField(default=300.0)
 
     class Meta:
         database = db

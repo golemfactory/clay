@@ -328,7 +328,7 @@ class ResourceHandshakeSessionMixin:
         self._remove_handshake(key_id)
 
     def _is_peer_blocked(self, key_id):
-        return not self.task_server.acl.is_allowed(key_id)
+        return not self.task_server.acl.is_allowed(key_id)[0]
 
     # ########################
     #         MESSAGES
