@@ -221,7 +221,8 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         subtask_id = uuid.uuid1().bytes
         ctd_prefix = 'ack_report_computed_task__' \
             'report_computed_task__' \
-            'task_to_compute__'
+            'task_to_compute__' \
+            'compute_task_def__'
         kwargs = {
             ctd_prefix+'task_id': task_id,
             ctd_prefix+'subtask_id': subtask_id,
