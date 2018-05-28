@@ -1,10 +1,11 @@
-import time
-import logging
-import random
-import operator
-from collections import deque, Counter
-import math
 import itertools
+import logging
+import math
+import operator
+import random
+import time
+from collections import deque, Counter
+from statistics import median
 
 logger = logging.getLogger("golem.network.p2p.peerkeeper")
 
@@ -203,6 +204,15 @@ class PeerKeeper(object):
                 '0%db' % self.k_size
             ).find("1")
 
+        def filter_outliers(data, m=2.0):
+            """ Simple median-based outlier detection """
+            med = median(data)
+            distance = [abs(x - med) for x in data]
+            med_dist = median(distance)
+            norm_distance = [d / med_dist for d in distance] if med_dist \
+                else [0] * len(data)
+            return (x for x, d in zip(data, norm_distance) if d < m)
+
         peers_depths = [depth(p) for b in self.buckets for p in b.peers]
 
         # Aggregate peer distances
@@ -210,11 +220,12 @@ class PeerKeeper(object):
         if not logical_buckets:
             return 0
 
-        return sum(
+        data = [
             num_peers * 2 ** (depth + 1)
             for depth, num_peers in logical_buckets.items()
             if num_peers < self.k
-        ) // len(logical_buckets)
+        ]
+        return median(filter_outliers(data, m=2))
 
     def __remove_old_expected_pongs(self):
         cur_time = time.time()
