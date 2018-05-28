@@ -300,30 +300,35 @@ class TaskServer(
 
     def add_task_header(self, th_dict_repr):
         try:
-            if not self.verify_header_sig(th_dict_repr):
+            ok, err = TaskHeader.is_correct(th_dict_repr)
+            if not ok:
+                raise ValueError(err)
+
+            header = TaskHeader.from_dict(th_dict_repr)
+            if not self.verify_header_sig(header):
                 raise Exception("Invalid signature")
 
-            task_id = th_dict_repr["task_id"]
-            key_id = th_dict_repr["task_owner"]["key"]
+            task_id = header.task_id
+            key_id = header.task_owner.key
             task_ids = list(self.task_manager.tasks.keys())
             new_sig = True
 
             if task_id in self.task_keeper.task_headers:
-                header = self.task_keeper.task_headers[task_id]
-                new_sig = th_dict_repr["signature"] != header.signature
+                old_header = self.task_keeper.task_headers[task_id]
+                new_sig = header.signature != old_header.signature
 
             if task_id not in task_ids and key_id != self.node.key and new_sig:
-                self.task_keeper.add_task_header(th_dict_repr)
+                self.task_keeper.add_task_header(header)
 
             return True
         except Exception:  # pylint: disable=broad-except
             logger.warning("Wrong task header received", exc_info=True)
             return False
 
-    def verify_header_sig(self, th_dict_repr):
-        _bin = TaskHeader.dict_to_binary(th_dict_repr)
-        _sig = th_dict_repr["signature"]
-        _key = th_dict_repr["task_owner"]["key"]
+    def verify_header_sig(self, header: TaskHeader):
+        _bin = header.to_binary()
+        _sig = header.signature
+        _key = header.task_owner.key
         return self.verify_sig(_sig, _bin, _key)
 
     def remove_task_header(self, task_id) -> bool:

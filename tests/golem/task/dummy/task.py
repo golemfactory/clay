@@ -62,8 +62,8 @@ class DummyTask(Task):
         owner_key_id = encode_hex(public_key)
         environment = self.ENVIRONMENT_NAME
         header = TaskHeader(
-            task_id,
-            environment,
+            task_id=task_id,
+            environment=environment,
             task_owner=Node(
                 node_name=client_id,
                 pub_addr=owner_address,

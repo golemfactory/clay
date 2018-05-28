@@ -310,94 +310,58 @@ class TaskHeaderKeeper:
         self.max_tasks_per_requestor = max_tasks_per_requestor
         self.task_archiver = task_archiver
 
-    def check_support(self, th_dict_repr) -> SupportStatus:
+    def check_support(self, header: TaskHeader) -> SupportStatus:
         """Checks if task described with given task header dict
-           representation may be computed by this node. This node must
+           may be computed by this node. This node must
            support proper environment, be allowed to make computation
            cheaper than with max price declared in task and have proper
            application version.
-        :param dict th_dict_repr: task header dictionary representation
+        :param TaskHeader header: task header
         :return SupportStatus: ok() if this node may compute a task
         """
-        supported = self.check_environment(th_dict_repr)
-        supported = supported.join(self.check_price(th_dict_repr))
-        supported = supported.join(self.check_version(th_dict_repr))
+        supported = self.check_environment(header.environment)
+        supported = supported.join(self.check_price(header))
+        supported = supported.join(self.check_version(header))
         if not supported.is_ok():
             logger.info("Unsupported task %s, reason: %r",
-                        th_dict_repr.get("task_id"), supported.desc)
+                        header.task_id, supported.desc)
         return supported
 
-    @staticmethod
-    def is_correct(th_dict_repr):
-        """Checks if task header dict representation has correctly
-           defined parameters
-         :param dict th_dict_repr: task header dictionary representation
-         :return (bool, error): First element is True if task is properly
-                                defined (the second element is then None).
-         Otheriwse first element is False and the second is the string
-         describing wrong element
-        """
-        if not isinstance(th_dict_repr['deadline'], (int, float)):
-            return False, "Deadline is not a timestamp"
-        if th_dict_repr['deadline'] < common.get_timestamp_utc():
-            msg = "Deadline already passed \n " \
-                  "task_id = %s \n " \
-                  "node name = %s " % \
-                  (th_dict_repr['task_id'],
-                   th_dict_repr['task_owner']['node_name'])
-            return False, msg
-        if not isinstance(th_dict_repr['subtask_timeout'], int):
-            msg = "Subtask timeout is not a number \n " \
-                  "task_id = %s \n " \
-                  "node name = %s " % \
-                  (th_dict_repr['task_id'],
-                   th_dict_repr['task_owner']['node_name'])
-            return False, msg
-        if th_dict_repr['subtask_timeout'] < 0:
-            msg = "Subtask timeout is less than 0 \n " \
-                  "task_id = %s \n " \
-                  "node name = %s " % \
-                  (th_dict_repr['task_id'],
-                   th_dict_repr['task_owner']['node_name'])
-            return False, msg
-        return True, None
+    def check_environment(self, env: str) -> SupportStatus:
+        """Checks if this node supports the given environment
 
-    def check_environment(self, th_dict_repr) -> SupportStatus:
-        """Checks if this node supports environment necessary to compute task
-           described with task header.
-        :param dict th_dict_repr: task header dictionary representation
+        :param str env: environment
         :return SupportStatus: ok() if this node support environment for this
                                task, err() otherwise
         """
-        env = th_dict_repr.get("environment")
         status = SupportStatus.ok()
         if not self.environments_manager.accept_tasks(env):
             status = SupportStatus.err(
                 {UnsupportReason.ENVIRONMENT_NOT_ACCEPTING_TASKS: env})
         return self.environments_manager.get_support_status(env).join(status)
 
-    def check_price(self, th_dict_repr) -> SupportStatus:
+    def check_price(self, header: TaskHeader) -> SupportStatus:
         """Check if this node offers prices that isn't greater than maximum
            price described in task header.
-        :param dict th_dict_repr: task header dictionary representation
+        :param TaskHeader header: task header
         :return SupportStatus: err() if price offered by this node is higher
                                than maximum price for this task,
                                ok() otherwise.
         """
-        if "max_price" in th_dict_repr \
-                and th_dict_repr["max_price"] >= self.min_price:
+        max_price = getattr(header, "max_price", None)
+        if max_price and max_price >= self.min_price:
             return SupportStatus.ok()
         return SupportStatus.err(
-            {UnsupportReason.MAX_PRICE: th_dict_repr.get("max_price")})
+            {UnsupportReason.MAX_PRICE: getattr(header, "max_price", None)})
 
-    def check_version(self, th_dict_repr) -> SupportStatus:
+    def check_version(self, header: TaskHeader) -> SupportStatus:
         """Check if this node has a version that isn't less than minimum
            version described in task header.
-        :param dict th_dict_repr: task header dictionary representation
+        :param TaskHeader header: task header
         :return SupportStatus: err() if node's version is lower than minimum
                                version for this task, False otherwise.
         """
-        min_v = th_dict_repr.get("min_version")
+        min_v = getattr(header, "min_version", None)
 
         ok = False
         try:
@@ -450,76 +414,69 @@ class TaskHeaderKeeper:
         self.min_price = config_desc.min_price
         self.supported_tasks = []
         for id_, th in self.task_headers.items():
-            supported = self.check_support(th.__dict__)
+            supported = self.check_support(th)
             self.support_status[id_] = supported
             if supported:
                 self.supported_tasks.append(id_)
             if self.task_archiver:
                 self.task_archiver.add_support_status(id_, supported)
 
-    def add_task_header(self, th_dict_repr):
+    def add_task_header(self, header: TaskHeader):
         """This function will try to add to or update a task header
            in a list of known headers. The header will be added / updated
            only if it hasn't been removed recently. If it's new and supported
            its id will be put in supported task list.
-        :param dict th_dict_repr: task dictionary representation
+        :param TaskHeader header: task header
         :return bool: True if task header was well formatted and
                       no error occurs, False otherwise
         """
         try:
-            id_ = th_dict_repr["task_id"]
-            task_owner_id = th_dict_repr["task_owner"]["key"]
-            self.check_owner(id_, task_owner_id)
-            update = id_ in list(self.task_headers.keys())
+            task_id = header.task_id
+            task_owner_id = header.task_owner.key
+            self.check_owner(task_id, task_owner_id)
+            update = task_id in list(self.task_headers.keys())
 
-            self.check_correct(th_dict_repr)
-
-            if id_ in list(self.removed_tasks.keys()):  # recent
+            if task_id in list(self.removed_tasks.keys()):  # recent
                 logger.debug("Received a task which has been already "
                              "cancelled/removed/timeout/banned/etc "
-                             "Task id %s .", id_)
+                             "Task id %s .", task_id)
                 return True
 
-            th = TaskHeader.from_dict(th_dict_repr)
-            self.task_headers[id_] = th
+            self.task_headers[task_id] = header
 
-            self._get_tasks_by_owner_set(th.task_owner.key).add(id_)
+            self._get_tasks_by_owner_set(header.task_owner.key).add(task_id)
 
-            self.update_supported_set(th_dict_repr, update)
+            self.update_supported_set(header, update)
 
-            self.check_max_tasks_per_owner(th.task_owner.key)
+            self.check_max_tasks_per_owner(header.task_owner.key)
 
-            if self.task_archiver and id_ in self.task_headers:
-                self.task_archiver.add_task(th)
-                self.task_archiver.add_support_status(id_,
-                                                      self.support_status[id_])
+            if self.task_archiver and task_id in self.task_headers:
+                self.task_archiver.add_task(header)
+                self.task_archiver.add_support_status(
+                    task_id, self.support_status[task_id])
 
             return True
         except (KeyError, TypeError, WrongOwnerException) as err:
             logger.warning("Wrong task header received: {}".format(err))
             return False
 
-    def update_supported_set(self, th_dict_repr, update_header):
-        id_ = th_dict_repr["task_id"]
+    def update_supported_set(self, header: TaskHeader, update_header: bool) \
+            -> None:
 
-        support = self.check_support(th_dict_repr)
-        self.support_status[id_] = support
+        task_id = header.task_id
+        support = self.check_support(header)
+        self.support_status[task_id] = support
 
         if update_header:
-            if not support and id_ in self.supported_tasks:
-                self.supported_tasks.remove(id_)
+            if not support and task_id in self.supported_tasks:
+                self.supported_tasks.remove(task_id)
         elif support:
             logger.info(
                 "Adding task %r support=%r",
-                id_,
+                task_id,
                 support
             )
-            self.supported_tasks.append(id_)
-
-    def check_correct(self, th_dict_repr):
-        is_correct, err = self.is_correct(th_dict_repr)
-        if not is_correct:
-            raise TypeError(err)
+            self.supported_tasks.append(task_id)
 
     @staticmethod
     def check_owner(task_id, owner_id):

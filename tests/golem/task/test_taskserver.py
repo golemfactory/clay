@@ -38,23 +38,25 @@ from tests.factories.resultpackage import ExtractedPackageFactory
 
 def get_example_task_header(key_id):
     return {
-        "task_id": generate_id(key_id),
-        "environment": "DEFAULT",
-        "task_owner": dict(
-            key=encode_hex(key_id),
-            node_name="ABC",
-            prv_port=40103,
-            prv_addr='10.0.0.10',
-            pub_port=40103,
-            pub_addr='1.2.3.4'
-        ),
-        "deadline": timeout_to_deadline(1201),
-        "subtask_timeout": 120,
-        "max_price": 20,
-        "resource_size": 2 * 1024,
-        "estimated_memory": 3 * 1024,
-        "signature": None,
-        "min_version": golem.__version__,
+        "fixed_header": {
+            "task_id": generate_id(key_id),
+            "environment": "DEFAULT",
+            "task_owner": dict(
+                key=encode_hex(key_id),
+                node_name="ABC",
+                prv_port=40103,
+                prv_addr='10.0.0.10',
+                pub_port=40103,
+                pub_addr='1.2.3.4'
+            ),
+            "deadline": timeout_to_deadline(1201),
+            "subtask_timeout": 120,
+            "max_price": 20,
+            "resource_size": 2 * 1024,
+            "estimated_memory": 3 * 1024,
+            "signature": None,
+            "min_version": golem.__version__,
+        }
     }
 
 
@@ -124,14 +126,14 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         keys_auth = KeysAuth(self.path, 'prv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
-        task_id = task_header["task_id"]
+        task_id = task_header["fixed_header"]["task_id"]
         ts.add_task_header(task_header)
         self.assertEqual(ts.request_task(), task_id)
         assert ts.remove_task_header(task_id)
 
         task_header = get_example_task_header(keys_auth.public_key)
-        task_header["task_owner"]["pub_port"] = 0
-        task_id2 = task_header["task_id"]
+        task_header["fixed_header"]["task_owner"]["pub_port"] = 0
+        task_id2 = task_header["fixed_header"]["task_id"]
         self.assertTrue(ts.add_task_header(task_header))
         self.assertIsNotNone(ts.task_keeper.task_headers[task_id2])
         # FIXME FIx this test
@@ -147,7 +149,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         tar.reset_mock()
         ts.config_desc.requesting_trust = 0.5
         task_header = get_example_task_header(keys_auth.public_key)
-        task_id3 = task_header["task_id"]
+        task_id3 = task_header["fixed_header"]["task_id"]
         ts.add_task_header(task_header)
         self.assertIsNone(ts.request_task())
         tar.add_support_status.assert_called_with(
@@ -161,8 +163,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         tar.reset_mock()
         ts.config_desc.requesting_trust = 0.0
         task_header = get_example_task_header(keys_auth.public_key)
-        task_id4 = task_header["task_id"]
-        task_header["max_price"] = 1
+        task_id4 = task_header["fixed_header"]["task_id"]
+        task_header["fixed_header"]["max_price"] = 1
         ts.add_task_header(task_header)
         self.assertIsNone(ts.request_task())
         tar.add_support_status.assert_called_with(
@@ -176,7 +178,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         tar.reset_mock()
         ts.acl.disallow(keys_auth.key_id)
         task_header = get_example_task_header(keys_auth.public_key)
-        task_id5 = task_header["task_id"]
+        task_id5 = task_header["fixed_header"]["task_id"]
         ts.add_task_header(task_header)
         self.assertIsNone(ts.request_task())
         tar.add_support_status.assert_called_with(
@@ -192,7 +194,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ccd.min_price = 11
         keys_auth = KeysAuth(self.path, 'priv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
-        n = Node.from_dict(task_header['task_owner'])
+        n = Node.from_dict(task_header["fixed_header"]['task_owner'])
 
         ts = self.ts
         ts._is_address_accessible = Mock(return_value=True)
@@ -202,7 +204,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         results = {"data": "", "result_type": ResultType.DATA}
         task_header = get_example_task_header(keys_auth.public_key)
-        task_id = task_header["task_id"]
+        task_id = task_header["fixed_header"]["task_id"]
         assert ts.add_task_header(task_header)
         assert ts.request_task()
         subtask_id = generate_new_id_from_id(task_id)
@@ -317,7 +319,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertEqual(len(ts.get_others_tasks_headers()), 1)
 
         task_header = get_example_task_header(keys_auth_2.public_key)
-        task_id2 = task_header["task_id"]
+        task_id2 = task_header["fixed_header"]["task_id"]
         task_header["signature"] = keys_auth_2.sign(
             TaskHeader.dict_to_binary(task_header))
 
@@ -328,14 +330,14 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
 
         new_header = dict(task_header)
-        new_header["task_owner"]["pub_port"] = 9999
+        new_header["fixed_header"]["task_owner"]["pub_port"] = 9999
         new_header["signature"] = keys_auth_2.sign(
             TaskHeader.dict_to_binary(new_header))
 
         self.assertIsNotNone(ts.add_task_header(new_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
         saved_task = next(th for th in ts.get_others_tasks_headers()
-                          if th["task_id"] == task_id2)
+                          if th["fixed_header"]["task_id"] == task_id2)
         self.assertEqual(saved_task["signature"], new_header["signature"])
 
     def test_sync(self, *_):
