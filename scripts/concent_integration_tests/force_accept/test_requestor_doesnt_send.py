@@ -13,6 +13,7 @@ from golem_messages import helpers
 from golem_messages import message
 
 from golem import testutils
+from golem.network.concent import exceptions as concent_exceptions
 from golem.transactions.ethereum import ethereumtransactionsystem as libets
 
 from ..base import ConcentBaseTest
@@ -89,7 +90,7 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         sys.stderr.write("\nDeposit confirmed in {}\n".format(
             datetime.datetime.now()-start))
 
-    def prepare_report_computed_task(self, mode):
+    def prepare_report_computed_task(self, mode, **kwargs):
         """Returns ReportComputedTask with open force acceptance window
 
         Can be modified by delta
@@ -99,6 +100,7 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
             **self.gen_rtc_kwargs(),
             **self.gen_ttc_kwargs(
                 'task_to_compute__'),
+            **kwargs,
         )
         # Difference between timestamp and deadline has to be constant
         # because it's part of SVT formula
@@ -150,8 +152,13 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         return report_computed_task
 
     def provider_send_force(
-            self, mode='within', **kwargs):
-        report_computed_task = self.prepare_report_computed_task(mode=mode)
+            self, mode='within', rct_kwargs=None, **kwargs):
+        if rct_kwargs is None:
+            rct_kwargs = {}
+        report_computed_task = self.prepare_report_computed_task(
+            mode=mode,
+            **rct_kwargs,
+        )
         fsr = msg_factories.concents.ForceSubtaskResultsFactory(
             ack_report_computed_task__report_computed_task=report_computed_task,
             **self.gen_rtc_kwargs(
@@ -220,18 +227,16 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         )
 
     def test_already_processed(self):
-        task_id = uuid.uuid1().bytes
-        subtask_id = uuid.uuid1().bytes
-        ctd_prefix = 'ack_report_computed_task__' \
-            'report_computed_task__' \
-            'task_to_compute__' \
+        task_id = str(uuid.uuid1())
+        subtask_id = str(uuid.uuid1())
+        ctd_prefix = 'task_to_compute__' \
             'compute_task_def__'
         kwargs = {
             ctd_prefix+'task_id': task_id,
             ctd_prefix+'subtask_id': subtask_id,
         }
-        self.assertIsNone(self.provider_send_force(**kwargs))
-        second_response = self.provider_send_force(**kwargs)
+        self.assertIsNone(self.provider_send_force(rct_kwargs=kwargs))
+        second_response = self.provider_send_force(rct_kwargs=kwargs)
         self.assertIsInstance(second_response, message.concents.ServiceRefused)
 
     def test_no_response_from_requestor(self):
@@ -262,11 +267,8 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
             response,
             message.concents.ServiceRefused,
         )
-        received = self.provider_receive()
-        self.assertIsInstance(
-            received,
-            None,
-        )
+        with self.assertRaises(concent_exceptions.ConcentRequestError):
+            self.provider_receive()
 
     def test_requestor_responds_with_accept(self):
         self.assertIsNone(self.provider_send_force())
