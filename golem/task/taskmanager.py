@@ -156,7 +156,7 @@ class TaskManager(TaskEventListener):
                                                self.listen_port):
             raise IOError("Incorrect socket address")
 
-        task.header.task_owner = self.node
+        task.header.fixed_header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
 
         task.create_reference_data_for_task_validation()

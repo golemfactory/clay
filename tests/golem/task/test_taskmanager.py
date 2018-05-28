@@ -97,7 +97,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     def _get_task_header(self, task_id, timeout, subtask_timeout):
         return TaskHeader(
             task_id=task_id,
-            task_owner=Mock(
+            task_owner=Node(
                 key="task_owner_key_%s" % (self.test_nonce,),
                 node_name="test_node_%s" % (self.test_nonce,),
                 pub_addr="task_owner_address_%s" % (self.test_nonce,),
@@ -379,12 +379,12 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.assertFalse(self.tm.use_distributed_resources)
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')
-    def test_computed_task_received(self, dump_mock):
+    def test_computed_task_received(self, _):
         owner = Node(node_name="ABC",
                      pub_addr="10.10.10.10",
                      pub_port=1024,
                      key="key_id")
-        th = TaskHeader("xyz", "DEFAULT", owner)
+        th = TaskHeader(task_id="xyz", environment="DEFAULT", task_owner=owner)
         th.max_price = 50
 
         class TestTask(Task):
@@ -648,7 +648,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                      pub_port=1023,
                      key="abcde")
         t = Task(
-            TaskHeader("xyz", "DEFAULT", owner),
+            TaskHeader(task_id="xyz", environment="DEFAULT", task_owner=owner),
             "print 'hello world'", None)
         listener_mock = Mock()
 
@@ -809,8 +809,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             prv_port=40103, pub_addr="1.2.3.4", pub_port=40103,
             p2p_prv_port=40102, p2p_pub_port=40102
         )
-        task = Task(TaskHeader("task_id", "environment", task_owner=node), '',
-                    TaskDefinition())
+        task = Task(
+            header=TaskHeader(
+                task_id="task_id",
+                environment="environment",
+                task_owner=node),
+            src_code='',
+            task_definition=TaskDefinition())
 
         self.tm.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         self.tm.add_new_task(task)
