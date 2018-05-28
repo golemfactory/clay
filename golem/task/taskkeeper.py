@@ -124,8 +124,14 @@ class CompTaskKeeper:
         tasks_path: to tasks directory
         """
         # information about tasks that this node wants to compute
-        self.active_tasks = {}
-        self.subtask_to_task = {}  # maps subtasks id to tasks id
+        self.active_tasks: typing.Dict[str, CompTaskInfo] = {}
+
+        # subtask_id to task_id mapping
+        self.subtask_to_task: typing.Dict[str, str] = {}
+
+        # task_id to package paths mapping
+        self.task_package_paths: typing.Dict[str, list] = {}
+
         if not tasks_path.is_dir():
             tasks_path.mkdir()
         self.dump_path = tasks_path / "comp_task_keeper.pickle"
@@ -140,7 +146,11 @@ class CompTaskKeeper:
     def _dump_tasks(self):
         logger.debug('COMPTASK DUMP: %s', self.dump_path)
         with self.dump_path.open('wb') as f:
-            dump_data = self.active_tasks, self.subtask_to_task
+            dump_data = (
+                self.active_tasks,
+                self.subtask_to_task,
+                self.task_package_paths
+            )
             pickle.dump(dump_data, f)
 
     def restore(self):
@@ -152,7 +162,10 @@ class CompTaskKeeper:
             return
         with self.dump_path.open('rb') as f:
             try:
-                active_tasks, subtask_to_task = pickle.load(f)
+                data = pickle.load(f)
+                active_tasks = data[0]
+                subtask_to_task = data[1]
+                task_package_paths = data[2] if len(data) > 2 else {}
             except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
                 logger.exception(
                     'Problem restoring dumpfile: %s',
@@ -161,6 +174,7 @@ class CompTaskKeeper:
                 return
         self.active_tasks.update(active_tasks)
         self.subtask_to_task.update(subtask_to_task)
+        self.task_package_paths.update(task_package_paths)
 
     def add_request(self, theader: TaskHeader, price: int):
         # price is task_header.max_price
@@ -266,11 +280,25 @@ class CompTaskKeeper:
             if delta > 0:
                 continue
             logger.info("Removing comp_task after deadline: %s", task_id)
+
             for subtask_id in self.active_tasks[task_id].subtasks:
                 del self.subtask_to_task[subtask_id]
+
             del self.active_tasks[task_id]
 
+            if task_id in self.task_package_paths:
+                del self.task_package_paths[task_id]
+
         self.dump()
+
+    def add_package_paths(
+            self, task_id: str, package_paths: typing.List[str]) -> None:
+        self.task_package_paths[task_id] = package_paths
+        self.dump()
+
+    def get_package_paths(
+            self, task_id: str) -> typing.Optional[typing.List[str]]:
+        return self.task_package_paths.get(task_id, None)
 
 
 class TaskHeaderKeeper:
@@ -579,7 +607,7 @@ class TaskHeaderKeeper:
             return None
         return task.task_owner.key
 
-    def get_task(self) -> TaskHeader:
+    def get_task(self) -> typing.Optional[TaskHeader]:
         """ Returns random task from supported tasks that may be computed
         :return TaskHeader|None: returns either None if there are no tasks
                                  that this node may want to compute
@@ -588,6 +616,7 @@ class TaskHeaderKeeper:
             tn = random.randrange(0, len(self.supported_tasks))
             task_id = self.supported_tasks[tn]
             return self.task_headers[task_id]
+        return None
 
     def remove_old_tasks(self):
         for t in list(self.task_headers.values()):

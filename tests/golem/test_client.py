@@ -1,10 +1,10 @@
-import datetime
 import json
 import os
 import time
 import uuid
 from random import Random
 from types import MethodType
+from unittest import mock
 from unittest import TestCase
 from unittest.mock import call, Mock, MagicMock, patch
 
@@ -13,10 +13,10 @@ from freezegun import freeze_time
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 
-import golem
 from apps.appsmanager import AppsManager
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
+import golem
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
@@ -24,11 +24,10 @@ from golem.client import Client, ClientTaskComputerEventListener, \
     ResourceCleanerService, TaskArchiverService, \
     TaskCleanerService
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import timestamp_to_datetime, timeout_to_string
+from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
-from golem.model import Payment, PaymentStatus, Income
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
@@ -42,7 +41,6 @@ from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
-from golem.utils import decode_hex, encode_hex
 
 random = Random(__name__)
 
@@ -74,18 +72,19 @@ def done_deferred(return_value=None):
     return deferred
 
 
-def make_mock_payment_processor(eth=100, gnt=100):
-    pp = MagicMock(name="MockPaymentProcessor")
-
-    pp.ETH_BATCH_PAYMENT_BASE = 0
-
-    pp.get_gas_cost_per_payment.return_value = 0
-
-    pp.gnt_balance.return_value = gnt * denoms.ether, time.time()
-    pp.eth_balance.return_value = eth * denoms.ether, time.time()
-    pp._gnt_available.return_value = gnt * denoms.ether
-    pp._eth_available.return_value = eth * denoms.ether
-    return pp
+def make_mock_ethereum_transaction_system(eth=100, gnt=100):
+    ets = MagicMock(name="MockEthereumTransactionSystem")
+    ets.get_balance.return_value = (
+        gnt * denoms.ether,
+        gnt * denoms.ether,
+        eth * denoms.ether,
+        time.time(),
+        time.time(),
+    )
+    ets.eth_for_batch_payment.return_value = 0.0001 * denoms.ether
+    ets.eth_base_for_batch_payment.return_value = 0.001 * denoms.ether
+    ets.get_payment_address.return_value = '0x' + 40 * 'a'
+    return ets
 
 
 @patch(
@@ -93,8 +92,8 @@ def make_mock_payment_processor(eth=100, gnt=100):
 )
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
-@patch('golem.transactions.ethereum.ethereumtransactionsystem.PaymentProcessor',
-       return_value=make_mock_payment_processor())
+@patch('golem.client.EthereumTransactionSystem',
+       return_value=make_mock_ethereum_transaction_system())
 class TestClient(TestWithDatabase, TestWithReactor):
     # FIXME: if we someday decide to run parallel tests,
     # this may completely break. Issue #2456
@@ -115,42 +114,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_docker_manager=False,
             use_monitor=False
         )
-
-        now = datetime.datetime.now()
-        n = 9
-        payments = [
-            Payment(
-                subtask=uuid.uuid4(),
-                status=PaymentStatus.awaiting,
-                payee=decode_hex(random_hex_str()),
-                value=i * 10**18,
-                created_date=now + datetime.timedelta(days=i),
-                modified_date=now + datetime.timedelta(days=i)
-            ) for i in range(n + 1)
-        ]
-
-        db = Mock()
-        db.get_newest_payment.return_value = reversed(payments)
-
-        self.client.transaction_system.payments_keeper.db = db
-        received_payments = self.client.get_payments_list()
-
-        self.assertEqual(len(received_payments), len(payments))
-
-        for i in range(len(payments)):
-            self.assertEqual(
-                received_payments[i]['subtask'], str(payments[n - i].subtask)
-            )
-            self.assertEqual(
-                received_payments[i]['status'], payments[n - i].status.name
-            )
-            self.assertEqual(
-                received_payments[i]['payee'],
-                encode_hex(payments[n - i].payee)
-            )
-            self.assertEqual(
-                received_payments[i]['value'], str(payments[n - i].value)
-            )
+        assert self.client.get_payments_list() == \
+            self.client.transaction_system.get_payments_list.return_value
 
     def test_get_incomes(self, *_):
         self.client = Client(
@@ -163,41 +128,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_docker_manager=False,
             use_monitor=False
         )
+        assert self.client.get_incomes_list() == \
+            self.client.transaction_system.get_incoming_payments.return_value
 
-        now = datetime.datetime.now()
-        n = 9
-        incomes = [
-            Income.create(
-                sender_node=random_hex_str(),
-                subtask=random_hex_str(),
-                value=i * 10**18,
-                created_date=now + datetime.timedelta(days=i),
-                modified_date=now + datetime.timedelta(days=i)
-            ) for i in range(n + 1)
-        ]
-
-        for income in incomes:
-            income.save()
-
-        received_incomes = self.client.get_incomes_list()
-        self.assertEqual(len(received_incomes), len(incomes))
-
-        for i in range(len(incomes)):
-            self.assertEqual(
-                received_incomes[i]['subtask'], str(incomes[n - i].subtask)
-            )
-            self.assertEqual(
-                received_incomes[i]['status'],
-                str(PaymentStatus.awaiting.name)
-            )
-            self.assertEqual(
-                received_incomes[i]['payer'], str(incomes[n - i].sender_node)
-            )
-            self.assertEqual(
-                received_incomes[i]['value'], str(incomes[n - i].value)
-            )
-
-    @patch('golem.client.EthereumTransactionSystem')
     def test_withdraw_testnet(self, *_):
         keys_auth = Mock()
         keys_auth._private_key = "a" * 32
@@ -270,8 +203,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.assertIsInstance(payment_address, str)
         self.assertTrue(len(payment_address) > 0)
 
-    @patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-           'EthereumTransactionSystem.sync')
     def test_sync(self, *_):
         self.client = Client(
             datadir=self.path,
@@ -286,7 +217,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.sync()
         self.assertTrue(self.client.transaction_system.sync.called)
 
-    @patch('golem.client.EthereumTransactionSystem')
     def test_remove_resources(self, *_):
         self.client = Client(
             datadir=self.path,
@@ -327,7 +257,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         c.remove_received_files()
         self.assertEqual(os.listdir(d), [])
 
-    @patch('golem.client.EthereumTransactionSystem')
     def test_datadir_lock(self, *_):
         # Let's use non existing dir as datadir here to check how the Client
         # is able to cope with that.
@@ -351,7 +280,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
                    keys_auth=Mock(),
                    database=Mock())
 
-    @patch('golem.client.EthereumTransactionSystem')
     def test_get_status(self, *_):
         self.client = Client(
             datadir=self.path,
@@ -391,7 +319,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         status = c.get_status()
         self.assertIn("Not accepting tasks", status)
 
-    @patch('golem.client.EthereumTransactionSystem')
     def test_quit(self, *_):
         self.client = Client(
             datadir=self.path,
@@ -403,7 +330,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.db = None
         self.client.quit()
 
-    @patch('golem.client.EthereumTransactionSystem')
     def test_collect_gossip(self, *_):
         self.client = Client(
             datadir=self.path,
@@ -418,7 +344,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.start_network()
         self.client.collect_gossip()
 
-    @patch('golem.client.EthereumTransactionSystem')
     def test_activate_hw_preset(self, *_):
         self.client = Client(
             datadir=self.path,
@@ -444,7 +369,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert config.max_memory_size > 0
         assert config.max_resource_size > 0
 
-    @patch('golem.client.EthereumTransactionSystem')
     def test_restart_by_frame(self, *_):
         self.client = Client(
             datadir=self.path,
@@ -484,7 +408,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert len(presets) == 1
         assert presets.get("Preset1") is None
 
-    @patch('golem.client.EthereumTransactionSystem')
     @patch('golem.environments.environmentsmanager.'
            'EnvironmentsManager.load_config')
     @patch('golem.client.SystemMonitor')
@@ -517,7 +440,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.p2pservice.disconnect.assert_called_once()
         self.client.task_server.disconnect.assert_called_once()
 
-    @patch('golem.client.EthereumTransactionSystem')
     @patch('golem.environments.environmentsmanager.'
            'EnvironmentsManager.load_config')
     @patch('golem.client.SystemMonitor')
@@ -643,7 +565,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert task_manager.tasks_states[new_task_id].status \
             == TaskStatus.waiting
 
-    @patch('golem.client.EthereumTransactionSystem', autospec=True)
     @patch('golem.client.Trust', autospec=True)
     def test_check_payments(self, trust, *_):
 
@@ -662,7 +583,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         client.check_payments()
         trust.PAYMENT.decrease.assert_has_calls((call('a'), call('b')))
 
-    @patch('golem.client.EthereumTransactionSystem')
     @patch('golem.client.get_timestamp_utc')
     def test_clean_old_tasks_no_tasks(self, *_):
         self.client = Client(
@@ -680,7 +600,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.clean_old_tasks()
         self.client.delete_task.assert_not_called()
 
-    @patch('golem.client.EthereumTransactionSystem')
     @patch('golem.client.get_timestamp_utc')
     def test_clean_old_tasks_only_new(self, get_timestamp, *_):
         self.client = Client(
@@ -704,7 +623,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.clean_old_tasks()
         self.client.delete_task.assert_not_called()
 
-    @patch('golem.client.EthereumTransactionSystem')
     @patch('golem.client.get_timestamp_utc')
     def test_clean_old_tasks_old_and_new(self, get_timestamp, *_):
         self.client = Client(
@@ -919,9 +837,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         super(TestClientRPCMethods, self).setUp()
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler'), \
-                patch('golem.transactions.ethereum.ethereumtransactionsystem'
-                      '.PaymentProcessor',
-                      return_value=make_mock_payment_processor()):
+                patch('golem.client.EthereumTransactionSystem',
+                      return_value=make_mock_ethereum_transaction_system()):
             apps_manager = AppsManager(False)
             apps_manager.load_all_apps()
             client = Client(
@@ -952,6 +869,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         client.monitor = Mock()
 
         self.client = client
+        print(self.client.funds_locker.sum_locks())
 
     def tearDown(self):
         self.client.quit()
@@ -1029,7 +947,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             header=task_header,
             get_resources=Mock(return_value=[]),
             total_tasks=5,
-            get_price=Mock(return_value=900)
+            get_price=Mock(return_value=900),
+            price=1000,
         )
 
         c.enqueue_new_task(task)
@@ -1040,13 +959,22 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_mock.total_tasks = 3
         price = task_mock.header.max_price * task_mock.total_tasks
         task_mock.get_price.return_value = price
+        task_mock.price = 1000
         c.task_server.task_manager.create_task.return_value = task_mock
+        c.concent_service = Mock()
+        c.concent_service.enabled = True
         c.enqueue_new_task(dict(
             max_price=1 * 10**18,
             task_id=str(uuid.uuid4())
         ))
-        assert c.task_server.task_manager.create_task.called
         c.funds_locker.persist = True
+        assert c.task_server.task_manager.create_task.called
+        c.transaction_system.concent_deposit.assert_called_once_with(
+            required=mock.ANY,
+            expected=mock.ANY,
+            reserved=c.funds_locker.sum_locks()[0],
+        )
+        c.funds_locker.persist = False
 
     @patch('golem.client.path')
     @patch('golem.client.async_run', side_effect=mock_async_run)
@@ -1115,29 +1043,32 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_get_balance(self, *_):
         c = self.client
-
-        result = (None, None, None)
+        print(c.funds_locker.sum_locks())
+        result = (None, None, None, None, None)
 
         c.transaction_system = Mock()
         c.transaction_system.get_balance.return_value = result
 
-        balance = yield sync_wait(c.get_balance())
-        assert balance == (None, None, None)
+        balance = sync_wait(c.get_balance())
 
-        result = (None, 1, None)
+        assert balance is None
+
+        result = (None, 1, None, None, None)
         c.transaction_system.get_balance.return_value = result
         balance = sync_wait(c.get_balance())
-        assert balance == (None, None, None)
+        assert balance is None
 
-        result = (1, 1, None)
+        result = (1, 1, None, None, None)
         c.transaction_system.get_balance.return_value = result
         balance = sync_wait(c.get_balance())
-        assert balance == ("1", "1", "None")
+        assert balance == {'gnt': "1",
+                           'av_gnt': "1",
+                           'eth': "None",
+                           'gnt_lock': "0",
+                           'eth_lock': "1000000000000000.0",
+                           'last_gnt_update': "None",
+                           'last_eth_update': "None"}
         assert all(isinstance(entry, str) for entry in balance)
-
-        c.transaction_system = None
-        balance = sync_wait(c.get_balance())
-        assert balance == (None, None, None)
 
     def test_run_benchmark(self, *_):
         from apps.blender.blenderenvironment import BlenderEnvironment

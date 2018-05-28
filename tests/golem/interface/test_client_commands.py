@@ -39,7 +39,7 @@ def assert_client_method(instance, name):
 
 class TestAccount(unittest.TestCase):
 
-    def test(self):
+    def test_show(self):
 
         node = dict(node_name='node1', key='deadbeef')
 
@@ -49,11 +49,13 @@ class TestAccount(unittest.TestCase):
         client.get_computing_trust.return_value = .01
         client.get_requesting_trust.return_value = .02
         client.get_payment_address.return_value = 'f0f0f0ababab'
-        client.get_balance.return_value = (
-            3 * denoms.ether,
-            2 * denoms.ether,
-            denoms.ether
-        )
+        client.get_balance.return_value = {
+            'gnt': 3 * denoms.ether,
+            'av_gnt': 2 * denoms.ether,
+            'eth': denoms.ether,
+            'gnt_lock': 0.01 * denoms.ether,
+            'eth_lock': 0.02 * denoms.ether
+        }
 
         with client_ctx(Account, client):
             result = Account().info()
@@ -67,9 +69,75 @@ class TestAccount(unittest.TestCase):
                     'eth_address': 'f0f0f0ababab',
                     'eth_balance': '1.000000 ETH',
                     'reserved_balance': '1.000000 GNT',
-                    'total_balance': '3.000000 GNT'
+                    'total_balance': '3.000000 GNT',
+                    'gnt_locked': '0.010000 GNT',
+                    'eth_locked': '0.020000 ETH'
                 },
             }
+
+    @patch('getpass.getuser', return_value="John")
+    @patch('zxcvbn.zxcvbn', return_value={'score': 2})
+    @patch('getpass.getpass', return_value="deadbeef")
+    def test_unlock_new(self, mock_pass, mock_zxcvbn, mock_getuser):
+
+        client = Mock()
+        client.key_exists.return_value = False
+
+        with client_ctx(Account, client):
+            result = Account().unlock()
+            assert result == "Account unlock success"
+            assert mock_pass.call_count == 2
+            mock_getuser.assert_called_once()
+            mock_zxcvbn.assert_called_once_with("deadbeef",
+                                                user_inputs=["Golem", "John"])
+            client.set_password.assert_called_once_with("deadbeef")
+
+    @patch('getpass.getpass', return_value="abc")
+    def test_unlock_new_short_error(self, mock_pass):
+
+        client = Mock()
+        client.key_exists.return_value = False
+
+        with client_ctx(Account, client):
+            result = Account().unlock()
+            assert result == "Password is too short, minimum is 5"
+            mock_pass.assert_called_once()
+            client.set_password.assert_not_called()
+
+    @patch('zxcvbn.zxcvbn', return_value={'score': 1})
+    @patch('getpass.getpass', return_value="deadbeef")
+    @patch('getpass.getuser', return_value="John")
+    def test_unlock_new_strength_error(self, mock_getuser, mock_pass,
+                                       mock_zxcvbn):
+
+        client = Mock()
+        client.key_exists.return_value = False
+
+        with client_ctx(Account, client):
+            result = Account().unlock()
+            assert result == "Password is not strong enough. " \
+                "Please use capitals, numbers and special characters."
+            mock_pass.assert_called_once()
+            mock_getuser.assert_called_once()
+            mock_zxcvbn.assert_called_once_with("deadbeef",
+                                                user_inputs=["Golem", "John"])
+            client.set_password.assert_not_called()
+
+    @patch('zxcvbn.zxcvbn', return_value={'score': 1})
+    @patch('getpass.getpass', return_value="deadbeef")
+    @patch('getpass.getuser', return_value="John")
+    def test_unlock_old(self, mock_getuser, mock_pass, mock_zxcvbn):
+
+        client = Mock()
+        client.key_exists.return_value = True
+
+        with client_ctx(Account, client):
+            result = Account().unlock()
+            assert result == "Account unlock success"
+            mock_pass.assert_called_once()
+            mock_getuser.assert_not_called()
+            mock_zxcvbn.assert_not_called()
+            client.set_password.assert_called_once_with("deadbeef")
 
 
 class TestEnvironments(unittest.TestCase):
@@ -408,7 +476,7 @@ class TestTasks(TempDirFixture):
         cls.n_subtasks = len(cls.subtasks)
         cls.get_tasks = lambda s, _id: dict(cls.tasks[0]) if _id \
             else [dict(t) for t in cls.tasks]
-        cls.get_subtasks = lambda s, x: ([dict(s) for s in cls.subtasks], None)
+        cls.get_subtasks = lambda s, x: [dict(s) for s in cls.subtasks]
         cls.get_unsupport_reasons = lambda s, x: cls.reasons
 
     def setUp(self):
@@ -573,10 +641,10 @@ class TestTasks(TempDirFixture):
 
     def test_subtasks_error(self):
         with client_ctx(Tasks, self.client):
-            self.client.get_subtasks = Mock(return_value=(None, 'error'))
+            self.client.get_subtasks = Mock(return_value=None)
             tasks = Tasks()
             result = tasks.subtasks('task_id', None)
-            self.assertEqual(result, 'error')
+            self.assertEqual(result, 'No subtasks')
             self.client.get_subtasks.assert_called_once_with('task_id')
 
     def test_unsupport(self):

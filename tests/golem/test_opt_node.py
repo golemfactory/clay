@@ -14,6 +14,7 @@ from golem.testutils import TempDirFixture
 from golem.tools.ci import ci_skip
 from golem.tools.testwithdatabase import TestWithDatabase
 from golemapp import start, Node
+from tests.golem.config.utils import mock_config
 
 concent_disabled = variables.CONCENT_CHOICES['disabled']
 
@@ -246,12 +247,15 @@ class TestNode(TestWithDatabase):
 
     @patch('golemapp.Node')
     def test_mainnet_should_be_passed_to_node(self, mock_node, *_):
+
         # given
         args = self.args + ['--mainnet']
 
         # when
         runner = CliRunner()
-        return_value = runner.invoke(start, args)
+
+        with mock_config():
+            return_value = runner.invoke(start, args)
 
         # then
         assert return_value.exit_code == 0
@@ -270,8 +274,9 @@ class TestNode(TestWithDatabase):
     @patch('golem.node.Client')
     def test_mainnet_should_be_passed_to_client(self, mock_client, *_):
         # when
-        node = Node(**self.node_kwargs, mainnet=True)
-        node._client_factory(None)
+        with mock_config():
+            node = Node(**self.node_kwargs, mainnet=True)
+            node._client_factory(None)
 
         # then
         mock_client.assert_called_with(datadir=self.path,
@@ -287,6 +292,58 @@ class TestNode(TestWithDatabase):
                                        use_monitor=False,
                                        mainnet=True,
                                        apps_manager=ANY)
+
+    @patch('golemapp.Node')
+    def test_net_testnet_should_be_passed_to_node(self, mock_node, *_):
+
+        # given
+        args = self.args + ['--net', 'testnet']
+
+        # when
+        runner = CliRunner()
+
+        with mock_config():
+            return_value = runner.invoke(start, args)
+
+        # then
+        assert return_value.exit_code == 0
+        mock_node.assert_called_with(datadir=path.join(self.path, 'rinkeby'),
+                                     app_config=ANY,
+                                     config_desc=ANY,
+                                     geth_address=None,
+                                     peers=[],
+                                     start_geth=False,
+                                     start_geth_port=None,
+                                     concent_variant=concent_disabled,
+                                     use_monitor=True,
+                                     password=None,
+                                     mainnet=False)
+
+    @patch('golemapp.Node')
+    def test_net_mainnet_should_be_passed_to_node(self, mock_node, *_):
+
+        # given
+        args = self.args + ['--net', 'mainnet']
+
+        # when
+        runner = CliRunner()
+
+        with mock_config():
+            return_value = runner.invoke(start, args)
+
+        # then
+        assert return_value.exit_code == 0
+        mock_node.assert_called_with(datadir=path.join(self.path, 'mainnet'),
+                                     app_config=ANY,
+                                     config_desc=ANY,
+                                     geth_address=None,
+                                     peers=[],
+                                     start_geth=False,
+                                     start_geth_port=None,
+                                     concent_variant=concent_disabled,
+                                     use_monitor=True,
+                                     password=None,
+                                     mainnet=True)
 
     @pytest.mark.skip('Issue #2476')
     def test_start_geth_port_wo_param_should_fail(self, *_):

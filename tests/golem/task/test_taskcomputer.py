@@ -240,7 +240,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.counting_task = True
         tc.change_config(mock.Mock(), in_background=False)
 
-        tc.docker_manager.update_config = lambda x, y, z: y()
+        tc.docker_manager.update_config = lambda x, y, z: y(False)
 
         tc.counting_task = None
         tc.change_config(mock.Mock(), in_background=False)

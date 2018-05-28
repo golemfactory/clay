@@ -441,6 +441,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     #########################
 
     def _react_to_want_to_compute_task(self, msg):
+        reasons = message.CannotAssignTask.REASON
+
+        if msg.concent_enabled and not self.concent_service.enabled:
+            self.send(
+                message.CannotAssignTask(
+                    task_id=msg.task_id,
+                    reason=reasons.ConcentDisabled,
+                )
+            )
+            self.dropped()
+            return
+
         self.task_manager.got_wants_to_compute(msg.task_id, self.key_id,
                                                msg.node_name)
         if self.task_server.should_accept_provider(self.key_id):
@@ -463,7 +475,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         else:
             ctd, wrong_task, wait = None, False, False
 
-        reasons = message.CannotAssignTask.REASON
         if wrong_task:
             self.send(
                 message.CannotAssignTask(
@@ -472,14 +483,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 )
             )
             self.dropped()
-        elif ctd:
+            return
+
+        if ctd:
             task = self.task_manager.tasks[ctd['task_id']]
             task_state = self.task_manager.tasks_states[ctd['task_id']]
             price = taskkeeper.compute_subtask_value(
                 task.header.max_price,
                 task.header.subtask_timeout,
             )
-            msg = message.tasks.TaskToCompute(
+            ttc = message.tasks.TaskToCompute(
                 compute_task_def=ctd,
                 requestor_id=task.header.task_owner.key,
                 requestor_public_key=task.header.task_owner.key,
@@ -490,31 +503,34 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 package_hash='sha1:' + task_state.package_hash,
                 # for now, we're assuming the Concent
                 # is always in use
-                concent_enabled=self.concent_service.enabled,
+                concent_enabled=msg.concent_enabled,
                 price=price,
                 size=0,  # @todo issue #2769
             )
             self.task_manager.set_subtask_value(
-                subtask_id=msg.subtask_id,
+                subtask_id=ttc.subtask_id,
                 price=price,
             )
             history.add(
-                msg=msg,
+                msg=ttc,
                 node_id=self.key_id,
                 local_role=Actor.Requestor,
                 remote_role=Actor.Provider,
             )
-            self.send(msg)
-        elif wait:
+            self.send(ttc)
+            return
+
+        if wait:
             self.send(message.WaitingForResults())
-        else:
-            self.send(
-                message.CannotAssignTask(
-                    task_id=msg.task_id,
-                    reason=reasons.NoMoreSubtasks,
-                )
+            return
+
+        self.send(
+            message.CannotAssignTask(
+                task_id=msg.task_id,
+                reason=reasons.NoMoreSubtasks,
             )
-            self.dropped()
+        )
+        self.dropped()
 
     @handle_attr_error_with_task_computer
     @history.provider_history
@@ -563,6 +579,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def _react_to_cannot_compute_task(self, msg):
         if self.check_provider_for_subtask(msg.subtask_id):
+            logger.info(
+                "Provider can't compute subtask: %r Reason: %r",
+                msg.subtask_id,
+                msg.reason,
+            )
             self.task_manager.task_computation_failure(
                 msg.subtask_id,
                 'Task computation rejected: {}'.format(msg.reason)
@@ -657,6 +678,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
             self.disconnect(message.Disconnect.REASON.BadProtocol)
             return
+
         if not self.check_requestor_for_subtask(msg.subtask_id):
             self.dropped()
             return

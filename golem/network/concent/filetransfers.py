@@ -10,30 +10,34 @@ from golem_messages.message.concents import (
     FileTransferToken, ClientAuthorization
 )
 
-
 from golem.core import keysauth
-from golem.core import variables
 from golem.core.service import LoopingCallService
 
 logger = logging.getLogger(__name__)
 
 
 class ConcentFileRequest():  # noqa pylint:disable=too-few-public-methods
-    def __init__(self,
+    def __init__(self,  # noqa pylint:disable=too-many-arguments
                  file_path: str,
                  file_transfer_token: FileTransferToken,
                  success: typing.Optional[typing.Callable] = None,
-                 error: typing.Optional[typing.Callable] = None) -> None:
+                 error: typing.Optional[typing.Callable] = None,
+                 file_category: typing.Optional[
+                     FileTransferToken.FileInfo.Category] = None) -> None:  # noqa pylint:disable=bad-whitespace
         self.file_path = file_path
         self.file_transfer_token = file_transfer_token
         self.success = success
         self.error = error
+        self.file_category = file_category or \
+            FileTransferToken.FileInfo.Category.results
 
     def __repr__(self):
-        return '%s request: %r %r' % (
+        return '%s request - path: %r, ftt: %r, category: %r' % (
             self.file_transfer_token.operation.value,
             self.file_path,
-            self.file_transfer_token)
+            self.file_transfer_token,
+            self.file_category,
+        )
 
 
 class ConcentFiletransferService(LoopingCallService):
@@ -53,24 +57,27 @@ class ConcentFiletransferService(LoopingCallService):
 
     def start(self, now: bool = True):
         super().start(now=now)
-        logger.debug("Concent Filestransfer Service started")
+        logger.debug("Concent Filetransfer Service started")
 
     def stop(self):
         self._transfers.join()
         super().stop()
-        logger.debug("Concent Filestransfer Service stopped")
+        logger.debug("Concent Filetransfer Service stopped")
 
-    def transfer(self,
+    def transfer(self,  # noqa pylint:disable=too-many-arguments
                  file_path: str,
                  file_transfer_token: FileTransferToken,
                  success: typing.Optional[typing.Callable] = None,
-                 error: typing.Optional[typing.Callable] = None):
+                 error: typing.Optional[typing.Callable] = None,
+                 file_category: typing.Optional[
+                     FileTransferToken.FileInfo.Category] = None) -> None:  # noqa pylint:disable=bad-whitespace
 
         if not self.running:
             logger.warning("Request scheduled when service is not started")
 
         request = ConcentFileRequest(
-            file_path, file_transfer_token, success=success, error=error)
+            file_path, file_transfer_token,
+            success=success, error=error, file_category=file_category)
 
         logger.debug("Scheduling: %r", request)
         self._transfers.put(request)
@@ -105,11 +112,12 @@ class ConcentFiletransferService(LoopingCallService):
             file_transfer_token.storage_cluster_address)
 
     @staticmethod
-    def _get_download_uri(file_transfer_token: FileTransferToken):
+    def _get_download_uri(file_transfer_token: FileTransferToken,
+                          file_category: FileTransferToken.FileInfo.Category):
         return '{}{}{}'.format(
             file_transfer_token.storage_cluster_address,
             'download/',
-            file_transfer_token.files[0].get('path')
+            file_transfer_token.get_file_info(file_category).get('path')
         )
 
     def _get_auth_headers(self, file_transfer_token: FileTransferToken):
@@ -136,8 +144,9 @@ class ConcentFiletransferService(LoopingCallService):
         uri = self._get_upload_uri(request.file_transfer_token)
         ftt = request.file_transfer_token
         headers = self._get_auth_headers(ftt)
+        path = ftt.get_file_info(request.file_category).get('path')
         headers.update({
-            'Concent-Upload-Path': ftt.files[0].get('path'),
+            'Concent-Upload-Path': path,
             'Content-Type': 'application/octet-stream',
         })
 
@@ -149,7 +158,8 @@ class ConcentFiletransferService(LoopingCallService):
         return response
 
     def download(self, request: ConcentFileRequest):
-        uri = self._get_download_uri(request.file_transfer_token)
+        uri = self._get_download_uri(request.file_transfer_token,
+                                     request.file_category)
         headers = self._get_auth_headers(request.file_transfer_token)
         response = requests.get(uri, stream=True, headers=headers)
         with open(request.file_path, mode='wb') as f:

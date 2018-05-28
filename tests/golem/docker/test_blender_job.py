@@ -30,6 +30,7 @@ class TestBlenderDockerJob(TestDockerJob):
             borders_x=(0, 1),
             borders_y=(0, 1),
             use_compositing=True,
+            samples=5
         )
 
         # copy the scene file to the resources dir

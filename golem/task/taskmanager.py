@@ -85,9 +85,9 @@ class TaskManager(TaskEventListener):
         self.keys_auth = keys_auth
         self.key_id = keys_auth.key_id
 
-        self.tasks = {}  # type: Dict[str, Task]
-        self.tasks_states = {}  # type: Dict[str, TaskState]
-        self.subtask2task_mapping = {}  # type: Dict[str, str]
+        self.tasks: Dict[str, Task] = {}
+        self.tasks_states: Dict[str, TaskState] = {}
+        self.subtask2task_mapping: Dict[str, str] = {}
 
         self.listen_address = listen_address
         self.listen_port = listen_port
@@ -219,6 +219,21 @@ class TaskManager(TaskEventListener):
         except (FileNotFoundError, OSError) as e:
             logger.warning("Couldn't remove dump file: %s - %s", filepath, e)
 
+    @staticmethod
+    def _migrate_status_to_enum(state: TaskState) -> None:
+        """
+        This is a migration for data stored in pickles.
+        See #2768
+        """
+        if isinstance(state.status, str):
+            state.status = TaskStatus(state.status)
+
+        subtask_state: SubtaskState
+        for subtask_state in state.subtask_states.values():
+            if isinstance(subtask_state.subtask_status, str):
+                subtask_state.subtask_status = \
+                    SubtaskStatus(subtask_state.subtask_status)
+
     def restore_tasks(self) -> None:
         logger.debug('SEARCHING FOR TASKS TO RESTORE')
         broken_paths = set()
@@ -230,7 +245,12 @@ class TaskManager(TaskEventListener):
             task_id = None
             with path.open('rb') as f:
                 try:
+                    task: Task
+                    state: TaskState
                     task, state = pickle.load(f)
+
+                    TaskManager._migrate_status_to_enum(state)
+
                     task.register_listener(self)
 
                     task_id = task.header.task_id
@@ -868,7 +888,8 @@ class TaskManager(TaskEventListener):
     def get_subtasks_dict(self, task_id):
         task_state = self.tasks_states[task_id]
         subtasks = task_state.subtask_states
-        return [subtask.to_dictionary() for subtask in subtasks.values()]
+        if subtasks:
+            return [subtask.to_dictionary() for subtask in subtasks.values()]
 
     def get_subtasks_borders(self, task_id, part=1):
         task = self.tasks[task_id]

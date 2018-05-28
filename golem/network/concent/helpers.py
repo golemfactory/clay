@@ -22,29 +22,6 @@ RESPONSE_FOR_RCT = typing.Union[
 ]
 
 
-def verify_message_signature(
-        msg: message.base.Message, ecc: cryptography.ECCx) -> bool:
-    """
-    Verifies that the message's signature belongs to the owner of the
-    specified key pair
-
-    :param msg: the Message to verify
-    :param ecc: the `ECCx` of the alleged owner
-    :return: `True` if the signature belongs to the same entity as the ecc
-             `False` otherwise
-    """
-    try:
-        ecc.verify(
-            sig=msg.sig,
-            inputb=msg.get_short_hash(),
-        )
-    except msg_exceptions.InvalidSignature:
-        logger.warning('Message signature mismatch: %r', msg)
-        return False
-
-    return True
-
-
 def verify_task_deadline(msg: message.base.Message) -> bool:
     now_ts = calendar.timegm(time.gmtime())
     # SEE #2683 for an explanation about TOLERANCE
@@ -97,7 +74,9 @@ def process_report_computed_task_no_time_check(
     reject_reasons = message.tasks.RejectReportComputedTask.REASON
 
     # Check msg.task_to_compute signature
-    if not verify_message_signature(msg.task_to_compute, ecc):
+    try:
+        msg.task_to_compute.verify_signature(ecc.raw_pubkey)
+    except msg_exceptions.InvalidSignature:
         return prepare_reject_report_computed_task(msg.task_to_compute, None)
 
     if not verify_message_payment_address(report_computed_task=msg, ecc=ecc):

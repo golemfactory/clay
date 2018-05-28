@@ -727,3 +727,27 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         assert "Cannot accept subtask abc for task %s. " \
                "Subtask id was not generated from requestor's " \
                "key." % (task_id) in log_.output[0]
+
+    def test_add_package_paths(self):
+        ctk = CompTaskKeeper(self.new_path)
+        task_id = 'veryimportanttask'
+        package_paths = ['path/to/file']
+        ctk.add_package_paths(task_id, package_paths)
+        self.assertEqual(ctk.task_package_paths[task_id], package_paths)
+
+    def test_get_package_paths(self):
+        ctk = CompTaskKeeper(self.new_path)
+        task_id = 'veryimportanttask'
+        package_paths = ['path/to/file']
+        ctk.task_package_paths[task_id] = package_paths
+        self.assertEqual(ctk.get_package_paths(task_id), package_paths)
+
+    def test_package_paths_restore(self):
+        ctk = CompTaskKeeper(self.new_path)
+        task_id = 'veryimportanttask'
+        package_paths = ['path/to/file']
+        ctk.add_package_paths(task_id, package_paths)
+        ctk._dump_tasks()
+        ctk.task_package_paths = {}
+        ctk.restore()
+        self.assertEqual(ctk.get_package_paths(task_id), package_paths)

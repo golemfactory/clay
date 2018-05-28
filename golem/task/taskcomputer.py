@@ -7,7 +7,7 @@ import uuid
 from threading import Lock
 
 from pydispatch import dispatcher
-
+from twisted.internet.defer import Deferred
 
 from golem.core.common import deadline_to_timeout
 from golem.core.statskeeper import IntStatsKeeper
@@ -15,7 +15,6 @@ from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
-from golem.network.p2p.node import Node as P2PNode
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
 
@@ -267,14 +266,17 @@ class TaskComputer(object):
         if self.counting_task is not None:
             return "Computing"
         return "Idle"
-
-    def change_config(self, config_desc, in_background=True, run_benchmarks=False):
+      
+    def change_config(self, config_desc, in_background=True,
+                      run_benchmarks=False):
         self.dir_manager = DirManager(self.task_server.get_task_computer_root())
         self.resource_manager = ResourcesManager(self.dir_manager, self)
         self.task_request_frequency = config_desc.task_request_interval
-        self.waiting_for_task_session_timeout = config_desc.waiting_for_task_session_timeout
+        self.waiting_for_task_session_timeout = \
+            config_desc.waiting_for_task_session_timeout
         self.compute_tasks = config_desc.accept_tasks
-        self.change_docker_config(config_desc, run_benchmarks, in_background)
+        return self.change_docker_config(config_desc, run_benchmarks,
+                                         in_background)
 
     def config_changed(self):
         for l in self.listeners:
@@ -285,9 +287,12 @@ class TaskComputer(object):
         dm = self.docker_manager
         dm.build_config(config_desc)
 
+        deferred = Deferred()
         if not dm.docker_machine and run_benchmarks:
-            self.task_server.benchmark_manager.run_all_benchmarks()
-            return
+            self.task_server.benchmark_manager.run_all_benchmarks(
+                deferred.callback, deferred.errback
+            )
+            return deferred
 
         if dm.docker_machine and self.use_docker_manager:  # noqa pylint: disable=no-member
 
@@ -296,9 +301,13 @@ class TaskComputer(object):
             def status_callback():
                 return self.counting_task
 
-            def done_callback():
-                if run_benchmarks:
-                    self.task_server.benchmark_manager.run_all_benchmarks()
+            def done_callback(config_differs):
+                if run_benchmarks or config_differs:
+                        self.task_server.benchmark_manager.run_all_benchmarks(
+                            deferred.callback, deferred.errback
+                        )
+                else:
+                    deferred.callback('Benchmarks not executed')
                 logger.debug("Resuming new task computation")
                 self.lock_config(False)
                 self.runnable = True
@@ -307,6 +316,8 @@ class TaskComputer(object):
             dm.update_config(status_callback,
                              done_callback,
                              in_background)
+
+            return deferred
 
     def register_listener(self, listener):
         self.listeners.append(listener)

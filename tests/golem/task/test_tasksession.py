@@ -101,6 +101,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts = TaskSession(conn)
         ts._get_handshake = Mock(return_value={})
         ts.verified = True
+        ts.concent_service.enabled = use_concent = True
         ts.request_task("ABC", "xyz", 1030, 30, 3, 1, 8)
         mt = ts.conn.send_message.call_args[0][0]
         self.assertIsInstance(mt, message.WantToComputeTask)
@@ -112,6 +113,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertEqual(mt.max_memory_size, 1)
         self.assertEqual(mt.num_cores, 8)
         ts2 = TaskSession(conn)
+        ts2.concent_service.enabled = use_concent
         ts2.verified = True
         ts2.key_id = provider_key = "DEF"
         ts2.can_be_not_encrypted.append(mt.TYPE)
@@ -144,7 +146,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertIsInstance(ms, message.CannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
         ts2.task_server.should_accept_provider.return_value = True
-        ts2.concent_service.enabled = use_concent = True
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.TaskToCompute)
@@ -448,6 +449,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_manager = MagicMock()
         ts.task_computer = Mock()
         ts.task_server = Mock()
+        ts.concent_service.enabled = False
         ts.send = Mock()
 
         env = Mock()
@@ -818,7 +820,8 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
     def test_send_report_computed_task_concent_success(self):
         wtr = factories.taskserver.WaitingTaskResultFactory(
             task_id=self.task_id, subtask_id=self.subtask_id, owner=self.n)
-        self._mock_task_to_compute(self.task_id, self.subtask_id, self.node_id)
+        self._mock_task_to_compute(self.task_id, self.subtask_id, self.node_id,
+                                   concent_enabled=True)
         self.ts.send_report_computed_task(
             wtr, wtr.owner.pub_addr, wtr.owner.pub_port, "0x00", self.n)
 
@@ -836,7 +839,8 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
             task_id=self.task_id, subtask_id=self.subtask_id, owner=self.n,
             result=result, result_type=ResultType.FILES
         )
-        self._mock_task_to_compute(self.task_id, self.subtask_id, self.node_id)
+        self._mock_task_to_compute(self.task_id, self.subtask_id, self.node_id,
+                                   concent_enabled=True)
 
         self.ts.send_report_computed_task(
             wtr, wtr.owner.pub_addr, wtr.owner.pub_port, "0x00", self.n)
