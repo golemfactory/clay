@@ -3,8 +3,8 @@ import inspect
 import json
 import pickle
 
+import enum
 import peewee
-from enum import Enum
 # Type is used for old-style (pre Python 3.6) type annotation
 from typing import Optional, Type  # pylint: disable=unused-import
 
@@ -82,12 +82,8 @@ class HexIntegerField(CharField):
             return int(value, 16)
 
 
-class EnumField(IntegerField):
-    """ Database field that maps enum type to integer."""
-
-    def __init__(self, enum_type, *args, **kwargs):
-        super(EnumField, self).__init__(*args, **kwargs)
-        self.enum_type = enum_type
+class EnumFieldBase:
+    enum_type = None
 
     def db_value(self, value):
         if not isinstance(value, self.enum_type):
@@ -98,20 +94,20 @@ class EnumField(IntegerField):
         return self.enum_type(value)
 
 
-class StringEnumField(CharField):
+class EnumField(EnumFieldBase, IntegerField):
+    """ Database field that maps enum type to integer."""
+
+    def __init__(self, enum_type, *args, **kwargs):
+        super(EnumField, self).__init__(*args, **kwargs)
+        self.enum_type = enum_type
+
+
+class StringEnumField(EnumFieldBase, CharField):
     """ Database field that maps enum types to strings."""
 
     def __init__(self, enum_type, *args, max_length=255, **kwargs):
         super().__init__(max_length, *args, **kwargs)
         self.enum_type = enum_type
-
-    def db_value(self, value):
-        if not isinstance(value, self.enum_type):
-            raise TypeError("Expected {} type".format(self.enum_type.__name__))
-        return value.value  # Get the string value of an enum.
-
-    def python_value(self, value):
-        return self.enum_type(value)
 
 
 class JsonField(TextField):
@@ -137,7 +133,7 @@ class DictSerializableJSONField(TextField):
         return self.objtype.from_dict(json.loads(value))
 
 
-class PaymentStatus(Enum):
+class PaymentStatus(enum.Enum):
     """ The status of a payment. """
     awaiting = 1  # Created but not introduced to the payment network.
     sent = 2  # Sent to the payment network.
@@ -236,12 +232,23 @@ class Payment(BaseModel):
 
 
 class Income(BaseModel):
+
+    @enum.unique
+    class Origin(enum.Enum):
+
+        def _generate_next_value_(name: str, *_):
+            return name
+
+        node = enum.auto()
+        concent = enum.auto()
+
     sender_node = CharField()
     subtask = CharField()
     value = HexIntegerField()
     accepted_ts = IntegerField(null=True)
     transaction = CharField(null=True)
     overdue = BooleanField(default=False)
+    origin = StringEnumField(Origin, default=Origin.node)
 
     class Meta:
         database = db
@@ -402,7 +409,7 @@ class Performance(BaseModel):
 ##################
 
 
-class Actor(Enum):
+class Actor(enum.Enum):
     Concent = "concent"
     Requestor = "requestor"
     Provider = "provider"
