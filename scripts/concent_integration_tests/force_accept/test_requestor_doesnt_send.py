@@ -36,9 +36,14 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
     def wait_for_gntb(self):
         sys.stderr.write('Waiting for GNTB...\n')
         while self.ets._gntb_balance <= 0:
-            self.ets._run()
+            try:
+                self.ets._run()
+            except ValueError as e:
+                # web3 will raise ValueError if 'error' is present
+                # in response from geth
+                sys.stderr.write('E: {}\n'.format(e))
             sys.stderr.write(
-                'Still waiting. GNT: {} GNTB: {} ETH: {}\n'.format(
+                'Still waiting. GNT: {:22} GNTB: {:22} ETH: {:17}\n'.format(
                     self.ets._gnt_balance,
                     self.ets._gntb_balance,
                     self.ets._eth_balance,
@@ -95,19 +100,20 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         # Difference between timestamp and deadline has to be constant
         # because it's part of SVT formula
         deadline_delta = 3600
+        deadline_timedelta = datetime.timedelta(seconds=deadline_delta)
         report_computed_task.task_to_compute.compute_task_def['deadline'] = \
             report_computed_task.task_to_compute.timestamp + deadline_delta
         svt = helpers.subtask_verification_time(report_computed_task)
         now = datetime.datetime.utcnow()
         if mode == 'before':
             # We're one moment before window opens
-            ttc_dt = now - svt + moment
+            ttc_dt = now - deadline_timedelta - svt + moment
         elif mode == 'after':
             # We're one moment after window closed
-            ttc_dt = now - svt - constants.FAT - moment
+            ttc_dt = now - deadline_timedelta - svt - constants.FAT - moment
         else:
             # We're a the beginning of the window (moment after to be sure)
-            ttc_dt = now - svt - moment
+            ttc_dt = now - deadline_timedelta - svt - moment
         ttc_timestamp = calendar.timegm(ttc_dt.utctimetuple())
 
         msg_factories.helpers.override_timestamp(
@@ -133,7 +139,9 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         print('*'*80)
         print('TTC:', ttc_dt)
         print('WINDOW: {} ---------- {}'.format(
-            ttc_dt+svt, ttc_dt+svt+constants.FAT))
+            ttc_dt+deadline_timedelta+svt,
+            ttc_dt+deadline_timedelta+svt+constants.FAT,
+        ))
         print('NOW:', now)
         print('*'*80)
         return report_computed_task

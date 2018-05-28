@@ -114,6 +114,8 @@ class ConcentBaseTest:
         return msg
 
     def _load_response(self, response, priv_key):
+        if response is None:
+            return None
         return golem_messages.load(
             response, priv_key, self.variant['pubkey'])
 
