@@ -2,6 +2,7 @@
 import calendar
 import datetime
 import logging
+import random
 import sys
 import threading
 import time
@@ -21,12 +22,13 @@ from ..base import ConcentBaseTest
 
 reasons = message.concents.ForceSubtaskResultsRejected.REASON
 logger = logging.getLogger(__name__)
-moment = datetime.timedelta(seconds=1)
+moment = datetime.timedelta(seconds=2)
 
 
 class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
     """Requestor doesn't send Ack/Reject of SubtaskResults"""
     def setUp(self):
+        random.seed()
         ConcentBaseTest.setUp(self)
         testutils.DatabaseFixture.setUp(self)
         self.ets = libets.EthereumTransactionSystem(
@@ -52,12 +54,12 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
             )
             time.sleep(10)
 
-    def requestor_put_deposit(self, fsr: message.concents.ForceSubtaskResults):
+    def requestor_put_deposit(self, price: int):
         start = datetime.datetime.now()
         self.wait_for_gntb()
         amount, _ = helpers.requestor_deposit_amount(
             # We'll use subtask price. Total number of subtasks is unknown
-            fsr.task_to_compute.price,
+            price,
         )
         tx_hash = self.ets.concent_deposit(
             required=amount,
@@ -155,6 +157,9 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
             self, mode='within', rct_kwargs=None, **kwargs):
         if rct_kwargs is None:
             rct_kwargs = {}
+        price = random.randint(1 << 20, 10 << 20)
+        self.requestor_put_deposit(price)
+        rct_kwargs['task_to_compute__price'] = price
         report_computed_task = self.prepare_report_computed_task(
             mode=mode,
             **rct_kwargs,
@@ -172,6 +177,7 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
             **kwargs,
             sign__privkey=self.provider_priv_key,
         )
+        self.assertEqual(fsr.task_to_compute.price, price)
         self.assertTrue(
             fsr.validate_ownership_chain(
                 concent_public_key=self.variant['pubkey'],
@@ -186,7 +192,6 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         )
         print(fsr)
         fsr.sig = None  # Will be signed in send_to_concent()
-        self.requestor_put_deposit(fsr)
         response = self.provider_load_response(self.provider_send(fsr))
         self.assertIn(
             type(response),
@@ -270,10 +275,11 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
     def test_requestor_responds_with_accept(self):
         self.assertIsNone(self.provider_send_force())
         fsr = self.requestor_receive()
-        # Check providers signature
         self.assertTrue(
-            fsr.ack_report_computed_task.verify_signature(
-                self.requestor_pub_key,
+            fsr.verify_owners(
+                provider_public_key=self.provider_pub_key,
+                requestor_public_key=self.requestor_pub_key,
+                concent_public_key=self.variant['pubkey'],
             ),
         )
         accept_msg = msg_factories.tasks.SubtaskResultsAcceptedFactory(
@@ -283,6 +289,13 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
             .task_to_compute,
         )
         accept_msg.sign_message(self.requestor_priv_key)
+        self.assertTrue(
+            accept_msg.verify_owners(
+                provider_public_key=self.provider_pub_key,
+                requestor_public_key=self.requestor_pub_key,
+                concent_public_key=self.variant['pubkey'],
+            ),
+        )
         fsrr = message.concents.ForceSubtaskResultsResponse(
             subtask_results_accepted=accept_msg,
         )
@@ -291,11 +304,6 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         self.assertIsInstance(
             received,
             message.concents.ForceSubtaskResultsResponse,
-        )
-        self.assertTrue(
-            received.subtask_results_accepted.verify_signature(
-                self.requestor_pub_key,
-            ),
         )
         self.assertIsNone(received.subtask_results_rejected)
         self.assertEqual(received.subtask_results_accepted, accept_msg)
@@ -311,10 +319,9 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
             ),
         )
         reject_msg = msg_factories.tasks.SubtaskResultsRejectedFactory(
-            task_to_compute=fsr
+            report_computed_task=fsr
             .ack_report_computed_task
             .report_computed_task
-            .task_to_compute,
         )
         reject_msg.sign_message(self.requestor_priv_key)
         self.assertTrue(
@@ -332,11 +339,6 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         self.assertIsInstance(
             received,
             message.concents.ForceSubtaskResultsResponse,
-        )
-        self.assertTrue(
-            received.subtask_results_accepted.verify_signature(
-                self.requestor_pub_key,
-            ),
         )
         self.assertIsNone(received.subtask_results_accepted)
         self.assertEqual(received.subtask_results_rejected, reject_msg)
