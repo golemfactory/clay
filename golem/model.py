@@ -86,9 +86,17 @@ class EnumFieldBase:
     enum_type = None
 
     def db_value(self, value):
-        if not isinstance(value, self.enum_type):
-            raise TypeError("Expected {} type".format(self.enum_type.__name__))
-        return value.value  # Get the integer value of an enum.
+        if isinstance(value, self.enum_type):
+            return value.value  # Get the base-type value of an enum.
+
+        value = self.coerce(value)
+        enum_vals = [e.value for e in self.enum_type]
+        if value not in enum_vals:
+            raise TypeError(
+                "Expected {} type or one of {}".format(
+                    self.enum_type.__name__, enum_vals))
+
+        return value
 
     def python_value(self, value):
         return self.enum_type(value)
@@ -231,24 +239,29 @@ class Payment(BaseModel):
             )
 
 
+@enum.unique
+class IncomeOrigin(enum.Enum):
+
+    def _generate_next_value_(name: str, *_):
+        return name
+
+    node = enum.auto()
+    concent = enum.auto()
+
+
+class IncomeOriginField(StringEnumField):
+    def __init__(self, *args, **kwargs):
+        super().__init__(IncomeOrigin, *args, **kwargs)
+
+
 class Income(BaseModel):
-
-    @enum.unique
-    class Origin(enum.Enum):
-
-        def _generate_next_value_(name: str, *_):
-            return name
-
-        node = enum.auto()
-        concent = enum.auto()
-
     sender_node = CharField()
     subtask = CharField()
     value = HexIntegerField()
     accepted_ts = IntegerField(null=True)
     transaction = CharField(null=True)
     overdue = BooleanField(default=False)
-    origin = StringEnumField(Origin, default=Origin.node)
+    origin = IncomeOriginField(default=IncomeOrigin.node.value)
 
     class Meta:
         database = db
