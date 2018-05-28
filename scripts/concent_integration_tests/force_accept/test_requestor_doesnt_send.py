@@ -64,7 +64,11 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
             reserved=0,
         )
         sys.stderr.write("Deposit tx_hash: {}\n".format(tx_hash))
-        self.assertIsNotNone(tx_hash)
+
+        if tx_hash is None:
+            sys.stderr.write("No need for deposit\n")
+            return
+
         transaction_processed = threading.Event()
 
         def _callback(receipt):
@@ -84,7 +88,6 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
             time.sleep(15)
         sys.stderr.write("\nDeposit confirmed in {}\n".format(
             datetime.datetime.now()-start))
-        return tx_hash
 
     def prepare_report_computed_task(self, mode):
         """Returns ReportComputedTask with open force acceptance window
