@@ -22,6 +22,11 @@ from golem.network.concent import received_handler
 from golem.network.concent.received_handler import TaskServerMessageHandler
 from golem.network.concent.handlers_library import library
 from golem.network.concent.filetransfers import ConcentFiletransferService
+from golem.transactions.incomeskeeper import (
+    IncomesKeeper, Income)
+from golem.transactions.ethereum.ethereumtransactionsystem import (
+    EthereumTransactionSystem)
+
 
 from tests.factories import taskserver as taskserver_factories
 from tests.factories.resultpackage import ExtractedPackageFactory
@@ -370,6 +375,12 @@ class ForceGetTaskResultTest(TaskServerMessageHandlerTestBase):
 
 
 class ForceSubtaskResultsResponseTest(TaskServerMessageHandlerTestBase):
+    def setUp(self):
+        super().setUp()
+        self.client.transaction_system = EthereumTransactionSystem(
+            self.path,
+            self.provider_keys.raw_privkey
+        )
 
     def test_force_subtask_results_response_empty(self):
         msg = message.concents.ForceSubtaskResultsResponse()
@@ -381,18 +392,26 @@ class ForceSubtaskResultsResponseTest(TaskServerMessageHandlerTestBase):
             library.interpret(msg)
 
     @mock.patch("golem.network.history.add")
-    @mock.patch("golem.task.taskserver.TaskServer.subtask_accepted")
     def test_force_subtask_results_response_accepted(
             self,
-            accepted_mock,
             add_mock):
         msg = msg_factories.concents.\
             ForceSubtaskResultsResponseFactory.with_accepted()
-        library.interpret(msg)
-        accepted_mock.assert_called_once_with(
+
+        IncomesKeeper().expect(
+            sender_node_id=msg.task_to_compute.requestor_id,
             subtask_id=msg.subtask_id,
-            accepted_ts=msg.subtask_results_accepted.payment_ts,
+            value=42
         )
+        self.assertIsNone(Income.get(subtask=msg.subtask_id).accepted_ts)
+
+        library.interpret(msg)
+
+        self.assertEqual(
+            Income.get(subtask=msg.subtask_id).accepted_ts,
+            msg.subtask_results_accepted.payment_ts
+        )
+
         add_mock.assert_called_once_with(
             msg=msg.subtask_results_accepted,
             node_id=mock.ANY,
@@ -775,3 +794,27 @@ class SubtaskResultsVerifyTest(FileTransferTokenTestsBase,  # noqa pylint:disabl
         self.cft._run()
         self.assertEqual(upload_mock.call_count, 1)
         self.assertIn('Cannot upload resources', log_mock.call_args[0][0])
+
+
+class SubtaskResultsSettledTest(TaskServerMessageHandlerTestBase):
+    def setUp(self):
+        super().setUp()
+        self.client.transaction_system = EthereumTransactionSystem(
+            self.path,
+            self.provider_keys.raw_privkey
+        )
+
+    def test_settled(self):
+        srs = msg_factories.concents.SubtaskResultsSettledFactory()
+        self.task_server.client.node.key = srs.task_to_compute.provider_id
+        IncomesKeeper().expect(
+            sender_node_id=srs.task_to_compute.requestor_id,
+            subtask_id=srs.subtask_id,
+            value=42
+        )
+        self.assertIsNone(Income.get(subtask=srs.subtask_id).settled_ts)
+
+        library.interpret(srs)
+
+        self.assertEqual(
+            Income.get(subtask=srs.subtask_id).settled_ts, srs.timestamp)

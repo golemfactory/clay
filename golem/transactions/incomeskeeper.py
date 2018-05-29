@@ -104,6 +104,18 @@ class IncomesKeeper:
             subtask_id=subtask_id
         )
 
+    @staticmethod
+    def settled(sender_node, subtask_id, settled_ts):
+        try:
+            income = Income.get(sender_node=sender_node, subtask=subtask_id)
+        except Income.DoesNotExist:
+            logger.error(
+                "Income.DoesNotExist subtask_id: %r", subtask_id)
+            return
+
+        income.settled_ts = settled_ts
+        income.save()
+
     def update_awaiting(self, sender_node, subtask_id, accepted_ts):
         try:
             income = Income.get(sender_node=sender_node, subtask=subtask_id)

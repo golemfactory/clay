@@ -28,9 +28,17 @@ class TestPayment(DatabaseFixture):
 
         self.assertEqual(3, len([payment for payment in m.Payment.select()]))
 
+    def test_status_base_type(self):
+        payee = 'xx'
+        subtask = 'zz'
+        m.Payment.create(payee=payee, subtask=subtask, value=5,
+                         status=m.PaymentStatus.awaiting.value)
+        p2 = m.Payment.get(payee=payee, subtask=subtask)
+        self.assertEqual(p2.status, m.PaymentStatus.awaiting)
+
     def test_invalid_status(self):
         with self.assertRaises(TypeError):
-            m.Payment.create(payee="XX", subtask="zz", value=5, status=1)
+            m.Payment.create(payee="XX", subtask="zz", value=5, status=667)
 
     def test_invalid_value_type(self):
         with self.assertRaises(TypeError):
