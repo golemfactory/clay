@@ -139,7 +139,8 @@ class TestNode(TestWithDatabase):
                                      concent_variant=variables.CONCENT_CHOICES[
                                          'test'
                                      ],
-                                     use_monitor=True,
+                                     use_monitor=None,
+                                     use_talkback=None,
                                      password=None)
 
     @patch('golem.node.Client')
@@ -218,7 +219,8 @@ class TestNode(TestWithDatabase):
                                      start_geth=True,
                                      start_geth_port=None,
                                      concent_variant=concent_disabled,
-                                     use_monitor=True,
+                                     use_monitor=None,
+                                     use_talkback=None,
                                      password=None)
 
     @patch('golem.node.Client')
@@ -263,7 +265,8 @@ class TestNode(TestWithDatabase):
                                      start_geth=False,
                                      start_geth_port=None,
                                      concent_variant=concent_disabled,
-                                     use_monitor=True,
+                                     use_monitor=None,
+                                     use_talkback=None,
                                      password=None)
 
     @patch('golem.node.Client')
@@ -312,7 +315,8 @@ class TestNode(TestWithDatabase):
                                      start_geth=False,
                                      start_geth_port=None,
                                      concent_variant=concent_disabled,
-                                     use_monitor=True,
+                                     use_monitor=None,
+                                     use_talkback=None,
                                      password=None)
 
     @patch('golem.node.Node')
@@ -340,7 +344,8 @@ class TestNode(TestWithDatabase):
                                      start_geth=False,
                                      start_geth_port=None,
                                      concent_variant=concent_disabled,
-                                     use_monitor=True,
+                                     use_monitor=None,
+                                     use_talkback=None,
                                      password=None)
 
     @patch('golem.node.Node')
@@ -417,7 +422,7 @@ class TestNode(TestWithDatabase):
                                      start_geth=True,
                                      start_geth_port=port,
                                      concent_variant=concent_disabled,
-                                     use_monitor=True,
+                                     use_monitor=None,
                                      password=None)
 
     @patch('golem.node.Client')
@@ -552,8 +557,36 @@ class TestNode(TestWithDatabase):
 
     @patch('golem.terms.TermsOfUse.accept_terms')
     def test_accept_terms(self, accept, *_):
-        Node.accept_terms()
+        node = Mock()
+
+        Node.accept_terms(node)
         accept.assert_called_once_with()
+
+        assert not isinstance(node._use_monitor, bool)
+        assert not isinstance(node._use_talkback, bool)
+        assert node._app_config.change_config.called
+
+    @patch('golem.terms.TermsOfUse.accept_terms')
+    def test_accept_terms_monitor_arg(self, accept, *_):
+        node = Mock()
+
+        Node.accept_terms(node, enable_monitor=True)
+        accept.assert_called_once_with()
+
+        assert node._use_monitor is True
+        assert not isinstance(node._use_talkback, bool)
+        assert node._app_config.change_config.called
+
+    @patch('golem.terms.TermsOfUse.accept_terms')
+    def test_accept_terms_talkback_arg(self, accept, *_):
+        node = Mock()
+
+        Node.accept_terms(node, enable_talkback=False)
+        accept.assert_called_once_with()
+
+        assert not isinstance(node._use_monitor, bool)
+        assert node._use_talkback is False
+        assert node._app_config.change_config.called
 
     @patch('golem.terms.TermsOfUse.show_terms', return_value=object())
     def test_show_terms(self, show, *_):

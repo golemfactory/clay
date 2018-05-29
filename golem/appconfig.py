@@ -36,6 +36,7 @@ USE_IP6 = 0
 USE_UPNP = 1
 ACCEPT_TASKS = 1
 SEND_PINGS = 1
+ENABLE_MONITOR = 1
 DEBUG_THIRD_PARTY = 0
 
 PINGS_INTERVALS = 120
@@ -126,6 +127,7 @@ class AppConfig:
             accept_tasks=ACCEPT_TASKS,
             send_pings=SEND_PINGS,
             enable_talkback=ENABLE_TALKBACK,
+            enable_monitor=ENABLE_MONITOR,
             # hardware
             hardware_preset_name=CUSTOM_HARDWARE_PRESET_NAME,
             # price and trust
