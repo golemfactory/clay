@@ -375,6 +375,12 @@ class ForceGetTaskResultTest(TaskServerMessageHandlerTestBase):
 
 
 class ForceSubtaskResultsResponseTest(TaskServerMessageHandlerTestBase):
+    def setUp(self):
+        super().setUp()
+        self.client.transaction_system = EthereumTransactionSystem(
+            self.path,
+            self.provider_keys.raw_privkey
+        )
 
     def test_force_subtask_results_response_empty(self):
         msg = message.concents.ForceSubtaskResultsResponse()
@@ -386,18 +392,26 @@ class ForceSubtaskResultsResponseTest(TaskServerMessageHandlerTestBase):
             library.interpret(msg)
 
     @mock.patch("golem.network.history.add")
-    @mock.patch("golem.task.taskserver.TaskServer.subtask_accepted")
     def test_force_subtask_results_response_accepted(
             self,
-            accepted_mock,
             add_mock):
         msg = msg_factories.concents.\
             ForceSubtaskResultsResponseFactory.with_accepted()
-        library.interpret(msg)
-        accepted_mock.assert_called_once_with(
+
+        IncomesKeeper().expect(
+            sender_node_id=msg.task_to_compute.requestor_id,
             subtask_id=msg.subtask_id,
-            accepted_ts=msg.subtask_results_accepted.payment_ts,
+            value=42
         )
+        self.assertIsNone(Income.get(subtask=msg.subtask_id).accepted_ts)
+
+        library.interpret(msg)
+
+        self.assertEqual(
+            Income.get(subtask=msg.subtask_id).accepted_ts,
+            msg.subtask_results_accepted.payment_ts
+        )
+
         add_mock.assert_called_once_with(
             msg=msg.subtask_results_accepted,
             node_id=mock.ANY,

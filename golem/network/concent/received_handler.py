@@ -279,6 +279,7 @@ class TaskServerMessageHandler():
             node_id = msg.subtask_results_accepted.task_to_compute.requestor_id
             sub_msg = msg.subtask_results_accepted
             self.task_server.subtask_accepted(
+                sender_node_id=msg.requestor_id,
                 subtask_id=msg.subtask_id,
                 accepted_ts=msg.subtask_results_accepted.payment_ts,
             )
