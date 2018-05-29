@@ -435,6 +435,16 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
     def test_result_rejected_with_concent(self):
         srr = self._get_srr(concent=True)
+        self.task_session.task_server.client.funds_locker\
+            .sum_locks.return_value = (0,)
+
+        def on_trans(**kwargs):
+            receipt = Mock()
+            receipt.status = True
+            kwargs['cb'](receipt)
+
+        self.task_session.task_server.client.transaction_system\
+            ._sci.on_transaction_confirmed.side_effect = on_trans
         self.__call_react_to_srr(srr)
         stm = self.task_session.concent_service.submit_task_message
         stm.assert_called()

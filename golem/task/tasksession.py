@@ -713,14 +713,41 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             # we are delegating the verification to the Concent so that
             # we can be paid for this subtask despite the rejection
 
-            srv = message.concents.SubtaskResultsVerify(
-                subtask_results_rejected=msg
+            amount, expected = msg_helpers.provider_deposit_amount(
+                subtask_price=msg.task_to_compute.price,
+            )
+            thash = self.task_server.client.transaction_system.concent_deposit(
+                required=amount,
+                expected=expected,
+                reserved=self.task_server.client.funds_locker.sum_locks()[0],
             )
 
-            self.concent_service.submit_task_message(
-                subtask_id=msg.subtask_id,
-                msg=srv,
-            )
+            def transaction_receipt(receipt):
+                if not receipt.status:
+                    logger.warning(
+                        "Couldn't request additional verification from Concent."
+                        " Deposit failed. Receipt: %r",
+                        receipt,
+                    )
+                    return
+
+                srv = message.concents.SubtaskResultsVerify(
+                    subtask_results_rejected=msg
+                )
+
+                self.concent_service.submit_task_message(
+                    subtask_id=msg.subtask_id,
+                    msg=srv,
+                )
+
+            # pylint: disable=protected-access
+            self.task_server.client.transaction_system._sci \
+                .on_transaction_confirmed(
+                    tx_hash=thash,
+                    required_confs=3,
+                    cb=transaction_receipt,
+                )
+            # pylint: enable=protected-access
 
         else:
             self.task_server.subtask_rejected(
