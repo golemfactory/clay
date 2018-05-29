@@ -75,9 +75,11 @@ class EthereumTransactionSystem(TransactionSystem):
         self._gntb_balance: int = 0
         self._last_eth_update = None
         self._last_gnt_update = None
+        self._is_stopped = False
 
     def stop(self):
         super().stop()
+        self._is_stopped = True
         self.payment_processor.sendout(0)
         self.incomes_keeper.stop()
         self._sci.stop()
@@ -85,8 +87,20 @@ class EthereumTransactionSystem(TransactionSystem):
 
     def sync(self) -> None:
         log.info("Synchronizing balances")
-        self._sci.wait_until_synchronized()
-        while True:
+        # Ensure sci is synchronised
+        # TODO: Remove this FN or make the blocking while loop controllable
+        # self._sci.wait_until_synchronized()
+        while not self._is_stopped:
+            try:
+                if self._sci.is_synchronized():
+                    break
+            except Exception as e:
+                logger.error(
+                    "Error while syncing with eth blockchain: %r", e)
+            else:
+                time.sleep(self._sci.SYNC_CHECK_INTERVAL)
+        # Fetch the balances
+        while not self._is_stopped:
             self._refresh_balances()
             if self._balance_known():
                 log.info("Balances synchronized")
