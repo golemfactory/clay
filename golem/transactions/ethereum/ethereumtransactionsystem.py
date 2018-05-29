@@ -171,7 +171,11 @@ class EthereumTransactionSystem(TransactionSystem):
         )
 
     def concent_deposit(
-            self, required: int, expected: int, reserved: int) -> Optional[str]:
+            self,
+            required: int,
+            expected: int,
+            reserved: int,
+            cb=None) -> Optional[str]:
         current = self.concent_balance()
         if current >= required:
             return None
@@ -188,6 +192,12 @@ class EthereumTransactionSystem(TransactionSystem):
             max_possible_amount,
             tx_hash,
         )
+        if cb is not None:
+            self._sci.on_transaction_confirmed(
+                tx_hash=tx_hash,
+                required_confs=3,
+                cb=cb,
+            )
         return tx_hash
 
     def _get_ether_from_faucet(self) -> None:

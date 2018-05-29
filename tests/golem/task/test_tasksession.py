@@ -442,9 +442,10 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             receipt = Mock()
             receipt.status = True
             kwargs['cb'](receipt)
+            return 'txhash'
 
         self.task_session.task_server.client.transaction_system\
-            ._sci.on_transaction_confirmed.side_effect = on_trans
+            .concent_deposit.side_effect = on_trans
         self.__call_react_to_srr(srr)
         stm = self.task_session.concent_service.submit_task_message
         stm.assert_called()

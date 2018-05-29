@@ -716,21 +716,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             amount, expected = msg_helpers.provider_deposit_amount(
                 subtask_price=msg.task_to_compute.price,
             )
-            thash = self.task_server.client.transaction_system.concent_deposit(
-                required=amount,
-                expected=expected,
-                reserved=self.task_server.client.funds_locker.sum_locks()[0],
-            )
 
-            def transaction_receipt(receipt):
-                if not receipt.status:
-                    logger.warning(
-                        "Couldn't request additional verification from Concent."
-                        " Deposit failed. Receipt: %r",
-                        receipt,
-                    )
-                    return
-
+            def ask_for_verification():
                 srv = message.concents.SubtaskResultsVerify(
                     subtask_results_rejected=msg
                 )
@@ -740,14 +727,25 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     msg=srv,
                 )
 
-            # pylint: disable=protected-access
-            self.task_server.client.transaction_system._sci \
-                .on_transaction_confirmed(
-                    tx_hash=thash,
-                    required_confs=3,
-                    cb=transaction_receipt,
-                )
-            # pylint: enable=protected-access
+            def transaction_receipt(receipt):
+                if not receipt.status:
+                    logger.warning(
+                        "Couldn't request additional verification from Concent."
+                        " Deposit failed. Receipt: %r",
+                        receipt,
+                    )
+                    return
+                ask_for_verification()
+
+            thash = self.task_server.client.transaction_system.concent_deposit(
+                required=amount,
+                expected=expected,
+                reserved=self.task_server.client.funds_locker.sum_locks()[0],
+                cb=transaction_receipt,
+            )
+            if thash is None:
+                # Deposit is big enough
+                ask_for_verification()
 
         else:
             self.task_server.subtask_rejected(
