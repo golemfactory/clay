@@ -8,7 +8,7 @@ from ethereum.utils import denoms
 from pydispatch import dispatcher
 
 from golem.core.variables import PAYMENT_DEADLINE
-from golem.model import Income
+from golem.model import Income, IncomeOrigin
 from golem.utils import encode_hex, pubkeytoaddr
 
 logger = logging.getLogger("golem.transactions.incomeskeeper")
@@ -103,6 +103,18 @@ class IncomesKeeper:
             event='rejected',
             subtask_id=subtask_id
         )
+
+    @staticmethod
+    def settled(subtask_id):
+        try:
+            income = Income.get(subtask=subtask_id, accepted_ts=None)
+        except Income.DoesNotExist:
+            logger.error(
+                "Income.DoesNotExist subtask_id: %r", subtask_id)
+            return
+
+        income.origin = IncomeOrigin.concent
+        income.save()
 
     def update_awaiting(self, sender_node, subtask_id, accepted_ts):
         try:

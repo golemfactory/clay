@@ -99,14 +99,6 @@ def on_force_subtask_results_rejected(msg):
     logger.warning("[CONCENT] %r", msg)
 
 
-@library.register_handler(message.concents.SubtaskResultsSettled)
-def on_subtask_results_settled(msg, **_):
-    """End of UC3. Nothing can be done after this point.
-    I'm either a Provider or Requestor
-    """
-    logger.warning("[CONCENT] End of Force Accept scenario by %r", msg)
-
-
 class TaskServerMessageHandler():
     """Container for received message handlers that require TaskServer."""
     def __init__(self, task_server: taskserver.TaskServer) -> None:
@@ -509,3 +501,21 @@ class TaskServerMessageHandler():
 
         self._upload_task_resources(msg.task_id, ftt)
         self._upload_results(msg.subtask_id, ftt)
+
+    @library.register_handler(message.concents.SubtaskResultsSettled)
+    def on_subtask_results_settled(self, msg, **_):
+        """
+        Sent from the Concent to either the Provider or to the Requestor.
+        It effectively ends processing for UC3/UC4 scenarios.
+        The task has been paid for from the Deposit by the Concent.
+        """
+        logger.warning(
+            "[CONCENT] End of Force Accept/Verify scenario by %r", msg)
+
+        # if the receiving party is the Provider,
+        # mark the income as coming from the Concent
+
+        if msg.provider_id == self.task_server.client.node.key:
+            self.task_server.subtask_settled(
+                subtask_id=msg.subtask_id
+            )
