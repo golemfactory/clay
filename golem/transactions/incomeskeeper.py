@@ -105,9 +105,9 @@ class IncomesKeeper:
         )
 
     @staticmethod
-    def settled(subtask_id, settled_ts):
+    def settled(sender_node, subtask_id, settled_ts):
         try:
-            income = Income.get(subtask=subtask_id)
+            income = Income.get(sender_node=sender_node, subtask=subtask_id)
         except Income.DoesNotExist:
             logger.error(
                 "Income.DoesNotExist subtask_id: %r", subtask_id)
