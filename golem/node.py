@@ -41,7 +41,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  # SEE golem.core.variables.CONCENT_CHOICES
                  concent_variant: dict,
                  peers: Optional[List[SocketAddress]] = None,
-                 use_monitor: bool = False,
+                 use_monitor: bool = None,
+                 use_talkback: bool = None,
                  use_docker_manager: bool = True,
                  start_geth: bool = False,
                  start_geth_port: Optional[int] = None,
@@ -54,9 +55,15 @@ class Node(object):  # pylint: disable=too-few-public-methods
         from twisted.internet import reactor
 
         self._reactor = reactor
+        self._app_config = app_config
         self._config_desc = config_desc
         self._datadir = datadir
         self._use_docker_manager = use_docker_manager
+
+        self._use_monitor = config_desc.enable_monitor \
+            if use_monitor is None else use_monitor
+        self._use_talkback = config_desc.enable_talkback \
+            if use_talkback is None else use_talkback
 
         self._keys_auth: Optional[KeysAuth] = None
 
@@ -81,7 +88,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             keys_auth=keys_auth,
             database=self._db,
             use_docker_manager=use_docker_manager,
-            use_monitor=use_monitor,
+            use_monitor=self._use_monitor,
             concent_variant=concent_variant,
             start_geth=start_geth,
             start_geth_port=start_geth_port,
@@ -179,8 +186,19 @@ class Node(object):  # pylint: disable=too-few-public-methods
     def are_terms_accepted():
         return TermsOfUse.are_terms_accepted()
 
-    @staticmethod
-    def accept_terms():
+    def accept_terms(self,
+                     enable_monitor: Optional[bool] = None,
+                     enable_talkback: Optional[bool] = None) -> None:
+
+        if enable_talkback is not None:
+            self._config_desc.enable_talkback = enable_talkback
+            self._use_talkback = enable_talkback
+
+        if enable_monitor is not None:
+            self._config_desc.enable_monitor = enable_monitor
+            self._use_monitor = enable_monitor
+
+        self._app_config.change_config(self._config_desc)
         return TermsOfUse.accept_terms()
 
     @staticmethod
@@ -245,6 +263,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
         if not self._keys_auth:
             self._error("KeysAuth is not available")
             return
+
+        from golem.tools.talkback import enable_sentry_logger
+        enable_sentry_logger(self._use_talkback)
 
         self.client = self._client_factory(self._keys_auth)
         self._reactor.addSystemEventTrigger("before", "shutdown",
