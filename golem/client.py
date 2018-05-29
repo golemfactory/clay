@@ -1158,11 +1158,10 @@ class Client(HardwarePresetsMixin):
             result = yield deferred
             returnValue(result)
         else:
-
             kwargs = {'func': DefaultEnvironment.run_default_benchmark,
                       'callback': deferred.callback,
                       'errback': deferred.errback,
-                      'num_cores': self.config_desc.num_cores,
+                      'num_cores': 1,
                       'save': True}
             Thread(target=callback_wrapper, kwargs=kwargs).start()
             result = yield deferred

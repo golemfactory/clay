@@ -5,6 +5,7 @@ from typing import Union
 
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.task.coretaskstate import TaskDesc
+from golem.environments.environment import Environment
 
 from golem.model import Performance
 from golem.resource.dirmanager import DirManager
@@ -21,11 +22,16 @@ class BenchmarkManager(object):
         self.task_server = task_server
         self.dir_manager = DirManager(root_path)
 
+    @staticmethod
+    def get_saved_benchmarks_ids():
+        query = Performance.select(Performance.environment_id)
+        ids = set(benchmark.environment_id for benchmark in query)
+        return ids
+
     def benchmarks_needed(self):
         if self.benchmarks:
-            query = Performance.select(Performance.environment_id)
-            data = set(benchmark.environment_id for benchmark in query)
-            return not set(self.benchmarks.keys()).issubset(data)
+            ids = self.get_saved_benchmarks_ids()
+            return not set(self.benchmarks.keys() | {'DEFAULT'}).issubset(ids)
         return False
 
     def run_benchmark(self, benchmark, task_builder, env_id, success=None,
@@ -61,6 +67,12 @@ class BenchmarkManager(object):
         br.run()
 
     def run_all_benchmarks(self, success=None, error=None):
+        logger.info('Running all benchmarks with num_cores=%d',
+                    self.task_server.client.config_desc.num_cores)
+
+        if Environment.get_id() not in self.get_saved_benchmarks_ids():
+            Environment.run_default_benchmark(num_cores=1, save=True)
+
         benchmarks_copy = copy(self.benchmarks)
         self.run_benchmarks(benchmarks_copy, success, error)
 
