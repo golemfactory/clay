@@ -1271,7 +1271,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         )
 
     def test_task_stats(self, *_):
-        task_id = str(uuid.uuid4())
         c = self.client
 
         result = c.get_task_stats()

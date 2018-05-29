@@ -266,7 +266,7 @@ class TaskComputer(object):
         if self.counting_task is not None:
             return "Computing"
         return "Idle"
-      
+
     def change_config(self, config_desc, in_background=True,
                       run_benchmarks=False):
         self.dir_manager = DirManager(self.task_server.get_task_computer_root())
