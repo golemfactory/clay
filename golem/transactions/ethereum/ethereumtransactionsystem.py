@@ -87,7 +87,6 @@ class EthereumTransactionSystem(TransactionSystem):
 
     def sync(self) -> None:
         log.info("Synchronizing balances")
-        # Ensure sci is synchronised
         self._sci.wait_until_synchronized()
         while not self._is_stopped:
             self._refresh_balances()
