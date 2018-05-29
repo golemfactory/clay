@@ -246,8 +246,7 @@ class Income(BaseModel):
     accepted_ts = IntegerField(null=True)
     transaction = CharField(null=True)
     overdue = BooleanField(default=False)
-    settled_ts = IntegerField(null=True)  # set if the income
-                                          # is settled by the Concent
+    settled_ts = IntegerField(null=True)  # set if settled by the Concent
 
     class Meta:
         database = db

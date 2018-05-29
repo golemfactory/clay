@@ -5,6 +5,7 @@ import peewee as pw
 
 SCHEMA_VERSION = 16
 
+
 def migrate(migrator, database, fake=False, **kwargs):
     migrator.add_fields('income', settled_ts=pw.IntegerField(null=True))
 
