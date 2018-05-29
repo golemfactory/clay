@@ -252,25 +252,15 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         self.assertIsNone(self.provider_send_force())
         fsrr = msg_factories.concents.ForceSubtaskResultsResponseFactory()
         fsrr.subtask_results_rejected = None
-        response = self.requestor_send(fsrr)
-        self.assertIsInstance(
-            response,
-            message.concents.ServiceRefused,
-        )
         with self.assertRaises(concent_exceptions.ConcentRequestError):
-            self.provider_receive()
+            self.requestor_send(fsrr)
 
     def test_requestor_responds_with_invalid_reject(self):
         self.assertIsNone(self.provider_send_force())
         fsrr = msg_factories.concents.ForceSubtaskResultsResponseFactory()
         fsrr.subtask_results_accepted = None
-        response = self.requestor_send(fsrr)
-        self.assertIsInstance(
-            response,
-            message.concents.ServiceRefused,
-        )
         with self.assertRaises(concent_exceptions.ConcentRequestError):
-            self.provider_receive()
+            self.requestor_send(fsrr)
 
     def test_requestor_responds_with_accept(self):
         self.assertIsNone(self.provider_send_force())
