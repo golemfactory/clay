@@ -88,18 +88,7 @@ class EthereumTransactionSystem(TransactionSystem):
     def sync(self) -> None:
         log.info("Synchronizing balances")
         # Ensure sci is synchronised
-        # TODO: Remove this FN or make the blocking while loop controllable
-        # self._sci.wait_until_synchronized()
-        while not self._is_stopped:
-            try:
-                if self._sci.is_synchronized():
-                    break
-            except Exception as e:
-                logger.error(
-                    "Error while syncing with eth blockchain: %r", e)
-            else:
-                time.sleep(self._sci.SYNC_CHECK_INTERVAL)
-        # Fetch the balances
+        self._sci.wait_until_synchronized()
         while not self._is_stopped:
             self._refresh_balances()
             if self._balance_known():
