@@ -17,7 +17,12 @@ class TestVersion(ProcTestFixture):
     def test_remote_version(self):
         print()
         print("DEBUG: Hello World")
-        args = ['.venv/bin/pytest', 'tests_dist/tests/test_version.py', '-s']
+        args = [
+            'ssh',
+            'maaktweluit@192.168.178.172', 
+            'cd', '/home/maaktweluit/src/golem', ';',
+            '.venv/bin/pytest', 'tests_dist/tests/test_version.py', '-s'
+        ]
         
         # assert logs in right order
         exp_err = []
