@@ -1,11 +1,11 @@
 # pylint: disable=too-many-lines
 
 import collections
+import json
 import logging
 import sys
 import time
 import uuid
-import json
 from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
@@ -20,16 +20,18 @@ from twisted.internet.defer import (
     gatherResults,
     Deferred)
 
-from apps.rendering.task import framerenderingtask
 import golem
 from apps.appsmanager import AppsManager
+from apps.rendering.task import framerenderingtask
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL, AppConfig)
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
+from golem.config.active import ENABLE_WITHDRAWALS, ACTIVE_NET
 from golem.config.presets import HardwarePresetsMixin
 from golem.core import variables
 from golem.core.async import AsyncRequest, async_run
-from golem.core.common import get_timestamp_utc, to_unicode, string_to_timeout,\
+from golem.core.common import get_timestamp_utc, to_unicode, \
+    string_to_timeout, \
     deadline_to_timeout
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
@@ -42,6 +44,7 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
+from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -69,10 +72,10 @@ from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus, SubtaskStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
+from golem.tools.talkback import enable_sentry_logger
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
 from golem.transactions.ethereum.fundslocker import FundsLocker
-from golem.tools.talkback import enable_sentry_logger
 
 logger = logging.getLogger(__name__)
 
@@ -99,7 +102,6 @@ class Client(HardwarePresetsMixin):
             config_desc: ClientConfigDescriptor,
             keys_auth: KeysAuth,
             database: Database,
-            mainnet: bool = False,
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
@@ -108,9 +110,8 @@ class Client(HardwarePresetsMixin):
             start_geth: bool = False,
             start_geth_port: Optional[int] = None,
             geth_address: Optional[str] = None,
-            apps_manager: AppsManager = AppsManager(False)) -> None:
+            apps_manager: AppsManager = AppsManager()) -> None:
 
-        self.mainnet = mainnet
         self.apps_manager = apps_manager
         self.datadir = datadir
         self.__lock_datadir()
@@ -183,7 +184,6 @@ class Client(HardwarePresetsMixin):
         self.transaction_system = EthereumTransactionSystem(
             datadir,
             self.keys_auth._private_key,
-            mainnet,
             start_geth=start_geth,
             start_port=start_geth_port,
             address=geth_address,
@@ -207,7 +207,6 @@ class Client(HardwarePresetsMixin):
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = str(uuid.uuid4())
-        self.mainnet = mainnet
 
         dispatcher.connect(
             self.p2p_listener,
@@ -308,7 +307,6 @@ class Client(HardwarePresetsMixin):
             self.node,
             self.config_desc,
             self.keys_auth,
-            self.mainnet,
             connect_to_known_hosts=self.connect_to_known_hosts
         )
 
@@ -479,8 +477,7 @@ class Client(HardwarePresetsMixin):
     def init_monitor(self):
         logger.debug("Starting monitor ...")
         metadata = self.__get_nodemetadatamodel()
-        self.monitor = SystemMonitor(
-            metadata, MONITOR_CONFIG, send_payment_info=(not self.mainnet))
+        self.monitor = SystemMonitor(metadata, MONITOR_CONFIG)
         self.monitor.start()
         self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
         self.diag_service.register(
@@ -967,8 +964,9 @@ class Client(HardwarePresetsMixin):
             amount: Union[str, int],
             destination: str,
             currency: str) -> List[str]:
-        if not self.mainnet:
-            raise Exception("Withdrawals are disabled on testnet")
+
+        if not ENABLE_WITHDRAWALS:
+            raise Exception("Withdrawals are disabled on {}".format(ACTIVE_NET))
 
         if isinstance(amount, str):
             amount = int(amount)
@@ -1139,6 +1137,7 @@ class Client(HardwarePresetsMixin):
             'supported': bool(env.check_support()),
             'accepted': env.is_accepted(),
             'performance': env.get_performance(),
+            'min_accepted': env.get_min_accepted_performance(),
             'description': str(env.short_description)
         } for env in envs]
 
@@ -1216,6 +1215,14 @@ class Client(HardwarePresetsMixin):
 
     def get_performance_values(self):
         return self.environments_manager.get_performance_values()
+
+    @staticmethod
+    def get_performance_mult() -> float:
+        return MinPerformanceMultiplier.get()
+
+    @staticmethod
+    def set_performance_mult(multiplier: float):
+        MinPerformanceMultiplier.set(multiplier)
 
     def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:

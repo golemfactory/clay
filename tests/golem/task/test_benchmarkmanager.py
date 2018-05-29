@@ -15,7 +15,7 @@ class TestBenchmarkManager(DatabaseFixture, PEP8MixIn):
         # No Benchmark, no benchmark needed
         assert not b.benchmarks_needed()
 
-        am = AppsManager(False)
+        am = AppsManager()
         am.load_all_apps()
         b.benchmarks = am.get_benchmarks()
         assert b.benchmarks_needed()

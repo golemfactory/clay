@@ -30,7 +30,6 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
         client_mock.get_key_id = mock.MagicMock(return_value='cliid')
         client_mock.session_id = 'sessid'
         client_mock.config_desc = ClientConfigDescriptor()
-        client_mock.mainnet = False
         meta_data = NodeMetadataModel(
             client_mock, 'os', 'ver')
         config = MONITOR_CONFIG.copy()
@@ -65,7 +64,6 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
         client_mock.cliid = 'CLIID'
         client_mock.sessid = 'SESSID'
         client_mock.config_desc = ccd
-        client_mock.mainnet = False
         new_meta_data = NodeMetadataModel(
             client_mock, "win32", "1.3")
         self.monitor.on_config_update(new_meta_data)

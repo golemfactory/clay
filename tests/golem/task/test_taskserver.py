@@ -58,7 +58,7 @@ def get_example_task_header(key_id):
     }
 
 
-def get_mock_task(key_gen, subtask_id):
+def get_mock_task(key_gen="whatsoever", subtask_id="whatever"):
     task_mock = Mock()
     key_id = str.encode(key_gen)
     task_mock.header = TaskHeader.from_dict(get_example_task_header(key_id))
@@ -582,20 +582,77 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         assert not ts.network.connect.called
 
     def test_should_accept_provider(self, *_):
+        # given
         ts = self.ts
+
+        task = get_mock_task()
+        task_id = task.header.task_id
+        ts.task_manager.tasks[task_id] = task
+
+        min_accepted_perf = 77
+        env = Mock()
+        env.get_min_accepted_performance.return_value = min_accepted_perf
+        ts.get_environment_by_id = Mock(return_value=env)
+        ids = f'provider_id: ABC, task_id: {task_id}'
+
+        # then
+        with self.assertLogs(logger, level='INFO') as cm:
+            assert not ts.should_accept_provider("ABC", 'tid', 27.18, 1, 1, 7)
+            self.assertEqual(cm.output, [
+                f'INFO:{logger.name}:Cannot find task in my tasks: '
+                f'provider_id: ABC, task_id: tid'])
+
+        with self.assertLogs(logger, level='INFO') as cm:
+            assert not ts.should_accept_provider("ABC", task_id, 27.18, 1, 1, 7)
+            self.assertEqual(cm.output, [
+                f'INFO:{logger.name}:insufficient provider performance: '
+                f'27.18 < {min_accepted_perf}; {ids}'])
+
+        with self.assertLogs(logger, level='INFO') as cm:
+            assert not ts.should_accept_provider("ABC", task_id, 99, 1.72, 1, 4)
+            self.assertEqual(cm.output, [
+                f'INFO:{logger.name}:insufficient provider disk size:'
+                f' 1.72 KiB; {ids}'])
+
+        with self.assertLogs(logger, level='INFO') as cm:
+            assert not ts.should_accept_provider("ABC", task_id, 999, 3, 2.7, 1)
+            self.assertEqual(cm.output, [
+                f'INFO:{logger.name}:insufficient provider memory size:'
+                f' 2.7 KiB; {ids}'])
+
+        # given
         self.client.get_computing_trust = Mock(return_value=0.4)
         ts.config_desc.computing_trust = 0.2
-        assert ts.should_accept_provider("ABC")
+        # then
+        assert ts.should_accept_provider("ABC", task_id, 99, 3, 4, 5)
+
+        # given
         ts.config_desc.computing_trust = 0.4
-        assert ts.should_accept_provider("ABC")
+        # then
+        assert ts.should_accept_provider("ABC", task_id, 99, 3, 4, 5)
+
+        # given
         ts.config_desc.computing_trust = 0.5
-        assert not ts.should_accept_provider("ABC")
+        # then
+        with self.assertLogs(logger, level='INFO') as cm:
+            assert not ts.should_accept_provider("ABC", task_id, 99, 3, 4, 5)
+            self.assertEqual(cm.output, [
+                f'INFO:{logger.name}:insufficient provider trust level:'
+                f' 0.4; {ids}'])
 
+        # given
         ts.config_desc.computing_trust = 0.2
-        assert ts.should_accept_provider("ABC")
+        # then
+        assert ts.should_accept_provider("ABC", task_id, 99, 3, 4, 5)
 
+        # given
         ts.acl.disallow("ABC")
-        assert not ts.should_accept_provider("ABC")
+        # then
+        with self.assertLogs(logger, level='INFO') as cm:
+            assert not ts.should_accept_provider("ABC", task_id, 99, 3, 4, 5)
+            self.assertEqual(cm.output, [
+                f'INFO:{logger.name}:provider node is blacklisted; '
+                f'provider_id: ABC, task_id: {task_id}'])
 
     def test_should_accept_requestor(self, *_):
         ts = self.ts
@@ -743,7 +800,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         self.assertEqual([], self.ts._find_sessions(subtask_id))
 
         # Found task_id
-        task_id = 't' + str(uuid.uuid4())
+        task_id = str(uuid.uuid4())
         session = MagicMock()
         session.task_id = task_id
         self.ts.task_manager.subtask2task_mapping[subtask_id] = task_id

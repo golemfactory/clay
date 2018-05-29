@@ -6,6 +6,12 @@ from golem.core.variables import PROTOCOL_CONST
 from . import TESTNET, CONCENT_ENVIRONMENT_VARIABLE
 
 IS_MAINNET = False
+ACTIVE_NET = TESTNET
+
+# CORE
+
+DATA_DIR = 'rinkeby'
+ENABLE_TALKBACK = 1
 
 # CONCENT
 
@@ -24,6 +30,12 @@ ETHEREUM_NODE_LIST = [
 
 ETHEREUM_CHAIN = RINKEBY
 ETHEREUM_FAUCET_ENABLED = True
+
+GETH_FLAGS = [
+    '--rinkeby',
+]
+
+ENABLE_WITHDRAWALS = False
 
 # P2P
 
@@ -47,3 +59,7 @@ APP_MANAGER_CONFIG_FILES = [
     os.path.join('apps', 'registered.ini'),
     os.path.join('apps', 'registered_test.ini')
 ]
+
+# MONITOR
+
+SEND_PAYMENT_INFO_TO_MONITOR = True

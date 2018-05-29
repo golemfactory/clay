@@ -6,11 +6,12 @@ import unittest
 import unittest.mock as mock
 
 import factory
+from golem_messages import cryptography
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import factories as msg_factories
 from golem_messages import message
+from golem_messages import utils as msg_utils
 from golem_messages.message.concents import FileTransferToken
-from golem_messages import cryptography
 
 from golem import testutils
 from golem.core import keysauth
@@ -225,8 +226,12 @@ class VerdictReportComputedTaskFactory(TaskServerMessageHandlerTestBase):
 
     def get_vrct(self):
         ttc = msg_factories.tasks.TaskToComputeFactory(
-            requestor_public_key=self.requestor_keys.raw_pubkey,
-            provider_public_key=self.provider_keys.raw_pubkey,
+            requestor_public_key=msg_utils.encode_hex(
+                self.requestor_keys.raw_pubkey,
+            ),
+            provider_public_key=msg_utils.encode_hex(
+                self.provider_keys.raw_pubkey,
+            ),
             sign__privkey=self.requestor_keys.raw_privkey,
         )
         frct = msg_factories.concents.ForceReportComputedTaskFactory(

@@ -1,15 +1,14 @@
 # pylint: disable=no-member
 # pylint: disable=too-few-public-methods
 import peewee as pw
-from golem.model import IncomeOrigin
 
 SCHEMA_VERSION = 15
 
 
-def migrate(migrator, database, fake=False, **kwargs):
-    migrator.add_fields(
-        'income', origin=pw.IncomeOriginField(default=IncomeOrigin.node))
+def migrate(migrator, *_, **__):
+    migrator.add_fields('performance',
+                        min_accepted_step=pw.FloatField(default=300.0))
 
 
-def rollback(migrator, database, fake=False, **kwargs):
-    migrator.remove_fields('income', 'origin')
+def rollback(migrator, *_, **__):
+    migrator.remove_fields('performance', 'min_accepted_step')

@@ -100,6 +100,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         )
         ts = TaskSession(conn)
         ts._get_handshake = Mock(return_value={})
+        ts._is_peer_blocked = Mock(return_value=False)
         ts.verified = True
         ts.concent_service.enabled = use_concent = True
         ts.request_task("ABC", "xyz", 1030, 30, 3, 1, 8)
@@ -112,7 +113,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertEqual(mt.max_resource_size, 3)
         self.assertEqual(mt.max_memory_size, 1)
         self.assertEqual(mt.num_cores, 8)
+
         ts2 = TaskSession(conn)
+        ts2._is_peer_blocked = Mock(return_value=False)
         ts2.concent_service.enabled = use_concent
         ts2.verified = True
         ts2.key_id = provider_key = "DEF"

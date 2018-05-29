@@ -54,7 +54,7 @@ class TaskServer(
                  use_ipv6=False,
                  use_docker_manager=True,
                  task_archiver=None,
-                 apps_manager=AppsManager(False)) -> None:
+                 apps_manager=AppsManager()) -> None:
         self.client = client
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
@@ -575,17 +575,57 @@ class TaskServer(
     def remove_forwarded_session_request(self, key_id):
         return self.forwarded_session_requests.pop(key_id, None)
 
-    def should_accept_provider(self, node_id):
-        if not self.acl.is_allowed(node_id):
+    def should_accept_provider(  # noqa pylint: disable=too-many-arguments,too-many-return-statements,unused-argument
+            self,
+            node_id,
+            task_id,
+            provider_perf,
+            max_resource_size,
+            max_memory_size,
+            num_cores):
+
+        ids = f'provider_id: {node_id}, task_id: {task_id}'
+
+        if task_id not in self.task_manager.tasks:
+            logger.info(f'Cannot find task in my tasks: {ids}')
             return False
+
+        task = self.task_manager.tasks[task_id]
+        env = self.get_environment_by_id(task.header.environment)
+        min_accepted_perf = env.get_min_accepted_performance()
+
+        if min_accepted_perf > int(provider_perf):
+            logger.info(f'insufficient provider performance: {provider_perf}'
+                        f' < {min_accepted_perf}; {ids}')
+            return False
+
+        if task.header.resource_size > (int(max_resource_size) * 1024):
+            logger.info('insufficient provider disk size: '
+                        f'{max_resource_size} KiB; {ids}')
+            return False
+
+        if task.header.estimated_memory > (int(max_memory_size) * 1024):
+            logger.info('insufficient provider memory size: '
+                        f'{max_memory_size} KiB; {ids}')
+            return False
+
+        allowed, reason = self.acl.is_allowed(node_id)
+        if not allowed:
+            logger.info(f'provider {reason}; {ids}')
+            return False
+
         trust = self.get_computing_trust(node_id)
-        logger.debug("Computing trust level: {}".format(trust))
-        return trust >= self.config_desc.computing_trust
+        if trust < self.config_desc.computing_trust:
+            logger.info(f'insufficient provider trust level: {trust}; {ids}')
+            return False
+
+        return True
 
     def should_accept_requestor(self, node_id):
-        if not self.acl.is_allowed(node_id):
-            return SupportStatus.err(
-                {UnsupportReason.DENY_LIST: node_id})
+        allowed, reason = self.acl.is_allowed(node_id)
+        if not allowed:
+            logger.info(f'requestor {reason}; {node_id}')
+            return SupportStatus.err({UnsupportReason.DENY_LIST: node_id})
         trust = self.client.get_requesting_trust(node_id)
         logger.debug("Requesting trust level: {}".format(trust))
         if trust >= self.config_desc.requesting_trust:

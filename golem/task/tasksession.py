@@ -1,3 +1,4 @@
+import datetime
 import functools
 import logging
 import os
@@ -455,7 +456,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         self.task_manager.got_wants_to_compute(msg.task_id, self.key_id,
                                                msg.node_name)
-        if self.task_server.should_accept_provider(self.key_id):
+        if self.task_server.should_accept_provider(
+                self.key_id, msg.task_id, msg.perf_index,
+                msg.max_resource_size, msg.max_memory_size, msg.num_cores):
 
             if self._handshake_required(self.key_id):
                 logger.warning('Cannot yet assign task for %r: resource '
@@ -820,22 +823,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             ack_report_computed_task=msg,
         )
         logger.debug('[CONCENT] ForceResults: %s', delayed_forcing_msg)
-        report_computed_task = get_task_message(
-            'ReportComputedTask',
-            msg.task_id,
-            msg.subtask_id,
+        ttc_deadline = datetime.datetime.utcfromtimestamp(
+            msg.task_to_compute.compute_task_def['deadline']
         )
-        if report_computed_task is None:
-            logger.warning(
-                '[CONCENT] Can`t delay send %r.'
-                ' ReportComputedTask not found; delay unknown',
-                delayed_forcing_msg,
-            )
-            return
+        svt = msg_helpers.subtask_verification_time(msg.report_computed_task)
+        delay = ttc_deadline + svt - datetime.datetime.utcnow()
         self.concent_service.submit_task_message(
             subtask_id=msg.subtask_id,
             msg=delayed_forcing_msg,
-            delay=msg_helpers.subtask_verification_time(report_computed_task),
+            delay=delay,
         )
 
     @history.provider_history
