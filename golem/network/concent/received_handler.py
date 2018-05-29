@@ -502,15 +502,14 @@ class TaskServerMessageHandler():
         self._upload_task_resources(msg.task_id, ftt)
         self._upload_results(msg.subtask_id, ftt)
 
-    @library.register_handler(message.concents.SubtaskResultsSettled)
+    @handler_for(message.concents.SubtaskResultsSettled)
     def on_subtask_results_settled(self, msg, **_):
         """
         Sent from the Concent to either the Provider or to the Requestor.
         It effectively ends processing for UC3/UC4 scenarios.
         The task has been paid for from the Deposit by the Concent.
         """
-        logger.warning(
-            "[CONCENT] End of Force Accept/Verify scenario by %r", msg)
+        logger.info("[CONCENT] End of Force Accept/Verify scenario by %r", msg)
 
         # if the receiving party is the Provider,
         # mark the income as coming from the Concent

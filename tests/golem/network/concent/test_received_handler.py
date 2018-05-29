@@ -22,6 +22,11 @@ from golem.network.concent import received_handler
 from golem.network.concent.received_handler import TaskServerMessageHandler
 from golem.network.concent.handlers_library import library
 from golem.network.concent.filetransfers import ConcentFiletransferService
+from golem.transactions.incomeskeeper import (
+    IncomesKeeper, Income, IncomeOrigin)
+from golem.transactions.ethereum.ethereumtransactionsystem import (
+    EthereumTransactionSystem)
+
 
 from tests.factories import taskserver as taskserver_factories
 from tests.factories.resultpackage import ExtractedPackageFactory
@@ -775,3 +780,28 @@ class SubtaskResultsVerifyTest(FileTransferTokenTestsBase,  # noqa pylint:disabl
         self.cft._run()
         self.assertEqual(upload_mock.call_count, 1)
         self.assertIn('Cannot upload resources', log_mock.call_args[0][0])
+
+
+class SubtaskResultsSettledTest(TaskServerMessageHandlerTestBase):
+    def setUp(self):
+        super().setUp()
+        self.client.transaction_system = EthereumTransactionSystem(
+            self.path,
+            self.provider_keys.raw_privkey
+        )
+
+    def test_settled(self):
+        srs = msg_factories.concents.SubtaskResultsSettledFactory()
+        self.task_server.client.node.key = srs.task_to_compute.provider_id
+        IncomesKeeper().expect(
+            sender_node_id=srs.task_to_compute.requestor_id,
+            subtask_id=srs.subtask_id,
+            value=42
+        )
+        self.assertEqual(
+            Income.get(subtask=srs.subtask_id).origin, IncomeOrigin.node)
+
+        library.interpret(srs)
+
+        self.assertEqual(
+            Income.get(subtask=srs.subtask_id).origin, IncomeOrigin.concent)
