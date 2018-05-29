@@ -31,8 +31,8 @@ class TestPayment(DatabaseFixture):
     def test_status_base_type(self):
         payee = 'xx'
         subtask = 'zz'
-        p = m.Payment.create(payee=payee, subtask=subtask, value=5,
-                             status=m.PaymentStatus.awaiting.value)
+        m.Payment.create(payee=payee, subtask=subtask, value=5,
+                         status=m.PaymentStatus.awaiting.value)
         p2 = m.Payment.get(payee=payee, subtask=subtask)
         self.assertEqual(p2.status, m.PaymentStatus.awaiting)
 

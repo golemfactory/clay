@@ -89,7 +89,7 @@ class EnumFieldBase:
         if isinstance(value, self.enum_type):
             return value.value  # Get the base-type value of an enum.
 
-        value = self.coerce(value)
+        value = self.coerce(value)  # noqa pylint:disable=no-member
         enum_vals = [e.value for e in self.enum_type]
         if value not in enum_vals:
             raise TypeError(
@@ -242,7 +242,7 @@ class Payment(BaseModel):
 @enum.unique
 class IncomeOrigin(enum.Enum):
 
-    def _generate_next_value_(name: str, *_):
+    def _generate_next_value_(name: str, *_):  # type: ignore  # noqa pylint:disable=no-self-argument
         return name
 
     node = enum.auto()
