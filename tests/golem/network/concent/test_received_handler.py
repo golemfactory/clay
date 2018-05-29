@@ -23,7 +23,7 @@ from golem.network.concent.received_handler import TaskServerMessageHandler
 from golem.network.concent.handlers_library import library
 from golem.network.concent.filetransfers import ConcentFiletransferService
 from golem.transactions.incomeskeeper import (
-    IncomesKeeper, Income, IncomeOrigin)
+    IncomesKeeper, Income)
 from golem.transactions.ethereum.ethereumtransactionsystem import (
     EthereumTransactionSystem)
 
@@ -798,10 +798,9 @@ class SubtaskResultsSettledTest(TaskServerMessageHandlerTestBase):
             subtask_id=srs.subtask_id,
             value=42
         )
-        self.assertEqual(
-            Income.get(subtask=srs.subtask_id).origin, IncomeOrigin.node)
+        self.assertIsNone(Income.get(subtask=srs.subtask_id).settled_ts)
 
         library.interpret(srs)
 
         self.assertEqual(
-            Income.get(subtask=srs.subtask_id).origin, IncomeOrigin.concent)
+            Income.get(subtask=srs.subtask_id).settled_ts, srs.timestamp)

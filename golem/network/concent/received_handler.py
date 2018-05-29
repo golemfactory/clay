@@ -516,5 +516,6 @@ class TaskServerMessageHandler():
 
         if msg.provider_id == self.task_server.client.node.key:
             self.task_server.subtask_settled(
-                subtask_id=msg.subtask_id
+                subtask_id=msg.subtask_id,
+                settled_ts=msg.timestamp,
             )

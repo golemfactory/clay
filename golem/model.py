@@ -239,21 +239,6 @@ class Payment(BaseModel):
             )
 
 
-@enum.unique
-class IncomeOrigin(enum.Enum):
-
-    def _generate_next_value_(name: str, *_):  # type: ignore  # noqa pylint:disable=no-self-argument
-        return name
-
-    node = enum.auto()
-    concent = enum.auto()
-
-
-class IncomeOriginField(StringEnumField):
-    def __init__(self, *args, **kwargs):
-        super().__init__(IncomeOrigin, *args, **kwargs)
-
-
 class Income(BaseModel):
     sender_node = CharField()
     subtask = CharField()
@@ -261,7 +246,8 @@ class Income(BaseModel):
     accepted_ts = IntegerField(null=True)
     transaction = CharField(null=True)
     overdue = BooleanField(default=False)
-    origin = IncomeOriginField(default=IncomeOrigin.node.value)
+    settled_ts = IntegerField(null=True)  # set if the income
+                                          # is settled by the Concent
 
     class Meta:
         database = db
