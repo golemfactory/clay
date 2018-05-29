@@ -1339,7 +1339,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         # then
         expected_status = {
             'status': 'waiting for task',
-            'task_id': task_computer.waiting_for_task,
+            'task_id_waited_for': task_computer.waiting_for_task,
         }
         assert status == expected_status
 

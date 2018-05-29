@@ -1288,7 +1288,7 @@ class Client(HardwarePresetsMixin):
         if waiting_for_task is not None:
             return {
                 'status': 'waiting for task',
-                'task_id': waiting_for_task,
+                'task_id_waited_for': waiting_for_task,
             }
 
         # not accepting tasks
