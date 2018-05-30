@@ -1,8 +1,4 @@
-import time
-import subprocess
-
-dist_name="golem-0.15.1+dev254.g7154f6c5c"
-version_check="0.15.1"
+from tests_dist.ProcTestFixture import ProcTestFixture
 
 print('Integration test runner.py')
 
@@ -11,15 +7,15 @@ print('Validating config...')
 
 # Start tests
 print('Starting tests...')
-from tests_dist.ProcTestFixture import ProcTestFixture
 
 class TestVersion(ProcTestFixture):
     def test_remote_version(self):
         print()
         print("DEBUG: Hello World")
+        # TODO: Make sure LC_AL and LC_LANG are set
         args = [
             'ssh',
-            'maaktweluit@192.168.178.172', 
+            'maaktweluit@192.168.178.172',
             'cd', '/home/maaktweluit/src/golem', ';',
             '.venv/bin/pytest', 'tests_dist/tests/test_version.py', '-s'
         ]
@@ -27,14 +23,20 @@ class TestVersion(ProcTestFixture):
         # assert logs in right order
         exp_err = []
         exp_out = [
-            '============================= test session starts ==============================',
+            '============================= test session starts ==============================', #  noqa
             'P: All expected out lines have been found'
         ]
 
         opts = {
             'cwd': None
         }
-        exit_code, log_err, log_out = self.do_magic(opts, args, exp_err, exp_out)
+        exit_code, log_err, log_out, check_err_exp, check_out_exp = self.do_magic(opts, args, exp_err, exp_out) #  noqa
+
+        assert check_out_exp == len(exp_out)
+        print("P: All expected out lines have been found")
+
+        assert check_err_exp == len(exp_err)
+        print("P: All expected err lines have been found")
 
         print("DEBUG: OUT:" + str(len(log_out)))
         print(log_out)
@@ -64,10 +66,10 @@ print("ERR:")
 # print(str(stderr))
 
 # Print report
-print('Generating report...')
-print('Test case 1:')
-expected = bytes('GOLEM version: ' + version_check + '\n', 'utf-8')
+# print('Generating report...')
+# print('Test case 1:')
+# expected = bytes('GOLEM version: ' + version_check + '\n', 'utf-8')
 # passed = stdout == expected
 # print(str(expected))
-passed = 'always'
-print('assert(config_version == golemapp --version): ' + str(passed))
+# passed = 'always'
+# print('assert(config_version == golemapp --version): ' + str(passed))

@@ -11,7 +11,7 @@ class TestVersion(ProcTestFixture):
         with open('./tests_dist/tests/config.json') as f:
             config = json.load(f)
         # do magic
-        args = ['golemapp', '--version']
+        args = ['./golemapp', '--version']
         
         # assert logs in right order
         exp_err = []
@@ -22,7 +22,13 @@ class TestVersion(ProcTestFixture):
         opts = {
             'cwd': 'dist/' + config["dist_dir"]
         }
-        exit_code, log_err, log_out = self.do_magic(opts, args, exp_err, exp_out)
+        exit_code, log_err, log_out, check_err_exp, check_out_exp = self.do_magic(opts, args, exp_err, exp_out)
+
+        assert check_out_exp == len(exp_out)
+        print("P: All expected out lines have been found")
+
+        assert check_err_exp == len(exp_err)
+        print("P: All expected err lines have been found")
 
         print("DEBUG: OUT:" + str(len(log_out)))
         print(log_out)
