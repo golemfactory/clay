@@ -208,6 +208,8 @@ def config_logging(suffix='', datadir=None, loglevel=None, config_desc=None):
         return  # Avoid consequent errors
     logging.captureWarnings(True)
 
+    from golem.tools.talkback import enable_sentry_logger
+    enable_sentry_logger(False)
     import txaio
     txaio.use_twisted()
     from ethereum import slogging
