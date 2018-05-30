@@ -84,7 +84,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             Node(),
             keys_auth,
             root_path=self.path,
-            task_persistence=True
+            task_persistence=True,
+            finished_cb=Mock()
         )
         self.tm.key_id = "KEYID"
         self.tm.listen_address = "10.10.10.10"
@@ -460,6 +461,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                       verify_subtasks={"aabbcc": True})
         self.tm.add_new_task(t2)
         self.tm.start_task(t2.header.task_id)
+        progress = self.tm.get_progresses()
+        assert progress != {}
         ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF",
                                                                 "abc", 1030, 10,
                                                                 10000, 10000,
