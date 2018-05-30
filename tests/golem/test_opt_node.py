@@ -865,17 +865,12 @@ class TestOptNode(TempDirFixture):
         assert self.node.client.quit.called
         assert self.node._reactor.stop.called
 
-    @patch('golem.node.Database')
-    @patch('threading.Thread', MockThread)
-    @patch('twisted.internet.reactor', create=True)
-    def test_graceful_shutdown_off(self, reactor, *_):
-        reactor.running = True
-
+    def test_graceful_shutdown_off(self, *_):
         self.node_kwargs['config_desc'].in_shutdown = True
 
         self.node = Node(**self.node_kwargs)
+        self.node.quit = Mock()
         self.node.client = Mock()
-        self.node._reactor.callFromThread = call_now
         self.node._is_task_in_progress = Mock(return_value=False)
 
         result = self.node.graceful_shutdown()
@@ -883,33 +878,57 @@ class TestOptNode(TempDirFixture):
         assert self.node.client.update_settings.called_with('in_shutdown',
                                                             False)
         assert self.node._is_task_in_progress.not_called
-        assert self.node.client.quit.not_called
-        assert self.node._reactor.stop.not_called
+        assert self.node.quit.not_called
 
-    @patch('golem.node.Database')
-    @patch('threading.Thread', MockThread)
-    @patch('twisted.internet.reactor', create=True)
-    def test_graceful_shutdown_on(self, reactor, *_):
-        reactor.running = True
-
+    def test_graceful_shutdown_on(self, *_):
         self.node = Node(**self.node_kwargs)
+        self.node.quit = Mock()
         self.node.client = Mock()
         self.node._reactor.callFromThread = call_now
         self.node._is_task_in_progress = Mock(return_value=True)
 
         self.node.check_shutdown()
-        assert self.node.client.quit.not_called
+        assert self.node.quit.not_called
 
         result = self.node.graceful_shutdown()
-        assert self.node.client.quit.not_called
-        assert self.node._is_task_in_progress.called
         assert result == 'on'
-        assert self.node.client.update_settings.called_with('in_shutdown'
+        assert self.node.client.update_settings.called_with('in_shutdown',
                                                             True)
+        assert self.node.quit.not_called
+        assert self.node._is_task_in_progress.called
 
         self.node._config_desc.in_shutdown = True
         self.node._is_task_in_progress = Mock(return_value=False)
         self.node.check_shutdown()
         assert self.node._is_task_in_progress.called
-        assert self.node.client.quit.called
-        assert self.node._reactor.stop.called
+        assert self.node.quit.called
+
+    def test__is_task_in_progress_no_shutdown(self, *_):
+        self.node = Node(**self.node_kwargs)
+        self.node.quit = Mock()
+
+        self.node.check_shutdown()
+
+        assert self.node.quit.not_called
+
+    def test__is_task_in_progress_in_progress(self, *_):
+        self.node_kwargs['config_desc'].in_shutdown = True
+
+        self.node = Node(**self.node_kwargs)
+        self.node.quit = Mock()
+        self.node._is_task_in_progress = Mock(return_value=True)
+
+        self.node.check_shutdown()
+
+        assert self.node.quit.not_called
+
+    def test__is_task_in_progress_quit(self, *_):
+        self.node_kwargs['config_desc'].in_shutdown = True
+
+        self.node = Node(**self.node_kwargs)
+        self.node.quit = Mock()
+        self.node._is_task_in_progress = Mock(return_value=False)
+
+        self.node.check_shutdown()
+
+        assert self.node.quit.called
