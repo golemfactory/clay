@@ -24,7 +24,7 @@ class TestBenchmarkManager(DatabaseFixture, PEP8MixIn):
     def test_benchmarks_needed_with_apps(self):
         assert self.b.benchmarks_needed()
 
-    def test_benchmarks_needed_with_apps(self):
+    def test_benchmarks_not_needed_when_results_saved(self):
         # given
         for b_id in self.b.benchmarks:
             Performance.update_or_create(b_id, 100)
