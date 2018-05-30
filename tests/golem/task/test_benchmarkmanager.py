@@ -1,6 +1,7 @@
 from unittest.mock import Mock
 
 from apps.appsmanager import AppsManager
+from golem.environments.environment import Environment
 
 from golem.model import Performance
 from golem.task.benchmarkmanager import BenchmarkManager
@@ -22,5 +23,7 @@ class TestBenchmarkManager(DatabaseFixture, PEP8MixIn):
 
         for b_id in b.benchmarks:
             Performance.update_or_create(b_id, 100)
+
+        Performance.update_or_create(Environment.get_id(), 100)
 
         assert not b.benchmarks_needed()
