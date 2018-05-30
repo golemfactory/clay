@@ -4,6 +4,8 @@ import logging
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import Task
+from golem.task.taskthread import TaskThread
+
 
 logger = logging.getLogger("apps.core")
 
@@ -52,7 +54,7 @@ class BenchmarkRunner(LocalComputer):
             raise Exception("No docker container found")
         return super(BenchmarkRunner, self)._get_task_thread(ctd)
 
-    def is_success(self, task_thread):
+    def is_success(self, task_thread: TaskThread) -> bool:
         if not task_thread.result:
             return False
         try:
@@ -65,7 +67,7 @@ class BenchmarkRunner(LocalComputer):
             return False
         return self.benchmark.verify_result(res["data"])
 
-    def computation_success(self, task_thread):
+    def computation_success(self, task_thread: TaskThread) -> None:
         res, _ = task_thread.result
         try:
             benchmark_value = self.benchmark.normalization_constant / self._get_time_spent()
