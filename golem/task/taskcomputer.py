@@ -253,9 +253,10 @@ class TaskComputer(object):
                 self.counting_thread.check_timeout()
         elif self.compute_tasks and self.runnable:
             if not self.waiting_for_task:
-                if time.time() - self.last_task_request > self.task_request_frequency:
-                    if self.counting_thread is None:
-                        self.__request_task()
+                last_request = time.time() - self.last_task_request
+                if last_request > self.task_request_frequency \
+                        and self.counting_thread is None:
+                    self.__request_task()
             elif self.use_waiting_deadline:
                 if self.waiting_deadline < time.time():
                     self.reset()

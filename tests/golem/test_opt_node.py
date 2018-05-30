@@ -880,7 +880,8 @@ class TestOptNode(TempDirFixture):
 
         result = self.node.graceful_shutdown()
         assert result == 'off'
-        assert self.node.client.update_settings.called_with('in_shutdown', False)
+        assert self.node.client.update_settings.called_with('in_shutdown',
+                                                            False)
         assert self.node._is_task_in_progress.not_called
         assert self.node.client.quit.not_called
         assert self.node._reactor.stop.not_called
@@ -903,7 +904,8 @@ class TestOptNode(TempDirFixture):
         assert self.node.client.quit.not_called
         assert self.node._is_task_in_progress.called
         assert result == 'on'
-        assert self.node.client.update_settings.called_with('in_shutdown', True)
+        assert self.node.client.update_settings.called_with('in_shutdown'
+                                                            True)
 
         self.node._config_desc.in_shutdown = True
         self.node._is_task_in_progress = Mock(return_value=False)
