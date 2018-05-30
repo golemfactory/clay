@@ -118,6 +118,5 @@ class BenchmarkManager(object):
         kwargs = {'func': Environment.run_default_benchmark,
                   'callback': callback,
                   'errback': errback,
-                  'num_cores': 1,
                   'save': True}
         Thread(target=callback_wrapper, kwargs=kwargs).start()

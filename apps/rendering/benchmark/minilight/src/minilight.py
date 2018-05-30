@@ -16,7 +16,7 @@ MODEL_FORMAT_ID = '#MiniLight'
 logger = logging.getLogger(__name__)
 
 
-def make_perf_test(filename, cfg_filename=None, num_cores=1):
+def make_perf_test(filename):
     """
     ----------------------------------------------------------------------
       MiniLight 1.6 Python
@@ -78,10 +78,6 @@ def make_perf_test(filename, cfg_filename=None, num_cores=1):
                 num_samples, duration, float(num_samples) / duration)
 
     average = float(num_samples) / duration
-    average = average * num_cores
-    if cfg_filename:
-        with open(cfg_filename, 'w') as cfg_file:
-            cfg_file.write("{0:.1f}".format(average))
     return average
 
 

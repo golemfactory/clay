@@ -155,12 +155,12 @@ class Environment():
                 return f.read()
 
     @classmethod
-    def run_default_benchmark(cls, num_cores=1, save=False):
+    def run_default_benchmark(cls, save=False):
         logger = logging.getLogger('golem.task.benchmarkmanager')
         logger.info('Running benchmark for %s', cls.get_id())
         test_file = path.join(get_golem_path(), 'apps', 'rendering',
                               'benchmark', 'minilight', 'cornellbox.ml.txt')
-        performance = make_perf_test(test_file, num_cores=num_cores)
+        performance = make_perf_test(test_file)
         logger.info('%s performance is %.2f', cls.get_id(), performance)
         if save:
             Performance.update_or_create(cls.get_id(), performance)
