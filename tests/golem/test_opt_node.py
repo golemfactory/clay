@@ -884,11 +884,7 @@ class TestOptNode(TempDirFixture):
         self.node = Node(**self.node_kwargs)
         self.node.quit = Mock()
         self.node.client = Mock()
-        self.node._reactor.callFromThread = call_now
         self.node._is_task_in_progress = Mock(return_value=True)
-
-        self.node.check_shutdown()
-        assert self.node.quit.not_called
 
         result = self.node.graceful_shutdown()
         assert result == 'on'
@@ -896,6 +892,18 @@ class TestOptNode(TempDirFixture):
                                                             True)
         assert self.node.quit.not_called
         assert self.node._is_task_in_progress.called
+
+    def test_check_shutdown(self, *_):
+        self.node = Node(**self.node_kwargs)
+        self.node.quit = Mock()
+        self.node.client = Mock()
+        self.node._is_task_in_progress = Mock(return_value=True)
+
+        self.node.check_shutdown()
+        assert self.node.quit.not_called
+
+        result = self.node.graceful_shutdown()
+        assert result == 'on'
 
         self.node._config_desc.in_shutdown = True
         self.node._is_task_in_progress = Mock(return_value=False)
@@ -905,30 +913,52 @@ class TestOptNode(TempDirFixture):
 
     def test__is_task_in_progress_no_shutdown(self, *_):
         self.node = Node(**self.node_kwargs)
-        self.node.quit = Mock()
 
-        self.node._is_task_in_progress()
+        mock_tm = Mock()
+        mock_tc = Mock()
+        self.node.client = Mock()
+        self.node.client.task_server.task_manager = mock_tm
+        self.node.client.task_server.task_computer = mock_tc
 
-        assert self.node.quit.not_called
+        mock_tm.get_progresses = Mock(return_value={})
+        mock_tc.assigned_subtasks = {}
+
+        result = self.node._is_task_in_progress()
+
+        assert result == False
+        assert mock_tm.get_progresses.called
 
     def test__is_task_in_progress_in_progress(self, *_):
-        self.node_kwargs['config_desc'].in_shutdown = True
-
         self.node = Node(**self.node_kwargs)
-        self.node.quit = Mock()
-        self.node._is_task_in_progress = Mock(return_value=True)
 
-        self.node._is_task_in_progress()
+        mock_tm = Mock()
+        mock_tc = Mock()
+        self.node.client = Mock()
+        self.node.client.task_server = Mock()
+        self.node.client.task_server.task_manager = mock_tm
+        self.node.client.task_server.task_computer = mock_tc
 
-        assert self.node.quit.not_called
+        mock_tm.get_progresses = Mock(return_value={'a':'a'})
+
+        result = self.node._is_task_in_progress()
+
+        assert result == True
+        assert mock_tm.get_progresses.called
 
     def test__is_task_in_progress_quit(self, *_):
-        self.node_kwargs['config_desc'].in_shutdown = True
-
         self.node = Node(**self.node_kwargs)
-        self.node.quit = Mock()
-        self.node._is_task_in_progress = Mock(return_value=False)
 
-        self.node._is_task_in_progress()
+        mock_tm = Mock()
+        mock_tc = Mock()
+        self.node.client = Mock()
+        self.node.client.task_server = Mock()
+        self.node.client.task_server.task_manager = mock_tm
+        self.node.client.task_server.task_computer = mock_tc
 
-        assert self.node.quit.called
+        mock_tm.get_progresses = Mock(return_value={'a':'a'})
+        mock_tc.assigned_subtasks = {'a':'a'}
+
+        result = self.node._is_task_in_progress()
+
+        assert result == True
+        assert mock_tm.get_progresses.called
