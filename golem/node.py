@@ -249,7 +249,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
         task_provider_progress = task_server.task_computer.assigned_subtasks
         logger.debug('_is_task_in_progress? provider=%r, requestor=False',
                      task_provider_progress)
-        return task_provider_progress
+        return task_provider_progress != {}
 
     def _check_terms(self) -> Optional[Deferred]:
         if not self.rpc_session:

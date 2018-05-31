@@ -925,7 +925,7 @@ class TestOptNode(TempDirFixture):
 
         result = self.node._is_task_in_progress()
 
-        assert result == False
+        assert result is False
         assert mock_tm.get_progresses.called
 
     def test__is_task_in_progress_in_progress(self, *_):
@@ -938,11 +938,11 @@ class TestOptNode(TempDirFixture):
         self.node.client.task_server.task_manager = mock_tm
         self.node.client.task_server.task_computer = mock_tc
 
-        mock_tm.get_progresses = Mock(return_value={'a':'a'})
+        mock_tm.get_progresses = Mock(return_value={'a': 'a'})
 
         result = self.node._is_task_in_progress()
 
-        assert result == True
+        assert result is True
         assert mock_tm.get_progresses.called
 
     def test__is_task_in_progress_quit(self, *_):
@@ -955,10 +955,10 @@ class TestOptNode(TempDirFixture):
         self.node.client.task_server.task_manager = mock_tm
         self.node.client.task_server.task_computer = mock_tc
 
-        mock_tm.get_progresses = Mock(return_value={'a':'a'})
-        mock_tc.assigned_subtasks = {'a':'a'}
+        mock_tm.get_progresses = Mock(return_value={'a': 'a'})
+        mock_tc.assigned_subtasks = {'a': 'a'}
 
         result = self.node._is_task_in_progress()
 
-        assert result == True
+        assert result is True
         assert mock_tm.get_progresses.called
