@@ -907,7 +907,7 @@ class TestOptNode(TempDirFixture):
         self.node = Node(**self.node_kwargs)
         self.node.quit = Mock()
 
-        self.node.check_shutdown()
+        self.node._is_task_in_progress()
 
         assert self.node.quit.not_called
 
@@ -918,7 +918,7 @@ class TestOptNode(TempDirFixture):
         self.node.quit = Mock()
         self.node._is_task_in_progress = Mock(return_value=True)
 
-        self.node.check_shutdown()
+        self.node._is_task_in_progress()
 
         assert self.node.quit.not_called
 
@@ -929,6 +929,6 @@ class TestOptNode(TempDirFixture):
         self.node.quit = Mock()
         self.node._is_task_in_progress = Mock(return_value=False)
 
-        self.node.check_shutdown()
+        self.node._is_task_in_progress()
 
         assert self.node.quit.called
