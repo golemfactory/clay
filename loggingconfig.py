@@ -81,6 +81,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'app': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'golem': {
             'level': 'WARNING',
             'propagate': True,

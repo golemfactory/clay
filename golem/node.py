@@ -231,12 +231,16 @@ class Node(object):  # pylint: disable=too-few-public-methods
             if self._keys_auth is not None:
                 return
 
+            tip_msg = 'Run `golemcli account unlock` and enter your password.'
+
             if self.key_exists():
                 event = 'get_password'
-                logger.info("Waiting for password to unlock the account")
+                logger.info('Waiting for password to unlock the account. '
+                            f'{tip_msg}')
             else:
                 event = 'new_password'
-                logger.info("New account, need to create new password")
+                logger.info('New account, waiting for password to be set. '
+                            f'{tip_msg}')
 
             while self._keys_auth is None and self._reactor.running:
                 StatusPublisher.publish(Component.client, event, Stage.pre)
