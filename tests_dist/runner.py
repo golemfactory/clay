@@ -1,4 +1,5 @@
 from tests_dist.ProcTestFixture import ProcTestFixture
+from tests_dist.ExpectLines import ExpectLines
 
 print('Integration test runner.py')
 
@@ -14,9 +15,9 @@ class TestVersion(ProcTestFixture):
         print("DEBUG: Hello World")
         # TODO: Make sure LC_AL and LC_LANG are set
         args = [
-            'ssh',
-            'maaktweluit@192.168.178.172',
-            'cd', '/home/maaktweluit/src/golem', ';',
+        #    'ssh',
+        #    'maaktweluit@192.168.178.172',
+        #    'cd', '/home/maaktweluit/src/golem', ';',
             '.venv/bin/pytest', 'tests_dist/tests/test_version.py', '-s'
         ]
         
@@ -30,13 +31,26 @@ class TestVersion(ProcTestFixture):
         opts = {
             'cwd': None
         }
-        exit_code, log_err, log_out, check_err_exp, check_out_exp = self.do_magic(opts, args, exp_err, exp_out) #  noqa
 
-        assert check_out_exp == len(exp_out)
-        print("P: All expected out lines have been found")
+        self.init_magic(opts, args)
+        expect_lines = ExpectLines(exp_err, exp_out)
+        log_err = []
+        log_out = []
 
-        assert check_err_exp == len(exp_err)
-        print("P: All expected err lines have been found")
+        while True:
+            exit_code, tmp_err, tmp_out = self.tick_magic()
+            # expect stuff
+            expect_lines.feed(tmp_err, tmp_out)
+            # store stuff
+            if tmp_err:
+                log_err += tmp_err
+            if tmp_out:
+                log_out += tmp_out
+            # are we there yet?
+            if exit_code is not None:
+                break
+
+        expect_lines.report()
 
         print("DEBUG: OUT:" + str(len(log_out)))
         print(log_out)
@@ -45,8 +59,8 @@ class TestVersion(ProcTestFixture):
         # assert final test state
         assert exit_code == 0
         print("P: Exit code is 0")
-        assert len(log_out) == 26 
-        print("P: Test returns 26 lines")
+        assert len(log_out) == 21 
+        print("P: Test returns 21 lines")
         err_len = len(log_err)
         assert len(log_err) <= 5 
         if err_len > 0:

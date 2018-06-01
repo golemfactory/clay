@@ -1,6 +1,7 @@
 import json
 
 from tests_dist.ProcTestFixture import ProcTestFixture
+from tests_dist.ExpectLines import ExpectLines
 
 class TestVersion(ProcTestFixture):
 
@@ -22,13 +23,27 @@ class TestVersion(ProcTestFixture):
         opts = {
             'cwd': 'dist/' + config["dist_dir"]
         }
-        exit_code, log_err, log_out, check_err_exp, check_out_exp = self.do_magic(opts, args, exp_err, exp_out)
 
-        assert check_out_exp == len(exp_out)
-        print("P: All expected out lines have been found")
+        self.init_magic(opts, args)
+        expect_lines = ExpectLines(exp_err, exp_out)
+        log_err = []
+        log_out = []
 
-        assert check_err_exp == len(exp_err)
-        print("P: All expected err lines have been found")
+        while True:
+            exit_code, tmp_err, tmp_out = self.tick_magic()
+            # expect stuff
+            expect_lines.feed(tmp_err, tmp_out)
+            # store stuff
+            if tmp_err:
+                log_err += tmp_err
+            if tmp_out:
+                log_out += tmp_out
+            # are we there yet?
+            if exit_code is not None:
+                break
+
+        expect_lines.report()
+
 
         print("DEBUG: OUT:" + str(len(log_out)))
         print(log_out)
