@@ -25,7 +25,7 @@ from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import object_method_map, Session, Publisher
 from golem.terms import TermsOfUse
 
-logger = logging.getLogger("app")
+logger = logging.getLogger(__name__)
 
 
 # pylint: disable=too-many-instance-attributes
