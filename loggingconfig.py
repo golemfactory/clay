@@ -105,6 +105,10 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
+        'golem.node': {
+            'level': 'INFO',
+            'propagate': True,
+        },
         'golem.pay': {
             'level': 'INFO',
             'propagate': True,
