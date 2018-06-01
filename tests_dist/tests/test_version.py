@@ -1,9 +1,8 @@
 import json
 
-from tests_dist.ProcTestFixture import ProcTestFixture
-from tests_dist.ExpectLines import ExpectLines
+from tests_dist.lib import ProcTester, ExpectLines
 
-class TestVersion(ProcTestFixture):
+class TestVersion:
 
     def test_golemapp_version(self):
         print()
@@ -24,20 +23,18 @@ class TestVersion(ProcTestFixture):
             'cwd': 'dist/' + config["dist_dir"]
         }
 
-        self.init_magic(opts, args)
+        proc_tester = ProcTester(opts, args)
         expect_lines = ExpectLines(exp_err, exp_out)
         log_err = []
         log_out = []
 
         while True:
-            exit_code, tmp_err, tmp_out = self.tick_magic()
+            exit_code, tmp_err, tmp_out = proc_tester.tick()
             # expect stuff
             expect_lines.feed(tmp_err, tmp_out)
             # store stuff
-            if tmp_err:
-                log_err += tmp_err
-            if tmp_out:
-                log_out += tmp_out
+            log_err += tmp_err
+            log_out += tmp_out
             # are we there yet?
             if exit_code is not None:
                 break
