@@ -68,6 +68,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
                 ANY,
                 ANY,
                 ANY,
+                ANY,
                 golem_sci.chains.RINKEBY,
             )
 
@@ -77,6 +78,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
                    '.ETHEREUM_CHAIN', 'mainnet'):
             EthereumTransactionSystem(self.tempdir, PRIV_KEY)
             new_sci.assert_called_once_with(
+                ANY,
                 ANY,
                 ANY,
                 ANY,
