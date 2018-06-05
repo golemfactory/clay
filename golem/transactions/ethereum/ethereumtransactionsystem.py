@@ -4,7 +4,7 @@ import time
 from typing import List, Optional
 
 from ethereum.utils import privtoaddr, denoms
-from eth_utils import encode_hex, is_address
+from eth_utils import encode_hex, is_address, to_checksum_address
 import requests
 
 from golem_sci import new_sci
@@ -49,7 +49,8 @@ class EthereumTransactionSystem(TransactionSystem):
         """
 
         try:
-            eth_addr = encode_hex(privtoaddr(node_priv_key))
+            eth_addr = \
+                to_checksum_address(encode_hex(privtoaddr(node_priv_key)))
         except AssertionError:
             raise ValueError("not a valid private key")
         log.info("Node Ethereum address: %s", eth_addr)
