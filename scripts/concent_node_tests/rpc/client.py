@@ -22,7 +22,7 @@ class RPCClient:
     def call(self,
              method, *args,
              on_success = lambda: None,
-             on_error = lambda: None,
+             on_error = None,
              **kwargs):
 
         def on_connected(_):
@@ -38,7 +38,7 @@ class RPCClient:
 
         self.session.connect(
             auto_reconnect=False
-        ).addCallbacks(on_connected, connection_error)
+        ).addCallbacks(on_connected, on_error or connection_error)
 
     def shutdown(self, *_):
         if self.session:
