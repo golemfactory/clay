@@ -300,10 +300,7 @@ class TaskServer(
 
     def add_task_header(self, th_dict_repr):
         try:
-            ok, err = TaskHeader.is_correct(th_dict_repr)
-            if not ok:
-                raise ValueError(err)
-
+            TaskHeader.validate(th_dict_repr)
             header = TaskHeader.from_dict(th_dict_repr)
             if not self.verify_header_sig(header):
                 raise Exception("Invalid signature")

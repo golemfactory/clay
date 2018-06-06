@@ -352,7 +352,7 @@ class TaskHeaderKeeper:
         if max_price and max_price >= self.min_price:
             return SupportStatus.ok()
         return SupportStatus.err(
-            {UnsupportReason.MAX_PRICE: getattr(header, "max_price", None)})
+            {UnsupportReason.MAX_PRICE: max_price})
 
     def check_version(self, header: TaskHeader) -> SupportStatus:
         """Check if this node has a version that isn't less than minimum
