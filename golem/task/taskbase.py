@@ -41,8 +41,8 @@ class ResultType(object): # class ResultType(Enum):
 
 
 class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
-    """ Task header describe general information about task as an request and
-        is propagated in the network as an offer for computing nodes
+    """
+    TaskFixedHeader is the fixed (i.e. unchangeable) part of TaskHeader
     """
     def __init__(self,  # pylint: disable=too-many-arguments
                  task_id: str,
@@ -73,7 +73,7 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
         self.max_price = max_price
 
     def __repr__(self):
-        return '<Header: %r>' % (self.task_id,)
+        return '<FixedHeader: %r>' % (self.task_id,)
 
     def to_binary(self):
         return self.dict_to_binary(self.to_dict())
@@ -102,11 +102,10 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
         """
         self_dict = dict(dictionary)
         self_dict.pop('last_checking', None)
-        self_dict.pop('signature', None)
 
         # "port_statuses" is a nested dict and needs to be sorted;
         # Python < 3.7 does not guarantee the same dict iteration ordering
-        if self_dict.get('task_owner'):
+        if 'task_owner' in self_dict:
             port_statuses = self_dict['task_owner'].get('port_statuses')
             if isinstance(port_statuses, dict):
                 self_dict['task_owner']['port_statuses'] = \
@@ -114,46 +113,41 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
 
             self_dict['task_owner'] = cls._ordered(self_dict['task_owner'])
 
-        if self_dict.get('docker_images'):
+        if 'docker_images' in self_dict:
             self_dict['docker_images'] = [cls._ordered(di) for di
                                           in self_dict['docker_images']]
 
         return cls._ordered(self_dict)
 
     @staticmethod
-    def is_correct(th_dict_repr: dict) -> Tuple[bool, Optional[str]]:
+    def validate(th_dict_repr: dict) -> None:
         """Checks if task header dict representation has correctly
            defined parameters
          :param dict th_dict_repr: task header dictionary representation
-         :return (bool, error): First element is True if task is properly
-                                defined (the second element is then None).
-         Otheriwse first element is False and the second is the string
-         describing wrong element
         """
         if not isinstance(th_dict_repr['deadline'], (int, float)):
-            return False, "Deadline is not a timestamp"
+            raise ValueError("Deadline is not a timestamp")
         if th_dict_repr['deadline'] < common.get_timestamp_utc():
             msg = "Deadline already passed \n " \
                   "task_id = %s \n " \
                   "node name = %s " % \
                   (th_dict_repr['task_id'],
                    th_dict_repr['task_owner']['node_name'])
-            return False, msg
+            raise ValueError(msg)
         if not isinstance(th_dict_repr['subtask_timeout'], int):
             msg = "Subtask timeout is not a number \n " \
                   "task_id = %s \n " \
                   "node name = %s " % \
                   (th_dict_repr['task_id'],
                    th_dict_repr['task_owner']['node_name'])
-            return False, msg
+            raise ValueError(msg)
         if th_dict_repr['subtask_timeout'] < 0:
             msg = "Subtask timeout is less than 0 \n " \
                   "task_id = %s \n " \
                   "node name = %s " % \
                   (th_dict_repr['task_id'],
                    th_dict_repr['task_owner']['node_name'])
-            return False, msg
-        return True, None
+            raise ValueError(msg)
 
     @staticmethod
     def _ordered(dictionary: dict) -> List[tuple]:
@@ -161,6 +155,10 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
 
 
 class TaskHeader(object):
+    """
+    Task header describes general information about task as an request and
+    is propagated in the network as an offer for computing nodes
+    """
 
     def __init__(
             self,
@@ -207,11 +205,11 @@ class TaskHeader(object):
         return cls._ordered(self_dict)
 
     @staticmethod
-    def is_correct(th_dict_repr: dict) -> Tuple[bool, Optional[str]]:
+    def validate(th_dict_repr: dict) -> None:
         fixed_header = th_dict_repr.get('fixed_header')
         if fixed_header:
-            return TaskFixedHeader.is_correct(fixed_header)
-        return False, 'Fixed header is missing'
+            return TaskFixedHeader.validate(fixed_header)
+        raise ValueError('Fixed header is missing')
 
     @staticmethod
     def _ordered(dictionary: dict) -> List[Tuple]:

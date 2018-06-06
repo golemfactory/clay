@@ -74,37 +74,34 @@ class TestTaskHeader(TestCase):
             }
         }
 
-    def test_is_correct_ok(self):
-        correct, err = TaskHeader.is_correct(self.th_dict_repr)
-        self.assertTrue(correct)
-        self.assertIsNone(err)
+    def test_validate_ok(self):
+        TaskHeader.validate(self.th_dict_repr)
 
-    def test_is_correct_illegal_deadline(self):
+    def test_validate_illegal_deadline(self):
         self.th_dict_repr['fixed_header']['deadline'] = datetime.now()
-        correct, err = TaskHeader.is_correct(self.th_dict_repr)
-        self.assertFalse(correct)
-        self.assertIn("Deadline is not a timestamp", err)
+        with self.assertRaisesRegex(ValueError, "Deadline is not a timestamp"):
+            TaskHeader.validate(self.th_dict_repr)
 
-    def test_is_correct_deadline_passed(self):
+    def test_validate_deadline_passed(self):
         self.th_dict_repr['fixed_header']['deadline'] = get_timestamp_utc() - 10
-        correct, err = TaskHeader.is_correct(self.th_dict_repr)
-        self.assertFalse(correct)
-        self.assertIn("Deadline already passed", err)
+        with self.assertRaisesRegex(ValueError, "Deadline already passed"):
+            TaskHeader.validate(self.th_dict_repr)
 
-    def test_is_correct_illegal_timeout(self):
+    def test_validate_illegal_timeout(self):
         self.th_dict_repr['fixed_header']['subtask_timeout'] = "abc"
-        correct, err = TaskHeader.is_correct(self.th_dict_repr)
-        self.assertFalse(correct)
-        self.assertIn("Subtask timeout is not a number", err)
+        with self.assertRaisesRegex(
+            ValueError, "Subtask timeout is not a number"
+        ):
+            TaskHeader.validate(self.th_dict_repr)
 
-    def test_is_correct_negative_timeout(self):
+    def test_validate_negative_timeout(self):
         self.th_dict_repr['fixed_header']['subtask_timeout'] = -131
-        correct, err = TaskHeader.is_correct(self.th_dict_repr)
-        self.assertFalse(correct)
-        self.assertIn("Subtask timeout is less than 0", err)
+        with self.assertRaisesRegex(
+            ValueError, "Subtask timeout is less than 0"
+        ):
+            TaskHeader.validate(self.th_dict_repr)
 
-    def test_is_correct_no_fixed_header(self):
+    def test_validate_no_fixed_header(self):
         del self.th_dict_repr['fixed_header']
-        correct, err = TaskHeader.is_correct(self.th_dict_repr)
-        self.assertFalse(correct)
-        self.assertIn("Fixed header is missing", err)
+        with self.assertRaisesRegex(ValueError, "Fixed header is missing"):
+            TaskHeader.validate(self.th_dict_repr)
