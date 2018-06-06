@@ -21,13 +21,16 @@ class RPCClient:
 
     def call(self,
              method, *args,
-             on_success = lambda: None,
-             on_error = None,
+             on_success=lambda: None,
+             on_error=None,
              **kwargs):
 
         def on_connected(_):
+            def default_errback(error):
+                print("Error: {}".format(error))
+
             deferred = self.session.call(method, *args, **kwargs)
-            deferred.addCallbacks(on_success, on_error)
+            deferred.addCallbacks(on_success, on_error or default_errback)
             deferred.addBoth(self.shutdown)
 
         def connection_error(error):
@@ -57,10 +60,11 @@ def call_requestor(method, *args,
                 **kwargs)
 
 
-def call_provider(method,
+def call_provider(method, *args,
                   on_success=lambda x: print(x),
-                  on_error=lambda: None,
-                  *args, **kwargs):
+                  on_error=None,
+                  **kwargs):
+
     client = RPCClient(host='localhost', port=PROVIDER_RPC_PORT)
     client.call(method, *args,
                 on_success=on_success,

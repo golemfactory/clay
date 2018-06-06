@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+import re
 import sys
 import tempfile
 import time
@@ -22,6 +23,7 @@ class NodeTestPlaybook:
     requestor_node_script = None
     provider_node = None
     requestor_node = None
+    provider_port = None
 
     exit_code = None
     current_step = 0
@@ -48,7 +50,7 @@ class NodeTestPlaybook:
         self.stop(1)
 
     def success(self):
-        print("Test run completed after {} steps! :)".format(
+        print("Test run completed after {} steps.".format(
             self.current_step + 1))
         self.stop(0)
 
@@ -89,8 +91,24 @@ class NodeTestPlaybook:
 
     def step_get_provider_network_info(self):
         def on_success(result):
-            print(type(result), result)
-        call_provider('net.status', on_success=on_success)
+            match = re.search(r'Port\s(\d+)', result)
+            if match:
+                self.provider_port = match.group(1)
+                print("Provider's port: {}".format(self.provider_port))
+                self.next()
+            else:
+                print("Waiting for Provider's network info...")
+                time.sleep(3)
+        call_provider('net.status',
+                      on_success=on_success, on_error=lambda: None)
+
+    def step_connect_nodes(self):
+        def on_success(result):
+            print("Peer connection initialized.")
+            self.next()
+        call_requestor('net.peer.connect',
+                       ("localhost", self.provider_port, ),
+                       on_success=on_success)
 
     def step_verify_peer_connection(self):
         def on_success(result):
@@ -178,6 +196,7 @@ class NodeTestPlaybook:
         step_get_provider_key,
         step_get_requestor_key,
         step_get_provider_network_info,
+        step_connect_nodes,
         step_verify_peer_connection,
         step_get_known_tasks,
         step_create_task,
@@ -236,7 +255,6 @@ class NodeTestPlaybook:
         return playbook
 
     def stop(self, exit_code):
-        self._instance.stop()
         try:
             reactor.stop()
         except ReactorNotRunning:
