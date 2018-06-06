@@ -50,7 +50,6 @@ class PaymentProcessor:
         self._sci = sci
         self._eth_reserved = 0
         self._gntb_reserved = 0
-        self._awaiting_lock = Lock()
         self._awaiting = SortedListWithKey(key=lambda p: p.processed_ts)
         self._inprogress: Dict[str, List[Payment]] = {}  # Sent transactions.
         self.load_from_db()
@@ -92,24 +91,20 @@ class PaymentProcessor:
             encode_hex(payment.payee),
             payment.value / denoms.ether))
 
-        with self._awaiting_lock:
-            ts = get_timestamp()
-            if not payment.processed_ts:
-                with Payment._meta.database.transaction():
-                    payment.processed_ts = ts
-                    payment.save()
+        ts = get_timestamp()
+        if not payment.processed_ts:
+            with Payment._meta.database.transaction():
+                payment.processed_ts = ts
+                payment.save()
 
-            self._awaiting.add(payment)
+        self._awaiting.add(payment)
 
         self._gntb_reserved += payment.value
         self._eth_reserved += self.get_gas_cost_per_payment()
 
         log.info("GNTB reserved %.6f", self._gntb_reserved / denoms.ether)
 
-    def __get_next_batch(
-            self,
-            payments: List[Payment],
-            closure_time: int) -> int:
+    def __get_next_batch(self, closure_time: int) -> int:
         gntb_balance = self._sci.get_gntb_balance(self._sci.get_eth_address())
         eth_balance = self._sci.get_eth_balance(self._sci.get_eth_address())
         if not gntb_balance or not eth_balance:
@@ -120,7 +115,7 @@ class PaymentProcessor:
         gas_limit = \
             self._sci.get_latest_block().gas_limit * self.BLOCK_GAS_LIMIT_RATIO
         payees = set()
-        for p in payments:
+        for p in self._awaiting:
             if p.processed_ts > closure_time:
                 break
             gntb_balance -= p.value
@@ -138,32 +133,28 @@ class PaymentProcessor:
             ind += 1
 
         # we need to take either all payments with given processed_ts or none
-        if ind < len(payments):
-            while ind > 0 and payments[ind - 1]\
-                    .processed_ts == payments[ind].processed_ts:
+        if ind < len(self._awaiting):
+            while ind > 0 and self._awaiting[ind - 1]\
+                    .processed_ts == self._awaiting[ind].processed_ts:
                 ind -= 1
 
         return ind
 
     def sendout(self, acceptable_delay: int = PAYMENT_MAX_DELAY):
-        with self._awaiting_lock:
-            if not self._awaiting:
-                return False
+        if not self._awaiting:
+            return False
 
-            now = get_timestamp()
-            deadline = self._awaiting[0].processed_ts + acceptable_delay
-            if deadline > now:
-                log.info("Next sendout in {} s".format(deadline - now))
-                return False
+        now = get_timestamp()
+        deadline = self._awaiting[0].processed_ts + acceptable_delay
+        if deadline > now:
+            log.info("Next sendout in {} s".format(deadline - now))
+            return False
 
-            payments_count = self.__get_next_batch(
-                self._awaiting.copy(),
-                now - self.CLOSURE_TIME_DELAY,
-            )
-            if payments_count == 0:
-                return False
-            payments = self._awaiting[:payments_count]
-            del self._awaiting[:payments_count]
+        payments_count = self.__get_next_batch(now - self.CLOSURE_TIME_DELAY)
+        if payments_count == 0:
+            return False
+        payments = self._awaiting[:payments_count]
+        del self._awaiting[:payments_count]
 
         value = sum([p.value for p in payments])
         log.info("Batch payments value: {:.6f}".format(value / denoms.ether))
@@ -176,8 +167,7 @@ class PaymentProcessor:
             )
         except Exception as e:
             log.warning("Exception while sending batch transfer {}".format(e))
-            with self._awaiting_lock:
-                self._awaiting.update(payments)
+            self._awaiting.update(payments)
             return False
 
         with Payment._meta.database.transaction():
@@ -195,9 +185,8 @@ class PaymentProcessor:
         # Remove from reserved, because we monitor the pending block.
         # TODO: Maybe we should only monitor the latest block? issue #2414
         self._gntb_reserved -= value
-        with self._awaiting_lock:
-            self._eth_reserved = \
-                len(self._awaiting) * self.get_gas_cost_per_payment()
+        self._eth_reserved = \
+            len(self._awaiting) * self.get_gas_cost_per_payment()
         return True
 
     def monitor_progress(self):
