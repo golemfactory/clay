@@ -79,7 +79,7 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
                 + 'DefaultHttpSender.post_json') \
                     as mock_send:
                 f()
-                time.sleep(0.005)
+                time.sleep(0.05)
                 self.assertEqual(mock_send.call_count, 1)
                 result = json.loads(mock_send.call_args[0][0])
                 expected_d = {
