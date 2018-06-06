@@ -10,6 +10,7 @@ from golem_sci.interface import TransactionReceipt
 from eth_utils import encode_hex
 from ethereum.utils import denoms, privtoaddr
 from freezegun import freeze_time
+from hexbytes import HexBytes
 
 from golem.core.common import timestamp_to_datetime
 from golem.ethereum.paymentprocessor import (
@@ -173,9 +174,9 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         tx_block_number = 1337
         self.sci.get_block_number.return_value = tx_block_number
         receipt = TransactionReceipt({
-            'transactionHash': tx_hash,
+            'transactionHash': HexBytes(tx_hash),
             'blockNumber': tx_block_number,
-            'blockHash': '0x' + 64 * 'f',
+            'blockHash': HexBytes('0x' + 64 * 'f'),
             'gasUsed': 55001,
             'status': 1,
         })
@@ -217,9 +218,9 @@ class PaymentProcessorInternalTest(DatabaseFixture):
 
         tx_block_number = 1337
         receipt = TransactionReceipt({
-            'transactionHash': tx_hash,
+            'transactionHash': HexBytes(tx_hash),
             'blockNumber': tx_block_number,
-            'blockHash': '0x' + 64 * 'f',
+            'blockHash': HexBytes('0x' + 64 * 'f'),
             'gasUsed': 55001,
             'status': 0,
         })

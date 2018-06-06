@@ -24,8 +24,6 @@ from golem.network.concent.handlers_library import library
 from golem.network.concent.filetransfers import ConcentFiletransferService
 from golem.transactions.incomeskeeper import (
     IncomesKeeper, Income)
-from golem.transactions.ethereum.ethereumtransactionsystem import (
-    EthereumTransactionSystem)
 
 
 from tests.factories import taskserver as taskserver_factories
@@ -377,10 +375,8 @@ class ForceGetTaskResultTest(TaskServerMessageHandlerTestBase):
 class ForceSubtaskResultsResponseTest(TaskServerMessageHandlerTestBase):
     def setUp(self):
         super().setUp()
-        self.client.transaction_system = EthereumTransactionSystem(
-            self.path,
-            self.provider_keys.raw_privkey
-        )
+        self.client.transaction_system = mock.Mock()
+        self.client.transaction_system.incomes_keeper = IncomesKeeper()
 
     def test_force_subtask_results_response_empty(self):
         msg = message.concents.ForceSubtaskResultsResponse()
@@ -799,10 +795,8 @@ class SubtaskResultsVerifyTest(FileTransferTokenTestsBase,  # noqa pylint:disabl
 class SubtaskResultsSettledTest(TaskServerMessageHandlerTestBase):
     def setUp(self):
         super().setUp()
-        self.client.transaction_system = EthereumTransactionSystem(
-            self.path,
-            self.provider_keys.raw_privkey
-        )
+        self.client.transaction_system = mock.Mock()
+        self.client.transaction_system.incomes_keeper = IncomesKeeper()
 
     def test_settled(self):
         srs = msg_factories.concents.SubtaskResultsSettledFactory()

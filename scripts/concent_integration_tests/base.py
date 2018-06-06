@@ -1,5 +1,6 @@
 import base64
 import logging
+import os
 import calendar
 import time
 
@@ -27,7 +28,8 @@ class ConcentBaseTest:
         return cryptography.ECCx(None)
 
     def setUp(self):
-        self.variant = variables.CONCENT_CHOICES['staging']
+        concent_variant = os.environ.get('CONCENT_VARIANT', 'staging')
+        self.variant = variables.CONCENT_CHOICES[concent_variant]
         self.provider_keys = self._fake_keys()
         self.requestor_keys = self._fake_keys()
         logger.debug('Provider key: %s',
