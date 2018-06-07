@@ -1147,11 +1147,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertNotEqual(c.get_setting('node_name'), newer_node_name)
 
         settings = c.get_settings()
-        settings['node_name'] = newer_node_name
-        with self.assertRaises(KeyError):
-            c.update_settings(settings)
+        self.assertIsInstance(settings['min_price'], str)
+        self.assertIsInstance(settings['max_price'], str)
 
-        del settings['py/object']
+        settings['node_name'] = newer_node_name
         c.update_settings(settings)
         self.assertEqual(c.get_setting('node_name'), newer_node_name)
 
