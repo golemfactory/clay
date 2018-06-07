@@ -40,7 +40,7 @@ class SenderThread(threading.Thread):
         while not self.stop_request.isSet():
             try:
                 msg = self.queue.get(True, self.monitor_sender_thread_timeout)
-                if not msg:
+                if msg is None:
                     continue
                 self.sender.send(msg)
             except queue.Empty:
