@@ -718,7 +718,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 subtask_price=msg.task_to_compute.price,
             )
 
-            def ask_for_verification():
+            def ask_for_verification(**_kwargs):
                 srv = message.concents.SubtaskResultsVerify(
                     subtask_results_rejected=msg
                 )
@@ -728,15 +728,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     msg=srv,
                 )
 
-            thash = self.task_server.client.transaction_system.concent_deposit(
+            self.task_server.client.transaction_system.concent_deposit(
                 required=amount,
                 expected=expected,
                 reserved=self.task_server.client.funds_locker.sum_locks()[0],
                 cb=ask_for_verification,
             )
-            if thash is None:
-                # Deposit is big enough
-                ask_for_verification()
 
         else:
             self.task_server.subtask_rejected(

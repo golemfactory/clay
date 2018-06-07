@@ -64,7 +64,9 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
 
         transaction_processed = threading.Event()
 
-        def _callback():
+        def _callback(receipt):
+            if not receipt.status:
+                raise RuntimeError("Deposit failed")
             transaction_processed.set()
 
         self.ets.concent_deposit(

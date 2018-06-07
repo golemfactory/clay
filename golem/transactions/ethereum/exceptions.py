@@ -12,7 +12,3 @@ class NotEnoughFunds(EthereumError):
     def __str__(self):
         return "Not enough %s available. Required: %d, available: %d" % \
                (self.extension, self.required, self.available)
-
-
-class TransactionFailed(EthereumError):
-    pass

@@ -1,7 +1,7 @@
 from datetime import datetime
 import logging
 import time
-from typing import List, Optional
+from typing import List
 
 from ethereum.utils import privtoaddr, denoms
 from eth_utils import encode_hex, is_address, to_checksum_address
@@ -182,9 +182,11 @@ class EthereumTransactionSystem(TransactionSystem):
             required: int,
             expected: int,
             reserved: int,
-            cb=None) -> Optional[str]:
+            cb=None) -> None:
         if cb is None:
-            cb = lambda: None  # noqa
+            def noop(**_kwargs):
+                pass
+            cb = noop
         current = self.concent_balance()
         if current >= required:
             cb()
@@ -205,12 +207,12 @@ class EthereumTransactionSystem(TransactionSystem):
 
         def transaction_receipt(receipt):
             if not receipt.status:
-                log.warning(
+                log.critical(
                     "Deposit failed. Receipt: %r",
                     receipt,
                 )
-                raise exceptions.TransactionFailed(receipt)
-            cb()
+                return
+            cb(receipt=receipt)
 
         self._sci.on_transaction_confirmed(
             tx_hash=tx_hash,
