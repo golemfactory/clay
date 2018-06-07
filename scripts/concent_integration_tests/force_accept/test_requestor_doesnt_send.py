@@ -73,7 +73,6 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
             reserved=0,
             cb=_callback,
         )
-
         while not transaction_processed.is_set():
             sys.stderr.write('.')
             sys.stderr.flush()
