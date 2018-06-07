@@ -199,7 +199,7 @@ class EthereumTransactionSystem(TransactionSystem):
         tx_hash = self._sci.deposit_payment(max_possible_amount)  # tx_hash
         log.info(
             "Requested concent deposit of %.6fGNT (tx: %r)",
-            max_possible_amount,
+            max_possible_amount / denoms.ether,
             tx_hash,
         )
 
