@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 import sys
-import time
 
 from scripts.concent_node_tests import helpers
-from scripts.concent_node_tests.tests.base import (
-    NodeTestPlaybook, call_requestor)
+from scripts.concent_node_tests.tests.base import NodeTestPlaybook
 
 
 class ForceReport(NodeTestPlaybook):
@@ -16,26 +14,17 @@ class ForceReport(NodeTestPlaybook):
         self.next()
 
     def step_wait_task_finished(self):
-        provider_concent_fail = helpers.search_output(
+        concent_fail = helpers.search_output(
             self.provider_output_queue,
             '.*Concent request failed.*',
         )
 
-        if provider_concent_fail:
-            print("Provider: ", provider_concent_fail.group(0))
+        if concent_fail:
+            print("Provider: ", concent_fail.group(0))
             self.fail()
             return
 
-        def on_success(result):
-            if result['status'] == 'Finished':
-                print("Task finished.")
-                self.success()
-            else:
-                print("{} ... ".format(result['status']))
-                time.sleep(5)
-
-        call_requestor('comp.task', self.task_id,
-                       on_success=on_success, on_error=self.print_error)
+        super().step_wait_task_finished()
 
     steps = (
         NodeTestPlaybook.step_get_provider_key,
