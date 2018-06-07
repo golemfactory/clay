@@ -3,8 +3,8 @@ import time
 
 from scripts.concent_node_tests import helpers
 
-provider_node = helpers.run_golem_node('regular_provider')
-requestor_node = helpers.run_golem_node('regular_requestor')
+provider_node = helpers.run_golem_node('provider/regular')
+requestor_node = helpers.run_golem_node('requestor/regular')
 
 provider_queue = helpers.get_output_queue(provider_node)
 requestor_queue = helpers.get_output_queue(requestor_node)

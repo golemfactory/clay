@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+"""
+
+Regular, unmodified Requestor node
+
+"""
+
 import sys
 
 sys.path.insert(0, 'golem')

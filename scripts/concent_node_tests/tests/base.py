@@ -17,7 +17,7 @@ _sslverify.platformTrust = lambda: None
 class NodeTestPlaybook:
     INTERVAL = 1
 
-    _instance = None
+    _loop = None
 
     provider_node_script = None
     requestor_node_script = None
@@ -31,6 +31,7 @@ class NodeTestPlaybook:
     requestor_key = None
     known_tasks = None
     task_id = None
+    started = False
 
     @property
     def current_step_method(self):
@@ -222,12 +223,13 @@ class NodeTestPlaybook:
             self.fail()
             return
 
-        provider_exit = self.provider_node.poll()
-        requestor_exit = self.requestor_node.poll()
-        helpers.report_termination(provider_exit, "Provider")
-        helpers.report_termination(requestor_exit, "Requestor")
-        if provider_exit is not None and requestor_exit is not None:
-            self.fail()
+        if self.started:
+            provider_exit = self.provider_node.poll()
+            requestor_exit = self.requestor_node.poll()
+            helpers.report_termination(provider_exit, "Provider")
+            helpers.report_termination(requestor_exit, "Requestor")
+            if provider_exit is not None and requestor_exit is not None:
+                self.fail()
 
     def __init__(self):
         if not self.provider_node_script or not self.requestor_node_script:
@@ -240,13 +242,13 @@ class NodeTestPlaybook:
         self.requestor_node = helpers.run_golem_node(
             self.requestor_node_script
         )
+        self.started=True
 
     @classmethod
     def start(cls):
         playbook = cls()
-        p =  task.LoopingCall(playbook.run)
-        p.start(cls.INTERVAL, False)
-        playbook._instance = p
+        playbook._loop = task.LoopingCall(playbook.run)
+        playbook._loop.start(cls.INTERVAL, False)
 
         reactor.addSystemEventTrigger(
             'before', 'shutdown', lambda: playbook.stop(2))
@@ -255,6 +257,10 @@ class NodeTestPlaybook:
         return playbook
 
     def stop(self, exit_code):
+        if not self.started:
+            return
+
+        self.started = False
         try:
             reactor.stop()
         except ReactorNotRunning:

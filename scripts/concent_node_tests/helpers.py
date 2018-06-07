@@ -14,11 +14,12 @@ def report_termination(exit_code, node_type):
 def gracefully_shutdown(process: subprocess.Popen, node_type: str):
     process.terminate()
     try:
-        print("Waiting for %s subprocess to shut-down" % node_type)
+        print("Waiting for the %s subprocess to shut-down" % node_type)
         exit_code = process.wait(60)
         report_termination(exit_code, node_type)
     except subprocess.TimeoutExpired:
-        print("%s Graceful shutdown timed-out, issuing kill signal." % node_type)
+        print(
+            "%s graceful shutdown timed-out, issuing sigkill." % node_type)
         process.kill()
 
 

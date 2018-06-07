@@ -1,4 +1,10 @@
 #!/usr/bin/env python
+"""
+
+Regular, unmodified Provider node
+
+"""
+
 import sys
 
 sys.path.insert(0, 'golem')
