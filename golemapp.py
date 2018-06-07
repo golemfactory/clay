@@ -26,7 +26,6 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor, \
 from golem.config.environments import set_environment  # noqa
 from golem.core import variables  # noqa
 from golem.core.common import install_reactor  # noqa
-from golem.tools.talkback import enable_sentry_logger  # noqa
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
 
@@ -48,7 +47,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 
 
 @click.command()
-@click.option('--monitor/--nomonitor', default=True)
+@click.option('--monitor/--nomonitor', default=None)
 @click.option('--concent', type=click.Choice(variables.CONCENT_CHOICES))
 @click.option('--datadir', '-d',
               default=None,
@@ -172,10 +171,6 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     from golem.core.common import config_logging
     config_logging(datadir=datadir, loglevel=log_level, config_desc=config_desc)
 
-    if enable_talkback is None:
-        enable_talkback = bool(config_desc.enable_talkback)
-    enable_sentry_logger(enable_talkback)
-
     log_golem_version()
     log_platform_info()
     log_ethereum_chain()
@@ -187,6 +182,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         config_desc=config_desc,
         peers=peer,
         use_monitor=monitor,
+        use_talkback=enable_talkback,
         concent_variant=CONCENT_VARIANT,
         start_geth=False,
         start_geth_port=None,

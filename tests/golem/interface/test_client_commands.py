@@ -865,8 +865,13 @@ class TestTerms(unittest.TestCase):
                 self.client.show_terms.return_value)
             self.assertEqual(result, html2text.return_value)
 
-    def test_accept(self):
+    @patch('sys.stdin')
+    def test_accept(self, stdin):
+        stdin.readline.return_value = 'y'
         with client_ctx(Terms, self.client):
             terms = Terms()
             terms.accept()
-            self.client.accept_terms.assert_called_once()
+            self.client.accept_terms.assert_called_once_with(
+                enable_monitor=True,
+                enable_talkback=True,
+            )

@@ -4,7 +4,7 @@ import time
 from typing import List, Optional
 
 from ethereum.utils import privtoaddr, denoms
-from eth_utils import encode_hex, is_address
+from eth_utils import encode_hex, is_address, to_checksum_address
 import requests
 
 from golem_sci import new_sci
@@ -49,7 +49,8 @@ class EthereumTransactionSystem(TransactionSystem):
         """
 
         try:
-            eth_addr = encode_hex(privtoaddr(node_priv_key))
+            eth_addr = \
+                to_checksum_address(encode_hex(privtoaddr(node_priv_key)))
         except AssertionError:
             raise ValueError("not a valid private key")
         log.info("Node Ethereum address: %s", eth_addr)
@@ -75,9 +76,11 @@ class EthereumTransactionSystem(TransactionSystem):
         self._gntb_balance: int = 0
         self._last_eth_update = None
         self._last_gnt_update = None
+        self._is_stopped = False
 
     def stop(self):
         super().stop()
+        self._is_stopped = True
         self.payment_processor.sendout(0)
         self.incomes_keeper.stop()
         self._sci.stop()
@@ -86,7 +89,7 @@ class EthereumTransactionSystem(TransactionSystem):
     def sync(self) -> None:
         log.info("Synchronizing balances")
         self._sci.wait_until_synchronized()
-        while True:
+        while not self._is_stopped:
             self._refresh_balances()
             if self._balance_known():
                 log.info("Balances synchronized")

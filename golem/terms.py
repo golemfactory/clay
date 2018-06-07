@@ -6,7 +6,7 @@ from golem.model import GenericKeyValue
 
 class TermsOfUse:
     TERMS_ACCEPTED_KEY = 'terms_of_use_accepted'
-    TERMS_VERSION = 2
+    TERMS_VERSION = 3
     TERMS_PATH = Path('golem/TERMS.html')
 
     @classmethod

@@ -891,6 +891,7 @@ class Client(HardwarePresetsMixin):
 
     def get_task_stats(self) -> Dict[str, int]:
         return {
+            'host_state': self.get_task_state(),
             'in_network': self.get_task_count(),
             'supported': self.get_supported_task_count(),
             'subtasks_computed': self.get_computed_task_count(),
@@ -902,6 +903,10 @@ class Client(HardwarePresetsMixin):
         if self.task_server:
             return len(self.task_server.task_keeper.supported_tasks)
         return 0
+
+    def get_task_state(self):
+        if self.task_server and self.task_server.task_computer:
+            return self.task_server.task_computer.get_host_state()
 
     def get_computed_task_count(self):
         return self.get_task_computer_stat('computed_tasks')

@@ -417,6 +417,13 @@ class TaskServer(
             accepted_ts,
         )
 
+    def subtask_settled(self, sender_node_id, subtask_id, settled_ts):
+        """My (provider's) results were accepted by the Concent"""
+        logger.debug("Subtask %r settled by the Concent", subtask_id)
+        self.task_result_sent(subtask_id)
+        self.client.transaction_system.incomes_keeper.settled(
+            sender_node_id, subtask_id, settled_ts)
+
     def subtask_failure(self, subtask_id, err):
         logger.info("Computation for task {} failed: {}.".format(
             subtask_id, err))
