@@ -37,22 +37,19 @@ class SenderThread(threading.Thread):
         self.queue.put(o)
 
     def run(self):
-        last_send = 0
-        msg = None
         while not self.stop_request.isSet():
             try:
+                msg = self.queue.get(True, self.monitor_sender_thread_timeout)
                 if not msg:
-                    msg = self.queue.get(True, 1)
-                if time.time() - last_send > self.monitor_sender_thread_timeout:
-                    last_send = time.time()
-                    self.sender.send(msg)
-                    msg = None
+                    continue
+                self.sender.send(msg)
             except queue.Empty:
                 # send ping message
                 self.sender.send(self.node_info)
 
     def join(self, timeout=None):
         self.stop_request.set()
+        self.queue.put(None)
         super(SenderThread, self).join(timeout)
 
 
