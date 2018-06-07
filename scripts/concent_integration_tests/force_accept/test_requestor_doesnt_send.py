@@ -61,29 +61,19 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
             # We'll use subtask price. Total number of subtasks is unknown
             price,
         )
-        tx_hash = self.ets.concent_deposit(
-            required=amount,
-            expected=amount,
-            reserved=0,
-        )
-        sys.stderr.write("Deposit tx_hash: {}\n".format(tx_hash))
-
-        if tx_hash is None:
-            sys.stderr.write("No need for deposit\n")
-            return
 
         transaction_processed = threading.Event()
 
-        def _callback(receipt):
-            if not receipt.status:
-                raise RuntimeError("Deposit failed")
+        def _callback():
             transaction_processed.set()
 
-        self.ets._sci.on_transaction_confirmed(
-            tx_hash=tx_hash,
-            required_confs=3,
+        self.ets.concent_deposit(
+            required=amount,
+            expected=amount,
+            reserved=0,
             cb=_callback,
         )
+
         while not transaction_processed.is_set():
             sys.stderr.write('.')
             sys.stderr.flush()

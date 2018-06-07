@@ -1,4 +1,8 @@
-class NotEnoughFunds(Exception):
+class EthereumError(Exception):
+    pass
+
+
+class NotEnoughFunds(EthereumError):
     def __init__(self, required=None, available=None, extension="GNT"):
         super().__init__()
         self.required = required
@@ -8,3 +12,7 @@ class NotEnoughFunds(Exception):
     def __str__(self):
         return "Not enough %s available. Required: %d, available: %d" % \
                (self.extension, self.required, self.available)
+
+
+class TransactionFailed(EthereumError):
+    pass

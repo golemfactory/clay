@@ -14,7 +14,7 @@ from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.transactions.ethereum.ethereumincomeskeeper \
     import EthereumIncomesKeeper
-from golem.transactions.ethereum.exceptions import NotEnoughFunds
+from golem.transactions.ethereum import exceptions
 from golem.transactions.transactionsystem import TransactionSystem
 
 log = logging.getLogger('golem.pay')
@@ -141,7 +141,7 @@ class EthereumTransactionSystem(TransactionSystem):
         if currency == 'ETH':
             eth = self._eth_balance - pp.reserved_eth
             if amount > eth - lock:
-                raise NotEnoughFunds(amount, eth - lock, currency)
+                raise exceptions.NotEnoughFunds(amount, eth - lock, currency)
             log.info(
                 "Withdrawing %f ETH to %s",
                 amount / denoms.ether,
@@ -153,7 +153,11 @@ class EthereumTransactionSystem(TransactionSystem):
             total_gnt = \
                 self._gnt_balance + self._gntb_balance - pp.reserved_gntb
             if amount > total_gnt - lock:
-                raise NotEnoughFunds(amount, total_gnt - lock, currency)
+                raise exceptions.NotEnoughFunds(
+                    amount,
+                    total_gnt - lock,
+                    currency,
+                )
             # This can happen during unfinished GNT-GNTB conversion,
             # so we should wait until it finishes
             if amount > self._gntb_balance:
@@ -179,15 +183,18 @@ class EthereumTransactionSystem(TransactionSystem):
             expected: int,
             reserved: int,
             cb=None) -> Optional[str]:
+        if cb is None:
+            cb = lambda: None  # noqa
         current = self.concent_balance()
         if current >= required:
-            return None
+            cb()
+            return
         required -= current
         expected -= current
         gntb_balance = self._gntb_balance
         gntb_balance -= reserved
         if gntb_balance < required:
-            raise NotEnoughFunds(required, gntb_balance, 'GNTB')
+            raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
         max_possible_amount = min(expected, gntb_balance)
         tx_hash = self._sci.deposit_payment(max_possible_amount)  # tx_hash
         log.info(
@@ -195,21 +202,21 @@ class EthereumTransactionSystem(TransactionSystem):
             max_possible_amount,
             tx_hash,
         )
-        if cb is not None:
-            def transaction_receipt(receipt):
-                if not receipt.status:
-                    log.warning(
-                        "Deposit failed. Receipt: %r",
-                        receipt,
-                    )
-                    return
-                cb()
-            self._sci.on_transaction_confirmed(
-                tx_hash=tx_hash,
-                required_confs=3,
-                cb=transaction_receipt,
-            )
-        return tx_hash
+
+        def transaction_receipt(receipt):
+            if not receipt.status:
+                log.warning(
+                    "Deposit failed. Receipt: %r",
+                    receipt,
+                )
+                raise exceptions.TransactionFailed(receipt)
+            cb()
+
+        self._sci.on_transaction_confirmed(
+            tx_hash=tx_hash,
+            required_confs=3,
+            cb=transaction_receipt,
+        )
 
     def _get_ether_from_faucet(self) -> None:
         if not self._faucet or not self._balance_known():
