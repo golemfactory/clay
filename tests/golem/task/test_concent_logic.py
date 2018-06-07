@@ -19,7 +19,7 @@ from golem.network import history
 from golem.task import taskbase
 from golem.task import tasksession
 from golem.task import taskstate
-
+from tests.factories.p2p import Node
 
 reject_reasons = message.tasks.RejectReportComputedTask.REASON
 cannot_reasons = message.tasks.CannotComputeTask.REASON
@@ -101,7 +101,11 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
             inputb=self.msg.task_to_compute.get_short_hash(),
         )
         task_id = self.msg.task_to_compute.compute_task_def['task_id']
-        task_header = taskbase.TaskHeader(*(None,)*6)
+        task_header = taskbase.TaskHeader(
+            task_id='task_id',
+            environment='env',
+            task_owner=Node()
+        )
         task_header.deadline = now_ts + 3600
         task = mock.Mock()
         task.header = task_header

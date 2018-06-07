@@ -1,4 +1,5 @@
 import abc
+import hashlib
 import logging
 import time
 from typing import List, Type, Optional, Tuple, Any
@@ -72,6 +73,8 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
         self.min_version = min_version
         self.max_price = max_price
 
+        self.update_checksum()
+
     def __repr__(self):
         return '<FixedHeader: %r>' % (self.task_id,)
 
@@ -81,13 +84,19 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
     def to_dict(self):
         return DictSerializer.dump(self, typed=False)
 
+    def update_checksum(self) -> None:
+        self.checksum = hashlib.sha256(self.to_binary()).digest()
+
     @staticmethod
-    def from_dict(dictionary):
-        th = DictSerializer.load(dictionary, as_class=TaskHeader)
+    def from_dict(dictionary) -> 'TaskFixedHeader':
+        th: TaskFixedHeader = \
+            DictSerializer.load(dictionary, as_class=TaskFixedHeader)
         th.last_checking = time.time()
 
         if isinstance(th.task_owner, dict):
             th.task_owner = Node.from_dict(th.task_owner)
+
+        th.update_checksum()
         return th
 
     @classmethod
@@ -102,6 +111,7 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
         """
         self_dict = dict(dictionary)
         self_dict.pop('last_checking', None)
+        self_dict.pop('checksum', None)
 
         # "port_statuses" is a nested dict and needs to be sorted;
         # Python < 3.7 does not guarantee the same dict iteration ordering
