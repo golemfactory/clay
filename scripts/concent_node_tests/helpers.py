@@ -1,6 +1,7 @@
 import os
 import pathlib
 import queue
+import re
 import subprocess
 import sys
 import threading
@@ -54,6 +55,27 @@ def print_output(q: queue.Queue, prefix):
             sys.stdout.write(prefix + line.decode('utf-8'))
     except queue.Empty:
         pass
+
+
+def clear_output(q: queue.Queue):
+    try:
+        while True:
+            q.get_nowait()
+    except queue.Empty:
+        pass
+
+
+def search_output(q: queue.Queue, pattern):
+    try:
+        for line in iter(q.get_nowait, None):
+            if line:
+                line = line.decode('utf-8')
+                m = re.match(pattern, line)
+                if m:
+                    return m
+    except queue.Empty:
+        pass
+    return None
 
 
 def construct_test_task(task_package_name, output_path):

@@ -23,6 +23,9 @@ class NodeTestPlaybook:
     requestor_node_script = None
     provider_node = None
     requestor_node = None
+    provider_output_queue = None
+    requestor_output_queue = None
+
     provider_port = None
 
     exit_code = None
@@ -242,6 +245,12 @@ class NodeTestPlaybook:
         self.requestor_node = helpers.run_golem_node(
             self.requestor_node_script
         )
+
+        self.provider_output_queue = helpers.get_output_queue(
+            self.provider_node)
+        self.requestor_output_queue = helpers.get_output_queue(
+            self.requestor_node)
+
         self.started=True
 
     @classmethod
