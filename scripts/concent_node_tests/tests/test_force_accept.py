@@ -6,14 +6,14 @@ from scripts.concent_node_tests.tests.base import NodeTestPlaybook
 
 
 class ForceAccept(NodeTestPlaybook):
-    provider_node_script = 'provider/regular'
+    provider_node_script = 'provider/debug'
     requestor_node_script = 'requestor/no_sra'
 
     def step_clear_provider_output(self):
         helpers.clear_output(self.provider_output_queue)
         self.next()
 
-    def step_wait_task_finished(self):
+    def step_wait(self):
         concent_fail = helpers.search_output(
             self.provider_output_queue,
             '.*Concent request failed.*',
@@ -23,8 +23,6 @@ class ForceAccept(NodeTestPlaybook):
             print("Provider: ", concent_fail.group(0))
             self.fail()
             return
-
-        super().step_wait_task_finished()
 
     steps = (
         NodeTestPlaybook.step_get_provider_key,
@@ -37,7 +35,7 @@ class ForceAccept(NodeTestPlaybook):
         NodeTestPlaybook.step_create_task,
         NodeTestPlaybook.step_get_task_id,
         NodeTestPlaybook.step_get_task_status,
-        step_wait_task_finished,
+        step_wait,
     )
 
 

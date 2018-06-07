@@ -18,6 +18,8 @@ from scripts.concent_node_tests import params
 
 sys.argv.extend(params.REQUESTOR_ARGS)
 
+original_send = TaskSession.send
+
 
 def send(self, msg, send_unverified=False):
 
@@ -25,7 +27,7 @@ def send(self, msg, send_unverified=False):
     if isinstance(msg, SubtaskResultsAccepted):
         return
 
-    TaskSession.send(self, msg, send_unverified=send_unverified)
+    original_send(self, msg, send_unverified=send_unverified)
 
 
 with mock.patch("golem.task.tasksession.TaskSession.send", send):

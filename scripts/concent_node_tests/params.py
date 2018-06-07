@@ -7,7 +7,6 @@ REQUESTOR_ARGS = [
     '--password', 'dupabladapsiakocia',
     '--accept-terms',
     '--rpc-address', 'localhost:%s' % REQUESTOR_RPC_PORT,
-    #'--log-level', 'DEBUG',
     '--protocol_id', '1337',
 ]
 
@@ -17,6 +16,13 @@ PROVIDER_ARGS = [
     '--password', 'dupabladapsiakocia',
     '--accept-terms',
     '--rpc-address', 'localhost:%s' % PROVIDER_RPC_PORT,
-    #'--log-level', 'DEBUG',
     '--protocol_id', '1337',
+]
+
+PROVIDER_ARGS_DEBUG = PROVIDER_ARGS + [
+    '--log-level', 'DEBUG',
+]
+
+REQUESTOR_ARGS_DEBUG = REQUESTOR_ARGS + [
+    '--log-level', 'DEBUG',
 ]
