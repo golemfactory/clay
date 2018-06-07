@@ -83,7 +83,10 @@ class ConfigApprover(object):
     to_int_opt = {
         'seed_port', 'num_cores', 'opt_peer_num', 'p2p_session_timeout',
         'task_session_timeout', 'pings_interval', 'max_results_sending_delay',
-        'min_price', 'max_price', 'key_difficulty'
+        'key_difficulty',
+    }
+    to_big_int_opt = {
+        'min_price', 'max_price',
     }
     to_float_opt = {
         'getting_peers_interval', 'getting_tasks_interval', 'computing_trust',
@@ -99,6 +102,7 @@ class ConfigApprover(object):
         """
         self._actions = [
             (self.to_int_opt, self._to_int),
+            (self.to_big_int_opt, self._to_int),
             (self.to_float_opt, self._to_float),
             (self.max_opt, self._max_value)
         ]
@@ -122,8 +126,16 @@ class ConfigApprover(object):
         return self.config_desc
 
     @classmethod
-    def is_numeric(cls, name):
-        return name in cls.to_int_opt or name in cls.to_float_opt
+    def is_numeric(cls, name: str) -> bool:
+        return (
+            name in cls.to_int_opt or
+            name in cls.to_float_opt or
+            name in cls.to_big_int_opt
+        )
+
+    @classmethod
+    def is_big_int(cls, name: str) -> bool:
+        return name in cls.to_big_int_opt
 
     @staticmethod
     def _to_int(val, name):

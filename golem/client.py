@@ -812,7 +812,13 @@ class Client(HardwarePresetsMixin):
         return str(key) if key else None
 
     def get_settings(self):
-        return DictSerializer.dump(self.config_desc)
+        settings = DictSerializer.dump(self.config_desc, typed=False)
+
+        for key, value in settings.items():
+            if ConfigApprover.is_big_int(key):
+                settings[key] = str(value)
+
+        return settings
 
     def get_setting(self, key):
         if not hasattr(self.config_desc, key):
