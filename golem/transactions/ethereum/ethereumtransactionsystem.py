@@ -196,10 +196,18 @@ class EthereumTransactionSystem(TransactionSystem):
             tx_hash,
         )
         if cb is not None:
+            def transaction_receipt(receipt):
+                if not receipt.status:
+                    log.warning(
+                        "Deposit failed. Receipt: %r",
+                        receipt,
+                    )
+                    return
+                cb()
             self._sci.on_transaction_confirmed(
                 tx_hash=tx_hash,
                 required_confs=3,
-                cb=cb,
+                cb=transaction_receipt,
             )
         return tx_hash
 

@@ -728,21 +728,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     msg=srv,
                 )
 
-            def transaction_receipt(receipt):
-                if not receipt.status:
-                    logger.warning(
-                        "Couldn't request additional verification from Concent."
-                        " Deposit failed. Receipt: %r",
-                        receipt,
-                    )
-                    return
-                ask_for_verification()
-
             thash = self.task_server.client.transaction_system.concent_deposit(
                 required=amount,
                 expected=expected,
                 reserved=self.task_server.client.funds_locker.sum_locks()[0],
-                cb=transaction_receipt,
+                cb=ask_for_verification,
             )
             if thash is None:
                 # Deposit is big enough
