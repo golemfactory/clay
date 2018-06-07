@@ -184,7 +184,7 @@ class EthereumTransactionSystem(TransactionSystem):
             reserved: int,
             cb=None) -> None:
         if cb is None:
-            def noop(**_kwargs):
+            def noop():
                 pass
             cb = noop
         current = self.concent_balance()
@@ -212,7 +212,7 @@ class EthereumTransactionSystem(TransactionSystem):
                     receipt,
                 )
                 return
-            cb(receipt=receipt)
+            cb()
 
         self._sci.on_transaction_confirmed(
             tx_hash=tx_hash,

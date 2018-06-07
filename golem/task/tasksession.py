@@ -718,7 +718,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 subtask_price=msg.task_to_compute.price,
             )
 
-            def ask_for_verification(**_kwargs):
+            def ask_for_verification():
                 srv = message.concents.SubtaskResultsVerify(
                     subtask_results_rejected=msg
                 )

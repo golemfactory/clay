@@ -64,9 +64,7 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
 
         transaction_processed = threading.Event()
 
-        def _callback(receipt):
-            if not receipt.status:
-                raise RuntimeError("Deposit failed")
+        def _callback():
             transaction_processed.set()
 
         self.ets.concent_deposit(
@@ -82,6 +80,8 @@ class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
             time.sleep(15)
         sys.stderr.write("\nDeposit confirmed in {}\n".format(
             datetime.datetime.now()-start))
+        if self.ets.concent_balance() < amount:
+            raise RuntimeError("Deposit failed")
 
     def prepare_report_computed_task(self, mode, **kwargs):
         """Returns ReportComputedTask with open force acceptance window
