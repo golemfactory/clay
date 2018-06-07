@@ -441,7 +441,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         def on_trans(**kwargs):
             receipt = Mock()
             receipt.status = True
-            kwargs['cb'](receipt)
+            kwargs['cb']()
             return 'txhash'
 
         self.task_session.task_server.client.transaction_system\
