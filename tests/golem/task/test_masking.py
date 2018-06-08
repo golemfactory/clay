@@ -23,20 +23,20 @@ class TestMask(TestCase):
 
     def test_wrong_bits_num(self):
         with self.assertRaises(AssertionError):
-            Mask(num_bits=-1)
+            Mask.generate(num_bits=-1)
         with self.assertRaises(AssertionError):
-            Mask(num_bits=Mask.MASK_LEN + 1)
+            Mask.generate(num_bits=Mask.MASK_LEN + 1)
 
     @patch('golem.task.masking.random', new=Random(__name__))
     def test_bits_num(self):
         for i in range(Mask.MASK_LEN):
-            mask = Mask(num_bits=i)
+            mask = Mask.generate(num_bits=i)
             self.assertEqual(mask.num_bits, i)
 
     @patch('golem.task.masking.random', new=Random(__name__))
     def test_to_bin(self):
         for i in range(Mask.MASK_LEN):
-            bin_repr = Mask(i).to_bin()
+            bin_repr = Mask.generate(i).to_bin()
             bits_num = sum(x == '1' for x in bin_repr)
             self.assertEqual(bits_num, i)
 
@@ -44,27 +44,27 @@ class TestMask(TestCase):
     @patch('golem.task.masking.random')
     def test_to_bytes(self, random):
         random.sample.return_value = range(8)
-        self.assertEqual(Mask(8).to_bytes(), b'\x00\x00\x00\xff')
+        self.assertEqual(Mask.generate(8).to_bytes(), b'\x00\x00\x00\xff')
         random.sample.return_value = [10]
-        self.assertEqual(Mask(1).to_bytes(), b'\x00\x00\x04\x00')
+        self.assertEqual(Mask.generate(1).to_bytes(), b'\x00\x00\x04\x00')
 
     @patch('golem.task.masking.random')
     def test_to_int(self, random):
         random.sample.return_value = range(8)
-        self.assertEqual(Mask(8).to_int(), 255)
+        self.assertEqual(Mask.generate(8).to_int(), 255)
         random.sample.return_value = [10]
-        self.assertEqual(Mask(1).to_int(), 1024)
+        self.assertEqual(Mask.generate(1).to_int(), 1024)
 
     @patch('golem.task.masking.random', new=Random(__name__))
     def test_increase(self):
-        mask = Mask(0)
+        mask = Mask.generate(0)
         for i in range(Mask.MASK_LEN):
             self.assertEqual(mask.num_bits, i)
             mask.increase()
 
     @patch('golem.task.masking.random', new=Random(__name__))
     def test_decrease(self):
-        mask = Mask(Mask.MASK_LEN)
+        mask = Mask.generate(Mask.MASK_LEN)
         for i in range(Mask.MASK_LEN):
             self.assertEqual(mask.num_bits, Mask.MASK_LEN - i)
             mask.decrease()
@@ -83,7 +83,7 @@ class TestMask(TestCase):
     @patch('golem.task.masking.random', new=Random(__name__))
     def test_apply(self):
         def _check(num_bits, exp_num_nodes):
-            mask = Mask(num_bits)
+            mask = Mask.generate(num_bits)
             avg_nodes = sum(
                 sum(mask.apply(addr) for addr in self._get_test_network())
                 for _ in range(1000)) / 1000
