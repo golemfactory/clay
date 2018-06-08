@@ -5,6 +5,7 @@ import random
 import time
 from collections import OrderedDict
 from copy import copy
+from typing import Optional
 
 import numpy
 from PIL import Image, ImageChops, ImageFile
@@ -391,8 +392,10 @@ class BlenderRenderTask(FrameRenderingTask):
 
     @coretask.accepting
     # pylint: disable-msg=too-many-locals
-    def query_extra_data(self, perf_index, num_cores=0, node_id=None,
-                         node_name=None):
+    def query_extra_data(self, perf_index: float, num_cores: int = 0,
+                         node_id: Optional[str] = None,
+                         node_name: Optional[str] = None) \
+            -> FrameRenderingTask.ExtraData:
 
         start_task, end_task = self._get_next_task()
         scene_file = self._get_scene_file_rel_path()

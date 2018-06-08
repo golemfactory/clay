@@ -1,11 +1,16 @@
 import logging
 import os
+from typing import ClassVar, Optional, TYPE_CHECKING
 
 import requests
 from golem.docker.job import DockerJob
 from golem.task.taskbase import ResultType
 from golem.task.taskthread import TaskThread, JobException, TimeoutException
 from golem.vm.memorychecker import MemoryChecker
+
+if TYPE_CHECKING:
+    from .manager import DockerManager  # noqa pylint:disable=unused-import
+
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +32,7 @@ class DockerTaskThread(TaskThread):
     STDOUT_FILE = "stdout.log"
     STDERR_FILE = "stderr.log"
 
-    docker_manager = None
+    docker_manager: ClassVar[Optional['DockerManager']] = None
 
     def __init__(self, task_computer, subtask_id, docker_images,
                  orig_script_dir, src_code, extra_data, short_desc,

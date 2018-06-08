@@ -98,6 +98,9 @@ class LocalComputer:
         else:
             self.computation_failure(task_thread)
 
+    # This cannot be changed to staticmethod, because it's overriden in
+    # a derived class
+    # pylint:disable=no-self-use
     def is_success(self, task_thread: TaskThread) -> bool:
         return \
             not task_thread.error \

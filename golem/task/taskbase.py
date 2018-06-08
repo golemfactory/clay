@@ -1,7 +1,7 @@
 import abc
 import logging
 import time
-from typing import List, Type
+from typing import List, Optional, Type
 
 from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
 import golem
@@ -213,13 +213,15 @@ class Task(abc.ABC):
         return  # Implement in derived class
 
     @abc.abstractmethod
-    def query_extra_data(self, perf_index: float, num_cores=1, node_id: str=None, node_name: str=None) -> ExtraData:
-        """ Called when a node asks with given parameters asks for a new subtask to compute.
-        :param int perf_index: performance that given node declares
-        :param int num_cores: number of cores that current node declares
-        :param None|str node_id: id of a node that wants to get a next subtask
-        :param None|str node_name: name of a node that wants to get a next subtask
-        :return ExtraData
+    def query_extra_data(self, perf_index: float, num_cores: int = 1,
+                         node_id: Optional[str] = None,
+                         node_name: Optional[str] = None) -> 'ExtraData':
+        """ Called when a node asks with given parameters asks for a new
+        subtask to compute.
+        :param perf_index: performance that given node declares
+        :param num_cores: number of cores that current node declares
+        :param node_id: id of a node that wants to get a next subtask
+        :param node_name: name of a node that wants to get a next subtask
         """
         pass  # Implement in derived class
 
