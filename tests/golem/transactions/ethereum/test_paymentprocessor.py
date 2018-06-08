@@ -1,5 +1,4 @@
 import random
-import time
 import uuid
 import unittest
 import unittest.mock as mock
@@ -19,18 +18,6 @@ from golem.ethereum.paymentprocessor import (
 )
 from golem.model import Payment, PaymentStatus, PaymentDetails
 from golem.testutils import DatabaseFixture
-
-
-def wait_for(condition, timeout, step=0.1):
-    for _ in range(int(timeout / step)):
-        if condition():
-            return True
-        time.sleep(step)
-    return False
-
-
-def check_deadline(deadline, expected):
-    return expected <= deadline <= expected + 1
 
 
 class PaymentStatusTest(unittest.TestCase):
@@ -64,50 +51,57 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.pp._gnt_converter.is_converting.return_value = False
         self.pp._gnt_converter.get_gate_balance.return_value = 0
 
-    def test_load_from_db(self):
+    def test_load_from_db_awaiting(self):
         self.assertEqual([], self.pp._awaiting)
 
-        subtask_id = str(uuid.uuid4())
-        value = random.randint(1, 2**5)
-        payee = encode_hex(urandom(32))
+        value = 10
         payment = Payment.create(
-            subtask=subtask_id,
-            payee=payee,
-            value=value
+            subtask=str(uuid.uuid4()),
+            payee=encode_hex(urandom(32)),
+            value=value,
         )
-        self.pp.add(payment)
 
-        del self.pp._awaiting[:]
         self.pp.load_from_db()
         expected = [payment]
         self.assertEqual(expected, self.pp._awaiting)
+        self.assertEqual(value, self.pp.reserved_gntb)
+        self.assertLess(0, self.pp.reserved_eth)
 
-        # Sent payments
-        self.assertEqual({}, self.pp._inprogress)
+    def test_load_from_db_sent(self):
         tx_hash = encode_hex(urandom(32))
+        value = 10
+        payee = encode_hex(urandom(32))
         sent_payment = Payment.create(
-            subtask='sent' + str(uuid.uuid4()),
+            subtask=str(uuid.uuid4()),
             payee=payee,
             value=value,
             details=PaymentDetails(tx=tx_hash[2:]),
             status=PaymentStatus.sent
         )
         sent_payment2 = Payment.create(
-            subtask='sent2' + str(uuid.uuid4()),
+            subtask=str(uuid.uuid4()),
             payee=payee,
             value=value,
             details=PaymentDetails(tx=tx_hash[2:]),
             status=PaymentStatus.sent
         )
         self.pp.load_from_db()
-        expected = {
-            tx_hash: [sent_payment, sent_payment2],
-        }
-        self.assertEqual(expected, self.pp._inprogress)
+        self.assertEqual(2 * value, self.pp.reserved_gntb)
+        self.assertEqual(0, self.pp.reserved_eth)
+        self.sci.on_transaction_confirmed.assert_called_once_with(
+            tx_hash,
+            mock.ANY,
+        )
+        with mock.patch('golem.ethereum.paymentprocessor.threads') as threads:
+            self.sci.on_transaction_confirmed.call_args[0][1](mock.Mock())
+            threads.deferToThread.assert_called_once_with(
+                self.pp._on_batch_confirmed,
+                [sent_payment, sent_payment2],
+                mock.ANY,
+            )
 
     def test_reserved_eth(self):
-        assert self.pp.reserved_eth == \
-            self.sci.GAS_BATCH_PAYMENT_BASE * self.sci.GAS_PRICE
+        assert self.pp.reserved_eth == 0
 
     def test_add_invalid_payment_status(self):
         a1 = urandom(20)
@@ -122,18 +116,14 @@ class PaymentProcessorInternalTest(DatabaseFixture):
             self.pp.add(p1)
 
     def test_monitor_progress(self):
-        inprogress = self.pp._inprogress
-
-        # Give 1 ETH and 99 GNT
         balance_eth = 1 * denoms.ether
         balance_gntb = 99 * denoms.ether
         self.sci.get_eth_balance.return_value = balance_eth
-        self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = balance_gntb
         self.pp.CLOSURE_TIME_DELAY = 0
 
         assert self.pp.reserved_gntb == 0
-        assert self.pp.reserved_eth == self.pp.ETH_BATCH_PAYMENT_BASE
+        assert self.pp.reserved_eth == 0
 
         gnt_value = 10**17
         p = Payment.create(subtask="p1", payee=urandom(20), value=gnt_value)
@@ -147,29 +137,10 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.sci.batch_transfer.return_value = tx_hash
         assert self.pp.sendout(0)
         assert self.sci.batch_transfer.call_count == 1
-
-        assert len(inprogress) == 1
-        assert tx_hash in inprogress
-        assert inprogress[tx_hash] == [p]
-
-        # Check payment status in the Blockchain
-        self.sci.get_transaction_receipt.return_value = None
-        self.sci.get_gntb_balance.return_value = balance_gntb - gnt_value
-        self.pp.monitor_progress()
-        balance_eth_after_sendout = balance_eth - \
-            self.pp.ETH_BATCH_PAYMENT_BASE - \
-            1 * self.pp.get_gas_cost_per_payment()
-        self.sci.get_eth_balance.return_value = balance_eth_after_sendout
-        assert len(inprogress) == 1
-        assert tx_hash in inprogress
-        assert inprogress[tx_hash] == [p]
-        assert self.pp.reserved_gntb == 0
-        assert self.pp.reserved_eth == self.pp.ETH_BATCH_PAYMENT_BASE
-
-        self.pp.monitor_progress()
-        assert len(inprogress) == 1
-        assert self.pp.reserved_gntb == 0
-        assert self.pp.reserved_eth == self.pp.ETH_BATCH_PAYMENT_BASE
+        self.sci.on_transaction_confirmed.assert_called_once_with(
+            tx_hash,
+            mock.ANY,
+        )
 
         tx_block_number = 1337
         self.sci.get_block_number.return_value = tx_block_number
@@ -180,15 +151,15 @@ class PaymentProcessorInternalTest(DatabaseFixture):
             'gasUsed': 55001,
             'status': 1,
         })
-        self.sci.get_transaction_receipt.return_value = receipt
-        self.pp.monitor_progress()
-        self.assertEqual(len(inprogress), 1)
+        with mock.patch('golem.ethereum.paymentprocessor.threads') as threads:
+            self.sci.on_transaction_confirmed.call_args[0][1](receipt)
+            threads.deferToThread.assert_called_once_with(
+                self.pp._on_batch_confirmed,
+                [p],
+                receipt,
+            )
+            self.pp._on_batch_confirmed([p], receipt)
 
-        self.sci.get_block_number.return_value =\
-            tx_block_number + self.pp.REQUIRED_CONFIRMATIONS
-        self.sci.get_transaction_receipt.return_value = receipt
-        self.pp.monitor_progress()
-        self.assertEqual(len(inprogress), 0)
         self.assertEqual(p.status, PaymentStatus.confirmed)
         self.assertEqual(p.details.block_number, tx_block_number)
         self.assertEqual(p.details.block_hash, 64 * 'f')
@@ -196,12 +167,9 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.assertEqual(self.pp.reserved_gntb, 0)
 
     def test_failed_transaction(self):
-        inprogress = self.pp._inprogress
-
         balance_eth = 1 * denoms.ether
         balance_gntb = 99 * denoms.ether
         self.sci.get_eth_balance.return_value = balance_eth
-        self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = balance_gntb
 
         gnt_value = 10**17
@@ -213,9 +181,6 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.sci.batch_transfer.return_value = tx_hash
         assert self.pp.sendout(0)
 
-        # Check payment status in the Blockchain
-        self.sci.get_transaction_receipt.return_value = None
-
         tx_block_number = 1337
         receipt = TransactionReceipt({
             'transactionHash': HexBytes(tx_hash),
@@ -224,26 +189,16 @@ class PaymentProcessorInternalTest(DatabaseFixture):
             'gasUsed': 55001,
             'status': 0,
         })
-        self.sci.get_block_number.return_value = \
-            tx_block_number + self.pp.REQUIRED_CONFIRMATIONS
-        self.sci.get_transaction_receipt.return_value = receipt
-        self.pp.monitor_progress()
-        self.assertEqual(len(inprogress), 0)
+        with mock.patch('golem.ethereum.paymentprocessor.threads') as threads:
+            self.sci.on_transaction_confirmed.call_args[0][1](receipt)
+            threads.deferToThread.assert_called_once_with(
+                self.pp._on_batch_confirmed,
+                [p],
+                receipt,
+            )
+            self.pp._on_batch_confirmed([p], receipt)
         self.assertEqual(p.status, PaymentStatus.awaiting)
-
-        self.pp.deadline = int(time.time())
-        assert self.pp.sendout(0)
-        self.assertEqual(len(inprogress), 1)
-
-        receipt.status = True
-        self.sci.get_transaction_receipt.return_value = receipt
-        self.pp.monitor_progress()
-        self.assertEqual(len(inprogress), 0)
-        self.assertEqual(p.status, PaymentStatus.confirmed)
-        self.assertEqual(p.details.block_number, tx_block_number)
-        self.assertEqual(p.details.block_hash, 64 * 'f')
-        self.assertEqual(p.details.fee, 55001 * self.sci.GAS_PRICE)
-        self.assertEqual(self.pp.reserved_gntb, 0)
+        assert len(self.pp._awaiting) == 1
 
     def test_payment_timestamp(self):
         self.sci.get_eth_balance.return_value = denoms.ether

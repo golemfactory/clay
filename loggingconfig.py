@@ -113,10 +113,6 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
-        'golem.gnt_converter': {
-            'level': 'INFO',
-            'propagate': True,
-        },
         'golem.ethereum': {
             'level': 'INFO',
             'propagate': True,
