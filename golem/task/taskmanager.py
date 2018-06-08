@@ -687,7 +687,7 @@ class TaskManager(TaskEventListener):
             for s in list(ts.subtask_states.values()):
                 if s.subtask_status.is_computed():
                     if cur_time > s.deadline:
-                        logger.info("Subtask {} dies".format(s.subtask_id))
+                        logger.info("Subtask %r dies", s.subtask_id)
                         s.subtask_status = SubtaskStatus.failure
                         nodes_with_timeouts.append(s.computer.node_id)
                         t.computation_failed(s.subtask_id)
@@ -697,7 +697,7 @@ class TaskManager(TaskEventListener):
                                                  op=SubtaskOp.TIMEOUT)
             # Check task timeout
             if cur_time > th.deadline:
-                logger.info("Task {} dies".format(th.task_id))
+                logger.info("Task %r dies", th.task_id)
                 self.tasks_states[th.task_id].status = TaskStatus.timeout
                 # TODO: t.tell_it_has_timeout()?
                 self.notice_task_updated(th.task_id, op=TaskOp.TIMEOUT)

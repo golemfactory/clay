@@ -214,6 +214,10 @@ class Node(object):  # pylint: disable=too-few-public-methods
         return TermsOfUse.show_terms()
 
     def graceful_shutdown(self) -> ShutdownResponse:
+        if self.client is None:
+            logger.warning('Shutdown called when client=None, try again later')
+            return ShutdownResponse.off
+
         # is in shutdown? turn off as toggle
         if self._config_desc.in_shutdown:
             self.client.update_setting('in_shutdown', False)
@@ -248,11 +252,24 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self.quit()
 
     def _is_task_in_progress(self) -> bool:
+        if self.client is None:
+            logger.debug('_is_task_in_progress? False: client=None')
+            return False
+
         task_server = self.client.task_server
+        if task_server is None or task_server.task_manager is None:
+            logger.debug('_is_task_in_progress? False: task_manager=None')
+            return False
+
         task_requester_progress = task_server.task_manager.get_progresses()
         if task_requester_progress:
             logger.debug('_is_task_in_progress? requestor=%r', True)
             return True
+
+        if task_server.task_computer is None:
+            logger.debug('_is_task_in_progress? False: task_computer=None')
+            return False
+
         task_provider_progress = task_server.task_computer.assigned_subtasks
         logger.debug('_is_task_in_progress? provider=%r, requestor=False',
                      task_provider_progress)
