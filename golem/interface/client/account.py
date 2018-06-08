@@ -44,12 +44,12 @@ class Account:
         gnt_balance = balance['gnt']
         gnt_available = balance['av_gnt']
         eth_balance = balance['eth']
-        gnt_balance = float(gnt_balance)
-        gnt_available = float(gnt_available)
-        eth_balance = float(eth_balance)
+        gnt_balance = int(gnt_balance)
+        gnt_available = int(gnt_available)
+        eth_balance = int(eth_balance)
         gnt_reserved = gnt_balance - gnt_available
-        gnt_locked = float(balance['gnt_lock'])
-        eth_locked = float(balance['eth_lock'])
+        gnt_locked = int(balance['gnt_lock'])
+        eth_locked = int(balance['eth_lock'])
 
         return dict(
             node_name=node['node_name'],
@@ -117,4 +117,8 @@ class Account:
 
 
 def _fmt(value: float, unit: str = "GNT") -> str:
-    return "{:.6f} {}".format(value / denoms.ether, unit)
+    full = value // denoms.ether
+    decimals = '.' + str(value % denoms.ether).zfill(18).rstrip('0')
+    if decimals == '.':
+        decimals = ''
+    return "{}{} {}".format(full, decimals, unit)
