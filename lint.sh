@@ -89,7 +89,7 @@ main() {
         printf "${files2chk}\n\n" | sed "s/^/    /"
     fi
 
-    local prod_files2chk=$(printf "${files2chk}" | grep -v '^tests\>') || true
+    local prod_files2chk=$(printf "${files2chk}" | grep -v '^tests\>' | grep -v '^scripts\>') || true
     local test_files2chk=$(printf "${files2chk}" | grep '^tests\>') || true
 
     local lintdiff_cmd="./lintdiff.sh -o -b ${BRANCH}"
