@@ -55,7 +55,7 @@ class BenchmarkRunner(LocalComputer):
         return super(BenchmarkRunner, self)._get_task_thread(ctd)
 
     def is_success(self, task_thread: TaskThread) -> bool:
-        if not task_thread.result:
+        if task_thread.error or not task_thread.result:
             return False
         try:
             res, _ = task_thread.result

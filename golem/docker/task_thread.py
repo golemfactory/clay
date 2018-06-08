@@ -1,5 +1,5 @@
 import logging
-import os
+from pathlib import Path
 from typing import ClassVar, Optional, TYPE_CHECKING
 
 import requests
@@ -53,73 +53,25 @@ class DockerTaskThread(TaskThread):
                 break
 
         self.job = None
-        self.mc = None
         self.check_mem = check_mem
 
-    def run(self):
-        if not self.image:
-            try:
-                raise JobException("None of the Docker images are available")
-            except JobException as e:
-                self._fail(e)
-            self._cleanup()
-            return
+        self.work_dir_path: Path = Path(self.tmp_path) / "work"
+        self.output_dir_path: Path = Path(self.tmp_path) / "output"
+
+    def run(self) -> None:
         try:
+            if not self.image:
+                raise JobException("None of the Docker images are available")
+
             if self.use_timeout and self.task_timeout < 0:
-                raise TimeoutException
-            work_dir = os.path.join(self.tmp_path, "work")
-            output_dir = os.path.join(self.tmp_path, "output")
+                raise TimeoutException()
 
-            if not os.path.exists(work_dir):
-                os.mkdir(work_dir)
-            if not os.path.exists(output_dir):
-                os.mkdir(output_dir)
-
-            if self.docker_manager:
-                host_config = self.docker_manager.container_host_config
-            else:
-                host_config = None
-
-            with DockerJob(self.image, self.src_code, self.extra_data,
-                           self.res_path, work_dir, output_dir,
-                           host_config=host_config) as job:
-                self.job = job
-                if self.check_mem:
-                    self.mc = MemoryChecker()
-                    self.mc.start()
-                self.job.start()
-                exit_code = self.job.wait()
-                # Get stdout and stderr
-                stdout_file = os.path.join(output_dir, self.STDOUT_FILE)
-                stderr_file = os.path.join(output_dir, self.STDERR_FILE)
-                self.job.dump_logs(stdout_file, stderr_file)
-
-                if self.mc:
-                    estm_mem = self.mc.stop()
-                if exit_code == 0:
-                    out_files = []
-                    for root, _, files in os.walk(output_dir):
-                        for name in files:
-                            out_files.append(os.path.join(root, name))
-                    self.result = {
-                        "data": out_files,
-                        "result_type": ResultType.FILES,
-                    }
-                    if self.check_mem:
-                        self.result = (self.result, estm_mem)
-                    self.task_computer.task_computed(self)
-                else:
-                    with open(stderr_file, 'r') as f:
-                        logger.warning('Task stderr:\n%s', f.read())
-
-                    try:
-                        raise JobException(self._exit_code_message(exit_code))
-                    except JobException as e:
-                        self._fail(e)
+            estm_mem = self._run_docker_job()
 
         except (requests.exceptions.ReadTimeout, TimeoutException) as exc:
             if not self.use_timeout:
-                return self._fail(exc)
+                self._fail(exc)
+                return
 
             failure = TimeoutException("Task timed out after {:.1f}s"
                                        .format(self.time_to_compute))
@@ -129,8 +81,53 @@ class DockerTaskThread(TaskThread):
         except Exception as exc:  # pylint: disable=broad-except
             self._fail(exc)
 
+        else:
+            self._task_computed(estm_mem)
+
         finally:
-            self._cleanup()
+            self.job = None
+
+    def _run_docker_job(self) -> Optional[int]:
+        self.work_dir_path.mkdir(exist_ok=True)
+        self.output_dir_path.mkdir(exist_ok=True)
+
+        host_config = self.docker_manager.container_host_config \
+            if self.docker_manager else None
+
+        with DockerJob(self.image, self.src_code, self.extra_data,
+                       self.res_path, str(self.work_dir_path),
+                       str(self.output_dir_path), host_config=host_config) \
+                as job, \
+                MemoryChecker(self.check_mem) as mc:
+            self.job = job
+            self.job.start()
+            exit_code = self.job.wait()
+
+            self.job.dump_logs(str(self.output_dir_path / self.STDOUT_FILE),
+                               str(self.output_dir_path / self.STDERR_FILE))
+
+            estm_mem = mc.estm_mem
+
+            if exit_code != 0:
+                logger.warning(
+                    'Task stderr:\n%s',
+                    (self.output_dir_path / self.STDERR_FILE).read_text())
+                raise JobException(self._exit_code_message(exit_code))
+
+        return estm_mem
+
+    def _task_computed(self, estm_mem: Optional[int]) -> None:
+        out_files = [
+            str(path) for path in self.output_dir_path.glob("**/*")
+            if path.is_file()
+        ]
+        self.result = {
+            "data": out_files,
+            "result_type": ResultType.FILES,
+        }
+        if estm_mem is not None:
+            self.result = (self.result, estm_mem)
+        self.task_computer.task_computed(self)
 
     def get_progress(self):
         # TODO: make the container update some status file? Issue #56
@@ -144,10 +141,6 @@ class DockerTaskThread(TaskThread):
         except requests.exceptions.BaseHTTPError:
             if self.docker_manager:
                 self.docker_manager.recover_vm_connectivity(self.job.kill)
-
-    def _cleanup(self):
-        if self.mc:
-            self.mc.stop()
 
     @staticmethod
     def _exit_code_message(exit_code):
