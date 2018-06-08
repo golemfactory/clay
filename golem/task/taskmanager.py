@@ -177,6 +177,28 @@ class TaskManager(TaskEventListener):
                                  persist=False)
 
     @handle_task_key_error
+    def increase_task_mask(self, task_id: str, num_bits: int = 1) -> None:
+        """ Increase mask for given task i.e. make it more restrictive """
+        task = self.tasks[task_id]
+        try:
+            task.header.mask.increase(num_bits)
+        except AssertionError:
+            return  # Mask cannot be further increased
+        else:
+            task.header.signature = self.sign_task_header(task.header)
+
+    @handle_task_key_error
+    def decrease_task_mask(self, task_id: str, num_bits: int = 1) -> None:
+        """ Decrease mask for given task i.e. make it less restrictive """
+        task = self.tasks[task_id]
+        try:
+            task.header.mask.decrease(num_bits)
+        except AssertionError:
+            return  # Mask cannot be further increased
+        else:
+            task.header.signature = self.sign_task_header(task.header)
+
+    @handle_task_key_error
     def start_task(self, task_id):
         task_state = self.tasks_states[task_id]
 

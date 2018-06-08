@@ -61,6 +61,10 @@ class ClientConfigDescriptor(object):
         self.accept_tasks = 1
         self.debug_third_party = 0
 
+        self.initial_mask_size_factor = 0
+        self.mask_update_interval = 0
+        self.mask_update_num_bits = 0
+
     def init_from_app_config(self, app_config):
         """Initializes config parameters based on the specified AppConfig
         :param app_config: instance of AppConfig

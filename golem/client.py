@@ -66,8 +66,10 @@ from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resource import get_resources_for_task, ResourceType
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.task import taskpreset
+from golem.task.masking import Mask
 from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskbase import Task as TaskBase
+from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus, SubtaskStatus
 from golem.task.tasktester import TaskTester
@@ -328,6 +330,14 @@ class Client(HardwarePresetsMixin):
         monitoring_publisher_service.start()
         self._services.append(monitoring_publisher_service)
 
+        mask_udpate_service = MaskUpdateService(
+            task_manager=self.task_server.task_manager,
+            interval_seconds=self.config_desc.mask_update_interval,
+            update_num_bits=self.config_desc.mask_update_num_bits
+        )
+        mask_udpate_service.start()
+        self._services.append(mask_udpate_service)
+
         dir_manager = self.task_server.task_computer.dir_manager
 
         logger.info("Starting resource server ...")
@@ -556,6 +566,11 @@ class Client(HardwarePresetsMixin):
         def package_created(packager_result):
             package_path, package_sha1 = packager_result
             task.header.resource_size = path.getsize(package_path)
+            task.header.mask = Mask.get_mask_for_task(
+                desired_num_workers=(task.get_total_tasks() *
+                                     self.config_desc.initial_mask_size_factor),
+                network_size=self.p2pservice.get_estimated_network_size()
+            )
             task_manager.add_new_task(task)
 
             client_options = self.task_server.get_share_options(task_id, None)
@@ -1477,3 +1492,26 @@ class TaskCleanerService(LoopingCallService):
 
     def _run(self):
         self._client.clean_old_tasks()
+
+
+class MaskUpdateService(LoopingCallService):
+
+    def __init__(
+            self,
+            task_manager: TaskManager,
+            interval_seconds: int,
+            update_num_bits: int
+    ) -> None:
+        self._task_manager: TaskManager = task_manager
+        self._update_num_bits = update_num_bits
+        super().__init__(interval_seconds)
+
+    def _run(self) -> None:
+        logger.info('Updating masks')
+        for task_id, task in self._task_manager.tasks.items():
+            if task.needs_computation():
+                self._task_manager.decrease_task_mask(
+                    task_id=task_id,
+                    num_bits=self._update_num_bits)
+                logger.info(
+                    'Task %r mask size: %r', task_id, task.header.mask.num_bits)
