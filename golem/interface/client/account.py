@@ -41,12 +41,9 @@ class Account:
                 'eth_lock': 0
             }
 
-        gnt_balance = balance['gnt']
-        gnt_available = balance['av_gnt']
-        eth_balance = balance['eth']
-        gnt_balance = int(gnt_balance)
-        gnt_available = int(gnt_available)
-        eth_balance = int(eth_balance)
+        gnt_balance = int(balance['gnt'])
+        gnt_available = int(balance['av_gnt'])
+        eth_balance = int(balance['eth'])
         gnt_reserved = gnt_balance - gnt_available
         gnt_locked = int(balance['gnt_lock'])
         eth_locked = int(balance['eth_lock'])
@@ -116,7 +113,7 @@ class Account:
         return sync_wait(Account.client.withdraw(amount, destination, currency))
 
 
-def _fmt(value: float, unit: str = "GNT") -> str:
+def _fmt(value: int, unit: str = "GNT") -> str:
     full = value // denoms.ether
     decimals = '.' + str(value % denoms.ether).zfill(18).rstrip('0')
     if decimals == '.':
