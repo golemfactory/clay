@@ -1,3 +1,4 @@
+from enum import Enum
 import functools
 import logging
 import time
@@ -26,6 +27,12 @@ from golem.rpc.session import object_method_map, Session, Publisher
 from golem.terms import TermsOfUse
 
 logger = logging.getLogger(__name__)
+
+
+class ShutdownResponse(Enum):
+    quit = "quit"
+    off = "off"
+    on = "on"
 
 
 # pylint: disable=too-many-instance-attributes
@@ -94,7 +101,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             start_geth_port=start_geth_port,
             geth_address=geth_address,
             apps_manager=self.apps_manager,
-            task_finished_cb=self.check_shutdown
+            task_finished_cb=self._try_shutdown
         )
 
         if password is not None:
@@ -206,18 +213,18 @@ class Node(object):  # pylint: disable=too-few-public-methods
     def show_terms():
         return TermsOfUse.show_terms()
 
-    def graceful_shutdown(self):
+    def graceful_shutdown(self) -> ShutdownResponse:
         # is in shutdown? turn off as toggle
         if self._config_desc.in_shutdown:
             self.client.update_setting('in_shutdown', False)
             logger.info('Turning off shutdown mode')
-            return 'off'
+            return ShutdownResponse.off
 
         # is not providing nor requesting, normal shutdown
         if not self._is_task_in_progress():
             logger.info('Node not working, executing normal shutdown')
             self.quit()
-            return 'quit'
+            return ShutdownResponse.quit
 
         # configure in_shutdown
         logger.info('Enabling shutdown mode, no more tasks can be started')
@@ -225,9 +232,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         # subscribe to events
 
-        return 'on'
+        return ShutdownResponse.on
 
-    def check_shutdown(self):
+    def _try_shutdown(self) -> None:
         # is not in shutdown?
         if not self._config_desc.in_shutdown:
             logger.debug('Checking shutdown, no shutdown configure')
@@ -240,7 +247,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
         logger.info('Node done with all tasks, shutting down')
         self.quit()
 
-    def _is_task_in_progress(self):
+    def _is_task_in_progress(self) -> bool:
         task_server = self.client.task_server
         task_requester_progress = task_server.task_manager.get_progresses()
         if task_requester_progress:

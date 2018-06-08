@@ -151,7 +151,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         assert tc.counting_thread is not None
         self.assertGreater(tc.counting_thread.time_to_compute, 9)
         self.assertLessEqual(tc.counting_thread.time_to_compute, 10)
-        mock_finished.assert_called_once()
+        mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
         self.__wait_for_tasks(tc)
 
@@ -165,7 +165,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertEqual(args[0], "xxyyzz")
         self.assertEqual(args[1], "xyz")
         self.assertEqual(args[2]["data"], 10000)
-        mock_finished.assert_called_once()
+        mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
 
         ctd['subtask_id'] = "aabbcc"
@@ -186,7 +186,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertIsNone(tc.assigned_subtasks.get("aabbcc"))
         task_server.send_task_failed.assert_called_with(
             "aabbcc", "xyz", 'some exception')
-        mock_finished.assert_called_once()
+        mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
 
         ctd['subtask_id'] = "aabbcc2"
@@ -198,7 +198,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
         task_server.send_task_failed.assert_called_with(
             "aabbcc2", "xyz", "Wrong result format")
-        mock_finished.assert_called_once()
+        mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
 
         task_server.task_keeper.task_headers["xyz"].deadline = \
@@ -217,12 +217,12 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd['deadline'] = timeout_to_deadline(1)
         tc.task_given(ctd)
         self.assertTrue(tc.task_resource_collected("xyz"))
-        mock_finished.assert_called_once()
+        mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
         tt = tc.counting_thread
         tc.task_computed(tc.counting_thread)
         self.assertIsNone(tc.counting_thread)
-        mock_finished.assert_called_once()
+        mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
         task_server.send_task_failed.assert_called_with(
             "xxyyzz2", "xyz", "Wrong result format")
