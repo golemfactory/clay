@@ -62,7 +62,8 @@ class TaskServer(
         self.node = node
         self.task_archiver = task_archiver
         self.task_keeper = TaskHeaderKeeper(
-            client.environments_manager,
+            environments_manager=client.environments_manager,
+            node=self.node,
             min_price=config_desc.min_price,
             task_archiver=task_archiver)
         self.task_manager = TaskManager(
@@ -298,27 +299,19 @@ class TaskServer(
         ths_tk = self.task_keeper.get_all_tasks()
         return [th.to_dict() for th in ths_tk]
 
-    def add_task_header(self, th_dict_repr):
+    def add_task_header(self, th_dict_repr: dict) -> bool:
         try:
             TaskHeader.validate(th_dict_repr)
             header = TaskHeader.from_dict(th_dict_repr)
             if not self.verify_header_sig(header):
-                raise Exception("Invalid signature")
+                raise ValueError("Invalid signature")
 
-            task_id = header.task_id
-            key_id = header.task_owner.key
-            task_ids = list(self.task_manager.tasks.keys())
-            new_sig = True
+            if self.task_manager.is_this_my_task(header):
+                return True  # Own tasks are not added to task keeper
 
-            if task_id in self.task_keeper.task_headers:
-                old_header = self.task_keeper.task_headers[task_id]
-                new_sig = header.signature != old_header.signature
+            return self.task_keeper.add_task_header(header)
 
-            if task_id not in task_ids and key_id != self.node.key and new_sig:
-                self.task_keeper.add_task_header(header)
-
-            return True
-        except Exception:  # pylint: disable=broad-except
+        except ValueError:
             logger.warning("Wrong task header received", exc_info=True)
             return False
 

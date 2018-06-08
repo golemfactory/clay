@@ -24,6 +24,7 @@ from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import tasksession
+from golem.task.masking import Mask
 from golem.task.taskbase import TaskHeader, ResultType
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
@@ -33,6 +34,7 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 from golem.utils import encode_hex
 
+from tests.factories.p2p import Node as NodeFactory
 from tests.factories.resultpackage import ExtractedPackageFactory
 
 
@@ -56,7 +58,11 @@ def get_example_task_header(key_id):
             "estimated_memory": 3 * 1024,
             "signature": None,
             "min_version": golem.__version__,
-        }
+        },
+        "mask": {
+            "byte_repr": Mask().to_bytes()
+        },
+        "timestamp": 0,
     }
 
 
@@ -84,7 +90,7 @@ class TaskServerTestBase(LogTestCase,
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
             self.ts = TaskServer(
-                node=Node(),
+                node=NodeFactory(),
                 config_desc=self.ccd,
                 client=self.client,
                 use_docker_manager=False,
@@ -107,7 +113,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
     def test_request(self, tar, *_):
         ccd = ClientConfigDescriptor()
         ccd.min_price = 10
-        n = Node()
+        n = NodeFactory()
         ts = TaskServer(
             node=n,
             config_desc=ccd,
@@ -315,7 +321,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_header["signature"] = keys_auth_2.sign(
             TaskHeader.dict_to_binary(task_header))
 
-        self.assertIsNotNone(ts.add_task_header(task_header))
+        self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 1)
 
         task_header = get_example_task_header(keys_auth_2.public_key)
@@ -323,10 +329,10 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_header["signature"] = keys_auth_2.sign(
             TaskHeader.dict_to_binary(task_header))
 
-        self.assertIsNotNone(ts.add_task_header(task_header))
+        self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
 
-        self.assertIsNotNone(ts.add_task_header(task_header))
+        self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
 
         new_header = dict(task_header)
@@ -334,11 +340,12 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         new_header["signature"] = keys_auth_2.sign(
             TaskHeader.dict_to_binary(new_header))
 
-        self.assertIsNotNone(ts.add_task_header(new_header))
+        # An attempt to update fixed header should *not* succeed
+        self.assertFalse(ts.add_task_header(new_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
         saved_task = next(th for th in ts.get_others_tasks_headers()
                           if th["fixed_header"]["task_id"] == task_id2)
-        self.assertEqual(saved_task["signature"], new_header["signature"])
+        self.assertEqual(saved_task["signature"], task_header["signature"])
 
     def test_sync(self, *_):
         self.ts.sync_network()
@@ -784,7 +791,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
             self.ts = TaskServer(
-                node=Node(),
+                node=NodeFactory(),
                 config_desc=self.ccd,
                 client=self.client,
                 use_docker_manager=False,

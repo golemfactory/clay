@@ -17,6 +17,7 @@ from golem.core.async import AsyncRequest, async_run
 from golem.core.idgenerator import check_id_seed
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.network.p2p.node import Node
 from golem.utils import decode_hex
 from .taskbase import TaskHeader
 
@@ -311,6 +312,7 @@ class TaskHeaderKeeper:
     def __init__(
             self,
             environments_manager,
+            node: Node,
             min_price=0.0,
             app_version=golem.__version__,
             remove_task_timeout=180,
@@ -336,6 +338,7 @@ class TaskHeaderKeeper:
         self.environments_manager = environments_manager
         self.max_tasks_per_requestor = max_tasks_per_requestor
         self.task_archiver = task_archiver
+        self.node = node
 
     def check_support(self, header: TaskHeader) -> SupportStatus:
         """Checks if task described with given task header dict
@@ -347,6 +350,7 @@ class TaskHeaderKeeper:
         :return SupportStatus: ok() if this node may compute a task
         """
         supported = self.check_environment(header.environment)
+        supported = supported.join(self.check_mask(header))
         supported = supported.join(self.check_price(header))
         supported = supported.join(self.check_version(header))
         if not supported.is_ok():
@@ -366,6 +370,12 @@ class TaskHeaderKeeper:
             status = SupportStatus.err(
                 {UnsupportReason.ENVIRONMENT_NOT_ACCEPTING_TASKS: env})
         return self.environments_manager.get_support_status(env).join(status)
+
+    def check_mask(self, header: TaskHeader) -> SupportStatus:
+        """ Check if ID of this node matches the mask in task header """
+        if header.mask.apply(decode_hex(self.node.key)):
+            return SupportStatus.ok()
+        return SupportStatus.err({UnsupportReason.MASK_MISMATCH: self.node.key})
 
     def check_price(self, header: TaskHeader) -> SupportStatus:
         """Check if this node offers prices that isn't greater than maximum
@@ -448,7 +458,7 @@ class TaskHeaderKeeper:
             if self.task_archiver:
                 self.task_archiver.add_support_status(id_, supported)
 
-    def add_task_header(self, header: TaskHeader):
+    def add_task_header(self, header: TaskHeader) -> bool:
         """This function will try to add to or update a task header
            in a list of known headers. The header will be added / updated
            only if it hasn't been removed recently. If it's new and supported
@@ -459,11 +469,24 @@ class TaskHeaderKeeper:
         """
         try:
             task_id = header.task_id
-            task_owner_id = header.task_owner.key
-            self.check_owner(task_id, task_owner_id)
-            update = task_id in list(self.task_headers.keys())
+            self.check_owner(task_id, header.task_owner.key)
 
-            if task_id in list(self.removed_tasks.keys()):  # recent
+            old_header = self.task_headers.get(task_id)
+            if old_header:
+                if header.checksum != old_header.checksum:
+                    # Fixed header cannot change so checksums should be equal
+                    logger.warning(
+                        "Fixed header checksums don't match. old: %r new: %r",
+                        old_header.checksum, header.checksum)
+                    return False
+
+                if header.signature == old_header.signature:
+                    return True  # Nothing changed
+
+                if header.timestamp < old_header.timestamp:
+                    return True  # We already have a newer version
+
+            if task_id in self.removed_tasks:  # recent
                 logger.debug("Received a task which has been already "
                              "cancelled/removed/timeout/banned/etc "
                              "Task id %s .", task_id)
@@ -473,7 +496,7 @@ class TaskHeaderKeeper:
 
             self._get_tasks_by_owner_set(header.task_owner.key).add(task_id)
 
-            self.update_supported_set(header, update)
+            self.update_supported_set(header)
 
             self.check_max_tasks_per_owner(header.task_owner.key)
 
@@ -487,17 +510,15 @@ class TaskHeaderKeeper:
             logger.warning("Wrong task header received: {}".format(err))
             return False
 
-    def update_supported_set(self, header: TaskHeader, update_header: bool) \
-            -> None:
+    def update_supported_set(self, header: TaskHeader) -> None:
 
         task_id = header.task_id
         support = self.check_support(header)
         self.support_status[task_id] = support
 
-        if update_header:
-            if not support and task_id in self.supported_tasks:
-                self.supported_tasks.remove(task_id)
-        elif support:
+        if not support and task_id in self.supported_tasks:
+            self.supported_tasks.remove(task_id)
+        if support and task_id not in self.supported_tasks:
             logger.info(
                 "Adding task %r support=%r",
                 task_id,
@@ -508,8 +529,8 @@ class TaskHeaderKeeper:
     @staticmethod
     def check_owner(task_id, owner_id):
         if not check_id_seed(task_id, decode_hex(owner_id)):
-            raise WrongOwnerException("Task_id %s doesn't suit to task "
-                                      "owner %s", task_id, owner_id)
+            raise WrongOwnerException(
+                "Task_id %s doesn't match task owner %s", task_id, owner_id)
 
     def _get_tasks_by_owner_set(self, owner_key_id):
         if owner_key_id not in self.tasks_by_owner:

@@ -25,7 +25,7 @@ from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener, Task
+from golem.task.taskbase import TaskEventListener, Task, TaskHeader
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
@@ -531,6 +531,10 @@ class TaskManager(TaskEventListener):
             return self.tasks[task_id].verify_subtask(subtask_id)
         else:
             return False
+
+    def is_this_my_task(self, header: TaskHeader) -> bool:
+        return header.task_id in self.tasks or \
+               header.task_owner.key == self.node.key
 
     def get_node_id_for_subtask(self, subtask_id):
         if subtask_id not in self.subtask2task_mapping:

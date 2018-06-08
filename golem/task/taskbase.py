@@ -7,6 +7,7 @@ from typing import List, Type, Optional, Tuple, Any
 from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
 import golem
 from golem.core import common
+from golem.core.common import get_timestamp_utc
 from golem.core.simpleserializer import CBORSerializer, DictSerializer
 from golem.network.p2p.node import Node
 from golem.task.masking import Mask
@@ -178,8 +179,8 @@ class TaskHeader(object):
             *args, **kwargs) -> None:
 
         self.fixed_header = TaskFixedHeader(*args, **kwargs)
-        self.mask = mask
-        self.timestamp = timestamp
+        self.mask = mask or Mask()
+        self.timestamp = timestamp or get_timestamp_utc()
         self.signature = signature
 
     def to_binary(self) -> bytes:
@@ -189,7 +190,7 @@ class TaskHeader(object):
         return DictSerializer.dump(self, typed=False)
 
     def __getattr__(self, item: str) -> Any:
-        if 'fixed_header' in self.__dict__:
+        if 'fixed_header' in self.__dict__ and hasattr(self.fixed_header, item):
             return getattr(self.fixed_header, item)
         raise AttributeError('TaskHeader has no attribute %r' % item)
 
@@ -198,6 +199,8 @@ class TaskHeader(object):
         th: TaskHeader = DictSerializer.load(dictionary, as_class=TaskHeader)
         if isinstance(th.fixed_header, dict):
             th.fixed_header = TaskFixedHeader.from_dict(th.fixed_header)
+        if isinstance(th.mask, dict):
+            th.mask = Mask.from_dict(th.mask)
         return th
 
     @classmethod
