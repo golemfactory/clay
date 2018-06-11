@@ -1065,7 +1065,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                            'av_gnt': "1",
                            'eth': "None",
                            'gnt_lock': "0",
-                           'eth_lock': "1000000000000000.0",
+                           'eth_lock': "0",
                            'last_gnt_update': "None",
                            'last_eth_update': "None"}
         assert all(isinstance(entry, str) for entry in balance)
