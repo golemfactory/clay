@@ -69,6 +69,10 @@ class TestMask(TestCase):
             self.assertEqual(mask.num_bits, Mask.MASK_LEN - i)
             mask.decrease()
 
+    def test_get_mask_for_task_zero_network_size(self):
+        mask = Mask.get_mask_for_task(10, 0)
+        self.assertEqual(mask.num_bits, 0)
+
     def test_get_mask_for_task(self):
         def _check(num_subtasks, exp_num_bits):
             mask = Mask.get_mask_for_task(num_subtasks, self.NETWORK_SIZE)
