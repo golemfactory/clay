@@ -1,4 +1,7 @@
+import calendar
+import datetime
 import logging
+import time
 import unittest
 
 from golem_messages import factories as msg_factories
@@ -21,6 +24,13 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
 
     def test_send(self):
         frct = self.get_frct()
+        response = self.provider_send(frct)
+        self.assertIsNone(response)
+
+    def test_send_ttc_deadline_float(self):
+        deadline = calendar.timegm(time.gmtime()) + \
+                   datetime.timedelta(days=1, microseconds=123).total_seconds()
+        frct = self.get_frct(report_computed_task__task_to_compute__compute_task_def__deadline=deadline)  # noqa pylint:disable=line-too-long
         response = self.provider_send(frct)
         self.assertIsNone(response)
 
