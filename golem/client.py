@@ -959,10 +959,15 @@ class Client(HardwarePresetsMixin):
     def get_withdraw_gas_cost(
             self,
             amount: Union[str, int],
+            destination: str,
             currency: str) -> int:
         if isinstance(amount, str):
             amount = int(amount)
-        return self.transaction_system.get_withdraw_gas_cost(amount, currency)
+        return self.transaction_system.get_withdraw_gas_cost(
+            amount,
+            destination,
+            currency,
+        )
 
     def withdraw(
             self,
@@ -981,8 +986,12 @@ class Client(HardwarePresetsMixin):
         else:
             lock = eth_lock
 
-        return self.transaction_system.withdraw(amount, destination, currency,
-                                                lock)
+        return self.transaction_system.withdraw(
+            amount,
+            destination,
+            currency,
+            lock,
+        )
 
     def get_task_cost(self, task_id):
         """
