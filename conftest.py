@@ -13,7 +13,8 @@ def pytest_addoption(parser: _pytest.config.Parser) -> None:
 def pytest_collection_modifyitems(config: _pytest.config.Config,
                                   items: List[_pytest.main.Item]) -> None:
     if not config.getoption("--runfirejail"):
-        skip_firejail = pytest.mark.skip(reason="need --runfirejail option to run")
+        skip_firejail = pytest.mark.skip(
+            reason="need --runfirejail option to run")
         for item in items:
             if "firejail" in item.keywords:
                 item.add_marker(skip_firejail)

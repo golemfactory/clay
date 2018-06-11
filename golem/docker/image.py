@@ -1,6 +1,6 @@
 import logging
-import requests.exceptions
 import tarfile
+import requests.exceptions
 
 from docker.errors import NotFound, APIError
 

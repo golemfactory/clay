@@ -46,6 +46,7 @@ def _init_gpu_blender():
         raise Exception('Failed to initialize blender with GPU support')
 
 
+# pylint: disable=too-many-instance-attributes
 class BlenderFirejailTaskThread(TaskThread):
 
     # pylint: disable=too-many-arguments

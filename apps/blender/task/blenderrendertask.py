@@ -694,4 +694,3 @@ def get_min_max_y(task_num, parts, res_y):
             max_y += (ceiling_subtasks - task_num + 1) * ceiling_height
             max_y = max_y / res_y
     return min_y, max_y
-

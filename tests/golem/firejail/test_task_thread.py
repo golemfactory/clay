@@ -1,15 +1,14 @@
-from pathlib import Path
-
-import pytest
 import shutil
 import os
 import tempfile
 from unittest import mock, TestCase
 
-from golem.core.common import get_golem_path
+import pytest
+
 from apps.blender.firejailenvironment.task_thread import \
     BlenderFirejailTaskThread
 from apps.rendering.task.rendering_engine_requirement import RenderingEngine
+from golem.core.common import get_golem_path
 from golem import testutils
 
 
@@ -26,7 +25,8 @@ class TestFirejailTaskThread(TestCase, testutils.PEP8MixIn):
                 dir='/tmp'
             ).name
             script_path = os.path.join(test_dir, 'script')
-            res_path = os.path.join(get_golem_path(), 'apps/blender/benchmark/test_task/')
+            res_path = os.path.join(get_golem_path(),
+                                    'apps/blender/benchmark/test_task/')
             tmp_path = os.path.join(test_dir, 'tmp')
             work_path = os.path.join(test_dir, 'work')
             out_path = os.path.join(test_dir, 'output')

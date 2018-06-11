@@ -33,6 +33,7 @@ def _get_test_exr(alt=False):
     return path.join(path.dirname(path.dirname(path.abspath(__file__))), "resources", filename)
 
 
+# pylint: disable=too-many-instance-attributes
 class RenderingTaskMock(RenderingTask):
     def query_extra_data(*args, **kwargs):
         pass

@@ -5,6 +5,7 @@ import subprocess
 import sys
 from multiprocessing import cpu_count
 
+# pylint: disable=import-error
 import params  # This module is generated before this script is run
 
 BLENDER_COMMAND = "blender"
@@ -32,6 +33,7 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
         "-f", "{}".format(frame)
     ]
     return cmd
+
 
 # pylint: disable=too-many-arguments
 def run_blender_task(outfilebasename, scene_file, script_src, start_task,

@@ -6,7 +6,6 @@ import shutil
 from typing import Tuple
 from unittest.mock import Mock, patch
 
-import unittest
 import pytest
 
 from apps.lux.luxenvironment import LuxRenderEnvironment
