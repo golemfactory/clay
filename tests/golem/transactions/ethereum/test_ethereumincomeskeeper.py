@@ -31,7 +31,6 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
             self.eth_address,
             0,
             self.instance._on_batch_event,
-            self.instance.REQUIRED_CONFS,
         )
 
         block_number = 123
@@ -42,8 +41,6 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         instance = EthereumIncomesKeeper(self.sci)
         self.sci.subscribe_to_incoming_batch_transfers.assert_called_once_with(
             self.eth_address,
-            block_number - (instance.REQUIRED_CONFS +
-                            instance.BLOCK_NUMBER_BUFFER),
+            block_number - instance.BLOCK_NUMBER_BUFFER,
             instance._on_batch_event,
-            instance.REQUIRED_CONFS,
         )

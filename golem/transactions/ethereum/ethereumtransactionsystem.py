@@ -1,20 +1,20 @@
 from datetime import datetime
 import logging
 import time
-from typing import List, Optional
+from pathlib import Path
+from typing import List
 
 from ethereum.utils import privtoaddr, denoms
 from eth_utils import encode_hex, is_address, to_checksum_address
 import requests
 
-from golem_sci import new_sci
-from golem_sci.gntconverter import GNTConverter
+from golem_sci import new_sci, GNTConverter
 from golem.config.active import ETHEREUM_CHAIN, ETHEREUM_FAUCET_ENABLED
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.transactions.ethereum.ethereumincomeskeeper \
     import EthereumIncomesKeeper
-from golem.transactions.ethereum.exceptions import NotEnoughFunds
+from golem.transactions.ethereum import exceptions
 from golem.transactions.transactionsystem import TransactionSystem
 
 log = logging.getLogger('golem.pay')
@@ -58,6 +58,7 @@ class EthereumTransactionSystem(TransactionSystem):
         self._node = NodeProcess(datadir, start_geth, address)
         self._node.start(start_port)
         self._sci = new_sci(
+            Path(datadir),
             self._node.web3,
             eth_addr,
             lambda tx: tx.sign(node_priv_key),
@@ -65,6 +66,7 @@ class EthereumTransactionSystem(TransactionSystem):
         )
         self._gnt_converter = GNTConverter(self._sci)
         self._faucet = ETHEREUM_FAUCET_ENABLED
+        self._gnt_faucet_requested = False
         self.payment_processor = PaymentProcessor(self._sci)
 
         super().__init__(
@@ -88,7 +90,6 @@ class EthereumTransactionSystem(TransactionSystem):
 
     def sync(self) -> None:
         log.info("Synchronizing balances")
-        self._sci.wait_until_synchronized()
         while not self._is_stopped:
             self._refresh_balances()
             if self._balance_known():
@@ -141,7 +142,7 @@ class EthereumTransactionSystem(TransactionSystem):
         if currency == 'ETH':
             eth = self._eth_balance - pp.reserved_eth
             if amount > eth - lock:
-                raise NotEnoughFunds(amount, eth - lock, currency)
+                raise exceptions.NotEnoughFunds(amount, eth - lock, currency)
             log.info(
                 "Withdrawing %f ETH to %s",
                 amount / denoms.ether,
@@ -153,7 +154,11 @@ class EthereumTransactionSystem(TransactionSystem):
             total_gnt = \
                 self._gnt_balance + self._gntb_balance - pp.reserved_gntb
             if amount > total_gnt - lock:
-                raise NotEnoughFunds(amount, total_gnt - lock, currency)
+                raise exceptions.NotEnoughFunds(
+                    amount,
+                    total_gnt - lock,
+                    currency,
+                )
             # This can happen during unfinished GNT-GNTB conversion,
             # so we should wait until it finishes
             if amount > self._gntb_balance:
@@ -174,40 +179,56 @@ class EthereumTransactionSystem(TransactionSystem):
         )
 
     def concent_deposit(
-            self, required: int, expected: int, reserved: int) -> Optional[str]:
+            self,
+            required: int,
+            expected: int,
+            reserved: int,
+            cb=None) -> None:
+        if cb is None:
+            def noop():
+                pass
+            cb = noop
         current = self.concent_balance()
         if current >= required:
-            return None
+            cb()
+            return
         required -= current
         expected -= current
         gntb_balance = self._gntb_balance
         gntb_balance -= reserved
         if gntb_balance < required:
-            raise NotEnoughFunds(required, gntb_balance, 'GNTB')
+            raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
         max_possible_amount = min(expected, gntb_balance)
-        tx_hash = self._sci.deposit_payment(max_possible_amount)  # tx_hash
+        tx_hash = self._sci.deposit_payment(max_possible_amount)
         log.info(
             "Requested concent deposit of %.6fGNT (tx: %r)",
-            max_possible_amount,
+            max_possible_amount / denoms.ether,
             tx_hash,
         )
-        return tx_hash
 
-    def _get_ether_from_faucet(self) -> None:
+        def transaction_receipt(receipt):
+            if not receipt.status:
+                log.critical("Deposit failed. Receipt: %r", receipt)
+                return
+            cb()
+
+        self._sci.on_transaction_confirmed(tx_hash, transaction_receipt)
+
+    def _get_funds_from_faucet(self) -> None:
         if not self._faucet or not self._balance_known():
             return
         if self._eth_balance < 0.01 * denoms.ether:
             log.info("Requesting tETH from faucet")
             tETH_faucet_donate(self._sci.get_eth_address())
+            return
 
-    def _get_gnt_from_faucet(self) -> None:
-        if not self._faucet or not self._balance_known():
-            return
-        if self._eth_balance < 0.001 * denoms.ether:
-            return
         if self._gnt_balance + self._gntb_balance < 100 * denoms.ether:
-            log.info("Requesting GNT from faucet")
-            self._sci.request_gnt_from_faucet()
+            if not self._gnt_faucet_requested:
+                log.info("Requesting GNT from faucet")
+                self._sci.request_gnt_from_faucet()
+                self._gnt_faucet_requested = True
+        else:
+            self._gnt_faucet_requested = False
 
     def _balance_known(self) -> bool:
         return self._last_eth_update is not None and \
@@ -216,34 +237,17 @@ class EthereumTransactionSystem(TransactionSystem):
     def _refresh_balances(self) -> None:
         addr = self._sci.get_eth_address()
 
-        eth_balance = self._sci.get_eth_balance(addr)
-        if eth_balance is not None:
-            self._eth_balance = eth_balance
-            self._last_eth_update = time.mktime(datetime.today().timetuple())
-        else:
-            log.warning("Failed to retrieve ETH balance")
+        self._eth_balance = self._sci.get_eth_balance(addr)
+        self._last_eth_update = time.mktime(datetime.today().timetuple())
 
-        gnt_balance = self._sci.get_gnt_balance(addr)
-        if gnt_balance is not None:
-            self._gnt_balance = \
-                gnt_balance + self._gnt_converter.get_gate_balance()
-        else:
-            log.warning("Failed to retrieve GNT balance")
-
-        gntb_balance = self._sci.get_gntb_balance(addr)
-        if gntb_balance is not None:
-            self._gntb_balance = gntb_balance
-            # Update the last update time if both GNT and GNTB were updated
-            if gnt_balance is not None:
-                self._last_gnt_update = \
-                    time.mktime(datetime.today().timetuple())
-        else:
-            log.warning("Failed to retrieve GNTB balance")
+        self._gnt_balance = self._sci.get_gnt_balance(addr) + \
+            self._gnt_converter.get_gate_balance()
+        self._gntb_balance = self._sci.get_gntb_balance(addr)
+        self._last_gnt_update = time.mktime(datetime.today().timetuple())
 
     def _run(self) -> None:
         self._refresh_balances()
-        self._get_ether_from_faucet()
-        self._get_gnt_from_faucet()
+        self._get_funds_from_faucet()
 
         if self._balance_known() and not self._gnt_converter.is_converting():
             if self._gnt_balance > 0 and self._eth_balance > 0:
@@ -253,4 +257,4 @@ class EthereumTransactionSystem(TransactionSystem):
                 )
                 self._gnt_converter.convert(self._gnt_balance)
 
-        self.payment_processor.run()
+        self.payment_processor.sendout()
