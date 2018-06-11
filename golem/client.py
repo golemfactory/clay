@@ -566,9 +566,16 @@ class Client(HardwarePresetsMixin):
         def package_created(packager_result):
             package_path, package_sha1 = packager_result
             task.header.resource_size = path.getsize(package_path)
+
+            # Minimum num_workers is 4 to avoid delayed start in case of
+            # task with very few subtasks (for small number of subtasks it is
+            # likable that initial mask would rule out all the nodes)
+            num_workers = max(
+                task.get_total_tasks() *
+                self.config_desc.initial_mask_size_factor,
+                4)
             task.header.mask = Mask.get_mask_for_task(
-                desired_num_workers=(task.get_total_tasks() *
-                                     self.config_desc.initial_mask_size_factor),
+                desired_num_workers=num_workers,
                 network_size=self.p2pservice.get_estimated_network_size()
             )
             task_manager.add_new_task(task)
@@ -1508,14 +1515,17 @@ class MaskUpdateService(LoopingCallService):
     ) -> None:
         self._task_manager: TaskManager = task_manager
         self._update_num_bits = update_num_bits
+        self._interval = interval_seconds
         super().__init__(interval_seconds)
 
     def _run(self) -> None:
         logger.info('Updating masks')
         for task_id, task in self._task_manager.tasks.items():
             if task.needs_computation():
-                self._task_manager.decrease_task_mask(
-                    task_id=task_id,
-                    num_bits=self._update_num_bits)
-                logger.info(
-                    'Task %r mask size: %r', task_id, task.header.mask.num_bits)
+                task_state = self._task_manager.query_task_state(task_id)
+                if task_state.elapsed_time > self._interval:
+                    self._task_manager.decrease_task_mask(
+                        task_id=task_id,
+                        num_bits=self._update_num_bits)
+                    logger.info('Updating mask for task %r Mask size: %r',
+                                task_id, task.header.mask.num_bits)
