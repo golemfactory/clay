@@ -68,6 +68,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
                 ANY,
                 ANY,
                 ANY,
+                ANY,
                 golem_sci.chains.RINKEBY,
             )
 
@@ -77,6 +78,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
                    '.ETHEREUM_CHAIN', 'mainnet'):
             EthereumTransactionSystem(self.tempdir, PRIV_KEY)
             new_sci.assert_called_once_with(
+                ANY,
                 ANY,
                 ANY,
                 ANY,
@@ -197,12 +199,14 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
     def test_concent_deposit_enough(self, balance_mock):
         balance_mock.return_value = 10
         ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-        tx_hash = ets.concent_deposit(
+        cb = Mock()
+        ets.concent_deposit(
             required=10,
             expected=40,
             reserved=1,
+            cb=cb,
         )
-        self.assertEqual(tx_hash, None)
+        cb.assert_called_once_with()
 
     @patch('golem.transactions.ethereum.ethereumtransactionsystem'
            '.EthereumTransactionSystem.concent_balance')
@@ -210,12 +214,15 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         balance_mock.return_value = 0
         ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
         ets._gntb_balance = 0
+        cb = Mock()
         with self.assertRaises(NotEnoughFunds):
             ets.concent_deposit(
                 required=10,
                 expected=40,
                 reserved=1,
+                cb=cb,
             )
+        cb.assert_not_called()
 
     @patch('golem_sci.implementation.SCIImplementation.deposit_payment')
     @patch('golem.transactions.ethereum.ethereumtransactionsystem'
@@ -226,13 +233,12 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         deposit_mock.return_value = given_hash
         ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
         ets._gntb_balance = 20
-        tx_hash = ets.concent_deposit(
+        ets.concent_deposit(
             required=10,
             expected=40,
             reserved=1,
         )
         deposit_mock.assert_called_once_with(20-1)
-        self.assertEqual(tx_hash, given_hash)
 
 
 class FaucetTest(unittest.TestCase):

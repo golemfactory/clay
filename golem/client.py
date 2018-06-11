@@ -1445,6 +1445,10 @@ class NetworkConnectionPublisherService(LoopingCallService):
         super().__init__(interval_seconds)
         self._client = client
 
+    def _run_async(self):
+        # Skip the async_run call and publish events in the main thread
+        self._run()
+
     def _run(self):
         self._client._publish(Network.evt_connection,
                               self._client.connection_status())
