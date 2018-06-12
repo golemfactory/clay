@@ -7,7 +7,7 @@ from scripts.concent_node_tests.tests.base import NodeTestPlaybook
 
 class ForceAccept(NodeTestPlaybook):
     provider_node_script = 'provider/debug'
-    requestor_node_script = 'requestor/no_sra'
+    requestor_node_script = 'requestor/reject_results'
 
     def step_clear_provider_output(self):
         helpers.clear_output(self.provider_output_queue)
@@ -16,7 +16,7 @@ class ForceAccept(NodeTestPlaybook):
     def step_wait(self):
         concent_fail = helpers.search_output(
             self.provider_output_queue,
-            '.*Concent request failed.*',
+            '.*Concent service exception.*',
         )
 
         if concent_fail:
