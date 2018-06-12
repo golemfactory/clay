@@ -7,6 +7,7 @@ import sys
 import threading
 import uuid
 
+
 def report_termination(exit_code, node_type):
     if exit_code:
         print("%s subprocess exited with: %s" % (node_type, exit_code))
@@ -40,7 +41,7 @@ def get_output_queue(process: subprocess.Popen):
         for line in iter(stream.readline, b''):
             q.put(line)
 
-    q = queue.Queue()
+    q: queue.Queue = queue.Queue()  # wth mypy?
     qt = threading.Thread(target=output_queue, args=[process.stdout, q])
     qt.daemon = True
     qt.start()

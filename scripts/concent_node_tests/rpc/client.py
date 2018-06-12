@@ -18,7 +18,6 @@ class RPCClient:
         address = WebSocketAddress(host, port, realm, ssl)
         self.session = Session(address)
 
-
     def call(self,
              method, *args,
              on_success=lambda: None,
@@ -70,5 +69,3 @@ def call_provider(method, *args,
                 on_success=on_success,
                 on_error=on_error,
                 **kwargs)
-
-

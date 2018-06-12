@@ -10,12 +10,12 @@ reach out to the Concent.
 import mock
 import sys
 
+from golem_messages.message import RandVal
+from scripts.concent_node_tests import params
+
 sys.path.insert(0, 'golem')
 
-from golem_messages.message import RandVal
-
-from golemapp import start
-from scripts.concent_node_tests import params
+from golemapp import start  # noqa: E402
 
 sys.argv.extend(params.REQUESTOR_ARGS)
 

@@ -4,10 +4,11 @@ import sys
 import tempfile
 import time
 import traceback
+import typing
 
 from ethereum.utils import denoms
 
-from twisted.internet import reactor, task, defer
+from twisted.internet import reactor, task
 from twisted.internet.error import ReactorNotRunning
 from twisted.internet import _sslverify  # pylint: disable=protected-access
 
@@ -16,6 +17,7 @@ from scripts.concent_node_tests import helpers
 
 _sslverify.platformTrust = lambda: None
 
+
 class NodeTestPlaybook:
     INTERVAL = 1
 
@@ -23,8 +25,8 @@ class NodeTestPlaybook:
 
     _loop = None
 
-    provider_node_script = None
-    requestor_node_script = None
+    provider_node_script: typing.Optional[str] = None
+    requestor_node_script: typing.Optional[str] = None
     provider_node = None
     requestor_node = None
     provider_output_queue = None
@@ -79,7 +81,7 @@ class NodeTestPlaybook:
     def _wait_gnt_eth(self, role, result):
         gnt_balance = int(result.get('gnt')) / denoms.ether
         eth_balance = int(result.get('eth')) / denoms.ether
-        if gnt_balance > 0 and  eth_balance > 0:
+        if gnt_balance > 0 and eth_balance > 0:
             print("{} has {} GNT and {} ETH.".format(
                 role.capitalize(), gnt_balance, eth_balance))
             self.next()
@@ -125,7 +127,7 @@ class NodeTestPlaybook:
             time.sleep(3)
 
         call_requestor('net.ident.key',
-                      on_success=on_success, on_error=on_error)
+                       on_success=on_success, on_error=on_error)
 
     def step_get_provider_network_info(self):
         def on_success(result):
@@ -238,7 +240,7 @@ class NodeTestPlaybook:
         call_requestor('comp.task', self.task_id,
                        on_success=on_success, on_error=self.print_error)
 
-    steps = (
+    steps: typing.Tuple = (
         step_get_provider_key,
         step_get_requestor_key,
         step_get_provider_network_info,
@@ -295,7 +297,7 @@ class NodeTestPlaybook:
         self.requestor_output_queue = helpers.get_output_queue(
             self.requestor_node)
 
-        self.started=True
+        self.started = True
 
     @classmethod
     def start(cls):

@@ -25,4 +25,3 @@ try:
 except KeyboardInterrupt:
     helpers.gracefully_shutdown(provider_node, 'Provider')
     helpers.gracefully_shutdown(requestor_node, 'Requestor')
-
