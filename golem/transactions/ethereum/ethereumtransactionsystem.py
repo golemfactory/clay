@@ -121,10 +121,15 @@ class EthereumTransactionSystem(TransactionSystem):
     def eth_base_for_batch_payment(self):
         return self.payment_processor.ETH_BATCH_PAYMENT_BASE
 
-    def get_withdraw_gas_cost(self, amount: int, currency: str) -> int:
+    def get_withdraw_gas_cost(
+            self,
+            amount: int,
+            destination: str,
+            currency: str) -> int:
         gas_price = self._sci.get_current_gas_price()
         if currency == 'ETH':
-            return 21000 * gas_price
+            return self._sci.estimate_transfer_eth_gas(destination, amount) * \
+                gas_price
         if currency == 'GNT':
             return self._sci.GAS_WITHDRAW * gas_price
         raise ValueError('Unknown currency {}'.format(currency))
