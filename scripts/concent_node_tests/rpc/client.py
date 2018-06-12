@@ -53,7 +53,7 @@ def call_requestor(method, *args,
                    on_error=lambda: None,
                    **kwargs):
 
-    client = RPCClient(host='localhost', port=REQUESTOR_RPC_PORT)
+    client = RPCClient(host='localhost', port=int(REQUESTOR_RPC_PORT))
     client.call(method, *args,
                 on_success=on_success,
                 on_error=on_error,
@@ -65,8 +65,10 @@ def call_provider(method, *args,
                   on_error=None,
                   **kwargs):
 
-    client = RPCClient(host='localhost', port=PROVIDER_RPC_PORT)
+    client = RPCClient(host='localhost', port=int(PROVIDER_RPC_PORT))
     client.call(method, *args,
                 on_success=on_success,
                 on_error=on_error,
                 **kwargs)
+
+

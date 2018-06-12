@@ -5,7 +5,9 @@ import tempfile
 import time
 import traceback
 
-from twisted.internet import reactor, task
+from ethereum.utils import denoms
+
+from twisted.internet import reactor, task, defer
 from twisted.internet.error import ReactorNotRunning
 from twisted.internet import _sslverify  # pylint: disable=protected-access
 
@@ -16,6 +18,8 @@ _sslverify.platformTrust = lambda: None
 
 class NodeTestPlaybook:
     INTERVAL = 1
+
+    start_time = None
 
     _loop = None
 
@@ -35,6 +39,7 @@ class NodeTestPlaybook:
     known_tasks = None
     task_id = None
     started = False
+    task_in_creation = False
 
     @property
     def current_step_method(self):
@@ -48,14 +53,18 @@ class NodeTestPlaybook:
         method = self.current_step_method
         return method.__name__ if method else ''
 
+    @property
+    def time_elapsed(self):
+        return time.time() - self.start_time
+
     def fail(self, msg=None):
-        print(msg or "Test run failed on step {}: {}".format(
-                self.current_step, self.current_step_name))
+        print(msg or "Test run failed after {} seconds on step {}: {}".format(
+                self.time_elapsed, self.current_step, self.current_step_name))
         self.stop(1)
 
     def success(self):
-        print("Test run completed after {} steps.".format(
-            self.current_step + 1))
+        print("Test run completed in {} seconds after {} steps.".format(
+            self.time_elapsed, self.current_step + 1, ))
         self.stop(0)
 
     def next(self):
@@ -67,13 +76,38 @@ class NodeTestPlaybook:
     def print_error(self, error):
         print("Error: {}".format(error))
 
+    def _wait_gnt_eth(self, role, result):
+        gnt_balance = int(result.get('gnt')) / denoms.ether
+        eth_balance = int(result.get('eth')) / denoms.ether
+        if gnt_balance > 0 and  eth_balance > 0:
+            print("{} has {} GNT and {} ETH.".format(
+                role.capitalize(), gnt_balance, eth_balance))
+            self.next()
+
+        else:
+            print("Waiting for {} GNT/ETH ({}/{})".format(
+                role.capitalize(), gnt_balance, eth_balance))
+            time.sleep(15)
+
+    def step_wait_provider_gnt(self):
+        def on_success(result):
+            return self._wait_gnt_eth('provider', result)
+
+        call_provider('pay.balance', on_success=on_success)
+
+    def step_wait_requestor_gnt(self):
+        def on_success(result):
+            return self._wait_gnt_eth('requestor', result)
+
+        call_requestor('pay.balance', on_success=on_success)
+
     def step_get_provider_key(self):
         def on_success(result):
             print("Provider key", result)
             self.provider_key = result
             self.next()
 
-        def on_error(result):
+        def on_error(_):
             print("Waiting for the Provider node...")
             time.sleep(3)
 
@@ -154,12 +188,20 @@ class NodeTestPlaybook:
                 print("Created task.")
                 self.next()
             else:
-                print("Failed to create task {}".format(result))
-                self.fail()
+                msg = result[1]
+                if re.match('Not enough GNTB', msg):
+                    print("Waiting for Requestor's GNTB...")
+                    time.sleep(30)
+                    self.task_in_creation = False
+                else:
+                    print("Failed to create task {}".format(msg))
+                    self.fail()
 
-        call_requestor('comp.task.create', task_dict,
-                       on_success=on_success,
-                       on_error=self.print_error)
+        if not self.task_in_creation:
+            self.task_in_creation = True
+            call_requestor('comp.task.create', task_dict,
+                           on_success=on_success,
+                           on_error=self.print_error)
 
     def step_get_task_id(self):
 
@@ -191,7 +233,7 @@ class NodeTestPlaybook:
                 self.success()
             else:
                 print("{} ... ".format(result['status']))
-                time.sleep(5)
+                time.sleep(10)
 
         call_requestor('comp.task', self.task_id,
                        on_success=on_success, on_error=self.print_error)
@@ -202,6 +244,8 @@ class NodeTestPlaybook:
         step_get_provider_network_info,
         step_connect_nodes,
         step_verify_peer_connection,
+        step_wait_provider_gnt,
+        step_wait_requestor_gnt,
         step_get_known_tasks,
         step_create_task,
         step_get_task_id,
@@ -256,8 +300,10 @@ class NodeTestPlaybook:
     @classmethod
     def start(cls):
         playbook = cls()
+        playbook.start_time = time.time()
         playbook._loop = task.LoopingCall(playbook.run)
-        playbook._loop.start(cls.INTERVAL, False)
+        d = playbook._loop.start(cls.INTERVAL, False)
+        d.addErrback(lambda x: print(x))
 
         reactor.addSystemEventTrigger(
             'before', 'shutdown', lambda: playbook.stop(2))
