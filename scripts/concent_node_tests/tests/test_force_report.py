@@ -16,7 +16,7 @@ class ForceReport(NodeTestPlaybook):
     def step_wait_task_finished(self):
         concent_fail = helpers.search_output(
             self.provider_output_queue,
-            '.*Concent request failed.*',
+            '.*Concent request failed.*|.*Problem interpreting.*',
         )
 
         if concent_fail:
