@@ -1,15 +1,18 @@
+# pylint: disable=too-many-lines
+
+import collections
+import json
 import logging
 import sys
 import time
 import uuid
-import json
-from collections import Iterable
 from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
 from threading import Lock, Thread
-from typing import Dict, Hashable, Optional, Union, List, Tuple
+from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
+from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -17,15 +20,19 @@ from twisted.internet.defer import (
     gatherResults,
     Deferred)
 
-from apps.rendering.task import framerenderingtask
 import golem
 from apps.appsmanager import AppsManager
+from apps.rendering.task import framerenderingtask
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL, AppConfig)
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
+from golem.config.active import ENABLE_WITHDRAWALS, ACTIVE_NET
 from golem.config.presets import HardwarePresetsMixin
+from golem.core import variables
 from golem.core.async import AsyncRequest, async_run
-from golem.core.common import get_timestamp_utc, to_unicode, string_to_timeout
+from golem.core.common import get_timestamp_utc, to_unicode, \
+    string_to_timeout, \
+    deadline_to_timeout
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import KeysAuth
@@ -37,6 +44,7 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
+from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -59,14 +67,15 @@ from golem.resource.resource import get_resources_for_task, ResourceType
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.task import taskpreset
 from golem.task.taskarchiver import TaskArchiver
+from golem.task.taskbase import Task as TaskBase
 from golem.task.taskserver import TaskServer
-from golem.task.taskstate import TaskTestStatus
+from golem.task.taskstate import TaskTestStatus, SubtaskStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
+from golem.tools.talkback import enable_sentry_logger
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
 from golem.transactions.ethereum.fundslocker import FundsLocker
-from golem.tools.talkback import enable_sentry_logger
 
 logger = logging.getLogger(__name__)
 
@@ -93,17 +102,16 @@ class Client(HardwarePresetsMixin):
             config_desc: ClientConfigDescriptor,
             keys_auth: KeysAuth,
             database: Database,
-            mainnet: bool = False,
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
-            use_concent: bool = False,
+            # SEE: golem.core.variables.CONCENT_CHOICES
+            concent_variant: dict = variables.CONCENT_CHOICES['disabled'],
             start_geth: bool = False,
             start_geth_port: Optional[int] = None,
             geth_address: Optional[str] = None,
-            apps_manager: AppsManager = AppsManager(False)) -> None:
+            apps_manager: AppsManager = AppsManager()) -> None:
 
-        self.mainnet = mainnet
         self.apps_manager = apps_manager
         self.datadir = datadir
         self.__lock_datadir()
@@ -138,16 +146,16 @@ class Client(HardwarePresetsMixin):
 
         self.p2pservice = None
         self.diag_service = None
-        self.use_concent = use_concent
         self.concent_service = ConcentClientService(
-            enabled=self.use_concent,
+            variant=concent_variant,
             keys_auth=self.keys_auth,
         )
         self.concent_filetransfers = ConcentFiletransferService(
             keys_auth=self.keys_auth,
+            variant=concent_variant,
         )
 
-        self.task_server = None
+        self.task_server: Optional[TaskServer] = None
         self.port_mapper = None
 
         self.nodes_manager_client = None
@@ -176,11 +184,11 @@ class Client(HardwarePresetsMixin):
         self.transaction_system = EthereumTransactionSystem(
             datadir,
             self.keys_auth._private_key,
-            mainnet,
             start_geth=start_geth,
             start_port=start_geth_port,
             address=geth_address,
         )
+        self.transaction_system.start()
 
         self.funds_locker = FundsLocker(self.transaction_system,
                                         Path(self.datadir))
@@ -199,7 +207,6 @@ class Client(HardwarePresetsMixin):
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = str(uuid.uuid4())
-        self.mainnet = mainnet
 
         dispatcher.connect(
             self.p2p_listener,
@@ -246,9 +253,9 @@ class Client(HardwarePresetsMixin):
         )
         self._publish(Task.evt_task_status, kwargs['task_id'])
 
-    # TODO: re-enable. issue #2398
+    @report_calls(Component.client, 'sync')
     def sync(self):
-        pass
+        self.transaction_system.sync()
 
     @report_calls(Component.client, 'start', stage=Stage.pre)
     def start(self):
@@ -300,7 +307,6 @@ class Client(HardwarePresetsMixin):
             self.node,
             self.config_desc,
             self.keys_auth,
-            self.mainnet,
             connect_to_known_hosts=self.connect_to_known_hosts
         )
 
@@ -318,7 +324,7 @@ class Client(HardwarePresetsMixin):
             self.task_server,
             interval_seconds=max(
                 int(self.config_desc.node_snapshot_interval),
-                1))
+                60))
         monitoring_publisher_service.start()
         self._services.append(monitoring_publisher_service)
 
@@ -471,8 +477,7 @@ class Client(HardwarePresetsMixin):
     def init_monitor(self):
         logger.debug("Starting monitor ...")
         metadata = self.__get_nodemetadatamodel()
-        self.monitor = SystemMonitor(
-            metadata, MONITOR_CONFIG, send_payment_info=(not self.mainnet))
+        self.monitor = SystemMonitor(metadata, MONITOR_CONFIG)
         self.monitor.start()
         self.diag_service = DiagnosticsService(DiagnosticsOutputFormat.data)
         self.diag_service.register(
@@ -487,7 +492,7 @@ class Client(HardwarePresetsMixin):
         self.diag_service.stop()
 
     def connect(self, socket_address):
-        if isinstance(socket_address, Iterable):
+        if isinstance(socket_address, collections.Iterable):
             socket_address = SocketAddress(
                 socket_address[0],
                 int(socket_address[1])
@@ -528,8 +533,18 @@ class Client(HardwarePresetsMixin):
         else:
             task = task_dict
 
-        if self.transaction_system:
-            self.funds_locker.lock_funds(task)
+        self.funds_locker.lock_funds(task)
+
+        if self.concent_service.enabled:
+            min_amount, opt_amount = msg_helpers.requestor_deposit_amount(
+                task.price,
+            )
+            # Could raise golem.transactions.ethereum.exceptions.NotEnoughFunds
+            self.transaction_system.concent_deposit(
+                required=min_amount,
+                expected=opt_amount,
+                reserved=self.funds_locker.sum_locks()[0],
+            )
 
         task_id = task.header.task_id
         logger.info('Enqueue new task "%r"', task_id)
@@ -543,9 +558,12 @@ class Client(HardwarePresetsMixin):
             task.header.resource_size = path.getsize(package_path)
             task_manager.add_new_task(task)
 
-            _resources = self.resource_server.add_task(package_path,
-                                                       package_sha1,
-                                                       task_id)
+            client_options = self.task_server.get_share_options(task_id, None)
+            client_options.timeout = deadline_to_timeout(task.header.deadline)
+
+            _resources = self.resource_server.add_task(
+                package_path, package_sha1, task_id,
+                client_options=client_options)
             _resources.addCallbacks(task_created, error)
 
         def task_created(resource_server_result):
@@ -559,9 +577,10 @@ class Client(HardwarePresetsMixin):
                 task_state.resource_hash = resource_manager_result[0]
             except Exception as exc:  # pylint: disable=broad-except
                 error(exc)
-            else:
-                request = AsyncRequest(task_manager.start_task, task_id)
-                async_run(request, lambda _: _result.callback(task), error)
+                return
+
+            request = AsyncRequest(task_manager.start_task, task_id)
+            async_run(request, lambda _: _result.callback(task), error)
 
         def error(exception):
             logger.error("Task '%s' creation failed: %r", task_id, exception)
@@ -671,7 +690,7 @@ class Client(HardwarePresetsMixin):
         # Task state is changed to restarted and stays this way until it's
         # deleted from task manager.
         try:
-            task_manager.put_task_in_restarted_state(task_id)
+            task_manager.assert_task_can_be_restarted(task_id)
         except task_manager.AlreadyRestartedError:
             return False, "Task already restarted: '{}'".format(task_id)
 
@@ -684,8 +703,49 @@ class Client(HardwarePresetsMixin):
         except KeyError:
             return False, "Task not found: '{}'".format(task_id)
 
+        task_dict.pop('id', None)
+        success, msg = self.create_task(task_dict)
+        if success:
+            task_manager.put_task_in_restarted_state(task_id)
+
+        return success, msg
+
+    def restart_subtasks_from_task(
+            self, task_id: str, subtask_ids: Iterable[str]):
+
+        assert isinstance(self.task_server, TaskServer)
+        task_manager = self.task_server.task_manager
+
+        try:
+            task_manager.put_task_in_restarted_state(task_id, clear_tmp=False)
+            old_task = task_manager.tasks[task_id]
+            finished_subtask_ids = set(
+                sub_id for sub_id, sub in old_task.subtasks_given.items()
+                if sub['status'] == SubtaskStatus.finished
+            )
+            subtask_ids_to_copy = finished_subtask_ids - set(subtask_ids)
+        except task_manager.AlreadyRestartedError:
+            logger.error('Task already restarted: %r', task_id)
+            return None
+        except KeyError:
+            logger.error('Task not found: %r', task_id)
+            return None
+
+        task_dict = deepcopy(task_manager.get_task_definition_dict(old_task))
         del task_dict['id']
-        return self.create_task(task_dict)
+
+        def copy_results(task: TaskBase):
+            task_manager.copy_results(
+                old_task_id=task_id,
+                new_task_id=task.header.task_id,
+                subtask_ids_to_copy=subtask_ids_to_copy
+            )
+
+        deferred = self.enqueue_new_task(task_dict)
+
+        deferred.addCallbacks(
+            copy_results,
+            lambda err: logger.error('Task creation failed: %r', err))
 
     def restart_frame_subtasks(self, task_id, frame):
         self.task_server.task_manager.restart_frame_subtasks(task_id, frame)
@@ -805,13 +865,13 @@ class Client(HardwarePresetsMixin):
         return []
 
     def get_subtasks(self, task_id: str) \
-            -> Tuple[Optional[List[Dict]], Optional[str]]:
+            -> Optional[List[Dict]]:
         try:
             assert isinstance(self.task_server, TaskServer)
             subtasks = self.task_server.task_manager.get_subtasks_dict(task_id)
-            return subtasks, None
+            return subtasks
         except KeyError:
-            return None, "Task not found: '{}'".format(task_id)
+            logger.info("Task not found: '%s'", task_id)
 
     def get_subtasks_borders(self, task_id, part=1):
         return self.task_server.task_manager.get_subtasks_borders(task_id,
@@ -835,6 +895,7 @@ class Client(HardwarePresetsMixin):
 
     def get_task_stats(self) -> Dict[str, int]:
         return {
+            'host_state': self.get_task_state(),
             'in_network': self.get_task_count(),
             'supported': self.get_supported_task_count(),
             'subtasks_computed': self.get_computed_task_count(),
@@ -846,6 +907,10 @@ class Client(HardwarePresetsMixin):
         if self.task_server:
             return len(self.task_server.task_keeper.supported_tasks)
         return 0
+
+    def get_task_state(self):
+        if self.task_server and self.task_server.task_computer:
+            return self.task_server.task_computer.get_host_state()
 
     def get_computed_task_count(self):
         return self.get_task_computer_stat('computed_tasks')
@@ -878,10 +943,16 @@ class Client(HardwarePresetsMixin):
         gnt, av_gnt, eth, \
             last_gnt_update, \
             last_eth_update = yield self.transaction_system.get_balance()
+        gnt_lock, eth_lock = self.funds_locker.sum_locks()
         if gnt is not None:
-            return str(gnt), str(av_gnt), str(eth), str(
-                last_gnt_update), str(last_eth_update)
-        return None, None, None, None, None
+            return {'gnt': str(gnt),
+                    'av_gnt': str(av_gnt),
+                    'eth': str(eth),
+                    'gnt_lock': str(gnt_lock),
+                    'eth_lock': str(eth_lock),
+                    'last_gnt_update': str(last_gnt_update),
+                    'last_eth_update': str(last_eth_update)}
+        return None
 
     def get_payments_list(self):
         return self.transaction_system.get_payments_list()
@@ -892,18 +963,24 @@ class Client(HardwarePresetsMixin):
     def get_withdraw_gas_cost(
             self,
             amount: Union[str, int],
+            destination: str,
             currency: str) -> int:
         if isinstance(amount, str):
             amount = int(amount)
-        return self.transaction_system.get_withdraw_gas_cost(amount, currency)
+        return self.transaction_system.get_withdraw_gas_cost(
+            amount,
+            destination,
+            currency,
+        )
 
     def withdraw(
             self,
             amount: Union[str, int],
             destination: str,
             currency: str) -> List[str]:
-        if not self.mainnet:
-            raise Exception("Withdrawals are disabled on testnet")
+
+        if not ENABLE_WITHDRAWALS:
+            raise Exception("Withdrawals are disabled on {}".format(ACTIVE_NET))
 
         if isinstance(amount, str):
             amount = int(amount)
@@ -913,19 +990,12 @@ class Client(HardwarePresetsMixin):
         else:
             lock = eth_lock
 
-        return self.transaction_system.withdraw(amount, destination, currency,
-                                                lock)
-
-    def get_task_cost(self, task_id):
-        """
-        Get current cost of the task defined by @task_id
-        :param task_id: Task ID
-        :return: Cost of the task
-        """
-        cost = self.task_server.task_manager.get_payment_for_task_id(task_id)
-        if cost is None:
-            return 0.0
-        return cost
+        return self.transaction_system.withdraw(
+            amount,
+            destination,
+            currency,
+            lock,
+        )
 
     # It's defined here only for RPC exposure in
     # golem.rpc.mapping.rpcmethodnames
@@ -1074,12 +1144,12 @@ class Client(HardwarePresetsMixin):
             'supported': bool(env.check_support()),
             'accepted': env.is_accepted(),
             'performance': env.get_performance(),
+            'min_accepted': env.get_min_accepted_performance(),
             'description': str(env.short_description)
         } for env in envs]
 
     @inlineCallbacks
     def run_benchmark(self, env_id):
-        logger.info('Running benchmarks ...')
         deferred = Deferred()
 
         if env_id != DefaultEnvironment.get_id():
@@ -1153,6 +1223,14 @@ class Client(HardwarePresetsMixin):
     def get_performance_values(self):
         return self.environments_manager.get_performance_values()
 
+    @staticmethod
+    def get_performance_mult() -> float:
+        return MinPerformanceMultiplier.get()
+
+    @staticmethod
+    def set_performance_mult(multiplier: float):
+        MinPerformanceMultiplier.set(multiplier)
+
     def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:
             self.rpc_publisher.publish(event_name, *args, **kwargs)
@@ -1209,13 +1287,16 @@ class Client(HardwarePresetsMixin):
     def get_golem_status():
         return StatusPublisher.last_status()
 
+    @inlineCallbacks
     def activate_hw_preset(self, name, run_benchmarks=False):
         HardwarePresets.update_config(name, self.config_desc)
         if hasattr(self, 'task_server') and self.task_server:
-            self.task_server.change_config(
-                self.config_desc,
-                run_benchmarks=run_benchmarks
-            )
+            deferred = self.task_server.change_config(
+                self.config_desc, run_benchmarks=run_benchmarks)
+
+            result = yield deferred
+            logger.info('change hw config result: %r', result)
+            returnValue(self.get_performance_values())
 
     def __lock_datadir(self):
         if not path.exists(self.datadir):
@@ -1240,6 +1321,17 @@ class Client(HardwarePresetsMixin):
     @staticmethod
     def enable_talkback(value):
         enable_sentry_logger(value)
+
+    def block_node(self, node_id: str) -> Tuple[bool, Optional[str]]:
+        if self.task_server is not None:
+            try:
+                self.task_server.acl.disallow(node_id, persist=True)
+                return True, None
+
+            except Exception as e:  # pylint: disable=broad-except
+                return False, str(e)
+
+        return False, 'Client is not ready'
 
 
 class DoWorkService(LoopingCallService):
@@ -1331,6 +1423,10 @@ class NetworkConnectionPublisherService(LoopingCallService):
                  interval_seconds: int) -> None:
         super().__init__(interval_seconds)
         self._client = client
+
+    def _run_async(self):
+        # Skip the async_run call and publish events in the main thread
+        self._run()
 
     def _run(self):
         self._client._publish(Network.evt_connection,

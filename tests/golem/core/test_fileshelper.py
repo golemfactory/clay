@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import getpass
+import locale
 import os
 import re
 import shutil
@@ -213,6 +214,7 @@ class TestDirSize(TestDirFixture):
 class TestDu(TestDirFixture):
 
     def test_du(self):
+        locale.setlocale(locale.LC_NUMERIC, '')
         files_ = self.additional_dir_content([1, [1]])
         testdir = self.path
         testdir2 = os.path.dirname(files_[1])
@@ -220,30 +222,34 @@ class TestDu(TestDirFixture):
         testfile2 = files_[1]
         res = du("notexisting")
         self.assertEqual(res, "-1")
+
         res = du(testdir)
         try:
-            size = float(res)
+            size = locale.atof(res)
         except ValueError:
-            size, sym = re.split("[ kKmMgGbB]", res)[:2]
-        self.assertGreaterEqual(float(size), 0.0)
+            size = locale.atof(re.split("[ kKmMgGbB]", res)[0])
+        self.assertGreaterEqual(size, 0.0)
+
         with open(os.path.join(testdir, testfile1), 'w') as f:
             f.write("a" * 10000)
         res = du(testdir)
-        size1, sym = re.split("[ kKmMgGbB]", res)[:2]
-        self.assertGreater(float(size1), float(size))
+        size1 = locale.atof(re.split("[ kKmMgGbB]", res)[0])
+        self.assertGreater(size1, size)
+
         if not os.path.exists(testdir2):
             os.makedirs(testdir2)
         with open(os.path.join(testdir2, testfile2), 'w') as f:
             f.write("123" * 10000)
         res = du(testdir)
-        size2, sym = re.split("[ kKmMgGbB]", res)[:2]
-        self.assertGreater(float(size2), float(size1))
+        size2 = locale.atof(re.split("[ kKmMgGbB]", res)[0])
+        self.assertGreater(size2, size1)
+
         res = du(".")
         try:
-            size = float(res)
+            size = locale.atof(res)
         except ValueError:
-            size, sym = re.split("[ kKmMgGbB]", res)[:2]
-        self.assertGreater(float(size), 0)
+            size = locale.atof(re.split("[ kKmMgGbB]", res)[0])
+        self.assertGreater(size, 0)
 
 
 class TestFindAndCopy(TestDirFixture):

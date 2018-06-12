@@ -79,7 +79,7 @@ class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
 
         return new_result
 
-    @mock.patch('apps.core.task.verifier.deadline_to_timeout')
+    @mock.patch('golem.core.common.deadline_to_timeout')
     def test_dummy_real_task(self, mock_dtt):
         mock_dtt.return_value = 1.0
 

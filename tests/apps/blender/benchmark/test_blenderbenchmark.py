@@ -11,6 +11,7 @@ from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem import testutils
+from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
 from golem.task.taskstate import TaskStatus
@@ -57,9 +58,8 @@ class TestBenchmarkRunner(testutils.TempDirFixture):
         dir_manager = DirManager(self.path)
         task = Task.build_task(
             blenderrendertask.BlenderRenderTaskBuilder(
-                "node name",
+                Node(),
                 task_definition,
-                self.path,
                 dir_manager
             )
         )

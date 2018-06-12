@@ -217,6 +217,13 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         if tt.is_alive():
             tt.join(timeout=5)
 
+    def test_host_state(self):
+        task_server = self.task_server
+        tc = TaskComputer("ABC", task_server, use_docker_manager=False)
+        self.assertEqual(tc.get_host_state(), "Idle")
+        tc.reset(counting_task="SOME_TASK_ID")
+        self.assertEqual(tc.get_host_state(), "Computing")
+
     def test_change_config(self):
         task_server = self.task_server
 
@@ -233,7 +240,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.counting_task = True
         tc.change_config(mock.Mock(), in_background=False)
 
-        tc.docker_manager.update_config = lambda x, y, z: y()
+        tc.docker_manager.update_config = lambda x, y, z: y(False)
 
         tc.counting_task = None
         tc.change_config(mock.Mock(), in_background=False)
@@ -374,7 +381,6 @@ class TestTaskMonitor(DatabaseFixture):
         client_mock.cliid = 'CLIID'
         client_mock.sessid = 'SESSID'
         client_mock.config_desc = ClientConfigDescriptor()
-        client_mock.mainnet = False
         monitor = SystemMonitor(  # noqa pylint: disable=unused-variable
             NodeMetadataModel(client_mock, "hackix", "3.1337"),
             MONITOR_CONFIG)

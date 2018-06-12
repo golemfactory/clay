@@ -192,9 +192,12 @@ class PendingConnectionsServer(TCPServer):
         addr = socket_addr.address
         if ip_address_private(addr):
             logger.debug('_is_address_accessible(%r) PRIVATE', socket_addr)
-            return self._is_address_in_network(addr, self.ipv4_networks)
+            return self.is_address_in_network(addr)
         logger.debug('_is_address_accessible(%r) PUBLIC', socket_addr)
         return True
+
+    def is_address_in_network(self, addr: str) -> bool:
+        return self._is_address_in_network(addr, self.ipv4_networks)
 
     @staticmethod
     def _is_address_in_network(addr, networks):

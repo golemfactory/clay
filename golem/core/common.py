@@ -10,7 +10,6 @@ from multiprocessing import cpu_count
 import pytz
 
 from golem.core import simpleenv
-from golem.core.variables import REACTOR_THREAD_POOL_SIZE
 
 TIMEOUT_FORMAT = '{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
@@ -168,7 +167,7 @@ class HandleAttributeError(HandleError):
         )
 
 
-def config_logging(suffix='', datadir=None, loglevel=None):
+def config_logging(suffix='', datadir=None, loglevel=None, config_desc=None):
     """Config logger"""
     try:
         from loggingconfig_local import LOGGING
@@ -193,6 +192,9 @@ def config_logging(suffix='', datadir=None, loglevel=None):
         for _logger in LOGGING.get('loggers', {}).values():
             _logger['level'] = loglevel
         LOGGING['root']['level'] = loglevel
+        if config_desc and not config_desc.debug_third_party:
+            LOGGING['loggers']['golem.rpc.crossbar']['level'] = 'WARNING'
+            LOGGING['loggers']['twisted']['level'] = 'WARNING'
 
     try:
         if not os.path.exists(logdir_path):
@@ -206,10 +208,16 @@ def config_logging(suffix='', datadir=None, loglevel=None):
         return  # Avoid consequent errors
     logging.captureWarnings(True)
 
+    from golem.tools.talkback import enable_sentry_logger
+    enable_sentry_logger(False)
     import txaio
     txaio.use_twisted()
     from ethereum import slogging
-    slogging.configure(':debug')
+    if config_desc and config_desc.debug_third_party:
+        slogging.configure(':debug')
+    else:
+        slogging.configure(':warning')
+
     from twisted.python import log
     observer = log.PythonLoggingObserver(loggerName='twisted')
     observer.start()
@@ -247,6 +255,7 @@ def install_reactor():
         kqreactor.install()
 
     from twisted.internet import reactor
+    from golem.core.variables import REACTOR_THREAD_POOL_SIZE
     reactor.suggestThreadPoolSize(REACTOR_THREAD_POOL_SIZE)
     return reactor
 

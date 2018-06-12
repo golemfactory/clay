@@ -10,9 +10,8 @@ from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.utils import handle_image_error, handle_none
 from apps.rendering.task.renderingtaskstate import RendererDefaults
-from apps.rendering.task.verifier import RenderingVerifier
+from golem_verificator.rendering_verifier import RenderingVerifier
 from golem.core.common import get_golem_path
-from golem.core.fileshelper import format_cmd_line_path
 from golem.core.simpleexccmd import is_windows, exec_cmd
 from golem.docker.environment import DockerEnvironment
 from golem.docker.job import DockerJob
@@ -46,16 +45,12 @@ class RenderingTask(CoreTask):
     # Task methods #
     ################
 
-    def __init__(self, node_name, task_definition, total_tasks, root_path, owner_address="",
-                 owner_port=0, owner_key_id=""):
+    def __init__(self, task_definition, total_tasks, root_path, owner):
 
         CoreTask.__init__(
             self,
             task_definition=task_definition,
-            node_name=node_name,
-            owner_address=owner_address,
-            owner_port=owner_port,
-            owner_key_id=owner_key_id,
+            owner=owner,
             root_path=root_path,
             total_tasks=total_tasks)
 
@@ -151,7 +146,8 @@ class RenderingTask(CoreTask):
         with handle_image_error(logger), \
                 self._open_preview() as img_task:
 
-            for sub in self.subtasks_given.values():
+            subtasks_given = dict(self.subtasks_given)
+            for sub in subtasks_given.values():
                 if sub['status'].is_active():
                     self._mark_task_area(sub, img_task, sent_color)
                 if sub['status'] in [SubtaskStatus.failure,
@@ -181,7 +177,7 @@ class RenderingTask(CoreTask):
                "{}".format(arg),
                "{}".format(self.res_x),
                "{}".format(self.res_y),
-               format_cmd_line_path(output_file_name)] + [format_cmd_line_path(f) for f in files]
+               output_file_name] + [f for f in files]
         exec_cmd(cmd)
 
     def _get_next_task(self):

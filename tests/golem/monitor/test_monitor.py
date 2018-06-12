@@ -12,12 +12,25 @@ from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core import variables
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
-from golem.monitor.monitor import SystemMonitor, SenderThread
+from golem.monitor.monitor import SystemMonitor, SenderThread, Sender
 from golem.monitorconfig import MONITOR_CONFIG
 from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats, \
     EMPTY_FINISHED_SUMMARY
 
 random = Random(__name__)
+
+
+class MockSenderThread:
+    def __init__(self):
+        with mock.patch('golem.monitor.transport.sender.DefaultHttpSender'):
+            self.sender = Sender('some_host', 'some_timeout',
+                                 MONITOR_CONFIG['PROTO_VERSION'])
+
+    def send(self, o):
+        self.sender.send(o)
+
+    def join(self):
+        pass
 
 
 class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
@@ -30,18 +43,15 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
         client_mock.get_key_id = mock.MagicMock(return_value='cliid')
         client_mock.session_id = 'sessid'
         client_mock.config_desc = ClientConfigDescriptor()
-        client_mock.mainnet = False
         meta_data = NodeMetadataModel(
             client_mock, 'os', 'ver')
         config = MONITOR_CONFIG.copy()
-        config['HOST'] = 'http://localhost/88881'
-        config['SENDER_THREAD_TIMEOUT'] = 0.05
+        config['PING_ME_HOSTS'] = ['']
         self.monitor = SystemMonitor(meta_data, config)
-        self.monitor.start()
+        self.monitor._sender_thread = MockSenderThread()
 
     def tearDown(self):
         self.monitor.shut_down()
-        del self.monitor
 
     def test_monitor_messages(self):
         """Just check if all signal handlers run without errors"""
@@ -61,10 +71,9 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
         ccd = ClientConfigDescriptor()
         ccd.node_name = "new node name"
         client_mock = mock.MagicMock()
-        client_mock.cliid = 'CLIID'
-        client_mock.sessid = 'SESSID'
+        client_mock.get_key_id = mock.MagicMock(return_value='cliid')
+        client_mock.session_id = 'sessid'
         client_mock.config_desc = ccd
-        client_mock.mainnet = False
         new_meta_data = NodeMetadataModel(
             client_mock, "win32", "1.3")
         self.monitor.on_config_update(new_meta_data)
@@ -75,41 +84,38 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
             and protocol data were sent."""
 
         def check(f, msg_type):
-            with mock.patch(
-                'golem.monitor.transport.httptransport.'
-                + 'DefaultHttpSender.post_json') \
-                    as mock_send:
-                f()
-                time.sleep(0.005)
-                self.assertEqual(mock_send.call_count, 1)
-                result = json.loads(mock_send.call_args[0][0])
-                expected_d = {
-                    'proto_ver': MONITOR_CONFIG['PROTO_VERSION'],
-                    'data': {
-                        'type': msg_type,
-                        'protocol_versions': {
-                            'monitor': self.monitor.config['PROTO_VERSION'],
-                            'p2p': variables.PROTOCOL_CONST.ID,
-                            'task': variables.PROTOCOL_CONST.ID,
-                        },
-                        'metadata': {
-                            'type': 'NodeMetadata',
-                            'net': 'testnet',
-                            'timestamp': mock.ANY,
-                            'cliid': 'cliid',
-                            'sessid': 'sessid',
-                            'os': 'os',
-                            'version': 'ver',
-                            'settings': mock.ANY,
-                        },
+            f()
+            mock_send = self.monitor._sender_thread.sender.transport.post_json
+            self.assertEqual(mock_send.call_count, 1)
+            result = json.loads(mock_send.call_args[0][0])
+            expected_d = {
+                'proto_ver': MONITOR_CONFIG['PROTO_VERSION'],
+                'data': {
+                    'type': msg_type,
+                    'protocol_versions': {
+                        'monitor': self.monitor.config['PROTO_VERSION'],
+                        'p2p': variables.PROTOCOL_CONST.ID,
+                        'task': variables.PROTOCOL_CONST.ID,
+                    },
+                    'metadata': {
+                        'type': 'NodeMetadata',
+                        'net': 'testnet',
+                        'timestamp': mock.ANY,
                         'cliid': 'cliid',
                         'sessid': 'sessid',
-                        'timestamp': mock.ANY,
-                    }
+                        'os': 'os',
+                        'version': 'ver',
+                        'settings': mock.ANY,
+                    },
+                    'cliid': 'cliid',
+                    'sessid': 'sessid',
+                    'timestamp': mock.ANY,
                 }
-                self.assertEqual(expected_d, result)
+            }
+            self.assertEqual(expected_d, result)
 
         check(self.monitor.on_login, "Login")
+        self.monitor._sender_thread.sender.transport.reset_mock()
         check(self.monitor.on_logout, "Logout")
 
     @mock.patch('requests.post')
@@ -139,7 +145,7 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
             event='listening',
             ports=[port])
         post_mock.assert_called_once_with(
-            urljoin(self.monitor.config['HOST'], 'ping-me'),
+            urljoin(self.monitor.config['PING_ME_HOSTS'][0], 'ping-me'),
             data={
                 'ports': [port],
                 'timestamp': time.time()

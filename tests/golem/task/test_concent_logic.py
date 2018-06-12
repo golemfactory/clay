@@ -5,9 +5,11 @@ https://docs.google.com/document/d/1QMnamlNnKxichfPZvBDIcFm1q0uJHMHJPkCt24KElxc/
 """
 import calendar
 import datetime
+import unittest
 import unittest.mock as mock
 
 from freezegun import freeze_time
+from golem_messages import constants as msg_constants
 from golem_messages import factories
 from golem_messages import message
 
@@ -20,8 +22,64 @@ from golem.task import taskstate
 
 
 reject_reasons = message.tasks.RejectReportComputedTask.REASON
+cannot_reasons = message.tasks.CannotComputeTask.REASON
 
 # pylint: disable=protected-access
+
+
+@mock.patch("golem.task.tasksession.TaskSession._check_ctd_params",
+            return_value=True)
+@mock.patch("golem.task.tasksession.TaskSession.send")
+class TaskToComputeConcentTestCase(testutils.TempDirFixture):
+    def setUp(self):
+        super().setUp()
+        self.msg = factories.tasks.TaskToComputeFactory()
+        self.task_session = tasksession.TaskSession(mock.MagicMock())
+
+    def assert_accepted(self, send_mock):  # pylint: disable=no-self-use
+        send_mock.assert_not_called()
+
+    def assert_rejected(
+            self,
+            send_mock,
+            reason=cannot_reasons.ConcentRequired):
+        send_mock.assert_called_once_with(mock.ANY)
+        msg = send_mock.call_args[0][0]
+        self.assertIsInstance(msg, message.tasks.CannotComputeTask)
+        self.assertIs(
+            msg.reason,
+            reason,
+        )
+
+    def test_requestor_failed_to_concent(self, send_mock, *_):
+        self.task_session.concent_service.enabled = True
+        self.msg.concent_enabled = False
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_rejected(send_mock)
+
+    def test_requestor_concented(self, send_mock, *_):
+        self.task_session.concent_service.enabled = True
+        self.msg.concent_enabled = True
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_accepted(send_mock)
+
+    def test_provider_doesnt_want_concent(self, send_mock, *_):
+        self.task_session.concent_service.enabled = False
+        self.msg.concent_enabled = False
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_accepted(send_mock)
+
+    def test_provider_doesnt_want_concent_but_requestor_insists(
+            self,
+            send_mock,
+            *_):
+        self.task_session.concent_service.enabled = False
+        self.msg.concent_enabled = True
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_rejected(
+            send_mock,
+            reason=cannot_reasons.ConcentDisabled,
+        )
 
 
 class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
@@ -45,8 +103,10 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         task_id = self.msg.task_to_compute.compute_task_def['task_id']
         task_header = taskbase.TaskHeader(*(None,)*6)
         task_header.deadline = now_ts + 3600
-        self.task_session.task_server.task_keeper.task_headers = {
-            task_id: task_header,
+        task = mock.Mock()
+        task.header = task_header
+        self.task_session.task_manager.tasks = {
+            task_id: task,
         }
         self.task_session.task_manager.tasks_states = {}
         self.task_session.task_manager.tasks_states[task_id] = task_state = \
@@ -95,18 +155,6 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.task_session._react_to_report_computed_task(self.msg)
         dropped_mock.assert_called_once_with()
 
-    @mock.patch('golem.task.tasksession.TaskSession.send')
-    def test_task_deadline(self, send_mock):
-        "Reject after task timeout"
-        after_deadline = self.now \
-            + datetime.timedelta(hours=1, seconds=1)
-        with freeze_time(after_deadline):
-            self.task_session._react_to_report_computed_task(self.msg)
-        self.assert_reject_reason(
-            send_mock,
-            reject_reasons.TaskTimeLimitExceeded,
-        )
-
     @mock.patch('golem.network.history.MessageHistoryService.get_sync')
     @mock.patch('golem.task.tasksession.TaskSession.send')
     def test_task_deadline_not_found(self, send_mock, get_mock):
@@ -125,7 +173,8 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         "Reject after subtask timeout"
         get_mock.return_value = []
         after_deadline = self.now \
-            + datetime.timedelta(minutes=1, seconds=1)
+            + datetime.timedelta(minutes=1, seconds=1) \
+            + (msg_constants.MTD * 2)  # TOLERANCE
         with freeze_time(after_deadline):
             self.task_session._react_to_report_computed_task(self.msg)
         self.assert_reject_reason(
@@ -189,3 +238,67 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.assertIsInstance(ack_msg, message.tasks.AckReportComputedTask)
         self.assertEqual(ack_msg.subtask_id, self.msg.subtask_id)
         self.assertEqual(ack_msg.report_computed_task, self.msg)
+
+
+@mock.patch('golem.task.tasksession.TaskSession.send')
+class ReactToWantToComputeTaskTestCase(unittest.TestCase):
+    def setUp(self):
+        super().setUp()
+        self.msg = factories.tasks.WantToComputeTaskFactory()
+        self.task_session = tasksession.TaskSession(mock.MagicMock())
+
+    def assert_blocked(self, send_mock):
+        self.task_session._react_to_want_to_compute_task(self.msg)
+        cat_msg = send_mock.call_args_list[0][0][0]
+        self.assertIsInstance(cat_msg, message.tasks.CannotAssignTask)
+        self.assertIs(
+            cat_msg.reason,
+            message.tasks.CannotAssignTask.REASON.ConcentDisabled,
+        )
+        self.task_session.task_manager.got_want_to_compute.assert_not_called()
+
+    def assert_allowed(self, send_mock):
+        self.task_session.task_manager.get_next_subtask.return_value = (
+            None, True, True)
+        self.task_session._react_to_want_to_compute_task(self.msg)
+        send_mock.assert_called()
+        # ctd, wrong_task, wait
+        self.task_session.task_manager.get_next_subtask.assert_called_once()
+
+    def test_provider_with_concent_requestor_without_concent(
+            self, send_mock):
+        self.msg.concent_enabled = True
+        self.task_session.concent_service.enabled = False
+        self.assert_blocked(send_mock)
+
+    def test_provider_with_concent_requestor_with_concent(
+            self, send_mock):
+        self.msg.concent_enabled = True
+        self.task_session.concent_service.enabled = True
+        self.assert_allowed(send_mock)
+
+    def test_provider_without_concent_requestor_without_concent(
+            self, send_mock):
+        self.msg.concent_enabled = False
+        self.task_session.concent_service.enabled = False
+        self.assert_allowed(send_mock)
+
+    def test_provider_without_concent_requestor_with_concent(
+            self, send_mock):
+        self.msg.concent_enabled = False
+        self.task_session.concent_service.enabled = True
+        self.assert_allowed(send_mock)
+
+    def test_concent_disabled_wtct_concent_flag_none(self, send_mock):
+        self.msg.concent_enabled = None
+        self.task_session.concent_service.enabled = False
+        self.task_session.task_manager.get_next_subtask.return_value = (
+            factories.tasks.ComputeTaskDefFactory(),
+            False,
+            True
+        )
+        self.task_session._react_to_want_to_compute_task(self.msg)
+        send_mock.assert_called()
+        ttc = send_mock.call_args_list[2][0][0]
+        self.assertIsInstance(ttc, message.tasks.TaskToCompute)
+        self.assertFalse(ttc.concent_enabled)

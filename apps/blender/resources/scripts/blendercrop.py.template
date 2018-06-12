@@ -18,6 +18,10 @@ class ShowInformation(bpy.types.Operator):
 
 
     def execute(self, context):
+        self.report({"INFO"}, "Engine: " +
+                              str(bpy.context.scene.render.engine))
+        if bpy.context.scene.render.engine == "CYCLES":
+            self.report({"INFO"}, "Samples: " + str(bpy.context.scene.cycles.samples))
         self.report({"INFO"}, "Resolution: " +
                               str(bpy.context.scene.render.resolution_x) +
                                " x " +
@@ -42,21 +46,22 @@ if engine not in ("BLENDER_RENDER", "CYCLES"):
 bpy.utils.register_class(ShowInformation)
 bpy.ops.wm.scene_information()
 
-
-for scene in bpy.data.scenes:
-
-    scene.render.tile_x = 0
-    scene.render.tile_y = 0
-    scene.render.resolution_x = %(resolution_x)d
-    scene.render.resolution_y = %(resolution_y)d
-    scene.render.resolution_percentage = 100
-    scene.render.use_border = True
-    scene.render.use_crop_to_border = True
-    scene.render.border_max_x = %(border_max_x)r
-    scene.render.border_min_x = %(border_min_x)r
-    scene.render.border_min_y = %(border_min_y)r
-    scene.render.border_max_y = %(border_max_y)r
-    scene.render.use_compositing = bool(%(use_compositing)r)
+bpy.context.scene.render.tile_x = 0
+bpy.context.scene.render.tile_y = 0
+bpy.context.scene.render.resolution_x = %(resolution_x)d
+bpy.context.scene.render.resolution_y = %(resolution_y)d
+bpy.context.scene.render.resolution_percentage = 100
+bpy.context.scene.render.use_border = True
+bpy.context.scene.render.use_crop_to_border = True
+bpy.context.scene.render.border_max_x = %(border_max_x)r
+bpy.context.scene.render.border_min_x = %(border_min_x)r
+bpy.context.scene.render.border_min_y = %(border_min_y)r
+bpy.context.scene.render.border_max_y = %(border_max_y)r
+bpy.context.scene.render.use_compositing = bool(%(use_compositing)r)
+if engine == "CYCLES":
+    samples = %(samples)d
+    if samples != 0:
+        bpy.context.scene.cycles.samples = samples
 
 #and check if additional files aren't missing
 bpy.ops.file.report_missing_files()

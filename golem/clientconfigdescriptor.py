@@ -23,6 +23,7 @@ class ClientConfigDescriptor(object):
         self.key_difficulty = 0
         self.use_upnp = 0
         self.enable_talkback = 0
+        self.enable_monitor = 0
 
         self.seed_host = ""
         self.seed_port = 0
@@ -58,6 +59,7 @@ class ClientConfigDescriptor(object):
         self.max_price = 0
 
         self.accept_tasks = 1
+        self.debug_third_party = 0
 
     def init_from_app_config(self, app_config):
         """Initializes config parameters based on the specified AppConfig

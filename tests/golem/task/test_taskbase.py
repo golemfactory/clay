@@ -12,19 +12,11 @@ from golem.tools.assertlogs import LogTestCase
 @mock.patch.multiple(Task, __abstractmethods__=frozenset())
 class TestTaskBase(LogTestCase):
     def test_header_serialization(self):
-        node = Node(node_name="test node")
-        docker_images = [
-            dict(
-                repository="repo_{}".format(i),
-                id="id_{}".format(i),
-                tag="tag_{}".format(i)
-            )
-            for i in range(4)
-        ]
+        node = Node(node_name="test node",
+                    pub_addr="10.10.10.10",
+                    pub_port=1023)
 
-        task_header = TaskHeader(
-            "ABC", "xyz", "10.10.10.10", 1023, "key", "DEFAULT",
-            task_owner=node)
+        task_header = TaskHeader("xyz", "DEFAULT", task_owner=node)
         # ignore dynamic properties
         task_header.last_checking = 0
 

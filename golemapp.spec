@@ -1,7 +1,7 @@
 # -*- mode: python -*-
 import glob
 import os
-
+import pkgutil
 import sys
 
 block_cipher = None
@@ -49,7 +49,6 @@ if is_windows:
         sys.exit(1)
 
     hidden_imports += ['vboxapi']
-
 
 a = Analysis(['golemapp.py'],
              hookspath=['./scripts/pyinstaller/hooks'],

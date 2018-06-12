@@ -41,20 +41,12 @@ class DummyTask(CoreTask):
 
     def __init__(self,
                  total_tasks: int,
-                 node_name: str,
                  task_definition: DummyTaskDefinition,
                  root_path=None,
-                 # TODO change that when TaskHeader will be updated. Issue #80
-                 owner_address="",
-                 owner_port=0,
-                 owner_key_id=""
-                 ):
+                 owner=None):
         super().__init__(
+            owner=owner,
             task_definition=task_definition,
-            node_name=node_name,
-            owner_address=owner_address,
-            owner_port=owner_port,
-            owner_key_id=owner_key_id,
             root_path=root_path,
             total_tasks=total_tasks
         )

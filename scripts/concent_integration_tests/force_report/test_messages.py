@@ -1,10 +1,11 @@
+import calendar
+import datetime
 import logging
+import time
 import unittest
 
 from golem_messages import factories as msg_factories
 from golem_messages import message
-
-from golem.core import variables
 
 from ..base import ConcentBaseTest
 
@@ -23,6 +24,13 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
 
     def test_send(self):
         frct = self.get_frct()
+        response = self.provider_send(frct)
+        self.assertIsNone(response)
+
+    def test_send_ttc_deadline_float(self):
+        deadline = calendar.timegm(time.gmtime()) + \
+                   datetime.timedelta(days=1, microseconds=123).total_seconds()
+        frct = self.get_frct(report_computed_task__task_to_compute__compute_task_def__deadline=deadline)  # noqa pylint:disable=line-too-long
         response = self.provider_send(frct)
         self.assertIsNone(response)
 
@@ -93,7 +101,8 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
         frct_rcv = self.requestor_receive()
 
         rrct = message.tasks.RejectReportComputedTask(
-            task_to_compute=frct_rcv.report_computed_task.task_to_compute,
+            attached_task_to_compute=frct_rcv.
+            report_computed_task.task_to_compute,
             reason=message.tasks.RejectReportComputedTask.
             REASON.SubtaskTimeLimitExceeded
         )
@@ -111,7 +120,7 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
 
         arct_rcv = frct_response.ack_report_computed_task
         self.assertIsInstance(arct_rcv, message.tasks.AckReportComputedTask)
-        arct_rcv.verify_signature(variables.CONCENT_PUBKEY)
+        arct_rcv.verify_signature(self.variant['pubkey'])
         self.assertEqual(arct_rcv.report_computed_task,
                          frct.report_computed_task)
 
@@ -130,40 +139,40 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
     def test_reject_rct_cannot_compute_task(self):
         frct = self.get_frct()
         self.provider_send(frct)
-        frct_rcv = self.requestor_receive()
+        self.requestor_receive()
 
         ttc = frct.report_computed_task.task_to_compute  # noqa pylint:disable=no-member
         cct = msg_factories.tasks.CannotComputeTaskFactory(
             task_to_compute=ttc,
-            subtask_id=ttc.subtask_id,
             sign__privkey=self.provider_priv_key,
+            reason=message.tasks.CannotComputeTask.REASON.NoSourceCode,
         )
 
         rrct = message.tasks.RejectReportComputedTask(
-            task_to_compute=frct_rcv.report_computed_task.task_to_compute,
             cannot_compute_task=cct,
             reason=message.tasks.RejectReportComputedTask.
             REASON.GotMessageCannotComputeTask,
         )
+
+        self.assertEqual(rrct.task_to_compute, ttc)
         self.send_and_verify_received_reject(rrct)
 
     def test_reject_rct_task_failure(self):
         frct = self.get_frct()
         self.provider_send(frct)
-        frct_rcv = self.requestor_receive()
+        self.requestor_receive()
 
         ttc = frct.report_computed_task.task_to_compute  # noqa pylint:disable=no-member
         tf = msg_factories.tasks.TaskFailureFactory(
             task_to_compute=ttc,
-            subtask_id=ttc.subtask_id,
             sign__privkey=self.provider_priv_key,
         )
 
         rrct = message.tasks.RejectReportComputedTask(
-            task_to_compute=frct_rcv.report_computed_task.task_to_compute,
             task_failure=tf,
             reason=message.tasks.RejectReportComputedTask.
             REASON.GotMessageTaskFailure,
         )
 
+        self.assertEqual(rrct.task_to_compute, ttc)
         self.send_and_verify_received_reject(rrct)

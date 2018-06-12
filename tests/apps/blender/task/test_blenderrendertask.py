@@ -24,13 +24,14 @@ from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
     RenderingTaskDefinition)
+from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from apps.core.task.coretask import logger as logger_core
-from golem.verification.verifier import SubtaskVerificationState
+from golem_verificator.verifier import SubtaskVerificationState
 
 
 class TestBlenderDefaults(unittest.TestCase):
@@ -42,7 +43,6 @@ class TestBlenderDefaults(unittest.TestCase):
 
 class BlenderTaskInitTest(TempDirFixture, LogTestCase):
     def test_compositing(self):
-
         task_definition = RenderingTaskDefinition()
         task_definition.options = BlenderRendererOptions()
         task_definition.options.use_frames = True
@@ -55,7 +55,7 @@ class BlenderTaskInitTest(TempDirFixture, LogTestCase):
 
         def _get_blender_task(task_definition, total_tasks=6):
             return BlenderRenderTask(
-                node_name="exmaple-node-name",
+                owner=Node(node_name="exmaple-node-name"),
                 task_definition=task_definition,
                 total_tasks=total_tasks,
                 root_path=self.tempdir,
@@ -100,7 +100,7 @@ class TestBlenderFrameTask(TempDirFixture):
         task_definition.task_id = str(uuid.uuid4())
         BlenderRenderTask.VERIFICATION_QUEUE._reset()
         self.bt = BlenderRenderTask(
-            node_name="example-node-name",
+            owner=Node(node_name="example-node-name"),
             task_definition=task_definition,
             total_tasks=6,
             root_path=self.tempdir,
@@ -115,7 +115,7 @@ class TestBlenderFrameTask(TempDirFixture):
         self.assertEqual(len(self.bt.preview_task_file_path),
                          len(self.bt.frames))
 
-    @mock.patch('apps.core.task.verifier.deadline_to_timeout')
+    @mock.patch('golem_verificator.core_verifier.deadline_to_timeout')
     def test_computation_failed_or_finished(self, mock_dtt):
         mock_dtt.return_value = 1.0
         assert self.bt.total_tasks == 6
@@ -159,7 +159,8 @@ class TestBlenderFrameTask(TempDirFixture):
                 result)
 
         with mock.patch(
-                'apps.core.task.verifier.CoreVerifier.start_verification',
+            'golem_verificator.core_verifier.CoreVerifier.'
+                'start_verification',
                 side_effect=verification_finished1):
             self.bt.computation_finished(extra_data3.ctd['subtask_id'], [file1],
                                          ResultType.FILES, lambda: None)
@@ -188,7 +189,8 @@ class TestBlenderFrameTask(TempDirFixture):
         img.close()
 
         with mock.patch(
-                'apps.core.task.verifier.CoreVerifier.start_verification',
+                'golem_verificator.core_verifier.CoreVerifier.'
+                'start_verification',
                 side_effect=verification_finished2):
             self.bt.computation_finished(extra_data4.ctd['subtask_id'], [file2],
                                          ResultType.FILES, lambda: None)
@@ -228,7 +230,7 @@ class TestBlenderFrameTask(TempDirFixture):
             exr.writePixels({'R': data, 'G': data, 'B': data,
                              'F': data, 'A': data})
             exr.close()
-            self.bt.frames_given["7"][i-1] = file1
+            self.bt.frames_given["7"][i - 1] = file1
         self.bt._put_frame_together(7, 2)
 
 
@@ -250,7 +252,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         task_definition.resolution = [res_x, res_y]
         task_definition.main_scene_file = path.join(self.path, "example.blend")
         task_definition.task_id = str(uuid.uuid4())
-        bt = BlenderRenderTask(node_name="example-node-name",
+        bt = BlenderRenderTask(owner=Node(node_name="example-node-name"),
                                task_definition=task_definition,
                                total_tasks=total_tasks,
                                root_path=self.tempdir,
@@ -568,7 +570,6 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         assert extra_data.ctd is None
         assert not extra_data.should_wait
 
-
     def test_update_preview(self):
         bt = self.build_bt(300, 200, 10)
         dm = DirManager(self.tempdir)
@@ -641,9 +642,8 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
         definition = RenderingTaskDefinition()
         definition.total_subtasks = 1
         definition.options = BlenderRendererOptions()
-        builder = BlenderRenderTaskBuilder(node_name="ABC",
+        builder = BlenderRenderTaskBuilder(owner=Node(),
                                            task_definition=definition,
-                                           root_path=self.tempdir,
                                            dir_manager=DirManager(self.tempdir))
         blender_task = builder.build()
         self.assertIsInstance(blender_task, BlenderRenderTask)

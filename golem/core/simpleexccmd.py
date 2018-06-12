@@ -11,7 +11,8 @@ def exec_cmd(cmd, nice=20, wait=True):
     :return:
     """
     if is_windows():
-        pc = subprocess.Popen(cmd, shell=True,
+        pc = subprocess.Popen(cmd,
+                              shell=False,
                               stdout=subprocess.PIPE,
                               stderr=subprocess.PIPE,
                               stdin=DEVNULL)
@@ -22,11 +23,10 @@ def exec_cmd(cmd, nice=20, wait=True):
         handle = win32api.OpenProcess(win32con.PROCESS_ALL_ACCESS, True, pc.pid)
         win32process.SetPriorityClass(handle, win32process.IDLE_PRIORITY_CLASS)
     else:
-        command = ""
-        for c in cmd:
-            command += " " + c
-        print(command)
-        pc = subprocess.Popen(["/bin/sh", "-c", command], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        pc = subprocess.Popen(cmd,
+                              shell=False,
+                              stdout=subprocess.PIPE,
+                              stderr=subprocess.PIPE)
         stdout, stderr = pc.communicate()
     if wait:
         pc.wait()

@@ -1,15 +1,20 @@
-from golem_messages.message import ComputeTaskDef
 import os
 import random
 import shutil
 import time
 import uuid
 from collections import OrderedDict
-from unittest.mock import Mock, patch
+from pathlib import Path
+from unittest.mock import Mock, patch, MagicMock
 
+from freezegun import freeze_time
+from golem_messages.message import ComputeTaskDef
 from pydispatch import dispatcher
+from twisted.internet.defer import fail
+from twisted.trial.unittest import TestCase as TwistedTestCase
 
 from apps.appsmanager import AppsManager
+from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import TaskDefinition
 from apps.blender.task.blenderrendertask import BlenderRenderTask
 from golem import testutils
@@ -91,11 +96,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
     def _get_task_header(self, task_id, timeout, subtask_timeout):
         return TaskHeader(
-            node_name="test_node_%s" % (self.test_nonce,),
             task_id=task_id,
-            task_owner_address="task_owner_address_%s" % (self.test_nonce,),
-            task_owner_port="task_owner_port_%s" % (self.test_nonce,),
-            task_owner_key_id="task_owner_key_id_%s" % (self.test_nonce,),
+            task_owner=Mock(
+                key="task_owner_key_%s" % (self.test_nonce,),
+                node_name="test_node_%s" % (self.test_nonce,),
+                pub_addr="task_owner_address_%s" % (self.test_nonce,),
+                pub_port="task_owner_port_%s" % (self.test_nonce,),
+            ),
             environment="test_environ_%s" % (self.test_nonce,),
             resource_size=2 * 1024,
             estimated_memory=3 * 1024,
@@ -177,7 +184,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         defaults = DummyTaskDefaults()
         tdd = DummyTaskDefinition(defaults)
         dm = DirManager(self.path)
-        dtb = DummyTaskBuilder("MyNodeName", tdd, self.path, dm)
+        dtb = DummyTaskBuilder(Node(node_name="MyNode"), tdd, dm)
 
         dummy_task = dtb.build()
         header = self._get_task_header(task_id=task_id, timeout=120.0,
@@ -373,7 +380,11 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')
     def test_computed_task_received(self, dump_mock):
-        th = TaskHeader("ABC", "xyz", "10.10.10.10", 1024, "key_id", "DEFAULT")
+        owner = Node(node_name="ABC",
+                     pub_addr="10.10.10.10",
+                     pub_port=1024,
+                     key="key_id")
+        th = TaskHeader("xyz", "DEFAULT", owner)
         th.max_price = 50
 
         class TestTask(Task):
@@ -632,8 +643,12 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     def test_resource_send(self):
         from pydispatch import dispatcher
         self.tm.task_persistence = True
+        owner = Node(node_name="ABC",
+                     pub_addr="10.10.10.10",
+                     pub_port=1023,
+                     key="abcde")
         t = Task(
-            TaskHeader("ABC", "xyz", "10.10.10.10", 1023, "abcde", "DEFAULT"),
+            TaskHeader("xyz", "DEFAULT", owner),
             "print 'hello world'", None)
         listener_mock = Mock()
 
@@ -728,7 +743,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_get_tasks(self, _):
         count = 3
-        apps_manager = AppsManager(False)
+        apps_manager = AppsManager()
         apps_manager.load_all_apps()
         tm = TaskManager("ABC", Node(), Mock(), root_path=self.path,
                          apps_manager=apps_manager)
@@ -758,7 +773,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     @patch('apps.blender.task.blenderrendertask.'
            'BlenderTaskTypeInfo.get_preview')
     def test_get_task_preview(self, get_preview, _):
-        apps_manager = AppsManager(False)
+        apps_manager = AppsManager()
         apps_manager.load_all_apps()
         tm = TaskManager("ABC", Node(), Mock(), root_path=self.path,
                          apps_manager=apps_manager)
@@ -770,7 +785,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_get_subtasks_borders(self, _):
         count = 3
-        apps_manager = AppsManager(False)
+        apps_manager = AppsManager()
         apps_manager.load_all_apps()
         tm = TaskManager("ABC", Node(), Mock(), root_path=self.path,
                          apps_manager=apps_manager)
@@ -787,14 +802,14 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert len(borders) == 0
 
     def test_update_signatures(self):
+        # pylint: disable=abstract-class-instantiated
 
         node = Node(
             node_name="node", key="key_id", prv_addr="10.0.0.10",
             prv_port=40103, pub_addr="1.2.3.4", pub_port=40103,
             p2p_prv_port=40102, p2p_pub_port=40102
         )
-        task = Task(TaskHeader("node", "task_id", "1.2.3.4", 1234,
-                               "key_id", "environment", task_owner=node), '',
+        task = Task(TaskHeader("task_id", "environment", task_owner=node), '',
                     TaskDefinition())
 
         self.tm.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
@@ -926,8 +941,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             state.extra_data = dict(result_preview=previews[i % 3])
             state.subtask_states = subtask_states
 
-            task = BlenderRenderTask(node_name='node',
-                                     task_definition=definition,
+            task = BlenderRenderTask(task_definition=definition,
+                                     owner=Node(node_name='node'),
                                      total_tasks=n,
                                      root_path=self.path)
             task.initialize(dirmanager.DirManager(self.path))
@@ -993,3 +1008,288 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             for sk, st in list(t.subtask_states.items()):
                 subtask2task[st.subtask_id] = t.header.task_id
         return subtask2task
+
+    @patch('golem.task.taskmanager.logger')
+    def test_copy_results_invalid_ids(self, logger_mock):
+        self.tm.copy_results('invalid_id1', 'invalid_id2', [])
+        logger_mock.exception.assert_called_once()
+
+    @patch('golem.task.taskmanager.logger')
+    def test_copy_results_invalid_task_class(self, logger_mock):
+        self.tm.tasks['old_task_id'] = self._get_task_mock('old_task_id')
+        self.tm.tasks['new_task_id'] = self._get_task_mock('new_task_id')
+        self.tm.copy_results('old_task_id', 'new_task_id', [])
+        logger_mock.exception.assert_called_once()
+
+    @freeze_time()
+    def test_copy_results_subtasks_properly_generated(self):
+        old_task = MagicMock(spec=CoreTask)
+        new_task = MagicMock(spec=CoreTask)
+        self.tm.tasks['old_task_id'] = old_task
+        self.tm.tasks['new_task_id'] = new_task
+        self.tm.tasks_states['new_task_id'] = TaskState()
+
+        new_task.header = MagicMock(max_price=42)
+        new_task.subtasks_given = {}
+        new_task.last_task = 0
+
+        ctds = [{
+            'task_id': 'new_task_id',
+            'subtask_id': 'subtask_id1',
+            'extra_data': {'start_task': 1},
+            'short_description': 'desc1',
+            'src_code': 'code1',
+            'performance': 1000,
+            'working_directory': '/workdir1/',
+            'deadline': 1000000000
+        }, {
+            'task_id': 'new_task_id',
+            'subtask_id': 'subtask_id2',
+            'extra_data': {'start_task': 2},
+            'short_description': 'desc2',
+            'src_code': 'code2',
+            'performance': 2000,
+            'working_directory': '/workdir2/',
+            'deadline': 2000000000
+        }]
+        ctd_iterator = iter(ctds)
+
+        def query_extra_data(*_, **__):
+            ctd = next(ctd_iterator)
+            new_task.subtasks_given[ctd['subtask_id']] = ctd['extra_data']
+            new_task.last_task += 1
+            return Task.ExtraData(ctd=ctd)
+
+        new_task.needs_computation = lambda: new_task.last_task < len(ctds)
+        new_task.query_extra_data = query_extra_data
+
+        with patch.object(self.tm, 'notice_task_updated'):
+            self.tm.copy_results('old_task_id', 'new_task_id', [])
+
+            self.assertEqual(
+                self.tm.subtask2task_mapping.get('subtask_id1'), 'new_task_id')
+            self.assertEqual(
+                self.tm.subtask2task_mapping.get('subtask_id2'), 'new_task_id')
+
+            subtask_states = self.tm.tasks_states['new_task_id'].subtask_states
+            ss1 = subtask_states.get('subtask_id1')
+            ss2 = subtask_states.get('subtask_id2')
+
+            self.assertIsInstance(ss1, SubtaskState)
+            self.assertIsInstance(ss2, SubtaskState)
+
+            for ss, ctd in zip((ss1, ss2), ctds):
+                self.assertEqual(ss.subtask_id, ctd['subtask_id'])
+                self.assertEqual(ss.time_started, time.time())
+                self.assertEqual(ss.deadline, ctd['deadline'])
+                self.assertEqual(ss.extra_data, ctd['extra_data'])
+                self.assertEqual(ss.subtask_status, SubtaskStatus.restarted)
+                self.assertEqual(
+                    ss.subtask_definition, ctd['short_description'])
+                self.assertEqual(ss.computer.performance, ctd['performance'])
+
+    def test_copy_results_subtasks_properly_matched(self):
+        old_task = MagicMock(spec=CoreTask)
+        new_task = MagicMock(spec=CoreTask)
+        self.tm.tasks['old_task_id'] = old_task
+        self.tm.tasks['new_task_id'] = new_task
+        old_task.subtasks_given = {
+            'old_subtask_id1': {
+                'id': 'old_subtask_id1',
+                'start_task': 1
+            },
+            'old_subtask_id2': {
+                'id': 'old_subtask_id2',
+                'start_task': 2
+            },
+            'old_subtask_id3': {
+                'id': 'old_subtask_id3',
+                'start_task': 3
+            }
+        }
+        new_task.subtasks_given = {
+            'new_subtask_id1': {
+                'id': 'new_subtask_id1',
+                'start_task': 3
+            },
+            'new_subtask_id2': {
+                'id': 'new_subtask_id2',
+                'start_task': 2
+            },
+            'new_subtask_id3': {
+                'id': 'new_subtask_id3',
+                'start_task': 1
+            }
+        }
+        new_task.needs_computation.return_value = False
+
+        with patch.object(self.tm, 'restart_subtask') as restart, \
+                patch.object(self.tm, '_copy_subtask_results') as copy:
+            self.tm.copy_results(
+                'old_task_id', 'new_task_id', old_task.subtasks_given.keys())
+            restart.assert_not_called()
+            copy.assert_any_call(
+                old_task=old_task,
+                new_task=new_task,
+                old_subtask=old_task.subtasks_given['old_subtask_id1'],
+                new_subtask=new_task.subtasks_given['new_subtask_id3']
+            )
+            copy.assert_any_call(
+                old_task=old_task,
+                new_task=new_task,
+                old_subtask=old_task.subtasks_given['old_subtask_id2'],
+                new_subtask=new_task.subtasks_given['new_subtask_id2']
+            )
+            copy.assert_any_call(
+                old_task=old_task,
+                new_task=new_task,
+                old_subtask=old_task.subtasks_given['old_subtask_id3'],
+                new_subtask=new_task.subtasks_given['new_subtask_id1']
+            )
+
+    def test_copy_results_error_in_copying(self):
+        old_task = MagicMock(spec=CoreTask)
+        new_task = MagicMock(spec=CoreTask)
+        self.tm.tasks['old_task_id'] = old_task
+        self.tm.tasks['new_task_id'] = new_task
+        old_task.subtasks_given = {
+            'old_subtask_id': {
+                'id': 'old_subtask_id',
+                'start_task': 1
+            }
+        }
+        new_task.subtasks_given = {
+            'new_subtask_id': {
+                'id': 'new_subtask_id',
+                'start_task': 1
+            }
+        }
+        new_task.needs_computation.return_value = False
+
+        with patch.object(self.tm, 'restart_subtask') as restart, \
+                patch.object(self.tm, '_copy_subtask_results') as copy, \
+                patch('golem.task.taskmanager.logger') as logger:
+
+            copy.return_value = fail(OSError())
+            self.tm.copy_results(
+                'old_task_id', 'new_task_id', old_task.subtasks_given.keys())
+
+            copy.assert_called_once()
+            logger.error.assert_called_once()
+            restart.assert_called_once_with('new_subtask_id')
+
+
+class TestCopySubtaskResults(TwistedTestCase):
+
+    def setUp(self):
+        self.tm = TaskManager(
+            node_name='node_name',
+            node=Node(),
+            keys_auth=MagicMock(spec=KeysAuth),
+            root_path='/tmp',
+            task_persistence=False
+        )
+
+        zip_patch = patch('golem.task.taskmanager.ZipFile')
+        os_patch = patch('golem.task.taskmanager.os')
+        shutil_patch = patch('golem.task.taskmanager.shutil')
+        self.zip_mock = zip_patch.start()
+        self.os_mock = os_patch.start()
+        self.shutil_mock = shutil_patch.start()
+        self.addCleanup(zip_patch.stop)
+        self.addCleanup(os_patch.stop)
+        self.addCleanup(shutil_patch.stop)
+
+    def test_copy_subtask_results(self):  # pylint: disable=too-many-locals
+
+        old_task = MagicMock(spec=CoreTask)
+        new_task = MagicMock(spec=CoreTask)
+        old_task.header = MagicMock(task_id='old_task_id')
+        new_task.header = MagicMock(task_id='new_task_id')
+
+        old_task.tmp_dir = '/tmp/old_task/'
+        new_task.tmp_dir = '/tmp/new_task/'
+        new_task.get_stdout.return_value = 'stdout'
+        new_task.get_stderr.return_value = 'stderr'
+        new_task.get_results.return_value = ['result']
+
+        old_subtask = {'subtask_id': 'old_subtask_id'}
+        new_subtask = {'subtask_id': 'new_subtask_id'}
+
+        old_task_state = TaskState()
+        new_task_state = TaskState()
+        old_subtask_state = SubtaskState()
+        new_subtask_state = SubtaskState()
+
+        old_subtask_state.computer.node_id = 'node_id'
+        old_subtask_state.computer.node_name = 'node_name'
+        old_subtask_state.computer.eth_account = 'eth_account'
+        old_subtask_state.computer.port = 12345
+        old_subtask_state.computer.performance = 1000
+        old_subtask_state.computer.price = 2000
+
+        old_task_state.subtask_states['old_subtask_id'] = old_subtask_state
+        new_task_state.subtask_states['new_subtask_id'] = new_subtask_state
+
+        self.tm.tasks['old_task_id'] = old_task
+        self.tm.tasks['new_task_id'] = new_task
+        self.tm.subtask2task_mapping['old_subtask_id'] = 'old_task_id'
+        self.tm.subtask2task_mapping['new_subtask_id'] = 'new_task_id'
+        self.tm.tasks_states['old_task_id'] = old_task_state
+        self.tm.tasks_states['new_task_id'] = new_task_state
+
+        self.zip_mock.return_value.__enter__().namelist.return_value = [
+            'stdout',
+            'stderr',
+            'result',
+            '.package_desc'
+        ]
+
+        def verify(_):
+            old_zip_path = Path('/tmp/old_task/old_task_id.old_subtask_id.zip')
+            new_zip_path = Path('/tmp/new_task/new_task_id.new_subtask_id.zip')
+            extract_path = Path('/tmp/new_task/new_subtask_id')
+
+            self.shutil_mock.copy.assert_called_once_with(
+                old_zip_path, new_zip_path)
+            self.os_mock.makedirs.assert_called_once_with(extract_path)
+            self.zip_mock.assert_called_once_with(new_zip_path, 'r')
+            self.zip_mock().__enter__().extractall.assert_called_once_with(
+                extract_path)
+
+            results = [
+                '/tmp/new_task/new_subtask_id/stdout',
+                '/tmp/new_task/new_subtask_id/stderr',
+                '/tmp/new_task/new_subtask_id/result'
+            ]
+            # Normalize paths (for non-posix systems)
+            results = [str(Path(result)) for result in results]
+
+            new_task.copy_subtask_results.assert_called_once_with(
+                'new_subtask_id', old_subtask, results)
+
+            self.assertEqual(new_subtask_state.subtask_progress, 1.0)
+            self.assertEqual(new_subtask_state.subtask_rem_time, 0.0)
+            self.assertEqual(
+                new_subtask_state.subtask_status, SubtaskStatus.finished)
+            self.assertEqual(new_subtask_state.stdout, 'stdout')
+            self.assertEqual(new_subtask_state.stderr, 'stderr')
+            self.assertEqual(new_subtask_state.results, ['result'])
+
+            self.assertEqual(old_subtask_state.computer.node_id, 'node_id')
+            self.assertEqual(old_subtask_state.computer.node_name, 'node_name')
+            self.assertEqual(
+                old_subtask_state.computer.eth_account, 'eth_account')
+            self.assertEqual(old_subtask_state.computer.port, 12345)
+            self.assertEqual(old_subtask_state.computer.performance, 1000)
+            self.assertEqual(old_subtask_state.computer.price, 2000)
+
+        patch.object(self.tm, 'notice_task_updated').start()
+        deferred = self.tm._copy_subtask_results(
+            old_task=old_task,
+            new_task=new_task,
+            old_subtask=old_subtask,
+            new_subtask=new_subtask
+        )
+        deferred.addCallback(verify)
+        return deferred

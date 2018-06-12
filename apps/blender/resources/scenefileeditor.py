@@ -3,13 +3,16 @@ from golem.resource import dirmanager
 import os
 
 BLENDER_CROP_TEMPLATE_PATH = dirmanager.find_task_script(
-    os.path.join(common.get_golem_path(), 'apps', 'blender'), "blendercrop.py.template")
+    os.path.join(common.get_golem_path(), 'apps', 'blender'),
+    "blendercrop.py.template")
 if BLENDER_CROP_TEMPLATE_PATH is None:
     raise IOError(None,
-                  'Template file not found: %s' % os.path.join(common.get_golem_path(), 'apps', 'blender'))
+                  'Template file not found: %s' % os.path.join(
+                      common.get_golem_path(), 'apps', 'blender'))
 
 
-def generate_blender_crop_file(resolution, borders_x, borders_y, use_compositing):
+def generate_blender_crop_file(resolution, borders_x, borders_y,
+                               use_compositing, samples):
     with open(BLENDER_CROP_TEMPLATE_PATH) as f:
         contents = f.read()
 
@@ -21,6 +24,7 @@ def generate_blender_crop_file(resolution, borders_x, borders_y, use_compositing
         'border_min_y': borders_y[0],
         'border_max_y': borders_y[1],
         'use_compositing': use_compositing,
+        'samples': samples
     }
 
     return contents

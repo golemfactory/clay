@@ -1,3 +1,4 @@
+import datetime
 import functools
 import logging
 import os
@@ -313,8 +314,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         report_computed_task = message.ReportComputedTask(
             task_to_compute=task_to_compute,
             result_type=task_result.result_type,
-            # https://github.com/golemfactory/golem-messages/issues/189
-            computation_time=0,  # TODO: remove field from messages
             node_name=node_name,
             address=address,
             port=port,
@@ -369,9 +368,24 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         :param str subtask_id:
         :param err_msg: error message that occurred during computation
         """
+
+        task_id = self._subtask_to_task(subtask_id, Actor.Provider)
+
+        task_to_compute = get_task_message(
+            'TaskToCompute',
+            task_id,
+            subtask_id,
+        )
+
+        if not task_to_compute:
+            logger.warning("Could not retrieve TaskToCompute"
+                           " for subtask_id: %s, task_id: %s",
+                           subtask_id, task_id)
+            return
+
         self.send(
             message.TaskFailure(
-                subtask_id=subtask_id,
+                task_to_compute=task_to_compute,
                 err=err_msg
             )
         )
@@ -428,9 +442,23 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     #########################
 
     def _react_to_want_to_compute_task(self, msg):
+        reasons = message.CannotAssignTask.REASON
+
+        if msg.concent_enabled and not self.concent_service.enabled:
+            self.send(
+                message.CannotAssignTask(
+                    task_id=msg.task_id,
+                    reason=reasons.ConcentDisabled,
+                )
+            )
+            self.dropped()
+            return
+
         self.task_manager.got_wants_to_compute(msg.task_id, self.key_id,
                                                msg.node_name)
-        if self.task_server.should_accept_provider(self.key_id):
+        if self.task_server.should_accept_provider(
+                self.key_id, msg.task_id, msg.perf_index,
+                msg.max_resource_size, msg.max_memory_size, msg.num_cores):
 
             if self._handshake_required(self.key_id):
                 logger.warning('Cannot yet assign task for %r: resource '
@@ -450,7 +478,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         else:
             ctd, wrong_task, wait = None, False, False
 
-        reasons = message.CannotAssignTask.REASON
         if wrong_task:
             self.send(
                 message.CannotAssignTask(
@@ -459,14 +486,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 )
             )
             self.dropped()
-        elif ctd:
+            return
+
+        if ctd:
             task = self.task_manager.tasks[ctd['task_id']]
             task_state = self.task_manager.tasks_states[ctd['task_id']]
             price = taskkeeper.compute_subtask_value(
                 task.header.max_price,
                 task.header.subtask_timeout,
             )
-            msg = message.tasks.TaskToCompute(
+            ttc = message.tasks.TaskToCompute(
                 compute_task_def=ctd,
                 requestor_id=task.header.task_owner.key,
                 requestor_public_key=task.header.task_owner.key,
@@ -477,30 +506,34 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 package_hash='sha1:' + task_state.package_hash,
                 # for now, we're assuming the Concent
                 # is always in use
-                concent_enabled=self.concent_service.enabled,
+                concent_enabled=msg.concent_enabled,
                 price=price,
+                size=0,  # @todo issue #2769
             )
             self.task_manager.set_subtask_value(
-                subtask_id=msg.subtask_id,
+                subtask_id=ttc.subtask_id,
                 price=price,
             )
             history.add(
-                msg=msg,
+                msg=ttc,
                 node_id=self.key_id,
                 local_role=Actor.Requestor,
                 remote_role=Actor.Provider,
             )
-            self.send(msg)
-        elif wait:
+            self.send(ttc)
+            return
+
+        if wait:
             self.send(message.WaitingForResults())
-        else:
-            self.send(
-                message.CannotAssignTask(
-                    task_id=msg.task_id,
-                    reason=reasons.NoMoreSubtasks,
-                )
+            return
+
+        self.send(
+            message.CannotAssignTask(
+                task_id=msg.task_id,
+                reason=reasons.NoMoreSubtasks,
             )
-            self.dropped()
+        )
+        self.dropped()
 
     @handle_attr_error_with_task_computer
     @history.provider_history
@@ -511,6 +544,27 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.task_computer.session_closed()
             self.dropped()
             return
+
+        def _cannot_compute(reason):
+            logger.debug("Cannot %r", reason)
+            self.send(
+                message.tasks.CannotComputeTask(
+                    task_to_compute=msg,
+                    reason=reason,
+                ),
+            )
+            self.task_computer.session_closed()
+            self.dropped()
+
+        reasons = message.CannotComputeTask.REASON
+
+        if self.concent_service.enabled and not msg.concent_enabled:
+            # Provider requires concent if it's enabed locally
+            _cannot_compute(reasons.ConcentRequired)
+            return
+        if not self.concent_service.enabled and msg.concent_enabled:
+            # We can't provide what requestors wants
+            _cannot_compute(reasons.ConcentDisabled)
         if self._check_ctd_params(ctd)\
                 and self._set_env_params(ctd)\
                 and self.task_manager.comp_task_keeper.receive_subtask(msg):
@@ -519,14 +573,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
             if self.task_computer.task_given(ctd):
                 return
-        self.send(
-            message.CannotComputeTask(
-                subtask_id=ctd['subtask_id'],
-                reason=self.err_msg
-            )
-        )
-        self.task_computer.session_closed()
-        self.dropped()
+        _cannot_compute(self.err_msg)
 
     def _react_to_waiting_for_results(self, _):
         self.task_computer.session_closed()
@@ -535,6 +582,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def _react_to_cannot_compute_task(self, msg):
         if self.check_provider_for_subtask(msg.subtask_id):
+            logger.info(
+                "Provider can't compute subtask: %r Reason: %r",
+                msg.subtask_id,
+                msg.reason,
+            )
             self.task_manager.task_computation_failure(
                 msg.subtask_id,
                 'Task computation rejected: {}'.format(msg.reason)
@@ -567,7 +619,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         returned_msg = concent_helpers.process_report_computed_task(
             msg=msg,
             ecc=self.task_server.keys_auth.ecc,
-            task_header_keeper=self.task_server.task_keeper,
         )
         self.send(returned_msg)
         if not isinstance(returned_msg, message.tasks.AckReportComputedTask):
@@ -630,33 +681,65 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
             self.disconnect(message.Disconnect.REASON.BadProtocol)
             return
+
         if not self.check_requestor_for_subtask(msg.subtask_id):
             self.dropped()
             return
+        self.concent_service.cancel_task_message(
+            msg.subtask_id,
+            'ForceSubtaskResults',
+        )
         self.task_server.subtask_accepted(
             self.key_id,
             msg.subtask_id,
             msg.payment_ts,
         )
-        self.concent_service.cancel_task_message(
-            msg.subtask_id,
-            'ForceSubtaskResults',
-        )
         self.dropped()
 
     @history.provider_history
-    def _react_to_subtask_results_rejected(self, msg):
+    def _react_to_subtask_results_rejected(
+            self, msg: message.tasks.SubtaskResultsRejected):
         subtask_id = msg.report_computed_task.subtask_id
         if not self.check_requestor_for_subtask(subtask_id):
             self.dropped()
             return
-        self.task_server.subtask_rejected(
-            subtask_id=subtask_id,
-        )
         self.concent_service.cancel_task_message(
             subtask_id,
             'ForceSubtaskResults',
         )
+
+        if msg.task_to_compute.concent_enabled:
+            # if the Concent is enabled for this subtask, as a provider,
+            # knowing that we had done a proper job of computing it,
+            # we are delegating the verification to the Concent so that
+            # we can be paid for this subtask despite the rejection
+
+            amount, expected = msg_helpers.provider_deposit_amount(
+                subtask_price=msg.task_to_compute.price,
+            )
+
+            def ask_for_verification():
+                srv = message.concents.SubtaskResultsVerify(
+                    subtask_results_rejected=msg
+                )
+
+                self.concent_service.submit_task_message(
+                    subtask_id=msg.subtask_id,
+                    msg=srv,
+                )
+
+            self.task_server.client.transaction_system.concent_deposit(
+                required=amount,
+                expected=expected,
+                reserved=self.task_server.client.funds_locker.sum_locks()[0],
+                cb=ask_for_verification,
+            )
+
+        else:
+            self.task_server.subtask_rejected(
+                subtask_id=subtask_id,
+            )
+
         self.dropped()
 
     def _react_to_task_failure(self, msg):
@@ -752,22 +835,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             ack_report_computed_task=msg,
         )
         logger.debug('[CONCENT] ForceResults: %s', delayed_forcing_msg)
-        report_computed_task = get_task_message(
-            'ReportComputedTask',
-            msg.task_id,
-            msg.subtask_id,
+        ttc_deadline = datetime.datetime.utcfromtimestamp(
+            msg.task_to_compute.compute_task_def['deadline']
         )
-        if report_computed_task is None:
-            logger.warning(
-                '[CONCENT] Can`t delay send %r.'
-                ' ReportComputedTask not found; delay unknown',
-                delayed_forcing_msg,
-            )
-            return
+        svt = msg_helpers.subtask_verification_time(msg.report_computed_task)
+        delay = ttc_deadline + svt - datetime.datetime.utcnow()
         self.concent_service.submit_task_message(
             subtask_id=msg.subtask_id,
             msg=delayed_forcing_msg,
-            delay=msg_helpers.subtask_verification_time(report_computed_task),
+            delay=delay,
         )
 
     @history.provider_history
@@ -824,14 +900,20 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def _check_ctd_params(self, ctd):
         header = self.task_manager.comp_task_keeper.get_task_header(
             ctd['task_id'])
+        owner = header.task_owner
+
         reasons = message.CannotComputeTask.REASON
-        if header.task_owner_key_id != self.key_id\
-                or header.task_owner.key != self.key_id:
+        if owner.key != self.key_id:
             self.err_msg = reasons.WrongKey
             return False
-        if not tcpnetwork.SocketAddress.is_proper_address(
-                header.task_owner_address,
-                header.task_owner_port):
+
+        addresses = [
+            (owner.pub_addr, owner.pub_port),
+            (owner.prv_addr, owner.prv_port)
+        ]
+
+        if not any(tcpnetwork.SocketAddress.is_proper_address(addr, port)
+                   for addr, port in addresses):
             self.err_msg = reasons.WrongAddress
             return False
         return True

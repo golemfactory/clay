@@ -21,7 +21,14 @@ cache:
 before_install:
   - brew update
   - brew upgrade python
-  - brew install openexr freeimage
+  - brew install openexr freeimage 
+  # Temporary fix for broken ilmbase
+  - ln -s /usr/local/opt/ilmbase/lib/libIex-2_2.23.dylib /usr/local/opt/ilmbase/lib/libIex-2_2.12.dylib
+  - ln -s /usr/local/opt/ilmbase/lib/libHalf.23.dylib /usr/local/opt/ilmbase/lib/libHalf.12.dylib
+  - ln -s /usr/local/opt/ilmbase/lib/libIexMath-2_2.23.dylib /usr/local/opt/ilmbase/lib/libIexMath-2_2.12.dylib
+  - ln -s /usr/local/opt/ilmbase/lib/libIlmThread-2_2.23.dylib /usr/local/opt/ilmbase/lib/libIlmThread-2_2.12.dylib
+  - ln -s /usr/local/opt/ilmbase/lib/libImath-2_2.23.dylib /usr/local/opt/ilmbase/lib/libImath-2_2.12.dylib
+
 
   # geth
   - wget https://gethstore.blob.core.windows.net/builds/${GETH_VER}.tar.gz

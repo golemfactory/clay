@@ -17,12 +17,12 @@ from apps.core.task.coretaskstate import Options
 from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.lux.resources.scenefilereader import make_scene_analysis
-from apps.lux.task.verifier import LuxRenderVerifier
 from apps.rendering.resources.imgrepr import load_img, blend, load_as_PILImgRepr
 from apps.rendering.resources.utils import handle_image_error
 from apps.rendering.task import renderingtask
 from apps.rendering.task import renderingtaskstate
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_Y, PREVIEW_X
+from golem_verificator.lux_verifier import LuxRenderVerifier
 from golem.core.common import timeout_to_deadline, get_golem_path, to_unicode
 from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
 from golem.resource import dirmanager

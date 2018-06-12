@@ -43,6 +43,16 @@ LOGGING_DICT = {
 logger = logging.getLogger(__name__)
 
 
+class DummyEnvironment(Environment):
+    @classmethod
+    def get_id(cls):
+        return DummyTask.ENVIRONMENT_NAME
+
+    def __init__(self):
+        super(DummyEnvironment, self).__init__()
+        self.allow_custom_main_program_file = True
+
+
 def format_msg(kind, pid, msg):
     return "[{} {:>5}] {}".format(kind, pid, msg)
 
@@ -83,9 +93,8 @@ def create_client(datadir):
     database = Database(
         db, fields=DB_FIELDS, models=DB_MODELS, db_dir=datadir)
 
-    with mock.patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                    'PaymentProcessor') as pp:
-        _configure_mock_payment_processor(pp.return_value)
+    with mock.patch('golem.client.EthereumTransactionSystem') as ets:
+        _configure_mock_ets(ets.return_value)
         return Client(datadir=datadir,
                       app_config=app_config,
                       config_desc=config_desc,
@@ -96,13 +105,17 @@ def create_client(datadir):
                       use_docker_manager=False)
 
 
-def _configure_mock_payment_processor(pp):
-    pp.ETH_BATCH_PAYMENT_BASE = 0.01 * denoms.ether
-    pp.ETH_PER_PAYMENT = 0.001 * denoms.ether
-    pp.gnt_balance.return_value = 5000 * denoms.ether, time.time()
-    pp.eth_balance.return_value = 300 * denoms.ether, time.time()
-    pp._eth_available.return_value = 5000 * denoms.ether
-    pp._gnt_available.return_value = 3000 * denoms.ether
+def _configure_mock_ets(ets):
+    ets.get_balance.return_value = (
+        1000 * denoms.ether,
+        1000 * denoms.ether,
+        1000 * denoms.ether,
+        time.time(),
+        time.time(),
+    )
+    ets.eth_for_batch_payment.return_value = 0.0001 * denoms.ether
+    ets.eth_base_for_batch_payment.return_value = 0.001 * denoms.ether
+    ets.get_payment_address.return_value = '0x' + 40 * 'a'
 
 
 def run_requesting_node(datadir, num_subtasks=3):
@@ -130,6 +143,9 @@ def run_requesting_node(datadir, num_subtasks=3):
     client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
 
+    dummy_env = DummyEnvironment()
+    client.environments_manager.add_environment(dummy_env)
+
     params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
     task = DummyTask(client.get_node_name(), params, num_subtasks,
                      client.keys_auth.public_key)
@@ -143,10 +159,14 @@ def run_requesting_node(datadir, num_subtasks=3):
     def report_status():
         while True:
             time.sleep(1)
-            if task.finished_computation():
+            if not task.finished_computation():
+                continue
+            if task.verify_task():
                 report("Task finished")
-                shutdown()
-                return
+            else:
+                report("Task failed")
+            shutdown()
+            return
 
     reactor.callInThread(report_status)
     reactor.run()
@@ -179,15 +199,6 @@ def run_computing_node(datadir, peer_address, fail_after=None):
     client.task_server.task_computer.support_direct_computation = True
     report("Started in {:.1f} s".format(time.time() - start_time))
 
-    class DummyEnvironment(Environment):
-        @classmethod
-        def get_id(cls):
-            return DummyTask.ENVIRONMENT_NAME
-
-        def __init__(self):
-            super(DummyEnvironment, self).__init__()
-            self.allow_custom_main_program_file = True
-
     dummy_env = DummyEnvironment()
     dummy_env.accept_tasks = True
     client.environments_manager.add_environment(dummy_env)
@@ -212,7 +223,7 @@ def run_computing_node(datadir, peer_address, fail_after=None):
 
 
 # Global var set by a thread monitoring the status of the requestor node
-task_finished = False
+task_result = None
 
 
 def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
@@ -276,19 +287,24 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
     all_procs = computing_procs + [requesting_proc]
     task_finished_status = format_msg(
         "REQUESTOR", requesting_proc.pid, "Task finished")
+    task_failed_status = format_msg(
+        "REQUESTOR", requesting_proc.pid, "Task failed")
 
-    global task_finished
-    task_finished = False
+    global task_result
+    task_result = None
 
     def monitor_subprocess(proc):
-        global task_finished
+        global task_result
+
         while proc.returncode is None:
             line = proc.stdout.readline().strip()
             if line:
                 line = line.decode('utf-8')
                 print(line)
             if line == task_finished_status:
-                task_finished = True
+                task_result = True
+            elif line == task_failed_status:
+                task_result = False
 
     monitor_threads = [Thread(target=monitor_subprocess,
                               name="monitor {}".format(p.pid),
@@ -301,7 +317,7 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
 
     # Wait until timeout elapses or the task is computed
     try:
-        while not task_finished:
+        while task_result is None:
             if time.time() - start_time > timeout:
                 return "Computation timed out"
             # Check if all subprocesses are alive
@@ -310,6 +326,9 @@ def run_simulation(num_computing_nodes=2, num_subtasks=3, timeout=120,
                     return "Node exited with return code {}".format(
                         proc.returncode)
             time.sleep(1)
+
+        if not task_result:
+            return "Task computation failed"
         return None
     finally:
         print("Stopping nodes...")

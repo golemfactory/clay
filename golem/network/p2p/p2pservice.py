@@ -7,6 +7,7 @@ from threading import Lock
 
 from golem_messages import message
 
+from golem.config.active import P2P_SEEDS
 from golem.core import simplechallenge
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.diag.service import DiagnosticsProvider
@@ -37,21 +38,6 @@ TASK_INTERVAL = 10
 PEERS_INTERVAL = 30
 FORWARD_INTERVAL = 2
 
-TESTNET_SEEDS = [
-    ('94.23.57.58', 40102),
-    ('94.23.57.58', 40104),
-    ('94.23.196.166', 40102),
-    ('94.23.196.166', 40104),
-    ('188.165.227.180', 40102),
-    ('188.165.227.180', 40104),
-    ('seeds.test.golem.network', 40102),
-    ('seeds.test.golem.network', 40104),
-]
-
-MAINNET_SEEDS = [
-    ('seeds.golem.network', 40102),
-]
-
 
 class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
@@ -60,7 +46,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             node,
             config_desc,
             keys_auth,
-            mainnet=False,
             connect_to_known_hosts=True
     ):
         """Create new P2P Server. Listen on port for connections and
@@ -113,7 +98,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.free_peers = []  # peers to which we're not connected
         self.seeds = set()
         self.used_seeds = set()
-        self.bootstrap_seeds = MAINNET_SEEDS if mainnet else TESTNET_SEEDS
+        self.bootstrap_seeds = P2P_SEEDS
 
         self._peer_lock = Lock()
 
@@ -479,11 +464,11 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                                   that should be changed
         """
         try:
-            id_ = th_dict_repr["task_owner_key_id"]
+            id_ = th_dict_repr["task_owner"]["key"]
 
             if self.peers[id_]:
-                th_dict_repr["address"] = self.peers[id_].address
-                th_dict_repr["port"] = self.peers[id_].port
+                th_dict_repr["task_owner"]["pub_addr"] = self.peers[id_].address
+                th_dict_repr["task_owner"]["pub_port"] = self.peers[id_].port
         except KeyError as err:
             logger.error("Wrong task representation: {}".format(err))
 

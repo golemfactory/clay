@@ -30,8 +30,12 @@ class BenchmarkManager(object):
 
     def run_benchmark(self, benchmark, task_builder, env_id, success=None,
                       error=None):
+        logger.info('Running benchmark for %s', env_id)
+
+        from golem.network.p2p.node import Node
 
         def success_callback(performance):
+            logger.info('%s performance is %.2f', env_id, performance)
             Performance.update_or_create(env_id, performance)
             if success:
                 success(performance)
@@ -47,8 +51,8 @@ class BenchmarkManager(object):
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.task_definition
         self._validate_task_state(task_state)
-        builder = task_builder(self.node_name, task_state.definition,
-                               self.task_server.client.datadir,
+        builder = task_builder(Node(),
+                               task_state.definition,
                                self.dir_manager)
         t = Task.build_task(builder)
         br = BenchmarkRunner(t, self.task_server.client.datadir,
@@ -56,17 +60,21 @@ class BenchmarkManager(object):
                              benchmark)
         br.run()
 
-    def run_all_benchmarks(self):
+    def run_all_benchmarks(self, success=None, error=None):
         benchmarks_copy = copy(self.benchmarks)
-        self.run_benchmarks(benchmarks_copy)
+        self.run_benchmarks(benchmarks_copy, success, error)
 
-    def run_benchmarks(self, benchmarks):
-        # Next benchmark ran only if previous completed successfully
-        if not benchmarks:
-            return
+    def run_benchmarks(self, benchmarks, success=None, error=None):
         env_id, (benchmark, builder_class) = benchmarks.popitem()
-        self.run_benchmark(benchmark, builder_class, env_id,
-                           lambda _: self.run_benchmarks(benchmarks))
+
+        def on_success(performance):
+            if benchmarks:
+                self.run_benchmarks(benchmarks, success, error)
+            else:
+                if success:
+                    success(performance)
+
+        self.run_benchmark(benchmark, builder_class, env_id, on_success, error)
 
     def _validate_task_state(self, task_state):
         td = task_state.definition
@@ -82,4 +90,4 @@ class BenchmarkManager(object):
             self.run_benchmark(benchmark_data[0], benchmark_data[1],
                                env_id, callback, errback)
         else:
-            raise Exception("Unkown environment: {}".format(env_id))
+            raise Exception("Unknown environment: {}".format(env_id))

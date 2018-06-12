@@ -42,21 +42,17 @@ class TaskHeader(object):
     """ Task header describe general information about task as an request and is propagated in the
         network as an offer for computing nodes
     """
-    def __init__(self,
-                 node_name: str,
+    def __init__(self,  # pylint: disable=too-many-arguments
                  task_id: str,
-                 task_owner_address,
-                 task_owner_port,
-                 task_owner_key_id,
-                 environment: str, # environment.get_id()
-                 task_owner=None,
+                 environment: str,  # environment.get_id()
+                 task_owner: Node,
                  deadline=0.0,
                  subtask_timeout=0.0,
                  resource_size=0,
                  estimated_memory=0,
                  min_version=golem.__version__,
                  max_price: int=0,
-                 signature=None):
+                 signature=None) -> None:
         """
         :param max_price: maximum price that this (requestor) node may
         pay for an hour of computation
@@ -64,15 +60,11 @@ class TaskHeader(object):
         """
 
         self.task_id = task_id
-        self.task_owner_key_id = task_owner_key_id
-        self.task_owner_address = task_owner_address
-        self.task_owner_port = task_owner_port
         self.task_owner = task_owner
         # TODO change last_checking param. Issue #2407
         self.last_checking = time.time()
         self.deadline = deadline
         self.subtask_timeout = subtask_timeout
-        self.node_name = node_name
         self.resource_size = resource_size
         self.environment = environment
         self.estimated_memory = estimated_memory
@@ -192,6 +184,14 @@ class Task(abc.ABC):
 
     def __repr__(self):
         return '<Task: %r>' % (self.header,)
+
+    @property
+    def subtask_price(self):
+        from golem.task import taskkeeper
+        return taskkeeper.compute_subtask_value(
+            self.header.max_price,
+            self.header.subtask_timeout,
+        )
 
     def register_listener(self, listener):
         if not isinstance(listener, TaskEventListener):
@@ -398,3 +398,12 @@ class Task(abc.ABC):
         :return list:
         """
         return []
+
+    @abc.abstractmethod
+    def copy_subtask_results(
+            self, subtask_id: int, old_subtask_info: dict, results: List[str]) \
+            -> None:
+        """
+        Copy results of a single subtask from another task
+        """
+        raise NotImplementedError()

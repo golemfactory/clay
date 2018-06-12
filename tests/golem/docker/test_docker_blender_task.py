@@ -80,8 +80,11 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
         node_name = "some_node"
         task_def = self._get_test_task_definition()
         dir_manager = DirManager(self.path)
-        builder = BlenderRenderTaskBuilder(node_name, task_def, self.tempdir,
-                                           dir_manager)
+        builder = BlenderRenderTaskBuilder(Node(node_name=node_name,
+                                                key='dd72b37a1f0c',
+                                                pub_addr='1.2.3.4',
+                                                pub_port=40102),
+                                           task_def, dir_manager)
         task = builder.build()
         assert isinstance(task, BlenderRenderTask)
         assert not task.compositing
@@ -93,12 +96,12 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
         assert task.src_code
         assert isinstance(task.header, TaskHeader)
         assert task.header.task_id == '7220aa01-ad45-4fb4-b199-ba72b37a1f0c'
-        assert task.header.task_owner_key_id == ''
-        assert task.header.task_owner_address == ''
-        assert task.header.task_owner_port == 0
+        assert task.header.task_owner.key == 'dd72b37a1f0c'
+        assert task.header.task_owner.pub_addr == '1.2.3.4'
+        assert task.header.task_owner.pub_port == 40102
         assert isinstance(task.header.task_owner, Node)
         assert task.header.subtask_timeout == 1200
-        assert task.header.node_name == 'some_node'
+        assert task.header.task_owner.node_name == 'some_node'
         assert task.header.resource_size > 0
         assert task.header.environment == 'BLENDER'
         assert task.header.estimated_memory == 0

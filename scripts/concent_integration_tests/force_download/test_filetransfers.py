@@ -37,13 +37,15 @@ class ForceGetTaskResultFiletransferTest(ForceDownloadBaseTest,
             keys_auth=mock.Mock(
                 public_key=self.provider_pub_key,
                 _private_key=self.provider_priv_key
-            )
+            ),
+            variant=self.variant,
         )
         self.requestor_cfts = ConcentFiletransferService(
             keys_auth=mock.Mock(
                 public_key=self.requestor_pub_key,
                 _private_key=self.requestor_priv_key
-            )
+            ),
+            variant=self.variant,
         )
 
     @property

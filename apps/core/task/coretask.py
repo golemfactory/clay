@@ -2,7 +2,6 @@ import abc
 import decimal
 import logging
 import os
-import uuid
 from enum import Enum
 from typing import Type
 
@@ -10,7 +9,8 @@ import golem_messages.message
 from ethereum.utils import denoms
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
-from apps.core.task.verifier import CoreVerifier, VerificationQueue
+from golem_verificator.core_verifier import CoreVerifier, VerificationQueue
+from golem_verificator.verifier import SubtaskVerificationState
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.compress import decompress
@@ -24,7 +24,6 @@ from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
     TaskTypeInfo
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
-from golem.verification.verifier import SubtaskVerificationState
 
 logger = logging.getLogger("apps.core")
 
@@ -97,10 +96,7 @@ class CoreTask(Task):
 
     def __init__(self,
                  task_definition: TaskDefinition,
-                 node_name: str,
-                 owner_address="",
-                 owner_port=0,
-                 owner_key_id="",
+                 owner: Node,
                  max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
                  resource_size=None,
                  root_path=None,
@@ -142,13 +138,9 @@ class CoreTask(Task):
             self.docker_images = None
 
         th = TaskHeader(
-            node_name=node_name,
             task_id=task_definition.task_id,
-            task_owner_address=owner_address,
-            task_owner_port=owner_port,
-            task_owner_key_id=owner_key_id,
             environment=self.environment.get_id(),
-            task_owner=Node(),
+            task_owner=owner,
             deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
             resource_size=self.resource_size,
@@ -177,6 +169,10 @@ class CoreTask(Task):
         self.res_files = {}
         self.tmp_dir = None
         self.max_pending_client_results = max_pending_client_results
+
+    @property
+    def price(self) -> int:
+        return self.subtask_price * self.total_tasks
 
     @staticmethod
     def create_task_id(public_key: bytes) -> str:
@@ -221,7 +217,8 @@ class CoreTask(Task):
             subtask_id,
             self._deadline,
             verification_finished,
-            subtask_info=self.subtasks_given[subtask_id],
+            subtask_info={**self.subtasks_given[subtask_id],
+                          **{'owner': self.header.task_owner.key}},
             results=result_files,
             resources=self.task_resources,
             reference_data=self.get_reference_data()
@@ -504,6 +501,24 @@ class CoreTask(Task):
         client.start()
         return AcceptClientVerdict.ACCEPTED
 
+    def copy_subtask_results(self, subtask_id, old_subtask_info, results):
+        new_subtask = self.subtasks_given[subtask_id]
+
+        new_subtask['node_id'] = old_subtask_info['node_id']
+        new_subtask['perf'] = old_subtask_info['perf']
+        new_subtask['ctd']['performance'] = \
+            old_subtask_info['ctd']['performance']
+
+        self._accept_client(new_subtask['node_id'])
+        self.result_incoming(subtask_id)
+        self.interpret_task_results(
+            subtask_id=subtask_id,
+            task_results=results,
+            result_type=ResultType.FILES)
+        self.accept_results(
+            subtask_id=subtask_id,
+            result_files=self.results[subtask_id])
+
 
 def accepting(query_extra_data_func):
     """
@@ -545,13 +560,12 @@ def accepting(query_extra_data_func):
 class CoreTaskBuilder(TaskBuilder):
     TASK_CLASS = CoreTask
 
-    # FIXME get the root path from dir_manager. Issue #2449
-    def __init__(self, node_name, task_definition, root_path, dir_manager):
+    def __init__(self, owner, task_definition, dir_manager):
         super(CoreTaskBuilder, self).__init__()
         self.task_definition = task_definition
-        self.node_name = node_name
-        self.root_path = root_path
+        self.root_path = dir_manager.root_path
         self.dir_manager = dir_manager
+        self.owner = owner
         self.src_code = ""
         self.environment = None
 
@@ -563,7 +577,7 @@ class CoreTaskBuilder(TaskBuilder):
     def get_task_kwargs(self, **kwargs):
         kwargs['total_tasks'] = int(self.task_definition.total_subtasks)
         kwargs["task_definition"] = self.task_definition
-        kwargs["node_name"] = self.node_name
+        kwargs["owner"] = self.owner
         kwargs["root_path"] = self.root_path
         return kwargs
 

@@ -60,13 +60,18 @@ class BaseResourceServer(object):
     def sync_network(self):
         self._download_resources()
 
-    def add_task(self, pkg_path, pkg_sha1, task_id) -> Deferred:
+    def add_task(self, pkg_path, pkg_sha1, task_id,
+                 client_options=None) -> Deferred:
         _result = Deferred()
         _result.addErrback(self._add_task_error)
 
-        _deferred = self.resource_manager.add_task([pkg_path], task_id)
-        _deferred.addCallback(lambda r: _result.callback((r, pkg_path,
-                                                          pkg_sha1)))
+        def callback(r):
+            value = r, pkg_path, pkg_sha1
+            _result.callback(value)
+
+        _deferred = self.resource_manager.add_task(
+            [pkg_path], task_id, client_options=client_options)
+        _deferred.addCallback(callback)
         _deferred.addErrback(_result.errback)
 
         return _result
@@ -153,12 +158,17 @@ class BaseResourceServer(object):
 
     def _extract_task_resources(self, resource, task_id):
         resource_dir = self.resource_manager.storage.get_dir(task_id)
+        ctk = self.client.task_server.task_manager.comp_task_keeper
 
         def extract_packages(package_files):
+            package_paths = []
             for package_file in package_files:
                 package_path = os.path.join(resource_dir, package_file)
-                logger.debug('Extracting task resource: %r', package_path)
+                package_paths.append(package_path)
+                logger.info('Extracting task resource: %r', package_path)
                 self.packager.extract(package_path, resource_dir)
+
+            ctk.add_package_paths(task_id, package_paths)
 
         async_req = AsyncRequest(extract_packages, resource[1])
         async_run(async_req).addCallbacks(
