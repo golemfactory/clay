@@ -142,9 +142,11 @@ class TestWithClient(TempDirFixture):
         # with Dummy one accepting tasks
         self.client.environments_manager = EnvironmentsManager()
         self.client.environments_manager.load_all_envs(None, False)
-        self.client.environments_manager \
-            .get_environment_by_id(DummyTaskEnvironment().get_id()) \
-            .accept_tasks = True
+        dummy_env = self.client.environments_manager \
+            .get_environment_by_id(DummyTaskEnvironment().get_id())
+        dummy_env.accept_tasks = True
+        # pylint: disable=protected-access
+        dummy_env._check_software = lambda: True
 
 class PEP8MixIn(object):
     """A mix-in class that adds PEP-8 style conformance.
