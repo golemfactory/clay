@@ -993,17 +993,6 @@ class Client(HardwarePresetsMixin):
             lock,
         )
 
-    def get_task_cost(self, task_id):
-        """
-        Get current cost of the task defined by @task_id
-        :param task_id: Task ID
-        :return: Cost of the task
-        """
-        cost = self.task_server.task_manager.get_payment_for_task_id(task_id)
-        if cost is None:
-            return 0.0
-        return cost
-
     # It's defined here only for RPC exposure in
     # golem.rpc.mapping.rpcmethodnames
     def get_subtasks_count(  # pylint: disable=no-self-use
