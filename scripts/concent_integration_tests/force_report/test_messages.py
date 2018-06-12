@@ -93,6 +93,11 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
         arct_rcv = frct_response.ack_report_computed_task
         self.assertIsInstance(
             arct_rcv, message.tasks.AckReportComputedTask)
+        self.assertEqual(
+            frct_response.reason,
+            message.concents.ForceReportComputedTaskResponse.
+            REASON.AckFromRequestor
+        )
         arct_rcv.verify_signature(self.requestor_pub_key)
 
     def test_reject_rct_timeout(self):
@@ -131,7 +136,11 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
         frct_response = self.provider_receive()
         self.assertIsInstance(
             frct_response, message.concents.ForceReportComputedTaskResponse)
-
+        self.assertEqual(
+            frct_response.reason,
+            message.concents.ForceReportComputedTaskResponse.
+            REASON.RejectFromRequestor
+        )
         rrct_rcv = frct_response.reject_report_computed_task
         rrct_rcv.verify_signature(self.requestor_pub_key)
         self.assertEqual(rrct_rcv, rrct)
