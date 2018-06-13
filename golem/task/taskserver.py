@@ -54,7 +54,8 @@ class TaskServer(
                  use_ipv6=False,
                  use_docker_manager=True,
                  task_archiver=None,
-                 apps_manager=AppsManager()) -> None:
+                 apps_manager=AppsManager(),
+                 task_finished_cb=None) -> None:
         self.client = client
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
@@ -73,7 +74,8 @@ class TaskServer(
             use_distributed_resources=config_desc.
             use_distributed_resource_management,
             tasks_dir=os.path.join(client.datadir, 'tasks'),
-            apps_manager=apps_manager
+            apps_manager=apps_manager,
+            finished_cb=task_finished_cb,
         )
         benchmarks = self.task_manager.apps_manager.get_benchmarks()
         self.benchmark_manager = BenchmarkManager(config_desc.node_name, self,
@@ -82,7 +84,8 @@ class TaskServer(
         self.task_computer = TaskComputer(
             config_desc.node_name,
             task_server=self,
-            use_docker_manager=udmm)
+            use_docker_manager=udmm,
+            finished_cb=task_finished_cb)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
@@ -425,8 +428,7 @@ class TaskServer(
             sender_node_id, subtask_id, settled_ts)
 
     def subtask_failure(self, subtask_id, err):
-        logger.info("Computation for task {} failed: {}.".format(
-            subtask_id, err))
+        logger.info("Computation for task %r failed: %r.", subtask_id, err)
         node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)

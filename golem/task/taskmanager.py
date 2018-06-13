@@ -72,7 +72,7 @@ class TaskManager(TaskEventListener):
             self, node_name, node, keys_auth, listen_address="",
             listen_port=0, root_path="res", use_distributed_resources=True,
             tasks_dir="tasks", task_persistence=True,
-            apps_manager=AppsManager()):
+            apps_manager=AppsManager(), finished_cb=None):
         super().__init__()
 
         self.apps_manager = apps_manager
@@ -119,6 +119,8 @@ class TaskManager(TaskEventListener):
         )
 
         self.requestor_stats_manager = RequestorTaskStatsManager()
+
+        self.finished_cb = finished_cb
 
         if self.task_persistence:
             self.restore_tasks()
@@ -680,15 +682,12 @@ class TaskManager(TaskEventListener):
             if self.tasks_states[th.task_id].status not in self.activeStatus:
                 continue
             cur_time = get_timestamp_utc()
-            if cur_time > th.deadline:
-                logger.info("Task {} dies".format(th.task_id))
-                self.tasks_states[th.task_id].status = TaskStatus.timeout
-                self.notice_task_updated(th.task_id, op=TaskOp.TIMEOUT)
+            # Check subtask timeout
             ts = self.tasks_states[th.task_id]
             for s in list(ts.subtask_states.values()):
                 if s.subtask_status.is_computed():
                     if cur_time > s.deadline:
-                        logger.info("Subtask {} dies".format(s.subtask_id))
+                        logger.info("Subtask %r dies", s.subtask_id)
                         s.subtask_status = SubtaskStatus.failure
                         nodes_with_timeouts.append(s.computer.node_id)
                         t.computation_failed(s.subtask_id)
@@ -696,22 +695,33 @@ class TaskManager(TaskEventListener):
                         self.notice_task_updated(th.task_id,
                                                  subtask_id=s.subtask_id,
                                                  op=SubtaskOp.TIMEOUT)
+            # Check task timeout
+            if cur_time > th.deadline:
+                logger.info("Task %r dies", th.task_id)
+                self.tasks_states[th.task_id].status = TaskStatus.timeout
+                # TODO: t.tell_it_has_timeout()?
+                self.notice_task_updated(th.task_id, op=TaskOp.TIMEOUT)
         return nodes_with_timeouts
 
     def get_progresses(self):
         tasks_progresses = {}
 
         for t in list(self.tasks.values()):
-            if t.get_progress() < 1.0:
+            task_id = t.header.task_id
+            task_status = self.tasks_states[task_id].status
+            in_progress = not TaskStatus.is_completed(task_status)
+            logger.info('Collecting progress %r %r %r',
+                        task_id, task_status, in_progress)
+            if in_progress:
                 ltss = LocalTaskStateSnapshot(
-                    t.header.task_id,
+                    task_id,
                     t.get_total_tasks(),
                     t.get_active_tasks(),
                     t.get_progress(),
                     t.short_extra_data_repr(2200.0)
                 )  # FIXME in short_extra_data_repr should there be extra data
                 # Issue #2460
-                tasks_progresses[t.header.task_id] = ltss
+                tasks_progresses[task_id] = ltss
 
         return tasks_progresses
 
@@ -803,6 +813,8 @@ class TaskManager(TaskEventListener):
 
         self.dir_manager.clear_temporary(task_id)
         self.remove_dump(task_id)
+        if self.finished_cb:
+            self.finished_cb()
 
     @handle_task_key_error
     def query_task_state(self, task_id):
@@ -977,11 +989,17 @@ class TaskManager(TaskEventListener):
         # self.save_state()
         if persist and self.task_persistence:
             self.dump_task(task_id)
+
+        task_state = self.tasks_states.get(task_id)
         dispatcher.send(
             signal='golem.taskmanager',
             event='task_status_updated',
             task_id=task_id,
-            task_state=self.tasks_states.get(task_id),
+            task_state=task_state,
             subtask_id=subtask_id,
             op=op,
         )
+
+        if self.finished_cb and persist and op \
+                and op.task_related() and op.is_completed():
+            self.finished_cb()
