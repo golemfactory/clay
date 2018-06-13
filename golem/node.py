@@ -261,8 +261,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
             logger.debug('_is_task_in_progress? False: task_manager=None')
             return False
 
-        task_requester_progress = task_server.task_manager.get_progresses()
-        if task_requester_progress:
+        task_requestor_progress = task_server.task_manager.get_progresses()
+        if task_requestor_progress:
             logger.debug('_is_task_in_progress? requestor=%r', True)
             return True
 
