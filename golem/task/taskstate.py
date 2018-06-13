@@ -19,6 +19,7 @@ class TaskState(object):
         self.resource_hash = None
         self.package_hash = None
         self.package_path = None
+        self.package_size = None
         self.extra_data = {}
 
     def __repr__(self):
