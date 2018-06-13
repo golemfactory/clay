@@ -89,6 +89,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
            Mock())
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.new_sci')
     def test_get_withdraw_gas_cost(self, new_sci):
+        dest = '0x' + 40 * '0'
         sci = Mock()
         sci.GAS_PRICE = 0
         sci.GAS_PER_PAYMENT = 0
@@ -97,15 +98,17 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         sci.GAS_GNT_TRANSFER = 222
         sci.GAS_WITHDRAW = 555
         gas_price = 123
+        eth_gas_cost = 21000
         sci.get_current_gas_price.return_value = gas_price
+        sci.estimate_transfer_eth_gas.return_value = eth_gas_cost
         new_sci.return_value = sci
 
         ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
 
-        cost = ets.get_withdraw_gas_cost(100, 'ETH')
-        assert cost == 21000 * gas_price
+        cost = ets.get_withdraw_gas_cost(100, dest, 'ETH')
+        assert cost == eth_gas_cost * gas_price
 
-        cost = ets.get_withdraw_gas_cost(200, 'GNT')
+        cost = ets.get_withdraw_gas_cost(200, dest, 'GNT')
         assert cost == sci.GAS_WITHDRAW * gas_price
 
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.NodeProcess',

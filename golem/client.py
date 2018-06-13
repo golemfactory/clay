@@ -110,7 +110,8 @@ class Client(HardwarePresetsMixin):
             start_geth: bool = False,
             start_geth_port: Optional[int] = None,
             geth_address: Optional[str] = None,
-            apps_manager: AppsManager = AppsManager()) -> None:
+            apps_manager: AppsManager = AppsManager(),
+            task_finished_cb=None) -> None:
 
         self.apps_manager = apps_manager
         self.datadir = datadir
@@ -124,6 +125,9 @@ class Client(HardwarePresetsMixin):
         self.app_config = app_config
         self.config_desc = config_desc
         self.config_approver = ConfigApprover(self.config_desc)
+
+        if self.config_desc.in_shutdown:
+            self.update_setting('in_shutdown', False)
 
         logger.info(
             'Client "%s", datadir: %s',
@@ -207,6 +211,7 @@ class Client(HardwarePresetsMixin):
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = str(uuid.uuid4())
+        self._task_finished_cb = task_finished_cb
 
         dispatcher.connect(
             self.p2p_listener,
@@ -317,7 +322,8 @@ class Client(HardwarePresetsMixin):
             use_ipv6=self.config_desc.use_ipv6,
             use_docker_manager=self.use_docker_manager,
             task_archiver=self.task_archiver,
-            apps_manager=self.apps_manager
+            apps_manager=self.apps_manager,
+            task_finished_cb=self._task_finished_cb,
         )
 
         monitoring_publisher_service = MonitoringPublisherService(
@@ -523,6 +529,9 @@ class Client(HardwarePresetsMixin):
         self._unlock_datadir()
 
     def enqueue_new_task(self, task_dict):
+        if self.config_desc.in_shutdown:
+            raise Exception('Can not enqueue task: shutdown is in progress, '
+                            'toggle shutdown mode off to create a new tasks.')
         task_manager = self.task_server.task_manager
         _result = Deferred()
 
@@ -959,10 +968,15 @@ class Client(HardwarePresetsMixin):
     def get_withdraw_gas_cost(
             self,
             amount: Union[str, int],
+            destination: str,
             currency: str) -> int:
         if isinstance(amount, str):
             amount = int(amount)
-        return self.transaction_system.get_withdraw_gas_cost(amount, currency)
+        return self.transaction_system.get_withdraw_gas_cost(
+            amount,
+            destination,
+            currency,
+        )
 
     def withdraw(
             self,
@@ -981,19 +995,12 @@ class Client(HardwarePresetsMixin):
         else:
             lock = eth_lock
 
-        return self.transaction_system.withdraw(amount, destination, currency,
-                                                lock)
-
-    def get_task_cost(self, task_id):
-        """
-        Get current cost of the task defined by @task_id
-        :param task_id: Task ID
-        :return: Cost of the task
-        """
-        cost = self.task_server.task_manager.get_payment_for_task_id(task_id)
-        if cost is None:
-            return 0.0
-        return cost
+        return self.transaction_system.withdraw(
+            amount,
+            destination,
+            currency,
+            lock,
+        )
 
     # It's defined here only for RPC exposure in
     # golem.rpc.mapping.rpcmethodnames

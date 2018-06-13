@@ -146,9 +146,7 @@ class TaskInfo:
             if (msg.op in [TaskOp.CREATED, TaskOp.RESTORED]
                     and not start_time):
                 start_time = msg.ts
-            elif (msg.op in [TaskOp.FINISHED, TaskOp.NOT_ACCEPTED,
-                             TaskOp.ABORTED, TaskOp.TIMEOUT]
-                  and not finish_time):
+            elif msg.op.is_completed() and not finish_time:
                 finish_time = msg.ts
 
         assert finish_time >= start_time
