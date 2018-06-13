@@ -13,20 +13,20 @@ from scripts.concent_node_tests import params
 
 sys.path.insert(0, 'golem')
 
-from golemapp import start  # noqa: E402
+from golemapp import start  # noqa: E402 module level import not at top of file
 
 sys.argv.extend(params.REQUESTOR_ARGS)
 
 original_send = TaskSession.send
 
 
-def send(self, msg, send_unverified=False):
+def send(self, msg, *args, **kwargs):
 
     # fail to send `SubtaskResultsAccepted`
     if isinstance(msg, SubtaskResultsAccepted):
         return
 
-    original_send(self, msg, send_unverified=send_unverified)
+    original_send(self, msg, *args, **kwargs)
 
 
 with mock.patch("golem.task.tasksession.TaskSession.send", send):
