@@ -10,7 +10,7 @@ from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
 from threading import Lock, Thread
-from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
+from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
@@ -1248,11 +1248,11 @@ class Client(HardwarePresetsMixin):
             ver=golem.__version__
         )
 
-    def connection_status(self):
+    def connection_status(self) -> Dict[str, Any]:
         listen_port = self.get_p2p_port()
         task_server_port = self.get_task_server_port()
 
-        status = dict()
+        status: Dict[str, Any] = dict()
 
         if listen_port == 0 or task_server_port == 0:
             status['listening'] = False

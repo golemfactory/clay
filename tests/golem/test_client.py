@@ -1297,40 +1297,91 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             task_id, 1
         )
 
-    def test_connection_status(self, *_):
+    def test_connection_status_not_listening(self, *_):
         c = self.client
 
-        # not connected
-        assert not c.connection_status()['listening']
+        # when
+        status = c.connection_status()
 
-        # status without peers
+        # then
+        assert not status['listening']
+
+    def test_connection_status_without_peers(self, *_):
+        c = self.client
+
+        # given
         c.p2pservice.cur_port = 12345
         c.task_server.cur_port = 12346
 
-        # status without peers
-        assert not c.connection_status()['connected']
+        # when
+        status = c.connection_status()
 
-        # peers
+        # then
+        assert status['listening']
+        assert not status['connected']
+
+    def test_connection_status_with_peers(self, *_):
+        c = self.client
+
+        # given
+        c.p2pservice.cur_port = 12345
+        c.task_server.cur_port = 12346
+        c.p2pservice.peers = {str(i): self.__new_session() for i in range(4)}
+
+        # when
+        status = c.connection_status()
+
+        # then
+        assert status['listening']
+        assert status['connected']
+
+    def test_connection_status_port_statuses(self, *_):
+        c = self.client
+
+        # given
+        c.p2pservice.cur_port = 12345
+        c.task_server.cur_port = 12346
+
+        port_statuses = {
+            1234: "open",
+            2345: "unreachable",
+        }
+        c.node.port_statuses = port_statuses
+
+        # when
+        status = c.connection_status()
+
+        # then
+        assert status['port_statuses'] == port_statuses
+
+    def test_get_known_peers(self, *_):
+        c = self.client
+
+        # given
         c.p2pservice.incoming_peers = {
             str(i): self.__new_incoming_peer()
             for i in range(3)
         }
-        c.p2pservice.peers = {str(i): self.__new_session() for i in range(4)}
 
+        # when
         known_peers = c.get_known_peers()
+
+        # then
         self.assertEqual(len(known_peers), 3)
         self.assertTrue(all(peer for peer in known_peers))
 
+    def test_get_connected_peers(self, *_):
+        c = self.client
+
+        # given
+        c.p2pservice.peers = {str(i): self.__new_session() for i in range(4)}
+
+        # when
         connected_peers = c.get_connected_peers()
+
+        # then
         self.assertEqual(len(connected_peers), 4)
         self.assertTrue(all(peer for peer in connected_peers))
-
-        # status with peers
-        assert c.connection_status()['connected']
-
-        # status without ports
-        c.p2pservice.cur_port = 0
-        assert not c.connection_status()['listening']
 
     def test_golem_version(self, *_):
         assert self.client.get_golem_version() == golem.__version__
