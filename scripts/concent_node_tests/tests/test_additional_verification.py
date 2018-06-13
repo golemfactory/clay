@@ -5,7 +5,7 @@ from scripts.concent_node_tests import helpers
 from scripts.concent_node_tests.tests.base import NodeTestPlaybook
 
 
-class ForceAccept(NodeTestPlaybook):
+class AdditionalVerification(NodeTestPlaybook):
     provider_node_script = 'provider/debug'
     requestor_node_script = 'requestor/reject_results'
 
@@ -41,7 +41,7 @@ class ForceAccept(NodeTestPlaybook):
     )
 
 
-playbook = ForceAccept.start()
+playbook = AdditionalVerification.start()
 if playbook.exit_code:
     print("exit code", playbook.exit_code)
 sys.exit(playbook.exit_code)

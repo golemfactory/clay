@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 """
 
-Requestor Node that sends fails the verification
+Requestor Node that fails the verification of the results,
+iow, always sends `SubtaskResultsRejected`.
 
 """
 
