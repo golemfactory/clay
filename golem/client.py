@@ -79,6 +79,11 @@ from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
 from golem.transactions.ethereum.fundslocker import FundsLocker
 
+# Minimum num_workers is 4 to avoid delayed start in case of
+# task with very few subtasks (for small number of subtasks it is
+# likable that initial mask would rule out all the nodes)
+MIN_NUM_WORKERS_FOR_MASK = 4
+
 logger = logging.getLogger(__name__)
 
 
@@ -566,14 +571,10 @@ class Client(HardwarePresetsMixin):
         def package_created(packager_result):
             package_path, package_sha1 = packager_result
             task.header.resource_size = path.getsize(package_path)
-
-            # Minimum num_workers is 4 to avoid delayed start in case of
-            # task with very few subtasks (for small number of subtasks it is
-            # likable that initial mask would rule out all the nodes)
             num_workers = max(
                 task.get_total_tasks() *
                 self.config_desc.initial_mask_size_factor,
-                4)
+                MIN_NUM_WORKERS_FOR_MASK)
             task.header.mask = Mask.get_mask_for_task(
                 desired_num_workers=num_workers,
                 network_size=self.p2pservice.get_estimated_network_size()
@@ -1520,7 +1521,8 @@ class MaskUpdateService(LoopingCallService):
 
     def _run(self) -> None:
         logger.info('Updating masks')
-        for task_id, task in self._task_manager.tasks.items():
+        # Using list() because tasks could be changed by another thread
+        for task_id, task in list(self._task_manager.tasks.items()):
             if task.needs_computation():
                 task_state = self._task_manager.query_task_state(task_id)
                 if task_state.elapsed_time > self._interval:

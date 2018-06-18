@@ -116,13 +116,12 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
 
         # "port_statuses" is a nested dict and needs to be sorted;
         # Python < 3.7 does not guarantee the same dict iteration ordering
-        if 'task_owner' in self_dict:
-            port_statuses = self_dict['task_owner'].get('port_statuses')
-            if isinstance(port_statuses, dict):
-                self_dict['task_owner']['port_statuses'] = \
-                    cls._ordered(port_statuses)
+        port_statuses = self_dict['task_owner'].get('port_statuses')
+        if isinstance(port_statuses, dict):
+            self_dict['task_owner']['port_statuses'] = \
+                cls._ordered(port_statuses)
 
-            self_dict['task_owner'] = cls._ordered(self_dict['task_owner'])
+        self_dict['task_owner'] = cls._ordered(self_dict['task_owner'])
 
         if 'docker_images' in self_dict:
             self_dict['docker_images'] = [cls._ordered(di) for di
@@ -136,8 +135,18 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
            defined parameters
          :param dict th_dict_repr: task header dictionary representation
         """
+        if not isinstance(th_dict_repr.get('task_id'), str):
+            raise ValueError('Task ID missing')
+
+        if not isinstance(th_dict_repr.get('task_owner'), dict):
+            raise ValueError('Task owner missing')
+
+        if not isinstance(th_dict_repr['task_owner'].get('node_name'), str):
+            raise ValueError('Task owner node name missing')
+
         if not isinstance(th_dict_repr['deadline'], (int, float)):
             raise ValueError("Deadline is not a timestamp")
+
         if th_dict_repr['deadline'] < common.get_timestamp_utc():
             msg = "Deadline already passed \n " \
                   "task_id = %s \n " \
@@ -145,6 +154,7 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
                   (th_dict_repr['task_id'],
                    th_dict_repr['task_owner']['node_name'])
             raise ValueError(msg)
+
         if not isinstance(th_dict_repr['subtask_timeout'], int):
             msg = "Subtask timeout is not a number \n " \
                   "task_id = %s \n " \
@@ -152,6 +162,7 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
                   (th_dict_repr['task_id'],
                    th_dict_repr['task_owner']['node_name'])
             raise ValueError(msg)
+
         if th_dict_repr['subtask_timeout'] < 0:
             msg = "Subtask timeout is less than 0 \n " \
                   "task_id = %s \n " \

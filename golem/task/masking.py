@@ -17,12 +17,16 @@ class Mask:
 
     def increase(self, num_bits: int = 1) -> None:
         bits = self.to_bits()
+        if len(bits) == self.MASK_LEN:
+            return  # Cannot increase any further
         assert 0 <= num_bits <= self.MASK_LEN - len(bits)
         bits |= set(random.sample(self.ALL_BITS - bits, num_bits))
         self.byte_repr = self._bits_to_bytes(bits)
 
     def decrease(self, num_bits: int = 1) -> None:
         bits = self.to_bits()
+        if not bits:
+            return  # Cannot decrease any further
         assert 0 <= num_bits <= len(bits)
         bits -= set(random.sample(bits, num_bits))
         self.byte_repr = self._bits_to_bytes(bits)

@@ -105,3 +105,18 @@ class TestTaskHeader(TestCase):
         del self.th_dict_repr['fixed_header']
         with self.assertRaisesRegex(ValueError, "Fixed header is missing"):
             TaskHeader.validate(self.th_dict_repr)
+
+    def test_validate_no_task_id(self):
+        del self.th_dict_repr['fixed_header']['task_id']
+        with self.assertRaisesRegex(ValueError, "Task ID missing"):
+            TaskHeader.validate(self.th_dict_repr)
+
+    def test_validate_no_task_owner(self):
+        del self.th_dict_repr['fixed_header']['task_owner']
+        with self.assertRaisesRegex(ValueError, "Task owner missing"):
+            TaskHeader.validate(self.th_dict_repr)
+
+    def test_validate_no_task_owner_node_name(self):
+        del self.th_dict_repr['fixed_header']['task_owner']['node_name']
+        with self.assertRaisesRegex(ValueError, "node name missing"):
+            TaskHeader.validate(self.th_dict_repr)
