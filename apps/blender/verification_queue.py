@@ -5,6 +5,7 @@ from types import FunctionType
 from typing import Optional, Type, Dict
 from collections import namedtuple
 from twisted.internet.defer import Deferred, gatherResults
+from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 from golem_verificator.verifier import Verifier
 from golem.core.common import deadline_to_timeout
 from golem.task.localcomputer import ComputerAdapter
@@ -84,6 +85,7 @@ class VerificationQueue:
                 self._process_queue()
 
         try:
+            entry.kwargs["reference_generator"] = BlenderReferenceGenerator()
             verifier = entry.verifier_class(callback, entry.kwargs)
             # FIXME set this from golem core, this code should not know about
             # LocalComputer or cmputer adapter. Maybe create an interface object.
