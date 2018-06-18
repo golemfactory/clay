@@ -169,7 +169,7 @@ class TaskServerMessageHandler():
             msg.is_valid()
             concent_key = self.task_server.client.concent_variant['pubkey']
             msg.verify_owners(
-                requestor_public_key=self.task_server.keys_auth.raw_pubkey,
+                requestor_public_key=self.task_server.keys_auth.ecc.raw_pubkey,
                 concent_public_key=concent_key,
             )
         except msg_exceptions.ValidationError as e:
