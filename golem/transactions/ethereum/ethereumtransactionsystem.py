@@ -24,7 +24,8 @@ log = logging.getLogger('golem.pay')
 class ConversionStatus(Enum):
     NONE = 0
     OPENING_GATE = 1
-    TRANFERRING = 2
+    TRANSFERRING = 2
+    UNFINISHED = 3
 
 
 class EthereumTransactionSystem(TransactionSystem):
@@ -54,7 +55,13 @@ class EthereumTransactionSystem(TransactionSystem):
         )
         self._faucet = ETHEREUM_FAUCET_ENABLED
         self._gnt_faucet_requested = False
+
         self._gnt_conversion_status = ConversionStatus.NONE
+        gate_address = self._sci.get_gate_address()
+        if gate_address is not None:
+            if self._sci.get_gnt_balance(gate_address):
+                self._gnt_conversion_status = ConversionStatus.UNFINISHED
+
         self.payment_processor = PaymentProcessor(self._sci)
 
         super().__init__(
@@ -237,8 +244,31 @@ class EthereumTransactionSystem(TransactionSystem):
         self._gntb_balance = self._sci.get_gntb_balance(addr)
         self._last_gnt_update = time.mktime(datetime.today().timetuple())
 
-    def _try_convert_gnt(self) -> None:
-        if not self._balance_known() or self._gnt_balance == 0:
+    def _try_convert_gnt(self) -> None:  # pylint: disable=too-many-branches
+        if not self._balance_known():
+            return
+        if self._gnt_conversion_status == ConversionStatus.UNFINISHED:
+            if self._gnt_balance > 0:
+                self._gnt_conversion_status = ConversionStatus.NONE
+            else:
+                gas_cost = self._sci.get_current_gas_price() * \
+                    self._sci.GAS_TRANSFER_FROM_GATE
+                if self._eth_balance >= gas_cost:
+                    tx_hash = self._sci.transfer_from_gate()
+                    log.info(
+                        "Finishing previously started GNT conversion %s",
+                        tx_hash,
+                    )
+                    self._gnt_conversion_status = ConversionStatus.TRANSFERRING
+                else:
+                    log.info(
+                        "Not enough gas to finish GNT conversion, has %.6f,"
+                        " needed: %.6f",
+                        self._eth_balance / denoms.ether,
+                        gas_cost / denoms.ether,
+                    )
+            return
+        if self._gnt_balance == 0:
             self._gnt_conversion_status = ConversionStatus.NONE
             return
 
@@ -246,11 +276,18 @@ class EthereumTransactionSystem(TransactionSystem):
         gate_address = self._sci.get_gate_address()
         if gate_address is None:
             gas_cost = gas_price * self._sci.GAS_OPEN_GATE
-            if self._gnt_conversion_status != ConversionStatus.OPENING_GATE and\
-               self._eth_balance >= gas_cost:
-                tx_hash = self._sci.open_gate()
-                log.info("Opening GNT-GNTB conversion gate %s", tx_hash)
-                self._gnt_conversion_status = ConversionStatus.OPENING_GATE
+            if self._gnt_conversion_status != ConversionStatus.OPENING_GATE:
+                if self._eth_balance >= gas_cost:
+                    tx_hash = self._sci.open_gate()
+                    log.info("Opening GNT-GNTB conversion gate %s", tx_hash)
+                    self._gnt_conversion_status = ConversionStatus.OPENING_GATE
+                else:
+                    log.info(
+                        "Not enough gas for opening conversion gate, has: %.6f,"
+                        " needed: %.6f",
+                        self._eth_balance / denoms.ether,
+                        gas_cost / denoms.ether,
+                    )
             return
 
         # This is extra safety check, shouldn't ever happen
@@ -263,17 +300,25 @@ class EthereumTransactionSystem(TransactionSystem):
 
         gas_cost = gas_price * \
             (self._sci.GAS_GNT_TRANSFER + self._sci.GAS_TRANSFER_FROM_GATE)
-        if self._gnt_conversion_status != ConversionStatus.TRANFERRING and\
-           self._eth_balance >= gas_cost:
-            tx_hash1 = self._sci.transfer_gnt(gate_address, self._gnt_balance)
-            tx_hash2 = self._sci.transfer_from_gate()
-            log.info(
-                "Converting %.6f GNT to GNTB %s %s",
-                self._gnt_balance / denoms.ether,
-                tx_hash1,
-                tx_hash2,
-            )
-            self._gnt_conversion_status = ConversionStatus.TRANFERRING
+        if self._gnt_conversion_status != ConversionStatus.TRANSFERRING:
+            if self._eth_balance >= gas_cost:
+                tx_hash1 = \
+                    self._sci.transfer_gnt(gate_address, self._gnt_balance)
+                tx_hash2 = self._sci.transfer_from_gate()
+                log.info(
+                    "Converting %.6f GNT to GNTB %s %s",
+                    self._gnt_balance / denoms.ether,
+                    tx_hash1,
+                    tx_hash2,
+                )
+                self._gnt_conversion_status = ConversionStatus.TRANSFERRING
+            else:
+                log.info(
+                    "Not enough gas for GNT conversion, has: %.6f,"
+                    " needed: %.6f",
+                    self._eth_balance / denoms.ether,
+                    gas_cost / denoms.ether,
+                )
 
     def _run(self) -> None:
         self._refresh_balances()

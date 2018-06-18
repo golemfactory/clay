@@ -27,6 +27,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         self.sci = Mock()
         self.sci.GAS_PRICE = 0
         self.sci.GAS_BATCH_PAYMENT_BASE = 0
+        self.sci.get_gate_address.return_value = None
         with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
                    'new_sci', return_value=self.sci),\
             patch('golem.transactions.ethereum.ethereumtransactionsystem.'
@@ -182,7 +183,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         self.sci.reset_mock()
 
     def test_convert_gnt(self):
-        amount = 1000
+        amount = 1000 * 10 ** 18
         gate_addr = '0x' + 40 * '2'
         self.sci.get_gate_address.return_value = None
         self.sci.get_gnt_balance.return_value = amount
@@ -208,6 +209,27 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         self.sci.transfer_from_gate.reset_mock()
         self.ets._try_convert_gnt()
         self.sci.transfer_gnt.assert_not_called()
+        self.sci.transfer_from_gate.assert_not_called()
+
+    def test_unfinished_gnt_conversion(self):
+        amount = 1000 * 10 ** 18
+        gate_addr = '0x' + 40 * '2'
+        self.sci.get_current_gas_price.return_value = 0
+        self.sci.GAS_TRANSFER_FROM_GATE = 5
+        self.sci.get_gate_address.return_value = gate_addr
+        self.sci.get_gnt_balance.side_effect = \
+            lambda addr: amount if addr == gate_addr else 0
+        self.sci.get_eth_balance.return_value = 10 ** 18
+        with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                   'new_sci', return_value=self.sci),\
+            patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                  'NodeProcess'):
+            ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+        ets._refresh_balances()
+        ets._try_convert_gnt()
+        self.sci.transfer_from_gate.assert_called_once_with()
+        self.sci.transfer_from_gate.reset_mock()
+        ets._try_convert_gnt()
         self.sci.transfer_from_gate.assert_not_called()
 
     def test_concent_deposit_enough(self):
