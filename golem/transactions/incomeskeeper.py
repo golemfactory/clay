@@ -9,7 +9,7 @@ from pydispatch import dispatcher
 
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import Income
-from golem.utils import encode_hex, pubkeytoaddr
+from golem.utils import pubkeytoaddr
 
 logger = logging.getLogger("golem.transactions.incomeskeeper")
 
@@ -32,7 +32,8 @@ class IncomesKeeper:
         expected = Income.select().where(
             Income.accepted_ts > 0,
             Income.accepted_ts <= closure_time,
-            Income.transaction.is_null())
+            Income.transaction.is_null(),
+            Income.settled_ts.is_null())
         expected = \
             [e for e in expected if pubkeytoaddr(e.sender_node) == sender]
 
@@ -63,14 +64,14 @@ class IncomesKeeper:
             dispatcher.send(
                 signal='golem.income',
                 event='confirmed',
-                subtask_id=e.subtask
+                subtask_id=e.subtask,
             )
 
         dispatcher.send(
             signal='golem.monitor',
             event='income',
-            addr=encode_hex(sender),
-            value=amount
+            addr=sender,
+            value=amount,
         )
 
     def expect(self, sender_node_id, subtask_id, value):
@@ -114,6 +115,35 @@ class IncomesKeeper:
             return
 
         income.settled_ts = settled_ts
+        income.save()
+
+    @staticmethod
+    def received_forced_subtask_payment(
+            tx_hash: str,
+            sender_addr: str,
+            subtask_id: str,
+            value: int) -> None:
+        expected = Income.select().where(Income.subtask_id == subtask_id)
+        expected = \
+            [e for e in expected if pubkeytoaddr(e.sender_node) == sender_addr]
+        if not expected:
+            logger.info(
+                "Received forced subtask payment but there's no entry for "
+                "subtask_id=%r",
+                subtask_id,
+            )
+            return
+
+        income = expected[0]
+        income.transaction = tx_hash[2:]
+        if income.value != value:
+            logger.warning(
+                "Received wrong amount for forced subtask payment. Expected "
+                "%.6f, got %.6f",
+                income.value / denoms.ether,
+                value / denoms.ether,
+            )
+            income.value = value
         income.save()
 
     def update_awaiting(self, sender_node, subtask_id, accepted_ts):
