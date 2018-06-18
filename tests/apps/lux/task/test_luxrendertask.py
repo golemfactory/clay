@@ -26,12 +26,6 @@ from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
 
-class TestLuxRenderDefaults(unittest.TestCase):
-    def test_init(self):
-        ld = LuxRenderDefaults()
-        self.assertTrue(os.path.isfile(ld.main_program_file))
-
-
 class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
     PEP8_FILES = [
         'apps/lux/task/luxrendertask.py',

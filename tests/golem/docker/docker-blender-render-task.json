@@ -5,7 +5,7 @@
     "use_frames":false,
     "compositing":false,
     "environment":{
-      "py/object":"apps.blender.blenderenvironment.BlenderEnvironment",
+      "py/object":"apps.blender.dockerenvironment.blenderenvironment.BlenderEnvironment",
       "accept_tasks":false,
       "docker_images":[
         {
@@ -62,7 +62,8 @@
   "full_task_timeout":14400,
   "max_price": 10.23,
   "task_type":"Blender",
-  "main_program_file":"$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py",
+  "requirements": [],
+  "main_program_file":"$GOLEM_DIR/apps/blender/dockerenvironment/resources/scripts/docker_blendertask.py",
   "subtask_timeout":1200,
   "total_subtasks":6
 }

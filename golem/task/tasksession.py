@@ -10,8 +10,6 @@ from golem.core.common import HandleAttributeError
 from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import CBORSerializer
 from golem.core.variables import PROTOCOL_CONST
-from golem.docker.environment import DockerEnvironment
-from golem.docker.image import DockerImage
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
@@ -855,37 +853,22 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return True
 
     def _set_env_params(self, ctd):
-        environment = self.task_manager.comp_task_keeper.get_task_env(ctd['task_id'])  # noqa
-        env = self.task_server.get_environment_by_id(environment)
+        task_type = ctd['task_type']
+        requirements = self.task_manager.get_task_requirements(ctd['task_id'])
+        env = self.task_server.get_environment_for_task(task_type, requirements)
         reasons = message.CannotComputeTask.REASON
         if not env:
             self.err_msg = reasons.WrongEnvironment
             return False
 
-        if isinstance(env, DockerEnvironment):
-            if not self.__check_docker_images(ctd, env):
-                return False
-
-        if not env.allow_custom_main_program_file:
+        if not env.allow_custom_source_code:
             ctd['src_code'] = env.get_source_code()
 
-        if not ctd['src_code']:
+        if env.source_code_required and not ctd['src_code']:
             self.err_msg = reasons.NoSourceCode
             return False
 
         return True
-
-    def __check_docker_images(self, ctd, env):
-        for image_dict in ctd['docker_images']:
-            image = DockerImage(**image_dict)
-            for env_image in env.docker_images:
-                if env_image.cmp_name_and_tag(image):
-                    ctd['docker_images'] = [image_dict]
-                    return True
-
-        reasons = message.CannotComputeTask.REASON
-        self.err_msg = reasons.WrongDockerImages
-        return False
 
     def __set_msg_interpretations(self):
         self._interpretation.update({

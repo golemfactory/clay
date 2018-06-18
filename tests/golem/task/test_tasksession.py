@@ -48,6 +48,9 @@ class DockerEnvironmentMock(DockerEnvironment):
     SCRIPT_NAME = ""
     SHORT_DESCRIPTION = ""
 
+    def get_benchmark(self):
+        return None, None
+
 
 class TestTaskSessionPep8(testutils.PEP8MixIn, TestCase):
     PEP8_FILES = ['golem/task/tasksession.py', ]
@@ -122,7 +125,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         requestor_key = 'req pubkey'
         task_manager.tasks[task_id] = Mock(header=TaskHeader(
             task_id='xyz',
-            environment='',
+            task_type='',
             task_owner=Node(
                 key=requestor_key,
                 node_name='ABC',
@@ -437,9 +440,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         env = Mock()
         env.docker_images = [DockerImage("dockerix/xii", tag="323")]
-        env.allow_custom_main_program_file = False
+        env.allow_custom_source_code = False
         env.get_source_code.return_value = None
-        ts.task_server.get_environment_by_id.return_value = env
+        ts.task_server.get_environment_for_task.return_value = env
 
         reasons = message.CannotComputeTask.REASON
 
@@ -467,9 +470,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         ctd = message.ComputeTaskDef()
         ctd['subtask_id'] = "SUBTASKID"
-        ctd['docker_images'] = [
-            DockerImage("dockerix/xiii", tag="323").to_dict(),
-        ]
+        ctd['task_type'] = 'DEFAULT'
         msg = message.TaskToCompute(compute_task_def=ctd)
         ts._react_to_task_to_compute(msg)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
@@ -531,7 +532,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # Allow custom code / no code in message.ComputeTaskDef -> failure
         __reset_mocks()
-        env.allow_custom_main_program_file = True
+        env.allow_custom_source_code = True
         ctd['src_code'] = ""
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
@@ -553,27 +554,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # No environment available -> failure
         __reset_mocks()
-        ts.task_server.get_environment_by_id.return_value = None
+        ts.task_server.get_environment_for_task.return_value = None
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
         ))
         assert ts.err_msg == reasons.WrongEnvironment
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
-
-        # Envrionment is Docker environment but with different images -> failure
-        __reset_mocks()
-        ts.task_server.get_environment_by_id.return_value = \
-            DockerEnvironmentMock(additional_images=[
-                DockerImage("dockerix/xii", tag="323"),
-                DockerImage("dockerix/xiii", tag="325"),
-                DockerImage("dockerix/xiii")
-            ])
-        ts._react_to_task_to_compute(message.TaskToCompute(
-            compute_task_def=ctd,
-        ))
-        assert ts.err_msg == reasons.WrongDockerImages
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
@@ -584,9 +569,10 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         de = DockerEnvironmentMock(additional_images=[
             DockerImage("dockerix/xii", tag="323"),
             DockerImage("dockerix/xiii", tag="325"),
-            DockerImage("dockerix/xiii", tag="323")
+            DockerImage("dockerix/xiii")
         ])
-        ts.task_server.get_environment_by_id.return_value = de
+        de.source_code_required = True
+        ts.task_server.get_environment_for_task.return_value = de
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
         ))
@@ -600,7 +586,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         file_name = os.path.join(self.path, "main_program_file")
         with open(file_name, 'w') as f:
             f.write("Hello world!")
-        de.main_program_file = file_name
+        de.default_program_file = file_name
         ts._react_to_task_to_compute(message.TaskToCompute(
             compute_task_def=ctd,
         ))
@@ -743,7 +729,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         task_owner = Node(node_name="ABC", key="KEY_ID",
                           pub_addr="10.10.10.10", pub_port=2311)
         task_keeper = CompTaskKeeper(self.new_path)
-        task_keeper.add_request(TaskHeader(environment='DEFAULT',
+        task_keeper.add_request(TaskHeader(task_type='DEFAULT',
                                            task_id="abc",
                                            task_owner=task_owner), 20)
         assert task_keeper.active_tasks["abc"].requests == 1

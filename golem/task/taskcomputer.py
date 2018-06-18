@@ -8,14 +8,10 @@ from threading import Lock
 
 from pydispatch import dispatcher
 
-
 from golem.core.common import deadline_to_timeout
 from golem.core.statskeeper import IntStatsKeeper
-from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
-from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
-from golem.network.p2p.node import Node as P2PNode
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
 
@@ -118,7 +114,7 @@ class TaskComputer(object):
                             "But I'm busy with another one. Ignoring.",
                             task_id)
                         return  # busy
-                    self.__compute_task(subtask_id, subtask['docker_images'],
+                    self.__compute_task(subtask_id, subtask['task_type'],
                                         subtask['src_code'], subtask['extra_data'],
                                         subtask['short_description'], subtask['deadline'])
                     self.waiting_for_task = None
@@ -132,11 +128,18 @@ class TaskComputer(object):
             if subtask_id in self.assigned_subtasks:
                 subtask = self.assigned_subtasks[subtask_id]
                 if unpack_delta:
-                    self.task_server.unpack_delta(self.dir_manager.get_task_resource_dir(task_id), self.delta, task_id)
+                    self.task_server.unpack_delta(
+                        self.dir_manager.get_task_resource_dir(task_id),
+                        self.delta,
+                        task_id)
                 self.delta = None
                 self.last_task_timeout_checking = time.time()
-                self.__compute_task(subtask_id, subtask['docker_images'], subtask['src_code'], subtask['extra_data'],
-                                    subtask['short_description'], subtask['deadline'])
+                self.__compute_task(subtask_id,
+                                    subtask['task_type'],
+                                    subtask['src_code'],
+                                    subtask['extra_data'],
+                                    subtask['short_description'],
+                                    subtask['deadline'])
                 return True
             return False
 
@@ -343,17 +346,19 @@ class TaskComputer(object):
         if not self.task_server.request_resource(task_id, subtask_id):
             self.reset()
 
-    def __compute_task(self, subtask_id, docker_images,
+    # pylint: disable=too-many-arguments,too-many-locals
+    def __compute_task(self, subtask_id, task_type,
                        src_code, extra_data, short_desc, subtask_deadline):
         task_id = self.assigned_subtasks[subtask_id]['task_id']
         task_header = self.task_server.task_keeper.task_headers.get(task_id)
-
         if not task_header:
             logger.warning("Subtask '%s' of task '%s' cannot be computed: "
                            "task header has been unexpectedly removed",
                            subtask_id, task_id)
             return self.session_closed()
 
+        environment = self.task_server.get_environment_for_task(
+            task_type, task_header.requirements)
         deadline = min(task_header.deadline, subtask_deadline)
         task_timeout = deadline_to_timeout(deadline)
 
@@ -361,8 +366,7 @@ class TaskComputer(object):
         unique_str = str(uuid.uuid4())
 
         logger.info("Starting computation of subtask %r (task: %r, deadline: "
-                    "%r, docker images: %r)", subtask_id, task_id, deadline,
-                    docker_images)
+                    "%r)", subtask_id, task_id, deadline)
 
         self.reset(counting_task=task_id)
 
@@ -375,28 +379,22 @@ class TaskComputer(object):
             if not os.path.exists(temp_dir):
                 os.makedirs(temp_dir)
 
-        if docker_images:
-            docker_images = [DockerImage(**did) for did in docker_images]
-            tt = DockerTaskThread(self, subtask_id, docker_images, working_dir,
-                                  src_code, extra_data, short_desc,
-                                  resource_dir, temp_dir, task_timeout)
-        elif self.support_direct_computation:
-            tt = PyTaskThread(self, subtask_id, working_dir, src_code,
-                              extra_data, short_desc, resource_dir, temp_dir,
-                              task_timeout)
+        if environment:
+            tt = environment.get_task_thread(self, subtask_id, short_desc,
+                                             src_code, extra_data, task_timeout,
+                                             working_dir, resource_dir,
+                                             temp_dir)
+            self.counting_thread = tt
+            tt.start()
         else:
-            logger.error("Cannot run PyTaskThread in this version")
+            logger.error("Cannot run %s task in this client", task_type)
             subtask = self.assigned_subtasks.pop(subtask_id)
             self.task_server.send_task_failed(
                 subtask_id,
                 subtask['task_id'],
-                "Host direct task not supported",
+                f"{task_type} task not supported",
             )
             self.counting_task = None
-            return
-
-        self.counting_thread = tt
-        tt.start()
 
     def quit(self):
         if self.counting_thread is not None:

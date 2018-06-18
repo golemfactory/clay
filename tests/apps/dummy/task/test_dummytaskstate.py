@@ -27,7 +27,6 @@ class TestDummyTaskOptions(TestCase):
     def test_option(self):
         opts = DummyTaskOptions()
         assert isinstance(opts, DummyTaskOptions)
-        assert isinstance(opts.environment, DummyTaskEnvironment)
         assert opts.subtask_data_size == 128
         assert opts.difficulty == 0xffff0000
 

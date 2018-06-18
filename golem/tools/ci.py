@@ -9,6 +9,10 @@ def in_travis():
     return os.environ.get('TRAVIS', False)
 
 
+def in_circleci():
+    return os.environ.get('CIRCLECI', False)
+
+
 def ci_skip(obj):
     import unittest
     if in_appveyor() or in_travis():

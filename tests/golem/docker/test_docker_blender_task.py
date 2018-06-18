@@ -5,14 +5,14 @@ from unittest.mock import Mock
 
 import pytest
 
+from apps.blender.dockerenvironment.blenderenvironment import BlenderEnvironment
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, \
     BlenderRenderTask
 from golem.core.common import get_golem_path, timeout_to_deadline
-from golem.docker.image import DockerImage
+from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ResultType, TaskHeader
-from golem.task.taskcomputer import DockerTaskThread
 from golem.task.tasktester import TaskTester
 from golem.tools.ci import ci_skip
 from .test_docker_task import DockerTaskTestCase
@@ -48,7 +48,11 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
 
     def _run_docker_test_task(self, render_task, timeout=60*5):
         render_task.deadline = timeout_to_deadline(timeout)
-        task_computer = TaskTester(render_task, self.path, Mock(), Mock())
+        envs_manager = Mock()
+        envs_manager.get_environment_for_task.return_value = \
+            BlenderEnvironment()
+        task_computer = TaskTester(render_task, envs_manager, self.path,
+                                   Mock(), Mock())
         task_computer.run()
         task_computer.tt.join(60.0)
         return task_computer.tt
@@ -56,7 +60,9 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
     def _run_docker_local_comp_task(self, render_task, timeout=60*5):
         render_task.deadline = timeout_to_deadline(timeout)
         local_computer = LocalComputer(
-            root_path=self.tempdir, success_callback=Mock(),
+            root_path=self.tempdir,
+            environment=BlenderEnvironment(),
+            success_callback=Mock(),
             error_callback=Mock(),
             get_compute_task_def=render_task.query_extra_data_for_test_task,
             resources=render_task.task_resources)
@@ -96,6 +102,7 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
         assert task.src_code
         assert isinstance(task.header, TaskHeader)
         assert task.header.task_id == '7220aa01-ad45-4fb4-b199-ba72b37a1f0c'
+        assert task.header.task_type == 'Blender'
         assert task.header.task_owner.key == 'dd72b37a1f0c'
         assert task.header.task_owner.pub_addr == '1.2.3.4'
         assert task.header.task_owner.pub_port == 40102
@@ -103,10 +110,7 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
         assert task.header.subtask_timeout == 1200
         assert task.header.task_owner.node_name == 'some_node'
         assert task.header.resource_size > 0
-        assert task.header.environment == 'BLENDER'
         assert task.header.estimated_memory == 0
-        assert task.docker_images[0].repository == 'golemfactory/blender'
-        assert task.docker_images[0].tag == '1.4'
         assert task.header.max_price == 10.2
         assert not task.header.signature
         assert task.listeners == []
@@ -136,33 +140,12 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
         self.assertIsInstance(task_thread, DockerTaskThread)
         self.assertTrue(task_thread.error_msg.startswith("Task timed out"))
 
-    def test_wrong_image_repository_specified(self):
-        task = self._get_test_task()
-        task.docker_images = [DockerImage("%$#@!!!")]
-        task_thread = self._run_task(task)
-        if task_thread:
-            self.assertFalse(task_thread.result)
-        self.assertIsInstance(task_thread.error_msg, str)
-        self.assertTrue(task_thread.error_msg)
-
-    def test_wrong_image_id_specified(self):
-        task = self._get_test_task()
-        image = task.docker_images[0]
-        task.docker_images = [
-            DockerImage(image.repository, image_id="%$#@!!!")]
-        task_thread = self._run_task(task)
-        if task_thread:
-            self.assertFalse(task_thread.result)
-        self.assertIsInstance(task_thread.error_msg, str)
-        self.assertTrue(task_thread.error_msg)
-
     def test_blender_subtask_script_error(self):
         task = self._get_test_task()
         # Replace the main script source with another script that will
         # produce errors when run in the task environment:
         task.src_code = 'main :: IO()\nmain = putStrLn "Hello, Haskell World"\n'
-        task.main_program_file = path.join(
-            path.join(get_golem_path(), "golem"), "node.py")
+        task.main_program_file = path.join(get_golem_path(), "golem", "node.py")
         task.task_resources = {task.main_program_file, task.main_scene_file}
         task_thread = self._run_task(task)
         self.assertIsInstance(task_thread, DockerTaskThread)
@@ -176,8 +159,7 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
         # kill itself
         task.src_code = \
             'import os; import signal; os.kill(os.getpid(), signal.SIGKILL)'
-        task.main_program_file = path.join(
-            path.join(get_golem_path(), "golem"), "node.py")
+        task.main_program_file = path.join(get_golem_path(), "golem", "node.py")
         task.task_resources = {task.main_program_file, task.main_scene_file}
         task_thread = self._run_task(task)
         self.assertIsInstance(task_thread, DockerTaskThread)
@@ -187,7 +169,7 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
     def test_blender_scene_file_error(self):
         task = self._get_test_task()
         # Replace scene file with some other, non-blender file:
-        task.main_scene_file = task.main_program_file
+        task.main_scene_file = path.join(get_golem_path(), "golem", "node.py")
         task_thread = self._run_task(task)
         self.assertIsInstance(task_thread, DockerTaskThread)
         self.assertIsInstance(task_thread.error_msg, str)

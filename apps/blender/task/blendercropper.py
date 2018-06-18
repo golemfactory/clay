@@ -189,12 +189,18 @@ class BlenderCropper:
         )
         ctd = generate_ctd(verify_ctx.subtask_info, script_src)
         # FIXME issue #1955
+
+        # a cyclic import, do not make it global
+        from apps.blender.dockerenvironment.blenderenvironment\
+            import BlenderEnvironment
+
         verify_ctx.computer.start_computation(
             root_path=verify_ctx.get_crop_path(crop_number),
             success_callback=partial(crop_rendered,
                                      verification_context=verify_ctx,
                                      crop_number=crop_number),
             error_callback=crop_render_failure,
+            environment=BlenderEnvironment(),
             compute_task_def=ctd,
             resources=verify_ctx.resources,
             additional_resources=[]
@@ -212,9 +218,8 @@ class BlenderCropper:
         self.rendered_crops_results[crop_number] \
             = [results, time_spend, verification_context]
         crop_number += 1
-        if crop_number == \
-                BlenderCropper.CROPS_NO_FIRST or crop_number == \
-                BlenderCropper.CROPS_NO_SECOND:
+        if crop_number == BlenderCropper.CROPS_NO_FIRST\
+                or crop_number == BlenderCropper.CROPS_NO_SECOND:
             self.crop_rendering_finished(
                 crop_number-BlenderCropper.CROPS_NO_FIRST,
                 crop_number)

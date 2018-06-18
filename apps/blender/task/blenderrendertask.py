@@ -10,7 +10,6 @@ import numpy
 from PIL import Image, ImageChops, ImageFile
 
 import apps.blender.resources.blenderloganalyser as log_analyser
-from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.blender.task.verifier import BlenderVerifier
 from apps.core.task import coretask
@@ -19,6 +18,8 @@ from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import \
     RenderingTaskCollector
 from apps.rendering.resources.utils import handle_image_error, handle_none
+from apps.rendering.task.rendering_engine_requirement import \
+    RenderingEngineRequirement
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, \
     FrameRenderingTaskBuilder, FrameRendererOptions
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, PREVIEW_Y
@@ -41,7 +42,6 @@ class BlenderDefaults(RendererDefaults):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
 
-        self.main_program_file = BlenderEnvironment().main_program_file
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 6
@@ -126,7 +126,7 @@ class PreviewUpdater(object):
 
 
 class BlenderTaskTypeInfo(CoreTaskTypeInfo):
-    """ Blender App descryption that can be used by interface to define
+    """ Blender App description that can be used by interface to define
     parameters and task build
     """
     def __init__(self):
@@ -138,6 +138,7 @@ class BlenderTaskTypeInfo(CoreTaskTypeInfo):
 
         self.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
         self.output_file_ext = ["blend"]
+        self.requirementTypes = [RenderingEngineRequirement.get_id()]
 
     @classmethod
     def get_preview(cls, task, single=False):
@@ -318,12 +319,10 @@ class BlenderTaskTypeInfo(CoreTaskTypeInfo):
 class BlenderRendererOptions(FrameRendererOptions):
     def __init__(self):
         super(BlenderRendererOptions, self).__init__()
-        self.environment = BlenderEnvironment()
         self.compositing = False
 
 
 class BlenderRenderTask(FrameRenderingTask):
-    ENVIRONMENT_CLASS = BlenderEnvironment
     VERIFIER_CLASS = BlenderVerifier
 
     BLENDER_MIN_BOX = [8, 8]
@@ -576,7 +575,7 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._put_collected_files_together(os.path.join(self.tmp_dir, output_file_name),
                                                list(self.collected_file_names.values()), "paste")
-            
+
     def mark_part_on_preview(self, part, img_task, color, preview_updater, frame_index=0):
         lower = preview_updater.get_offset(part)
         upper = preview_updater.get_offset(part + 1)
@@ -695,7 +694,3 @@ def get_min_max_y(task_num, parts, res_y):
             max_y += (ceiling_subtasks - task_num + 1) * ceiling_height
             max_y = max_y / res_y
     return min_y, max_y
-
-
-
-    

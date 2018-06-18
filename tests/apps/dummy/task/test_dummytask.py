@@ -26,7 +26,6 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         return dt, td
 
     def test_constants(self):
-        assert DummyTask.ENVIRONMENT_CLASS == DummyTaskEnvironment
         assert DummyTask.RESULT_EXT == ".result"
 
     def test_init(self):

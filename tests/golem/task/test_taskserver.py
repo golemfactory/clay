@@ -16,7 +16,6 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.core.keysauth import KeysAuth
-from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient, to_hyperg_peer
 from golem.network.p2p.node import Node
@@ -25,6 +24,7 @@ from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import tasksession
 from golem.task.taskbase import TaskHeader, ResultType
+from golem.task.taskkeeper import SupportStatus, UnsupportReason
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.task.tasksession import TaskSession
@@ -39,7 +39,7 @@ from tests.factories.resultpackage import ExtractedPackageFactory
 def get_example_task_header(key_id):
     return {
         "task_id": generate_id(key_id),
-        "environment": "DEFAULT",
+        "task_type": "Dummy",
         "task_owner": dict(
             key=encode_hex(key_id),
             node_name="ABC",
@@ -55,6 +55,7 @@ def get_example_task_header(key_id):
         "estimated_memory": 3 * 1024,
         "signature": None,
         "min_version": golem.__version__,
+        "requirements": {}
     }
 
 
@@ -769,6 +770,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         extra_data.ctd = ComputeTaskDef()
         extra_data.ctd['task_id'] = task_mock.header.task_id
         extra_data.ctd['subtask_id'] = "xxyyzz"
+        extra_data.ctd['task_type'] = "DEFAULT"
         extra_data.should_wait = False
         task_mock.query_extra_data.return_value = extra_data
         task_mock.task_definition.subtask_timeout = 3600
@@ -807,6 +809,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         extra_data = Mock()
         extra_data.ctd = ComputeTaskDef()
         extra_data.ctd['subtask_id'] = "xxyyzz"
+        extra_data.ctd['task_type'] = "DEFAULT"
         extra_data.should_wait = False
 
         task_mock = get_mock_task("xyz", "xxyyzz")

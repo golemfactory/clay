@@ -29,7 +29,7 @@ eth-keys==0.1.0b4
 eth-tester==0.1.0b15
 eth-utils==0.7.4
 ethereum==1.6.1
-Golem-Messages==2.6.4
+-e git+https://github.com/RDProjekt/golem-messages.git@rdp/PoC_firejail#egg=Golem-Messages
 Golem-Smart-Contracts-Interface==1.0.6
 h2==3.0.1
 hpack==3.0.0

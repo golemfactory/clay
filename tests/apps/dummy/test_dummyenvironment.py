@@ -18,11 +18,11 @@ class TestDummyEnvironment(DatabaseFixture):
         assert result == 0.0
 
         perf = 1234.5
-        p = Performance(environment_id=DummyTaskEnvironment.get_id(),
+        p = Performance(environment_id=env.get_id(),
                         value=perf)
         p.save()
         result = env.get_performance()
         self.assertTrue(result == perf)
 
     def test_main_program_file(self):
-        assert path.isfile(DummyTaskEnvironment().main_program_file)
+        assert path.isfile(DummyTaskEnvironment().default_program_file)

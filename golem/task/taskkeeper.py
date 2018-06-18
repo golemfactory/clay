@@ -2,6 +2,7 @@ import logging
 import pathlib
 import pickle
 import time
+from enum import Enum
 import typing
 
 import random
@@ -16,7 +17,6 @@ from golem.core import common
 from golem.core.async import AsyncRequest, async_run
 from golem.core.idgenerator import check_id_seed
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
-from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.utils import decode_hex
 from .taskbase import TaskHeader
 
@@ -175,8 +175,12 @@ class CompTaskKeeper:
         self.dump()
 
     @handle_key_error
-    def get_task_env(self, task_id):
-        return self.active_tasks[task_id].header.environment
+    def get_task_type(self, task_id):
+        return self.active_tasks[task_id].header.task_type
+
+    @handle_key_error
+    def get_task_requirements(self, task_id):
+        return self.active_tasks[task_id].header.requirements
 
     @handle_key_error
     def get_task_header(self, task_id):
@@ -273,6 +277,46 @@ class CompTaskKeeper:
         self.dump()
 
 
+class SupportStatus:
+    def __init__(self, ok, desc=None):
+        self.desc = desc or {}
+        self._ok = ok
+
+    def is_ok(self) -> bool:
+        return self._ok
+
+    def __bool__(self) -> bool:
+        return self.is_ok()
+
+    def __eq__(self, other) -> bool:
+        return self.is_ok() == other.is_ok() and self.desc == other.desc
+
+    def join(self, other) -> 'SupportStatus':
+        desc = self.desc.copy()
+        desc.update(other.desc)
+        return SupportStatus(self.is_ok() and other.is_ok(), desc)
+
+    @classmethod
+    def ok(cls) -> 'SupportStatus':
+        return cls(True)
+
+    @classmethod
+    def err(cls, desc) -> 'SupportStatus':
+        return cls(False, desc)
+
+    def __repr__(self) -> str:
+        return '<SupportStatus %s (%r)>' % \
+               ('ok' if self._ok else 'err', self.desc)
+
+
+class UnsupportReason(Enum):
+    ENVIRONMENT_MISSING = 'no_matching_environment'
+    MAX_PRICE = 'max_price'
+    APP_VERSION = 'app_version'
+    DENY_LIST = 'deny_list'
+    REQUESTOR_TRUST = 'requesting_trust'
+
+
 class TaskHeaderKeeper:
     """Keeps information about tasks living in Golem Network. Node may
        choose one of those task to compute or will pass information
@@ -309,21 +353,21 @@ class TaskHeaderKeeper:
         self.max_tasks_per_requestor = max_tasks_per_requestor
         self.task_archiver = task_archiver
 
-    def check_support(self, th_dict_repr) -> SupportStatus:
+    def check_support(self, header) -> SupportStatus:
         """Checks if task described with given task header dict
            representation may be computed by this node. This node must
            support proper environment, be allowed to make computation
            cheaper than with max price declared in task and have proper
            application version.
-        :param dict th_dict_repr: task header dictionary representation
+        :param header: task header
         :return SupportStatus: ok() if this node may compute a task
         """
-        supported = self.check_environment(th_dict_repr)
-        supported = supported.join(self.check_price(th_dict_repr))
-        supported = supported.join(self.check_version(th_dict_repr))
+        supported = self.check_environment(header)
+        supported = supported.join(self.check_price(header))
+        supported = supported.join(self.check_version(header))
         if not supported.is_ok():
             logger.info("Unsupported task %s, reason: %r",
-                        th_dict_repr.get("task_id"), supported.desc)
+                        header.task_id, supported.desc)
         return supported
 
     @staticmethod
@@ -361,42 +405,43 @@ class TaskHeaderKeeper:
             return False, msg
         return True, None
 
-    def check_environment(self, th_dict_repr) -> SupportStatus:
+    def check_environment(self, header) -> SupportStatus:
         """Checks if this node supports environment necessary to compute task
            described with task header.
-        :param dict th_dict_repr: task header dictionary representation
+        :param header: task header
         :return SupportStatus: ok() if this node support environment for this
                                task, err() otherwise
         """
-        env = th_dict_repr.get("environment")
-        status = SupportStatus.ok()
-        if not self.environments_manager.accept_tasks(env):
-            status = SupportStatus.err(
-                {UnsupportReason.ENVIRONMENT_NOT_ACCEPTING_TASKS: env})
-        return self.environments_manager.get_support_status(env).join(status)
+        task_type = header.task_type
+        requirements = header.requirements
+        env = self.environments_manager.get_environment_for_task(
+            task_type, requirements)
+        if not env:
+            return SupportStatus.err(
+                {UnsupportReason.ENVIRONMENT_MISSING: task_type})
+        return SupportStatus.ok()
 
-    def check_price(self, th_dict_repr) -> SupportStatus:
+    def check_price(self, header) -> SupportStatus:
         """Check if this node offers prices that isn't greater than maximum
            price described in task header.
-        :param dict th_dict_repr: task header dictionary representation
+        :param header: task header
         :return SupportStatus: err() if price offered by this node is higher
                                than maximum price for this task,
                                ok() otherwise.
         """
-        if "max_price" in th_dict_repr \
-                and th_dict_repr["max_price"] >= self.min_price:
+        if header.max_price >= self.min_price:
             return SupportStatus.ok()
         return SupportStatus.err(
-            {UnsupportReason.MAX_PRICE: th_dict_repr.get("max_price")})
+            {UnsupportReason.MAX_PRICE: header.max_price})
 
-    def check_version(self, th_dict_repr) -> SupportStatus:
+    def check_version(self, header) -> SupportStatus:
         """Check if this node has a version that isn't less than minimum
            version described in task header.
-        :param dict th_dict_repr: task header dictionary representation
+        :param header: task header
         :return SupportStatus: err() if node's version is lower than minimum
                                version for this task, False otherwise.
         """
-        min_v = th_dict_repr.get("min_version")
+        min_v = header.min_version
 
         ok = False
         try:
@@ -449,7 +494,7 @@ class TaskHeaderKeeper:
         self.min_price = config_desc.min_price
         self.supported_tasks = []
         for id_, th in self.task_headers.items():
-            supported = self.check_support(th.__dict__)
+            supported = self.check_support(th)
             self.support_status[id_] = supported
             if supported:
                 self.supported_tasks.append(id_)
@@ -484,7 +529,7 @@ class TaskHeaderKeeper:
 
             self._get_tasks_by_owner_set(th.task_owner.key).add(id_)
 
-            self.update_supported_set(th_dict_repr, update)
+            self.update_supported_set(th, update)
 
             self.check_max_tasks_per_owner(th.task_owner.key)
 
@@ -498,10 +543,10 @@ class TaskHeaderKeeper:
             logger.warning("Wrong task header received: {}".format(err))
             return False
 
-    def update_supported_set(self, th_dict_repr, update_header):
-        id_ = th_dict_repr["task_id"]
+    def update_supported_set(self, header, update_header):
+        id_ = header.task_id
 
-        support = self.check_support(th_dict_repr)
+        support = self.check_support(header)
         self.support_status[id_] = support
 
         if update_header:

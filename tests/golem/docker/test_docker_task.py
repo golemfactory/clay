@@ -107,6 +107,7 @@ class DockerTaskTestCase(
             self.node.client = self.node._client_factory(Mock())
         self.node.client.start = Mock()
         self.node._run()
+        self.node.client.environments_manager.load_config(self.path)
 
         ccd = ClientConfigDescriptor()
 

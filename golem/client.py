@@ -261,6 +261,7 @@ class Client(HardwarePresetsMixin):
 
         logger.debug('Starting client services ...')
         self.environments_manager.load_config(self.datadir)
+        self.environments_manager.change_config(self.config_desc)
         self.concent_service.start()
         self.concent_filetransfers.start()
 
@@ -633,7 +634,8 @@ class Client(HardwarePresetsMixin):
         except Exception as e:
             return on_error(to_unicode(e))
 
-        self.task_tester = TaskTester(task, self.datadir, on_success, on_error)
+        self.task_tester = TaskTester(task, self.environments_manager,
+                                      self.datadir, on_success, on_error)
         self.task_tester.run()
         self.task_test_result = json.dumps(
             {"status": TaskTestStatus.started, "error": True})
@@ -1014,6 +1016,7 @@ class Client(HardwarePresetsMixin):
         self.config_desc = self.config_approver.change_config(new_config_desc)
         self.upsert_hw_preset(HardwarePresets.from_config(self.config_desc))
 
+        self.environments_manager.change_config(self.config_desc)
         if self.p2pservice:
             self.p2pservice.change_config(self.config_desc)
         if self.task_server:
@@ -1128,7 +1131,7 @@ class Client(HardwarePresetsMixin):
         logger.info('Running benchmarks ...')
         deferred = Deferred()
 
-        if env_id != DefaultEnvironment.get_id():
+        if env_id != DefaultEnvironment.DEFAULT_ID:
             benchmark_manager = self.task_server.benchmark_manager
             benchmark_manager.run_benchmark_for_env_id(env_id,
                                                        deferred.callback,
@@ -1136,7 +1139,6 @@ class Client(HardwarePresetsMixin):
             result = yield deferred
             returnValue(result)
         else:
-
             kwargs = {'func': DefaultEnvironment.run_default_benchmark,
                       'callback': deferred.callback,
                       'errback': deferred.errback,

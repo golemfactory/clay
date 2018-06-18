@@ -57,8 +57,8 @@ True'''
             'border_max_y': borders_y[1],
             'use_compositing': use_compositing,
 
-            'tile_x': 0,
-            'tile_y': 0,
+            'tile_x': 16,
+            'tile_y': 16,
             'resolution_percentage': 100,
             'use_border': True,
             'use_crop_to_border': True,

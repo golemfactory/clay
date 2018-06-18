@@ -4,7 +4,6 @@ from copy import deepcopy
 
 from apps.core.task.coretaskstate import (TaskDefinition,
                                           TaskDefaults, Options)
-from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from golem.core.common import get_golem_path
 from golem.resource.dirmanager import symlink_or_copy
 
@@ -47,7 +46,7 @@ class DummyTaskDefinition(TaskDefinition):
         TaskDefinition.__init__(self)
 
         self.options = DummyTaskOptions()
-        self.task_type = 'DUMMY'
+        self.task_type = 'Dummy'
 
         # subtask data
         self.shared_data_files = []
@@ -107,7 +106,6 @@ class DummyTaskDefinition(TaskDefinition):
 class DummyTaskOptions(Options):
     def __init__(self):
         super(DummyTaskOptions, self).__init__()
-        self.environment = DummyTaskEnvironment()
         self.subtask_data_size = 128  # # length of subtask-specific hex number
 
         # The difficulty is a 4 byte int; 0xffffffff is the greatest

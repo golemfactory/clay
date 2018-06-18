@@ -1,98 +1,85 @@
-import enum
+from abc import ABC, abstractmethod
 
 from os import path
+from typing import List
 
 from apps.rendering.benchmark.minilight.src.minilight import make_perf_test
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 from golem.core.common import get_golem_path
 from golem.model import Performance
+from golem.task.requirement import Support
 
 
-class SupportStatus(object):
-    def __init__(self, ok, desc=None) -> None:
-        self.desc = desc or {}
-        self._ok = ok
-
-    def is_ok(self) -> bool:
-        return self._ok
-
-    def __bool__(self) -> bool:
-        return self.is_ok()
-
-    def __eq__(self, other) -> bool:
-        return self.is_ok() == other.is_ok() and self.desc == other.desc
-
-    def join(self, other) -> 'SupportStatus':
-        desc = self.desc.copy()
-        desc.update(other.desc)
-        return SupportStatus(self.is_ok() and other.is_ok(), desc)
+# pylint: disable=too-many-instance-attributes
+class Environment(ABC):
+    DEFAULT_ID = "DEFAULT"
 
     @classmethod
-    def ok(cls) -> 'SupportStatus':
-        return cls(True)
+    def create(cls, **kwargs):
+        """ Create instance of environment with string arguments passed
+        in kwargs. This method is used for creating environments from
+        config file's data.
+        :param kwargs:
+        :return:
+        """
+        proper_kwargs = cls.parse_init_args(**kwargs)
+        return cls(**proper_kwargs)
 
     @classmethod
-    def err(cls, desc) -> 'SupportStatus':
-        return cls(False, desc)
+    def parse_init_args(cls, **kwargs):
+        return kwargs
 
-    def __repr__(self) -> str:
-        return '<SupportStatus %s (%r)>' % \
-            ('ok' if self._ok else 'err', self.desc)
-
-
-class UnsupportReason(enum.Enum):
-    ENVIRONMENT_MISSING = 'environment_missing'
-    ENVIRONMENT_UNSUPPORTED = 'environment_unsupported'
-    ENVIRONMENT_NOT_ACCEPTING_TASKS = 'environment_not_accepting_tasks'
-    MAX_PRICE = 'max_price'
-    APP_VERSION = 'app_version'
-    DENY_LIST = 'deny_list'
-    REQUESTOR_TRUST = 'requesting_trust'
-    NETWORK_REQUEST = 'cannot_perform_network_request'
-
-
-class Environment():
-
-    @classmethod
-    def get_id(cls):
+    # pylint: disable=no-self-use
+    def get_id(self):
         """ Get Environment unique id
         :return str:
         """
-        return "DEFAULT"
+        return Environment.DEFAULT_ID
 
-    def __init__(self):
+    # pylint: disable=unused-argument
+    def __init__(self, **kwargs):
         self.software = []  # list of software that should be installed
         self.caps = []  # list of hardware requirements
+        self.supports: List[Support] = []
         self.short_description = "Default environment for generic tasks" \
                                  " without any additional requirements."
 
         self.long_description = ""
         self.accept_tasks = False
         # Check if tasks can define the source code
-        self.allow_custom_main_program_file = False
-        self.main_program_file = None
+        self.allow_custom_source_code = False
+        self.default_program_file = None
+        self.source_code_required = False
 
-    def check_software(self):
+    def change_config(self, config: ClientConfigDescriptor):
+        """ Called to notify this environment about changes to client config.
+        :param config:
+        """
+        pass
+
+    def _check_software(self):
         """ Check if required software is installed on this machine
         :return bool:
         """
-        if not self.allow_custom_main_program_file:
-            return self.main_program_file and \
-                path.isfile(self.main_program_file)
+        if self.source_code_required and not self.allow_custom_source_code:
+            return self.default_program_file and \
+                   path.isfile(self.default_program_file)
 
         return True
 
-    def check_caps(self):
-        """ Check if required hardware is available on this machine
+    # pylint: disable=no-self-use
+    def _check_caps(self):
+        """ Check if required hardware is available on this machine.
         :return bool:
         """
         return True
 
-    def check_support(self) -> SupportStatus:
+    def check_support(self) -> bool:
         """ Check if this environment is supported on this machine
-        :return SupportStatus:
+        :return bool:
         """
-        return SupportStatus.ok()
+        return bool(self._check_software() and self._check_caps())
 
     def is_accepted(self):
         """ Check if user wants to compute tasks from this environment
@@ -100,17 +87,38 @@ class Environment():
         """
         return self.accept_tasks
 
-    @classmethod
-    def get_performance(cls):
+    def satisfies_requirements(self, requirements) -> bool:
+        return all(self._satisfies_requirement(r) for r in requirements)
+
+    def _satisfies_requirement(self, requirement) -> bool:
+        return any(support.satisfies(requirement)
+                   for support in self.get_supports())
+
+    # pylint: disable=no-self-use
+    def get_supports(self):
+        return []
+
+    def get_performance(self):
+        return Environment.get_performance_for_id(self.get_id())
+
+    @staticmethod
+    def get_performance_for_id(env_id):
         """ Return performance index associated with the environment. Return
         0.0 if performance is unknown
         :return float:
         """
         try:
-            perf = Performance.get(Performance.environment_id == cls.get_id())
+            perf = Performance.get(Performance.environment_id == env_id)
+            return perf.value
         except Performance.DoesNotExist:
             return 0.0
-        return perf.value
+
+    # pylint: disable=too-many-arguments
+    @abstractmethod
+    def get_task_thread(self, taskcomputer, subtask_id, short_desc,
+                        src_code, extra_data, task_timeout,
+                        working_dir, resource_dir, temp_dir, **kwargs):
+        pass
 
     def description(self):
         """ Return long description of this environment
@@ -134,15 +142,25 @@ class Environment():
         return desc
 
     def get_source_code(self):
-        if self.main_program_file and path.isfile(self.main_program_file):
-            with open(self.main_program_file) as f:
+        if self.default_program_file and path.isfile(self.default_program_file):
+            with open(self.default_program_file) as f:
                 return f.read()
 
-    @classmethod
-    def run_default_benchmark(cls, num_cores=1, save=False):
+    @abstractmethod
+    def get_benchmark(self):
+        """
+        Should return a pair of benchmark and benchmark task builder.
+        :return:
+        """
+        pass
+
+    @staticmethod
+    def run_default_benchmark(num_cores=1, save=False,
+                              env_id=DEFAULT_ID):
         test_file = path.join(get_golem_path(), 'apps', 'rendering',
                               'benchmark', 'minilight', 'cornellbox.ml.txt')
         estimated_performance = make_perf_test(test_file, num_cores=1)
         if save:
-            Performance.update_or_create(cls.get_id(), estimated_performance)
+            Performance.update_or_create(env_id,
+                                         estimated_performance)
         return estimated_performance

@@ -126,6 +126,9 @@ class TaskManager(TaskEventListener):
     def get_task_manager_root(self):
         return self.root_path
 
+    def get_task_requirements(self, task_id):
+        return self.comp_task_keeper.get_task_requirements(task_id)
+
     def create_task(self, dictionary, minimal=False):
         type_name = dictionary['type'].lower()
         task_type = self.task_types[type_name]
@@ -136,7 +139,7 @@ class TaskManager(TaskEventListener):
         definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
         builder = builder_type(self.node, definition, self.dir_manager)
 
-        return Task.build_task(builder)
+        return builder.build()
 
     def get_task_definition_dict(self, task: Task):
         if isinstance(task, dict):

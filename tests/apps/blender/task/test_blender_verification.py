@@ -50,8 +50,6 @@ class TestGenerateCrops(TempDirFixture):
         self.subtask_info['outfilebasename'] = 'GolemTask'
         self.subtask_info['ctd'] = dict()
         self.subtask_info['ctd']['deadline'] = time.time() + 3600
-        self.subtask_info['ctd']['docker_images'] = [DockerImage(
-            'golemfactory/blender', tag='1.4').to_dict()]
         self.subtask_info['ctd']['extra_data'] = dict()
         self.subtask_info['ctd']['extra_data']['end_task'] = \
             self.subtask_info['end_task']
@@ -76,7 +74,8 @@ class TestGenerateCrops(TempDirFixture):
         self.subtask_info['ctd']['src_code'] = open(
             os.path.join(
                 self.golem_dir,
-                'apps/blender/resources/scripts/docker_blendertask.py'),
+                'apps/blender/dockerenvironment/resources/scripts/'
+                'docker_blendertask.py'),
             'r').read()
         self.subtask_info['ctd']['subtask_id'] = self.subtask_info['subtask_id']
         self.subtask_info['ctd']['task_id'] = \

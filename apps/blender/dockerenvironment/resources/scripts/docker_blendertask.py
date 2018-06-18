@@ -5,6 +5,7 @@ import subprocess
 import sys
 from multiprocessing import cpu_count
 
+# pylint: disable=import-error
 import params  # This module is generated before this script is run
 
 BLENDER_COMMAND = "blender"
@@ -17,6 +18,7 @@ def exec_cmd(cmd):
     return pc.wait()
 
 
+# pylint: disable=too-many-arguments
 def format_blender_render_cmd(outfilebasename, scene_file, script_file,
                               start_task, frame, output_format):
     cmd = [
@@ -33,6 +35,7 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
     return cmd
 
 
+# pylint: disable=too-many-arguments
 def run_blender_task(outfilebasename, scene_file, script_src, start_task,
                      frames, output_format):
     scene_file = os.path.normpath(scene_file)
@@ -47,13 +50,13 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task,
 
     for frame in frames:
         cmd = format_blender_render_cmd(outfilebasename, scene_file,
-                                        script_file.name, start_task, frame, output_format)
+                                        script_file.name, start_task, frame,
+                                        output_format)
         print(cmd, file=sys.stderr)
         exit_code = exec_cmd(cmd)
         if exit_code is not 0:
             sys.exit(exit_code)
 
 
-run_blender_task(params.outfilebasename, params.scene_file, params.script_src, params.start_task, params.frames,
-                 params.output_format)
-
+run_blender_task(params.outfilebasename, params.scene_file, params.script_src,
+                 params.start_task, params.frames, params.output_format)

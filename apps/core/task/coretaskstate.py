@@ -4,6 +4,7 @@ from ethereum.utils import denoms
 
 from golem.core.common import timeout_to_string
 from golem.environments.environment import Environment
+from golem.task.requirement import RequirementRegistry
 from golem.task.taskstate import TaskState
 
 
@@ -45,14 +46,15 @@ class TaskDefinition(object):
         self.task_type = None
         self.task_name = ""
 
+        self.requirements = []
+
         self.max_price = 0
 
         self.verification_options = None
         self.options = Options()
-        self.docker_images = None
 
     def is_valid(self):
-        if not path.exists(self.main_program_file):
+        if self.main_program_file and not path.exists(self.main_program_file):
             return False, "Main program file does not exist: {}".format(
                 self.main_program_file)
         return self._check_output_file(self.output_file)
@@ -104,6 +106,7 @@ class TaskDefinition(object):
         task_timeout = timeout_to_string(self.full_task_timeout)
         subtask_timeout = timeout_to_string(self.subtask_timeout)
         output_path = self.build_output_path()
+        requirements = RequirementRegistry.to_dict(self.requirements)
 
         return {
             'id': self.task_id,
@@ -114,6 +117,7 @@ class TaskDefinition(object):
             'subtasks': self.total_subtasks,
             'bid': float(self.max_price) / denoms.ether,
             'resources': list(self.resources),
+            'requirements': requirements,
             'options': {
                 'output_path': output_path
             },
@@ -151,7 +155,6 @@ class Options(object):
     """ Task specific options """
 
     def __init__(self):
-        self.environment = Environment()
         self.name = ''
 
     def add_to_resources(self, resources):

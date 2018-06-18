@@ -11,12 +11,29 @@ from golem.client import ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.network.p2p.node import Node as P2PNode
+from golem.environments.environment import Environment
 from golem.task.taskbase import ResultType
 from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
 from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
 
+
+class PyTaskEnvironment(Environment):
+    @classmethod
+    def get_id(cls):
+        return 'PyTaskEnv'
+
+    # pylint: disable=too-many-arguments
+    def get_task_thread(self, taskcomputer, subtask_id, short_desc,
+                        src_code, extra_data, task_timeout,
+                        working_dir, resource_dir, temp_dir, **kwargs):
+        return PyTaskThread(taskcomputer, subtask_id, working_dir,
+                            src_code, extra_data, short_desc, resource_dir,
+                            temp_dir, task_timeout)
+
+    def get_benchmark(self):
+        return None, None
 
 @ci_skip
 class TestTaskComputer(DatabaseFixture, LogTestCase):
@@ -102,6 +119,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd = ComputeTaskDef()
         ctd['task_id'] = "xyz"
         ctd['subtask_id'] = "xxyyzz"
+        ctd['task_type'] = 'Dummy'
         ctd['src_code'] = \
             "cnt=0\n" \
             "for i in range(10000):\n" \
@@ -112,6 +130,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd['deadline'] = timeout_to_deadline(10)
 
         task_server = self.task_server
+        task_server.get_environment_for_task.return_value = None
         task_server.task_keeper.task_headers = {
             ctd['subtask_id']: mock.Mock(
                 subtask_timeout=5,
@@ -140,9 +159,10 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         assert tc.counting_thread is None
         assert tc.assigned_subtasks.get("xxyyzz") is None
         task_server.send_task_failed.assert_called_with(
-            "xxyyzz", "xyz", "Host direct task not supported")
+            "xxyyzz", "xyz", "Dummy task not supported")
 
-        tc.support_direct_computation = True
+        task_server.get_environment_for_task.return_value = \
+            PyTaskEnvironment()
         tc.task_given(ctd)
         assert tc.task_resource_collected("xyz")
         assert not tc.waiting_for_task
@@ -277,10 +297,12 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_computer.task_server.task_keeper.task_headers = {
             task_id: None
         }
+        task_computer.task_server.get_environment_for_task.return_value = \
+            PyTaskEnvironment()
 
         args = (task_computer, subtask_id)
         kwargs = dict(
-            docker_images=[],
+            task_type='test',
             src_code='print("test")',
             extra_data=mock.Mock(),
             short_desc='test',

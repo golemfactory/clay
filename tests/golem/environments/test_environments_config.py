@@ -1,13 +1,13 @@
-from golem.environments.environment import Environment
 from golem.environments.environmentsconfig import EnvironmentsConfig
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.tools.testdirfixture import TestDirFixture
+from tests.golem.environments.test_environment_class import DummyTestEnvironment
 
 
 class TestEnvironmentsConfig(TestDirFixture):
 
     def test_load_config(self):
-        envs = {"test-env": ("Test Env", True)}
+        envs = [("Test Env", True)]
         config = EnvironmentsConfig.load_config(envs, self.path)
         assert config
 
@@ -18,7 +18,8 @@ class TestEnvironmentsConfig(TestDirFixture):
 
     def test_load_config_manager(self):
         mgr = EnvironmentsManager()
-        mgr.environments.add(Environment())
+        env = DummyTestEnvironment()
+        mgr.add_environment(env.get_id(), env)
         mgr.load_config(self.path)
         assert mgr.env_config
 
