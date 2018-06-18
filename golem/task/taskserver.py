@@ -29,6 +29,7 @@ from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
+from golem.utils import decode_hex
 
 from .result.resultmanager import ExtractedPackage
 from .server import resources
@@ -613,6 +614,10 @@ class TaskServer(
         trust = self.get_computing_trust(node_id)
         if trust < self.config_desc.computing_trust:
             logger.info(f'insufficient provider trust level: {trust}; {ids}')
+            return False
+
+        if not task.header.mask.apply(decode_hex(node_id)):
+            logger.info(f'network mask mismatch: {ids}')
             return False
 
         return True
