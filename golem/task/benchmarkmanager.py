@@ -7,7 +7,7 @@ from typing import Union
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.task.coretaskstate import TaskDesc
 from golem.core.threads import callback_wrapper
-from golem.environments.environment import Environment
+from golem.environments.environment import Environment as DefaultEnvironment
 
 from golem.model import Performance
 from golem.resource.dirmanager import DirManager
@@ -34,7 +34,7 @@ class BenchmarkManager(object):
         if self.benchmarks:
             ids = self.get_saved_benchmarks_ids()
             return not set(self.benchmarks.keys() |
-                           {Environment.get_id()}).issubset(ids)
+                           {DefaultEnvironment.get_id()}).issubset(ids)
         return False
 
     def run_benchmark(self, benchmark, task_builder, env_id, success=None,
@@ -73,11 +73,11 @@ class BenchmarkManager(object):
         logger.info('Running all benchmarks with num_cores=%r',
                     self.task_server.client.config_desc.num_cores)
 
-        def run_non_default_benchmarks():
+        def run_non_default_benchmarks(_performance=None):
             self.run_benchmarks(copy(self.benchmarks), success, error)
 
-        if Environment.get_id() not in self.get_saved_benchmarks_ids():
-            # run only once, because it is always for single CPU core
+        if DefaultEnvironment.get_id() not in self.get_saved_benchmarks_ids():
+            # run once in lifetime, since it's for single CPU core
             self.run_default_benchmark(run_non_default_benchmarks, error)
         else:
             run_non_default_benchmarks()
@@ -103,7 +103,7 @@ class BenchmarkManager(object):
         return True
 
     def run_benchmark_for_env_id(self, env_id, callback, errback):
-        if env_id == Environment.get_id():
+        if env_id == DefaultEnvironment.get_id():
             self.run_default_benchmark(callback, errback)
         else:
             benchmark_data = self.benchmarks.get(env_id)
@@ -115,7 +115,7 @@ class BenchmarkManager(object):
 
     @staticmethod
     def run_default_benchmark(callback, errback):
-        kwargs = {'func': Environment.run_default_benchmark,
+        kwargs = {'func': DefaultEnvironment.run_default_benchmark,
                   'callback': callback,
                   'errback': errback,
                   'save': True}

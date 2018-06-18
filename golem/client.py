@@ -16,7 +16,6 @@ from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
 from twisted.internet.defer import (
     inlineCallbacks,
-    returnValue,
     gatherResults,
     Deferred)
 
@@ -1159,7 +1158,7 @@ class Client(HardwarePresetsMixin):
             env_id, deferred.callback, deferred.errback)
 
         result = yield deferred
-        returnValue(result)
+        return result
 
     def enable_environment(self, env_id):
         self.environments_manager.change_accept_tasks(env_id, True)
@@ -1295,7 +1294,7 @@ class Client(HardwarePresetsMixin):
 
             result = yield deferred
             logger.info('change hw config result: %r', result)
-            returnValue(self.get_performance_values())
+            return self.get_performance_values()
 
     def __lock_datadir(self):
         if not path.exists(self.datadir):

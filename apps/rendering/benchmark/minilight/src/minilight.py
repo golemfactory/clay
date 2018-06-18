@@ -18,6 +18,8 @@ logger = logging.getLogger(__name__)
 
 def make_perf_test(filename):
     """
+    Single core CPU performance test.
+
     ----------------------------------------------------------------------
       MiniLight 1.6 Python
 
@@ -73,9 +75,9 @@ def make_perf_test(filename):
     duration: float = render_taskable(image, camera, scene, iterations)
 
     num_samples = image.width * image.height * iterations
-    logger.info("Summary: Rendering scene with %d rays took %d seconds"
-                " giving an average speed of %f rays/s",
-                num_samples, duration, float(num_samples) / duration)
+    logger.debug("Summary: Rendering scene with %d rays took %d seconds"
+                 " giving an average speed of %f rays/s",
+                 num_samples, duration, float(num_samples) / duration)
 
     average = float(num_samples) / duration
     return average
