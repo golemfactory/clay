@@ -61,6 +61,7 @@ class ClientConfigDescriptor(object):
         self.accept_tasks = 1
         self.debug_third_party = 0
 
+        self.net_masking_enabled = 0
         self.initial_mask_size_factor = 0
         self.mask_update_interval = 0
         self.mask_update_num_bits = 0

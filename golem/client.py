@@ -335,13 +335,14 @@ class Client(HardwarePresetsMixin):
         monitoring_publisher_service.start()
         self._services.append(monitoring_publisher_service)
 
-        mask_udpate_service = MaskUpdateService(
-            task_manager=self.task_server.task_manager,
-            interval_seconds=self.config_desc.mask_update_interval,
-            update_num_bits=self.config_desc.mask_update_num_bits
-        )
-        mask_udpate_service.start()
-        self._services.append(mask_udpate_service)
+        if self.config_desc.net_masking_enabled:
+            mask_udpate_service = MaskUpdateService(
+                task_manager=self.task_server.task_manager,
+                interval_seconds=self.config_desc.mask_update_interval,
+                update_num_bits=self.config_desc.mask_update_num_bits
+            )
+            mask_udpate_service.start()
+            self._services.append(mask_udpate_service)
 
         dir_manager = self.task_server.task_computer.dir_manager
 
@@ -571,14 +572,19 @@ class Client(HardwarePresetsMixin):
         def package_created(packager_result):
             package_path, package_sha1 = packager_result
             task.header.resource_size = path.getsize(package_path)
-            num_workers = max(
-                task.get_total_tasks() *
-                self.config_desc.initial_mask_size_factor,
-                MIN_NUM_WORKERS_FOR_MASK)
-            task.header.mask = Mask.get_mask_for_task(
-                desired_num_workers=num_workers,
-                network_size=self.p2pservice.get_estimated_network_size()
-            )
+
+            if self.config_desc.net_masking_enabled:
+                num_workers = max(
+                    task.get_total_tasks() *
+                    self.config_desc.initial_mask_size_factor,
+                    MIN_NUM_WORKERS_FOR_MASK)
+                task.header.mask = Mask.get_mask_for_task(
+                    desired_num_workers=num_workers,
+                    network_size=self.p2pservice.get_estimated_network_size()
+                )
+            else:
+                task.header.mask = Mask()
+
             task_manager.add_new_task(task)
 
             client_options = self.task_server.get_share_options(task_id, None)
