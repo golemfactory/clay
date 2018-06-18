@@ -257,12 +257,13 @@ class TaskServer(
 
         wtr.result_secret = task_result_manager.gen_secret()
         result = task_result_manager.create(self.node, wtr, wtr.result_secret)
-        (wtr.result_hash,
-         wtr.result_path,
-         wtr.package_sha1,
-         wtr.result_size,
-         wtr.package_path,
-         ) = \
+        (
+            wtr.result_hash,
+            wtr.result_path,
+            wtr.package_sha1,
+            wtr.result_size,
+            wtr.package_path,
+        ) = \
             result
 
     def send_task_failed(

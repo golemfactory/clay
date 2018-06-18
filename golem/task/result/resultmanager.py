@@ -93,12 +93,13 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
         for resource in self.resource_manager.get_resources(
                 task_result.task_id):
             if file_name in resource.files:
-                return (resource.hash,
-                        file_path,
-                        sha1,
-                        package_size,
-                        package_path
-                        )
+                return (
+                    resource.hash,
+                    file_path,
+                    sha1,
+                    package_size,
+                    package_path
+                )
 
         if os.path.exists(path):
             raise EnvironmentError("Error creating package: "
