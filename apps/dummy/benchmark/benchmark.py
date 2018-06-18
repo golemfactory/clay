@@ -30,11 +30,15 @@ class DummyTaskBenchmark(CoreBenchmark):
         td.main_program_file = DummyTaskEnvironment().main_program_file
         td.resources = {join(self.dummy_task_path, "in.data")}
         td.add_to_resources()
-        self.verifier = DummyTaskVerifier(lambda **kwargs: None)
+
         self.verification_options = {"difficulty": td.options.difficulty,
                                      "shared_data_files": td.shared_data_files,
                                      "result_size": td.result_size,
                                      "result_extension": DummyTask.RESULT_EXT}
+        verification_data = dict()
+        verification_data['subtask_info'] = self.verification_options
+        self.verifier = DummyTaskVerifier(lambda **kwargs: None,
+                                          verification_data)
         self.subtask_data = DummyTask.TESTING_CHAR * td.options.subtask_data_size  # noqa
 
     @property
@@ -53,10 +57,10 @@ class DummyTaskBenchmark(CoreBenchmark):
         results = [filepath for filepath in result
                    if Path(filepath).suffix.lower() == '.result']
 
-        self.verifier.start_verification(
-            subtask_info=sd,
-            reference_data=[],
-            resources=[],
-            results=results)
+        verification_data = dict()
+        verification_data["subtask_info"] = sd
+        verification_data["results"] = results
+
+        self.verifier.start_verification(verification_data)
 
         return self.verifier.state == SubtaskVerificationState.VERIFIED

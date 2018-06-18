@@ -84,12 +84,16 @@ class VerificationQueue:
                 self._process_queue()
 
         try:
-            verifier = entry.verifier_class(callback)
-            #FIXME set this from golem core, this code should not know about LocalComputer
-            # or cmputer adapter. Maybe create an interface object.
+            verifier = entry.verifier_class(callback, entry.kwargs)
+            # FIXME set this from golem core, this code should not know about
+            # LocalComputer or cmputer adapter. Maybe create an interface object.
             verifier.computer = ComputerAdapter()
             if deadline_to_timeout(entry.deadline) > 0:
-                verifier.start_verification(**entry.kwargs)
+                if not verifier.simple_verification(entry.kwargs):
+                    verifier.verification_completed()
+                else:
+                    verifier.start_verification(entry.kwargs)
+                    verifier.verification_completed()
             else:
                 verifier.task_timeout(subtask_id)
                 raise Exception("Task deadline passed")

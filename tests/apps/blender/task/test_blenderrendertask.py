@@ -144,22 +144,20 @@ class TestBlenderFrameTask(TempDirFixture):
         img = Image.new("RGB", (self.bt.res_x, self.bt.res_y // 2))
         img.save(file1, "PNG")
 
-        def verification_finished1(*args, **kwargs):
-            # extra_data3.ctd['results'] = kwargs['results']
-
+        def verification_finished1(verification_data):
             result = {'reference_data': None,
                       'message': "",
                       'time_started': None,
                       'time_ended': None,
                       'extra_data': {}}
-            result['extra_data']['results'] = kwargs['results']
+            result['extra_data']['results'] = verification_data['results']
             self.bt.verification_finished(
                 extra_data3.ctd['subtask_id'],
                 SubtaskVerificationState.VERIFIED,
                 result)
 
         with mock.patch(
-            'golem_verificator.core_verifier.CoreVerifier.'
+            'golem_verificator.rendering_verifier.RenderingVerifier.'
                 'start_verification',
                 side_effect=verification_finished1):
             self.bt.computation_finished(extra_data3.ctd['subtask_id'], [file1],
@@ -169,13 +167,13 @@ class TestBlenderFrameTask(TempDirFixture):
 
         BlenderRenderTask.VERIFICATION_QUEUE._reset()
 
-        def verification_finished2(*args, **kwargs):
+        def verification_finished2(verification_data):
             result = {'reference_data': None,
                       'message': "",
                       'time_started': None,
                       'time_ended': None,
                       'extra_data': {}}
-            result['extra_data']['results'] = kwargs['results']
+            result['extra_data']['results'] = verification_data['results']
             self.bt.verification_finished(
                 extra_data4.ctd['subtask_id'],
                 SubtaskVerificationState.VERIFIED,
@@ -189,7 +187,7 @@ class TestBlenderFrameTask(TempDirFixture):
         img.close()
 
         with mock.patch(
-                'golem_verificator.core_verifier.CoreVerifier.'
+                'golem_verificator.rendering_verifier.RenderingVerifier.'
                 'start_verification',
                 side_effect=verification_finished2):
             self.bt.computation_finished(extra_data4.ctd['subtask_id'], [file2],

@@ -7,19 +7,26 @@ from apps.dummy.resources.code_dir import computing
 class DummyTaskVerifier(CoreVerifier):
     # subtask_info is what sits in the task.subtasks_given["subtask_id"]
     # it is set in the query_extra_data
-    def _verify_result(self, subtask_info: dict, result: str,
-                       reference_data: list, resources: list):
+    def __init__(self, callback, verification_data=None):
+        super().__init__(callback)
+        self.subtask_info = verification_data["subtask_info"]
 
-        _, ext = os.path.splitext(result)
-        ext = ext.lower()
-        if ext != subtask_info["result_extension"]:
-            return False
+    def _verify_result(self, verification_data):
 
-        with open(result, "r") as f:
-            result_data = f.read()
+        results = verification_data["results"]
+        subtask_info = verification_data["subtask_info"]
 
-        if len(result_data) != subtask_info["result_size"]:
-            return False
+        for result in results:
+            _, ext = os.path.splitext(result)
+            ext = ext.lower()
+            if ext != subtask_info["result_extension"]:
+                return False
+
+            with open(result, "r") as f:
+                result_data = f.read()
+
+            if len(result_data) != subtask_info["result_size"]:
+                return False
 
         if subtask_info["difficulty"] == 0:
             return True
