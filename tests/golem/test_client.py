@@ -173,6 +173,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_get_withdraw_gas_cost(self, *_):
         keys_auth = Mock()
         keys_auth._private_key = "a" * 32
+        dest = '0x' + 40 * '0'
         with patch('golem.client.EthereumTransactionSystem') as ets:
             ets.return_value = ets
             self.client = Client(
@@ -185,8 +186,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
                 use_docker_manager=False,
                 use_monitor=False,
             )
-            self.client.get_withdraw_gas_cost('123', 'ETH')
-            ets.get_withdraw_gas_cost.assert_called_once_with(123, 'ETH')
+            self.client.get_withdraw_gas_cost('123', dest, 'ETH')
+            ets.get_withdraw_gas_cost.assert_called_once_with(123, dest, 'ETH')
 
     def test_payment_address(self, *_):
         self.client = Client(
@@ -1066,7 +1067,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                            'av_gnt': "1",
                            'eth': "None",
                            'gnt_lock': "0",
-                           'eth_lock': "1000000000000000.0",
+                           'eth_lock': "0",
                            'last_gnt_update': "None",
                            'last_eth_update': "None"}
         assert all(isinstance(entry, str) for entry in balance)

@@ -23,10 +23,10 @@
     <ROW Property="ExtractFilesFirst" Value="1"/>
     <ROW Property="Manufacturer" Value="Golem Factory GmbH"/>
     <ROW Property="MsiLogging" MultiBuildValue="DefaultBuild:vp"/>
-    <ROW Property="ProductCode" Value="2057:{4F28B1C7-F57E-4472-9777-08C2F6F55DA7} " Type="16"/>
+    <ROW Property="ProductCode" Value="2057:{CBFCA01E-981C-4958-A5BC-379FEA3BE8B4} " Type="16"/>
     <ROW Property="ProductLanguage" Value="2057"/>
     <ROW Property="ProductName" Value="Golem"/>
-    <ROW Property="ProductVersion" Value="0.15.1" Type="32"/>
+    <ROW Property="ProductVersion" Value="0.16.0" Type="32"/>
     <ROW Property="REBOOT" MultiBuildValue="DefaultBuild:Force"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND;AI_SETUPEXEPATH;SETUPEXEDIR"/>
     <ROW Property="UpgradeCode" Value="{3D57CAE4-2890-4BA4-961E-1BDA1630B605}"/>
