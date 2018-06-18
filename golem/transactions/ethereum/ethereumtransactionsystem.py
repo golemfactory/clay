@@ -55,7 +55,7 @@ class EthereumTransactionSystem(TransactionSystem):
             raise ValueError("not a valid private key")
         log.info("Node Ethereum address: %s", eth_addr)
 
-        self._node = NodeProcess(datadir, start_geth, address)
+        self._node = NodeProcess(datadir, addr=address, start_node=start_geth)
         self._node.start(start_port)
         self._sci = new_sci(
             Path(datadir),

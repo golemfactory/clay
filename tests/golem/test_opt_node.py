@@ -122,7 +122,7 @@ class TestNode(TestWithDatabase):
     @patch('twisted.internet.reactor', create=True)
     @patch('golem.node.Node')
     def test_geth_address_should_be_passed_to_node(self, mock_node, *_):
-        geth_address = 'http://3.14.15.92:6535'
+        geth_address = 'https://3.14.15.92:6535'
 
         runner = CliRunner()
         args = self.args + ['--geth-address', geth_address]
@@ -146,7 +146,7 @@ class TestNode(TestWithDatabase):
     @patch('golem.node.Client')
     def test_geth_address_should_be_passed_to_client(self, mock_client, *_):
         # given
-        geth_address = 'http://3.14.15.92:6535'
+        geth_address = 'https://3.14.15.92:6535'
 
         # when
         node = Node(**self.node_kwargs, geth_address=geth_address)
@@ -173,22 +173,22 @@ class TestNode(TestWithDatabase):
         return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 2)
         self.assertIn('Invalid value for "--geth-address"', return_value.output)
-        self.assertIn('Address without http:// prefix', return_value.output)
+        self.assertIn('Address without https:// prefix', return_value.output)
         self.assertIn(geth_addr, return_value.output)
 
     def test_geth_address_w_wrong_prefix_should_fail(self, *_):
         runner = CliRunner()
-        geth_addr = 'https://3.14.15.92'
+        geth_addr = 'http://3.14.15.92'
         args = self.args + ['--geth-address', geth_addr]
         return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 2)
         self.assertIn('Invalid value for "--geth-address"', return_value.output)
-        self.assertIn('Address without http:// prefix', return_value.output)
+        self.assertIn('Address without https:// prefix', return_value.output)
         self.assertIn(geth_addr, return_value.output)
 
     def test_geth_address_wo_port_should_fail(self, *_):
         runner = CliRunner()
-        geth_addr = 'http://3.14.15.92'
+        geth_addr = 'https://3.14.15.92'
         args = self.args + ['--geth-address', geth_addr]
         return_value = runner.invoke(start, args, catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 2)
