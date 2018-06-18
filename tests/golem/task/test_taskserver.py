@@ -595,6 +595,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts = self.ts
 
         task = get_mock_task()
+        node_id = "0xdeadbeef"
         task_id = task.header.task_id
         ts.task_manager.tasks[task_id] = task
 
@@ -602,66 +603,89 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         env = Mock()
         env.get_min_accepted_performance.return_value = min_accepted_perf
         ts.get_environment_by_id = Mock(return_value=env)
-        ids = f'provider_id: ABC, task_id: {task_id}'
+        ids = f'provider_id: {node_id}, task_id: {task_id}'
+
+        def _assert_log_msg(logger_mock, msg):
+            self.assertEqual(len(logger_mock.output), 1)
+            self.assertEqual(logger_mock.output[0].strip(), msg)
 
         # then
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider("ABC", 'tid', 27.18, 1, 1, 7)
-            self.assertEqual(cm.output, [
+            assert not ts.should_accept_provider(
+                node_id, 'tid', 27.18, 1, 1, 7)
+            _assert_log_msg(
+                cm,
                 f'INFO:{logger.name}:Cannot find task in my tasks: '
-                f'provider_id: ABC, task_id: tid'])
+                f'provider_id: {node_id}, task_id: tid')
 
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider("ABC", task_id, 27.18, 1, 1, 7)
-            self.assertEqual(cm.output, [
+            assert not ts.should_accept_provider(
+                node_id, task_id, 27.18, 1, 1, 7)
+            _assert_log_msg(
+                cm,
                 f'INFO:{logger.name}:insufficient provider performance: '
-                f'27.18 < {min_accepted_perf}; {ids}'])
+                f'27.18 < {min_accepted_perf}; {ids}')
 
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider("ABC", task_id, 99, 1.72, 1, 4)
-            self.assertEqual(cm.output, [
+            assert not ts.should_accept_provider(
+                node_id, task_id, 99, 1.72, 1, 4)
+            _assert_log_msg(
+                cm,
                 f'INFO:{logger.name}:insufficient provider disk size:'
-                f' 1.72 KiB; {ids}'])
+                f' 1.72 KiB; {ids}')
 
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider("ABC", task_id, 999, 3, 2.7, 1)
-            self.assertEqual(cm.output, [
+            assert not ts.should_accept_provider(
+                node_id, task_id, 999, 3, 2.7, 1)
+            _assert_log_msg(
+                cm,
                 f'INFO:{logger.name}:insufficient provider memory size:'
-                f' 2.7 KiB; {ids}'])
+                f' 2.7 KiB; {ids}')
 
         # given
         self.client.get_computing_trust = Mock(return_value=0.4)
         ts.config_desc.computing_trust = 0.2
         # then
-        assert ts.should_accept_provider("ABC", task_id, 99, 3, 4, 5)
+        assert ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
 
         # given
         ts.config_desc.computing_trust = 0.4
         # then
-        assert ts.should_accept_provider("ABC", task_id, 99, 3, 4, 5)
+        assert ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
 
         # given
         ts.config_desc.computing_trust = 0.5
         # then
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider("ABC", task_id, 99, 3, 4, 5)
-            self.assertEqual(cm.output, [
+            assert not ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
+            _assert_log_msg(
+                cm,
                 f'INFO:{logger.name}:insufficient provider trust level:'
-                f' 0.4; {ids}'])
+                f' 0.4; {ids}')
 
         # given
         ts.config_desc.computing_trust = 0.2
         # then
-        assert ts.should_accept_provider("ABC", task_id, 99, 3, 4, 5)
+        assert ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
+
+        task.header.mask = Mask(b'\xff' * Mask.MASK_BYTES)
+        with self.assertLogs(logger, level='INFO') as cm:
+            assert not ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
+            _assert_log_msg(
+                cm,
+                f'INFO:{logger.name}:network mask mismatch: {ids}')
 
         # given
-        ts.acl.disallow("ABC")
+        task.header.mask = Mask()
+        ts.acl.disallow(node_id)
         # then
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider("ABC", task_id, 99, 3, 4, 5)
-            self.assertEqual(cm.output, [
+            assert not ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
+            _assert_log_msg(
+                cm,
                 f'INFO:{logger.name}:provider node is blacklisted; '
-                f'provider_id: ABC, task_id: {task_id}'])
+                f'provider_id: {node_id}, task_id: {task_id}')
+
 
     def test_should_accept_requestor(self, *_):
         ts = self.ts
