@@ -37,7 +37,7 @@ class TestVersion (CleanupFixture):
             if test.tick() is not None:
                 break
 
-        exit_code, log_err, log_out = test.report()
+        exit_code, log_err, log_out = test.report()[0]
 
         # assert final test state
         assert exit_code == 0
