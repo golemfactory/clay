@@ -1,17 +1,15 @@
 import datetime
+import enum
 import inspect
 import json
 import pickle
-
-import enum
-import peewee
+import sys
 # Type is used for old-style (pre Python 3.6) type annotation
 from typing import Optional, Type  # pylint: disable=unused-import
 
-import sys
 from ethereum.utils import denoms
 from golem_messages import message
-from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
+from peewee import (Field, BooleanField, CharField, CompositeKey, DateTimeField,
                     FloatField, IntegerField, Model, SmallIntegerField,
                     TextField, BlobField)
 
@@ -455,7 +453,7 @@ def collect_db_fields(module: str = __name__):
         sys.modules[module],
         lambda cls: (
             inspect.isclass(cls) and
-            issubclass(cls, peewee.Field)
+            issubclass(cls, Field)
         )
     )
 
