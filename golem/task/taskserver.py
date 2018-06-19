@@ -254,7 +254,13 @@ class TaskServer(
 
         wtr.result_secret = task_result_manager.gen_secret()
         result = task_result_manager.create(self.node, wtr, wtr.result_secret)
-        wtr.result_hash, wtr.result_path, wtr.package_sha1, wtr.result_size = \
+        (
+            wtr.result_hash,
+            wtr.result_path,
+            wtr.package_sha1,
+            wtr.result_size,
+            wtr.package_path,
+        ) = \
             result
 
     def send_task_failed(
@@ -1026,7 +1032,7 @@ class WaitingTaskResult(object):
     def __init__(self, task_id, subtask_id, result, result_type,
                  last_sending_trial, delay_time, owner, result_path=None,
                  result_hash=None, result_secret=None, package_sha1=None,
-                 result_size=None):
+                 result_size=None, package_path=None):
 
         self.task_id = task_id
         self.subtask_id = subtask_id
@@ -1040,6 +1046,7 @@ class WaitingTaskResult(object):
         self.result_hash = result_hash
         self.result_secret = result_secret
         self.package_sha1 = package_sha1
+        self.package_path = package_path
         self.result_size = result_size
 
         self.already_sending = False
