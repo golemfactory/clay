@@ -1116,14 +1116,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 self.assertRaisesRegex(Exception, 'Test exception'):
             sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
 
-    @patch("golem.task.benchmarkmanager.BenchmarkRunner")
-    def test_run_benchmarks(self, br_mock, *_):
-        benchmark_manager = self.client.task_server.benchmark_manager
-        Performance.update_or_create(DefaultEnvironment.get_id(), 3)
-        benchmark_manager.run_all_benchmarks()
-        success_callback = br_mock.call_args[0][2]
-        success_callback(1)
-        assert br_mock.call_count == 2
 
     def test_config_changed(self, *_):
         c = self.client

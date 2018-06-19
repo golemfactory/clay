@@ -18,7 +18,8 @@ class EnvTest(DatabaseFixture, PEP8MixIn):
     def test_get_performance(self):
         # given
         perf_value = 6666.6
-        perf = Performance(environment_id="DEFAULT", value=perf_value)
+        perf = Performance(environment_id=Environment.get_id(),
+                           value=perf_value)
         perf.save()
 
         # then
