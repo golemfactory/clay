@@ -285,17 +285,16 @@ class TaskComputer(object):
     def change_docker_config(self, config_desc, run_benchmarks,
                              in_background=True):
         dm = self.docker_manager
-        dm.build_config(config_desc)
+        config_changed = dm.build_config(config_desc)
 
         deferred = Deferred()
-        if not dm.docker_machine and run_benchmarks:
+        if not dm.docker_machine and (run_benchmarks or config_changed):
             self.task_server.benchmark_manager.run_all_benchmarks(
                 deferred.callback, deferred.errback
             )
             return deferred
 
         if dm.docker_machine and self.use_docker_manager:  # noqa pylint: disable=no-member
-
             self.lock_config(True)
 
             def status_callback():
