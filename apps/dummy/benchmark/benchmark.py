@@ -36,6 +36,7 @@ class DummyTaskBenchmark(CoreBenchmark):
                                      "result_size": td.result_size,
                                      "result_extension": DummyTask.RESULT_EXT}
         verification_data = dict()
+        self.verification_options["subtask_id"] = "DummyBenchmark"
         verification_data['subtask_info'] = self.verification_options
         self.verifier = DummyTaskVerifier(lambda **kwargs: None,
                                           verification_data)
@@ -52,7 +53,6 @@ class DummyTaskBenchmark(CoreBenchmark):
     def verify_result(self, result):
         sd = self.verification_options.copy()
         sd["subtask_data"] = self.subtask_data
-        sd["subtask_id"] = "DummyBenchmark"
 
         results = [filepath for filepath in result
                    if Path(filepath).suffix.lower() == '.result']

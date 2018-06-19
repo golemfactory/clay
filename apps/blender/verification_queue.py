@@ -95,7 +95,6 @@ class VerificationQueue:
                     verifier.verification_completed()
                 else:
                     verifier.start_verification(entry.kwargs)
-                    verifier.verification_completed()
             else:
                 verifier.task_timeout(subtask_id)
                 raise Exception("Task deadline passed")
