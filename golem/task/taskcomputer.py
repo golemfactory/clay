@@ -295,7 +295,6 @@ class TaskComputer(object):
             return deferred
 
         if dm.docker_machine and self.use_docker_manager:  # noqa pylint: disable=no-member
-
             self.lock_config(True)
 
             def status_callback():

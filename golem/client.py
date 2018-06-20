@@ -1295,7 +1295,9 @@ class Client(HardwarePresetsMixin):
 
     @inlineCallbacks
     def activate_hw_preset(self, name, run_benchmarks=False):
-        HardwarePresets.update_config(name, self.config_desc)
+        config_changed = HardwarePresets.update_config(name, self.config_desc)
+        run_benchmarks = run_benchmarks or config_changed
+
         if hasattr(self, 'task_server') and self.task_server:
             deferred = self.task_server.change_config(
                 self.config_desc, run_benchmarks=run_benchmarks)
