@@ -2,6 +2,7 @@ import random
 from os import path
 from threading import Lock
 
+from eth_utils import encode_hex
 from golem_messages.message import ComputeTaskDef
 
 from golem.appconfig import MIN_PRICE
@@ -9,7 +10,6 @@ from golem.core.common import timeout_to_deadline
 from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.network.p2p.node import Node
 from golem.task.taskbase import Task, TaskHeader, ResultType
-from golem.utils import encode_hex
 
 
 class DummyTaskParameters(object):
@@ -59,7 +59,7 @@ class DummyTask(Task):
         task_id = generate_id(public_key)
         owner_address = ''
         owner_port = 0
-        owner_key_id = encode_hex(public_key)
+        owner_key_id = encode_hex(public_key)[2:]
         environment = self.ENVIRONMENT_NAME
         header = TaskHeader(
             task_id,

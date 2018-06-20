@@ -4,7 +4,6 @@ import logging
 import time
 from typing import List
 
-from eth_utils import encode_hex
 from ethereum.utils import denoms
 from pydispatch import dispatcher
 
@@ -29,7 +28,12 @@ class IncomesKeeper:
         # TODO Check for unpaid incomes and ask Concent for them. issue #2194
         pass
 
-    def received_batch_transfer(self, tx_hash, sender, amount, closure_time):
+    def received_batch_transfer(
+            self,
+            tx_hash: str,
+            sender: str,
+            amount: int,
+            closure_time: int) -> None:
         expected = Income.select().where(
             Income.accepted_ts > 0,
             Income.accepted_ts <= closure_time,
@@ -70,7 +74,7 @@ class IncomesKeeper:
         dispatcher.send(
             signal='golem.monitor',
             event='income',
-            addr=encode_hex(sender),
+            addr=sender,
             value=amount
         )
 

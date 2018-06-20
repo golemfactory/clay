@@ -1,12 +1,12 @@
 from unittest import TestCase
 
-from golem.utils import encode_hex
+from eth_utils import encode_hex
 
 from golem_messages.cryptography import privtopub, mk_privkey
 
 
 def key_in_hex(key):
-    return encode_hex(key)
+    return encode_hex(key)[2:]
 
 
 class TestKeygenHelper(TestCase):
