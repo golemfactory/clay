@@ -373,7 +373,7 @@ class TaskHeaderKeeper:
 
     def check_mask(self, header: TaskHeader) -> SupportStatus:
         """ Check if ID of this node matches the mask in task header """
-        if header.mask.apply(decode_hex(self.node.key)):
+        if header.mask.matches(decode_hex(self.node.key)):
             return SupportStatus.ok()
         return SupportStatus.err({UnsupportReason.MASK_MISMATCH: self.node.key})
 

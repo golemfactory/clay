@@ -54,7 +54,7 @@ class Mask:
     def to_int(self) -> int:
         return int.from_bytes(self.byte_repr, 'big', signed=False)
 
-    def apply(self, addr: bytes) -> bool:
+    def matches(self, addr: bytes) -> bool:
         digest = int.from_bytes(sha256(addr).digest(), 'big', signed=False)
         return (digest & self.to_int()) == 0
 

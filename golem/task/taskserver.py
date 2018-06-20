@@ -616,7 +616,7 @@ class TaskServer(
             logger.info(f'insufficient provider trust level: {trust}; {ids}')
             return False
 
-        if not task.header.mask.apply(decode_hex(node_id)):
+        if not task.header.mask.matches(decode_hex(node_id)):
             logger.info(f'network mask mismatch: {ids}')
             return False
 

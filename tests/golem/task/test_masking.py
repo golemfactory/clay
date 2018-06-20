@@ -107,11 +107,11 @@ class TestMask(TestCase):
 
     @pytest.mark.slow
     @patch('golem.task.masking.random', new=Random(__name__))
-    def test_apply(self):
+    def test_matches(self):
         def _check(num_bits, exp_num_nodes):
             mask = Mask.generate(num_bits)
             avg_nodes = sum(
-                sum(mask.apply(addr) for addr in self._get_test_network())
+                sum(mask.matches(addr) for addr in self._get_test_network())
                 for _ in range(1000)) / 1000
             self.assertAlmostEqual(avg_nodes, exp_num_nodes, delta=1)
 
