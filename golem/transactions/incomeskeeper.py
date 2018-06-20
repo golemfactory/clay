@@ -4,12 +4,13 @@ import logging
 import time
 from typing import List
 
+from eth_utils import encode_hex
 from ethereum.utils import denoms
 from pydispatch import dispatcher
 
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import Income
-from golem.utils import encode_hex, pubkeytoaddr
+from golem.utils import pubkeytoaddr
 
 logger = logging.getLogger("golem.transactions.incomeskeeper")
 

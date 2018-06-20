@@ -7,6 +7,7 @@ import typing
 import random
 from collections import Counter
 
+from eth_utils import decode_hex
 from golem_messages import message, helpers
 from golem_messages.constants import MTD
 from semantic_version import Version
@@ -17,7 +18,6 @@ from golem.core.async import AsyncRequest, async_run
 from golem.core.idgenerator import check_id_seed
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
-from golem.utils import decode_hex
 from .taskbase import TaskHeader
 
 logger = logging.getLogger('golem.task.taskkeeper')
