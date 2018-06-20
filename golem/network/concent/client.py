@@ -372,6 +372,7 @@ class ConcentClientService(threading.Thread):
     def react_to_concent_message(self, data: typing.Optional[bytes],
                                  response_to: message.Message = None):
         if data is None:
+            logger.debug('Received nothing from Concent')
             return
         try:
             msg = golem_messages.load(
@@ -379,6 +380,7 @@ class ConcentClientService(threading.Thread):
                 self.keys_auth.ecc.raw_privkey,
                 self.variant['pubkey'],
             )
+            logger.debug('Concent Message received: %s', msg)
         except golem_messages.exceptions.MessageError as e:
             logger.warning("Can't deserialize concent message %s:%r", e, data)
             logger.debug('Problem parsing msg', exc_info=True)
