@@ -16,8 +16,8 @@ class TestHardwarePresets(testutils.DatabaseFixture):
         self.config = ClientConfigDescriptor()
 
     def test_initialize(self):
-        assert HardwarePreset.get_or_create(name=DEFAULT_HARDWARE_PRESET_NAME)
-        assert HardwarePreset.get_or_create(name=CUSTOM_HARDWARE_PRESET_NAME)
+        assert HardwarePreset.get(name=DEFAULT_HARDWARE_PRESET_NAME)
+        assert HardwarePreset.get(name=CUSTOM_HARDWARE_PRESET_NAME)
 
     def test_caps(self):
         caps = HardwarePresets.caps()
