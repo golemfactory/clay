@@ -285,10 +285,10 @@ class TaskComputer(object):
     def change_docker_config(self, config_desc, run_benchmarks,
                              in_background=True):
         dm = self.docker_manager
-        config_changed = dm.build_config(config_desc)
+        dm.build_config(config_desc)
 
         deferred = Deferred()
-        if not dm.docker_machine and (run_benchmarks or config_changed):
+        if not dm.docker_machine and run_benchmarks:
             self.task_server.benchmark_manager.run_all_benchmarks(
                 deferred.callback, deferred.errback
             )

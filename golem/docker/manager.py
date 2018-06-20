@@ -162,7 +162,7 @@ class DockerManager(DockerConfigManager):
             self._wait_for_tasks(status_callback, done_callback)
 
     def build_config(self, config_desc):
-        config_changed = super(DockerManager, self).build_config(config_desc)
+        super(DockerManager, self).build_config(config_desc)
 
         cpu_count = self.min_constraints['cpu_count']
         memory_size = self.min_constraints['memory_size']
@@ -183,8 +183,6 @@ class DockerManager(DockerConfigManager):
             memory_size=memory_size,
             cpu_count=cpu_count
         )
-
-        return config_changed
 
     def constrain(self, name, **params) -> bool:
         constraints = self.hypervisor.constraints(name)

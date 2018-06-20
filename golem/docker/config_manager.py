@@ -46,14 +46,7 @@ class DockerConfigManager(object):
             with self._try():
                 host_config['mem_limit'] = int(max_memory_size) * 1024
 
-        old_cfg = dict(self.container_host_config)
         self.container_host_config.update(host_config)
-
-        config_changed = self.container_host_config == old_cfg
-        if config_changed:
-            logger.info("Config change detected.")
-            
-        return config_changed
 
     @classmethod
     def install(cls, *args, **kwargs):
