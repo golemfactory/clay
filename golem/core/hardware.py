@@ -69,7 +69,7 @@ class HardwarePresets(object):
 
     @classmethod
     def update_config(cls, preset_or_name, config):
-        old_config = config.__dict__
+        old_config = dict(config.__dict__)
         name, values = cls.values(preset_or_name)
         logger.info("updating config: name: %s, num_cores: %s, "
                     "max_memory_size: %s, max_resource_size: %s",
@@ -81,7 +81,7 @@ class HardwarePresets(object):
         setattr(config, 'max_memory_size', values['memory'])
         setattr(config, 'max_resource_size', values['disk'])
 
-        if config.__dict__ == old_config:
+        if config.__dict__ != old_config:
             logger.info("Config change detected.")
             return True
 
