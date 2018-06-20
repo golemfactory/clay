@@ -199,10 +199,8 @@ class PeerKeeper(object):
             """ Get peer 'depth' i.e. number of common leading digits in binary
             representations of peer's key and own key which is equivalent to the
             position of the first '1' in (peer_key XOR own_key)"""
-            return format(
-                node_id_distance(peer, self.key_num),
-                '0%db' % self.k_size
-            ).find("1")
+            return self.k_size \
+                - int(math.log2(node_id_distance(peer, self.key_num))) - 1
 
         def filter_outliers(data, m=2.0):
             """ Simple median-based outlier detection """
