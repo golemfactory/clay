@@ -182,7 +182,7 @@ class TaskManager(TaskEventListener):
         task = self.tasks[task_id]
         try:
             task.header.mask.increase(num_bits)
-        except AssertionError:
+        except ValueError:
             logger.exception('Wrong number of bits for mask increase')
         else:
             task.header.signature = self.sign_task_header(task.header)
@@ -193,7 +193,7 @@ class TaskManager(TaskEventListener):
         task = self.tasks[task_id]
         try:
             task.header.mask.decrease(num_bits)
-        except AssertionError:
+        except ValueError:
             logger.exception('Wrong number of bits for mask decrease')
         else:
             task.header.signature = self.sign_task_header(task.header)

@@ -17,17 +17,23 @@ class Mask:
 
     def increase(self, num_bits: int = 1) -> None:
         bits = self.to_bits()
-        if len(bits) == self.MASK_LEN:
-            return  # Cannot increase any further
-        assert 0 <= num_bits <= self.MASK_LEN - len(bits)
+        num_bits = min(num_bits, self.MASK_LEN - len(bits))
+        if num_bits < 0:
+            raise ValueError("num_bits must be positive")
+        elif num_bits == 0:
+            return  # Nothing to do
+
         bits |= set(random.sample(self.ALL_BITS - bits, num_bits))
         self.byte_repr = self._bits_to_bytes(bits)
 
     def decrease(self, num_bits: int = 1) -> None:
         bits = self.to_bits()
-        if not bits:
-            return  # Cannot decrease any further
-        assert 0 <= num_bits <= len(bits)
+        num_bits = min(num_bits, len(bits))
+        if num_bits < 0:
+            raise ValueError("num_bits must be positive")
+        elif num_bits == 0:
+            return  # Nothing to do
+
         bits -= set(random.sample(bits, num_bits))
         self.byte_repr = self._bits_to_bytes(bits)
 
@@ -59,7 +65,10 @@ class Mask:
 
     @classmethod
     def generate(cls, num_bits: int = 0) -> 'Mask':
-        assert 0 <= num_bits <= cls.MASK_LEN
+        num_bits = min(num_bits, cls.MASK_LEN)
+        if num_bits < 0:
+            raise ValueError("num_bits must be positive")
+
         bits = set(random.sample(cls.ALL_BITS, num_bits))
         return cls.from_bits(bits)
 

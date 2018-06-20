@@ -21,11 +21,13 @@ class TestMask(TestCase):
     def _get_test_network(self):
         return (self._get_test_key() for _ in range(self.NETWORK_SIZE))
 
-    def test_wrong_bits_num(self):
-        with self.assertRaises(AssertionError):
+    def test_generate_negative_bits_num(self):
+        with self.assertRaises(ValueError):
             Mask.generate(num_bits=-1)
-        with self.assertRaises(AssertionError):
-            Mask.generate(num_bits=Mask.MASK_LEN + 1)
+
+    def test_generate_num_bits_above_limit(self):
+        mask = Mask.generate(num_bits=Mask.MASK_LEN + 1)
+        self.assertEqual(mask.num_bits, Mask.MASK_LEN)
 
     @patch('golem.task.masking.random', new=Random(__name__))
     def test_bits_num(self):
@@ -57,17 +59,37 @@ class TestMask(TestCase):
 
     @patch('golem.task.masking.random', new=Random(__name__))
     def test_increase(self):
-        mask = Mask.generate(0)
+        mask = Mask()
         for i in range(Mask.MASK_LEN):
             self.assertEqual(mask.num_bits, i)
             mask.increase()
 
+    def test_increase_above_limit(self):
+        mask = Mask()
+        mask.increase(Mask.MASK_LEN + 1)
+        self.assertEqual(mask.num_bits, Mask.MASK_LEN)
+
+    def test_increase_below_limit(self):
+        mask = Mask()
+        with self.assertRaises(ValueError):
+            mask.increase(-1)
+
     @patch('golem.task.masking.random', new=Random(__name__))
     def test_decrease(self):
-        mask = Mask.generate(Mask.MASK_LEN)
+        mask = Mask(b'\xff' * Mask.MASK_BYTES)
         for i in range(Mask.MASK_LEN):
             self.assertEqual(mask.num_bits, Mask.MASK_LEN - i)
             mask.decrease()
+
+    def test_decrease_above_limit(self):
+        mask = Mask(b'\xff' * Mask.MASK_BYTES)
+        mask.decrease(Mask.MASK_LEN + 1)
+        self.assertEqual(mask.num_bits, 0)
+
+    def test_decrease_below_limit(self):
+        mask = Mask(b'\xff' * Mask.MASK_BYTES)
+        with self.assertRaises(ValueError):
+            mask.decrease(-1)
 
     def test_get_mask_for_task_zero_network_size(self):
         mask = Mask.get_mask_for_task(10, 0)
