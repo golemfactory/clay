@@ -9,14 +9,13 @@ import uuid
 from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
-from threading import Lock, Thread
+from threading import Lock
 from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
 from twisted.internet.defer import (
     inlineCallbacks,
-    returnValue,
     gatherResults,
     Deferred)
 
@@ -38,11 +37,9 @@ from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
-from golem.core.threads import callback_wrapper
 from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
-from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
@@ -1157,23 +1154,11 @@ class Client(HardwarePresetsMixin):
     def run_benchmark(self, env_id):
         deferred = Deferred()
 
-        if env_id != DefaultEnvironment.get_id():
-            benchmark_manager = self.task_server.benchmark_manager
-            benchmark_manager.run_benchmark_for_env_id(env_id,
-                                                       deferred.callback,
-                                                       deferred.errback)
-            result = yield deferred
-            returnValue(result)
-        else:
+        self.task_server.benchmark_manager.run_benchmark_for_env_id(
+            env_id, deferred.callback, deferred.errback)
 
-            kwargs = {'func': DefaultEnvironment.run_default_benchmark,
-                      'callback': deferred.callback,
-                      'errback': deferred.errback,
-                      'num_cores': self.config_desc.num_cores,
-                      'save': True}
-            Thread(target=callback_wrapper, kwargs=kwargs).start()
-            result = yield deferred
-            returnValue(result)
+        result = yield deferred
+        return result
 
     def enable_environment(self, env_id):
         self.environments_manager.change_accept_tasks(env_id, True)
@@ -1309,7 +1294,7 @@ class Client(HardwarePresetsMixin):
 
             result = yield deferred
             logger.info('change hw config result: %r', result)
-            returnValue(self.get_performance_values())
+            return self.get_performance_values()
 
     def __lock_datadir(self):
         if not path.exists(self.datadir):
