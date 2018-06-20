@@ -59,7 +59,7 @@ class RawCharField(CharField):
     """ Char field without auto utf-8 encoding."""
 
     def db_value(self, value):
-        return str(encode_hex(value)[2:])
+        return encode_hex(value)[2:]
 
     def python_value(self, value):
         return decode_hex(value)
