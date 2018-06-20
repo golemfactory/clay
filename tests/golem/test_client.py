@@ -28,6 +28,7 @@ from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
+from golem.model import Performance
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
@@ -1082,7 +1083,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         benchmark_manager.run_benchmark.side_effect = lambda b, tb, e, c, ec: \
             c(True)
 
-        with self.assertRaises(Exception):
+        with self.assertRaisesRegex(Exception, "Unknown environment"):
             sync_wait(self.client.run_benchmark(str(uuid.uuid4())))
 
         sync_wait(self.client.run_benchmark(BlenderEnvironment.get_id()))
@@ -1115,13 +1116,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 self.assertRaisesRegex(Exception, 'Test exception'):
             sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
 
-    @patch("golem.task.benchmarkmanager.BenchmarkRunner")
-    def test_run_benchmarks(self, br_mock, *_):
-        benchmark_manager = self.client.task_server.benchmark_manager
-        benchmark_manager.run_all_benchmarks()
-        f = br_mock.call_args[0][2]  # get success callback
-        f(1)
-        assert br_mock.call_count == 2
 
     def test_config_changed(self, *_):
         c = self.client
@@ -1148,11 +1142,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertNotEqual(c.get_setting('node_name'), newer_node_name)
 
         settings = c.get_settings()
-        settings['node_name'] = newer_node_name
-        with self.assertRaises(KeyError):
-            c.update_settings(settings)
+        self.assertIsInstance(settings['min_price'], str)
+        self.assertIsInstance(settings['max_price'], str)
 
-        del settings['py/object']
+        settings['node_name'] = newer_node_name
         c.update_settings(settings)
         self.assertEqual(c.get_setting('node_name'), newer_node_name)
 
