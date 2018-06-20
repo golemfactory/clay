@@ -2,9 +2,9 @@ import uuid
 
 from peewee import DoesNotExist, IntegrityError
 
-from golem.appconfig import DEFAULT_HARDWARE_PRESET_NAME, CUSTOM_HARDWARE_PRESET_NAME
+from golem.appconfig import DEFAULT_HARDWARE_PRESET_NAME, \
+    CUSTOM_HARDWARE_PRESET_NAME
 from golem.config.presets import HardwarePresetsMixin
-from golem.core.hardware import HardwarePresets
 from golem.model import HardwarePreset
 from golem.tools.testwithdatabase import TestWithDatabase
 
@@ -13,13 +13,6 @@ class TestHardwarePresetsMixin(TestWithDatabase):
 
     def setUp(self):
         super(TestHardwarePresetsMixin, self).setUp()
-        HardwarePresets.initialize(self.tempdir)
-
-    def test_get_hw_caps(self):
-        caps = HardwarePresetsMixin.get_hw_caps()
-        assert caps['cpu_cores'] >= 1
-        assert caps['memory'] > 0
-        assert caps['disk'] > 0
 
     def test_get_hw_presets(self):
         presets = HardwarePresetsMixin.get_hw_presets()

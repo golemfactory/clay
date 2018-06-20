@@ -1,17 +1,12 @@
 import logging
 
 from golem import appconfig
-from golem.core.hardware import HardwarePresets
 from golem.model import HardwarePreset
 
 log = logging.getLogger("golem.config")
 
 
 class HardwarePresetsMixin(object):
-
-    @staticmethod
-    def get_hw_caps():
-        return HardwarePresets.caps()
 
     @staticmethod
     def get_hw_presets():
