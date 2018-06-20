@@ -1,9 +1,6 @@
 import logging
 import pickle
-import time
 
-from golem.core.service import LoopingCallService
-from golem.core.variables import PAYMENT_DEADLINE
 from golem.transactions.ethereum.exceptions import NotEnoughFunds
 
 logger = logging.getLogger(__name__)
@@ -13,13 +10,10 @@ class TaskFundsLock:  # pylint: disable=too-few-public-methods
     def __init__(self, task):
         self.gnt_lock = task.price
         self.num_tasks = task.total_tasks
-        self.task_deadline = task.header.deadline
 
 
-class FundsLocker(LoopingCallService):
-    def __init__(self, transaction_system, datadir, persist=True,
-                 interval_seconds=60):
-        super().__init__(interval_seconds)
+class FundsLocker:
+    def __init__(self, transaction_system, datadir, persist=True):
         self.task_lock = {}
         self.transaction_system = transaction_system
         self.dump_path = datadir / "fundslockv1.pickle"
@@ -63,16 +57,6 @@ class FundsLocker(LoopingCallService):
                 self.transaction_system.eth_for_batch_payment(total_subtasks) +\
                 self.transaction_system.eth_base_for_batch_payment()
         return gnt, eth
-
-    def remove_old(self):
-        time_ = time.time()
-        for task_id, task in list(self.task_lock.items()):
-            if task.task_deadline + PAYMENT_DEADLINE < time_:
-                del self.task_lock[task_id]
-        self.dump_locks()
-
-    def _run(self):
-        self.remove_old()
 
     def restore(self):
         if not self.persist:

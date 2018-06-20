@@ -25,12 +25,10 @@ class TestFundsLocker(TempDirFixture):
 
     def test_lock_funds(self):
         fl = FundsLocker(self.ts, self.new_path)
-        task_deadline = timeout_to_deadline(3600)
         task = mock.MagicMock()
         task.header.task_id = "abc"
         task.price = 320
         task.total_tasks = 10
-        task.header.deadline = task_deadline
         fl.lock_funds(task)
         tfl = fl.task_lock['abc']
 
@@ -38,13 +36,11 @@ class TestFundsLocker(TempDirFixture):
             assert isinstance(tfl, TaskFundsLock)
             assert tfl.gnt_lock == 320
             assert tfl.num_tasks == 10
-            assert tfl.task_deadline == task_deadline
 
         test_params(tfl)
 
         task.header.max_price = 111
         task.total_tasks = 5
-        task.header.deadline = task_deadline + 4
         fl.lock_funds(task)
         tfl = fl.task_lock['abc']
         test_params(tfl)
@@ -80,18 +76,6 @@ class TestFundsLocker(TempDirFixture):
         gnt, eth = fl.sum_locks()
         assert eth == 13000 * (tasks1 + tasks2 + tasks3 + tasks4) + 3000
         assert gnt == val1 + val2 + val3 + val4
-
-    @mock.patch("golem.transactions.ethereum.fundslocker.time")
-    def test_remove_old(self, time_mock):
-        time_mock.time.return_value = time.time()
-        fl = FundsLocker(self.ts, self.new_path)
-        self._add_tasks(fl)
-        time_mock.time.return_value += PAYMENT_DEADLINE + 1
-        fl.remove_old()
-        assert fl.task_lock.get("abc") is None
-        assert fl.task_lock.get("def") is not None
-        assert fl.task_lock.get("ghi") is None
-        assert fl.task_lock.get("jkl") is not None
 
     def test_dump_and_restore(self):
         fl = FundsLocker(self.ts, self.new_path)

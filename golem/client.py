@@ -193,7 +193,6 @@ class Client(HardwarePresetsMixin):
 
         self.funds_locker = FundsLocker(self.transaction_system,
                                         Path(self.datadir))
-        self._services.append(self.funds_locker)
 
         self.use_docker_manager = use_docker_manager
         self.connect_to_known_hosts = connect_to_known_hosts
