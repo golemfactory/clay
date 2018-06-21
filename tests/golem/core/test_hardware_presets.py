@@ -2,9 +2,7 @@ from golem import testutils
 from golem.appconfig import DEFAULT_HARDWARE_PRESET_NAME, \
     CUSTOM_HARDWARE_PRESET_NAME, MIN_MEMORY_SIZE, MIN_DISK_SPACE, MIN_CPU_CORES
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.fileshelper import free_partition_space
-from golem.core.hardware import HardwarePresets, cpu_cores_available, \
-    memory_available
+from golem.core.hardware import HardwarePresets
 from golem.model import HardwarePreset
 
 
@@ -56,7 +54,7 @@ class TestHardwarePresets(testutils.DatabaseFixture):
 
     def test_update_config(self):
         # given
-        HardwarePreset.create(name='foo', cpu_cores=1, memory=3000000,
+        HardwarePreset.create(name='foo', cpu_cores=1, memory=1200000,
                               disk=2000000)
 
         # when
@@ -66,12 +64,13 @@ class TestHardwarePresets(testutils.DatabaseFixture):
         assert config_changed
         assert self.config.hardware_preset_name == 'foo'
         assert self.config.num_cores == 1
-        assert self.config.max_memory_size == 3000000
+        assert self.config.max_memory_size == 1200000
         assert self.config.max_resource_size == 2000000
 
     def test_update_config_upper_bounds(self):
         # given
         HardwarePreset.create(name='max', cpu_cores=1e9, memory=1e18, disk=1e18)
+        caps = HardwarePresets.caps()
 
         # when
         config_changed = HardwarePresets.update_config('max', self.config)
@@ -79,10 +78,9 @@ class TestHardwarePresets(testutils.DatabaseFixture):
         # then
         assert config_changed
         assert self.config.hardware_preset_name == 'max'
-        assert self.config.num_cores == len(cpu_cores_available())
-        assert self.config.max_memory_size == memory_available()
-        assert self.config.max_resource_size == free_partition_space(
-            self.tempdir)
+        assert self.config.num_cores == caps['cpu_cores']
+        assert self.config.max_memory_size == caps['memory']
+        assert self.config.max_resource_size == caps['disk']
 
     def test_update_config_not_changed(self):
         assert HardwarePresets.update_config(
