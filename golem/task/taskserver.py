@@ -55,7 +55,8 @@ class TaskServer(
                  use_ipv6=False,
                  use_docker_manager=True,
                  task_archiver=None,
-                 apps_manager=AppsManager()) -> None:
+                 apps_manager=AppsManager(),
+                 task_finished_cb=None) -> None:
         self.client = client
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
@@ -75,7 +76,8 @@ class TaskServer(
             use_distributed_resources=config_desc.
             use_distributed_resource_management,
             tasks_dir=os.path.join(client.datadir, 'tasks'),
-            apps_manager=apps_manager
+            apps_manager=apps_manager,
+            finished_cb=task_finished_cb,
         )
         benchmarks = self.task_manager.apps_manager.get_benchmarks()
         self.benchmark_manager = BenchmarkManager(config_desc.node_name, self,
@@ -84,7 +86,8 @@ class TaskServer(
         self.task_computer = TaskComputer(
             config_desc.node_name,
             task_server=self,
-            use_docker_manager=udmm)
+            use_docker_manager=udmm,
+            finished_cb=task_finished_cb)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
@@ -256,7 +259,13 @@ class TaskServer(
 
         wtr.result_secret = task_result_manager.gen_secret()
         result = task_result_manager.create(self.node, wtr, wtr.result_secret)
-        wtr.result_hash, wtr.result_path, wtr.package_sha1, wtr.result_size = \
+        (
+            wtr.result_hash,
+            wtr.result_path,
+            wtr.package_sha1,
+            wtr.result_size,
+            wtr.package_path,
+        ) = \
             result
 
     def send_task_failed(
@@ -421,8 +430,7 @@ class TaskServer(
             sender_node_id, subtask_id, settled_ts)
 
     def subtask_failure(self, subtask_id, err):
-        logger.info("Computation for task {} failed: {}.".format(
-            subtask_id, err))
+        logger.info("Computation for task %r failed: %r.", subtask_id, err)
         node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
@@ -1026,7 +1034,7 @@ class WaitingTaskResult(object):
     def __init__(self, task_id, subtask_id, result, result_type,
                  last_sending_trial, delay_time, owner, result_path=None,
                  result_hash=None, result_secret=None, package_sha1=None,
-                 result_size=None):
+                 result_size=None, package_path=None):
 
         self.task_id = task_id
         self.subtask_id = subtask_id
@@ -1040,6 +1048,7 @@ class WaitingTaskResult(object):
         self.result_hash = result_hash
         self.result_secret = result_secret
         self.package_sha1 = package_sha1
+        self.package_path = package_path
         self.result_size = result_size
 
         self.already_sending = False

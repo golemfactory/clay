@@ -1,4 +1,7 @@
+import calendar
+import datetime
 import logging
+import time
 import unittest
 
 from golem_messages import factories as msg_factories
@@ -21,6 +24,13 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
 
     def test_send(self):
         frct = self.get_frct()
+        response = self.provider_send(frct)
+        self.assertIsNone(response)
+
+    def test_send_ttc_deadline_float(self):
+        deadline = calendar.timegm(time.gmtime()) + \
+                   datetime.timedelta(days=1, microseconds=123).total_seconds()
+        frct = self.get_frct(report_computed_task__task_to_compute__compute_task_def__deadline=deadline)  # noqa pylint:disable=line-too-long
         response = self.provider_send(frct)
         self.assertIsNone(response)
 
@@ -83,6 +93,11 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
         arct_rcv = frct_response.ack_report_computed_task
         self.assertIsInstance(
             arct_rcv, message.tasks.AckReportComputedTask)
+        self.assertEqual(
+            frct_response.reason,
+            message.concents.ForceReportComputedTaskResponse.
+            REASON.AckFromRequestor
+        )
         arct_rcv.verify_signature(self.requestor_pub_key)
 
     def test_reject_rct_timeout(self):
@@ -121,7 +136,11 @@ class ForceReportComputedTaskTest(ConcentBaseTest, unittest.TestCase):
         frct_response = self.provider_receive()
         self.assertIsInstance(
             frct_response, message.concents.ForceReportComputedTaskResponse)
-
+        self.assertEqual(
+            frct_response.reason,
+            message.concents.ForceReportComputedTaskResponse.
+            REASON.RejectFromRequestor
+        )
         rrct_rcv = frct_response.reject_report_computed_task
         rrct_rcv.verify_signature(self.requestor_pub_key)
         self.assertEqual(rrct_rcv, rrct)

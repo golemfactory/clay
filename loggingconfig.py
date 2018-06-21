@@ -82,38 +82,6 @@ LOGGING = {
             'propagate': True,
         },
         'golem': {
-            'level': 'WARNING',
-            'propagate': True,
-        },
-        'golem.client': {
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'golem.core.hardware': {
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'golem.core.keysauth': {
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'golem.db': {
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'golem.docker': {
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'golem.node': {
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'golem.pay': {
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'golem.ethereum': {
             'level': 'INFO',
             'propagate': True,
         },
@@ -121,23 +89,7 @@ LOGGING = {
             'level': 'INFO',
             'propagate': True,
         },
-        'golem.rpc.cert': {
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'golem.resources': {
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'golem.task': {
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'golem.token': {
-            'level': 'INFO',
-            'propagate': True,
-        },
-        'golem.transactions': {
+        'golem_sci': {
             'level': 'INFO',
             'propagate': True,
         },

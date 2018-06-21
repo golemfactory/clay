@@ -6,8 +6,8 @@ import time
 from unittest import TestCase
 import unittest.mock as mock
 
+from eth_utils import encode_hex
 from freezegun import freeze_time
-
 from golem_messages import factories as msg_factories
 from golem_messages.message import ComputeTaskDef
 
@@ -26,7 +26,6 @@ from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper,\
 from golem.testutils import PEP8MixIn
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-from golem.utils import encode_hex
 
 from tests.factories import p2p
 
@@ -485,7 +484,7 @@ def get_dict_task_header(key_id_seed="kkk"):
             "task_id": generate_id(key_id),
             "task_owner": {
                 "node_name": "Bob's node",
-                "key": encode_hex(key_id),
+                "key": encode_hex(key_id)[2:],
                 "pub_addr": "10.10.10.10",
                 "pub_port": 10101
             },

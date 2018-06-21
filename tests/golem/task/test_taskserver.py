@@ -5,6 +5,7 @@ from collections import deque
 from math import ceil
 from unittest.mock import Mock, MagicMock, patch, ANY
 
+from eth_utils import encode_hex
 from golem_messages.message import ComputeTaskDef
 from golem_messages import factories as msg_factories
 from requests import HTTPError
@@ -32,7 +33,6 @@ from golem.task.tasksession import TaskSession
 from golem.task.taskstate import TaskState, TaskOp
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
-from golem.utils import encode_hex
 
 from tests.factories.p2p import Node as NodeFactory
 from tests.factories.resultpackage import ExtractedPackageFactory
@@ -44,7 +44,7 @@ def get_example_task_header(key_id):
             "task_id": generate_id(key_id),
             "environment": "DEFAULT",
             "task_owner": dict(
-                key=encode_hex(key_id),
+                key=encode_hex(key_id)[2:],
                 node_name="ABC",
                 prv_port=40103,
                 prv_addr='10.0.0.10',

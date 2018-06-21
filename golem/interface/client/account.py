@@ -112,6 +112,13 @@ class Account:
         amount = str(int(Decimal(amount) * denoms.ether))
         return sync_wait(Account.client.withdraw(amount, destination, currency))
 
+    @command(help="Trigger graceful shutdown of your golem")
+    def shutdown(self) -> str:  # pylint: disable=no-self-use
+
+        result = sync_wait(Account.client.graceful_shutdown())
+
+        return "Graceful shutdown triggered result: {}".format(result)
+
 
 def _fmt(value: int, unit: str = "GNT") -> str:
     full = value // denoms.ether

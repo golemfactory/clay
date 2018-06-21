@@ -3,7 +3,6 @@ from unittest import mock
 
 from golem.core.common import timeout_to_deadline
 from golem.core.variables import PAYMENT_DEADLINE
-from golem.task.taskkeeper import compute_subtask_value
 from golem.testutils import TempDirFixture
 from golem.transactions.ethereum.fundslocker import (logger, FundsLocker,
                                                      TaskFundsLock)
@@ -13,9 +12,9 @@ class TestFundsLocker(TempDirFixture):
     def setUp(self):
         super().setUp()
         self.ts = mock.MagicMock()
-        self.ts.eth_for_batch_payment.return_value = 13000
+        self.ts.eth_for_batch_payment.side_effect = lambda n: n * 13000
         self.ts.eth_base_for_batch_payment.return_value = 3000
-        val = 100000
+        val = 1000000
         time_ = time.time()
         self.ts.get_balance.return_value = val, val, val, time_, time_
 
@@ -38,7 +37,6 @@ class TestFundsLocker(TempDirFixture):
         def test_params(tfl):
             assert isinstance(tfl, TaskFundsLock)
             assert tfl.gnt_lock == 320
-            assert tfl.eth_lock() == 13000
             assert tfl.num_tasks == 10
             assert tfl.task_deadline == task_deadline
 
@@ -52,31 +50,35 @@ class TestFundsLocker(TempDirFixture):
         test_params(tfl)
 
     def test_sum_locks(self):
-        fl = FundsLocker(self.ts, self.new_path)
-        task = mock.MagicMock()
-        task.header.task_id = "abc"
-        task.price = 320
-        task.total_tasks = 10
-        task.header.deadline = timeout_to_deadline(3600)
-        fl.lock_funds(task)
-        task.header.task_id = "def"
-        task.price = 140
-        task.total_tasks = 7
-        fl.lock_funds(task)
-        task.header.task_id = "ghi"
-        task.price = 10
-        task.total_tasks = 4
-        fl.lock_funds(task)
-        task.header.task_id = "jkl"
-        task.price = 13
-        task.total_tasks = 1
-        fl.lock_funds(task)
-        gnt, eth = fl.sum_locks()
-        assert eth == 13000 * 4 + 3000
         val1 = 320
         val2 = 140
         val3 = 10
         val4 = 13
+        tasks1 = 10
+        tasks2 = 7
+        tasks3 = 4
+        tasks4 = 1
+        fl = FundsLocker(self.ts, self.new_path)
+        task = mock.MagicMock()
+        task.header.task_id = "abc"
+        task.price = val1
+        task.total_tasks = tasks1
+        task.header.deadline = timeout_to_deadline(3600)
+        fl.lock_funds(task)
+        task.header.task_id = "def"
+        task.price = val2
+        task.total_tasks = tasks2
+        fl.lock_funds(task)
+        task.header.task_id = "ghi"
+        task.price = val3
+        task.total_tasks = tasks3
+        fl.lock_funds(task)
+        task.header.task_id = "jkl"
+        task.price = val4
+        task.total_tasks = tasks4
+        fl.lock_funds(task)
+        gnt, eth = fl.sum_locks()
+        assert eth == 13000 * (tasks1 + tasks2 + tasks3 + tasks4) + 3000
         assert gnt == val1 + val2 + val3 + val4
 
     @mock.patch("golem.transactions.ethereum.fundslocker.time")
@@ -101,8 +103,6 @@ class TestFundsLocker(TempDirFixture):
         fl2 = FundsLocker(self.ts, self.new_path)
         assert len(fl2.task_lock) == 4
         assert fl2.task_lock['abc'].gnt_lock == 320
-        assert fl2.task_lock['def'].transaction_system == self.ts
-        assert fl2.task_lock['ghi'].eth_lock() == 13000
 
     @staticmethod
     def _add_tasks(fl):

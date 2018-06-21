@@ -18,7 +18,6 @@ from golem.task.taskbase import ResultType, TaskEventListener
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
-from golem.utils import decode_hex
 
 
 class TestCoreTask(LogTestCase, TestDirFixture):
@@ -164,7 +163,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
     def test_create_task_id(self):
         # when
-        task_id = CoreTask.create_task_id(decode_hex(b'beefdeadbeef'))
+        task_id = CoreTask.create_task_id(b'\xbe\xef\xde\xad\xbe\xef')
 
         # then
         self.assertRegex(task_id, "^[-0-9a-f]{23}-beefdeadbeef$")
@@ -172,7 +171,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
     def test_create_subtask_id(self):
         # given
         t = self._get_core_task()
-        t.header.task_id = CoreTask.create_task_id(decode_hex(b'beefdeadbeef'))
+        t.header.task_id = CoreTask.create_task_id(b'\xbe\xef\xde\xad\xbe\xef')
 
         # when
         subtask_id = t.create_subtask_id()

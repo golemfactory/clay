@@ -9,14 +9,13 @@ import uuid
 from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
-from threading import Lock, Thread
+from threading import Lock
 from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
 from twisted.internet.defer import (
     inlineCallbacks,
-    returnValue,
     gatherResults,
     Deferred)
 
@@ -38,11 +37,9 @@ from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
-from golem.core.threads import callback_wrapper
 from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
-from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
@@ -117,7 +114,8 @@ class Client(HardwarePresetsMixin):
             start_geth: bool = False,
             start_geth_port: Optional[int] = None,
             geth_address: Optional[str] = None,
-            apps_manager: AppsManager = AppsManager()) -> None:
+            apps_manager: AppsManager = AppsManager(),
+            task_finished_cb=None) -> None:
 
         self.apps_manager = apps_manager
         self.datadir = datadir
@@ -131,6 +129,9 @@ class Client(HardwarePresetsMixin):
         self.app_config = app_config
         self.config_desc = config_desc
         self.config_approver = ConfigApprover(self.config_desc)
+
+        if self.config_desc.in_shutdown:
+            self.update_setting('in_shutdown', False)
 
         logger.info(
             'Client "%s", datadir: %s',
@@ -214,6 +215,7 @@ class Client(HardwarePresetsMixin):
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = str(uuid.uuid4())
+        self._task_finished_cb = task_finished_cb
 
         dispatcher.connect(
             self.p2p_listener,
@@ -324,7 +326,8 @@ class Client(HardwarePresetsMixin):
             use_ipv6=self.config_desc.use_ipv6,
             use_docker_manager=self.use_docker_manager,
             task_archiver=self.task_archiver,
-            apps_manager=self.apps_manager
+            apps_manager=self.apps_manager,
+            task_finished_cb=self._task_finished_cb,
         )
 
         monitoring_publisher_service = MonitoringPublisherService(
@@ -539,6 +542,9 @@ class Client(HardwarePresetsMixin):
         self._unlock_datadir()
 
     def enqueue_new_task(self, task_dict):
+        if self.config_desc.in_shutdown:
+            raise Exception('Can not enqueue task: shutdown is in progress, '
+                            'toggle shutdown mode off to create a new tasks.')
         task_manager = self.task_server.task_manager
         _result = Deferred()
 
@@ -841,7 +847,13 @@ class Client(HardwarePresetsMixin):
         return str(key) if key else None
 
     def get_settings(self):
-        return DictSerializer.dump(self.config_desc)
+        settings = DictSerializer.dump(self.config_desc, typed=False)
+
+        for key, value in settings.items():
+            if ConfigApprover.is_big_int(key):
+                settings[key] = str(value)
+
+        return settings
 
     def get_setting(self, key):
         if not hasattr(self.config_desc, key):
@@ -988,10 +1000,15 @@ class Client(HardwarePresetsMixin):
     def get_withdraw_gas_cost(
             self,
             amount: Union[str, int],
+            destination: str,
             currency: str) -> int:
         if isinstance(amount, str):
             amount = int(amount)
-        return self.transaction_system.get_withdraw_gas_cost(amount, currency)
+        return self.transaction_system.get_withdraw_gas_cost(
+            amount,
+            destination,
+            currency,
+        )
 
     def withdraw(
             self,
@@ -1010,19 +1027,12 @@ class Client(HardwarePresetsMixin):
         else:
             lock = eth_lock
 
-        return self.transaction_system.withdraw(amount, destination, currency,
-                                                lock)
-
-    def get_task_cost(self, task_id):
-        """
-        Get current cost of the task defined by @task_id
-        :param task_id: Task ID
-        :return: Cost of the task
-        """
-        cost = self.task_server.task_manager.get_payment_for_task_id(task_id)
-        if cost is None:
-            return 0.0
-        return cost
+        return self.transaction_system.withdraw(
+            amount,
+            destination,
+            currency,
+            lock,
+        )
 
     # It's defined here only for RPC exposure in
     # golem.rpc.mapping.rpcmethodnames
@@ -1179,23 +1189,11 @@ class Client(HardwarePresetsMixin):
     def run_benchmark(self, env_id):
         deferred = Deferred()
 
-        if env_id != DefaultEnvironment.get_id():
-            benchmark_manager = self.task_server.benchmark_manager
-            benchmark_manager.run_benchmark_for_env_id(env_id,
-                                                       deferred.callback,
-                                                       deferred.errback)
-            result = yield deferred
-            returnValue(result)
-        else:
+        self.task_server.benchmark_manager.run_benchmark_for_env_id(
+            env_id, deferred.callback, deferred.errback)
 
-            kwargs = {'func': DefaultEnvironment.run_default_benchmark,
-                      'callback': deferred.callback,
-                      'errback': deferred.errback,
-                      'num_cores': self.config_desc.num_cores,
-                      'save': True}
-            Thread(target=callback_wrapper, kwargs=kwargs).start()
-            result = yield deferred
-            returnValue(result)
+        result = yield deferred
+        return result
 
     def enable_environment(self, env_id):
         self.environments_manager.change_accept_tasks(env_id, True)
@@ -1331,7 +1329,7 @@ class Client(HardwarePresetsMixin):
 
             result = yield deferred
             logger.info('change hw config result: %r', result)
-            returnValue(self.get_performance_values())
+            return self.get_performance_values()
 
     def __lock_datadir(self):
         if not path.exists(self.datadir):
