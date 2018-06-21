@@ -582,6 +582,12 @@ class Client(HardwarePresetsMixin):
                 task_state.package_hash = package_hash
                 task_state.package_size = package_size
                 task_state.resource_hash = resource_manager_result[0]
+                logger.debug(
+                    "Setting task state - package_path: %s, package_hash: %s, "
+                    "package_size: %s, resource_hash: %s",
+                    task_state.package_path, task_state.package_hash,
+                    task_state.package_size, task_state.resource_hash
+                )
             except Exception as exc:  # pylint: disable=broad-except
                 error(exc)
                 return
