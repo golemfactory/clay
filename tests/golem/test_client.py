@@ -950,7 +950,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             get_resources=Mock(return_value=[]),
             total_tasks=5,
             get_price=Mock(return_value=900),
-            price=1000,
+            subtask_price=1000,
         )
 
         c.enqueue_new_task(task)
@@ -961,7 +961,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_mock.total_tasks = 3
         price = task_mock.header.max_price * task_mock.total_tasks
         task_mock.get_price.return_value = price
-        task_mock.price = 1000
+        task_mock.subtask_price = 1000
         c.task_server.task_manager.create_task.return_value = task_mock
         c.concent_service = Mock()
         c.concent_service.enabled = True
