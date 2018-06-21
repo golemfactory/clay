@@ -12,7 +12,8 @@ from golem.resource.dirmanager import find_task_script
 
 @enforce.runtime_validation()
 class DockerEnvironment(Environment):
-    def __init__(self, tag=None, image_id=None, additional_images: List[DockerImage] = None):
+    def __init__(self, tag=None, image_id=None,
+                 additional_images: List[DockerImage] = None) -> None:
 
         if tag is None:
             tag = self.DOCKER_TAG
@@ -22,8 +23,9 @@ class DockerEnvironment(Environment):
         Environment.__init__(self)
         self.software.append('Docker')
 
-        self.main_program_file = find_task_script(self.APP_DIR, self.SCRIPT_NAME)
-
+        self.default_program_file = find_task_script(self.APP_DIR,
+                                                     self.SCRIPT_NAME)
+        self.source_code_required = True
         self.docker_images = [image]
         if additional_images:
             self.docker_images += additional_images

@@ -3,7 +3,7 @@ from unittest import TestCase
 from apps.appsmanager import AppsManager
 from apps.core.benchmark.benchmarkrunner import CoreBenchmark
 from apps.core.task.coretask import TaskBuilder
-from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.blender.dockerenvironment.blenderenvironment import BlenderEnvironment
 from apps.lux.luxenvironment import LuxRenderEnvironment
 
 

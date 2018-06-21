@@ -31,7 +31,7 @@ class EnvTest(DatabaseFixture, PEP8MixIn):
 
         # given
         file_name = path.join(self.path, "mainprogramfile")
-        self.env.main_program_file = file_name
+        self.env.default_program_file = file_name
 
         # then
         assert self.env.get_source_code() is None
@@ -41,19 +41,19 @@ class EnvTest(DatabaseFixture, PEP8MixIn):
             f.write("PROGRAM CODE")
 
         # then
-        self.env.main_program_file = file_name
+        self.env.default_program_file = file_name
         assert self.env.get_source_code() == "PROGRAM CODE"
 
     def test_check_software(self):
         # check defaults
         assert not self.env.check_software()
-        self.env.allow_custom_main_program_file = True
+        self.env.allow_custom_source_code = True
         assert self.env.check_software()
 
         # given
-        self.env.allow_custom_main_program_file = False
+        self.env.allow_custom_source_code = False
         file_name = path.join(self.path, "mainprogramfile")
-        self.env.main_program_file = file_name
+        self.env.default_program_file = file_name
 
         with open(file_name, 'w') as f:
             f.write("PROGRAM CODE")

@@ -26,7 +26,7 @@ class DummyTaskBenchmark(CoreBenchmark):
         td.out_file_basename = td.out_file_basename
 
         td.task_id = str(uuid.uuid4())
-        td.main_program_file = env.main_program_file
+        td.main_program_file = env.default_program_file
         td.resources = {join(self.dummy_task_path, "in.data")}
         td.add_to_resources()
         self.verifier = DummyTaskVerifier(lambda **kwargs: None)

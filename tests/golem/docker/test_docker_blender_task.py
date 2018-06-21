@@ -5,7 +5,7 @@ from unittest.mock import Mock
 
 import pytest
 
-from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.blender.dockerenvironment.blenderenvironment import BlenderEnvironment
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, \
     BlenderRenderTask
 from golem.core.common import get_golem_path, timeout_to_deadline

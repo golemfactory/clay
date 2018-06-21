@@ -42,4 +42,4 @@ class TestLuxRenderEnvironment(DatabaseFixture, PEP8MixIn):
         self.assertEqual(self.env.get_min_accepted_performance(), 314.1)
 
     def test_main_program_file(self):
-        assert path.isfile(LuxRenderEnvironment().main_program_file)
+        assert path.isfile(LuxRenderEnvironment().default_program_file)
