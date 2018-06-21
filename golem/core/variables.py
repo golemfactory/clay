@@ -1,6 +1,8 @@
 import pathlib
 from typing import ClassVar
 
+from golem_messages.constants import MAX_CONCENT_PING_INTERVAL
+
 from golem.core import common
 
 ####################
@@ -49,7 +51,8 @@ CONCENT_CHOICES = {
         'pubkey': b"\xfch\x8e.\xe8\x1b\xe2\x95\x9c7&D\xe4\xfb\x9d\x88\xe2\xd90\x14t\xfd\x81pC\x93B\xefo\xda.\xd8\x85'\x02m\xf0\xc1\x8c\xf9\xb1\xfe\xd7uc\xd7\x81\x94\r\xe8\xce\xed(%TmX\xba\xd5\xc2Y\x0c9\x8b",  # noqa pylint: disable=line-too-long
     },
 }
-CONCENT_PULL_INTERVAL = 30  # seconds
+
+CONCENT_PULL_INTERVAL = (MAX_CONCENT_PING_INTERVAL / 2).total_seconds()
 
 # Number of task headers transmitted per message
 TASK_HEADERS_LIMIT = 20
