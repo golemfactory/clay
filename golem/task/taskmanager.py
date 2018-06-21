@@ -25,7 +25,7 @@ from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener, Task
+from golem.task.taskbase import TaskEventListener, Task, TaskHeader
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
@@ -158,7 +158,7 @@ class TaskManager(TaskEventListener):
                                                self.listen_port):
             raise IOError("Incorrect socket address")
 
-        task.header.task_owner = self.node
+        task.header.fixed_header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
 
         task.create_reference_data_for_task_validation()
@@ -177,6 +177,28 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id,
                                  op=TaskOp.CREATED,
                                  persist=False)
+
+    @handle_task_key_error
+    def increase_task_mask(self, task_id: str, num_bits: int = 1) -> None:
+        """ Increase mask for given task i.e. make it more restrictive """
+        task = self.tasks[task_id]
+        try:
+            task.header.mask.increase(num_bits)
+        except ValueError:
+            logger.exception('Wrong number of bits for mask increase')
+        else:
+            task.header.signature = self.sign_task_header(task.header)
+
+    @handle_task_key_error
+    def decrease_task_mask(self, task_id: str, num_bits: int = 1) -> None:
+        """ Decrease mask for given task i.e. make it less restrictive """
+        task = self.tasks[task_id]
+        try:
+            task.header.mask.decrease(num_bits)
+        except ValueError:
+            logger.exception('Wrong number of bits for mask decrease')
+        else:
+            task.header.signature = self.sign_task_header(task.header)
 
     @handle_task_key_error
     def start_task(self, task_id):
@@ -533,6 +555,10 @@ class TaskManager(TaskEventListener):
             return self.tasks[task_id].verify_subtask(subtask_id)
         else:
             return False
+
+    def is_this_my_task(self, header: TaskHeader) -> bool:
+        return header.task_id in self.tasks or \
+               header.task_owner.key == self.node.key
 
     def get_node_id_for_subtask(self, subtask_id):
         if subtask_id not in self.subtask2task_mapping:

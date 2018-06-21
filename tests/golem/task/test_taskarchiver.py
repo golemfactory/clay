@@ -36,9 +36,13 @@ class TestTaskArchiver(TestCase):
         if not deadline:
             deadline = timeout_to_deadline(36000)
 
-        ret = TaskHeader(str(uuid4()), "DEFAULT", task_owner=Node(),
-                         max_price=max_price, deadline=deadline,
-                         min_version=min_version)
+        ret = TaskHeader(
+            task_id=str(uuid4()),
+            environment="DEFAULT",
+            task_owner=Node(),
+            max_price=max_price,
+            deadline=deadline,
+            min_version=min_version)
         if last_checking:
             ret.last_checking = last_checking
         return ret

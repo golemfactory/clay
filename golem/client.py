@@ -63,8 +63,10 @@ from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resource import get_resources_for_task, ResourceType
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.task import taskpreset
+from golem.task.masking import Mask
 from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskbase import Task as TaskBase
+from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus, SubtaskStatus
 from golem.task.tasktester import TaskTester
@@ -73,6 +75,11 @@ from golem.tools.talkback import enable_sentry_logger
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
 from golem.transactions.ethereum.fundslocker import FundsLocker
+
+# Minimum num_workers is 4 to avoid delayed start in case of
+# task with very few subtasks (for small number of subtasks it is
+# likable that initial mask would rule out all the nodes)
+MIN_NUM_WORKERS_FOR_MASK = 4
 
 logger = logging.getLogger(__name__)
 
@@ -331,6 +338,15 @@ class Client(HardwarePresetsMixin):
         monitoring_publisher_service.start()
         self._services.append(monitoring_publisher_service)
 
+        if self.config_desc.net_masking_enabled:
+            mask_udpate_service = MaskUpdateService(
+                task_manager=self.task_server.task_manager,
+                interval_seconds=self.config_desc.mask_update_interval,
+                update_num_bits=self.config_desc.mask_update_num_bits
+            )
+            mask_udpate_service.start()
+            self._services.append(mask_udpate_service)
+
         dir_manager = self.task_server.task_computer.dir_manager
 
         logger.info("Starting resource server ...")
@@ -562,6 +578,19 @@ class Client(HardwarePresetsMixin):
         def package_created(packager_result):
             package_path, package_sha1 = packager_result
             task.header.resource_size = path.getsize(package_path)
+
+            if self.config_desc.net_masking_enabled:
+                num_workers = max(
+                    task.get_total_tasks() *
+                    self.config_desc.initial_mask_size_factor,
+                    MIN_NUM_WORKERS_FOR_MASK)
+                task.header.mask = Mask.get_mask_for_task(
+                    desired_num_workers=num_workers,
+                    network_size=self.p2pservice.get_estimated_network_size()
+                )
+            else:
+                task.header.mask = Mask()
+
             task_manager.add_new_task(task)
 
             client_options = self.task_server.get_share_options(task_id, None)
@@ -1479,3 +1508,33 @@ class TaskCleanerService(LoopingCallService):
 
     def _run(self):
         self._client.clean_old_tasks()
+
+
+class MaskUpdateService(LoopingCallService):
+
+    def __init__(
+            self,
+            task_manager: TaskManager,
+            interval_seconds: int,
+            update_num_bits: int
+    ) -> None:
+        self._task_manager: TaskManager = task_manager
+        self._update_num_bits = update_num_bits
+        self._interval = interval_seconds
+        super().__init__(interval_seconds)
+
+    def _run(self) -> None:
+        logger.info('Updating masks')
+        # Using list() because tasks could be changed by another thread
+        for task_id, task in list(self._task_manager.tasks.items()):
+            if not task.needs_computation():
+                continue
+            task_state = self._task_manager.query_task_state(task_id)
+            if task_state.elapsed_time < self._interval:
+                continue
+
+            self._task_manager.decrease_task_mask(
+                task_id=task_id,
+                num_bits=self._update_num_bits)
+            logger.info('Updating mask for task %r Mask size: %r',
+                        task_id, task.header.mask.num_bits)
