@@ -61,8 +61,8 @@ class DummyTask(Task):
         owner_port = 0
         owner_key_id = encode_hex(public_key)[2:]
         header = TaskHeader(
-            task_id,
-            self.TASK_TYPE,
+            task_id=task_id,
+            task_type=self.TASK_TYPE,
             task_owner=Node(
                 node_name=client_id,
                 pub_addr=owner_address,

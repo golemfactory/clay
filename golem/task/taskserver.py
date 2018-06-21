@@ -29,6 +29,7 @@ from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
+from golem.utils import decode_hex
 
 from .result.resultmanager import ExtractedPackage
 from .server import resources
@@ -63,7 +64,8 @@ class TaskServer(
         self.node = node
         self.task_archiver = task_archiver
         self.task_keeper = TaskHeaderKeeper(
-            client.environments_manager,
+            environments_manager=client.environments_manager,
+            node=self.node,
             min_price=config_desc.min_price,
             task_archiver=task_archiver)
         self.task_manager = TaskManager(
@@ -306,32 +308,26 @@ class TaskServer(
         ths_tk = self.task_keeper.get_all_tasks()
         return [th.to_dict() for th in ths_tk]
 
-    def add_task_header(self, th_dict_repr):
+    def add_task_header(self, th_dict_repr: dict) -> bool:
         try:
-            if not self.verify_header_sig(th_dict_repr):
-                raise Exception("Invalid signature")
+            TaskHeader.validate(th_dict_repr)
+            header = TaskHeader.from_dict(th_dict_repr)
+            if not self.verify_header_sig(header):
+                raise ValueError("Invalid signature")
 
-            task_id = th_dict_repr["task_id"]
-            key_id = th_dict_repr["task_owner"]["key"]
-            task_ids = list(self.task_manager.tasks.keys())
-            new_sig = True
+            if self.task_manager.is_this_my_task(header):
+                return True  # Own tasks are not added to task keeper
 
-            if task_id in self.task_keeper.task_headers:
-                header = self.task_keeper.task_headers[task_id]
-                new_sig = th_dict_repr["signature"] != header.signature
+            return self.task_keeper.add_task_header(header)
 
-            if task_id not in task_ids and key_id != self.node.key and new_sig:
-                self.task_keeper.add_task_header(th_dict_repr)
-
-            return True
-        except Exception:  # pylint: disable=broad-except
+        except ValueError:
             logger.warning("Wrong task header received", exc_info=True)
             return False
 
-    def verify_header_sig(self, th_dict_repr):
-        _bin = TaskHeader.dict_to_binary(th_dict_repr)
-        _sig = th_dict_repr["signature"]
-        _key = th_dict_repr["task_owner"]["key"]
+    def verify_header_sig(self, header: TaskHeader):
+        _bin = header.to_binary()
+        _sig = header.signature
+        _key = header.task_owner.key
         return self.verify_sig(_sig, _bin, _key)
 
     def remove_task_header(self, task_id) -> bool:
@@ -625,6 +621,10 @@ class TaskServer(
         trust = self.get_computing_trust(node_id)
         if trust < self.config_desc.computing_trust:
             logger.info(f'insufficient provider trust level: {trust}; {ids}')
+            return False
+
+        if not task.header.mask.matches(decode_hex(node_id)):
+            logger.info(f'network mask mismatch: {ids}')
             return False
 
         return True

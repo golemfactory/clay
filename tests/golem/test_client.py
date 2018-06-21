@@ -944,6 +944,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.funds_locker.persist = False
         c.resource_server = Mock()
         c.task_server = Mock()
+        c.p2pservice.get_estimated_network_size.return_value = 0
 
         task_header = Mock(
             max_price=1 * 10**18,
@@ -1035,6 +1036,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             side_effect=create_resource_package)
         c.resource_server.add_task = Mock(
             side_effect=add_task)
+        c.p2pservice.get_estimated_network_size.return_value = 0
 
         deferred = c.enqueue_new_task(t_dict)
         task = sync_wait(deferred)

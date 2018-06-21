@@ -50,6 +50,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
     def test_instantiation(self):
         task_def = self._get_core_task_definition()
+        node = Node()
 
         # abstract class cannot be instantiated
         # pylint: disable=abstract-class-instantiated
@@ -66,7 +67,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
         # ENVIRONMENT has to be set
         with self.assertRaises(TypeError):
-            CoreTaskDeabstacted(task_def, "node_name")
+            CoreTaskDeabstacted(task_def, node)
 
         class CoreTaskDeabstractedEnv(CoreTask):
             ENVIRONMENT_CLASS = MagicMock()
@@ -80,8 +81,8 @@ class TestCoreTask(LogTestCase, TestDirFixture):
             def query_extra_data_for_test_task(self):
                 pass
 
-        self.assertTrue(isinstance(
-            CoreTaskDeabstractedEnv(task_def, "node_name"), CoreTask))
+        task = CoreTaskDeabstractedEnv(task_def, node)
+        self.assertIsInstance(task, CoreTask)
 
     def _get_core_task(self):
         task_def = TestCoreTask._get_core_task_definition()
