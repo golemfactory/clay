@@ -1014,7 +1014,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         def add_task(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
-            result = resource_manager_result, 'res_file_1', 'package_hash'
+            result = resource_manager_result, 'res_file_1', 'package_hash', 42
             return done_deferred(result)
 
         c = self.client
