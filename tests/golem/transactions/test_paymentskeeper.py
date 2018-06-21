@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+from eth_utils import encode_hex
 from peewee import IntegrityError
 from os import urandom
 
@@ -12,7 +13,6 @@ from golem.tools.assertlogs import LogTestCase
 from golem.transactions.paymentskeeper import PaymentsDatabase, PaymentInfo, \
     logger, PaymentsKeeper
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
-from golem.utils import encode_hex
 from golem.tools.ci import ci_skip
 
 
@@ -57,7 +57,7 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
         pi3 = deepcopy(pi)
         pi3.subtask_id = "bbbxxx"
         pi4 = deepcopy(pi)
-        pi4.computer.eth_account.address = "GHI"
+        pi4.computer.eth_account.address = b"GHI"
         pi4.subtask_id = "ghighi"
         with self.assertLogs(logger, level='WARNING') as l:
             self.assertIsNone(pd.get_state(pi4))
