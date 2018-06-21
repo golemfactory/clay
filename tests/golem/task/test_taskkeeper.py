@@ -21,6 +21,7 @@ from golem.network.p2p.node import Node
 from golem.task import taskkeeper
 from golem.task.masking import Mask
 from golem.task.taskbase import TaskHeader
+from golem.task.taskcomputer import PyTaskThread
 from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper,\
     CompSubtaskInfo, logger
 from golem.testutils import PEP8MixIn
@@ -29,6 +30,18 @@ from golem.tools.assertlogs import LogTestCase
 
 from tests.factories import p2p
 
+
+class DummyEnvironment(Environment):
+    # pylint: disable=too-many-arguments
+    def get_task_thread(self, taskcomputer, subtask_id, short_desc,
+                        src_code, extra_data, task_timeout,
+                        working_dir, resource_dir, temp_dir, **kwargs):
+        return PyTaskThread(taskcomputer, subtask_id, working_dir,
+                            src_code, extra_data, short_desc, resource_dir,
+                            temp_dir, task_timeout)
+
+    def get_benchmark(self):
+        return None, None
 
 def async_run(request, success=None, error=None):
     try:
@@ -55,12 +68,13 @@ class TestTaskHeaderKeeper(LogTestCase):
             node=p2p.Node(),
             min_price=10.0)
         header = get_task_header()
-        header.fixed_header.environment = None
         header.fixed_header.max_price = None
         header.fixed_header.min_version = None
         self.assertFalse(tk.check_support(header))
 
-        header.fixed_header.environment = Environment.get_id()
+        e = DummyEnvironmrnt()
+        e.accept_tasks = True
+        tk.environments_manager.add_environment('Dummy', e)
         header.fixed_header.max_price = 0
         supported = tk.check_support(header)
         self.assertFalse(supported)
@@ -143,9 +157,9 @@ class TestTaskHeaderKeeper(LogTestCase):
             node=p2p.Node(),
             min_price=10.0,
             task_archiver=tar)
-        e = Environment()
+        e = DummyEnvironment()
         e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
+        tk.environments_manager.add_environment('Dummy', e)
 
         task_header = get_task_header()
         task_id = task_header.task_id
@@ -195,9 +209,9 @@ class TestTaskHeaderKeeper(LogTestCase):
         task_header = get_task_header("uvw")
         self.assertTrue(tk.add_task_header(task_header))
         self.assertIsNone(tk.get_task())
-        e = Environment()
+        e = DummyEnvironment()
         e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
+        tk.environments_manager.add_environment('Dummy', e)
         task_header2 = get_task_header("xyz")
         self.assertTrue(tk.add_task_header(task_header2))
         th = tk.get_task()
@@ -210,9 +224,9 @@ class TestTaskHeaderKeeper(LogTestCase):
             environments_manager=EnvironmentsManager(),
             node=p2p.Node(),
             min_price=10)
-        e = Environment()
+        e = DummyEnvironment()
         e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
+        tk.environments_manager.add_environment('Dummy', e)
         task_header = get_task_header()
         task_header.fixed_header.deadline = timeout_to_deadline(10)
         assert tk.add_task_header(task_header)
@@ -238,14 +252,14 @@ class TestTaskHeaderKeeper(LogTestCase):
         assert tk.supported_tasks[0] == task_id
 
     def test_task_header_update(self):
-        e = Environment()
+        e = DummyEnvironment()
         e.accept_tasks = True
 
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
             node=p2p.Node(),
             min_price=10)
-        tk.environments_manager.add_environment(e)
+        tk.environments_manager.add_environment('Dummy', e)
 
         task_header = get_task_header()
         task_id = task_header.task_id
@@ -272,14 +286,14 @@ class TestTaskHeaderKeeper(LogTestCase):
 
     @mock.patch('golem.task.taskarchiver.TaskArchiver')
     def test_task_header_update_stats(self, tar):
-        e = Environment()
+        e = DummyEnvironment()
         e.accept_tasks = True
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
             node=p2p.Node(),
             min_price=10,
             task_archiver=tar)
-        tk.environments_manager.add_environment(e)
+        tk.environments_manager.add_environment('Dummy', e)
         task_header = get_task_header("good")
         assert tk.add_task_header(task_header)
         tar.add_task.assert_called_with(mock.ANY)
@@ -415,9 +429,9 @@ class TestTaskHeaderKeeper(LogTestCase):
             environments_manager=EnvironmentsManager(),
             node=p2p.Node(),
             min_price=10)
-        e = Environment()
+        e = DummyEnvironment()
         e.accept_tasks = True
-        tk.environments_manager.add_environment(e)
+        tk.environments_manager.add_environment('Dummy', e)
 
         # Supported task
         thd = get_task_header("good")
@@ -432,6 +446,12 @@ class TestTaskHeaderKeeper(LogTestCase):
         thd = get_task_header("wrong env")
         thd.fixed_header.environment = "UNKNOWN"
         tk.add_task_header(thd)
+
+        # Environment not accepting
+        thd = get_dict_task_header("non-accepting env")
+        e.accept_tasks = False
+        tk.add_task_header(thd)
+        e.accept_tasks = True
 
         # Wrong price
         thd = get_task_header("wrong price")
@@ -488,7 +508,7 @@ def get_dict_task_header(key_id_seed="kkk"):
                 "pub_addr": "10.10.10.10",
                 "pub_port": 10101
             },
-            "environment": "DEFAULT",
+            "task_type": "Dummy",
             "last_checking": time.time(),
             "deadline": timeout_to_deadline(1201),
             "subtask_timeout": 120,
@@ -671,10 +691,10 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         assert ctk.active_tasks[task_id].requests == 1
 
     @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump')
-    def test_get_task_env(self, dump_mock):
+    def test_get_task_type(self, _dump_mock):
         ctk = CompTaskKeeper(Path('ignored'))
         with self.assertLogs(logger, level="WARNING"):
-            assert ctk.get_task_env("task1") is None
+            assert ctk.get_task_type("task1") is None
 
         header = get_task_header()
         task_id1 = header.task_id
@@ -682,11 +702,11 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
 
         header = get_task_header()
         task_id2 = header.task_id
-        header.environment = "NOTDEFAULT"
+        header.task_type = "Not Dummy"
         ctk.add_request(header, 4002)
 
-        assert ctk.get_task_env(task_id2) == "NOTDEFAULT"
-        assert ctk.get_task_env(task_id1) == "DEFAULT"
+        assert ctk.get_task_type(task_id2) == "Not Dummy"
+        assert ctk.get_task_type(task_id1) == "Dummy"
 
     def test_check_comp_task_def(self):
         ctk = CompTaskKeeper(self.new_path)

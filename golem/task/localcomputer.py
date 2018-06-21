@@ -10,9 +10,10 @@ from golem_messages.message import ComputeTaskDef
 
 from golem.core.common import to_unicode
 from golem.core.fileshelper import common_dir
-from golem.docker.image import DockerImage
-from golem.docker.task_thread import DockerTaskThread
+from golem.environments.environment import Environment
+from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.resource.dirmanager import DirManager
+from golem.task.taskthread import TaskThread
 
 logger = logging.getLogger("golem.task")
 
@@ -21,10 +22,13 @@ class LocalComputer:
     DEFAULT_WARNING = "Computation failed"
     DEFAULT_SUCCESS = "Task computation success!"
 
+    # pylint: disable=too-many-arguments
     def __init__(self,
                  root_path: str,
                  success_callback: Callable,
                  error_callback: Callable,
+                 environments_manager: Optional[EnvironmentsManager] = None,
+                 environment: Optional[Environment] = None,
                  get_compute_task_def: Callable[[], ComputeTaskDef] = None,
                  compute_task_def: ComputeTaskDef = None,
                  check_mem: bool = False,
@@ -36,7 +40,14 @@ class LocalComputer:
         self.tmp_dir = None
         self.success = False
         self.lock = Lock()
-        self.tt: Optional[DockerTaskThread] = None
+        if (environments_manager and environment)\
+                or (not environments_manager and not environment):
+            raise AttributeError("Either environments_manager or a single"
+                                 " environment is required for LocalComputer"
+                                 " to run")
+        self.environments_manager = environments_manager
+        self.environment = environment
+        self.tt: Optional[TaskThread] = None
         self.dir_manager = DirManager(root_path)
         self.compute_task_def = compute_task_def
         self.get_compute_task_def = get_compute_task_def
@@ -168,19 +179,30 @@ class LocalComputer:
             shutil.rmtree(self.tmp_dir, True)
         os.makedirs(self.tmp_dir)
 
-    def _get_task_thread(self, ctd: ComputeTaskDef) -> DockerTaskThread:
-        return DockerTaskThread(
+    def _get_task_thread(self, ctd: ComputeTaskDef) -> TaskThread:
+        environment = self.environment
+        if self.environments_manager:
+            environment = self.environments_manager\
+                .get_environment_by_task_type(ctd['task_type'])
+        if not environment:
+            task_type = ctd['task_type']
+            logger.error('No environment found for running task of type %s'
+                         ' in LocalComputer',
+                         task_type)
+            raise ValueError(f'No environment for task type {task_type}')
+        if not ctd['src_code']:
+            ctd['src_code'] = environment.get_source_code()
+        return environment.get_task_thread(
             self,
-            ctd['subtask_id'],
-            [DockerImage(**did) for did in ctd['docker_images']],
-            ctd['working_directory'],
-            ctd['src_code'],
-            ctd['extra_data'],
-            ctd['short_description'],
-            self.test_task_res_path,
-            self.tmp_dir,
-            0,
-            check_mem=self.check_mem,
+            subtask_id=ctd['subtask_id'],
+            short_desc=ctd['short_description'],
+            src_code=ctd['src_code'],
+            extra_data=ctd['extra_data'],
+            task_timeout=0,
+            working_dir=ctd['working_directory'],
+            resource_dir=self.test_task_res_path,
+            temp_dir=self.tmp_dir,
+            check_mem=self.check_mem
         )
 
 
@@ -190,10 +212,12 @@ class ComputerAdapter(object):
         self.computer = None
 
     def start_computation(self, root_path, success_callback, error_callback,
-                          compute_task_def, resources, additional_resources):
+                          environment, compute_task_def, resources,
+                          additional_resources):
         self.computer = LocalComputer(root_path=root_path,
                                       success_callback=success_callback,
                                       error_callback=error_callback,
+                                      environment=environment,
                                       compute_task_def=compute_task_def,
                                       resources=resources,
                                       additional_resources=additional_resources)

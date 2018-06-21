@@ -2,7 +2,6 @@ import logging
 
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import Task
-from golem.task.taskcomputer import PyTestTaskThread
 
 logger = logging.getLogger("golem.task")
 
@@ -14,9 +13,12 @@ class TaskTester(LocalComputer):
     # TODO I think there should be Task, not CoreTask type
     # but Task doesn't have query_extra_data_for_test_task method
     # Issue: #1355
-    def __init__(self, task: Task, root_path, success_callback, error_callback):
+    # pylint: disable=too-many-arguments
+    def __init__(self, task: Task, environments_manager, root_path,
+                 success_callback, error_callback) -> None:
         super(TaskTester, self).__init__(
             root_path=root_path,
+            environments_manager=environments_manager,
             success_callback=success_callback,
             error_callback=error_callback,
             get_compute_task_def=task.query_extra_data_for_test_task,
@@ -25,21 +27,6 @@ class TaskTester(LocalComputer):
             comp_success_message=TaskTester.TESTER_SUCCESS,
             resources=task.get_resources())
         self.task = task
-
-    def _get_task_thread(self, ctd):
-        # ctd: ComputeTaskDef
-        if ctd['docker_images']:
-            return LocalComputer._get_task_thread(self, ctd)
-        else:
-            return PyTestTaskThread(self,
-                                    ctd['subtask_id'],
-                                    ctd['working_directory'],
-                                    ctd['src_code'],
-                                    ctd['extra_data'],
-                                    ctd['short_description'],
-                                    self.test_task_res_path,
-                                    self.tmp_dir,
-                                    0)
 
     def computation_success(self, task_thread):
         time_spent = self._get_time_spent()

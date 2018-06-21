@@ -10,7 +10,7 @@ from golem.task.taskbase import Task
 from golem.tools.ci import ci_skip
 from golem.tools.testdirfixture import TestDirFixture
 
-from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.blender.dockerenvironment.blenderenvironment import BlenderEnvironment
 
 
 @ci_skip
@@ -28,55 +28,47 @@ class TestLocalComputer(TestDirFixture):
             self.error_msg = error_msg
 
     def test_computer(self):
-
+        em = mock.Mock()
+        em.get_environment_by_task_type.return_value = BlenderEnvironment()
         files = self.additional_dir_content([1])
         lc = LocalComputer(root_path=self.path,
+                           environments_manager=em,
                            success_callback=self._success_callback,
                            error_callback=self._failure_callback,
-                           get_compute_task_def=self._get_bad_task_def)
-        self.assertIsInstance(lc, LocalComputer)
-        lc.run()
-        assert self.last_error is not None
-        assert self.last_result is None
-        assert self.error_counter == 1
-
-        lc = LocalComputer(root_path=self.path,
-                           success_callback=self._success_callback,
-                           error_callback=self._failure_callback,
-                           get_compute_task_def=self._get_better_task_def,
+                           get_compute_task_def=self._get_task_def,
                            resources=[],
                            additional_resources=files)
         lc.run()
         lc.tt.join(60.0)
         path_ = os.path.join(lc.test_task_res_path, os.path.basename(files[0]))
         assert os.path.isfile(path_)
-        assert self.error_counter == 1
+        assert self.error_counter == 0
         assert self.success_counter == 1
 
         tt = self.TestTaskThread({'data': "some data"}, "some error")
         lc.task_computed(tt)
         assert self.last_result == {"data": "some data"}
         assert self.last_result != "some error"
-        assert self.error_counter == 1
+        assert self.error_counter == 0
         assert self.success_counter == 2
 
         tt = self.TestTaskThread({}, "some error")
         lc.task_computed(tt)
         assert self.last_error == "some error"
-        assert self.error_counter == 2
+        assert self.error_counter == 1
         assert self.success_counter == 2
 
         tt = self.TestTaskThread({}, None)
         lc.task_computed(tt)
         assert self.last_error is None
-        assert self.error_counter == 3
+        assert self.error_counter == 2
         assert self.success_counter == 2
 
         tt = self.TestTaskThread({'data': "some data"}, None)
         tt.error = True
         lc.task_computed(tt)
         assert self.last_error is None
-        assert self.error_counter == 4
+        assert self.error_counter == 3
         assert self.success_counter == 2
 
     def test_prepare_resources_onerror(self):
@@ -92,7 +84,8 @@ class TestLocalComputer(TestDirFixture):
         lc = LocalComputer(root_path=self.path,
                            success_callback=self._success_callback,
                            error_callback=self._failure_callback,
-                           get_compute_task_def=self._get_better_task_def)
+                           environment=mock.Mock(),
+                           get_compute_task_def=self._get_task_def)
 
         task_dir = lc.dir_manager.get_task_test_dir("")
         resource_dir = os.path.join(self.path, 'subdir')
@@ -118,15 +111,13 @@ class TestLocalComputer(TestDirFixture):
 
         reset_permissions(existing_file)
 
-    def _get_bad_task_def(self):
+    def _get_task_def(self):
         ctd = ComputeTaskDef()
-        return ctd
-
-    def _get_better_task_def(self):
-        ctd = ComputeTaskDef()
-        ctd['docker_images'] = [
-            di.to_dict() for di in BlenderEnvironment().docker_images
-        ]
+        ctd['src_code'] = ' '
+        ctd['extra_data'] = {
+            # scene_file is required by BlenderEnvironment's get_task_thread
+            'scene_file': ''
+        }
         return ctd
 
     def _success_callback(self, result, time_spent):

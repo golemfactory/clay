@@ -2,6 +2,8 @@ from unittest.mock import Mock, patch
 
 from apps.appsmanager import AppsManager
 from golem.environments.environment import Environment as DefaultEnvironment
+from golem.environments.environmentsmanager import EnvironmentsManager
+
 from golem.model import Performance
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.testutils import DatabaseFixture, PEP8MixIn
@@ -26,10 +28,10 @@ class TestBenchmarkManager(DatabaseFixture, PEP8MixIn):
 
     def setUp(self):
         super().setUp()
-        am = AppsManager()
-        am.load_all_apps()
+        em = EnvironmentsManager()
+        em.load_all_envs(None, False)
         self.b = BenchmarkManager("NODE1", Mock(), self.path,
-                                  am.get_benchmarks())
+                                  em.get_benchmarks())
 
     def test_benchmarks_not_needed_wo_apps(self):
         assert not BenchmarkManager(None, None, None).benchmarks_needed()

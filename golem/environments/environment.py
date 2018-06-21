@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 import enum
 import logging
 
@@ -54,7 +55,7 @@ class UnsupportReason(enum.Enum):
     MASK_MISMATCH = 'mask_mismatch'
 
 
-class Environment():
+class Environment(ABC):
 
     @classmethod
     def get_id(cls):
@@ -72,16 +73,17 @@ class Environment():
         self.long_description = ""
         self.accept_tasks = False
         # Check if tasks can define the source code
-        self.allow_custom_main_program_file = False
-        self.main_program_file = None
+        self.allow_custom_source_code = False
+        self.default_program_file = None
+        self.source_code_required = False
 
     def check_software(self):
         """ Check if required software is installed on this machine
         :return bool:
         """
-        if not self.allow_custom_main_program_file:
-            return self.main_program_file and \
-                path.isfile(self.main_program_file)
+        if not self.source_code_required and not self.allow_custom_source_code:
+            return self.default_program_file and \
+                   path.isfile(self.default_program_file)
 
         return True
 
@@ -129,6 +131,13 @@ class Environment():
 
         return step * MinPerformanceMultiplier.get()
 
+    # pylint: disable=too-many-arguments
+    @abstractmethod
+    def get_task_thread(self, taskcomputer, subtask_id, short_desc,
+                        src_code, extra_data, task_timeout,
+                        working_dir, resource_dir, temp_dir, **kwargs):
+        pass
+
     def description(self):
         """ Return long description of this environment
         :return str:
@@ -151,9 +160,17 @@ class Environment():
         return desc
 
     def get_source_code(self):
-        if self.main_program_file and path.isfile(self.main_program_file):
-            with open(self.main_program_file) as f:
+        if self.default_program_file and path.isfile(self.default_program_file):
+            with open(self.default_program_file) as f:
                 return f.read()
+
+    @abstractmethod
+    def get_benchmark(self):
+        """
+        Should return a pair of benchmark and benchmark task builder.
+        :return:
+        """
+        pass
 
     @classmethod
     def run_default_benchmark(cls, save=False):

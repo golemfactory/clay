@@ -41,4 +41,4 @@ class TestDummyEnvironment(DatabaseFixture):
         self.assertEqual(self.env.get_min_accepted_performance(), 314.1)
 
     def test_main_program_file(self):
-        assert path.isfile(DummyTaskEnvironment().main_program_file)
+        assert path.isfile(DummyTaskEnvironment().default_program_file)

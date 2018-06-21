@@ -2,6 +2,7 @@ import os
 from unittest.mock import patch
 
 from apps.dummy.benchmark.benchmark import DummyTaskBenchmark
+from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition, DummyTaskOptions
 
 from golem.testutils import TempDirFixture
@@ -10,7 +11,7 @@ from golem.testutils import TempDirFixture
 class TestDummyBenchmark(TempDirFixture):
     def setUp(self):
         super().setUp()
-        self.db = DummyTaskBenchmark()
+        self.db = DummyTaskBenchmark(DummyTaskEnvironment())
 
     def test_is_instance(self):
         self.assertIsInstance(self.db, DummyTaskBenchmark)

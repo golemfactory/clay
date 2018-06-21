@@ -14,9 +14,12 @@ from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 
 from apps.appsmanager import AppsManager
+from apps.blender.dockerenvironment.blenderenvironment import BlenderEnvironment
+from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 import golem
+from apps.lux.luxenvironment import LuxRenderEnvironment
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
@@ -28,7 +31,6 @@ from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
-from golem.model import Performance
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
@@ -857,6 +859,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 apps_manager=apps_manager
             )
 
+        client.environments_manager.load_all_envs(None, False)
+
         client.sync = Mock()
         client.p2pservice = Mock(peers={})
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
@@ -1075,9 +1079,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert all(isinstance(entry, str) for entry in balance)
 
     def test_run_benchmark(self, *_):
-        from apps.blender.blenderenvironment import BlenderEnvironment
         from apps.blender.benchmark.benchmark import BlenderBenchmark
-        from apps.lux.luxenvironment import LuxRenderEnvironment
         from apps.lux.benchmark.benchmark import LuxBenchmark
 
         benchmark_manager = self.client.task_server.benchmark_manager
@@ -1106,8 +1108,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         assert benchmark_manager.run_benchmark.call_count == 2
 
     def test_run_benchmark_fail(self, *_):
-        from apps.dummy.dummyenvironment import DummyTaskEnvironment
-
         def raise_exc(*_args, **_kwargs):
             raise Exception('Test exception')
 
@@ -1370,7 +1370,12 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertEqual(self.client.node.port_statuses.get(port), "timeout")
 
     def test_get_performance_values(self, *_):
-        expected_perf = {DefaultEnvironment.get_id(): 0.0}
+        expected_perf = {
+            DefaultEnvironment.get_id(): 0.0,
+            DummyTaskEnvironment.get_id(): 0.0,
+            LuxRenderEnvironment.get_id(): 0.0,
+            BlenderEnvironment.get_id(): 0.0,
+        }
         assert self.client.get_performance_values() == expected_perf
 
     def test_block_node(self, *_):

@@ -752,6 +752,7 @@ class TestOptNode(TempDirFixture):
 
     def test_start_starts_client(
             self, reactor, mock_gather_results, mock_session, *_):
+        # pylint: disable=protected-access
 
         # given
         mock_gather_results.return_value = mock_gather_results
@@ -774,12 +775,12 @@ class TestOptNode(TempDirFixture):
                          peers=parsed_peer)
 
         self.node._client_factory = Mock()
-        self.node._setup_apps = Mock()
+        self.node._setup_apps_envs = Mock()
 
         self.node.start()
 
         # then
-        assert self.node._setup_apps.called
+        assert self.node._setup_apps_envs.called
         assert self.node.client.sync.called
         assert self.node.client.start.call_count == 1
         self.node.client.connect.assert_called_with(parsed_peer[0])

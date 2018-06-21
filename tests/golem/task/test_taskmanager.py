@@ -98,13 +98,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     def _get_task_header(self, task_id, timeout, subtask_timeout):
         return TaskHeader(
             task_id=task_id,
+            task_type="test_type_%s" % (self.test_nonce,),
             task_owner=Node(
                 key="task_owner_key_%s" % (self.test_nonce,),
                 node_name="test_node_%s" % (self.test_nonce,),
                 pub_addr="task_owner_address_%s" % (self.test_nonce,),
                 pub_port="task_owner_port_%s" % (self.test_nonce,),
             ),
-            environment="test_environ_%s" % (self.test_nonce,),
             resource_size=2 * 1024,
             estimated_memory=3 * 1024,
             max_price=1010,
@@ -121,6 +121,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
         ctd['subtask_id'] = subtask_id
+        ctd['task_type'] = "DEFAULT"
         ctd['deadline'] = timeout_to_deadline(subtask_timeout)
 
         task_mock.query_extra_data_return_value = Task.ExtraData(
@@ -401,6 +402,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                 ctd = ComputeTaskDef()
                 ctd['task_id'] = self.header.task_id
                 ctd['subtask_id'] = self.subtasks_id[0]
+                ctd['task_type'] = "DEFAULT"
                 self.subtasks_id = self.subtasks_id[1:]
                 e = self.ExtraData(False, ctd)
                 return e

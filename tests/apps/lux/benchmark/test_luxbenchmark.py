@@ -3,6 +3,7 @@ import tempfile
 import unittest
 
 from apps.lux.benchmark.benchmark import LuxBenchmark
+from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.task.luxrendertask import LuxRenderOptions
 from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
@@ -10,7 +11,7 @@ from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 
 class TestLuxBenchmark(unittest.TestCase):
     def setUp(self):
-        self.lb = LuxBenchmark()
+        self.lb = LuxBenchmark(LuxRenderEnvironment())
 
     def test_is_instance(self):
         self.assertIsInstance(self.lb, LuxBenchmark)
@@ -25,4 +26,3 @@ class TestLuxBenchmark(unittest.TestCase):
         self.assertTrue(self.lb.task_definition.task_type == "LuxRender")
         self.assertTrue(self.lb.task_definition.output_format == "png")
         self.assertTrue(os.path.isfile(self.lb.task_definition.main_scene_file))
-        self.assertTrue(os.path.isfile(self.lb.task_definition.main_program_file))

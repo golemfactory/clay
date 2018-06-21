@@ -678,7 +678,8 @@ class Client(HardwarePresetsMixin):
         except Exception as e:
             return on_error(to_unicode(e))
 
-        self.task_tester = TaskTester(task, self.datadir, on_success, on_error)
+        self.task_tester = TaskTester(task, self.environments_manager,
+                                      self.datadir, on_success, on_error)
         self.task_tester.run()
         self.task_test_result = json.dumps(
             {"status": TaskTestStatus.started, "error": True})

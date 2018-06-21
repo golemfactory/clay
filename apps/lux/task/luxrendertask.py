@@ -14,7 +14,6 @@ import apps.lux.resources.scenefilereader as sfr
 from apps.core.task import coretask
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.core.task.coretaskstate import Options
-from apps.lux.luxenvironment import LuxRenderEnvironment
 from apps.lux.resources.scenefileeditor import regenerate_lux_file
 from apps.lux.resources.scenefilereader import make_scene_analysis
 from apps.rendering.resources.imgrepr import load_img, blend, load_as_PILImgRepr
@@ -41,7 +40,6 @@ class LuxRenderDefaults(renderingtaskstate.RendererDefaults):
     def __init__(self):
         super(LuxRenderDefaults, self).__init__()
         self.output_format = "EXR"
-        self.main_program_file = LuxRenderEnvironment().main_program_file
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 5
@@ -120,13 +118,11 @@ class LuxRenderTaskTypeInfo(CoreTaskTypeInfo):
 class LuxRenderOptions(Options):
     def __init__(self):
         super(LuxRenderOptions, self).__init__()
-        self.environment = LuxRenderEnvironment()
         self.halttime = 50
         self.haltspp = 10
 
 
 class LuxTask(renderingtask.RenderingTask):
-    ENVIRONMENT_CLASS = LuxRenderEnvironment
     VERIFIER_CLASS = LuxRenderVerifier
 
     ################
@@ -180,6 +176,11 @@ class LuxTask(renderingtask.RenderingTask):
 
         return write_interval
 
+    @staticmethod
+    def _get_environment():
+        from apps.lux.luxenvironment import LuxRenderEnvironment
+        return LuxRenderEnvironment()
+
     @coretask.accepting
     def query_extra_data(self,
                          perf_index,
@@ -204,7 +205,7 @@ class LuxTask(renderingtask.RenderingTask):
             [0, 1, 0, 1],
             self.output_format
         )
-        scene_dir = os.path.dirname(self._get_scene_file_rel_path())
+        scene_dir = self._get_scene_file_rel_path()
 
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": start_task,
@@ -246,7 +247,7 @@ class LuxTask(renderingtask.RenderingTask):
             crop=[0, 1, 0, 1],
             output_format=self.output_format)
 
-        scene_dir = os.path.dirname(self._get_scene_file_rel_path())
+        scene_dir = self._get_scene_file_rel_path()
 
         extra_data = {
             "path_root": self.main_scene_dir,
@@ -280,7 +281,7 @@ class LuxTask(renderingtask.RenderingTask):
             crop=self.random_crop_window_for_verification,
             output_format=self.output_format)
 
-        scene_dir = os.path.dirname(self._get_scene_file_rel_path())
+        scene_dir = self._get_scene_file_rel_path()
 
         extra_data = {
             "path_root": self.main_scene_dir,
@@ -356,7 +357,7 @@ class LuxTask(renderingtask.RenderingTask):
             crop=[0, 1, 0, 1],
             output_format="png")
 
-        scene_dir = os.path.dirname(self._get_scene_file_rel_path())
+        scene_dir = self._get_scene_file_rel_path()
 
         extra_data = {
             "path_root": self.main_scene_dir,
@@ -397,7 +398,7 @@ class LuxTask(renderingtask.RenderingTask):
             self.output_format
         )
 
-        scene_dir = os.path.dirname(self._get_scene_file_rel_path())
+        scene_dir = self._get_scene_file_rel_path()
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": 0,
                       "end_task": 0,
@@ -545,6 +546,7 @@ class LuxTask(renderingtask.RenderingTask):
 
             computer = LocalComputer(
                 root_path=path,
+                environment=LuxTask._get_environment(),
                 success_callback=self.__final_img_ready,
                 error_callback=self.__final_img_error,
                 compute_task_def=self.query_extra_data_for_reference_task(
@@ -563,6 +565,7 @@ class LuxTask(renderingtask.RenderingTask):
             root_path=path,
             success_callback=self.__final_img_ready,
             error_callback=self.__final_img_error,
+            environment=LuxTask._get_environment(),
             get_compute_task_def=self.query_extra_data_for_flm_merging_test,
             resources=self.task_resources
         )
@@ -574,6 +577,7 @@ class LuxTask(renderingtask.RenderingTask):
             root_path=self.root_path,
             success_callback=self.__final_img_ready,
             error_callback=self.__final_img_error,
+            environment=LuxTask._get_environment(),
             get_compute_task_def=self.query_extra_data_for_merge,
             resources=self.task_resources,
             additional_resources=[flm]
@@ -608,6 +612,7 @@ class LuxTask(renderingtask.RenderingTask):
             root_path=self.root_path,
             success_callback=self.__final_flm_ready,
             error_callback=self.__final_flm_failure,
+            environment=LuxTask._get_environment(),
             get_compute_task_def=self.query_extra_data_for_final_flm,
             resources=[],
             additional_resources=list(self.collected_file_names.values())

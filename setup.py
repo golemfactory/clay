@@ -56,6 +56,7 @@ setup(
             'golemcli = golemcli:start',
         ]
     },
+    # pylint: disable=line-too-long
     data_files=[
         (path.normpath('../../'), [
             'golemapp.py', 'golemcli.py', 'loggingconfig.py'
@@ -64,16 +65,20 @@ setup(
             path.normpath('golem/TERMS.html'),
         ]),
         (path.normpath('../../golem/apps'), [
-            path.normpath('apps/registered.ini'),
-            path.normpath('apps/registered_test.ini'),
+            path.normpath('apps/registered_envs.ini'),
+            path.normpath('apps/registered_envs_test.ini'),
+            path.normpath('apps/registered_tasks.ini'),
+            path.normpath('apps/registered_tasks_test.ini'),
             path.normpath('apps/images.ini')
         ]),
         (path.normpath('../../golem/apps/rendering/benchmark/minilight'), [
             path.normpath('apps/rendering/benchmark/minilight/cornellbox.ml.txt'),
         ]),
         (path.normpath('../../golem/apps/blender/resources/scripts'), [
-            path.normpath('apps/blender/resources/scripts/blendercrop.py.template'),
-            path.normpath('apps/blender/resources/scripts/docker_blendertask.py')
+            path.normpath('apps/blender/resources/scripts/blendercrop.py.template')  # noqa
+        ]),
+        (path.normpath('../../golem/apps/blender/dockerenvironment/resources/scripts'), [  # noqa
+            path.normpath('apps/blender/resources/scripts/docker_blendertask.py')  # noqa
         ]),
         (path.normpath('../../golem/apps/lux/resources/scripts'), [
             path.normpath('apps/lux/resources/scripts/docker_luxtask.py'),
