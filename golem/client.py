@@ -645,10 +645,10 @@ class Client(HardwarePresetsMixin):
         except Exception as e:
             return on_error(to_unicode(e))
 
-        self.task_tester = TaskTester(task, self.datadir, on_success, on_error)
-        self.task_tester.run()
         self.task_test_result = json.dumps(
             {"status": TaskTestStatus.started, "error": True})
+        self.task_tester = TaskTester(task, self.datadir, on_success, on_error)
+        self.task_tester.run()
 
     def abort_test_task(self):
         logger.debug('Aborting test task ...')
