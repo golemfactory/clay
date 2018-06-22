@@ -619,13 +619,15 @@ class Client(HardwarePresetsMixin):
 
     def _run_test_task(self, t_dict):
 
-        def on_success(*args, **kwargs):
+        def on_success(result, estimated_memory, time_spent, **kwargs):
             logger.info('Test task succes "%r"', t_dict)
             self.task_tester = None
             self.task_test_result = json.dumps(
                 {
                     "status": TaskTestStatus.success,
-                    "error": args,
+                    "result": result,
+                    "estimated_memory": estimated_memory,
+                    "time_spent": time_spent,
                     "more": kwargs
                 })
 
@@ -643,10 +645,10 @@ class Client(HardwarePresetsMixin):
         except Exception as e:
             return on_error(to_unicode(e))
 
-        self.task_tester = TaskTester(task, self.datadir, on_success, on_error)
-        self.task_tester.run()
         self.task_test_result = json.dumps(
             {"status": TaskTestStatus.started, "error": True})
+        self.task_tester = TaskTester(task, self.datadir, on_success, on_error)
+        self.task_tester.run()
 
     def abort_test_task(self):
         logger.debug('Aborting test task ...')
