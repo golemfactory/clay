@@ -2,6 +2,7 @@ import pathlib
 import sys
 import tempfile
 from os.path import dirname, join
+from os import close
 
 from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.task.blenderrendertask import BlenderRendererOptions
@@ -19,7 +20,8 @@ class BlenderBenchmark(RenderingBenchmark):
             this_dir = pathlib.Path(__file__).resolve().parent
             self.blender_task_path = str(this_dir / "test_task")
         task_def = self.task_definition
-        task_def.output_file = tempfile.mkstemp("blender_benchmark.png")[1]
+        handle, task_def.output_file = tempfile.mkstemp("blender_benchmark.png")[1]
+        close(handle)
         task_def.task_type = "Blender"
         task_def.output_format = "png"
         task_def.options = BlenderRendererOptions()

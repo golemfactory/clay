@@ -25,7 +25,8 @@ class NodeConfig(object):
         self._section = "Node"
 
         for env_id, (env_name, supported) in environments.items():
-            ConfigEntry.create_property(self.section(), env_id.lower(), int(supported), self, env_name)
+            ConfigEntry.create_property(self.section(), env_id.lower(),
+                                        int(supported), self, env_name)
 
     def section(self):
         return self._section

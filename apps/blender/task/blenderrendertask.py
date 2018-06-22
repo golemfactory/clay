@@ -126,7 +126,7 @@ class PreviewUpdater(object):
 
 
 class BlenderTaskTypeInfo(CoreTaskTypeInfo):
-    """ Blender App descryption that can be used by interface to define
+    """ Blender App description that can be used by interface to define
     parameters and task build
     """
 
