@@ -13,10 +13,10 @@ def get_datadir(role: str):
 
 
 PROVIDER_RPC_PORT = os.environ.get('GOLEM_PROVIDER_RPC_PORT', '61001')
-REQUESTOR_RPC_PORT = os.environ.get('GOLEM_PROVIDER_RPC_PORT', '61000')
+REQUESTOR_RPC_PORT = os.environ.get('GOLEM_REQUESTOR_RPC_PORT', '61000')
 
 PROVIDER_PASSWORD = os.environ.get('GOLEM_PROVIDER_PASSWORD', 'dupa.8')
-REQUESTOR_PASSWORD = os.environ.get('GOLEM_PROVIDER_PASSWORD', 'dupa.8')
+REQUESTOR_PASSWORD = os.environ.get('GOLEM_REQUESTOR_PASSWORD', 'dupa.8')
 
 REQUESTOR_ARGS = [
     '--concent', os.environ.get('GOLEM_CONCENT_VARIANT', 'staging'),
@@ -28,7 +28,7 @@ REQUESTOR_ARGS = [
 ]
 
 PROVIDER_ARGS = [
-    '--concent', 'staging',
+    '--concent', os.environ.get('GOLEM_CONCENT_VARIANT', 'staging'),
     '--datadir', get_datadir('provider'),
     '--password', PROVIDER_PASSWORD,
     '--accept-terms',

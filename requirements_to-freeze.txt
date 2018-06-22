@@ -48,8 +48,8 @@ token_bucket==0.2.0
 py-cpuinfo==3.3.0
 humanize==0.5.1
 raven
--e git+https://github.com/golemfactory/golem-messages.git@bytes_uuid#egg=golem_messages
--e git+https://github.com/golemfactory/golem-smart-contracts-interface.git@forced_subtask_payment_subs#egg=golem_sci
+Golem-Messages==2.10.0
+Golem-Smart-Contracts-Interface==1.4.0
 Golem-Verificator==1.0.8
 html2text==2018.1.9
 zxcvbn-python

@@ -6,6 +6,7 @@ from typing import Dict, List
 from threading import Lock
 
 from sortedcontainers import SortedListWithKey
+from eth_utils import encode_hex
 from ethereum.utils import denoms
 from pydispatch import dispatcher
 from twisted.internet import threads
@@ -13,7 +14,6 @@ from twisted.internet import threads
 import golem_sci
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import db, Payment, PaymentStatus
-from golem.utils import encode_hex
 
 log = logging.getLogger("golem.pay")
 
@@ -32,7 +32,7 @@ def _make_batch_payments(payments: List[Payment]) -> List[golem_sci.Payment]:
         payees[p.payee] += p.value
     res = []
     for payee, amount in payees.items():
-        res.append(golem_sci.Payment('0x' + encode_hex(payee), amount))
+        res.append(golem_sci.Payment(encode_hex(payee), amount))
     return res
 
 
