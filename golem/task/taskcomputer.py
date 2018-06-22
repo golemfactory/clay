@@ -168,6 +168,8 @@ class TaskComputer(object):
         self.reset()
 
     def task_computed(self, task_thread):
+        self.reset()
+
         if task_thread.end_time is None:
             task_thread.end_time = time.time()
 
@@ -228,8 +230,6 @@ class TaskComputer(object):
 
         dispatcher.send(signal='golem.monitor', event='computation_time_spent',
                         success=was_success, value=work_time_to_be_paid)
-
-        self.counting_task = None
 
     def run(self):
         """ Main loop of task computer """
