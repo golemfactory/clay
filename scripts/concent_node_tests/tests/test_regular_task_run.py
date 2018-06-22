@@ -5,8 +5,8 @@ from scripts.concent_node_tests.tests.base import NodeTestPlaybook
 
 
 class RegularRun(NodeTestPlaybook):
-    provider_node_script = 'provider/regular'
-    requestor_node_script = 'requestor/regular'
+    provider_node_script = 'provider/debug'
+    requestor_node_script = 'requestor/debug'
 
 
 playbook = RegularRun.start()

@@ -713,7 +713,9 @@ class TaskManager(TaskEventListener):
             for s in list(ts.subtask_states.values()):
                 if s.subtask_status.is_computed():
                     if cur_time > s.deadline:
-                        logger.info("Subtask %r dies", s.subtask_id)
+                        logger.info("Subtask %r dies with status %r",
+                                    s.subtask_id,
+                                    s.subtask_status.value)
                         s.subtask_status = SubtaskStatus.failure
                         nodes_with_timeouts.append(s.computer.node_id)
                         t.computation_failed(s.subtask_id)

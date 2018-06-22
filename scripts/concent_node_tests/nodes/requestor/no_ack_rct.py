@@ -17,7 +17,7 @@ sys.path.insert(0, 'golem')
 
 from golemapp import start  # noqa: E402 module level import not at top of file
 
-sys.argv.extend(params.REQUESTOR_ARGS)
+sys.argv.extend(params.REQUESTOR_ARGS_DEBUG)
 
 with mock.patch(
         "golem.task.tasksession.concent_helpers.process_report_computed_task",

@@ -597,19 +597,26 @@ class Client(HardwarePresetsMixin):
             client_options.timeout = deadline_to_timeout(task.header.deadline)
 
             _resources = self.resource_server.add_task(
-                package_path, package_sha1, task_id,
+                package_path, package_sha1, task_id, task.header.resource_size,
                 client_options=client_options)
             _resources.addCallbacks(task_created, error)
 
         def task_created(resource_server_result):
-            resource_manager_result, package_path, package_hash = \
-                resource_server_result
+            resource_manager_result, package_path,\
+                package_hash, package_size = resource_server_result
 
             try:
                 task_state = task_manager.tasks_states[task_id]
                 task_state.package_path = package_path
                 task_state.package_hash = package_hash
+                task_state.package_size = package_size
                 task_state.resource_hash = resource_manager_result[0]
+                logger.debug(
+                    "Setting task state - package_path: %s, package_hash: %s, "
+                    "package_size: %s, resource_hash: %s",
+                    task_state.package_path, task_state.package_hash,
+                    task_state.package_size, task_state.resource_hash
+                )
             except Exception as exc:  # pylint: disable=broad-except
                 error(exc)
                 return
