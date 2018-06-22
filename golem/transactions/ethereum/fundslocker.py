@@ -11,9 +11,13 @@ logger = logging.getLogger(__name__)
 
 class TaskFundsLock:  # pylint: disable=too-few-public-methods
     def __init__(self, task):
-        self.gnt_lock = task.price
+        self.price = task.subtask_price
         self.num_tasks = task.total_tasks
         self.task_deadline = task.header.deadline
+
+    @property
+    def gnt_lock(self):
+        return self.price * self.num_tasks
 
 
 class FundsLocker(LoopingCallService):
