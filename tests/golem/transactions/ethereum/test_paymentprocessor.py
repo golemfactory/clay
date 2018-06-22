@@ -453,7 +453,8 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.batch_transfer.side_effect = Exception
 
         with freeze_time(timestamp_to_datetime(ts)):
-            self.pp.sendout(0)
+            with self.assertRaises(Exception):
+                self.pp.sendout(0)
             self._assert_batch_transfer_called_with([scip], ts)
             self.sci.batch_transfer.reset_mock()
 
