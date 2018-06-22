@@ -619,13 +619,15 @@ class Client(HardwarePresetsMixin):
 
     def _run_test_task(self, t_dict):
 
-        def on_success(*args, **kwargs):
+        def on_success(result, estimated_memory, time_spent, **kwargs):
             logger.info('Test task succes "%r"', t_dict)
             self.task_tester = None
             self.task_test_result = json.dumps(
                 {
                     "status": TaskTestStatus.success,
-                    "error": args,
+                    "result": result,
+                    "estimated_memory": estimated_memory,
+                    "time_spent": time_spent,
                     "more": kwargs
                 })
 
