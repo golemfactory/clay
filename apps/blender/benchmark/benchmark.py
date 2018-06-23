@@ -20,7 +20,7 @@ class BlenderBenchmark(RenderingBenchmark):
             this_dir = pathlib.Path(__file__).resolve().parent
             self.blender_task_path = str(this_dir / "test_task")
         task_def = self.task_definition
-        handle, task_def.output_file = tempfile.mkstemp("blender_benchmark.png")[1]
+        handle, task_def.output_file = tempfile.mkstemp("blender_benchmark.png")
         close(handle)
         task_def.task_type = "Blender"
         task_def.output_format = "png"
