@@ -3,7 +3,6 @@ import os
 import logging
 import math
 import numpy
-from unittest import TestCase
 from twisted.internet.defer import Deferred
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 from golem.task.localcomputer import ComputerAdapter
@@ -283,7 +282,7 @@ class TestGenerateCrops(TempDirFixture):
                 top_p = math.floor(numpy.float32(crop_window[3]) *
                                    numpy.float32(res[1]))
                 cropper = BlenderReferenceGenerator()
-                values, pixels, crop_size = cropper.generate_split_data(
+                values, pixels, _ = cropper.generate_split_data(
                     (res[0], res[1]), crop_window, 3)
                 for j in range(0, 3):
                     height_p = math.floor(numpy.float32(
@@ -296,7 +295,6 @@ class TestGenerateCrops(TempDirFixture):
                     assert bottom_p <= top_p - pixels[j][1] <= top_p
                     assert left_p <= pixels[j][0] + width_p <= right_p
                     assert bottom_p <= top_p - pixels[j][1] - height_p <= top_p
-
 
     def test_find_crop_size(self):
         assert self.cropper._find_split_size(800) == 8
@@ -330,7 +328,7 @@ class TestGenerateCrops(TempDirFixture):
                 crops_info = self.cropper.generate_split_data(resolution, crop,
                                                               num, ncrop_size)
             assert len(crops_info) == 3
-            crops, pixels, size = crops_info
+            crops, pixels, _ = crops_info
             assert len(crops) == num
             assert len(pixels) == num
             for pixel_ in pixels:

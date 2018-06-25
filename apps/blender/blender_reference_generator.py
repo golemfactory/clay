@@ -2,9 +2,9 @@ import math
 import random
 import os
 import logging
-import numpy
 from copy import deepcopy
 from functools import partial
+import numpy
 
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from golem.core.common import timeout_to_deadline
@@ -14,6 +14,7 @@ logger = logging.getLogger("blendercroppper")
 
 # FIXME #2086
 # pylint: disable=R0903
+# pylint: disable=R0902
 class CropContext:
     def __init__(self, crops_data, computer,
                  subtask_data, callbacks):
@@ -51,6 +52,7 @@ class BlenderReferenceGenerator:
         self.split_pixels = []
         self.rendered_crops_results = {}
 
+    # pylint: disable=R0914
     def generate_split_data(self, resolution, image_border, splits_num,
                             crop_size=None):
         """

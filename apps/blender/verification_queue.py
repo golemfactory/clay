@@ -87,8 +87,6 @@ class VerificationQueue:
         try:
             entry.kwargs["reference_generator"] = BlenderReferenceGenerator()
             verifier = entry.verifier_class(callback, entry.kwargs)
-            # FIXME set this from golem core, this code should not know about
-            # LocalComputer or cmputer adapter. Maybe create an interface object.
             verifier.computer = ComputerAdapter()
             if deadline_to_timeout(entry.deadline) > 0:
                 if not verifier.simple_verification(entry.kwargs):
@@ -107,7 +105,6 @@ class VerificationQueue:
             logger.error("Failed to start verification of subtask %r: %r",
                          subtask_id, exc)
             self._process_queue()
-
 
     def _reset(self) -> None:
         self._queue = queue.Queue()

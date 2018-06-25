@@ -11,10 +11,10 @@ class DummyTaskVerifier(CoreVerifier):
         super().__init__(callback)
         self.subtask_info = verification_data["subtask_info"]
 
-    def _verify_result(self, verification_data):
+    def _verify_result(self, results):
 
-        results = verification_data["results"]
-        subtask_info = verification_data["subtask_info"]
+        results = results["results"]
+        subtask_info = results["subtask_info"]
 
         for result in results:
             _, ext = os.path.splitext(result)
