@@ -9,14 +9,13 @@ import uuid
 from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
-from threading import Lock, Thread
+from threading import Lock
 from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
 from twisted.internet.defer import (
     inlineCallbacks,
-    returnValue,
     gatherResults,
     Deferred)
 
@@ -38,11 +37,9 @@ from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
-from golem.core.threads import callback_wrapper
 from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
-from golem.environments.environment import Environment as DefaultEnvironment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
@@ -66,8 +63,10 @@ from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resource import get_resources_for_task, ResourceType
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.task import taskpreset
+from golem.task.masking import Mask
 from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskbase import Task as TaskBase
+from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus, SubtaskStatus
 from golem.task.tasktester import TaskTester
@@ -76,6 +75,11 @@ from golem.tools.talkback import enable_sentry_logger
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
 from golem.transactions.ethereum.fundslocker import FundsLocker
+
+# Minimum num_workers is 4 to avoid delayed start in case of
+# task with very few subtasks (for small number of subtasks it is
+# likable that initial mask would rule out all the nodes)
+MIN_NUM_WORKERS_FOR_MASK = 4
 
 logger = logging.getLogger(__name__)
 
@@ -110,7 +114,8 @@ class Client(HardwarePresetsMixin):
             start_geth: bool = False,
             start_geth_port: Optional[int] = None,
             geth_address: Optional[str] = None,
-            apps_manager: AppsManager = AppsManager()) -> None:
+            apps_manager: AppsManager = AppsManager(),
+            task_finished_cb=None) -> None:
 
         self.apps_manager = apps_manager
         self.datadir = datadir
@@ -124,6 +129,9 @@ class Client(HardwarePresetsMixin):
         self.app_config = app_config
         self.config_desc = config_desc
         self.config_approver = ConfigApprover(self.config_desc)
+
+        if self.config_desc.in_shutdown:
+            self.update_setting('in_shutdown', False)
 
         logger.info(
             'Client "%s", datadir: %s',
@@ -207,6 +215,7 @@ class Client(HardwarePresetsMixin):
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = str(uuid.uuid4())
+        self._task_finished_cb = task_finished_cb
 
         dispatcher.connect(
             self.p2p_listener,
@@ -317,7 +326,8 @@ class Client(HardwarePresetsMixin):
             use_ipv6=self.config_desc.use_ipv6,
             use_docker_manager=self.use_docker_manager,
             task_archiver=self.task_archiver,
-            apps_manager=self.apps_manager
+            apps_manager=self.apps_manager,
+            task_finished_cb=self._task_finished_cb,
         )
 
         monitoring_publisher_service = MonitoringPublisherService(
@@ -327,6 +337,15 @@ class Client(HardwarePresetsMixin):
                 60))
         monitoring_publisher_service.start()
         self._services.append(monitoring_publisher_service)
+
+        if self.config_desc.net_masking_enabled:
+            mask_udpate_service = MaskUpdateService(
+                task_manager=self.task_server.task_manager,
+                interval_seconds=self.config_desc.mask_update_interval,
+                update_num_bits=self.config_desc.mask_update_num_bits
+            )
+            mask_udpate_service.start()
+            self._services.append(mask_udpate_service)
 
         dir_manager = self.task_server.task_computer.dir_manager
 
@@ -523,6 +542,9 @@ class Client(HardwarePresetsMixin):
         self._unlock_datadir()
 
     def enqueue_new_task(self, task_dict):
+        if self.config_desc.in_shutdown:
+            raise Exception('Can not enqueue task: shutdown is in progress, '
+                            'toggle shutdown mode off to create a new tasks.')
         task_manager = self.task_server.task_manager
         _result = Deferred()
 
@@ -556,25 +578,45 @@ class Client(HardwarePresetsMixin):
         def package_created(packager_result):
             package_path, package_sha1 = packager_result
             task.header.resource_size = path.getsize(package_path)
+
+            if self.config_desc.net_masking_enabled:
+                num_workers = max(
+                    task.get_total_tasks() *
+                    self.config_desc.initial_mask_size_factor,
+                    MIN_NUM_WORKERS_FOR_MASK)
+                task.header.mask = Mask.get_mask_for_task(
+                    desired_num_workers=num_workers,
+                    network_size=self.p2pservice.get_estimated_network_size()
+                )
+            else:
+                task.header.mask = Mask()
+
             task_manager.add_new_task(task)
 
             client_options = self.task_server.get_share_options(task_id, None)
             client_options.timeout = deadline_to_timeout(task.header.deadline)
 
             _resources = self.resource_server.add_task(
-                package_path, package_sha1, task_id,
+                package_path, package_sha1, task_id, task.header.resource_size,
                 client_options=client_options)
             _resources.addCallbacks(task_created, error)
 
         def task_created(resource_server_result):
-            resource_manager_result, package_path, package_hash = \
-                resource_server_result
+            resource_manager_result, package_path,\
+                package_hash, package_size = resource_server_result
 
             try:
                 task_state = task_manager.tasks_states[task_id]
                 task_state.package_path = package_path
                 task_state.package_hash = package_hash
+                task_state.package_size = package_size
                 task_state.resource_hash = resource_manager_result[0]
+                logger.debug(
+                    "Setting task state - package_path: %s, package_hash: %s, "
+                    "package_size: %s, resource_hash: %s",
+                    task_state.package_path, task_state.package_hash,
+                    task_state.package_size, task_state.resource_hash
+                )
             except Exception as exc:  # pylint: disable=broad-except
                 error(exc)
                 return
@@ -812,7 +854,13 @@ class Client(HardwarePresetsMixin):
         return str(key) if key else None
 
     def get_settings(self):
-        return DictSerializer.dump(self.config_desc)
+        settings = DictSerializer.dump(self.config_desc, typed=False)
+
+        for key, value in settings.items():
+            if ConfigApprover.is_big_int(key):
+                settings[key] = str(value)
+
+        return settings
 
     def get_setting(self, key):
         if not hasattr(self.config_desc, key):
@@ -959,10 +1007,15 @@ class Client(HardwarePresetsMixin):
     def get_withdraw_gas_cost(
             self,
             amount: Union[str, int],
+            destination: str,
             currency: str) -> int:
         if isinstance(amount, str):
             amount = int(amount)
-        return self.transaction_system.get_withdraw_gas_cost(amount, currency)
+        return self.transaction_system.get_withdraw_gas_cost(
+            amount,
+            destination,
+            currency,
+        )
 
     def withdraw(
             self,
@@ -981,19 +1034,12 @@ class Client(HardwarePresetsMixin):
         else:
             lock = eth_lock
 
-        return self.transaction_system.withdraw(amount, destination, currency,
-                                                lock)
-
-    def get_task_cost(self, task_id):
-        """
-        Get current cost of the task defined by @task_id
-        :param task_id: Task ID
-        :return: Cost of the task
-        """
-        cost = self.task_server.task_manager.get_payment_for_task_id(task_id)
-        if cost is None:
-            return 0.0
-        return cost
+        return self.transaction_system.withdraw(
+            amount,
+            destination,
+            currency,
+            lock,
+        )
 
     # It's defined here only for RPC exposure in
     # golem.rpc.mapping.rpcmethodnames
@@ -1150,23 +1196,11 @@ class Client(HardwarePresetsMixin):
     def run_benchmark(self, env_id):
         deferred = Deferred()
 
-        if env_id != DefaultEnvironment.get_id():
-            benchmark_manager = self.task_server.benchmark_manager
-            benchmark_manager.run_benchmark_for_env_id(env_id,
-                                                       deferred.callback,
-                                                       deferred.errback)
-            result = yield deferred
-            returnValue(result)
-        else:
+        self.task_server.benchmark_manager.run_benchmark_for_env_id(
+            env_id, deferred.callback, deferred.errback)
 
-            kwargs = {'func': DefaultEnvironment.run_default_benchmark,
-                      'callback': deferred.callback,
-                      'errback': deferred.errback,
-                      'num_cores': self.config_desc.num_cores,
-                      'save': True}
-            Thread(target=callback_wrapper, kwargs=kwargs).start()
-            result = yield deferred
-            returnValue(result)
+        result = yield deferred
+        return result
 
     def enable_environment(self, env_id):
         self.environments_manager.change_accept_tasks(env_id, True)
@@ -1302,7 +1336,7 @@ class Client(HardwarePresetsMixin):
 
             result = yield deferred
             logger.info('change hw config result: %r', result)
-            returnValue(self.get_performance_values())
+            return self.get_performance_values()
 
     def __lock_datadir(self):
         if not path.exists(self.datadir):
@@ -1481,3 +1515,33 @@ class TaskCleanerService(LoopingCallService):
 
     def _run(self):
         self._client.clean_old_tasks()
+
+
+class MaskUpdateService(LoopingCallService):
+
+    def __init__(
+            self,
+            task_manager: TaskManager,
+            interval_seconds: int,
+            update_num_bits: int
+    ) -> None:
+        self._task_manager: TaskManager = task_manager
+        self._update_num_bits = update_num_bits
+        self._interval = interval_seconds
+        super().__init__(interval_seconds)
+
+    def _run(self) -> None:
+        logger.info('Updating masks')
+        # Using list() because tasks could be changed by another thread
+        for task_id, task in list(self._task_manager.tasks.items()):
+            if not task.needs_computation():
+                continue
+            task_state = self._task_manager.query_task_state(task_id)
+            if task_state.elapsed_time < self._interval:
+                continue
+
+            self._task_manager.decrease_task_mask(
+                task_id=task_id,
+                num_bits=self._update_num_bits)
+            logger.info('Updating mask for task %r Mask size: %r',
+                        task_id, task.header.mask.num_bits)

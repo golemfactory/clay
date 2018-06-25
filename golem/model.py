@@ -1,17 +1,16 @@
 import datetime
+import enum
 import inspect
 import json
 import pickle
-
-import enum
-import peewee
+import sys
 # Type is used for old-style (pre Python 3.6) type annotation
 from typing import Optional, Type  # pylint: disable=unused-import
 
-import sys
+from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
 from golem_messages import message
-from peewee import (BooleanField, CharField, CompositeKey, DateTimeField,
+from peewee import (Field, BooleanField, CharField, CompositeKey, DateTimeField,
                     FloatField, IntegerField, Model, SmallIntegerField,
                     TextField, BlobField)
 
@@ -19,7 +18,6 @@ from golem.core.simpleserializer import DictSerializable
 from golem.database import GolemSqliteDatabase
 from golem.network.p2p.node import Node
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
-from golem.utils import decode_hex, encode_hex
 
 # Indicates how many KnownHosts can be stored in the DB
 MAX_STORED_HOSTS = 4
@@ -61,7 +59,7 @@ class RawCharField(CharField):
     """ Char field without auto utf-8 encoding."""
 
     def db_value(self, value):
-        return str(encode_hex(value))
+        return encode_hex(value)[2:]
 
     def python_value(self, value):
         return decode_hex(value)
@@ -455,7 +453,7 @@ def collect_db_fields(module: str = __name__):
         sys.modules[module],
         lambda cls: (
             inspect.isclass(cls) and
-            issubclass(cls, peewee.Field)
+            issubclass(cls, Field)
         )
     )
 

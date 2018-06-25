@@ -1,10 +1,10 @@
-import binascii
 import logging
 import socket
 import sys
 
 import semantic_version
 
+from eth_utils import decode_hex, encode_hex
 from ethereum.utils import sha3
 
 logger = logging.getLogger(__name__)
@@ -46,30 +46,8 @@ class UnicodeFormatter(logging.Formatter):
         return s
 
 
-def decode_hex(s):
-    if isinstance(s, str):
-        if s.startswith('0x'):
-            s = s[2:]
-        return bytes.fromhex(s)
-    if isinstance(s, (bytes, bytearray)):
-        if s[0] == b'0' and s[1] == b'x':
-            s = s[2:]
-        return binascii.unhexlify(s)
-    raise TypeError(f'Value {s} must be an instance of str or bytes: {type(s)}')
-
-
-def encode_hex(b):
-    if isinstance(b, str):
-        b = bytes(b, 'utf-8')
-    if isinstance(b, (bytes, bytearray)):
-        if b[0] == b'0' and b[1] == b'x':
-            b = b[2:]
-        return str(binascii.hexlify(b), 'utf-8')
-    raise TypeError('Value must be an instance of str or bytes')
-
-
 def pubkeytoaddr(pubkey: str) -> str:
-    return '0x' + encode_hex(sha3(decode_hex(pubkey))[12:])
+    return encode_hex(sha3(decode_hex(pubkey))[12:])
 
 
 def tee_target(prefix, proc, input_stream, path, stream):

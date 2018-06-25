@@ -4,7 +4,6 @@ from unittest.mock import patch, Mock
 
 from eth_utils import encode_hex, to_checksum_address
 from ethereum.transactions import Transaction
-from ethereum.utils import zpad
 
 from golem.ethereum.node import log, NodeProcess
 from golem.testutils import PEP8MixIn, TempDirFixture
@@ -111,11 +110,6 @@ class EthereumClientNodeTest(TempDirFixture):
         assert c == 0
         b = client.get_balance(hex_addr)
         assert b == 0
-
-        eth = client.web3.eth
-        with patch.object(eth, 'getBalance', side_effect=ValueError):
-            b = client.get_balance(hex_addr)
-        assert b is None
 
     def test_send_raw_transaction(self):
         client = self.client

@@ -2,6 +2,8 @@
 
 import logging
 
+from golem_messages.utils import bytes32_to_uuid
+
 from golem.model import GenericKeyValue
 from golem.transactions.incomeskeeper import IncomesKeeper
 
@@ -9,9 +11,8 @@ logger = logging.getLogger('golem.transactions.ethereum.ethereumincomeskeeper')
 
 
 class EthereumIncomesKeeper(IncomesKeeper):
-    REQUIRED_CONFS = 6
     BLOCK_NUMBER_DB_KEY = 'eth_incomes_keeper_block_number'
-    BLOCK_NUMBER_BUFFER = 10
+    BLOCK_NUMBER_BUFFER = 50
 
     def __init__(self, sci) -> None:
         self.__sci = sci
@@ -19,11 +20,17 @@ class EthereumIncomesKeeper(IncomesKeeper):
         values = GenericKeyValue.select().where(
             GenericKeyValue.key == self.BLOCK_NUMBER_DB_KEY)
         from_block = int(values.get().value) if values.count() == 1 else 0
-        self.__sci.subscribe_to_incoming_batch_transfers(
+        self.__sci.subscribe_to_batch_transfers(
+            None,
             self.__sci.get_eth_address(),
             from_block,
             self._on_batch_event,
-            self.REQUIRED_CONFS,
+        )
+        self.__sci.subscribe_to_forced_subtask_payments(
+            None,
+            self.__sci.get_eth_address(),
+            from_block,
+            self._on_forced_subtask_payment,
         )
 
     def _on_batch_event(self, event):
@@ -34,13 +41,20 @@ class EthereumIncomesKeeper(IncomesKeeper):
             event.closure_time,
         )
 
+    def _on_forced_subtask_payment(self, event):
+        self.received_forced_subtask_payment(
+            event.tx_hash,
+            event.requestor,
+            str(bytes32_to_uuid(event.subtask_id)),
+            event.amount,
+        )
+
     def stop(self) -> None:
         block_number = self.__sci.get_block_number()
         if block_number:
             with GenericKeyValue._meta.database.transaction():
                 kv, _ = GenericKeyValue.get_or_create(
                     key=self.BLOCK_NUMBER_DB_KEY)
-                kv.value = block_number - self.REQUIRED_CONFS -\
-                    self.BLOCK_NUMBER_BUFFER
+                kv.value = block_number - self.BLOCK_NUMBER_BUFFER
                 kv.save()
         super().stop()

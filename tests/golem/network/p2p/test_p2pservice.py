@@ -5,6 +5,7 @@ import time
 import unittest.mock as mock
 import uuid
 
+from eth_utils import encode_hex
 from twisted.internet.tcp import EISCONN
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -18,7 +19,6 @@ from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.tools.testwithreactor import TestDatabaseWithReactor
-from golem.utils import encode_hex
 
 
 class TestP2PService(TestDatabaseWithReactor):
@@ -88,7 +88,7 @@ class TestP2PService(TestDatabaseWithReactor):
 
     def test_add_to_peer_keeper(self):
         node = Node()
-        node.key = encode_hex(urandom(64))
+        node.key = encode_hex(urandom(64))[2:]
         m_test2 = mock.MagicMock()
         m_test3 = mock.MagicMock()
         self.service.peers["TEST3"] = m_test3
@@ -118,7 +118,7 @@ class TestP2PService(TestDatabaseWithReactor):
 
     def test_remove_old_peers(self):
         node = mock.MagicMock()
-        node.key = encode_hex(urandom(64))
+        node.key = encode_hex(urandom(64))[2:]
         node.key_id = node.key
 
         self.service.last_peers_request = time.time() + 10
@@ -139,12 +139,12 @@ class TestP2PService(TestDatabaseWithReactor):
         sa = SocketAddress('127.0.0.1', 11111)
 
         node = mock.MagicMock()
-        node.key = encode_hex(urandom(64))
+        node.key = encode_hex(urandom(64))[2:]
         node.key_id = node.key
         node.address = sa
 
         node2 = mock.MagicMock()
-        node2.key = encode_hex(urandom(64))
+        node2.key = encode_hex(urandom(64))[2:]
         node2.key_id = node2.key
         node2.address = sa
 
@@ -168,7 +168,7 @@ class TestP2PService(TestDatabaseWithReactor):
         assert len(self.service.peers) == 2
 
     def test_add_known_peer(self):
-        key_id = encode_hex(urandom(64))
+        key_id = encode_hex(urandom(64))[2:]
         nominal_seeds = len(self.service.seeds)
 
         node = Node(
@@ -226,7 +226,7 @@ class TestP2PService(TestDatabaseWithReactor):
 
     def test_sync_free_peers(self):
         node = Node(
-            key=encode_hex(urandom(64)),
+            key=encode_hex(urandom(64))[2:],
             pub_addr='127.0.0.1',
             p2p_pub_port=10000
         )
@@ -330,7 +330,7 @@ class TestP2PService(TestDatabaseWithReactor):
         m2.transport.getPeer.return_value.port = "11432"
         m2.transport.getPeer.return_value.host = "127.0.0.1"
         ps2 = PeerSession(m2)
-        key_id2 = encode_hex(urandom(64))
+        key_id2 = encode_hex(urandom(64))[2:]
         ps2.key_id = key_id2
         self.service.add_peer(ps2)
         self.service.get_diagnostics(DiagnosticsOutputFormat.json)
