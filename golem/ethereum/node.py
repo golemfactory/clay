@@ -64,7 +64,7 @@ class NodeProcess(object):
             raise RuntimeError("Ethereum node already started by us")
 
         if not self.addr_list:
-            self.addr_list = FALLBACK_NODE_LIST + self.initial_addr_list.copy()
+            self.addr_list = FALLBACK_NODE_LIST + self.initial_addr_list
 
         if self.start_node:
             provider = self._create_local_ipc_provider(start_port)
