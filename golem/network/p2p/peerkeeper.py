@@ -1,10 +1,11 @@
-import time
-import logging
-import random
-import operator
-from collections import deque
-import math
 import itertools
+import logging
+import math
+import operator
+import random
+import time
+from collections import deque, Counter
+from statistics import median
 
 logger = logging.getLogger("golem.network.p2p.peerkeeper")
 
@@ -189,6 +190,41 @@ class PeerKeeper(object):
         return sorted(
             self.buckets, key=operator.methodcaller('id_distance', key_num))
 
+    def get_estimated_network_size(self) -> int:
+        """
+        Get estimated network size
+        Based on https://gnunet.org/bartmsthesis p. 55
+        """
+        def depth(peer):
+            """ Get peer 'depth' i.e. number of common leading digits in binary
+            representations of peer's key and own key which is equivalent to the
+            position of the first '1' in (peer_key XOR own_key)"""
+            return self.k_size \
+                - int(math.log2(node_id_distance(peer, self.key_num))) - 1
+
+        def filter_outliers(data, m=2.0):
+            """ Simple median-based outlier detection """
+            med = median(data)
+            distance = [abs(x - med) for x in data]
+            med_dist = median(distance)
+            norm_distance = [d / med_dist for d in distance] if med_dist \
+                else [0] * len(data)
+            return (x for x, d in zip(data, norm_distance) if d < m)
+
+        peers_depths = [depth(p) for b in self.buckets for p in b.peers]
+
+        # Aggregate peer distances
+        logical_buckets = Counter(peers_depths)
+        if not logical_buckets:
+            return 0
+
+        data = [
+            num_peers * 2 ** (depth + 1)
+            for depth, num_peers in logical_buckets.items()
+            if num_peers < self.k
+        ]
+        return median(filter_outliers(data, m=2))
+
     def __remove_old_expected_pongs(self):
         cur_time = time.time()
         for key, (replacement, time_) in list(self.expected_pongs.items()):
@@ -315,6 +351,10 @@ class KBucket(object):
             else:
                 upper.add_peer(peer)
         return lower, upper
+
+    @property
+    def num_peers(self) -> int:
+        return len(self.peers)
 
     def __str__(self):
         return "Bucket: {} - {} peers {}".format(

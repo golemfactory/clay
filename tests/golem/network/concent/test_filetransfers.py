@@ -153,10 +153,10 @@ class ConcentFiletransferServiceTest(testutils.TempDirFixture):
         )
         with mock.patch('golem.network.concent.filetransfers.'
                         'ConcentFiletransferService.upload',
-                        mock.Mock(return_value=rv)):
+                        mock.Mock(return_value=mock.Mock(ok=True, text=rv))):
             response = self.cfs.process(request)
 
-        self.assertEqual(response, rv)
+        self.assertEqual(response.text, rv)
 
     @mock.patch('golem.network.concent.filetransfers.'
                 'ConcentFiletransferService.upload',

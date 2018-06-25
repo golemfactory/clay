@@ -11,9 +11,7 @@ import requests
 import golem_messages
 from golem_messages import message
 from golem_messages import datastructures as msg_datastructures
-from golem_messages.constants import (
-    DEFAULT_MSG_LIFETIME, MSG_DELAYS, MSG_LIFETIMES
-)
+from golem_messages.constants import MSG_DELAYS
 
 from golem import constants as gconst
 from golem import utils
@@ -163,7 +161,6 @@ class ConcentRequest(msg_datastructures.FrozenDict):
     ITEMS = {
         'key': '',
         'msg': None,
-        'deadline_at': None,
     }
 
     @staticmethod
@@ -263,10 +260,6 @@ class ConcentClientService(threading.Thread):
         from twisted.internet import reactor
 
         msg_cls = msg.__class__
-        lifetime = MSG_LIFETIMES.get(
-            msg_cls,
-            DEFAULT_MSG_LIFETIME
-        )
         if (delay is not None) and delay < datetime.timedelta(seconds=0):
             logger.warning(
                 '[CONCENT] Negative delay for %r. Assuming default...',
@@ -279,7 +272,6 @@ class ConcentClientService(threading.Thread):
         req = ConcentRequest(
             key=key,
             msg=msg,
-            deadline_at=datetime.datetime.now() + lifetime,
         )
 
         if delay:
@@ -317,12 +309,6 @@ class ConcentClientService(threading.Thread):
 
         if not self.enabled:
             logger.debug('Concent disabled. Dropping %r', req)
-            return
-
-        now = datetime.datetime.now()
-
-        if req['deadline_at'] < now:
-            logger.debug('Concent request lifetime has ended: %r', req)
             return
 
         try:
@@ -372,6 +358,7 @@ class ConcentClientService(threading.Thread):
     def react_to_concent_message(self, data: typing.Optional[bytes],
                                  response_to: message.Message = None):
         if data is None:
+            logger.debug('Received nothing from Concent')
             return
         try:
             msg = golem_messages.load(
@@ -379,6 +366,7 @@ class ConcentClientService(threading.Thread):
                 self.keys_auth.ecc.raw_privkey,
                 self.variant['pubkey'],
             )
+            logger.debug('Concent Message received: %s', msg)
         except golem_messages.exceptions.MessageError as e:
             logger.warning("Can't deserialize concent message %s:%r", e, data)
             logger.debug('Problem parsing msg', exc_info=True)
