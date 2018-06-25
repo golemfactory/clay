@@ -1,28 +1,33 @@
+# pylint: disable=protected-access,no-member
 import base64
+import calendar
+import datetime
 import logging
 import os
-import calendar
+import random
+import sys
+import threading
 import time
 
 import golem_messages
 
 from golem_messages import cryptography
+from golem_messages import helpers
 from golem_messages import serializer
 from golem_messages import utils as msg_utils
 from golem_messages.message.base import Message
 from golem_messages.message import concents as concent_msg
 
-from golem.network.concent import client
-
+from golem import testutils
 from golem.core import variables
+from golem.network.concent import client
+from golem.transactions.ethereum import ethereumtransactionsystem as libets
 
 
 logger = logging.getLogger(__name__)
 
 
 class ConcentBaseTest:
-    # pylint:disable=no-member
-
     @staticmethod
     def _fake_keys():
         return cryptography.ECCx(None)
@@ -157,4 +162,62 @@ class ConcentBaseTest:
         )
         self.assertEqual(ftt.operation, operation)
 
-    # pylint:enable=no-member
+
+class ETSBaseTest(ConcentBaseTest, testutils.DatabaseFixture):
+    """Base test with ets attribute"""
+
+    def setUp(self):
+        random.seed()
+        ConcentBaseTest.setUp(self)
+        testutils.DatabaseFixture.setUp(self)
+        self.ets = libets.EthereumTransactionSystem(
+            datadir=self.tempdir,
+            node_priv_key=self.requestor_keys.raw_privkey,
+        )
+
+    def wait_for_gntb(self):
+        sys.stderr.write('Waiting for GNTB...\n')
+        while self.ets._gntb_balance <= 0:
+            try:
+                self.ets._run()
+            except ValueError as e:
+                # web3 will raise ValueError if 'error' is present
+                # in response from geth
+                sys.stderr.write('E: {}\n'.format(e))
+            sys.stderr.write(
+                'Still waiting. GNT: {:22} GNTB: {:22} ETH: {:17}\n'.format(
+                    self.ets._gnt_balance,
+                    self.ets._gntb_balance,
+                    self.ets._eth_balance,
+                ),
+            )
+            time.sleep(10)
+
+    def requestor_put_deposit(self, price: int):
+        start = datetime.datetime.now()
+        self.wait_for_gntb()
+        amount, _ = helpers.requestor_deposit_amount(
+            # We'll use subtask price. Total number of subtasks is unknown
+            price,
+        )
+
+        transaction_processed = threading.Event()
+
+        def _callback():
+            transaction_processed.set()
+
+        self.ets.concent_deposit(
+            required=amount,
+            expected=amount,
+            reserved=0,
+            cb=_callback,
+        )
+        while not transaction_processed.is_set():
+            sys.stderr.write('.')
+            sys.stderr.flush()
+            self.ets._sci._monitor_blockchain_single()
+            time.sleep(15)
+        sys.stderr.write("\nDeposit confirmed in {}\n".format(
+            datetime.datetime.now()-start))
+        if self.ets.concent_balance() < amount:
+            raise RuntimeError("Deposit failed")

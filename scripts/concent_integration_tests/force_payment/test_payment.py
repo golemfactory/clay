@@ -6,20 +6,15 @@ from golem_messages import factories as msg_factories
 from golem_messages import message
 from golem_messages.utils import encode_hex as encode_key_id
 
-from golem import testutils
 from golem.network.concent import exceptions as concent_exceptions
 
-from ..base import ConcentBaseTest
+from ..base import ETSBaseTest
 
 
 fpr_reasons = message.concents.ForcePaymentRejected.REASON
 
 
-class RquestorDoesntPayTestCase(ConcentBaseTest, testutils.DatabaseFixture):
-    def setUp(self):
-        ConcentBaseTest.setUp(self)
-        testutils.DatabaseFixture.setUp(self)
-
+class RquestorDoesntPayTestCase(ETSBaseTest):
     def test_empty_list(self):
         fp = message.concents.ForcePayment(
             subtask_results_accepted_list=[],
@@ -112,6 +107,7 @@ class RquestorDoesntPayTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         self.assertEqual(response.reason, fpr_reasons.TimestampError)
         self.assertEqual(response.force_payment, fp)
 
+    @unittest.skip('too long')
     def test_no_debt(self):
         """React to no debts
 
@@ -119,7 +115,23 @@ class RquestorDoesntPayTestCase(ConcentBaseTest, testutils.DatabaseFixture):
         NoUnsettledTasksFound.
         """
         # REASON.NoUnsetledTasksFound
-        pass  # TODO
+        self.requestor_put_deposit(sra.task_to_compute.price)
+        # TODO pay
+        # TODO sleep till timeout
+        sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
+            **self.gen_ttc_kwargs(
+                'task_to_compute__',
+            ),
+            payment_ts=int(time.time()),
+        )
+        sra.sign_message(self.requestor_priv_key)
+        fp = message.concents.ForcePayment(
+            subtask_results_accepted_list=[
+                sra,
+            ],
+        )
+        response = self.provider_load_response(self.provider_send(fp))
+        self.assertIsInstance(response, message.concents.ForcePaymentRejected)
 
     def test_force_payment_commited(self):
         """Concent service commits forced payment
