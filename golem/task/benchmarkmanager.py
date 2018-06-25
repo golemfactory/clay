@@ -63,7 +63,7 @@ class BenchmarkManager(object):
         builder = task_builder(Node(),
                                task_state.definition,
                                self.dir_manager)
-        t = Task.build_task(builder)
+        t = builder.build()
         br = BenchmarkRunner(t, self.task_server.client.datadir,
                              success_callback, error_callback,
                              benchmark)
