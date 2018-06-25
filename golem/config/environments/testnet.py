@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 from golem_sci.chains import RINKEBY
 
@@ -26,6 +27,10 @@ ETHEREUM_NODE_LIST = [
     'http://188.165.227.180:55555',
     'http://94.23.17.170:55555',
     'http://94.23.57.58:55555',
+]
+
+FALLBACK_NODE_LIST: List[str] = [
+
 ]
 
 ETHEREUM_CHAIN = RINKEBY
