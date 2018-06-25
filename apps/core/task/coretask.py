@@ -145,7 +145,7 @@ class CoreTask(Task):
             subtask_timeout=task_definition.subtask_timeout,
             resource_size=self.resource_size,
             estimated_memory=task_definition.estimated_memory,
-            max_price=task_definition.max_price
+            max_price=task_definition.max_price,
         )
 
         Task.__init__(self, th, src_code, task_definition)
