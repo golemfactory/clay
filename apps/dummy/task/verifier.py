@@ -13,8 +13,8 @@ class DummyTaskVerifier(CoreVerifier):
 
     def _verify_result(self, results):
 
-        results = results["results"]
         subtask_info = results["subtask_info"]
+        results = results["results"]
 
         for result in results:
             _, ext = os.path.splitext(result)
