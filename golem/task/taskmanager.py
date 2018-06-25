@@ -375,6 +375,8 @@ class TaskManager(TaskEventListener):
             return None, False, False
 
         if not self.task_needs_computation(task_id):
+            logger.info(f'Task does not need computation; '
+                        f'provider: {node_name} - {node_id}')
             return None, False, False
 
         extra_data = task.query_extra_data(
