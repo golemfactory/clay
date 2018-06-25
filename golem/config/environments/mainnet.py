@@ -33,6 +33,10 @@ ETHEREUM_NODE_LIST = [
     'https://2.geth.golem.network:2137',
 ]
 
+FALLBACK_NODE_LIST = [
+    'https://rinkeby.golem.network:2137',
+]
+
 ETHEREUM_CHAIN = MAINNET
 ETHEREUM_FAUCET_ENABLED = False
 

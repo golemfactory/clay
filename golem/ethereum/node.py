@@ -10,7 +10,8 @@ import time
 
 from web3 import Web3, IPCProvider, HTTPProvider
 
-from golem.config.active import ETHEREUM_CHAIN, ETHEREUM_NODE_LIST, GETH_FLAGS
+from golem.config.active import ETHEREUM_CHAIN, ETHEREUM_NODE_LIST, \
+    GETH_FLAGS, FALLBACK_NODE_LIST
 from golem.core.common import is_windows, DEVNULL, SUBPROCESS_STARTUP_INFO
 from golem.ethereum.web3.middleware import RemoteRPCErrorMiddlewareBuilder
 from golem.ethereum.web3.providers import ProviderProxy
@@ -63,7 +64,7 @@ class NodeProcess(object):
             raise RuntimeError("Ethereum node already started by us")
 
         if not self.addr_list:
-            self.addr_list = self.initial_addr_list.copy()
+            self.addr_list = FALLBACK_NODE_LIST + self.initial_addr_list.copy()
 
         if self.start_node:
             provider = self._create_local_ipc_provider(start_port)
