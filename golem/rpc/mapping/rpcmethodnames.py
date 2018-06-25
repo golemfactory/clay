@@ -104,5 +104,6 @@ NODE_METHOD_MAP = dict(
     accept_terms=           'golem.terms.accept',
     show_terms=             'golem.terms.show',
 
+    graceful_shutdown=      'golem.graceful_shutdown',
     quit=                   'ui.quit',
 )

@@ -28,6 +28,7 @@ from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
+from golem.model import Performance
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
@@ -938,6 +939,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.funds_locker.persist = False
         c.resource_server = Mock()
         c.task_server = Mock()
+        c.p2pservice.get_estimated_network_size.return_value = 0
 
         task_header = Mock(
             max_price=1 * 10**18,
@@ -949,7 +951,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             get_resources=Mock(return_value=[]),
             total_tasks=5,
             get_price=Mock(return_value=900),
-            price=1000,
+            subtask_price=1000,
         )
 
         c.enqueue_new_task(task)
@@ -960,7 +962,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_mock.total_tasks = 3
         price = task_mock.header.max_price * task_mock.total_tasks
         task_mock.get_price.return_value = price
-        task_mock.price = 1000
+        task_mock.subtask_price = 1000
         c.task_server.task_manager.create_task.return_value = task_mock
         c.concent_service = Mock()
         c.concent_service.enabled = True
@@ -1013,7 +1015,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         def add_task(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
-            result = resource_manager_result, 'res_file_1', 'package_hash'
+            result = resource_manager_result, 'res_file_1', 'package_hash', 42
             return done_deferred(result)
 
         c = self.client
@@ -1029,6 +1031,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             side_effect=create_resource_package)
         c.resource_server.add_task = Mock(
             side_effect=add_task)
+        c.p2pservice.get_estimated_network_size.return_value = 0
 
         deferred = c.enqueue_new_task(t_dict)
         task = sync_wait(deferred)
@@ -1082,7 +1085,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         benchmark_manager.run_benchmark.side_effect = lambda b, tb, e, c, ec: \
             c(True)
 
-        with self.assertRaises(Exception):
+        with self.assertRaisesRegex(Exception, "Unknown environment"):
             sync_wait(self.client.run_benchmark(str(uuid.uuid4())))
 
         sync_wait(self.client.run_benchmark(BlenderEnvironment.get_id()))
@@ -1115,13 +1118,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 self.assertRaisesRegex(Exception, 'Test exception'):
             sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
 
-    @patch("golem.task.benchmarkmanager.BenchmarkRunner")
-    def test_run_benchmarks(self, br_mock, *_):
-        benchmark_manager = self.client.task_server.benchmark_manager
-        benchmark_manager.run_all_benchmarks()
-        f = br_mock.call_args[0][2]  # get success callback
-        f(1)
-        assert br_mock.call_count == 2
 
     def test_config_changed(self, *_):
         c = self.client
@@ -1148,11 +1144,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertNotEqual(c.get_setting('node_name'), newer_node_name)
 
         settings = c.get_settings()
-        settings['node_name'] = newer_node_name
-        with self.assertRaises(KeyError):
-            c.update_settings(settings)
+        self.assertIsInstance(settings['min_price'], str)
+        self.assertIsInstance(settings['max_price'], str)
 
-        del settings['py/object']
+        settings['node_name'] = newer_node_name
         c.update_settings(settings)
         self.assertEqual(c.get_setting('node_name'), newer_node_name)
 

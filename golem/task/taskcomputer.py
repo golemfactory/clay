@@ -41,7 +41,8 @@ class TaskComputer(object):
     lock = Lock()
     dir_lock = Lock()
 
-    def __init__(self, node_name, task_server, use_docker_manager=True) -> None:
+    def __init__(self, node_name, task_server, use_docker_manager=True,
+                 finished_cb=None) -> None:
         """ Create new task computer instance
         :param node_name:
         :param task_server:
@@ -90,7 +91,9 @@ class TaskComputer(object):
         self.last_task_timeout_checking = None
         self.support_direct_computation = False
         # Should this node behave as provider and compute tasks?
-        self.compute_tasks = task_server.config_desc.accept_tasks
+        self.compute_tasks = task_server.config_desc.accept_tasks \
+            and not task_server.config_desc.in_shutdown
+        self.finished_cb = finished_cb
 
     def task_given(self, ctd):
         if ctd['subtask_id'] in self.assigned_subtasks:
@@ -117,9 +120,13 @@ class TaskComputer(object):
                             "But I'm busy with another one. Ignoring.",
                             task_id)
                         return  # busy
-                    self.__compute_task(subtask_id, subtask['docker_images'],
-                                        subtask['src_code'], subtask['extra_data'],
-                                        subtask['short_description'], subtask['deadline'])
+                    self.__compute_task(
+                        subtask_id,
+                        subtask['docker_images'],
+                        subtask['src_code'],
+                        subtask['extra_data'],
+                        subtask['short_description'],
+                        subtask['deadline'])
                     self.waiting_for_task = None
                 return True
             else:
@@ -131,11 +138,17 @@ class TaskComputer(object):
             if subtask_id in self.assigned_subtasks:
                 subtask = self.assigned_subtasks[subtask_id]
                 if unpack_delta:
-                    self.task_server.unpack_delta(self.dir_manager.get_task_resource_dir(task_id), self.delta, task_id)
+                    rs_dir = self.dir_manager.get_task_resource_dir(task_id)
+                    self.task_server.unpack_delta(rs_dir, self.delta, task_id)
                 self.delta = None
                 self.last_task_timeout_checking = time.time()
-                self.__compute_task(subtask_id, subtask['docker_images'], subtask['src_code'], subtask['extra_data'],
-                                    subtask['short_description'], subtask['deadline'])
+                self.__compute_task(
+                    subtask_id,
+                    subtask['docker_images'],
+                    subtask['src_code'],
+                    subtask['extra_data'],
+                    subtask['short_description'],
+                    subtask['deadline'])
                 return True
             return False
 
@@ -159,11 +172,11 @@ class TaskComputer(object):
                 self.delta = delta
 
     def task_request_rejected(self, task_id, reason):
-        logger.info("Task {} request rejected: {}".format(task_id, reason))
+        logger.info("Task %r request rejected: %r", task_id, reason)
 
     def resource_request_rejected(self, subtask_id, reason):
-        logger.info("Task {} resource request rejected: {}".format(subtask_id,
-                                                                   reason))
+        logger.info("Task %r resource request rejected: %r",
+                    subtask_id, reason)
         self.assigned_subtasks.pop(subtask_id, None)
         self.reset()
 
@@ -230,6 +243,8 @@ class TaskComputer(object):
                         success=was_success, value=work_time_to_be_paid)
 
         self.counting_task = None
+        if self.finished_cb:
+            self.finished_cb()
 
     def run(self):
         """ Main loop of task computer """
@@ -238,9 +253,10 @@ class TaskComputer(object):
                 self.counting_thread.check_timeout()
         elif self.compute_tasks and self.runnable:
             if not self.waiting_for_task:
-                if time.time() - self.last_task_request > self.task_request_frequency:
-                    if self.counting_thread is None:
-                        self.__request_task()
+                last_request = time.time() - self.last_task_request
+                if last_request > self.task_request_frequency \
+                        and self.counting_thread is None:
+                    self.__request_task()
             elif self.use_waiting_deadline:
                 if self.waiting_deadline < time.time():
                     self.reset()
@@ -274,7 +290,8 @@ class TaskComputer(object):
         self.task_request_frequency = config_desc.task_request_interval
         self.waiting_for_task_session_timeout = \
             config_desc.waiting_for_task_session_timeout
-        self.compute_tasks = config_desc.accept_tasks
+        self.compute_tasks = config_desc.accept_tasks \
+            and not config_desc.in_shutdown
         return self.change_docker_config(config_desc, run_benchmarks,
                                          in_background)
 
@@ -417,6 +434,9 @@ class TaskComputer(object):
                 "Host direct task not supported",
             )
             self.counting_task = None
+            if self.finished_cb:
+                self.finished_cb()
+
             return
 
         self.counting_thread = tt

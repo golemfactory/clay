@@ -4,6 +4,7 @@ import logging
 import time
 import typing
 
+from eth_utils import decode_hex
 from ethereum.utils import privtoaddr
 from golem_messages import constants as msg_constants
 from golem_messages import cryptography
@@ -11,7 +12,6 @@ from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 
 from golem.network import history
-from golem.utils import decode_hex
 
 
 logger = logging.getLogger(__name__)
