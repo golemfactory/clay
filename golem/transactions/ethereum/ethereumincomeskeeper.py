@@ -18,7 +18,7 @@ class EthereumIncomesKeeper(IncomesKeeper):
         values = GenericKeyValue.select().where(
             GenericKeyValue.key == self.BLOCK_NUMBER_DB_KEY)
         from_block = int(values.get().value) if values.count() == 1 else 0
-        self.__sci.subscribe_to_incoming_batch_transfers(
+        self.__sci.subscribe_to_batch_transfers(
             None,
             self.__sci.get_eth_address(),
             from_block,

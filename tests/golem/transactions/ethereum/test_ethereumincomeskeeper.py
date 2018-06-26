@@ -27,7 +27,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
         self.instance = EthereumIncomesKeeper(self.sci)
 
     def test_start_stop(self):
-        self.sci.subscribe_to_incoming_batch_transfers.assert_called_once_with(
+        self.sci.subscribe_to_batch_transfers.assert_called_once_with(
             None,
             self.eth_address,
             0,
@@ -40,7 +40,7 @@ class TestEthereumIncomesKeeper(testutils.DatabaseFixture, testutils.PEP8MixIn):
 
         self.sci.reset_mock()
         instance = EthereumIncomesKeeper(self.sci)
-        self.sci.subscribe_to_incoming_batch_transfers.assert_called_once_with(
+        self.sci.subscribe_to_batch_transfers.assert_called_once_with(
             None,
             self.eth_address,
             block_number - instance.BLOCK_NUMBER_BUFFER,
