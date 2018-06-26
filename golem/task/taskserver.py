@@ -489,7 +489,7 @@ class TaskServer(
     def decrease_trust_payment(self, task_id):
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
             task_id)
-        Trust.PAYMENT.decrease(node_id, self.max_trust)
+        Trust.PAYMENT.decrease(node_id, self.min_trust)
 
     def reject_result(self, subtask_id, account_info):
         mod = min(
