@@ -327,6 +327,16 @@ class TaskManager(TaskEventListener):
                                      op=TaskOp.WORK_OFFER_RECEIVED,
                                      persist=False)
 
+    def task_needs_computation(self, task_id: str) -> bool:
+        if self.tasks_states[task_id].status not in self.activeStatus:
+            logger.info(f'task is not active: {task_id}')
+            return False
+        task = self.tasks[task_id]
+        if not task.needs_computation():
+            logger.info(f'no more computation needed: {task_id}')
+            return False
+        return True
+
     def get_next_subtask(
             self, node_id, node_name, task_id, estimated_performance, price,
             max_resource_size, max_memory_size, num_cores=0, address=""):
@@ -364,17 +374,9 @@ class TaskManager(TaskEventListener):
         if task.header.max_price < price:
             return None, False, False
 
-        def needs_computation():
-            ids = f'provider: {node_name} - {node_id}, task_id: {task_id}'
-            if self.tasks_states[task_id].status not in self.activeStatus:
-                logger.info(f'task is not active; {ids}')
-                return False
-            if not task.needs_computation():
-                logger.info(f'no more computation needed; {ids}')
-                return False
-            return True
-
-        if not needs_computation():
+        if not self.task_needs_computation(task_id):
+            logger.info(f'Task does not need computation; '
+                        f'provider: {node_name} - {node_id}')
             return None, False, False
 
         extra_data = task.query_extra_data(
