@@ -34,7 +34,7 @@ ETHEREUM_NODE_LIST = [
 ]
 
 FALLBACK_NODE_LIST = [
-    'https://rinkeby.golem.network:2137',
+    'https://proxy.geth.golem.network:2137',
 ]
 
 ETHEREUM_CHAIN = MAINNET
@@ -56,7 +56,7 @@ P2P_SEEDS = [
     ('3.seeds.golem.network', 40102),
     ('4.seeds.golem.network', 40102),
     ('5.seeds.golem.network', 40102),
-    ('51.38.49.60', 40102),
+    ('proxy.seeds.golem.network', 40102),
 ]
 
 PROTOCOL_CONST.POSTFIX = ''
