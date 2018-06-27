@@ -863,7 +863,7 @@ class TaskServer(
         session.result_received(extra_data)
 
     def __connection_for_task_verification_result_failure(  # noqa pylint:disable=no-self-use
-            self, _conn_id, extracted_package, key_id):
+            self, conn_id, extracted_package, key_id):
         subtask_id = extracted_package.to_extra_data().get('subtask_id')
         logger.warning("Failed to establish a session to deliver "
                        "the verification result for %s to the provider %s",
