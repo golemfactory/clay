@@ -115,9 +115,6 @@ class RquestorDoesntPayTestCase(ETSBaseTest):
         NoUnsettledTasksFound.
         """
         # REASON.NoUnsetledTasksFound
-        self.requestor_put_deposit(sra.task_to_compute.price)
-        # TODO pay
-        # TODO sleep till timeout
         sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             **self.gen_ttc_kwargs(
                 'task_to_compute__',
@@ -125,6 +122,9 @@ class RquestorDoesntPayTestCase(ETSBaseTest):
             payment_ts=int(time.time()),
         )
         sra.sign_message(self.requestor_priv_key)
+        self.requestor_put_deposit(sra.task_to_compute.price)  # noqa pylint: disable=no-member
+        # TODO pay
+        # TODO sleep till timeout
         fp = message.concents.ForcePayment(
             subtask_results_accepted_list=[
                 sra,
