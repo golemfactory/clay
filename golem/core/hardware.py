@@ -1,5 +1,5 @@
 import logging
-from typing import Union, List, Tuple, Optional
+from typing import Union, List, Tuple, Optional, Dict
 import humanize
 import psutil
 from psutil import virtual_memory
@@ -19,7 +19,7 @@ from golem.model import HardwarePreset
 logger = logging.getLogger(__name__)
 
 
-def cpu_cores_available() -> List:
+def cpu_cores_available() -> List[int]:
     """Retrieves available CPU cores except for the first one. Tries to read
        process' CPU affinity first.
     :return list: Available cpu cores except the first one.
@@ -39,7 +39,7 @@ def cpu_cores_available() -> List:
 
 def memory_available() -> int:
     """
-    :return int: 3/4 of total available memory
+    :return int: 3/4 of total available memory in KiB
     """
     return int(max(int(virtual_memory().total * 0.75) / 1024, MIN_MEMORY_SIZE))
 
@@ -109,7 +109,7 @@ class HardwarePresets(object):
         )
 
     @classmethod
-    def caps(cls) -> dict:
+    def caps(cls) -> Dict[str, int]:
         cls._assert_initialized()
         return {
             'cpu_cores': len(cpu_cores_available()),
@@ -119,7 +119,7 @@ class HardwarePresets(object):
 
     @classmethod
     def values(cls, preset_or_name: Union[str, HardwarePreset]) \
-            -> Tuple[str, dict]:
+            -> Tuple[str, Dict[str, int]]:
         preset_or_name = preset_or_name or DEFAULT
 
         if isinstance(preset_or_name, str):

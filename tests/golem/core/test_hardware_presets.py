@@ -87,7 +87,7 @@ class TestHardwarePresets(testutils.DatabaseFixture):
         HardwarePreset.create(name='foo', cpu_cores=1, memory=1200000,
                               disk=2000000)
 
-        # than
+        # then
         assert not HardwarePresets.update_config(DEFAULT, self.config)
         assert not HardwarePresets.update_config(DEFAULT, self.config)
         assert not HardwarePresets.update_config(DEFAULT, self.config)
