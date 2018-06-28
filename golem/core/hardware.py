@@ -1,5 +1,5 @@
 import logging
-from typing import Union, List, Tuple
+from typing import Union, List, Tuple, Optional
 import humanize
 import psutil
 from psutil import virtual_memory
@@ -54,7 +54,7 @@ class HardwarePresets(object):
 
     CUSTOM_VALUES = dict(default_values)
 
-    working_dir: str = None
+    working_dir: Optional[str] = None
 
     @classmethod
     def initialize(cls, working_dir: str):
