@@ -419,7 +419,7 @@ class TestResources(unittest.TestCase):
             res = Resources()
             res.clear(provider=True, requestor=False)
 
-            assert len(client.clear_dir.mock_calls) == 1
+            client.clear_dir.assert_called_with(DirectoryType.DISTRIBUTED)
 
     def test_clear_requestor(self):
         client = self.client
@@ -427,7 +427,7 @@ class TestResources(unittest.TestCase):
             res = Resources()
             res.clear(provider=False, requestor=True)
 
-            client.clear_dir.assert_called_with(DirectoryType.DISTRIBUTED)
+            client.clear_dir.assert_called_with(DirectoryType.RECEIVED)
 
     def test_clear_all(self):
         client = self.client
