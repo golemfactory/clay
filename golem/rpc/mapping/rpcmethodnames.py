@@ -55,7 +55,6 @@ CORE_METHOD_MAP = dict(
     delete_task_preset=     'comp.tasks.preset.delete',
     get_estimated_cost=     'comp.tasks.estimated.cost',
 
-    get_task_cost=          'comp.task.cost',
     get_task_preview=       'comp.task.preview',
     query_task_state=       'comp.task.state',
     create_task=            'comp.task.create',
@@ -105,5 +104,6 @@ NODE_METHOD_MAP = dict(
     accept_terms=           'golem.terms.accept',
     show_terms=             'golem.terms.show',
 
+    graceful_shutdown=      'golem.graceful_shutdown',
     quit=                   'ui.quit',
 )

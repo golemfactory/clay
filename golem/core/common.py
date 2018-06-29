@@ -213,7 +213,11 @@ def config_logging(suffix='', datadir=None, loglevel=None, config_desc=None):
     import txaio
     txaio.use_twisted()
     from ethereum import slogging
-    slogging.configure(':debug')
+    if config_desc and config_desc.debug_third_party:
+        slogging.configure(':debug')
+    else:
+        slogging.configure(':warning')
+
     from twisted.python import log
     observer = log.PythonLoggingObserver(loggerName='twisted')
     observer.start()
