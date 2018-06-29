@@ -615,6 +615,7 @@ class CoreTaskBuilder(TaskBuilder):
         definition.subtask_timeout = string_to_timeout(
             dictionary['subtask_timeout'])
         definition.output_file = cls.get_output_path(dictionary, definition)
+        definition.estimated_memory = dictionary.get('estimated_memory', 0)
 
         return definition
 

@@ -182,6 +182,8 @@ class TaskComputer(object):
         self.reset()
 
     def task_computed(self, task_thread: TaskThread) -> None:
+        self.reset()
+
         if task_thread.end_time is None:
             task_thread.end_time = time.time()
 
@@ -313,7 +315,6 @@ class TaskComputer(object):
             return deferred
 
         if dm.docker_machine and self.use_docker_manager:  # noqa pylint: disable=no-member
-
             self.lock_config(True)
 
             def status_callback():
