@@ -29,9 +29,8 @@ class BenchmarkRunner(LocalComputer):
     RUNNER_WARNING = "Failed to compute benchmark"
     RUNNER_SUCCESS = "Benchmark computed successfully"
 
-
-
-    def __init__(self, task: Task, root_path, success_callback, error_callback, benchmark: CoreBenchmark):
+    def __init__(self, task: Task, root_path, success_callback, error_callback,
+                 benchmark: CoreBenchmark) -> None:
         def get_compute_task_def():
             return task.query_extra_data(10000).ctd
 

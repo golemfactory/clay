@@ -47,13 +47,15 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task,
 
     for frame in frames:
         cmd = format_blender_render_cmd(outfilebasename, scene_file,
-                                        script_file.name, start_task, frame, output_format)
+                                        script_file.name, start_task,
+                                        frame, output_format)
         print(cmd, file=sys.stderr)
         exit_code = exec_cmd(cmd)
         if exit_code is not 0:
             sys.exit(exit_code)
 
 
-run_blender_task(params.outfilebasename, params.scene_file, params.script_src, params.start_task, params.frames,
+run_blender_task(params.outfilebasename, params.scene_file, params.script_src,
+                 params.start_task, params.frames,
                  params.output_format)
 

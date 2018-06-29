@@ -283,7 +283,9 @@ class Task(abc.ABC):
     @classmethod
     def build_task(cls, task_builder: TaskBuilder) -> 'Task':
         if not isinstance(task_builder, TaskBuilder):
-            raise TypeError("Incorrect 'task_builder' type: {}. Should be: TaskBuilder".format(type(task_builder)))
+            raise TypeError("Incorrect 'task_builder' type: {}."
+                            " Should be: TaskBuilder".
+                            format(type(task_builder)))
         return task_builder.build()
 
     def __init__(self, header: TaskHeader, src_code: str, task_definition):

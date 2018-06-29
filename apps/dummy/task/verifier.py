@@ -9,11 +9,14 @@ class DummyTaskVerifier(CoreVerifier):
     # subtask_info is what sits in the task.subtasks_given["subtask_id"]
     # it is set in the query_extra_data
     def __init__(self, callback: Callable,
-                 verification_data: Optional[Dict[str, Any]]=None) -> None:
+                 verification_data: Optional[Dict[str, Any]] = None) -> None:
         super().__init__(callback)
-        self.subtask_info = verification_data["subtask_info"]
+        if verification_data:
+            self.subtask_info = verification_data["subtask_info"]
+        else:
+            self.subtask_info = None
 
-    def _verify_result(self, results: Dict[str, str]):
+    def _verify_result(self, results: Dict[str, Any]):
 
         subtask_info = results["subtask_info"]
         results = results["results"]
@@ -41,6 +44,6 @@ class DummyTaskVerifier(CoreVerifier):
             input_data = shared_data + subtask_info["subtask_data"]
 
             ret_list.append(computing.check_pow(int(result_data, 16),
-                                       input_data,
-                                       subtask_info["difficulty"]))
+                                                input_data,
+                                                subtask_info["difficulty"]))
             return ret_list

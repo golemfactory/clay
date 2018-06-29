@@ -13,6 +13,7 @@ from golem.core.common import timeout_to_deadline
 
 logger = logging.getLogger("blendercroppper")
 
+
 # FIXME #2086
 # pylint: disable=R0903
 # pylint: disable=R0902
@@ -47,9 +48,9 @@ class BlenderReferenceGenerator:
 
     def __init__(self):
         self.crop_counter: int = 0
-        self.crop_size: Tuple[float] = ()
-        self.split_values: List[Tuple[float]] = []
-        self.split_pixels: List[Tuple[int]] = []
+        self.crop_size: Tuple[float, float] = ()
+        self.split_values: List[Tuple[float, float, float, float]] = []
+        self.split_pixels: List[Tuple[int, int]] = []
         self.rendered_crops_results: Dict[int, [[str], float, CropContext]] = {}
 
     def clear(self):
@@ -60,10 +61,10 @@ class BlenderReferenceGenerator:
         self.rendered_crops_results = {}
 
     # pylint: disable=R0914
-    def generate_split_data(self, resolution: Tuple[int],
+    def generate_split_data(self, resolution: Tuple[int, int],
                             image_border: List[float],
                             splits_num: int,
-                            crop_size: Optional[Tuple[float]] = None):
+                            crop_size: Optional[Tuple[int, int]] = None):
         """
         This function will generate split data for performing random crops.
         Crops will be rendered from blend files using calculated values (
@@ -148,8 +149,8 @@ class BlenderReferenceGenerator:
                      crop_rendered: CropRenderedSuccessCallback,
                      crop_render_failure: CropRenderedFailureCallback,
                      subtask_info: Dict[str, Any],
-                     num_crops: int=CROPS_NO_FIRST,
-                     crop_size: Optional[Tuple[float]]=None):
+                     num_crops: int = CROPS_NO_FIRST,
+                     crop_size: Optional[Tuple[int, int]] = None):
         # pylint: disable=unused-argument
         crops_path = os.path.join(subtask_info['tmp_dir'],
                                   subtask_info['subtask_id'])
@@ -251,7 +252,7 @@ class BlenderReferenceGenerator:
         return [split_min, split_max]
 
     @staticmethod
-    def _pixel(crop_x_min: int, crop_y_max: int, top: int) -> Tuple[int]:
+    def _pixel(crop_x_min: int, crop_y_max: int, top: int) -> Tuple[int, int]:
         # In matrics calculation, y=0 is located on top. Where in blender in
         # bottom. Take then given top and substract it from y_max
         y = top - crop_y_max
@@ -260,7 +261,7 @@ class BlenderReferenceGenerator:
         return x, y
 
     @staticmethod
-    def _find_split_size(res: int) -> Tuple[float]:
+    def _find_split_size(res: int) -> int:
         #  Int rounding, this hasn't to be exact, since its only have to be
         #  precise and constant
         return int(
