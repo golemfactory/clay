@@ -6,6 +6,7 @@ from typing import List, Optional, Callable, Any
 
 from twisted.internet import threads
 from twisted.internet.defer import gatherResults, Deferred
+from twisted.python.failure import Failure
 
 from apps.appsmanager import AppsManager
 from golem.appconfig import AppConfig
@@ -384,5 +385,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def _stop_on_error(self, msg: str, err: Any) -> None:
         if self._reactor.running:
-            logger.error("Stopping because of %r error: %r", msg, err)
+            exc_info = (err.type, err.value, err.getTracebackObject()) \
+                if isinstance(err, Failure) else None
+            logger.error(
+                "Stopping because of %r error: %r", msg, err, exc_info=exc_info)
             self._reactor.callFromThread(self._reactor.stop)

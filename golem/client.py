@@ -1534,7 +1534,7 @@ class MaskUpdateService(LoopingCallService):
         logger.info('Updating masks')
         # Using list() because tasks could be changed by another thread
         for task_id, task in list(self._task_manager.tasks.items()):
-            if not task.needs_computation():
+            if not self._task_manager.task_needs_computation(task_id):
                 continue
             task_state = self._task_manager.query_task_state(task_id)
             if task_state.elapsed_time < self._interval:

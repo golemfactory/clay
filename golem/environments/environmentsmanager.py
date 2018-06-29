@@ -6,8 +6,10 @@ logger = logging.getLogger(__name__)
 
 
 class EnvironmentsManager(object):
-    """ Manage known environments. Allow user to choose accepted environment,
-     keep track of supported environments """
+    """ Manage known environments.
+
+    Allow user to choose accepted environment,
+    keep track of supported environments """
 
     def __init__(self):
         self.support_statuses = {}
