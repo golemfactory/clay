@@ -17,9 +17,10 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
-
-from golem.task.taskthread import TaskThread
 from golem.vm.vm import PythonProcVM, PythonTestVM
+
+from .taskthread import TaskThread
+
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +181,7 @@ class TaskComputer(object):
         self.assigned_subtasks.pop(subtask_id, None)
         self.reset()
 
-    def task_computed(self, task_thread):
+    def task_computed(self, task_thread: TaskThread) -> None:
         if task_thread.end_time is None:
             task_thread.end_time = time.time()
 
