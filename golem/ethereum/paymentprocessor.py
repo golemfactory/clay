@@ -96,8 +96,8 @@ class PaymentProcessor:
                 self.add(p)
             return
 
-        # TODO: Use the actual gas price of the transaction
-        total_fee = receipt.gas_used * self._sci.GAS_PRICE
+        gas_price = self._sci.get_transaction_gas_price(receipt.tx_hash)
+        total_fee = receipt.gas_used * gas_price
         fee = total_fee // len(payments)
         log.info(
             "Batch transfer confirmed %s average gas fee per subtask %f",
