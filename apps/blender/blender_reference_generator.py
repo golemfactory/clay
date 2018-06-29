@@ -213,7 +213,7 @@ class BlenderReferenceGenerator:
             additional_resources=[]
         )
 
-    def crop_rendering_finished(self, begin: int, end: int):
+    def crop_rendering_finished(self, begin: int, end: int) -> None:
         for i in range(begin, end):
             self.rendered_crops_results[i][2].success(
                 self.rendered_crops_results[i][0],
@@ -260,7 +260,7 @@ class BlenderReferenceGenerator:
         return x, y
 
     @staticmethod
-    def _find_split_size(res: int) -> Tuple(float):
+    def _find_split_size(res: int) -> Tuple[float]:
         #  Int rounding, this hasn't to be exact, since its only have to be
         #  precise and constant
         return int(
