@@ -341,7 +341,8 @@ class ConcentClientService(threading.Thread):
 
         for receive_function in (receive_from_concent, receive_out_of_band):
             try:
-                res = receive_function(  # noqa mypy, why u so silly?
+                # mypy, why u so silly?
+                res = receive_function(  # type: ignore
                     signing_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
                     public_key=self.keys_auth.public_key,
                     concent_variant=self.variant,
