@@ -1,5 +1,5 @@
 import os
-from typing import Callable, Dict
+from typing import Callable, Dict, Optional
 
 from golem_verificator.core_verifier import CoreVerifier
 from apps.dummy.resources.code_dir import computing
@@ -8,7 +8,8 @@ from apps.dummy.resources.code_dir import computing
 class DummyTaskVerifier(CoreVerifier):
     # subtask_info is what sits in the task.subtasks_given["subtask_id"]
     # it is set in the query_extra_data
-    def __init__(self, callback: Callable, verification_data: Dict=None):
+    def __init__(self, callback: Callable,
+                 verification_data: Optional[Dict]=None) -> None:
         super().__init__(callback)
         self.subtask_info = verification_data["subtask_info"]
 

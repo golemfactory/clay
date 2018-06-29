@@ -4,7 +4,7 @@ import os
 import logging
 from copy import deepcopy
 from functools import partial
-from typing import Dict, Tuple, List, Callable
+from typing import Dict, Tuple, List, Callable, Optional
 
 import numpy
 
@@ -19,7 +19,7 @@ logger = logging.getLogger("blendercroppper")
 # pylint: disable=R0902
 class CropContext:
     def __init__(self, crops_data: Dict, computer,
-                 subtask_data: Dict, callbacks: Dict):
+                 subtask_data: Dict, callbacks: Dict) -> None:
         self.crops_path = crops_data['paths']
         self.crop_values = crops_data['position'][0]
         self.crop_pixels = crops_data['position'][1]
@@ -57,7 +57,7 @@ class BlenderReferenceGenerator:
     # pylint: disable=R0914
     def generate_split_data(self, resolution: Tuple, image_border: List,
                             splits_num: int,
-                            crop_size: Tuple = None):
+                            crop_size: Optional[Tuple] = None):
         """
         This function will generate split data for performing random crops.
         Crops will be rendered from blend files using calculated values (
@@ -144,7 +144,7 @@ class BlenderReferenceGenerator:
                      crop_render_failure: Callable[[Exception], None],
                      subtask_info: Dict,
                      num_crops: int=CROPS_NO_FIRST,
-                     crop_size: Tuple=None):
+                     crop_size: Optional[Tuple]=None):
         # pylint: disable=unused-argument
         crops_path = os.path.join(subtask_info['tmp_dir'],
                                   subtask_info['subtask_id'])
