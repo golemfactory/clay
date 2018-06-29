@@ -2,18 +2,17 @@ import calendar
 import logging
 import time
 from collections import defaultdict
-from typing import Dict, List
-from threading import Lock
+from typing import List
 
 from sortedcontainers import SortedListWithKey
+from eth_utils import encode_hex
 from ethereum.utils import denoms
 from pydispatch import dispatcher
 from twisted.internet import threads
 
 import golem_sci
 from golem.core.variables import PAYMENT_DEADLINE
-from golem.model import db, Payment, PaymentStatus
-from golem.utils import encode_hex
+from golem.model import Payment, PaymentStatus
 
 log = logging.getLogger("golem.pay")
 
@@ -32,7 +31,7 @@ def _make_batch_payments(payments: List[Payment]) -> List[golem_sci.Payment]:
         payees[p.payee] += p.value
     res = []
     for payee, amount in payees.items():
-        res.append(golem_sci.Payment('0x' + encode_hex(payee), amount))
+        res.append(golem_sci.Payment(encode_hex(payee), amount))
     return res
 
 
@@ -46,7 +45,6 @@ class PaymentProcessor:
             sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
         self._sci = sci
         self._gntb_reserved = 0
-        self._awaiting_lock = Lock()
         self._awaiting = SortedListWithKey(key=lambda p: p.processed_ts)
         self.load_from_db()
 
@@ -67,27 +65,26 @@ class PaymentProcessor:
         return gas_price * self._sci.GAS_PER_PAYMENT
 
     def load_from_db(self):
-        with db.atomic():
-            sent = {}
-            for sent_payment in Payment \
-                    .select() \
-                    .where(Payment.status == PaymentStatus.sent):
-                tx_hash = '0x' + sent_payment.details.tx
-                if tx_hash not in sent:
-                    sent[tx_hash] = []
-                sent[tx_hash].append(sent_payment)
-                self._gntb_reserved += sent_payment.value
-            for tx_hash, payments in sent.items():
-                self._sci.on_transaction_confirmed(
-                    tx_hash,
-                    lambda r: threads.deferToThread(
-                        self._on_batch_confirmed, payments.copy(), r),
-                )
+        sent = {}
+        for sent_payment in Payment \
+                .select() \
+                .where(Payment.status == PaymentStatus.sent):
+            tx_hash = '0x' + sent_payment.details.tx
+            if tx_hash not in sent:
+                sent[tx_hash] = []
+            sent[tx_hash].append(sent_payment)
+            self._gntb_reserved += sent_payment.value
+        for tx_hash, payments in sent.items():
+            self._sci.on_transaction_confirmed(
+                tx_hash,
+                lambda r: threads.deferToThread(
+                    self._on_batch_confirmed, payments.copy(), r),
+            )
 
-            for awaiting_payment in Payment \
-                    .select() \
-                    .where(Payment.status == PaymentStatus.awaiting):
-                self.add(awaiting_payment)
+        for awaiting_payment in Payment \
+                .select() \
+                .where(Payment.status == PaymentStatus.awaiting):
+            self.add(awaiting_payment)
 
     def _on_batch_confirmed(self, payments: List[Payment], receipt) -> None:
         if not receipt.status:
@@ -99,8 +96,8 @@ class PaymentProcessor:
                 self.add(p)
             return
 
-        # TODO: Use the actual gas price of the transaction
-        total_fee = receipt.gas_used * self._sci.GAS_PRICE
+        gas_price = self._sci.get_transaction_gas_price(receipt.tx_hash)
+        total_fee = receipt.gas_used * gas_price
         fee = total_fee // len(payments)
         log.info(
             "Batch transfer confirmed %s average gas fee per subtask %f",
@@ -126,7 +123,7 @@ class PaymentProcessor:
                 fee / denoms.ether
             )
 
-    def add(self, payment):
+    def add(self, payment: Payment) -> None:
         if payment.status is not PaymentStatus.awaiting:
             raise RuntimeError(
                 "Invalid payment status: {}".format(payment.status))
@@ -136,34 +133,26 @@ class PaymentProcessor:
             encode_hex(payment.payee),
             payment.value / denoms.ether))
 
-        with self._awaiting_lock:
-            ts = get_timestamp()
-            if not payment.processed_ts:
-                with Payment._meta.database.transaction():
-                    payment.processed_ts = ts
-                    payment.save()
+        if not payment.processed_ts:
+            payment.processed_ts = get_timestamp()
+            payment.save()
 
-            self._awaiting.add(payment)
+        self._awaiting.add(payment)
 
         self._gntb_reserved += payment.value
 
         log.info("GNTB reserved %.6f", self._gntb_reserved / denoms.ether)
 
-    def __get_next_batch(
-            self,
-            payments: List[Payment],
-            closure_time: int) -> int:
+    def __get_next_batch(self, closure_time: int) -> int:
         gntb_balance = self._sci.get_gntb_balance(self._sci.get_eth_address())
         eth_balance = self._sci.get_eth_balance(self._sci.get_eth_address())
-        if not gntb_balance or not eth_balance:
-            return 0
         eth_balance = eth_balance - self.ETH_BATCH_PAYMENT_BASE
         ind = 0
         eth_per_payment = self.get_gas_cost_per_payment()
         gas_limit = \
             self._sci.get_latest_block().gas_limit * self.BLOCK_GAS_LIMIT_RATIO
         payees = set()
-        for p in payments:
+        for p in self._awaiting:
             if p.processed_ts > closure_time:
                 break
             gntb_balance -= p.value
@@ -181,62 +170,51 @@ class PaymentProcessor:
             ind += 1
 
         # we need to take either all payments with given processed_ts or none
-        if ind < len(payments):
-            while ind > 0 and payments[ind - 1]\
-                    .processed_ts == payments[ind].processed_ts:
+        if ind < len(self._awaiting):
+            while ind > 0 and self._awaiting[ind - 1]\
+                    .processed_ts == self._awaiting[ind].processed_ts:
                 ind -= 1
 
         return ind
 
     def sendout(self, acceptable_delay: int = PAYMENT_MAX_DELAY):
-        with self._awaiting_lock:
-            if not self._awaiting:
-                return False
-
-            now = get_timestamp()
-            deadline = self._awaiting[0].processed_ts + acceptable_delay
-            if deadline > now:
-                log.info("Next sendout in {} s".format(deadline - now))
-                return False
-
-            payments_count = self.__get_next_batch(
-                self._awaiting.copy(),
-                now - self.CLOSURE_TIME_DELAY,
-            )
-            if payments_count == 0:
-                return False
-            payments = self._awaiting[:payments_count]
-            del self._awaiting[:payments_count]
-
-        value = sum([p.value for p in payments])
-        log.info("Batch payments value: {:.6f}".format(value / denoms.ether))
-
-        closure_time = payments[-1].processed_ts
-        try:
-            tx_hash = self._sci.batch_transfer(
-                _make_batch_payments(payments),
-                closure_time,
-            )
-        except Exception as e:
-            log.warning("Exception while sending batch transfer {}".format(e))
-            with self._awaiting_lock:
-                self._awaiting.update(payments)
+        if not self._awaiting:
             return False
 
-        with Payment._meta.database.transaction():
-            for payment in payments:
-                payment.status = PaymentStatus.sent
-                payment.details.tx = tx_hash[2:]
-                payment.save()
-                log.debug("- {} send to {} ({:.6f})".format(
-                    payment.subtask,
-                    encode_hex(payment.payee),
-                    payment.value / denoms.ether))
+        now = get_timestamp()
+        deadline = self._awaiting[0].processed_ts + acceptable_delay
+        if deadline > now:
+            log.info("Next sendout in %r s", deadline - now)
+            return False
 
-            self._sci.on_transaction_confirmed(
-                tx_hash,
-                lambda r: threads.deferToThread(
-                    self._on_batch_confirmed, payments, r)
-            )
+        payments_count = self.__get_next_batch(now - self.CLOSURE_TIME_DELAY)
+        if payments_count == 0:
+            return False
+        payments = self._awaiting[:payments_count]
+
+        value = sum([p.value for p in payments])
+        log.info("Batch payments value: %.6f", value / denoms.ether)
+
+        closure_time = payments[-1].processed_ts
+        tx_hash = self._sci.batch_transfer(
+            _make_batch_payments(payments),
+            closure_time,
+        )
+        del self._awaiting[:payments_count]
+
+        for payment in payments:
+            payment.status = PaymentStatus.sent
+            payment.details.tx = tx_hash[2:]
+            payment.save()
+            log.debug("- {} send to {} ({:.6f})".format(
+                payment.subtask,
+                encode_hex(payment.payee),
+                payment.value / denoms.ether))
+
+        self._sci.on_transaction_confirmed(
+            tx_hash,
+            lambda r: threads.deferToThread(
+                self._on_batch_confirmed, payments, r)
+        )
 
         return True

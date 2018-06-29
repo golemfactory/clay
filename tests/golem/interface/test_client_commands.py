@@ -65,13 +65,13 @@ class TestAccount(unittest.TestCase):
                 'requestor_reputation': 2,
                 'Golem_ID': 'deadbeef',
                 'finances': {
-                    'available_balance': '2.000000 GNT',
+                    'available_balance': '2 GNT',
                     'eth_address': 'f0f0f0ababab',
-                    'eth_balance': '1.000000 ETH',
-                    'reserved_balance': '1.000000 GNT',
-                    'total_balance': '3.000000 GNT',
-                    'gnt_locked': '0.010000 GNT',
-                    'eth_locked': '0.020000 ETH'
+                    'eth_balance': '1 ETH',
+                    'reserved_balance': '1 GNT',
+                    'total_balance': '3 GNT',
+                    'gnt_locked': '0.01 GNT',
+                    'eth_locked': '0.02 ETH'
                 },
             }
 
@@ -419,7 +419,7 @@ class TestResources(unittest.TestCase):
             res = Resources()
             res.clear(provider=True, requestor=False)
 
-            assert len(client.clear_dir.mock_calls) == 1
+            client.clear_dir.assert_called_with(DirectoryType.DISTRIBUTED)
 
     def test_clear_requestor(self):
         client = self.client
@@ -427,7 +427,7 @@ class TestResources(unittest.TestCase):
             res = Resources()
             res.clear(provider=False, requestor=True)
 
-            client.clear_dir.assert_called_with(DirectoryType.DISTRIBUTED)
+            client.clear_dir.assert_called_with(DirectoryType.RECEIVED)
 
     def test_clear_all(self):
         client = self.client

@@ -2,6 +2,7 @@ import logging
 import os
 import random
 from copy import copy
+from typing import Optional
 
 import enforce
 from golem_messages.message import ComputeTaskDef
@@ -80,9 +81,9 @@ class DummyTask(CoreTask):
     @coretask.accepting
     def query_extra_data(self,
                          perf_index: float,
-                         num_cores=1,
-                         node_id: str = None,
-                         node_name: str = None) -> Task.ExtraData:
+                         num_cores: int = 1,
+                         node_id: Optional[str] = None,
+                         node_name: Optional[str] = None) -> Task.ExtraData:
         logger.debug("Query extra data on dummytask")
 
         ctd = self._extra_data(perf_index)

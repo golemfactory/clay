@@ -8,11 +8,11 @@ from hashlib import sha256
 from typing import Optional, Tuple, Union
 
 import ethereum.keys
+from eth_utils import encode_hex, decode_hex
 from ethereum.keys import decode_keystore_json, make_keystore_json
 from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
     privtopub
 
-from golem.utils import encode_hex, decode_hex
 
 logger = logging.getLogger(__name__)
 
@@ -97,7 +97,7 @@ class KeysAuth:
         self._private_key = prv
         self.ecc = ECCx(prv)
         self.public_key = pub
-        self.key_id = encode_hex(pub)
+        self.key_id = encode_hex(pub)[2:]
         self.difficulty = KeysAuth.get_difficulty(self.key_id)
 
     @staticmethod

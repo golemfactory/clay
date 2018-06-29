@@ -57,7 +57,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         value = 10
         payment = Payment.create(
             subtask=str(uuid.uuid4()),
-            payee=encode_hex(urandom(32)),
+            payee=urandom(20),
             value=value,
         )
 
@@ -70,7 +70,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
     def test_load_from_db_sent(self):
         tx_hash = encode_hex(urandom(32))
         value = 10
-        payee = encode_hex(urandom(32))
+        payee = urandom(20)
         sent_payment = Payment.create(
             subtask=str(uuid.uuid4()),
             payee=payee,
@@ -118,8 +118,10 @@ class PaymentProcessorInternalTest(DatabaseFixture):
     def test_monitor_progress(self):
         balance_eth = 1 * denoms.ether
         balance_gntb = 99 * denoms.ether
+        gas_price = 10 ** 9
         self.sci.get_eth_balance.return_value = balance_eth
         self.sci.get_gntb_balance.return_value = balance_gntb
+        self.sci.get_transaction_gas_price.return_value = gas_price
         self.pp.CLOSURE_TIME_DELAY = 0
 
         assert self.pp.reserved_gntb == 0
@@ -163,7 +165,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.assertEqual(p.status, PaymentStatus.confirmed)
         self.assertEqual(p.details.block_number, tx_block_number)
         self.assertEqual(p.details.block_hash, 64 * 'f')
-        self.assertEqual(p.details.fee, 55001 * self.sci.GAS_PRICE)
+        self.assertEqual(p.details.fee, 55001 * gas_price)
         self.assertEqual(self.pp.reserved_gntb, 0)
 
     def test_failed_transaction(self):
@@ -453,7 +455,8 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.batch_transfer.side_effect = Exception
 
         with freeze_time(timestamp_to_datetime(ts)):
-            self.pp.sendout(0)
+            with self.assertRaises(Exception):
+                self.pp.sendout(0)
             self._assert_batch_transfer_called_with([scip], ts)
             self.sci.batch_transfer.reset_mock()
 

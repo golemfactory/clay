@@ -56,13 +56,11 @@ class TestBenchmarkRunner(testutils.TempDirFixture):
         task_state.definition = task_definition
 
         dir_manager = DirManager(self.path)
-        task = Task.build_task(
-            blenderrendertask.BlenderRenderTaskBuilder(
+        task = blenderrendertask.BlenderRenderTaskBuilder(
                 Node(),
                 task_definition,
                 dir_manager
-            )
-        )
+            ).build()
 
         success = mock.MagicMock()
         error = mock.MagicMock()
