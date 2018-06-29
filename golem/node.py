@@ -1,3 +1,4 @@
+from enum import Enum
 import functools
 import logging
 import time
@@ -5,6 +6,7 @@ from typing import List, Optional, Callable, Any
 
 from twisted.internet import threads
 from twisted.internet.defer import gatherResults, Deferred
+from twisted.python.failure import Failure
 
 from apps.appsmanager import AppsManager
 from golem.appconfig import AppConfig
@@ -26,6 +28,12 @@ from golem.rpc.session import object_method_map, Session, Publisher
 from golem.terms import TermsOfUse
 
 logger = logging.getLogger(__name__)
+
+
+class ShutdownResponse(Enum):
+    quit = "quit"
+    off = "off"
+    on = "on"
 
 
 # pylint: disable=too-many-instance-attributes
@@ -93,7 +101,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
             start_geth=start_geth,
             start_geth_port=start_geth_port,
             geth_address=geth_address,
-            apps_manager=self.apps_manager
+            apps_manager=self.apps_manager,
+            task_finished_cb=self._try_shutdown
         )
 
         if password is not None:
@@ -205,6 +214,68 @@ class Node(object):  # pylint: disable=too-few-public-methods
     def show_terms():
         return TermsOfUse.show_terms()
 
+    def graceful_shutdown(self) -> ShutdownResponse:
+        if self.client is None:
+            logger.warning('Shutdown called when client=None, try again later')
+            return ShutdownResponse.off
+
+        # is in shutdown? turn off as toggle
+        if self._config_desc.in_shutdown:
+            self.client.update_setting('in_shutdown', False)
+            logger.info('Turning off shutdown mode')
+            return ShutdownResponse.off
+
+        # is not providing nor requesting, normal shutdown
+        if not self._is_task_in_progress():
+            logger.info('Node not working, executing normal shutdown')
+            self.quit()
+            return ShutdownResponse.quit
+
+        # configure in_shutdown
+        logger.info('Enabling shutdown mode, no more tasks can be started')
+        self.client.update_setting('in_shutdown', True)
+
+        # subscribe to events
+
+        return ShutdownResponse.on
+
+    def _try_shutdown(self) -> None:
+        # is not in shutdown?
+        if not self._config_desc.in_shutdown:
+            logger.debug('Checking shutdown, no shutdown configure')
+            return
+
+        if self._is_task_in_progress():
+            logger.info('Shutdown checked, a task is still in progress')
+            return
+
+        logger.info('Node done with all tasks, shutting down')
+        self.quit()
+
+    def _is_task_in_progress(self) -> bool:
+        if self.client is None:
+            logger.debug('_is_task_in_progress? False: client=None')
+            return False
+
+        task_server = self.client.task_server
+        if task_server is None or task_server.task_manager is None:
+            logger.debug('_is_task_in_progress? False: task_manager=None')
+            return False
+
+        task_requestor_progress = task_server.task_manager.get_progresses()
+        if task_requestor_progress:
+            logger.debug('_is_task_in_progress? requestor=%r', True)
+            return True
+
+        if task_server.task_computer is None:
+            logger.debug('_is_task_in_progress? False: task_computer=None')
+            return False
+
+        task_provider_progress = task_server.task_computer.assigned_subtasks
+        logger.debug('_is_task_in_progress? provider=%r, requestor=False',
+                     task_provider_progress)
+        return task_provider_progress != {}
+
     def _check_terms(self) -> Optional[Deferred]:
         if not self.rpc_session:
             self._error("RPC session is not available")
@@ -314,5 +385,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def _stop_on_error(self, msg: str, err: Any) -> None:
         if self._reactor.running:
-            logger.error("Stopping because of %r error: %r", msg, err)
+            exc_info = (err.type, err.value, err.getTracebackObject()) \
+                if isinstance(err, Failure) else None
+            logger.error(
+                "Stopping because of %r error: %r", msg, err, exc_info=exc_info)
             self._reactor.callFromThread(self._reactor.stop)

@@ -141,6 +141,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         task_state = taskstate.TaskState()
         task_state.package_hash = '667'
+        task_state.package_size = 42
         conn.server.task_manager.tasks_states[ctd['task_id']] = task_state
 
         ts2.task_manager.get_next_subtask.return_value = (ctd, False, False)
@@ -163,7 +164,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             ['package_hash', 'sha1:' + task_state.package_hash],
             ['concent_enabled', use_concent],
             ['price', 0],
-            ['size', 0],
+            ['size', task_state.package_size],
         ]
         self.assertCountEqual(ms.slots(), expected)
         ts2.task_manager.get_next_subtask.return_value = (ctd, True, False)
@@ -435,6 +436,17 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
     def test_result_rejected_with_concent(self):
         srr = self._get_srr(concent=True)
+        self.task_session.task_server.client.funds_locker\
+            .sum_locks.return_value = (0,)
+
+        def on_trans(**kwargs):
+            receipt = Mock()
+            receipt.status = True
+            kwargs['cb']()
+            return 'txhash'
+
+        self.task_session.task_server.client.transaction_system\
+            .concent_deposit.side_effect = on_trans
         self.__call_react_to_srr(srr)
         stm = self.task_session.concent_service.submit_task_message
         stm.assert_called()
