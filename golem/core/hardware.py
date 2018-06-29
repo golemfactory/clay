@@ -41,7 +41,7 @@ def memory_available() -> int:
     """
     :return int: 3/4 of total available memory in KiB
     """
-    return int(max(int(virtual_memory().total * 0.75) / 1024, MIN_MEMORY_SIZE))
+    return max(int(virtual_memory().total * 0.75 / 1024), MIN_MEMORY_SIZE)
 
 
 class HardwarePresets(object):
