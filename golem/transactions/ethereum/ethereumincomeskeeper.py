@@ -2,6 +2,8 @@
 
 import logging
 
+from golem_messages.utils import bytes32_to_uuid
+
 from golem.model import GenericKeyValue
 from golem.transactions.incomeskeeper import IncomesKeeper
 
@@ -24,6 +26,12 @@ class EthereumIncomesKeeper(IncomesKeeper):
             from_block,
             self._on_batch_event,
         )
+        self.__sci.subscribe_to_forced_subtask_payments(
+            None,
+            self.__sci.get_eth_address(),
+            from_block,
+            self._on_forced_subtask_payment,
+        )
 
     def _on_batch_event(self, event):
         self.received_batch_transfer(
@@ -31,6 +39,14 @@ class EthereumIncomesKeeper(IncomesKeeper):
             event.sender,
             event.amount,
             event.closure_time,
+        )
+
+    def _on_forced_subtask_payment(self, event):
+        self.received_forced_subtask_payment(
+            event.tx_hash,
+            event.requestor,
+            str(bytes32_to_uuid(event.subtask_id)),
+            event.amount,
         )
 
     def stop(self) -> None:

@@ -41,15 +41,12 @@ class Account:
                 'eth_lock': 0
             }
 
-        gnt_balance = balance['gnt']
-        gnt_available = balance['av_gnt']
-        eth_balance = balance['eth']
-        gnt_balance = float(gnt_balance)
-        gnt_available = float(gnt_available)
-        eth_balance = float(eth_balance)
+        gnt_balance = int(balance['gnt'])
+        gnt_available = int(balance['av_gnt'])
+        eth_balance = int(balance['eth'])
         gnt_reserved = gnt_balance - gnt_available
-        gnt_locked = float(balance['gnt_lock'])
-        eth_locked = float(balance['eth_lock'])
+        gnt_locked = int(balance['gnt_lock'])
+        eth_locked = int(balance['eth_lock'])
 
         return dict(
             node_name=node['node_name'],
@@ -115,6 +112,17 @@ class Account:
         amount = str(int(Decimal(amount) * denoms.ether))
         return sync_wait(Account.client.withdraw(amount, destination, currency))
 
+    @command(help="Trigger graceful shutdown of your golem")
+    def shutdown(self) -> str:  # pylint: disable=no-self-use
 
-def _fmt(value: float, unit: str = "GNT") -> str:
-    return "{:.6f} {}".format(value / denoms.ether, unit)
+        result = sync_wait(Account.client.graceful_shutdown())
+
+        return "Graceful shutdown triggered result: {}".format(result)
+
+
+def _fmt(value: int, unit: str = "GNT") -> str:
+    full = value // denoms.ether
+    decimals = '.' + str(value % denoms.ether).zfill(18).rstrip('0')
+    if decimals == '.':
+        decimals = ''
+    return "{}{} {}".format(full, decimals, unit)

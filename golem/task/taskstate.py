@@ -19,6 +19,7 @@ class TaskState(object):
         self.resource_hash = None
         self.package_hash = None
         self.package_path = None
+        self.package_size = None
         self.extra_data = {}
 
     def __repr__(self):
@@ -92,7 +93,8 @@ class TaskStatus(Enum):
     restarted = "Restart"
 
     def is_completed(self) -> bool:
-        return self in [self.finished, self.aborted, self.timeout]
+        return self in [self.finished, self.aborted,
+                        self.timeout, self.restarted]
 
 
 class SubtaskStatus(Enum):
@@ -130,6 +132,9 @@ class Operation(Enum):
     def unnoteworthy() -> bool:
         return False
 
+    def is_completed(self) -> bool:
+        pass
+
 
 class TaskOp(Operation):
     """Ops that result in storing of task level information"""
@@ -137,6 +142,14 @@ class TaskOp(Operation):
     @staticmethod
     def task_related() -> bool:
         return True
+
+    def is_completed(self) -> bool:
+        return self in [
+            TaskOp.FINISHED,
+            TaskOp.NOT_ACCEPTED,
+            TaskOp.TIMEOUT,
+            TaskOp.RESTARTED,
+            TaskOp.ABORTED]
 
     WORK_OFFER_RECEIVED = auto()
     CREATED = auto()
