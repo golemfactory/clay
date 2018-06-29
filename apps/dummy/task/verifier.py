@@ -1,4 +1,5 @@
 import os
+from typing import Callable, Dict
 
 from golem_verificator.core_verifier import CoreVerifier
 from apps.dummy.resources.code_dir import computing
@@ -7,14 +8,16 @@ from apps.dummy.resources.code_dir import computing
 class DummyTaskVerifier(CoreVerifier):
     # subtask_info is what sits in the task.subtasks_given["subtask_id"]
     # it is set in the query_extra_data
-    def __init__(self, callback, verification_data=None):
+    def __init__(self, callback: Callable, verification_data: Dict=None):
         super().__init__(callback)
         self.subtask_info = verification_data["subtask_info"]
 
-    def _verify_result(self, results):
+    def _verify_result(self, results: Dict):
 
         subtask_info = results["subtask_info"]
         results = results["results"]
+
+        ret_list = []
 
         for result in results:
             _, ext = os.path.splitext(result)
@@ -28,14 +31,15 @@ class DummyTaskVerifier(CoreVerifier):
             if len(result_data) != subtask_info["result_size"]:
                 return False
 
-        if subtask_info["difficulty"] == 0:
-            return True
+            if subtask_info["difficulty"] == 0:
+                return True
 
-        with open(subtask_info["shared_data_files"][0], 'rU') as f:
-            shared_data = f.read()
+            with open(subtask_info["shared_data_files"][0], 'rU') as f:
+                shared_data = f.read()
 
-        input_data = shared_data + subtask_info["subtask_data"]
+            input_data = shared_data + subtask_info["subtask_data"]
 
-        return computing.check_pow(int(result_data, 16),
-                                   input_data,
-                                   subtask_info["difficulty"])
+            ret_list.append(computing.check_pow(int(result_data, 16),
+                                       input_data,
+                                       subtask_info["difficulty"]))
+            return ret_list

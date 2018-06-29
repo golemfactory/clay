@@ -4,6 +4,8 @@ import os
 import logging
 from copy import deepcopy
 from functools import partial
+from typing import Dict, Tuple, List, Callable
+
 import numpy
 
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
@@ -16,8 +18,8 @@ logger = logging.getLogger("blendercroppper")
 # pylint: disable=R0903
 # pylint: disable=R0902
 class CropContext:
-    def __init__(self, crops_data, computer,
-                 subtask_data, callbacks):
+    def __init__(self, crops_data: Dict, computer,
+                 subtask_data: Dict, callbacks: Dict):
         self.crops_path = crops_data['paths']
         self.crop_values = crops_data['position'][0]
         self.crop_pixels = crops_data['position'][1]
@@ -39,11 +41,11 @@ class BlenderReferenceGenerator:
     CROPS_NO_SECOND = 6
 
     def __init__(self):
-        self.crop_counter = 0
-        self.crop_size = ()
-        self.split_values = []
-        self.split_pixels = []
-        self.rendered_crops_results = {}
+        self.crop_counter: int = 0
+        self.crop_size: Tuple = ()
+        self.split_values: List = []
+        self.split_pixels: List = []
+        self.rendered_crops_results: Dict = {}
 
     def clear(self):
         self.crop_counter = 0
@@ -53,8 +55,9 @@ class BlenderReferenceGenerator:
         self.rendered_crops_results = {}
 
     # pylint: disable=R0914
-    def generate_split_data(self, resolution, image_border, splits_num,
-                            crop_size=None):
+    def generate_split_data(self, resolution: Tuple, image_border: List,
+                            splits_num: int,
+                            crop_size: Tuple = None):
         """
         This function will generate split data for performing random crops.
         Crops will be rendered from blend files using calculated values (
@@ -135,10 +138,13 @@ class BlenderReferenceGenerator:
         return self.split_values, self.split_pixels, self.crop_size
 
     # pylint: disable-msg=too-many-arguments
-    def render_crops(self, computer, resources, crop_rendered,
-                     crop_render_failure, subtask_info,
-                     num_crops=CROPS_NO_FIRST,
-                     crop_size=None):
+    def render_crops(self, computer, resources: List,
+                     crop_rendered: Callable[[List, float, CropContext, int],
+                                             None],
+                     crop_render_failure: Callable[[Exception], None],
+                     subtask_info: Dict,
+                     num_crops: int=CROPS_NO_FIRST,
+                     crop_size: Tuple=None):
         # pylint: disable=unused-argument
         crops_path = os.path.join(subtask_info['tmp_dir'],
                                   subtask_info['subtask_id'])
@@ -164,8 +170,11 @@ class BlenderReferenceGenerator:
     # Issue # 2447
     # pylint: disable-msg=too-many-arguments
     # pylint: disable=R0914
-    def _render_one_crop(self, verify_ctx, crop_rendered, crop_render_failure,
-                         crop_number):
+    def _render_one_crop(self, verify_ctx: CropContext,
+                         crop_rendered: Callable[[List, float,
+                                                  CropContext, int], None],
+                         crop_render_failure: Callable[[Exception], None],
+                         crop_number: int):
         minx, maxx, miny, maxy = verify_ctx.crop_values[
             crop_number - self.crop_counter]
 
@@ -200,15 +209,16 @@ class BlenderReferenceGenerator:
             additional_resources=[]
         )
 
-    def crop_rendering_finished(self, begin, end):
+    def crop_rendering_finished(self, begin: int, end: int):
         for i in range(begin, end):
             self.rendered_crops_results[i][2].success(
                 self.rendered_crops_results[i][0],
                 self.rendered_crops_results[i][1],
                 self.rendered_crops_results[i][2], i-self.crop_counter)
 
-    def crop_rendered(self, results, time_spend, verification_context,
-                      crop_number):
+    def crop_rendered(self, results: List, time_spend: float,
+                      verification_context: CropContext,
+                      crop_number: int):
         self.rendered_crops_results[crop_number] \
             = [results, time_spend, verification_context]
         crop_number += 1
@@ -224,7 +234,7 @@ class BlenderReferenceGenerator:
                               verification_context.errback, crop_number)
 
     @staticmethod
-    def _random_split(min_, max_, size_):
+    def _random_split(min_: int, max_: int, size_: int):
         # survive in edge cases
         max_ -= 1
         min_ += 1
@@ -237,7 +247,7 @@ class BlenderReferenceGenerator:
         return [split_min, split_max]
 
     @staticmethod
-    def _pixel(crop_x_min, crop_y_max, top):
+    def _pixel(crop_x_min: int, crop_y_max: int, top: int):
         # In matrics calculation, y=0 is located on top. Where in blender in
         # bottom. Take then given top and substract it from y_max
         y = top - crop_y_max
@@ -246,7 +256,7 @@ class BlenderReferenceGenerator:
         return x, y
 
     @staticmethod
-    def _find_split_size(res):
+    def _find_split_size(res: int):
         #  Int rounding, this hasn't to be exact, since its only have to be
         #  precise and constant
         return int(

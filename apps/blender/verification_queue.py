@@ -4,7 +4,9 @@ import queue
 from types import FunctionType
 from typing import Optional, Type, Dict
 from collections import namedtuple
+
 from twisted.internet.defer import Deferred, gatherResults
+
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 from golem_verificator.verifier import Verifier
 from golem.core.common import deadline_to_timeout
