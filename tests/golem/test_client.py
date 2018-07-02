@@ -39,6 +39,7 @@ from golem.task.taskbase import Task
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     TaskTestStatus
+from golem.task.tasktester import TaskTester
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
@@ -1378,6 +1379,62 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.client.block_node('node_id')
         self.client.task_server.acl.disallow.assert_called_once_with(
             'node_id', persist=True)
+
+    def test_run_test_task_success(self, *_):
+        result = {'result': 'result'}
+        estimated_memory = 1234
+        time_spent = 1.234
+        more = {'more': 'more'}
+
+        def _run(_self: TaskTester):
+            self.assertIsInstance(self.client.task_test_result, str)
+            test_result = json.loads(self.client.task_test_result)
+            self.assertEqual(test_result, {
+                "status": TaskTestStatus.started,
+                "error": True
+            })
+
+            _self.success_callback(result, estimated_memory, time_spent, **more)
+
+        with patch.object(self.client.task_server.task_manager, 'create_task'),\
+                patch('golem.client.TaskTester.run', _run):
+            self.client._run_test_task({})
+
+        self.assertIsInstance(self.client.task_test_result, str)
+        test_result = json.loads(self.client.task_test_result)
+        self.assertEqual(test_result, {
+            "status": TaskTestStatus.success,
+            "result": result,
+            "estimated_memory": estimated_memory,
+            "time_spent": time_spent,
+            "more": more
+        })
+
+    def test_run_test_task_error(self, *_):
+        error = ['error', 'error']
+        more = {'more': 'more'}
+
+        def _run(_self: TaskTester):
+            self.assertIsInstance(self.client.task_test_result, str)
+            test_result = json.loads(self.client.task_test_result)
+            self.assertEqual(test_result, {
+                "status": TaskTestStatus.started,
+                "error": True
+            })
+
+            _self.error_callback(*error, **more)
+
+        with patch.object(self.client.task_server.task_manager, 'create_task'),\
+                patch('golem.client.TaskTester.run', _run):
+            self.client._run_test_task({})
+
+        self.assertIsInstance(self.client.task_test_result, str)
+        test_result = json.loads(self.client.task_test_result)
+        self.assertEqual(test_result, {
+            "status": TaskTestStatus.error,
+            "error": error,
+            "more": more
+        })
 
     @classmethod
     def __new_incoming_peer(cls):

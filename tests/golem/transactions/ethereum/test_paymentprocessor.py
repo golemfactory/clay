@@ -118,8 +118,10 @@ class PaymentProcessorInternalTest(DatabaseFixture):
     def test_monitor_progress(self):
         balance_eth = 1 * denoms.ether
         balance_gntb = 99 * denoms.ether
+        gas_price = 10 ** 9
         self.sci.get_eth_balance.return_value = balance_eth
         self.sci.get_gntb_balance.return_value = balance_gntb
+        self.sci.get_transaction_gas_price.return_value = gas_price
         self.pp.CLOSURE_TIME_DELAY = 0
 
         assert self.pp.reserved_gntb == 0
@@ -163,7 +165,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.assertEqual(p.status, PaymentStatus.confirmed)
         self.assertEqual(p.details.block_number, tx_block_number)
         self.assertEqual(p.details.block_hash, 64 * 'f')
-        self.assertEqual(p.details.fee, 55001 * self.sci.GAS_PRICE)
+        self.assertEqual(p.details.fee, 55001 * gas_price)
         self.assertEqual(self.pp.reserved_gntb, 0)
 
     def test_failed_transaction(self):

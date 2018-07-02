@@ -2,7 +2,8 @@ import uuid
 
 from peewee import DoesNotExist, IntegrityError
 
-from golem.appconfig import DEFAULT_HARDWARE_PRESET_NAME, CUSTOM_HARDWARE_PRESET_NAME
+from golem.appconfig import DEFAULT_HARDWARE_PRESET_NAME, \
+    CUSTOM_HARDWARE_PRESET_NAME
 from golem.config.presets import HardwarePresetsMixin
 from golem.core.hardware import HardwarePresets
 from golem.model import HardwarePreset
@@ -13,20 +14,22 @@ class TestHardwarePresetsMixin(TestWithDatabase):
 
     def setUp(self):
         super(TestHardwarePresetsMixin, self).setUp()
-        HardwarePresets.initialize(self.tempdir)
 
-    def test_get_hw_caps(self):
-        caps = HardwarePresetsMixin.get_hw_caps()
-        assert caps['cpu_cores'] >= 1
-        assert caps['memory'] > 0
-        assert caps['disk'] > 0
+    @staticmethod
+    def create_sample_preset_dict():
+        return {'name': str(uuid.uuid4()),
+                'cpu_cores': 1,
+                'memory': 1000 * 1024,
+                'disk': 1000 * 1024}
 
     def test_get_hw_presets(self):
+        HardwarePresets.initialize(self.tempdir)
         presets = HardwarePresetsMixin.get_hw_presets()
         assert len(presets) >= 2
         assert all([preset is not None for preset in presets])
 
     def test_get_hw_preset(self):
+        HardwarePresets.initialize(self.tempdir)
         assert HardwarePresetsMixin.get_hw_preset(DEFAULT_HARDWARE_PRESET_NAME)
         assert HardwarePresetsMixin.get_hw_preset(CUSTOM_HARDWARE_PRESET_NAME)
 
@@ -39,7 +42,6 @@ class TestHardwarePresetsMixin(TestWithDatabase):
         preset_memory = 1000 * 1024
         preset_disk = 1000 * 1024
         preset_dict = dict()
-
         # try to persist a preset with null values
         with self.assertRaises(IntegrityError):
             HardwarePresetsMixin.create_hw_preset(preset_dict)
@@ -84,8 +86,7 @@ class TestHardwarePresetsMixin(TestWithDatabase):
         assert HardwarePresetsMixin.get_hw_preset(preset_dict['name'])
 
     def test_update_hw_preset(self):
-        preset_dict = HardwarePresetsMixin.get_hw_caps()
-        preset_dict['name'] = str(uuid.uuid4())
+        preset_dict = self.create_sample_preset_dict()
         assert HardwarePresetsMixin.create_hw_preset(preset_dict)
 
         preset_dict['cpu_cores'] += 1
@@ -109,8 +110,7 @@ class TestHardwarePresetsMixin(TestWithDatabase):
         # test removal of a non-existing preset
         assert not HardwarePresetsMixin.delete_hw_preset(str(uuid.uuid4()))
 
-        preset_dict = HardwarePresetsMixin.get_hw_caps()
-        preset_dict['name'] = str(uuid.uuid4())
+        preset_dict = self.create_sample_preset_dict()
 
         # create and remove a preset
         assert HardwarePresetsMixin.create_hw_preset(preset_dict)
@@ -120,12 +120,15 @@ class TestHardwarePresetsMixin(TestWithDatabase):
         assert not HardwarePresetsMixin.delete_hw_preset(preset_dict['name'])
 
     def test_sanitize_preset_name(self):
-        sanitize = HardwarePresetsMixin._HardwarePresetsMixin__sanitize_preset_name
+        sanitize = \
+            HardwarePresetsMixin._HardwarePresetsMixin__sanitize_preset_name
 
         assert sanitize(None) == CUSTOM_HARDWARE_PRESET_NAME
         assert sanitize('') == CUSTOM_HARDWARE_PRESET_NAME
-        assert sanitize(DEFAULT_HARDWARE_PRESET_NAME) == CUSTOM_HARDWARE_PRESET_NAME
-        assert sanitize(CUSTOM_HARDWARE_PRESET_NAME) == CUSTOM_HARDWARE_PRESET_NAME
+        assert sanitize(
+            DEFAULT_HARDWARE_PRESET_NAME) == CUSTOM_HARDWARE_PRESET_NAME
+        assert sanitize(
+            CUSTOM_HARDWARE_PRESET_NAME) == CUSTOM_HARDWARE_PRESET_NAME
         assert sanitize('test') == 'test'
 
     def test_activate_hw_preset(self):
