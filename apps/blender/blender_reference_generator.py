@@ -51,7 +51,7 @@ class BlenderReferenceGenerator:
         self.crop_size: Tuple[float, float] = ()
         self.split_values: List[Tuple[float, float, float, float]] = []
         self.split_pixels: List[Tuple[int, int]] = []
-        self.rendered_crops_results: Dict[int, [[str], float, CropContext]] = {}
+        self.rendered_crops_results: Dict[int, List[Any]] = {}
 
     def clear(self):
         self.crop_counter = 0
