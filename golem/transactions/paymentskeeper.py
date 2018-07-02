@@ -1,10 +1,11 @@
 import logging
 from datetime import datetime
+from typing import Iterable, Tuple
 
 from eth_utils import encode_hex
 
 from golem.core.common import to_unicode, datetime_to_timestamp_utc
-from golem.model import Payment
+from golem.model import Payment, PaymentStatus
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +31,26 @@ class PaymentsDatabase(object):
         except Payment.DoesNotExist:
             logger.debug("Can't get payment value - payment does not exist")
             return 0
+
+    @staticmethod
+    def get_total_payment_for_subtasks(subtask_ids: Iterable[str])\
+            -> Tuple[int, int]:
+        """
+        Get total value and total fee for confirmed payments for the given
+        subtask IDs
+        :param subtask_ids: subtask IDs
+        :return: (total_value, total_fee)
+        """
+        payments = Payment.select(
+            Payment.value,
+            Payment.details
+        ).where(
+            Payment.subtask.in_(subtask_ids),
+            Payment.status == PaymentStatus.confirmed
+        )
+        # Because details are JSON field
+        return sum(p.value for p in payments), \
+            sum(p.details.fee for p in payments)
 
     def add_payment(self, payment_info):
         """ Add new payment to the database.
@@ -106,6 +127,16 @@ class PaymentsKeeper:
         :return: Cost of the @subtask_id
         """
         return self.db.get_payment_for_subtask(subtask_id)
+
+    def get_total_payment_for_subtasks(self, subtask_ids: Iterable[str]) \
+            -> Tuple[int, int]:
+        """
+        Get total value and total fee for confirmed payments for the given
+        subtask IDs
+        :param subtask_ids: subtask IDs
+        :return: (total_value, total_fee)
+        """
+        return self.db.get_total_payment_for_subtasks(subtask_ids)
 
 
 class PaymentInfo(object):
