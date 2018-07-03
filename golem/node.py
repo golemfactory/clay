@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import IntEnum
 import functools
 import logging
 import time
@@ -30,10 +30,10 @@ from golem.terms import TermsOfUse
 logger = logging.getLogger(__name__)
 
 
-class ShutdownResponse(Enum):
-    quit = "quit"
-    off = "off"
-    on = "on"
+class ShutdownResponse(IntEnum):
+    quit = 0
+    off = 1
+    on = 2
 
 
 # pylint: disable=too-many-instance-attributes
