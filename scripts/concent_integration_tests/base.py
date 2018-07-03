@@ -1,12 +1,19 @@
 import base64
+import datetime
 import logging
 import os
 import calendar
+import random
+import tempfile
+import sys
+import threading
 import time
+import unittest
 
 import golem_messages
 
 from golem_messages import cryptography
+from golem_messages import helpers
 from golem_messages import serializer
 from golem_messages import utils as msg_utils
 from golem_messages.message.base import Message
@@ -14,7 +21,11 @@ from golem_messages.message import concents as concent_msg
 
 from golem.network.concent import client
 
+from golem import testutils
 from golem.core import variables
+from golem.database import Database
+from golem.model import DB_MODELS, db, DB_FIELDS
+from golem.transactions.ethereum import ethereumtransactionsystem as libets
 
 
 logger = logging.getLogger(__name__)
@@ -158,3 +169,82 @@ class ConcentBaseTest:
         self.assertEqual(ftt.operation, operation)
 
     # pylint:enable=no-member
+
+
+class ConcentDepositBaseTest(ConcentBaseTest, unittest.TestCase):
+    requestor_ets = None
+    provider_ets = None
+
+    def setUp(self):
+        super(ConcentDepositBaseTest, self).setUp()
+        random.seed()
+        td_requestor = tempfile.mkdtemp()
+        td_provider = tempfile.mkdtemp()
+
+        self.database_requestor = Database(
+            db, fields=DB_FIELDS, models=DB_MODELS, db_dir=td_requestor)
+        self.database_provider = Database(
+            db, fields=DB_FIELDS, models=DB_MODELS, db_dir=td_provider)
+        self.requestor_ets = libets.EthereumTransactionSystem(
+            datadir=td_requestor,
+            node_priv_key=self.requestor_keys.raw_privkey,
+        )
+        self.provider_ets = libets.EthereumTransactionSystem(
+            datadir=td_provider,
+            node_priv_key=self.provider_keys.raw_privkey,
+        )
+
+    @staticmethod
+    def wait_for_gntb(ets: libets.EthereumTransactionSystem):
+        sys.stderr.write('Waiting for GNTB...\n')
+        while ets._gntb_balance <= 0:
+            try:
+                ets._run()
+            except ValueError as e:
+                # web3 will raise ValueError if 'error' is present
+                # in response from geth
+                sys.stderr.write('E: {}\n'.format(e))
+            sys.stderr.write(
+                'Still waiting. GNT: {:22} GNTB: {:22} ETH: {:17}\n'.format(
+                    ets._gnt_balance,
+                    ets._gntb_balance,
+                    ets._eth_balance,
+                ),
+            )
+            time.sleep(10)
+
+    def put_deposit(self, ets: libets.EthereumTransactionSystem, amount: int):
+        start = datetime.datetime.now()
+        self.wait_for_gntb(ets)
+
+        transaction_processed = threading.Event()
+
+        def _callback():
+            transaction_processed.set()
+
+        ets.concent_deposit(
+            required=amount,
+            expected=amount,
+            reserved=0,
+            cb=_callback,
+        )
+        while not transaction_processed.is_set():
+            sys.stderr.write('.')
+            sys.stderr.flush()
+            ets._sci._monitor_blockchain_single()
+            time.sleep(15)
+        sys.stderr.write("\nDeposit confirmed in {}\n".format(
+            datetime.datetime.now()-start))
+        if ets.concent_balance() < amount:
+            raise RuntimeError("Deposit failed")
+
+    def requestor_put_deposit(self, price: int):
+        amount, _ = helpers.requestor_deposit_amount(
+            # We'll use subtask price. Total number of subtasks is unknown
+            price,
+        )
+        return self.put_deposit(self.requestor_ets, amount)
+
+    def provider_put_deposit(self, price: int):
+        amount, _ = helpers.provider_deposit_amount(price)
+        return self.put_deposit(self.provider_ets, amount)

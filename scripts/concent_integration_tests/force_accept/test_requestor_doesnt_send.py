@@ -3,9 +3,6 @@ import calendar
 import datetime
 import logging
 import random
-import sys
-import threading
-import time
 import uuid
 
 from golem_messages import constants
@@ -13,11 +10,9 @@ from golem_messages import factories as msg_factories
 from golem_messages import helpers
 from golem_messages import message
 
-from golem import testutils
 from golem.network.concent import exceptions as concent_exceptions
-from golem.transactions.ethereum import ethereumtransactionsystem as libets
 
-from ..base import ConcentBaseTest
+from ..base import ConcentDepositBaseTest
 
 
 reasons = message.concents.ForceSubtaskResultsRejected.REASON
@@ -25,63 +20,8 @@ logger = logging.getLogger(__name__)
 moment = datetime.timedelta(seconds=2)
 
 
-class RequestorDoesntSendTestCase(ConcentBaseTest, testutils.DatabaseFixture):
+class RequestorDoesntSendTestCase(ConcentDepositBaseTest):
     """Requestor doesn't send Ack/Reject of SubtaskResults"""
-    def setUp(self):
-        random.seed()
-        ConcentBaseTest.setUp(self)
-        testutils.DatabaseFixture.setUp(self)
-        self.ets = libets.EthereumTransactionSystem(
-            datadir=self.tempdir,
-            node_priv_key=self.requestor_keys.raw_privkey,
-        )
-
-    def wait_for_gntb(self):
-        sys.stderr.write('Waiting for GNTB...\n')
-        while self.ets._gntb_balance <= 0:
-            try:
-                self.ets._run()
-            except ValueError as e:
-                # web3 will raise ValueError if 'error' is present
-                # in response from geth
-                sys.stderr.write('E: {}\n'.format(e))
-            sys.stderr.write(
-                'Still waiting. GNT: {:22} GNTB: {:22} ETH: {:17}\n'.format(
-                    self.ets._gnt_balance,
-                    self.ets._gntb_balance,
-                    self.ets._eth_balance,
-                ),
-            )
-            time.sleep(10)
-
-    def requestor_put_deposit(self, price: int):
-        start = datetime.datetime.now()
-        self.wait_for_gntb()
-        amount, _ = helpers.requestor_deposit_amount(
-            # We'll use subtask price. Total number of subtasks is unknown
-            price,
-        )
-
-        transaction_processed = threading.Event()
-
-        def _callback():
-            transaction_processed.set()
-
-        self.ets.concent_deposit(
-            required=amount,
-            expected=amount,
-            reserved=0,
-            cb=_callback,
-        )
-        while not transaction_processed.is_set():
-            sys.stderr.write('.')
-            sys.stderr.flush()
-            self.ets._sci._monitor_blockchain_single()
-            time.sleep(15)
-        sys.stderr.write("\nDeposit confirmed in {}\n".format(
-            datetime.datetime.now()-start))
-        if self.ets.concent_balance() < amount:
-            raise RuntimeError("Deposit failed")
 
     def prepare_report_computed_task(self, mode, **kwargs):
         """Returns ReportComputedTask with open force acceptance window
