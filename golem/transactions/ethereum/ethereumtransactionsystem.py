@@ -235,14 +235,20 @@ class EthereumTransactionSystem(TransactionSystem):
             self._last_gnt_update is not None
 
     def _refresh_balances(self) -> None:
+        now = time.mktime(datetime.today().timetuple())
         addr = self._sci.get_eth_address()
 
-        self._eth_balance = self._sci.get_eth_balance(addr)
-        self._last_eth_update = time.mktime(datetime.today().timetuple())
+        # Sometimes web3 may throw but it's fine here, we'll just update the
+        # balances next time
+        try:
+            self._eth_balance = self._sci.get_eth_balance(addr)
+            self._last_eth_update = now
 
-        self._gnt_balance = self._sci.get_gnt_balance(addr)
-        self._gntb_balance = self._sci.get_gntb_balance(addr)
-        self._last_gnt_update = time.mktime(datetime.today().timetuple())
+            self._gnt_balance = self._sci.get_gnt_balance(addr)
+            self._gntb_balance = self._sci.get_gntb_balance(addr)
+            self._last_gnt_update = now
+        except Exception as e:
+            logger.info('Failed to update balances: %r', e)
 
     def _try_convert_gnt(self) -> None:  # pylint: disable=too-many-branches
         if not self._balance_known():
