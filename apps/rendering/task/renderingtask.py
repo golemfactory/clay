@@ -220,15 +220,10 @@ class RenderingTask(CoreTask):
         else:
             return ''
 
-    def short_extra_data_repr(self, extra_data=None):
-        _extra_data = extra_data
-        if _extra_data is None:
-            # FIXME Use real data? Issue #2460
-            _extra_data = self.query_extra_data_for_test_task()['extra_data']
-        return "path_root: {path_root}, start_task: {start_task}, " \
-               "end_task: {end_task}, total_tasks: {total_tasks}, " \
-               "outfilebasename: {outfilebasename}, " \
-               "scene_file: {scene_file}".format(**_extra_data)
+    def short_extra_data_repr(self, extra_data):
+        l = extra_data
+        return "path_root: {path_root}, start_task: {start_task}, end_task: {end_task}, total_tasks: {total_tasks}, " \
+               "outfilebasename: {outfilebasename}, scene_file: {scene_file}".format(**l)
 
     def _open_preview(self, mode="RGB", ext=PREVIEW_EXT):
         """ If preview file doesn't exist create a new empty one with given mode and extension.
