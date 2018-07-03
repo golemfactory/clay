@@ -248,7 +248,7 @@ class EthereumTransactionSystem(TransactionSystem):
             self._gntb_balance = self._sci.get_gntb_balance(addr)
             self._last_gnt_update = now
         except Exception as e:  # pylint: disable=broad-except
-            log.info('Failed to update balances: %r', e)
+            log.warning('Failed to update balances: %r', e)
 
     def _try_convert_gnt(self) -> None:  # pylint: disable=too-many-branches
         if not self._balance_known():
