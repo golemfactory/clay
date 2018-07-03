@@ -220,8 +220,11 @@ class RenderingTask(CoreTask):
         else:
             return ''
 
-    def short_extra_data_repr(self, extra_data):
-        l = extra_data
+    def short_extra_data_repr(self, extra_data=None):
+        if extra_data is not None:
+            l = extra_data
+        else:
+            l = self.query_extra_data_for_test_task()['extra_data']
         return "path_root: {path_root}, start_task: {start_task}, end_task: {end_task}, total_tasks: {total_tasks}, " \
                "outfilebasename: {outfilebasename}, scene_file: {scene_file}".format(**l)
 
