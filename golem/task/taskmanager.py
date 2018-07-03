@@ -748,7 +748,7 @@ class TaskManager(TaskEventListener):
                     t.get_total_tasks(),
                     t.get_active_tasks(),
                     t.get_progress(),
-                    t.short_extra_data_repr(2200.0)
+                    t.short_extra_data_repr(None)
                 )  # FIXME in short_extra_data_repr should there be extra data
                 # Issue #2460
                 tasks_progresses[task_id] = ltss
