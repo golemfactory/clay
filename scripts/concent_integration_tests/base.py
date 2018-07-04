@@ -170,6 +170,13 @@ class ConcentBaseTest:
 
     # pylint:enable=no-member
 
+    @staticmethod
+    def _log_concent_response(response):
+        logger.debug(
+            "Concent response - status: %s, head: '%s', body: '%s'",
+            response.status_code, response.headers, response.content
+        )
+
 
 class ConcentDepositBaseTest(ConcentBaseTest, unittest.TestCase):
     requestor_ets = None

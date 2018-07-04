@@ -66,13 +66,6 @@ class ForceGetTaskResultFiletransferTest(ForceDownloadBaseTest,
         self.requestor_send(fgtr)
         return self.provider_receive()
 
-    @staticmethod
-    def _log_concent_response(response):
-        logger.debug(
-            "Concent response - status: %s, head: '%s', body: '%s'",
-            response.status_code, response.headers, response.content
-        )
-
     def test_upload(self):
         fgtru = self.get_fgtru()
         self.assertIsInstance(fgtru, concent_msg.ForceGetTaskResultUpload)
