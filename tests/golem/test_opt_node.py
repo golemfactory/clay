@@ -841,11 +841,9 @@ class TestOptNode(TempDirFixture):
         reactor.running = True
 
         self.node = Node(**self.node_kwargs)
-        self.node.client = Mock()
         self.node._reactor.callFromThread = call_now
 
         self.node.quit()
-        assert self.node.client.quit.called
         assert self.node._reactor.stop.called
 
     @patch('golem.node.Database')
@@ -862,7 +860,6 @@ class TestOptNode(TempDirFixture):
         result = self.node.graceful_shutdown()
         assert result == ShutdownResponse.quit
         assert self.node._is_task_in_progress.called
-        assert self.node.client.quit.called
         assert self.node._reactor.stop.called
 
     def test_graceful_shutdown_off(self, *_):

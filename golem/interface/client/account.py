@@ -5,6 +5,7 @@ import zxcvbn
 from decimal import Decimal
 from ethereum.utils import denoms
 
+from golem.node import ShutdownResponse
 from golem.core.deferred import sync_wait
 from golem.interface.command import Argument, command, group
 
@@ -107,12 +108,13 @@ class Account:
         return "Account unlock success"
 
     @command(
-        arguments=(amount_arg, address_arg, currency_arg),
-        help="Withdraw GNT/ETH")
+        arguments=(address_arg, amount_arg, currency_arg),
+        help=("Withdraw GNT/ETH\n"
+              "(withdrawals are not available for the testnet)"))
     def withdraw(  # pylint: disable=no-self-use
             self,
-            amount,
             destination,
+            amount,
             currency) -> str:
         amount = str(int(Decimal(amount) * denoms.ether))
         return sync_wait(Account.client.withdraw(amount, destination, currency))
@@ -121,8 +123,9 @@ class Account:
     def shutdown(self) -> str:  # pylint: disable=no-self-use
 
         result = sync_wait(Account.client.graceful_shutdown())
+        readable_result = repr(ShutdownResponse(result))
 
-        return "Graceful shutdown triggered result: {}".format(result)
+        return "Graceful shutdown triggered result: {}".format(readable_result)
 
 
 def _fmt(value: int, unit: str = "GNT") -> str:

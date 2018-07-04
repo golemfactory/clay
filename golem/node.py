@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import IntEnum
 import functools
 import logging
 import time
@@ -30,10 +30,10 @@ from golem.terms import TermsOfUse
 logger = logging.getLogger(__name__)
 
 
-class ShutdownResponse(Enum):
-    quit = "quit"
-    off = "off"
-    on = "on"
+class ShutdownResponse(IntEnum):
+    quit = 0
+    off = 1
+    on = 2
 
 
 # pylint: disable=too-many-instance-attributes
@@ -131,8 +131,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         def _quit():
             reactor = self._reactor
-            if self.client:
-                self.client.quit()
             if reactor.running:
                 reactor.callFromThread(reactor.stop)
 
@@ -309,14 +307,15 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
             if self.key_exists():
                 event = 'get_password'
-                logger.info('Waiting for password to unlock the account. '
-                            f'{tip_msg}')
+                tip_msg = 'Waiting for password to unlock the account. ' \
+                          f'{tip_msg}'
             else:
                 event = 'new_password'
-                logger.info('New account, waiting for password to be set. '
-                            f'{tip_msg}')
+                tip_msg = 'New account, waiting for password to be set. ' \
+                          f'{tip_msg}'
 
             while not self.is_account_unlocked() and self._reactor.running:
+                logger.info(tip_msg)
                 StatusPublisher.publish(Component.client, event, Stage.pre)
                 time.sleep(5)
 
