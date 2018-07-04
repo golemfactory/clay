@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import IntEnum
 import functools
 import logging
 import time
@@ -30,10 +30,10 @@ from golem.terms import TermsOfUse
 logger = logging.getLogger(__name__)
 
 
-class ShutdownResponse(Enum):
-    quit = "quit"
-    off = "off"
-    on = "on"
+class ShutdownResponse(IntEnum):
+    quit = 0
+    off = 1
+    on = 2
 
 
 # pylint: disable=too-many-instance-attributes
@@ -131,8 +131,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         def _quit():
             reactor = self._reactor
-            if self.client:
-                self.client.quit()
             if reactor.running:
                 reactor.callFromThread(reactor.stop)
 

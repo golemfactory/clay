@@ -738,7 +738,8 @@ class TaskManager(TaskEventListener):
 
         for t in list(self.tasks.values()):
             task_id = t.header.task_id
-            task_status = self.tasks_states[task_id].status
+            task_state = self.tasks_states[task_id]
+            task_status = task_state.status
             in_progress = not TaskStatus.is_completed(task_status)
             logger.info('Collecting progress %r %r %r',
                         task_id, task_status, in_progress)
@@ -748,7 +749,7 @@ class TaskManager(TaskEventListener):
                     t.get_total_tasks(),
                     t.get_active_tasks(),
                     t.get_progress(),
-                    t.short_extra_data_repr(2200.0)
+                    t.short_extra_data_repr(task_state.extra_data)
                 )  # FIXME in short_extra_data_repr should there be extra data
                 # Issue #2460
                 tasks_progresses[task_id] = ltss

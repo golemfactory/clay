@@ -5,6 +5,7 @@ import zxcvbn
 from decimal import Decimal
 from ethereum.utils import denoms
 
+from golem.node import ShutdownResponse
 from golem.core.deferred import sync_wait
 from golem.interface.command import Argument, command, group
 
@@ -116,8 +117,9 @@ class Account:
     def shutdown(self) -> str:  # pylint: disable=no-self-use
 
         result = sync_wait(Account.client.graceful_shutdown())
+        readable_result = repr(ShutdownResponse(result))
 
-        return "Graceful shutdown triggered result: {}".format(result)
+        return "Graceful shutdown triggered result: {}".format(readable_result)
 
 
 def _fmt(value: int, unit: str = "GNT") -> str:
