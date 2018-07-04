@@ -1,11 +1,13 @@
+# pylint: disable=protected-access,no-member
 import base64
+import calendar
 import datetime
+import functools
 import logging
 import os
-import calendar
 import random
-import tempfile
 import sys
+import tempfile
 import threading
 import time
 import unittest
@@ -19,12 +21,11 @@ from golem_messages import utils as msg_utils
 from golem_messages.message.base import Message
 from golem_messages.message import concents as concent_msg
 
-from golem.network.concent import client
-
-from golem import testutils
 from golem.core import variables
 from golem.database import Database
 from golem.model import DB_MODELS, db, DB_FIELDS
+from golem.network.concent import client
+
 from golem.transactions.ethereum import ethereumtransactionsystem as libets
 
 
@@ -32,8 +33,6 @@ logger = logging.getLogger(__name__)
 
 
 class ConcentBaseTest:
-    # pylint:disable=no-member
-
     @staticmethod
     def _fake_keys():
         return cryptography.ECCx(None)
@@ -85,13 +84,6 @@ class ConcentBaseTest:
             concent_variant=self.variant,
         )
 
-    def receive_from_concent(self, signing_key=None, public_key=None):
-        return client.receive_from_concent(
-            signing_key=signing_key or self.provider_priv_key,
-            public_key=public_key or self.provider_pub_key,
-            concent_variant=self.variant,
-        )
-
     def provider_send(self, msg):
         logger.debug("Provider sends %s", msg)
         return self.send_to_concent(
@@ -106,28 +98,58 @@ class ConcentBaseTest:
             signing_key=self.requestor_keys.raw_privkey
         )
 
-    def provider_receive(self):
-        response = self.receive_from_concent()
-        if not response:
-            logger.debug("Provider got empty response")
-            return None
-
-        msg = self.provider_load_response(response)
-        logger.debug("Provider receives %s", msg)
-        return msg
-
-    def requestor_receive(self):
-        response = self.receive_from_concent(
-            signing_key=self.requestor_keys.raw_privkey,
-            public_key=self.requestor_keys.raw_pubkey
+    def receive_and_load(self, actor, receive_function, private_key, **kwargs):
+        response = receive_function(
+            concent_variant=self.variant,
+            **kwargs,
         )
         if not response:
-            logger.debug("Requestor got empty response")
+            logger.debug("%s got empty response", actor)
             return None
-
-        msg = self.requestor_load_response(response)
-        logger.debug("Requestor receives %s", msg)
+        msg = self._load_response(response, private_key)
+        logger.debug("%s receives %s", actor, msg)
         return msg
+
+    receive_from_concent = functools.partialmethod(
+        receive_and_load,
+        receive_function=client.receive_from_concent,
+    )
+    receive_out_of_band = functools.partialmethod(
+        receive_and_load,
+        receive_function=client.receive_out_of_band,
+    )
+
+    def provider_receive(self):
+        return self.receive_from_concent(
+            actor='Provider',
+            signing_key=self.provider_priv_key,
+            private_key=self.provider_priv_key,
+            public_key=self.provider_pub_key,
+        )
+
+    def provider_receive_oob(self):
+        return self.receive_out_of_band(
+            actor='Provider',
+            signing_key=self.provider_priv_key,
+            private_key=self.provider_priv_key,
+            public_key=self.provider_pub_key,
+        )
+
+    def requestor_receive(self):
+        return self.receive_from_concent(
+            actor='Requestor',
+            signing_key=self.requestor_keys.raw_privkey,
+            private_key=self.requestor_keys.raw_privkey,
+            public_key=self.requestor_keys.raw_pubkey
+        )
+
+    def requestor_receive_oob(self):
+        return self.receive_out_of_band(
+            actor='Requestor',
+            signing_key=self.requestor_keys.raw_privkey,
+            private_key=self.requestor_keys.raw_privkey,
+            public_key=self.requestor_keys.raw_pubkey
+        )
 
     def _load_response(self, response, priv_key):
         if response is None:
@@ -136,10 +158,14 @@ class ConcentBaseTest:
             response, priv_key, self.variant['pubkey'])
 
     def provider_load_response(self, response):
-        return self._load_response(response, self.provider_priv_key)
+        msg = self._load_response(response, self.provider_priv_key)
+        logger.debug("Provider receives %s", msg)
+        return msg
 
     def requestor_load_response(self, response):
-        return self._load_response(response, self.requestor_priv_key)
+        msg = self._load_response(response, self.requestor_priv_key)
+        logger.debug("Requestor receives %s", msg)
+        return msg
 
     def assertSamePayload(self, msg1, msg2):
         dump1 = serializer.dumps(msg1.slots())
@@ -178,12 +204,16 @@ class ConcentBaseTest:
         )
 
 
-class ConcentDepositBaseTest(ConcentBaseTest, unittest.TestCase):
+class ETSBaseTest(ConcentBaseTest, unittest.TestCase):
+    """
+    Base test providing instances of EthereumTransactionSystem
+    for the provider and the requestor
+    """
     requestor_ets = None
     provider_ets = None
 
     def setUp(self):
-        super(ConcentDepositBaseTest, self).setUp()
+        super(ETSBaseTest, self).setUp()
         random.seed()
         td_requestor = tempfile.mkdtemp()
         td_provider = tempfile.mkdtemp()
@@ -240,8 +270,10 @@ class ConcentDepositBaseTest(ConcentBaseTest, unittest.TestCase):
             sys.stderr.flush()
             ets._sci._monitor_blockchain_single()
             time.sleep(15)
+
         sys.stderr.write("\nDeposit confirmed in {}\n".format(
             datetime.datetime.now()-start))
+
         if ets.concent_balance() < amount:
             raise RuntimeError("Deposit failed")
 

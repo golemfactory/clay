@@ -3,10 +3,10 @@ import random
 from golem_messages import factories as msg_factories
 from golem_messages.message import tasks as tasks_msg
 
-from ..base import ConcentDepositBaseTest
+from ..base import ETSBaseTest
 
 
-class SubtaskResultsVerifyBaseTest(ConcentDepositBaseTest):
+class SubtaskResultsVerifyBaseTest(ETSBaseTest):
 
     def get_srv(self, **kwargs):
         rct_path = 'subtask_results_rejected__report_computed_task__'
