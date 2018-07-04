@@ -14,10 +14,7 @@ from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
-from twisted.internet.defer import (
-    inlineCallbacks,
-    gatherResults,
-    Deferred)
+from twisted.internet.defer import inlineCallbacks, Deferred
 
 import golem
 from apps.appsmanager import AppsManager
@@ -51,8 +48,12 @@ from golem.network.history import MessageHistoryService
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
-from golem.network.p2p.peersession import PeerSessionInfo
-from golem.network.transport.tcpnetwork import SocketAddress
+from golem.network.p2p.peersession import PeerSessionInfo, PeerSession
+from golem.network.transport.native import NativeNetwork
+from golem.network.transport.network import ProtocolFactory, SessionFactory, \
+    IncomingProtocolFactoryWrapper, OutgoingProtocolFactoryWrapper
+from golem.network.transport.tcpnetwork import SocketAddress, SafeProtocol
+from golem.network.transport.tcpnetwork_helpers import TCPListenInfo
 from golem.network.upnp.mapper import PortMapperManager
 from golem.ranking.helper.trust import Trust
 from golem.ranking.ranking import Ranking
@@ -68,6 +69,7 @@ from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskbase import Task as TaskBase
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
+from golem.task.tasksession import TaskSession
 from golem.task.taskstate import TaskTestStatus, SubtaskStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
@@ -152,6 +154,7 @@ class Client(HardwarePresetsMixin):
                          prv_addr=self.config_desc.node_address,
                          key=self.keys_auth.key_id)
 
+        self.network = None
         self.p2pservice = None
         self.diag_service = None
         self.concent_service = ConcentClientService(
@@ -306,20 +309,16 @@ class Client(HardwarePresetsMixin):
         logger.debug('Stopped client services')
 
     def start_network(self):
-        logger.info("Starting network ...")
+        logger.info("Initializing network ...")
         self.node.collect_network_info(self.config_desc.seed_host,
                                        use_ipv6=self.config_desc.use_ipv6)
 
         logger.debug("Is super node? %s", self.node.is_super_node())
 
-        self.p2pservice = P2PService(
-            self.node,
-            self.config_desc,
-            self.keys_auth,
-            connect_to_known_hosts=self.connect_to_known_hosts
-        )
+        self.network = NativeNetwork()
 
         self.task_server = TaskServer(
+            self.network,
             self.node,
             self.config_desc,
             self,
@@ -329,6 +328,34 @@ class Client(HardwarePresetsMixin):
             apps_manager=self.apps_manager,
             task_finished_cb=self._task_finished_cb,
         )
+
+        self.p2pservice = P2PService(
+            self.network,
+            self.node,
+            self.config_desc,
+            self.keys_auth,
+            connect_to_known_hosts=self.connect_to_known_hosts
+        )
+
+        session_and_service = [
+            (PeerSession, self.p2pservice),
+            (TaskSession, self.task_server),
+        ]
+
+        def wrap_factories(wrapper):
+            return [wrapper(ProtocolFactory(
+                session_class.ConnectionStateType,
+                service,
+                SessionFactory(session_class),
+            )) for session_class, service in session_and_service]
+
+        in_factories = wrap_factories(IncomingProtocolFactoryWrapper)
+        out_factories = wrap_factories(OutgoingProtocolFactoryWrapper)
+
+        self.network.start(in_factories, out_factories)
+
+        self.p2pservice.task_server = self.task_server
+        self.p2pservice.set_resource_server(self.resource_server)
 
         monitoring_publisher_service = MonitoringPublisherService(
             self.task_server,
@@ -386,7 +413,23 @@ class Client(HardwarePresetsMixin):
             task_cleaner_service.start()
             self._services.append(task_cleaner_service)
 
-        def connect(ports):
+        def connect(address: SocketAddress):
+
+            ports = [address.port]
+
+            self.node.p2p_prv_port = \
+                self.node.prv_port = \
+                self.p2pservice.cur_port = \
+                self.task_server.cur_port = \
+                self.task_server.task_manager.listen_port = \
+                address.port
+
+            self.task_server.task_manager.listen_address = \
+                address.address
+
+            self.task_server.task_manager.node = \
+                self.node
+
             logger.info(
                 'Golem is listening on ports: P2P=%s, Task=%s, Hyperdrive=%r',
                 self.node.p2p_prv_port,
@@ -428,20 +471,12 @@ class Client(HardwarePresetsMixin):
                                     data=[to_unicode(e) for e in exceptions])
             sys.exit(1)
 
-        task = Deferred()
-        p2p = Deferred()
+        logger.info("Starting network ...")
 
-        gatherResults([p2p, task], consumeErrors=True).addCallbacks(connect,
-                                                                    terminate)
-        logger.info("Starting p2p server ...")
-        self.p2pservice.task_server = self.task_server
-        self.p2pservice.set_resource_server(self.resource_server)
-        self.p2pservice.start_accepting(listening_established=p2p.callback,
-                                        listening_failure=p2p.errback)
-
-        logger.info("Starting task server ...")
-        self.task_server.start_accepting(listening_established=task.callback,
-                                         listening_failure=task.errback)
+        listen_info = TCPListenInfo(self.config_desc.start_port,
+                                    self.config_desc.end_port,
+                                    connect, terminate)
+        self.network.listen(listen_info)
 
     def start_upnp(self, ports):
         logger.debug("Starting upnp ...")
@@ -463,6 +498,8 @@ class Client(HardwarePresetsMixin):
             self.task_server.disconnect()
         if self.port_mapper:
             self.port_mapper.quit()
+        if self.network:
+            self.network.stop_listening(None)
 
     @inlineCallbacks
     def pause(self):

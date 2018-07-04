@@ -15,7 +15,6 @@ from golem.model import KnownHosts, MAX_STORED_HOSTS, db
 from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
 from golem.network.transport import tcpnetwork
 from golem.network.transport import tcpserver
-from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.ranking.manager.gossip_manager import GossipManager
 from .peerkeeper import PeerKeeper, key_distance
 
@@ -43,10 +42,11 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
     def __init__(
             self,
+            network,
             node,
             config_desc,
             keys_auth,
-            connect_to_known_hosts=True
+            connect_to_known_hosts=True,
     ):
         """Create new P2P Server. Listen on port for connections and
            connect to other peers. Keeps up-to-date list of peers information
@@ -55,15 +55,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         :param ClientConfigDescriptor config_desc: configuration options
         :param KeysAuth keys_auth: authorization manager
         """
-        network = tcpnetwork.TCPNetwork(
-            ProtocolFactory(
-                tcpnetwork.SafeProtocol,
-                self,
-                SessionFactory(PeerSession)
-            ),
-            config_desc.use_ipv6,
-            limit_connection_rate=True
-        )
         tcpserver.PendingConnectionsServer.__init__(self, config_desc, network)
 
         self.node = node
@@ -161,6 +152,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             return
 
         connect_info = tcpnetwork.TCPConnectInfo(
+            PeerSession.ProtocolId,
             [socket_address],
             self.__connection_established,
             P2PService.__connection_failure
@@ -825,6 +817,11 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             P2PConnTypes.Start: P2PService.__connection_final_failure
         })
 
+    def _set_protocol_id_for_type(self):
+        self.protocol_id_for_type.update({
+            P2PConnTypes.Start: PeerSession.ProtocolId
+        })
+
     # In the future it may be changed to something more flexible
     # and more connected with key_id
     def _get_difficulty(self, key_id):
@@ -973,4 +970,4 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
 class P2PConnTypes(object):
     """ P2P Connection Types that allows to choose right reaction  """
-    Start = 1
+    Start = 0

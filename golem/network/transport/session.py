@@ -35,6 +35,8 @@ class BasicSession(FileSession):
        to different types of messages.
     """
 
+    ProtocolId = 0
+
     def __init__(self, conn):
         """
         Create new Session

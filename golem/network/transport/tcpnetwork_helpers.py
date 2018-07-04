@@ -3,7 +3,7 @@ import logging
 import re
 import uuid
 from functools import partial
-from typing import Callable, List, Optional
+from typing import Callable, List, Optional, Tuple
 
 from golem.core.types import Kwargs
 from golem.core import variables
@@ -204,6 +204,7 @@ class TCPListeningInfo(object):
 class TCPConnectInfo(object):
     # pylint: disable-msg=too-many-arguments
     def __init__(self,
+                 protocol_id: int,
                  socket_addresses: List[SocketAddress],
                  established_callback: Optional[Callable] = None,
                  failure_callback: Optional[Callable] = None,
@@ -214,6 +215,7 @@ class TCPConnectInfo(object):
         Information for TCP connect function
         """
         self.id = str(uuid.uuid4())
+        self.protocol_id = protocol_id
         self.socket_addresses = socket_addresses
         self.established_callback = (
             partial(established_callback, conn_id=self.id, **kwargs)

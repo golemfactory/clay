@@ -53,6 +53,7 @@ class PeerSession(BasicSafeSession):
     """ Session for Golem P2P Network. """
 
     ConnectionStateType = SafeProtocol
+    ProtocolId = 1
 
     def __init__(self, conn):
         """

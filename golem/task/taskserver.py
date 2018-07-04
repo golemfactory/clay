@@ -17,9 +17,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.p2p import node as p2p_node
-from golem.network.transport.network import ProtocolFactory, SessionFactory
-from golem.network.transport.tcpnetwork import (
-    TCPNetwork, SocketAddress, SafeProtocol)
+from golem.network.transport.tcpnetwork import SocketAddress
 from golem.network.transport.tcpserver import (
     PendingConnectionsServer, PenConnStatus)
 from golem.ranking.helper.trust import Trust
@@ -49,6 +47,7 @@ class TaskServer(
         PendingConnectionsServer,
         resources.TaskResourcesMixin):
     def __init__(self,
+                 network,
                  node,
                  config_desc: ClientConfigDescriptor,
                  client,
@@ -110,9 +109,6 @@ class TaskServer(
         self.acl = get_acl(Path(client.datadir))
         self.resource_handshakes = {}
 
-        network = TCPNetwork(
-            ProtocolFactory(SafeProtocol, self, SessionFactory(TaskSession)),
-            use_ipv6)
         PendingConnectionsServer.__init__(self, config_desc, network)
         # instantiate ReceivedMessageHandler connected to self
         # to register in golem.network.concent.handlers_library
@@ -1023,6 +1019,11 @@ class TaskServer(
             self.__connection_for_start_session_final_failure,
             TASK_CONN_TYPES['task_verification_result']:
                 self.__connection_for_task_verification_result_failure,
+        })
+
+    def _set_protocol_id_for_type(self):
+        self.protocol_id_for_type.update({
+            t: TaskSession.ProtocolId for t in TASK_CONN_TYPES.values()
         })
 
 

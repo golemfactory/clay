@@ -71,6 +71,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     """ Session for Golem task network """
 
     ConnectionStateType = tcpnetwork.SafeProtocol
+    ProtocolId = 2
+
     handle_attr_error = HandleAttributeError(drop_after_attr_error)
     handle_attr_error_with_task_computer = HandleAttributeError(
         call_task_computer_and_drop_after_attr_error
@@ -577,8 +579,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def _react_to_waiting_for_results(self, _):
         self.task_computer.session_closed()
-        if not self.msgs_to_send:
-            self.disconnect(message.Disconnect.REASON.NoMoreMessages)
 
     def _react_to_cannot_compute_task(self, msg):
         if self.check_provider_for_subtask(msg.subtask_id):
@@ -626,7 +626,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         def after_success():
-            self.disconnect(message.Disconnect.REASON.NoMoreMessages)
+            pass
 
         def after_error():
             if msg.task_to_compute.concent_enabled:
