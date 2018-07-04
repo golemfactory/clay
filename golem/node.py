@@ -304,14 +304,15 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
             if self.key_exists():
                 event = 'get_password'
-                logger.info('Waiting for password to unlock the account. '
-                            f'{tip_msg}')
+                tip_msg = 'Waiting for password to unlock the account. ' \
+                          f'{tip_msg}'
             else:
                 event = 'new_password'
-                logger.info('New account, waiting for password to be set. '
-                            f'{tip_msg}')
+                tip_msg = 'New account, waiting for password to be set. ' \
+                          f'{tip_msg}'
 
             while self._keys_auth is None and self._reactor.running:
+                logger.info(tip_msg)
                 StatusPublisher.publish(Component.client, event, Stage.pre)
                 time.sleep(5)
 
