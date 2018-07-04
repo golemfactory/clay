@@ -99,6 +99,16 @@ def on_force_subtask_results_rejected(msg):
     logger.warning("[CONCENT] %r", msg)
 
 
+@library.register_handler(message.concents.ForcePaymentRejected)
+def on_force_payment_rejected(msg):
+    logger.warning("[CONCENT] ForcePaymentRejected by %r", msg)
+    if msg.reason is msg.REASON.TimestampError:
+        logger.warning(
+            "[CONCENT] Payment rejected due to time issue."
+            " Please check your clock",
+        )
+
+
 class TaskServerMessageHandler():
     """Container for received message handlers that require TaskServer."""
     def __init__(self, task_server: taskserver.TaskServer) -> None:
@@ -527,3 +537,21 @@ class TaskServerMessageHandler():
                 subtask_id=msg.subtask_id,
                 settled_ts=msg.timestamp,
             )
+
+    @handler_for(message.concents.ForcePaymentCommitted)
+    def on_force_payment_committed(self, msg, **_):
+        handler_name = 'on_force_payment_committed_for_{}'.format(
+            msg.role.value,
+        )
+        getattr(self, handler_name)(msg)
+
+    def on_force_payment_committed_for_requestor(self, msg):
+        # There is no mechanism to cancel started payment.
+        pass
+
+    def on_force_payment_committed_for_provider(self, msg):
+        self.task_server.client.transaction_system.incomes_keeper.update_forced(
+            sender_node=msg.task_owner_key,
+            subtask_id=msg.subtask_id,
+            settled_ts=msg.payment_ts,
+        )
