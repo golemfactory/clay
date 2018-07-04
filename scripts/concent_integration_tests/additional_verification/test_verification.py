@@ -7,6 +7,7 @@ from unittest import mock
 
 from golem_messages.factories.tasks import ComputeTaskDefFactory
 from golem_messages.message import concents as concent_msg
+from golem_messages.message import tasks as tasks_msg
 
 from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
@@ -70,6 +71,10 @@ class SubtaskResultsVerifyFiletransferTest(SubtaskResultsVerifyBaseTest):
         return Path(__file__).parent / 'data/results.zip'
 
     @property
+    def results_corrupt_filename(self):
+        return Path(__file__).parent / 'data/results_corrupt.zip'
+
+    @property
     def resources_filename(self):
         return Path(__file__).parent / 'data/resources'
 
@@ -83,7 +88,31 @@ class SubtaskResultsVerifyFiletransferTest(SubtaskResultsVerifyBaseTest):
             SimpleHash.hash_file(filename)
         ).decode()
 
-    def test_verify(self):
+    def perform_upload(self, request):
+        response = self.provider_cfts.upload(request)
+        self._log_concent_response(response)
+        self.assertEqual(response.status_code, 200)
+
+    def upload_files(self, ftt, resources_filename, results_filename):
+        self.perform_upload(
+            ConcentFileRequest(
+                str(resources_filename),
+                ftt,
+                file_category=concent_msg.FileTransferToken.FileInfo.
+                Category.resources
+            )
+        )
+
+        self.perform_upload(
+            ConcentFileRequest(
+                str(results_filename),
+                ftt,
+                file_category=concent_msg.FileTransferToken.FileInfo.
+                Category.results
+            )
+        )
+
+    def init_srv_with_files(self, results_filename):
         price = self.init_deposits()
         rct_path = 'subtask_results_rejected__report_computed_task__'
         ttc_path = rct_path + 'task_to_compute__'
@@ -93,36 +122,61 @@ class SubtaskResultsVerifyFiletransferTest(SubtaskResultsVerifyBaseTest):
             ttc_path + 'size': self.size(self.resources_filename),
             ttc_path + 'package_hash': self.hash(self.resources_filename),
             ttc_path + 'concent_enabled': True,
-            rct_path + 'size': self.size(self.results_filename),
-            rct_path + 'package_hash': self.hash(self.results_filename),
+            rct_path + 'size': self.size(results_filename),
+            rct_path + 'package_hash': self.hash(results_filename),
         })
+        return srv
 
+    def test_verify(self):
+        srv = self.init_srv_with_files(self.results_filename)
         response = self.provider_send(srv)
         asrv = self.provider_load_response(response)
         self.assertIsInstance(asrv, concent_msg.AckSubtaskResultsVerify)
 
         ftt = asrv.file_transfer_token
 
-        resources_request = ConcentFileRequest(
-            str(self.resources_filename),
-            ftt,
-            file_category=concent_msg.FileTransferToken.FileInfo.
-                Category.resources)
-        response = self.provider_cfts.upload(resources_request)
-        self._log_concent_response(response)
-        self.assertEqual(response.status_code, 200)
-
-        results_request = ConcentFileRequest(
-            str(self.results_filename),
-            ftt,
-            file_category=concent_msg.FileTransferToken.FileInfo.
-                Category.results)
-        response = self.provider_cfts.upload(results_request)
-        self._log_concent_response(response)
-        self.assertEqual(response.status_code, 200)
+        self.upload_files(ftt, self.resources_filename,
+                          self.results_filename)
 
         verification_start = time.time()
 
-        #while time.time() < verification_start + self.TIMEOUT:
-        #
-        #    time.sleep(self.INTERVAL)
+        while time.time() < verification_start + self.TIMEOUT:
+            response = self.provider_receive_oob()
+            if response:
+                self.assertIsInstance(response,
+                                      concent_msg.SubtaskResultsSettled)
+                self.assertSamePayload(
+                    response.task_to_compute,
+                    srv.subtask_results_rejected.
+                    report_computed_task.task_to_compute
+                )
+                return
+            time.sleep(self.INTERVAL)
+
+        self.assertFalse(True, "Verification timed out")
+
+    def test_verify_negative(self):
+        srv = self.init_srv_with_files(self.results_corrupt_filename)
+        response = self.provider_send(srv)
+        asrv = self.provider_load_response(response)
+        self.assertIsInstance(asrv, concent_msg.AckSubtaskResultsVerify)
+
+        ftt = asrv.file_transfer_token
+
+        self.upload_files(ftt, self.resources_filename,
+                          self.results_corrupt_filename)
+        verification_start = time.time()
+
+        while time.time() < verification_start + self.TIMEOUT:
+            response = self.provider_receive_oob()
+            if response:
+                self.assertIsInstance(response,
+                                      tasks_msg.SubtaskResultsRejected)
+                self.assertSamePayload(
+                    response.report_computed_task,
+                    srv.subtask_results_rejected.report_computed_task
+                )
+                return
+            time.sleep(self.INTERVAL)
+
+        self.assertFalse(True, "Verification timed out")
