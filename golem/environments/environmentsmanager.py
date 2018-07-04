@@ -29,13 +29,15 @@ class EnvironmentsManager(object):
             env.accept_tasks = bool(getter_for_env())
 
     def add_environment(self, environment: Environment) -> None:
-        """ Add new environment to the manager. Check if environment is supported.
         """
-        self.environments[environment.get_id()] = environment
+        Add new environment to the manager. Check if environment is supported.
+        """
+        env_id = environment.get_id()
+        self.environments[env_id] = environment
         supported = environment.check_support()
-        logger.info("Adding environment {} supported={}"
-                    .format(environment.get_id(), supported))
-        self.support_statuses[environment.get_id()] = supported
+        logger.info("Adding environment %s supported=%s",
+                    env_id, supported)
+        self.support_statuses[env_id] = supported
 
     def get_support_status(self, env_id: str) -> SupportStatus:
         """ Return information if given environment are supported.
@@ -61,7 +63,7 @@ class EnvironmentsManager(object):
 
     def _get_environments_to_config(self) -> Dict[str, Tuple[str, bool]]:
         envs = {}
-        for env_id in self.environments.keys():
+        for env_id in self.environments:
             envs[env_id] = (env_id, True)
         return envs
 
@@ -69,6 +71,9 @@ class EnvironmentsManager(object):
         """ Change information whether tasks from this environment are accepted
             or not. Write changes in config file
         """
+        if self.env_config is None:
+            raise RuntimeError("change_accept_tasks: env_config is None")
+
         env = self.environments[env_id]
         env.accept_tasks = state
         config_entries = self.env_config.get_config_entries()
