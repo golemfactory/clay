@@ -18,7 +18,8 @@ class TestEnvironmentsConfig(TestDirFixture):
 
     def test_load_config_manager(self):
         mgr = EnvironmentsManager()
-        mgr.environments.add(Environment())
+        env = Environment()
+        mgr.environments[env.get_id()] = env
         mgr.load_config(self.path)
         assert mgr.env_config
 
