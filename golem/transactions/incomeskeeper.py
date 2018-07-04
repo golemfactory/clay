@@ -169,6 +169,27 @@ class IncomesKeeper:
         income.accepted_ts = accepted_ts
         income.save()
 
+    def update_forced(self, sender_node, subtask_id, settled_ts):
+        try:
+            income = Income.get(sender_node=sender_node, subtask=subtask_id)
+        except Income.DoesNotExist:
+            logger.error(
+                "Income missing for subtask_id: %r from node: %r",
+                subtask_id,
+                sender_node,
+            )
+            return
+        if income.settled_ts is not None and income.settled_ts != settled_ts:
+            logger.error(
+                "Duplicated settled_ts %r for %r",
+                settled_ts,
+                income,
+            )
+            return
+        income.settled_ts = settled_ts
+        income.save()
+
+
     def get_list_of_all_incomes(self):
         # TODO: pagination. issue #2402
         return Income.select(
