@@ -158,6 +158,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
     def key_exists(self) -> bool:
         return KeysAuth.key_exists(self._datadir, PRIVATE_KEY)
 
+    def is_account_unlocked(self) -> bool:
+        return self._keys_auth is not None
+
     def is_mainnet(self) -> bool:
         return IS_MAINNET
 
