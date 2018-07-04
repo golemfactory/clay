@@ -102,12 +102,13 @@ class Account:
         return "Account unlock success"
 
     @command(
-        arguments=(amount_arg, address_arg, currency_arg),
-        help="Withdraw GNT/ETH")
+        arguments=(address_arg, amount_arg, currency_arg),
+        help=("Withdraw GNT/ETH\n"
+              "(withdrawals are not available for the testnet)"))
     def withdraw(  # pylint: disable=no-self-use
             self,
-            amount,
             destination,
+            amount,
             currency) -> str:
         amount = str(int(Decimal(amount) * denoms.ether))
         return sync_wait(Account.client.withdraw(amount, destination, currency))
