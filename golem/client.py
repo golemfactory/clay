@@ -1205,10 +1205,16 @@ class Client(HardwarePresetsMixin):
         return result
 
     def enable_environment(self, env_id):
-        self.environments_manager.change_accept_tasks(env_id, True)
+        try:
+            self.environments_manager.change_accept_tasks(env_id, True)
+        except KeyError:
+            return "No such environment"
 
     def disable_environment(self, env_id):
-        self.environments_manager.change_accept_tasks(env_id, False)
+        try:
+            self.environments_manager.change_accept_tasks(env_id, False)
+        except KeyError:
+            return "No such environment"
 
     def send_gossip(self, gossip, send_to):
         return self.p2pservice.send_gossip(gossip, send_to)
