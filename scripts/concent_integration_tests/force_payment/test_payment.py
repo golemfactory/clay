@@ -32,6 +32,8 @@ class RquestorDoesntPayTestCase(ETSBaseTest):
         Concent service verifies wether all messages from LAR are signed by
         the same Requestor and are have the same Ethereum address. Otherwise
         Concent responds with ServiceRefused "invalid message".
+
+        LAR - list of acceptances in request
         """
         sra1 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             **self.gen_ttc_kwargs(
@@ -136,7 +138,7 @@ class RquestorDoesntPayTestCase(ETSBaseTest):
     def test_force_payment_commited(self):
         """Concent service commits forced payment
 
-        If deposit is higher or equal to V then V is payed to provider.
+        If deposit is higher or equal to V then V is paid to provider.
         Otherwise maximum available amount is transferred to provider.
         Both Requestor and Provider should receive ForcePaymentCommitted.
         """
