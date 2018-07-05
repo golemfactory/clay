@@ -854,9 +854,6 @@ class Client(HardwarePresetsMixin):
     def get_suggested_addr(self, key_id):
         return self.p2pservice.suggested_address.get(key_id)
 
-    def get_suggested_conn_reverse(self, key_id):
-        return self.p2pservice.get_suggested_conn_reverse(key_id)
-
     def get_peers(self):
         if self.p2pservice:
             return list(self.p2pservice.peers.values())

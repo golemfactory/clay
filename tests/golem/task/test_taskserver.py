@@ -125,7 +125,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.ts = ts
         ts._is_address_accessible = Mock(return_value=True)
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
-        ts.client.get_suggested_conn_reverse.return_value = False
         ts.client.get_requesting_trust.return_value = 0.3
         self.assertIsInstance(ts, TaskServer)
         self.assertIsNone(ts.request_task())
