@@ -75,12 +75,23 @@ class TestAccount(unittest.TestCase):
                 },
             }
 
+    @patch('getpass.getpass')
+    def test_unlock_unlocked(self, mock_pass: Mock):
+        client = Mock()
+        client.is_account_unlocked.return_value = True
+
+        with client_ctx(Account, client):
+            result = Account().unlock()
+            assert result == "Account already unlocked"
+            mock_pass.assert_not_called()
+
     @patch('getpass.getuser', return_value="John")
     @patch('zxcvbn.zxcvbn', return_value={'score': 2})
     @patch('getpass.getpass', return_value="deadbeef")
     def test_unlock_new(self, mock_pass, mock_zxcvbn, mock_getuser):
 
         client = Mock()
+        client.is_account_unlocked.return_value = False
         client.key_exists.return_value = False
 
         with client_ctx(Account, client):
@@ -96,6 +107,7 @@ class TestAccount(unittest.TestCase):
     def test_unlock_new_short_error(self, mock_pass):
 
         client = Mock()
+        client.is_account_unlocked.return_value = False
         client.key_exists.return_value = False
 
         with client_ctx(Account, client):
@@ -111,6 +123,7 @@ class TestAccount(unittest.TestCase):
                                        mock_zxcvbn):
 
         client = Mock()
+        client.is_account_unlocked.return_value = False
         client.key_exists.return_value = False
 
         with client_ctx(Account, client):
@@ -129,6 +142,7 @@ class TestAccount(unittest.TestCase):
     def test_unlock_old(self, mock_getuser, mock_pass, mock_zxcvbn):
 
         client = Mock()
+        client.is_account_unlocked.return_value = False
         client.key_exists.return_value = True
 
         with client_ctx(Account, client):
@@ -419,7 +433,7 @@ class TestResources(unittest.TestCase):
             res = Resources()
             res.clear(provider=True, requestor=False)
 
-            assert len(client.clear_dir.mock_calls) == 1
+            client.clear_dir.assert_called_with(DirectoryType.DISTRIBUTED)
 
     def test_clear_requestor(self):
         client = self.client
@@ -427,7 +441,7 @@ class TestResources(unittest.TestCase):
             res = Resources()
             res.clear(provider=False, requestor=True)
 
-            client.clear_dir.assert_called_with(DirectoryType.DISTRIBUTED)
+            client.clear_dir.assert_called_with(DirectoryType.RECEIVED)
 
     def test_clear_all(self):
         client = self.client

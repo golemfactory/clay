@@ -44,7 +44,7 @@ class EthereumTransactionSystem(TransactionSystem):
             raise ValueError("not a valid private key")
         log.info("Node Ethereum address: %s", eth_addr)
 
-        self._node = NodeProcess(datadir, start_geth, address)
+        self._node = NodeProcess(datadir, addr=address, start_node=start_geth)
         self._node.start(start_port)
         self._sci = new_sci(
             Path(datadir),
@@ -235,14 +235,20 @@ class EthereumTransactionSystem(TransactionSystem):
             self._last_gnt_update is not None
 
     def _refresh_balances(self) -> None:
+        now = time.mktime(datetime.today().timetuple())
         addr = self._sci.get_eth_address()
 
-        self._eth_balance = self._sci.get_eth_balance(addr)
-        self._last_eth_update = time.mktime(datetime.today().timetuple())
+        # Sometimes web3 may throw but it's fine here, we'll just update the
+        # balances next time
+        try:
+            self._eth_balance = self._sci.get_eth_balance(addr)
+            self._last_eth_update = now
 
-        self._gnt_balance = self._sci.get_gnt_balance(addr)
-        self._gntb_balance = self._sci.get_gntb_balance(addr)
-        self._last_gnt_update = time.mktime(datetime.today().timetuple())
+            self._gnt_balance = self._sci.get_gnt_balance(addr)
+            self._gntb_balance = self._sci.get_gntb_balance(addr)
+            self._last_gnt_update = now
+        except Exception as e:  # pylint: disable=broad-except
+            log.warning('Failed to update balances: %r', e)
 
     def _try_convert_gnt(self) -> None:  # pylint: disable=too-many-branches
         if not self._balance_known():

@@ -661,13 +661,15 @@ class Client(HardwarePresetsMixin):
 
     def _run_test_task(self, t_dict):
 
-        def on_success(*args, **kwargs):
+        def on_success(result, estimated_memory, time_spent, **kwargs):
             logger.info('Test task succes "%r"', t_dict)
             self.task_tester = None
             self.task_test_result = json.dumps(
                 {
                     "status": TaskTestStatus.success,
-                    "error": args,
+                    "result": result,
+                    "estimated_memory": estimated_memory,
+                    "time_spent": time_spent,
                     "more": kwargs
                 })
 
@@ -685,10 +687,10 @@ class Client(HardwarePresetsMixin):
         except Exception as e:
             return on_error(to_unicode(e))
 
-        self.task_tester = TaskTester(task, self.datadir, on_success, on_error)
-        self.task_tester.run()
         self.task_test_result = json.dumps(
             {"status": TaskTestStatus.started, "error": True})
+        self.task_tester = TaskTester(task, self.datadir, on_success, on_error)
+        self.task_tester.run()
 
     def abort_test_task(self):
         logger.debug('Aborting test task ...')
@@ -1184,13 +1186,13 @@ class Client(HardwarePresetsMixin):
     def get_environments(self):
         envs = copy(self.environments_manager.get_environments())
         return [{
-            'id': str(env.get_id()),
+            'id': env_id,
             'supported': bool(env.check_support()),
             'accepted': env.is_accepted(),
             'performance': env.get_performance(),
             'min_accepted': env.get_min_accepted_performance(),
             'description': str(env.short_description)
-        } for env in envs]
+        } for env_id, env in envs.items()]
 
     @inlineCallbacks
     def run_benchmark(self, env_id):
@@ -1203,10 +1205,16 @@ class Client(HardwarePresetsMixin):
         return result
 
     def enable_environment(self, env_id):
-        self.environments_manager.change_accept_tasks(env_id, True)
+        try:
+            self.environments_manager.change_accept_tasks(env_id, True)
+        except KeyError:
+            return "No such environment"
 
     def disable_environment(self, env_id):
-        self.environments_manager.change_accept_tasks(env_id, False)
+        try:
+            self.environments_manager.change_accept_tasks(env_id, False)
+        except KeyError:
+            return "No such environment"
 
     def send_gossip(self, gossip, send_to):
         return self.p2pservice.send_gossip(gossip, send_to)
@@ -1329,7 +1337,9 @@ class Client(HardwarePresetsMixin):
 
     @inlineCallbacks
     def activate_hw_preset(self, name, run_benchmarks=False):
-        HardwarePresets.update_config(name, self.config_desc)
+        config_changed = HardwarePresets.update_config(name, self.config_desc)
+        run_benchmarks = run_benchmarks or config_changed
+
         if hasattr(self, 'task_server') and self.task_server:
             deferred = self.task_server.change_config(
                 self.config_desc, run_benchmarks=run_benchmarks)
@@ -1534,7 +1544,7 @@ class MaskUpdateService(LoopingCallService):
         logger.info('Updating masks')
         # Using list() because tasks could be changed by another thread
         for task_id, task in list(self._task_manager.tasks.items()):
-            if not task.needs_computation():
+            if not self._task_manager.task_needs_computation(task_id):
                 continue
             task_state = self._task_manager.query_task_state(task_id)
             if task_state.elapsed_time < self._interval:

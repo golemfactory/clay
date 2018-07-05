@@ -125,6 +125,7 @@ class LuxRenderOptions(Options):
         self.haltspp = 10
 
 
+# pylint: disable=too-many-instance-attributes
 class LuxTask(renderingtask.RenderingTask):
     ENVIRONMENT_CLASS = LuxRenderEnvironment
     VERIFIER_CLASS = LuxRenderVerifier

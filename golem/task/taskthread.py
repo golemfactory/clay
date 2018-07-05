@@ -3,6 +3,10 @@ import logging
 import os
 import threading
 import time
+from typing import Any, Dict, Tuple, Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from .taskcomputer import TaskComputer  # noqa pylint:disable=unused-import
 
 
 logger = logging.getLogger("golem.task.taskthread")
@@ -17,11 +21,15 @@ class TimeoutException(JobException):
 
 
 class TaskThread(threading.Thread):
-    def __init__(self, task_computer, subtask_id, working_directory, src_code,
-                 extra_data, short_desc, res_path, tmp_path, timeout=0):
+    result: Union[None, Dict[str, Any], Tuple[Dict[str, Any], int]] = None
+
+    # pylint:disable=too-many-arguments
+    def __init__(self, task_computer: 'TaskComputer', subtask_id,
+                 working_directory, src_code, extra_data, short_desc, res_path,
+                 tmp_path, timeout=0) -> None:
         super(TaskThread, self).__init__()
 
-        self.task_computer = task_computer
+        self.task_computer: 'TaskComputer' = task_computer
         self.vm = None
         self.subtask_id = subtask_id
         self.src_code = src_code

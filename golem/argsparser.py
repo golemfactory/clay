@@ -18,10 +18,10 @@ def parse_http_addr(ctx, param, value):
     del ctx, param
     if value:
         try:
-            http_prefix = 'http://'
+            http_prefix = 'https://'
             if not value.startswith(http_prefix):
                 raise click.BadParameter(
-                    "Address without http:// prefix"
+                    "Address without https:// prefix"
                     "specified: {}".format(value))
             SocketAddress.parse(value[len(http_prefix):])
             return value
