@@ -90,6 +90,7 @@ class TaskServer(
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
         self.task_sessions_incoming = weakref.WeakSet()
+        self.peer_sessions = {}
 
         self.max_trust = 1.0
         self.min_trust = 0.0
@@ -329,6 +330,9 @@ class TaskServer(
     def remove_task_header(self, task_id) -> bool:
         return self.task_keeper.remove_task_header(task_id)
 
+    def add_session(self, session):
+        self.peer_sessions[session.key_id] = session
+
     def add_task_session(self, subtask_id, session):
         self.task_sessions[subtask_id] = session
 
@@ -338,7 +342,8 @@ class TaskServer(
 
         for tsk in list(self.task_sessions.keys()):
             if self.task_sessions[tsk] == task_session:
-                del self.task_sessions[tsk]
+                session = self.task_sessions.pop(tsk)
+                self.peer_sessions.pop(session.key_id, None)
 
     def set_last_message(self, type_, t, msg, address, port):
         if len(self.last_messages) >= 5:
@@ -666,6 +671,17 @@ class TaskServer(
         # FIXME: some graceful terminations should take place here. #1287
         # sys.exit(0)
 
+    def _add_pending_request(self, request_type, node,  # noqa # pylint: disable=too-many-arguments
+                             prv_port, pub_port, args) -> bool:
+        session = self.peer_sessions.get(node.key)
+        if session:
+            self.conn_established_for_type[request_type](
+                session=session, conn_id=None, **args
+            )
+            return True
+        return super()._add_pending_request(request_type, node, prv_port,
+                                            pub_port, args)
+
     #############################
     #   CONNECTION REACTIONS    #
     #############################
@@ -679,7 +695,9 @@ class TaskServer(
             key_id=key_id,
             conn_id=conn_id,
         )
-        session.send_hello()
+
+        if not session.verified:
+            session.send_hello()
         session.request_task(node_name, task_id, estimated_performance, price,
                              max_resource_size, max_memory_size, num_cores)
 
@@ -713,7 +731,9 @@ class TaskServer(
             conn_id=conn_id,
         )
 
-        session.send_hello()
+        if not session.verified:
+            session.send_hello()
+
         payment_addr = self.client.transaction_system.get_payment_address()
         session.send_report_computed_task(waiting_task_result,
                                           self.node.prv_addr, self.cur_port,
@@ -746,7 +766,9 @@ class TaskServer(
             key_id=key_id,
             conn_id=conn_id,
         )
-        session.send_hello()
+
+        if not session.verified:
+            session.send_hello()
         session.send_task_failure(subtask_id, err_msg)
 
     def __connection_for_task_failure_failure(self, conn_id, key_id,
@@ -769,15 +791,19 @@ class TaskServer(
 
     def __connection_for_start_session_established(
             self, session, conn_id, key_id, node_info, super_node_info,
-            ans_conn_id):
+            ans_conn_id=None):
+
         self.new_session_prepare(
             session=session,
             subtask_id=None,
             key_id=key_id,
             conn_id=conn_id,
         )
-        session.send_hello()
-        session.send_start_session_response(ans_conn_id)
+
+        if not session.verified:
+            session.send_hello()
+        if ans_conn_id:
+            session.send_start_session_response(ans_conn_id)
 
     def __connection_for_start_session_failure(
             self, conn_id, key_id, node_info, super_node_info, ans_conn_id):
@@ -835,6 +861,7 @@ class TaskServer(
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
         self.task_sessions[subtask_id] = session
+        self.peer_sessions[key_id] = session
 
     def noop(self, *args, **kwargs):
         args_, kwargs_ = args, kwargs  # avoid params name collision in logger
@@ -855,7 +882,8 @@ class TaskServer(
             conn_id=conn_id,
         )
 
-        session.send_hello()
+        if not session.verified:
+            session.send_hello()
         session.result_received(extra_data)
 
     def __connection_for_task_verification_result_failure(  # noqa pylint:disable=no-self-use
@@ -913,43 +941,32 @@ class TaskServer(
                 if now - wtr.last_sending_trial > wtr.delay_time:
                     wtr.already_sending = True
                     wtr.last_sending_trial = now
-                    session = self.task_sessions.get(subtask_id, None)
-                    if session:
-                        self.__connection_for_task_result_established(
-                            session, session.conn_id, wtr)
-                    else:
-                        args = {'waiting_task_result': wtr}
-                        node = wtr.owner
-                        self._add_pending_request(
-                            TASK_CONN_TYPES['task_result'],
-                            node,
-                            prv_port=node.prv_port,
-                            pub_port=node.pub_port,
-                            args=args
-                        )
+
+                    args = {'waiting_task_result': wtr}
+                    node = wtr.owner
+                    self._add_pending_request(
+                        TASK_CONN_TYPES['task_result'],
+                        node,
+                        prv_port=node.prv_port,
+                        pub_port=node.pub_port,
+                        args=args
+                    )
 
         for subtask_id in list(self.failures_to_send.keys()):
             wtf = self.failures_to_send[subtask_id]
-
-            session = self.task_sessions.get(subtask_id, None)
-            if session:
-                self.__connection_for_task_failure_established(
-                    session, session.conn_id, wtf.owner.key, subtask_id,
-                    wtf.err_msg)
-            else:
-                args = {
-                    'key_id': wtf.owner.key,
-                    'subtask_id': wtf.subtask_id,
-                    'err_msg': wtf.err_msg
-                }
-                node = wtf.owner
-                self._add_pending_request(
-                    TASK_CONN_TYPES['task_failure'],
-                    node,
-                    prv_port=node.prv_port,
-                    pub_port=node.pub_port,
-                    args=args
-                )
+            args = {
+                'key_id': wtf.owner.key,
+                'subtask_id': wtf.subtask_id,
+                'err_msg': wtf.err_msg
+            }
+            node = wtf.owner
+            self._add_pending_request(
+                TASK_CONN_TYPES['task_failure'],
+                node,
+                prv_port=node.prv_port,
+                pub_port=node.pub_port,
+                args=args
+            )
 
         self.failures_to_send.clear()
 
