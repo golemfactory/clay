@@ -218,7 +218,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 local_role=Actor.Requestor,
                 remote_role=Actor.Provider,
             )
-            self.dropped()
 
         self.task_manager.computed_task_received(
             subtask_id,
@@ -787,6 +786,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.disconnect(message.Disconnect.REASON.KeyNotDifficult)
             return
 
+        self.task_server.add_session(self)
         if send_hello:
             self.send_hello()
         self.send(
