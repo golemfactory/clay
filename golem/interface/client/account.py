@@ -68,6 +68,11 @@ class Account:
     @command(help="Unlock account, will prompt for your password")
     def unlock(self) -> str:  # pylint: disable=no-self-use
         client = Account.client
+
+        is_account_unlocked: bool = sync_wait(client.is_account_unlocked())
+        if is_account_unlocked:
+            return "Account already unlocked"
+
         has_key = sync_wait(client.key_exists())
 
         if not has_key:

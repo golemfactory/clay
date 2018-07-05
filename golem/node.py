@@ -156,6 +156,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
     def key_exists(self) -> bool:
         return KeysAuth.key_exists(self._datadir, PRIVATE_KEY)
 
+    def is_account_unlocked(self) -> bool:
+        return self._keys_auth is not None
+
     def is_mainnet(self) -> bool:
         return IS_MAINNET
 
@@ -297,7 +300,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
         def create_keysauth():
             # If keys_auth already exists it means we used command line flag
             # and don't need to inform client about required password
-            if self._keys_auth is not None:
+            if self.is_account_unlocked():
                 return
 
             tip_msg = 'Run `golemcli account unlock` and enter your password.'
@@ -311,7 +314,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
                 tip_msg = 'New account, waiting for password to be set. ' \
                           f'{tip_msg}'
 
-            while self._keys_auth is None and self._reactor.running:
+            while not self.is_account_unlocked() and self._reactor.running:
                 logger.info(tip_msg)
                 StatusPublisher.publish(Component.client, event, Stage.pre)
                 time.sleep(5)
