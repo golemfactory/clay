@@ -189,7 +189,6 @@ class IncomesKeeper:
         income.settled_ts = settled_ts
         income.save()
 
-
     def get_list_of_all_incomes(self):
         # TODO: pagination. issue #2402
         return Income.select(

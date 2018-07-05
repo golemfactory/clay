@@ -54,6 +54,27 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         assert expected_income.accepted_ts is None
         assert expected_income.transaction is None
 
+    def test_update_forced(self):
+        sender_node_id = '0x' + 64 * 'a'
+        subtask_id = 'sample_subtask_id1'
+        value = MAX_INT + 10
+        timestamp = 1337
+
+        self._test_expect_income(
+            sender_node_id=sender_node_id,
+            subtask_id=subtask_id,
+            value=value,
+        )
+
+        self.incomes_keeper.update_forced(
+            sender_node=sender_node_id,
+            subtask_id=subtask_id,
+            settled_ts=timestamp,
+        )
+
+        income = Income.get(sender_node=sender_node_id, subtask=subtask_id)
+        self.assertEqual(income.settled_ts, timestamp)
+
     def test_received_batch_transfer_closure_time(self):
         sender_node_id = '0x' + 64 * 'a'
         subtask_id1 = 'sample_subtask_id1'
