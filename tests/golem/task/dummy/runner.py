@@ -150,13 +150,15 @@ def run_requesting_node(datadir, num_subtasks=3):
     task = DummyTask(client.get_node_name(), params, num_subtasks,
                      client.keys_auth.public_key)
     task.initialize(DirManager(datadir))
-    client.enqueue_new_task(task)
-
-    port = client.p2pservice.cur_port
-    requestor_addr = "{}:{}".format(client.node.prv_addr, port)
-    report("Listening on {}".format(requestor_addr))
 
     def report_status():
+        while not client.p2pservice.cur_port:
+            time.sleep(0.25)
+
+        client.enqueue_new_task(task)
+        port = client.p2pservice.cur_port
+        report("Listening on {}:{}".format(client.node.prv_addr, port))
+
         while True:
             time.sleep(1)
             if not task.finished_computation():
