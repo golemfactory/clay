@@ -1,9 +1,11 @@
 import inspect
 import logging
 
+from ethereum.utils import denoms
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 
+from golem import utils
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
@@ -541,17 +543,35 @@ class TaskServerMessageHandler():
     @handler_for(message.concents.ForcePaymentCommitted)
     def on_force_payment_committed(self, msg, **_):
         handler_name = 'on_force_payment_committed_for_{}'.format(
-            msg.role.value,
+            msg.recipient_type.value,
         )
         getattr(self, handler_name)(msg)
 
-    def on_force_payment_committed_for_requestor(self, msg):
+    def on_force_payment_committed_for_requestor(self, msg):  # noqa pylint: disable=no-self-use
         # There is no mechanism to cancel started payment.
-        pass
+        logger.warning(
+            "[CONCENT] Our deposit was used to cover payment of %.6f GNT"
+            " for eth address: %s",
+            msg.amount_paid / denoms.ether,
+            msg.provider_eth_account,
+        )
 
     def on_force_payment_committed_for_provider(self, msg):
-        self.task_server.client.transaction_system.incomes_keeper.update_forced(
-            sender_node=msg.task_owner_key,
-            subtask_id=msg.subtask_id,
-            settled_ts=msg.payment_ts,
+        """Update income entries with settled_ts.
+
+        tx_hash and value will be updated on forced_subtask_payment event
+        from golem_sci (blockchain).
+        SEE: IncomesKeeper.received_forced_subtask_payment
+        """
+        incomes_keeper = self.task_server.client \
+            .transaction_system.incomes_keeper
+        upi = incomes_keeper.get_list_of_unpaid_incomes(
+            sender=utils.pubkeytoaddr(msg.task_owner_key),
+            closure_time=msg.payment_ts,
         )
+        for income in upi:
+            incomes_keeper.update_forced(
+                sender_node=msg.task_owner_key,
+                subtask_id=income.subtask,
+                settled_ts=msg.payment_ts,
+            )

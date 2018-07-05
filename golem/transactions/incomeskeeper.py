@@ -189,6 +189,17 @@ class IncomesKeeper:
         income.settled_ts = settled_ts
         income.save()
 
+    @staticmethod
+    def get_list_of_unpaid_incomes(sender: str, closure_time: int):
+        expected = Income.select().where(
+            Income.accepted_ts > 0,
+            Income.accepted_ts <= closure_time,
+            Income.transaction.is_null(),
+            Income.settled_ts.is_null())
+        expected = \
+            [e for e in expected if pubkeytoaddr(e.sender_node) == sender]
+        return expected
+
     def get_list_of_all_incomes(self):
         # TODO: pagination. issue #2402
         return Income.select(
