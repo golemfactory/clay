@@ -77,8 +77,8 @@ class PaymentProcessor:
         for tx_hash, payments in sent.items():
             self._sci.on_transaction_confirmed(
                 tx_hash,
-                lambda r: threads.deferToThread(
-                    self._on_batch_confirmed, payments.copy(), r),
+                lambda r, p=payments: threads.deferToThread(
+                    self._on_batch_confirmed, p, r),
             )
 
         for awaiting_payment in Payment \
