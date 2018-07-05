@@ -1186,13 +1186,13 @@ class Client(HardwarePresetsMixin):
     def get_environments(self):
         envs = copy(self.environments_manager.get_environments())
         return [{
-            'id': str(env.get_id()),
+            'id': env_id,
             'supported': bool(env.check_support()),
             'accepted': env.is_accepted(),
             'performance': env.get_performance(),
             'min_accepted': env.get_min_accepted_performance(),
             'description': str(env.short_description)
-        } for env in envs]
+        } for env_id, env in envs.items()]
 
     @inlineCallbacks
     def run_benchmark(self, env_id):
@@ -1205,10 +1205,16 @@ class Client(HardwarePresetsMixin):
         return result
 
     def enable_environment(self, env_id):
-        self.environments_manager.change_accept_tasks(env_id, True)
+        try:
+            self.environments_manager.change_accept_tasks(env_id, True)
+        except KeyError:
+            return "No such environment"
 
     def disable_environment(self, env_id):
-        self.environments_manager.change_accept_tasks(env_id, False)
+        try:
+            self.environments_manager.change_accept_tasks(env_id, False)
+        except KeyError:
+            return "No such environment"
 
     def send_gossip(self, gossip, send_to):
         return self.p2pservice.send_gossip(gossip, send_to)
