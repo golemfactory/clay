@@ -1,44 +1,28 @@
 #!/usr/bin/env python
 import sys
 
-from scripts.concent_node_tests import helpers
-from scripts.concent_node_tests.tests.base import NodeTestPlaybook
+from scripts.concent_integration_tests import helpers
+from scripts.concent_integration_tests.tests.base import NodeTestPlaybook
 
 
-class ForceDownload(NodeTestPlaybook):
+class AdditionalVerification(NodeTestPlaybook):
     provider_node_script = 'provider/debug'
-    requestor_node_script = 'requestor/fail_results'
-
-    def step_clear_requestor_output(self):
-        helpers.clear_output(self.requestor_output_queue)
-        self.next()
+    requestor_node_script = 'requestor/reject_results'
 
     def step_clear_provider_output(self):
         helpers.clear_output(self.provider_output_queue)
         self.next()
 
-    def step_wait_task_finished(self):
-        concent_fail = helpers.search_output(
-            self.requestor_output_queue,
-            '.*Concent request failed.*',
-        )
-
-        if concent_fail:
-            print("Requestor: ", concent_fail.group(0))
-            self.fail()
-            return
-
+    def step_wait(self):
         concent_fail = helpers.search_output(
             self.provider_output_queue,
-            ".*Concent request failed.*|.*Can't receive message from Concent.*",
+            '.*Concent service exception.*',
         )
 
         if concent_fail:
             print("Provider: ", concent_fail.group(0))
             self.fail()
             return
-
-        super().step_wait_task_finished()
 
     steps = (
         NodeTestPlaybook.step_get_provider_key,
@@ -49,16 +33,15 @@ class ForceDownload(NodeTestPlaybook):
         NodeTestPlaybook.step_wait_provider_gnt,
         NodeTestPlaybook.step_wait_requestor_gnt,
         NodeTestPlaybook.step_get_known_tasks,
-        step_clear_requestor_output,
         step_clear_provider_output,
         NodeTestPlaybook.step_create_task,
         NodeTestPlaybook.step_get_task_id,
         NodeTestPlaybook.step_get_task_status,
-        step_wait_task_finished,
+        step_wait,
     )
 
 
-playbook = ForceDownload.start()
+playbook = AdditionalVerification.start()
 if playbook.exit_code:
     print("exit code", playbook.exit_code)
 sys.exit(playbook.exit_code)

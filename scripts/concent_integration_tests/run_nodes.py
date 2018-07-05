@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import time
 
-from scripts.concent_node_tests import helpers
+from scripts.concent_integration_tests import helpers
 
 provider_node = helpers.run_golem_node('provider/regular')
 requestor_node = helpers.run_golem_node('requestor/regular')

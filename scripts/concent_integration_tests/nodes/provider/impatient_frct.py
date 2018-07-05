@@ -13,7 +13,7 @@ import mock
 import sys
 
 from golem_messages.message.concents import ForceReportComputedTask
-from scripts.concent_node_tests import params
+from scripts.concent_integration_tests import params
 
 sys.path.insert(0, 'golem')
 

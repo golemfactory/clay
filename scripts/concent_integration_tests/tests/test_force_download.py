@@ -1,13 +1,17 @@
 #!/usr/bin/env python
 import sys
 
-from scripts.concent_node_tests import helpers
-from scripts.concent_node_tests.tests.base import NodeTestPlaybook
+from scripts.concent_integration_tests import helpers
+from scripts.concent_integration_tests.tests.base import NodeTestPlaybook
 
 
-class ForceReport(NodeTestPlaybook):
-    provider_node_script = 'provider/impatient_frct'
-    requestor_node_script = 'requestor/no_ack_rct'
+class ForceDownload(NodeTestPlaybook):
+    provider_node_script = 'provider/debug'
+    requestor_node_script = 'requestor/fail_results'
+
+    def step_clear_requestor_output(self):
+        helpers.clear_output(self.requestor_output_queue)
+        self.next()
 
     def step_clear_provider_output(self):
         helpers.clear_output(self.provider_output_queue)
@@ -15,8 +19,18 @@ class ForceReport(NodeTestPlaybook):
 
     def step_wait_task_finished(self):
         concent_fail = helpers.search_output(
+            self.requestor_output_queue,
+            '.*Concent request failed.*',
+        )
+
+        if concent_fail:
+            print("Requestor: ", concent_fail.group(0))
+            self.fail()
+            return
+
+        concent_fail = helpers.search_output(
             self.provider_output_queue,
-            '.*Concent request failed.*|.*Problem interpreting.*',
+            ".*Concent request failed.*|.*Can't receive message from Concent.*",
         )
 
         if concent_fail:
@@ -35,6 +49,7 @@ class ForceReport(NodeTestPlaybook):
         NodeTestPlaybook.step_wait_provider_gnt,
         NodeTestPlaybook.step_wait_requestor_gnt,
         NodeTestPlaybook.step_get_known_tasks,
+        step_clear_requestor_output,
         step_clear_provider_output,
         NodeTestPlaybook.step_create_task,
         NodeTestPlaybook.step_get_task_id,
@@ -43,7 +58,7 @@ class ForceReport(NodeTestPlaybook):
     )
 
 
-playbook = ForceReport.start()
+playbook = ForceDownload.start()
 if playbook.exit_code:
     print("exit code", playbook.exit_code)
 sys.exit(playbook.exit_code)

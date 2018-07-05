@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 import sys
 
-from scripts.concent_node_tests import helpers
-from scripts.concent_node_tests.tests.base import NodeTestPlaybook
+from scripts.concent_integration_tests import helpers
+from scripts.concent_integration_tests.tests.base import NodeTestPlaybook
 
 
-class AdditionalVerification(NodeTestPlaybook):
+class ForceAccept(NodeTestPlaybook):
     provider_node_script = 'provider/debug'
-    requestor_node_script = 'requestor/reject_results'
+    requestor_node_script = 'requestor/no_sra'
 
     def step_clear_provider_output(self):
         helpers.clear_output(self.provider_output_queue)
@@ -16,7 +16,7 @@ class AdditionalVerification(NodeTestPlaybook):
     def step_wait(self):
         concent_fail = helpers.search_output(
             self.provider_output_queue,
-            '.*Concent service exception.*',
+            '.*Concent request failed.*',
         )
 
         if concent_fail:
@@ -41,7 +41,7 @@ class AdditionalVerification(NodeTestPlaybook):
     )
 
 
-playbook = AdditionalVerification.start()
+playbook = ForceAccept.start()
 if playbook.exit_code:
     print("exit code", playbook.exit_code)
 sys.exit(playbook.exit_code)

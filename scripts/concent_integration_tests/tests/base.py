@@ -12,8 +12,8 @@ from twisted.internet import reactor, task
 from twisted.internet.error import ReactorNotRunning
 from twisted.internet import _sslverify  # pylint: disable=protected-access
 
-from scripts.concent_node_tests.rpc.client import call_requestor, call_provider
-from scripts.concent_node_tests import helpers
+from scripts.concent_integration_tests.rpc.client import call_requestor, call_provider
+from scripts.concent_integration_tests import helpers
 
 _sslverify.platformTrust = lambda: None
 

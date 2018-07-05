@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import sys
 
-from scripts.concent_node_tests.tests.base import NodeTestPlaybook
+from scripts.concent_integration_tests.tests.base import NodeTestPlaybook
 
 
 class RegularRun(NodeTestPlaybook):

@@ -9,7 +9,7 @@ import sys
 
 from golem_messages.message.tasks import SubtaskResultsAccepted
 from golem.task.tasksession import TaskSession
-from scripts.concent_node_tests import params
+from scripts.concent_integration_tests import params
 
 sys.path.insert(0, 'golem')
 

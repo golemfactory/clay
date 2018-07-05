@@ -3,7 +3,7 @@ import sys
 from golem.rpc.common import CROSSBAR_REALM, CROSSBAR_PORT, CROSSBAR_HOST
 from golem.rpc.session import Session, WebSocketAddress
 
-from scripts.concent_node_tests.params import (
+from scripts.concent_integration_tests.params import (
     REQUESTOR_RPC_PORT, PROVIDER_RPC_PORT)
 
 
