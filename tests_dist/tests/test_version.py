@@ -1,41 +1,38 @@
-import json
+import time
 
-from tests_dist.lib import TestSession, CleanupFixture
+from tests_dist.lib import tSession, CleanupFixture, ConfigFixture
 
-class TestVersion (CleanupFixture):
+class TestVersion(CleanupFixture, ConfigFixture):
 
     def test_golemapp_version(self):
         print()
         print("DEBUG: Hello World")
 
-        config = {}
-        with open('./tests_dist/tests/config.json') as f:
-            config = json.load(f)
+        print("DEBUG: config: "+ repr(self.config))
 
         opts = {
-            'cwd': 'dist/' + config["dist_dir"]
+            'dist_name': self.config["dist_name"]
         }
         script = [
             {
-                'cmd': ['./golemapp', '--version'],
+                'cmd': ['golemapp', '--version'],
                 'type': 'cmd',
                 'err': [],
                 'out': [
-                    'GOLEM version: ' + config['version']
+                    'GOLEM version: ' + self.config['version']
                 ],
                 'done': 'out'
             },
         ]
 
-        test = TestSession(
+        test = tSession(
             opts,
             script
         )
         self._tests = [test]
 
-        while True:
-            if test.tick() is not None:
-                break
+        while test.tick() is False:
+            time.sleep(0.1)
 
         exit_code, log_err, log_out = test.report()[0]
 
@@ -50,4 +47,3 @@ class TestVersion (CleanupFixture):
             print("W: Version does not expect stderr")
         else:
             print("P: Version stderr is empty")
-

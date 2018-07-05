@@ -1,0 +1,29 @@
+{
+    "duration": 3600,
+    "preview": "/home/ubuntu/.local/share/golem/default/mainnet/res/dcde4bda-3c1f-11e8-8bef-b306f56d18a6/tmp/current_task_preview.PNG",
+    "id": "dcde4bda-3c1f-11e8-8bef-b306f56d18a6",
+    "name": "bmw1",
+    "type": "Blender",
+    "subtasks": 2,
+    "progress": 1.0,
+    "options": {
+        "frame_count": 1,
+        "output_path": "/home/ubuntu/Documents",
+        "format": "PNG",
+        "resolution": [
+            48,
+            32
+        ],
+        "frames": "1",
+        "compositing": false
+    },
+    "time_started": 1523296818.8601952,
+    "time_remaining": 0,
+    "status": "Finished",
+    "timeout": "0:10:00",
+    "subtask_timeout": "0:02:00",
+    "bid": 0.1,
+    "resources": [
+        "/home/ubuntu/src/golem/apps/blender/benchmark/test_task/bmw27_cpu.blend"
+    ]
+}
