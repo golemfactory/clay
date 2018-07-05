@@ -8,9 +8,8 @@ from typing import Callable, Dict, Type, Tuple, List, Any
 
 from twisted.internet.defer import inlineCallbacks
 
-from golem_core import CoreNetwork, CoreError
+from golem_core import CoreNetwork, CoreError, events
 from golem_core.enums import TransportProtocol, ErrorKind
-from golem_core.events import *
 
 from golem.core.hostaddress import get_host_addresses
 from golem.network.transport.limiter import CallRateLimiter
@@ -29,7 +28,13 @@ class NativeModuleTransport:
 
     Host = namedtuple('Host', ['host', 'port'])
 
-    def __init__(self, network, protocol_id, peer, host):
+    def __init__(
+        self,
+        network: 'NativeNetwork',
+        protocol_id: int,
+        peer: Tuple[str, int],
+        host: Tuple[str, int]
+    ) -> None:
         self.network = network
         self.protocol_id = protocol_id
         self.peer = self.Host(peer[0], peer[1])
@@ -98,7 +103,7 @@ class NativeEventQueue(metaclass=ABCMeta):
             return
 
         try:
-            event = CoreEvent.convert_from(args)
+            event = events.Event.convert_from(args)
         except (ValueError, AttributeError, IndexError) as exc:
             logger.error("Invalid event %r: %r", args, exc)
         else:
@@ -166,7 +171,7 @@ class NativeNetwork(Network):
         try:
             self._network.stop()
         except CoreError as exc:
-            if ErrorKind.from_core_error(exc) is ErrorKind.Mailbox:
+            if ErrorKind.convert_from(exc) is ErrorKind.Mailbox:
                 logger.debug('Already stopping the network')
             else:
                 raise
@@ -266,28 +271,27 @@ class NativeNetwork(Network):
 
     # Event handlers
 
-    def _handle(self, event: BaseEvent) -> None:
+    def _handle(self, event: Event) -> None:
         handler = self.EVENT_HANDLERS.get(event.__class__)
         if handler:
             self._reactor.callFromThread(handler, self, event)
         else:
             logger.error("Unhandled event: %r", event)
 
-    def _handle_exiting(self, _: Exiting) -> None:
+    def _handle_exiting(self, _: events.Exiting) -> None:
         self._events.stop()
 
-    def _handle_started(self, event: Started) -> None:
-        self._address = event.address
+    def _handle_started(self, event: events.Started) -> None:
         if not self._pending_listen:
             return
 
         logger.info('Network started')
 
-        listen_info = self._pending_listen
-        self._pending_listen = None
+        self._address = event.address
+        listen_info, self._pending_listen = self._pending_listen, None
         listen_info.established_callback(SocketAddress(*event.address))
 
-    def _handle_stopped(self, event: Stopped) -> None:
+    def _handle_stopped(self, event: events.Stopped) -> None:
         logger.info("%r has stopped", event.transport_protocol.name)
 
         for key, conns in list(self._conns.items()):
@@ -295,7 +299,7 @@ class NativeNetwork(Network):
                 conn.session.dropped()
             self._conns[key] = dict()
 
-    def _handle_connected(self, event: Connected) -> None:
+    def _handle_connected(self, event: events.Connected) -> None:
         connect_info = self._pending_conns.pop(event.address, None)
 
         def create_conn(factory):
@@ -321,7 +325,7 @@ class NativeNetwork(Network):
         else:
             logger.warning('Unknown pending connection: %s:%r', *event.address)
 
-    def _handle_disconnected(self, event: Disconnected) -> None:
+    def _handle_disconnected(self, event: events.Disconnected) -> None:
         conns = self._conns.pop(event.address, None)
         if not conns:
             return
@@ -332,7 +336,7 @@ class NativeNetwork(Network):
         logger.info("%s disconnected from %s:%r", event.transport_protocol.name,
                     *event.address)
 
-    def _handle_message(self, event: Message) -> None:
+    def _handle_message(self, event: events.Message) -> None:
         conns = self._conns.get(event.address)
         if conns and event.encapsulated.protocol_id in conns:
             conn = conns[event.encapsulated.protocol_id]
@@ -340,15 +344,15 @@ class NativeNetwork(Network):
         else:
             logger.warning('Unknown session: %s:%r', *event.address)
 
-    def _handle_log(self, event: Log) -> None:
+    def _handle_log(self, event: events.Log) -> None:
         logger.log(event.log_level.value, event.message)
 
-    EVENT_HANDLERS: Dict[Type[BaseEvent], Callable] = {
-        Exiting: _handle_exiting,
-        Started: _handle_started,
-        Stopped: _handle_stopped,
-        Connected: _handle_connected,
-        Disconnected: _handle_disconnected,
-        Message: _handle_message,
-        Log: _handle_log,
+    EVENT_HANDLERS: Dict[Type[Event], Callable] = {
+        events.Exiting: _handle_exiting,
+        events.Started: _handle_started,
+        events.Stopped: _handle_stopped,
+        events.Connected: _handle_connected,
+        events.Disconnected: _handle_disconnected,
+        events.Message: _handle_message,
+        events.Log: _handle_log,
     }
