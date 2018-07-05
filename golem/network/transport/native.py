@@ -158,13 +158,6 @@ class NativeNetwork(Network):
                                 'running', *address)
         except CoreError as exc:
             logger.warning('Network: %r', exc)
-        else:
-            conns = self._conns.pop((address, port), None)
-            if not conns:
-                return
-
-            for conn in conns.values():
-                conn.session.dropped()
 
     def listen(self, listen_info: TCPListenInfo) -> None:
         self._listen(listen_info)
@@ -329,6 +322,13 @@ class NativeNetwork(Network):
             logger.warning('Unknown pending connection: %s:%r', *event.address)
 
     def _handle_disconnected(self, event: Disconnected) -> None:
+        conns = self._conns.pop(event.address, None)
+        if not conns:
+            return
+
+        for conn in conns.values():
+            conn.session.dropped()
+
         logger.info("%s disconnected from %s:%r", event.transport_protocol.name,
                     *event.address)
 
