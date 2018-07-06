@@ -2,7 +2,6 @@ import logging
 from abc import ABCMeta
 from collections import namedtuple
 
-from queue import Empty, Queue
 from threading import Event, Thread
 from typing import Callable, Dict, Type, Tuple, List, Any
 
@@ -69,9 +68,9 @@ class NativeModuleTransport:
 
 class NativeEventQueue(metaclass=ABCMeta):
 
-    def __init__(self, queue: Queue, handler: Callable) -> None:
+    def __init__(self, network, handler: Callable) -> None:
 
-        self._queue = queue
+        self._network = network
         self._handler = handler
 
         self._stop = Event()
@@ -98,8 +97,11 @@ class NativeEventQueue(metaclass=ABCMeta):
 
     def _loop(self):
         try:
-            args = self._queue.get(block=True, timeout=1)
-        except Empty:
+            args = self._network.poll(1)
+        except CoreError:
+            return
+
+        if not args:
             return
 
         try:
@@ -130,9 +132,8 @@ class NativeNetwork(Network):
         self._rate_limiter = CallRateLimiter()
         self._reactor = self._get_reactor()
 
-        self._queue = Queue()
-        self._network = CoreNetwork(self._queue)
-        self._events = NativeEventQueue(self._queue, self._handle)
+        self._network = CoreNetwork()
+        self._events = NativeEventQueue(self._network, self._handle)
 
     def start(self, in_factories, out_factories):
         self._in_factories = in_factories
@@ -205,7 +206,7 @@ class NativeNetwork(Network):
                                          *address):
                 raise CoreError(f'Unable to connect to {address}: server '
                                 'is not running')
-        except CoreError:
+        except Exception:  # pylint: disable=broad-except
             if connect_info.socket_addresses:
                 connect_info.socket_addresses.pop(0)
                 self._connect(connect_info)
