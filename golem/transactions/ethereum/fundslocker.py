@@ -4,6 +4,7 @@ import time
 
 from golem.core.service import LoopingCallService
 from golem.core.variables import PAYMENT_DEADLINE
+from golem.transactions.ethereum.exceptions import NotEnoughFunds
 
 logger = logging.getLogger(__name__)
 
@@ -74,6 +75,14 @@ class FundsLocker(LoopingCallService):
                 return
         for task_id, task in self.task_lock.items():
             logger.info('Restoring old tasks locks: %r', task_id)
+            # Bandait solution for increasing gas price
+            try:
+                self.transaction_system.lock_funds_for_payments(
+                    task.price,
+                    task.num_tasks,
+                )
+            except NotEnoughFunds:
+                pass
 
     def dump_locks(self):
         if not self.persist:

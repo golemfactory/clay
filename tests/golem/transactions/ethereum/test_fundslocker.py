@@ -67,9 +67,15 @@ class TestFundsLocker(TempDirFixture):
         self._add_tasks(fl)
 
         # new fund locker should restore tasks
+        self.ts.reset_mock()
         fl2 = FundsLocker(self.ts, self.new_path)
         assert len(fl2.task_lock) == 4
         assert fl2.task_lock['abc'].gnt_lock == 320 * 10
+        assert self.ts.lock_funds_for_payments.call_count == 4
+        assert self.ts.lock_funds_for_payments.call_args_list[0][0] == (320, 10)
+        assert self.ts.lock_funds_for_payments.call_args_list[1][0] == (140, 7)
+        assert self.ts.lock_funds_for_payments.call_args_list[2][0] == (10, 4)
+        assert self.ts.lock_funds_for_payments.call_args_list[3][0] == (13, 1)
 
     @staticmethod
     def _add_tasks(fl):
