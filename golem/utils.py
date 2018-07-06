@@ -3,7 +3,7 @@ import socket
 
 import semantic_version
 
-from eth_utils import decode_hex, encode_hex
+from eth_utils import decode_hex, encode_hex, to_checksum_address
 from ethereum.utils import sha3
 
 logger = logging.getLogger(__name__)
@@ -17,7 +17,7 @@ def find_free_net_port():
 
 
 def pubkeytoaddr(pubkey: str) -> str:
-    return encode_hex(sha3(decode_hex(pubkey))[12:])
+    return to_checksum_address(encode_hex(sha3(decode_hex(pubkey))[12:]))
 
 
 def tee_target(prefix, proc, input_stream, path, stream):
