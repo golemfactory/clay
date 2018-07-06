@@ -3,6 +3,7 @@ import unittest
 from unittest.mock import patch, Mock, ANY, PropertyMock
 
 from eth_utils import encode_hex
+from ethereum.utils import denoms
 import golem_sci
 import requests
 
@@ -107,9 +108,9 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         assert cost == self.sci.GAS_WITHDRAW * gas_price
 
     def test_withdraw(self):
-        eth_balance = 40 * 10 ** 18
-        gnt_balance = 10 * 10 ** 18
-        gntb_balance = 20 * 10 ** 18
+        eth_balance = 40 * denoms.ether
+        gnt_balance = 10 * denoms.ether
+        gntb_balance = 20 * denoms.ether
         self.sci.get_eth_balance.return_value = eth_balance
         self.sci.get_gnt_balance.return_value = gnt_balance
         self.sci.get_gntb_balance.return_value = gntb_balance
@@ -190,8 +191,8 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         self.sci.reset_mock()
 
     def test_locking_funds(self):
-        eth_balance = 10 * 10 ** 18
-        gnt_balance = 1000 * 10 ** 18
+        eth_balance = 10 * denoms.ether
+        gnt_balance = 1000 * denoms.ether
         self.sci.get_eth_balance.return_value = eth_balance
         self.sci.get_gntb_balance.return_value = gnt_balance
         self.ets._refresh_balances()
@@ -199,7 +200,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         assert self.ets.get_locked_eth() == 0
         assert self.ets.get_locked_gnt() == 0
 
-        price = 5 * 10 ** 18
+        price = 5 * denoms.ether
         num = 3
 
         self.ets.lock_funds_for_payments(price, num)
@@ -225,11 +226,11 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             self.ets.unlock_funds_for_payments(1, 1)
 
     def test_convert_gnt(self):
-        amount = 1000 * 10 ** 18
+        amount = 1000 * denoms.ether
         gate_addr = '0x' + 40 * '2'
         self.sci.get_gate_address.return_value = None
         self.sci.get_gnt_balance.return_value = amount
-        self.sci.get_eth_balance.return_value = 10 ** 18
+        self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_current_gas_price.return_value = 0
         self.sci.GAS_OPEN_GATE = 10
         self.sci.GAS_GNT_TRANSFER = 2
@@ -254,14 +255,14 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         self.sci.transfer_from_gate.assert_not_called()
 
     def test_unfinished_gnt_conversion(self):
-        amount = 1000 * 10 ** 18
+        amount = 1000 * denoms.ether
         gate_addr = '0x' + 40 * '2'
         self.sci.get_current_gas_price.return_value = 0
         self.sci.GAS_TRANSFER_FROM_GATE = 5
         self.sci.get_gate_address.return_value = gate_addr
         self.sci.get_gnt_balance.side_effect = \
             lambda addr: amount if addr == gate_addr else 0
-        self.sci.get_eth_balance.return_value = 10 ** 18
+        self.sci.get_eth_balance.return_value = denoms.ether
         with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
                    'new_sci', return_value=self.sci),\
             patch('golem.transactions.ethereum.ethereumtransactionsystem.'
@@ -300,7 +301,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
     def test_concent_deposit_done(self):
         self.sci.get_deposit_value.return_value = 0
         self.ets._gntb_balance = 20
-        self.ets._eth_balance = 10 ** 18
+        self.ets._eth_balance = denoms.ether
         self.ets.lock_funds_for_payments(1, 1)
         self.ets.concent_deposit(
             required=10,
