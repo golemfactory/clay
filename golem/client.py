@@ -565,7 +565,6 @@ class Client(HardwarePresetsMixin):
             self.transaction_system.concent_deposit(
                 required=min_amount,
                 expected=opt_amount,
-                reserved=self.funds_locker.sum_locks()[0],
             )
 
         task_id = task.header.task_id
@@ -984,21 +983,18 @@ class Client(HardwarePresetsMixin):
             return self.task_server.task_computer.stats.get_stats(name)
         return None, None
 
-    @inlineCallbacks
     def get_balance(self):
-        gnt, av_gnt, eth, \
-            last_gnt_update, \
-            last_eth_update = yield self.transaction_system.get_balance()
-        gnt_lock, eth_lock = self.funds_locker.sum_locks()
-        if gnt is not None:
-            return {'gnt': str(gnt),
-                    'av_gnt': str(av_gnt),
-                    'eth': str(eth),
-                    'gnt_lock': str(gnt_lock),
-                    'eth_lock': str(eth_lock),
-                    'last_gnt_update': str(last_gnt_update),
-                    'last_eth_update': str(last_eth_update)}
-        return None
+        balances = self.transaction_system.get_balance()
+        gnt_total = balances['gnt_available'] + balances['gnt_nonconverted']
+        return {
+            'gnt': str(gnt_total),
+            'av_gnt': str(balances['gnt_available']),
+            'eth': str(balances['eth_available']),
+            'gnt_lock': str(balances['gnt_locked']),
+            'eth_lock': str(balances['eth_locked']),
+            'last_gnt_update': str(balances['gnt_update_time']),
+            'last_eth_update': str(balances['eth_update_time']),
+        }
 
     def get_payments_list(self):
         return self.transaction_system.get_payments_list()
@@ -1030,17 +1026,10 @@ class Client(HardwarePresetsMixin):
 
         if isinstance(amount, str):
             amount = int(amount)
-        gnt_lock, eth_lock = self.funds_locker.sum_locks()
-        if currency == 'GNT':
-            lock = gnt_lock
-        else:
-            lock = eth_lock
-
         return self.transaction_system.withdraw(
             amount,
             destination,
             currency,
-            lock,
         )
 
     # It's defined here only for RPC exposure in
