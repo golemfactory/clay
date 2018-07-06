@@ -6,7 +6,7 @@ class EthereumError(Exception):
 
 
 class NotEnoughFunds(EthereumError):
-    def __init__(self, required: int, available: int, extension="GNT"):
+    def __init__(self, required: int, available: int, extension="GNT") -> None:
         super().__init__()
         self.required = required
         self.available = available

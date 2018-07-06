@@ -146,7 +146,11 @@ class EthereumTransactionSystem(TransactionSystem):
         if eth > eth_available:
             raise NotEnoughFunds(eth, eth_available, 'ETH')
 
-        log.info("Locking %f GNT and ETH for %d payments", gnt, num)
+        log.info(
+            "Locking %f GNT and ETH for %d payments",
+            gnt / denoms.ether,
+            num,
+        )
         self._gntb_locked += gnt
         self._payments_locked += num
 
@@ -163,7 +167,11 @@ class EthereumTransactionSystem(TransactionSystem):
                 self._payments_locked,
 
             ))
-        log.info("Unlocking %f GNT and ETH for %d payments", gnt, num)
+        log.info(
+            "Unlocking %f GNT and ETH for %d payments",
+            gnt / denoms.ether,
+            num,
+        )
         self._gntb_locked -= gnt
         self._payments_locked -= num
 
