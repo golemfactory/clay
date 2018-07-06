@@ -46,6 +46,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         self.peer_session.conn.server = \
             self.peer_session.p2p_service = P2PService(
+                network=Mock(),
                 node=node,
                 config_desc=clientconfigdescriptor.ClientConfigDescriptor(),
                 keys_auth=keys_auth,
@@ -365,7 +366,8 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         keys_auth = KeysAuth(self.path, 'priv_key', 'password')
 
         peer_session = PeerSession(conn)
-        peer_session.p2p_service = P2PService(node, conf, keys_auth, False)
+        peer_session.p2p_service = P2PService(Mock(), node, conf, keys_auth,
+                                              False)
         peer_session.key_id = "NEW KEY_ID"
         peer_session._react_to_stop_gossip(message.StopGossip())
 

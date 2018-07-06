@@ -579,6 +579,7 @@ class TestResourceHandshakeShare(DatabaseFixture):
                 ".HandlersLibrary"
                 ".register_handler"):
             task_server = TaskServer(
+                network=Mock(),
                 node=Mock(client=client, key=str(uuid.uuid4())),
                 config_desc=ClientConfigDescriptor(),
                 client=client,

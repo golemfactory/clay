@@ -90,6 +90,7 @@ class TaskServerTestBase(LogTestCase,
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
             self.ts = TaskServer(
+                network=Mock(),
                 node=NodeFactory(),
                 config_desc=self.ccd,
                 client=self.client,
@@ -115,6 +116,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ccd.min_price = 10
         n = NodeFactory()
         ts = TaskServer(
+            network=Mock(),
             node=n,
             config_desc=ccd,
             client=self.client,
@@ -271,9 +273,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ccd = ClientConfigDescriptor()
         ccd.min_price = 11
         ts = self.ts
-        session = Mock()
-        session.address = "10.10.10.10"
-        session.port = 1020
+        session = Mock(verified=False, address="10.10.10.10", port=1020)
         ts.conn_established_for_type[TASK_CONN_TYPES['task_request']](
             session, "abc", "nodename", "key", "xyz", 1010, 30, 3, 1, 2)
         self.assertEqual(session.task_id, "xyz")
@@ -437,7 +437,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         ts.failures_to_send[subtask_id] = wtf
         ts.sync_network()
-        ts._add_pending_request.assert_not_called()
+        ts._add_pending_request.assert_called()
+        self.assertEqual(ts.pending_connections, {})
         self.assertEqual(ts.failures_to_send, {})
 
         ts._add_pending_request.reset_mock()
@@ -485,9 +486,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
     def test_conn_for_task_failure_established(self, *_):
         ts = self.ts
         ts.network = Mock()
-        session = Mock()
-        session.address = '127.0.0.1'
-        session.port = 40102
+        session = Mock(verified=False, address='127.0.0.1', port=40102)
 
         method = ts._TaskServer__connection_for_task_failure_established
         method(session, 'conn_id', 'key_id', 'subtask_id', 'err_msg')
@@ -814,6 +813,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
             self.ts = TaskServer(
+                network=Mock(),
                 node=NodeFactory(),
                 config_desc=self.ccd,
                 client=self.client,
@@ -950,6 +950,7 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
             self.ts = TaskServer(
+                network=Mock(),
                 node=self.node,
                 config_desc=ClientConfigDescriptor(),
                 client=self.client,

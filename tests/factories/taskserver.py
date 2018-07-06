@@ -11,6 +11,7 @@ class TaskServer(factory.Factory):
     class Meta:
         model = taskserver.TaskServer
 
+    network = factory.SubFactory('tests.factories.network.NativeNetwork')
     node = factory.SubFactory('tests.factories.p2p.Node')
     config_desc = clientconfigdescriptor.ClientConfigDescriptor()
     use_docker_manager = False

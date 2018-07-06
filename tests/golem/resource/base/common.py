@@ -103,6 +103,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
                 ".HandlersLibrary"
                 ".register_handler"):
             client.task_server = TaskServer(
+                network=mock.Mock(),
                 node=Node(prv_addr='127.0.0.1', hyperdrive_prv_port=3282),
                 config_desc=mock.Mock(),
                 client=client,

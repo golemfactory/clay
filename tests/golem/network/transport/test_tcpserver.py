@@ -151,6 +151,7 @@ class TestPendingConnectionServer(unittest.TestCase):
         server.conn_established_for_type[req_type] = lambda x: x
         server.conn_failure_for_type[req_type] = server.final_conn_failure
         server.conn_final_failure_for_type[req_type] = final_failure
+        server.protocol_id_for_type[req_type] = 1
         server._is_address_accessible = Mock(return_value=True)
 
         server._add_pending_request(
@@ -205,6 +206,7 @@ class TestPendingConnectionServer(unittest.TestCase):
         server.conn_established_for_type[req_type] = lambda x: x
         server.conn_failure_for_type[req_type] = server.final_conn_failure
         server.conn_final_failure_for_type[req_type] = final_failure
+        server.protocol_id_for_type[req_type] = 1
         server._is_address_accessible = Mock(return_value=True)
 
         server._add_pending_request(
@@ -240,5 +242,6 @@ class TestPendingConnectionServer(unittest.TestCase):
 
 class TestPendingConnection(unittest.TestCase):
     def test_init(self):
-        pc = PendingConnection(1, "10.10.10.10")
+        pc = PendingConnection(protocol_id=1, type_=1,
+                               socket_addresses=["10.10.10.10"])
         self.assertIsInstance(pc, PendingConnection)

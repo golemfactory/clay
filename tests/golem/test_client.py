@@ -2,6 +2,7 @@ import json
 import os
 import time
 import uuid
+from contextlib import contextmanager
 from random import Random
 from types import MethodType
 from unittest import mock
@@ -31,6 +32,7 @@ from golem.environments.environment import Environment as DefaultEnvironment
 from golem.model import Performance
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
+from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
 from golem.rpc.mapping.rpceventnames import UI, Environment
@@ -87,6 +89,18 @@ def make_mock_ethereum_transaction_system(eth=100, gnt=100):
     ets.eth_base_for_batch_payment.return_value = 0.001 * denoms.ether
     ets.get_payment_address.return_value = '0x' + 40 * 'a'
     return ets
+
+
+@contextmanager
+def patch_network_run():
+    def call_established_callback(listen_info):
+        socket_address = SocketAddress('127.0.0.1', 40102)
+        listen_info.established_callback(socket_address)
+
+    with patch('golem.client.NativeNetwork') as net_cls:
+        net_cls.return_value = net_cls
+        net_cls.listen = call_established_callback
+        yield net_cls
 
 
 @patch(
@@ -344,8 +358,10 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_docker_manager=False,
             use_monitor=False
         )
-        self.client.start_network()
-        self.client.collect_gossip()
+
+        with patch_network_run():
+            self.client.start_network()
+            self.client.collect_gossip()
 
     def test_activate_hw_preset(self, *_):
         self.client = Client(
@@ -430,7 +446,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
         connect_to_network.side_effect = lambda *_: deferred.callback(True)
         self.client.are_terms_accepted = lambda: True
 
-        self.client.start()
+        with patch_network_run():
+            self.client.start()
         sync_wait(deferred)
 
         self.client.p2pservice.disconnect = Mock(
@@ -458,7 +475,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_docker_manager=False
         )
 
-        self.client.start()
+        with patch('golem.client.NativeNetwork'):
+            self.client.start()
 
         assert self.client.p2pservice.active
         assert self.client.task_server.active
@@ -499,7 +517,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
         deferred = Deferred()
         connect_to_network.side_effect = lambda *_: deferred.callback(True)
         self.client.are_terms_accepted = lambda: True
-        self.client.start()
+
+        with patch_network_run():
+            self.client.start()
         sync_wait(deferred)
 
         def create_resource_package(*_args):
@@ -517,10 +537,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         )
 
         task_manager = self.client.task_server.task_manager
-
         task_manager.dump_task = Mock()
-        task_manager.listen_address = '127.0.0.1'
-        task_manager.listen_port = 40103
 
         some_file_path = self.new_path / "foo"
         # pylint thinks it's PurePath, but it's a concrete path
@@ -863,6 +880,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler', ):
             client.task_server = TaskServer(
+                network=Mock(),
                 node=Node(),
                 config_desc=ClientConfigDescriptor(),
                 client=client,

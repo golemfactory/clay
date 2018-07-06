@@ -115,6 +115,7 @@ class DockerTaskTestCase(
             ".register_handler"
         ):
             task_server = TaskServer(
+                network=Mock(),
                 node=Mock(),
                 config_desc=ccd,
                 client=self.node.client,
