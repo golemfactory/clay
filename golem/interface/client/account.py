@@ -67,6 +67,7 @@ class Account:
 
     @command(help="Unlock account, will prompt for your password")
     def unlock(self) -> str:  # pylint: disable=no-self-use
+        from twisted.internet import threads
         client = Account.client
 
         is_account_unlocked: bool = sync_wait(client.is_account_unlocked())
@@ -80,7 +81,17 @@ class Account:
         else:
             print("Unlock your account to start golem")
 
-        pswd = getpass.getpass('Password:')
+        print("This command will time out in 30 seconds.")
+
+        defer_getpass = threads.deferToThread(getpass.getpass, 'Password:')
+        
+        # FIXME: Command does not exit on its own,
+        # needs manual "Return" key or sys.exit()
+        defer_getpass.addErrback(lambda _:sys.exit(1))
+
+        pswd = sync_wait(defer_getpass, timeout=30)
+        if not pswd:
+             return "ERROR: No password provided"
 
         if not has_key:
             # Check password length
