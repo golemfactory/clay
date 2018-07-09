@@ -245,12 +245,17 @@ class Client(HardwarePresetsMixin):
             sender, signal, event, kwargs
         )
 
-        if 'op' in kwargs and kwargs['op'] is not None \
-                and kwargs['op'].subtask_related():
+        op = kwargs['op'] if 'op' in kwargs else None
+
+        if op is not None and op.subtask_related():
             self._publish(Task.evt_subtask_status, kwargs['task_id'],
-                          kwargs['subtask_id'])
+                          kwargs['subtask_id'], op.value)
         else:
-            self._publish(Task.evt_task_status, kwargs['task_id'])
+            op_class_name: str = op.__class__.__name__ \
+                                 if op is not None else None
+            op_value: int = op.value if op is not None else None
+            self._publish(Task.evt_task_status, kwargs['task_id'],
+                          op_class_name, op_value)
 
     # TODO: re-enable. issue #2398
     def sync(self):
