@@ -233,7 +233,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
     def test_host_state(self):
         task_server = self.task_server
-        tc = TaskComputer("ABC", task_server, use_docker_manager=False)
+        tc = TaskComputer(task_server, use_docker_manager=False)
         self.assertEqual(tc.get_host_state(), "Idle")
         tc.reset(counting_task="SOME_TASK_ID")
         self.assertEqual(tc.get_host_state(), "Computing")
