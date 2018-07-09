@@ -127,9 +127,10 @@ class EthereumTransactionSystem(TransactionSystem):
             'gnt_available': self.get_available_gnt(),
             'gnt_locked': self.get_locked_gnt(),
             'gnt_nonconverted': self._gnt_balance,
-            'gnt_update_time': self._last_gnt_update,
             'eth_available': self.get_available_eth(),
             'eth_locked': self.get_locked_eth(),
+            'block_number': self._sci.get_block_number(),
+            'gnt_update_time': self._last_gnt_update,
             'eth_update_time': self._last_eth_update,
         }
 

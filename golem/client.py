@@ -987,11 +987,13 @@ class Client(HardwarePresetsMixin):
         balances = self.transaction_system.get_balance()
         gnt_total = balances['gnt_available'] + balances['gnt_nonconverted']
         return {
-            'gnt': str(gnt_total),
             'av_gnt': str(balances['gnt_available']),
-            'eth': str(balances['eth_available']),
+            'gnt': str(gnt_total),
             'gnt_lock': str(balances['gnt_locked']),
+            'gnt_nonconverted': str(balances['gnt_nonconverted']),
+            'eth': str(balances['eth_available']),
             'eth_lock': str(balances['eth_locked']),
+            'block_number': str(balances['block_number']),
             'last_gnt_update': str(balances['gnt_update_time']),
             'last_eth_update': str(balances['eth_update_time']),
         }
