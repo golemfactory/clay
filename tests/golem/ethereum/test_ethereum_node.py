@@ -2,13 +2,12 @@ import logging
 from os import path
 from unittest.mock import patch, Mock
 
+from eth_utils import encode_hex, to_checksum_address
 from ethereum.transactions import Transaction
-from ethereum.utils import zpad
 
 from golem.ethereum.node import log, NodeProcess
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-from golem.utils import encode_hex
 from golem_sci.client import Client
 
 
@@ -105,17 +104,12 @@ class EthereumClientNodeTest(TempDirFixture):
         assert type(s) is bool
         addr = b'FakeEthereumAddress!'
         assert len(addr) == 20
-        hex_addr = '0x' + encode_hex(addr)
+        hex_addr = to_checksum_address(encode_hex(addr))
         c = client.get_transaction_count(hex_addr)
         assert type(c) is int
         assert c == 0
         b = client.get_balance(hex_addr)
         assert b == 0
-
-        eth = client.web3.eth
-        with patch.object(eth, 'getBalance', side_effect=ValueError):
-            b = client.get_balance(hex_addr)
-        assert b is None
 
     def test_send_raw_transaction(self):
         client = self.client
@@ -130,14 +124,6 @@ class EthereumClientNodeTest(TempDirFixture):
         tx.sign(priv)
         with self.assertRaisesRegex(ValueError, "[Ii]nsufficient funds"):
             client.send(tx)
-
-    def test_get_logs(self):
-        addr = encode_hex(zpad(b'deadbeef', 32))
-        log_id = encode_hex(zpad(b'beefbeef', 32))
-        client = self.client
-        logs = client.get_logs(from_block='latest', to_block='latest',
-                               topics=[log_id, addr])
-        assert logs == []
 
     def test_filters(self):
         """ Test creating filter and getting logs """

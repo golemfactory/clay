@@ -1,3 +1,4 @@
+import datetime
 import functools
 import logging
 import os
@@ -22,6 +23,7 @@ from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import ResultType
+from golem.task.taskstate import TaskState
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 from .taskmanager import TaskManager
@@ -491,7 +493,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         if ctd:
             task = self.task_manager.tasks[ctd['task_id']]
-            task_state = self.task_manager.tasks_states[ctd['task_id']]
+            task_state: TaskState = self.task_manager.tasks_states[
+                ctd['task_id']]
             price = taskkeeper.compute_subtask_value(
                 task.header.max_price,
                 task.header.subtask_timeout,
@@ -505,11 +508,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 provider_public_key=self.key_id,
                 provider_ethereum_public_key=self.key_id,
                 package_hash='sha1:' + task_state.package_hash,
-                # for now, we're assuming the Concent
-                # is always in use
                 concent_enabled=msg.concent_enabled,
                 price=price,
-                size=0,  # @todo issue #2769
+                size=task_state.package_size
             )
             self.task_manager.set_subtask_value(
                 subtask_id=ttc.subtask_id,
@@ -715,13 +716,25 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             # we are delegating the verification to the Concent so that
             # we can be paid for this subtask despite the rejection
 
-            srv = message.concents.SubtaskResultsVerify(
-                subtask_results_rejected=msg
+            amount, expected = msg_helpers.provider_deposit_amount(
+                subtask_price=msg.task_to_compute.price,
             )
 
-            self.concent_service.submit_task_message(
-                subtask_id=msg.subtask_id,
-                msg=srv,
+            def ask_for_verification():
+                srv = message.concents.SubtaskResultsVerify(
+                    subtask_results_rejected=msg
+                )
+
+                self.concent_service.submit_task_message(
+                    subtask_id=msg.subtask_id,
+                    msg=srv,
+                )
+
+            self.task_server.client.transaction_system.concent_deposit(
+                required=amount,
+                expected=expected,
+                reserved=self.task_server.client.funds_locker.sum_locks()[0],
+                cb=ask_for_verification,
             )
 
         else:
@@ -824,22 +837,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             ack_report_computed_task=msg,
         )
         logger.debug('[CONCENT] ForceResults: %s', delayed_forcing_msg)
-        report_computed_task = get_task_message(
-            'ReportComputedTask',
-            msg.task_id,
-            msg.subtask_id,
+        ttc_deadline = datetime.datetime.utcfromtimestamp(
+            msg.task_to_compute.compute_task_def['deadline']
         )
-        if report_computed_task is None:
-            logger.warning(
-                '[CONCENT] Can`t delay send %r.'
-                ' ReportComputedTask not found; delay unknown',
-                delayed_forcing_msg,
-            )
-            return
+        svt = msg_helpers.subtask_verification_time(msg.report_computed_task)
+        delay = ttc_deadline + svt - datetime.datetime.utcnow()
         self.concent_service.submit_task_message(
             subtask_id=msg.subtask_id,
             msg=delayed_forcing_msg,
-            delay=msg_helpers.subtask_verification_time(report_computed_task),
+            delay=delay,
         )
 
     @history.provider_history

@@ -1,8 +1,7 @@
 import unittest
 
+from eth_utils import encode_hex
 from ethereum.abi import encode_abi
-
-from golem.utils import encode_hex
 
 
 class TestEthereumAbi(unittest.TestCase):
@@ -12,7 +11,7 @@ class TestEthereumAbi(unittest.TestCase):
             ['uint32', 'uint32[]', 'bytes10', 'bytes'],
             [int(0x123), [int(0x456), int(0x789)],
              b"1234567890", b"Hello, world!"]
-        ))
+        ))[2:]
         data = "0000000000000000000000000000000000000000000000000000000000000" \
                "1230000000000000000000000000000000000000000000000000000000000" \
                "0000803132333435363738393000000000000000000000000000000000000" \

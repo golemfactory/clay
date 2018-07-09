@@ -13,9 +13,6 @@ import golem_messages.cryptography
 import golem_messages.exceptions
 from golem_messages import message
 from golem_messages import factories as msg_factories
-from golem_messages.constants import (
-    DEFAULT_MSG_LIFETIME, MSG_LIFETIMES
-)
 
 from golem import testutils
 from golem.core import keysauth
@@ -181,6 +178,7 @@ class TestReceiveFromConcent(TestCase):
 
 
 @mock.patch('twisted.internet.reactor', create=True)
+@mock.patch('golem.network.concent.client.receive_out_of_band')
 @mock.patch('golem.network.concent.client.receive_from_concent')
 @mock.patch('golem.network.concent.client.send_to_concent')
 class TestConcentClientService(testutils.TempDirFixture):
@@ -259,25 +257,6 @@ class TestConcentClientService(testutils.TempDirFixture):
 
         assert not self.concent_service._delayed
 
-    def test_loop_request_timeout(self, send_mock, *_):
-        self.assertFalse(self.concent_service.isAlive())
-        delta = MSG_LIFETIMES.get(
-            self.msg.__class__,
-            DEFAULT_MSG_LIFETIME,
-        )
-        with freeze_time(datetime.datetime.now()) as frozen_time:
-            self.concent_service.submit(
-                'key',
-                self.msg,
-                delay=datetime.timedelta(),
-            )
-
-            self.assertEqual(send_mock.call_count, 0)
-            frozen_time.tick(delta=delta)
-            frozen_time.tick()  # on second more
-            self.concent_service._loop()
-            self.assertEqual(send_mock.call_count, 0)
-
     @mock.patch(
         'golem.network.concent.client.ConcentClientService'
         '.react_to_concent_message'
@@ -303,15 +282,26 @@ class TestConcentClientService(testutils.TempDirFixture):
         'golem.network.concent.client.ConcentClientService'
         '.react_to_concent_message'
     )
-    def test_receive(self, react_mock, _send_mock, receive_mock, *_):
-        receive_mock.return_value = content = object()
+    def test_receive(self, react_mock, _send_mock, receive_mock, roob_mock, *_):
+        receive_mock.return_value = content = 'rcv_content'
+        roob_mock.return_value = content_oob = 'oob_content'
         self.concent_service.receive()
         receive_mock.assert_called_once_with(
             signing_key=self.concent_service.keys_auth._private_key,
             public_key=self.concent_service.keys_auth.public_key,
             concent_variant=self.concent_service.variant,
         )
-        react_mock.assert_called_once_with(content)
+        roob_mock.assert_called_once_with(
+            signing_key=self.concent_service.keys_auth._private_key,
+            public_key=self.concent_service.keys_auth.public_key,
+            concent_variant=self.concent_service.variant,
+        )
+        react_mock.assert_has_calls(
+            (
+                mock.call(content),
+                mock.call(content_oob),
+            ),
+        )
 
     @mock.patch(
         'golem.network.concent.client.ConcentClientService'

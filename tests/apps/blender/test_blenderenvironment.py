@@ -23,25 +23,29 @@ class BlenderEnvTest(DatabaseFixture, PEP8MixIn):
 
     def test_get_performance(self):
         """Changing estimated performance in ClientConfigDescriptor."""
-        result = self.env.get_performance()
-        assert result == 0.0
+        assert self.env.get_performance() == 0.0
 
+        # given
         fake_performance = 2345.2
         p = Performance(environment_id=BlenderEnvironment.get_id(),
                         value=fake_performance)
         p.save()
-        result = self.env.get_performance()
-        self.assertEqual(result, fake_performance)
+
+        # then
+        self.assertEqual(self.env.get_performance(), fake_performance)
 
     def test_get_min_accepted_performance_default(self):
         self.assertEqual(MinPerformanceMultiplier.get(), 0.0)
         self.assertEqual(self.env.get_min_accepted_performance(), 0.0)
 
     def test_get_min_accepted_performance(self):
+        # given
         p = Performance(environment_id=BlenderEnvironment.get_id(),
                         min_accepted_step=100)
         p.save()
         MinPerformanceMultiplier.set(3.141)
+
+        # then
         self.assertEqual(MinPerformanceMultiplier.get(), 3.141)
         self.assertEqual(self.env.get_min_accepted_performance(), 314.1)
 

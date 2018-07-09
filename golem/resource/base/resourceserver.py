@@ -60,13 +60,13 @@ class BaseResourceServer(object):
     def sync_network(self):
         self._download_resources()
 
-    def add_task(self, pkg_path, pkg_sha1, task_id,
+    def add_task(self, pkg_path, pkg_sha1, task_id, pkg_size,  # noqa pylint:disable=too-many-arguments
                  client_options=None) -> Deferred:
         _result = Deferred()
         _result.addErrback(self._add_task_error)
 
         def callback(r):
-            value = r, pkg_path, pkg_sha1
+            value = r, pkg_path, pkg_sha1, pkg_size
             _result.callback(value)
 
         _deferred = self.resource_manager.add_task(

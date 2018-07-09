@@ -5,6 +5,7 @@ import zxcvbn
 from decimal import Decimal
 from ethereum.utils import denoms
 
+from golem.node import ShutdownResponse
 from golem.core.deferred import sync_wait
 from golem.interface.command import Argument, command, group
 
@@ -41,15 +42,12 @@ class Account:
                 'eth_lock': 0
             }
 
-        gnt_balance = balance['gnt']
-        gnt_available = balance['av_gnt']
-        eth_balance = balance['eth']
-        gnt_balance = float(gnt_balance)
-        gnt_available = float(gnt_available)
-        eth_balance = float(eth_balance)
+        gnt_balance = int(balance['gnt'])
+        gnt_available = int(balance['av_gnt'])
+        eth_balance = int(balance['eth'])
         gnt_reserved = gnt_balance - gnt_available
-        gnt_locked = float(balance['gnt_lock'])
-        eth_locked = float(balance['eth_lock'])
+        gnt_locked = int(balance['gnt_lock'])
+        eth_locked = int(balance['eth_lock'])
 
         return dict(
             node_name=node['node_name'],
@@ -70,6 +68,11 @@ class Account:
     @command(help="Unlock account, will prompt for your password")
     def unlock(self) -> str:  # pylint: disable=no-self-use
         client = Account.client
+
+        is_account_unlocked: bool = sync_wait(client.is_account_unlocked())
+        if is_account_unlocked:
+            return "Account already unlocked"
+
         has_key = sync_wait(client.key_exists())
 
         if not has_key:
@@ -105,16 +108,29 @@ class Account:
         return "Account unlock success"
 
     @command(
-        arguments=(amount_arg, address_arg, currency_arg),
-        help="Withdraw GNT/ETH")
+        arguments=(address_arg, amount_arg, currency_arg),
+        help=("Withdraw GNT/ETH\n"
+              "(withdrawals are not available for the testnet)"))
     def withdraw(  # pylint: disable=no-self-use
             self,
-            amount,
             destination,
+            amount,
             currency) -> str:
         amount = str(int(Decimal(amount) * denoms.ether))
         return sync_wait(Account.client.withdraw(amount, destination, currency))
 
+    @command(help="Trigger graceful shutdown of your golem")
+    def shutdown(self) -> str:  # pylint: disable=no-self-use
 
-def _fmt(value: float, unit: str = "GNT") -> str:
-    return "{:.6f} {}".format(value / denoms.ether, unit)
+        result = sync_wait(Account.client.graceful_shutdown())
+        readable_result = repr(ShutdownResponse(result))
+
+        return "Graceful shutdown triggered result: {}".format(readable_result)
+
+
+def _fmt(value: int, unit: str = "GNT") -> str:
+    full = value // denoms.ether
+    decimals = '.' + str(value % denoms.ether).zfill(18).rstrip('0')
+    if decimals == '.':
+        decimals = ''
+    return "{}{} {}".format(full, decimals, unit)

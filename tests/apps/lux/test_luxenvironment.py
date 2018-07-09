@@ -17,23 +17,27 @@ class TestLuxRenderEnvironment(DatabaseFixture, PEP8MixIn):
         self.env = LuxRenderEnvironment()
 
     def test_get_performance(self):
-        env = LuxRenderEnvironment()
+        # given
         perf_value = 1234.5
         perf = Performance(environment_id=LuxRenderEnvironment.get_id(),
                            value=perf_value)
         perf.save()
-        result = env.get_performance()
-        self.assertTrue(result == perf_value)
+
+        # then
+        self.assertEqual(self.env.get_performance(), perf_value)
 
     def test_get_min_accepted_performance_default(self):
         self.assertEqual(MinPerformanceMultiplier.get(), 0.0)
         self.assertEqual(self.env.get_min_accepted_performance(), 0.0)
 
     def test_get_min_accepted_performance(self):
+        # given
         p = Performance(environment_id=LuxRenderEnvironment.get_id(),
                         min_accepted_step=100)
         p.save()
         MinPerformanceMultiplier.set(3.141)
+
+        # then
         self.assertEqual(MinPerformanceMultiplier.get(), 3.141)
         self.assertEqual(self.env.get_min_accepted_performance(), 314.1)
 

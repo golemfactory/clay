@@ -9,27 +9,15 @@ from golem.transactions.ethereum.exceptions import NotEnoughFunds
 logger = logging.getLogger(__name__)
 
 
-class TaskFundsLock():  # pylint: disable=too-few-public-methods
-    def __init__(self, task, transaction_system=None):
-        self.gnt_lock = task.price
+class TaskFundsLock:  # pylint: disable=too-few-public-methods
+    def __init__(self, task):
+        self.price = task.subtask_price
         self.num_tasks = task.total_tasks
         self.task_deadline = task.header.deadline
-        self.transaction_system = transaction_system
 
-    def eth_lock(self):
-        if self.transaction_system is None:
-            return 0
-        return self.transaction_system.eth_for_batch_payment(self.num_tasks)
-
-    def __getstate__(self):
-        state = self.__dict__.copy()
-        del state['transaction_system']
-        return state
-
-    def __setstate__(self, state):
-        # pylint: disable=attribute-defined-outside-init
-        self.__dict__ = state
-        self.transaction_system = None
+    @property
+    def gnt_lock(self):
+        return self.price * self.num_tasks
 
 
 class FundsLocker(LoopingCallService):
@@ -49,7 +37,7 @@ class FundsLocker(LoopingCallService):
                          "task_id %r", task_id)
             return
 
-        tfl = TaskFundsLock(task, self.transaction_system)
+        tfl = TaskFundsLock(task)
         _, gnt, eth, _, _ = self.transaction_system.get_balance()
         lock_gnt, lock_eth = self.sum_locks()
         logger.info('Locking funds for task: %r %r %r', task_id, lock_gnt,
@@ -57,8 +45,12 @@ class FundsLocker(LoopingCallService):
         if tfl.gnt_lock > gnt - lock_gnt:
             raise NotEnoughFunds(tfl.gnt_lock, gnt - lock_gnt)
 
-        if tfl.eth_lock() > eth - lock_eth:
-            raise NotEnoughFunds(tfl.eth_lock(), eth - lock_eth,
+        required_eth = \
+            self.transaction_system.eth_for_batch_payment(tfl.num_tasks)
+        if lock_eth == 0:
+            required_eth += self.transaction_system.eth_base_for_batch_payment()
+        if required_eth > eth - lock_eth:
+            raise NotEnoughFunds(required_eth, eth - lock_eth,
                                  extension="ETH")
 
         self.task_lock[task_id] = tfl
@@ -66,10 +58,14 @@ class FundsLocker(LoopingCallService):
 
     def sum_locks(self):
         gnt, eth = 0, 0
+        total_subtasks = 0
         for task_lock in self.task_lock.values():
             gnt += task_lock.gnt_lock
-            eth += task_lock.eth_lock()
-        eth += self.transaction_system.eth_base_for_batch_payment()
+            total_subtasks += task_lock.num_tasks
+        if total_subtasks > 0:
+            eth = \
+                self.transaction_system.eth_for_batch_payment(total_subtasks) +\
+                self.transaction_system.eth_base_for_batch_payment()
         return gnt, eth
 
     def remove_old(self):
@@ -95,9 +91,7 @@ class FundsLocker(LoopingCallService):
                                  self.dump_path)
                 return
         for task_id, task in self.task_lock.items():
-            logger.info('Restoring old tasks locks: %r %r %r', task_id,
-                        task.gnt_lock, task.eth_lock())
-            task.transaction_system = self.transaction_system
+            logger.info('Restoring old tasks locks: %r', task_id)
 
     def dump_locks(self):
         if not self.persist:

@@ -205,8 +205,8 @@ class RenderingTask(CoreTask):
         return self.__get_path(working_directory)
 
     def _get_scene_file_rel_path(self):
-        """Returns the path to the secene file relative to the directory where
-        the task srcipt is run.
+        """Returns the path to the scene file relative to the directory where
+        the task script is run.
         """
         if self.is_docker_task():
             # In a Docker container we know the absolute path:

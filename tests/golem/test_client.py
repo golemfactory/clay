@@ -39,6 +39,7 @@ from golem.task.taskbase import Task
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     TaskTestStatus
+from golem.task.tasktester import TaskTester
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
@@ -173,6 +174,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_get_withdraw_gas_cost(self, *_):
         keys_auth = Mock()
         keys_auth._private_key = "a" * 32
+        dest = '0x' + 40 * '0'
         with patch('golem.client.EthereumTransactionSystem') as ets:
             ets.return_value = ets
             self.client = Client(
@@ -185,8 +187,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
                 use_docker_manager=False,
                 use_monitor=False,
             )
-            self.client.get_withdraw_gas_cost('123', 'ETH')
-            ets.get_withdraw_gas_cost.assert_called_once_with(123, 'ETH')
+            self.client.get_withdraw_gas_cost('123', dest, 'ETH')
+            ets.get_withdraw_gas_cost.assert_called_once_with(123, dest, 'ETH')
 
     def test_payment_address(self, *_):
         self.client = Client(
@@ -899,6 +901,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.funds_locker.persist = False
         c.resource_server = Mock()
         c.task_server = Mock()
+        c.p2pservice.get_estimated_network_size.return_value = 0
 
         task_header = Mock(
             max_price=1 * 10**18,
@@ -910,7 +913,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             get_resources=Mock(return_value=[]),
             total_tasks=5,
             get_price=Mock(return_value=900),
-            price=1000,
+            subtask_price=1000,
         )
 
         c.enqueue_new_task(task)
@@ -921,7 +924,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_mock.total_tasks = 3
         price = task_mock.header.max_price * task_mock.total_tasks
         task_mock.get_price.return_value = price
-        task_mock.price = 1000
+        task_mock.subtask_price = 1000
         c.task_server.task_manager.create_task.return_value = task_mock
         c.concent_service = Mock()
         c.concent_service.enabled = True
@@ -974,7 +977,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         def add_task(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
-            result = resource_manager_result, 'res_file_1', 'package_hash'
+            result = resource_manager_result, 'res_file_1', 'package_hash', 42
             return done_deferred(result)
 
         c = self.client
@@ -990,6 +993,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             side_effect=create_resource_package)
         c.resource_server.add_task = Mock(
             side_effect=add_task)
+        c.p2pservice.get_estimated_network_size.return_value = 0
 
         deferred = c.enqueue_new_task(t_dict)
         task = sync_wait(deferred)
@@ -1027,7 +1031,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                            'av_gnt': "1",
                            'eth': "None",
                            'gnt_lock': "0",
-                           'eth_lock': "1000000000000000.0",
+                           'eth_lock': "0",
                            'last_gnt_update': "None",
                            'last_eth_update': "None"}
         assert all(isinstance(entry, str) for entry in balance)
@@ -1043,7 +1047,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         benchmark_manager.run_benchmark.side_effect = lambda b, tb, e, c, ec: \
             c(True)
 
-        with self.assertRaises(Exception):
+        with self.assertRaisesRegex(Exception, "Unknown environment"):
             sync_wait(self.client.run_benchmark(str(uuid.uuid4())))
 
         sync_wait(self.client.run_benchmark(BlenderEnvironment.get_id()))
@@ -1076,13 +1080,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 self.assertRaisesRegex(Exception, 'Test exception'):
             sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
 
-    @patch("golem.task.benchmarkmanager.BenchmarkRunner")
-    def test_run_benchmarks(self, br_mock, *_):
-        benchmark_manager = self.client.task_server.benchmark_manager
-        benchmark_manager.run_all_benchmarks()
-        f = br_mock.call_args[0][2]  # get success callback
-        f(1)
-        assert br_mock.call_count == 2
 
     def test_config_changed(self, *_):
         c = self.client
@@ -1109,11 +1106,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertNotEqual(c.get_setting('node_name'), newer_node_name)
 
         settings = c.get_settings()
-        settings['node_name'] = newer_node_name
-        with self.assertRaises(KeyError):
-            c.update_settings(settings)
+        self.assertIsInstance(settings['min_price'], str)
+        self.assertIsInstance(settings['max_price'], str)
 
-        del settings['py/object']
+        settings['node_name'] = newer_node_name
         c.update_settings(settings)
         self.assertEqual(c.get_setting('node_name'), newer_node_name)
 
@@ -1231,6 +1227,21 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.task_server.task_manager.get_task_preview.assert_called_with(
             task_id, single=False
         )
+
+    def test_task_stats(self, *_):
+        c = self.client
+
+        result = c.get_task_stats()
+        expected = {
+            'host_state': "Idle",
+            'in_network': 0,
+            'supported': 0,
+            'subtasks_computed': (0, 0),
+            'subtasks_with_errors': (0, 0),
+            'subtasks_with_timeout': (0, 0)
+        }
+
+        self.assertEqual(result, expected)
 
     def test_subtasks_borders(self, *_):
         task_id = str(uuid.uuid4())
@@ -1413,6 +1424,62 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.client.block_node('node_id')
         self.client.task_server.acl.disallow.assert_called_once_with(
             'node_id', persist=True)
+
+    def test_run_test_task_success(self, *_):
+        result = {'result': 'result'}
+        estimated_memory = 1234
+        time_spent = 1.234
+        more = {'more': 'more'}
+
+        def _run(_self: TaskTester):
+            self.assertIsInstance(self.client.task_test_result, str)
+            test_result = json.loads(self.client.task_test_result)
+            self.assertEqual(test_result, {
+                "status": TaskTestStatus.started,
+                "error": True
+            })
+
+            _self.success_callback(result, estimated_memory, time_spent, **more)
+
+        with patch.object(self.client.task_server.task_manager, 'create_task'),\
+                patch('golem.client.TaskTester.run', _run):
+            self.client._run_test_task({})
+
+        self.assertIsInstance(self.client.task_test_result, str)
+        test_result = json.loads(self.client.task_test_result)
+        self.assertEqual(test_result, {
+            "status": TaskTestStatus.success,
+            "result": result,
+            "estimated_memory": estimated_memory,
+            "time_spent": time_spent,
+            "more": more
+        })
+
+    def test_run_test_task_error(self, *_):
+        error = ['error', 'error']
+        more = {'more': 'more'}
+
+        def _run(_self: TaskTester):
+            self.assertIsInstance(self.client.task_test_result, str)
+            test_result = json.loads(self.client.task_test_result)
+            self.assertEqual(test_result, {
+                "status": TaskTestStatus.started,
+                "error": True
+            })
+
+            _self.error_callback(*error, **more)
+
+        with patch.object(self.client.task_server.task_manager, 'create_task'),\
+                patch('golem.client.TaskTester.run', _run):
+            self.client._run_test_task({})
+
+        self.assertIsInstance(self.client.task_test_result, str)
+        test_result = json.loads(self.client.task_test_result)
+        self.assertEqual(test_result, {
+            "status": TaskTestStatus.error,
+            "error": error,
+            "more": more
+        })
 
     @classmethod
     def __new_incoming_peer(cls):

@@ -1,3 +1,4 @@
+from enum import IntEnum
 import functools
 import logging
 import time
@@ -5,6 +6,7 @@ from typing import List, Optional, Callable, Any
 
 from twisted.internet import threads
 from twisted.internet.defer import gatherResults, Deferred
+from twisted.python.failure import Failure
 
 from apps.appsmanager import AppsManager
 from golem.appconfig import AppConfig
@@ -25,7 +27,13 @@ from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import object_method_map, Session, Publisher
 from golem.terms import TermsOfUse
 
-logger = logging.getLogger("app")
+logger = logging.getLogger(__name__)
+
+
+class ShutdownResponse(IntEnum):
+    quit = 0
+    off = 1
+    on = 2
 
 
 # pylint: disable=too-many-instance-attributes
@@ -41,7 +49,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  # SEE golem.core.variables.CONCENT_CHOICES
                  concent_variant: dict,
                  peers: Optional[List[SocketAddress]] = None,
-                 use_monitor: bool = False,
+                 use_monitor: bool = None,
+                 use_talkback: bool = None,
                  use_docker_manager: bool = True,
                  start_geth: bool = False,
                  start_geth_port: Optional[int] = None,
@@ -54,9 +63,15 @@ class Node(object):  # pylint: disable=too-few-public-methods
         from twisted.internet import reactor
 
         self._reactor = reactor
+        self._app_config = app_config
         self._config_desc = config_desc
         self._datadir = datadir
         self._use_docker_manager = use_docker_manager
+
+        self._use_monitor = config_desc.enable_monitor \
+            if use_monitor is None else use_monitor
+        self._use_talkback = config_desc.enable_talkback \
+            if use_talkback is None else use_talkback
 
         self._keys_auth: Optional[KeysAuth] = None
 
@@ -81,12 +96,13 @@ class Node(object):  # pylint: disable=too-few-public-methods
             keys_auth=keys_auth,
             database=self._db,
             use_docker_manager=use_docker_manager,
-            use_monitor=use_monitor,
+            use_monitor=self._use_monitor,
             concent_variant=concent_variant,
             start_geth=start_geth,
             start_geth_port=start_geth_port,
             geth_address=geth_address,
-            apps_manager=self.apps_manager
+            apps_manager=self.apps_manager,
+            task_finished_cb=self._try_shutdown
         )
 
         if password is not None:
@@ -115,8 +131,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         def _quit():
             reactor = self._reactor
-            if self.client:
-                self.client.quit()
             if reactor.running:
                 reactor.callFromThread(reactor.stop)
 
@@ -141,6 +155,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def key_exists(self) -> bool:
         return KeysAuth.key_exists(self._datadir, PRIVATE_KEY)
+
+    def is_account_unlocked(self) -> bool:
+        return self._keys_auth is not None
 
     def is_mainnet(self) -> bool:
         return IS_MAINNET
@@ -179,13 +196,86 @@ class Node(object):  # pylint: disable=too-few-public-methods
     def are_terms_accepted():
         return TermsOfUse.are_terms_accepted()
 
-    @staticmethod
-    def accept_terms():
+    def accept_terms(self,
+                     enable_monitor: Optional[bool] = None,
+                     enable_talkback: Optional[bool] = None) -> None:
+
+        if enable_talkback is not None:
+            self._config_desc.enable_talkback = enable_talkback
+            self._use_talkback = enable_talkback
+
+        if enable_monitor is not None:
+            self._config_desc.enable_monitor = enable_monitor
+            self._use_monitor = enable_monitor
+
+        self._app_config.change_config(self._config_desc)
         return TermsOfUse.accept_terms()
 
     @staticmethod
     def show_terms():
         return TermsOfUse.show_terms()
+
+    def graceful_shutdown(self) -> ShutdownResponse:
+        if self.client is None:
+            logger.warning('Shutdown called when client=None, try again later')
+            return ShutdownResponse.off
+
+        # is in shutdown? turn off as toggle
+        if self._config_desc.in_shutdown:
+            self.client.update_setting('in_shutdown', False)
+            logger.info('Turning off shutdown mode')
+            return ShutdownResponse.off
+
+        # is not providing nor requesting, normal shutdown
+        if not self._is_task_in_progress():
+            logger.info('Node not working, executing normal shutdown')
+            self.quit()
+            return ShutdownResponse.quit
+
+        # configure in_shutdown
+        logger.info('Enabling shutdown mode, no more tasks can be started')
+        self.client.update_setting('in_shutdown', True)
+
+        # subscribe to events
+
+        return ShutdownResponse.on
+
+    def _try_shutdown(self) -> None:
+        # is not in shutdown?
+        if not self._config_desc.in_shutdown:
+            logger.debug('Checking shutdown, no shutdown configure')
+            return
+
+        if self._is_task_in_progress():
+            logger.info('Shutdown checked, a task is still in progress')
+            return
+
+        logger.info('Node done with all tasks, shutting down')
+        self.quit()
+
+    def _is_task_in_progress(self) -> bool:
+        if self.client is None:
+            logger.debug('_is_task_in_progress? False: client=None')
+            return False
+
+        task_server = self.client.task_server
+        if task_server is None or task_server.task_manager is None:
+            logger.debug('_is_task_in_progress? False: task_manager=None')
+            return False
+
+        task_requestor_progress = task_server.task_manager.get_progresses()
+        if task_requestor_progress:
+            logger.debug('_is_task_in_progress? requestor=%r', True)
+            return True
+
+        if task_server.task_computer is None:
+            logger.debug('_is_task_in_progress? False: task_computer=None')
+            return False
+
+        task_provider_progress = task_server.task_computer.assigned_subtasks
+        logger.debug('_is_task_in_progress? provider=%r, requestor=False',
+                     task_provider_progress)
+        return task_provider_progress != {}
 
     def _check_terms(self) -> Optional[Deferred]:
         if not self.rpc_session:
@@ -210,17 +300,22 @@ class Node(object):  # pylint: disable=too-few-public-methods
         def create_keysauth():
             # If keys_auth already exists it means we used command line flag
             # and don't need to inform client about required password
-            if self._keys_auth is not None:
+            if self.is_account_unlocked():
                 return
+
+            tip_msg = 'Run `golemcli account unlock` and enter your password.'
 
             if self.key_exists():
                 event = 'get_password'
-                logger.info("Waiting for password to unlock the account")
+                tip_msg = 'Waiting for password to unlock the account. ' \
+                          f'{tip_msg}'
             else:
                 event = 'new_password'
-                logger.info("New account, need to create new password")
+                tip_msg = 'New account, waiting for password to be set. ' \
+                          f'{tip_msg}'
 
-            while self._keys_auth is None and self._reactor.running:
+            while not self.is_account_unlocked() and self._reactor.running:
+                logger.info(tip_msg)
                 StatusPublisher.publish(Component.client, event, Stage.pre)
                 time.sleep(5)
 
@@ -245,6 +340,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
         if not self._keys_auth:
             self._error("KeysAuth is not available")
             return
+
+        from golem.tools.talkback import enable_sentry_logger
+        enable_sentry_logger(self._use_talkback)
 
         self.client = self._client_factory(self._keys_auth)
         self._reactor.addSystemEventTrigger("before", "shutdown",
@@ -289,5 +387,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def _stop_on_error(self, msg: str, err: Any) -> None:
         if self._reactor.running:
-            logger.error("Stopping because of %r error: %r", msg, err)
+            exc_info = (err.type, err.value, err.getTracebackObject()) \
+                if isinstance(err, Failure) else None
+            logger.error(
+                "Stopping because of %r error: %r", msg, err, exc_info=exc_info)
             self._reactor.callFromThread(self._reactor.stop)

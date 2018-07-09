@@ -66,15 +66,25 @@ class TestAccount(unittest.TestCase):
                 'requestor_reputation': 2,
                 'Golem_ID': 'deadbeef',
                 'finances': {
-                    'available_balance': '2.000000 GNT',
+                    'available_balance': '2 GNT',
                     'eth_address': 'f0f0f0ababab',
-                    'eth_balance': '1.000000 ETH',
-                    'reserved_balance': '1.000000 GNT',
-                    'total_balance': '3.000000 GNT',
-                    'gnt_locked': '0.010000 GNT',
-                    'eth_locked': '0.020000 ETH'
+                    'eth_balance': '1 ETH',
+                    'reserved_balance': '1 GNT',
+                    'total_balance': '3 GNT',
+                    'gnt_locked': '0.01 GNT',
+                    'eth_locked': '0.02 ETH'
                 },
             }
+
+    @patch('getpass.getpass')
+    def test_unlock_unlocked(self, mock_pass: Mock):
+        client = Mock()
+        client.is_account_unlocked.return_value = True
+
+        with client_ctx(Account, client):
+            result = Account().unlock()
+            assert result == "Account already unlocked"
+            mock_pass.assert_not_called()
 
     @patch('getpass.getuser', return_value="John")
     @patch('zxcvbn.zxcvbn', return_value={'score': 2})
@@ -82,6 +92,7 @@ class TestAccount(unittest.TestCase):
     def test_unlock_new(self, mock_pass, mock_zxcvbn, mock_getuser):
 
         client = Mock()
+        client.is_account_unlocked.return_value = False
         client.key_exists.return_value = False
 
         with client_ctx(Account, client):
@@ -97,6 +108,7 @@ class TestAccount(unittest.TestCase):
     def test_unlock_new_short_error(self, mock_pass):
 
         client = Mock()
+        client.is_account_unlocked.return_value = False
         client.key_exists.return_value = False
 
         with client_ctx(Account, client):
@@ -112,6 +124,7 @@ class TestAccount(unittest.TestCase):
                                        mock_zxcvbn):
 
         client = Mock()
+        client.is_account_unlocked.return_value = False
         client.key_exists.return_value = False
 
         with client_ctx(Account, client):
@@ -130,6 +143,7 @@ class TestAccount(unittest.TestCase):
     def test_unlock_old(self, mock_getuser, mock_pass, mock_zxcvbn):
 
         client = Mock()
+        client.is_account_unlocked.return_value = False
         client.key_exists.return_value = True
 
         with client_ctx(Account, client):
@@ -438,7 +452,7 @@ class TestResources(unittest.TestCase):
             res = Resources()
             res.clear(provider=True, requestor=False)
 
-            assert len(client.clear_dir.mock_calls) == 1
+            client.clear_dir.assert_called_with(DirectoryType.DISTRIBUTED)
 
     def test_clear_requestor(self):
         client = self.client
@@ -446,7 +460,7 @@ class TestResources(unittest.TestCase):
             res = Resources()
             res.clear(provider=False, requestor=True)
 
-            client.clear_dir.assert_called_with(DirectoryType.DISTRIBUTED)
+            client.clear_dir.assert_called_with(DirectoryType.RECEIVED)
 
     def test_clear_all(self):
         client = self.client
@@ -884,8 +898,13 @@ class TestTerms(unittest.TestCase):
                 self.client.show_terms.return_value)
             self.assertEqual(result, html2text.return_value)
 
-    def test_accept(self):
+    @patch('sys.stdin')
+    def test_accept(self, stdin):
+        stdin.readline.return_value = 'y'
         with client_ctx(Terms, self.client):
             terms = Terms()
             terms.accept()
-            self.client.accept_terms.assert_called_once()
+            self.client.accept_terms.assert_called_once_with(
+                enable_monitor=True,
+                enable_talkback=True,
+            )
