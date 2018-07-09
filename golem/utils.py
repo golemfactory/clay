@@ -5,6 +5,7 @@ import sys
 
 import semantic_version
 
+from eth_utils import to_checksum_address
 from ethereum.utils import sha3
 
 logger = logging.getLogger(__name__)
@@ -69,7 +70,7 @@ def encode_hex(b):
 
 
 def pubkeytoaddr(pubkey: str) -> str:
-    return '0x' + encode_hex(sha3(decode_hex(pubkey))[12:])
+    return to_checksum_address('0x' + encode_hex(sha3(decode_hex(pubkey))[12:]))
 
 
 def tee_target(prefix, proc, input_stream, path, stream):
