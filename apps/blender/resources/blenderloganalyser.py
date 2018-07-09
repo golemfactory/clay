@@ -21,6 +21,20 @@ def make_log_analyses(log_content, return_data):
     file_format = find_file_format(log_content)
     if file_format:
         return_data["file_format"] = to_unicode(file_format)
+    engine_type = find_engine_type(log_content)
+    if engine_type:
+        return_data['engine_type'] = to_unicode(engine_type)
+        if engine_type == "CYCLES":
+            samples_pp = find_samples_for_scenes(log_content)
+            if samples_pp:
+                return_data['samples'] = samples_pp
+
+
+def find_samples_for_scenes(log_content):
+    samples = re.search("^Info: Samples: (.*)", log_content,
+                        re.MULTILINE)
+    if samples:
+        return samples.group(1)
 
 
 def _get_warnings(log_content, return_data):
@@ -103,6 +117,13 @@ def find_frames(log_content):
 
 def find_file_format(log_content):
     file_format = re.search("^Info: File format: (\.\w+)", log_content,
+                            re.MULTILINE | re.IGNORECASE)
+    if file_format:
+        return file_format.group(1)
+
+
+def find_engine_type(log_content):
+    file_format = re.search("^Info: Engine: (.*)", log_content,
                             re.MULTILINE | re.IGNORECASE)
     if file_format:
         return file_format.group(1)

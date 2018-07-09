@@ -3,10 +3,9 @@ from configparser import ConfigParser
 from collections import OrderedDict
 from importlib import import_module
 
+from golem.config.active import APP_MANAGER_CONFIG_FILES
 from golem.core.common import get_golem_path
 
-REGISTERED_CONFIG_FILE = os.path.join('apps', 'registered.ini')
-REGISTERED_TEST_CONFIG_FILE = os.path.join('apps', 'registered_test.ini')
 
 class App(object):
     """ Basic Golem App Representation """
@@ -15,25 +14,25 @@ class App(object):
         self.builder = None  # inherit from TaskBuilder
         self.task_type_info = None  # inherit from TaskTypeInfo
         self.benchmark = None  # inherit from Benchmark
-        self.benchmark_builder = None #inherit from TaskBuilder
+        self.benchmark_builder = None  # inherit from TaskBuilder
 
 
 class AppsManager(object):
     """ Temporary solution for apps detection and management. """
-    def __init__(self, mainnet):
+    def __init__(self):
         self.apps = OrderedDict()
-        self._mainnet = mainnet
 
     def load_all_apps(self):
-        self._load_apps(REGISTERED_CONFIG_FILE)
-        if not self._mainnet:
-            self._load_apps(REGISTERED_TEST_CONFIG_FILE)
+        for config_file in APP_MANAGER_CONFIG_FILES:
+            self._load_apps(config_file)
 
     def _load_apps(self, apps_config_file):
 
         parser = ConfigParser()
         config_path = os.path.join(get_golem_path(), apps_config_file)
-        parser.readfp(open(config_path))
+
+        with open(config_path) as config_file:
+            parser.read_file(config_file)
 
         for section in parser.sections():
             app = App()

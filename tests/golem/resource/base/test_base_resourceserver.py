@@ -22,6 +22,7 @@ class MockClient:
     def __init__(self):
         self.downloaded = None
         self.failed = None
+        self.task_server = mock.Mock()
 
     def task_resource_collected(self, *args, **kwargs):
         self.downloaded = True
@@ -105,7 +106,8 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
 
         _deferred = rs.create_resource_package(existing_paths, self.task_id)
         pkg_path, pkg_sha1 = sync_wait(_deferred)
-        return rm, rs.add_task(pkg_path, pkg_sha1, self.task_id)
+        resource_size = os.path.getsize(pkg_path)
+        return rm, rs.add_task(pkg_path, pkg_sha1, self.task_id, resource_size)
 
     def testAddTask(self):
         rm, deferred = self._add_task()

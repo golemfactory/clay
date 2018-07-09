@@ -87,7 +87,8 @@ class ResourceHandshakeSessionMixin:
             price=price,
             max_resource_size=max_resource_size,
             max_memory_size=max_memory_size,
-            num_cores=num_cores
+            num_cores=num_cores,
+            concent_enabled=self.task_server.client.concent_service.enabled,
         )
 
         if self._is_peer_blocked(key_id):
@@ -327,7 +328,7 @@ class ResourceHandshakeSessionMixin:
         self._remove_handshake(key_id)
 
     def _is_peer_blocked(self, key_id):
-        return not self.task_server.acl.is_allowed(key_id)
+        return not self.task_server.acl.is_allowed(key_id)[0]
 
     # ########################
     #         MESSAGES

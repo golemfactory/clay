@@ -5,9 +5,9 @@ import uuid
 
 import sys
 
+from eth_utils import encode_hex
 from golem.network.p2p.peerkeeper import PeerKeeper, K_SIZE, CONCURRENCY, \
     node_id_distance
-from golem.utils import encode_hex
 from golem import testutils
 
 
@@ -38,7 +38,7 @@ class TestPeerKeeper(unittest.TestCase, testutils.PEP8MixIn):
         self.n_bytes = K_SIZE // 8
         self.key = random_key(self.n_bytes)
         self.key_num = key_to_number(self.key)
-        self.peer_keeper = PeerKeeper(encode_hex(self.key))
+        self.peer_keeper = PeerKeeper(encode_hex(self.key)[2:])
 
     def test_neighbours(self):
         keys = set(random_key(self.n_bytes) for _ in range(64))
@@ -100,7 +100,7 @@ class TestPeerKeeper(unittest.TestCase, testutils.PEP8MixIn):
 
 class MockPeer:
     def __init__(self, key):
-        self.key = encode_hex(key)
+        self.key = encode_hex(key)[2:]
         self.key_num = int(self.key, 16)
         self.address = random.randrange(1, 2 ** 32 - 1)
         self.port = random.randrange(1000, 65535)

@@ -2,7 +2,7 @@ import abc
 import time
 
 from pathlib import Path
-from typing import Set, Union, Iterable
+from typing import Set, Union, Iterable, Tuple
 
 DENY_LIST_NAME = "deny.txt"
 ALL_EXCEPT_ALLOWED = "ALL_EXCEPT_ALLOWED"
@@ -11,7 +11,7 @@ DEFAULT_TIMEOUT = 3600 * 24 * 30 * 12 * 10  # ~10 years (arbitrarily big)
 
 class Acl(abc.ABC):
     @abc.abstractmethod
-    def is_allowed(self, node_id: str) -> bool:
+    def is_allowed(self, node_id: str) -> Tuple[bool, str]:
         pass
 
     @abc.abstractmethod
@@ -26,17 +26,17 @@ class _DenyAcl(Acl):
         self._deny_deadlines = dict.fromkeys(key_sequence, self._deadline())
         self._list_path = list_path
 
-    def is_allowed(self, node_id: str) -> bool:
+    def is_allowed(self, node_id: str) -> Tuple[bool, str]:
         deadline = self._deny_deadlines.get(node_id)
 
         if deadline is None:
-            return True
+            return True, ''
 
         elif deadline < time.time():
             self._deny_deadlines.pop(node_id, None)
-            return True
+            return True, ''
 
-        return False
+        return False, 'node is blacklisted'
 
     def disallow(self, node_id: str,
                  timeout_seconds: int = DEFAULT_TIMEOUT,
@@ -58,8 +58,11 @@ class _AllowAcl(Acl):
         self._allow_set = allow_set
         self._list_path = list_path
 
-    def is_allowed(self, node_id: str) -> bool:
-        return node_id in self._allow_set
+    def is_allowed(self, node_id: str) -> Tuple[bool, str]:
+        if node_id in self._allow_set:
+            return True, ''
+
+        return False, 'node is not whitelisted'
 
     def disallow(self, node_id: str,
                  timeout_seconds: int = 0,

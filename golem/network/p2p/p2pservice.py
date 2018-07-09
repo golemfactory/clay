@@ -7,6 +7,7 @@ from threading import Lock
 
 from golem_messages import message
 
+from golem.config.active import P2P_SEEDS
 from golem.core import simplechallenge
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.diag.service import DiagnosticsProvider
@@ -37,27 +38,6 @@ TASK_INTERVAL = 10
 PEERS_INTERVAL = 30
 FORWARD_INTERVAL = 2
 
-TESTNET_SEEDS = [
-    ('94.23.57.58', 40102),
-    ('94.23.57.58', 40104),
-    ('94.23.196.166', 40102),
-    ('94.23.196.166', 40104),
-    ('188.165.227.180', 40102),
-    ('188.165.227.180', 40104),
-    ('seeds.test.golem.network', 40102),
-    ('seeds.test.golem.network', 40104),
-]
-
-MAINNET_SEEDS = [
-    ('seeds.golem.network', 40102),
-    ('0.seeds.golem.network', 40102),
-    ('1.seeds.golem.network', 40102),
-    ('2.seeds.golem.network', 40102),
-    ('3.seeds.golem.network', 40102),
-    ('4.seeds.golem.network', 40102),
-    ('5.seeds.golem.network', 40102),
-]
-
 
 class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
@@ -66,7 +46,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             node,
             config_desc,
             keys_auth,
-            mainnet=False,
             connect_to_known_hosts=True
     ):
         """Create new P2P Server. Listen on port for connections and
@@ -119,7 +98,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.free_peers = []  # peers to which we're not connected
         self.seeds = set()
         self.used_seeds = set()
-        self.bootstrap_seeds = MAINNET_SEEDS if mainnet else TESTNET_SEEDS
+        self.bootstrap_seeds = P2P_SEEDS
 
         self._peer_lock = Lock()
 
@@ -278,6 +257,11 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             peer = PeerSessionInfo(peer).get_simplified_repr()
             peer_data.append(peer)
         return self._format_diagnostics(peer_data, output_format)
+
+    def get_estimated_network_size(self) -> int:
+        size = self.peer_keeper.get_estimated_network_size()
+        logger.info('Estimated network size: %r', size)
+        return size
 
     def ping_peers(self, interval):
         """ Send ping to all peers with whom this peer has open connection

@@ -40,6 +40,7 @@ class TaskInfo:
     def got_want_to_compute(self):
         """Makes note of a received work offer"""
         self._want_to_compute_count += 1
+        logger.info('Received work offers: %r', self._want_to_compute_count)
 
     def got_task_message(self, msg: TaskMsg, latest_status: TaskStatus):
         """Stores information from task level message"""
@@ -146,9 +147,7 @@ class TaskInfo:
             if (msg.op in [TaskOp.CREATED, TaskOp.RESTORED]
                     and not start_time):
                 start_time = msg.ts
-            elif (msg.op in [TaskOp.FINISHED, TaskOp.NOT_ACCEPTED,
-                             TaskOp.ABORTED, TaskOp.TIMEOUT]
-                  and not finish_time):
+            elif msg.op.is_completed() and not finish_time:
                 finish_time = msg.ts
 
         assert finish_time >= start_time

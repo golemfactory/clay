@@ -84,7 +84,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             Node(),
             keys_auth,
             root_path=self.path,
-            task_persistence=True
+            task_persistence=True,
+            finished_cb=Mock()
         )
         self.tm.key_id = "KEYID"
         self.tm.listen_address = "10.10.10.10"
@@ -97,7 +98,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     def _get_task_header(self, task_id, timeout, subtask_timeout):
         return TaskHeader(
             task_id=task_id,
-            task_owner=Mock(
+            task_owner=Node(
                 key="task_owner_key_%s" % (self.test_nonce,),
                 node_name="test_node_%s" % (self.test_nonce,),
                 pub_addr="task_owner_address_%s" % (self.test_nonce,),
@@ -379,12 +380,12 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.assertFalse(self.tm.use_distributed_resources)
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')
-    def test_computed_task_received(self, dump_mock):
+    def test_computed_task_received(self, _):
         owner = Node(node_name="ABC",
                      pub_addr="10.10.10.10",
                      pub_port=1024,
                      key="key_id")
-        th = TaskHeader("xyz", "DEFAULT", owner)
+        th = TaskHeader(task_id="xyz", environment="DEFAULT", task_owner=owner)
         th.max_price = 50
 
         class TestTask(Task):
@@ -460,6 +461,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                       verify_subtasks={"aabbcc": True})
         self.tm.add_new_task(t2)
         self.tm.start_task(t2.header.task_id)
+        progress = self.tm.get_progresses()
+        assert progress != {}
         ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF",
                                                                 "abc", 1030, 10,
                                                                 10000, 10000,
@@ -648,7 +651,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                      pub_port=1023,
                      key="abcde")
         t = Task(
-            TaskHeader("xyz", "DEFAULT", owner),
+            TaskHeader(task_id="xyz", environment="DEFAULT", task_owner=owner),
             "print 'hello world'", None)
         listener_mock = Mock()
 
@@ -704,9 +707,9 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             self.tm.check_timeouts()
             assert self.tm.tasks_states["qwe"].status == TaskStatus.timeout
             assert self.tm.tasks_states["qwe"].subtask_states[
-                       "qwerty"].subtask_status == SubtaskStatus.failure
-            checker([("qwe", None, TaskOp.TIMEOUT),
-                     ("qwe", "qwerty", SubtaskOp.TIMEOUT)])
+                "qwerty"].subtask_status == SubtaskStatus.failure
+            checker([("qwe", "qwerty", SubtaskOp.TIMEOUT),
+                     ("qwe", None, TaskOp.TIMEOUT)])
             del handler
 
     def test_task_event_listener(self):
@@ -743,7 +746,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_get_tasks(self, _):
         count = 3
-        apps_manager = AppsManager(False)
+        apps_manager = AppsManager()
         apps_manager.load_all_apps()
         tm = TaskManager("ABC", Node(), Mock(), root_path=self.path,
                          apps_manager=apps_manager)
@@ -773,7 +776,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     @patch('apps.blender.task.blenderrendertask.'
            'BlenderTaskTypeInfo.get_preview')
     def test_get_task_preview(self, get_preview, _):
-        apps_manager = AppsManager(False)
+        apps_manager = AppsManager()
         apps_manager.load_all_apps()
         tm = TaskManager("ABC", Node(), Mock(), root_path=self.path,
                          apps_manager=apps_manager)
@@ -785,7 +788,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     @patch('golem.network.p2p.node.Node.collect_network_info')
     def test_get_subtasks_borders(self, _):
         count = 3
-        apps_manager = AppsManager(False)
+        apps_manager = AppsManager()
         apps_manager.load_all_apps()
         tm = TaskManager("ABC", Node(), Mock(), root_path=self.path,
                          apps_manager=apps_manager)
@@ -809,8 +812,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             prv_port=40103, pub_addr="1.2.3.4", pub_port=40103,
             p2p_prv_port=40102, p2p_pub_port=40102
         )
-        task = Task(TaskHeader("task_id", "environment", task_owner=node), '',
-                    TaskDefinition())
+        task = Task(
+            header=TaskHeader(
+                task_id="task_id",
+                environment="environment",
+                task_owner=node),
+            src_code='',
+            task_definition=TaskDefinition())
 
         self.tm.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         self.tm.add_new_task(task)

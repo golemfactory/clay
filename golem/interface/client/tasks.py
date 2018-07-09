@@ -91,10 +91,10 @@ class Tasks:
         values = []
 
         deferred = Tasks.client.get_subtasks(id)
-        result, error = sync_wait(deferred)
+        result = sync_wait(deferred)
 
-        if error:
-            return error
+        if result is None:
+            return "No subtasks"
 
         if isinstance(result, list):
             for subtask in result:

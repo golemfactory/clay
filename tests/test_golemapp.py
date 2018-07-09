@@ -3,10 +3,10 @@ import unittest.mock as mock
 
 from click.testing import CliRunner
 
-from golem.core.variables import PROTOCOL_CONST
 from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.ci import ci_skip
 from golemapp import start
+from tests.golem.config.utils import mock_config
 
 
 @ci_skip
@@ -15,7 +15,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         "golemapp.py",
     ]
 
-    @mock.patch('golemapp.Node')
+    @mock.patch('golem.node.Node')
     def test_start_node(self, node_class):
         runner = CliRunner()
         runner.invoke(start, ['--datadir', self.path], catch_exceptions=False)
@@ -43,29 +43,33 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
                 assert '-u' not in sys.argv
 
     @mock.patch('golem.core.common.config_logging')
-    @mock.patch('golemapp.Node')
+    @mock.patch('golem.appconfig.AppConfig')
+    @mock.patch('golem.node.Node')
     def test_patch_protocol_id(self, node_class, *_):
         runner = CliRunner()
         custom_id = '123456'
 
         # On testnet
-        runner.invoke(
-            start,
-            ['--datadir', self.path, '--protocol_id', custom_id],
-            catch_exceptions=False,
-        )
-        assert node_class.called
-        node_class.reset_mock()
-        assert PROTOCOL_CONST.ID == custom_id + '-testnet'
+        with mock_config():
+            runner.invoke(start, ['--datadir', self.path,
+                                  '--protocol_id', custom_id],
+                          catch_exceptions=False,)
+            assert node_class.called
+            node_class.reset_mock()
+
+            from golem.core.variables import PROTOCOL_CONST
+            assert PROTOCOL_CONST.ID == custom_id + '-testnet'
 
         # On mainnet
-        runner.invoke(
-            start,
-            ['--datadir', self.path, '--protocol_id', custom_id, '--mainnet'],
-            catch_exceptions=False,
-        )
-        assert node_class.called
-        assert PROTOCOL_CONST.ID == custom_id
+        with mock_config():
+            runner.invoke(start, ['--datadir', self.path,
+                                  '--protocol_id', custom_id,
+                                  '--mainnet'],
+                          catch_exceptions=False,)
+            assert node_class.called
+
+            from golem.core.variables import PROTOCOL_CONST
+            assert PROTOCOL_CONST.ID == custom_id
 
     @mock.patch('golem.rpc.cert.CertificateManager')
     def test_generate_rpc_cert(self, cert_manager, *_):
@@ -79,7 +83,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         )
         assert cert_manager.generate_if_needed.called
 
-    @mock.patch('golemapp.Node')
+    @mock.patch('golem.node.Node')
     def test_accept_terms(self, node_cls):
         runner = CliRunner()
         runner.invoke(

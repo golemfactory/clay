@@ -29,6 +29,7 @@ from golem.task.taskbase import TaskHeader
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
+from golem.utils import decode_hex
 
 from .result.resultmanager import ExtractedPackage
 from .server import resources
@@ -54,7 +55,8 @@ class TaskServer(
                  use_ipv6=False,
                  use_docker_manager=True,
                  task_archiver=None,
-                 apps_manager=AppsManager(False)) -> None:
+                 apps_manager=AppsManager(),
+                 task_finished_cb=None) -> None:
         self.client = client
         self.keys_auth = client.keys_auth
         self.config_desc = config_desc
@@ -62,7 +64,8 @@ class TaskServer(
         self.node = node
         self.task_archiver = task_archiver
         self.task_keeper = TaskHeaderKeeper(
-            client.environments_manager,
+            environments_manager=client.environments_manager,
+            node=self.node,
             min_price=config_desc.min_price,
             task_archiver=task_archiver)
         self.task_manager = TaskManager(
@@ -73,7 +76,8 @@ class TaskServer(
             use_distributed_resources=config_desc.
             use_distributed_resource_management,
             tasks_dir=os.path.join(client.datadir, 'tasks'),
-            apps_manager=apps_manager
+            apps_manager=apps_manager,
+            finished_cb=task_finished_cb,
         )
         benchmarks = self.task_manager.apps_manager.get_benchmarks()
         self.benchmark_manager = BenchmarkManager(config_desc.node_name, self,
@@ -82,7 +86,8 @@ class TaskServer(
         self.task_computer = TaskComputer(
             config_desc.node_name,
             task_server=self,
-            use_docker_manager=udmm)
+            use_docker_manager=udmm,
+            finished_cb=task_finished_cb)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
@@ -254,7 +259,13 @@ class TaskServer(
 
         wtr.result_secret = task_result_manager.gen_secret()
         result = task_result_manager.create(self.node, wtr, wtr.result_secret)
-        wtr.result_hash, wtr.result_path, wtr.package_sha1, wtr.result_size = \
+        (
+            wtr.result_hash,
+            wtr.result_path,
+            wtr.package_sha1,
+            wtr.result_size,
+            wtr.package_path,
+        ) = \
             result
 
     def send_task_failed(
@@ -298,32 +309,26 @@ class TaskServer(
         ths_tk = self.task_keeper.get_all_tasks()
         return [th.to_dict() for th in ths_tk]
 
-    def add_task_header(self, th_dict_repr):
+    def add_task_header(self, th_dict_repr: dict) -> bool:
         try:
-            if not self.verify_header_sig(th_dict_repr):
-                raise Exception("Invalid signature")
+            TaskHeader.validate(th_dict_repr)
+            header = TaskHeader.from_dict(th_dict_repr)
+            if not self.verify_header_sig(header):
+                raise ValueError("Invalid signature")
 
-            task_id = th_dict_repr["task_id"]
-            key_id = th_dict_repr["task_owner"]["key"]
-            task_ids = list(self.task_manager.tasks.keys())
-            new_sig = True
+            if self.task_manager.is_this_my_task(header):
+                return True  # Own tasks are not added to task keeper
 
-            if task_id in self.task_keeper.task_headers:
-                header = self.task_keeper.task_headers[task_id]
-                new_sig = th_dict_repr["signature"] != header.signature
+            return self.task_keeper.add_task_header(header)
 
-            if task_id not in task_ids and key_id != self.node.key and new_sig:
-                self.task_keeper.add_task_header(th_dict_repr)
-
-            return True
-        except Exception:  # pylint: disable=broad-except
+        except ValueError:
             logger.warning("Wrong task header received", exc_info=True)
             return False
 
-    def verify_header_sig(self, th_dict_repr):
-        _bin = TaskHeader.dict_to_binary(th_dict_repr)
-        _sig = th_dict_repr["signature"]
-        _key = th_dict_repr["task_owner"]["key"]
+    def verify_header_sig(self, header: TaskHeader):
+        _bin = header.to_binary()
+        _sig = header.signature
+        _key = header.task_owner.key
         return self.verify_sig(_sig, _bin, _key)
 
     def remove_task_header(self, task_id) -> bool:
@@ -385,9 +390,9 @@ class TaskServer(
         self.task_manager.change_config(
             self.__get_task_manager_root(self.client.datadir),
             config_desc.use_distributed_resource_management)
-        self.task_computer.change_config(
-            config_desc, run_benchmarks=run_benchmarks)
         self.task_keeper.change_config(config_desc)
+        return self.task_computer.change_config(
+            config_desc, run_benchmarks=run_benchmarks)
 
     def get_task_computer_root(self):
         return os.path.join(self.client.datadir, "ComputerRes")
@@ -417,9 +422,15 @@ class TaskServer(
             accepted_ts,
         )
 
+    def subtask_settled(self, sender_node_id, subtask_id, settled_ts):
+        """My (provider's) results were accepted by the Concent"""
+        logger.debug("Subtask %r settled by the Concent", subtask_id)
+        self.task_result_sent(subtask_id)
+        self.client.transaction_system.incomes_keeper.settled(
+            sender_node_id, subtask_id, settled_ts)
+
     def subtask_failure(self, subtask_id, err):
-        logger.info("Computation for task {} failed: {}.".format(
-            subtask_id, err))
+        logger.info("Computation for task %r failed: %r.", subtask_id, err)
         node_id = self.task_manager.get_node_id_for_subtask(subtask_id)
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
@@ -569,17 +580,61 @@ class TaskServer(
     def remove_forwarded_session_request(self, key_id):
         return self.forwarded_session_requests.pop(key_id, None)
 
-    def should_accept_provider(self, node_id):
-        if not self.acl.is_allowed(node_id):
+    def should_accept_provider(  # noqa pylint: disable=too-many-arguments,too-many-return-statements,unused-argument
+            self,
+            node_id,
+            task_id,
+            provider_perf,
+            max_resource_size,
+            max_memory_size,
+            num_cores):
+
+        ids = f'provider_id: {node_id}, task_id: {task_id}'
+
+        if task_id not in self.task_manager.tasks:
+            logger.info(f'Cannot find task in my tasks: {ids}')
             return False
+
+        task = self.task_manager.tasks[task_id]
+        env = self.get_environment_by_id(task.header.environment)
+        min_accepted_perf = env.get_min_accepted_performance()
+
+        if min_accepted_perf > int(provider_perf):
+            logger.info(f'insufficient provider performance: {provider_perf}'
+                        f' < {min_accepted_perf}; {ids}')
+            return False
+
+        if task.header.resource_size > (int(max_resource_size) * 1024):
+            logger.info('insufficient provider disk size: '
+                        f'{max_resource_size} KiB; {ids}')
+            return False
+
+        if task.header.estimated_memory > (int(max_memory_size) * 1024):
+            logger.info('insufficient provider memory size: '
+                        f'{max_memory_size} KiB; {ids}')
+            return False
+
+        allowed, reason = self.acl.is_allowed(node_id)
+        if not allowed:
+            logger.info(f'provider {reason}; {ids}')
+            return False
+
         trust = self.get_computing_trust(node_id)
-        logger.debug("Computing trust level: {}".format(trust))
-        return trust >= self.config_desc.computing_trust
+        if trust < self.config_desc.computing_trust:
+            logger.info(f'insufficient provider trust level: {trust}; {ids}')
+            return False
+
+        if not task.header.mask.matches(decode_hex(node_id)):
+            logger.info(f'network mask mismatch: {ids}')
+            return False
+
+        return True
 
     def should_accept_requestor(self, node_id):
-        if not self.acl.is_allowed(node_id):
-            return SupportStatus.err(
-                {UnsupportReason.DENY_LIST: node_id})
+        allowed, reason = self.acl.is_allowed(node_id)
+        if not allowed:
+            logger.info(f'requestor {reason}; {node_id}')
+            return SupportStatus.err({UnsupportReason.DENY_LIST: node_id})
         trust = self.client.get_requesting_trust(node_id)
         logger.debug("Requesting trust level: {}".format(trust))
         if trust >= self.config_desc.requesting_trust:
@@ -979,7 +1034,7 @@ class WaitingTaskResult(object):
     def __init__(self, task_id, subtask_id, result, result_type,
                  last_sending_trial, delay_time, owner, result_path=None,
                  result_hash=None, result_secret=None, package_sha1=None,
-                 result_size=None):
+                 result_size=None, package_path=None):
 
         self.task_id = task_id
         self.subtask_id = subtask_id
@@ -993,6 +1048,7 @@ class WaitingTaskResult(object):
         self.result_hash = result_hash
         self.result_secret = result_secret
         self.package_sha1 = package_sha1
+        self.package_path = package_path
         self.result_size = result_size
 
         self.already_sending = False

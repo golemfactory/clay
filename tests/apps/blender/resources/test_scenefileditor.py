@@ -18,17 +18,19 @@ class TestSceneFileEditor(TempDirFixture):
 %(border_max_x).3f
 %(border_min_y).3f
 %(border_max_y).3f
-%(use_compositing)r''')
+%(use_compositing)r
+%(samples)d''')
         # Unfortunatelly on windows you can't open tempfile second time
         # that's why we are leaving with statement and using delete=False.
         orig_path = scenefileeditor.BLENDER_CROP_TEMPLATE_PATH
         scenefileeditor.BLENDER_CROP_TEMPLATE_PATH = filepath
         try:
             result = scenefileeditor.generate_blender_crop_file(
-                resolution=(1,2),
+                resolution=(1, 2),
                 borders_x=(3.01, 3.02),
                 borders_y=(4.01, 4.02),
-                use_compositing=True
+                use_compositing=True,
+                samples=5
             )
         finally:
             scenefileeditor.BLENDER_CROP_TEMPLATE_PATH = orig_path
@@ -38,15 +40,18 @@ class TestSceneFileEditor(TempDirFixture):
 3.020
 4.010
 4.020
-True'''
+True
+5'''
         self.assertEqual(result, expected)
 
     def test_crop_file_generation_full(self):
-        """Mocks blender by providing bpy and tests wether generated script acted as expected."""
-        resolution = (1,2)
+        """Mocks blender by providing bpy and tests wether generated script
+         acted as expected."""
+        resolution = (1, 2)
         borders_x = (3.01, 3.02)
         borders_y = (4.01, 4.02)
         use_compositing = True
+        samples = 5
 
         expected_attributes = {
             'resolution_x': resolution[0],
@@ -64,16 +69,17 @@ True'''
             'use_crop_to_border': True,
         }
         result = scenefileeditor.generate_blender_crop_file(
-                    resolution=resolution,
-                    borders_x=borders_x,
-                    borders_y=borders_y,
-                    use_compositing=use_compositing
+            resolution=resolution,
+            borders_x=borders_x,
+            borders_y=borders_y,
+            use_compositing=use_compositing,
+            samples=samples
         )
 
         scene_m = mock.MagicMock()
         scene_m.render = mock.NonCallableMock()
         bpy_m = mock.MagicMock()
-        bpy_m.data.scenes = [scene_m]
+        bpy_m.context.scene = scene_m
         bpy_m.ops.render.render.return_value = None
         bpy_m.ops.file.report_missing_files.return_value = None
 
@@ -87,7 +93,9 @@ True'''
         for name in expected_attributes:
             expected = expected_attributes[name]
             value = getattr(scene_m.render, name)
-            self.assertEqual(value, expected, 'Value of scene.render.%s expected:%r got:%r' % (name, expected, value))
+            self.assertEqual(value, expected,
+                             'Value of scene.render.%s expected:%r got:%r' % (
+                                 name, expected, value))
 
         # test calls
         bpy_m.ops.render.render.assert_not_called()

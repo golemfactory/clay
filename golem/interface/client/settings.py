@@ -1,5 +1,7 @@
 import multiprocessing
 from collections import namedtuple
+from types import FunctionType
+from typing import Optional
 
 from ethereum.utils import denoms
 from golem.appconfig import MIN_MEMORY_SIZE
@@ -7,18 +9,21 @@ from golem.core.deferred import sync_wait
 from golem.interface.command import group, Argument, command, CommandResult
 from psutil import virtual_memory
 
-Setting = namedtuple('Setting', ['help', 'type', 'converter', 'validator'])
-
-
-def _int(x):
-    return int(x)
-
-
-def _float(x):
-    return float(x)
 
 _cpu_count = multiprocessing.cpu_count()
 _virtual_mem = int(virtual_memory().total / 1024)
+
+
+class Setting(namedtuple('Setting', ['help', 'type', 'converter', 'validator',
+                                     'formatter'])):
+
+    def __new__(cls, *args, formatter: Optional[FunctionType] = None):
+        return super(Setting, cls).__new__(cls, *args, formatter)
+
+    def format(self, value):
+        if self.formatter:
+            return self.formatter(value)
+        return value
 
 
 @group(help="Manage settings")
@@ -49,109 +54,111 @@ class Settings(object):
         'node_name': Setting(
             'Node name',
             'non-empty string',
-            lambda x: str(x) if isinstance(x, str) else None,
+            lambda x: x if isinstance(x, str) else None,
             lambda x: x and len(x) > 0
         ),
         'accept_tasks': Setting(
             'Accept tasks',
             'int {0, 1}',
-            _int,
+            int,
             lambda x: x in [0, 1]
         ),
         'max_resource_size': Setting(
             'Maximal resource size',
             'int > 0 [kB]',
-            _int,
+            int,
             lambda x: x > 0
         ),
         'getting_tasks_interval': Setting(
             'Interval between task requests',
             'int > 0 [s]',
-            _int,
+            int,
             lambda x: x > 0
         ),
         'getting_peers_interval': Setting(
             'Interval between peer requests',
             'int > 0 [s]',
-            _int,
+            int,
             lambda x: x > 0
         ),
         'task_session_timeout': Setting(
             'Task session timeout',
             'int > 0 [s]',
-            _int,
+            int,
             lambda x: x > 0
         ),
         'p2p_session_timeout': Setting(
             'P2P session timeout',
             'int > 0 [s]',
-            _int,
+            int,
             lambda x: x > 0
         ),
         'requesting_trust': Setting(
             'Minimal requestor trust',
             'float [-1., 1.]',
-            _float,
+            float,
             lambda x: -1. <= x <= 1.
         ),
         'computing_trust': Setting(
             'Minimal provider trust',
             'float [-1., 1.]',
-            _float,
+            float,
             lambda x: -1. <= x <= 1.
         ),
         'min_price': Setting(
             'Min GNT/h price (provider)',
             'float >= 0',
             lambda x: float(x) * denoms.ether,
-            lambda x: x >= 0
+            lambda x: float(x) >= 0,
+            formatter=lambda x: float(x) / denoms.ether
         ),
         'max_price': Setting(
             'Max GNT/h price (requestor)',
             'float >= 0',
             lambda x: float(x) * denoms.ether,
-            lambda x: x >= 0
+            lambda x: float(x) >= 0,
+            formatter=lambda x: float(x) / denoms.ether
         ),
         'use_ipv6': Setting(
             'Use IPv6',
             'int {0, 1}',
-            _int,
+            int,
             lambda x: x in [0, 1]
         ),
         'opt_peer_num': Setting(
             'Number of peers to keep',
             'int > 0',
-            _int,
+            int,
             lambda x: x > 0
         ),
         'send_pings': Setting(
             'Send ping messages to peers',
             'int {0, 1}',
-            _int,
+            int,
             lambda x: x in [0, 1]
         ),
         'pings_interval': Setting(
             'Interval between ping messages',
             'int > 0',
-            _int,
+            int,
             lambda x: x > 0
         ),
         'max_memory_size': Setting(
             'Max memory size',
             '{} > int >= {} [kB]'.format(_virtual_mem, MIN_MEMORY_SIZE),
-            _int,
+            int,
             lambda x: _virtual_mem > x >= MIN_MEMORY_SIZE
         ),
         'num_cores': Setting(
             'Number of CPU cores to use',
             '{} >= int >= 1'.format(_cpu_count),
-            _int,
+            int,
             lambda x: _cpu_count >= x >= 1
         ),
         'enable_talkback': Setting(
             'Enable error reporting with talkback service',
             'int {0, 1}',
-            _int,
+            int,
             lambda x: x in [0, 1]
         )
     }
@@ -182,7 +189,14 @@ class Settings(object):
              help="Show current settings")
     def show(self, basic, provider, requestor):
 
+        def fmt(k, v):
+            if k in self.settings:
+                return self.settings[k].format(v)
+            return v
+
         config = sync_wait(Settings.client.get_settings())
+        config = {k: fmt(k, v) for k, v in config.items()}
+
         if not (basic ^ provider) and not (provider ^ requestor):
             return config
 

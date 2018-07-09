@@ -1,5 +1,6 @@
 import base64
 import logging
+import os
 import calendar
 import time
 
@@ -7,6 +8,7 @@ import golem_messages
 
 from golem_messages import cryptography
 from golem_messages import serializer
+from golem_messages import utils as msg_utils
 from golem_messages.message.base import Message
 from golem_messages.message import concents as concent_msg
 
@@ -26,7 +28,8 @@ class ConcentBaseTest:
         return cryptography.ECCx(None)
 
     def setUp(self):
-        self.variant = variables.CONCENT_CHOICES['staging']
+        concent_variant = os.environ.get('CONCENT_VARIANT', 'staging')
+        self.variant = variables.CONCENT_CHOICES[concent_variant]
         self.provider_keys = self._fake_keys()
         self.requestor_keys = self._fake_keys()
         logger.debug('Provider key: %s',
@@ -53,8 +56,10 @@ class ConcentBaseTest:
     def gen_ttc_kwargs(self, prefix=''):
         kwargs = {
             'sign__privkey': self.requestor_priv_key,
-            'requestor_public_key': self.requestor_pub_key,
-            'provider_public_key': self.provider_pub_key,
+            'requestor_public_key': msg_utils.encode_hex(
+                self.requestor_pub_key,
+            ),
+            'provider_public_key': msg_utils.encode_hex(self.provider_pub_key),
         }
         return {prefix + k: v for k, v in kwargs.items()}
 
@@ -114,6 +119,8 @@ class ConcentBaseTest:
         return msg
 
     def _load_response(self, response, priv_key):
+        if response is None:
+            return None
         return golem_messages.load(
             response, priv_key, self.variant['pubkey'])
 
