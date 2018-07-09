@@ -1,10 +1,13 @@
 from copy import copy
 import logging
 import os
+from threading import Thread
 from typing import Union
 
 from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.core.task.coretaskstate import TaskDesc
+from golem.core.threads import callback_wrapper
+from golem.environments.environment import Environment as DefaultEnvironment
 
 from golem.model import Performance
 from golem.resource.dirmanager import DirManager
@@ -21,19 +24,27 @@ class BenchmarkManager(object):
         self.task_server = task_server
         self.dir_manager = DirManager(root_path)
 
+    @staticmethod
+    def get_saved_benchmarks_ids():
+        query = Performance.select(Performance.environment_id)
+        ids = set(benchmark.environment_id for benchmark in query)
+        return ids
+
     def benchmarks_needed(self):
         if self.benchmarks:
-            query = Performance.select(Performance.environment_id)
-            data = set(benchmark.environment_id for benchmark in query)
-            return not set(self.benchmarks.keys()).issubset(data)
+            ids = self.get_saved_benchmarks_ids()
+            return not set(self.benchmarks.keys() |
+                           {DefaultEnvironment.get_id()}).issubset(ids)
         return False
 
     def run_benchmark(self, benchmark, task_builder, env_id, success=None,
                       error=None):
+        logger.info('Running benchmark for %s', env_id)
 
         from golem.network.p2p.node import Node
 
         def success_callback(performance):
+            logger.info('%s performance is %.2f', env_id, performance)
             Performance.update_or_create(env_id, performance)
             if success:
                 success(performance)
@@ -58,19 +69,32 @@ class BenchmarkManager(object):
                              benchmark)
         br.run()
 
-    def run_all_benchmarks(self):
-        benchmarks_copy = copy(self.benchmarks)
-        self.run_benchmarks(benchmarks_copy)
+    def run_all_benchmarks(self, success=None, error=None):
+        logger.info('Running all benchmarks with num_cores=%r',
+                    self.task_server.client.config_desc.num_cores)
 
-    def run_benchmarks(self, benchmarks):
-        # Next benchmark ran only if previous completed successfully
-        if not benchmarks:
-            return
+        def run_non_default_benchmarks(_performance=None):
+            self.run_benchmarks(copy(self.benchmarks), success, error)
+
+        if DefaultEnvironment.get_id() not in self.get_saved_benchmarks_ids():
+            # run once in lifetime, since it's for single CPU core
+            self.run_default_benchmark(run_non_default_benchmarks, error)
+        else:
+            run_non_default_benchmarks()
+
+    def run_benchmarks(self, benchmarks, success=None, error=None):
         env_id, (benchmark, builder_class) = benchmarks.popitem()
-        self.run_benchmark(benchmark, builder_class, env_id,
-                           lambda _: self.run_benchmarks(benchmarks))
 
-    def _validate_task_state(self, task_state):
+        def on_success(performance):
+            if benchmarks:
+                self.run_benchmarks(benchmarks, success, error)
+            elif success:
+                success(performance)
+
+        self.run_benchmark(benchmark, builder_class, env_id, on_success, error)
+
+    @staticmethod
+    def _validate_task_state(task_state):
         td = task_state.definition
         if not os.path.exists(td.main_program_file):
             logger.error("Main program file does not exist: {}".format(
@@ -79,9 +103,20 @@ class BenchmarkManager(object):
         return True
 
     def run_benchmark_for_env_id(self, env_id, callback, errback):
-        benchmark_data = self.benchmarks.get(env_id)
-        if benchmark_data:
-            self.run_benchmark(benchmark_data[0], benchmark_data[1],
-                               env_id, callback, errback)
+        if env_id == DefaultEnvironment.get_id():
+            self.run_default_benchmark(callback, errback)
         else:
-            raise Exception("Unkown environment: {}".format(env_id))
+            benchmark_data = self.benchmarks.get(env_id)
+            if benchmark_data:
+                self.run_benchmark(benchmark_data[0], benchmark_data[1],
+                                   env_id, callback, errback)
+            else:
+                raise Exception("Unknown environment: {}".format(env_id))
+
+    @staticmethod
+    def run_default_benchmark(callback, errback):
+        kwargs = {'func': DefaultEnvironment.run_default_benchmark,
+                  'callback': callback,
+                  'errback': errback,
+                  'save': True}
+        Thread(target=callback_wrapper, kwargs=kwargs).start()

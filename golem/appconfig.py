@@ -5,6 +5,7 @@ import sys
 from typing import Set, Any
 from ethereum.utils import denoms
 
+from golem.config.active import ENABLE_TALKBACK
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simpleconfig import SimpleConfig, ConfigEntry
 from golem.core.variables import KEY_DIFFICULTY
@@ -35,7 +36,8 @@ USE_IP6 = 0
 USE_UPNP = 1
 ACCEPT_TASKS = 1
 SEND_PINGS = 1
-ENABLE_TALKBACK = 0
+ENABLE_MONITOR = 1
+DEBUG_THIRD_PARTY = 0
 
 PINGS_INTERVALS = 120
 GETTING_PEERS_INTERVAL = 4.0
@@ -46,6 +48,7 @@ PUBLISH_TASKS_INTERVAL = 1.0
 NODE_SNAPSHOT_INTERVAL = 10.0
 NETWORK_CHECK_INTERVAL = 10.0
 PAYMENT_CHECK_INTERVAL = 10.0
+MASK_UPDATE_INTERVAL = 30.0
 MAX_SENDING_DELAY = 360
 # How frequently task archive should be saved to disk (in seconds)
 TASKARCHIVE_MAINTENANCE_INTERVAL = 30
@@ -68,6 +71,12 @@ CLEAN_TASKS_OLDER_THAN_SECONDS = 3*24*60*60  # 3 days
 MAX_PRICE = int(1.0 * denoms.ether)
 # Default min price per hour of computation to accept
 MIN_PRICE = MAX_PRICE // 10
+
+NET_MASKING_ENABLED = 1
+# Expected number of workers = number of subtasks * INITIAL_MASK_SIZE_FACTOR
+INITIAL_MASK_SIZE_FACTOR = 1.0
+# Updating by 1 bit increases number of workers 2x
+MASK_UPDATE_NUM_BITS = 1
 
 
 class NodeConfig:
@@ -94,11 +103,11 @@ class AppConfig:
     __loaded_configs = set()  # type: Set[Any]
 
     @classmethod
-    def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME, mainnet=False):
+    def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME):
 
-        if not mainnet and 'pytest' not in sys.modules:
-            global ENABLE_TALKBACK
-            ENABLE_TALKBACK = 1
+        if ENABLE_TALKBACK and 'pytest' in sys.modules:
+            from golem.config import active
+            active.ENABLE_TALKBACK = 0
 
         cfg_file = path.join(datadir, cfg_file_name)
         if cfg_file in cls.__loaded_configs:
@@ -122,9 +131,11 @@ class AppConfig:
             opt_peer_num=OPTIMAL_PEER_NUM,
             key_difficulty=KEY_DIFFICULTY,
             # flags
+            in_shutdown=0,
             accept_tasks=ACCEPT_TASKS,
             send_pings=SEND_PINGS,
             enable_talkback=ENABLE_TALKBACK,
+            enable_monitor=ENABLE_MONITOR,
             # hardware
             hardware_preset_name=CUSTOM_HARDWARE_PRESET_NAME,
             # price and trust
@@ -139,6 +150,7 @@ class AppConfig:
             task_request_interval=TASK_REQUEST_INTERVAL,
             node_snapshot_interval=NODE_SNAPSHOT_INTERVAL,
             network_check_interval=NETWORK_CHECK_INTERVAL,
+            mask_update_interval=MASK_UPDATE_INTERVAL,
             max_results_sending_delay=MAX_SENDING_DELAY,
             # timeouts
             p2p_session_timeout=P2P_SESSION_TIMEOUT,
@@ -147,7 +159,13 @@ class AppConfig:
             waiting_for_task_session_timeout=WAITING_FOR_TASK_SESSION_TIMEOUT,
             forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT,
             clean_resources_older_than_seconds=CLEAN_RESOURES_OLDER_THAN_SECS,
-            clean_tasks_older_than_seconds=CLEAN_TASKS_OLDER_THAN_SECONDS)
+            clean_tasks_older_than_seconds=CLEAN_TASKS_OLDER_THAN_SECONDS,
+            debug_third_party=DEBUG_THIRD_PARTY,
+            # network masking
+            net_masking_enabled=NET_MASKING_ENABLED,
+            initial_mask_size_factor=INITIAL_MASK_SIZE_FACTOR,
+            mask_update_num_bits=MASK_UPDATE_NUM_BITS
+        )
 
         cfg = SimpleConfig(node_config, cfg_file, keep_old=False)
         return AppConfig(cfg, cfg_file)

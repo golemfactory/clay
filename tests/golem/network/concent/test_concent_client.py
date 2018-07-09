@@ -13,9 +13,6 @@ import golem_messages.cryptography
 import golem_messages.exceptions
 from golem_messages import message
 from golem_messages import factories as msg_factories
-from golem_messages.constants import (
-    DEFAULT_MSG_LIFETIME, MSG_LIFETIMES
-)
 
 from golem import testutils
 from golem.core import keysauth
@@ -258,25 +255,6 @@ class TestConcentClientService(testutils.TempDirFixture):
         )
 
         assert not self.concent_service._delayed
-
-    def test_loop_request_timeout(self, send_mock, *_):
-        self.assertFalse(self.concent_service.isAlive())
-        delta = MSG_LIFETIMES.get(
-            self.msg.__class__,
-            DEFAULT_MSG_LIFETIME,
-        )
-        with freeze_time(datetime.datetime.now()) as frozen_time:
-            self.concent_service.submit(
-                'key',
-                self.msg,
-                delay=datetime.timedelta(),
-            )
-
-            self.assertEqual(send_mock.call_count, 0)
-            frozen_time.tick(delta=delta)
-            frozen_time.tick()  # on second more
-            self.concent_service._loop()
-            self.assertEqual(send_mock.call_count, 0)
 
     @mock.patch(
         'golem.network.concent.client.ConcentClientService'

@@ -1,10 +1,12 @@
 import enum
+import logging
 
 from os import path
 
 from apps.rendering.benchmark.minilight.src.minilight import make_perf_test
 
 from golem.core.common import get_golem_path
+from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.model import Performance
 
 
@@ -49,6 +51,7 @@ class UnsupportReason(enum.Enum):
     DENY_LIST = 'deny_list'
     REQUESTOR_TRUST = 'requesting_trust'
     NETWORK_REQUEST = 'cannot_perform_network_request'
+    MASK_MISMATCH = 'mask_mismatch'
 
 
 class Environment():
@@ -112,6 +115,20 @@ class Environment():
             return 0.0
         return perf.value
 
+    @classmethod
+    def get_min_accepted_performance(cls) -> float:
+        """ Return minimal accepted performance for the environment.
+        :return float:
+        """
+        step: float = 300
+        try:
+            perf = Performance.get(Performance.environment_id == cls.get_id())
+            step = perf.min_accepted_step
+        except Performance.DoesNotExist:
+            pass
+
+        return step * MinPerformanceMultiplier.get()
+
     def description(self):
         """ Return long description of this environment
         :return str:
@@ -139,10 +156,13 @@ class Environment():
                 return f.read()
 
     @classmethod
-    def run_default_benchmark(cls, num_cores=1, save=False):
+    def run_default_benchmark(cls, save=False):
+        logger = logging.getLogger('golem.task.benchmarkmanager')
+        logger.info('Running benchmark for %s', cls.get_id())
         test_file = path.join(get_golem_path(), 'apps', 'rendering',
                               'benchmark', 'minilight', 'cornellbox.ml.txt')
-        estimated_performance = make_perf_test(test_file, num_cores=1)
+        performance = make_perf_test(test_file)
+        logger.info('%s performance is %.2f', cls.get_id(), performance)
         if save:
-            Performance.update_or_create(cls.get_id(), estimated_performance)
-        return estimated_performance
+            Performance.update_or_create(cls.get_id(), performance)
+        return performance

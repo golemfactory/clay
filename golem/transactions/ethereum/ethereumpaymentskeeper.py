@@ -1,9 +1,8 @@
 import logging
 
+from eth_utils import encode_hex
 from ethereum.utils import normalize_address
 
-
-from golem.utils import encode_hex
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +43,7 @@ class EthereumAddress(object):
 
     def get_str_addr(self):
         if self.address:
-            return "0x{}".format(encode_hex(self.address))
+            return encode_hex(self.address)
         return None
 
     def __eq__(self, other):

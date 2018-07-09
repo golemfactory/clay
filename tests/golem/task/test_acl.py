@@ -8,7 +8,8 @@ class TestAcl(TempDirFixture):
     def test_no_file(self):
         acl = get_acl(self.new_path)
         assert acl._deny_deadlines == dict()
-        assert acl.is_allowed("some node")
+        self.assertEqual((True, ''),
+                         acl.is_allowed("some node"))
 
     @property
     def deny_list_path(self):
@@ -27,20 +28,24 @@ class TestAcl(TempDirFixture):
         keys = set(acl._deny_deadlines.keys())
         assert keys == {"Node1", "Node2", "Node3", "Node4"}
 
-        assert not acl.is_allowed("Node1")
-        assert acl.is_allowed("some other node")
+        self.assertEqual((False, 'node is blacklisted'),
+                         acl.is_allowed("Node1"))
+        self.assertEqual((True, ''),
+                         acl.is_allowed("some other node"))
 
     @freeze_time("2018-01-01 00:00:00")
     def test_deny_timeout(self):
         acl = get_acl(self.new_path)
 
         acl.disallow("Node1", timeout_seconds=10)
-        assert not acl.is_allowed("Node1")
+        self.assertEqual((False, 'node is blacklisted'),
+                         acl.is_allowed("Node1"))
         assert "Node1" in acl._deny_deadlines
 
         with freeze_time("2018-01-01 00:00:30"):
             assert "Node1" in acl._deny_deadlines
-            assert acl.is_allowed("Node1")
+            self.assertEqual((True, ''),
+                             acl.is_allowed("Node1"))
             assert "Node1" not in acl._deny_deadlines
 
     def test_allow(self):
@@ -50,8 +55,10 @@ class TestAcl(TempDirFixture):
         acl = get_acl(self.new_path)
         assert acl._allow_set == {"Node1", "Node2", "Node3", "Node4"}
 
-        assert acl.is_allowed("Node1")
-        assert not acl.is_allowed("some other node")
+        self.assertEqual((True, ''),
+                         acl.is_allowed("Node1"))
+        self.assertEqual((False, 'node is not whitelisted'),
+                         acl.is_allowed("some other node"))
 
     def test_deny_disallow_persistence(self):
         self.deny_list_path.touch()
@@ -63,6 +70,12 @@ class TestAcl(TempDirFixture):
 
         saved_nodes = self.deny_list_path.read_text().split()
         self.assertEqual(sorted(saved_nodes), ['node_id1', 'node_id2'])
+        self.assertEqual((False, 'node is blacklisted'),
+                         acl.is_allowed("node_id1"))
+        self.assertEqual((False, 'node is blacklisted'),
+                         acl.is_allowed("node_id2"))
+        self.assertEqual((True, ''),
+                         acl.is_allowed("node_id3"))
 
     def test_allow_disallow_persistence(self):
         self.deny_list_path.write_text('\n'.join((
@@ -77,3 +90,10 @@ class TestAcl(TempDirFixture):
 
         saved_nodes = self.deny_list_path.read_text().split()
         self.assertEqual(sorted(saved_nodes), [ALL_EXCEPT_ALLOWED, 'node_id2'])
+
+        self.assertEqual((False, 'node is not whitelisted'),
+                         acl.is_allowed("node_id1"))
+        self.assertEqual((True, ''),
+                         acl.is_allowed("node_id2"))
+        self.assertEqual((False, 'node is not whitelisted'),
+                         acl.is_allowed("node_id3"))

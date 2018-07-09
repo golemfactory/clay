@@ -11,13 +11,12 @@ import requests
 import golem_messages
 from golem_messages import message
 from golem_messages import datastructures as msg_datastructures
-from golem_messages.constants import (
-    DEFAULT_MSG_LIFETIME, MSG_DELAYS, MSG_LIFETIMES
-)
+from golem_messages.constants import MSG_DELAYS
 
 from golem import constants as gconst
 from golem import utils
 from golem.core import keysauth
+from golem.core import variables
 from golem.network.concent import exceptions
 from golem.network.concent.handlers_library import library
 
@@ -59,6 +58,13 @@ def verify_response(response: requests.Response) -> None:
                 response.text
             )
         )
+
+
+def ssl_kwargs(concent_variant: dict) -> dict:
+    """Returns additional ssl related kwargs for requests"""
+    if 'certificate' not in concent_variant:
+        return {}
+    return {'verify': concent_variant['certificate'], }
 
 
 def send_to_concent(
@@ -106,6 +112,7 @@ def send_to_concent(
             concent_post_url,
             data=data,
             headers=headers,
+            **ssl_kwargs(concent_variant),
         )
     except requests.exceptions.RequestException as e:
         logger.warning('Concent RequestException %r', e)
@@ -139,6 +146,7 @@ def receive_from_concent(
             concent_receive_url,
             data=data,
             headers=headers,
+            **ssl_kwargs(concent_variant),
         )
     except requests.exceptions.RequestException as e:
         raise exceptions.ConcentUnavailableError(
@@ -153,7 +161,6 @@ class ConcentRequest(msg_datastructures.FrozenDict):
     ITEMS = {
         'key': '',
         'msg': None,
-        'deadline_at': None,
     }
 
     @staticmethod
@@ -192,9 +199,12 @@ class ConcentClientService(threading.Thread):
         return None not in self.variant.values()
 
     def run(self) -> None:
+        last_receive = 0.0
         while not self._stop_event.isSet():
             self._loop()
-            self.receive()
+            if time.time() - last_receive > variables.CONCENT_PULL_INTERVAL:
+                last_receive = time.time()
+                self.receive()
             time.sleep(1)
 
     def stop(self) -> None:
@@ -250,10 +260,6 @@ class ConcentClientService(threading.Thread):
         from twisted.internet import reactor
 
         msg_cls = msg.__class__
-        lifetime = MSG_LIFETIMES.get(
-            msg_cls,
-            DEFAULT_MSG_LIFETIME
-        )
         if (delay is not None) and delay < datetime.timedelta(seconds=0):
             logger.warning(
                 '[CONCENT] Negative delay for %r. Assuming default...',
@@ -266,7 +272,6 @@ class ConcentClientService(threading.Thread):
         req = ConcentRequest(
             key=key,
             msg=msg,
-            deadline_at=datetime.datetime.now() + lifetime,
         )
 
         if delay:
@@ -304,12 +309,6 @@ class ConcentClientService(threading.Thread):
 
         if not self.enabled:
             logger.debug('Concent disabled. Dropping %r', req)
-            return
-
-        now = datetime.datetime.now()
-
-        if req['deadline_at'] < now:
-            logger.debug('Concent request lifetime has ended: %r', req)
             return
 
         try:
@@ -359,6 +358,7 @@ class ConcentClientService(threading.Thread):
     def react_to_concent_message(self, data: typing.Optional[bytes],
                                  response_to: message.Message = None):
         if data is None:
+            logger.debug('Received nothing from Concent')
             return
         try:
             msg = golem_messages.load(
@@ -366,6 +366,7 @@ class ConcentClientService(threading.Thread):
                 self.keys_auth.ecc.raw_privkey,
                 self.variant['pubkey'],
             )
+            logger.debug('Concent Message received: %s', msg)
         except golem_messages.exceptions.MessageError as e:
             logger.warning("Can't deserialize concent message %s:%r", e, data)
             logger.debug('Problem parsing msg', exc_info=True)

@@ -9,9 +9,8 @@ logger = logging.getLogger('golem.transactions.ethereum.ethereumincomeskeeper')
 
 
 class EthereumIncomesKeeper(IncomesKeeper):
-    REQUIRED_CONFS = 6
     BLOCK_NUMBER_DB_KEY = 'eth_incomes_keeper_block_number'
-    BLOCK_NUMBER_BUFFER = 10
+    BLOCK_NUMBER_BUFFER = 50
 
     def __init__(self, sci) -> None:
         self.__sci = sci
@@ -23,7 +22,6 @@ class EthereumIncomesKeeper(IncomesKeeper):
             self.__sci.get_eth_address(),
             from_block,
             self._on_batch_event,
-            self.REQUIRED_CONFS,
         )
 
     def _on_batch_event(self, event):
@@ -40,7 +38,6 @@ class EthereumIncomesKeeper(IncomesKeeper):
             with GenericKeyValue._meta.database.transaction():
                 kv, _ = GenericKeyValue.get_or_create(
                     key=self.BLOCK_NUMBER_DB_KEY)
-                kv.value = block_number - self.REQUIRED_CONFS -\
-                    self.BLOCK_NUMBER_BUFFER
+                kv.value = block_number - self.BLOCK_NUMBER_BUFFER
                 kv.save()
         super().stop()

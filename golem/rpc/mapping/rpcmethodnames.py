@@ -56,7 +56,6 @@ CORE_METHOD_MAP = dict(
     get_estimated_cost=     'comp.tasks.estimated.cost',
     get_estimated_costs=    'comp.tasks.estimated.costs',
 
-    get_task_cost=          'comp.task.cost',
     get_task_preview=       'comp.task.preview',
     query_task_state=       'comp.task.state',
     create_task=            'comp.task.create',
@@ -84,6 +83,8 @@ CORE_METHOD_MAP = dict(
     disable_environment=    'comp.environment.disable',
     run_benchmark=          'comp.environment.benchmark',
     get_performance_values= 'comp.environment.performance',
+    get_performance_mult=   'performance.multiplier',
+    set_performance_mult=   'performance.multiplier.update',
 
     get_payment_address=    'pay.ident',
     get_balance=            'pay.balance',
@@ -104,5 +105,6 @@ NODE_METHOD_MAP = dict(
     accept_terms=           'golem.terms.accept',
     show_terms=             'golem.terms.show',
 
+    graceful_shutdown=      'golem.graceful_shutdown',
     quit=                   'ui.quit',
 )
