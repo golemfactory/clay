@@ -106,7 +106,7 @@ class EthereumTransactionSystem(TransactionSystem):
         return self._sci.get_eth_address()
 
     def get_available_eth(self) -> int:
-        return max(self._eth_balance - self.get_locked_eth(), 0)
+        return self._eth_balance - self.get_locked_eth()
 
     def get_locked_eth(self) -> int:
         eth = self.payment_processor.reserved_eth + \
@@ -114,10 +114,10 @@ class EthereumTransactionSystem(TransactionSystem):
         if self._payments_locked > 0 and \
            self.payment_processor.reserved_eth == 0:
             eth += self._eth_base_for_batch_payment()
-        return eth
+        return min(eth, self._eth_balance)
 
     def get_available_gnt(self) -> int:
-        return max(self._gntb_balance - self.get_locked_gnt(), 0)
+        return self._gntb_balance - self.get_locked_gnt()
 
     def get_locked_gnt(self) -> int:
         return self._gntb_locked + self.payment_processor.reserved_gntb
