@@ -52,6 +52,7 @@ class TestAccount(unittest.TestCase):
         client.get_balance.return_value = {
             'gnt': 3 * denoms.ether,
             'av_gnt': 2 * denoms.ether,
+            'gnt_nonconverted': 0,
             'eth': denoms.ether,
             'gnt_lock': 0.01 * denoms.ether,
             'eth_lock': 0.02 * denoms.ether
@@ -65,13 +66,12 @@ class TestAccount(unittest.TestCase):
                 'requestor_reputation': 2,
                 'Golem_ID': 'deadbeef',
                 'finances': {
-                    'available_balance': '2 GNT',
                     'eth_address': 'f0f0f0ababab',
-                    'eth_balance': '1 ETH',
-                    'reserved_balance': '1 GNT',
-                    'total_balance': '3 GNT',
+                    'eth_available': '1 ETH',
+                    'eth_locked': '0.02 ETH',
+                    'gnt_available': '2 GNT',
                     'gnt_locked': '0.01 GNT',
-                    'eth_locked': '0.02 ETH'
+                    'gnt_unadopted': '0 GNT',
                 },
             }
 

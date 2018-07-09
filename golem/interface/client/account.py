@@ -38,7 +38,6 @@ class Account:
         gnt_available = int(balance['av_gnt'])
         gnt_nonconverted = int(balance['gnt_nonconverted'])
         eth_balance = int(balance['eth'])
-        gnt_reserved = gnt_balance - gnt_available
         gnt_locked = int(balance['gnt_lock'])
         eth_locked = int(balance['eth_lock'])
 
@@ -52,7 +51,7 @@ class Account:
                 eth_available=_fmt(eth_balance, unit="ETH"),
                 eth_locked=_fmt(eth_locked, unit="ETH"),
                 gnt_available=_fmt(gnt_available),
-                gnt_locked=_fmt(gnt_reserved),
+                gnt_locked=_fmt(gnt_locked),
                 gnt_unadopted=_fmt(gnt_nonconverted),
             )
         )

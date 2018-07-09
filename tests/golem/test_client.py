@@ -1056,16 +1056,21 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             'eth_available': 2,
             'eth_locked': 1,
             'eth_update_time': None,
+            'block_number': 222,
         }
         c.transaction_system.get_balance.return_value = result
         balance = sync_wait(c.get_balance())
-        assert balance == {'gnt': "2",
-                           'av_gnt': "2",
-                           'eth': "2",
-                           'gnt_lock': "1",
-                           'eth_lock': "1",
-                           'last_gnt_update': "None",
-                           'last_eth_update': "None"}
+        assert balance == {
+            'gnt': "2",
+            'av_gnt': "2",
+            'eth': "2",
+            'gnt_nonconverted': "0",
+            'gnt_lock': "1",
+            'eth_lock': "1",
+            'last_gnt_update': "None",
+            'last_eth_update': "None",
+            'block_number': "222",
+        }
         assert all(isinstance(entry, str) for entry in balance)
 
     def test_run_benchmark(self, *_):
