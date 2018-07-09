@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 
 class EthereumIncomesKeeper(IncomesKeeper):
-    BLOCK_NUMBER_DB_KEY = 'eth_incomes_keeper_block_number'
+    BLOCK_NUMBER_DB_KEY = 'eth_incomes_keeper_block_number_v2'
     BLOCK_NUMBER_BUFFER = 50
 
     def __init__(self, sci) -> None:
