@@ -900,15 +900,31 @@ class Client(HardwarePresetsMixin):
             return len(self.task_server.task_keeper.get_all_tasks())
         return 0
 
-    def get_task(self, task_id):
-        return self.task_server.task_manager.get_task_dict(task_id)
+    def get_task(self, task_id: str) -> Optional[dict]:
+        assert isinstance(self.task_server, TaskServer)
 
-    def get_tasks(self, task_id=None):
-        if self.task_server:
-            if task_id:
-                return self.task_server.task_manager.get_task_dict(task_id)
-            return self.task_server.task_manager.get_tasks_dict()
-        return []
+        task_dict = self.task_server.task_manager.get_task_dict(task_id)
+        if not task_dict:
+            return None
+
+        task_state = self.task_server.task_manager.query_task_state(task_id)
+        subtask_ids = list(task_state.subtask_states.keys())
+        task_dict['cost'], task_dict['fee'] = \
+            self.transaction_system.get_total_payment_for_subtasks(subtask_ids)
+        return task_dict
+
+    def get_tasks(self, task_id: Optional[str] = None) \
+            -> Union[Optional[dict], Iterable[dict]]:
+        if not self.task_server:
+            return []
+
+        if task_id:
+            return self.get_task(task_id)
+
+        task_ids = list(self.task_server.task_manager.tasks.keys())
+        tasks = (self.get_task(task_id) for task_id in task_ids)
+        # Filter Nones because get_task returns Optional[dict]
+        return list(filter(None, tasks))
 
     def get_subtasks(self, task_id: str) \
             -> Optional[List[Dict]]:
