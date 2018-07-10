@@ -59,7 +59,7 @@ def get_version(prefix='', cwd='.'):
     path = pathlib.Path(cwd) / VERSION_FILE
     try:
         with path.open("r") as f:  # pylint: disable=no-member
-            release_version = f.read()
+            release_version = f.read().strip()
     except Exception:
         release_version = None
 
