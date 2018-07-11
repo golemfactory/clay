@@ -5,12 +5,14 @@ import os
 import sys
 import time
 from hashlib import sha256
+
+from secp256k1 import PrivateKey, FLAG_SIGN
 from typing import Optional, Tuple, Union
 
 import ethereum.keys
 from eth_utils import encode_hex, decode_hex
 from ethereum.keys import decode_keystore_json, make_keystore_json
-from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
+from golem_messages.cryptography import ECCx, ecdsa_verify, \
     privtopub
 
 
@@ -166,9 +168,11 @@ class KeysAuth:
         reactor_started = reactor.running
         logger.info("Generating new key pair")
         started = time.time()
-        while True:
-            priv_key = mk_privkey(str(get_random_float()))
-            pub_key = privtopub(priv_key)
+
+        while 1:
+            priv_key = PrivateKey(flags=FLAG_SIGN)
+            pub_key = priv_key.pubkey.serialize(compressed=False)[1:]
+
             if KeysAuth.is_pubkey_difficult(pub_key, difficulty):
                 break
 
@@ -178,7 +182,7 @@ class KeysAuth:
                 raise Exception("aborting key generation")
 
         logger.info("Keys generated in %.2fs", time.time() - started)
-        return priv_key, pub_key
+        return priv_key.private_key, pub_key
 
     @staticmethod
     def _save_private_key(key, key_path, password: str):
