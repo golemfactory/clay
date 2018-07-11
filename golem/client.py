@@ -76,10 +76,6 @@ from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
 from golem.transactions.ethereum.fundslocker import FundsLocker
 
-# Minimum num_workers is 4 to avoid delayed start in case of
-# task with very few subtasks (for small number of subtasks it is
-# likable that initial mask would rule out all the nodes)
-MIN_NUM_WORKERS_FOR_MASK = 4
 
 logger = logging.getLogger(__name__)
 
@@ -582,10 +578,15 @@ class Client(HardwarePresetsMixin):
                 num_workers = max(
                     task.get_total_tasks() *
                     self.config_desc.initial_mask_size_factor,
-                    MIN_NUM_WORKERS_FOR_MASK)
+                    self.config_desc.min_num_workers_for_mask)
                 task.header.mask = Mask.get_mask_for_task(
                     desired_num_workers=num_workers,
                     network_size=self.p2pservice.get_estimated_network_size()
+                )
+                logger.info(
+                    f'Task {task_id} '
+                    f'initial mask size: {task.header.mask.num_bits} '
+                    f'expected number of providers: {num_workers}'
                 )
             else:
                 task.header.mask = Mask()
