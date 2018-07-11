@@ -52,8 +52,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  use_monitor: bool = None,
                  use_talkback: bool = None,
                  use_docker_manager: bool = True,
-                 start_geth: bool = False,
-                 start_geth_port: Optional[int] = None,
                  geth_address: Optional[str] = None,
                  password: Optional[str] = None) -> None:
 
@@ -98,8 +96,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
             use_docker_manager=use_docker_manager,
             use_monitor=self._use_monitor,
             concent_variant=concent_variant,
-            start_geth=start_geth,
-            start_geth_port=start_geth_port,
             geth_address=geth_address,
             apps_manager=self.apps_manager,
             task_finished_cb=self._try_shutdown

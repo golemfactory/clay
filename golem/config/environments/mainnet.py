@@ -1,5 +1,4 @@
 import os
-from typing import List
 
 from golem_sci.chains import MAINNET
 
@@ -39,10 +38,6 @@ FALLBACK_NODE_LIST = [
 
 ETHEREUM_CHAIN = MAINNET
 ETHEREUM_FAUCET_ENABLED = False
-
-GETH_FLAGS: List[str] = [
-
-]
 
 ENABLE_WITHDRAWALS = True
 

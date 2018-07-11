@@ -10,7 +10,6 @@ from eth_utils import encode_hex, is_address, to_checksum_address
 import requests
 
 from golem_sci import new_sci
-from golem.config.active import ETHEREUM_CHAIN, ETHEREUM_FAUCET_ENABLED
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.transactions.ethereum.ethereumincomeskeeper \
@@ -18,7 +17,7 @@ from golem.transactions.ethereum.ethereumincomeskeeper \
 from golem.transactions.ethereum.exceptions import NotEnoughFunds
 from golem.transactions.transactionsystem import TransactionSystem
 
-log = logging.getLogger('golem.pay')
+log = logging.getLogger(__name__)
 
 
 class ConversionStatus(Enum):
@@ -31,12 +30,13 @@ class ConversionStatus(Enum):
 class EthereumTransactionSystem(TransactionSystem):
     """ Transaction system connected with Ethereum """
 
-    def __init__(self, datadir, node_priv_key, start_geth=False,  # noqa pylint: disable=too-many-arguments
-                 start_port=None, address=None):
-        """ Create new transaction system instance for node with given id
-        :param node_priv_key str: node's private key for Ethereum account(32b)
-        """
-
+    def __init__(  # noqa pylint: disable=too-many-arguments
+            self,
+            datadir: str,
+            node_priv_key: bytes,
+            geth_addresses: List[str],
+            ethereum_chain: str,
+            faucet_enabled: bool) -> None:
         try:
             eth_addr = \
                 to_checksum_address(encode_hex(privtoaddr(node_priv_key)))
@@ -44,16 +44,16 @@ class EthereumTransactionSystem(TransactionSystem):
             raise ValueError("not a valid private key")
         log.info("Node Ethereum address: %s", eth_addr)
 
-        self._node = NodeProcess(datadir, addr=address, start_node=start_geth)
-        self._node.start(start_port)
+        self._node = NodeProcess(geth_addresses)
+        self._node.start()
         self._sci = new_sci(
             Path(datadir),
             self._node.web3,
             eth_addr,
             lambda tx: tx.sign(node_priv_key),
-            ETHEREUM_CHAIN,
+            ethereum_chain,
         )
-        self._faucet = ETHEREUM_FAUCET_ENABLED
+        self._faucet = faucet_enabled
         self._gnt_faucet_requested = False
 
         self._gnt_conversion_status = ConversionStatus.NONE
@@ -83,7 +83,6 @@ class EthereumTransactionSystem(TransactionSystem):
         self.payment_processor.sendout(0)
         self.incomes_keeper.stop()
         self._sci.stop()
-        self._node.stop()
 
     def sync(self) -> None:
         log.info("Synchronizing balances")

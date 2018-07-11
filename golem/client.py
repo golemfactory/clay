@@ -3,6 +3,7 @@
 import collections
 import json
 import logging
+import random
 import sys
 import time
 import uuid
@@ -25,7 +26,14 @@ from apps.rendering.task import framerenderingtask
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL, AppConfig)
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
-from golem.config.active import ENABLE_WITHDRAWALS, ACTIVE_NET
+from golem.config.active import (
+    ENABLE_WITHDRAWALS,
+    ACTIVE_NET,
+    ETHEREUM_NODE_LIST,
+    FALLBACK_NODE_LIST,
+    ETHEREUM_CHAIN,
+    ETHEREUM_FAUCET_ENABLED,
+)
 from golem.config.presets import HardwarePresetsMixin
 from golem.core import variables
 from golem.core.async import AsyncRequest, async_run
@@ -107,8 +115,6 @@ class Client(HardwarePresetsMixin):
             use_monitor: bool = True,
             # SEE: golem.core.variables.CONCENT_CHOICES
             concent_variant: dict = variables.CONCENT_CHOICES['disabled'],
-            start_geth: bool = False,
-            start_geth_port: Optional[int] = None,
             geth_address: Optional[str] = None,
             apps_manager: AppsManager = AppsManager(),
             task_finished_cb=None) -> None:
@@ -185,12 +191,18 @@ class Client(HardwarePresetsMixin):
 
         self.ranking = Ranking(self)
 
+        if geth_address:
+            geth_addresses = [geth_address]
+        else:
+            geth_addresses = ETHEREUM_NODE_LIST
+            random.shuffle(geth_addresses)
+            geth_addresses += FALLBACK_NODE_LIST
         self.transaction_system = EthereumTransactionSystem(
             datadir,
             self.keys_auth._private_key,
-            start_geth=start_geth,
-            start_port=start_geth_port,
-            address=geth_address,
+            geth_addresses,
+            ETHEREUM_CHAIN,
+            ETHEREUM_FAUCET_ENABLED,
         )
         self.transaction_system.start()
 
