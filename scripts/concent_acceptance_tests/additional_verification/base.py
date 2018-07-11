@@ -117,4 +117,3 @@ class SubtaskResultsVerifyBaseTest(ETSBaseTest):
                    'task_to_compute__'
         kwargs.update({ttc_path + 'price': price})
         return self.get_correct_srv(results_filename=results_filename, **kwargs)
-
