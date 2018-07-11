@@ -7,6 +7,7 @@ from os import path
 import docker.errors
 
 from golem.core.common import is_windows, nt_path_to_posix_path, is_osx
+from golem.environments.environmentsmanager import EnvironmentsManager
 from .client import local_client
 
 __all__ = ['DockerJob']
@@ -47,7 +48,7 @@ class DockerJob(object):
     # Name of the parameters file, relative to WORK_DIR
     PARAMS_FILE = "params.py"
 
-    def __init__(self, image, script_src, parameters,
+    def __init__(self, image, script_src, parameters,  # noqa # pylint: disable=too-many-arguments
                  resources_dir, work_dir, output_dir,
                  host_config=None, container_log_level=None):
         """
@@ -112,16 +113,25 @@ class DockerJob(object):
             return path
 
         container_config = dict(self.host_config)
+        docker_env = EnvironmentsManager().get_environment_by_image(self.image)
         cpuset = container_config.pop('cpuset', None)
 
         if is_windows():
-            environment = None
+            environment = {}
         elif is_osx():
             environment = dict(OSX_USER=1)
         else:
             environment = dict(LOCAL_USER_ID=os.getuid())
 
+        environment.update(docker_env.get_environment_variables())
+        volumes = [
+            self.WORK_DIR,
+            self.RESOURCES_DIR,
+            self.OUTPUT_DIR
+        ] + docker_env.get_volumes()
+
         host_cfg = client.create_host_config(
+            devices=docker_env.get_devices(),
             binds={
                 posix_path(self.work_dir): {
                     "bind": self.WORK_DIR,
@@ -143,12 +153,12 @@ class DockerJob(object):
         container_script_path = self._get_container_script_path()
         self.container = client.create_container(
             image=self.image.name,
-            volumes=[self.WORK_DIR, self.RESOURCES_DIR, self.OUTPUT_DIR],
+            volumes=volumes,
             host_config=host_cfg,
             command=[container_script_path],
             working_dir=self.WORK_DIR,
             cpuset=cpuset,
-            environment=environment
+            environment=environment,
         )
         self.container_id = self.container["Id"]
         if self.container_id is None:
