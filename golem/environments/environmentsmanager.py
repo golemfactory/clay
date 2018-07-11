@@ -1,22 +1,30 @@
 import logging
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Any
 
+from golem.docker.environment import DockerEnvironment
+from golem.docker.image import DockerImage
 from golem.environments.environmentsconfig import EnvironmentsConfig
 from .environment import Environment, SupportStatus, UnsupportReason
 
 logger = logging.getLogger(__name__)
 
 
-class EnvironmentsManager(object):
+class EnvironmentsManager:
     """ Manage known environments.
 
     Allow user to choose accepted environment,
     keep track of supported environments """
 
-    def __init__(self) -> None:
-        self.support_statuses: Dict[str, SupportStatus] = {}
-        self.environments: Dict[str, Environment] = {}
-        self.env_config: Optional[EnvironmentsConfig] = None
+    __instance = None
+
+    support_statuses: Dict[str, SupportStatus] = {}
+    environments: Dict[str, Environment] = {}
+    env_config: Optional[EnvironmentsConfig] = None
+
+    def __new__(cls):
+        if cls.__instance is None:
+            cls.__instance = object.__new__(cls)
+        return cls.__instance
 
     def load_config(self, datadir: str) -> None:
         """ Load acceptance of environments from the config file
@@ -60,6 +68,16 @@ class EnvironmentsManager(object):
 
     def get_environment_by_id(self, env_id: str) -> Optional[Environment]:
         return self.environments.get(env_id)
+
+    def get_environment_by_image(
+            self,
+            image: DockerImage) -> Optional[DockerEnvironment]:
+
+        for name, env in self.environments.items():
+            if not isinstance(env, DockerEnvironment):
+                continue
+            if env.DOCKER_IMAGE == image.repository:
+                return env
 
     def _get_environments_to_config(self) -> Dict[str, Tuple[str, bool]]:
         envs = {}
