@@ -68,35 +68,53 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.assertLess(0, self.pp.reserved_eth)
 
     def test_load_from_db_sent(self):
-        tx_hash = encode_hex(urandom(32))
+        tx_hash1 = encode_hex(urandom(32))
+        tx_hash2 = encode_hex(urandom(32))
         value = 10
         payee = urandom(20)
-        sent_payment = Payment.create(
+        sent_payment11 = Payment.create(
             subtask=str(uuid.uuid4()),
             payee=payee,
             value=value,
-            details=PaymentDetails(tx=tx_hash[2:]),
+            details=PaymentDetails(tx=tx_hash1[2:]),
             status=PaymentStatus.sent
         )
-        sent_payment2 = Payment.create(
+        sent_payment12 = Payment.create(
             subtask=str(uuid.uuid4()),
             payee=payee,
             value=value,
-            details=PaymentDetails(tx=tx_hash[2:]),
+            details=PaymentDetails(tx=tx_hash1[2:]),
+            status=PaymentStatus.sent
+        )
+        sent_payment21 = Payment.create(
+            subtask=str(uuid.uuid4()),
+            payee=payee,
+            value=value,
+            details=PaymentDetails(tx=tx_hash2[2:]),
             status=PaymentStatus.sent
         )
         self.pp.load_from_db()
-        self.assertEqual(2 * value, self.pp.reserved_gntb)
+        self.assertEqual(3 * value, self.pp.reserved_gntb)
         self.assertEqual(0, self.pp.reserved_eth)
-        self.sci.on_transaction_confirmed.assert_called_once_with(
-            tx_hash,
-            mock.ANY,
-        )
+        assert self.sci.on_transaction_confirmed.call_count == 2
+        assert self.sci.on_transaction_confirmed.call_args_list[0][0][0] == \
+            tx_hash1
+        assert self.sci.on_transaction_confirmed.call_args_list[1][0][0] == \
+            tx_hash2
         with mock.patch('golem.ethereum.paymentprocessor.threads') as threads:
-            self.sci.on_transaction_confirmed.call_args[0][1](mock.Mock())
+            self.sci.on_transaction_confirmed.call_args_list[0][0][1](
+                mock.Mock())
             threads.deferToThread.assert_called_once_with(
                 self.pp._on_batch_confirmed,
-                [sent_payment, sent_payment2],
+                [sent_payment11, sent_payment12],
+                mock.ANY,
+            )
+            threads.reset_mock()
+            self.sci.on_transaction_confirmed.call_args_list[1][0][1](
+                mock.Mock())
+            threads.deferToThread.assert_called_once_with(
+                self.pp._on_batch_confirmed,
+                [sent_payment21],
                 mock.ANY,
             )
 

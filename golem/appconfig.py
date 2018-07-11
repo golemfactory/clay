@@ -73,8 +73,10 @@ MAX_PRICE = int(1.0 * denoms.ether)
 MIN_PRICE = MAX_PRICE // 10
 
 NET_MASKING_ENABLED = 1
-# Expected number of workers = number of subtasks * INITIAL_MASK_SIZE_FACTOR
+# Expected number of workers =
+# max(number of subtasks * INITIAL_MASK_SIZE_FACTOR, MIN_NUM_WORKERS_FOR_MASK)
 INITIAL_MASK_SIZE_FACTOR = 1.0
+MIN_NUM_WORKERS_FOR_MASK = 20
 # Updating by 1 bit increases number of workers 2x
 MASK_UPDATE_NUM_BITS = 1
 
@@ -164,6 +166,7 @@ class AppConfig:
             # network masking
             net_masking_enabled=NET_MASKING_ENABLED,
             initial_mask_size_factor=INITIAL_MASK_SIZE_FACTOR,
+            min_num_workers_for_mask=MIN_NUM_WORKERS_FOR_MASK,
             mask_update_num_bits=MASK_UPDATE_NUM_BITS
         )
 

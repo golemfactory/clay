@@ -87,9 +87,8 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     def test_run_computing_node(self, mock_config_logging, mock_reactor, _):
         client = runner.run_computing_node(self.path,
                                            SocketAddress("127.0.0.1", 40102))
-        environments = list(client.environments_manager.environments)
-        self.assertTrue(any(env.get_id() == task.DummyTask.ENVIRONMENT_NAME
-                            for env in environments))
+        assert task.DummyTask.ENVIRONMENT_NAME in \
+            client.environments_manager.environments
         self.assertTrue(mock_reactor.run.called)
         self.assertTrue(mock_config_logging.called)
         client.quit()
