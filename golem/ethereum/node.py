@@ -16,7 +16,7 @@ class NodeProcess(object):
 
     CONNECTION_TIMEOUT = 10
 
-    def __init__(self, addresses: List[str]):
+    def __init__(self, addresses: List[str]) -> None:
         """
         :param addr: address of a geth instance to connect with
         """

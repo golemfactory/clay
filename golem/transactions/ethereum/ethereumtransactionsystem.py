@@ -30,7 +30,7 @@ class ConversionStatus(Enum):
 class EthereumTransactionSystem(TransactionSystem):
     """ Transaction system connected with Ethereum """
 
-    def __init__(
+    def __init__(  # noqa pylint: disable=too-many-arguments
             self,
             datadir: str,
             node_priv_key: bytes,

@@ -35,11 +35,26 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
                    'new_sci', return_value=self.sci),\
             patch('golem.transactions.ethereum.ethereumtransactionsystem.'
                   'NodeProcess'):
-            self.ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+            self.ets = self._make_ets()
+
+    def _make_ets(self):
+        return EthereumTransactionSystem(
+            self.tempdir,
+            PRIV_KEY,
+            [],
+            'test_chain',
+            False,
+        )
 
     def test_invalid_private_key(self):
         with self.assertRaises(ValueError):
-            EthereumTransactionSystem(self.tempdir, "not a private key")
+            EthereumTransactionSystem(
+                self.tempdir,
+                "not a private key",
+                [],
+                'test_chain',
+                False,
+            )
 
     @patch('golem.core.service.LoopingCallService.running',
            new_callable=PropertyMock)
@@ -55,43 +70,26 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             node_mock.return_value = node_mock
 
             mock_is_service_running.return_value = False
-            e = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-            node_mock.start.assert_called_once_with(None)
+            e = self._make_ets()
+            node_mock.start.assert_called_once_with()
             e.start()
 
             mock_is_service_running.return_value = True
             e.stop()
-            node_mock.stop.assert_called_once_with()
             e.payment_processor.sendout.assert_called_once_with(0)  # noqa pylint: disable=no-member
 
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.NodeProcess',
            Mock())
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.new_sci')
-    def test_mainnet_flag(self, new_sci):
-
-        with patch('golem.transactions.ethereum.ethereumtransactionsystem'
-                   '.ETHEREUM_CHAIN', 'rinkeby'):
-            EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-            new_sci.assert_called_once_with(
-                ANY,
-                ANY,
-                ANY,
-                ANY,
-                golem_sci.chains.RINKEBY,
-            )
-
-        new_sci.reset_mock()
-
-        with patch('golem.transactions.ethereum.ethereumtransactionsystem'
-                   '.ETHEREUM_CHAIN', 'mainnet'):
-            EthereumTransactionSystem(self.tempdir, PRIV_KEY)
-            new_sci.assert_called_once_with(
-                ANY,
-                ANY,
-                ANY,
-                ANY,
-                golem_sci.chains.MAINNET,
-            )
+    def test_chain_arg(self, new_sci):
+        self._make_ets()
+        new_sci.assert_called_once_with(
+            ANY,
+            ANY,
+            ANY,
+            ANY,
+            'test_chain',
+        )
 
     def test_get_withdraw_gas_cost(self):
         dest = '0x' + 40 * '0'
@@ -267,7 +265,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
                    'new_sci', return_value=self.sci),\
             patch('golem.transactions.ethereum.ethereumtransactionsystem.'
                   'NodeProcess'):
-            ets = EthereumTransactionSystem(self.tempdir, PRIV_KEY)
+            ets = self._make_ets()
         ets._refresh_balances()
         ets._try_convert_gnt()
         self.sci.transfer_from_gate.assert_called_once_with()

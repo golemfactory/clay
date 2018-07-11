@@ -308,7 +308,6 @@ class TestNode(TestWithDatabase):
             assert a.ETHEREUM_NODE_LIST == m.ETHEREUM_NODE_LIST
             assert a.ETHEREUM_CHAIN == m.ETHEREUM_CHAIN
             assert a.ETHEREUM_FAUCET_ENABLED == m.ETHEREUM_FAUCET_ENABLED
-            assert a.GETH_FLAGS == m.GETH_FLAGS
             assert a.ENABLE_WITHDRAWALS == m.ENABLE_WITHDRAWALS
             assert a.P2P_SEEDS == m.P2P_SEEDS
             assert a.PROTOCOL_CONST.ID == m.PROTOCOL_CONST.ID
