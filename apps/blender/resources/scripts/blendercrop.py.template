@@ -1,6 +1,7 @@
 # This template is rendered by
 # apps.blender.resources.scenefileeditor.generate_blender_crop_file(),
 # written to tempfile and passed as arg to blender.
+import os
 import bpy
 
 class EngineWarning(bpy.types.Operator):
@@ -38,6 +39,17 @@ class ShowInformation(bpy.types.Operator):
         return {"FINISHED"}
 
 
+def get_device_type():
+    return os.environ.get('BLENDER_DEVICE_TYPE', 'cpu').strip().lower()
+
+
+use_gpu = get_device_type() == 'gpu'
+
+if use_gpu:
+    preferences = bpy.context.user_preferences.addons['cycles'].preferences
+    preferences.compute_device_type = 'CUDA'
+
+
 bpy.utils.register_class(EngineWarning)
 engine = bpy.context.scene.render.engine
 if engine not in ("BLENDER_RENDER", "CYCLES"):
@@ -58,10 +70,13 @@ bpy.context.scene.render.border_min_x = %(border_min_x)r
 bpy.context.scene.render.border_min_y = %(border_min_y)r
 bpy.context.scene.render.border_max_y = %(border_max_y)r
 bpy.context.scene.render.use_compositing = bool(%(use_compositing)r)
+
 if engine == "CYCLES":
     samples = %(samples)d
     if samples != 0:
         bpy.context.scene.cycles.samples = samples
+    if use_gpu:
+        bpy.context.scene.cycles.device = 'GPU'
 
 #and check if additional files aren't missing
 bpy.ops.file.report_missing_files()
