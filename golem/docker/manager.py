@@ -319,6 +319,11 @@ class DockerManager(DockerConfigManager):
 
         for entry in cls._collect_images():
             version = cls._image_version(entry)
+
+            if not cls._image_supported(entry):
+                logger.warning(f'Image {version} is not supported')
+                continue
+
             if not cls.command('images', args=[version]):
                 entries.append(entry)
 
@@ -351,6 +356,11 @@ class DockerManager(DockerConfigManager):
 
         for entry in cls._collect_images():
             version = cls._image_version(entry)
+
+            if not cls._image_supported(entry):
+                logger.warning(f'Image {version} is not supported')
+                continue
+
             if not cls.command('images', args=[version]):
                 entries.append(entry)
 
@@ -371,8 +381,25 @@ class DockerManager(DockerConfigManager):
 
     @classmethod
     def _image_version(cls, entry):
-        image, _, tag, _ = entry
+        image, _, tag = entry[:3]
         return '{}:{}'.format(image, tag)
+
+    @classmethod
+    def _image_supported(cls, entry):
+        if len(entry) < 5:
+            return True
+
+        from importlib import import_module
+
+        try:
+            path = entry[4]
+            package, name = path.rsplit('.', 1)
+            module = import_module(package)
+            is_supported = getattr(module, name)
+        except (AttributeError, TypeError, ModuleNotFoundError, ImportError):
+            return False
+        else:
+            return is_supported(entry[0])
 
     @classmethod
     def _collect_images(cls):
