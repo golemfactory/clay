@@ -1,5 +1,5 @@
 import abc
-from typing import List
+from typing import List, Dict
 
 import enforce
 
@@ -52,6 +52,15 @@ class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
         descr += "\n"
 
         return descr
+
+    def get_volumes(self) -> List[str]:
+        return []
+
+    def get_devices(self) -> List[str]:
+        return []
+
+    def get_environment_variables(self) -> Dict[str, str]:
+        return {}
 
     @property
     @abc.abstractmethod
