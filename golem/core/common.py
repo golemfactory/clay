@@ -97,6 +97,12 @@ def nt_path_to_posix_path(path):
     return path
 
 
+def posix_path(path):
+    if is_windows():
+        return nt_path_to_posix_path(path)
+    return path
+
+
 def get_timestamp_utc():
     now = datetime.now(pytz.utc)
     return datetime_to_timestamp(now)

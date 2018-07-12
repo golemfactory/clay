@@ -6,7 +6,8 @@ from os import path
 
 import docker.errors
 
-from golem.core.common import is_windows, nt_path_to_posix_path, is_osx
+from golem.core.common import is_windows, nt_path_to_posix_path, is_osx, \
+    posix_path
 from golem.environments.environmentsmanager import EnvironmentsManager
 from .client import local_client
 
@@ -105,16 +106,27 @@ class DockerJob(object):
         # Setup volumes for the container
         client = local_client()
 
-        # Docker config requires binds to be specified using posix paths,
-        # even on Windows. Hence this function:
-        def posix_path(path):
-            if is_windows():
-                return nt_path_to_posix_path(path)
-            return path
-
         container_config = dict(self.host_config)
-        docker_env = EnvironmentsManager().get_environment_by_image(self.image)
         cpuset = container_config.pop('cpuset', None)
+        container_config = {}
+
+        docker_env = EnvironmentsManager().get_environment_by_image(self.image)
+
+        volumes = [self.WORK_DIR, self.RESOURCES_DIR, self.OUTPUT_DIR]
+        binds = {
+            posix_path(self.work_dir): {
+                "bind": self.WORK_DIR,
+                "mode": "rw"
+            },
+            posix_path(self.resources_dir): {
+                "bind": self.RESOURCES_DIR,
+                "mode": "ro"
+            },
+            posix_path(self.output_dir): {
+                "bind": self.OUTPUT_DIR,
+                "mode": "rw"
+            },
+        }
 
         if is_windows():
             environment = {}
@@ -124,40 +136,25 @@ class DockerJob(object):
             environment = dict(LOCAL_USER_ID=os.getuid())
 
         environment.update(docker_env.get_environment_variables())
-        volumes = [
-            self.WORK_DIR,
-            self.RESOURCES_DIR,
-            self.OUTPUT_DIR
-        ] + docker_env.get_volumes()
+        binds.update(docker_env.get_binds())
+        volumes += docker_env.get_volumes()
 
-        host_cfg = client.create_host_config(
+        host_cfg = client.api.create_host_config(
+            cpuset_cpus=cpuset,
             devices=docker_env.get_devices(),
-            binds={
-                posix_path(self.work_dir): {
-                    "bind": self.WORK_DIR,
-                    "mode": "rw"
-                },
-                posix_path(self.resources_dir): {
-                    "bind": self.RESOURCES_DIR,
-                    "mode": "ro"
-                },
-                posix_path(self.output_dir): {
-                    "bind": self.OUTPUT_DIR,
-                    "mode": "rw"
-                }
-            },
+            binds=binds,
+            runtime=docker_env.get_runtime(),
             **container_config
         )
 
         # The location of the task script when mounted in the container
         container_script_path = self._get_container_script_path()
-        self.container = client.create_container(
+        self.container = client.api.create_container(
             image=self.image.name,
             volumes=volumes,
             host_config=host_cfg,
             command=[container_script_path],
             working_dir=self.WORK_DIR,
-            cpuset=cpuset,
             environment=environment,
         )
         self.container_id = self.container["Id"]
@@ -176,7 +173,7 @@ class DockerJob(object):
             self._host_dir_chmod(self.resources_dir, self.resources_dir_mod)
             self._host_dir_chmod(self.output_dir, self.output_dir_mod)
             try:
-                client.remove_container(self.container_id, force=True)
+                client.api.remove_container(self.container_id, force=True)
                 logger.debug("Container {} removed".format(self.container_id))
             except docker.errors.APIError:
                 pass  # Already removed? Sometimes happens in CircleCI.
@@ -236,8 +233,8 @@ class DockerJob(object):
             for chunk in s:
                 container_logger.debug(chunk)
 
-        stream = client.attach(self.container_id, stdout=True, stderr=True,
-                               stream=True, logs=True)
+        stream = client.api.attach(self.container_id, stdout=True, stderr=True,
+                                   stream=True, logs=True)
         self.logging_thread = threading.Thread(
             target=log_stream, args=(stream,), name="ContainerLoggingThread")
         self.logging_thread.start()
@@ -245,8 +242,8 @@ class DockerJob(object):
     def start(self):
         if self.get_status() == self.STATE_CREATED:
             client = local_client()
-            client.start(self.container_id)
-            result = client.inspect_container(self.container_id)
+            client.api.start(self.container_id)
+            result = client.api.inspect_container(self.container_id)
             self.state = result["State"]["Status"]
             logger.debug("Container {} started".format(self.container_id))
             if self.log_std_streams:
@@ -263,7 +260,7 @@ class DockerJob(object):
         """
         if self.get_status() in [self.STATE_RUNNING, self.STATE_EXITED]:
             client = local_client()
-            return client.wait(self.container_id, timeout)
+            return client.api.wait(self.container_id, timeout)
         logger.debug("Cannot wait for container {}, status = {}"
                      .format(self.container_id, self.get_status()))
         return -1
@@ -281,7 +278,7 @@ class DockerJob(object):
 
         try:
             client = local_client()
-            client.kill(self.container_id)
+            client.api.kill(self.container_id)
         except Exception as exc:
             logger.error("Couldn't kill container {}: {}"
                          .format(self.container_id, exc))
@@ -299,17 +296,17 @@ class DockerJob(object):
                 f.flush()
 
         if stdout_file:
-            stdout = client.logs(self.container_id,
-                                 stream=True, stdout=True, stderr=False)
+            stdout = client.api.logs(self.container_id,
+                                     stream=True, stdout=True, stderr=False)
             dump_stream(stdout, stdout_file)
         if stderr_file:
-            stderr = client.logs(self.container_id,
-                                 stream=True, stdout=False, stderr=True)
+            stderr = client.api.logs(self.container_id,
+                                     stream=True, stdout=False, stderr=True)
             dump_stream(stderr, stderr_file)
 
     def get_status(self):
         if self.container:
             client = local_client()
-            inspect = client.inspect_container(self.container_id)
+            inspect = client.api.inspect_container(self.container_id)
             return inspect["State"]["Status"]
         return self.state
