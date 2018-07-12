@@ -3,13 +3,13 @@ import time
 from enum import Enum
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, ClassVar, Dict, List
 
 from ethereum.utils import privtoaddr, denoms
 from eth_utils import encode_hex, is_address, to_checksum_address
 import requests
 
-from golem_sci import new_sci
+from golem_sci import new_sci, JsonTransactionsStorage
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.transactions.ethereum.ethereumincomeskeeper \
@@ -30,6 +30,8 @@ class ConversionStatus(Enum):
 class EthereumTransactionSystem(TransactionSystem):
     """ Transaction system connected with Ethereum """
 
+    TX_FILENAME: ClassVar[str] = 'transactions.json'
+
     def __init__(  # noqa pylint: disable=too-many-arguments
             self,
             datadir: str,
@@ -47,11 +49,11 @@ class EthereumTransactionSystem(TransactionSystem):
         self._node = NodeProcess(geth_addresses)
         self._node.start()
         self._sci = new_sci(
-            Path(datadir),
             self._node.web3,
             eth_addr,
-            lambda tx: tx.sign(node_priv_key),
             ethereum_chain,
+            JsonTransactionsStorage(Path(datadir) / self.TX_FILENAME),
+            lambda tx: tx.sign(node_priv_key),
         )
         self._faucet = faucet_enabled
         self._gnt_faucet_requested = False
