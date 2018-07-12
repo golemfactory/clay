@@ -1,3 +1,4 @@
+import gc
 import json
 import os
 import time
@@ -102,6 +103,9 @@ class TestClient(TestDatabaseWithReactor):
     def tearDown(self):
         if hasattr(self, 'client'):
             self.client.quit()
+            # make sure we're releasing all open files
+            del self.client
+            gc.collect()
         super().tearDown()
 
     def test_get_payments(self, *_):
@@ -874,6 +878,9 @@ class TestClientRPCMethods(TestDatabaseWithReactor, LogTestCase):
 
     def tearDown(self):
         self.client.quit()
+        # make sure we're releasing all open files
+        del self.client
+        gc.collect()
         super().tearDown()
 
     def test_node(self, *_):
