@@ -336,7 +336,7 @@ class DockerManager(DockerConfigManager):
         cwd = os.getcwd()
 
         for entry in entries:
-            image, docker_file, tag, build_dir = entry
+            image, docker_file, tag, build_dir = entry[:4]
             version = cls._image_version(entry)
 
             try:
