@@ -4,6 +4,7 @@
 import os
 import bpy
 
+
 class EngineWarning(bpy.types.Operator):
     bl_idname = "wm.engine_warning"
     bl_label = "Inform about not supported rendering engine"
@@ -13,22 +14,22 @@ class EngineWarning(bpy.types.Operator):
                                " not supported by Golem")
         return {"FINISHED"}
 
+
 class ShowInformation(bpy.types.Operator):
     bl_idname = "wm.scene_information"
     bl_label = "Inform user about scene settings"
 
-
-    def execute(self, context):
+    def execute(self, _):
         self.report({"INFO"}, "Engine: " +
                               str(bpy.context.scene.render.engine))
         if bpy.context.scene.render.engine == "CYCLES":
             self.report({"INFO"}, "Samples: " + str(bpy.context.scene.cycles.samples))
         self.report({"INFO"}, "Resolution: " +
                               str(bpy.context.scene.render.resolution_x) +
-                               " x " +
-                               str(bpy.context.scene.render.resolution_y))
+                              " x " +
+                              str(bpy.context.scene.render.resolution_y))
         self.report({"INFO"}, "File format: " +
-                               str(bpy.context.scene.render.file_extension))
+                              str(bpy.context.scene.render.file_extension))
         self.report({"INFO"}, "Filepath: " +
                               str(bpy.context.scene.render.filepath))
         self.report({"INFO"}, "Frames: " +
@@ -41,13 +42,6 @@ class ShowInformation(bpy.types.Operator):
 
 def get_device_type():
     return os.environ.get('BLENDER_DEVICE_TYPE', 'cpu').strip().lower()
-
-
-use_gpu = get_device_type() == 'gpu'
-
-if use_gpu:
-    preferences = bpy.context.user_preferences.addons['cycles'].preferences
-    preferences.compute_device_type = 'CUDA'
 
 
 bpy.utils.register_class(EngineWarning)
@@ -75,7 +69,9 @@ if engine == "CYCLES":
     samples = %(samples)d
     if samples != 0:
         bpy.context.scene.cycles.samples = samples
-    if use_gpu:
+    if get_device_type() == 'gpu':
+        preferences = bpy.context.user_preferences.addons['cycles'].preferences
+        preferences.compute_device_type = 'CUDA'
         bpy.context.scene.cycles.device = 'GPU'
 
 #and check if additional files aren't missing
