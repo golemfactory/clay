@@ -1,4 +1,5 @@
 import logging
+import re
 import unittest
 
 from golem_messages import factories as msg_factories
@@ -35,10 +36,12 @@ class SendTest(ConcentBaseTest, unittest.TestCase):
         with self.assertRaises(ConcentRequestError) as context:
             self.send_to_concent(msg)
 
-        self.assertIn('exception when validating if golem_message'
-                      ' %s is signed with public key' %
-                      message.tasks.TaskToCompute.TYPE,
-                      context.exception.args[0])
+        print(context.exception.args[0])
+        self.assertTrue(re.match('.*exception when validating if golem_message'
+                                 '.* is signed with public key',
+                                 context.exception.args[0]),
+                        "'%s' is not an validation exception" %
+                        context.exception.args[0])
 
 
 class ReceiveTest(ConcentBaseTest, unittest.TestCase):
