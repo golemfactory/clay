@@ -55,6 +55,9 @@ class TaskMock(Task):
     def query_extra_data(self, *args, **kwargs):
         return self.query_extra_data_return_value
 
+    def get_total_tasks(self):
+        return 0
+
     def __getstate__(self):
         state = super(TaskMock, self).__getstate__()
         del state['query_extra_data_return_value']
@@ -405,6 +408,9 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                 e = self.ExtraData(False, ctd)
                 return e
 
+            def get_total_tasks(self):
+                return 0
+
             def needs_computation(self):
                 return sum(self.finished.values()) != len(self.finished)
 
@@ -644,13 +650,14 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert self.tm.get_subtasks("TASK 1") == ["SUBTASK 1"]
 
     def test_resource_send(self):
+        # pylint: disable=abstract-class-instantiated
         from pydispatch import dispatcher
         self.tm.task_persistence = True
         owner = Node(node_name="ABC",
                      pub_addr="10.10.10.10",
                      pub_port=1023,
                      key="abcde")
-        t = Task(
+        t = TaskMock(
             TaskHeader(task_id="xyz", environment="DEFAULT", task_owner=owner),
             "print 'hello world'", None)
         listener_mock = Mock()
@@ -812,7 +819,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             prv_port=40103, pub_addr="1.2.3.4", pub_port=40103,
             p2p_prv_port=40102, p2p_pub_port=40102
         )
-        task = Task(
+        task = TaskMock(
             header=TaskHeader(
                 task_id="task_id",
                 environment="environment",

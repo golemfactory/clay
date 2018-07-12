@@ -615,7 +615,9 @@ class Client(HardwarePresetsMixin):
             else:
                 task.header.mask = Mask()
 
-            task_manager.add_new_task(task)
+            estimated_fee = self.transaction_system.eth_for_batch_payment(
+                task.total_tasks)
+            task_manager.add_new_task(task, estimated_fee=estimated_fee)
 
             client_options = self.task_server.get_share_options(task_id, None)
             client_options.timeout = deadline_to_timeout(task.header.deadline)

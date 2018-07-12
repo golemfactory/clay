@@ -170,24 +170,28 @@ class TestGetTotalPaymentForSubtasks(TestWithDatabase):
 
     def test_no_payments(self):
         result = self.pd.get_total_payment_for_subtasks(('id1',))
-        self.assertEqual(result, (0, 0))
+        self.assertEqual(result, (None, None))
 
     def test_wrong_id(self):
         self._create_payment(subtask='id1', status=PaymentStatus.confirmed)
         result = self.pd.get_total_payment_for_subtasks(('id2',))
-        self.assertEqual(result, (0, 0))
+        self.assertEqual(result, (None, None))
 
     def test_awaiting_status(self):
         self._create_payment(subtask='id1', status=PaymentStatus.awaiting)
         result = self.pd.get_total_payment_for_subtasks(('id1',))
-        self.assertEqual(result, (0, 0))
+        self.assertEqual(result, (None, None))
 
     def test_sent_status(self):
-        self._create_payment(subtask='id1', status=PaymentStatus.sent)
+        payment = self._create_payment(
+            subtask='id1',
+            status=PaymentStatus.sent)
         result = self.pd.get_total_payment_for_subtasks(('id1',))
-        self.assertEqual(result, (0, 0))
+        self.assertEqual(
+            result,
+            (payment.value, payment.details.fee))  # pylint: disable=no-member
 
-    def test_single_payment(self):
+    def test_confirmed_status(self):
         payment = self._create_payment(
             subtask='id1',
             status=PaymentStatus.confirmed)
@@ -196,7 +200,29 @@ class TestGetTotalPaymentForSubtasks(TestWithDatabase):
             result,
             (payment.value, payment.details.fee))  # pylint: disable=no-member
 
-    def test_multiple_payments(self):
+    def test_sent_and_confirmed_status(self):
+        p1 = self._create_payment(
+            subtask='id1',
+            status=PaymentStatus.sent)
+        p2 = self._create_payment(
+            subtask='id2',
+            status=PaymentStatus.confirmed)
+        result = self.pd.get_total_payment_for_subtasks(('id1', 'id2'))
+        exp_value = p1.value + p2.value
+        exp_fee = p1.details.fee + p2.details.fee  # pylint: disable=no-member
+        self.assertEqual(result, (exp_value, exp_fee))
+
+    def test_awaiting_and_confirmed_status(self):
+        self._create_payment(
+            subtask='id1',
+            status=PaymentStatus.awaiting)
+        self._create_payment(
+            subtask='id2',
+            status=PaymentStatus.confirmed)
+        result = self.pd.get_total_payment_for_subtasks(('id1', 'id2'))
+        self.assertEqual(result, (None, None))
+
+    def test_ignored_subtasks(self):
         p1 = self._create_payment(
             subtask='id1',
             status=PaymentStatus.confirmed)
