@@ -21,7 +21,8 @@ class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
         Environment.__init__(self)
         self.software.append('Docker')
 
-        self.main_program_file = find_task_script(self.APP_DIR, self.SCRIPT_NAME)
+        self.main_program_file = find_task_script(self.APP_DIR,
+                                                  self.SCRIPT_NAME)
 
         self.docker_images = [image]
         if additional_images:

@@ -127,8 +127,11 @@ class TaskServerMessageHandler():
 
         if child_msg:
             try:
+                pubkey = self.task_server.keys_auth.ecc.raw_pubkey
+                logger.debug("Verifying message %s against our pubkey: %s",
+                             child_msg, pubkey)
                 return child_msg.verify_signature(
-                    public_key=self.task_server.keys_auth.raw_pubkey)
+                    public_key=pubkey)
             except msg_exceptions.InvalidSignature:
                 pass
 
@@ -166,7 +169,7 @@ class TaskServerMessageHandler():
             msg.is_valid()
             concent_key = self.task_server.client.concent_variant['pubkey']
             msg.verify_owners(
-                requestor_public_key=self.task_server.keys_auth.raw_pubkey,
+                requestor_public_key=self.task_server.keys_auth.ecc.raw_pubkey,
                 concent_public_key=concent_key,
             )
         except msg_exceptions.ValidationError as e:
@@ -355,7 +358,7 @@ class TaskServerMessageHandler():
                            subtask_id, exc)
 
         self.concent_filetransfers.transfer(
-            file_path=wtr.result_path,
+            file_path=wtr.package_path,
             file_transfer_token=ftt,
             success=success,
             error=error,
@@ -428,10 +431,13 @@ class TaskServerMessageHandler():
             self._log_ftt_invalid(msg)
             return
 
-        # verify if the attached `ForceGetTaskResult` bears our
-        # (the requestor's) signature
-        if not self.is_ours(msg, 'force_get_task_result'):
-            return
+        # ugh... for some reason, the Concent rewrites the FGTR
+        # instead of passing it along...
+        #
+        # # verify if the attached `ForceGetTaskResult` bears our
+        # # (the requestor's) signature
+        # if not self.is_ours(msg, 'force_get_task_result'):
+        #     return
 
         # everything okay, so we can proceed with download
         # and should download succeed,
@@ -453,8 +459,8 @@ class TaskServerMessageHandler():
                          msg.subtask_id, response)
 
             try:
-                extracted_package = result_manager.extract(
-                    file_path, output_dir, rct.secret)
+                extracted_package = result_manager.extract_zip(
+                    file_path, output_dir)
             except Exception as e:  # noqa pylint:disable=broad-except
                 logger.error("Concent results extraction failure: %r, %s",
                              msg.subtask_id, e)

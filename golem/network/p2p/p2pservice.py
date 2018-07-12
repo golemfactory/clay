@@ -258,6 +258,11 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             peer_data.append(peer)
         return self._format_diagnostics(peer_data, output_format)
 
+    def get_estimated_network_size(self) -> int:
+        size = self.peer_keeper.get_estimated_network_size()
+        logger.info('Estimated network size: %r', size)
+        return size
+
     def ping_peers(self, interval):
         """ Send ping to all peers with whom this peer has open connection
         :param int interval: will send ping only if time from last ping

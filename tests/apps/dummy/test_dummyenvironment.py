@@ -14,25 +14,29 @@ class TestDummyEnvironment(DatabaseFixture):
         self.env = DummyTaskEnvironment()
 
     def test_get_performance(self):
-        result = self.env.get_performance()
-        assert result == 0.0
+        assert self.env.get_performance() == 0.0
 
+        # given
         perf = 1234.5
         p = Performance(environment_id=DummyTaskEnvironment.get_id(),
                         value=perf)
         p.save()
-        result = self.env.get_performance()
-        self.assertTrue(result == perf)
+
+        # then
+        self.assertEqual(self.env.get_performance(), perf)
 
     def test_get_min_accepted_performance_default(self):
         self.assertEqual(MinPerformanceMultiplier.get(), 0.0)
         self.assertEqual(self.env.get_min_accepted_performance(), 0.0)
 
     def test_get_min_accepted_performance(self):
+        # given
         p = Performance(environment_id=DummyTaskEnvironment.get_id(),
                         min_accepted_step=100)
         p.save()
         MinPerformanceMultiplier.set(3.141)
+
+        # then
         self.assertEqual(MinPerformanceMultiplier.get(), 3.141)
         self.assertEqual(self.env.get_min_accepted_performance(), 314.1)
 
