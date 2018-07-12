@@ -46,9 +46,9 @@ class DockerImage(object):
         client = local_client()
         try:
             if self.id:
-                info = client.inspect_image(self.id)
+                info = client.api.inspect_image(self.id)
                 return self.name in info["RepoTags"]
-            info = client.inspect_image(self.name)
+            info = client.api.inspect_image(self.name)
             return self.id is None or info["Id"] == self.id
         except NotFound:
             log.debug('DockerImage NotFound', exc_info=True)

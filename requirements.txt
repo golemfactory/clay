@@ -20,7 +20,7 @@ constantly==15.1.0
 crossbar==17.12.1
 cryptography==2.2.2
 cytoolz==0.9.0.1
-docker-py==1.7.2
+docker==3.4.1
 enforce==0.3.4
 enum34==1.1.6
 eth-abi==1.1.1
