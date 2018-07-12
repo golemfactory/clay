@@ -169,7 +169,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
                     use_monitor=False,
                 )
                 self.client.withdraw('123', '0xdead', 'ETH')
-                ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH', 0)
+                ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH')
 
     def test_get_withdraw_gas_cost(self, *_):
         keys_auth = Mock()
@@ -833,7 +833,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         client.monitor = Mock()
 
         self.client = client
-        print(self.client.funds_locker.sum_locks())
 
     def tearDown(self):
         self.client.quit()
@@ -937,7 +936,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.transaction_system.concent_deposit.assert_called_once_with(
             required=mock.ANY,
             expected=mock.ANY,
-            reserved=c.funds_locker.sum_locks()[0],
         )
         c.funds_locker.persist = False
 
@@ -1009,31 +1007,32 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_get_balance(self, *_):
         c = self.client
-        print(c.funds_locker.sum_locks())
-        result = (None, None, None, None, None)
 
         c.transaction_system = Mock()
+
+        result = {
+            'gnt_available': 2,
+            'gnt_locked': 1,
+            'gnt_nonconverted': 0,
+            'gnt_update_time': None,
+            'eth_available': 2,
+            'eth_locked': 1,
+            'eth_update_time': None,
+            'block_number': 222,
+        }
         c.transaction_system.get_balance.return_value = result
-
         balance = sync_wait(c.get_balance())
-
-        assert balance is None
-
-        result = (None, 1, None, None, None)
-        c.transaction_system.get_balance.return_value = result
-        balance = sync_wait(c.get_balance())
-        assert balance is None
-
-        result = (1, 1, None, None, None)
-        c.transaction_system.get_balance.return_value = result
-        balance = sync_wait(c.get_balance())
-        assert balance == {'gnt': "1",
-                           'av_gnt': "1",
-                           'eth': "None",
-                           'gnt_lock': "0",
-                           'eth_lock': "0",
-                           'last_gnt_update': "None",
-                           'last_eth_update': "None"}
+        assert balance == {
+            'gnt': "2",
+            'av_gnt': "2",
+            'eth': "2",
+            'gnt_nonconverted': "0",
+            'gnt_lock': "1",
+            'eth_lock': "1",
+            'last_gnt_update': "None",
+            'last_eth_update': "None",
+            'block_number': "222",
+        }
         assert all(isinstance(entry, str) for entry in balance)
 
     def test_run_benchmark(self, *_):

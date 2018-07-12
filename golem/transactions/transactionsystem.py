@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Iterable, Tuple
 
 from golem.core.common import datetime_to_timestamp_utc, to_unicode
 from golem.core.service import LoopingCallService
@@ -56,6 +56,16 @@ class TransactionSystem(LoopingCallService):
         :return list: list of dictionaries describing payments
         """
         return self.payments_keeper.get_list_of_all_payments()
+
+    def get_total_payment_for_subtasks(self, subtask_ids: Iterable[str]) \
+            -> Tuple[int, int]:
+        """
+        Get total value and total fee for confirmed payments for the given
+        subtask IDs
+        :param subtask_ids: subtask IDs
+        :return: (total_value, total_fee)
+        """
+        return self.payments_keeper.get_total_payment_for_subtasks(subtask_ids)
 
     def get_incomes_list(self):
         """ Return list of all expected and received incomes

@@ -733,7 +733,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.task_server.client.transaction_system.concent_deposit(
                 required=amount,
                 expected=expected,
-                reserved=self.task_server.client.funds_locker.sum_locks()[0],
                 cb=ask_for_verification,
             )
 

@@ -1,5 +1,6 @@
 from typing import Dict, Any
 import getpass
+import sys
 import zxcvbn
 
 from decimal import Decimal
@@ -33,19 +34,11 @@ class Account:
         payment_address = sync_wait(client.get_payment_address())
 
         balance = sync_wait(client.get_balance())
-        if balance is None:
-            balance = {
-                'gnt': 0,
-                'av_gnt': 0,
-                'eth': 0,
-                'gnt_lock': 0,
-                'eth_lock': 0
-            }
 
         gnt_balance = int(balance['gnt'])
         gnt_available = int(balance['av_gnt'])
+        gnt_nonconverted = int(balance['gnt_nonconverted'])
         eth_balance = int(balance['eth'])
-        gnt_reserved = gnt_balance - gnt_available
         gnt_locked = int(balance['gnt_lock'])
         eth_locked = int(balance['eth_lock'])
 
@@ -56,17 +49,17 @@ class Account:
             provider_reputation=int(computing_trust * 100),
             finances=dict(
                 eth_address=payment_address,
-                total_balance=_fmt(gnt_balance),
-                available_balance=_fmt(gnt_available),
-                reserved_balance=_fmt(gnt_reserved),
-                eth_balance=_fmt(eth_balance, unit="ETH"),
-                gnt_locked=_fmt(gnt_locked),
+                eth_available=_fmt(eth_balance, unit="ETH"),
                 eth_locked=_fmt(eth_locked, unit="ETH"),
+                gnt_available=_fmt(gnt_available),
+                gnt_locked=_fmt(gnt_locked),
+                gnt_unadopted=_fmt(gnt_nonconverted),
             )
         )
 
     @command(help="Unlock account, will prompt for your password")
     def unlock(self) -> str:  # pylint: disable=no-self-use
+        from twisted.internet import threads
         client = Account.client
 
         is_account_unlocked: bool = sync_wait(client.is_account_unlocked())
@@ -80,7 +73,17 @@ class Account:
         else:
             print("Unlock your account to start golem")
 
-        pswd = getpass.getpass('Password:')
+        print("This command will time out in 30 seconds.")
+
+        defer_getpass = threads.deferToThread(getpass.getpass, 'Password:')
+
+        # FIXME: Command does not exit on its own,
+        # needs manual "Return" key or sys.exit()
+        defer_getpass.addErrback(lambda _: sys.exit(1))
+
+        pswd = sync_wait(defer_getpass, timeout=30)
+        if not pswd:
+            return "ERROR: No password provided"
 
         if not has_key:
             # Check password length

@@ -8,6 +8,7 @@ from unittest.mock import MagicMock, Mock, mock_open, patch
 import uuid
 
 from ethereum.utils import denoms
+from twisted.internet import defer
 
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
@@ -38,6 +39,10 @@ def assert_client_method(instance, name):
     return super(Mock, instance).__getattribute__(name)
 
 
+def mock_defer(a, b):
+    return defer.maybeDeferred(a, b)
+
+
 class TestAccount(unittest.TestCase):
 
     def test_show(self):
@@ -53,6 +58,7 @@ class TestAccount(unittest.TestCase):
         client.get_balance.return_value = {
             'gnt': 3 * denoms.ether,
             'av_gnt': 2 * denoms.ether,
+            'gnt_nonconverted': 0,
             'eth': denoms.ether,
             'gnt_lock': 0.01 * denoms.ether,
             'eth_lock': 0.02 * denoms.ether
@@ -66,13 +72,12 @@ class TestAccount(unittest.TestCase):
                 'requestor_reputation': 2,
                 'Golem_ID': 'deadbeef',
                 'finances': {
-                    'available_balance': '2 GNT',
                     'eth_address': 'f0f0f0ababab',
-                    'eth_balance': '1 ETH',
-                    'reserved_balance': '1 GNT',
-                    'total_balance': '3 GNT',
+                    'eth_available': '1 ETH',
+                    'eth_locked': '0.02 ETH',
+                    'gnt_available': '2 GNT',
                     'gnt_locked': '0.01 GNT',
-                    'eth_locked': '0.02 ETH'
+                    'gnt_unadopted': '0 GNT',
                 },
             }
 
@@ -86,10 +91,12 @@ class TestAccount(unittest.TestCase):
             assert result == "Account already unlocked"
             mock_pass.assert_not_called()
 
+    @patch('twisted.internet.threads.deferToThread', side_effect=mock_defer)
     @patch('getpass.getuser', return_value="John")
     @patch('zxcvbn.zxcvbn', return_value={'score': 2})
     @patch('getpass.getpass', return_value="deadbeef")
-    def test_unlock_new(self, mock_pass, mock_zxcvbn, mock_getuser):
+    def test_unlock_new(self, mock_pass, mock_zxcvbn, mock_getuser,
+                        mock_threads):
 
         client = Mock()
         client.is_account_unlocked.return_value = False
@@ -104,8 +111,9 @@ class TestAccount(unittest.TestCase):
                                                 user_inputs=["Golem", "John"])
             client.set_password.assert_called_once_with("deadbeef")
 
+    @patch('twisted.internet.threads.deferToThread', side_effect=mock_defer)
     @patch('getpass.getpass', return_value="abc")
-    def test_unlock_new_short_error(self, mock_pass):
+    def test_unlock_new_short_error(self, mock_pass, mock_threads):
 
         client = Mock()
         client.is_account_unlocked.return_value = False
@@ -117,11 +125,12 @@ class TestAccount(unittest.TestCase):
             mock_pass.assert_called_once()
             client.set_password.assert_not_called()
 
+    @patch('twisted.internet.threads.deferToThread', side_effect=mock_defer)
     @patch('zxcvbn.zxcvbn', return_value={'score': 1})
     @patch('getpass.getpass', return_value="deadbeef")
     @patch('getpass.getuser', return_value="John")
     def test_unlock_new_strength_error(self, mock_getuser, mock_pass,
-                                       mock_zxcvbn):
+                                       mock_zxcvbn, mock_threads):
 
         client = Mock()
         client.is_account_unlocked.return_value = False
@@ -137,10 +146,12 @@ class TestAccount(unittest.TestCase):
                                                 user_inputs=["Golem", "John"])
             client.set_password.assert_not_called()
 
+    @patch('twisted.internet.threads.deferToThread', side_effect=mock_defer)
     @patch('zxcvbn.zxcvbn', return_value={'score': 1})
     @patch('getpass.getpass', return_value="deadbeef")
     @patch('getpass.getuser', return_value="John")
-    def test_unlock_old(self, mock_getuser, mock_pass, mock_zxcvbn):
+    def test_unlock_old(self, mock_getuser, mock_pass, mock_zxcvbn,
+                        mock_threads):
 
         client = Mock()
         client.is_account_unlocked.return_value = False
