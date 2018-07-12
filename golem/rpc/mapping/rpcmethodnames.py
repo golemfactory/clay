@@ -98,6 +98,7 @@ CORE_METHOD_MAP = dict(
 )
 
 NODE_METHOD_MAP = dict(
+    is_account_unlocked=    'golem.password.unlocked',
     set_password=           'golem.password.set',
     key_exists=             'golem.password.key_exists',
     is_mainnet=             'golem.mainnet',

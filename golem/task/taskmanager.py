@@ -139,7 +139,7 @@ class TaskManager(TaskEventListener):
         definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
         builder = builder_type(self.node, definition, self.dir_manager)
 
-        return Task.build_task(builder)
+        return builder.build()
 
     def get_task_definition_dict(self, task: Task):
         if isinstance(task, dict):
@@ -328,6 +328,16 @@ class TaskManager(TaskEventListener):
                                      op=TaskOp.WORK_OFFER_RECEIVED,
                                      persist=False)
 
+    def task_needs_computation(self, task_id: str) -> bool:
+        if self.tasks_states[task_id].status not in self.activeStatus:
+            logger.info(f'task is not active: {task_id}')
+            return False
+        task = self.tasks[task_id]
+        if not task.needs_computation():
+            logger.info(f'no more computation needed: {task_id}')
+            return False
+        return True
+
     def get_next_subtask(
             self, node_id, node_name, task_id, estimated_performance, price,
             max_resource_size, max_memory_size, num_cores=0, address=""):
@@ -365,17 +375,9 @@ class TaskManager(TaskEventListener):
         if task.header.max_price < price:
             return None, False, False
 
-        def needs_computation():
-            ids = f'provider: {node_name} - {node_id}, task_id: {task_id}'
-            if self.tasks_states[task_id].status not in self.activeStatus:
-                logger.info(f'task is not active; {ids}')
-                return False
-            if not task.needs_computation():
-                logger.info(f'no more computation needed; {ids}')
-                return False
-            return True
-
-        if not needs_computation():
+        if not self.task_needs_computation(task_id):
+            logger.info(f'Task does not need computation; '
+                        f'provider: {node_name} - {node_id}')
             return None, False, False
 
         extra_data = task.query_extra_data(
@@ -737,7 +739,8 @@ class TaskManager(TaskEventListener):
 
         for t in list(self.tasks.values()):
             task_id = t.header.task_id
-            task_status = self.tasks_states[task_id].status
+            task_state = self.tasks_states[task_id]
+            task_status = task_state.status
             in_progress = not TaskStatus.is_completed(task_status)
             logger.info('Collecting progress %r %r %r',
                         task_id, task_status, in_progress)
@@ -747,7 +750,7 @@ class TaskManager(TaskEventListener):
                     t.get_total_tasks(),
                     t.get_active_tasks(),
                     t.get_progress(),
-                    t.short_extra_data_repr(2200.0)
+                    t.short_extra_data_repr(task_state.extra_data)
                 )  # FIXME in short_extra_data_repr should there be extra data
                 # Issue #2460
                 tasks_progresses[task_id] = ltss

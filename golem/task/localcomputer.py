@@ -14,6 +14,9 @@ from golem.docker.image import DockerImage
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 
+from .taskthread import TaskThread
+
+
 logger = logging.getLogger("golem.task")
 
 
@@ -88,23 +91,26 @@ class LocalComputer:
                 return self.tt.get_progress()
         return None
 
-    def task_computed(self, task_thread):
+    def task_computed(self, task_thread: TaskThread) -> None:
         self.end_time = time.time()
         if self.is_success(task_thread):
             self.computation_success(task_thread)
         else:
             self.computation_failure(task_thread)
 
-    def is_success(self, task_thread):
+    # This cannot be changed to staticmethod, because it's overriden in
+    # a derived class
+    # pylint:disable=no-self-use
+    def is_success(self, task_thread: TaskThread) -> bool:
         return \
             not task_thread.error \
             and task_thread.result \
             and task_thread.result.get("data")
 
-    def computation_success(self, task_thread):
+    def computation_success(self, task_thread: TaskThread) -> None:
         self.success_callback(task_thread.result, self._get_time_spent())
 
-    def computation_failure(self, task_thread):
+    def computation_failure(self, task_thread: TaskThread) -> None:
         logger_msg = self.comp_failed_warning
         if task_thread.error_msg:
             logger_msg += " " + task_thread.error_msg

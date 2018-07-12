@@ -1,4 +1,4 @@
-from enum import Enum
+from enum import IntEnum
 import functools
 import logging
 import time
@@ -6,6 +6,7 @@ from typing import List, Optional, Callable, Any
 
 from twisted.internet import threads
 from twisted.internet.defer import gatherResults, Deferred
+from twisted.python.failure import Failure
 
 from apps.appsmanager import AppsManager
 from golem.appconfig import AppConfig
@@ -29,10 +30,10 @@ from golem.terms import TermsOfUse
 logger = logging.getLogger(__name__)
 
 
-class ShutdownResponse(Enum):
-    quit = "quit"
-    off = "off"
-    on = "on"
+class ShutdownResponse(IntEnum):
+    quit = 0
+    off = 1
+    on = 2
 
 
 # pylint: disable=too-many-instance-attributes
@@ -51,8 +52,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  use_monitor: bool = None,
                  use_talkback: bool = None,
                  use_docker_manager: bool = True,
-                 start_geth: bool = False,
-                 start_geth_port: Optional[int] = None,
                  geth_address: Optional[str] = None,
                  password: Optional[str] = None) -> None:
 
@@ -97,8 +96,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
             use_docker_manager=use_docker_manager,
             use_monitor=self._use_monitor,
             concent_variant=concent_variant,
-            start_geth=start_geth,
-            start_geth_port=start_geth_port,
             geth_address=geth_address,
             apps_manager=self.apps_manager,
             task_finished_cb=self._try_shutdown
@@ -130,8 +127,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         def _quit():
             reactor = self._reactor
-            if self.client:
-                self.client.quit()
             if reactor.running:
                 reactor.callFromThread(reactor.stop)
 
@@ -156,6 +151,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def key_exists(self) -> bool:
         return KeysAuth.key_exists(self._datadir, PRIVATE_KEY)
+
+    def is_account_unlocked(self) -> bool:
+        return self._keys_auth is not None
 
     def is_mainnet(self) -> bool:
         return IS_MAINNET
@@ -298,21 +296,22 @@ class Node(object):  # pylint: disable=too-few-public-methods
         def create_keysauth():
             # If keys_auth already exists it means we used command line flag
             # and don't need to inform client about required password
-            if self._keys_auth is not None:
+            if self.is_account_unlocked():
                 return
 
             tip_msg = 'Run `golemcli account unlock` and enter your password.'
 
             if self.key_exists():
                 event = 'get_password'
-                logger.info('Waiting for password to unlock the account. '
-                            f'{tip_msg}')
+                tip_msg = 'Waiting for password to unlock the account. ' \
+                          f'{tip_msg}'
             else:
                 event = 'new_password'
-                logger.info('New account, waiting for password to be set. '
-                            f'{tip_msg}')
+                tip_msg = 'New account, waiting for password to be set. ' \
+                          f'{tip_msg}'
 
-            while self._keys_auth is None and self._reactor.running:
+            while not self.is_account_unlocked() and self._reactor.running:
+                logger.info(tip_msg)
                 StatusPublisher.publish(Component.client, event, Stage.pre)
                 time.sleep(5)
 
@@ -384,5 +383,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def _stop_on_error(self, msg: str, err: Any) -> None:
         if self._reactor.running:
-            logger.error("Stopping because of %r error: %r", msg, err)
+            exc_info = (err.type, err.value, err.getTracebackObject()) \
+                if isinstance(err, Failure) else None
+            logger.error(
+                "Stopping because of %r error: %r", msg, err, exc_info=exc_info)
             self._reactor.callFromThread(self._reactor.stop)

@@ -279,13 +279,6 @@ class Task(abc.ABC):
             for key, value in kwargs.items():
                 setattr(self, key, value)
 
-    # TODO why do we need that instead of calling .build() directly? issue #2409
-    @classmethod
-    def build_task(cls, task_builder: TaskBuilder) -> 'Task':
-        if not isinstance(task_builder, TaskBuilder):
-            raise TypeError("Incorrect 'task_builder' type: {}. Should be: TaskBuilder".format(type(task_builder)))
-        return task_builder.build()
-
     def __init__(self, header: TaskHeader, src_code: str, task_definition):
         self.src_code = src_code
         self.header = header
@@ -333,13 +326,15 @@ class Task(abc.ABC):
         return  # Implement in derived class
 
     @abc.abstractmethod
-    def query_extra_data(self, perf_index: float, num_cores=1, node_id: str=None, node_name: str=None) -> ExtraData:
-        """ Called when a node asks with given parameters asks for a new subtask to compute.
-        :param int perf_index: performance that given node declares
-        :param int num_cores: number of cores that current node declares
-        :param None|str node_id: id of a node that wants to get a next subtask
-        :param None|str node_name: name of a node that wants to get a next subtask
-        :return ExtraData
+    def query_extra_data(self, perf_index: float, num_cores: int = 1,
+                         node_id: Optional[str] = None,
+                         node_name: Optional[str] = None) -> 'ExtraData':
+        """ Called when a node asks with given parameters asks for a new
+        subtask to compute.
+        :param perf_index: performance that given node declares
+        :param num_cores: number of cores that current node declares
+        :param node_id: id of a node that wants to get a next subtask
+        :param node_name: name of a node that wants to get a next subtask
         """
         pass  # Implement in derived class
 

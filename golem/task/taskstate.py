@@ -1,4 +1,5 @@
 from enum import Enum, auto
+import time
 from typing import Optional
 
 from golem.core.common import to_unicode
@@ -21,6 +22,12 @@ class TaskState(object):
         self.package_path = None
         self.package_size = None
         self.extra_data = {}
+        self.last_update_time = time.time()
+
+    def __setattr__(self, key, value):
+        super().__setattr__(key, value)
+        if key == 'status':
+            self.last_update_time = time.time()
 
     def __repr__(self):
         return '<TaskStatus: %r %.2f>' % (self.status, self.progress)
@@ -29,6 +36,7 @@ class TaskState(object):
         return {
             'time_started': self.time_started,
             'time_remaining': self.remaining_time,
+            'last_updated': getattr(self, 'last_update_time', None),
             'status': self.status.value
         }
 

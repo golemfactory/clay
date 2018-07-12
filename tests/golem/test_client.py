@@ -28,7 +28,6 @@ from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
-from golem.model import Performance
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
@@ -39,6 +38,7 @@ from golem.task.taskbase import Task
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     TaskTestStatus
+from golem.task.tasktester import TaskTester
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
@@ -168,7 +168,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
                     use_monitor=False,
                 )
                 self.client.withdraw('123', '0xdead', 'ETH')
-                ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH', 0)
+                ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH')
 
     def test_get_withdraw_gas_cost(self, *_):
         keys_auth = Mock()
@@ -871,7 +871,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         client.monitor = Mock()
 
         self.client = client
-        print(self.client.funds_locker.sum_locks())
 
     def tearDown(self):
         self.client.quit()
@@ -951,7 +950,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             get_resources=Mock(return_value=[]),
             total_tasks=5,
             get_price=Mock(return_value=900),
-            price=1000,
+            subtask_price=1000,
         )
 
         c.enqueue_new_task(task)
@@ -962,7 +961,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_mock.total_tasks = 3
         price = task_mock.header.max_price * task_mock.total_tasks
         task_mock.get_price.return_value = price
-        task_mock.price = 1000
+        task_mock.subtask_price = 1000
         c.task_server.task_manager.create_task.return_value = task_mock
         c.concent_service = Mock()
         c.concent_service.enabled = True
@@ -975,7 +974,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.transaction_system.concent_deposit.assert_called_once_with(
             required=mock.ANY,
             expected=mock.ANY,
-            reserved=c.funds_locker.sum_locks()[0],
         )
         c.funds_locker.persist = False
 
@@ -1047,31 +1045,32 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
     def test_get_balance(self, *_):
         c = self.client
-        print(c.funds_locker.sum_locks())
-        result = (None, None, None, None, None)
 
         c.transaction_system = Mock()
+
+        result = {
+            'gnt_available': 2,
+            'gnt_locked': 1,
+            'gnt_nonconverted': 0,
+            'gnt_update_time': None,
+            'eth_available': 2,
+            'eth_locked': 1,
+            'eth_update_time': None,
+            'block_number': 222,
+        }
         c.transaction_system.get_balance.return_value = result
-
         balance = sync_wait(c.get_balance())
-
-        assert balance is None
-
-        result = (None, 1, None, None, None)
-        c.transaction_system.get_balance.return_value = result
-        balance = sync_wait(c.get_balance())
-        assert balance is None
-
-        result = (1, 1, None, None, None)
-        c.transaction_system.get_balance.return_value = result
-        balance = sync_wait(c.get_balance())
-        assert balance == {'gnt': "1",
-                           'av_gnt': "1",
-                           'eth': "None",
-                           'gnt_lock': "0",
-                           'eth_lock': "0",
-                           'last_gnt_update': "None",
-                           'last_eth_update': "None"}
+        assert balance == {
+            'gnt': "2",
+            'av_gnt': "2",
+            'eth': "2",
+            'gnt_nonconverted': "0",
+            'gnt_lock': "1",
+            'eth_lock': "1",
+            'last_gnt_update': "None",
+            'last_eth_update': "None",
+            'block_number': "222",
+        }
         assert all(isinstance(entry, str) for entry in balance)
 
     def test_run_benchmark(self, *_):
@@ -1378,6 +1377,62 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.client.block_node('node_id')
         self.client.task_server.acl.disallow.assert_called_once_with(
             'node_id', persist=True)
+
+    def test_run_test_task_success(self, *_):
+        result = {'result': 'result'}
+        estimated_memory = 1234
+        time_spent = 1.234
+        more = {'more': 'more'}
+
+        def _run(_self: TaskTester):
+            self.assertIsInstance(self.client.task_test_result, str)
+            test_result = json.loads(self.client.task_test_result)
+            self.assertEqual(test_result, {
+                "status": TaskTestStatus.started,
+                "error": True
+            })
+
+            _self.success_callback(result, estimated_memory, time_spent, **more)
+
+        with patch.object(self.client.task_server.task_manager, 'create_task'),\
+                patch('golem.client.TaskTester.run', _run):
+            self.client._run_test_task({})
+
+        self.assertIsInstance(self.client.task_test_result, str)
+        test_result = json.loads(self.client.task_test_result)
+        self.assertEqual(test_result, {
+            "status": TaskTestStatus.success,
+            "result": result,
+            "estimated_memory": estimated_memory,
+            "time_spent": time_spent,
+            "more": more
+        })
+
+    def test_run_test_task_error(self, *_):
+        error = ['error', 'error']
+        more = {'more': 'more'}
+
+        def _run(_self: TaskTester):
+            self.assertIsInstance(self.client.task_test_result, str)
+            test_result = json.loads(self.client.task_test_result)
+            self.assertEqual(test_result, {
+                "status": TaskTestStatus.started,
+                "error": True
+            })
+
+            _self.error_callback(*error, **more)
+
+        with patch.object(self.client.task_server.task_manager, 'create_task'),\
+                patch('golem.client.TaskTester.run', _run):
+            self.client._run_test_task({})
+
+        self.assertIsInstance(self.client.task_test_result, str)
+        test_result = json.loads(self.client.task_test_result)
+        self.assertEqual(test_result, {
+            "status": TaskTestStatus.error,
+            "error": error,
+            "more": more
+        })
 
     @classmethod
     def __new_incoming_peer(cls):

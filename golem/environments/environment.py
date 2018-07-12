@@ -85,6 +85,7 @@ class Environment():
 
         return True
 
+    # pylint: disable=no-self-use
     def check_caps(self):
         """ Check if required hardware is available on this machine
         :return bool:

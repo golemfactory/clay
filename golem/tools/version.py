@@ -40,7 +40,7 @@ VERSION_FILE = "RELEASE-VERSION"
 
 
 def call_git_describe(prefix='', cwd='.'):
-    cmd = 'git describe --tags --match %s[0-9]*' % prefix
+    cmd = 'git describe --tags --abbrev=7 --match %s[0-9]*' % prefix
     try:
         version = subprocess.run(
             cmd.split(),

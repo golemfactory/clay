@@ -12,8 +12,6 @@ class TestFundsLocker(TempDirFixture):
     def setUp(self):
         super().setUp()
         self.ts = mock.MagicMock()
-        self.ts.eth_for_batch_payment.side_effect = lambda n: n * 13000
-        self.ts.eth_base_for_batch_payment.return_value = 3000
         val = 1000000
         time_ = time.time()
         self.ts.get_balance.return_value = val, val, val, time_, time_
@@ -28,15 +26,16 @@ class TestFundsLocker(TempDirFixture):
         task_deadline = timeout_to_deadline(3600)
         task = mock.MagicMock()
         task.header.task_id = "abc"
-        task.price = 320
+        task.subtask_price = 320
         task.total_tasks = 10
         task.header.deadline = task_deadline
         fl.lock_funds(task)
+        self.ts.lock_funds_for_payments.assert_called_once_with(320, 10)
         tfl = fl.task_lock['abc']
 
         def test_params(tfl):
             assert isinstance(tfl, TaskFundsLock)
-            assert tfl.gnt_lock == 320
+            assert tfl.gnt_lock == 320 * 10
             assert tfl.num_tasks == 10
             assert tfl.task_deadline == task_deadline
 
@@ -48,38 +47,6 @@ class TestFundsLocker(TempDirFixture):
         fl.lock_funds(task)
         tfl = fl.task_lock['abc']
         test_params(tfl)
-
-    def test_sum_locks(self):
-        val1 = 320
-        val2 = 140
-        val3 = 10
-        val4 = 13
-        tasks1 = 10
-        tasks2 = 7
-        tasks3 = 4
-        tasks4 = 1
-        fl = FundsLocker(self.ts, self.new_path)
-        task = mock.MagicMock()
-        task.header.task_id = "abc"
-        task.price = val1
-        task.total_tasks = tasks1
-        task.header.deadline = timeout_to_deadline(3600)
-        fl.lock_funds(task)
-        task.header.task_id = "def"
-        task.price = val2
-        task.total_tasks = tasks2
-        fl.lock_funds(task)
-        task.header.task_id = "ghi"
-        task.price = val3
-        task.total_tasks = tasks3
-        fl.lock_funds(task)
-        task.header.task_id = "jkl"
-        task.price = val4
-        task.total_tasks = tasks4
-        fl.lock_funds(task)
-        gnt, eth = fl.sum_locks()
-        assert eth == 13000 * (tasks1 + tasks2 + tasks3 + tasks4) + 3000
-        assert gnt == val1 + val2 + val3 + val4
 
     @mock.patch("golem.transactions.ethereum.fundslocker.time")
     def test_remove_old(self, time_mock):
@@ -100,30 +67,36 @@ class TestFundsLocker(TempDirFixture):
         self._add_tasks(fl)
 
         # new fund locker should restore tasks
+        self.ts.reset_mock()
         fl2 = FundsLocker(self.ts, self.new_path)
         assert len(fl2.task_lock) == 4
-        assert fl2.task_lock['abc'].gnt_lock == 320
+        assert fl2.task_lock['abc'].gnt_lock == 320 * 10
+        assert self.ts.lock_funds_for_payments.call_count == 4
+        assert self.ts.lock_funds_for_payments.call_args_list[0][0] == (320, 10)
+        assert self.ts.lock_funds_for_payments.call_args_list[1][0] == (140, 7)
+        assert self.ts.lock_funds_for_payments.call_args_list[2][0] == (10, 4)
+        assert self.ts.lock_funds_for_payments.call_args_list[3][0] == (13, 1)
 
     @staticmethod
     def _add_tasks(fl):
         task = mock.MagicMock()
         task.header.task_id = "abc"
-        task.price = 320
+        task.subtask_price = 320
         task.total_tasks = 10
         task.header.deadline = timeout_to_deadline(0.5)
         fl.lock_funds(task)
         task.header.task_id = "def"
-        task.price = 140
+        task.subtask_price = 140
         task.total_tasks = 7
         task.header.deadline = timeout_to_deadline(2)
         fl.lock_funds(task)
         task.header.task_id = "ghi"
-        task.price = 10
+        task.subtask_price = 10
         task.total_tasks = 4
         task.header.deadline = timeout_to_deadline(0.2)
         fl.lock_funds(task)
         task.header.task_id = "jkl"
-        task.price = 13
+        task.subtask_price = 13
         task.total_tasks = 1
         task.header.deadline = timeout_to_deadline(3.5)
         fl.lock_funds(task)
@@ -133,6 +106,8 @@ class TestFundsLocker(TempDirFixture):
         self._add_tasks(fl)
         assert fl.task_lock['ghi']
         fl.remove_task('ghi')
+        self.ts.unlock_funds_for_payments.assert_called_once_with(10, 4)
+        self.ts.reset_mock()
 
         assert fl.task_lock.get('jkl')
         assert fl.task_lock.get('def')
@@ -141,6 +116,7 @@ class TestFundsLocker(TempDirFixture):
 
         with self.assertLogs(logger, level="WARNING"):
             fl.remove_task('ghi')
+            self.ts.unlock_funds_for_payments.assert_not_called()
 
         assert fl.task_lock.get('ghi') is None
 
@@ -151,8 +127,11 @@ class TestFundsLocker(TempDirFixture):
         assert fl.task_lock["ghi"].num_tasks == 4
 
         fl.remove_subtask("ghi")
+        self.ts.unlock_funds_for_payments.assert_called_once_with(10, 1)
+        self.ts.reset_mock()
         assert fl.task_lock.get("ghi")
         assert fl.task_lock["ghi"].num_tasks == 3
 
         with self.assertLogs(logger, level="WARNING"):
             fl.remove_subtask("NONEXISTING")
+            self.ts.unlock_funds_for_payments.assert_not_called()
