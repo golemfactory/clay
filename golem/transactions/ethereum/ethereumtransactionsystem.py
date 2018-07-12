@@ -109,7 +109,7 @@ class EthereumTransactionSystem(TransactionSystem):
 
     def get_locked_eth(self) -> int:
         eth = self.payment_processor.reserved_eth + \
-            self._eth_for_batch_payment(self._payments_locked)
+            self.eth_for_batch_payment(self._payments_locked)
         if self._payments_locked > 0 and \
            self.payment_processor.reserved_eth == 0:
             eth += self._eth_base_for_batch_payment()
@@ -138,7 +138,7 @@ class EthereumTransactionSystem(TransactionSystem):
         if gnt > self.get_available_gnt():
             raise NotEnoughFunds(gnt, self.get_available_gnt(), 'GNT')
 
-        eth = self._eth_for_batch_payment(num)
+        eth = self.eth_for_batch_payment(num)
         if self._payments_locked == 0 and \
            self.payment_processor.reserved_eth == 0:
             eth += self._eth_base_for_batch_payment()
@@ -175,7 +175,7 @@ class EthereumTransactionSystem(TransactionSystem):
         self._gntb_locked -= gnt
         self._payments_locked -= num
 
-    def _eth_for_batch_payment(self, num_payments: int) -> int:
+    def eth_for_batch_payment(self, num_payments: int) -> int:
         return self.payment_processor.get_gas_cost_per_payment() * num_payments
 
     def _eth_base_for_batch_payment(self) -> int:

@@ -8,12 +8,12 @@ import sys
 import time
 import uuid
 from copy import copy, deepcopy
-from ethereum.utils import denoms
 from os import path, makedirs
 from pathlib import Path
 from threading import Lock
 from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
+from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -1275,24 +1275,14 @@ class Client(HardwarePresetsMixin):
         taskpreset.delete_task_preset(task_type, preset_name)
 
     def get_estimated_cost(self, task_type, options):
-        options['price'] = float(options['price'])
-        options['subtask_time'] = float(options['subtask_time'])
-        options['num_subtasks'] = int(options['num_subtasks'])
-        return self.task_server.task_manager.get_estimated_cost(task_type,
-                                                                options)
-
-    def get_estimated_costs(
-            self,
-            task_type: str,
-            options) -> Dict[str, int]:
-        options['price'] = float(options['price'])
-        options['subtask_time'] = float(options['subtask_time'])
-        options['num_subtasks'] = int(options['num_subtasks'])
         if self.task_server is None:
             raise Exception('Cannot estimate costs')
+        options['price'] = float(options['price'])
+        options['subtask_time'] = float(options['subtask_time'])
+        options['num_subtasks'] = int(options['num_subtasks'])
         return {
             'GNT': self.task_server.task_manager.get_estimated_cost(task_type,
-                                                                options),
+                                                                    options),
             'ETH': float(self.transaction_system.eth_for_batch_payment(
                 options['num_subtasks']) / denoms.ether),
         }

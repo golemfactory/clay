@@ -203,13 +203,13 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
         self.ets.lock_funds_for_payments(price, num)
         assert self.ets.get_locked_eth() == \
-            self.ets._eth_for_batch_payment(num) + \
+            self.ets.eth_for_batch_payment(num) + \
             self.ets._eth_base_for_batch_payment()
         assert self.ets.get_locked_gnt() == price * num
 
         self.ets.unlock_funds_for_payments(price, num - 1)
         assert self.ets.get_locked_eth() == \
-            self.ets._eth_for_batch_payment(1) + \
+            self.ets.eth_for_batch_payment(1) + \
             self.ets._eth_base_for_batch_payment()
         assert self.ets.get_locked_gnt() == price
 

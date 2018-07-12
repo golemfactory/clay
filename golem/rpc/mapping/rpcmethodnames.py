@@ -54,7 +54,6 @@ CORE_METHOD_MAP = dict(
     get_task_presets=       'comp.tasks.preset.get',
     delete_task_preset=     'comp.tasks.preset.delete',
     get_estimated_cost=     'comp.tasks.estimated.cost',
-    get_estimated_costs=    'comp.tasks.estimated.costs',
 
     get_task_preview=       'comp.task.preview',
     query_task_state=       'comp.task.state',
