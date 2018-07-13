@@ -268,7 +268,18 @@ class Client(HardwarePresetsMixin):
             'taskmanager_listen (sender: %r, signal: %r, event: %r, args: %r)',
             sender, signal, event, kwargs
         )
-        self._publish(Task.evt_task_status, kwargs['task_id'])
+
+        op = kwargs['op'] if 'op' in kwargs else None
+
+        if op is not None and op.subtask_related():
+            self._publish(Task.evt_subtask_status, kwargs['task_id'],
+                          kwargs['subtask_id'], op.value)
+        else:
+            op_class_name: str = op.__class__.__name__ \
+                                 if op is not None else None
+            op_value: int = op.value if op is not None else None
+            self._publish(Task.evt_task_status, kwargs['task_id'],
+                          op_class_name, op_value)
 
     @report_calls(Component.client, 'sync')
     def sync(self):
