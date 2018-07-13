@@ -53,3 +53,4 @@ Golem-Smart-Contracts-Interface==1.4.2
 Golem-Verificator==1.0.8
 html2text==2018.1.9
 zxcvbn-python
+golem-core==0.1.0
