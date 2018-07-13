@@ -2,7 +2,7 @@ import logging
 from os import path
 import sys
 
-from typing import Set, Any
+from typing import Set, Any, Dict, Optional
 from ethereum.utils import denoms
 
 from golem.config.active import ENABLE_TALKBACK
@@ -105,7 +105,7 @@ class AppConfig:
     __loaded_configs = set()  # type: Set[Any]
 
     @classmethod
-    def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME):
+    def load_config(cls, datadir, cfg_file_name=CONFIG_FILENAME, patched_values: Optional[Dict]=None):
 
         if ENABLE_TALKBACK and 'pytest' in sys.modules:
             from golem.config import active
@@ -116,61 +116,72 @@ class AppConfig:
             raise RuntimeError("Config has been loaded: {}".format(cfg_file))
         cls.__loaded_configs.add(cfg_file)
 
-        node_config = NodeConfig(
-            node_name="",
-            node_address="",
-            eth_account="",
-            use_ipv6=USE_IP6,
-            use_upnp=USE_UPNP,
-            start_port=START_PORT,
-            end_port=END_PORT,
-            rpc_address=RPC_ADDRESS,
-            rpc_port=RPC_PORT,
+        node_config_kwargs = {
+            "node_name": "",
+            "node_address": "",
+            "eth_account": "",
+            "use_ipv6": USE_IP6,
+            "use_upnp": USE_UPNP,
+            "start_port": START_PORT,
+            "end_port": END_PORT,
+            "rpc_address": RPC_ADDRESS,
+            "rpc_port": RPC_PORT,
             # peers
-            seed_host="",
-            seed_port=START_PORT,
-            seeds="",
-            opt_peer_num=OPTIMAL_PEER_NUM,
-            key_difficulty=KEY_DIFFICULTY,
+            "seed_host": "",
+            "seed_port": START_PORT,
+            "seeds": "",
+            "opt_peer_num": OPTIMAL_PEER_NUM,
+            "key_difficulty": KEY_DIFFICULTY,
             # flags
-            in_shutdown=0,
-            accept_tasks=ACCEPT_TASKS,
-            send_pings=SEND_PINGS,
-            enable_talkback=ENABLE_TALKBACK,
-            enable_monitor=ENABLE_MONITOR,
+            "in_shutdown": 0,
+            "accept_tasks": ACCEPT_TASKS,
+            "send_pings": SEND_PINGS,
+            "enable_talkback": ENABLE_TALKBACK,
+            "enable_monitor": ENABLE_MONITOR,
             # hardware
-            hardware_preset_name=CUSTOM_HARDWARE_PRESET_NAME,
+            "hardware_preset_name": CUSTOM_HARDWARE_PRESET_NAME,
             # price and trust
-            min_price=MIN_PRICE,
-            max_price=MAX_PRICE,
-            requesting_trust=REQUESTING_TRUST,
-            computing_trust=COMPUTING_TRUST,
+            "min_price": MIN_PRICE,
+            "max_price": MAX_PRICE,
+            "requesting_trust": REQUESTING_TRUST,
+            "computing_trust": COMPUTING_TRUST,
             # intervals
-            pings_interval=PINGS_INTERVALS,
-            getting_peers_interval=GETTING_PEERS_INTERVAL,
-            getting_tasks_interval=GETTING_TASKS_INTERVAL,
-            task_request_interval=TASK_REQUEST_INTERVAL,
-            node_snapshot_interval=NODE_SNAPSHOT_INTERVAL,
-            network_check_interval=NETWORK_CHECK_INTERVAL,
-            mask_update_interval=MASK_UPDATE_INTERVAL,
-            max_results_sending_delay=MAX_SENDING_DELAY,
+            "pings_interval": PINGS_INTERVALS,
+            "getting_peers_interval": GETTING_PEERS_INTERVAL,
+            "getting_tasks_interval": GETTING_TASKS_INTERVAL,
+            "task_request_interval": TASK_REQUEST_INTERVAL,
+            "node_snapshot_interval": NODE_SNAPSHOT_INTERVAL,
+            "network_check_interval": NETWORK_CHECK_INTERVAL,
+            "mask_update_interval": MASK_UPDATE_INTERVAL,
+            "max_results_sending_delay": MAX_SENDING_DELAY,
             # timeouts
-            p2p_session_timeout=P2P_SESSION_TIMEOUT,
-            task_session_timeout=TASK_SESSION_TIMEOUT,
-            resource_session_timeout=RESOURCE_SESSION_TIMEOUT,
-            waiting_for_task_session_timeout=WAITING_FOR_TASK_SESSION_TIMEOUT,
-            forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT,
-            clean_resources_older_than_seconds=CLEAN_RESOURES_OLDER_THAN_SECS,
-            clean_tasks_older_than_seconds=CLEAN_TASKS_OLDER_THAN_SECONDS,
-            debug_third_party=DEBUG_THIRD_PARTY,
+            "p2p_session_timeout": P2P_SESSION_TIMEOUT,
+            "task_session_timeout": TASK_SESSION_TIMEOUT,
+            "resource_session_timeout": RESOURCE_SESSION_TIMEOUT,
+            "waiting_for_task_session_timeout": WAITING_FOR_TASK_SESSION_TIMEOUT,
+            "forwarded_session_request_timeout": FORWARDED_SESSION_REQUEST_TIMEOUT,
+            "clean_resources_older_than_seconds": CLEAN_RESOURES_OLDER_THAN_SECS,
+            "clean_tasks_older_than_seconds": CLEAN_TASKS_OLDER_THAN_SECONDS,
+            "debug_third_party": DEBUG_THIRD_PARTY,
             # network masking
-            net_masking_enabled=NET_MASKING_ENABLED,
-            initial_mask_size_factor=INITIAL_MASK_SIZE_FACTOR,
-            min_num_workers_for_mask=MIN_NUM_WORKERS_FOR_MASK,
-            mask_update_num_bits=MASK_UPDATE_NUM_BITS
-        )
+            "net_masking_enabled": NET_MASKING_ENABLED,
+            "initial_mask_size_factor": INITIAL_MASK_SIZE_FACTOR,
+            "min_num_workers_for_mask": MIN_NUM_WORKERS_FOR_MASK,
+            "mask_update_num_bits": MASK_UPDATE_NUM_BITS
+        }
 
-        cfg = SimpleConfig(node_config, cfg_file, keep_old=False)
+        # validation of patched_values
+        if patched_values:
+            incorrect_patched = [k for k in patched_values
+                                 if k not in node_config_kwargs]
+            if incorrect_patched:
+                raise RuntimeError(f"Incorrect options in app config: "
+                                   f"{incorrect_patched}")
+            node_config_kwargs.update(patched_values)
+
+        node_config = NodeConfig(**node_config_kwargs)
+
+        cfg = SimpleConfig(node_config, cfg_file, keep_old=True)
         return AppConfig(cfg, cfg_file)
 
     def __init__(self, cfg, config_file):

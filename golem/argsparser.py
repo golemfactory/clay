@@ -1,4 +1,6 @@
 import ipaddress
+import json
+from typing import Dict
 
 import click
 
@@ -65,3 +67,12 @@ def parse_peer(ctx, param, value):
             raise click.BadParameter(
                 "Invalid peer address specified: {}".format(e))
     return addresses
+
+def parse_app_cfg_opt(ctx, param, value: str) -> Dict:
+    del ctx, param
+    if value:
+        try:
+            return json.loads(value)
+        except json.JSONDecodeError as e:
+            raise click.BadParameter(f"Error with --app-cfg argument: {e}")
+
