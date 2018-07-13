@@ -420,11 +420,11 @@ class TaskComputer(object):
 
         if docker_images:
             docker_images = [DockerImage(**did) for did in docker_images]
-            tt = DockerTaskThread(self, subtask_id, docker_images, working_dir,
+            tt = DockerTaskThread(subtask_id, docker_images, working_dir,
                                   src_code, extra_data, short_desc,
                                   resource_dir, temp_dir, task_timeout)
         elif self.support_direct_computation:
-            tt = PyTaskThread(self, subtask_id, working_dir, src_code,
+            tt = PyTaskThread(subtask_id, working_dir, src_code,
                               extra_data, short_desc, resource_dir, temp_dir,
                               task_timeout)
         else:
@@ -442,7 +442,7 @@ class TaskComputer(object):
             return
 
         self.counting_thread = tt
-        tt.start()
+        tt.start().addBoth(lambda _: self.task_computed(tt))
 
     def quit(self):
         if self.counting_thread is not None:
@@ -460,18 +460,18 @@ class AssignedSubTask(object):
 
 
 class PyTaskThread(TaskThread):
-    def __init__(self, task_computer, subtask_id, working_directory, src_code,
+    def __init__(self, subtask_id, working_directory, src_code,
                  extra_data, short_desc, res_path, tmp_path, timeout):
         super(PyTaskThread, self).__init__(
-            task_computer, subtask_id, working_directory, src_code, extra_data,
+            subtask_id, working_directory, src_code, extra_data,
             short_desc, res_path, tmp_path, timeout)
         self.vm = PythonProcVM()
 
 
 class PyTestTaskThread(PyTaskThread):
-    def __init__(self, task_computer, subtask_id, working_directory, src_code,
+    def __init__(self, subtask_id, working_directory, src_code,
                  extra_data, short_desc, res_path, tmp_path, timeout):
         super(PyTestTaskThread, self).__init__(
-            task_computer, subtask_id, working_directory, src_code, extra_data,
+            subtask_id, working_directory, src_code, extra_data,
             short_desc, res_path, tmp_path, timeout)
         self.vm = PythonTestVM()

@@ -70,7 +70,7 @@ class LocalComputer:
                 ctd = self.compute_task_def
 
             self.tt = self._get_task_thread(ctd)
-            self.tt.start()
+            self.tt.start().addBoth(lambda _: self.task_computed(self.tt))
 
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning("%s", self.comp_failed_warning, exc_info=True)
@@ -176,7 +176,6 @@ class LocalComputer:
 
     def _get_task_thread(self, ctd: ComputeTaskDef) -> DockerTaskThread:
         return DockerTaskThread(
-            self,
             ctd['subtask_id'],
             [DockerImage(**did) for did in ctd['docker_images']],
             ctd['working_directory'],
