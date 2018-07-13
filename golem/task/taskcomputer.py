@@ -45,7 +45,7 @@ class TaskComputer(object):
     lock = Lock()
     dir_lock = Lock()
 
-    def __init__(self, task_server: 'TaskServer', use_docker_manager=True, \
+    def __init__(self, task_server: 'TaskServer', use_docker_manager=True,
                  finished_cb=None) -> None:
         self.task_server = task_server
         # Id of the task that we're currently waiting for  for
