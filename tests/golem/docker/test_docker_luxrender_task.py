@@ -91,7 +91,7 @@ class TestDockerLuxrenderTask(
         self._test_luxrender_real_task(task)
 
     @pytest.mark.slow
-    @patch('golem_verificator.core_verifier.deadline_to_timeout')
+    @patch('golem.core.common.deadline_to_timeout')
     def test_luxrender_real_task_exr(self, mock_dtt):
         mock_dtt.return_value = 1.0
         task = self._get_test_task()

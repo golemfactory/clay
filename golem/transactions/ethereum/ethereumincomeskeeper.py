@@ -7,11 +7,11 @@ from golem_messages.utils import bytes32_to_uuid
 from golem.model import GenericKeyValue
 from golem.transactions.incomeskeeper import IncomesKeeper
 
-logger = logging.getLogger('golem.transactions.ethereum.ethereumincomeskeeper')
+logger = logging.getLogger(__name__)
 
 
 class EthereumIncomesKeeper(IncomesKeeper):
-    BLOCK_NUMBER_DB_KEY = 'eth_incomes_keeper_block_number'
+    BLOCK_NUMBER_DB_KEY = 'eth_incomes_keeper_block_number_v2'
     BLOCK_NUMBER_BUFFER = 50
 
     def __init__(self, sci) -> None:
@@ -26,12 +26,18 @@ class EthereumIncomesKeeper(IncomesKeeper):
             from_block,
             self._on_batch_event,
         )
-        self.__sci.subscribe_to_forced_subtask_payments(
-            None,
-            self.__sci.get_eth_address(),
-            from_block,
-            self._on_forced_subtask_payment,
-        )
+
+        # Temporary try-catch block, until GNTDeposit is deployed on mainnet.
+        # Remove it after that.
+        try:
+            self.__sci.subscribe_to_forced_subtask_payments(
+                None,
+                self.__sci.get_eth_address(),
+                from_block,
+                self._on_forced_subtask_payment,
+            )
+        except AttributeError as e:
+            logger.info("Can't use GNTDeposit on mainnet yet: %r", e)
 
     def _on_batch_event(self, event):
         self.received_batch_transfer(

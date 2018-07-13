@@ -341,12 +341,13 @@ class TestTaskThread(DatabaseFixture):
         tc = TaskComputer("ABC", ts, use_docker_manager=False)
         tc.counting_task = True
         tc.waiting_for_task = None
-        tt = self._new_task_thread(tc)
 
+        tt = self._new_task_thread(tc)
         tt.run()
+
         self.assertGreater(tt.end_time - tt.start_time, 0)
         self.assertLess(tt.end_time - tt.start_time, 20)
-        self.assertTrue(tc.counting_task)
+        self.assertFalse(tc.counting_task)
 
     def test_fail(self):
         first_error = Exception("First error message")

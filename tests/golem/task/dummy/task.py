@@ -1,6 +1,7 @@
 import random
 from os import path
 from threading import Lock
+from typing import Optional
 
 from eth_utils import encode_hex
 from golem_messages.message import ComputeTaskDef
@@ -153,14 +154,10 @@ class DummyTask(Task):
     def finished_computation(self):
         return self.get_tasks_left() == 0
 
-    def query_extra_data(self, perf_index, num_cores=1, node_id=None,
-                         node_name=None):
-        """Returns data for the next subtask.
-        :param int perf_index:
-        :param int num_cores:
-        :param str | None node_id:
-        :param str | None node_name:
-        :rtype: ComputeTaskDef"""
+    def query_extra_data(self, perf_index: float, num_cores: int = 1,
+                         node_id: Optional[str] = None,
+                         node_name: Optional[str] = None) -> Task.ExtraData:
+        """ Returns data for the next subtask. """
 
         # create new subtask_id
         subtask_id = generate_new_id_from_id(self.header.task_id)

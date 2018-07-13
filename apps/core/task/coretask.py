@@ -8,8 +8,9 @@ from typing import Type
 import golem_messages.message
 from ethereum.utils import denoms
 
+from apps.blender.verification_queue import VerificationQueue
 from apps.core.task.coretaskstate import TaskDefinition, Options
-from golem_verificator.core_verifier import CoreVerifier, VerificationQueue
+from golem_verificator.core_verifier import CoreVerifier
 from golem_verificator.verifier import SubtaskVerificationState
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
@@ -615,6 +616,7 @@ class CoreTaskBuilder(TaskBuilder):
         definition.subtask_timeout = string_to_timeout(
             dictionary['subtask_timeout'])
         definition.output_file = cls.get_output_path(dictionary, definition)
+        definition.estimated_memory = dictionary.get('estimated_memory', 0)
 
         return definition
 
