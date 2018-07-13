@@ -26,15 +26,19 @@ def cpu_cores_available() -> List[int]:
     """
     try:
         affinity = psutil.Process().cpu_affinity()
+        if 0 in affinity:
+            affinity.remove(0)
+
         if is_osx() and len(affinity) > MAX_CPU_MACOS:
-            return list(range(0, MAX_CPU_MACOS))
+            return affinity[:MAX_CPU_MACOS]
         if is_windows() and len(affinity) > MAX_CPU_WINDOWS:
-            return list(range(0, MAX_CPU_WINDOWS))
-        return affinity[:-1] or affinity
+            return affinity[:MAX_CPU_WINDOWS]
+        return affinity or [0]
     except Exception as e:
         logger.debug("Couldn't read CPU affinity: %r", e)
         num_cores = get_cpu_count()
-        return list(range(0, num_cores - 1)) or [0]
+        shift = int(num_cores > 1)  # int(bool) = 0 or 1
+        return list(range(shift, num_cores + shift))
 
 
 def memory_available() -> int:
