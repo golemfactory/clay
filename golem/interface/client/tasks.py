@@ -112,8 +112,8 @@ class Tasks:
     @command(argument=id_req, help="Restart a task")
     def restart(self, id):
         deferred = Tasks.client.restart_task(id)
-        ok, error = sync_wait(deferred)
-        if not ok:
+        new_task_id, error = sync_wait(deferred)
+        if not new_task_id:
             return error
         return None
 

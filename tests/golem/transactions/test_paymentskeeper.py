@@ -1,5 +1,6 @@
 from copy import deepcopy
 
+from eth_utils import encode_hex
 from peewee import IntegrityError
 from os import urandom
 
@@ -12,8 +13,8 @@ from golem.tools.assertlogs import LogTestCase
 from golem.transactions.paymentskeeper import PaymentsDatabase, PaymentInfo, \
     logger, PaymentsKeeper
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
-from golem.utils import encode_hex
 from golem.tools.ci import ci_skip
+from tests.factories.model import Payment as PaymentFactory
 
 
 @ci_skip  # Windows gives random failures #1738
@@ -57,7 +58,7 @@ class TestPaymentsDatabase(LogTestCase, TestWithDatabase):
         pi3 = deepcopy(pi)
         pi3.subtask_id = "bbbxxx"
         pi4 = deepcopy(pi)
-        pi4.computer.eth_account.address = "GHI"
+        pi4.computer.eth_account.address = b"GHI"
         pi4.subtask_id = "ghighi"
         with self.assertLogs(logger, level='WARNING') as l:
             self.assertIsNone(pd.get_state(pi4))
@@ -153,6 +154,62 @@ class TestPaymentsKeeper(TestWithDatabase):
         self.assertEqual(len(all_payments), 6)
         assert pk.get_payment("xxyyzz") == 2023
         assert pk.get_payment("not existing") == 0
+
+
+class TestGetTotalPaymentForSubtasks(TestWithDatabase):
+
+    def setUp(self):
+        super().setUp()
+        self.pd = PaymentsDatabase()
+
+    @staticmethod
+    def _create_payment(**kwargs):
+        payment = PaymentFactory(**kwargs)
+        payment.save(force_insert=True)
+        return payment
+
+    def test_no_payments(self):
+        result = self.pd.get_total_payment_for_subtasks(('id1',))
+        self.assertEqual(result, (0, 0))
+
+    def test_wrong_id(self):
+        self._create_payment(subtask='id1', status=PaymentStatus.confirmed)
+        result = self.pd.get_total_payment_for_subtasks(('id2',))
+        self.assertEqual(result, (0, 0))
+
+    def test_awaiting_status(self):
+        self._create_payment(subtask='id1', status=PaymentStatus.awaiting)
+        result = self.pd.get_total_payment_for_subtasks(('id1',))
+        self.assertEqual(result, (0, 0))
+
+    def test_sent_status(self):
+        self._create_payment(subtask='id1', status=PaymentStatus.sent)
+        result = self.pd.get_total_payment_for_subtasks(('id1',))
+        self.assertEqual(result, (0, 0))
+
+    def test_single_payment(self):
+        payment = self._create_payment(
+            subtask='id1',
+            status=PaymentStatus.confirmed)
+        result = self.pd.get_total_payment_for_subtasks(('id1',))
+        self.assertEqual(
+            result,
+            (payment.value, payment.details.fee))  # pylint: disable=no-member
+
+    def test_multiple_payments(self):
+        p1 = self._create_payment(
+            subtask='id1',
+            status=PaymentStatus.confirmed)
+        p2 = self._create_payment(
+            subtask='id2',
+            status=PaymentStatus.confirmed)
+        self._create_payment(
+            subtask='id3',
+            status=PaymentStatus.confirmed)
+        result = self.pd.get_total_payment_for_subtasks(('id1', 'id2'))
+        exp_value = p1.value + p2.value
+        exp_fee = p1.details.fee + p2.details.fee  # pylint: disable=no-member
+        self.assertEqual(result, (exp_value, exp_fee))
 
 
 class TestAccountInfo(TempDirFixture):

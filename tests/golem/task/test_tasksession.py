@@ -141,6 +141,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         task_state = taskstate.TaskState()
         task_state.package_hash = '667'
+        task_state.package_size = 42
         conn.server.task_manager.tasks_states[ctd['task_id']] = task_state
 
         ts2.task_manager.get_next_subtask.return_value = (ctd, False, False)
@@ -163,7 +164,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             ['package_hash', 'sha1:' + task_state.package_hash],
             ['concent_enabled', use_concent],
             ['price', 0],
-            ['size', 0],
+            ['size', task_state.package_size],
         ]
         self.assertCountEqual(ms.slots(), expected)
         ts2.task_manager.get_next_subtask.return_value = (ctd, True, False)

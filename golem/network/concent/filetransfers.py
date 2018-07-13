@@ -40,6 +40,10 @@ class ConcentFileRequest():  # noqa pylint:disable=too-few-public-methods
         )
 
 
+class ConcentFiletransferError(Exception):
+    pass
+
+
 class ConcentFiletransferService(LoopingCallService):
     """
     Golem service responsible for exchanging files with the Concent service.
@@ -95,14 +99,17 @@ class ConcentFiletransferService(LoopingCallService):
         try:
             if request.file_transfer_token.is_upload:
                 response = self.upload(request)
-            elif request.file_transfer_token.is_download:
+            else:
                 response = self.download(request)
+            if not response.ok:
+                raise ConcentFiletransferError(
+                    '{}: {}'.format(response.status_code, response.text))
         except Exception as e:  # noqa pylint:disable=broad-except
             if request.error:
                 request.error(e)
                 return None
             else:
-                raise
+                raise e
 
         return request.success(response) if request.success else response
 

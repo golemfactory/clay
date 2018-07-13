@@ -23,6 +23,7 @@ from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import ResultType
+from golem.task.taskstate import TaskState
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
@@ -490,7 +491,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         if ctd:
             task = self.task_manager.tasks[ctd['task_id']]
-            task_state = self.task_manager.tasks_states[ctd['task_id']]
+            task_state: TaskState = self.task_manager.tasks_states[
+                ctd['task_id']]
             price = taskkeeper.compute_subtask_value(
                 task.header.max_price,
                 task.header.subtask_timeout,
@@ -504,11 +506,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 provider_public_key=self.key_id,
                 provider_ethereum_public_key=self.key_id,
                 package_hash='sha1:' + task_state.package_hash,
-                # for now, we're assuming the Concent
-                # is always in use
                 concent_enabled=msg.concent_enabled,
                 price=price,
-                size=0,  # @todo issue #2769
+                size=task_state.package_size
             )
             self.task_manager.set_subtask_value(
                 subtask_id=ttc.subtask_id,
@@ -731,7 +731,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.task_server.client.transaction_system.concent_deposit(
                 required=amount,
                 expected=expected,
-                reserved=self.task_server.client.funds_locker.sum_locks()[0],
                 cb=ask_for_verification,
             )
 

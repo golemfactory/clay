@@ -1,4 +1,5 @@
 ;aic
 ResetSig
+SetPackageName Golem-installer.exe -buildname DefaultBuild
 Save
 Rebuild

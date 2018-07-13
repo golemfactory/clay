@@ -113,14 +113,13 @@ class PythonTestVM(GolemVM):
     """  Python VM for tests with additional memory usage estimation
     """
     def _interpret(self):
-        mc = MemoryChecker()
-        mc.start()
-        try:
-            exec(self.src_code, self.scope)
-        except Exception as err:
-            self.scope["error"] = str(err)
-        finally:
-            estimated_mem = mc.stop()
+        with MemoryChecker() as mc:
+            try:
+                exec(self.src_code, self.scope)
+            except Exception as err:
+                self.scope["error"] = str(err)
+            finally:
+                estimated_mem = mc.estm_mem
         logger.info("Estimated memory for task: {}".format(estimated_mem))
-        return (self.scope.get("output"), estimated_mem), self.scope.get("error")
-
+        return (self.scope.get("output"), estimated_mem), \
+            self.scope.get("error")

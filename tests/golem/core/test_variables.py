@@ -9,5 +9,6 @@ class TestVariables(TestCase):
         v = golem.__version__.split('.')
         assert len(v) >= 3
         assert '.'.join(v) == golem.__version__
+        assert '\n' not in v
         # semantic_version shouldn't throw
         Version(golem.__version__)
