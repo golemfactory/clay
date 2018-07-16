@@ -5,13 +5,13 @@ import math
 import numpy
 from twisted.internet.defer import Deferred
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
+from apps.blender.task.blenderrendertask import BlenderRenderTask
+from golem.docker.image import DockerImage
 from golem.task.localcomputer import ComputerAdapter
 from golem.testutils import TempDirFixture
 from golem.core.common import get_golem_path
 from golem_verificator.common.rendering_task_utils import get_min_max_y
-from golem_verificator.blender_verifier import BlenderVerifier
 from golem_verificator.common.common import sync_wait
-from golem_verificator.docker.image import DockerImage
 from golem_verificator.common.ci import ci_skip
 
 logger = logging.getLogger(__name__)
@@ -104,14 +104,12 @@ class TestGenerateCrops(TempDirFixture):
         verification_data['results'] = []
         verification_data['reference_data'] = []
         verification_data['resources'] = self.resources
-        verification_data["reference_generator"] = self.cropper
+        verification_data['paths'] = os.path.dirname(self.resources[0])
 
-        verifier = BlenderVerifier(verification_finished,
-                                   verification_data)
-        verifier.computer = ComputerAdapter()
-
-        verifier.current_results_files =\
-            ['tests/apps/blender/test_data/very_bad_image.png']
+        verifier = BlenderRenderTask.VERIFIER_CLASS(verification_finished,
+                                                    verification_data)
+        verifier.current_results_files = ['tests/apps/blender/test_data/'
+                                          'very_bad_image.png']
 
         verifier.success = success
         verifier.failure = failure
@@ -119,7 +117,6 @@ class TestGenerateCrops(TempDirFixture):
         verifier.resources = self.resources
 
         self.cropper.render_crops(
-            self.computer,
             self.resources,
             verifier._crop_rendered,
             verifier._crop_render_failure,
@@ -147,12 +144,10 @@ class TestGenerateCrops(TempDirFixture):
         verification_data['results'] = []
         verification_data['reference_data'] = []
         verification_data['resources'] = self.resources
-        verification_data["reference_generator"] = self.cropper
+        verification_data['paths'] = os.path.dirname(self.resources[0])
 
-        verifier = BlenderVerifier(verification_finished,
-                                   verification_data)
-        verifier.computer = ComputerAdapter()
-
+        verifier = BlenderRenderTask.VERIFIER_CLASS(verification_finished,
+                                                    verification_data)
         verifier.current_results_files = ['tests/apps/blender/test_data/'
                                           'GolemTask_10001.png']
 
@@ -162,7 +157,6 @@ class TestGenerateCrops(TempDirFixture):
         verifier.resources = self.resources
 
         self.cropper.render_crops(
-            self.computer,
             self.resources,
             verifier._crop_rendered,
             verifier._crop_render_failure,
@@ -176,6 +170,7 @@ class TestGenerateCrops(TempDirFixture):
 
         def success(*args, **kwargs):
             # pylint: disable=unused-argument
+            d.errback(False)
             assert False
 
         def failure(*args, **kwargs):
@@ -190,11 +185,10 @@ class TestGenerateCrops(TempDirFixture):
         verification_data['results'] = []
         verification_data['reference_data'] = []
         verification_data['resources'] = self.resources
-        verification_data["reference_generator"] = self.cropper
+        verification_data['paths'] = os.path.dirname(self.resources[0])
 
-        verifier = BlenderVerifier(verification_finished,
-                                   verification_data)
-        verifier.computer = ComputerAdapter()
+        verifier = BlenderRenderTask.VERIFIER_CLASS(verification_finished,
+                                                    verification_data)
 
         verifier.current_results_files = ['tests/apps/blender/test_data/'
                                           'almost_good_image.png']
@@ -205,7 +199,6 @@ class TestGenerateCrops(TempDirFixture):
         verifier.resources = self.resources
 
         self.cropper.render_crops(
-            self.computer,
             self.resources,
             verifier._crop_rendered,
             verifier._crop_render_failure,
@@ -237,11 +230,10 @@ class TestGenerateCrops(TempDirFixture):
         verification_data['results'] = []
         verification_data['reference_data'] = []
         verification_data['resources'] = self.resources
-        verification_data["reference_generator"] = self.cropper
+        verification_data['paths'] = os.path.dirname(self.resources[0])
 
-        verifier = BlenderVerifier(verification_finished,
-                                   verification_data)
-        verifier.computer = ComputerAdapter()
+        verifier = BlenderRenderTask.VERIFIER_CLASS(verification_finished,
+                                                    verification_data)
 
         verifier.current_results_files = ['tests/apps/blender/test_data/'
                                           'GolemTask_10001.png',
@@ -254,7 +246,6 @@ class TestGenerateCrops(TempDirFixture):
         verifier.resources = self.resources
 
         self.cropper.render_crops(
-            self.computer,
             self.resources,
             verifier._crop_rendered,
             verifier._crop_render_failure,
