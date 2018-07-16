@@ -23,6 +23,7 @@ class TaskThread(threading.Thread):
     result: Union[None, Dict[str, Any], Tuple[Dict[str, Any], int]] = None
 
     # pylint:disable=too-many-arguments
+    # pylint:disable=too-many-instance-attributes
     def __init__(self, subtask_id, working_directory, src_code, extra_data,
                  short_desc, res_path, tmp_path, timeout=0) -> None:
         super(TaskThread, self).__init__()

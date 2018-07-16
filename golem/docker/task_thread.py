@@ -34,9 +34,9 @@ class DockerTaskThread(TaskThread):
 
     docker_manager: ClassVar[Optional['DockerManager']] = None
 
-    def __init__(self, subtask_id, docker_images,
-                 orig_script_dir, src_code, extra_data, short_desc,
-                 res_path, tmp_path, timeout, check_mem=False):
+    def __init__(self, subtask_id,  # pylint: disable=too-many-arguments
+                 docker_images, orig_script_dir, src_code, extra_data,
+                 short_desc, res_path, tmp_path, timeout, check_mem=False):
 
         if not docker_images:
             raise AttributeError("docker images is None")

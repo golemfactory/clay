@@ -194,6 +194,7 @@ class ComputerAdapter(object):
     def __init__(self):
         self.computer = None
 
+    # pylint: disable=too-many-arguments
     def start_computation(self, root_path, success_callback, error_callback,
                           compute_task_def, resources, additional_resources):
         self.computer = LocalComputer(root_path=root_path,

@@ -460,6 +460,7 @@ class AssignedSubTask(object):
 
 
 class PyTaskThread(TaskThread):
+    # pylint: disable=too-many-arguments
     def __init__(self, subtask_id, working_directory, src_code,
                  extra_data, short_desc, res_path, tmp_path, timeout):
         super(PyTaskThread, self).__init__(
@@ -469,6 +470,7 @@ class PyTaskThread(TaskThread):
 
 
 class PyTestTaskThread(PyTaskThread):
+    # pylint: disable=too-many-arguments
     def __init__(self, subtask_id, working_directory, src_code,
                  extra_data, short_desc, res_path, tmp_path, timeout):
         super(PyTestTaskThread, self).__init__(
