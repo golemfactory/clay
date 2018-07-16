@@ -76,7 +76,7 @@ class EnvironmentsManager:
         for name, env in self.environments.items():
             if not isinstance(env, DockerEnvironment):
                 continue
-            if env.DOCKER_IMAGE == image.repository:
+            if env.supports_image(image):
                 return env
 
     def _get_environments_to_config(self) -> Dict[str, Tuple[str, bool]]:

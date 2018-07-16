@@ -4,6 +4,7 @@ from typing import List, Dict, Optional
 from apps.core import nvgpu
 from golem.core.common import get_golem_path, posix_path
 from golem.docker.environment import DockerEnvironment
+from golem.docker.image import DockerImage
 
 
 class BlenderEnvironmentChooser:
@@ -31,6 +32,10 @@ class BlenderNVGPUEnvironment(BlenderEnvironment):
     DOCKER_IMAGE = "golemfactory/blender_nvgpu"
     DOCKER_TAG = "1.0"
     SHORT_DESCRIPTION = "Blender NVGPU (www.blender.org)"
+
+    def supports_image(self, docker_image: DockerImage) -> bool:
+        return super().supports_image(docker_image) or \
+            super().DOCKER_IMAGE == docker_image.repository
 
     def get_volumes(self) -> List[str]:
         return [
