@@ -585,6 +585,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
             .get_nodes_with_overdue_payments.return_value = ['a', 'b']
         client.check_payments()
         trust.PAYMENT.decrease.assert_has_calls((call('a'), call('b')))
+        client.transaction_system \
+            .incomes_keeper \
+            .update_overdue_incomes.assert_called_once_with()
 
     @patch('golem.client.get_timestamp_utc')
     def test_clean_old_tasks_no_tasks(self, *_):

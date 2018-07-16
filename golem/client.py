@@ -1235,6 +1235,7 @@ class Client(HardwarePresetsMixin):
         self.p2pservice.push_local_rank(node_id, loc_rank)
 
     def check_payments(self):
+        self.transaction_system.incomes_keeper.update_overdue_incomes()
         after_deadline_nodes = \
             self.transaction_system.get_nodes_with_overdue_payments()
         for node_id in after_deadline_nodes:
