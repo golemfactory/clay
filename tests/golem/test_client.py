@@ -930,7 +930,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             {"price": 150,
              "subtask_time": 2.5,
              "num_subtasks": 5}
-        ) == 1875
+        ) == {
+            "GNT": 1875.0,
+            "ETH": 0.0001,
+        }
 
     @patch('golem.client.get_resources_for_task')
     def test_enqueue_new_task_from_type(self, *_):
