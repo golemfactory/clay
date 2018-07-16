@@ -175,15 +175,18 @@ class LocalComputer:
         os.makedirs(self.tmp_dir)
 
     def _get_task_thread(self, ctd: ComputeTaskDef) -> DockerTaskThread:
+        dir_mapping = DockerTaskThread.generate_dir_mapping(
+            resources=self.test_task_res_path,
+            temporary=self.tmp_dir,
+        )
         return DockerTaskThread(
             ctd['subtask_id'],
-            [DockerImage(**did) for did in ctd['docker_images']],
+            ctd['docker_images'],
             ctd['working_directory'],
             ctd['src_code'],
             ctd['extra_data'],
             ctd['short_description'],
-            self.test_task_res_path,
-            self.tmp_dir,
+            dir_mapping,
             0,
             check_mem=self.check_mem,
         )
