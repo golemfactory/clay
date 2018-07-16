@@ -48,6 +48,7 @@ class DockerDirMapping:
         return cls(resources, temporary, work, output, logs)
 
     def mkdirs(self, exist_ok: bool = True) -> None:
+        os.makedirs(self.resources, exist_ok=exist_ok)
         os.makedirs(self.temporary, exist_ok=exist_ok)
 
         self.work.mkdir(exist_ok=exist_ok)
