@@ -38,35 +38,18 @@ class FundsLocker(LoopingCallService):
             return
 
         tfl = TaskFundsLock(task)
-        _, gnt, eth, _, _ = self.transaction_system.get_balance()
-        lock_gnt, lock_eth = self.sum_locks()
-        logger.info('Locking funds for task: %r %r %r', task_id, lock_gnt,
-                    lock_eth)
-        if tfl.gnt_lock > gnt - lock_gnt:
-            raise NotEnoughFunds(tfl.gnt_lock, gnt - lock_gnt)
-
-        required_eth = \
-            self.transaction_system.eth_for_batch_payment(tfl.num_tasks)
-        if lock_eth == 0:
-            required_eth += self.transaction_system.eth_base_for_batch_payment()
-        if required_eth > eth - lock_eth:
-            raise NotEnoughFunds(required_eth, eth - lock_eth,
-                                 extension="ETH")
-
+        logger.info(
+            'Locking funds for task: %r price: %f num: %d',
+            task_id,
+            tfl.price,
+            tfl.num_tasks,
+        )
         self.task_lock[task_id] = tfl
         self.dump_locks()
-
-    def sum_locks(self):
-        gnt, eth = 0, 0
-        total_subtasks = 0
-        for task_lock in self.task_lock.values():
-            gnt += task_lock.gnt_lock
-            total_subtasks += task_lock.num_tasks
-        if total_subtasks > 0:
-            eth = \
-                self.transaction_system.eth_for_batch_payment(total_subtasks) +\
-                self.transaction_system.eth_base_for_batch_payment()
-        return gnt, eth
+        self.transaction_system.lock_funds_for_payments(
+            tfl.price,
+            tfl.num_tasks,
+        )
 
     def remove_old(self):
         time_ = time.time()
@@ -92,6 +75,14 @@ class FundsLocker(LoopingCallService):
                 return
         for task_id, task in self.task_lock.items():
             logger.info('Restoring old tasks locks: %r', task_id)
+            # Bandait solution for increasing gas price
+            try:
+                self.transaction_system.lock_funds_for_payments(
+                    task.price,
+                    task.num_tasks,
+                )
+            except NotEnoughFunds:
+                pass
 
     def dump_locks(self):
         if not self.persist:
@@ -108,6 +99,7 @@ class FundsLocker(LoopingCallService):
         logger.info('Removing subtask lock for task %r', task_id)
         task_lock.num_tasks -= 1
         self.dump_locks()
+        self.transaction_system.unlock_funds_for_payments(task_lock.price, 1)
 
     def remove_task(self, task_id):
         task_lock = self.task_lock.get(task_id)
@@ -118,3 +110,7 @@ class FundsLocker(LoopingCallService):
         logger.info('Removing task lock %r', task_id)
         del self.task_lock[task_id]
         self.dump_locks()
+        self.transaction_system.unlock_funds_for_payments(
+            task_lock.price,
+            task_lock.num_tasks,
+        )

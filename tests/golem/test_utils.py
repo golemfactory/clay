@@ -1,5 +1,7 @@
+import os
 import unittest
 
+from eth_utils import encode_hex, is_checksum_address
 import faker
 import semantic_version
 
@@ -46,3 +48,9 @@ class IsVersionCompatibleTest(unittest.TestCase):
 
     def test_invalid(self):
         self.assertFalse(utils.is_version_compatible(fake.word(), self.spec))  # noqa pylint: disable=no-member
+
+
+def test_pubkeytoaddr():
+    pubkey = encode_hex(os.urandom(64))
+    addr = utils.pubkeytoaddr(pubkey)
+    assert is_checksum_address(addr)

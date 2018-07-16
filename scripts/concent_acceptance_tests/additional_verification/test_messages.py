@@ -11,7 +11,7 @@ class SubtaskResultsVerifyTest(SubtaskResultsVerifyBaseTest):
         msg = self.provider_load_response(response)
         self.assertIsInstance(msg, concent_msg.ServiceRefused)
         self.assertEqual(
-            msg.REASON,
+            msg.reason,
             concent_msg.ServiceRefused.REASON.InvalidRequest
         )
 
@@ -21,16 +21,12 @@ class SubtaskResultsVerifyTest(SubtaskResultsVerifyBaseTest):
         msg = self.provider_load_response(response)
         self.assertIsInstance(msg, concent_msg.ServiceRefused)
         self.assertEqual(
-            msg.REASON,
+            msg.reason,
             concent_msg.ServiceRefused.REASON.TooSmallRequestorDeposit
         )
 
     def test_send(self):
-        price = self.init_deposits()
-        srv = self.get_correct_srv(**{
-            'subtask_results_rejected__report_computed_task__'
-            'task_to_compute__price': price,
-        })
+        srv = self.get_srv_with_deposit()
         response = self.provider_send(srv)
         msg = self.provider_load_response(response)
         self.assertIsInstance(msg, concent_msg.AckSubtaskResultsVerify)

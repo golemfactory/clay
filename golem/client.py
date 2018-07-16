@@ -3,6 +3,7 @@
 import collections
 import json
 import logging
+import random
 import sys
 import time
 import uuid
@@ -12,6 +13,7 @@ from pathlib import Path
 from threading import Lock
 from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
+from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -25,7 +27,14 @@ from apps.rendering.task import framerenderingtask
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL, AppConfig)
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
-from golem.config.active import ENABLE_WITHDRAWALS, ACTIVE_NET
+from golem.config.active import (
+    ENABLE_WITHDRAWALS,
+    ACTIVE_NET,
+    ETHEREUM_NODE_LIST,
+    FALLBACK_NODE_LIST,
+    ETHEREUM_CHAIN,
+    ETHEREUM_FAUCET_ENABLED,
+)
 from golem.config.presets import HardwarePresetsMixin
 from golem.core import variables
 from golem.core.async import AsyncRequest, async_run
@@ -76,10 +85,6 @@ from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
 from golem.transactions.ethereum.fundslocker import FundsLocker
 
-# Minimum num_workers is 4 to avoid delayed start in case of
-# task with very few subtasks (for small number of subtasks it is
-# likable that initial mask would rule out all the nodes)
-MIN_NUM_WORKERS_FOR_MASK = 4
 
 logger = logging.getLogger(__name__)
 
@@ -111,8 +116,6 @@ class Client(HardwarePresetsMixin):
             use_monitor: bool = True,
             # SEE: golem.core.variables.CONCENT_CHOICES
             concent_variant: dict = variables.CONCENT_CHOICES['disabled'],
-            start_geth: bool = False,
-            start_geth_port: Optional[int] = None,
             geth_address: Optional[str] = None,
             apps_manager: AppsManager = AppsManager(),
             task_finished_cb=None) -> None:
@@ -189,12 +192,18 @@ class Client(HardwarePresetsMixin):
 
         self.ranking = Ranking(self)
 
+        if geth_address:
+            geth_addresses = [geth_address]
+        else:
+            geth_addresses = ETHEREUM_NODE_LIST
+            random.shuffle(geth_addresses)
+            geth_addresses += FALLBACK_NODE_LIST
         self.transaction_system = EthereumTransactionSystem(
             datadir,
             self.keys_auth._private_key,
-            start_geth=start_geth,
-            start_port=start_geth_port,
-            address=geth_address,
+            geth_addresses,
+            ETHEREUM_CHAIN,
+            ETHEREUM_FAUCET_ENABLED,
         )
         self.transaction_system.start()
 
@@ -260,7 +269,18 @@ class Client(HardwarePresetsMixin):
             'taskmanager_listen (sender: %r, signal: %r, event: %r, args: %r)',
             sender, signal, event, kwargs
         )
-        self._publish(Task.evt_task_status, kwargs['task_id'])
+
+        op = kwargs['op'] if 'op' in kwargs else None
+
+        if op is not None and op.subtask_related():
+            self._publish(Task.evt_subtask_status, kwargs['task_id'],
+                          kwargs['subtask_id'], op.value)
+        else:
+            op_class_name: str = op.__class__.__name__ \
+                                 if op is not None else None
+            op_value: int = op.value if op is not None else None
+            self._publish(Task.evt_task_status, kwargs['task_id'],
+                          op_class_name, op_value)
 
     @report_calls(Component.client, 'sync')
     def sync(self):
@@ -565,7 +585,6 @@ class Client(HardwarePresetsMixin):
             self.transaction_system.concent_deposit(
                 required=min_amount,
                 expected=opt_amount,
-                reserved=self.funds_locker.sum_locks()[0],
             )
 
         task_id = task.header.task_id
@@ -583,10 +602,15 @@ class Client(HardwarePresetsMixin):
                 num_workers = max(
                     task.get_total_tasks() *
                     self.config_desc.initial_mask_size_factor,
-                    MIN_NUM_WORKERS_FOR_MASK)
+                    self.config_desc.min_num_workers_for_mask)
                 task.header.mask = Mask.get_mask_for_task(
                     desired_num_workers=num_workers,
                     network_size=self.p2pservice.get_estimated_network_size()
+                )
+                logger.info(
+                    f'Task {task_id} '
+                    f'initial mask size: {task.header.mask.num_bits} '
+                    f'expected number of providers: {num_workers}'
                 )
             else:
                 task.header.mask = Mask()
@@ -900,15 +924,31 @@ class Client(HardwarePresetsMixin):
             return len(self.task_server.task_keeper.get_all_tasks())
         return 0
 
-    def get_task(self, task_id):
-        return self.task_server.task_manager.get_task_dict(task_id)
+    def get_task(self, task_id: str) -> Optional[dict]:
+        assert isinstance(self.task_server, TaskServer)
 
-    def get_tasks(self, task_id=None):
-        if self.task_server:
-            if task_id:
-                return self.task_server.task_manager.get_task_dict(task_id)
-            return self.task_server.task_manager.get_tasks_dict()
-        return []
+        task_dict = self.task_server.task_manager.get_task_dict(task_id)
+        if not task_dict:
+            return None
+
+        task_state = self.task_server.task_manager.query_task_state(task_id)
+        subtask_ids = list(task_state.subtask_states.keys())
+        task_dict['cost'], task_dict['fee'] = \
+            self.transaction_system.get_total_payment_for_subtasks(subtask_ids)
+        return task_dict
+
+    def get_tasks(self, task_id: Optional[str] = None) \
+            -> Union[Optional[dict], Iterable[dict]]:
+        if not self.task_server:
+            return []
+
+        if task_id:
+            return self.get_task(task_id)
+
+        task_ids = list(self.task_server.task_manager.tasks.keys())
+        tasks = (self.get_task(task_id) for task_id in task_ids)
+        # Filter Nones because get_task returns Optional[dict]
+        return list(filter(None, tasks))
 
     def get_subtasks(self, task_id: str) \
             -> Optional[List[Dict]]:
@@ -984,21 +1024,20 @@ class Client(HardwarePresetsMixin):
             return self.task_server.task_computer.stats.get_stats(name)
         return None, None
 
-    @inlineCallbacks
     def get_balance(self):
-        gnt, av_gnt, eth, \
-            last_gnt_update, \
-            last_eth_update = yield self.transaction_system.get_balance()
-        gnt_lock, eth_lock = self.funds_locker.sum_locks()
-        if gnt is not None:
-            return {'gnt': str(gnt),
-                    'av_gnt': str(av_gnt),
-                    'eth': str(eth),
-                    'gnt_lock': str(gnt_lock),
-                    'eth_lock': str(eth_lock),
-                    'last_gnt_update': str(last_gnt_update),
-                    'last_eth_update': str(last_eth_update)}
-        return None
+        balances = self.transaction_system.get_balance()
+        gnt_total = balances['gnt_available'] + balances['gnt_nonconverted']
+        return {
+            'av_gnt': str(balances['gnt_available']),
+            'gnt': str(gnt_total),
+            'gnt_lock': str(balances['gnt_locked']),
+            'gnt_nonconverted': str(balances['gnt_nonconverted']),
+            'eth': str(balances['eth_available']),
+            'eth_lock': str(balances['eth_locked']),
+            'block_number': str(balances['block_number']),
+            'last_gnt_update': str(balances['gnt_update_time']),
+            'last_eth_update': str(balances['eth_update_time']),
+        }
 
     def get_payments_list(self):
         return self.transaction_system.get_payments_list()
@@ -1030,17 +1069,10 @@ class Client(HardwarePresetsMixin):
 
         if isinstance(amount, str):
             amount = int(amount)
-        gnt_lock, eth_lock = self.funds_locker.sum_locks()
-        if currency == 'GNT':
-            lock = gnt_lock
-        else:
-            lock = eth_lock
-
         return self.transaction_system.withdraw(
             amount,
             destination,
             currency,
-            lock,
         )
 
     # It's defined here only for RPC exposure in
@@ -1254,11 +1286,17 @@ class Client(HardwarePresetsMixin):
         taskpreset.delete_task_preset(task_type, preset_name)
 
     def get_estimated_cost(self, task_type, options):
+        if self.task_server is None:
+            raise Exception('Cannot estimate costs')
         options['price'] = float(options['price'])
         options['subtask_time'] = float(options['subtask_time'])
         options['num_subtasks'] = int(options['num_subtasks'])
-        return self.task_server.task_manager.get_estimated_cost(task_type,
-                                                                options)
+        return {
+            'GNT': self.task_server.task_manager.get_estimated_cost(task_type,
+                                                                    options),
+            'ETH': float(self.transaction_system.eth_for_batch_payment(
+                options['num_subtasks']) / denoms.ether),
+        }
 
     def get_performance_values(self):
         return self.environments_manager.get_performance_values()
