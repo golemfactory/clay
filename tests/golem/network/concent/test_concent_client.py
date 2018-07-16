@@ -425,11 +425,10 @@ class OverdueIncomeTestCase(testutils.DatabaseFixture):
     def setUp(self):
         super().setUp()
         gc.collect()
-        for receiver in dispatcher.getReceivers(signal='golem.income'):
-            dispatcher.disconnect(
-                receiver(),
-                signal='golem.income',
-            )
+        # unfortunately dispatcher.disconnect won't do the job
+        dispatcher.connections = {}
+        dispatcher.senders = {}
+        dispatcher.sendersBack = {}
         self.concent_service = client.ConcentClientService(
             keys_auth=keysauth.KeysAuth(
                 datadir=self.path,
