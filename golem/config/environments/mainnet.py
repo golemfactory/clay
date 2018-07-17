@@ -19,27 +19,30 @@ os.environ[CONCENT_ENVIRONMENT_VARIABLE] = os.environ.get(
     CONCENT_ENVIRONMENT_VARIABLE, 'disabled'
 )
 
+
 # ETH
 
-ETHEREUM_NODE_LIST = [
-    'https://geth.golem.network:55555',
-    'https://0.geth.golem.network:55555',
-    'https://1.geth.golem.network:55555',
-    'https://2.geth.golem.network:55555',
-    'https://geth.golem.network:2137',
-    'https://0.geth.golem.network:2137',
-    'https://1.geth.golem.network:2137',
-    'https://2.geth.golem.network:2137',
-]
+class EthereumConfig:
+    NODE_LIST = [
+        'https://geth.golem.network:55555',
+        'https://0.geth.golem.network:55555',
+        'https://1.geth.golem.network:55555',
+        'https://2.geth.golem.network:55555',
+        'https://geth.golem.network:2137',
+        'https://0.geth.golem.network:2137',
+        'https://1.geth.golem.network:2137',
+        'https://2.geth.golem.network:2137',
+    ]
 
-FALLBACK_NODE_LIST = [
-    'https://proxy.geth.golem.network:2137',
-]
+    FALLBACK_NODE_LIST = [
+        'https://proxy.geth.golem.network:2137',
+    ]
 
-ETHEREUM_CHAIN = MAINNET
-ETHEREUM_FAUCET_ENABLED = False
+    CHAIN = MAINNET
+    FAUCET_ENABLED = False
 
-ENABLE_WITHDRAWALS = True
+    WITHDRAWALS_ENABLED = True
+
 
 # P2P
 

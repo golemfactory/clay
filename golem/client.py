@@ -28,12 +28,8 @@ from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL, AppConfig)
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.config.active import (
-    ENABLE_WITHDRAWALS,
     ACTIVE_NET,
-    ETHEREUM_NODE_LIST,
-    FALLBACK_NODE_LIST,
-    ETHEREUM_CHAIN,
-    ETHEREUM_FAUCET_ENABLED,
+    EthereumConfig,
 )
 from golem.config.presets import HardwarePresetsMixin
 from golem.core import variables
@@ -192,18 +188,10 @@ class Client(HardwarePresetsMixin):
 
         self.ranking = Ranking(self)
 
-        if geth_address:
-            geth_addresses = [geth_address]
-        else:
-            geth_addresses = ETHEREUM_NODE_LIST
-            random.shuffle(geth_addresses)
-            geth_addresses += FALLBACK_NODE_LIST
         self.transaction_system = EthereumTransactionSystem(
             datadir,
             self.keys_auth._private_key,
-            geth_addresses,
-            ETHEREUM_CHAIN,
-            ETHEREUM_FAUCET_ENABLED,
+            EthereumConfig,
         )
         self.transaction_system.start()
 
@@ -1063,10 +1051,6 @@ class Client(HardwarePresetsMixin):
             amount: Union[str, int],
             destination: str,
             currency: str) -> List[str]:
-
-        if not ENABLE_WITHDRAWALS:
-            raise Exception("Withdrawals are disabled on {}".format(ACTIVE_NET))
-
         if isinstance(amount, str):
             amount = int(amount)
         return self.transaction_system.withdraw(

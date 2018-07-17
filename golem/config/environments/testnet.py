@@ -20,23 +20,25 @@ os.environ[CONCENT_ENVIRONMENT_VARIABLE] = os.environ.get(
     CONCENT_ENVIRONMENT_VARIABLE, 'test'
 )
 
+
 # ETH
 
-ETHEREUM_NODE_LIST = [
-    'https://rinkeby.golem.network:55555',
-    'http://188.165.227.180:55555',
-    'http://94.23.17.170:55555',
-    'http://94.23.57.58:55555',
-]
+class EthereumConfig:
+    NODE_LIST = [
+        'https://rinkeby.golem.network:55555',
+        'http://188.165.227.180:55555',
+        'http://94.23.17.170:55555',
+        'http://94.23.57.58:55555',
+    ]
 
-FALLBACK_NODE_LIST: List[str] = [
+    FALLBACK_NODE_LIST: List[str] = [
+    ]
 
-]
+    CHAIN = RINKEBY
+    FAUCET_ENABLED = True
 
-ETHEREUM_CHAIN = RINKEBY
-ETHEREUM_FAUCET_ENABLED = True
+    WITHDRAWALS_ENABLED = False
 
-ENABLE_WITHDRAWALS = False
 
 # P2P
 
