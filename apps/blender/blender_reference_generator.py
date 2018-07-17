@@ -47,7 +47,7 @@ class BlenderReferenceGenerator:
     CROPS_NO_FIRST = 3
     CROPS_NO_SECOND = 6
 
-    def __init__(self, computer: ComputerAdapter = None):
+    def __init__(self, computer: Optional[ComputerAdapter] = None) -> None:
         self.computer = computer or ComputerAdapter()
         self.crop_counter: int = 0
         self.crop_size: Tuple[float, float] = ()

@@ -37,8 +37,7 @@ class DockerImage(object):
         if isinstance(di, tuple):
             if len(di) == 2:
                 return DockerImage(repository=di[0], tag=di[1])
-            else:
-                return DockerImage(*di)
+            return DockerImage(*di)
         elif isinstance(di, dict):
             return DockerImage(**di)
         return di

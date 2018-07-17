@@ -30,8 +30,10 @@ class ImageException(RuntimeError):
 
 class DockerDirMapping:
 
-    def __init__(self, resources: str, temporary: str,
+    def __init__(self,   # pylint: disable=too-many-arguments
+                 resources: str, temporary: str,
                  work: Path, output: Path, logs: Path) -> None:
+
         self.resources = resources
         self.temporary = temporary
 
@@ -73,7 +75,7 @@ class DockerTaskThread(TaskThread):
                  short_desc: str,
                  dir_mapping: DockerDirMapping,
                  timeout: int,
-                 check_mem: bool = False):
+                 check_mem: bool = False) -> None:
 
         if not docker_images:
             raise AttributeError("docker images is None")
@@ -91,7 +93,7 @@ class DockerTaskThread(TaskThread):
                 self.image = img
                 break
 
-        self.job = None
+        self.job: Optional[DockerJob] = None
         self.check_mem = check_mem
         self.dir_mapping = dir_mapping
 
@@ -151,13 +153,13 @@ class DockerTaskThread(TaskThread):
 
         with DockerJob(**params) as job, MemoryChecker(self.check_mem) as mc:
             self.job = job
-            self.job.start()
+            job.start()
 
-            exit_code = self.job.wait()
+            exit_code = job.wait()
             estm_mem = mc.estm_mem
 
-            self.job.dump_logs(str(self.dir_mapping.logs / self.STDOUT_FILE),
-                               str(self.dir_mapping.logs / self.STDERR_FILE))
+            job.dump_logs(str(self.dir_mapping.logs / self.STDOUT_FILE),
+                          str(self.dir_mapping.logs / self.STDERR_FILE))
 
             if exit_code != 0:
                 std_err = (self.dir_mapping.logs / self.STDERR_FILE).read_text()
