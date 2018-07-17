@@ -615,7 +615,9 @@ class Client(HardwarePresetsMixin):
             else:
                 task.header.mask = Mask()
 
-            task_manager.add_new_task(task)
+            estimated_fee = self.transaction_system.eth_for_batch_payment(
+                task.total_tasks)
+            task_manager.add_new_task(task, estimated_fee=estimated_fee)
 
             client_options = self.task_server.get_share_options(task_id, None)
             client_options.timeout = deadline_to_timeout(task.header.deadline)
@@ -935,6 +937,12 @@ class Client(HardwarePresetsMixin):
         subtask_ids = list(task_state.subtask_states.keys())
         task_dict['cost'], task_dict['fee'] = \
             self.transaction_system.get_total_payment_for_subtasks(subtask_ids)
+
+        # Convert to string because RPC serializer fails on big numbers
+        for k in ('cost', 'fee', 'estimated_cost', 'estimated_fee'):
+            if task_dict[k] is not None:
+                task_dict[k] = str(task_dict[k])
+
         return task_dict
 
     def get_tasks(self, task_id: Optional[str] = None) \

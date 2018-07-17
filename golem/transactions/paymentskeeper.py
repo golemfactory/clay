@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Iterable, Tuple
+from typing import Iterable, Tuple, Optional
 
 from eth_utils import encode_hex
 
@@ -34,23 +34,30 @@ class PaymentsDatabase(object):
 
     @staticmethod
     def get_total_payment_for_subtasks(subtask_ids: Iterable[str])\
-            -> Tuple[int, int]:
+            -> Tuple[Optional[int], Optional[int]]:
         """
-        Get total value and total fee for confirmed payments for the given
-        subtask IDs
+        Get total value and total fee for payments for the given subtask IDs
+        **if all payments for the given subtasks are sent**
         :param subtask_ids: subtask IDs
-        :return: (total_value, total_fee)
+        :return: (total_value, total_fee) if all payments are sent,
+                (None, None) otherwise
         """
         payments = Payment.select(
             Payment.value,
-            Payment.details
+            Payment.details,
+            Payment.status
         ).where(
             Payment.subtask.in_(subtask_ids),
-            Payment.status == PaymentStatus.confirmed
         )
+        all_sent = all(
+            p.status in [PaymentStatus.sent, PaymentStatus.confirmed]
+            for p in payments)
+        if not payments or not all_sent:
+            return None, None
+
         # Because details are JSON field
-        return sum(p.value for p in payments), \
-            sum(p.details.fee for p in payments)
+        return sum(p.value or 0 for p in payments), \
+            sum(p.details.fee or 0 for p in payments)
 
     def add_payment(self, payment_info):
         """ Add new payment to the database.
@@ -129,12 +136,13 @@ class PaymentsKeeper:
         return self.db.get_payment_for_subtask(subtask_id)
 
     def get_total_payment_for_subtasks(self, subtask_ids: Iterable[str]) \
-            -> Tuple[int, int]:
+            -> Tuple[Optional[int], Optional[int]]:
         """
-        Get total value and total fee for confirmed payments for the given
-        subtask IDs
+        Get total value and total fee for payments for the given subtask IDs
+        **if all payments for the given subtasks are sent**
         :param subtask_ids: subtask IDs
-        :return: (total_value, total_fee)
+        :return: (total_value, total_fee) if all payments are sent,
+                (None, None) otherwise
         """
         return self.db.get_total_payment_for_subtasks(subtask_ids)
 
