@@ -35,7 +35,7 @@ class EthereumTransactionSystem(TransactionSystem):
             self,
             datadir: str,
             node_priv_key: bytes,
-            config: 'EthereumConfig') -> None:
+            config) -> None:
         try:
             eth_addr = \
                 to_checksum_address(encode_hex(privtoaddr(node_priv_key)))
