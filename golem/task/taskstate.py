@@ -23,6 +23,8 @@ class TaskState(object):
         self.package_size = None
         self.extra_data = {}
         self.last_update_time = time.time()
+        self.estimated_cost = 0
+        self.estimated_fee = 0
 
     def __setattr__(self, key, value):
         super().__setattr__(key, value)
@@ -37,7 +39,9 @@ class TaskState(object):
             'time_started': self.time_started,
             'time_remaining': self.remaining_time,
             'last_updated': getattr(self, 'last_update_time', None),
-            'status': self.status.value
+            'status': self.status.value,
+            'estimated_cost': getattr(self, 'estimated_cost', None),
+            'estimated_fee': getattr(self, 'estimated_fee', None)
         }
 
 
