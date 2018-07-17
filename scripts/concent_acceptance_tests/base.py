@@ -8,7 +8,6 @@ import os
 import random
 import sys
 import tempfile
-import typing
 import time
 import unittest
 
@@ -24,7 +23,6 @@ from golem_messages.message.base import Message
 from golem_messages.message import concents as concent_msg
 
 from golem_sci import new_sci_rpc, SmartContractsInterface
-from golem_sci.gntconverter import GNTConverter
 
 from golem.config.environments.testnet import (
     ETHEREUM_NODE_LIST, ETHEREUM_CHAIN)
