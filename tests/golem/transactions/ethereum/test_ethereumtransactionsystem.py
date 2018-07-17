@@ -86,9 +86,9 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         new_sci.assert_called_once_with(
             ANY,
             ANY,
-            ANY,
-            ANY,
             'test_chain',
+            ANY,
+            ANY,
         )
 
     def test_get_withdraw_gas_cost(self):
