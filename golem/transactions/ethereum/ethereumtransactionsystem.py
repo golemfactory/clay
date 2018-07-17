@@ -1,4 +1,5 @@
 import logging
+import random
 import time
 from enum import Enum
 from datetime import datetime
@@ -32,13 +33,11 @@ class EthereumTransactionSystem(TransactionSystem):
 
     TX_FILENAME: ClassVar[str] = 'transactions.json'
 
-    def __init__(  # noqa pylint: disable=too-many-arguments
+    def __init__(
             self,
             datadir: str,
             node_priv_key: bytes,
-            geth_addresses: List[str],
-            ethereum_chain: str,
-            faucet_enabled: bool) -> None:
+            config) -> None:
         try:
             eth_addr = \
                 to_checksum_address(encode_hex(privtoaddr(node_priv_key)))
@@ -46,16 +45,21 @@ class EthereumTransactionSystem(TransactionSystem):
             raise ValueError("not a valid private key")
         log.info("Node Ethereum address: %s", eth_addr)
 
-        self._node = NodeProcess(geth_addresses)
+        self._config = config
+
+        node_list = config.NODE_LIST.copy()
+        random.shuffle(node_list)
+        node_list += config.FALLBACK_NODE_LIST
+        self._node = NodeProcess(node_list)
         self._node.start()
+
         self._sci = new_sci(
             self._node.web3,
             eth_addr,
-            ethereum_chain,
+            config.CHAIN,
             JsonTransactionsStorage(Path(datadir) / self.TX_FILENAME),
             lambda tx: tx.sign(node_priv_key),
         )
-        self._faucet = faucet_enabled
         self._gnt_faucet_requested = False
 
         self._gnt_conversion_status = ConversionStatus.NONE
@@ -201,6 +205,9 @@ class EthereumTransactionSystem(TransactionSystem):
             amount: int,
             destination: str,
             currency: str) -> List[str]:
+        if not self._config.WITHDRAWALS_ENABLED:
+            raise Exception("Withdrawals are disabled")
+
         if not is_address(destination):
             raise ValueError("{} is not valid ETH address".format(destination))
 
@@ -268,7 +275,7 @@ class EthereumTransactionSystem(TransactionSystem):
         self._sci.on_transaction_confirmed(tx_hash, transaction_receipt)
 
     def _get_funds_from_faucet(self) -> None:
-        if not self._faucet:
+        if not self._config.FAUCET_ENABLED:
             return
         if self._eth_balance < 0.01 * denoms.ether:
             log.info("Requesting tETH from faucet")
