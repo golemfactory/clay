@@ -22,7 +22,7 @@ os.environ[CONCENT_ENVIRONMENT_VARIABLE] = os.environ.get(
 
 # ETH
 
-class EthereumConfig:
+class EthereumConfig:  # pylint:disable=too-few-public-methods
     NODE_LIST = [
         'https://geth.golem.network:55555',
         'https://0.geth.golem.network:55555',
