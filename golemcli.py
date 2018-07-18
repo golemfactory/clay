@@ -23,6 +23,7 @@ from golem.interface.client.resources import Resources  # noqa
 from golem.interface.client.settings import Settings  # noqa
 from golem.interface.client.tasks import Tasks, Subtasks  # noqa
 from golem.interface.client.terms import Terms  # noqa
+from golem.interface.client.test_task import TestTask  # noqa
 from golem.interface.websockets import WebSocketCLI  # noqa
 
 

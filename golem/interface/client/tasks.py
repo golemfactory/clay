@@ -2,7 +2,6 @@
 
 from datetime import timedelta
 import json
-import re
 from typing import Any, Optional
 
 from apps.core.task.coretaskstate import TaskDefinition
@@ -191,43 +190,7 @@ class Tasks:
         return '{:.2f} %'.format(progress * 100.0)
 
     def __create_from_json(self, jsondata: str) -> Any:
-        task_name = ""
         dictionary = json.loads(jsondata)
-        if 'name' in dictionary.keys():
-            dictionary['name'] = dictionary['name'].strip()
-            task_name = dictionary['name']
-        if (len(task_name) < 4 or len(task_name) > 24):
-            raise ValueError(
-                "Length of task name cannot be less "
-                "than 4 or more than 24 characters.")
-        if not re.match(r"(\w|[\-\. ])+$", task_name):
-            raise ValueError(
-                "Task name can only contain letters, numbers, "
-                "spaces, underline, dash or dot.")
-        if 'id' in dictionary:
-            print("Warning: discarding the UUID from the preset")
-
-        subtasks = dictionary.get('subtasks', 0)
-        options = dictionary.get('options', {})
-        optimize_total = bool(options.get('optimize_total', False))
-        if subtasks and not optimize_total:
-            computed_subtasks = sync_wait(
-                Tasks.client.get_subtasks_count(
-                    total_subtasks=subtasks,
-                    optimize_total=False,
-                    use_frames=options.get('frame_count', 1) > 1,
-                    frames=[None]*options.get('frame_count', 1),
-                ),
-                CREATE_TASK_TIMEOUT,
-            )
-            if computed_subtasks != subtasks:
-                raise ValueError(
-                    "Subtasks count {:d} is invalid."
-                    " Maybe use {:d} instead?".format(
-                        subtasks,
-                        computed_subtasks,
-                    )
-                )
         deferred = Tasks.client.create_task(dictionary)
         return sync_wait(deferred, CREATE_TASK_TIMEOUT)
 

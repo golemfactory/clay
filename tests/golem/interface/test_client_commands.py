@@ -562,23 +562,9 @@ class TestTasks(TempDirFixture):
         with client_ctx(Tasks, client):
             tasks = Tasks()
             tasks._Tasks__create_from_json(def_str)
-            task_def = json.loads(def_str)
-            client.create_task.assert_called_with(task_def)
+            client.create_task.assert_called_with(definition.to_dict())
 
             patched_open = "golem.interface.client.tasks.open"
-            with patch(patched_open, mock_open(read_data='{}')):
-                self.assertRaises(ValueError, partial(tasks.create, "foo"))
-
-            with patch(patched_open, mock_open(
-                read_data='{"name": "This name has 27 characters"}'
-            )):
-                self.assertRaises(ValueError, partial(tasks.create, "foo"))
-
-            with patch(patched_open, mock_open(
-                read_data='{"name": "Golem task/"}'
-            )):
-                self.assertRaises(ValueError, partial(tasks.create, "foo"))
-
             with patch(patched_open, mock_open(
                 read_data='{"name": "Golem task"}'
             )):
