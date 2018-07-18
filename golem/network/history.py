@@ -328,8 +328,8 @@ def add(msg: message.base.Message,
 def get(
         message_class_name: str,
         subtask_id: str,
-        task_id: Optional[str] = None,  # deprecated
-        node_id: Optional[str] = None)\
+        node_id: Optional[str] = None,
+        task_id: Optional[str] = None) \
         -> Optional[message.Message]:
     #  FIXME: Use node_id in queries
     #         https://github.com/golemfactory/golem/issues/2670
