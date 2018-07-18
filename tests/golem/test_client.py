@@ -28,7 +28,6 @@ from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
-from golem.model import Performance
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
@@ -571,7 +570,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.client.Trust', autospec=True)
     def test_check_payments(self, trust, *_):
 
-        client = Client(
+        self.client = client = Client(
             datadir=self.path,
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
@@ -585,9 +584,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
             .get_nodes_with_overdue_payments.return_value = ['a', 'b']
         client.check_payments()
         trust.PAYMENT.decrease.assert_has_calls((call('a'), call('b')))
-        client.transaction_system \
-            .incomes_keeper \
-            .update_overdue_incomes.assert_called_once_with()
 
     @patch('golem.client.get_timestamp_utc')
     def test_clean_old_tasks_no_tasks(self, *_):
@@ -1121,7 +1117,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                       side_effect=raise_exc), \
                 self.assertRaisesRegex(Exception, 'Test exception'):
             sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
-
 
     def test_config_changed(self, *_):
         c = self.client
