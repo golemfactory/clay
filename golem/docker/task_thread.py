@@ -155,7 +155,7 @@ class DockerTaskThread(TaskThread):
             self.job = job
             job.start()
 
-            exit_code = job.wait()
+            exit_code = job.wait().get('StatusCode')
             estm_mem = mc.estm_mem
 
             job.dump_logs(str(self.dir_mapping.logs / self.STDOUT_FILE),
