@@ -110,8 +110,6 @@ class DockerJob(object):
         cpuset = container_config.pop('cpuset', None)
         container_config = {}
 
-        docker_env = EnvironmentsManager().get_environment_by_image(self.image)
-
         volumes = [self.WORK_DIR, self.RESOURCES_DIR, self.OUTPUT_DIR]
         binds = {
             posix_path(self.work_dir): {
@@ -135,15 +133,26 @@ class DockerJob(object):
         else:
             environment = dict(LOCAL_USER_ID=os.getuid())
 
-        environment.update(docker_env.get_environment_variables())
-        binds.update(docker_env.get_binds())
-        volumes += docker_env.get_volumes()
+        docker_env = EnvironmentsManager().get_environment_by_image(self.image)
+
+        if docker_env:
+            environment.update(docker_env.get_environment_variables())
+            binds.update(docker_env.get_binds())
+            volumes += docker_env.get_volumes()
+
+            devices = docker_env.get_devices()
+            runtime = docker_env.get_runtime()
+        else:
+            logger.debug('No Docker environment found for image %r', self.image)
+
+            devices = None
+            runtime = None
 
         host_cfg = client.api.create_host_config(
             cpuset_cpus=cpuset,
-            devices=docker_env.get_devices(),
+            devices=devices,
             binds=binds,
-            runtime=docker_env.get_runtime(),
+            runtime=runtime,
             **container_config
         )
 
