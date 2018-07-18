@@ -269,7 +269,7 @@ class DockerJob(object):
         """
         if self.get_status() in [self.STATE_RUNNING, self.STATE_EXITED]:
             client = local_client()
-            return client.api.wait(self.container_id, timeout)
+            return client.api.wait(self.container_id, timeout).get('StatusCode')
         logger.debug("Cannot wait for container {}, status = {}"
                      .format(self.container_id, self.get_status()))
         return -1
