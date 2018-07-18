@@ -29,6 +29,7 @@ from golem.core.deferred import sync_wait
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.network.p2p.node import Node
+from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
@@ -652,6 +653,82 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.clean_old_tasks()
         self.client.delete_task.assert_called_once_with('old_task')
 
+    def test_get_mask_for_task(self, *_):
+        client = Client(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
+            database=Mock(),
+            connect_to_known_hosts=False,
+            use_docker_manager=False,
+            use_monitor=False
+        )
+
+        def _check(  # pylint: disable=too-many-arguments
+                num_tasks=0,
+                network_size=0,
+                mask_size_factor=1.0,
+                min_num_workers=0,
+                perf_rank=0.0,
+                exp_desired_workers=0,
+                exp_potential_workers=0):
+
+            client.config_desc.initial_mask_size_factor = mask_size_factor
+            client.config_desc.min_num_workers_for_mask = min_num_workers
+
+            with patch.object(client, 'p2pservice', spec=P2PService) as p2p, \
+                    patch.object(client, 'task_server', spec=TaskServer), \
+                    patch('golem.client.Mask') as mask:
+
+                p2p.get_estimated_network_size.return_value = network_size
+                p2p.get_performance_percentile_rank.return_value = perf_rank
+
+                task = MagicMock()
+                task.get_total_tasks.return_value = num_tasks
+
+                client._get_mask_for_task(task)
+
+                mask.get_mask_for_task.assert_called_once_with(
+                    desired_num_workers=exp_desired_workers,
+                    potential_num_workers=exp_potential_workers
+                )
+
+        _check()
+
+        _check(
+            num_tasks=1,
+            exp_desired_workers=1)
+
+        _check(
+            num_tasks=2,
+            mask_size_factor=2,
+            exp_desired_workers=4)
+
+        _check(
+            min_num_workers=10,
+            exp_desired_workers=10)
+
+        _check(
+            num_tasks=2,
+            mask_size_factor=5,
+            min_num_workers=4,
+            exp_desired_workers=10)
+
+        _check(
+            network_size=1,
+            exp_potential_workers=1)
+
+        _check(
+            network_size=1,
+            perf_rank=1,
+            exp_potential_workers=0)
+
+        _check(
+            network_size=10,
+            perf_rank=0.2,
+            exp_potential_workers=8)
+
 
 class TestDoWorkService(TestWithReactor):
 
@@ -1119,7 +1196,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                       side_effect=raise_exc), \
                 self.assertRaisesRegex(Exception, 'Test exception'):
             sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
-
 
     def test_config_changed(self, *_):
         c = self.client

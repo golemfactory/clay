@@ -469,3 +469,9 @@ class TestP2PService(TestDatabaseWithReactor):
                                                    pub_port)
         assert SocketAddress(address, prv_port) in result
         assert SocketAddress(address, pub_port) in result
+
+    @mock.patch('golem.network.p2p.p2pservice.PERFORMANCE_STATS', (1, 2, 3, 4))
+    def test_get_performance_percentile_rank(self):
+        self.assertEqual(self.service.get_performance_percentile_rank(0), 0.0)
+        self.assertEqual(self.service.get_performance_percentile_rank(2), 0.5)
+        self.assertEqual(self.service.get_performance_percentile_rank(4), 1.0)
