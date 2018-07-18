@@ -44,7 +44,8 @@ class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
         return self.check_docker_images().join(Environment.check_support(self))
 
     def supports_image(self, docker_image: DockerImage) -> bool:
-        return self.DOCKER_IMAGE == docker_image.repository
+        return any(image.repository == docker_image.repository
+                   for image in self.docker_images)
 
     def description(self):
         descr = Environment.description(self)

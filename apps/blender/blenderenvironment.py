@@ -33,9 +33,11 @@ class BlenderNVGPUEnvironment(BlenderEnvironment):
     DOCKER_TAG = "1.0"
     SHORT_DESCRIPTION = "Blender NVGPU (www.blender.org)"
 
-    def supports_image(self, docker_image: DockerImage) -> bool:
-        return super().supports_image(docker_image) or \
-            super().DOCKER_IMAGE == docker_image.repository
+    def __init__(self) -> None:
+        super().__init__(additional_images=[DockerImage(
+            repository=BlenderEnvironment.DOCKER_IMAGE,
+            tag=BlenderEnvironment.DOCKER_TAG,
+        )])
 
     def get_volumes(self) -> List[str]:
         return [
