@@ -80,6 +80,17 @@ class ResourceHandshakeSessionMixin:
         :return:
         """
 
+        print('request_task')
+        from pathlib import Path
+        import tempfile
+        import os
+        fd, agent_pubkey_filename = tempfile.mkstemp(suffix=".pem")
+        os.close(fd)
+        from golem.sgx.agent import init_agent
+        init_agent(Path(agent_pubkey_filename))
+        with open(agent_pubkey_filename) as f:
+            sgx_key = f.read()
+
         key_id = self.key_id
         task_header = self.task_server.task_keeper.task_headers[task_id]
         if not self.task_server.client.concent_service.enabled:
@@ -100,6 +111,9 @@ class ResourceHandshakeSessionMixin:
             concent_enabled=concent_enabled,
             provider_public_key=self.task_server.get_key_id(),
             provider_ethereum_public_key=self.task_server.get_key_id(),
+            extra_data={
+                'sgx_key': sgx_key,
+            },
         )
 
         if self._is_peer_blocked(key_id):

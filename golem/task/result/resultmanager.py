@@ -57,6 +57,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
 
         def package_downloaded(*args, **kwargs):
             request = AsyncRequest(self.extract, file_path,
+                                   task_id=task_id, subtask_id=subtask_id,
                                    output_dir=output_dir,
                                    key_or_secret=key_or_secret)
             async_run(request, package_extracted, error)
@@ -113,8 +114,24 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
         if not key_or_secret:
             raise ValueError("Empty key / secret")
 
+        print(self.get_file_name_and_path(kwargs['task_id'], kwargs['subtask_id']))  # noqa
+
         packager = self.package_class(key_or_secret)
-        return packager.extract(path, output_dir=output_dir)
+
+        import tempfile
+        from pathlib import Path
+        tmpdir = tempfile.mkdtemp()
+        res = packager.extract(path, output_dir=tmpdir)
+        print('ExtractedPackage', res)
+        from golem.sgx.agent import decrypt_file
+        decrypt_file(
+            Path(self.get_file_name_and_path(kwargs['task_id'], kwargs['subtask_id'])[1]).parent.parent.parent.parent / 'ComputerRes' / kwargs['task_id'] / 'resources' / '{}.wrapkey'.format(kwargs['task_id']),  # noqa
+            tmpdir,
+            output_dir,
+        )
+        res.files_dir = output_dir
+
+        return res
 
     def extract_zip(self, path, output_dir=None) -> ExtractedPackage:
         packager = self.zip_package_class()
