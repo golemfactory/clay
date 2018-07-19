@@ -54,8 +54,12 @@ class TestHardwarePresets(testutils.DatabaseFixture):
 
     def test_update_config(self):
         # given
-        HardwarePreset.create(name='foo', cpu_cores=1, memory=1200000,
-                              disk=2000000)
+        cpu_cores = 1
+        memory = 1200000
+        disk = 2000000
+
+        HardwarePreset.create(name='foo', cpu_cores=cpu_cores, memory=memory,
+                              disk=disk)
 
         # when
         config_changed = HardwarePresets.update_config('foo', self.config)
@@ -63,9 +67,9 @@ class TestHardwarePresets(testutils.DatabaseFixture):
         # then
         assert not config_changed
         assert self.config.hardware_preset_name == 'foo'
-        assert self.config.num_cores == 1
-        assert self.config.max_memory_size == 1200000
-        assert self.config.max_resource_size == 2000000
+        assert self.config.num_cores == HardwarePresets.cpu_cores(cpu_cores)
+        assert self.config.max_memory_size == HardwarePresets.memory(memory)
+        assert self.config.max_resource_size == HardwarePresets.disk(disk)
 
     def test_update_config_upper_bounds(self):
         # given
