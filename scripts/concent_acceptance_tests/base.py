@@ -28,12 +28,9 @@ from golem_sci import (
 from golem.config.environments.testnet import EthereumConfig
 
 from golem.core import variables
-from golem.database import Database
-from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.concent import client
 from golem.utils import privkeytoaddr
 
-# igor contradicts himself ;p
 from golem.transactions.ethereum.ethereumtransactionsystem import (
     tETH_faucet_donate)
 
@@ -225,18 +222,10 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
         self.transaction_timeout = datetime.timedelta(seconds=300)
         self.sleep_interval = 15
 
-        td_requestor = tempfile.mkdtemp()
-        td_provider = tempfile.mkdtemp()
-
         requestor_storage = JsonTransactionsStorage(
-            Path(td_requestor) / 'tx.json')
+            Path(tempfile.mkdtemp()) / 'tx.json')
         provider_storage = JsonTransactionsStorage(
-            Path(td_provider) / 'tx.json')
-
-        self.database_requestor = Database(
-            db, fields=DB_FIELDS, models=DB_MODELS, db_dir=td_requestor)
-        self.database_provider = Database(
-            db, fields=DB_FIELDS, models=DB_MODELS, db_dir=td_provider)
+            Path(tempfile.mkdtemp()) / 'tx.json')
 
         self.requestor_eth_addr = privkeytoaddr(self.requestor_keys.raw_privkey)
         self.provider_eth_addr = privkeytoaddr(self.provider_keys.raw_privkey)
