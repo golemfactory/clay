@@ -188,20 +188,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.assertIsInstance(payment_address, str)
         self.assertTrue(len(payment_address) > 0)
 
-    def test_sync(self, *_):
-        self.client = Client(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=ClientConfigDescriptor(),
-            keys_auth=(Mock(_private_key='a' * 32)),
-            database=Mock(),
-            connect_to_known_hosts=False,
-            use_docker_manager=False,
-            use_monitor=False
-        )
-        self.client.sync()
-        self.assertTrue(self.client.transaction_system.sync.called)
-
     def test_remove_resources(self, *_):
         self.client = Client(
             datadir=self.path,

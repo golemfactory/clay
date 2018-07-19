@@ -30,6 +30,9 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         self.sci.get_gate_address.return_value = None
         self.sci.get_block_number.return_value = 1223
         self.sci.get_current_gas_price.return_value = 10 ** 9
+        self.sci.get_eth_balance.return_value = 0
+        self.sci.get_gnt_balance.return_value = 0
+        self.sci.get_gntb_balance.return_value = 0
         self.sci.GAS_PER_PAYMENT = 20000
         self.ets = self._make_ets()
 
