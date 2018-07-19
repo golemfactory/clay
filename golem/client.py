@@ -659,7 +659,7 @@ class Client(HardwarePresetsMixin):
         if self.task_tester is None:
             try:
                 self._validate_task_dict(t_dict)
-            except Exception as e:
+            except Exception as e:  # pylint: disable=broad-except
                 self.task_test_result = {
                     "status": TaskTestStatus.error,
                     "error": str(e),
@@ -742,10 +742,10 @@ class Client(HardwarePresetsMixin):
 
     def _validate_task_dict(self, t_dict) -> None:
         task_name = ""
-        if 'name' in t_dict.keys():
+        if 'name' in t_dict:
             t_dict['name'] = t_dict['name'].strip()
             task_name = t_dict['name']
-        if (len(task_name) < 4 or len(task_name) > 24):
+        if len(task_name) < 4 or len(task_name) > 24:
             raise ValueError(
                 "Length of task name cannot be less "
                 "than 4 or more than 24 characters.")
