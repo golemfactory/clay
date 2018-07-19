@@ -553,7 +553,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.client.Trust', autospec=True)
     def test_check_payments(self, trust, *_):
 
-        client = Client(
+        self.client = client = Client(
             datadir=self.path,
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
@@ -1102,7 +1102,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                       side_effect=raise_exc), \
                 self.assertRaisesRegex(Exception, 'Test exception'):
             sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
-
 
     def test_config_changed(self, *_):
         c = self.client
