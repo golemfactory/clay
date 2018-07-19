@@ -1,3 +1,5 @@
+from unittest import mock
+
 from golem import testutils
 from golem.appconfig import DEFAULT_HARDWARE_PRESET_NAME as DEFAULT, \
     CUSTOM_HARDWARE_PRESET_NAME as CUSTOM, MIN_MEMORY_SIZE, MIN_DISK_SPACE, \
@@ -88,15 +90,29 @@ class TestHardwarePresets(testutils.DatabaseFixture):
 
     def test_update_config_not_changed(self):
         # given
-        HardwarePreset.create(name='foo', cpu_cores=1, memory=1200000,
-                              disk=2000000)
+        cpu_cores = HardwarePresets.cpu_cores(1)
+        memory = HardwarePresets.memory(1200000)
+        disk = HardwarePresets.disk(2000000)
+
+        HardwarePreset.create(name='foo', cpu_cores=cpu_cores, memory=memory,
+                              disk=disk)
 
         # then
-        assert not HardwarePresets.update_config(DEFAULT, self.config)
-        assert not HardwarePresets.update_config(DEFAULT, self.config)
-        assert not HardwarePresets.update_config(DEFAULT, self.config)
-        assert HardwarePresets.update_config(CUSTOM, self.config)
-        assert not HardwarePresets.update_config(CUSTOM, self.config)
-        assert HardwarePresets.update_config(DEFAULT, self.config)
-        assert HardwarePresets.update_config('foo', self.config)
-        assert not HardwarePresets.update_config('foo', self.config)
+        with mock.patch(
+            'golem.core.hardware.HardwarePresets.cpu_cores',
+            return_value=cpu_cores
+        ), mock.patch(
+            'golem.core.hardware.HardwarePresets.memory',
+            return_value=memory
+        ), mock.patch(
+            'golem.core.hardware.HardwarePresets.disk',
+            return_value=disk
+        ):
+            assert not HardwarePresets.update_config(DEFAULT, self.config)
+            assert not HardwarePresets.update_config(DEFAULT, self.config)
+            assert not HardwarePresets.update_config(DEFAULT, self.config)
+            assert HardwarePresets.update_config(CUSTOM, self.config)
+            assert not HardwarePresets.update_config(CUSTOM, self.config)
+            assert HardwarePresets.update_config(DEFAULT, self.config)
+            assert HardwarePresets.update_config('foo', self.config)
+            assert not HardwarePresets.update_config('foo', self.config)
