@@ -79,6 +79,17 @@ class ResourceHandshakeSessionMixin:
         :return:
         """
 
+        print('request_task')
+        from pathlib import Path
+        import tempfile
+        import os
+        fd, agent_pubkey_filename = tempfile.mkstemp(suffix=".pem")
+        os.close(fd)
+        from golem.sgx.agent import init_agent
+        init_agent(Path(agent_pubkey_filename))
+        with open(agent_pubkey_filename) as f:
+            sgx_key = f.read()
+
         key_id = self.key_id
         msg_d = dict(
             node_name=node_name,
@@ -89,6 +100,7 @@ class ResourceHandshakeSessionMixin:
             max_memory_size=max_memory_size,
             num_cores=num_cores,
             concent_enabled=self.task_server.client.concent_service.enabled,
+            sgx_key=sgx_key,
         )
 
         if self._is_peer_blocked(key_id):

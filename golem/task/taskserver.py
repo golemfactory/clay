@@ -236,7 +236,7 @@ class TaskServer(
         return None
 
     def send_results(self, subtask_id, task_id, result):
-
+        print('send_results', subtask_id, task_id, result)
         if 'data' not in result or 'result_type' not in result:
             raise AttributeError("Wrong result format")
 

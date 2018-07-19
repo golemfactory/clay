@@ -14,7 +14,7 @@ from golem.core.deferred import sync_wait
 from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
-from golem.docker.task_thread import DockerTaskThread
+from golem.docker.task_thread import DockerTaskThread, SgxDockerTaskThread
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
@@ -420,7 +420,14 @@ class TaskComputer(object):
             if not os.path.exists(temp_dir):
                 os.makedirs(temp_dir)
 
-        if docker_images:
+        if True:  # sgx
+            docker_images = [DockerImage(**did) for did in docker_images]
+            dir_mapping = DockerTaskThread.generate_dir_mapping(resource_dir,
+                                                                temp_dir)
+            tt = SgxDockerTaskThread(subtask_id, docker_images, working_dir,
+                                     src_code, extra_data, short_desc,
+                                     dir_mapping, task_timeout)
+        elif docker_images:
             docker_images = [DockerImage(**did) for did in docker_images]
             dir_mapping = DockerTaskThread.generate_dir_mapping(resource_dir,
                                                                 temp_dir)
@@ -446,7 +453,11 @@ class TaskComputer(object):
             return
 
         self.counting_thread = tt
-        tt.start().addBoth(lambda _: self.task_computed(tt))
+
+        def asd(r):
+            print(r)
+            self.task_computed(tt)
+        tt.start().addBoth(asd)
 
     def quit(self):
         if self.counting_thread is not None:

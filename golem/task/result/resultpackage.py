@@ -5,6 +5,7 @@ from typing import Iterable, Tuple, Optional
 
 import abc
 import os
+from pathlib import Path
 
 from golem.core.fileencrypt import AESFileEncryptor
 from golem.core.fileshelper import common_dir, relative_path
@@ -35,11 +36,17 @@ def backup_rename(file_path, max_iterations=100):
 
 class Packager(object):
 
+    def __init__(self) -> None:
+        self._wrap_key = None
+
     def create(self,
                output_path: str,
                disk_files: Optional[Iterable[str]] = None,
                cbor_files: Optional[Iterable[Tuple[str, str]]] = None,
                **_kwargs):
+        from golem.sgx.agent import generate_wrap_key
+        self._wrap_key = Path(output_path + '.wrapkey')
+        generate_wrap_key(self._wrap_key)
 
         if not disk_files and not cbor_files:
             raise ValueError('No files to pack')
@@ -115,7 +122,7 @@ class ZipPackager(Packager):
     ZIP_MODE = zipfile.ZIP_STORED  # no compression
 
     def extract(self, input_path, output_dir=None, **kwargs):
-
+        print('ZipPackager')
         if not output_dir:
             output_dir = os.path.dirname(input_path)
         os.makedirs(output_dir, exist_ok=True)
@@ -130,7 +137,19 @@ class ZipPackager(Packager):
         return zipfile.ZipFile(output_path, mode='w', compression=self.ZIP_MODE)
 
     def write_disk_file(self, obj, file_path, file_name):
-        obj.write(file_path, file_name)
+        if self._wrap_key is None:
+            obj.write(file_path, file_name)
+            return
+        import tempfile
+        from golem.sgx.agent import encrypt_file
+        fd, outfile = tempfile.mkstemp()
+        os.close(fd)
+        encrypt_file(
+            self._wrap_key,
+            Path(file_path),
+            outfile,
+        )
+        obj.write(outfile, file_name)
 
     def write_cbor_file(self, obj, file_name, cbord_data):
         obj.writestr(file_name, cbord_data)
@@ -169,6 +188,7 @@ class EncryptingPackager(Packager):
         return output_path, pkg_sha1
 
     def extract(self, input_path, output_dir=None, **kwargs):
+        print('EncryptingPackager')
         tmp_file_path = self.package_name(input_path)
         backup_rename(tmp_file_path)
 
@@ -228,6 +248,7 @@ class TaskResultPackager:
                               cbor_files=cbor_files)
 
     def extract(self, input_path, output_dir=None, **kwargs):
+        print('TaskResultPackager')
 
         files, files_dir = super().extract(input_path, output_dir=output_dir)
         descriptor_path = os.path.join(files_dir, self.descriptor_file_name)
