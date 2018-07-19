@@ -22,10 +22,10 @@ from golem_messages import utils as msg_utils
 from golem_messages.message.base import Message
 from golem_messages.message import concents as concent_msg
 
-from golem_sci import new_sci_rpc, SmartContractsInterface
+from golem_sci import (
+    new_sci_rpc, SmartContractsInterface, JsonTransactionsStorage)
 
-from golem.config.environments.testnet import (
-    ETHEREUM_NODE_LIST, ETHEREUM_CHAIN)
+from golem.config.environments.testnet import EthereumConfig
 
 from golem.core import variables
 from golem.database import Database
@@ -228,6 +228,11 @@ class ETSBaseTest(ConcentBaseTest, unittest.TestCase):
         td_requestor = tempfile.mkdtemp()
         td_provider = tempfile.mkdtemp()
 
+        requestor_storage = JsonTransactionsStorage(
+            Path(td_requestor) / 'tx.json')
+        provider_storage = JsonTransactionsStorage(
+            Path(td_provider) / 'tx.json')
+
         self.database_requestor = Database(
             db, fields=DB_FIELDS, models=DB_MODELS, db_dir=td_requestor)
         self.database_provider = Database(
@@ -237,19 +242,19 @@ class ETSBaseTest(ConcentBaseTest, unittest.TestCase):
         self.provider_eth_addr = privkeytoaddr(self.provider_keys.raw_privkey)
 
         self.requestor_sci = new_sci_rpc(
-            datadir=Path(td_requestor),
-            rpc=ETHEREUM_NODE_LIST[0],
+            storage=requestor_storage,
+            rpc=EthereumConfig.NODE_LIST[0],
             address=self.requestor_eth_addr,
             tx_sign=lambda tx: tx.sign(self.requestor_keys.raw_privkey),
-            chain=ETHEREUM_CHAIN,
+            chain=EthereumConfig.CHAIN,
         )
         self.requestor_sci.REQUIRED_CONFS = 1
         self.provider_sci = new_sci_rpc(
-            datadir=Path(td_provider),
-            rpc=ETHEREUM_NODE_LIST[0],
+            storage=provider_storage,
+            rpc=EthereumConfig.NODE_LIST[0],
             address=self.provider_eth_addr,
             tx_sign=lambda tx: tx.sign(self.provider_keys.raw_privkey),
-            chain=ETHEREUM_CHAIN,
+            chain=EthereumConfig.CHAIN,
         )
         self.provider_sci.REQUIRED_CONFS = 1
 
