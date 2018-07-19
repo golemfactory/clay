@@ -269,7 +269,7 @@ class Client(HardwarePresetsMixin):
 
     @report_calls(Component.client, 'sync')
     def sync(self):
-        self.transaction_system.sync()
+        pass
 
     @report_calls(Component.client, 'start', stage=Stage.pre)
     def start(self):
