@@ -8,8 +8,9 @@ from golem.docker.image import DockerImage
 
 
 class BlenderEnvironmentChooser:
+    # pylint: disable=too-few-public-methods
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *_args, **_kwargs):
         if nvgpu.is_supported():
             instance = BlenderNVGPUEnvironment.__new__(BlenderNVGPUEnvironment)
         else:
@@ -20,6 +21,8 @@ class BlenderEnvironmentChooser:
 
 
 class BlenderEnvironment(DockerEnvironment):
+    # pylint: disable=too-few-public-methods
+
     DOCKER_IMAGE = "golemfactory/blender"
     DOCKER_TAG = "1.4"
     ENV_ID = "BLENDER"
@@ -29,6 +32,8 @@ class BlenderEnvironment(DockerEnvironment):
 
 
 class BlenderNVGPUEnvironment(BlenderEnvironment):
+    # pylint: disable=too-few-public-methods
+
     DOCKER_IMAGE = "golemfactory/blender_nvgpu"
     DOCKER_TAG = "1.0"
     SHORT_DESCRIPTION = "Blender NVGPU (www.blender.org)"

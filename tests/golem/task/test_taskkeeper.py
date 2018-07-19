@@ -50,10 +50,15 @@ class TestTaskHeaderKeeper(LogTestCase):
         self.assertIsInstance(tk, TaskHeaderKeeper)
 
     def test_is_supported(self):
+        em = EnvironmentsManager()
+        em.environments = {}
+        em.support_statuses = {}
+
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
             node=p2p.Node(),
             min_price=10.0)
+
         header = get_task_header()
         header.fixed_header.environment = None
         header.fixed_header.max_price = None
@@ -186,8 +191,12 @@ class TestTaskHeaderKeeper(LogTestCase):
             task_id2, SupportStatus(True, {}))
 
     def test_get_task(self):
+        em = EnvironmentsManager()
+        em.environments = {}
+        em.support_statuses = {}
+
         tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
+            environments_manager=em,
             node=p2p.Node(),
             min_price=10)
 

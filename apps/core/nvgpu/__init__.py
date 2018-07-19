@@ -60,5 +60,5 @@ def _pipe(cmd: List[str], pipe: List[str]):
                                  stderr=subprocess.PIPE,
                                  stdin=proc_cmd.stdout)
     proc_cmd.stdout.close()
-    stdout, stderr = proc_pipe.communicate()
+    stdout, _ = proc_pipe.communicate()
     return stdout.strip()

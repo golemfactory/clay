@@ -11,6 +11,8 @@ from golem.resource.dirmanager import find_task_script
 
 @enforce.runtime_validation()
 class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
+    # pylint: disable=no-self-use
+
     def __init__(self, tag=None, image_id=None, additional_images: List[DockerImage] = None):
 
         if tag is None:

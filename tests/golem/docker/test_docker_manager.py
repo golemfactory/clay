@@ -491,7 +491,13 @@ class TestDockerManager(unittest.TestCase):
             dmm = MockDockerManager()
             dmm.pull_images()
 
-        assert pulls[0] == 4
+        from apps.core import nvgpu
+        if nvgpu.is_supported():
+            expected = 6
+        else:
+            expected = 4
+
+        assert pulls[0] == expected
 
     @mock.patch('os.chdir')
     def test_build_images(self, os_chdir):
@@ -514,9 +520,15 @@ class TestDockerManager(unittest.TestCase):
             dmm = MockDockerManager()
             dmm.build_images()
 
-        assert builds[0] == 4
-        assert tags[0] == 4
-        assert len(os_chdir.mock_calls) == 8
+        from apps.core import nvgpu
+        if nvgpu.is_supported():
+            expected = 6
+        else:
+            expected = 4
+
+        assert builds[0] == expected
+        assert tags[0] == expected
+        assert len(os_chdir.mock_calls) == 2 * expected
 
     def test_recover_vm_connectivity(self):
         callback = mock.Mock()

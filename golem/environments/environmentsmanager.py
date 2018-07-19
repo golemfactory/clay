@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Optional, Tuple, Any
+from typing import Dict, Optional, Tuple
 
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -73,11 +73,12 @@ class EnvironmentsManager:
             self,
             image: DockerImage) -> Optional[DockerEnvironment]:
 
-        for name, env in self.environments.items():
+        for env in self.environments.values():
             if not isinstance(env, DockerEnvironment):
                 continue
             if env.supports_image(image):
                 return env
+        return None
 
     def _get_environments_to_config(self) -> Dict[str, Tuple[str, bool]]:
         envs = {}

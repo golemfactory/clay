@@ -2,6 +2,7 @@
 
 import json
 import os
+import time
 from os import path
 from pathlib import Path
 import shutil
@@ -19,6 +20,7 @@ from golem.network.p2p.node import Node as P2PNode
 from golem.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
+from golem.task.taskcomputer import TaskComputer
 from golem.task.taskserver import TaskServer
 from golem.testutils import TempDirFixture
 from .test_docker_image import DockerTestCase
@@ -26,6 +28,19 @@ from .test_docker_image import DockerTestCase
 Task = TypeVar('Task', bound=CoreTask)
 Builder = TypeVar('Builder', bound=CoreTaskBuilder, covariant=True)
 PathOrStr = Union[Path, AnyStr]
+
+
+class TaskComputerExt(TaskComputer):
+
+    @property  # type: ignore
+    def counting_thread(self):  # noqa
+        return getattr(self, '_counting_thread', None)
+
+    @counting_thread.setter
+    def counting_thread(self, value):
+        setattr(self, '_counting_thread', value)
+        if value:
+            setattr(self, 'last_thread', value)
 
 
 class DockerTaskTestCase(
@@ -110,16 +125,16 @@ class DockerTaskTestCase(
 
         ccd = ClientConfigDescriptor()
 
-        with patch(
-            "golem.network.concent.handlers_library.HandlersLibrary"
-            ".register_handler"
-        ):
-            task_server = TaskServer(
-                node=Mock(),
-                config_desc=ccd,
-                client=self.node.client,
-                use_docker_manager=False
-            )
+        with patch("golem.network.concent.handlers_library.HandlersLibrary"
+                   ".register_handler"):
+            with patch('golem.task.taskserver.TaskComputer', TaskComputerExt):
+                task_server = TaskServer(
+                    node=Mock(),
+                    config_desc=ccd,
+                    client=self.node.client,
+                    use_docker_manager=False
+                )
+
         patch.object(task_server, 'create_and_set_result_package').start()
         task_server.task_keeper.task_headers[task_id] = task.header
         task_computer = task_server.task_computer
@@ -148,9 +163,13 @@ class DockerTaskTestCase(
         result = task_computer.resource_given(ctd['task_id'])
         self.assertTrue(result)
 
-        # Thread for task computation should be created by now
-        with task_computer.lock:
-            task_thread = task_computer.counting_thread
+        task_thread = None
+        started = time.time()
+
+        while not task_thread:
+            task_thread = getattr(task_computer, 'last_thread', None)
+            if time.time() - started > timeout:
+                break
 
         if task_thread:
             task_thread.join(timeout)

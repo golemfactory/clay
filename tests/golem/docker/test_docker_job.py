@@ -74,7 +74,8 @@ class TestDockerJob(DockerTestCase):
         if self.test_job and self.test_job.container:
             client = self.test_client()
             try:
-                client.remove_container(self.test_job.container_id, force=True)
+                client.api.remove_container(self.test_job.container_id,
+                                            force=True)
             except docker.errors.APIError:
                 pass  # Already removed?
         self.test_job = None
@@ -151,18 +152,18 @@ class TestBaseDockerJob(TestDockerJob):
         with self._create_test_job() as job:
             self.assertIsNotNone(job.container_id)
             docker = self.test_client()
-            info = docker.inspect_container(job.container_id)
+            info = docker.api.inspect_container(job.container_id)
             self.assertEqual(info["Id"], job.container_id)
             self.assertEqual(info["State"]["Status"], "created")
             self.assertFalse(info["State"]["Running"])
 
-            image_id = docker.inspect_image(self.image.name)["Id"]
+            image_id = docker.api.inspect_image(self.image.name)["Id"]
             self.assertEqual(info["Image"], image_id)
 
     def test_mounts(self):
         with self._create_test_job() as job:
             docker = self.test_client()
-            info = docker.inspect_container(job.container_id)
+            info = docker.api.inspect_container(job.container_id)
 
             work_mount = None
             resources_mount = None
@@ -200,7 +201,7 @@ class TestBaseDockerJob(TestDockerJob):
         self.assertIsNone(job.container_id)
         with self.assertRaises(docker.errors.NotFound):
             client = self.test_client()
-            client.inspect_container(container_id)
+            client.api.inspect_container(container_id)
 
     def test_status(self):
         job = self._create_test_job()
@@ -221,7 +222,7 @@ class TestBaseDockerJob(TestDockerJob):
         with self._create_test_job() as job:
             job.start()
             client = self.test_client()
-            info = client.inspect_container(job.container_id)
+            info = client.api.inspect_container(job.container_id)
             self.assertIn("Path", info)
             self.assertEqual(info["Path"], "/usr/local/bin/entrypoint.sh")
             self.assertIn("Args", info)
@@ -264,7 +265,7 @@ class TestBaseDockerJob(TestDockerJob):
 
     def test_wait_timeout(self):
         src = "import time\ntime.sleep(10)\n"
-        with self.assertRaises(requests.exceptions.ReadTimeout):
+        with self.assertRaises(requests.exceptions.ConnectionError):
             with self._create_test_job(script=src) as job:
                 job.start()
                 self.assertEqual(job.get_status(), DockerJob.STATE_RUNNING)
@@ -359,22 +360,22 @@ with open("../output/out.txt", "w") as f:
             raise Exception("Test exception")
 
         with mock.patch('golem.docker.job.DockerJob.get_status',
-                   side_effect=raise_exception):
+                        side_effect=raise_exception):
             job = self._create_test_job("test_script")
             job.kill()
             assert not local_client.called
-            assert not client.kill.called
+            assert not client.api.kill.called
 
         with mock.patch('golem.docker.job.DockerJob.get_status',
-                   return_value=DockerJob.STATE_KILLED):
+                        return_value=DockerJob.STATE_KILLED):
             job = self._create_test_job("test_script")
             job.kill()
             assert not local_client.called
-            assert not client.kill.called
+            assert not client.api.kill.called
 
         with mock.patch('golem.docker.job.DockerJob.get_status',
-                   return_value=DockerJob.STATE_RUNNING):
+                        return_value=DockerJob.STATE_RUNNING):
             job = self._create_test_job("test_script")
             job.kill()
             assert local_client.called
-            assert client.kill.called
+            assert client.api.kill.called

@@ -1,7 +1,7 @@
 import unittest
 
 import requests
-from docker import Client
+from docker import DockerClient as Client
 from docker.utils import kwargs_from_env
 
 from golem.docker.image import DockerImage
@@ -16,7 +16,7 @@ class DockerTestCase(unittest.TestCase):
     TEST_ENV_ID = None
 
     @classmethod
-    def test_client(cls):
+    def test_client(cls, *_):
         return Client(**kwargs_from_env(assert_hostname=False))
 
     @classmethod
@@ -24,7 +24,7 @@ class DockerTestCase(unittest.TestCase):
         """Disable all tests if Docker or the test image is not available."""
         try:
             client = cls.test_client()
-            images = client.images()
+            images = client.api.images()
             repo_tags = sum([img["RepoTags"]
                              for img in images
                              if img["RepoTags"]], [])
@@ -32,7 +32,7 @@ class DockerTestCase(unittest.TestCase):
                 raise unittest.SkipTest(
                     "Skipping tests: Image {} not available".format(
                         cls.TEST_IMAGE))
-            cls.TEST_ENV_ID = client.inspect_image(cls.TEST_IMAGE)["Id"]
+            cls.TEST_ENV_ID = client.api.inspect_image(cls.TEST_IMAGE)["Id"]
         except requests.exceptions.ConnectionError:
             raise unittest.SkipTest(
                 "Skipping tests: Cannot connect with Docker daemon")
@@ -43,9 +43,9 @@ class TestDockerImage(DockerTestCase):
 
     def tearDown(self):
         client = self.test_client()
-        for c in client.containers(all=True):
+        for c in client.api.containers(all=True):
             if c["Image"] == self.TEST_IMAGE:
-                client.remove_container(c["Id"], force=True)
+                client.api.remove_container(c["Id"], force=True)
 
     def _is_test_image(self, img):
         self.assertEqual(img.name, self.TEST_IMAGE)
