@@ -8,13 +8,13 @@ from golem_messages.utils import encode_hex as encode_key_id
 
 from golem.network.concent import exceptions as concent_exceptions
 
-from ..base import ETSBaseTest
+from ..base import SCIBaseTest
 
 
 fpr_reasons = message.concents.ForcePaymentRejected.REASON
 
 
-class RequestorDoesntPayTestCase(ETSBaseTest):
+class RequestorDoesntPayTestCase(SCIBaseTest):
     def test_empty_list(self):
         fp = message.concents.ForcePayment(
             subtask_results_accepted_list=[],
@@ -59,12 +59,12 @@ class RequestorDoesntPayTestCase(ETSBaseTest):
         )
         print(fp)
         self.assertTrue(
-            fp.subtask_results_accepted_list[0].verify_signature(
+            fp.subtask_results_accepted_list[0].verify_signature(  # noqa pylint:disable=no-member
                 self.requestor_pub_key
             )
         )
         self.assertTrue(
-            fp.subtask_results_accepted_list[1].verify_signature(
+            fp.subtask_results_accepted_list[1].verify_signature(  # noqa pylint:disable=no-member
                 requestor2_keys.raw_pubkey
             )
         )
@@ -216,4 +216,4 @@ class RequestorDoesntPayTestCase(ETSBaseTest):
             ],
         )
         with self.assertRaises(concent_exceptions.ConcentRequestError):
-            response = self.provider_load_response(self.provider_send(fp))
+            self.provider_load_response(self.provider_send(fp))

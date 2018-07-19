@@ -3,7 +3,6 @@ import re
 import unittest
 
 from golem_messages import factories as msg_factories
-from golem_messages import message
 from golem.network.concent import client
 from golem.network.concent.exceptions import ConcentRequestError
 

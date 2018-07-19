@@ -212,14 +212,14 @@ class ConcentBaseTest:
         )
 
 
-class ETSBaseTest(ConcentBaseTest, unittest.TestCase):
+class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
     """
     Base test providing instances of EthereumTransactionSystem
     for the provider and the requestor
     """
 
     def setUp(self):
-        super(ETSBaseTest, self).setUp()
+        super(SCIBaseTest, self).setUp()
         random.seed()
 
         self.transaction_timeout = datetime.timedelta(seconds=300)
