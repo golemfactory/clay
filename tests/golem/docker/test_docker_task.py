@@ -13,7 +13,7 @@ from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core import variables
-from golem.core.common import get_golem_path, timeout_to_deadline
+from golem.core.common import get_golem_path, timeout_to_deadline, is_windows
 from golem.core.simpleserializer import DictSerializer
 from golem.docker.task_thread import DockerTaskThread
 from golem.network.p2p.node import Node as P2PNode
@@ -77,7 +77,10 @@ class DockerTaskTestCase(
     def _get_test_task_definition(cls) -> TaskDefinition:
         task_path = Path(__file__).parent / cls.TASK_FILE
         with open(task_path) as f:
-            json_str = f.read().replace('$GOLEM_DIR', get_golem_path())
+            golem_path = get_golem_path()
+            if is_windows():
+                golem_path = golem_path.replace('\\', '\\\\')
+            json_str = f.read().replace('$GOLEM_DIR', golem_path)
             return DictSerializer.load(json.loads(json_str))
 
     def _get_test_task(self) -> Task:

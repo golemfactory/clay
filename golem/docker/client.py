@@ -1,9 +1,13 @@
 from docker import DockerClient
+from docker.utils import kwargs_from_env
 
 
 def local_client():
-    """Returns an instance of docker.Client for communicating with
+    """Returns an instance of docker.DockerClient for communicating with
     local docker daemon.
     :returns docker.DockerClient:
     """
-    return DockerClient(timeout=600)
+    kwargs = kwargs_from_env(assert_hostname=False)
+    kwargs["timeout"] = 600
+    client = DockerClient(**kwargs)
+    return client

@@ -72,7 +72,7 @@ class TestDockerJob(DockerTestCase):
 
     def tearDown(self):
         if self.test_job and self.test_job.container:
-            client = self.test_client()
+            client = self.new_client()
             try:
                 client.api.remove_container(self.test_job.container_id,
                                             force=True)
@@ -151,7 +151,7 @@ class TestBaseDockerJob(TestDockerJob):
     def test_container_created(self):
         with self._create_test_job() as job:
             self.assertIsNotNone(job.container_id)
-            docker = self.test_client()
+            docker = self.new_client()
             info = docker.api.inspect_container(job.container_id)
             self.assertEqual(info["Id"], job.container_id)
             self.assertEqual(info["State"]["Status"], "created")
@@ -162,7 +162,7 @@ class TestBaseDockerJob(TestDockerJob):
 
     def test_mounts(self):
         with self._create_test_job() as job:
-            docker = self.test_client()
+            docker = self.new_client()
             info = docker.api.inspect_container(job.container_id)
 
             work_mount = None
@@ -200,7 +200,7 @@ class TestBaseDockerJob(TestDockerJob):
 
         self.assertIsNone(job.container_id)
         with self.assertRaises(docker.errors.NotFound):
-            client = self.test_client()
+            client = self.new_client()
             client.api.inspect_container(container_id)
 
     def test_status(self):
@@ -221,7 +221,7 @@ class TestBaseDockerJob(TestDockerJob):
     def test_start(self):
         with self._create_test_job() as job:
             job.start()
-            client = self.test_client()
+            client = self.new_client()
             info = client.api.inspect_container(job.container_id)
             self.assertIn("Path", info)
             self.assertEqual(info["Path"], "/usr/local/bin/entrypoint.sh")

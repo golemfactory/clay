@@ -1,9 +1,10 @@
+import os
 import unittest
 
 import requests
-from docker import DockerClient as Client
-from docker.utils import kwargs_from_env
 
+from golem.core.common import is_windows
+from golem.docker.client import local_client
 from golem.docker.image import DockerImage
 from golem.tools.ci import ci_skip
 
@@ -16,14 +17,17 @@ class DockerTestCase(unittest.TestCase):
     TEST_ENV_ID = None
 
     @classmethod
-    def test_client(cls, *_):
-        return Client(**kwargs_from_env(assert_hostname=False))
+    def new_client(cls, *_):
+        if is_windows():
+            host = os.environ.get('DOCKER_HOST')
+            os.environ['DOCKER_HOST'] = host or 'tcp://127.0.0.1:2375'
+        return local_client()
 
     @classmethod
     def setUpClass(cls):
         """Disable all tests if Docker or the test image is not available."""
         try:
-            client = cls.test_client()
+            client = cls.new_client()
             images = client.api.images()
             repo_tags = sum([img["RepoTags"]
                              for img in images
@@ -42,7 +46,7 @@ class DockerTestCase(unittest.TestCase):
 class TestDockerImage(DockerTestCase):
 
     def tearDown(self):
-        client = self.test_client()
+        client = self.new_client()
         for c in client.api.containers(all=True):
             if c["Image"] == self.TEST_IMAGE:
                 client.api.remove_container(c["Id"], force=True)
