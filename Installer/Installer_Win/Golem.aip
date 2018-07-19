@@ -490,6 +490,7 @@
     <ROW Action="AI_BACKUP_AI_SETUPEXEPATH" Type="51" Source="AI_SETUPEXEPATH_ORIGINAL" Target="[AI_SETUPEXEPATH]"/>
     <ROW Action="AI_DATA_SETTER" Type="51" Source="AI_ExtractFiles" Target="[AI_SETUPEXEPATH]"/>
     <ROW Action="AI_DATA_SETTER_1" Type="51" Source="StopProcess_Golem" Target="Golem.exe"/>
+    <ROW Action="AI_DATA_SETTER_10" Type="51" Source="CustomActionData" Target="AEkAcwA2ADQAQgBpAHQAAgABAFAAYQByAGEAbQBzAAIAAQBTAGMAcgBpAHAAdAACACMAIABCAGwAbwBjAGsAIABmAG8AcgAgAGQAZQBjAGwAYQByAGkAbgBnACAAdABoAGUAIABzAGMAcgBpAHAAdAAgAHAAYQByAGEAbQBlAHQAZQByAHMALgANAAoAUABhAHIAYQBtACgAKQANAAoADQAKACMAIABZAG8AdQByACAAYwBvAGQAZQAgAGcAbwBlAHMAIABoAGUAcgBlAC4ADQAKACQAaABhAHMASQBuAHMAdABhAGwAbABlAGQAIAA9ACAAQQBJAF8ARwBlAHQATQBzAGkAUAByAG8AcABlAHIAdAB5ACAAQQBJAF8ATQBJAFMAUwBJAE4ARwBfAFAAUgBFAFIARQBRAFMADQAKAA0ACgBpAGYAIAAoACAALQBOAG8AdAAgACgAIAAkAGgAYQBzAEkAbgBzAHQAYQBsAGwAZQBkAC4AaQBuAGQAZQB4AG8AZgAoACIARABvAGMAawBlAHIAIgApACAAPQAgAC0AMQAgACkAKQAgAA0ACgBbAFwAewBdAA0ACgAJAGMAbQBkAC4AZQB4AGUAIAAvAGMAIAAiAGQAbwBjAGsAZQByAC0AbQBhAGMAaABpAG4AZQAgAHIAbQAgAC0AZgAgAGcAbwBsAGUAbQAiAA0ACgBbAFwAfQBd"/>
     <ROW Action="AI_DATA_SETTER_2" Type="51" Source="StopProcess_Golemapp" Target="Golemapp.exe"/>
     <ROW Action="AI_DATA_SETTER_3" Type="51" Source="StopProcess_hyperg" Target="hyperg.exe"/>
     <ROW Action="AI_DATA_SETTER_4" Type="51" Source="StopProcess_DockerToolbox" Target="DockerToolbox.exe"/>
@@ -521,7 +522,7 @@
     <ROW Action="AI_SHOW_LOG" Type="65" Source="aicustact.dll" Target="LaunchLogFile" WithoutSeq="true"/>
     <ROW Action="AI_STORE_LOCATION" Type="51" Source="ARPINSTALLLOCATION" Target="[APPDIR]"/>
     <ROW Action="ExecuteUninstallPre011" Type="3122" Source="GOLEM_UNINSTALL_CLEAN" Target="/SILENT"/>
-    <ROW Action="Execute_CleanDockerVM" Type="4198" Target="Script Text" TargetUnformatted="txt = Session.Property(&quot;AI_MISSING_PREREQS&quot;)&#13;&#10;&#13;&#10;if InStr(txt, &quot;Docker&quot;) then&#13;&#10;&#9;Const WshRunning = 0&#13;&#10;&#9;Const WshFinished = 1&#13;&#10;&#9;Const WshFailed = 2&#13;&#10;&#13;&#10;&#9;Dim shell : Set shell = CreateObject(&quot;WScript.Shell&quot;)&#13;&#10;&#9;Dim exec : Set exec = shell.Exec(&quot;docker-machine rm -f golem&quot;)&#13;&#10;&#13;&#10;&#9;While exec.Status = WshRunning&#13;&#10;&#9;&#9;&#9;&apos; FIXME: WScript.Sleep 50&#13;&#10;&#9;Wend&#13;&#10;&#13;&#10;&#9;Dim output&#13;&#10;&#13;&#10;&#9;If exec.Status = WshFailed Then&#13;&#10;&#9;&#9;&#9;output = exec.StdErr.ReadAll&#13;&#10;&#9;Else&#13;&#10;&#9;&#9;&#9;output = exec.StdOut.ReadAll&#13;&#10;&#9;End If&#13;&#10;&#13;&#10;&#9;Session.Property(&quot;DOCKER_DELETE_OUTPUT&quot;) = output&#13;&#10;end if"/>
+    <ROW Action="Execute_CleanDockerVM" Type="65" Source="PowerShellScriptLauncher.dll" Target="RunPowerShellScript" Options="1" AdditionalSeq="AI_DATA_SETTER_10"/>
     <ROW Action="ForceReboot" Type="51" Source="REBOOT" Target="Force"/>
     <ROW Action="MessageBox" Type="1" Source="aicustact.dll" Target="MsgBox" Options="1" AdditionalSeq="AI_DATA_SETTER_9"/>
     <ROW Action="SET_APPDIR" Type="307" Source="APPDIR" Target="[ProgramFilesFolder][Manufacturer]\[ProductName]" MultiBuildTarget="DefaultBuild:[ProgramFiles64Folder][ProductName]"/>
@@ -564,29 +565,30 @@
     <ROW Action="AI_DATA_SETTER" Sequence="3997"/>
     <ROW Action="AI_EstimateExtractFiles" Sequence="3999" Builds="DefaultBuild"/>
     <ROW Action="AI_AiRemoveFilesRollback" Sequence="3099"/>
-    <ROW Action="StopProcess_DockerToolbox" Sequence="1609"/>
-    <ROW Action="AI_DATA_SETTER_4" Sequence="1608"/>
-    <ROW Action="StopProcess_VBoxHeadless" Sequence="1611"/>
-    <ROW Action="AI_DATA_SETTER_5" Sequence="1610"/>
+    <ROW Action="StopProcess_DockerToolbox" Sequence="1610"/>
+    <ROW Action="AI_DATA_SETTER_4" Sequence="1609"/>
+    <ROW Action="StopProcess_VBoxHeadless" Sequence="1612"/>
+    <ROW Action="AI_DATA_SETTER_5" Sequence="1611"/>
     <ROW Action="StopProcess_Golem" Sequence="1602"/>
     <ROW Action="AI_DATA_SETTER_1" Sequence="1601"/>
     <ROW Action="StopProcess_Golemapp" Sequence="1604"/>
     <ROW Action="AI_DATA_SETTER_2" Sequence="1603"/>
     <ROW Action="StopProcess_hyperg" Sequence="1606"/>
     <ROW Action="AI_DATA_SETTER_3" Sequence="1605"/>
-    <ROW Action="StopProcess_VirtualBoxInterface" Sequence="1615"/>
-    <ROW Action="AI_DATA_SETTER_6" Sequence="1614"/>
-    <ROW Action="StopProcess_VBoxNetDHCP" Sequence="1613"/>
-    <ROW Action="AI_DATA_SETTER_7" Sequence="1612"/>
+    <ROW Action="StopProcess_VirtualBoxInterface" Sequence="1616"/>
+    <ROW Action="AI_DATA_SETTER_6" Sequence="1615"/>
+    <ROW Action="StopProcess_VBoxNetDHCP" Sequence="1614"/>
+    <ROW Action="AI_DATA_SETTER_7" Sequence="1613"/>
     <ROW Action="AI_AppSearchEx" Sequence="101"/>
     <ROW Action="AI_DELETE_SHORTCUTS" Condition="NOT (REMOVE=&quot;ALL&quot;)" Sequence="1402"/>
     <ROW Action="AI_DEL_EMPTY_SHORTCUTDIR" Condition="NOT (REMOVE=&quot;ALL&quot;)" Sequence="6402"/>
     <ROW Action="AI_DATA_SETTER_8" Condition="NOT (REMOVE=&quot;ALL&quot;)" Sequence="6401"/>
     <ROW Action="AI_GetArpIconPath" Sequence="1401"/>
-    <ROW Action="ExecuteUninstallPre011" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL_CLEAN &lt;&gt; &quot;&quot; )" Sequence="1617"/>
-    <ROW Action="StripQuotesFromUninstallPath" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="1616"/>
+    <ROW Action="ExecuteUninstallPre011" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL_CLEAN &lt;&gt; &quot;&quot; )" Sequence="1618"/>
+    <ROW Action="StripQuotesFromUninstallPath" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="1617"/>
     <ROW Action="AI_AiRemoveFilesImmediate" Sequence="3499"/>
-    <ROW Action="Execute_CleanDockerVM" Sequence="1607"/>
+    <ROW Action="Execute_CleanDockerVM" Condition="(VersionNT &gt; 501) OR (VersionNT = 501 AND ServicePackLevel &gt;= 2)" Sequence="1608"/>
+    <ROW Action="AI_DATA_SETTER_10" Condition="(VersionNT &gt; 501) OR (VersionNT = 501 AND ServicePackLevel &gt;= 2)" Sequence="1607"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiInstallUISequenceComponent">
     <ROW Action="AI_RESTORE_LOCATION" Condition="APPDIR=&quot;&quot;" Sequence="749"/>
