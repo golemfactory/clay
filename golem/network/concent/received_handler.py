@@ -547,13 +547,22 @@ class TaskServerMessageHandler():
         getattr(self, handler_name)(msg)
 
     def on_force_payment_committed_for_requestor(self, msg):  # noqa pylint: disable=no-self-use
-        # There is no mechanism to cancel started payment.
+        from golem.model import Payment
+        from golem.model import PaymentStatus
         logger.warning(
             "[CONCENT] Our deposit was used to cover payment of %.6f GNT"
             " for eth address: %s",
             msg.amount_paid / denoms.ether,
             msg.provider_eth_account,
         )
+        # Try to stop awaiting payments
+        payments = Payment.select().where(
+            processed_ts=msg.payment_ts,
+            status=PaymentStatus.awaiting,
+        )
+        for p in payments:
+            p.status = PaymentStatus.confirmed
+            p.save()
 
     def on_force_payment_committed_for_provider(self, msg):  # noqa pylint: disable=no-self-use
         # This informative/redundant.
