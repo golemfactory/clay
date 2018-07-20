@@ -5,7 +5,6 @@ from ethereum.utils import denoms
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 
-from golem import utils
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
@@ -556,22 +555,12 @@ class TaskServerMessageHandler():
             msg.provider_eth_account,
         )
 
-    def on_force_payment_committed_for_provider(self, msg):
-        """Update income entries with settled_ts.
-
-        tx_hash and value will be updated on forced_subtask_payment event
-        from golem_sci (blockchain).
-        SEE: IncomesKeeper.received_forced_subtask_payment
-        """
-        incomes_keeper = self.task_server.client \
-            .transaction_system.incomes_keeper
-        upi = incomes_keeper.get_list_of_unpaid_incomes(
-            sender=utils.pubkeytoaddr(msg.task_owner_key),
-            closure_time=msg.payment_ts,
+    def on_force_payment_committed_for_provider(self, msg):  # noqa pylint: disable=no-self-use
+        # This informative/redundant.
+        # SEE: golem.transactions.ethereum.ethereumincomeskeeper
+        #      ._on_forced_payment
+        logger.debug(
+            "[CONCENT] Forced payment from % should be on blockchain."
+            " Will wait for that.",
+            msg.task_owner_key,
         )
-        for income in upi:
-            incomes_keeper.update_forced(
-                sender_node=msg.task_owner_key,
-                subtask_id=income.subtask,
-                settled_ts=msg.payment_ts,
-            )

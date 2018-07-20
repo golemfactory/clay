@@ -3,6 +3,7 @@
 import logging
 
 from golem_messages.utils import bytes32_to_uuid
+import golem_sci
 
 from golem.model import GenericKeyValue
 from golem.transactions.incomeskeeper import IncomesKeeper
@@ -36,6 +37,11 @@ class EthereumIncomesKeeper(IncomesKeeper):
                 from_block,
                 self._on_forced_subtask_payment,
             )
+            self.__sci.subscribe_to_forced_payments(
+                requestor_address=None,
+                provider_address=self.__sci.get_eth_address(),
+                from_block=from_block,
+                cb=self._on_forced_payment,
         except AttributeError as e:
             logger.info("Can't use GNTDeposit on mainnet yet: %r", e)
 
@@ -53,6 +59,14 @@ class EthereumIncomesKeeper(IncomesKeeper):
             event.requestor,
             str(bytes32_to_uuid(event.subtask_id)),
             event.amount,
+        )
+
+    def _on_forced_payment(self, event: golem_sci.events.ForcedPaymentEvent) -> None:
+        self.received_forced_payment(
+            tx_hash=event.tx_hash,
+            sender=event.sender,
+            amount=event.amount,
+            closure_time=event.closure_time,
         )
 
     def stop(self) -> None:

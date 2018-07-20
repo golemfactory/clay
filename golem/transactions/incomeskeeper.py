@@ -48,9 +48,6 @@ class IncomesKeeper:
             return
 
         if expected_value != amount:
-            # TODO Need to report this to Concent if expected is greater
-            # and probably move all these expected incomes to a different table
-            # issue #2255
             logger.warning(
                 'Batch transfer amount does not match, expected %r, got %r',
                 expected_value / denoms.ether,
@@ -59,11 +56,10 @@ class IncomesKeeper:
         amount_left = amount
 
         for e in expected:
-            value = min(amount_left, e.value)
-            amount_left -= value
+            if amount_left < e.value:
+                continue
+            amount_left -= e.value
             e.transaction = tx_hash[2:]
-            # TODO don't change the value, wait for Concent. issue #2255
-            e.value = value
             e.save()
 
             dispatcher.send(
@@ -78,6 +74,13 @@ class IncomesKeeper:
             addr=sender,
             value=amount,
         )
+
+    def received_forced_payment(self, *args, **kwargs):
+        logger.info(
+            "Received forced payment from %s",
+            kwargs.get('sender', None),
+        )
+        self.received_batch_transfer(*args, **kwargs)
 
     def expect(self, sender_node_id, subtask_id, value):
         logger.debug(
@@ -168,37 +171,6 @@ class IncomesKeeper:
             return
         income.accepted_ts = accepted_ts
         income.save()
-
-    def update_forced(self, sender_node, subtask_id, settled_ts):
-        try:
-            income = Income.get(sender_node=sender_node, subtask=subtask_id)
-        except Income.DoesNotExist:
-            logger.error(
-                "Income missing for subtask_id: %r from node: %r",
-                subtask_id,
-                sender_node,
-            )
-            return
-        if income.settled_ts is not None and income.settled_ts != settled_ts:
-            logger.error(
-                "Duplicated settled_ts %r for %r",
-                settled_ts,
-                income,
-            )
-            return
-        income.settled_ts = settled_ts
-        income.save()
-
-    @staticmethod
-    def get_list_of_unpaid_incomes(sender: str, closure_time: int):
-        expected = Income.select().where(
-            Income.accepted_ts > 0,
-            Income.accepted_ts <= closure_time,
-            Income.transaction.is_null(),
-            Income.settled_ts.is_null())
-        expected = \
-            [e for e in expected if pubkeytoaddr(e.sender_node) == sender]
-        return expected
 
     def get_list_of_all_incomes(self):
         # TODO: pagination. issue #2402

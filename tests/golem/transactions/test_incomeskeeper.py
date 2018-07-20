@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from random import Random
 import time
+import unittest.mock as mock
 
 from freezegun import freeze_time
 
@@ -54,26 +55,16 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         assert expected_income.accepted_ts is None
         assert expected_income.transaction is None
 
-    def test_update_forced(self):
-        sender_node_id = '0x' + 64 * 'a'
-        subtask_id = 'sample_subtask_id1'
-        value = MAX_INT + 10
-        timestamp = 1337
-
-        self._test_expect_income(
-            sender_node_id=sender_node_id,
-            subtask_id=subtask_id,
-            value=value,
+    @mock.patch("golem.transactions.incomeskeeper.IncomesKeeper"
+                ".received_batch_transfer")
+    def test_received_forced_payment(self, batch_mock):
+        args = range(10)
+        kwargs = dict((str(x), x**2) for x in range(10))
+        self.incomes_keeper.received_forced_payment(
+            *args,
+            **kwargs,
         )
-
-        self.incomes_keeper.update_forced(
-            sender_node=sender_node_id,
-            subtask_id=subtask_id,
-            settled_ts=timestamp,
-        )
-
-        income = Income.get(sender_node=sender_node_id, subtask=subtask_id)
-        self.assertEqual(income.settled_ts, timestamp)
+        batch_mock.assert_called_once_with(*args, **kwargs)
 
     def test_received_batch_transfer_closure_time(self):
         sender_node_id = '0x' + 64 * 'a'

@@ -834,25 +834,13 @@ class ForcePaymentTest(TaskServerMessageHandlerTestBase):
             log_mock.call_args[0][0],
         )
 
-    @mock.patch('golem.transactions.incomeskeeper.IncomesKeeper.update_forced')
-    def test_committed_provider(self, update_mock):
+    @mock.patch('golem.network.concent.received_handler.logger.debug')
+    def test_committed_provider(self, log_mock):
         fpc = msg_factories.concents.ForcePaymentCommittedFactory.to_provider(
             amount_pending=31337,
         )
-        subtask_id = '<subtaskId>'
-        self.client.transaction_system.incomes_keeper.expect(
-            sender_node_id=fpc.task_owner_key,
-            subtask_id=subtask_id,
-            value=fpc.amount_paid+fpc.amount_pending,
-        )
-        income = Income.get(subtask=subtask_id)
-        income.accepted_ts = 1
-        income.save()
-        print(repr(income.sender_node))
-        print(fpc)
         library.interpret(fpc)
-        update_mock.assert_called_once_with(
-            sender_node=fpc.task_owner_key,
-            subtask_id=subtask_id,
-            settled_ts=fpc.payment_ts,
+        self.assertIn(
+            "Forced payment from",
+            log_mock.call_args[0][0],
         )
