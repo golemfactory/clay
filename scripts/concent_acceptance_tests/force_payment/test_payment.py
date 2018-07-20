@@ -8,13 +8,13 @@ from golem_messages.utils import encode_hex as encode_key_id
 
 from golem.network.concent import exceptions as concent_exceptions
 
-from ..base import ETSBaseTest
+from ..base import SCIBaseTest
 
 
 fpr_reasons = message.concents.ForcePaymentRejected.REASON
 
 
-class RquestorDoesntPayTestCase(ETSBaseTest):
+class RequestorDoesntPayTestCase(SCIBaseTest):
     def test_empty_list(self):
         fp = message.concents.ForcePayment(
             subtask_results_accepted_list=[],
@@ -42,17 +42,31 @@ class RquestorDoesntPayTestCase(ETSBaseTest):
             payment_ts=int(time.time()) - 3600*24,
         )
         sra1.sign_message(self.requestor_priv_key)
+        requestor2_keys = cryptography.ECCx(None)
+        ttc2_kwargs = self.gen_ttc_kwargs('task_to_compute__')
+        ttc2_kwargs.update(
+            {'task_to_compute__sign__privkey': requestor2_keys.raw_privkey}
+        )
         sra2 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
-            **self.gen_ttc_kwargs(
-                'task_to_compute__',
-            ),
+            **ttc2_kwargs,
             payment_ts=int(time.time()) - 3600*24,
         )
-        sra2.sign_message(self.provider_priv_key)
+        sra2.sign_message(requestor2_keys.raw_privkey)
         fp = message.concents.ForcePayment(
             subtask_results_accepted_list=[
                 sra1, sra2,
             ],
+        )
+        print(fp)
+        self.assertTrue(
+            fp.subtask_results_accepted_list[0].verify_signature(  # noqa pylint:disable=no-member
+                self.requestor_pub_key
+            )
+        )
+        self.assertTrue(
+            fp.subtask_results_accepted_list[1].verify_signature(  # noqa pylint:disable=no-member
+                requestor2_keys.raw_pubkey
+            )
         )
         response = self.provider_load_response(self.provider_send(fp))
         self.assertEqual(response, message.concents.ServiceRefused)
@@ -83,6 +97,7 @@ class RquestorDoesntPayTestCase(ETSBaseTest):
                 sra1, sra2,
             ],
         )
+        print(fp)
         response = self.provider_load_response(self.provider_send(fp))
         self.assertEqual(response, message.concents.ServiceRefused)
 
@@ -200,5 +215,5 @@ class RquestorDoesntPayTestCase(ETSBaseTest):
                 sra,
             ],
         )
-        response = self.provider_load_response(self.provider_send(fp))
-        self.assertIsInstance(response, message.concents.ServiceRefused)
+        with self.assertRaises(concent_exceptions.ConcentRequestError):
+            self.provider_load_response(self.provider_send(fp))

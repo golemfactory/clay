@@ -6,8 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List
 
-from ethereum.utils import privtoaddr, denoms
-from eth_utils import encode_hex, is_address, to_checksum_address
+from ethereum.utils import denoms
+from eth_utils import is_address
 import requests
 
 from golem_sci import new_sci, JsonTransactionsStorage
@@ -17,6 +17,7 @@ from golem.transactions.ethereum.ethereumincomeskeeper \
     import EthereumIncomesKeeper
 from golem.transactions.ethereum.exceptions import NotEnoughFunds
 from golem.transactions.transactionsystem import TransactionSystem
+from golem.utils import privkeytoaddr
 
 log = logging.getLogger(__name__)
 
@@ -38,11 +39,7 @@ class EthereumTransactionSystem(TransactionSystem):
             datadir: str,
             node_priv_key: bytes,
             config) -> None:
-        try:
-            eth_addr = \
-                to_checksum_address(encode_hex(privtoaddr(node_priv_key)))
-        except AssertionError:
-            raise ValueError("not a valid private key")
+        eth_addr = privkeytoaddr(node_priv_key)
         log.info("Node Ethereum address: %s", eth_addr)
 
         self._config = config
