@@ -199,8 +199,6 @@ class ConcentBaseTest:
         )
         self.assertEqual(ftt.operation, operation)
 
-    # pylint:enable=no-member
-
     @staticmethod
     def _log_concent_response(response):
         logger.debug(
