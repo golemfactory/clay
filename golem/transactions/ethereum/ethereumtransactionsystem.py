@@ -1,21 +1,23 @@
 import logging
+import random
 import time
 from enum import Enum
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, ClassVar, Dict, List
 
-from ethereum.utils import privtoaddr, denoms
-from eth_utils import encode_hex, is_address, to_checksum_address
+from ethereum.utils import denoms
+from eth_utils import is_address
 import requests
 
-from golem_sci import new_sci
+from golem_sci import new_sci, JsonTransactionsStorage
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.transactions.ethereum.ethereumincomeskeeper \
     import EthereumIncomesKeeper
 from golem.transactions.ethereum.exceptions import NotEnoughFunds
 from golem.transactions.transactionsystem import TransactionSystem
+from golem.utils import privkeytoaddr
 
 log = logging.getLogger(__name__)
 
@@ -30,30 +32,31 @@ class ConversionStatus(Enum):
 class EthereumTransactionSystem(TransactionSystem):
     """ Transaction system connected with Ethereum """
 
-    def __init__(  # noqa pylint: disable=too-many-arguments
+    TX_FILENAME: ClassVar[str] = 'transactions.json'
+
+    def __init__(
             self,
             datadir: str,
             node_priv_key: bytes,
-            geth_addresses: List[str],
-            ethereum_chain: str,
-            faucet_enabled: bool) -> None:
-        try:
-            eth_addr = \
-                to_checksum_address(encode_hex(privtoaddr(node_priv_key)))
-        except AssertionError:
-            raise ValueError("not a valid private key")
+            config) -> None:
+        eth_addr = privkeytoaddr(node_priv_key)
         log.info("Node Ethereum address: %s", eth_addr)
 
-        self._node = NodeProcess(geth_addresses)
+        self._config = config
+
+        node_list = config.NODE_LIST.copy()
+        random.shuffle(node_list)
+        node_list += config.FALLBACK_NODE_LIST
+        self._node = NodeProcess(node_list)
         self._node.start()
+
         self._sci = new_sci(
-            Path(datadir),
             self._node.web3,
             eth_addr,
+            config.CHAIN,
+            JsonTransactionsStorage(Path(datadir) / self.TX_FILENAME),
             lambda tx: tx.sign(node_priv_key),
-            ethereum_chain,
         )
-        self._faucet = faucet_enabled
         self._gnt_faucet_requested = False
 
         self._gnt_conversion_status = ConversionStatus.NONE
@@ -75,25 +78,20 @@ class EthereumTransactionSystem(TransactionSystem):
         self._last_gnt_update = None
         self._payments_locked: int = 0
         self._gntb_locked: int = 0
-        self._is_stopped = False
+
+        self._refresh_balances()
+        log.info(
+            "Initial balances: %f GNTB, %f GNT, %f ETH",
+            self._gntb_balance / denoms.ether,
+            self._gnt_balance / denoms.ether,
+            self._eth_balance / denoms.ether,
+        )
 
     def stop(self):
         super().stop()
-        self._is_stopped = True
         self.payment_processor.sendout(0)
         self.incomes_keeper.stop()
         self._sci.stop()
-
-    def sync(self) -> None:
-        log.info("Synchronizing balances")
-        while not self._is_stopped:
-            self._refresh_balances()
-            if self._last_eth_update is not None and \
-               self._last_gnt_update is not None:
-                log.info("Balances synchronized")
-                return
-            log.info("Waiting for initial GNT/ETH balances...")
-            time.sleep(1)
 
     def add_payment_info(self, *args, **kwargs):
         payment = super().add_payment_info(*args, **kwargs)
@@ -199,6 +197,9 @@ class EthereumTransactionSystem(TransactionSystem):
             amount: int,
             destination: str,
             currency: str) -> List[str]:
+        if not self._config.WITHDRAWALS_ENABLED:
+            raise Exception("Withdrawals are disabled")
+
         if not is_address(destination):
             raise ValueError("{} is not valid ETH address".format(destination))
 
@@ -266,7 +267,7 @@ class EthereumTransactionSystem(TransactionSystem):
         self._sci.on_transaction_confirmed(tx_hash, transaction_receipt)
 
     def _get_funds_from_faucet(self) -> None:
-        if not self._faucet:
+        if not self._config.FAUCET_ENABLED:
             return
         if self._eth_balance < 0.01 * denoms.ether:
             log.info("Requesting tETH from faucet")

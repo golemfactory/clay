@@ -29,3 +29,4 @@ class TestTransactionSystem(TestWithDatabase):
                 self.transaction_system.get_nodes_with_overdue_payments(),
                 ['a', 'b']
             )
+            incomes.assert_called_once()

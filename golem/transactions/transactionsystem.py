@@ -1,4 +1,4 @@
-from typing import List, Iterable, Tuple
+from typing import List, Iterable, Tuple, Optional
 
 from golem.core.common import datetime_to_timestamp_utc, to_unicode
 from golem.core.service import LoopingCallService
@@ -58,12 +58,13 @@ class TransactionSystem(LoopingCallService):
         return self.payments_keeper.get_list_of_all_payments()
 
     def get_total_payment_for_subtasks(self, subtask_ids: Iterable[str]) \
-            -> Tuple[int, int]:
+            -> Tuple[Optional[int], Optional[int]]:
         """
-        Get total value and total fee for confirmed payments for the given
-        subtask IDs
+        Get total value and total fee for payments for the given subtask IDs
+        **if all payments for the given subtasks are sent**
         :param subtask_ids: subtask IDs
-        :return: (total_value, total_fee)
+        :return: (total_value, total_fee) if all payments are sent,
+                (None, None) otherwise
         """
         return self.payments_keeper.get_total_payment_for_subtasks(subtask_ids)
 

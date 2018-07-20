@@ -4,7 +4,6 @@ from unittest.mock import patch, Mock, ANY, PropertyMock
 
 from eth_utils import encode_hex
 from ethereum.utils import denoms
-import golem_sci
 import requests
 
 from golem import testutils
@@ -29,32 +28,34 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         self.sci.GAS_PRICE = 10 ** 9
         self.sci.GAS_BATCH_PAYMENT_BASE = 30000
         self.sci.get_gate_address.return_value = None
+        self.sci.get_block_number.return_value = 1223
         self.sci.get_current_gas_price.return_value = 10 ** 9
+        self.sci.get_eth_balance.return_value = 0
+        self.sci.get_gnt_balance.return_value = 0
+        self.sci.get_gntb_balance.return_value = 0
         self.sci.GAS_PER_PAYMENT = 20000
-        with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                   'new_sci', return_value=self.sci),\
-            patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                  'NodeProcess'):
-            self.ets = self._make_ets()
+        self.ets = self._make_ets()
 
-    def _make_ets(self):
-        return EthereumTransactionSystem(
-            self.tempdir,
-            PRIV_KEY,
-            [],
-            'test_chain',
-            False,
-        )
+    def _make_ets(self, privkey=PRIV_KEY, withdrawals=True):
+        with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                   'NodeProcess'),\
+            patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                  'new_sci', return_value=self.sci):
+            return EthereumTransactionSystem(
+                self.tempdir,
+                privkey,
+                Mock(
+                    NODE_LIST=[],
+                    FALLBACK_NODE_LIST=[],
+                    CHAIN='test_chain',
+                    FAUCET_ENABLED=False,
+                    WITHDRAWALS_ENABLED=withdrawals,
+                )
+            )
 
     def test_invalid_private_key(self):
-        with self.assertRaises(ValueError):
-            EthereumTransactionSystem(
-                self.tempdir,
-                "not a private key",
-                [],
-                'test_chain',
-                False,
-            )
+        with self.assertRaisesRegex(ValueError, "not a valid private key"):
+            self._make_ets(privkey="not a valid key")
 
     @patch('golem.core.service.LoopingCallService.running',
            new_callable=PropertyMock)
@@ -62,16 +63,9 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         with patch('twisted.internet.task.LoopingCall.start'), \
                 patch('twisted.internet.task.LoopingCall.stop'), \
                 patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                      'new_sci'), \
-                patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                      'PaymentProcessor'), \
-                patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                      'NodeProcess') as node_mock:
-            node_mock.return_value = node_mock
-
+                      'PaymentProcessor'):
             mock_is_service_running.return_value = False
             e = self._make_ets()
-            node_mock.start.assert_called_once_with()
             e.start()
 
             mock_is_service_running.return_value = True
@@ -82,13 +76,21 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
            Mock())
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.new_sci')
     def test_chain_arg(self, new_sci):
-        self._make_ets()
+        EthereumTransactionSystem(
+            self.tempdir,
+            PRIV_KEY,
+            Mock(
+                NODE_LIST=[],
+                FALLBACK_NODE_LIST=[],
+                CHAIN='test_chain',
+            )
+        )
         new_sci.assert_called_once_with(
             ANY,
             ANY,
-            ANY,
-            ANY,
             'test_chain',
+            ANY,
+            ANY,
         )
 
     def test_get_withdraw_gas_cost(self):
@@ -188,6 +190,11 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             self.ets.withdraw(gntb_balance + locked_gnt + 1, dest, 'GNT')
         self.sci.reset_mock()
 
+    def test_withdraw_disabled(self):
+        ets = self._make_ets(withdrawals=False)
+        with self.assertRaisesRegex(Exception, 'Withdrawals are disabled'):
+            ets.withdraw(1, '0x' + 40 * '0', 'GNT')
+
     def test_locking_funds(self):
         eth_balance = 10 * denoms.ether
         gnt_balance = 1000 * denoms.ether
@@ -262,9 +269,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             lambda addr: amount if addr == gate_addr else 0
         self.sci.get_eth_balance.return_value = denoms.ether
         with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                   'new_sci', return_value=self.sci),\
-            patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                  'NodeProcess'):
+                   'new_sci', return_value=self.sci):
             ets = self._make_ets()
         ets._refresh_balances()
         ets._try_convert_gnt()

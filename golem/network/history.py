@@ -8,6 +8,7 @@ import time
 from functools import reduce, wraps
 from typing import List
 from typing import Optional
+import warnings
 
 from golem_messages import message
 from peewee import (PeeweeException, DataError, ProgrammingError,
@@ -100,14 +101,13 @@ class MessageHistoryService(IService):
             self._loop()
 
     @classmethod
-    def get_sync(cls, task: str, **properties) -> List[NetworkMessage]:
+    def get_sync(cls, **properties) -> List[NetworkMessage]:
         """
-        Returns Task-related messages synchronously
-        :param task: Task id
+        Returns messages synchronously
         :param properties: Optional NetworkMessage properties
         :return: Collection of NetworkMessage
         """
-        clauses = cls.build_clauses(task=task, **properties)
+        clauses = cls.build_clauses(**properties)
 
         result = NetworkMessage.select() \
             .where(reduce(operator.and_, clauses)) \
@@ -325,21 +325,36 @@ def add(msg: message.base.Message,
     )
 
 
-def get(message_class_name: str, task_id: str, subtask_id: str)\
+def get(
+        message_class_name: str,
+        subtask_id: str,
+        node_id: Optional[str] = None,
+        task_id: Optional[str] = None) \
         -> Optional[message.Message]:
     #  FIXME: Use node_id in queries
     #         https://github.com/golemfactory/golem/issues/2670
-    try:
-        return MessageHistoryService.get_sync_as_message(
-            task=task_id,
-            subtask=subtask_id,
-            msg_cls=message_class_name,
+    if not (node_id or task_id):
+        raise RuntimeError("Please use node_id, subtask_id pair")
+
+    query = {}
+    query['subtask'] = subtask_id
+    query['msg_cls'] = message_class_name
+    if task_id:
+        query['task'] = task_id
+        warnings.warn(
+            "Please use node_id, subtask_id pair",
+            DeprecationWarning,
+            stacklevel=2,
         )
+    if node_id:
+        query['node'] = node_id
+    try:
+        return MessageHistoryService.get_sync_as_message(**query)
     except MessageNotFound:
         logger.warning(
-            "%s message not found for task %r, subtask %r",
+            "%s message not found for node %r, subtask %r",
             message_class_name,
-            task_id,
+            node_id,
             subtask_id,
         )
         return None
