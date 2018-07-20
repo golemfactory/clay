@@ -188,20 +188,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.assertIsInstance(payment_address, str)
         self.assertTrue(len(payment_address) > 0)
 
-    def test_sync(self, *_):
-        self.client = Client(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=ClientConfigDescriptor(),
-            keys_auth=(Mock(_private_key='a' * 32)),
-            database=Mock(),
-            connect_to_known_hosts=False,
-            use_docker_manager=False,
-            use_monitor=False
-        )
-        self.client.sync()
-        self.assertTrue(self.client.transaction_system.sync.called)
-
     def test_remove_resources(self, *_):
         self.client = Client(
             datadir=self.path,
@@ -553,7 +539,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.client.Trust', autospec=True)
     def test_check_payments(self, trust, *_):
 
-        client = Client(
+        self.client = client = Client(
             datadir=self.path,
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
@@ -1102,7 +1088,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                       side_effect=raise_exc), \
                 self.assertRaisesRegex(Exception, 'Test exception'):
             sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
-
 
     def test_config_changed(self, *_):
         c = self.client

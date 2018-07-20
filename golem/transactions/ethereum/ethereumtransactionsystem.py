@@ -6,8 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, ClassVar, Dict, List
 
-from ethereum.utils import privtoaddr, denoms
-from eth_utils import encode_hex, is_address, to_checksum_address
+from ethereum.utils import denoms
+from eth_utils import is_address
 import requests
 
 from golem_sci import new_sci, JsonTransactionsStorage
@@ -17,6 +17,7 @@ from golem.transactions.ethereum.ethereumincomeskeeper \
     import EthereumIncomesKeeper
 from golem.transactions.ethereum.exceptions import NotEnoughFunds
 from golem.transactions.transactionsystem import TransactionSystem
+from golem.utils import privkeytoaddr
 
 log = logging.getLogger(__name__)
 
@@ -38,11 +39,7 @@ class EthereumTransactionSystem(TransactionSystem):
             datadir: str,
             node_priv_key: bytes,
             config) -> None:
-        try:
-            eth_addr = \
-                to_checksum_address(encode_hex(privtoaddr(node_priv_key)))
-        except AssertionError:
-            raise ValueError("not a valid private key")
+        eth_addr = privkeytoaddr(node_priv_key)
         log.info("Node Ethereum address: %s", eth_addr)
 
         self._config = config
@@ -81,25 +78,20 @@ class EthereumTransactionSystem(TransactionSystem):
         self._last_gnt_update = None
         self._payments_locked: int = 0
         self._gntb_locked: int = 0
-        self._is_stopped = False
+
+        self._refresh_balances()
+        log.info(
+            "Initial balances: %f GNTB, %f GNT, %f ETH",
+            self._gntb_balance / denoms.ether,
+            self._gnt_balance / denoms.ether,
+            self._eth_balance / denoms.ether,
+        )
 
     def stop(self):
         super().stop()
-        self._is_stopped = True
         self.payment_processor.sendout(0)
         self.incomes_keeper.stop()
         self._sci.stop()
-
-    def sync(self) -> None:
-        log.info("Synchronizing balances")
-        while not self._is_stopped:
-            self._refresh_balances()
-            if self._last_eth_update is not None and \
-               self._last_gnt_update is not None:
-                log.info("Balances synchronized")
-                return
-            log.info("Waiting for initial GNT/ETH balances...")
-            time.sleep(1)
 
     def add_payment_info(self, *args, **kwargs):
         payment = super().add_payment_info(*args, **kwargs)

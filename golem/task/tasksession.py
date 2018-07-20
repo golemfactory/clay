@@ -55,7 +55,11 @@ def get_task_message(message_class_name, task_id, subtask_id, log_prefix=None):
     if log_prefix:
         log_prefix = '%s ' % log_prefix
 
-    msg = history.get(message_class_name, task_id, subtask_id)
+    msg = history.get(
+        message_class_name=message_class_name,
+        task_id=task_id,
+        subtask_id=subtask_id,
+    )
     if msg is None:
         logger.debug(
             '%s%s message not found for task %r, subtask: %r',

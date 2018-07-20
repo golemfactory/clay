@@ -4,7 +4,7 @@ import socket
 import semantic_version
 
 from eth_utils import decode_hex, encode_hex, to_checksum_address
-from ethereum.utils import sha3
+from ethereum.utils import sha3, privtoaddr as _privtoaddr
 
 logger = logging.getLogger(__name__)
 
@@ -18,6 +18,18 @@ def find_free_net_port():
 
 def pubkeytoaddr(pubkey: str) -> str:
     return to_checksum_address(encode_hex(sha3(decode_hex(pubkey))[12:]))
+
+
+def privkeytoaddr(privkey: bytes) -> str:
+    """
+    Converts a private key bytes sequence to a string, representing the
+    hex-encoded ethereum address with checksum
+    :raises ValueError: provided bytes sequence is not an ethereum private key
+    """
+    try:
+        return to_checksum_address(encode_hex(_privtoaddr(privkey)))
+    except AssertionError:
+        raise ValueError("not a valid private key")
 
 
 def tee_target(prefix, proc, input_stream, path, stream):

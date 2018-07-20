@@ -2,7 +2,6 @@ import logging
 import unittest
 
 from golem_messages import factories as msg_factories
-from golem_messages import message
 from golem.network.concent import client
 from golem.network.concent.exceptions import ConcentRequestError
 
@@ -32,13 +31,12 @@ class SendTest(ConcentBaseTest, unittest.TestCase):
 
     def test_fail_signature_invalid(self):
         msg = msg_factories.concents.ForceReportComputedTaskFactory()
-        with self.assertRaises(ConcentRequestError) as context:
+        with self.assertRaisesRegex(
+            ConcentRequestError,
+            '.*exception when validating if golem_message'
+            '.* is signed with public key'
+        ):
             self.send_to_concent(msg)
-
-        self.assertIn('exception when validating if golem_message'
-                      ' %s is signed with public key' %
-                      message.tasks.TaskToCompute.TYPE,
-                      context.exception.args[0])
 
 
 class ReceiveTest(ConcentBaseTest, unittest.TestCase):
