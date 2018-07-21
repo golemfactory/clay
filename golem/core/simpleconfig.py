@@ -87,7 +87,7 @@ class ConfigEntry(object):
 class SimpleConfig(object):
     """ Simple configuration manager"""
 
-    def __init__(self, node_config, cfg_file, refresh=False, keep_old=True, write_config=False):
+    def __init__(self, node_config, cfg_file, refresh=False, keep_old=True, write_config=True):
         """Read existing configuration or create new one if it doesn't exist
            or refresh option is set to True.
         :param node_config: node specific configuration

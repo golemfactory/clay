@@ -181,7 +181,10 @@ class AppConfig:
 
         node_config = NodeConfig(**node_config_kwargs)
 
-        cfg = SimpleConfig(node_config, cfg_file, keep_old=True)
+        cfg = SimpleConfig(node_config,
+                           cfg_file,
+                           keep_old=True,
+                           write_config=bool(patched_values))
         return AppConfig(cfg, cfg_file)
 
     def __init__(self, cfg, config_file):
