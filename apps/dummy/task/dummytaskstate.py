@@ -65,7 +65,7 @@ class DummyTaskDefinition(TaskDefinition):
         self.tmp_dir = tempfile.mkdtemp()
 
         self.shared_data_files = list(self.resources)
-        self.code_files = ls_R(self.code_dir)
+        self.code_files = ls_r(self.code_dir)
 
         symlink_or_copy(self.code_dir, os.path.join(self.tmp_dir, "code"))
 
