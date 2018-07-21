@@ -83,7 +83,7 @@ class DummyTaskDefinition(TaskDefinition):
         symlink_or_copy(data_file,
                         os.path.join(data_path, os.path.basename(data_file)))
 
-        self.resources = set(ls_R(self.tmp_dir))
+        self.resources = set(ls_r(self.tmp_dir))
 
     # TODO maybe move it to the CoreTask? Issue #2428
     def set_defaults(self, defaults: DummyTaskDefaults):
