@@ -55,6 +55,14 @@ def find_task_script(task_dir, script_name):
     logger.error("Script file {} does not exist!".format(script_file))
 
 
+def ls_r(dir):
+    files = []
+    for dirpath, dirnames, filenames in os.walk(dir, followlinks=True):
+        for name in filenames:
+            files.append(os.path.join(dirpath, name))
+    return files
+
+
 class DirManager(object):
     """ Manage working directories for application. Return paths, create them if it's needed """
     def __init__(self, root_path, tmp="tmp", res="resources", output="output", global_resource="golemres", reference_data_dir="reference_data", test="test"):

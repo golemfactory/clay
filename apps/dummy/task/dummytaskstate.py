@@ -6,16 +6,7 @@ from apps.core.task.coretaskstate import (TaskDefinition,
                                           TaskDefaults, Options)
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from golem.core.common import get_golem_path
-from golem.resource.dirmanager import symlink_or_copy
-
-
-# moved it to dir_manager and created tests, in PR#1297
-def ls_R(dir):
-    files = []
-    for dirpath, dirnames, filenames in os.walk(dir, followlinks=True):
-        for name in filenames:
-            files.append(os.path.join(dirpath, name))
-    return files
+from golem.resource.dirmanager import symlink_or_copy, ls_r
 
 
 class DummyTaskDefaults(TaskDefaults):
