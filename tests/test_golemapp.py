@@ -92,5 +92,3 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
             catch_exceptions=False
         )
         node_cls().accept_terms.assert_called_once()
-
-

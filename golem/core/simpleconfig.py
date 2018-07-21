@@ -87,7 +87,8 @@ class ConfigEntry(object):
 class SimpleConfig(object):
     """ Simple configuration manager"""
 
-    def __init__(self, node_config, cfg_file, refresh=False, keep_old=True, write_config=True):
+    def __init__(self, node_config, cfg_file,
+                 refresh=False, keep_old=True, write_config=True):
         """Read existing configuration or create new one if it doesn't exist
            or refresh option is set to True.
         :param node_config: node specific configuration
@@ -122,7 +123,6 @@ class SimpleConfig(object):
                 logger.info("{} ... failed".format(logger_msg))
                 cfg = self.__create_fresh_config()
                 # there were no previous files, so config has to be saved
-                write_config = True
 
             if write_config:
                 logger.info(

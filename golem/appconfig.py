@@ -183,7 +183,7 @@ class AppConfig:
 
         cfg = SimpleConfig(node_config,
                            cfg_file,
-                           keep_old=True,
+                           keep_old=bool(patched_values),
                            write_config=bool(patched_values))
         return AppConfig(cfg, cfg_file)
 
