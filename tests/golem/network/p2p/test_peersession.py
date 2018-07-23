@@ -267,6 +267,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.assertFalse(self.peer_session.verified)
 
     def test_react_to_hello_new_version(self):
+        # FIXME new test with DNS names
         listener = MagicMock()
         dispatcher.connect(listener, signal='golem.p2p')
         self.peer_session.p2p_service.seeds = {

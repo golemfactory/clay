@@ -8,6 +8,7 @@ from pydispatch import dispatcher
 
 import golem
 from golem.appconfig import SEND_PEERS_NUM
+from golem.config import active as active_config
 from golem.core import variables
 from golem.core.keysauth import KeysAuth
 from golem.network.p2p.node import Node
@@ -268,9 +269,13 @@ class PeerSession(BasicSafeSession):
             logger.error("Received unexpected Hello message, ignoring")
             return
 
+        if not msg.verify_signature(public_key=msg.client_key_id):
+            logger.debug('BadSignature msg=%r', msg)
+            self.disconnect(message.Disconnect.REASON.BadSignature)
+            return
+
         # Check if sender is a seed/bootstrap node
-        port = getattr(msg, 'port', None)
-        if (self.address, port) in self.p2p_service.seeds:
+        if msg.client_key_id in active_config.P2P_SEEDS_KEYS:
             compare_version(getattr(msg, 'client_ver', None))
 
         if not self.conn.opened:
@@ -290,6 +295,13 @@ class PeerSession(BasicSafeSession):
             return
 
         self.node_info = Node.from_dict(msg.node_info)
+        if self.node_info.key != msg.client_key_id:
+            logger.debug(
+                'BadProtocol node_info.key != client_key_id msg=%r',
+                msg,
+            )
+            self.disconnect(message.Disconnect.REASON.BadProtocol)
+            return
 
         if not KeysAuth.is_pubkey_difficult(
                 self.node_info.key,

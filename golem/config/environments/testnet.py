@@ -53,6 +53,10 @@ P2P_SEEDS = [
     ('seeds.test.golem.network', 40104),
 ]
 
+P2P_SEEDS_KEYS = frozenset([
+    '...',  # FIXME obtain list of key ids
+])
+
 PROTOCOL_CONST.POSTFIX = '-' + TESTNET
 PROTOCOL_CONST.patch_protocol_id(value=PROTOCOL_CONST.NUM)
 
