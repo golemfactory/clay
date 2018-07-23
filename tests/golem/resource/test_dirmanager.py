@@ -3,6 +3,7 @@ import os
 import shutil
 import time
 
+from golem.core.common import is_linux, is_osx
 from golem.resource.dirmanager import symlink_or_copy, DirManager, \
     find_task_script, logger, ls_r
 from golem.tools.assertlogs import LogTestCase
@@ -290,8 +291,12 @@ class TestUtilityFunction(TempDirFixture):
         with open(os.path.join(self.tempdir, "aaa", "bbb", "f3"), "w") as f:
             f.write("content")
 
-        os.symlink(os.path.join(self.tempdir, "f2"), os.path.join(self.tempdir, "eee", "fff", "f4"))
-        dirs = ls_r(self.tempdir)
-
-        self.assertEqual(set(dirs), {os.path.join(*[self.tempdir, *x]) for x in
-            [["eee", "f1"], ["f2"], ["aaa", "bbb", "f3"], ["eee", "fff", "f4"]]})
+        if is_osx() or is_linux():
+            os.symlink(os.path.join(self.tempdir, "f2"), os.path.join(self.tempdir, "eee", "fff", "f4"))
+            dirs = ls_r(self.tempdir)
+            self.assertEqual(set(dirs), {os.path.join(*[self.tempdir, *x]) for x in
+                [["eee", "f1"], ["f2"], ["aaa", "bbb", "f3"], ["eee", "fff", "f4"]]})
+        else:
+            dirs = ls_r(self.tempdir)
+            self.assertEqual(set(dirs), {os.path.join(*[self.tempdir, *x]) for x in
+                                         [["eee", "f1"], ["f2"], ["aaa", "bbb", "f3"]]})
