@@ -8,13 +8,13 @@ from typing import Any, ClassVar, Dict, List
 
 from ethereum.utils import denoms
 from eth_utils import is_address
+from golem_messages.utils import bytes32_to_uuid
+from golem_sci import new_sci, JsonTransactionsStorage
 import requests
 
-from golem_sci import new_sci, JsonTransactionsStorage
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
-from golem.transactions.ethereum.ethereumincomeskeeper \
-    import EthereumIncomesKeeper
+from golem.model import GenericKeyValue
 from golem.transactions.ethereum.exceptions import NotEnoughFunds
 from golem.transactions.transactionsystem import TransactionSystem
 from golem.utils import privkeytoaddr
@@ -34,11 +34,14 @@ class EthereumTransactionSystem(TransactionSystem):
 
     TX_FILENAME: ClassVar[str] = 'transactions.json'
 
+    BLOCK_NUMBER_DB_KEY: ClassVar[str] = 'ets_subscriptions_block_number'
+
     def __init__(
             self,
             datadir: str,
             node_priv_key: bytes,
             config) -> None:
+        super().__init__()
         eth_addr = privkeytoaddr(node_priv_key)
         log.info("Node Ethereum address: %s", eth_addr)
 
@@ -67,9 +70,7 @@ class EthereumTransactionSystem(TransactionSystem):
 
         self.payment_processor = PaymentProcessor(self._sci)
 
-        super().__init__(
-            incomes_keeper=EthereumIncomesKeeper(self._sci),
-        )
+        self._subscribe_to_events()
 
         self._eth_balance: int = 0
         self._gnt_balance: int = 0
@@ -87,11 +88,52 @@ class EthereumTransactionSystem(TransactionSystem):
             self._eth_balance / denoms.ether,
         )
 
+    def _subscribe_to_events(self) -> None:
+        values = GenericKeyValue.select().where(
+            GenericKeyValue.key == self.BLOCK_NUMBER_DB_KEY)
+        from_block = int(values.get().value) if values.count() == 1 else 0
+
+        ik = self.incomes_keeper
+        self._sci.subscribe_to_batch_transfers(
+            None,
+            self._sci.get_eth_address(),
+            from_block,
+            lambda event: ik.received_batch_transfer(
+                event.tx_hash,
+                event.sender,
+                event.amount,
+                event.closure_time,
+            )
+        )
+
+        # Temporary try-catch block, until GNTDeposit is deployed on mainnet.
+        # Remove it after that.
+        try:
+            self._sci.subscribe_to_forced_subtask_payments(
+                None,
+                self._sci.get_eth_address(),
+                from_block,
+                lambda event: ik.received_forced_subtask_payment(
+                    event.tx_hash,
+                    event.requestor,
+                    str(bytes32_to_uuid(event.subtask_id)),
+                    event.amount,
+                )
+            )
+        except AttributeError as e:
+            log.info("Can't use GNTDeposit on mainnet yet: %r", e)
+
+    def _save_subscription_block_number(self) -> None:
+        block_number = self._sci.get_block_number() - self._sci.REQUIRED_CONFS
+        kv, _ = GenericKeyValue.get_or_create(key=self.BLOCK_NUMBER_DB_KEY)
+        kv.value = block_number - 1
+        kv.save()
+
     def stop(self):
-        super().stop()
         self.payment_processor.sendout(0)
-        self.incomes_keeper.stop()
+        self._save_subscription_block_number()
         self._sci.stop()
+        super().stop()
 
     def add_payment_info(self, *args, **kwargs):
         payment = super().add_payment_info(*args, **kwargs)
