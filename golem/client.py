@@ -28,14 +28,7 @@ from apps.rendering.task import framerenderingtask
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL, AppConfig)
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
-from golem.config.active import (
-    ENABLE_WITHDRAWALS,
-    ACTIVE_NET,
-    ETHEREUM_NODE_LIST,
-    FALLBACK_NODE_LIST,
-    ETHEREUM_CHAIN,
-    ETHEREUM_FAUCET_ENABLED,
-)
+from golem.config.active import EthereumConfig
 from golem.config.presets import HardwarePresetsMixin
 from golem.core import variables
 from golem.core.async import AsyncRequest, async_run
@@ -193,18 +186,10 @@ class Client(HardwarePresetsMixin):
 
         self.ranking = Ranking(self)
 
-        if geth_address:
-            geth_addresses = [geth_address]
-        else:
-            geth_addresses = ETHEREUM_NODE_LIST
-            random.shuffle(geth_addresses)
-            geth_addresses += FALLBACK_NODE_LIST
         self.transaction_system = EthereumTransactionSystem(
             datadir,
             self.keys_auth._private_key,
-            geth_addresses,
-            ETHEREUM_CHAIN,
-            ETHEREUM_FAUCET_ENABLED,
+            EthereumConfig,
         )
         self.transaction_system.start()
 
@@ -285,7 +270,7 @@ class Client(HardwarePresetsMixin):
 
     @report_calls(Component.client, 'sync')
     def sync(self):
-        self.transaction_system.sync()
+        pass
 
     @report_calls(Component.client, 'start', stage=Stage.pre)
     def start(self):
@@ -604,7 +589,9 @@ class Client(HardwarePresetsMixin):
             else:
                 task.header.mask = Mask()
 
-            task_manager.add_new_task(task)
+            estimated_fee = self.transaction_system.eth_for_batch_payment(
+                task.total_tasks)
+            task_manager.add_new_task(task, estimated_fee=estimated_fee)
 
             client_options = self.task_server.get_share_options(task_id, None)
             client_options.timeout = deadline_to_timeout(task.header.deadline)
@@ -951,6 +938,12 @@ class Client(HardwarePresetsMixin):
         subtask_ids = list(task_state.subtask_states.keys())
         task_dict['cost'], task_dict['fee'] = \
             self.transaction_system.get_total_payment_for_subtasks(subtask_ids)
+
+        # Convert to string because RPC serializer fails on big numbers
+        for k in ('cost', 'fee', 'estimated_cost', 'estimated_fee'):
+            if task_dict[k] is not None:
+                task_dict[k] = str(task_dict[k])
+
         return task_dict
 
     def get_tasks(self, task_id: Optional[str] = None) \
@@ -1079,10 +1072,6 @@ class Client(HardwarePresetsMixin):
             amount: Union[str, int],
             destination: str,
             currency: str) -> List[str]:
-
-        if not ENABLE_WITHDRAWALS:
-            raise Exception("Withdrawals are disabled on {}".format(ACTIVE_NET))
-
         if isinstance(amount, str):
             amount = int(amount)
         return self.transaction_system.withdraw(

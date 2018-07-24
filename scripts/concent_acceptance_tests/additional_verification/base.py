@@ -11,14 +11,15 @@ from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 
 from golem.core.simplehash import SimpleHash
 
-from ..base import ETSBaseTest
+from ..base import SCIBaseTest
 
 
-class SubtaskResultsVerifyBaseTest(ETSBaseTest):
+class SubtaskResultsVerifyBaseTest(SCIBaseTest):
 
     def setUp(self):
         super(SubtaskResultsVerifyBaseTest, self).setUp()
         self.env = BlenderEnvironment()
+        self.main_program_file = self.env.main_program_file
 
     def init_deposits(self):
         price = random.randint(1 << 20, 10 << 20)
@@ -50,7 +51,6 @@ class SubtaskResultsVerifyBaseTest(ETSBaseTest):
 
     @property
     def src_code(self):
-        self.main_program_file = self.env.main_program_file
         with open(self.main_program_file, "r") as src_file:
             return src_file.read()
 

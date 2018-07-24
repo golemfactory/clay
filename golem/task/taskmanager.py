@@ -147,7 +147,7 @@ class TaskManager(TaskEventListener):
         task_type = self.task_types[definition.task_type.lower()]
         return task_type.task_builder_type.build_dictionary(definition)
 
-    def add_new_task(self, task):
+    def add_new_task(self, task: Task, estimated_fee: int = 0) -> None:
         task_id = task.header.task_id
         if task_id in self.tasks:
             raise RuntimeError("Task {} has been already added"
@@ -169,6 +169,8 @@ class TaskManager(TaskEventListener):
         ts.outputs = task.get_output_names()
         ts.total_subtasks = task.get_total_tasks()
         ts.time_started = time.time()
+        ts.estimated_cost = task.price
+        ts.estimated_fee = estimated_fee
 
         self.tasks[task_id] = task
         self.tasks_states[task_id] = ts

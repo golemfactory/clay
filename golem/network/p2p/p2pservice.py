@@ -39,6 +39,8 @@ HISTORY_LEN = 5  # How many entries from challenge history should we remember
 TASK_INTERVAL = 10
 PEERS_INTERVAL = 30
 FORWARD_INTERVAL = 2
+RANDOM_DISCONNECT_INTERVAL = 5 * 60
+RANDOM_DISCONNECT_FRACTION = 0.1
 
 
 class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
@@ -111,10 +113,12 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             logger.error("Error reading seed addresses: {}".format(exc))
 
         # Timers
-        self.last_peers_request = time.time()
-        self.last_tasks_request = time.time()
-        self.last_refresh_peers = time.time()
-        self.last_forward_request = time.time()
+        now = time.time()
+        self.last_peers_request = now
+        self.last_tasks_request = now
+        self.last_refresh_peers = now
+        self.last_forward_request = now
+        self.last_random_disconnect = now
 
         self.last_messages = []
         random.seed()
@@ -247,6 +251,11 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             self._sync_forward_requests()
 
         self.__remove_old_peers()
+
+        if now - self.last_random_disconnect > RANDOM_DISCONNECT_INTERVAL:
+            self.last_random_disconnect = now
+            self._disconnect_random_peers()
+
         self._sync_pending()
         if len(self.peers) == 0:
             delta = time.time() - self.last_time_tried_connect_with_seed
@@ -967,6 +976,20 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         for node in self.peer_keeper.sessions_to_end:
             self.remove_peer_by_id(node.key)
         self.peer_keeper.sessions_to_end = []
+
+    def _disconnect_random_peers(self) -> None:
+        peers = list(self.peers.values())
+        if len(peers) < self.config_desc.opt_peer_num:
+            return
+
+        logger.info('Disconnecting random peers')
+        for peer in random.sample(
+                peers, k=int(len(peers) * RANDOM_DISCONNECT_FRACTION)):
+            logger.info('Disconnecting peer %r', peer.key_id)
+            self.remove_peer(peer)
+            peer.disconnect(
+                message.Disconnect.REASON.Refresh
+            )
 
     @staticmethod
     def __remove_redundant_hosts_from_db():
