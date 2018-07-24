@@ -15,14 +15,10 @@ class PaymentsDatabase(object):
     """
 
     @staticmethod
-    def get_payment_value(payment_info):
+    def get_payment_value(subtask_id: str):
         """ Return value of a payment that was done to the same node and for the same task as payment for payment_info
-        :param PaymentInfo payment_info: payment structure from which the
-               database should retrieve information about computing node and
-               task id.
-        :return int: value of a previous similiar payment or 0 if there is no such payment in database
         """
-        return PaymentsDatabase.get_payment_for_subtask(payment_info.subtask_id)
+        return PaymentsDatabase.get_payment_for_subtask(subtask_id)
 
     @staticmethod
     def get_payment_for_subtask(subtask_id):
@@ -59,13 +55,14 @@ class PaymentsDatabase(object):
         return sum(p.value or 0 for p in payments), \
             sum(p.details.fee or 0 for p in payments)
 
-    def add_payment(self, payment_info):
+    @staticmethod
+    def add_payment(subtask_id: str, eth_address: bytes, value: int):
         """ Add new payment to the database.
         :param payment_info:
         """
-        Payment.create(subtask=payment_info.subtask_id,
-                       payee=payment_info.computer.eth_account.address,
-                       value=payment_info.value)
+        Payment.create(subtask=subtask_id,
+                       payee=eth_address,
+                       value=value)
 
     def change_state(self, subtask_id, state):
         """ Change state for all payments for task_id
@@ -121,11 +118,15 @@ class PaymentsKeeper:
             "modified": datetime_to_timestamp_utc(payment.modified_date)
         } for payment in self.db.get_newest_payment()]
 
-    def finished_subtasks(self, payment_info):
+    def finished_subtasks(
+            self,
+            subtask_id: str,
+            eth_address: bytes,
+            value: int):
         """ Add new information about finished subtask
         :param PaymentInfo payment_info: full information about payment for given subtask
         """
-        self.db.add_payment(payment_info)
+        self.db.add_payment(subtask_id, eth_address, value)
 
     def get_payment(self, subtask_id):
         """
@@ -145,14 +146,3 @@ class PaymentsKeeper:
                 (None, None) otherwise
         """
         return self.db.get_total_payment_for_subtasks(subtask_ids)
-
-
-class PaymentInfo(object):
-    """ Full information about payment for a subtask. Include task id, subtask payment information and
-    account information about node that has computed this task. """
-    def __init__(self, task_id, subtask_id, value, computer):
-        self.task_id = task_id
-        self.subtask_id = subtask_id
-        self.value = value
-        self.computer = computer
-

@@ -1,8 +1,10 @@
 from typing import List, Iterable, Tuple, Optional
 
+from eth_utils import decode_hex
+
 from golem.core.common import datetime_to_timestamp_utc, to_unicode
 from golem.core.service import LoopingCallService
-from golem.model import Payment, PaymentStatus, PaymentDetails
+from golem.model import Payment, PaymentStatus
 
 from .paymentskeeper import PaymentsKeeper
 from .incomeskeeper import IncomesKeeper
@@ -29,16 +31,14 @@ class TransactionSystem(LoopingCallService):
 
         super().__init__(13)
 
-    def add_payment_info(self, task_id, subtask_id, value, account_info):
+    def add_payment_info(  # pylint:disable=no-self-use
+            self,
+            subtask_id: str,
+            value: int,
+            eth_address: str):
         """ Add to payment keeper information about new payment for subtask.
-        :param str task_id:    ID if a task the payment is related to.
-        :param str subtask_id: the id of the compleated
-                               subtask this payment is for.
-        :param int value:      Aggreed value of the computed subtask.
-        :param AccountInfo account_info: Billing account.
-        :raise ValueError:     In case of incorrect payee address
         """
-        payee = account_info.eth_account.address
+        payee = decode_hex(eth_address)
         if len(payee) != 20:
             raise ValueError(
                 "Incorrect 'payee' length: {}. Should be 20".format(len(payee)))
@@ -46,9 +46,6 @@ class TransactionSystem(LoopingCallService):
             subtask=subtask_id,
             payee=payee,
             value=value,
-            details=PaymentDetails(
-                node_info=account_info.node_info,
-            )
         )
 
     def get_payments_list(self):

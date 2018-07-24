@@ -93,8 +93,8 @@ class EthereumTransactionSystem(TransactionSystem):
         self.incomes_keeper.stop()
         self._sci.stop()
 
-    def add_payment_info(self, *args, **kwargs):
-        payment = super().add_payment_info(*args, **kwargs)
+    def add_payment_info(self, subtask_id: str, value: int, eth_address: str):
+        payment = super().add_payment_info(subtask_id, value, eth_address)
         self.payment_processor.add(payment)
         return payment
 
