@@ -42,6 +42,7 @@ class EthereumIncomesKeeper(IncomesKeeper):
                 provider_address=self.__sci.get_eth_address(),
                 from_block=from_block,
                 cb=self._on_forced_payment,
+            )
         except AttributeError as e:
             logger.info("Can't use GNTDeposit on mainnet yet: %r", e)
 
@@ -61,7 +62,8 @@ class EthereumIncomesKeeper(IncomesKeeper):
             event.amount,
         )
 
-    def _on_forced_payment(self, event: golem_sci.events.ForcedPaymentEvent) -> None:
+    def _on_forced_payment(self, event: golem_sci.events.ForcedPaymentEvent) \
+            -> None:
         self.received_forced_payment(
             tx_hash=event.tx_hash,
             sender=event.sender,
