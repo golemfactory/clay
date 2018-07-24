@@ -129,8 +129,9 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_docker_manager=False,
             use_monitor=False
         )
-        assert self.client.get_incomes_list() == \
-            self.client.transaction_system.get_incoming_payments.return_value
+        self.client.get_incomes_list()
+        self.client.transaction_system.get_incomes_list.\
+            assert_called_once_with()
 
     def test_withdraw(self, *_):
         keys_auth = Mock()
