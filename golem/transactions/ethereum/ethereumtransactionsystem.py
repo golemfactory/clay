@@ -45,41 +45,28 @@ class EthereumTransactionSystem(LoopingCallService):
 
     def __init__(
             self,
-            datadir: str,
-            node_priv_key: bytes,
+            datadir: Path,
+            privkey: bytes,
             config) -> None:
         super().__init__(self.LOOP_INTERVAL)
-        eth_addr = privkeytoaddr(node_priv_key)
-        log.info("Node Ethereum address: %s", eth_addr)
+        datadir.mkdir(exist_ok=True)
 
+        self._datadir = datadir
+        self._privkey = privkey
         self._config = config
 
         node_list = config.NODE_LIST.copy()
         random.shuffle(node_list)
         node_list += config.FALLBACK_NODE_LIST
         self._node = NodeProcess(node_list)
-        self._node.start()
-
-        self._sci = new_sci(
-            self._node.web3,
-            eth_addr,
-            config.CHAIN,
-            JsonTransactionsStorage(Path(datadir) / self.TX_FILENAME),
-            lambda tx: tx.sign(node_priv_key),
-        )
-        self._gnt_faucet_requested = False
-
-        self._gnt_conversion_status = ConversionStatus.NONE
-        gate_address = self._sci.get_gate_address()
-        if gate_address is not None:
-            if self._sci.get_gnt_balance(gate_address):
-                self._gnt_conversion_status = ConversionStatus.UNFINISHED
+        self._sci = None
 
         self.payments_keeper = PaymentsKeeper()
         self.incomes_keeper = IncomesKeeper()
-        self.payment_processor = PaymentProcessor(self._sci)
+        self.payment_processor = None
 
-        self._subscribe_to_events()
+        self._gnt_faucet_requested = False
+        self._gnt_conversion_status = ConversionStatus.NONE
 
         self._eth_balance: int = 0
         self._gnt_balance: int = 0
@@ -89,6 +76,44 @@ class EthereumTransactionSystem(LoopingCallService):
         self._payments_locked: int = 0
         self._gntb_locked: int = 0
 
+    def backwards_compatibility_tx_storage(self, json_content: Dict) -> None:
+        if self.running:
+            raise Exception(
+                "Service already started, can't do backwards compatibility")
+        path = self._datadir / self.TX_FILENAME
+        if path.exists():
+            raise Exception("Storage already exists, can't override")
+        log.info(
+            "Initializing transaction storage with value: %r",
+            json_content,
+        )
+        with open(path, 'w') as f:
+            import json
+            json.dump(json_content, f)
+
+    def _init(self) -> None:
+        eth_addr = privkeytoaddr(self._privkey)
+        log.info("Node Ethereum address: %s", eth_addr)
+
+        self._node.start()
+
+        self._sci = new_sci(
+            self._node.web3,
+            eth_addr,
+            self._config.CHAIN,
+            JsonTransactionsStorage(self._datadir / self.TX_FILENAME),
+            lambda tx: tx.sign(self._privkey),
+        )
+
+        gate_address = self._sci.get_gate_address()
+        if gate_address is not None:
+            if self._sci.get_gnt_balance(gate_address):
+                self._gnt_conversion_status = ConversionStatus.UNFINISHED
+
+        self.payment_processor = PaymentProcessor(self._sci)
+
+        self._subscribe_to_events()
+
         self._refresh_balances()
         log.info(
             "Initial balances: %f GNTB, %f GNT, %f ETH",
@@ -96,6 +121,10 @@ class EthereumTransactionSystem(LoopingCallService):
             self._gnt_balance / denoms.ether,
             self._eth_balance / denoms.ether,
         )
+
+    def start(self) -> None:
+        self._init()
+        super().start()
 
     def _subscribe_to_events(self) -> None:
         values = GenericKeyValue.select().where(
