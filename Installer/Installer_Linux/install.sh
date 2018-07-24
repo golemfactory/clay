@@ -21,6 +21,7 @@ declare -r GOLEM_DIR=$HOME'/golem'
 
 # Questions
 declare -i INSTALL_DOCKER=0
+declare -i INSTALL_NVIDIA_DOCKER=0
 declare -i reinstall=0
 
 # PACKAGE VERSION
@@ -87,7 +88,7 @@ function release_url()
               ][0])'
 }
 
-# @brief check if dependencies (Docker)
+# @brief check if dependencies (Docker, nvidia-docker)
 # are installed and set proper 'global' variables
 function check_dependencies()
 {
@@ -95,6 +96,24 @@ function check_dependencies()
     if [[ -z "$( service --status-all 2>&1 | grep -F 'docker' )" ]]; then
         ask_user "Docker not found. Do you want to install it? (y/n)"
         INSTALL_DOCKER=$?
+    else
+        info_msg "Docker is already installed"
+    fi
+
+    # Check if nvidia-docker2 is installed
+    if [[ -z "$(dpkg -s nvidia-docker2 | grep -i 'status: install ok installed')" ]]; then
+        if [[ -z "$(lspci | grep -i nvidia)" ]]; then
+            warning_msg "nvidia-docker is not supported: incompatible device"
+        elif [[ ! -z "$(lsmod | grep -i nouveau)" ]]; then
+            warning_msg "nvidia-docker is not supported: please install the proprietary driver"
+        elif [[ -z "$(lsmod | grep -i nvidia)" ]]; then
+            warning_msg "nvidia-docker is not supported: no compatible driver found"
+        else
+            ask_user "nvidia-docker not found. Do you want to install it? (y/n)"
+            INSTALL_NVIDIA_DOCKER=$?
+        fi
+    else
+        info_msg "nvidia-docker is already installed"
     fi
 }
 
@@ -139,6 +158,18 @@ function install_dependencies()
         packages+=(docker-ce=${docker_version})
     fi
 
+    if [[ ${INSTALL_NVIDIA_DOCKER} -eq 1 ]]; then
+        info_msg "INSTALLING NVIDIA-DOCKER"
+
+        curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+        distribution=$(. /etc/os-release;echo ${ID}${VERSION_ID})
+
+        curl -s -L https://nvidia.github.io/nvidia-docker/${distribution}/nvidia-docker.list | \
+            sudo tee /etc/apt/sources.list.d/nvidia-docker.list
+
+        packages+=(nvidia-docker2)
+    fi
+
     declare -r hyperg=$(release_url "https://api.github.com/repos/mfranciszkiewicz/golem-hyperdrive/releases")
     hyperg_release=$( echo ${hyperg} | cut -d '/' -f 8 | sed 's/v//' )
     # Older version of HyperG doesn't have `--version`, so need to kill
@@ -178,6 +209,10 @@ function install_dependencies()
             warning_msg "Error occurred during installation"
             sleep 5s
         fi
+    fi
+
+    if [[ ${INSTALL_NVIDIA_DOCKER} -eq 1 ]]; then
+        sudo pkill -SIGHUP dockerd
     fi
     info_msg "Done installing Golem dependencies"
 }
