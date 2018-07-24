@@ -472,6 +472,12 @@ class TestP2PService(TestDatabaseWithReactor):
         assert SocketAddress(address, prv_port) in result
         assert SocketAddress(address, pub_port) in result
 
+    @mock.patch('golem.network.p2p.p2pservice.PERFORMANCE_STATS', (1, 2, 3, 4))
+    def test_get_performance_percentile_rank(self):
+        self.assertEqual(self.service.get_performance_percentile_rank(0), 0.0)
+        self.assertEqual(self.service.get_performance_percentile_rank(2), 0.5)
+        self.assertEqual(self.service.get_performance_percentile_rank(4), 1.0)
+
     def test_disconnect_random_peers_no_peers(self):
         self.service.config_desc.opt_peer_num = 10
         with mock.patch.object(self.service, 'remove_peer') as remove_mock:
