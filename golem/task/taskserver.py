@@ -25,7 +25,7 @@ from golem.network.transport.tcpserver import (
 from golem.ranking.helper.trust import Trust
 from golem.task.acl import get_acl
 from golem.task.benchmarkmanager import BenchmarkManager
-from golem.task.taskbase import TaskHeader
+from golem.task.taskbase import TaskHeader, Task
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
 from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
@@ -579,6 +579,10 @@ class TaskServer(
     def remove_forwarded_session_request(self, key_id):
         return self.forwarded_session_requests.pop(key_id, None)
 
+    def get_min_performance_for_task(self, task: Task) -> float:
+        env = self.get_environment_by_id(task.header.environment)
+        return env.get_min_accepted_performance()
+
     def should_accept_provider(  # noqa pylint: disable=too-many-arguments,too-many-return-statements,unused-argument
             self,
             node_id,
@@ -595,8 +599,7 @@ class TaskServer(
             return False
 
         task = self.task_manager.tasks[task_id]
-        env = self.get_environment_by_id(task.header.environment)
-        min_accepted_perf = env.get_min_accepted_performance()
+        min_accepted_perf = self.get_min_performance_for_task(task)
 
         if min_accepted_perf > int(provider_perf):
             logger.info(f'insufficient provider performance: {provider_perf}'

@@ -48,6 +48,7 @@ class TestGenerateCrops(TempDirFixture):
         self.subtask_info['path_root'] = os.path.dirname(self.resources[0])
         self.subtask_info['parts'] = 1
         self.subtask_info['outfilebasename'] = 'GolemTask'
+        self.subtask_info['owner'] = "deadbeef"
         self.subtask_info['ctd'] = dict()
         self.subtask_info['ctd']['deadline'] = time.time() + 3600
         self.subtask_info['ctd']['docker_images'] = [DockerImage(
