@@ -14,6 +14,11 @@ def is_supported(*_) -> bool:
         return False
 
 
+def get_devices(*_) -> List[int]:
+    # Fixme: add configuration
+    return [0]
+
+
 def _is_supported(*_) -> bool:
     # soft fail section
     if not is_linux():
@@ -33,21 +38,25 @@ def _is_supported(*_) -> bool:
     if not mod_nvidia:
         raise RuntimeError('nvidia kernel module not loaded')
 
+    dev_nvidia_ctl = _pipe(['ls', '/dev'], ['grep', '-i', 'nvidiactl'])
+    if not dev_nvidia_ctl:
+        raise RuntimeError('nvidiactl device not found')
+
+    devices = ['-c={}'.format(d) for d in get_devices()]
+    command = ['nvidia-modprobe', '-u'] + devices
+
+    try:
+        subprocess.check_call(command)
+    except subprocess.CalledProcessError:
+        raise RuntimeError(f'{command} failed')
+
     mod_nvidia_uvm = _pipe(['lsmod'], ['grep', '-i', 'nvidia_uvm'])
     if not mod_nvidia_uvm:
         raise RuntimeError('nvidia_uvm kernel module was not loaded')
 
-    dev_nvidia_0 = _pipe(['ls', '-l', '/dev'], ['grep', '-i', 'nvidia0'])
-    if not dev_nvidia_0:
-        raise RuntimeError('nvidia0 device not found')
-
-    dev_nvidia_uvm = _pipe(['ls', '-l', '/dev'], ['grep', '-i', 'nvidia-uvm'])
+    dev_nvidia_uvm = _pipe(['ls', '/dev'], ['grep', '-i', 'nvidia-uvm'])
     if not dev_nvidia_uvm:
         raise RuntimeError('nvidia-uvm device not found')
-
-    dev_nvidia_ctl = _pipe(['ls', '-l', '/dev'], ['grep', '-i', 'nvidiactl'])
-    if not dev_nvidia_ctl:
-        raise RuntimeError('nvidiactl device not found')
 
     return True
 

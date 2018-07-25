@@ -1,7 +1,8 @@
 from os import path
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 
 from apps.core import nvgpu
+from apps.core.nvgpu import get_devices
 from golem.core.common import get_golem_path, posix_path
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -44,25 +45,22 @@ class BlenderNVGPUEnvironment(BlenderEnvironment):
             tag=BlenderEnvironment.DOCKER_TAG,
         )])
 
-    def get_volumes(self) -> List[str]:
-        return [
-            '/tmp/.X11-unix',
-        ]
-
-    def get_binds(self) -> Dict[str, Dict[str, str]]:
-        return {
-            posix_path('/tmp/.X11-unix'): {
-                "bind": '/tmp/.X11-unix',
-                "mode": "rw"
-            }
-        }
-
-    def get_devices(self) -> List[str]:
-        return [
-            '/dev/nvidia0:/dev/nvidia0',
-            '/dev/nvidiactl:/dev/nvidiactl',
-            '/dev/nvidia-uvm:/dev/nvidia-uvm',
-        ]
-
-    def get_runtime(self) -> Optional[str]:
-        return 'nvidia'
+    def get_container_config(self) -> Dict[str, Optional[Union[List, Dict]]]:
+        devices = [f'/dev/nvidia{d}:/dev/nvidia{d}' for d in get_devices()]
+        return dict(
+            runtime='nvidia',
+            volumes=[
+                '/tmp/.X11-unix',
+            ],
+            binds={
+                posix_path('/tmp/.X11-unix'): {
+                    "bind": '/tmp/.X11-unix',
+                    "mode": "rw"
+                }
+            },
+            devices=[
+                '/dev/nvidiactl:/dev/nvidiactl',
+                '/dev/nvidia-uvm:/dev/nvidia-uvm',
+            ] + devices,
+            environment={},
+        )

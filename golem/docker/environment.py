@@ -1,5 +1,5 @@
 import abc
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Union
 
 import enforce
 
@@ -59,20 +59,14 @@ class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
 
         return descr
 
-    def get_volumes(self) -> List[str]:
-        return []
-
-    def get_binds(self) -> Dict[str, Dict[str, str]]:
-        return {}
-
-    def get_devices(self) -> List[str]:
-        return []
-
-    def get_environment_variables(self) -> Dict[str, str]:
-        return {}
-
-    def get_runtime(self) -> Optional[str]:
-        return None
+    def get_container_config(self) -> Dict[str, Optional[Union[List, Dict]]]:
+        return dict(
+            runtime=None,
+            volumes=[],
+            binds={},
+            devices=[],
+            environment={},
+        )
 
     @property
     @abc.abstractmethod

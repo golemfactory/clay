@@ -136,12 +136,13 @@ class DockerJob(object):
         docker_env = EnvironmentsManager().get_environment_by_image(self.image)
 
         if docker_env:
-            environment.update(docker_env.get_environment_variables())
-            binds.update(docker_env.get_binds())
-            volumes += docker_env.get_volumes()
+            env_config = docker_env.get_container_config()
 
-            devices = docker_env.get_devices()
-            runtime = docker_env.get_runtime()
+            environment.update(env_config['environment'])
+            binds.update(env_config['binds'])
+            volumes += env_config['volumes']
+            devices = env_config['devices']
+            runtime = env_config['runtime']
         else:
             logger.debug('No Docker environment found for image %r', self.image)
 
