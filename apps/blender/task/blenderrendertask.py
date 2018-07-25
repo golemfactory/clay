@@ -13,7 +13,8 @@ from PIL import Image, ImageChops, ImageFile
 
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
-from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.blender.blenderenvironment import BlenderEnvironment, \
+    BlenderNVGPUEnvironment
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.core.task import coretask
 from apps.core.task.coretask import CoreTaskTypeInfo
@@ -320,12 +321,31 @@ class BlenderTaskTypeInfo(CoreTaskTypeInfo):
         return parts
 
 
+class BlenderNVGPUTaskTypeInfo(BlenderTaskTypeInfo):
+
+    def __init__(self):
+        super(BlenderTaskTypeInfo, self).__init__("Blender_NVGPU",
+                                                  RenderingTaskDefinition,
+                                                  BlenderDefaults(),
+                                                  BlenderRendererOptions,
+                                                  BlenderRenderTaskBuilder)
+
+        self.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
+        self.output_file_ext = ["blend"]
+
+
 class BlenderRendererOptions(FrameRendererOptions):
     def __init__(self):
         super(BlenderRendererOptions, self).__init__()
         self.environment = BlenderEnvironment()
         self.compositing = False
         self.samples = 0
+
+
+class BlenderNVGPURendererOptions(BlenderRendererOptions):
+    def __init__(self):
+        super().__init__()
+        self.environment = BlenderNVGPUEnvironment()
 
 
 class BlenderRenderTask(FrameRenderingTask):
@@ -344,8 +364,7 @@ class BlenderRenderTask(FrameRenderingTask):
         self.preview_updater = None
         self.preview_updaters = None
 
-        FrameRenderingTask.__init__(self, task_definition=task_definition,
-                                    **kwargs)
+        super().__init__(task_definition=task_definition, **kwargs)
 
         # https://github.com/golemfactory/golem/issues/2388
         self.compositing = False
@@ -648,6 +667,10 @@ class BlenderRenderTask(FrameRenderingTask):
         self._update_frame_task_preview()
 
 
+class BlenderNVGPURenderTask(BlenderRenderTask):
+    ENVIRONMENT_CLASS = BlenderNVGPUEnvironment
+
+
 class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     """ Build new Blender tasks using RenderingTaskDefintions and
      BlenderRendererOptions as taskdefinition renderer options """
@@ -671,6 +694,10 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
         definition.options.compositing = options.get('compositing', False)
         definition.options.samples = options.get('samples', 0)
         return definition
+
+
+class BlenderNVGPURenderTaskBuilder(BlenderRenderTaskBuilder):
+    TASK_CLASS = BlenderNVGPURenderTask
 
 
 class CustomCollector(RenderingTaskCollector):
