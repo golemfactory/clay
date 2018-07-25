@@ -1,6 +1,8 @@
 import pathlib
 import sys
 import tempfile
+from typing import Type
+
 from os.path import dirname, join
 from os import close
 
@@ -13,7 +15,7 @@ from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 
 class BlenderBenchmark(RenderingBenchmark):
     RENDERER_OPTIONS_CLASS = BlenderRendererOptions
-    ENVIRONMENT_CLASS = BlenderEnvironment
+    ENVIRONMENT_CLASS: Type[BlenderEnvironment] = BlenderEnvironment
 
     def __init__(self):
         super(BlenderBenchmark, self).__init__()
@@ -40,4 +42,4 @@ class BlenderBenchmark(RenderingBenchmark):
 
 class BlenderNVGPUBenchmark(BlenderBenchmark):
     RENDERER_OPTIONS_CLASS = BlenderNVGPURendererOptions
-    ENVIRONMENT_CLASS = BlenderNVGPUEnvironment
+    ENVIRONMENT_CLASS: Type[BlenderEnvironment] = BlenderNVGPUEnvironment

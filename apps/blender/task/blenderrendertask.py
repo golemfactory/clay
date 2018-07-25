@@ -6,7 +6,7 @@ import random
 import time
 from collections import OrderedDict
 from copy import copy
-from typing import Optional
+from typing import Optional, Type
 
 import numpy
 from PIL import Image, ImageChops, ImageFile
@@ -50,6 +50,12 @@ class BlenderDefaults(RendererDefaults):
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 6
+
+
+class BlenderNVGPUDefaults(BlenderDefaults):
+    def __init__(self):
+        super().__init__()
+        self.main_program_file = BlenderNVGPUEnvironment().main_program_file
 
 
 class PreviewUpdater(object):
@@ -130,20 +136,7 @@ class PreviewUpdater(object):
                 img.save(self.preview_file_path, PREVIEW_EXT)
 
 
-class BlenderTaskTypeInfo(CoreTaskTypeInfo):
-    """ Blender App description that can be used by interface to define
-    parameters and task build
-    """
-
-    def __init__(self):
-        super(BlenderTaskTypeInfo, self).__init__("Blender",
-                                                  RenderingTaskDefinition,
-                                                  BlenderDefaults(),
-                                                  BlenderRendererOptions,
-                                                  BlenderRenderTaskBuilder)
-
-        self.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
-        self.output_file_ext = ["blend"]
+class RenderingTaskTypeInfo(CoreTaskTypeInfo):
 
     @classmethod
     def get_preview(cls, task, single=False):
@@ -321,14 +314,30 @@ class BlenderTaskTypeInfo(CoreTaskTypeInfo):
         return parts
 
 
-class BlenderNVGPUTaskTypeInfo(BlenderTaskTypeInfo):
+class BlenderTaskTypeInfo(RenderingTaskTypeInfo):
+    """ Blender App description that can be used by interface to define
+    parameters and task build
+    """
 
     def __init__(self):
-        super(BlenderTaskTypeInfo, self).__init__("Blender_NVGPU",
+        super(BlenderTaskTypeInfo, self).__init__("Blender",
                                                   RenderingTaskDefinition,
                                                   BlenderDefaults(),
                                                   BlenderRendererOptions,
                                                   BlenderRenderTaskBuilder)
+
+        self.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
+        self.output_file_ext = ["blend"]
+
+
+class BlenderNVGPUTaskTypeInfo(RenderingTaskTypeInfo):
+
+    def __init__(self):
+        super().__init__("Blender_NVGPU",
+                         RenderingTaskDefinition,
+                         BlenderNVGPUDefaults(),
+                         BlenderNVGPURendererOptions,
+                         BlenderNVGPURenderTaskBuilder)
 
         self.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
         self.output_file_ext = ["blend"]
@@ -349,7 +358,7 @@ class BlenderNVGPURendererOptions(BlenderRendererOptions):
 
 
 class BlenderRenderTask(FrameRenderingTask):
-    ENVIRONMENT_CLASS = BlenderEnvironment
+    ENVIRONMENT_CLASS: Type[BlenderEnvironment] = BlenderEnvironment
     VERIFIER_CLASS = functools.partial(BlenderVerifier,
                                        cropper_cls=BlenderReferenceGenerator,
                                        docker_task_cls=DockerTaskThread)
@@ -668,36 +677,34 @@ class BlenderRenderTask(FrameRenderingTask):
 
 
 class BlenderNVGPURenderTask(BlenderRenderTask):
-    ENVIRONMENT_CLASS = BlenderNVGPUEnvironment
+    ENVIRONMENT_CLASS: Type[BlenderEnvironment] = BlenderNVGPUEnvironment
 
 
 class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     """ Build new Blender tasks using RenderingTaskDefintions and
      BlenderRendererOptions as taskdefinition renderer options """
-    TASK_CLASS = BlenderRenderTask
-    DEFAULTS = BlenderDefaults
+    TASK_CLASS: Type[BlenderRenderTask] = BlenderRenderTask
+    DEFAULTS: Type[BlenderDefaults] = BlenderDefaults
 
     @classmethod
     def build_dictionary(cls, definition):
-        parent = super(BlenderRenderTaskBuilder, cls)
-
-        dictionary = parent.build_dictionary(definition)
+        dictionary = super().build_dictionary(definition)
         dictionary['options']['compositing'] = definition.options.compositing
         return dictionary
 
     @classmethod
     def build_full_definition(cls, task_type, dictionary):
-        parent = super(BlenderRenderTaskBuilder, cls)
         options = dictionary['options']
 
-        definition = parent.build_full_definition(task_type, dictionary)
+        definition = super().build_full_definition(task_type, dictionary)
         definition.options.compositing = options.get('compositing', False)
         definition.options.samples = options.get('samples', 0)
         return definition
 
 
 class BlenderNVGPURenderTaskBuilder(BlenderRenderTaskBuilder):
-    TASK_CLASS = BlenderNVGPURenderTask
+    TASK_CLASS: Type[BlenderRenderTask] = BlenderNVGPURenderTask
+    DEFAULTS: Type[BlenderDefaults] = BlenderNVGPUDefaults
 
 
 class CustomCollector(RenderingTaskCollector):
