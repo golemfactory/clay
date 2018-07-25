@@ -267,7 +267,6 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.assertFalse(self.peer_session.verified)
 
     def test_react_to_hello_new_version(self):
-        # FIXME new test with DNS names
         listener = MagicMock()
         dispatcher.connect(listener, signal='golem.p2p')
         self.peer_session.p2p_service.seeds = {
@@ -510,7 +509,10 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         # Unknown task owner
         client = MagicMock()
         client.datadir = self.path
-        task_server = task_server_factory.TaskServer(client=client,)
+        with patch(
+                'golem.network.concent.handlers_library.HandlersLibrary'
+                '.register_handler',):
+            task_server = task_server_factory.TaskServer(client=client,)
         self.peer_session.p2p_service.task_server = task_server
         peer_mock = MagicMock()
         self.peer_session.p2p_service.peers["ABC"] = peer_mock

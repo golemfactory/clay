@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+# pylint: disable=protected-access
 from os import urandom
 import random
 import time
@@ -19,6 +19,48 @@ from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.tools.testwithreactor import TestDatabaseWithReactor
+
+
+class TestSyncSeeds(TestDatabaseWithReactor):
+    def setUp(self):
+        super().setUp()
+        self.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
+        self.service = P2PService(
+            node=None,
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=self.keys_auth,
+            connect_to_known_hosts=False,
+        )
+        self.service.seeds = set()
+
+    def test_P2P_SEEDS(self):
+        self.service._sync_seeds()
+        self.assertGreater(len(self.service.bootstrap_seeds), 0)
+        self.assertGreaterEqual(
+            len(self.service.seeds),
+            len(self.service.bootstrap_seeds),
+        )
+
+    def test_port_not_digit(self):
+        self.service.bootstrap_seeds = frozenset()
+        self.service.config_desc.seed_host = '127.0.0.1'
+        self.service.config_desc.seed_port = 'l33t'
+        self.service._sync_seeds()
+        self.assertEqual(self.service.seeds, set())
+
+    def test_no_host(self):
+        self.service.bootstrap_seeds = frozenset()
+        self.service.config_desc.seed_host = ''
+        self.service.config_desc.seed_port = '31337'
+        self.service._sync_seeds()
+        self.assertEqual(self.service.seeds, set())
+
+    def test_gaierror(self):
+        self.service.bootstrap_seeds = frozenset()
+        self.service.config_desc.seed_host = 'nosuchaddress'
+        self.service.config_desc.seed_port = '31337'
+        self.service._sync_seeds()
+        self.assertEqual(self.service.seeds, set())
 
 
 class TestP2PService(TestDatabaseWithReactor):
