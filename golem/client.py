@@ -32,9 +32,13 @@ from golem.config.active import EthereumConfig
 from golem.config.presets import HardwarePresetsMixin
 from golem.core import variables
 from golem.core.async import AsyncRequest, async_run
-from golem.core.common import get_timestamp_utc, to_unicode, \
-    string_to_timeout, \
-    deadline_to_timeout
+from golem.core.common import (
+    deadline_to_timeout,
+    datetime_to_timestamp_utc,
+    get_timestamp_utc,
+    string_to_timeout,
+    to_unicode,
+)
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import KeysAuth
@@ -1052,7 +1056,22 @@ class Client(HardwarePresetsMixin):
         return self.transaction_system.get_payments_list()
 
     def get_incomes_list(self):
-        return self.transaction_system.get_incoming_payments()
+        incomes = self.transaction_system.get_incomes_list()
+
+        def item(o):
+            status = "confirmed" if o.transaction else "awaiting"
+
+            return {
+                "subtask": to_unicode(o.subtask),
+                "payer": to_unicode(o.sender_node),
+                "value": to_unicode(o.value),
+                "status": to_unicode(status),
+                "transaction": to_unicode(o.transaction),
+                "created": datetime_to_timestamp_utc(o.created_date),
+                "modified": datetime_to_timestamp_utc(o.modified_date)
+            }
+
+        return [item(income) for income in incomes]
 
     def get_withdraw_gas_cost(
             self,

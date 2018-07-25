@@ -1,8 +1,7 @@
 from typing import List, Iterable, Tuple, Optional
 
-from golem.core.common import datetime_to_timestamp_utc, to_unicode
 from golem.core.service import LoopingCallService
-from golem.model import Payment, PaymentStatus, PaymentDetails
+from golem.model import Payment, PaymentDetails
 
 from .paymentskeeper import PaymentsKeeper
 from .incomeskeeper import IncomesKeeper
@@ -73,28 +72,6 @@ class TransactionSystem(LoopingCallService):
         :return list: list of dictionaries describing incomes
         """
         return self.incomes_keeper.get_list_of_all_incomes()
-
-    def get_incoming_payments(self):
-        """Returns preprocessed list of pending & confirmed incomes.
-        It's optimised for electron GUI.
-        """
-        incomes = self.incomes_keeper.get_list_of_all_incomes()
-
-        def item(o):
-            status = PaymentStatus.confirmed if o.transaction \
-                else PaymentStatus.awaiting
-
-            return {
-                "subtask": to_unicode(o.subtask),
-                "payer": to_unicode(o.sender_node),
-                "value": to_unicode(o.value),
-                "status": to_unicode(status.name),
-                "transaction": to_unicode(o.transaction),
-                "created": datetime_to_timestamp_utc(o.created_date),
-                "modified": datetime_to_timestamp_utc(o.modified_date)
-            }
-
-        return [item(income) for income in incomes]
 
     def get_nodes_with_overdue_payments(self) -> List[str]:
         overdue_incomes = self.incomes_keeper.update_overdue_incomes()
