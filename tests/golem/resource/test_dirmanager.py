@@ -280,23 +280,29 @@ class TestFindTaskScript(TempDirFixture, LogTestCase):
 
 class TestUtilityFunction(TempDirFixture):
     def test_ls_r(self):
-        os.makedirs(os.path.join(self.tempdir, "aaa", "bbb", "ccc"))
-        os.makedirs(os.path.join(self.tempdir, "ddd", "bbb", "ccc"))
-        os.makedirs(os.path.join(self.tempdir, "eee", "fff"))
+        os.makedirs(os.path.join(self.tempdir, "aa", "bb", "cc"))
+        os.makedirs(os.path.join(self.tempdir, "ddd", "bb", "cc"))
+        os.makedirs(os.path.join(self.tempdir, "ee", "ff"))
 
-        with open(os.path.join(self.tempdir, "eee", "f1"), "w") as f:
+        with open(os.path.join(self.tempdir, "ee", "f1"), "w") as f:
             f.write("content")
         with open(os.path.join(self.tempdir, "f2"), "w") as f:
             f.write("content")
-        with open(os.path.join(self.tempdir, "aaa", "bbb", "f3"), "w") as f:
+        with open(os.path.join(self.tempdir, "aa", "bb", "f3"), "w") as f:
             f.write("content")
 
         if is_osx() or is_linux():
-            os.symlink(os.path.join(self.tempdir, "f2"), os.path.join(self.tempdir, "eee", "fff", "f4"))
+            os.symlink(os.path.join(self.tempdir, "f2"),
+                       os.path.join(self.tempdir, "ee", "ff", "f4"))
             dirs = ls_r(self.tempdir)
-            self.assertEqual(set(dirs), {os.path.join(*[self.tempdir, *x]) for x in
-                [["eee", "f1"], ["f2"], ["aaa", "bbb", "f3"], ["eee", "fff", "f4"]]})
+            true_dirs = {os.path.join(*[self.tempdir, *x])
+                         for x in [["ee", "f1"],
+                                   ["f2"],
+                                   ["aa", "bb", "f3"],
+                                   ["ee", "ff", "f4"]]}
+            self.assertEqual(set(dirs), true_dirs)
         else:
             dirs = ls_r(self.tempdir)
-            self.assertEqual(set(dirs), {os.path.join(*[self.tempdir, *x]) for x in
-                                         [["eee", "f1"], ["f2"], ["aaa", "bbb", "f3"]]})
+            true_dirs = {os.path.join(*[self.tempdir, *x])
+                         for x in [["ee", "f1"], ["f2"], ["aa", "bb", "f3"]]}
+            self.assertEqual(set(dirs), true_dirs)
