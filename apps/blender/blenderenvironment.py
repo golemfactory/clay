@@ -1,5 +1,5 @@
 from os import path
-from typing import List, Dict, Optional, Union
+from typing import Dict
 
 from apps.core import nvgpu
 from apps.core.nvgpu import get_devices
@@ -45,7 +45,7 @@ class BlenderNVGPUEnvironment(BlenderEnvironment):
             tag=BlenderEnvironment.DOCKER_TAG,
         )])
 
-    def get_container_config(self) -> Dict[str, Optional[Union[List, Dict]]]:
+    def get_container_config(self) -> Dict:
         devices = [f'/dev/nvidia{d}:/dev/nvidia{d}' for d in get_devices()]
         return dict(
             runtime='nvidia',
