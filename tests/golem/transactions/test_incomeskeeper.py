@@ -58,13 +58,16 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
     @mock.patch("golem.transactions.incomeskeeper.IncomesKeeper"
                 ".received_batch_transfer")
     def test_received_forced_payment(self, batch_mock):
-        args = range(10)
-        kwargs = dict((str(x), x**2) for x in range(10))
+        kwargs = {
+            'tx_hash': object(),
+            'sender': object(),
+            'amount': object(),
+            'closure_time': object(),
+        }
         self.incomes_keeper.received_forced_payment(
-            *args,
             **kwargs,
         )
-        batch_mock.assert_called_once_with(*args, **kwargs)
+        batch_mock.assert_called_once_with(**kwargs)
 
     def test_received_batch_transfer_closure_time(self):
         sender_node_id = '0x' + 64 * 'a'
