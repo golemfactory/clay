@@ -8,6 +8,7 @@ import time
 import typing
 from urllib.parse import urljoin
 
+from pydispatch import dispatcher
 import requests
 import golem_messages
 from golem_messages import message
@@ -201,6 +202,11 @@ class ConcentClientService(threading.Thread):
 
         self._delayed: dict = dict()
         self.received_messages: queue.Queue = queue.Queue(maxsize=100)
+
+        dispatcher.connect(
+            self.income_listener,
+            signal='golem.income',
+        )
 
     @property
     def enabled(self):
@@ -398,3 +404,38 @@ class ConcentClientService(threading.Thread):
         logger.debug("_enqueue(%r)", req)
         self._delayed.pop(req['key'], None)
         self._queue.put(req)
+
+    def income_listener(self, event, **kwargs):
+        if event != 'overdue':
+            return
+
+        from golem.network import history
+        sra_l = []
+        for income in kwargs['incomes']:
+            sra = history.get(
+                node_id=income.sender_node,
+                subtask_id=income.subtask,
+                message_class_name='SubtaskResultsAccepted',
+            )
+            if sra is None:
+                logger.debug(
+                    '[CONCENT] SRA missing subtask_id=%r node_id=%r',
+                    income.subtask,
+                    income.sender_node,
+                )
+                continue
+            sra_l.append(sra)
+        if not sra_l:
+            return
+        sra_l.sort(key=lambda x: x.payment_ts)
+        fp = message.concents.ForcePayment(
+            subtask_results_accepted_list=sra_l,
+        )
+        self.submit_task_message(
+            subtask_id='-'.join((
+                'force-payment',
+                min(sra.subtask_id for sra in sra_l),
+                max(sra.subtask_id for sra in sra_l),
+            )),
+            msg=fp,
+        )

@@ -305,10 +305,7 @@ class TestNode(TestWithDatabase):
             assert a.IS_MAINNET == m.IS_MAINNET
             assert a.ACTIVE_NET == m.ACTIVE_NET
             assert a.DATA_DIR == m.DATA_DIR
-            assert a.ETHEREUM_NODE_LIST == m.ETHEREUM_NODE_LIST
-            assert a.ETHEREUM_CHAIN == m.ETHEREUM_CHAIN
-            assert a.ETHEREUM_FAUCET_ENABLED == m.ETHEREUM_FAUCET_ENABLED
-            assert a.ENABLE_WITHDRAWALS == m.ENABLE_WITHDRAWALS
+            assert a.EthereumConfig == m.EthereumConfig
             assert a.P2P_SEEDS == m.P2P_SEEDS
             assert a.PROTOCOL_CONST.ID == m.PROTOCOL_CONST.ID
             assert a.APP_MANAGER_CONFIG_FILES == m.APP_MANAGER_CONFIG_FILES

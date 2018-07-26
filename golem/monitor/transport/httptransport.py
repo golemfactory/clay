@@ -14,8 +14,10 @@ class DefaultHttpSender(object):
 
     def _post(self, headers, payload):
         try:
+            log.debug(f'sending msg {payload}')
             r = requests.post(self.url, data=payload, headers=headers,
                               timeout=self.timeout)
+            log.debug(f'result {r}')
             return r.status_code == 200
         except requests.exceptions.RequestException as e:
             delta = time.time() - self.last_exception_time

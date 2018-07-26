@@ -242,8 +242,8 @@ def log_platform_info():
 
 
 def log_ethereum_chain():
-    from golem.config.active import ETHEREUM_CHAIN
-    logger.info("Ethereum chain: %s", ETHEREUM_CHAIN)
+    from golem.config.active import EthereumConfig
+    logger.info("Ethereum chain: %s", EthereumConfig.CHAIN)
 
 
 def log_concent_choice(value: dict):

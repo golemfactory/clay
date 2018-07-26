@@ -30,6 +30,18 @@ class DockerJob(object):
     STATE_KILLED = "killed"
     STATE_REMOVED = "removed"
 
+
+    # TODO refactor that out
+    GOLEM_BASE_PATH = "/golem"
+    RESOURCES_DIR_E = "resources"
+    WORK_DIR_E = "work"
+    OUTPUT_DIR_E = "output"
+    MESSAGES_IN_DIR_E = f"{WORK_DIR_E}/messages_in"
+    MESSAGES_OUT_DIR_E = f"{WORK_DIR_E}/messages_out"
+
+    MESSAGES_IN_DIR = f"{GOLEM_BASE_PATH}/{MESSAGES_IN_DIR_E}"
+    MESSAGES_OUT_DIR = f"{GOLEM_BASE_PATH}/{MESSAGES_OUT_DIR_E}"
+
     # This dir contains static task resources.
     # Mounted read-only in the container.
     RESOURCES_DIR = "/golem/resources"
@@ -65,6 +77,18 @@ class DockerJob(object):
         self.image = image
         self.script_src = script_src
         self.parameters = parameters if parameters else {}
+
+        # NOT os.path.join, because here we build directory structure inside Docker
+        # (OS outside can be different than OS inside)
+        paths_params = {k: f"{self.GOLEM_BASE_PATH}/{v}" for k, v in {
+                            "RESOURCES_DIR": self.RESOURCES_DIR_E,
+                            "WORK_DIR": self.WORK_DIR_E,
+                            "OUTPUT_DIR": self.OUTPUT_DIR_E,
+                            "MESSAGES_IN_DIR": self.MESSAGES_IN_DIR_E,
+                            "MESSAGES_OUT_DIR": self.MESSAGES_OUT_DIR_E
+                        }.items()}
+        self.parameters.update(paths_params)
+
         self.host_config = host_config or {}
 
         self.resources_dir = resources_dir

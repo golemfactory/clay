@@ -1,21 +1,26 @@
 import logging
+import random
 import time
 from enum import Enum
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, ClassVar, Dict, Iterable, List, Optional, Tuple
 
-from ethereum.utils import privtoaddr, denoms
-from eth_utils import encode_hex, is_address, to_checksum_address
+from ethereum.utils import denoms, decode_hex
+from eth_utils import is_address
+from golem_messages.utils import bytes32_to_uuid
+from golem_sci import new_sci, JsonTransactionsStorage
 import requests
 
-from golem_sci import new_sci
+from golem.core.service import LoopingCallService
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
-from golem.transactions.ethereum.ethereumincomeskeeper \
-    import EthereumIncomesKeeper
+from golem.model import GenericKeyValue, Payment
 from golem.transactions.ethereum.exceptions import NotEnoughFunds
-from golem.transactions.transactionsystem import TransactionSystem
+from golem.transactions.incomeskeeper import IncomesKeeper
+from golem.transactions.paymentskeeper import PaymentsKeeper
+from golem.utils import privkeytoaddr
+
 
 log = logging.getLogger(__name__)
 
@@ -27,33 +32,40 @@ class ConversionStatus(Enum):
     UNFINISHED = 3
 
 
-class EthereumTransactionSystem(TransactionSystem):
+# pylint:disable=too-many-instance-attributes
+class EthereumTransactionSystem(LoopingCallService):
     """ Transaction system connected with Ethereum """
 
-    def __init__(  # noqa pylint: disable=too-many-arguments
+    TX_FILENAME: ClassVar[str] = 'transactions.json'
+
+    BLOCK_NUMBER_DB_KEY: ClassVar[str] = 'ets_subscriptions_block_number'
+
+    LOOP_INTERVAL: ClassVar[int] = 13
+
+    def __init__(
             self,
             datadir: str,
             node_priv_key: bytes,
-            geth_addresses: List[str],
-            ethereum_chain: str,
-            faucet_enabled: bool) -> None:
-        try:
-            eth_addr = \
-                to_checksum_address(encode_hex(privtoaddr(node_priv_key)))
-        except AssertionError:
-            raise ValueError("not a valid private key")
+            config) -> None:
+        super().__init__(self.LOOP_INTERVAL)
+        eth_addr = privkeytoaddr(node_priv_key)
         log.info("Node Ethereum address: %s", eth_addr)
 
-        self._node = NodeProcess(geth_addresses)
+        self._config = config
+
+        node_list = config.NODE_LIST.copy()
+        random.shuffle(node_list)
+        node_list += config.FALLBACK_NODE_LIST
+        self._node = NodeProcess(node_list)
         self._node.start()
+
         self._sci = new_sci(
-            Path(datadir),
             self._node.web3,
             eth_addr,
+            config.CHAIN,
+            JsonTransactionsStorage(Path(datadir) / self.TX_FILENAME),
             lambda tx: tx.sign(node_priv_key),
-            ethereum_chain,
         )
-        self._faucet = faucet_enabled
         self._gnt_faucet_requested = False
 
         self._gnt_conversion_status = ConversionStatus.NONE
@@ -62,11 +74,11 @@ class EthereumTransactionSystem(TransactionSystem):
             if self._sci.get_gnt_balance(gate_address):
                 self._gnt_conversion_status = ConversionStatus.UNFINISHED
 
+        self.payments_keeper = PaymentsKeeper()
+        self.incomes_keeper = IncomesKeeper()
         self.payment_processor = PaymentProcessor(self._sci)
 
-        super().__init__(
-            incomes_keeper=EthereumIncomesKeeper(self._sci),
-        )
+        self._subscribe_to_events()
 
         self._eth_balance: int = 0
         self._gnt_balance: int = 0
@@ -75,34 +87,106 @@ class EthereumTransactionSystem(TransactionSystem):
         self._last_gnt_update = None
         self._payments_locked: int = 0
         self._gntb_locked: int = 0
-        self._is_stopped = False
+
+        self._refresh_balances()
+        log.info(
+            "Initial balances: %f GNTB, %f GNT, %f ETH",
+            self._gntb_balance / denoms.ether,
+            self._gnt_balance / denoms.ether,
+            self._eth_balance / denoms.ether,
+        )
+
+    def _subscribe_to_events(self) -> None:
+        values = GenericKeyValue.select().where(
+            GenericKeyValue.key == self.BLOCK_NUMBER_DB_KEY)
+        from_block = int(values.get().value) if values.count() == 1 else 0
+
+        ik = self.incomes_keeper
+        self._sci.subscribe_to_batch_transfers(
+            None,
+            self._sci.get_eth_address(),
+            from_block,
+            lambda event: ik.received_batch_transfer(
+                event.tx_hash,
+                event.sender,
+                event.amount,
+                event.closure_time,
+            )
+        )
+
+        # Temporary try-catch block, until GNTDeposit is deployed on mainnet.
+        # Remove it after that.
+        try:
+            self._sci.subscribe_to_forced_subtask_payments(
+                None,
+                self._sci.get_eth_address(),
+                from_block,
+                lambda event: ik.received_forced_subtask_payment(
+                    event.tx_hash,
+                    event.requestor,
+                    str(bytes32_to_uuid(event.subtask_id)),
+                    event.amount,
+                )
+            )
+        except AttributeError as e:
+            log.info("Can't use GNTDeposit on mainnet yet: %r", e)
+
+    def _save_subscription_block_number(self) -> None:
+        block_number = self._sci.get_block_number() - self._sci.REQUIRED_CONFS
+        kv, _ = GenericKeyValue.get_or_create(key=self.BLOCK_NUMBER_DB_KEY)
+        kv.value = block_number - 1
+        kv.save()
 
     def stop(self):
-        super().stop()
-        self._is_stopped = True
         self.payment_processor.sendout(0)
-        self.incomes_keeper.stop()
+        self._save_subscription_block_number()
         self._sci.stop()
+        super().stop()
 
-    def sync(self) -> None:
-        log.info("Synchronizing balances")
-        while not self._is_stopped:
-            self._refresh_balances()
-            if self._last_eth_update is not None and \
-               self._last_gnt_update is not None:
-                log.info("Balances synchronized")
-                return
-            log.info("Waiting for initial GNT/ETH balances...")
-            time.sleep(1)
-
-    def add_payment_info(self, *args, **kwargs):
-        payment = super().add_payment_info(*args, **kwargs)
+    def add_payment_info(self, subtask_id: str, value: int, eth_address: str):
+        payee = decode_hex(eth_address)
+        if len(payee) != 20:
+            raise ValueError(
+                "Incorrect 'payee' length: {}. Should be 20".format(len(payee)))
+        payment = Payment.create(
+            subtask=subtask_id,
+            payee=payee,
+            value=value,
+        )
         self.payment_processor.add(payment)
         return payment
 
     def get_payment_address(self):
         """ Human readable Ethereum address for incoming payments."""
         return self._sci.get_eth_address()
+
+    def get_payments_list(self):
+        """ Return list of all planned and made payments
+        :return list: list of dictionaries describing payments
+        """
+        return self.payments_keeper.get_list_of_all_payments()
+
+    def get_total_payment_for_subtasks(
+            self,
+            subtask_ids: Iterable[str]) -> Tuple[Optional[int], Optional[int]]:
+        """
+        Get total value and total fee for payments for the given subtask IDs
+        **if all payments for the given subtasks are sent**
+        :param subtask_ids: subtask IDs
+        :return: (total_value, total_fee) if all payments are sent,
+                (None, None) otherwise
+        """
+        return self.payments_keeper.get_total_payment_for_subtasks(subtask_ids)
+
+    def get_incomes_list(self):
+        """ Return list of all expected and received incomes
+        :return list: list of dictionaries describing incomes
+        """
+        return self.incomes_keeper.get_list_of_all_incomes()
+
+    def get_nodes_with_overdue_payments(self) -> List[str]:
+        overdue_incomes = self.incomes_keeper.update_overdue_incomes()
+        return [x.sender_node for x in overdue_incomes]
 
     def get_available_eth(self) -> int:
         return self._eth_balance - self.get_locked_eth()
@@ -199,6 +283,9 @@ class EthereumTransactionSystem(TransactionSystem):
             amount: int,
             destination: str,
             currency: str) -> List[str]:
+        if not self._config.WITHDRAWALS_ENABLED:
+            raise Exception("Withdrawals are disabled")
+
         if not is_address(destination):
             raise ValueError("{} is not valid ETH address".format(destination))
 
@@ -266,7 +353,7 @@ class EthereumTransactionSystem(TransactionSystem):
         self._sci.on_transaction_confirmed(tx_hash, transaction_receipt)
 
     def _get_funds_from_faucet(self) -> None:
-        if not self._faucet:
+        if not self._config.FAUCET_ENABLED:
             return
         if self._eth_balance < 0.01 * denoms.ether:
             log.info("Requesting tETH from faucet")

@@ -1,7 +1,9 @@
+import hashlib
+import json
 import logging
 import os
 from pathlib import Path
-from typing import ClassVar, Optional, TYPE_CHECKING
+from typing import ClassVar, Optional, TYPE_CHECKING, List, Dict
 
 import requests
 from golem.docker.job import DockerJob
@@ -30,24 +32,10 @@ class ImageException(RuntimeError):
 # plus, there is GOLEM_BASE_PATH hardcoded here
 class DockerTaskThread(TaskThread):
 
-    GOLEM_BASE_PATH = "/golem"
-
-    OUTPUT_DIR = "output"
-    WORK_DIR = "work"
-    RESOURCES_DIR = "resources"
-
-
     # These files will be placed in the output dir (self.tmp_path)
     # and will contain dumps of the task script's stdout and stderr.
     STDOUT_FILE = "stdout.log"
     STDERR_FILE = "stderr.log"
-
-    # These files are located in the work dir, they are updated by job.py
-    # it contains list of incoming messages in json
-    MESSAGES_IN_DIR = os.path.join(WORK_DIR, "messages_in")
-    # it contains list outcoming messages in json
-    MESSAGES_OUT_DIR = os.path.join(WORK_DIR, "messages_out")
-
 
     docker_manager: ClassVar[Optional['DockerManager']] = None
 
@@ -72,22 +60,10 @@ class DockerTaskThread(TaskThread):
         self.job = None
         self.check_mem = check_mem
 
-        self.work_dir_path: Path = Path(self.tmp_path) / self.WORK_DIR
-        self.output_dir_path: Path = Path(self.tmp_path) / self.RESOURCES_DIR
-
-        self.messages_input_path = Path(self.tmp_path) / self.MESSAGES_IN_DIR
-        self.messages_output_path = Path(self.tmp_path) / self.MESSAGES_OUT_DIR
-
-        paths_params = {k: os.path.join(self.GOLEM_BASE_PATH, v) for k, v in
-                        {
-                            "RESOURCES_DIR": self.RESOURCES_DIR,
-                            "WORK_DIR": self.WORK_DIR,
-                            "OUTPUT_DIR": self.OUTPUT_DIR,
-                            "MESSAGES_IN_DIR": self.MESSAGES_IN_DIR,
-                            "MESSAGES_OUT_DIR": self.MESSAGES_OUT_DIR
-                        }.items()}
-
-        self.extra_data.update(paths_params)
+        self.work_dir_path: Path = Path(self.tmp_path) / DockerJob.WORK_DIR_E
+        self.output_dir_path: Path = Path(self.tmp_path) / DockerJob.RESOURCES_DIR_E
+        self.messages_input_path = Path(self.tmp_path) / DockerJob.MESSAGES_IN_DIR_E
+        self.messages_output_path = Path(self.tmp_path) / DockerJob.MESSAGES_OUT_DIR_E
 
     def run(self) -> None:
         try:
@@ -178,7 +154,7 @@ class DockerTaskThread(TaskThread):
         """
         if not self.job:
             return [{}]
-        msgs = self.job.read_work_files(dir=self.MESSAGES_OUT_DIR)
+        msgs = self.job.read_work_files(dir=DockerJob.MESSAGES_OUT_DIR)
         msgs_decoded = []
         for filename, content in msgs.items():
             try:
@@ -191,7 +167,7 @@ class DockerTaskThread(TaskThread):
                 logger.warning("ValueError during decoding message %r", str(content))  # noqa
 
         # cleaning messages files, to not read multiple times the same content
-        self.job.clean_work_files(dir=self.MESSAGES_OUT_DIR)
+        self.job.clean_work_files(dir=DockerJob.MESSAGES_OUT_DIR)
 
         return msgs_decoded
 
@@ -210,7 +186,7 @@ class DockerTaskThread(TaskThread):
             data_dump = json.dumps(data)
 
             msg_filename = HASH(data_dump)
-            msg_path = os.path.join(self.MESSAGES_IN_DIR, msg_filename)
+            msg_path = os.path.join(DockerJob.MESSAGES_IN_DIR, msg_filename)
             self.job.write_work_file(msg_path, data_dump, options="w")
         else:
             logger.warning("There is currently no job to receive message")

@@ -75,10 +75,10 @@ class TaskDefinition(object):
                 output_file, err)
 
     def add_to_resources(self):
-        self.options.add_to_resources(self.resources)
+        pass
 
     def remove_from_resources(self):
-        self.options.remove_from_resources(self.resources)
+        pass
 
     def make_preset(self):
         """ Create preset that can be shared with different tasks
@@ -153,9 +153,3 @@ class Options(object):
     def __init__(self):
         self.environment = Environment()
         self.name = ''
-
-    def add_to_resources(self, resources):
-        pass
-
-    def remove_from_resources(self, resources):
-        pass

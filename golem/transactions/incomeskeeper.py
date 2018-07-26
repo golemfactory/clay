@@ -197,14 +197,17 @@ class IncomesKeeper:
             )
         ))
 
+        if not incomes:
+            return incomes
+
         for income in incomes:
             income.overdue = True
             income.save()
 
-            dispatcher.send(
-                signal='golem.income',
-                event='overdue',
-                subtask_id=income.subtask
-            )
+        dispatcher.send(
+            signal='golem.income',
+            event='overdue',
+            incomes=incomes,
+        )
 
         return incomes
