@@ -6,8 +6,8 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, ClassVar, Dict, Iterable, List, Optional, Tuple
 
-from ethereum.utils import denoms, decode_hex
-from eth_utils import is_address
+from ethereum.utils import denoms
+from eth_utils import decode_hex, is_address
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import new_sci, JsonTransactionsStorage
 import requests

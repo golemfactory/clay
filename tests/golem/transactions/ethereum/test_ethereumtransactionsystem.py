@@ -94,6 +94,17 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             ANY,
         )
 
+    def test_payment(self):
+        subtask_id = 'derp'
+        value = 10
+        payee = '0x' + 40 * '1'
+        self.ets.add_payment_info(subtask_id, value, payee)
+        payments = self.ets.get_payments_list()
+        assert len(payments) == 1
+        assert payments[0]['subtask'] == subtask_id
+        assert payments[0]['value'] == str(value)
+        assert payments[0]['payee'] == payee
+
     def test_get_withdraw_gas_cost(self):
         dest = '0x' + 40 * '0'
         gas_price = 123
