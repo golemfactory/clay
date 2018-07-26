@@ -376,11 +376,6 @@ class CoreTask(Task):
             subtask_id]['node_id']].finish()
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
 
-    # TODO why is it here and not in the Task? Issue #1355
-    @abc.abstractmethod
-    def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa
-        pass  # Implement in derived methods
-
     def load_task_results(self, task_result, result_type: int, subtask_id):
         """ Change results to a list of files. If result_type is equal to ResultType.files this
         function only return task_results without making any changes. If result_type is equal to

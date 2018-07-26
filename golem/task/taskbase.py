@@ -4,6 +4,8 @@ import logging
 import time
 from typing import List, Type, Optional, Tuple, Any
 
+import golem_messages
+
 from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
 import golem
 from golem.core import common
@@ -341,6 +343,10 @@ class Task(abc.ABC):
         :param node_name: name of a node that wants to get a next subtask
         """
         pass  # Implement in derived class
+
+    @abc.abstractmethod
+    def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa
+        pass  # Implement in derived methods
 
     def create_reference_data_for_task_validation(self):
         """
