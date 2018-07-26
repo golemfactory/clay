@@ -622,7 +622,7 @@ class CoreTaskBuilder(TaskBuilder):
     def get_output_path(cls, dictionary, definition):
         options = dictionary['options']
 
-        absolute_path = cls.get_nonexistant_path(
+        absolute_path = cls.get_nonexistent_path(
             options['output_path'],
             definition.task_name,
             options.get('format', ''))
@@ -630,7 +630,7 @@ class CoreTaskBuilder(TaskBuilder):
         return absolute_path
 
     @classmethod
-    def get_nonexistant_path(cls, path, name, extension=""):
+    def get_nonexistent_path(cls, path, name, extension=""):
         """
         Prevent overwriting with incremental filename
         @ref https://stackoverflow.com/a/43167607/1763249
@@ -638,7 +638,7 @@ class CoreTaskBuilder(TaskBuilder):
         Example
         --------
 
-        >>> get_nonexistant_path('/documents/golem/', 'task1', 'png')
+        >>> get_nonexistent_path('/documents/golem/', 'task1', 'png')
 
         # if path is not exist
         '/documents/golem/task1'
