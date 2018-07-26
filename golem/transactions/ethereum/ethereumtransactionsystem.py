@@ -4,20 +4,23 @@ import time
 from enum import Enum
 from datetime import datetime
 from pathlib import Path
-from typing import Any, ClassVar, Dict, List
+from typing import Any, ClassVar, Dict, Iterable, List, Optional, Tuple
 
-from ethereum.utils import denoms
+from ethereum.utils import denoms, decode_hex
 from eth_utils import is_address
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import new_sci, JsonTransactionsStorage
 import requests
 
+from golem.core.service import LoopingCallService
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
-from golem.model import GenericKeyValue
+from golem.model import GenericKeyValue, Payment
 from golem.transactions.ethereum.exceptions import NotEnoughFunds
-from golem.transactions.transactionsystem import TransactionSystem
+from golem.transactions.incomeskeeper import IncomesKeeper
+from golem.transactions.paymentskeeper import PaymentsKeeper
 from golem.utils import privkeytoaddr
+
 
 log = logging.getLogger(__name__)
 
@@ -29,19 +32,22 @@ class ConversionStatus(Enum):
     UNFINISHED = 3
 
 
-class EthereumTransactionSystem(TransactionSystem):
+# pylint:disable=too-many-instance-attributes
+class EthereumTransactionSystem(LoopingCallService):
     """ Transaction system connected with Ethereum """
 
     TX_FILENAME: ClassVar[str] = 'transactions.json'
 
     BLOCK_NUMBER_DB_KEY: ClassVar[str] = 'ets_subscriptions_block_number'
 
+    LOOP_INTERVAL: ClassVar[int] = 13
+
     def __init__(
             self,
             datadir: str,
             node_priv_key: bytes,
             config) -> None:
-        super().__init__()
+        super().__init__(self.LOOP_INTERVAL)
         eth_addr = privkeytoaddr(node_priv_key)
         log.info("Node Ethereum address: %s", eth_addr)
 
@@ -68,6 +74,8 @@ class EthereumTransactionSystem(TransactionSystem):
             if self._sci.get_gnt_balance(gate_address):
                 self._gnt_conversion_status = ConversionStatus.UNFINISHED
 
+        self.payments_keeper = PaymentsKeeper()
+        self.incomes_keeper = IncomesKeeper()
         self.payment_processor = PaymentProcessor(self._sci)
 
         self._subscribe_to_events()
@@ -136,13 +144,49 @@ class EthereumTransactionSystem(TransactionSystem):
         super().stop()
 
     def add_payment_info(self, subtask_id: str, value: int, eth_address: str):
-        payment = super().add_payment_info(subtask_id, value, eth_address)
+        payee = decode_hex(eth_address)
+        if len(payee) != 20:
+            raise ValueError(
+                "Incorrect 'payee' length: {}. Should be 20".format(len(payee)))
+        payment = Payment.create(
+            subtask=subtask_id,
+            payee=payee,
+            value=value,
+        )
         self.payment_processor.add(payment)
         return payment
 
     def get_payment_address(self):
         """ Human readable Ethereum address for incoming payments."""
         return self._sci.get_eth_address()
+
+    def get_payments_list(self):
+        """ Return list of all planned and made payments
+        :return list: list of dictionaries describing payments
+        """
+        return self.payments_keeper.get_list_of_all_payments()
+
+    def get_total_payment_for_subtasks(
+            self,
+            subtask_ids: Iterable[str]) -> Tuple[Optional[int], Optional[int]]:
+        """
+        Get total value and total fee for payments for the given subtask IDs
+        **if all payments for the given subtasks are sent**
+        :param subtask_ids: subtask IDs
+        :return: (total_value, total_fee) if all payments are sent,
+                (None, None) otherwise
+        """
+        return self.payments_keeper.get_total_payment_for_subtasks(subtask_ids)
+
+    def get_incomes_list(self):
+        """ Return list of all expected and received incomes
+        :return list: list of dictionaries describing incomes
+        """
+        return self.incomes_keeper.get_list_of_all_incomes()
+
+    def get_nodes_with_overdue_payments(self) -> List[str]:
+        overdue_incomes = self.incomes_keeper.update_overdue_incomes()
+        return [x.sender_node for x in overdue_incomes]
 
     def get_available_eth(self) -> int:
         return self._eth_balance - self.get_locked_eth()
