@@ -3,6 +3,7 @@ import os
 import posixpath
 import threading
 from os import path
+from typing import Dict
 
 import docker.errors
 
@@ -303,3 +304,38 @@ class DockerJob(object):
             inspect = client.inspect_container(self.container_id)
             return inspect["State"]["Status"]
         return self.state
+
+    def read_work_file(self, path: str, options="r") -> str:
+        try:
+            with open(os.path.join(self.work_dir, path), options) as f:
+                return f.read()
+        except IOError as e:
+            logger.warning("There was a problem with read_work_file. Path: %r, exception: %r", path, e)
+            return ""
+
+    def write_work_file(self, path, content, options="w"):
+        try:
+            with open(os.path.join(self.work_dir, path), options) as f:
+                return f.write(content)
+        except IOError as e:
+            logger.warning("There was a problem with write_work_file. Path: %r, exception: %r", path, e)
+
+    def read_work_files(self, dir="", options="r") -> Dict[str, str]:
+        dir = os.path.join(self.work_dir, dir)
+        contents = {}
+        if os.path.isdir(dir):
+            # FIXME after #3074 is merged
+            from apps.dummy.task.dummytaskstate import ls_R
+            for file in ls_R(dir):
+                contents[file] = self.read_work_file(file, options)
+        else:
+            logger.warning("%r is not a directory", dir)
+        return contents
+
+    def clean_work_files(self, dir):
+        dir = os.path.join(self.work_dir, dir)
+        try:
+            for f in os.listdir(dir):
+                os.remove(os.path.join(dir, f))
+        except IOError as e:
+            logger.warning("There was a problem with clean_work_files. Path: %r, exception: %r", dir, e)
