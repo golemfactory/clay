@@ -81,14 +81,15 @@ class NodeTestPlaybook:
     def _wait_gnt_eth(self, role, result):
         gnt_balance = int(result.get('gnt')) / denoms.ether
         eth_balance = int(result.get('eth')) / denoms.ether
-        if gnt_balance > 0 and eth_balance > 0:
-            print("{} has {} GNT and {} ETH.".format(
-                role.capitalize(), gnt_balance, eth_balance))
+        gntb_balance = int(result.get('av_gnt')) / denoms.ether
+        if gnt_balance > 0 and eth_balance > 0 and gntb_balance > 0:
+            print("{} has {} GNT (including {} GNTB) and {} ETH.".format(
+                role.capitalize(), gnt_balance, gntb_balance, eth_balance))
+            time.sleep(1)
             self.next()
-
         else:
-            print("Waiting for {} GNT/ETH ({}/{})".format(
-                role.capitalize(), gnt_balance, eth_balance))
+            print("Waiting for {} GNT/GNTB/ETH ({}/{}/{})".format(
+                role.capitalize(), gnt_balance, gntb_balance, eth_balance))
             time.sleep(15)
 
     def step_wait_provider_gnt(self):
@@ -280,11 +281,7 @@ class NodeTestPlaybook:
             if provider_exit is not None and requestor_exit is not None:
                 self.fail()
 
-    def __init__(self):
-        if not self.provider_node_script or not self.requestor_node_script:
-            raise NotImplementedError(
-                "Provider and Requestor scripts need to be set")
-
+    def start_nodes(self):
         self.provider_node = helpers.run_golem_node(
             self.provider_node_script
         )
@@ -299,9 +296,22 @@ class NodeTestPlaybook:
 
         self.started = True
 
+    def stop_nodes(self):
+        helpers.gracefully_shutdown(self.provider_node, 'Provider')
+        helpers.gracefully_shutdown(self.requestor_node, 'Requestor')
+        self.started = False
+
+    def __init__(self, stop_reactor=True):
+        if not self.provider_node_script or not self.requestor_node_script:
+            raise NotImplementedError(
+                "Provider and Requestor scripts need to be set")
+
+        self.stop_reactor = stop_reactor
+        self.start_nodes()
+
     @classmethod
-    def start(cls):
-        playbook = cls()
+    def start(cls, start_reactor=True, stop_reactor=True):
+        playbook = cls(stop_reactor=stop_reactor)
         playbook.start_time = time.time()
         playbook._loop = task.LoopingCall(playbook.run)
         d = playbook._loop.start(cls.INTERVAL, False)
@@ -309,7 +319,9 @@ class NodeTestPlaybook:
 
         reactor.addSystemEventTrigger(
             'before', 'shutdown', lambda: playbook.stop(2))
-        reactor.run()
+
+        if start_reactor:
+            reactor.run()
 
         return playbook
 
@@ -317,13 +329,12 @@ class NodeTestPlaybook:
         if not self.started:
             return
 
-        self.started = False
+        self._loop.stop()
         try:
-            reactor.stop()
+            if self.stop_reactor or exit_code > 0:
+                reactor.stop()
         except ReactorNotRunning:
             pass
 
-        helpers.gracefully_shutdown(self.provider_node, 'Provider')
-        helpers.gracefully_shutdown(self.requestor_node, 'Requestor')
-
+        self.stop_nodes()
         self.exit_code = exit_code

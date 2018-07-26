@@ -406,6 +406,7 @@ class ConcentClientService(threading.Thread):
         self._queue.put(req)
 
     def income_listener(self, event, **kwargs):
+        logger.debug("income listener event: {}", event)
         if event != 'overdue':
             return
 

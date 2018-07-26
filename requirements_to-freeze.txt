@@ -18,6 +18,7 @@ Twisted==17.9.0
 cffi==1.10.0
 ethereum==1.6.1
 eth-utils==1.0.3
+freezegun==0.3.10
 web3==4.2.1
 autobahn==17.10.1
 cbor2==3.0.4

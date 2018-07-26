@@ -1,3 +1,4 @@
+import datetime
 import os
 import pathlib
 import queue
@@ -6,6 +7,10 @@ import subprocess
 import sys
 import threading
 import uuid
+
+
+def yesterday():
+    return datetime.datetime.utcnow() - datetime.timedelta(days=1)
 
 
 def report_termination(exit_code, node_type):
@@ -17,8 +22,8 @@ def gracefully_shutdown(process: subprocess.Popen, node_type: str):
     process.terminate()
     try:
         print("Waiting for the %s subprocess to shut-down" % node_type)
-        exit_code = process.wait(60)
-        report_termination(exit_code, node_type)
+        process.communicate(None, 60)
+        report_termination(process.returncode, node_type)
     except subprocess.TimeoutExpired:
         print(
             "%s graceful shutdown timed-out, issuing sigkill." % node_type)
