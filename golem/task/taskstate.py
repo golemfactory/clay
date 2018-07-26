@@ -28,7 +28,7 @@ class TaskState(object):
 
     def __setattr__(self, key, value):
         super().__setattr__(key, value)
-        if key == 'status':
+        if key == 'status' and value != TaskStatus.restarted: #Don't update for user interaction
             self.last_update_time = time.time()
 
     def __repr__(self):

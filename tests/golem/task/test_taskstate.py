@@ -79,6 +79,12 @@ class TestTaskState(unittest.TestCase):
         self.assertEqual(ts.last_update_time, time.time())
 
         frozen_time.tick()  # pylint: disable=no-member
+
+        ts.status = TaskStatus.restarted
+        self.assertNotEqual(ts.last_update_time, time.time())
+
+        frozen_time.tick()  # pylint: disable=no-member
+        
         ts.status = TaskStatus.finished
         self.assertEqual(ts.last_update_time, time.time())
 
