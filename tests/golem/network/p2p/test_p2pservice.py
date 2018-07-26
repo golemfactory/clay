@@ -6,6 +6,7 @@ import unittest.mock as mock
 import uuid
 
 from eth_utils import encode_hex
+from golem_messages.message import Disconnect
 from twisted.internet.tcp import EISCONN
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -14,7 +15,8 @@ from golem.diag.service import DiagnosticsOutputFormat
 from golem.model import MAX_STORED_HOSTS, KnownHosts
 from golem.network.p2p import peersession
 from golem.network.p2p.node import Node
-from golem.network.p2p.p2pservice import HISTORY_LEN, P2PService
+from golem.network.p2p.p2pservice import HISTORY_LEN, P2PService, \
+    RANDOM_DISCONNECT_FRACTION
 from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
@@ -469,3 +471,39 @@ class TestP2PService(TestDatabaseWithReactor):
                                                    pub_port)
         assert SocketAddress(address, prv_port) in result
         assert SocketAddress(address, pub_port) in result
+
+    @mock.patch('golem.network.p2p.p2pservice.PERFORMANCE_STATS', (1, 2, 3, 4))
+    def test_get_performance_percentile_rank(self):
+        self.assertEqual(self.service.get_performance_percentile_rank(0), 0.0)
+        self.assertEqual(self.service.get_performance_percentile_rank(2), 0.5)
+        self.assertEqual(self.service.get_performance_percentile_rank(4), 1.0)
+
+    def test_disconnect_random_peers_no_peers(self):
+        self.service.config_desc.opt_peer_num = 10
+        with mock.patch.object(self.service, 'remove_peer') as remove_mock:
+            self.service._disconnect_random_peers()
+            remove_mock.assert_not_called()
+
+    def test_disconnect_random_peers_below_limit(self):
+        self.service.config_desc.opt_peer_num = 10
+        for i in range(5):
+            self.service.add_peer(mock.Mock(key_id=f'0x0{i}'))
+
+        self.service._disconnect_random_peers()
+        self.assertEqual(len(self.service.peers), 5)
+
+    def test_disconnect_random_peers_limit_reached(self):
+        num_peers = int(1 / RANDOM_DISCONNECT_FRACTION)
+        self.service.config_desc.opt_peer_num = num_peers
+        peers = [mock.MagicMock(key_id=f'0x0{i}') for i in range(num_peers)]
+        for p in peers:
+            self.service.add_peer(p)
+
+        self.service._disconnect_random_peers()
+
+        exp_num_peers = num_peers - int(num_peers * RANDOM_DISCONNECT_FRACTION)
+        self.assertEqual(len(self.service.peers), exp_num_peers)
+
+        removed_peers = set(peers) - set(self.service.peers.values())
+        for p in removed_peers:
+            p.disconnect.assert_called_once_with(Disconnect.REASON.Refresh)

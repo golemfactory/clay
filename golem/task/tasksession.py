@@ -24,7 +24,6 @@ from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import TaskState
-from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 
 logger = logging.getLogger(__name__)
 
@@ -204,9 +203,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task_to_compute = get_task_message(
                 'TaskToCompute', task_id, subtask_id)
 
+            eth_address = get_task_message(
+                'ReportComputedTask',
+                task_id,
+                subtask_id,
+            ).eth_account
             payment = self.task_server.accept_result(
                 subtask_id,
-                self.get_result_owner(subtask_id),
+                self.key_id,
+                eth_address,
             )
 
             response_msg = message.tasks.SubtaskResultsAccepted(
@@ -229,33 +234,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             verification_finished
         )
 
-    def get_result_owner(self, subtask_id) -> EthAccountInfo:
-        """Returns information about user that should be rewarded (or punished)
-        for the result.
-        """
-
-        task_id = self._subtask_to_task(subtask_id, Actor.Requestor)
-        report_computed_task = get_task_message(
-            'ReportComputedTask',
-            task_id,
-            subtask_id,
-        )
-
-        result_owner = EthAccountInfo(
-            self.key_id,
-            report_computed_task.node_name,
-            p2p_node.Node.from_dict(report_computed_task.node_info),
-            report_computed_task.eth_account
-        )
-        return result_owner
-
     def _reject_subtask_result(self, subtask_id, reason):
         logger.debug('_reject_subtask_result(%r, %r)', subtask_id, reason)
 
-        self.task_server.reject_result(
-            subtask_id,
-            self.get_result_owner(subtask_id),
-        )
+        self.task_server.reject_result(subtask_id, self.key_id)
         self.send_result_rejected(subtask_id, reason)
 
     def request_resource(self, task_id):

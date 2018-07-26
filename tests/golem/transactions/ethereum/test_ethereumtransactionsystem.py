@@ -34,6 +34,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 0
         self.sci.GAS_PER_PAYMENT = 20000
+        self.sci.REQUIRED_CONFS = 6
         self.ets = self._make_ets()
 
     def _make_ets(self, privkey=PRIV_KEY, withdrawals=True):
@@ -278,6 +279,29 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         ets._try_convert_gnt()
         self.sci.transfer_from_gate.assert_not_called()
 
+    def test_subscriptions(self):
+        self.sci.subscribe_to_batch_transfers.assert_called_once_with(
+            None,
+            self.sci.get_eth_address(),
+            0,
+            ANY,
+        )
+
+        block_number = 123
+        self.sci.get_block_number.return_value = block_number
+        with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                   'LoopingCallService.stop'):
+            self.ets.stop()
+
+        self.sci.reset_mock()
+        self._make_ets()
+        self.sci.subscribe_to_batch_transfers.assert_called_once_with(
+            None,
+            self.sci.get_eth_address(),
+            block_number - self.sci.REQUIRED_CONFS - 1,
+            ANY,
+        )
+
     def test_concent_deposit_enough(self):
         self.sci.get_deposit_value.return_value = 10
         cb = Mock()
@@ -311,6 +335,20 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             expected=40,
         )
         self.sci.deposit_payment.assert_called_once_with(20 - 1)
+
+    def test_check_payments(self):
+        with patch.object(
+            self.ets.incomes_keeper, 'update_overdue_incomes'
+        ) as incomes:
+            incomes.return_value = [
+                Mock(sender_node='a'),
+                Mock(sender_node='b'),
+            ]
+            self.assertEqual(
+                self.ets.get_nodes_with_overdue_payments(),
+                ['a', 'b']
+            )
+            incomes.assert_called_once()
 
 
 class FaucetTest(unittest.TestCase):
