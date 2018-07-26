@@ -336,9 +336,6 @@ class LuxTask(renderingtask.RenderingTask):
         test_flm = glob.glob(os.path.join(dir, '*.flm'))
         return test_flm.pop()
 
-    ###################
-    # CoreTask methods #
-    ###################
     def query_extra_data_for_test_task(self):
         self.test_task_res_path = \
             self.dirManager.get_task_test_dir(
@@ -374,6 +371,9 @@ class LuxTask(renderingtask.RenderingTask):
 
         return self._new_compute_task_def(hash, extra_data, None, 0)
 
+    ###################
+    # CoreTask methods #
+    ###################
     def after_test(self, results, tmp_dir):
         FLM_NOT_FOUND_MSG = "Flm file was not found, check scene."
         return_data = dict()
