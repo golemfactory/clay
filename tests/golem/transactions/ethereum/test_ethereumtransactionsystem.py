@@ -304,26 +304,23 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
     def test_concent_deposit_enough(self):
         self.sci.get_deposit_value.return_value = 10
-        cb = Mock()
-        self.ets.concent_deposit(
+        deferred = self.ets.concent_deposit(
             required=10,
             expected=40,
-            cb=cb,
         )
-        cb.assert_called_once_with()
+        called = []
+        deferred.addCallback(lambda _: called.append(True))
+        assert called == [True]
         self.sci.deposit_payment.assert_not_called()
 
     def test_concent_deposit_not_enough(self):
         self.sci.get_deposit_value.return_value = 0
         self.ets._gntb_balance = 0
-        cb = Mock()
         with self.assertRaises(NotEnoughFunds):
             self.ets.concent_deposit(
                 required=10,
                 expected=40,
-                cb=cb,
             )
-        cb.assert_not_called()
 
     def test_concent_deposit_done(self):
         self.sci.get_deposit_value.return_value = 0

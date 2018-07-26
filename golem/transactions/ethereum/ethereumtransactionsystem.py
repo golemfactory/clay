@@ -10,6 +10,7 @@ from ethereum.utils import denoms, decode_hex
 from eth_utils import is_address
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import new_sci, JsonTransactionsStorage
+from twisted.internet.defer import Deferred
 import requests
 
 from golem.core.service import LoopingCallService
@@ -322,15 +323,12 @@ class EthereumTransactionSystem(LoopingCallService):
     def concent_balance(self) -> int:
         return self._sci.get_deposit_value(self._sci.get_eth_address())
 
-    def concent_deposit(self, required: int, expected: int, cb=None) -> None:
-        if cb is None:
-            def noop():
-                pass
-            cb = noop
+    def concent_deposit(self, required: int, expected: int) -> Deferred:
+        result = Deferred()
         current = self.concent_balance()
         if current >= required:
-            cb()
-            return
+            result.callback(None)
+            return result
         required -= current
         expected -= current
         gntb_balance = self.get_available_gnt()
@@ -346,11 +344,12 @@ class EthereumTransactionSystem(LoopingCallService):
 
         def transaction_receipt(receipt):
             if not receipt.status:
-                log.critical("Deposit failed. Receipt: %r", receipt)
+                result.errback(Exception(f"Deposit failed. Receipt: {receipt}"))
                 return
-            cb()
+            result.callback(None)
 
         self._sci.on_transaction_confirmed(tx_hash, transaction_receipt)
+        return result
 
     def _get_funds_from_faucet(self) -> None:
         if not self._config.FAUCET_ENABLED:
