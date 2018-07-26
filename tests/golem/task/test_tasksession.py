@@ -359,7 +359,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
             payment = ts.task_server.accept_result(
                 subtask_id,
-                ts.get_result_owner(subtask_id),
+                'key_id',
+                'eth_address',
             )
             ts.send(msg_factories.tasks.SubtaskResultsAcceptedFactory(
                 task_to_compute__compute_task_def__subtask_id=subtask_id,

@@ -875,15 +875,12 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
             "10.10.10.10")
         expected_value = ceil(1031 * 1010 / 3600)
         ts.task_manager.set_subtask_value("xxyyzz", expected_value)
-        account_info = Mock()
-        account_info.key_id = "key"
         prev_calls = trust.COMPUTED.increase.call_count
-        ts.accept_result("xxyyzz", account_info)
+        ts.accept_result("xxyyzz", "key", "eth_address")
         ts.client.transaction_system.add_payment_info.assert_called_with(
-            task_id,
             "xxyyzz",
             expected_value,
-            account_info)
+            "eth_address")
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 
     @patch("golem.task.taskmanager.TaskManager.dump_task")
@@ -912,12 +909,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
             "DEF", "DEF", task_id, 1000, 10, 5, 10, 2, "10.10.10.10")
 
-        account_info = Mock()
-        account_info.key_id = "key"
-        account_info.eth_account = Mock()
-        account_info.eth_account.address = None
-
-        ts.accept_result("xxyyzz", account_info)
+        ts.accept_result("xxyyzz", "key", "eth_address")
         self.assertEqual(
             ts.client.transaction_system.add_payment_info.call_count, 0)
 
