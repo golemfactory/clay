@@ -179,7 +179,7 @@ class CoreTask(Task):
         return generate_new_id_from_id(self.header.task_id)
 
     def is_docker_task(self):
-        return len(self.docker_images or ()) > 0
+        return bool(self.docker_images)
 
     def initialize(self, dir_manager: DirManager) -> None:
         dir_manager.clear_temporary(self.header.task_id)
