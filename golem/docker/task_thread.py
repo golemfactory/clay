@@ -24,9 +24,7 @@ EXIT_CODE_PROBABLE_CAUSES = {
 class ImageException(RuntimeError):
     pass
 
-# TODO change the way OUTPUT_DIR and WORK_DIR are handled
-# now there is duplication of declarations in DockerJob and here
-# plus, there is GOLEM_BASE_PATH hardcoded here
+
 class DockerTaskThread(TaskThread):
 
     # These files will be placed in the output dir (self.tmp_path)
