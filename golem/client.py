@@ -1093,11 +1093,12 @@ class Client(HardwarePresetsMixin):
             currency: str) -> List[str]:
         if isinstance(amount, str):
             amount = int(amount)
-        return self.transaction_system.withdraw(
+        # It returns a list for backwards compatibility with Electron.
+        return [self.transaction_system.withdraw(
             amount,
             destination,
             currency,
-        )
+        )]
 
     # It's defined here only for RPC exposure in
     # golem.rpc.mapping.rpcmethodnames

@@ -141,7 +141,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
         # Enough GNTB
         res = self.ets.withdraw(gntb_balance - 1, dest, 'GNT')
-        assert res == [gntb_tx]
+        assert res == gntb_tx
         self.sci.convert_gntb_to_gnt.assert_called_once_with(
             dest,
             gntb_balance - 1,
@@ -155,7 +155,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
         # Enough ETH
         res = self.ets.withdraw(eth_balance - 1, dest, 'ETH')
-        assert res == [eth_tx]
+        assert res == eth_tx
         self.sci.transfer_eth.assert_called_once_with(dest, eth_balance - 1)
         self.sci.reset_mock()
 
@@ -166,7 +166,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         assert 0 < locked_eth < eth_balance
         assert 0 < locked_gnt < gnt_balance
         res = self.ets.withdraw(eth_balance - locked_eth, dest, 'ETH')
-        assert res == [eth_tx]
+        assert res == eth_tx
         self.sci.transfer_eth.assert_called_once_with(
             dest,
             eth_balance - locked_eth,
