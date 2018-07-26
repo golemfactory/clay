@@ -1,6 +1,6 @@
 import logging
 from pathlib import Path
-from typing import ClassVar, Optional, TYPE_CHECKING
+from typing import ClassVar, Optional, TYPE_CHECKING, Dict
 
 import requests
 from golem.docker.job import DockerJob
@@ -34,9 +34,19 @@ class DockerTaskThread(TaskThread):
 
     docker_manager: ClassVar[Optional['DockerManager']] = None
 
-    def __init__(self, task_computer, subtask_id, docker_images,
-                 orig_script_dir, src_code, extra_data, short_desc,
-                 res_path, tmp_path, timeout, check_mem=False):
+
+    def __init__(self,
+                 task_computer: 'TaskComputer',
+                 subtask_id: str,
+                 docker_images: 'List[DockerImage]',
+                 orig_script_dir: str,
+                 src_code: str,
+                 extra_data: Dict,
+                 short_desc: str,
+                 res_path: str,
+                 tmp_path: str,
+                 timeout: float,
+                 check_mem=False):
 
         if not docker_images:
             raise AttributeError("docker images is None")
