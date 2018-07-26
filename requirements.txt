@@ -31,8 +31,8 @@ eth-utils==1.0.3
 ethereum==1.6.1
 freezegun==0.3.10
 Golem-Messages==2.10.1
-Golem-Verificator==1.1.0
-Golem-Smart-Contracts-Interface==1.5.0
+Golem-Verificator==1.1.2
+Golem-Smart-Contracts-Interface==1.5.1
 h2==3.0.1
 hpack==3.0.0
 html2text==2018.1.9

@@ -1,8 +1,9 @@
 from typing import List, Iterable, Tuple, Optional
 
-from golem.core.common import datetime_to_timestamp_utc, to_unicode
+from eth_utils import decode_hex
+
 from golem.core.service import LoopingCallService
-from golem.model import Payment, PaymentStatus, PaymentDetails
+from golem.model import Payment
 
 from .paymentskeeper import PaymentsKeeper
 from .incomeskeeper import IncomesKeeper
@@ -29,16 +30,14 @@ class TransactionSystem(LoopingCallService):
 
         super().__init__(13)
 
-    def add_payment_info(self, task_id, subtask_id, value, account_info):
+    def add_payment_info(  # pylint:disable=no-self-use
+            self,
+            subtask_id: str,
+            value: int,
+            eth_address: str):
         """ Add to payment keeper information about new payment for subtask.
-        :param str task_id:    ID if a task the payment is related to.
-        :param str subtask_id: the id of the compleated
-                               subtask this payment is for.
-        :param int value:      Aggreed value of the computed subtask.
-        :param AccountInfo account_info: Billing account.
-        :raise ValueError:     In case of incorrect payee address
         """
-        payee = account_info.eth_account.address
+        payee = decode_hex(eth_address)
         if len(payee) != 20:
             raise ValueError(
                 "Incorrect 'payee' length: {}. Should be 20".format(len(payee)))
@@ -46,9 +45,6 @@ class TransactionSystem(LoopingCallService):
             subtask=subtask_id,
             payee=payee,
             value=value,
-            details=PaymentDetails(
-                node_info=account_info.node_info,
-            )
         )
 
     def get_payments_list(self):
@@ -73,28 +69,6 @@ class TransactionSystem(LoopingCallService):
         :return list: list of dictionaries describing incomes
         """
         return self.incomes_keeper.get_list_of_all_incomes()
-
-    def get_incoming_payments(self):
-        """Returns preprocessed list of pending & confirmed incomes.
-        It's optimised for electron GUI.
-        """
-        incomes = self.incomes_keeper.get_list_of_all_incomes()
-
-        def item(o):
-            status = PaymentStatus.confirmed if o.transaction \
-                else PaymentStatus.awaiting
-
-            return {
-                "subtask": to_unicode(o.subtask),
-                "payer": to_unicode(o.sender_node),
-                "value": to_unicode(o.value),
-                "status": to_unicode(status.name),
-                "transaction": to_unicode(o.transaction),
-                "created": datetime_to_timestamp_utc(o.created_date),
-                "modified": datetime_to_timestamp_utc(o.modified_date)
-            }
-
-        return [item(income) for income in incomes]
 
     def get_nodes_with_overdue_payments(self) -> List[str]:
         overdue_incomes = self.incomes_keeper.update_overdue_incomes()

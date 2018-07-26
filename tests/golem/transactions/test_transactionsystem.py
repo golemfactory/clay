@@ -1,10 +1,10 @@
 from os import urandom
 from unittest.mock import Mock, patch
 
+from eth_utils import encode_hex
+
 from golem.model import Income
-from golem.network.p2p.node import Node
 from golem.tools.testwithdatabase import TestWithDatabase
-from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 from golem.transactions.transactionsystem import TransactionSystem
 
 
@@ -14,8 +14,11 @@ class TestTransactionSystem(TestWithDatabase):
         self.transaction_system = TransactionSystem()
 
     def test_add_payment_info(self):
-        ai = EthAccountInfo("DEF", "node1", Node(), urandom(20))
-        self.transaction_system.add_payment_info("xyz", "xxyyzz", 10, ai)
+        self.transaction_system.add_payment_info(
+            "xxyyzz",
+            10,
+            encode_hex(urandom(20)),
+        )
 
     def test_check_payments(self):
         with patch.object(

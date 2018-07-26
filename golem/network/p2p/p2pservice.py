@@ -6,6 +6,7 @@ from collections import deque
 from threading import Lock
 
 from golem_messages import message
+from scipy.stats import stats
 
 from golem.config.active import P2P_SEEDS
 from golem.core import simplechallenge
@@ -13,6 +14,7 @@ from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.diag.service import DiagnosticsProvider
 from golem.model import KnownHosts, MAX_STORED_HOSTS, db
 from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
+from golem.network.p2p.performance_stats import PERFORMANCE_STATS
 from golem.network.transport import tcpnetwork
 from golem.network.transport import tcpserver
 from golem.network.transport.network import ProtocolFactory, SessionFactory
@@ -271,6 +273,11 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         size = self.peer_keeper.get_estimated_network_size()
         logger.info('Estimated network size: %r', size)
         return size
+
+    @staticmethod
+    def get_performance_percentile_rank(perf: float) -> float:
+        return \
+            stats.percentileofscore(PERFORMANCE_STATS, perf, kind='weak') / 100
 
     def ping_peers(self, interval):
         """ Send ping to all peers with whom this peer has open connection
