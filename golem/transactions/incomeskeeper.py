@@ -42,7 +42,7 @@ class IncomesKeeper:
         expected = \
             [e for e in expected if pubkeytoaddr(e.sender_node) == sender]
 
-        expected_value = sum([e.value for e in expected])
+        expected_value = sum([e.value_expected for e in expected])
         if expected_value == 0:
             # Probably already handled event
             return
@@ -56,17 +56,18 @@ class IncomesKeeper:
         amount_left = amount
 
         for e in expected:
-            if amount_left < e.value:
-                continue
-            amount_left -= e.value
+            received = min(amount_left, e.value_expected)
+            e.value_received += received
+            amount_left -= received
             e.transaction = tx_hash[2:]
             e.save()
 
-            dispatcher.send(
-                signal='golem.income',
-                event='confirmed',
-                subtask_id=e.subtask,
-            )
+            if e.value_expected <= 0:
+                dispatcher.send(
+                    signal='golem.income',
+                    event='confirmed',
+                    subtask_id=e.subtask,
+                )
 
         dispatcher.send(
             signal='golem.monitor',

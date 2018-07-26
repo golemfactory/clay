@@ -241,6 +241,7 @@ class Income(BaseModel):
     sender_node = CharField()
     subtask = CharField()
     value = HexIntegerField()
+    value_received = HexIntegerField(default=0)
     accepted_ts = IntegerField(null=True)
     transaction = CharField(null=True)
     overdue = BooleanField(default=False)
@@ -259,6 +260,9 @@ class Income(BaseModel):
                 self.transaction,
             )
 
+    @property
+    def value_expected(self):
+        return self.value - self.value_received
 
 ##################
 # RANKING MODELS #
