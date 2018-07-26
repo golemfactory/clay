@@ -3,6 +3,7 @@ import shutil
 from os import path
 
 from golem.core.common import get_golem_path
+from golem.docker.job import DockerJob
 from golem.resource.dirmanager import find_task_script
 from golem.tools.ci import ci_skip
 from .test_docker_job import TestDockerJob
@@ -50,7 +51,7 @@ class TestLuxRenderDockerJob(TestDockerJob):
             "start_task": 42,
             "end_task": 42,
             "frames": [1],
-            "scene_dir": "/golem/resources/",
+            "scene_dir": DockerJob.RESOURCES_DIR,
             "num_threads": 1
         }
 
@@ -61,7 +62,3 @@ class TestLuxRenderDockerJob(TestDockerJob):
 
         out_files = os.listdir(self.output_dir)
         self.assertEqual(out_files, ['out42.png'])
-
-
-
-

@@ -24,7 +24,9 @@ EXIT_CODE_PROBABLE_CAUSES = {
 class ImageException(RuntimeError):
     pass
 
-
+# TODO change the way OUTPUT_DIR and WORK_DIR are handled
+# now there is duplication of declarations in DockerJob and here
+# plus, there is GOLEM_BASE_PATH hardcoded here
 class DockerTaskThread(TaskThread):
 
     # These files will be placed in the output dir (self.tmp_path)
@@ -55,8 +57,9 @@ class DockerTaskThread(TaskThread):
         self.job = None
         self.check_mem = check_mem
 
-        self.work_dir_path: Path = Path(self.tmp_path) / "work"
-        self.output_dir_path: Path = Path(self.tmp_path) / "output"
+        self.work_dir_path: Path = Path(self.tmp_path) / DockerJob.WORK_DIR_E
+        self.output_dir_path: Path = Path(self.tmp_path) / DockerJob.RESOURCES_DIR_E
+
 
     def run(self) -> None:
         try:
