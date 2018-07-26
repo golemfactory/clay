@@ -33,14 +33,6 @@ class DummyTaskDefaults(TaskDefaults):
                                      "apps", "dummy", "resources", "code_dir")
         self.result_size = 256  # length of result hex number
 
-        @property
-        def full_task_timeout(self):
-            return self.default_subtasks * self.subtask_timeout
-
-        @property
-        def subtask_timeout(self):
-            return 1200
-
 
 class DummyTaskDefinition(TaskDefinition):
     def __init__(self, defaults=None):
