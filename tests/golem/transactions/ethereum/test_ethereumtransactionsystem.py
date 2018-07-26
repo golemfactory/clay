@@ -290,7 +290,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         block_number = 123
         self.sci.get_block_number.return_value = block_number
         with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                   'TransactionSystem.stop'):
+                   'LoopingCallService.stop'):
             self.ets.stop()
 
         self.sci.reset_mock()
@@ -335,6 +335,20 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             expected=40,
         )
         self.sci.deposit_payment.assert_called_once_with(20 - 1)
+
+    def test_check_payments(self):
+        with patch.object(
+            self.ets.incomes_keeper, 'update_overdue_incomes'
+        ) as incomes:
+            incomes.return_value = [
+                Mock(sender_node='a'),
+                Mock(sender_node='b'),
+            ]
+            self.assertEqual(
+                self.ets.get_nodes_with_overdue_payments(),
+                ['a', 'b']
+            )
+            incomes.assert_called_once()
 
 
 class FaucetTest(unittest.TestCase):
