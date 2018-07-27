@@ -394,18 +394,18 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
     def test_send_waiting_results(self, *_):
         ts = self.ts
-        ts.network = Mock()
-        ts._mark_connected = Mock()
-        ts.task_computer = Mock()
-        ts.task_manager = Mock()
+        ts.network = MagicMock()
+        ts._mark_connected = MagicMock()
+        ts.task_computer = MagicMock()
+        ts.task_manager = MagicMock()
         ts.task_manager.check_timeouts.return_value = []
-        ts.task_keeper = Mock()
-        ts.task_connections_helper = Mock()
-        ts._add_pending_request = Mock()
+        ts.task_keeper = MagicMock()
+        ts.task_connections_helper = MagicMock()
+        ts._add_pending_request = MagicMock()
 
         subtask_id = 'xxyyzz'
 
-        wtr = Mock()
+        wtr = MagicMock()
         ts.results_to_send[subtask_id] = wtr
 
         wtr.already_sending = True

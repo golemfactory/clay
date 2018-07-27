@@ -454,8 +454,10 @@ class TaskComputer(object):
     def check_for_new_messages(self) -> List[Tuple[str, str, Dict]]:
         msgs = []
         tt = self.counting_thread
-        subtask_id = tt.subtask_id
+        if not tt:
+            return []
 
+        subtask_id = tt.subtask_id
         task_id = self.task_to_subtask_mapping[subtask_id]
         all_subtask_messages_data = tt.check_for_new_messages()
 
