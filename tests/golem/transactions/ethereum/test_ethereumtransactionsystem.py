@@ -308,9 +308,8 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             required=10,
             expected=40,
         )
-        called = []
-        deferred.addCallback(lambda _: called.append(True))
-        assert called == [True]
+        deferred.addErrback(lambda _: self.failed('shoud not fail'))
+        assert deferred.called
         self.sci.deposit_payment.assert_not_called()
 
     def test_concent_deposit_not_enough(self):
