@@ -1,10 +1,14 @@
+import logging
 import socket
 
 from types import MethodType
 
 from web3.exceptions import CannotHandleRequest
 
-MAX_ERRORS = 3
+logger = logging.getLogger(__name__)
+
+MAX_ERRORS = 20
+RETRIES = 3
 
 
 class RemoteRPCErrorMiddlewareBuilder:
@@ -15,7 +19,8 @@ class RemoteRPCErrorMiddlewareBuilder:
 
     def __init__(self,
                  error_listener: MethodType,
-                 max_errors: int = MAX_ERRORS) -> None:
+                 max_errors: int = MAX_ERRORS,
+                 retries: int = RETRIES) -> None:
         """
         :param error_listener: Function to execute when the maximum number of
         consecutive errors is reached
@@ -23,26 +28,30 @@ class RemoteRPCErrorMiddlewareBuilder:
         """
         self._max_errors = max_errors
         self._cur_errors = 0
+        self._retries = retries
         self._err_listener = error_listener
 
     def build(self, make_request, _web3):
         """ Returns the middleware function """
 
         def middleware(method, params):
-            try:
-                result = make_request(method, params)
-            except (ConnectionError, ValueError,
-                    socket.error, CannotHandleRequest) as exc:
-
-                self._cur_errors += 1
-                if self._cur_errors >= self._max_errors:
+            while True:
+                try:
+                    result = make_request(method, params)
+                except (ConnectionError, ValueError,
+                        socket.error, CannotHandleRequest) as exc:
+                    logger.warning(
+                        'GETH: request failure, retrying: %s',
+                        exc,
+                    )
+                    self._cur_errors += 1
+                    if self._cur_errors >= self._max_errors:
+                        raise
+                    if self._cur_errors % self._retries == 0:
+                        self._err_listener()
+                else:
                     self.reset()
-                    self._err_listener(exc)
-                raise
-
-            else:
-                self.reset()
-                return result
+                    return result
 
         return middleware
 

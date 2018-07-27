@@ -29,7 +29,7 @@ class TestPublicNodeList(TestCase):
 
         node.provider_proxy.provider = Mock()
         node.addr_list = []
-        node._handle_remote_rpc_provider_failure(Exception('test exception'))
+        node._handle_remote_rpc_provider_failure()
 
         assert node.provider_proxy.provider is None
         assert node.start.called
