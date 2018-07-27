@@ -308,7 +308,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             required=10,
             expected=40,
         )
-        deferred.addErrback(lambda _: self.failed('shoud not fail'))
+        deferred.addErrback(lambda _: self.fail('shoud not fail'))
         assert deferred.called
         self.sci.deposit_payment.assert_not_called()
 
