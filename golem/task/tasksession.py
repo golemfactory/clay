@@ -705,7 +705,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 subtask_price=msg.task_to_compute.price,
             )
 
-            def ask_for_verification():
+            def ask_for_verification(_):
                 srv = message.concents.SubtaskResultsVerify(
                     subtask_results_rejected=msg
                 )
@@ -718,8 +718,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.task_server.client.transaction_system.concent_deposit(
                 required=amount,
                 expected=expected,
-                cb=ask_for_verification,
-            )
+            ).addCallback(ask_for_verification)
 
         else:
             self.task_server.subtask_rejected(
