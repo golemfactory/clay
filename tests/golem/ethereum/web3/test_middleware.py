@@ -42,6 +42,11 @@ class TestMiddleware(unittest.TestCase):
         make_request = Mock(side_effect=ConnectionError)
         middleware = builder.build(make_request, _web3=None)
 
+        middleware(Mock(), None)
+        assert listener.call_count == 1
+
+        middleware(Mock(), None)
+        assert listener.call_count == 2
+
         with self.assertRaises(ConnectionError):
             middleware(Mock(), None)
-        assert listener.call_count == 2

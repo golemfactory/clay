@@ -1,5 +1,6 @@
 import logging
 import socket
+from typing import ClassVar
 
 from types import MethodType
 
@@ -17,6 +18,8 @@ class RemoteRPCErrorMiddlewareBuilder:
     CannotHandleRequest exception in middleware function.
     """
 
+    _cur_errors: ClassVar[int] = 0
+
     def __init__(self,
                  error_listener: MethodType,
                  max_errors: int = MAX_ERRORS,
@@ -27,7 +30,6 @@ class RemoteRPCErrorMiddlewareBuilder:
         :param max_errors: Maximum number of consecutive unrecoverable errors
         """
         self._max_errors = max_errors
-        self._cur_errors = 0
         self._retries = retries
         self._err_listener = error_listener
 
@@ -46,9 +48,11 @@ class RemoteRPCErrorMiddlewareBuilder:
                     )
                     self._cur_errors += 1
                     if self._cur_errors >= self._max_errors:
+                        self.reset()
                         raise
                     if self._cur_errors % self._retries == 0:
                         self._err_listener()
+                        return
                 else:
                     self.reset()
                     return result
