@@ -6,10 +6,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, ClassVar, Dict, Iterable, List, Optional, Tuple
 
-from ethereum.utils import denoms, decode_hex
-from eth_utils import is_address
+from ethereum.utils import denoms
+from eth_utils import decode_hex, is_address
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import new_sci, JsonTransactionsStorage
+from twisted.internet.defer import Deferred
 import requests
 
 from golem.core.service import LoopingCallService
@@ -282,7 +283,7 @@ class EthereumTransactionSystem(LoopingCallService):
             self,
             amount: int,
             destination: str,
-            currency: str) -> List[str]:
+            currency: str) -> str:
         if not self._config.WITHDRAWALS_ENABLED:
             raise Exception("Withdrawals are disabled")
 
@@ -301,7 +302,7 @@ class EthereumTransactionSystem(LoopingCallService):
                 amount / denoms.ether,
                 destination,
             )
-            return [self._sci.transfer_eth(destination, amount)]
+            return self._sci.transfer_eth(destination, amount)
 
         if currency == 'GNT':
             if amount > self.get_available_gnt():
@@ -315,22 +316,19 @@ class EthereumTransactionSystem(LoopingCallService):
                 amount / denoms.ether,
                 destination,
             )
-            return [self._sci.convert_gntb_to_gnt(destination, amount)]
+            return self._sci.convert_gntb_to_gnt(destination, amount)
 
         raise ValueError('Unknown currency {}'.format(currency))
 
     def concent_balance(self) -> int:
         return self._sci.get_deposit_value(self._sci.get_eth_address())
 
-    def concent_deposit(self, required: int, expected: int, cb=None) -> None:
-        if cb is None:
-            def noop():
-                pass
-            cb = noop
+    def concent_deposit(self, required: int, expected: int) -> Deferred:
+        result = Deferred()
         current = self.concent_balance()
         if current >= required:
-            cb()
-            return
+            result.callback(None)
+            return result
         required -= current
         expected -= current
         gntb_balance = self.get_available_gnt()
@@ -346,11 +344,12 @@ class EthereumTransactionSystem(LoopingCallService):
 
         def transaction_receipt(receipt):
             if not receipt.status:
-                log.critical("Deposit failed. Receipt: %r", receipt)
+                result.errback(Exception(f"Deposit failed. Receipt: {receipt}"))
                 return
-            cb()
+            result.callback(None)
 
         self._sci.on_transaction_confirmed(tx_hash, transaction_receipt)
+        return result
 
     def _get_funds_from_faucet(self) -> None:
         if not self._config.FAUCET_ENABLED:

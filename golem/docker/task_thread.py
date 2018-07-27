@@ -34,9 +34,7 @@ class DockerTaskThread(TaskThread):
 
     docker_manager: ClassVar[Optional['DockerManager']] = None
 
-
     def __init__(self,
-                 task_computer: 'TaskComputer',
                  subtask_id: str,
                  docker_images: 'List[DockerImage]',
                  orig_script_dir: str,
@@ -51,7 +49,7 @@ class DockerTaskThread(TaskThread):
         if not docker_images:
             raise AttributeError("docker images is None")
         super(DockerTaskThread, self).__init__(
-            task_computer, subtask_id, orig_script_dir, src_code, extra_data,
+            subtask_id, orig_script_dir, src_code, extra_data,
             short_desc, res_path, tmp_path, timeout)
 
         # Find available image
@@ -137,7 +135,7 @@ class DockerTaskThread(TaskThread):
         }
         if estm_mem is not None:
             self.result = (self.result, estm_mem)
-        self.task_computer.task_computed(self)
+        self._deferred.callback(self)
 
     def get_progress(self):
         # TODO: make the container update some status file? Issue #56

@@ -94,6 +94,17 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             ANY,
         )
 
+    def test_payment(self):
+        subtask_id = 'derp'
+        value = 10
+        payee = '0x' + 40 * '1'
+        self.ets.add_payment_info(subtask_id, value, payee)
+        payments = self.ets.get_payments_list()
+        assert len(payments) == 1
+        assert payments[0]['subtask'] == subtask_id
+        assert payments[0]['value'] == str(value)
+        assert payments[0]['payee'] == payee
+
     def test_get_withdraw_gas_cost(self):
         dest = '0x' + 40 * '0'
         gas_price = 123
@@ -141,7 +152,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
         # Enough GNTB
         res = self.ets.withdraw(gntb_balance - 1, dest, 'GNT')
-        assert res == [gntb_tx]
+        assert res == gntb_tx
         self.sci.convert_gntb_to_gnt.assert_called_once_with(
             dest,
             gntb_balance - 1,
@@ -155,7 +166,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
         # Enough ETH
         res = self.ets.withdraw(eth_balance - 1, dest, 'ETH')
-        assert res == [eth_tx]
+        assert res == eth_tx
         self.sci.transfer_eth.assert_called_once_with(dest, eth_balance - 1)
         self.sci.reset_mock()
 
@@ -166,7 +177,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         assert 0 < locked_eth < eth_balance
         assert 0 < locked_gnt < gnt_balance
         res = self.ets.withdraw(eth_balance - locked_eth, dest, 'ETH')
-        assert res == [eth_tx]
+        assert res == eth_tx
         self.sci.transfer_eth.assert_called_once_with(
             dest,
             eth_balance - locked_eth,
@@ -304,26 +315,22 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
     def test_concent_deposit_enough(self):
         self.sci.get_deposit_value.return_value = 10
-        cb = Mock()
-        self.ets.concent_deposit(
+        deferred = self.ets.concent_deposit(
             required=10,
             expected=40,
-            cb=cb,
         )
-        cb.assert_called_once_with()
+        deferred.addErrback(lambda _: self.fail('shoud not fail'))
+        assert deferred.called
         self.sci.deposit_payment.assert_not_called()
 
     def test_concent_deposit_not_enough(self):
         self.sci.get_deposit_value.return_value = 0
         self.ets._gntb_balance = 0
-        cb = Mock()
         with self.assertRaises(NotEnoughFunds):
             self.ets.concent_deposit(
                 required=10,
                 expected=40,
-                cb=cb,
             )
-        cb.assert_not_called()
 
     def test_concent_deposit_done(self):
         self.sci.get_deposit_value.return_value = 0
