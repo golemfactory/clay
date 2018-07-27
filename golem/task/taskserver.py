@@ -6,6 +6,7 @@ import time
 import weakref
 from collections import deque
 from pathlib import Path
+from typing import List, Tuple, Dict
 
 from golem_messages import message
 from pydispatch import dispatcher
@@ -135,6 +136,10 @@ class TaskServer(
         self._sync_pending()
         self.__send_waiting_results()
         self.task_computer.run()
+
+        msgs = self.task_computer.check_for_new_messages()
+        self.send_task_messages(msgs)
+
         self.task_connections_helper.sync()
         self._sync_forwarded_session_requests()
         self.__remove_old_tasks()
@@ -668,6 +673,11 @@ class TaskServer(
             self.config_desc.start_port, self.config_desc.end_port))
         # FIXME: some graceful terminations should take place here. #1287
         # sys.exit(0)
+
+    def send_task_messages(self, all_messages: List[Tuple[str, str, Dict]]):
+        for task_id, subtask_id, data in all_messages:
+            self.task_sessions[subtask_id].send_message_to_requestor(
+                subtask_id, task_id, data)
 
     #############################
     #   CONNECTION REACTIONS    #
