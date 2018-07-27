@@ -9,7 +9,7 @@ from typing import Any, ClassVar, Dict, Iterable, List, Optional, Tuple
 from ethereum.utils import denoms, decode_hex
 from eth_utils import is_address
 from golem_messages.utils import bytes32_to_uuid
-from golem_sci import new_sci, JsonTransactionsStorage
+from golem_sci import new_sci, SmartContractsInterface, JsonTransactionsStorage
 from twisted.internet.defer import Deferred
 import requests
 
@@ -59,11 +59,11 @@ class EthereumTransactionSystem(LoopingCallService):
         random.shuffle(node_list)
         node_list += config.FALLBACK_NODE_LIST
         self._node = NodeProcess(node_list)
-        self._sci = None
+        self._sci: Optional[SmartContractsInterface] = None
 
         self.payments_keeper = PaymentsKeeper()
         self.incomes_keeper = IncomesKeeper()
-        self.payment_processor = None
+        self.payment_processor: Optional[PaymentProcessor] = None
 
         self._gnt_faucet_requested = False
         self._gnt_conversion_status = ConversionStatus.NONE
@@ -71,8 +71,8 @@ class EthereumTransactionSystem(LoopingCallService):
         self._eth_balance: int = 0
         self._gnt_balance: int = 0
         self._gntb_balance: int = 0
-        self._last_eth_update = None
-        self._last_gnt_update = None
+        self._last_eth_update: Optional[float] = None
+        self._last_gnt_update: Optional[float] = None
         self._payments_locked: int = 0
         self._gntb_locked: int = 0
 
@@ -122,11 +122,13 @@ class EthereumTransactionSystem(LoopingCallService):
             self._eth_balance / denoms.ether,
         )
 
-    def start(self) -> None:
+    def start(self, now: bool = True) -> None:
         self._init()
-        super().start()
+        super().start(now)
 
     def _subscribe_to_events(self) -> None:
+        if not self._sci:
+            raise Exception('Start was not called')
         values = GenericKeyValue.select().where(
             GenericKeyValue.key == self.BLOCK_NUMBER_DB_KEY)
         from_block = int(values.get().value) if values.count() == 1 else 0
@@ -162,6 +164,8 @@ class EthereumTransactionSystem(LoopingCallService):
             log.info("Can't use GNTDeposit on mainnet yet: %r", e)
 
     def _save_subscription_block_number(self) -> None:
+        if not self._sci:
+            raise Exception('Start was not called')
         block_number = self._sci.get_block_number() - self._sci.REQUIRED_CONFS
         kv, _ = GenericKeyValue.get_or_create(key=self.BLOCK_NUMBER_DB_KEY)
         kv.value = block_number - 1
@@ -174,6 +178,8 @@ class EthereumTransactionSystem(LoopingCallService):
         super().stop()
 
     def add_payment_info(self, subtask_id: str, value: int, eth_address: str):
+        if not self.payment_processor:
+            raise Exception('Start was not called')
         payee = decode_hex(eth_address)
         if len(payee) != 20:
             raise ValueError(
@@ -188,6 +194,8 @@ class EthereumTransactionSystem(LoopingCallService):
 
     def get_payment_address(self):
         """ Human readable Ethereum address for incoming payments."""
+        if not self._sci:
+            raise Exception('Start was not called')
         return self._sci.get_eth_address()
 
     def get_payments_list(self):
@@ -222,6 +230,8 @@ class EthereumTransactionSystem(LoopingCallService):
         return self._eth_balance - self.get_locked_eth()
 
     def get_locked_eth(self) -> int:
+        if not self.payment_processor:
+            raise Exception('Start was not called')
         eth = self.payment_processor.reserved_eth + \
             self.eth_for_batch_payment(self._payments_locked)
         if self._payments_locked > 0 and \
@@ -233,9 +243,13 @@ class EthereumTransactionSystem(LoopingCallService):
         return self._gntb_balance - self.get_locked_gnt()
 
     def get_locked_gnt(self) -> int:
+        if not self.payment_processor:
+            raise Exception('Start was not called')
         return self._gntb_locked + self.payment_processor.reserved_gntb
 
     def get_balance(self) -> Dict[str, Any]:
+        if not self._sci:
+            raise Exception('Start was not called')
         return {
             'gnt_available': self.get_available_gnt(),
             'gnt_locked': self.get_locked_gnt(),
@@ -248,6 +262,8 @@ class EthereumTransactionSystem(LoopingCallService):
         }
 
     def lock_funds_for_payments(self, price: int, num: int) -> None:
+        if not self.payment_processor:
+            raise Exception('Start was not called')
         gnt = price * num
         if gnt > self.get_available_gnt():
             raise NotEnoughFunds(gnt, self.get_available_gnt(), 'GNT')
@@ -290,9 +306,13 @@ class EthereumTransactionSystem(LoopingCallService):
         self._payments_locked -= num
 
     def eth_for_batch_payment(self, num_payments: int) -> int:
+        if not self.payment_processor:
+            raise Exception('Start was not called')
         return self.payment_processor.get_gas_cost_per_payment() * num_payments
 
     def _eth_base_for_batch_payment(self) -> int:
+        if not self.payment_processor:
+            raise Exception('Start was not called')
         return self.payment_processor.ETH_BATCH_PAYMENT_BASE
 
     def get_withdraw_gas_cost(
@@ -300,6 +320,8 @@ class EthereumTransactionSystem(LoopingCallService):
             amount: int,
             destination: str,
             currency: str) -> int:
+        if not self._sci:
+            raise Exception('Start was not called')
         gas_price = self._sci.get_current_gas_price()
         if currency == 'ETH':
             return self._sci.estimate_transfer_eth_gas(destination, amount) * \
@@ -313,6 +335,8 @@ class EthereumTransactionSystem(LoopingCallService):
             amount: int,
             destination: str,
             currency: str) -> str:
+        if not self._sci:
+            raise Exception('Start was not called')
         if not self._config.WITHDRAWALS_ENABLED:
             raise Exception("Withdrawals are disabled")
 
@@ -350,9 +374,13 @@ class EthereumTransactionSystem(LoopingCallService):
         raise ValueError('Unknown currency {}'.format(currency))
 
     def concent_balance(self) -> int:
+        if not self._sci:
+            raise Exception('Start was not called')
         return self._sci.get_deposit_value(self._sci.get_eth_address())
 
     def concent_deposit(self, required: int, expected: int) -> Deferred:
+        if not self._sci:
+            raise Exception('Start was not called')
         result = Deferred()
         current = self.concent_balance()
         if current >= required:
@@ -381,6 +409,8 @@ class EthereumTransactionSystem(LoopingCallService):
         return result
 
     def _get_funds_from_faucet(self) -> None:
+        if not self._sci:
+            raise Exception('Start was not called')
         if not self._config.FAUCET_ENABLED:
             return
         if self._eth_balance < 0.01 * denoms.ether:
@@ -397,6 +427,8 @@ class EthereumTransactionSystem(LoopingCallService):
             self._gnt_faucet_requested = False
 
     def _refresh_balances(self) -> None:
+        if not self._sci:
+            raise Exception('Start was not called')
         now = time.mktime(datetime.today().timetuple())
         addr = self._sci.get_eth_address()
 
@@ -413,6 +445,8 @@ class EthereumTransactionSystem(LoopingCallService):
             log.warning('Failed to update balances: %r', e)
 
     def _try_convert_gnt(self) -> None:  # pylint: disable=too-many-branches
+        if not self._sci:
+            raise Exception('Start was not called')
         if self._gnt_conversion_status == ConversionStatus.UNFINISHED:
             if self._gnt_balance > 0:
                 self._gnt_conversion_status = ConversionStatus.NONE
@@ -487,6 +521,8 @@ class EthereumTransactionSystem(LoopingCallService):
                 )
 
     def _run(self) -> None:
+        if not self.payment_processor:
+            raise Exception('Start was not called')
         self._refresh_balances()
         self._get_funds_from_faucet()
         self._try_convert_gnt()

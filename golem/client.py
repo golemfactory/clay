@@ -94,6 +94,7 @@ def _transaction_system_backward_compatibility(
     if old_tx_file.exists():
         with open(old_tx_file, 'r') as f:
             storage_content = json.load(f)
+        ets.backwards_compatibility_tx_storage(storage_content)
         import os
         os.remove(old_tx_file)
 
