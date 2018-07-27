@@ -282,7 +282,7 @@ class EthereumTransactionSystem(LoopingCallService):
             self,
             amount: int,
             destination: str,
-            currency: str) -> List[str]:
+            currency: str) -> str:
         if not self._config.WITHDRAWALS_ENABLED:
             raise Exception("Withdrawals are disabled")
 
@@ -301,7 +301,7 @@ class EthereumTransactionSystem(LoopingCallService):
                 amount / denoms.ether,
                 destination,
             )
-            return [self._sci.transfer_eth(destination, amount)]
+            return self._sci.transfer_eth(destination, amount)
 
         if currency == 'GNT':
             if amount > self.get_available_gnt():
@@ -315,7 +315,7 @@ class EthereumTransactionSystem(LoopingCallService):
                 amount / denoms.ether,
                 destination,
             )
-            return [self._sci.convert_gntb_to_gnt(destination, amount)]
+            return self._sci.convert_gntb_to_gnt(destination, amount)
 
         raise ValueError('Unknown currency {}'.format(currency))
 
