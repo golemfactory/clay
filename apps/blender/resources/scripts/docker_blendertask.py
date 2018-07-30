@@ -42,7 +42,7 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task,
               file=sys.stderr)
         sys.exit(1)
 
-    blender_script_path = f"{params.WORK_DIR}/blenderscript.py"
+    blender_script_path = "{}/blenderscript.py".format(params.WORK_DIR)
     with open(blender_script_path, "w") as script_file:
         script_file.write(script_src)
 

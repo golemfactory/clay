@@ -56,7 +56,11 @@ class TestDockerJob(DockerTestCase):
         job = DockerJob(self.image, self.TEST_SCRIPT, None, self.resources_dir, self.work_dir, self.output_dir)
         self.assertEqual(job.image, self.image)
         self.assertEqual(job.script_src, self.TEST_SCRIPT)
-        self.assertEqual(job.parameters, {})
+
+        parameters = {'OUTPUT_DIR': '/golem/output',
+                      'RESOURCES_DIR': '/golem/resources',
+                      'WORK_DIR': '/golem/work'}
+        self.assertEqual(job.parameters, parameters)
         self.assertEqual(job.host_config, {})
         self.assertEqual(job.resources_dir, self.resources_dir)
         self.assertEqual(job.work_dir, self.work_dir)
