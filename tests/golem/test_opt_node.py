@@ -94,6 +94,7 @@ class TestNode(TestWithDatabase):
                                        ],
                                        keys_auth=keys_auth,
                                        database=ANY,
+                                       transaction_system=ANY,
                                        geth_address=None,
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
@@ -155,6 +156,7 @@ class TestNode(TestWithDatabase):
                                        config_desc=ANY,
                                        keys_auth=None,
                                        database=ANY,
+                                       transaction_system=ANY,
                                        geth_address=geth_address,
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
@@ -235,6 +237,7 @@ class TestNode(TestWithDatabase):
                                        config_desc=ANY,
                                        keys_auth=None,
                                        database=ANY,
+                                       transaction_system=ANY,
                                        geth_address=None,
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
@@ -572,7 +575,7 @@ class TestOptNode(TempDirFixture):
         assert reactor.addSystemEventTrigger.call_args[0] == (
             'before', 'shutdown', self.node.rpc_router.stop)
 
-    @patch('golem.client.EthereumTransactionSystem')
+    @patch('golem.node.EthereumTransactionSystem')
     def test_start_creates_client(self, _ets, reactor, mock_gather_results, *_):
         mock_gather_results.return_value = mock_gather_results
         mock_gather_results.addCallbacks.side_effect = \
@@ -592,7 +595,7 @@ class TestOptNode(TempDirFixture):
         assert reactor.addSystemEventTrigger.call_args_list[1][0] == (
             'before', 'shutdown', self.node.client.quit)
 
-    @patch('golem.client.EthereumTransactionSystem')
+    @patch('golem.node.EthereumTransactionSystem')
     @patch('golem.node.Node._run')
     def test_start_creates_client_and_calls_run(
             self,

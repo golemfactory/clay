@@ -1,4 +1,6 @@
+import json
 import logging
+import os
 import random
 import time
 from enum import Enum
@@ -7,6 +9,7 @@ from pathlib import Path
 from typing import Any, ClassVar, Dict, Iterable, List, Optional, Tuple
 
 from ethereum.utils import denoms
+from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
 from eth_utils import decode_hex, is_address
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import new_sci, SmartContractsInterface, JsonTransactionsStorage
@@ -38,22 +41,19 @@ class EthereumTransactionSystem(LoopingCallService):
     """ Transaction system connected with Ethereum """
 
     TX_FILENAME: ClassVar[str] = 'transactions.json'
+    KEYSTORE_FILENAME: ClassVar[str] = 'wallet.json'
 
     BLOCK_NUMBER_DB_KEY: ClassVar[str] = 'ets_subscriptions_block_number'
 
     LOOP_INTERVAL: ClassVar[int] = 13
 
-    def __init__(
-            self,
-            datadir: Path,
-            privkey: bytes,
-            config) -> None:
+    def __init__(self, datadir: Path, config) -> None:
         super().__init__(self.LOOP_INTERVAL)
         datadir.mkdir(exist_ok=True)
 
         self._datadir = datadir
-        self._privkey = privkey
         self._config = config
+        self._privkey = b''
 
         node_list = config.NODE_LIST.copy()
         random.shuffle(node_list)
@@ -92,15 +92,32 @@ class EthereumTransactionSystem(LoopingCallService):
         new_storage_path = self._datadir / self.TX_FILENAME
         if new_storage_path.exists():
             raise Exception("Storage already exists, can't override")
-        import json
-        import os
         with open(old_storage_path, 'r') as f:
             json_content = json.load(f)
         with open(new_storage_path, 'w') as f:
             json.dump(json_content, f)
         os.remove(old_storage_path)
 
+    def backwards_compatibility_privkey(
+            self,
+            privkey: bytes,
+            password: str) -> None:
+        keystore_path = self._datadir / self.KEYSTORE_FILENAME
+        if keystore_path.exists():
+            return
+        log.info("Initializing keystore with backward compatible value")
+        keystore = create_keyfile_json(
+            privkey,
+            password.encode('utf-8'),
+            iterations=1024,
+        )
+        with open(keystore_path, 'w') as f:
+            json.dump(keystore, f)
+
     def _init(self) -> None:
+        if len(self._privkey) != 32:
+            raise Exception(
+                "Invalid private key. Did you forget to set password?")
         eth_addr = privkeytoaddr(self._privkey)
         log.info("Node Ethereum address: %s", eth_addr)
 
@@ -134,6 +151,24 @@ class EthereumTransactionSystem(LoopingCallService):
     def start(self, now: bool = True) -> None:
         self._init()
         super().start(now)
+
+    def set_password(self, password: str) -> None:
+        keystore_path = self._datadir / self.KEYSTORE_FILENAME
+        if keystore_path.exists():
+            self._privkey = extract_key_from_keyfile(
+                str(keystore_path),
+                password.encode('utf-8'),
+            )
+        else:
+            log.info("Generating new Ethereum private key")
+            self._privkey = os.urandom(32)
+            keystore = create_keyfile_json(
+                self._privkey,
+                password.encode('utf-8'),
+                iterations=1024,
+            )
+            with open(keystore_path, 'w') as f:
+                json.dump(keystore, f)
 
     def _subscribe_to_events(self) -> None:
         if not self._sci:

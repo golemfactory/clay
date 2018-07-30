@@ -1,13 +1,14 @@
 from os import urandom
-import unittest
+from pathlib import Path
+from typing import Optional
 from unittest.mock import patch, Mock, ANY, PropertyMock
+from unittest import TestCase
 
 from eth_utils import encode_hex
 from ethereum.utils import denoms
 import requests
 
 from golem import testutils
-from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.transactions.ethereum.ethereumtransactionsystem import (
     EthereumTransactionSystem,
@@ -15,11 +16,10 @@ from golem.transactions.ethereum.ethereumtransactionsystem import (
 )
 from golem.transactions.ethereum.exceptions import NotEnoughFunds
 
-PRIV_KEY = '07' * 32
+PASSWORD = 'derp'
 
 
-class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
-                                    testutils.PEP8MixIn):
+class TestEthereumTransactionSystem(TestWithDatabase, testutils.PEP8MixIn):
     PEP8_FILES = ['golem/transactions/ethereum/ethereumtransactionsystem.py', ]
 
     def setUp(self):
@@ -37,14 +37,18 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         self.sci.REQUIRED_CONFS = 6
         self.ets = self._make_ets()
 
-    def _make_ets(self, privkey=PRIV_KEY, withdrawals=True):
+    def _make_ets(
+            self,
+            datadir: Optional[Path] = None,
+            withdrawals: bool = True,
+            password: str = PASSWORD,
+            just_create: bool = False):
         with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
                    'NodeProcess'),\
             patch('golem.transactions.ethereum.ethereumtransactionsystem.'
                   'new_sci', return_value=self.sci):
             ets = EthereumTransactionSystem(
-                self.new_path,
-                privkey,
+                datadir or self.new_path,
                 Mock(
                     NODE_LIST=[],
                     FALLBACK_NODE_LIST=[],
@@ -53,12 +57,10 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
                     WITHDRAWALS_ENABLED=withdrawals,
                 )
             )
-            ets._init()
+            if not just_create:
+                ets.set_password(password)
+                ets._init()
             return ets
-
-    def test_invalid_private_key(self):
-        with self.assertRaisesRegex(ValueError, "not a valid private key"):
-            self._make_ets(privkey="not a valid key")
 
     @patch('golem.core.service.LoopingCallService.running',
            new_callable=PropertyMock)
@@ -78,15 +80,16 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
            Mock())
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.new_sci')
     def test_chain_arg(self, new_sci):
-        EthereumTransactionSystem(
+        ets = EthereumTransactionSystem(
             self.new_path,
-            PRIV_KEY,
             Mock(
                 NODE_LIST=[],
                 FALLBACK_NODE_LIST=[],
                 CHAIN='test_chain',
             )
-        )._init()
+        )
+        ets.set_password(PASSWORD)
+        ets._init()
         new_sci.assert_called_once_with(
             ANY,
             ANY,
@@ -281,9 +284,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         self.sci.get_gnt_balance.side_effect = \
             lambda addr: amount if addr == gate_addr else 0
         self.sci.get_eth_balance.return_value = denoms.ether
-        with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                   'new_sci', return_value=self.sci):
-            ets = self._make_ets()
+        ets = self._make_ets()
         ets._refresh_balances()
         ets._try_convert_gnt()
         self.sci.transfer_from_gate.assert_called_once_with()
@@ -358,8 +359,33 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             )
             incomes.assert_called_once()
 
+    def test_no_password(self):
+        ets = self._make_ets(just_create=True)
+        with self.assertRaisesRegex(Exception, 'Invalid private key'):
+            ets.start()
 
-class FaucetTest(unittest.TestCase):
+    def test_invalid_password(self):
+        ets = self._make_ets(just_create=True)
+        with self.assertRaisesRegex(Exception, 'MAC mismatch'):
+            ets.set_password(PASSWORD + 'nope')
+
+    def test_backwards_compatibility_privkey(self):
+        ets = self._make_ets(datadir=self.new_path / 'other', just_create=True)
+        privkey = b'\x21' * 32
+        address = '0x2BD0C9FE079c8FcA0E3352eb3D02839c371E5c41'
+        password = 'Password1'
+        ets.backwards_compatibility_privkey(privkey, password)
+        ets.set_password(password)
+        with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                   'new_sci', return_value=self.sci) as new_sci:
+            ets._init()
+            new_sci.assert_called_once_with(ANY, address, ANY, ANY, ANY)
+
+        # Shouldn't throw
+        self._make_ets(datadir=self.new_path / 'other', password=password)
+
+
+class FaucetTest(TestCase):
 
     @patch('requests.get')
     def test_error_code(self, get):

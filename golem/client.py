@@ -28,7 +28,6 @@ from apps.rendering.task import framerenderingtask
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL, AppConfig)
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
-from golem.config.active import EthereumConfig
 from golem.config.presets import HardwarePresetsMixin
 from golem.core import variables
 from golem.core.async import AsyncRequest, async_run
@@ -110,6 +109,7 @@ class Client(HardwarePresetsMixin):
             config_desc: ClientConfigDescriptor,
             keys_auth: KeysAuth,
             database: Database,
+            transaction_system: EthereumTransactionSystem,
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
@@ -191,14 +191,7 @@ class Client(HardwarePresetsMixin):
 
         self.ranking = Ranking(self)
 
-        self.transaction_system = EthereumTransactionSystem(
-            Path(datadir) / 'transaction_system',
-            self.keys_auth._private_key,
-            EthereumConfig,
-        )
-        self.transaction_system.backwards_compatibility_tx_storage(
-            Path(datadir),
-        )
+        self.transaction_system = transaction_system
         self.transaction_system.start()
 
         self.funds_locker = FundsLocker(self.transaction_system,
