@@ -267,3 +267,5 @@ def generate_rpc_certificate(datadir: str):
 
 if __name__ == '__main__':
     start()  # pylint: disable=no-value-for-parameter
+
+# Trigger integration tests
