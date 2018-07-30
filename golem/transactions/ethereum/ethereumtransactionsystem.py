@@ -128,9 +128,9 @@ class EthereumTransactionSystem(LoopingCallService):
                     event.amount,
                 )
             )
-            self.__sci.subscribe_to_forced_payments(
+            self._sci.subscribe_to_forced_payments(
                 requestor_address=None,
-                provider_address=self.__sci.get_eth_address(),
+                provider_address=self._sci.get_eth_address(),
                 from_block=from_block,
                 cb=lambda event: ik.received_forced_payment(
                     tx_hash=event.tx_hash,
