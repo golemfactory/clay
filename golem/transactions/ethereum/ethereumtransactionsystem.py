@@ -76,20 +76,29 @@ class EthereumTransactionSystem(LoopingCallService):
         self._payments_locked: int = 0
         self._gntb_locked: int = 0
 
-    def backwards_compatibility_tx_storage(self, json_content: Dict) -> None:
+    def backwards_compatibility_tx_storage(self, old_datadir: Path) -> None:
         if self.running:
             raise Exception(
                 "Service already started, can't do backwards compatibility")
-        path = self._datadir / self.TX_FILENAME
-        if path.exists():
-            raise Exception("Storage already exists, can't override")
+        # Filename is the same as TX_FILENAME, but the constant shouldn't be
+        # used here as if it ever changes this value below should stay the same.
+        old_storage_path = old_datadir / 'transactions.json'
+        if not old_storage_path.exists():
+            return
         log.info(
-            "Initializing transaction storage with value: %r",
-            json_content,
+            "Initializing transaction storage from old path: %s",
+            old_storage_path,
         )
-        with open(path, 'w') as f:
-            import json
+        new_storage_path = self._datadir / self.TX_FILENAME
+        if new_storage_path.exists():
+            raise Exception("Storage already exists, can't override")
+        import json
+        import os
+        with open(old_storage_path, 'r') as f:
+            json_content = json.load(f)
+        with open(new_storage_path, 'w') as f:
             json.dump(json_content, f)
+        os.remove(old_storage_path)
 
     def _init(self) -> None:
         eth_addr = privkeytoaddr(self._privkey)

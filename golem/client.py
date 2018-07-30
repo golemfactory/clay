@@ -87,18 +87,6 @@ from golem.transactions.ethereum.fundslocker import FundsLocker
 logger = logging.getLogger(__name__)
 
 
-def _transaction_system_backward_compatibility(
-        ets: EthereumTransactionSystem,
-        datadir: str) -> None:
-    old_tx_file = Path(datadir) / 'transactions.json'
-    if old_tx_file.exists():
-        with open(old_tx_file, 'r') as f:
-            storage_content = json.load(f)
-        ets.backwards_compatibility_tx_storage(storage_content)
-        import os
-        os.remove(old_tx_file)
-
-
 class ClientTaskComputerEventListener(object):
 
     def __init__(self, client):
@@ -207,9 +195,8 @@ class Client(HardwarePresetsMixin):
             self.keys_auth._private_key,
             EthereumConfig,
         )
-        _transaction_system_backward_compatibility(
-            self.transaction_system,
-            datadir,
+        self.transaction_system.backwards_compatibility_tx_storage(
+            Path(datadir),
         )
         self.transaction_system.start()
 
