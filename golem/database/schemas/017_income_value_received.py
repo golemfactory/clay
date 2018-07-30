@@ -11,6 +11,10 @@ def migrate(migrator, database, fake=False, **kwargs):
         'income',
         value_received=model.HexIntegerField(default=0),
     )
+    migrator.sql(
+        'UPDATE income SET value_received = value'
+        ' WHERE "transaction" IS NOT NULL',
+    )
 
 
 def rollback(migrator, database, fake=False, **kwargs):
