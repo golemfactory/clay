@@ -134,7 +134,7 @@ class EthereumTransactionSystem(LoopingCallService):
                 from_block=from_block,
                 cb=lambda event: ik.received_forced_payment(
                     tx_hash=event.tx_hash,
-                    sender=event.sender,
+                    sender=event.requestor,
                     amount=event.amount,
                     closure_time=event.closure_time,
                 ),
