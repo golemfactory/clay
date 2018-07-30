@@ -45,7 +45,7 @@ RANDOM_DISCONNECT_INTERVAL = 5 * 60
 RANDOM_DISCONNECT_FRACTION = 0.1
 
 
-class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
+class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # noqa P2P will be rewritten s00n pylint: disable=too-many-instance-attributes, too-many-public-methods
     def __init__(
             self,
             node,
