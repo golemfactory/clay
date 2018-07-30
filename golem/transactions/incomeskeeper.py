@@ -62,7 +62,7 @@ class IncomesKeeper:
             e.transaction = tx_hash[2:]
             e.save()
 
-            if e.value_expected <= 0:
+            if e.value_expected == 0:
                 dispatcher.send(
                     signal='golem.income',
                     event='confirmed',
@@ -76,12 +76,22 @@ class IncomesKeeper:
             value=amount,
         )
 
-    def received_forced_payment(self, *args, **kwargs):
+    def received_forced_payment(
+            self,
+            tx_hash: str,
+            sender: str,
+            amount: int,
+            closure_time: int) -> None:
         logger.info(
             "Received forced payment from %s",
-            kwargs.get('sender', None),
+            sender,
         )
-        self.received_batch_transfer(*args, **kwargs)
+        self.received_batch_transfer(
+            tx_hash=tx_hash,
+            sender=sender,
+            amount=amount,
+            closure_time=closure_time,
+        )
 
     def expect(self, sender_node_id, subtask_id, value):
         logger.debug(
