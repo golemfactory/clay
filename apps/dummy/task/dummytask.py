@@ -2,7 +2,7 @@ import logging
 import os
 import random
 from copy import copy
-from typing import Optional
+from typing import Optional, Dict
 
 import enforce
 from golem_messages.message import ComputeTaskDef
@@ -120,11 +120,11 @@ class DummyTask(CoreTask):
         return exd
 
     # Temporary testing for communications
-    # def react_to_message(self, subtask_id: str, data: Dict):
-    #     if "content" in data:
-    #         return {"content": {"got_messages": "a" + data["got_messages"]}}
-    #     else:
-    #         return {"content": {"got_messages": "bbbb"}}
+    def react_to_message(self, subtask_id: str, data: Dict):
+        if "content" in data:
+            return {"content": {"got_messages": "a" + data["got_messages"]}}
+        else:
+            return {"content": {"got_messages": "bbbb"}}
 
 
 class DummyTaskBuilder(CoreTaskBuilder):

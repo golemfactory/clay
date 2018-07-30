@@ -25,28 +25,25 @@ def run(data_files, subtask_data, difficulty, result_size, result_file):
     # -------------------------------------------------------------------
     # Temporary testing for communications
     #####################################################################
-    # import json
-    # import time
-    #
-    # os.makedirs(MESSAGES_IN)
-    # os.makedirs(MESSAGES_OUT)
-    #
-    #
-    # with open(os.path.join(MESSAGES_IN, "first.json"), "w+") as f:
-    #     json.dump({"got_messages": "aaa"}, f)
-    # with open(os.path.join(MESSAGES_OUT, "second.json"), "w+") as f:
-    #     json.dump({"got_messages": "vvv"}, f)
-    #
-    # time.sleep(1)
-    #
-    # if difficulty != 0xffff0000:
-    #     for _ in range(240):
-    #         time.sleep(1)
-    #         for fname in os.listdir(MESSAGES_IN):
-    #             with open(os.path.join(MESSAGES_IN, fname), "r") as f:
-    #                 x = json.load(f)
-    #             with open(os.path.join(MESSAGES_OUT, fname + "out"), "w+") as f:
-    #                 json.dump({"got_messages": x["got_messages"] + "bbb"}, f)
+    import json
+    import time
+
+
+    with open(os.path.join(params.MESSAGES_IN_DIR, "first.json"), "w+") as f:
+        json.dump({"got_messages": "aaa"}, f)
+    with open(os.path.join(params.MESSAGES_OUT_DIR, "second.json"), "w+") as f:
+        json.dump({"got_messages": "vvv"}, f)
+
+    time.sleep(1)
+
+    if difficulty != 0xffff0000:
+        for _ in range(240):
+            time.sleep(1)
+            for fname in os.listdir(params.MESSAGES_IN_DIR):
+                with open(os.path.join(params.MESSAGES_IN_DIR, fname), "r") as f:
+                    x = json.load(f)
+                with open(os.path.join(params.MESSAGES_OUT_DIR, fname + "out"), "w+") as f:
+                    json.dump({"got_messages": x["got_messages"] + "bbb"}, f)
 
 
 run(params.data_files,
