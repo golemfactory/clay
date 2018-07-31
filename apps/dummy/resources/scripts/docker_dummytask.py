@@ -7,6 +7,12 @@ import params  # This module is generated before this script is run
 
 
 def run(data_files, subtask_data, difficulty, result_size, result_file):
+
+    print("DIRS ", str(os.listdir("/")))
+    print("DIRS ", str(os.listdir(params.RESOURCES_DIR)))
+    print("DIRS ", str(os.listdir("{}/code".format(params.RESOURCES_DIR))))
+    print("DIRS ", str(os.listdir(params.OUTPUT_DIR)))
+
     code_file = os.path.join(params.RESOURCES_DIR, "code", "computing.py")
     computing = imp.load_source("code", code_file)
 
@@ -34,16 +40,20 @@ def run(data_files, subtask_data, difficulty, result_size, result_file):
     with open(os.path.join(params.MESSAGES_OUT_DIR, "second.json"), "w+") as f:
         json.dump({"got_messages": "vvv"}, f)
 
-    time.sleep(1)
+    time.sleep(3)
 
-    if difficulty != 0xffff0000:
-        for _ in range(240):
+    if difficulty == 0xffff0000:
+        for _ in range(10):
             time.sleep(1)
             for fname in os.listdir(params.MESSAGES_IN_DIR):
-                with open(os.path.join(params.MESSAGES_IN_DIR, fname), "r") as f:
-                    x = json.load(f)
-                with open(os.path.join(params.MESSAGES_OUT_DIR, fname + "out"), "w+") as f:
-                    json.dump({"got_messages": x["got_messages"] + "bbb"}, f)
+                if not fname.startswith("."):
+                    with open(os.path.join(params.MESSAGES_IN_DIR, fname), "r") as f:
+                        print(os.path.join(params.MESSAGES_IN_DIR, fname))
+                        x = f.read()
+                        print(x)
+                        x = json.loads(x)
+                    with open(os.path.join(params.MESSAGES_OUT_DIR, fname + "out"), "w+") as f:
+                        json.dump({"got_messages": x["got_messages"] + "bbb"}, f)
 
 
 run(params.data_files,

@@ -36,11 +36,11 @@ class DockerJob(object):
     RESOURCES_DIR_E = "resources"
     WORK_DIR_E = "work"
     OUTPUT_DIR_E = "output"
-    MESSAGES_IN_DIR_E = f"{WORK_DIR_E}/messages_in"
-    MESSAGES_OUT_DIR_E = f"{WORK_DIR_E}/messages_out"
+    MESSAGES_IN_DIR_E = "messages_in"
+    MESSAGES_OUT_DIR_E = "messages_out"
 
-    MESSAGES_IN_DIR = f"{GOLEM_BASE_PATH}/{MESSAGES_IN_DIR_E}"
-    MESSAGES_OUT_DIR = f"{GOLEM_BASE_PATH}/{MESSAGES_OUT_DIR_E}"
+    MESSAGES_IN_DIR = f"{GOLEM_BASE_PATH}/{WORK_DIR_E}/{MESSAGES_IN_DIR_E}"
+    MESSAGES_OUT_DIR = f"{GOLEM_BASE_PATH}/{WORK_DIR_E}/{MESSAGES_OUT_DIR_E}"
 
     # This dir contains static task resources.
     # Mounted read-only in the container.
@@ -84,8 +84,8 @@ class DockerJob(object):
                             "RESOURCES_DIR": self.RESOURCES_DIR_E,
                             "WORK_DIR": self.WORK_DIR_E,
                             "OUTPUT_DIR": self.OUTPUT_DIR_E,
-                            "MESSAGES_IN_DIR": self.MESSAGES_IN_DIR_E,
-                            "MESSAGES_OUT_DIR": self.MESSAGES_OUT_DIR_E
+                            "MESSAGES_IN_DIR": f"{self.WORK_DIR_E}/{self.MESSAGES_IN_DIR_E}",
+                            "MESSAGES_OUT_DIR": f"{self.WORK_DIR_E}/{self.MESSAGES_OUT_DIR_E}"
                         }.items()}
         self.parameters.update(paths_params)
 
@@ -339,7 +339,9 @@ class DockerJob(object):
 
     def write_work_file(self, path, content, options="w"):
         try:
-            with open(os.path.join(self.work_dir, path), options) as f:
+            from atomicfile import AtomicFile
+
+            with AtomicFile(os.path.join(self.work_dir, path), options) as f:
                 return f.write(content)
         except IOError as e:
             logger.warning("There was a problem with write_work_file. Path: %r, exception: %r", path, e)

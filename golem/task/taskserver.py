@@ -676,8 +676,8 @@ class TaskServer(
 
     def send_task_messages(self, all_messages: List[Tuple[str, str, Dict]]):
         for task_id, subtask_id, data in all_messages:
-            self.task_sessions[subtask_id].send_message_to_requestor(
-                subtask_id, task_id, data)
+            self.task_sessions[subtask_id].send_state_update_from_subtask_to_task(  # noqa
+                task_id, subtask_id, data)
 
     #############################
     #   CONNECTION REACTIONS    #

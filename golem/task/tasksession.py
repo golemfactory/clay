@@ -847,9 +847,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            self.key_id, msg.subtask_id)
 
     def _react_to_state_update_call(self, msg: message.tasks.SubtaskToTaskStateUpdateCall):  # noqa
+        print("aaa")
         task = self.task_server.task_manager.tasks[msg.task_id]
         data = task.react_to_message(msg.subtask_id, msg.state_update_data)
-        new_message = message.tasks.SubtaskToTaskStateUpdateCall(
+        new_message = message.tasks.TaskToSubtaskStateUpdateReturn(
             task_id=msg.task_id,
             subtask_id=msg.subtask_id,
             state_update_data=data
@@ -986,6 +987,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.RandVal.TYPE: self._react_to_rand_val,
             message.StartSessionResponse.TYPE: self._react_to_start_session_response,  # noqa
             message.WaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
+            message.tasks.SubtaskToTaskStateUpdateCall.TYPE:
+                self._react_to_state_update_call,
+            message.tasks.TaskToSubtaskStateUpdateReturn.TYPE:
+                self._react_to_state_update_return,
 
             # Concent messages
             message.tasks.AckReportComputedTask.TYPE:

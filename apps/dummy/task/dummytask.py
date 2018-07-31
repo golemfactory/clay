@@ -121,10 +121,7 @@ class DummyTask(CoreTask):
 
     # Temporary testing for communications
     def react_to_message(self, subtask_id: str, data: Dict):
-        if "content" in data:
-            return {"content": {"got_messages": "a" + data["got_messages"]}}
-        else:
-            return {"content": {"got_messages": "bbbb"}}
+        return {"got_messages": "a" + data["got_messages"]}
 
 
 class DummyTaskBuilder(CoreTaskBuilder):

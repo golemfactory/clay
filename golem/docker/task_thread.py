@@ -62,8 +62,8 @@ class DockerTaskThread(TaskThread):
 
         self.work_dir_path: Path = Path(self.tmp_path) / DockerJob.WORK_DIR_E
         self.output_dir_path: Path = Path(self.tmp_path) / DockerJob.RESOURCES_DIR_E
-        self.messages_input_path = Path(self.tmp_path) / DockerJob.MESSAGES_IN_DIR_E
-        self.messages_output_path = Path(self.tmp_path) / DockerJob.MESSAGES_OUT_DIR_E
+        self.messages_input_path = Path(self.tmp_path) / DockerJob.WORK_DIR_E / DockerJob.MESSAGES_IN_DIR_E
+        self.messages_output_path = Path(self.tmp_path) / DockerJob.WORK_DIR_E / DockerJob.MESSAGES_OUT_DIR_E
 
     def run(self) -> None:
         try:
@@ -154,20 +154,17 @@ class DockerTaskThread(TaskThread):
         """
         if not self.job:
             return [{}]
-        msgs = self.job.read_work_files(dir=DockerJob.MESSAGES_OUT_DIR)
+        msgs = self.job.read_work_files(dir=DockerJob.MESSAGES_OUT_DIR_E)
         msgs_decoded = []
         for filename, content in msgs.items():
             try:
-                msgs_decoded.append({
-                    "content": json.loads(content),
-                    "filename": filename
-                })
+                msgs_decoded.append(json.loads(content))
             except ValueError:
                 msgs_decoded.append({})
                 logger.warning("ValueError during decoding message %r", str(content))  # noqa
 
         # cleaning messages files, to not read multiple times the same content
-        self.job.clean_work_files(dir=DockerJob.MESSAGES_OUT_DIR)
+        self.job.clean_work_files(dir=DockerJob.MESSAGES_OUT_DIR_E)
 
         return msgs_decoded
 
@@ -186,7 +183,7 @@ class DockerTaskThread(TaskThread):
             data_dump = json.dumps(data)
 
             msg_filename = HASH(data_dump)
-            msg_path = os.path.join(DockerJob.MESSAGES_IN_DIR, msg_filename)
+            msg_path = os.path.join(DockerJob.MESSAGES_IN_DIR_E, msg_filename)
             self.job.write_work_file(msg_path, data_dump, options="w")
         else:
             logger.warning("There is currently no job to receive message")
