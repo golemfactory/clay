@@ -33,6 +33,7 @@ from golem.task.tasksession import TaskSession
 from golem.task.taskstate import TaskState, TaskOp
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
+from golem.utils import pubkeytoaddr
 
 from tests.factories.p2p import Node as NodeFactory
 from tests.factories.resultpackage import ExtractedPackageFactory
@@ -229,8 +230,9 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertEqual(wtr.already_sending, False)
         incomes_keeper = ts.client.transaction_system.incomes_keeper
         incomes_keeper.expect.assert_called_once_with(
-            sender_node_id=keys_auth.key_id,
+            sender_node=keys_auth.key_id,
             subtask_id=subtask_id2,
+            payer_address=pubkeytoaddr(keys_auth.key_id),
             value=1,
         )
 
@@ -251,8 +253,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.task_manager.comp_task_keeper.receive_subtask(ttc)
         model.Income.create(
             sender_node=keys_auth.public_key,
-            task=ctd['task_id'],
             subtask=ctd['subtask_id'],
+            payer_address=pubkeytoaddr(keys_auth.key_id),
             value=1
         )
 
