@@ -3,7 +3,8 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
-from apps.dummy.task.dummytaskstate import DummyTaskDefaults, DummyTaskOptions, DummyTaskDefinition
+from apps.dummy.task.dummytaskstate import DummyTaskDefaults, \
+    DummyTaskOptions, DummyTaskDefinition
 from golem.core.common import get_golem_path
 from golem.resource.dirmanager import list_dir_recursive
 from golem.testutils import PEP8MixIn, TempDirFixture
