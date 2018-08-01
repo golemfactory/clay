@@ -279,10 +279,15 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
         # 4) sci.get_gntb_balance
         # 5) sci.concent_deposit + `on_transaction_confirmed`
 
-        start = datetime.datetime.now()
+        fstart = datetime.datetime.now()
 
-        if not tETH_faucet_donate(sci.get_eth_address()):
-            raise RuntimeError("Could not acquire tETH")
+        while not tETH_faucet_donate(sci.get_eth_address()):
+            sys.stderr.write('Getting tETH from Faucet...\n')
+            time.sleep(self.sleep_interval)
+            if fstart + self.transaction_timeout < datetime.datetime.now():
+                raise TimeoutError("Faucet timed out")
+
+        start = datetime.datetime.now()
 
         while not sci.get_eth_balance(sci.get_eth_address()) > 0:
             sys.stderr.write('Waiting for tETH...\n')
