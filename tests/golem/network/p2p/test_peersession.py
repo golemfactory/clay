@@ -509,7 +509,9 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         # Unknown task owner
         client = MagicMock()
         client.datadir = self.path
-        task_server = task_server_factory.TaskServer(client=client,)
+        with patch('golem.network.concent.handlers_library.HandlersLibrary'
+                   '.register_handler',):
+            task_server = task_server_factory.TaskServer(client=client,)
         self.peer_session.p2p_service.task_server = task_server
         peer_mock = MagicMock()
         self.peer_session.p2p_service.peers["ABC"] = peer_mock

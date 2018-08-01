@@ -34,14 +34,19 @@ class TestMiddleware(unittest.TestCase):
 
     def test_unrecoverable_errors(self):
         listener = Mock()
-        builder = RemoteRPCErrorMiddlewareBuilder(listener, max_errors=2)
+        builder = RemoteRPCErrorMiddlewareBuilder(
+            listener,
+            max_errors=5,
+            retries=2,
+        )
         make_request = Mock(side_effect=ConnectionError)
         middleware = builder.build(make_request, _web3=None)
 
-        with self.assertRaises(ConnectionError):
-            middleware(Mock(), None)
-        assert not listener.called
+        middleware(Mock(), None)
+        assert listener.call_count == 1
+
+        middleware(Mock(), None)
+        assert listener.call_count == 2
 
         with self.assertRaises(ConnectionError):
             middleware(Mock(), None)
-        assert listener.called
