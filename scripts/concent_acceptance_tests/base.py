@@ -9,6 +9,7 @@ import random
 import sys
 import tempfile
 import time
+import typing
 import unittest
 
 from pathlib import Path
@@ -33,8 +34,6 @@ from golem.utils import privkeytoaddr
 
 from golem.transactions.ethereum.ethereumtransactionsystem import (
     tETH_faucet_donate)
-
-from .utils import retry_until_timeout
 
 logger = logging.getLogger(__name__)
 
@@ -247,17 +246,39 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
         )
         self.provider_sci.REQUIRED_CONFS = 1
 
+    def retry_until_timeout(
+            self,
+            condition: typing.Callable,
+            timeout_message: str = '',
+            timeout: typing.Optional[datetime.timedelta]=None,
+            sleep_interval: typing.Optional[float]=None,
+            sleep_action: typing.Optional[typing.Callable]=
+            lambda: sys.stderr.write('.\n'),
+    ):
+        if sleep_interval is None:
+            sleep_interval = self.sleep_interval
+
+        if timeout is None:
+            timeout = self.transaction_timeout
+
+        start = datetime.datetime.now()
+
+        while condition():
+            if sleep_action:
+                sleep_action()
+            time.sleep(sleep_interval)  # noqa
+            if start + timeout < datetime.datetime.now():  # noqa
+                raise TimeoutError(timeout_message)
+        return start, datetime.datetime.now()
+
     def wait_for_gntb(self, sci: SmartContractsInterface):
         sys.stderr.write('Waiting for GNT\n')
         sci.request_gnt_from_faucet()
         sci.open_gate()
 
-        retry_until_timeout(
-            lambda:
-            sci.get_gnt_balance(sci.get_eth_address()) == 0 or
-            sci.get_gate_address() is None,
-            self.transaction_timeout,
-            self.sleep_interval,
+        self.retry_until_timeout(
+            lambda: (sci.get_gnt_balance(sci.get_eth_address()) == 0 or
+                     sci.get_gate_address() is None),
             "Acquiring GNT timed out",
         )
 
@@ -267,10 +288,8 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
                          sci.get_gnt_balance(sci.get_eth_address()))
         sci.transfer_from_gate()
 
-        retry_until_timeout(
+        self.retry_until_timeout(
             lambda: sci.get_gntb_balance(sci.get_eth_address()) == 0,
-            self.transaction_timeout,
-            self.sleep_interval,
             "GNTB conversion timed out",
         )
 
@@ -285,18 +304,14 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
         # 5) sci.concent_deposit + `on_transaction_confirmed`
 
         sys.stderr.write('Calling tETH faucet...\n')
-        retry_until_timeout(
+        self.retry_until_timeout(
             lambda: not tETH_faucet_donate(sci.get_eth_address()),
-            self.transaction_timeout,
-            self.sleep_interval,
             "Faucet timed out",
         )
 
         sys.stderr.write('Waiting for tETH...\n')
-        retry_until_timeout(
+        self.retry_until_timeout(
             lambda: sci.get_eth_balance(sci.get_eth_address()) == 0,
-            self.transaction_timeout,
-            self.sleep_interval,
             "Acquiring tETH timed out",
         )
 
@@ -311,10 +326,10 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
         tx_hash = sci.deposit_payment(amount)
         sci.on_transaction_confirmed(tx_hash, deposit_confirmed)
 
-        retry_until_timeout(
+        self.retry_until_timeout(
             lambda: not deposit,
-            self.transaction_timeout,
-            timeout_message="Deposit timed out.",
+            "Deposit timed out.",
+            sleep_interval=1,
         )
 
         sys.stderr.write("\nDeposit confirmed\n")
