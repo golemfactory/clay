@@ -266,8 +266,8 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
         while condition():
             if sleep_action:
                 sleep_action()
-            time.sleep(sleep_interval)  # noqa
-            if start + timeout < datetime.datetime.now():  # noqa
+            time.sleep(sleep_interval)  # type: ignore
+            if start + timeout < datetime.datetime.now():  # type: ignore
                 raise TimeoutError(timeout_message)
         return start, datetime.datetime.now()
 

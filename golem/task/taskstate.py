@@ -28,7 +28,9 @@ class TaskState(object):
 
     def __setattr__(self, key, value):
         super().__setattr__(key, value)
-        if key == 'status':
+        # Set last update time when changing status to other than 'restarted'
+        # (user interaction)
+        if key == 'status' and value != TaskStatus.restarted:
             self.last_update_time = time.time()
 
     def __repr__(self):
