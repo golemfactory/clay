@@ -5,7 +5,7 @@ import time
 
 from golem.core.common import is_linux, is_osx
 from golem.resource.dirmanager import symlink_or_copy, DirManager, \
-    find_task_script, logger, ls_r
+    find_task_script, logger, list_dir_recursive
 from golem.tools.assertlogs import LogTestCase
 from golem.testutils import TempDirFixture
 
@@ -291,10 +291,11 @@ class TestUtilityFunction(TempDirFixture):
         with open(os.path.join(self.tempdir, "aa", "bb", "f3"), "w") as f:
             f.write("content")
 
+        # Depending on os, we are testing symlinks or not
         if is_osx() or is_linux():
             os.symlink(os.path.join(self.tempdir, "f2"),
                        os.path.join(self.tempdir, "ee", "ff", "f4"))
-            dirs = ls_r(self.tempdir)
+            dirs = list(list_dir_recursive(self.tempdir))
             true_dirs = {os.path.join(*[self.tempdir, *x])
                          for x in [["ee", "f1"],
                                    ["f2"],
@@ -302,7 +303,7 @@ class TestUtilityFunction(TempDirFixture):
                                    ["ee", "ff", "f4"]]}
             self.assertEqual(set(dirs), true_dirs)
         else:
-            dirs = ls_r(self.tempdir)
+            dirs = list(list_dir_recursive(self.tempdir))
             true_dirs = {os.path.join(*[self.tempdir, *x])
                          for x in [["ee", "f1"], ["f2"], ["aa", "bb", "f3"]]}
             self.assertEqual(set(dirs), true_dirs)

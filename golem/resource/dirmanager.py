@@ -2,6 +2,7 @@ import logging
 import os
 import shutil
 import time
+from typing import Generator
 
 logger = logging.getLogger(__name__)
 
@@ -55,12 +56,10 @@ def find_task_script(task_dir, script_name):
     logger.error("Script file {} does not exist!".format(script_file))
 
 
-def ls_r(dir):
-    files = []
+def list_dir_recursive(dir: str) -> Generator[str]:
     for dirpath, dirnames, filenames in os.walk(dir, followlinks=True):
         for name in filenames:
-            files.append(os.path.join(dirpath, name))
-    return files
+            yield os.path.join(dirpath, name)
 
 
 class DirManager(object):
