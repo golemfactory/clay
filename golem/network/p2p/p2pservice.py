@@ -134,12 +134,14 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         self.node.p2p_prv_port = port
 
     def connect_to_network(self):
+        # pylint: disable=singleton-comparison
         self.connect_to_seeds()
         if not self.connect_to_known_hosts:
             return
 
         for host in KnownHosts.select() \
-                .where(KnownHosts.is_seed == False):  # noqa
+                .where(KnownHosts.is_seed == False)\
+                .limit(self.config_desc.opt_peer_num):  # noqa
 
             ip_address = host.ip_address
             port = host.port
