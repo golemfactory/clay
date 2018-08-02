@@ -36,6 +36,12 @@ class VerificationQueue:
                cb: FunctionType,
                **kwargs) -> None:
 
+        logger.debug(
+            "Verification Queue submit: "
+            "(verifier_class: %s, subtask: %s, deadline: %s, kwargs: %s)",
+            verifier_class, subtask_id, deadline, kwargs
+        )
+
         entry = self.Entry(verifier_class, subtask_id, deadline, kwargs, cb)
         self._queue.put(entry)
         self._process_queue()

@@ -81,6 +81,7 @@ from golem.tools import filelock
 from golem.tools.talkback import enable_sentry_logger
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
+from golem.transactions.ethereum.exceptions import NotEnoughFunds
 from golem.transactions.ethereum.fundslocker import FundsLocker
 
 
@@ -191,9 +192,12 @@ class Client(HardwarePresetsMixin):
         self.ranking = Ranking(self)
 
         self.transaction_system = EthereumTransactionSystem(
-            datadir,
+            Path(datadir) / 'transaction_system',
             self.keys_auth._private_key,
             EthereumConfig,
+        )
+        self.transaction_system.backwards_compatibility_tx_storage(
+            Path(datadir),
         )
         self.transaction_system.start()
 
@@ -565,19 +569,25 @@ class Client(HardwarePresetsMixin):
         else:
             task = task_dict
 
+        task_id = task.header.task_id
         self.funds_locker.lock_funds(task)
 
         if self.concent_service.enabled:
             min_amount, opt_amount = msg_helpers.requestor_deposit_amount(
                 task.price,
             )
-            # Could raise golem.transactions.ethereum.exceptions.NotEnoughFunds
-            self.transaction_system.concent_deposit(
-                required=min_amount,
-                expected=opt_amount,
-            )
+            # This is a bandaid solution for unlocking funds when task creation
+            # fails. This case is most common but, the better way it to always
+            # unlock them when the task fails regardless of the reason.
+            try:
+                self.transaction_system.concent_deposit(
+                    required=min_amount,
+                    expected=opt_amount,
+                )
+            except NotEnoughFunds:
+                self.funds_locker.remove_task(task_id)
+                raise
 
-        task_id = task.header.task_id
         logger.info('Enqueue new task "%r"', task_id)
         files = get_resources_for_task(resource_header=None,
                                        resource_type=ResourceType.HASHES,
@@ -1093,11 +1103,12 @@ class Client(HardwarePresetsMixin):
             currency: str) -> List[str]:
         if isinstance(amount, str):
             amount = int(amount)
-        return self.transaction_system.withdraw(
+        # It returns a list for backwards compatibility with Electron.
+        return [self.transaction_system.withdraw(
             amount,
             destination,
             currency,
-        )
+        )]
 
     # It's defined here only for RPC exposure in
     # golem.rpc.mapping.rpcmethodnames

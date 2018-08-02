@@ -1,5 +1,7 @@
 import ipaddress
+import itertools
 import logging
+import socket
 import random
 import time
 from collections import deque
@@ -43,8 +45,7 @@ RANDOM_DISCONNECT_INTERVAL = 5 * 60
 RANDOM_DISCONNECT_FRACTION = 0.1
 
 
-class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
-
+class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # noqa P2P will be rewritten s00n pylint: disable=too-many-instance-attributes, too-many-public-methods
     def __init__(
             self,
             node,
@@ -108,7 +109,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
         try:
             self.__remove_redundant_hosts_from_db()
-            self.__sync_seeds()
+            self._sync_seeds()
         except Exception as exc:
             logger.error("Error reading seed addresses: {}".format(exc))
 
@@ -119,6 +120,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.last_refresh_peers = now
         self.last_forward_request = now
         self.last_random_disconnect = now
+        self.last_seeds_sync = time.time()
 
         self.last_messages = []
         random.seed()
@@ -210,7 +212,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 ).execute()
 
             self.__remove_redundant_hosts_from_db()
-            self.__sync_seeds()
+            self._sync_seeds()
 
         except Exception as err:
             logger.error(
@@ -257,8 +259,12 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             self._disconnect_random_peers()
 
         self._sync_pending()
+
+        if now - self.last_seeds_sync > self.reconnect_with_seed_threshold:
+            self._sync_seeds()
+
         if len(self.peers) == 0:
-            delta = time.time() - self.last_time_tried_connect_with_seed
+            delta = now - self.last_time_tried_connect_with_seed
             if delta > self.reconnect_with_seed_threshold:
                 self.connect_to_seeds()
 
@@ -453,9 +459,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         Change configuration for resource server.
         :param ClientConfigDescriptor config_desc: new config descriptor
         """
-
-        is_node_name_changed = self.node_name != config_desc.node_name
-
         tcpserver.TCPServer.change_config(self, config_desc)
         self.node_name = config_desc.node_name
 
@@ -782,8 +785,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         return self.gossip_keeper.pop_gossips()
 
     def send_stop_gossip(self):
-        """ Send stop gossip message to all peers
-        """
+        """ Send stop gossip message to all peers """
         for peer in list(self.peers.values()):
             peer.send_stop_gossip()
 
@@ -936,32 +938,54 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         if peers_to_find:
             self.send_find_nodes(peers_to_find)
 
-    def __sync_seeds(self, known_hosts=None):
+    def _sync_seeds(self, known_hosts=None):
+        self.last_seeds_sync = time.time()
         if not known_hosts:
             known_hosts = KnownHosts.select().where(KnownHosts.is_seed)
 
-        self.seeds = {(x.ip_address, x.port) for x in known_hosts if x.is_seed}
-        self.seeds.update(self.bootstrap_seeds)
+        def _resolve_hostname(host, port):
+            try:
+                port = int(port)
+            except ValueError:
+                logger.info(
+                    "Invalid seed: %s:%s. Ignoring.",
+                    host,
+                    port,
+                )
+                return
+            if not (host and port):
+                logger.debug(
+                    "Ignoring incomplete seed. host=%r port=%r",
+                    host,
+                    port,
+                )
+                return
+            try:
+                for addrinfo in socket.getaddrinfo(host, port):
+                    yield addrinfo[4]  # (ip, port)
+            except OSError as e:
+                logger.error(
+                    "Can't resolve %s:%s. %s",
+                    host,
+                    port,
+                    e,
+                )
+
+        self.seeds = set()
 
         ip_address = self.config_desc.seed_host
         port = self.config_desc.seed_port
-        if ip_address and port:
-            self.seeds.add((ip_address, port))
 
-        for config_seed in self.config_desc.seeds.split(None):
-            try:
-                ip_address, port = config_seed.split(':', 1)
-                port = int(port)
-                # Verify that ip_address is valid.
-                # Throws ipaddress.AddressValueError.
-                ipaddress.ip_address(ip_address)
-            except ValueError:
-                logger.info(
-                    "Invalid seed from config: %r. Ignoring.",
-                    config_seed
-                )
-                continue
-            self.seeds.add((ip_address, port))
+        for hostport in itertools.chain(
+                ((kh.ip_address, kh.port) for kh in known_hosts if kh.is_seed),
+                self.bootstrap_seeds,
+                ((ip_address, port), ),
+                (
+                    cs.split(':', 1) for cs in self.config_desc.seeds.split(
+                        None,
+                    )
+                )):
+            self.seeds.update(_resolve_hostname(*hostport))
 
     def _get_next_random_seed(self):
         # this loop won't execute more than twice

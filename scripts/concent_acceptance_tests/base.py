@@ -9,6 +9,7 @@ import random
 import sys
 import tempfile
 import time
+import typing
 import unittest
 
 from pathlib import Path
@@ -245,29 +246,52 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
         )
         self.provider_sci.REQUIRED_CONFS = 1
 
-    def wait_for_gntb(self, sci: SmartContractsInterface):
+    def retry_until_timeout(
+            self,
+            condition: typing.Callable,
+            timeout_message: str = '',
+            timeout: typing.Optional[datetime.timedelta]=None,
+            sleep_interval: typing.Optional[float]=None,
+            sleep_action: typing.Optional[typing.Callable]=
+            lambda: sys.stderr.write('.\n'),
+    ):
+        if sleep_interval is None:
+            sleep_interval = self.sleep_interval
+
+        if timeout is None:
+            timeout = self.transaction_timeout
+
         start = datetime.datetime.now()
+
+        while condition():
+            if sleep_action:
+                sleep_action()
+            time.sleep(sleep_interval)  # type: ignore
+            if start + timeout < datetime.datetime.now():  # type: ignore
+                raise TimeoutError(timeout_message)
+        return start, datetime.datetime.now()
+
+    def wait_for_gntb(self, sci: SmartContractsInterface):
         sys.stderr.write('Waiting for GNT\n')
         sci.request_gnt_from_faucet()
         sci.open_gate()
 
-        while (sci.get_gnt_balance(sci.get_eth_address()) == 0 or
-               sci.get_gate_address() is None):
-            if start + self.transaction_timeout < datetime.datetime.now():
-                raise TimeoutError("Acquiring GNT timed out")
-            time.sleep(self.sleep_interval)
+        self.retry_until_timeout(
+            lambda: (sci.get_gnt_balance(sci.get_eth_address()) == 0 or
+                     sci.get_gate_address() is None),
+            "Acquiring GNT timed out",
+        )
 
-        sys.stderr.write('Got GNT...\n')
+        sys.stderr.write('Got GNT, waiting for GNTB...\n')
 
-        start = datetime.datetime.now()
         sci.transfer_gnt(sci.get_gate_address(),
                          sci.get_gnt_balance(sci.get_eth_address()))
         sci.transfer_from_gate()
 
-        while sci.get_gntb_balance(sci.get_eth_address()) == 0:
-            if start + self.transaction_timeout < datetime.datetime.now():
-                raise TimeoutError("GNTB conversion timed out")
-            time.sleep(self.sleep_interval)
+        self.retry_until_timeout(
+            lambda: sci.get_gntb_balance(sci.get_eth_address()) == 0,
+            "GNTB conversion timed out",
+        )
 
         sys.stderr.write('Got GNTB...\n')
 
@@ -279,20 +303,20 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
         # 4) sci.get_gntb_balance
         # 5) sci.concent_deposit + `on_transaction_confirmed`
 
-        start = datetime.datetime.now()
+        sys.stderr.write('Calling tETH faucet...\n')
+        self.retry_until_timeout(
+            lambda: not tETH_faucet_donate(sci.get_eth_address()),
+            "Faucet timed out",
+        )
 
-        if not tETH_faucet_donate(sci.get_eth_address()):
-            raise RuntimeError("Could not acquire tETH")
-
-        while not sci.get_eth_balance(sci.get_eth_address()) > 0:
-            sys.stderr.write('Waiting for tETH...\n')
-            time.sleep(self.sleep_interval)
-            if start + self.transaction_timeout < datetime.datetime.now():
-                raise TimeoutError("Acquiring tETH timed out")
+        sys.stderr.write('Waiting for tETH...\n')
+        self.retry_until_timeout(
+            lambda: sci.get_eth_balance(sci.get_eth_address()) == 0,
+            "Acquiring tETH timed out",
+        )
 
         self.wait_for_gntb(sci)
 
-        start2 = datetime.datetime.now()
         deposit = False
 
         def deposit_confirmed(_):
@@ -302,12 +326,13 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
         tx_hash = sci.deposit_payment(amount)
         sci.on_transaction_confirmed(tx_hash, deposit_confirmed)
 
-        while not deposit:
-            if start2 + self.transaction_timeout < datetime.datetime.now():
-                raise TimeoutError("Deposit timed out.")
+        self.retry_until_timeout(
+            lambda: not deposit,
+            "Deposit timed out.",
+            sleep_interval=1,
+        )
 
-        sys.stderr.write("\nDeposit confirmed in {}\n".format(
-            datetime.datetime.now()-start))
+        sys.stderr.write("\nDeposit confirmed\n")
 
         if sci.get_deposit_value(sci.get_eth_address()) < amount:
             raise RuntimeError("Deposit failed")
