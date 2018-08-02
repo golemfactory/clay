@@ -42,8 +42,8 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
                    'NodeProcess'),\
             patch('golem.transactions.ethereum.ethereumtransactionsystem.'
                   'new_sci', return_value=self.sci):
-            return EthereumTransactionSystem(
-                self.tempdir,
+            ets = EthereumTransactionSystem(
+                self.new_path,
                 privkey,
                 Mock(
                     NODE_LIST=[],
@@ -53,6 +53,8 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
                     WITHDRAWALS_ENABLED=withdrawals,
                 )
             )
+            ets._init()
+            return ets
 
     def test_invalid_private_key(self):
         with self.assertRaisesRegex(ValueError, "not a valid private key"):
@@ -67,7 +69,6 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
                       'PaymentProcessor'):
             mock_is_service_running.return_value = False
             e = self._make_ets()
-            e.start()
 
             mock_is_service_running.return_value = True
             e.stop()
@@ -78,14 +79,14 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
     @patch('golem.transactions.ethereum.ethereumtransactionsystem.new_sci')
     def test_chain_arg(self, new_sci):
         EthereumTransactionSystem(
-            self.tempdir,
+            self.new_path,
             PRIV_KEY,
             Mock(
                 NODE_LIST=[],
                 FALLBACK_NODE_LIST=[],
                 CHAIN='test_chain',
             )
-        )
+        )._init()
         new_sci.assert_called_once_with(
             ANY,
             ANY,

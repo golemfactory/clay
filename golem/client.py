@@ -192,9 +192,12 @@ class Client(HardwarePresetsMixin):
         self.ranking = Ranking(self)
 
         self.transaction_system = EthereumTransactionSystem(
-            datadir,
+            Path(datadir) / 'transaction_system',
             self.keys_auth._private_key,
             EthereumConfig,
+        )
+        self.transaction_system.backwards_compatibility_tx_storage(
+            Path(datadir),
         )
         self.transaction_system.start()
 
