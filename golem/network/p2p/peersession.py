@@ -503,6 +503,7 @@ class PeerSession(BasicSafeSession):
             client_ver=golem.__version__,
             rand_val=self.rand_val,
             solve_challenge=self.solve_challenge,
+            metadata=self.p2p_service.get_node_metadata(),
             **challenge_kwargs
         )
         self.send(msg, send_unverified=True)
@@ -555,7 +556,8 @@ class PeerSession(BasicSafeSession):
         self.p2p_service.add_known_peer(
             self.node_info,
             self.address,
-            self.port
+            self.port,
+            self.metadata
         )
         self.p2p_service.set_suggested_address(
             self.key_id,

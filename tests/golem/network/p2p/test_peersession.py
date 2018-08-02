@@ -80,6 +80,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             proto_id=PROTOCOL_CONST.ID,
             rand_val=self.peer_session.rand_val,
             solve_challenge=False,
+            metadata={},
         )
 
         self.assertEqual(send_mock.call_args[0][1].slots(), expected.slots())
@@ -205,7 +206,9 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             rand_val=random.random(),
             client_key_id=server_peer_info.key,
             node_info=server_peer_info.to_dict(),
-            proto_id=PROTOCOL_CONST.ID)
+            proto_id=PROTOCOL_CONST.ID,
+            metadata={},
+        )
         fill_slots(server_hello)
         expected = message.Hello(
             challenge=None,
@@ -218,9 +221,10 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             proto_id=PROTOCOL_CONST.ID,
             rand_val=self.peer_session.rand_val,
             solve_challenge=False,
+            metadata={},
         )
 
-        return (server_hello, expected)
+        return server_hello, expected
 
     @patch('golem.network.transport.session.BasicSession.send')
     def test_handshake_client_successful(self, send_mock):

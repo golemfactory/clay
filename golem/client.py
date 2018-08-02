@@ -332,6 +332,8 @@ class Client(HardwarePresetsMixin):
             self.keys_auth,
             connect_to_known_hosts=self.connect_to_known_hosts
         )
+        self.p2pservice.add_metadata_provider(
+            'performance', self.environments_manager.get_performance_values)
 
         self.task_server = TaskServer(
             self.node,
@@ -657,7 +659,8 @@ class Client(HardwarePresetsMixin):
 
         network_size = self.p2pservice.get_estimated_network_size()
         min_perf = self.task_server.get_min_performance_for_task(task)
-        perf_rank = self.p2pservice.get_performance_percentile_rank(min_perf)
+        perf_rank = self.p2pservice.get_performance_percentile_rank(
+            min_perf, task.header.environment)
         potential_num_workers = int(network_size * (1 - perf_rank))
 
         mask = Mask.get_mask_for_task(
@@ -667,7 +670,7 @@ class Client(HardwarePresetsMixin):
         logger.info(
             f'Task {task.header.task_id} '
             f'initial mask size: {mask.num_bits} '
-            f'expected number of providers: {desired_num_workers}'
+            f'expected number of providers: {desired_num_workers} '
             f'potential number of providers: {potential_num_workers}'
         )
 

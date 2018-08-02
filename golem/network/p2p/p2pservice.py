@@ -6,6 +6,7 @@ import random
 import time
 from collections import deque
 from threading import Lock
+from typing import Callable, Any, Dict
 
 from golem_messages import message
 from scipy.stats import stats
@@ -14,9 +15,8 @@ from golem.config.active import P2P_SEEDS
 from golem.core import simplechallenge
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.diag.service import DiagnosticsProvider
-from golem.model import KnownHosts, MAX_STORED_HOSTS, db
+from golem.model import KnownHosts, db
 from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
-from golem.network.p2p.performance_stats import PERFORMANCE_STATS
 from golem.network.transport import tcpnetwork
 from golem.network.transport import tcpserver
 from golem.network.transport.network import ProtocolFactory, SessionFactory
@@ -43,6 +43,9 @@ PEERS_INTERVAL = 30
 FORWARD_INTERVAL = 2
 RANDOM_DISCONNECT_INTERVAL = 5 * 60
 RANDOM_DISCONNECT_FRACTION = 0.1
+
+# Indicates how many KnownHosts can be stored in the DB
+MAX_STORED_HOSTS = 100
 
 
 class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # noqa P2P will be rewritten s00n pylint: disable=too-many-instance-attributes, too-many-public-methods
@@ -82,6 +85,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         self.suggested_conn_reverse = {}
         self.gossip_keeper = GossipManager()
         self.manager_session = None
+        self.metadata_providers: Dict[str, Callable[[], Any]] = {}
 
         # Useful config options
         self.node_name = self.config_desc.node_name
@@ -130,12 +134,14 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         self.node.p2p_prv_port = port
 
     def connect_to_network(self):
+        # pylint: disable=singleton-comparison
         self.connect_to_seeds()
         if not self.connect_to_known_hosts:
             return
 
         for host in KnownHosts.select() \
-                .where(KnownHosts.is_seed == False):  # noqa
+                .where(KnownHosts.is_seed == False)\
+                .limit(self.config_desc.opt_peer_num):  # noqa
 
             ip_address = host.ip_address
             port = host.port
@@ -194,22 +200,19 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
                 message.Disconnect.REASON.NoMoreMessages
             )
 
-    def add_known_peer(self, node, ip_address, port):
+    def add_known_peer(self, node, ip_address, port, metadata=None):
         is_seed = node.is_super_node() if node else False
 
         try:
             with db.transaction():
-                KnownHosts.delete().where(
-                    (KnownHosts.ip_address == ip_address)
-                    & (KnownHosts.port == port)
-                ).execute()
-
-                KnownHosts.insert(
+                host, _ = KnownHosts.get_or_create(
                     ip_address=ip_address,
                     port=port,
-                    last_connected=time.time(),
-                    is_seed=is_seed
-                ).execute()
+                    defaults={'is_seed': is_seed}
+                )
+                host.last_connected = time.time()
+                host.metadata = metadata or {}
+                host.save()
 
             self.__remove_redundant_hosts_from_db()
             self._sync_seeds()
@@ -281,9 +284,22 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         return size
 
     @staticmethod
-    def get_performance_percentile_rank(perf: float) -> float:
-        return \
-            stats.percentileofscore(PERFORMANCE_STATS, perf, kind='weak') / 100
+    def get_performance_percentile_rank(perf: float, env_id: str) -> float:
+        # Hosts which don't support the given env at all shouldn't be counted
+        # even if perf equals 0. Therefore -1 is the default value.
+        hosts_perf = [
+            host.metadata['performance'].get(env_id, -1.0)
+            for host in KnownHosts.select()
+            if 'performance' in host.metadata
+        ]
+        if not hosts_perf:
+            logger.warning('Cannot compute percentile rank. No host '
+                           'performance info is available')
+            return 1.0
+
+        rank = stats.percentileofscore(hosts_perf, perf, kind='strict') / 100
+        logger.info(f'Performance for env `{env_id}`: rank({perf}) = {rank}')
+        return rank
 
     def ping_peers(self, interval):
         """ Send ping to all peers with whom this peer has open connection
@@ -584,6 +600,17 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             self._prepend_address(socket_addresses, socket_address)
 
         return socket_addresses[:MAX_CONNECT_SOCKET_ADDRESSES]
+
+    def add_metadata_provider(self, name: str, provider: Callable[[], Any]):
+        self.metadata_providers[name] = provider
+
+    def remove_metadata_provider(self, name: str) -> None:
+        self.metadata_providers.pop(name, None)
+
+    def get_node_metadata(self) -> Dict[str, Any]:
+        """ Get metadata about node to be sent in `Hello` message """
+        return {name: provider()
+                for name, provider in self.metadata_providers.items()}
 
     # Kademlia functions
     #############################

@@ -10,6 +10,7 @@ from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 
 from golem.core.common import deadline_to_timeout
+from golem.core.deferred import sync_wait
 from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
@@ -23,6 +24,8 @@ from .taskthread import TaskThread
 
 
 logger = logging.getLogger(__name__)
+
+BENCHMARK_TIMEOUT = 60  # s
 
 
 class CompStats(object):
@@ -80,8 +83,14 @@ class TaskComputer(object):
 
         self.use_docker_manager = use_docker_manager
         run_benchmarks = self.task_server.benchmark_manager.benchmarks_needed()
-        self.change_config(task_server.config_desc, in_background=False,
-                           run_benchmarks=run_benchmarks)
+        deferred = self.change_config(
+            task_server.config_desc, in_background=False,
+            run_benchmarks=run_benchmarks)
+        try:
+            sync_wait(deferred, BENCHMARK_TIMEOUT)
+        except TimeoutError:
+            logger.warning('Benchmark computation timed out')
+
         self.stats = IntStatsKeeper(CompStats)
 
         self.assigned_subtasks = {}
