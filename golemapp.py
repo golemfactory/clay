@@ -120,7 +120,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     delete_reactor()
 
     # Crossbar
-    if m == 'crossbar.worker.process':
+    if m == 'crossbar.worker.main':
         start_crossbar_worker(m)
         return
 
@@ -204,7 +204,8 @@ def start_crossbar_worker(module):
 
     import importlib
     module = importlib.import_module(module)
-    module.run()
+    # pylint: disable=protected-access
+    module._run_command_exec_worker(sys.argv)
 
 
 def log_golem_version():

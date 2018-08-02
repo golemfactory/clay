@@ -23,22 +23,22 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
 
     def test_start_crossbar_worker(self):
         runner = CliRunner()
-        args = ['--datadir', self.path, '-m', 'crossbar.worker.process']
+        args = ['--datadir', self.path, '-m', 'crossbar.worker.main']
 
-        with mock.patch('crossbar.worker.process.run') as _run:
+        with mock.patch('crossbar.worker.main._run_command_exec_worker') as run:
             with mock.patch.object(sys, 'argv', list(args)):
                 runner.invoke(start, sys.argv, catch_exceptions=False)
-                assert _run.called
+                assert run.called
                 assert '-m' not in sys.argv
 
     def test_start_crossbar_worker_u(self):
         runner = CliRunner()
-        args = ['--datadir', self.path, '-m', 'crossbar.worker.process', '-u']
+        args = ['--datadir', self.path, '-m', 'crossbar.worker.main', '-u']
 
-        with mock.patch('crossbar.worker.process.run') as _run:
+        with mock.patch('crossbar.worker.main._run_command_exec_worker') as run:
             with mock.patch.object(sys, 'argv', list(args)):
                 runner.invoke(start, sys.argv, catch_exceptions=False)
-                assert _run.called
+                assert run.called
                 assert '-m' not in sys.argv
                 assert '-u' not in sys.argv
 

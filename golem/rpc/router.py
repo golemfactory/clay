@@ -3,7 +3,6 @@ import os
 from collections import namedtuple
 from typing import Iterable, Optional
 
-from crossbar.common import checkconfig
 from twisted.internet.defer import inlineCallbacks
 
 from golem.rpc.cert import CertificateManager
@@ -57,24 +56,27 @@ class CrossbarRouter(object):
 
     def start(self, reactor, options=None):
         # imports reactor
-        from crossbar.controller.node import Node, default_native_workers
+        from crossbar.common.checkconfig import check_config
+        from crossbar.node.node import Node
+        from crossbar.personality import Personality
 
         options = options or self.options
+        personality = Personality()
+
         if self.address.ssl:
             self.cert_manager.generate_if_needed()
 
-        self.node = Node(options.cbdir, reactor=reactor)
-        self.pubkey = self.node.maybe_generate_key(options.cbdir)
+        self.node = Node(personality, cbdir=options.cbdir, reactor=reactor)
+        self.pubkey = self.node.load_keys(options.cbdir)
 
-        workers = default_native_workers()
-
-        checkconfig.check_config(self.config, workers)
+        check_config(Personality, self.config)
         self.node._config = self.config
         return self.node.start()
 
     @inlineCallbacks
     def stop(self):
-        yield self.node._controller.shutdown()  # noqa # pylint: disable=protected-access
+        # pylint: disable=protected-access
+        yield self.node._controller.shutdown()
 
     def _build_options(self, argv=None, config=None):
         return CrossbarRouterOptions(
