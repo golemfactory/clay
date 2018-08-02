@@ -1,5 +1,6 @@
 import time
 import logging
+from golem_messages.register import library
 from golem_messages.message import Message, SetTaskSession
 
 logger = logging.getLogger(__name__)
@@ -9,7 +10,7 @@ class SpamProtector:
 
     SetTaskSessionInterval = 20
 
-    INTERVALS = {SetTaskSession.TYPE: SetTaskSessionInterval}
+    INTERVALS = {library.get_type(SetTaskSession): SetTaskSessionInterval}
 
     def __init__(self):
 

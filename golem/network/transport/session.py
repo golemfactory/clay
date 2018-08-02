@@ -4,6 +4,7 @@ import time
 from typing import Optional
 
 from golem_messages import message
+from golem_messages.register import library
 
 from golem import utils
 from golem.core.keysauth import get_random_float
@@ -51,15 +52,15 @@ class BasicSession(FileSession):
         self.last_message_time = time.time()
         self._disconnect_sent = False
         self._interpretation = {
-            message.Disconnect.TYPE: self._react_to_disconnect,
-            message.Hello.TYPE: self._react_to_hello,
+            library.get_type(message.Disconnect): self._react_to_disconnect,
+            library.get_type(message.Hello): self._react_to_hello,
         }
         # Message interpretation - dictionary where keys are message types
         # and values are functions that should
         # be called after receiving specific message
         self.conn.server.pending_sessions.add(self)
 
-    def interpret(self, msg):
+    def interpret(self, msg: message.Message):
         """
         React to specific message. Disconnect, if message type is unknown
         for that session.
@@ -71,7 +72,7 @@ class BasicSession(FileSession):
         if not self._check_msg(msg):
             return
 
-        action = self._interpretation.get(msg.TYPE)
+        action = self._interpretation.get(msg.header.type_)
         if action:
             action(msg)
         else:
@@ -167,9 +168,9 @@ class BasicSafeSession(BasicSession):
         self.rand_val = get_random_float()
         self.verified = False
         # React to message even if it's self.verified is set to False
-        self.can_be_unverified = [message.Disconnect.TYPE]
+        self.can_be_unverified = [library.get_type(message.Disconnect)]
         # React to message even if it's not encrypted.
-        self.can_be_not_encrypted = [message.Disconnect.TYPE]
+        self.can_be_not_encrypted = [library.get_type(message.Disconnect)]
 
     @property
     def theirs_public_key(self):
@@ -201,10 +202,10 @@ class BasicSafeSession(BasicSession):
 
         BasicSession.send(self, msg)
 
-    def _can_send(self, msg, send_unverified):
+    def _can_send(self, msg: message.Message, send_unverified):
         return self.verified \
             or send_unverified \
-            or msg.TYPE in self.can_be_unverified
+            or msg.header.type_ in self.can_be_unverified
 
     def _check_msg(self, msg):
         if not BasicSession._check_msg(self, msg):
