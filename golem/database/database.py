@@ -51,7 +51,7 @@ class GolemSqliteDatabase(peewee.SqliteDatabase):
 
 class Database:
 
-    SCHEMA_VERSION = 16
+    SCHEMA_VERSION = 18
 
     def __init__(self,  # noqa pylint: disable=too-many-arguments
                  db: peewee.Database,
@@ -77,7 +77,7 @@ class Database:
         if not version:
             self._create_tables()
         elif schemas_dir and version < self.SCHEMA_VERSION:
-            self._migrate_schema(version, to_version=self.SCHEMA_VERSION)
+            self._migrate_schema(version, self.SCHEMA_VERSION)
 
     def close(self):
         if not self.db.is_closed():

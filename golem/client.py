@@ -1073,7 +1073,7 @@ class Client(HardwarePresetsMixin):
 
             return {
                 "subtask": to_unicode(o.subtask),
-                "payer": to_unicode(o.sender_node),
+                "payer": to_unicode(o.payer_address),
                 "value": to_unicode(o.value),
                 "status": to_unicode(status),
                 "transaction": to_unicode(o.transaction),

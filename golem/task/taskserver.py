@@ -28,7 +28,7 @@ from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.taskbase import TaskHeader, Task
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
-from golem.utils import decode_hex
+from golem.utils import decode_hex, pubkeytoaddr
 
 from .result.resultmanager import ExtractedPackage
 from .server import resources
@@ -226,7 +226,7 @@ class TaskServer(
         if subtask_id not in self.results_to_send:
             value = self.task_manager.comp_task_keeper.get_value(task_id)
             self.client.transaction_system.incomes_keeper.expect(
-                sender_node_id=header.task_owner.key,
+                payer_address=pubkeytoaddr(header.task_owner.key),
                 subtask_id=subtask_id,
                 value=value,
             )
@@ -415,7 +415,7 @@ class TaskServer(
         logger.debug("Subtask %r result accepted", subtask_id)
         self.task_result_sent(subtask_id)
         self.client.transaction_system.incomes_keeper.update_awaiting(
-            sender_node_id,
+            pubkeytoaddr(sender_node_id),
             subtask_id,
             accepted_ts,
         )
@@ -425,7 +425,10 @@ class TaskServer(
         logger.debug("Subtask %r settled by the Concent", subtask_id)
         self.task_result_sent(subtask_id)
         self.client.transaction_system.incomes_keeper.settled(
-            sender_node_id, subtask_id, settled_ts)
+            pubkeytoaddr(sender_node_id),
+            subtask_id,
+            settled_ts,
+        )
 
     def subtask_failure(self, subtask_id, err):
         logger.info("Computation for task %r failed: %r.", subtask_id, err)

@@ -238,7 +238,7 @@ class Payment(BaseModel):
 
 
 class Income(BaseModel):
-    sender_node = CharField()
+    payer_address = CharField()
     subtask = CharField()
     value = HexIntegerField()
     accepted_ts = IntegerField(null=True)
@@ -248,7 +248,7 @@ class Income(BaseModel):
 
     class Meta:
         database = db
-        primary_key = CompositeKey('sender_node', 'subtask')
+        primary_key = CompositeKey('payer_address', 'subtask')
 
     def __repr__(self):
         return "<Income: {!r} v:{:.3f} accepted_ts:{!r} tid:{!r}>"\
