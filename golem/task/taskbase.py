@@ -2,7 +2,7 @@ import abc
 import hashlib
 import logging
 import time
-from typing import List, Type, Optional, Tuple, Any
+from typing import List, Type, Optional, Tuple, Any, Dict
 
 from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
 import golem
@@ -526,3 +526,13 @@ class Task(abc.ABC):
         Copy results of a single subtask from another task
         """
         raise NotImplementedError()
+
+    def react_to_message(self,
+                         subtask_id: str,
+                         message_data: Dict) -> Dict:
+        """ Reacts to a message from provider
+        :param subtask_id:
+        :param message_data: Message data in dict
+        :return: Response in dict
+        """
+        return {}

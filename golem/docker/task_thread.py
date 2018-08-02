@@ -1,6 +1,9 @@
+import hashlib
+import json
 import logging
+import os
 from pathlib import Path
-from typing import ClassVar, Optional, TYPE_CHECKING
+from typing import ClassVar, Optional, TYPE_CHECKING, List, Dict
 
 import requests
 from golem.docker.job import DockerJob
@@ -24,7 +27,9 @@ EXIT_CODE_PROBABLE_CAUSES = {
 class ImageException(RuntimeError):
     pass
 
-
+# TODO change the way OUTPUT_DIR and WORK_DIR are handled
+# now there is duplication of declarations in DockerJob and here
+# plus, there is GOLEM_BASE_PATH hardcoded here
 class DockerTaskThread(TaskThread):
 
     # These files will be placed in the output dir (self.tmp_path)
@@ -55,8 +60,10 @@ class DockerTaskThread(TaskThread):
         self.job = None
         self.check_mem = check_mem
 
-        self.work_dir_path: Path = Path(self.tmp_path) / "work"
-        self.output_dir_path: Path = Path(self.tmp_path) / "output"
+        self.work_dir_path: Path = Path(self.tmp_path) / DockerJob.WORK_DIR_E
+        self.output_dir_path: Path = Path(self.tmp_path) / DockerJob.RESOURCES_DIR_E
+        self.messages_input_path = Path(self.tmp_path) / DockerJob.WORK_DIR_E / DockerJob.MESSAGES_IN_DIR_E
+        self.messages_output_path = Path(self.tmp_path) / DockerJob.WORK_DIR_E / DockerJob.MESSAGES_OUT_DIR_E
 
     def run(self) -> None:
         try:
@@ -90,13 +97,19 @@ class DockerTaskThread(TaskThread):
     def _run_docker_job(self) -> Optional[int]:
         self.work_dir_path.mkdir(exist_ok=True)
         self.output_dir_path.mkdir(exist_ok=True)
+        self.messages_input_path.mkdir(exist_ok=True)
+        self.messages_output_path.mkdir(exist_ok=True)
 
         host_config = self.docker_manager.container_host_config \
             if self.docker_manager else None
 
-        with DockerJob(self.image, self.src_code, self.extra_data,
-                       self.res_path, str(self.work_dir_path),
-                       str(self.output_dir_path), host_config=host_config) \
+        with DockerJob(self.image,
+                       self.src_code,
+                       self.extra_data,
+                       self.res_path,
+                       str(self.work_dir_path),
+                       str(self.output_dir_path),
+                       host_config=host_config) \
                 as job, \
                 MemoryChecker(self.check_mem) as mc:
             self.job = job
@@ -132,6 +145,48 @@ class DockerTaskThread(TaskThread):
     def get_progress(self):
         # TODO: make the container update some status file? Issue #56
         return 0.0
+
+    # TODO make the structure of msgs_decoded explicit somewhere
+    # instead of "content": ..., "filename": ... hardcoded here
+    def check_for_new_messages(self) -> List[Dict]:
+        """ Check is the script produced any new messages
+        :return: list containing list of messages, each of which is a dict
+        """
+        if not self.job:
+            return [{}]
+        msgs = self.job.read_work_files(dir=DockerJob.MESSAGES_OUT_DIR_E)
+        msgs_decoded = []
+        for filename, content in msgs.items():
+            try:
+                msgs_decoded.append(json.loads(content))
+            except ValueError:
+                msgs_decoded.append({})
+                logger.warning("ValueError during decoding message %r", str(content))  # noqa
+
+        # cleaning messages files, to not read multiple times the same content
+        self.job.clean_work_files(dir=DockerJob.MESSAGES_OUT_DIR_E)
+
+        return msgs_decoded
+
+    def receive_message(self, data: Dict):
+        """
+        Takes a message from network and puts it in new file in MESSAGES_IN_DIR
+        :param data: Message data
+        :return:
+        """
+        # TODO consider moving hash somewhere else
+        # although it is not very important
+        # messages names don't matter at all
+        # it's just that they should be unique
+        HASH = lambda x: hashlib.md5(x.encode()).hexdigest()
+        if self.job:
+            data_dump = json.dumps(data)
+
+            msg_filename = HASH(data_dump)
+            msg_path = os.path.join(DockerJob.MESSAGES_IN_DIR_E, msg_filename)
+            self.job.write_work_file(msg_path, data_dump, options="w")
+        else:
+            logger.warning("There is currently no job to receive message")
 
     def end_comp(self):
         try:

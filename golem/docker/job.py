@@ -3,6 +3,7 @@ import os
 import posixpath
 import threading
 from os import path
+from typing import Dict
 
 import docker.errors
 
@@ -28,6 +29,18 @@ class DockerJob(object):
     STATE_STOPPED = "stopped"
     STATE_KILLED = "killed"
     STATE_REMOVED = "removed"
+
+
+    # TODO refactor that out
+    GOLEM_BASE_PATH = "/golem"
+    RESOURCES_DIR_E = "resources"
+    WORK_DIR_E = "work"
+    OUTPUT_DIR_E = "output"
+    MESSAGES_IN_DIR_E = "messages_in"
+    MESSAGES_OUT_DIR_E = "messages_out"
+
+    MESSAGES_IN_DIR = f"{GOLEM_BASE_PATH}/{WORK_DIR_E}/{MESSAGES_IN_DIR_E}"
+    MESSAGES_OUT_DIR = f"{GOLEM_BASE_PATH}/{WORK_DIR_E}/{MESSAGES_OUT_DIR_E}"
 
     # This dir contains static task resources.
     # Mounted read-only in the container.
@@ -64,6 +77,18 @@ class DockerJob(object):
         self.image = image
         self.script_src = script_src
         self.parameters = parameters if parameters else {}
+
+        # NOT os.path.join, because here we build directory structure inside Docker
+        # (OS outside can be different than OS inside)
+        paths_params = {k: f"{self.GOLEM_BASE_PATH}/{v}" for k, v in {
+                            "RESOURCES_DIR": self.RESOURCES_DIR_E,
+                            "WORK_DIR": self.WORK_DIR_E,
+                            "OUTPUT_DIR": self.OUTPUT_DIR_E,
+                            "MESSAGES_IN_DIR": f"{self.WORK_DIR_E}/{self.MESSAGES_IN_DIR_E}",
+                            "MESSAGES_OUT_DIR": f"{self.WORK_DIR_E}/{self.MESSAGES_OUT_DIR_E}"
+                        }.items()}
+        self.parameters.update(paths_params)
+
         self.host_config = host_config or {}
 
         self.resources_dir = resources_dir
@@ -303,3 +328,40 @@ class DockerJob(object):
             inspect = client.inspect_container(self.container_id)
             return inspect["State"]["Status"]
         return self.state
+
+    def read_work_file(self, path: str, options="r") -> str:
+        try:
+            with open(os.path.join(self.work_dir, path), options) as f:
+                return f.read()
+        except IOError as e:
+            logger.warning("There was a problem with read_work_file. Path: %r, exception: %r", path, e)
+            return ""
+
+    def write_work_file(self, path, content, options="w"):
+        try:
+            from atomicfile import AtomicFile
+
+            with AtomicFile(os.path.join(self.work_dir, path), options) as f:
+                return f.write(content)
+        except IOError as e:
+            logger.warning("There was a problem with write_work_file. Path: %r, exception: %r", path, e)
+
+    def read_work_files(self, dir="", options="r") -> Dict[str, str]:
+        dir = os.path.join(self.work_dir, dir)
+        contents = {}
+        if os.path.isdir(dir):
+            # FIXME after #3074 is merged
+            from apps.dummy.task.dummytaskstate import ls_R
+            for file in ls_R(dir):
+                contents[file] = self.read_work_file(file, options)
+        else:
+            logger.warning("%r is not a directory", dir)
+        return contents
+
+    def clean_work_files(self, dir):
+        dir = os.path.join(self.work_dir, dir)
+        try:
+            for f in os.listdir(dir):
+                os.remove(os.path.join(dir, f))
+        except IOError as e:
+            logger.warning("There was a problem with clean_work_files. Path: %r, exception: %r", dir, e)

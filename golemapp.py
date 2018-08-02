@@ -1,10 +1,12 @@
 #!/usr/bin/env python
 import binascii
+import json
 import os
 import platform
 import sys
 import logging
 from multiprocessing import freeze_support
+from typing import Dict
 
 import click
 import humanize
@@ -97,6 +99,9 @@ slogging.SManager.getLogger = monkey_patched_getLogger
                   'DEBUG',
               ]),
               help="Change level for Golem loggers and handlers")
+@click.option('--app-cfg', default=None, type=click.STRING,
+              callback=argsparser.parse_app_cfg_opt,
+              help="Patch options from app_cfg.ini")
 @click.option('--enable-talkback', is_flag=True, default=None)
 # Python flags, needed by crossbar (package only)
 @click.option('-m', nargs=1, default=None)
@@ -114,7 +119,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--title', expose_value=False)
 def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
           net, geth_address, password, accept_terms, generate_rpc_cert, version,
-          log_level, enable_talkback, m):
+          log_level, app_cfg, enable_talkback, m):
 
     freeze_support()
     delete_reactor()
@@ -148,7 +153,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     sys.modules['win32com.gen_py.pywintypes'] = None
     sys.modules['win32com.gen_py.pythoncom'] = None
 
-    app_config = AppConfig.load_config(datadir)
+    app_config = AppConfig.load_config(datadir, patched_values=app_cfg)
     config_desc = ClientConfigDescriptor()
     config_desc.init_from_app_config(app_config)
     config_desc = ConfigApprover(config_desc).approve()

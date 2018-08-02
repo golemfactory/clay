@@ -3,6 +3,7 @@ import functools
 import logging
 import os
 import time
+from _ast import Dict
 
 from golem_messages import message
 from golem_messages import helpers as msg_helpers
@@ -844,6 +845,37 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            "an unknown task (subtask_id='%s')",
                            self.key_id, msg.subtask_id)
 
+    def _react_to_state_update_call(self, msg: message.tasks.SubtaskToTaskStateUpdateCall):  # noqa
+        print("aaa")
+        task = self.task_server.task_manager.tasks[msg.task_id]
+        data = task.react_to_message(msg.subtask_id, msg.state_update_data)
+        new_message = message.tasks.TaskToSubtaskStateUpdateReturn(
+            task_id=msg.task_id,
+            subtask_id=msg.subtask_id,
+            state_update_data=data
+        )
+        response_sess = self
+        response_sess.send(new_message)
+
+    def _react_to_state_update_return(self, msg: message.tasks.TaskToSubtaskStateUpdateReturn):  # noqa
+        self.task_computer.receive_message(
+            msg.task_id,
+            msg.subtask_id,
+            msg.state_update_data
+        )
+
+    def send_state_update_from_subtask_to_task(self,
+                                               task_id: str,
+                                               subtask_id: str,
+                                               data: Dict):
+        new_message = message.tasks.SubtaskToTaskStateUpdateCall(
+            task_id=task_id,
+            subtask_id=subtask_id,
+            state_update_data=data
+        )
+        response_sess = self.task_server.task_sessions[subtask_id]
+        response_sess.send(new_message)
+
     def send(self, msg, send_unverified=False):
         if not self.verified and not send_unverified:
             self.msgs_to_send.append(msg)
@@ -954,6 +986,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.RandVal.TYPE: self._react_to_rand_val,
             message.StartSessionResponse.TYPE: self._react_to_start_session_response,  # noqa
             message.WaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
+            message.tasks.SubtaskToTaskStateUpdateCall.TYPE:
+                self._react_to_state_update_call,
+            message.tasks.TaskToSubtaskStateUpdateReturn.TYPE:
+                self._react_to_state_update_return,
 
             # Concent messages
             message.tasks.AckReportComputedTask.TYPE:

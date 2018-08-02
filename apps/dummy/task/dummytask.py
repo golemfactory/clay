@@ -2,7 +2,7 @@ import logging
 import os
 import random
 from copy import copy
-from typing import Optional
+from typing import Optional, Dict
 
 import enforce
 from golem_messages.message import ComputeTaskDef
@@ -118,6 +118,10 @@ class DummyTask(CoreTask):
         char = self.TESTING_CHAR
         exd['extra_data']["subtask_data"] = char * size
         return exd
+
+    # Temporary testing for communications
+    def react_to_message(self, subtask_id: str, data: Dict):
+        return {"got_messages": "a" + data["got_messages"]}
 
 
 class DummyTaskBuilder(CoreTaskBuilder):

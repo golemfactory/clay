@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, List, Tuple, Dict
 
 import os
 import time
@@ -86,6 +86,7 @@ class TaskComputer(object):
 
         self.assigned_subtasks = {}
         self.task_to_subtask_mapping = {}
+        self.subtask_to_task_mapping = {}
         self.max_assigned_tasks = 1
 
         self.delta = None
@@ -102,6 +103,8 @@ class TaskComputer(object):
         self.wait(ttl=deadline_to_timeout(ctd['deadline']))
         self.assigned_subtasks[ctd['subtask_id']] = ctd
         self.task_to_subtask_mapping[ctd['task_id']] = ctd['subtask_id']
+        self.task_to_subtask_mapping[ctd['subtask_id']] = ctd['task_id']
+
         self.__request_resource(
             ctd['task_id'],
             ctd['subtask_id']
@@ -447,6 +450,25 @@ class TaskComputer(object):
     def quit(self):
         if self.counting_thread is not None:
             self.counting_thread.end_comp()
+
+    def check_for_new_messages(self) -> List[Tuple[str, str, Dict]]:
+        msgs = []
+        tt = self.counting_thread
+        if not tt:
+            return []
+
+        subtask_id = tt.subtask_id
+        task_id = self.task_to_subtask_mapping[subtask_id]
+        all_subtask_messages_data = tt.check_for_new_messages()
+
+        # TODO make the structure of msgs tuple explicit somewhere
+        for data in all_subtask_messages_data:
+            msgs.append((task_id, subtask_id, data))
+        return msgs
+
+    def receive_message(self, task_id, subtask_id, data: Dict):
+        if self.counting_thread.subtask_id == subtask_id:
+            self.counting_thread.receive_message(data)
 
 
 class AssignedSubTask(object):
