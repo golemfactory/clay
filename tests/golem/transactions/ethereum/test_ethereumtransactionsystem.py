@@ -34,6 +34,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 0
         self.sci.GAS_PER_PAYMENT = 20000
+        self.sci.REQUIRED_CONFS = 6
         self.ets = self._make_ets()
 
     def _make_ets(self, privkey=PRIV_KEY, withdrawals=True):
@@ -93,6 +94,17 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             ANY,
         )
 
+    def test_payment(self):
+        subtask_id = 'derp'
+        value = 10
+        payee = '0x' + 40 * '1'
+        self.ets.add_payment_info(subtask_id, value, payee)
+        payments = self.ets.get_payments_list()
+        assert len(payments) == 1
+        assert payments[0]['subtask'] == subtask_id
+        assert payments[0]['value'] == str(value)
+        assert payments[0]['payee'] == payee
+
     def test_get_withdraw_gas_cost(self):
         dest = '0x' + 40 * '0'
         gas_price = 123
@@ -140,7 +152,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
         # Enough GNTB
         res = self.ets.withdraw(gntb_balance - 1, dest, 'GNT')
-        assert res == [gntb_tx]
+        assert res == gntb_tx
         self.sci.convert_gntb_to_gnt.assert_called_once_with(
             dest,
             gntb_balance - 1,
@@ -154,7 +166,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
         # Enough ETH
         res = self.ets.withdraw(eth_balance - 1, dest, 'ETH')
-        assert res == [eth_tx]
+        assert res == eth_tx
         self.sci.transfer_eth.assert_called_once_with(dest, eth_balance - 1)
         self.sci.reset_mock()
 
@@ -165,7 +177,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         assert 0 < locked_eth < eth_balance
         assert 0 < locked_gnt < gnt_balance
         res = self.ets.withdraw(eth_balance - locked_eth, dest, 'ETH')
-        assert res == [eth_tx]
+        assert res == eth_tx
         self.sci.transfer_eth.assert_called_once_with(
             dest,
             eth_balance - locked_eth,
@@ -278,28 +290,47 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         ets._try_convert_gnt()
         self.sci.transfer_from_gate.assert_not_called()
 
+    def test_subscriptions(self):
+        self.sci.subscribe_to_batch_transfers.assert_called_once_with(
+            None,
+            self.sci.get_eth_address(),
+            0,
+            ANY,
+        )
+
+        block_number = 123
+        self.sci.get_block_number.return_value = block_number
+        with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                   'LoopingCallService.stop'):
+            self.ets.stop()
+
+        self.sci.reset_mock()
+        self._make_ets()
+        self.sci.subscribe_to_batch_transfers.assert_called_once_with(
+            None,
+            self.sci.get_eth_address(),
+            block_number - self.sci.REQUIRED_CONFS - 1,
+            ANY,
+        )
+
     def test_concent_deposit_enough(self):
         self.sci.get_deposit_value.return_value = 10
-        cb = Mock()
-        self.ets.concent_deposit(
+        deferred = self.ets.concent_deposit(
             required=10,
             expected=40,
-            cb=cb,
         )
-        cb.assert_called_once_with()
+        deferred.addErrback(lambda _: self.fail('shoud not fail'))
+        assert deferred.called
         self.sci.deposit_payment.assert_not_called()
 
     def test_concent_deposit_not_enough(self):
         self.sci.get_deposit_value.return_value = 0
         self.ets._gntb_balance = 0
-        cb = Mock()
         with self.assertRaises(NotEnoughFunds):
             self.ets.concent_deposit(
                 required=10,
                 expected=40,
-                cb=cb,
             )
-        cb.assert_not_called()
 
     def test_concent_deposit_done(self):
         self.sci.get_deposit_value.return_value = 0
@@ -311,6 +342,20 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             expected=40,
         )
         self.sci.deposit_payment.assert_called_once_with(20 - 1)
+
+    def test_check_payments(self):
+        with patch.object(
+            self.ets.incomes_keeper, 'update_overdue_incomes'
+        ) as incomes:
+            incomes.return_value = [
+                Mock(sender_node='a'),
+                Mock(sender_node='b'),
+            ]
+            self.assertEqual(
+                self.ets.get_nodes_with_overdue_payments(),
+                ['a', 'b']
+            )
+            incomes.assert_called_once()
 
 
 class FaucetTest(unittest.TestCase):

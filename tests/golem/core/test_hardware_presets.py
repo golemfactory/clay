@@ -16,7 +16,9 @@ class TestHardwarePresets(testutils.DatabaseFixture):
 
     def setUp(self):
         super().setUp()
-        HardwarePresets.initialize(self.tempdir)
+        with patch('golem.core.hardware.free_partition_space',
+                   return_value=7e9):
+            HardwarePresets.initialize(self.tempdir)
         self.config = ClientConfigDescriptor()
 
     def test_initialize(self, *_):
@@ -40,7 +42,7 @@ class TestHardwarePresets(testutils.DatabaseFixture):
     def test_memory(self, *_):
         assert HardwarePresets.memory(-1) == MIN_MEMORY_SIZE
         assert HardwarePresets.memory(1e6) == MIN_MEMORY_SIZE
-        assert HardwarePresets.memory(2**20) == 2 ** 20
+        assert HardwarePresets.memory(2 ** 20) == 2 ** 20
         assert HardwarePresets.memory(1e7) == 1e7
         assert HardwarePresets.memory(7e7) == 7e7
         assert HardwarePresets.memory(9e9) == 7e7
@@ -48,7 +50,7 @@ class TestHardwarePresets(testutils.DatabaseFixture):
     def test_disk(self, *_):
         assert HardwarePresets.disk(-1) == MIN_DISK_SPACE
         assert HardwarePresets.disk(1e6) == MIN_DISK_SPACE
-        assert HardwarePresets.disk(2**20) == 2 ** 20
+        assert HardwarePresets.disk(2 ** 20) == 2 ** 20
         assert HardwarePresets.disk(1e7) == 1e7
         assert HardwarePresets.disk(7e9) == 7e9
         assert HardwarePresets.disk(9e19) == 7e9
@@ -125,3 +127,28 @@ class TestHardwarePresets(testutils.DatabaseFixture):
         assert HardwarePresets.update_config(DEFAULT, self.config)
         assert HardwarePresets.update_config('foo', self.config)
         assert not HardwarePresets.update_config('foo', self.config)
+
+    def test_update_config_changed_on_env_change(self, *_):
+        # given
+        HardwarePreset.create(name='foo', cpu_cores=1, memory=1200000,
+                              disk=2000000)
+
+        # then
+        assert self.config.max_resource_size == 0  # initial
+        assert not HardwarePresets.update_config(DEFAULT, self.config)
+        assert self.config.max_resource_size == 7e9
+        assert not HardwarePresets.update_config(DEFAULT, self.config)
+        assert not HardwarePresets.update_config(DEFAULT, self.config)
+
+        # when env changes (disk space shrinks)
+        with patch('golem.core.hardware.free_partition_space',
+                   return_value=5e9):
+            # then
+            assert HardwarePresets.update_config(DEFAULT, self.config)
+            assert self.config.max_resource_size == 5e9
+            assert not HardwarePresets.update_config(DEFAULT, self.config)
+
+        # when env changes again (back to previous state) than
+        assert HardwarePresets.update_config(DEFAULT, self.config)
+        assert self.config.max_resource_size == 7e9
+        assert not HardwarePresets.update_config(DEFAULT, self.config)

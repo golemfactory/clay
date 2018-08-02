@@ -23,6 +23,7 @@ from twisted.internet.defer import (
 
 import golem
 from apps.appsmanager import AppsManager
+from apps.core.task.coretask import CoreTask
 from apps.rendering.task import framerenderingtask
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL, AppConfig)
@@ -31,9 +32,13 @@ from golem.config.active import EthereumConfig
 from golem.config.presets import HardwarePresetsMixin
 from golem.core import variables
 from golem.core.async import AsyncRequest, async_run
-from golem.core.common import get_timestamp_utc, to_unicode, \
-    string_to_timeout, \
-    deadline_to_timeout
+from golem.core.common import (
+    deadline_to_timeout,
+    datetime_to_timestamp_utc,
+    get_timestamp_utc,
+    string_to_timeout,
+    to_unicode,
+)
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import KeysAuth
@@ -584,19 +589,7 @@ class Client(HardwarePresetsMixin):
             task.header.resource_size = path.getsize(package_path)
 
             if self.config_desc.net_masking_enabled:
-                num_workers = max(
-                    task.get_total_tasks() *
-                    self.config_desc.initial_mask_size_factor,
-                    self.config_desc.min_num_workers_for_mask)
-                task.header.mask = Mask.get_mask_for_task(
-                    desired_num_workers=num_workers,
-                    network_size=self.p2pservice.get_estimated_network_size()
-                )
-                logger.info(
-                    f'Task {task_id} '
-                    f'initial mask size: {task.header.mask.num_bits} '
-                    f'expected number of providers: {num_workers}'
-                )
+                task.header.mask = self._get_mask_for_task(task)
             else:
                 task.header.mask = Mask()
 
@@ -642,6 +635,33 @@ class Client(HardwarePresetsMixin):
         _package = self.resource_server.create_resource_package(files, task_id)
         _package.addCallbacks(package_created, error)
         return _result
+
+    def _get_mask_for_task(self, task: CoreTask) -> Mask:
+        desired_num_workers = max(
+            task.get_total_tasks() *
+            self.config_desc.initial_mask_size_factor,
+            self.config_desc.min_num_workers_for_mask)
+
+        assert isinstance(self.p2pservice, P2PService)
+        assert isinstance(self.task_server, TaskServer)
+
+        network_size = self.p2pservice.get_estimated_network_size()
+        min_perf = self.task_server.get_min_performance_for_task(task)
+        perf_rank = self.p2pservice.get_performance_percentile_rank(min_perf)
+        potential_num_workers = int(network_size * (1 - perf_rank))
+
+        mask = Mask.get_mask_for_task(
+            desired_num_workers=desired_num_workers,
+            potential_num_workers=potential_num_workers
+        )
+        logger.info(
+            f'Task {task.header.task_id} '
+            f'initial mask size: {mask.num_bits} '
+            f'expected number of providers: {desired_num_workers}'
+            f'potential number of providers: {potential_num_workers}'
+        )
+
+        return mask
 
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
@@ -1036,7 +1056,22 @@ class Client(HardwarePresetsMixin):
         return self.transaction_system.get_payments_list()
 
     def get_incomes_list(self):
-        return self.transaction_system.get_incoming_payments()
+        incomes = self.transaction_system.get_incomes_list()
+
+        def item(o):
+            status = "confirmed" if o.transaction else "awaiting"
+
+            return {
+                "subtask": to_unicode(o.subtask),
+                "payer": to_unicode(o.sender_node),
+                "value": to_unicode(o.value),
+                "status": to_unicode(status),
+                "transaction": to_unicode(o.transaction),
+                "created": datetime_to_timestamp_utc(o.created_date),
+                "modified": datetime_to_timestamp_utc(o.modified_date)
+            }
+
+        return [item(income) for income in incomes]
 
     def get_withdraw_gas_cost(
             self,
@@ -1058,11 +1093,12 @@ class Client(HardwarePresetsMixin):
             currency: str) -> List[str]:
         if isinstance(amount, str):
             amount = int(amount)
-        return self.transaction_system.withdraw(
+        # It returns a list for backwards compatibility with Electron.
+        return [self.transaction_system.withdraw(
             amount,
             destination,
             currency,
-        )
+        )]
 
     # It's defined here only for RPC exposure in
     # golem.rpc.mapping.rpcmethodnames

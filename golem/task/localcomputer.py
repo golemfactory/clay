@@ -70,7 +70,7 @@ class LocalComputer:
                 ctd = self.compute_task_def
 
             self.tt = self._get_task_thread(ctd)
-            self.tt.start()
+            self.tt.start().addBoth(lambda _: self.task_computed(self.tt))
 
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning("%s", self.comp_failed_warning, exc_info=True)
@@ -176,7 +176,6 @@ class LocalComputer:
 
     def _get_task_thread(self, ctd: ComputeTaskDef) -> DockerTaskThread:
         return DockerTaskThread(
-            self,
             ctd['subtask_id'],
             [DockerImage(**did) for did in ctd['docker_images']],
             ctd['working_directory'],
@@ -195,6 +194,7 @@ class ComputerAdapter(object):
     def __init__(self):
         self.computer = None
 
+    # pylint: disable=too-many-arguments
     def start_computation(self, root_path, success_callback, error_callback,
                           compute_task_def, resources, additional_resources):
         self.computer = LocalComputer(root_path=root_path,

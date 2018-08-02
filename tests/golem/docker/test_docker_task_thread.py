@@ -36,12 +36,12 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
         image = DockerImage("golemfactory/base", tag="1.2")
 
         with self.assertRaises(AttributeError):
-            DockerTaskThread(task_computer, "subtask_id", None,
+            DockerTaskThread("subtask_id", None,
                              self.work_dir, script, None, "test task thread",
                              self.resources_dir, self.output_dir, timeout=30)
 
         def test():
-            tt = DockerTaskThread(task_computer, "subtask_id", [image],
+            tt = DockerTaskThread("subtask_id", [image],
                                   self.work_dir, script, None,
                                   "test task thread", self.resources_dir,
                                   self.output_dir, timeout=30)
