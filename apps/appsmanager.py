@@ -56,12 +56,15 @@ class AppsManager(object):
         are defined as pairs of instance of Benchmark and class of task builder
         """
         benchmarks = dict()
-        ok = SupportStatus.ok()
 
         for app in self.apps.values():
             env = app.env()
-            if env.check_support() != ok:
+            if not self._benchmark_enabled(env):
                 continue
             benchmarks[env.get_id()] = app.benchmark(), app.benchmark_builder
 
         return benchmarks
+
+    @staticmethod
+    def _benchmark_enabled(env):
+        return env.check_support() == SupportStatus.ok()

@@ -1,4 +1,4 @@
-from unittest import TestCase
+from unittest import mock, TestCase
 
 from apps.appsmanager import AppsManager
 from apps.core.benchmark.benchmarkrunner import CoreBenchmark
@@ -13,6 +13,7 @@ class TestAppsManager(TestCase):
     def _get_loaded_app_manger():
         app_manager = AppsManager()
         app_manager.load_all_apps()
+        app_manager._benchmark_enabled = mock.Mock(return_value=True)
         return app_manager
 
     def test_get_env_list(self):

@@ -842,6 +842,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 patch('golem.client.EthereumTransactionSystem',
                       return_value=make_mock_ethereum_transaction_system()):
             apps_manager = AppsManager()
+            apps_manager._benchmark_enabled = Mock(return_value=True)
             apps_manager.load_all_apps()
             client = Client(
                 datadir=self.path,
