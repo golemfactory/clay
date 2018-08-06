@@ -11,7 +11,7 @@ import numpy
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from golem.core.common import timeout_to_deadline
 
-logger = logging.getLogger("blendercropper")
+logger = logging.getLogger("blender_reference_generator")
 
 
 # FIXME #2086
@@ -61,7 +61,7 @@ class BlenderReferenceGenerator:
         self.rendered_crops_results = {}
 
     @staticmethod
-    def get_center_offset(res):
+    def get_pixel_centers_offset(res):
         return numpy.float32(1/(2*res))
 
     # pylint: disable=R0914
@@ -106,19 +106,19 @@ class BlenderReferenceGenerator:
 
         left_p = math.floor(numpy.float32(image_border[0]) *
                             numpy.float32(resolution[0]) +
-                            BlenderReferenceGenerator.get_center_offset(
+                            BlenderReferenceGenerator.get_pixel_centers_offset(
                                 resolution[0]))
         right_p = math.floor(numpy.float32(image_border[1]) *
                              numpy.float32(resolution[0]) +
-                             BlenderReferenceGenerator.get_center_offset(
+                             BlenderReferenceGenerator.get_pixel_centers_offset(
                                  resolution[0]))
         bottom_p = math.floor(numpy.float32(image_border[2]) *
                               numpy.float32(resolution[1]) +
-                              BlenderReferenceGenerator.get_center_offset(
+                              BlenderReferenceGenerator.get_pixel_centers_offset(
                                   resolution[1]))
         top_p = math.floor(numpy.float32(image_border[3]) *
                            numpy.float32(resolution[1]) +
-                           BlenderReferenceGenerator.get_center_offset(
+                           BlenderReferenceGenerator.get_pixel_centers_offset(
                                resolution[1]))
 
         logger.info("Pixels left=%r, right=%r, top=%r, bottom=%r", left_p,
@@ -144,16 +144,16 @@ class BlenderReferenceGenerator:
             # Here another conversion from double to float
             x_f = numpy.float32(numpy.float32(split_x[0]) /
                                 numpy.float32(resolution[0]) +
-                                self.get_center_offset(resolution[0]))
+                                self.get_pixel_centers_offset(resolution[0]))
             right_f = numpy.float32(numpy.float32(split_x[1]) /
                                     numpy.float32(resolution[0]) +
-                                    self.get_center_offset(resolution[0]))
+                                    self.get_pixel_centers_offset(resolution[0]))
             y_f = numpy.float32(numpy.float32(split_y[0]) /
                                 numpy.float32(resolution[1]) +
-                                self.get_center_offset(resolution[1]))
+                                self.get_pixel_centers_offset(resolution[1]))
             bottom_f = numpy.float32(numpy.float32(split_y[1]) /
                                      numpy.float32(resolution[1]) +
-                                     self.get_center_offset(resolution[1]))
+                                     self.get_pixel_centers_offset(resolution[1]))
 
             logger.debug(
                 "Crop values x={:.32f}, right={:.32f},"
