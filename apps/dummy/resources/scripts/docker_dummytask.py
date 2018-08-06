@@ -59,26 +59,6 @@ def run(data_files, subtask_data, difficulty, result_size, result_file):
     # Temporary testing for communications by sockets
     #####################################################################
 
-    import subprocess
-    import sys
-
-    def install(package):
-        res = subprocess.call([sys.executable, "-m", "pip", "install", package])
-        if res:
-           raise Exception(res)
-
-    prc = subprocess.Popen(["which", "apt-get"], stdout=subprocess.PIPE)
-    aptget, _ = prc.communicate()
-    print(aptget)
-
-    subprocess.call(["sudo", aptget, "install", "python-pip", "-y"])
-    install("twisted")
-    install("autobahn")
-    install("u-msgpack-python")
-
-    import site
-    reload(site)
-
     from twisted.internet import reactor
     from twisted.internet.defer import inlineCallbacks
 
