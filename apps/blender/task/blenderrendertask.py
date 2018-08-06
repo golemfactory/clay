@@ -344,6 +344,7 @@ class BlenderNVGPUTaskTypeInfo(RenderingTaskTypeInfo):
 
 
 class BlenderRendererOptions(FrameRendererOptions):
+    # pylint: disable=too-few-public-methods
     def __init__(self):
         super(BlenderRendererOptions, self).__init__()
         self.environment = BlenderEnvironment()
@@ -352,6 +353,7 @@ class BlenderRendererOptions(FrameRendererOptions):
 
 
 class BlenderNVGPURendererOptions(BlenderRendererOptions):
+    # pylint: disable=too-few-public-methods
     def __init__(self):
         super().__init__()
         self.environment = BlenderNVGPUEnvironment()
