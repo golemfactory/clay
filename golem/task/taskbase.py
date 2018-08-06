@@ -529,10 +529,10 @@ class Task(abc.ABC):
 
     def react_to_message(self,
                          subtask_id: str,
-                         message_data: Dict) -> Dict:
+                         data: Dict) -> Dict:
         """ Reacts to a message from provider
         :param subtask_id:
-        :param message_data: Message data in dict
+        :param data: Message data in dict
         :return: Response in dict
         """
-        return {}
+        raise NotImplementedError()

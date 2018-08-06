@@ -43,7 +43,7 @@ from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
-from golem.core.simpleserializer import DictSerializer
+from golem.core.simpleserializer import DictSerializer, JSONDictSerializer
 from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
@@ -76,13 +76,13 @@ from golem.task.taskbase import Task as TaskBase
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus, SubtaskStatus
+from golem.task.taskstateupdate import TaskInfo, StateUpdateData
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.tools.talkback import enable_sentry_logger
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
 from golem.transactions.ethereum.fundslocker import FundsLocker
-
 
 logger = logging.getLogger(__name__)
 
@@ -267,7 +267,7 @@ class Client(HardwarePresetsMixin):
                           kwargs['subtask_id'], op.value)
         else:
             op_class_name: str = op.__class__.__name__ \
-                                 if op is not None else None
+                if op is not None else None
             op_value: int = op.value if op is not None else None
             self._publish(Task.evt_task_status, kwargs['task_id'],
                           op_class_name, op_value)
@@ -606,8 +606,8 @@ class Client(HardwarePresetsMixin):
             _resources.addCallbacks(task_created, error)
 
         def task_created(resource_server_result):
-            resource_manager_result, package_path,\
-                package_hash, package_size = resource_server_result
+            resource_manager_result, package_path, \
+            package_hash, package_size = resource_server_result
 
             try:
                 task_state = task_manager.tasks_states[task_id]
@@ -1227,8 +1227,8 @@ class Client(HardwarePresetsMixin):
         now = get_timestamp_utc()
         for task in self.get_tasks():
             deadline = task['time_started'] \
-                + string_to_timeout(task['timeout'])\
-                + self.config_desc.clean_tasks_older_than_seconds
+                       + string_to_timeout(task['timeout']) \
+                       + self.config_desc.clean_tasks_older_than_seconds
             if deadline <= now:
                 logger.info('Task %s got too old. Deleting.', task['id'])
                 self.delete_task(task['id'])
@@ -1444,6 +1444,27 @@ class Client(HardwarePresetsMixin):
                 return False, str(e)
 
         return False, 'Client is not ready'
+
+    def receive_state_update_from_subtask(self, msg: Dict) -> Dict:
+        # TODO ensure to throw an error if that fails or if types are wrong
+        print(f"ABCD 1, {msg}")
+        # msg = DictSerializer.load(msg, as_class=StateUpdateCall)
+        # print(f"ABCD 2, {msg}")
+        #
+        # task = self.task_server.task_manager.tasks[msg.task_info.task_id]
+        # response_data = task.react_to_message(msg.task_info.subtask_id,
+        #                                       msg.data)
+        # print(f"ABCD 2, {msg}")
+        #
+        # return DictSerializer.dump(StateUpdateReturn(task_info=msg.task_info,
+        #                            state_update_id=msg.state_update_id,
+        #                            data=response_data))
+        ti = TaskInfo(task_id="aa", subtask_id="bb")
+        stu = StateUpdateData(task_info=ti,
+                              state_update_id="ccc",
+                              data={"aaa": "bbb"})
+        ser = DictSerializer.dump(stu)
+        return ser
 
 
 class DoWorkService(LoopingCallService):
