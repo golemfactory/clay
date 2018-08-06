@@ -1,4 +1,6 @@
 import logging
+from typing import Dict, Union, Tuple
+
 import requests.exceptions
 
 from docker.errors import NotFound, APIError
@@ -29,6 +31,16 @@ class DockerImage(object):
             'image_id': self.id,
             'tag': self.tag,
         }
+
+    @staticmethod
+    def build(di: Union['DockerImage', Tuple, Dict]) -> 'DockerImage':
+        if isinstance(di, tuple):
+            if len(di) == 2:
+                return DockerImage(repository=di[0], tag=di[1])
+            return DockerImage(*di)
+        elif isinstance(di, dict):
+            return DockerImage(**di)
+        return di
 
     def is_available(self):
         client = local_client()
