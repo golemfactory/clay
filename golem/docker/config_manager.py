@@ -12,11 +12,11 @@ DEFAULT_HOST_CONFIG = dict(
     # mount the container's root filesystem as read only
     # read_only=True,
     # ['bridge', 'none', 'container:<name|id>', 'host']
-    network_mode='none',
+    network_mode='host',
     dns=[],
     dns_search=[],
     cap_drop=['setpcap', 'setfcap',
-              'net_admin', 'net_bind_service', 'net_raw',
+              'net_bind_service', 'net_raw',
               'mknod', 'audit_control', 'audit_write',
               'mac_admin', 'mac_override',
               'sys_chroot', 'sys_admin', 'sys_boot',
