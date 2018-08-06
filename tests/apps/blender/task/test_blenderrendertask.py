@@ -298,12 +298,11 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         results = {"data": {notalog, outlog, errlog}}
         after_test_data = self.bt.after_test(results, None)
         warnings = after_test_data["warnings"]
-
-        self.assertTrue("f1.png" in warnings)
-        self.assertTrue("file2.png" in warnings)
-        self.assertTrue("file3.png" in warnings)
-        self.assertEqual(warnings.count("file2.png"), 1)
-        self.assertFalse("file4.png" in warnings)
+        self.assertTrue([f for f in warnings['missing_files'] if f['baseName'] == "f1.png"])
+        self.assertTrue([f for f in warnings['missing_files'] if f['baseName'] == "file2.png"])
+        self.assertTrue([f for f in warnings['missing_files'] if f['baseName'] == "file3.png"])
+        self.assertEqual(sum(f['baseName'] == "file2.png" for f in warnings['missing_files']), 1)
+        self.assertFalse([f for f in warnings['missing_files'] if f['baseName'] == "file4.png"])
 
         with open(outlog, 'w') as fd_out:
             fd_out.write("Error: engine COMPLETELY UNKNOWN ENGINE not found")
@@ -313,7 +312,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
 
         after_test_data = self.bt.after_test(results, None)
         warnings = after_test_data["warnings"]
-        self.assertTrue("COMPLETELY UNKNOWN ENGINE" in warnings)
+        self.assertTrue(warnings['wrong_engine'] == " COMPLETELY UNKNOWN ENGINE not found")
 
     def test_query_extra_data_for_test_task(self):
         self.bt.use_frames = True

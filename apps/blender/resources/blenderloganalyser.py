@@ -49,7 +49,10 @@ def _get_warnings(log_content, return_data):
 
     if warnings:
         if return_data.get("warnings"):
-            return_data["warnings"] = {**return_data.get("warnings"), **warnings}
+            return_warnings = return_data.get("warnings")
+            if return_warnings.get("missing_files"):
+                return_data["warnings"]["missing_files"] = return_data.get(
+                    "warnings")['missing_files'] + warnings['missing_files']
         else:
             return_data["warnings"] = warnings
 
