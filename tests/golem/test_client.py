@@ -29,6 +29,7 @@ from golem.core.deferred import sync_wait
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.network.p2p.node import Node
+from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
@@ -129,46 +130,30 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_docker_manager=False,
             use_monitor=False
         )
-        assert self.client.get_incomes_list() == \
-            self.client.transaction_system.get_incoming_payments.return_value
-
-    def test_withdraw_testnet(self, *_):
-        keys_auth = Mock()
-        keys_auth._private_key = "a" * 32
-        self.client = Client(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=ClientConfigDescriptor(),
-            keys_auth=keys_auth,
-            database=Mock(),
-            connect_to_known_hosts=False,
-            use_docker_manager=False,
-            use_monitor=False,
-        )
-        with self.assertRaisesRegex(Exception, 'Withdrawals.*disabled'):
-            self.client.withdraw('123', '0xdead', 'ETH')
+        self.client.get_incomes_list()
+        self.client.transaction_system.get_incomes_list.\
+            assert_called_once_with()
 
     def test_withdraw(self, *_):
         keys_auth = Mock()
         keys_auth._private_key = "a" * 32
 
         # golem.client has already been imported
-        with patch('golem.client.ENABLE_WITHDRAWALS', True):
-            with patch('golem.client.EthereumTransactionSystem') as ets:
-                ets.return_value = ets
-                ets.return_value.eth_base_for_batch_payment.return_value = 0
-                self.client = Client(
-                    datadir=self.path,
-                    app_config=Mock(),
-                    config_desc=ClientConfigDescriptor(),
-                    keys_auth=keys_auth,
-                    database=Mock(),
-                    connect_to_known_hosts=False,
-                    use_docker_manager=False,
-                    use_monitor=False,
-                )
-                self.client.withdraw('123', '0xdead', 'ETH')
-                ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH')
+        with patch('golem.client.EthereumTransactionSystem') as ets:
+            ets.return_value = ets
+            ets.return_value.eth_base_for_batch_payment.return_value = 0
+            self.client = Client(
+                datadir=self.path,
+                app_config=Mock(),
+                config_desc=ClientConfigDescriptor(),
+                keys_auth=keys_auth,
+                database=Mock(),
+                connect_to_known_hosts=False,
+                use_docker_manager=False,
+                use_monitor=False,
+            )
+            self.client.withdraw('123', '0xdead', 'ETH')
+            ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH')
 
     def test_get_withdraw_gas_cost(self, *_):
         keys_auth = Mock()
@@ -204,20 +189,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         payment_address = self.client.get_payment_address()
         self.assertIsInstance(payment_address, str)
         self.assertTrue(len(payment_address) > 0)
-
-    def test_sync(self, *_):
-        self.client = Client(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=ClientConfigDescriptor(),
-            keys_auth=(Mock(_private_key='a' * 32)),
-            database=Mock(),
-            connect_to_known_hosts=False,
-            use_docker_manager=False,
-            use_monitor=False
-        )
-        self.client.sync()
-        self.assertTrue(self.client.transaction_system.sync.called)
 
     def test_remove_resources(self, *_):
         self.client = Client(
@@ -570,7 +541,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
     @patch('golem.client.Trust', autospec=True)
     def test_check_payments(self, trust, *_):
 
-        client = Client(
+        self.client = client = Client(
             datadir=self.path,
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
@@ -651,6 +622,82 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.delete_task = Mock()
         self.client.clean_old_tasks()
         self.client.delete_task.assert_called_once_with('old_task')
+
+    def test_get_mask_for_task(self, *_):
+        client = Client(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
+            database=Mock(),
+            connect_to_known_hosts=False,
+            use_docker_manager=False,
+            use_monitor=False
+        )
+
+        def _check(  # pylint: disable=too-many-arguments
+                num_tasks=0,
+                network_size=0,
+                mask_size_factor=1.0,
+                min_num_workers=0,
+                perf_rank=0.0,
+                exp_desired_workers=0,
+                exp_potential_workers=0):
+
+            client.config_desc.initial_mask_size_factor = mask_size_factor
+            client.config_desc.min_num_workers_for_mask = min_num_workers
+
+            with patch.object(client, 'p2pservice', spec=P2PService) as p2p, \
+                    patch.object(client, 'task_server', spec=TaskServer), \
+                    patch('golem.client.Mask') as mask:
+
+                p2p.get_estimated_network_size.return_value = network_size
+                p2p.get_performance_percentile_rank.return_value = perf_rank
+
+                task = MagicMock()
+                task.get_total_tasks.return_value = num_tasks
+
+                client._get_mask_for_task(task)
+
+                mask.get_mask_for_task.assert_called_once_with(
+                    desired_num_workers=exp_desired_workers,
+                    potential_num_workers=exp_potential_workers
+                )
+
+        _check()
+
+        _check(
+            num_tasks=1,
+            exp_desired_workers=1)
+
+        _check(
+            num_tasks=2,
+            mask_size_factor=2,
+            exp_desired_workers=4)
+
+        _check(
+            min_num_workers=10,
+            exp_desired_workers=10)
+
+        _check(
+            num_tasks=2,
+            mask_size_factor=5,
+            min_num_workers=4,
+            exp_desired_workers=10)
+
+        _check(
+            network_size=1,
+            exp_potential_workers=1)
+
+        _check(
+            network_size=1,
+            perf_rank=1,
+            exp_potential_workers=0)
+
+        _check(
+            network_size=10,
+            perf_rank=0.2,
+            exp_potential_workers=8)
 
 
 class TestDoWorkService(TestWithReactor):
@@ -931,7 +978,10 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             {"price": 150,
              "subtask_time": 2.5,
              "num_subtasks": 5}
-        ) == 1875
+        ) == {
+            "GNT": 1875.0,
+            "ETH": 0.0001,
+        }
 
     @patch('golem.client.get_resources_for_task')
     def test_enqueue_new_task_from_type(self, *_):
@@ -1117,7 +1167,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                       side_effect=raise_exc), \
                 self.assertRaisesRegex(Exception, 'Test exception'):
             sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
-
 
     def test_config_changed(self, *_):
         c = self.client

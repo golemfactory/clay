@@ -299,6 +299,10 @@ class Task(abc.ABC):
         return '<Task: %r>' % (self.header,)
 
     @property
+    def price(self) -> int:
+        return self.subtask_price * self.get_total_tasks()
+
+    @property
     def subtask_price(self):
         from golem.task import taskkeeper
         return taskkeeper.compute_subtask_value(

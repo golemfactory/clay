@@ -8,9 +8,11 @@ import os
 import random
 import sys
 import tempfile
-import threading
 import time
+import typing
 import unittest
+
+from pathlib import Path
 
 import golem_messages
 
@@ -21,13 +23,17 @@ from golem_messages import utils as msg_utils
 from golem_messages.message.base import Message
 from golem_messages.message import concents as concent_msg
 
+from golem_sci import (
+    new_sci_rpc, SmartContractsInterface, JsonTransactionsStorage)
+
+from golem.config.environments.testnet import EthereumConfig
+
 from golem.core import variables
-from golem.database import Database
-from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.concent import client
+from golem.utils import privkeytoaddr
 
-from golem.transactions.ethereum import ethereumtransactionsystem as libets
-
+from golem.transactions.ethereum.ethereumtransactionsystem import (
+    tETH_faucet_donate)
 
 logger = logging.getLogger(__name__)
 
@@ -194,8 +200,6 @@ class ConcentBaseTest:
         )
         self.assertEqual(ftt.operation, operation)
 
-    # pylint:enable=no-member
-
     @staticmethod
     def _log_concent_response(response):
         logger.debug(
@@ -204,77 +208,133 @@ class ConcentBaseTest:
         )
 
 
-class ETSBaseTest(ConcentBaseTest, unittest.TestCase):
+class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
     """
     Base test providing instances of EthereumTransactionSystem
     for the provider and the requestor
     """
-    requestor_ets = None
-    provider_ets = None
 
     def setUp(self):
-        super(ETSBaseTest, self).setUp()
+        super(SCIBaseTest, self).setUp()
         random.seed()
-        td_requestor = tempfile.mkdtemp()
-        td_provider = tempfile.mkdtemp()
 
-        self.database_requestor = Database(
-            db, fields=DB_FIELDS, models=DB_MODELS, db_dir=td_requestor)
-        self.database_provider = Database(
-            db, fields=DB_FIELDS, models=DB_MODELS, db_dir=td_provider)
-        self.requestor_ets = libets.EthereumTransactionSystem(
-            datadir=td_requestor,
-            node_priv_key=self.requestor_keys.raw_privkey,
+        self.transaction_timeout = datetime.timedelta(seconds=300)
+        self.sleep_interval = 15
+
+        requestor_storage = JsonTransactionsStorage(
+            Path(tempfile.mkdtemp()) / 'tx.json')
+        provider_storage = JsonTransactionsStorage(
+            Path(tempfile.mkdtemp()) / 'tx.json')
+
+        self.requestor_eth_addr = privkeytoaddr(self.requestor_keys.raw_privkey)
+        self.provider_eth_addr = privkeytoaddr(self.provider_keys.raw_privkey)
+
+        self.requestor_sci = new_sci_rpc(
+            storage=requestor_storage,
+            rpc=EthereumConfig.NODE_LIST[0],
+            address=self.requestor_eth_addr,
+            tx_sign=lambda tx: tx.sign(self.requestor_keys.raw_privkey),
+            chain=EthereumConfig.CHAIN,
         )
-        self.provider_ets = libets.EthereumTransactionSystem(
-            datadir=td_provider,
-            node_priv_key=self.provider_keys.raw_privkey,
+        self.requestor_sci.REQUIRED_CONFS = 1
+        self.provider_sci = new_sci_rpc(
+            storage=provider_storage,
+            rpc=EthereumConfig.NODE_LIST[0],
+            address=self.provider_eth_addr,
+            tx_sign=lambda tx: tx.sign(self.provider_keys.raw_privkey),
+            chain=EthereumConfig.CHAIN,
         )
+        self.provider_sci.REQUIRED_CONFS = 1
 
-    @staticmethod
-    def wait_for_gntb(ets: libets.EthereumTransactionSystem):
-        sys.stderr.write('Waiting for GNTB...\n')
-        while ets._gntb_balance <= 0:
-            try:
-                ets._run()
-            except ValueError as e:
-                # web3 will raise ValueError if 'error' is present
-                # in response from geth
-                sys.stderr.write('E: {}\n'.format(e))
-            sys.stderr.write(
-                'Still waiting. GNT: {:22} GNTB: {:22} ETH: {:17}\n'.format(
-                    ets._gnt_balance,
-                    ets._gntb_balance,
-                    ets._eth_balance,
-                ),
-            )
-            time.sleep(10)
+    def retry_until_timeout(
+            self,
+            condition: typing.Callable,
+            timeout_message: str = '',
+            timeout: typing.Optional[datetime.timedelta]=None,
+            sleep_interval: typing.Optional[float]=None,
+            sleep_action: typing.Optional[typing.Callable]=
+            lambda: sys.stderr.write('.\n'),
+    ):
+        if sleep_interval is None:
+            sleep_interval = self.sleep_interval
 
-    def put_deposit(self, ets: libets.EthereumTransactionSystem, amount: int):
+        if timeout is None:
+            timeout = self.transaction_timeout
+
         start = datetime.datetime.now()
-        self.wait_for_gntb(ets)
 
-        transaction_processed = threading.Event()
+        while condition():
+            if sleep_action:
+                sleep_action()
+            time.sleep(sleep_interval)  # type: ignore
+            if start + timeout < datetime.datetime.now():  # type: ignore
+                raise TimeoutError(timeout_message)
+        return start, datetime.datetime.now()
 
-        def _callback():
-            transaction_processed.set()
+    def wait_for_gntb(self, sci: SmartContractsInterface):
+        sys.stderr.write('Waiting for GNT\n')
+        sci.request_gnt_from_faucet()
+        sci.open_gate()
 
-        ets.concent_deposit(
-            required=amount,
-            expected=amount,
-            reserved=0,
-            cb=_callback,
+        self.retry_until_timeout(
+            lambda: (sci.get_gnt_balance(sci.get_eth_address()) == 0 or
+                     sci.get_gate_address() is None),
+            "Acquiring GNT timed out",
         )
-        while not transaction_processed.is_set():
-            sys.stderr.write('.')
-            sys.stderr.flush()
-            ets._sci._monitor_blockchain_single()
-            time.sleep(15)
 
-        sys.stderr.write("\nDeposit confirmed in {}\n".format(
-            datetime.datetime.now()-start))
+        sys.stderr.write('Got GNT, waiting for GNTB...\n')
 
-        if ets.concent_balance() < amount:
+        sci.transfer_gnt(sci.get_gate_address(),
+                         sci.get_gnt_balance(sci.get_eth_address()))
+        sci.transfer_from_gate()
+
+        self.retry_until_timeout(
+            lambda: sci.get_gntb_balance(sci.get_eth_address()) == 0,
+            "GNTB conversion timed out",
+        )
+
+        sys.stderr.write('Got GNTB...\n')
+
+    def put_deposit(self, sci: SmartContractsInterface, amount: int):
+        # 0) get tETH from faucet
+        # 1) -> request GNT from faucet `request_gnt_from_faucet`
+        # 2) `on_transaction_complete`
+        # 3) GNTConverter -> convert + is_converting
+        # 4) sci.get_gntb_balance
+        # 5) sci.concent_deposit + `on_transaction_confirmed`
+
+        sys.stderr.write('Calling tETH faucet...\n')
+        self.retry_until_timeout(
+            lambda: not tETH_faucet_donate(sci.get_eth_address()),
+            "Faucet timed out",
+        )
+
+        sys.stderr.write('Waiting for tETH...\n')
+        self.retry_until_timeout(
+            lambda: sci.get_eth_balance(sci.get_eth_address()) == 0,
+            "Acquiring tETH timed out",
+        )
+
+        self.wait_for_gntb(sci)
+
+        deposit = False
+
+        def deposit_confirmed(_):
+            nonlocal deposit
+            deposit = True
+
+        tx_hash = sci.deposit_payment(amount)
+        sci.on_transaction_confirmed(tx_hash, deposit_confirmed)
+
+        self.retry_until_timeout(
+            lambda: not deposit,
+            "Deposit timed out.",
+            sleep_interval=1,
+        )
+
+        sys.stderr.write("\nDeposit confirmed\n")
+
+        if sci.get_deposit_value(sci.get_eth_address()) < amount:
             raise RuntimeError("Deposit failed")
 
     def requestor_put_deposit(self, price: int):
@@ -282,8 +342,8 @@ class ETSBaseTest(ConcentBaseTest, unittest.TestCase):
             # We'll use subtask price. Total number of subtasks is unknown
             price,
         )
-        return self.put_deposit(self.requestor_ets, amount)
+        return self.put_deposit(self.requestor_sci, amount)
 
     def provider_put_deposit(self, price: int):
         amount, _ = helpers.provider_deposit_amount(price)
-        return self.put_deposit(self.provider_ets, amount)
+        return self.put_deposit(self.provider_sci, amount)
