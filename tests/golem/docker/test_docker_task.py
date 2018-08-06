@@ -96,15 +96,15 @@ class DockerTaskTestCase(
         ctd['deadline'] = timeout_to_deadline(timeout)
 
         # Create the computing node
-        self.node = Node(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=ClientConfigDescriptor(),
-            use_docker_manager=False,
-            concent_variant=variables.CONCENT_CHOICES['disabled'],
-        )
-        with patch('golem.client.EthereumTransactionSystem'):
-            self.node.client = self.node._client_factory(Mock())
+        with patch('golem.node.EthereumTransactionSystem'):
+            self.node = Node(
+                datadir=self.path,
+                app_config=Mock(),
+                config_desc=ClientConfigDescriptor(),
+                use_docker_manager=False,
+                concent_variant=variables.CONCENT_CHOICES['disabled'],
+            )
+        self.node.client = self.node._client_factory(Mock())
         self.node.client.start = Mock()
         self.node._run()
 
