@@ -114,8 +114,8 @@ class BlenderReferenceGenerator:
                                  resolution[0]))
         bottom_p = math.floor(numpy.float32(image_border[2]) *
                               numpy.float32(resolution[1]) +
-                              BlenderReferenceGenerator.get_pixel_centers_offset
-                                  (resolution[1]))
+                              BlenderReferenceGenerator.
+                              get_pixel_centers_offset(resolution[1]))
         top_p = math.floor(numpy.float32(image_border[3]) *
                            numpy.float32(resolution[1]) +
                            BlenderReferenceGenerator.get_pixel_centers_offset(
