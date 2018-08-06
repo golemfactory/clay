@@ -1,17 +1,21 @@
 import ipaddress
+import itertools
 import logging
+import socket
 import random
 import time
 from collections import deque
 from threading import Lock
+from typing import Callable, Any, Dict
 
 from golem_messages import message
+from scipy.stats import stats
 
 from golem.config.active import P2P_SEEDS
 from golem.core import simplechallenge
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.diag.service import DiagnosticsProvider
-from golem.model import KnownHosts, MAX_STORED_HOSTS, db
+from golem.model import KnownHosts, db
 from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
 from golem.network.transport import tcpnetwork
 from golem.network.transport import tcpserver
@@ -37,10 +41,14 @@ HISTORY_LEN = 5  # How many entries from challenge history should we remember
 TASK_INTERVAL = 10
 PEERS_INTERVAL = 30
 FORWARD_INTERVAL = 2
+RANDOM_DISCONNECT_INTERVAL = 5 * 60
+RANDOM_DISCONNECT_FRACTION = 0.1
+
+# Indicates how many KnownHosts can be stored in the DB
+MAX_STORED_HOSTS = 100
 
 
-class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
-
+class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # noqa P2P will be rewritten s00n pylint: disable=too-many-instance-attributes, too-many-public-methods
     def __init__(
             self,
             node,
@@ -77,6 +85,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.suggested_conn_reverse = {}
         self.gossip_keeper = GossipManager()
         self.manager_session = None
+        self.metadata_providers: Dict[str, Callable[[], Any]] = {}
 
         # Useful config options
         self.node_name = self.config_desc.node_name
@@ -104,15 +113,18 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
 
         try:
             self.__remove_redundant_hosts_from_db()
-            self.__sync_seeds()
+            self._sync_seeds()
         except Exception as exc:
             logger.error("Error reading seed addresses: {}".format(exc))
 
         # Timers
-        self.last_peers_request = time.time()
-        self.last_tasks_request = time.time()
-        self.last_refresh_peers = time.time()
-        self.last_forward_request = time.time()
+        now = time.time()
+        self.last_peers_request = now
+        self.last_tasks_request = now
+        self.last_refresh_peers = now
+        self.last_forward_request = now
+        self.last_random_disconnect = now
+        self.last_seeds_sync = time.time()
 
         self.last_messages = []
         random.seed()
@@ -122,12 +134,14 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         self.node.p2p_prv_port = port
 
     def connect_to_network(self):
+        # pylint: disable=singleton-comparison
         self.connect_to_seeds()
         if not self.connect_to_known_hosts:
             return
 
         for host in KnownHosts.select() \
-                .where(KnownHosts.is_seed == False):  # noqa
+                .where(KnownHosts.is_seed == False)\
+                .limit(self.config_desc.opt_peer_num):  # noqa
 
             ip_address = host.ip_address
             port = host.port
@@ -186,25 +200,22 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
                 message.Disconnect.REASON.NoMoreMessages
             )
 
-    def add_known_peer(self, node, ip_address, port):
+    def add_known_peer(self, node, ip_address, port, metadata=None):
         is_seed = node.is_super_node() if node else False
 
         try:
             with db.transaction():
-                KnownHosts.delete().where(
-                    (KnownHosts.ip_address == ip_address)
-                    & (KnownHosts.port == port)
-                ).execute()
-
-                KnownHosts.insert(
+                host, _ = KnownHosts.get_or_create(
                     ip_address=ip_address,
                     port=port,
-                    last_connected=time.time(),
-                    is_seed=is_seed
-                ).execute()
+                    defaults={'is_seed': is_seed}
+                )
+                host.last_connected = time.time()
+                host.metadata = metadata or {}
+                host.save()
 
             self.__remove_redundant_hosts_from_db()
-            self.__sync_seeds()
+            self._sync_seeds()
 
         except Exception as err:
             logger.error(
@@ -245,9 +256,18 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             self._sync_forward_requests()
 
         self.__remove_old_peers()
+
+        if now - self.last_random_disconnect > RANDOM_DISCONNECT_INTERVAL:
+            self.last_random_disconnect = now
+            self._disconnect_random_peers()
+
         self._sync_pending()
+
+        if now - self.last_seeds_sync > self.reconnect_with_seed_threshold:
+            self._sync_seeds()
+
         if len(self.peers) == 0:
-            delta = time.time() - self.last_time_tried_connect_with_seed
+            delta = now - self.last_time_tried_connect_with_seed
             if delta > self.reconnect_with_seed_threshold:
                 self.connect_to_seeds()
 
@@ -262,6 +282,24 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         size = self.peer_keeper.get_estimated_network_size()
         logger.info('Estimated network size: %r', size)
         return size
+
+    @staticmethod
+    def get_performance_percentile_rank(perf: float, env_id: str) -> float:
+        # Hosts which don't support the given env at all shouldn't be counted
+        # even if perf equals 0. Therefore -1 is the default value.
+        hosts_perf = [
+            host.metadata['performance'].get(env_id, -1.0)
+            for host in KnownHosts.select()
+            if 'performance' in host.metadata
+        ]
+        if not hosts_perf:
+            logger.warning('Cannot compute percentile rank. No host '
+                           'performance info is available')
+            return 1.0
+
+        rank = stats.percentileofscore(hosts_perf, perf, kind='strict') / 100
+        logger.info(f'Performance for env `{env_id}`: rank({perf}) = {rank}')
+        return rank
 
     def ping_peers(self, interval):
         """ Send ping to all peers with whom this peer has open connection
@@ -437,9 +475,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         Change configuration for resource server.
         :param ClientConfigDescriptor config_desc: new config descriptor
         """
-
-        is_node_name_changed = self.node_name != config_desc.node_name
-
         tcpserver.TCPServer.change_config(self, config_desc)
         self.node_name = config_desc.node_name
 
@@ -565,6 +600,17 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
             self._prepend_address(socket_addresses, socket_address)
 
         return socket_addresses[:MAX_CONNECT_SOCKET_ADDRESSES]
+
+    def add_metadata_provider(self, name: str, provider: Callable[[], Any]):
+        self.metadata_providers[name] = provider
+
+    def remove_metadata_provider(self, name: str) -> None:
+        self.metadata_providers.pop(name, None)
+
+    def get_node_metadata(self) -> Dict[str, Any]:
+        """ Get metadata about node to be sent in `Hello` message """
+        return {name: provider()
+                for name, provider in self.metadata_providers.items()}
 
     # Kademlia functions
     #############################
@@ -766,8 +812,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         return self.gossip_keeper.pop_gossips()
 
     def send_stop_gossip(self):
-        """ Send stop gossip message to all peers
-        """
+        """ Send stop gossip message to all peers """
         for peer in list(self.peers.values()):
             peer.send_stop_gossip()
 
@@ -920,32 +965,54 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         if peers_to_find:
             self.send_find_nodes(peers_to_find)
 
-    def __sync_seeds(self, known_hosts=None):
+    def _sync_seeds(self, known_hosts=None):
+        self.last_seeds_sync = time.time()
         if not known_hosts:
             known_hosts = KnownHosts.select().where(KnownHosts.is_seed)
 
-        self.seeds = {(x.ip_address, x.port) for x in known_hosts if x.is_seed}
-        self.seeds.update(self.bootstrap_seeds)
+        def _resolve_hostname(host, port):
+            try:
+                port = int(port)
+            except ValueError:
+                logger.info(
+                    "Invalid seed: %s:%s. Ignoring.",
+                    host,
+                    port,
+                )
+                return
+            if not (host and port):
+                logger.debug(
+                    "Ignoring incomplete seed. host=%r port=%r",
+                    host,
+                    port,
+                )
+                return
+            try:
+                for addrinfo in socket.getaddrinfo(host, port):
+                    yield addrinfo[4]  # (ip, port)
+            except OSError as e:
+                logger.error(
+                    "Can't resolve %s:%s. %s",
+                    host,
+                    port,
+                    e,
+                )
+
+        self.seeds = set()
 
         ip_address = self.config_desc.seed_host
         port = self.config_desc.seed_port
-        if ip_address and port:
-            self.seeds.add((ip_address, port))
 
-        for config_seed in self.config_desc.seeds.split(None):
-            try:
-                ip_address, port = config_seed.split(':', 1)
-                port = int(port)
-                # Verify that ip_address is valid.
-                # Throws ipaddress.AddressValueError.
-                ipaddress.ip_address(ip_address)
-            except ValueError:
-                logger.info(
-                    "Invalid seed from config: %r. Ignoring.",
-                    config_seed
-                )
-                continue
-            self.seeds.add((ip_address, port))
+        for hostport in itertools.chain(
+                ((kh.ip_address, kh.port) for kh in known_hosts if kh.is_seed),
+                self.bootstrap_seeds,
+                ((ip_address, port), ),
+                (
+                    cs.split(':', 1) for cs in self.config_desc.seeds.split(
+                        None,
+                    )
+                )):
+            self.seeds.update(_resolve_hostname(*hostport))
 
     def _get_next_random_seed(self):
         # this loop won't execute more than twice
@@ -960,6 +1027,20 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):
         for node in self.peer_keeper.sessions_to_end:
             self.remove_peer_by_id(node.key)
         self.peer_keeper.sessions_to_end = []
+
+    def _disconnect_random_peers(self) -> None:
+        peers = list(self.peers.values())
+        if len(peers) < self.config_desc.opt_peer_num:
+            return
+
+        logger.info('Disconnecting random peers')
+        for peer in random.sample(
+                peers, k=int(len(peers) * RANDOM_DISCONNECT_FRACTION)):
+            logger.info('Disconnecting peer %r', peer.key_id)
+            self.remove_peer(peer)
+            peer.disconnect(
+                message.Disconnect.REASON.Refresh
+            )
 
     @staticmethod
     def __remove_redundant_hosts_from_db():

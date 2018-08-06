@@ -13,6 +13,7 @@ from pathlib import Path
 from threading import Lock
 from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
+from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -22,24 +23,22 @@ from twisted.internet.defer import (
 
 import golem
 from apps.appsmanager import AppsManager
+from apps.core.task.coretask import CoreTask
 from apps.rendering.task import framerenderingtask
 from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
                              PAYMENT_CHECK_INTERVAL, AppConfig)
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
-from golem.config.active import (
-    ENABLE_WITHDRAWALS,
-    ACTIVE_NET,
-    ETHEREUM_NODE_LIST,
-    FALLBACK_NODE_LIST,
-    ETHEREUM_CHAIN,
-    ETHEREUM_FAUCET_ENABLED,
-)
+from golem.config.active import EthereumConfig
 from golem.config.presets import HardwarePresetsMixin
 from golem.core import variables
 from golem.core.async import AsyncRequest, async_run
-from golem.core.common import get_timestamp_utc, to_unicode, \
-    string_to_timeout, \
-    deadline_to_timeout
+from golem.core.common import (
+    deadline_to_timeout,
+    datetime_to_timestamp_utc,
+    get_timestamp_utc,
+    string_to_timeout,
+    to_unicode,
+)
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import KeysAuth
@@ -82,6 +81,7 @@ from golem.tools import filelock
 from golem.tools.talkback import enable_sentry_logger
 from golem.transactions.ethereum.ethereumtransactionsystem import \
     EthereumTransactionSystem
+from golem.transactions.ethereum.exceptions import NotEnoughFunds
 from golem.transactions.ethereum.fundslocker import FundsLocker
 
 
@@ -191,18 +191,13 @@ class Client(HardwarePresetsMixin):
 
         self.ranking = Ranking(self)
 
-        if geth_address:
-            geth_addresses = [geth_address]
-        else:
-            geth_addresses = ETHEREUM_NODE_LIST
-            random.shuffle(geth_addresses)
-            geth_addresses += FALLBACK_NODE_LIST
         self.transaction_system = EthereumTransactionSystem(
-            datadir,
+            Path(datadir) / 'transaction_system',
             self.keys_auth._private_key,
-            geth_addresses,
-            ETHEREUM_CHAIN,
-            ETHEREUM_FAUCET_ENABLED,
+            EthereumConfig,
+        )
+        self.transaction_system.backwards_compatibility_tx_storage(
+            Path(datadir),
         )
         self.transaction_system.start()
 
@@ -268,11 +263,22 @@ class Client(HardwarePresetsMixin):
             'taskmanager_listen (sender: %r, signal: %r, event: %r, args: %r)',
             sender, signal, event, kwargs
         )
-        self._publish(Task.evt_task_status, kwargs['task_id'])
+
+        op = kwargs['op'] if 'op' in kwargs else None
+
+        if op is not None and op.subtask_related():
+            self._publish(Task.evt_subtask_status, kwargs['task_id'],
+                          kwargs['subtask_id'], op.value)
+        else:
+            op_class_name: str = op.__class__.__name__ \
+                                 if op is not None else None
+            op_value: int = op.value if op is not None else None
+            self._publish(Task.evt_task_status, kwargs['task_id'],
+                          op_class_name, op_value)
 
     @report_calls(Component.client, 'sync')
     def sync(self):
-        self.transaction_system.sync()
+        pass
 
     @report_calls(Component.client, 'start', stage=Stage.pre)
     def start(self):
@@ -326,6 +332,8 @@ class Client(HardwarePresetsMixin):
             self.keys_auth,
             connect_to_known_hosts=self.connect_to_known_hosts
         )
+        self.p2pservice.add_metadata_provider(
+            'performance', self.environments_manager.get_performance_values)
 
         self.task_server = TaskServer(
             self.node,
@@ -563,19 +571,25 @@ class Client(HardwarePresetsMixin):
         else:
             task = task_dict
 
+        task_id = task.header.task_id
         self.funds_locker.lock_funds(task)
 
         if self.concent_service.enabled:
             min_amount, opt_amount = msg_helpers.requestor_deposit_amount(
                 task.price,
             )
-            # Could raise golem.transactions.ethereum.exceptions.NotEnoughFunds
-            self.transaction_system.concent_deposit(
-                required=min_amount,
-                expected=opt_amount,
-            )
+            # This is a bandaid solution for unlocking funds when task creation
+            # fails. This case is most common but, the better way it to always
+            # unlock them when the task fails regardless of the reason.
+            try:
+                self.transaction_system.concent_deposit(
+                    required=min_amount,
+                    expected=opt_amount,
+                )
+            except NotEnoughFunds:
+                self.funds_locker.remove_task(task_id)
+                raise
 
-        task_id = task.header.task_id
         logger.info('Enqueue new task "%r"', task_id)
         files = get_resources_for_task(resource_header=None,
                                        resource_type=ResourceType.HASHES,
@@ -587,23 +601,13 @@ class Client(HardwarePresetsMixin):
             task.header.resource_size = path.getsize(package_path)
 
             if self.config_desc.net_masking_enabled:
-                num_workers = max(
-                    task.get_total_tasks() *
-                    self.config_desc.initial_mask_size_factor,
-                    self.config_desc.min_num_workers_for_mask)
-                task.header.mask = Mask.get_mask_for_task(
-                    desired_num_workers=num_workers,
-                    network_size=self.p2pservice.get_estimated_network_size()
-                )
-                logger.info(
-                    f'Task {task_id} '
-                    f'initial mask size: {task.header.mask.num_bits} '
-                    f'expected number of providers: {num_workers}'
-                )
+                task.header.mask = self._get_mask_for_task(task)
             else:
                 task.header.mask = Mask()
 
-            task_manager.add_new_task(task)
+            estimated_fee = self.transaction_system.eth_for_batch_payment(
+                task.total_tasks)
+            task_manager.add_new_task(task, estimated_fee=estimated_fee)
 
             client_options = self.task_server.get_share_options(task_id, None)
             client_options.timeout = deadline_to_timeout(task.header.deadline)
@@ -643,6 +647,34 @@ class Client(HardwarePresetsMixin):
         _package = self.resource_server.create_resource_package(files, task_id)
         _package.addCallbacks(package_created, error)
         return _result
+
+    def _get_mask_for_task(self, task: CoreTask) -> Mask:
+        desired_num_workers = max(
+            task.get_total_tasks() *
+            self.config_desc.initial_mask_size_factor,
+            self.config_desc.min_num_workers_for_mask)
+
+        assert isinstance(self.p2pservice, P2PService)
+        assert isinstance(self.task_server, TaskServer)
+
+        network_size = self.p2pservice.get_estimated_network_size()
+        min_perf = self.task_server.get_min_performance_for_task(task)
+        perf_rank = self.p2pservice.get_performance_percentile_rank(
+            min_perf, task.header.environment)
+        potential_num_workers = int(network_size * (1 - perf_rank))
+
+        mask = Mask.get_mask_for_task(
+            desired_num_workers=desired_num_workers,
+            potential_num_workers=potential_num_workers
+        )
+        logger.info(
+            f'Task {task.header.task_id} '
+            f'initial mask size: {mask.num_bits} '
+            f'expected number of providers: {desired_num_workers} '
+            f'potential number of providers: {potential_num_workers}'
+        )
+
+        return mask
 
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
@@ -923,6 +955,12 @@ class Client(HardwarePresetsMixin):
         subtask_ids = list(task_state.subtask_states.keys())
         task_dict['cost'], task_dict['fee'] = \
             self.transaction_system.get_total_payment_for_subtasks(subtask_ids)
+
+        # Convert to string because RPC serializer fails on big numbers
+        for k in ('cost', 'fee', 'estimated_cost', 'estimated_fee'):
+            if task_dict[k] is not None:
+                task_dict[k] = str(task_dict[k])
+
         return task_dict
 
     def get_tasks(self, task_id: Optional[str] = None) \
@@ -1031,7 +1069,22 @@ class Client(HardwarePresetsMixin):
         return self.transaction_system.get_payments_list()
 
     def get_incomes_list(self):
-        return self.transaction_system.get_incoming_payments()
+        incomes = self.transaction_system.get_incomes_list()
+
+        def item(o):
+            status = "confirmed" if o.transaction else "awaiting"
+
+            return {
+                "subtask": to_unicode(o.subtask),
+                "payer": to_unicode(o.sender_node),
+                "value": to_unicode(o.value),
+                "status": to_unicode(status),
+                "transaction": to_unicode(o.transaction),
+                "created": datetime_to_timestamp_utc(o.created_date),
+                "modified": datetime_to_timestamp_utc(o.modified_date)
+            }
+
+        return [item(income) for income in incomes]
 
     def get_withdraw_gas_cost(
             self,
@@ -1051,17 +1104,14 @@ class Client(HardwarePresetsMixin):
             amount: Union[str, int],
             destination: str,
             currency: str) -> List[str]:
-
-        if not ENABLE_WITHDRAWALS:
-            raise Exception("Withdrawals are disabled on {}".format(ACTIVE_NET))
-
         if isinstance(amount, str):
             amount = int(amount)
-        return self.transaction_system.withdraw(
+        # It returns a list for backwards compatibility with Electron.
+        return [self.transaction_system.withdraw(
             amount,
             destination,
             currency,
-        )
+        )]
 
     # It's defined here only for RPC exposure in
     # golem.rpc.mapping.rpcmethodnames
@@ -1274,11 +1324,17 @@ class Client(HardwarePresetsMixin):
         taskpreset.delete_task_preset(task_type, preset_name)
 
     def get_estimated_cost(self, task_type, options):
+        if self.task_server is None:
+            raise Exception('Cannot estimate costs')
         options['price'] = float(options['price'])
         options['subtask_time'] = float(options['subtask_time'])
         options['num_subtasks'] = int(options['num_subtasks'])
-        return self.task_server.task_manager.get_estimated_cost(task_type,
-                                                                options)
+        return {
+            'GNT': self.task_server.task_manager.get_estimated_cost(task_type,
+                                                                    options),
+            'ETH': float(self.transaction_system.eth_for_batch_payment(
+                options['num_subtasks']) / denoms.ether),
+        }
 
     def get_performance_values(self):
         return self.environments_manager.get_performance_values()

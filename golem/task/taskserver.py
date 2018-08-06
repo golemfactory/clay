@@ -25,10 +25,9 @@ from golem.network.transport.tcpserver import (
 from golem.ranking.helper.trust import Trust
 from golem.task.acl import get_acl
 from golem.task.benchmarkmanager import BenchmarkManager
-from golem.task.taskbase import TaskHeader
+from golem.task.taskbase import TaskHeader, Task
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
-from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
 from golem.utils import decode_hex
 
 from .result.resultmanager import ExtractedPackage
@@ -434,11 +433,11 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def accept_result(self, subtask_id, account_info: EthAccountInfo):
+    def accept_result(self, subtask_id, key_id, eth_address: str):
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
             self.max_trust)
-        Trust.COMPUTED.increase(account_info.key_id, mod)
+        Trust.COMPUTED.increase(key_id, mod)
 
         task_id = self.task_manager.get_task_id(subtask_id)
         value = self.task_manager.get_value(subtask_id)
@@ -447,14 +446,11 @@ class TaskServer(
             logger.info("Invaluable subtask: %r value: %r", subtask_id, value)
             return
 
-        if not account_info.eth_account.address:
-            logger.warning("Unknown payment address of %r (%r). Subtask: %r",
-                           account_info.node_name, account_info.key_id,
-                           subtask_id)
-            return
-
         payment = self.client.transaction_system.add_payment_info(
-            task_id, subtask_id, value, account_info)
+            subtask_id,
+            value,
+            eth_address,
+        )
         self.client.funds_locker.remove_subtask(task_id)
         logger.debug('Result accepted for subtask: %s Created payment: %r',
                      subtask_id, payment)
@@ -491,11 +487,11 @@ class TaskServer(
             task_id)
         Trust.PAYMENT.decrease(node_id, self.max_trust)
 
-    def reject_result(self, subtask_id, account_info):
+    def reject_result(self, subtask_id, key_id):
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
             self.max_trust)
-        Trust.WRONG_COMPUTED.decrease(account_info.key_id, mod)
+        Trust.WRONG_COMPUTED.decrease(key_id, mod)
 
     def unpack_delta(self, dest_dir, delta, task_id):
         self.client.resource_server.unpack_delta(dest_dir, delta, task_id)
@@ -579,6 +575,10 @@ class TaskServer(
     def remove_forwarded_session_request(self, key_id):
         return self.forwarded_session_requests.pop(key_id, None)
 
+    def get_min_performance_for_task(self, task: Task) -> float:
+        env = self.get_environment_by_id(task.header.environment)
+        return env.get_min_accepted_performance()
+
     def should_accept_provider(  # noqa pylint: disable=too-many-arguments,too-many-return-statements,unused-argument
             self,
             node_id,
@@ -595,8 +595,7 @@ class TaskServer(
             return False
 
         task = self.task_manager.tasks[task_id]
-        env = self.get_environment_by_id(task.header.environment)
-        min_accepted_perf = env.get_min_accepted_performance()
+        min_accepted_perf = self.get_min_performance_for_task(task)
 
         if min_accepted_perf > int(provider_perf):
             logger.info(f'insufficient provider performance: {provider_perf}'
