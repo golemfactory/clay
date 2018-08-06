@@ -103,8 +103,17 @@ class EthereumTransactionSystem(LoopingCallService):
             privkey: bytes,
             password: str) -> None:
         keystore_path = self._datadir / self.KEYSTORE_FILENAME
+
+        # Sanity check that this is in fact still the same key
         if keystore_path.exists():
+            self.set_password(password)
+            try:
+                if privkey != self._privkey:
+                    raise Exception("Private key is not backward compatible")
+            finally:
+                self._privkey = b''
             return
+
         log.info("Initializing keystore with backward compatible value")
         keystore = create_keyfile_json(
             privkey,

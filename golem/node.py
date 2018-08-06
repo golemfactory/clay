@@ -153,7 +153,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
                 password=password,
                 difficulty=self._config_desc.key_difficulty,
             )
-            # When Golem is ready to use different Ethereum accounta for
+            # When Golem is ready to use different Ethereum account for
             # payments and identity this should be called only when
             # idendity was not just created above for the first time.
             self._ets.backwards_compatibility_privkey(

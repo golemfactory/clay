@@ -372,9 +372,12 @@ class TestEthereumTransactionSystem(TestWithDatabase, testutils.PEP8MixIn):
     def test_backwards_compatibility_privkey(self):
         ets = self._make_ets(datadir=self.new_path / 'other', just_create=True)
         privkey = b'\x21' * 32
+        other_privkey = b'\x13' * 32
         address = '0x2BD0C9FE079c8FcA0E3352eb3D02839c371E5c41'
         password = 'Password1'
         ets.backwards_compatibility_privkey(privkey, password)
+        with self.assertRaisesRegex(Exception, 'backward compatible'):
+            ets.backwards_compatibility_privkey(other_privkey, password)
         ets.set_password(password)
         with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
                    'new_sci', return_value=self.sci) as new_sci:
