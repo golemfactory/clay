@@ -38,21 +38,20 @@ def find_samples_for_scenes(log_content):
 
 
 def _get_warnings(log_content, return_data):
-    warnings = []
+    warnings = {}
     missing_files = find_missing_files(log_content)
     if missing_files:
-        warnings.append(_format_missing_files_warning(
-            missing_files))
+        warnings['missing_files'] = missing_files
 
     wrong_engine = find_wrong_renderer_warning(log_content)
     if wrong_engine:
-        warnings.append("\n{}\n".format(wrong_engine))
+        warnings['wrong_engine'] = wrong_engine
 
     if warnings:
         if return_data.get("warnings"):
-            return_data["warnings"] += "".join(warnings)
+            return_data["warnings"] = {**return_data.get("warnings"), **warnings}
         else:
-            return_data["warnings"] = "".join(warnings)
+            return_data["warnings"] = warnings
 
 
 def find_wrong_renderer_warning(log_content):
@@ -64,14 +63,19 @@ def find_wrong_renderer_warning(log_content):
 
 
 def find_missing_files(log_content):
-    warnings = set()
+    warnings = list()
     for l in log_content.splitlines():
         missing_file = re.search("^Warning: Path '(.*)' not found", l,
                                  re.IGNORECASE)
         if missing_file:
             # extract filename from warning message
-            warnings.add(os.path.basename(missing_file.group(1)))
-    return warnings
+            missing_path = missing_file.group(1)
+            fileInfo = {
+                'baseName': os.path.basename(missing_path),
+                'dirName': os.path.dirname(missing_path)
+            }
+            warnings.append(fileInfo)
+    return list(map(dict, set(tuple(sorted(f.items())) for f in warnings)))
 
 
 def _format_missing_files_warning(missing_files):

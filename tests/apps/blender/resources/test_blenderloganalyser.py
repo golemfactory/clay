@@ -17,9 +17,9 @@ class TestBlenderLogAnalyser(TestCase):
 
     def test_find_missing_files(self):
         missing_files = bla.find_missing_files(self._get_log_file())
-        assert "VSE_copy_proxy_path_to_all_strips.py" in missing_files
-        assert "subsurf_change_level.py" in missing_files
-        assert "set_ray_visibilities_for_selected_objects.py" in missing_files
+        assert [f for f in missing_files if f['baseName'] == "VSE_copy_proxy_path_to_all_strips.py"]
+        assert [f for f in missing_files if f['baseName'] == "subsurf_change_level.py"]
+        assert [f for f in missing_files if f['baseName'] == "set_ray_visibilities_for_selected_objects.py"]
 
     def test_find_rendering_time(self):
         time_rendering = bla.find_rendering_time(self._get_log_file())
