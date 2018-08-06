@@ -21,6 +21,7 @@ class TestGenerateCrops(TempDirFixture):
     def setUp(self):
         # pylint: disable=R0915
         super().setUp()
+        BlenderReferenceGenerator.CROPS_NO_FIRST = 1
         self.cropper = BlenderReferenceGenerator()
         self.golem_dir = get_golem_path()
         self.resources = ['tests/apps/blender/test_data/bmw.blend']
@@ -124,7 +125,9 @@ class TestGenerateCrops(TempDirFixture):
             self.resources,
             verifier._crop_rendered,
             verifier._crop_render_failure,
-            self.subtask_info)
+            self.subtask_info,
+            BlenderReferenceGenerator.CROPS_NO_FIRST
+        )
 
         sync_wait(d, 140)
 
@@ -167,7 +170,9 @@ class TestGenerateCrops(TempDirFixture):
             self.resources,
             verifier._crop_rendered,
             verifier._crop_render_failure,
-            self.subtask_info)
+            self.subtask_info,
+            BlenderReferenceGenerator.CROPS_NO_FIRST
+        )
 
         sync_wait(d, 140)
 
@@ -210,7 +215,9 @@ class TestGenerateCrops(TempDirFixture):
             self.resources,
             verifier._crop_rendered,
             verifier._crop_render_failure,
-            self.subtask_info)
+            self.subtask_info,
+            BlenderReferenceGenerator.CROPS_NO_FIRST
+        )
 
         sync_wait(d, 140)
 
@@ -259,7 +266,9 @@ class TestGenerateCrops(TempDirFixture):
             self.resources,
             verifier._crop_rendered,
             verifier._crop_render_failure,
-            self.subtask_info)
+            self.subtask_info,
+            BlenderReferenceGenerator.CROPS_NO_FIRST
+        )
 
         sync_wait(d, 140)
 
