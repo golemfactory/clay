@@ -17,27 +17,27 @@ logger = logging.getLogger("blendercroppper")
 # FIXME #2086
 # pylint: disable=R0903
 # pylint: disable=R0902
-class CropContext:
+class VerificationContext:
     def __init__(self, crops_data: Dict[str, Any], computer,
                  subtask_data: Dict[str, Any],
                  callbacks: Dict[str, Callable]) -> None:
         self.crops_path = crops_data['paths']
-        self.crop_values = crops_data['position'][0]
-        self.crop_pixels = crops_data['position'][1]
+        self.crops_floating_point_coordinates = crops_data['position'][0]
+        self.crops_pixel_coordinates = crops_data['position'][1]
         self.computer = computer
         self.resources = subtask_data['resources']
         self.subtask_info = subtask_data['subtask_info']
         self.success = callbacks['success']
-        self.errback = callbacks['errback']
+        self.error_callback = callbacks['errback']
         self.crop_size = crops_data['position'][2]
 
     def get_crop_path(self, crop_number):
         return os.path.join(self.crops_path, str(crop_number))
 
 
-CropRenderedSuccessCallback = Callable[[List[str], float, CropContext, int],
+CropRenderedSuccessCallbackType = Callable[[List[str], float, VerificationContext, int],
                                        None]
-CropRenderedFailureCallback = Callable[[Exception], None]
+CropRenderedFailureCallbackType = Callable[[Exception], None]
 
 
 class BlenderReferenceGenerator:
@@ -146,8 +146,8 @@ class BlenderReferenceGenerator:
 
     # pylint: disable-msg=too-many-arguments
     def render_crops(self, computer, resources: List[str],
-                     crop_rendered: CropRenderedSuccessCallback,
-                     crop_render_failure: CropRenderedFailureCallback,
+                     crop_rendered: CropRenderedSuccessCallbackType,
+                     crop_render_failure: CropRenderedFailureCallbackType,
                      subtask_info: Dict[str, Any],
                      num_crops: int = CROPS_NO_FIRST,
                      crop_size: Optional[Tuple[int, int]] = None):
@@ -161,13 +161,13 @@ class BlenderReferenceGenerator:
                                               num_crops,
                                               crop_size)
 
-        verify_ctx = CropContext({'paths': crops_path, 'position': crops_info},
+        verification_context = VerificationContext({'paths': crops_path, 'position': crops_info},
                                  computer,
                                  {'resources': resources,
                                   'subtask_info': subtask_info},
                                  {'success': crop_rendered,
                                   'errback': crop_render_failure})
-        self._render_one_crop(verify_ctx, self.crop_rendered,
+        self._render_one_crop(verification_context, self.crop_rendered,
                               crop_render_failure, self.crop_counter)
         return self.crop_size
 
@@ -176,11 +176,11 @@ class BlenderReferenceGenerator:
     # Issue # 2447
     # pylint: disable-msg=too-many-arguments
     # pylint: disable=R0914
-    def _render_one_crop(self, verify_ctx: CropContext,
-                         crop_rendered: CropRenderedSuccessCallback,
-                         crop_render_failure: CropRenderedFailureCallback,
+    def _render_one_crop(self, verification_context: VerificationContext,
+                         crop_rendered: CropRenderedSuccessCallbackType,
+                         crop_render_failure: CropRenderedFailureCallbackType,
                          crop_number: int):
-        minx, maxx, miny, maxy = verify_ctx.crop_values[
+        minx, maxx, miny, maxy = verification_context.crops_floating_point_coordinates[
             crop_number - self.crop_counter]
 
         def generate_ctd(subtask_info, script_src):
@@ -194,23 +194,23 @@ class BlenderReferenceGenerator:
             return ctd
 
         script_src = generate_blender_crop_file(
-            resolution=(verify_ctx.subtask_info['res_x'],
-                        verify_ctx.subtask_info['res_y']),
+            resolution=(verification_context.subtask_info['res_x'],
+                        verification_context.subtask_info['res_y']),
             borders_x=(minx, maxx),
             borders_y=(miny, maxy),
             use_compositing=False,
-            samples=verify_ctx.subtask_info['samples']
+            samples=verification_context.subtask_info['samples']
         )
-        ctd = generate_ctd(verify_ctx.subtask_info, script_src)
+        ctd = generate_ctd(verification_context.subtask_info, script_src)
         # FIXME issue #1955
-        verify_ctx.computer.start_computation(
-            root_path=verify_ctx.get_crop_path(crop_number),
+        verification_context.computer.start_computation(
+            root_path=verification_context.get_crop_path(crop_number),
             success_callback=partial(crop_rendered,
-                                     verification_context=verify_ctx,
+                                     verification_context=verification_context,
                                      crop_number=crop_number),
             error_callback=crop_render_failure,
             compute_task_def=ctd,
-            resources=verify_ctx.resources,
+            resources=verification_context.resources,
             additional_resources=[]
         )
 
@@ -222,7 +222,7 @@ class BlenderReferenceGenerator:
                 self.rendered_crops_results[i][2], i-self.crop_counter)
 
     def crop_rendered(self, results: List[str], time_spend: float,
-                      verification_context: CropContext,
+                      verification_context: VerificationContext,
                       crop_number: int) -> None:
         self.rendered_crops_results[crop_number] \
             = [results, time_spend, verification_context]
@@ -236,7 +236,7 @@ class BlenderReferenceGenerator:
             return
 
         self._render_one_crop(verification_context, self.crop_rendered,
-                              verification_context.errback, crop_number)
+                              verification_context.error_callback, crop_number)
 
     @staticmethod
     def _random_split(min_: int, max_: int, size_: int) -> List[int]:
