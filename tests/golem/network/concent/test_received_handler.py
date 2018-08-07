@@ -397,8 +397,9 @@ class ForceSubtaskResultsResponseTest(TaskServerMessageHandlerTestBase):
             ForceSubtaskResultsResponseFactory.with_accepted()
 
         IncomesKeeper().expect(
-            sender_node_id=msg.task_to_compute.requestor_id,
+            sender_node=msg.task_to_compute.requestor_id,
             subtask_id=msg.subtask_id,
+            payer_address='0xdead',
             value=42
         )
         self.assertIsNone(Income.get(subtask=msg.subtask_id).accepted_ts)
@@ -806,8 +807,9 @@ class SubtaskResultsSettledTest(TaskServerMessageHandlerTestBase):
         srs = msg_factories.concents.SubtaskResultsSettledFactory()
         self.task_server.client.node.key = srs.task_to_compute.provider_id
         IncomesKeeper().expect(
-            sender_node_id=srs.task_to_compute.requestor_id,
+            sender_node=srs.task_to_compute.requestor_id,
             subtask_id=srs.subtask_id,
+            payer_address='0xdead',
             value=42
         )
         self.assertIsNone(Income.get(subtask=srs.subtask_id).settled_ts)

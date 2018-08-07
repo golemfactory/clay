@@ -74,7 +74,7 @@ def done_deferred(return_value=None):
     return deferred
 
 
-def make_mock_ethereum_transaction_system(eth=100, gnt=100):
+def make_mock_ets(eth=100, gnt=100):
     ets = MagicMock(name="MockEthereumTransactionSystem")
     ets.get_balance.return_value = (
         gnt * denoms.ether,
@@ -94,8 +94,6 @@ def make_mock_ethereum_transaction_system(eth=100, gnt=100):
 )
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
-@patch('golem.client.EthereumTransactionSystem',
-       return_value=make_mock_ethereum_transaction_system())
 class TestClient(TestWithDatabase, TestWithReactor):
     # FIXME: if we someday decide to run parallel tests,
     # this may completely break. Issue #2456
@@ -106,73 +104,72 @@ class TestClient(TestWithDatabase, TestWithReactor):
             self.client.quit()
 
     def test_get_payments(self, *_):
+        ets = Mock()
         self.client = Client(
             datadir=self.path,
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=(Mock(_private_key='a' * 32)),
             database=Mock(),
+            transaction_system=ets,
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
         )
         assert self.client.get_payments_list() == \
-            self.client.transaction_system.get_payments_list.return_value
+            ets.get_payments_list.return_value
 
     def test_get_incomes(self, *_):
+        ets = Mock()
+        ets.get_incomes_list.return_value = []
         self.client = Client(
             datadir=self.path,
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=(Mock(_private_key='a' * 32)),
             database=Mock(),
+            transaction_system=ets,
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
         )
         self.client.get_incomes_list()
-        self.client.transaction_system.get_incomes_list.\
-            assert_called_once_with()
+        ets.get_incomes_list.assert_called_once_with()
 
     def test_withdraw(self, *_):
-        keys_auth = Mock()
-        keys_auth._private_key = "a" * 32
-
-        # golem.client has already been imported
-        with patch('golem.client.EthereumTransactionSystem') as ets:
-            ets.return_value = ets
-            ets.return_value.eth_base_for_batch_payment.return_value = 0
-            self.client = Client(
-                datadir=self.path,
-                app_config=Mock(),
-                config_desc=ClientConfigDescriptor(),
-                keys_auth=keys_auth,
-                database=Mock(),
-                connect_to_known_hosts=False,
-                use_docker_manager=False,
-                use_monitor=False,
-            )
-            self.client.withdraw('123', '0xdead', 'ETH')
-            ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH')
+        ets = Mock()
+        ets.return_value = ets
+        ets.return_value.eth_base_for_batch_payment.return_value = 0
+        self.client = Client(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
+            database=Mock(),
+            transaction_system=ets,
+            connect_to_known_hosts=False,
+            use_docker_manager=False,
+            use_monitor=False,
+        )
+        self.client.withdraw('123', '0xdead', 'ETH')
+        ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH')
 
     def test_get_withdraw_gas_cost(self, *_):
-        keys_auth = Mock()
-        keys_auth._private_key = "a" * 32
         dest = '0x' + 40 * '0'
-        with patch('golem.client.EthereumTransactionSystem') as ets:
-            ets.return_value = ets
-            self.client = Client(
-                datadir=self.path,
-                app_config=Mock(),
-                config_desc=ClientConfigDescriptor(),
-                keys_auth=keys_auth,
-                database=Mock(),
-                connect_to_known_hosts=False,
-                use_docker_manager=False,
-                use_monitor=False,
-            )
-            self.client.get_withdraw_gas_cost('123', dest, 'ETH')
-            ets.get_withdraw_gas_cost.assert_called_once_with(123, dest, 'ETH')
+        ets = Mock()
+        self.client = Client(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
+            database=Mock(),
+            transaction_system=ets,
+            connect_to_known_hosts=False,
+            use_docker_manager=False,
+            use_monitor=False,
+        )
+        self.client.get_withdraw_gas_cost('123', dest, 'ETH')
+        ets.get_withdraw_gas_cost.assert_called_once_with(123, dest, 'ETH')
 
     def test_payment_address(self, *_):
         self.client = Client(
@@ -181,6 +178,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             keys_auth=(Mock(_private_key='a' * 32)),
             database=Mock(),
+            transaction_system=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -197,6 +195,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             database=Mock(),
+            transaction_system=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -240,6 +239,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             database=Mock(),
+            transaction_system=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -251,7 +251,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
                    app_config=Mock(),
                    config_desc=ClientConfigDescriptor(),
                    keys_auth=Mock(),
-                   database=Mock())
+                   database=Mock(),
+                   transaction_system=Mock())
 
     def test_get_status(self, *_):
         self.client = Client(
@@ -260,6 +261,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             database=Mock(),
+            transaction_system=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -299,6 +301,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             database=Mock(),
+            transaction_system=Mock(),
         )
         self.client.db = None
         self.client.quit()
@@ -310,6 +313,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             keys_auth=(Mock(key_id='a' * 64)),
             database=Mock(),
+            transaction_system=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -324,6 +328,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             database=Mock(),
+            transaction_system=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -349,6 +354,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             database=Mock(),
+            transaction_system=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -392,6 +398,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             keys_auth=(Mock(key_id='a' * 64)),
             database=Mock(),
+            transaction_system=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False
         )
@@ -424,6 +431,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(key_id='a' * 64),
             database=Mock(),
+            transaction_system=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False
         )
@@ -461,6 +469,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
                            key_id='a' * 64,
                            public_key=b'a' * 128),
             database=Mock(),
+            transaction_system=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             apps_manager=apps_manager
@@ -547,6 +556,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             database=Mock(),
+            transaction_system=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -564,6 +574,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             database=Mock(),
+            transaction_system=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -581,6 +592,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             database=Mock(),
+            transaction_system=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -604,6 +616,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             database=Mock(),
+            transaction_system=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -630,6 +643,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             database=Mock(),
+            transaction_system=Mock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -887,7 +901,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler'), \
                 patch('golem.client.EthereumTransactionSystem',
-                      return_value=make_mock_ethereum_transaction_system()):
+                      return_value=Mock()):
             apps_manager = AppsManager()
             apps_manager._benchmark_enabled = Mock(return_value=True)
             apps_manager.load_all_apps()
@@ -899,6 +913,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                                key_id='a' * 64,
                                public_key=b'a' * 128),
                 database=Mock(),
+                transaction_system=make_mock_ets(),
                 connect_to_known_hosts=False,
                 use_docker_manager=False,
                 use_monitor=False,

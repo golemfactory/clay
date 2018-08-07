@@ -467,8 +467,9 @@ class OverdueIncomeTestCase(testutils.DatabaseFixture):
                 sync=True,
             )
             self.incomes_keeper.expect(
-                sender_node_id='requestor_id',
+                sender_node='requestor_id',
                 subtask_id=msg.subtask_id,
+                payer_address='0x1234',
                 value=msg.task_to_compute.price,  # pylint: disable=no-member
             )
             self.incomes_keeper.update_awaiting(

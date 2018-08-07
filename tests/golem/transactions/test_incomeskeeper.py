@@ -39,15 +39,16 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         random.seed(__name__)
         self.incomes_keeper = IncomesKeeper()
 
-    def _test_expect_income(self, sender_node_id, subtask_id, value):
+    def _test_expect_income(self, sender_node, subtask_id, payer_addr, value):
         self.incomes_keeper.expect(
-            sender_node_id=sender_node_id,
+            sender_node=sender_node,
             subtask_id=subtask_id,
+            payer_address=payer_addr,
             value=value
         )
         with db.atomic():
             expected_income = Income.get(
-                sender_node=sender_node_id,
+                sender_node=sender_node,
                 subtask=subtask_id,
             )
         assert expected_income.value == value
@@ -55,7 +56,8 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         assert expected_income.transaction is None
 
     def test_received_batch_transfer_closure_time(self):
-        sender_node_id = '0x' + 64 * 'a'
+        sender_node = 64 * 'a'
+        payer_address = '0x' + 40 * '9'
         subtask_id1 = 'sample_subtask_id1'
         value1 = MAX_INT + 10
         accepted_ts1 = 1337
@@ -65,13 +67,15 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
 
         assert Income.select().count() == 0
         self._test_expect_income(
-            sender_node_id=sender_node_id,
+            sender_node=sender_node,
             subtask_id=subtask_id1,
+            payer_addr=payer_address,
             value=value1,
         )
         self._test_expect_income(
-            sender_node_id=sender_node_id,
+            sender_node=sender_node,
             subtask_id=subtask_id2,
+            payer_addr=payer_address,
             value=value2,
         )
         assert Income.select().count() == 2
@@ -83,50 +87,52 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         # incomes not accepted, so this in no op
         self.incomes_keeper.received_batch_transfer(
             transaction_id,
-            pubkeytoaddr(sender_node_id),
+            payer_address,
             value1,
             accepted_ts2,
         )
-        income1 = Income.get(sender_node=sender_node_id, subtask=subtask_id1)
+        income1 = Income.get(sender_node=sender_node, subtask=subtask_id1)
         assert income1.transaction is None
-        income2 = Income.get(sender_node=sender_node_id, subtask=subtask_id2)
+        income2 = Income.get(sender_node=sender_node, subtask=subtask_id2)
         assert income2.transaction is None
 
         # now we accept both
         self.incomes_keeper.update_awaiting(
-            sender_node_id,
+            sender_node,
             subtask_id1,
             accepted_ts1,
         )
         self.incomes_keeper.update_awaiting(
-            sender_node_id,
+            sender_node,
             subtask_id2,
             accepted_ts2,
         )
         self.incomes_keeper.received_batch_transfer(
             transaction_id1,
-            pubkeytoaddr(sender_node_id),
+            payer_address,
             value1,
             accepted_ts1,
         )
-        income1 = Income.get(sender_node=sender_node_id, subtask=subtask_id1)
+        income1 = Income.get(sender_node=sender_node, subtask=subtask_id1)
         assert transaction_id1[2:] == income1.transaction
-        income2 = Income.get(sender_node=sender_node_id, subtask=subtask_id2)
+        income2 = Income.get(sender_node=sender_node, subtask=subtask_id2)
         assert income2.transaction is None
         self.incomes_keeper.received_batch_transfer(
             transaction_id2,
-            pubkeytoaddr(sender_node_id),
+            payer_address,
             value2,
             accepted_ts2,
         )
-        income1 = Income.get(sender_node=sender_node_id, subtask=subtask_id1)
+        income1 = Income.get(sender_node=sender_node, subtask=subtask_id1)
         assert transaction_id1[2:] == income1.transaction
-        income2 = Income.get(sender_node=sender_node_id, subtask=subtask_id2)
+        income2 = Income.get(sender_node=sender_node, subtask=subtask_id2)
         assert transaction_id2[2:] == income2.transaction
 
     def test_received_batch_transfer_two_senders(self):
-        sender_node_id1 = '0x' + 64 * 'a'
-        sender_node_id2 = '0x' + 64 * 'b'
+        sender_node1 = 64 * 'a'
+        sender_node2 = 64 * 'b'
+        payer_address1 = '0x' + 40 * '1'
+        payer_address2 = '0x' + 40 * '2'
         subtask_id1 = 'sample_subtask_id1'
         subtask_id2 = 'sample_subtask_id2'
         value1 = MAX_INT + 10
@@ -134,13 +140,15 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
 
         assert Income.select().count() == 0
         self._test_expect_income(
-            sender_node_id=sender_node_id1,
+            sender_node=sender_node1,
             subtask_id=subtask_id1,
+            payer_addr=payer_address1,
             value=value1,
         )
         self._test_expect_income(
-            sender_node_id=sender_node_id2,
+            sender_node=sender_node2,
             subtask_id=subtask_id2,
+            payer_addr=payer_address2,
             value=value2,
         )
         assert Income.select().count() == 2
@@ -151,35 +159,35 @@ class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
         closure_time2 = 2137
 
         self.incomes_keeper.update_awaiting(
-            sender_node_id1,
+            sender_node1,
             subtask_id1,
             closure_time1,
         )
         self.incomes_keeper.received_batch_transfer(
             transaction_id1,
-            pubkeytoaddr(sender_node_id1),
+            payer_address1,
             value1,
             closure_time1,
         )
-        income1 = Income.get(sender_node=sender_node_id1, subtask=subtask_id1)
+        income1 = Income.get(sender_node=sender_node1, subtask=subtask_id1)
         assert transaction_id1[2:] == income1.transaction
-        income2 = Income.get(sender_node=sender_node_id2, subtask=subtask_id2)
+        income2 = Income.get(sender_node=sender_node2, subtask=subtask_id2)
         assert income2.transaction is None
 
         self.incomes_keeper.update_awaiting(
-            sender_node_id2,
+            sender_node2,
             subtask_id2,
             closure_time2,
         )
         self.incomes_keeper.received_batch_transfer(
             transaction_id2,
-            pubkeytoaddr(sender_node_id2),
+            payer_address2,
             value2,
             closure_time2,
         )
-        income1 = Income.get(sender_node=sender_node_id1, subtask=subtask_id1)
+        income1 = Income.get(sender_node=sender_node1, subtask=subtask_id1)
         assert transaction_id1[2:] == income1.transaction
-        income2 = Income.get(sender_node=sender_node_id2, subtask=subtask_id2)
+        income2 = Income.get(sender_node=sender_node2, subtask=subtask_id2)
         assert transaction_id2[2:] == income2.transaction
 
     @staticmethod
