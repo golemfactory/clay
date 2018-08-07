@@ -8,20 +8,17 @@ from eth_utils import encode_hex
 from ethereum.utils import denoms
 import requests
 
-from golem import testutils
 from golem.tools.testwithdatabase import TestWithDatabase
-from golem.transactions.ethereum.ethereumtransactionsystem import (
+from golem.ethereum.ethereumtransactionsystem import (
     EthereumTransactionSystem,
     tETH_faucet_donate,
 )
-from golem.transactions.ethereum.exceptions import NotEnoughFunds
+from golem.ethereum.exceptions import NotEnoughFunds
 
 PASSWORD = 'derp'
 
 
-class TestEthereumTransactionSystem(TestWithDatabase, testutils.PEP8MixIn):
-    PEP8_FILES = ['golem/transactions/ethereum/ethereumtransactionsystem.py', ]
-
+class TestEthereumTransactionSystem(TestWithDatabase):
     def setUp(self):
         super().setUp()
         self.sci = Mock()
@@ -43,9 +40,8 @@ class TestEthereumTransactionSystem(TestWithDatabase, testutils.PEP8MixIn):
             withdrawals: bool = True,
             password: str = PASSWORD,
             just_create: bool = False):
-        with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                   'NodeProcess'),\
-            patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+        with patch('golem.ethereum.ethereumtransactionsystem.NodeProcess'),\
+            patch('golem.ethereum.ethereumtransactionsystem.'
                   'new_sci', return_value=self.sci):
             ets = EthereumTransactionSystem(
                 datadir or self.new_path,
@@ -67,7 +63,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, testutils.PEP8MixIn):
     def test_stop(self, mock_is_service_running):
         with patch('twisted.internet.task.LoopingCall.start'), \
                 patch('twisted.internet.task.LoopingCall.stop'), \
-                patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+                patch('golem.ethereum.ethereumtransactionsystem.'
                       'PaymentProcessor'):
             mock_is_service_running.return_value = False
             e = self._make_ets()
@@ -76,9 +72,9 @@ class TestEthereumTransactionSystem(TestWithDatabase, testutils.PEP8MixIn):
             e.stop()
             e.payment_processor.sendout.assert_called_once_with(0)  # noqa pylint: disable=no-member
 
-    @patch('golem.transactions.ethereum.ethereumtransactionsystem.NodeProcess',
+    @patch('golem.ethereum.ethereumtransactionsystem.NodeProcess',
            Mock())
-    @patch('golem.transactions.ethereum.ethereumtransactionsystem.new_sci')
+    @patch('golem.ethereum.ethereumtransactionsystem.new_sci')
     def test_chain_arg(self, new_sci):
         ets = EthereumTransactionSystem(
             self.new_path,
@@ -302,7 +298,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, testutils.PEP8MixIn):
 
         block_number = 123
         self.sci.get_block_number.return_value = block_number
-        with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+        with patch('golem.ethereum.ethereumtransactionsystem.'
                    'LoopingCallService.stop'):
             self.ets.stop()
 
@@ -379,7 +375,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, testutils.PEP8MixIn):
         with self.assertRaisesRegex(Exception, 'backward compatible'):
             ets.backwards_compatibility_privkey(other_privkey, password)
         ets.set_password(password)
-        with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
+        with patch('golem.ethereum.ethereumtransactionsystem.'
                    'new_sci', return_value=self.sci) as new_sci:
             ets._init()
             new_sci.assert_called_once_with(ANY, address, ANY, ANY, ANY)

@@ -16,14 +16,13 @@ from golem_messages.message.concents import FileTransferToken
 from golem import testutils
 from golem.core import keysauth
 from golem.core import variables
+from golem.ethereum.incomeskeeper import IncomesKeeper, Income
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import received_handler
 from golem.network.concent.received_handler import TaskServerMessageHandler
 from golem.network.concent.handlers_library import library
 from golem.network.concent.filetransfers import ConcentFiletransferService
-from golem.transactions.incomeskeeper import (
-    IncomesKeeper, Income)
 
 
 from tests.factories import taskserver as taskserver_factories

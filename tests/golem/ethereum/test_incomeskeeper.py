@@ -5,11 +5,9 @@ import time
 from freezegun import freeze_time
 
 from golem.core.variables import PAYMENT_DEADLINE
+from golem.ethereum.incomeskeeper import IncomesKeeper
 from golem.model import db, Income
-from golem.testutils import PEP8MixIn
 from golem.tools.testwithdatabase import TestWithDatabase
-from golem.transactions.incomeskeeper import IncomesKeeper
-from golem.utils import pubkeytoaddr
 from tests.factories import model as model_factories
 
 # SQLITE3_MAX_INT = 2 ** 31 - 1 # old one
@@ -29,11 +27,7 @@ def generate_some_id(prefix='test'):
     return "%s-%d-%d" % (prefix, time.time() * 1000, random.random() * 1000)
 
 
-class TestIncomesKeeper(TestWithDatabase, PEP8MixIn):
-    PEP8_FILES = [
-        'golem/transactions/incomeskeeper.py',
-    ]
-
+class TestIncomesKeeper(TestWithDatabase):
     def setUp(self):
         super(TestIncomesKeeper, self).setUp()
         random.seed(__name__)

@@ -19,10 +19,10 @@ import requests
 from golem.core.service import LoopingCallService
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
+from golem.ethereum.exceptions import NotEnoughFunds
+from golem.ethereum.incomeskeeper import IncomesKeeper
+from golem.ethereum.paymentskeeper import PaymentsKeeper
 from golem.model import GenericKeyValue, Payment
-from golem.transactions.ethereum.exceptions import NotEnoughFunds
-from golem.transactions.incomeskeeper import IncomesKeeper
-from golem.transactions.paymentskeeper import PaymentsKeeper
 from golem.utils import privkeytoaddr
 
 

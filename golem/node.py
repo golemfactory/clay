@@ -20,6 +20,7 @@ from golem.core.async import async_run, AsyncRequest
 from golem.core.variables import PRIVATE_KEY
 from golem.database import Database
 from golem.docker.manager import DockerManager
+from golem.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
 from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher, Component, Stage
@@ -27,8 +28,6 @@ from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP, NODE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import object_method_map, Session, Publisher
 from golem.terms import TermsOfUse
-from golem.transactions.ethereum.ethereumtransactionsystem import \
-    EthereumTransactionSystem
 
 logger = logging.getLogger(__name__)
 

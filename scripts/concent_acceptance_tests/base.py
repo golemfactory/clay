@@ -32,8 +32,7 @@ from golem.core import variables
 from golem.network.concent import client
 from golem.utils import privkeytoaddr
 
-from golem.transactions.ethereum.ethereumtransactionsystem import (
-    tETH_faucet_donate)
+from golem.ethereum.ethereumtransactionsystem import tETH_faucet_donate
 
 logger = logging.getLogger(__name__)
 
