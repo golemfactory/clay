@@ -1,9 +1,7 @@
-import os
 import unittest
 
 import requests
 
-from golem.core.common import is_windows
 from golem.docker.client import local_client
 from golem.docker.image import DockerImage
 from golem.tools.ci import ci_skip
@@ -18,9 +16,6 @@ class DockerTestCase(unittest.TestCase):
 
     @classmethod
     def new_client(cls, *_):
-        if is_windows():
-            host = os.environ.get('DOCKER_HOST')
-            os.environ['DOCKER_HOST'] = host or 'tcp://127.0.0.1:2375'
         return local_client()
 
     @classmethod
