@@ -437,7 +437,7 @@ class OverdueIncomeTestCase(testutils.DatabaseFixture):
             ),
             variant=variables.CONCENT_CHOICES['dev'],
         )
-        from golem.transactions.incomeskeeper import IncomesKeeper
+        from golem.ethereum.incomeskeeper import IncomesKeeper
         self.incomes_keeper = IncomesKeeper()
         self.history = history.MessageHistoryService()
 

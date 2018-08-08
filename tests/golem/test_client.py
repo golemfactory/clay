@@ -75,7 +75,7 @@ def done_deferred(return_value=None):
 
 
 def make_mock_ets(eth=100, gnt=100):
-    ets = MagicMock(name="MockEthereumTransactionSystem")
+    ets = MagicMock(name="MockTransactionSystem")
     ets.get_balance.return_value = (
         gnt * denoms.ether,
         gnt * denoms.ether,
@@ -900,7 +900,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         super(TestClientRPCMethods, self).setUp()
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler'), \
-                patch('golem.client.EthereumTransactionSystem',
+                patch('golem.client.TransactionSystem',
                       return_value=Mock()):
             apps_manager = AppsManager()
             apps_manager.load_all_apps()
