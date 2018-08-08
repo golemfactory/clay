@@ -31,6 +31,7 @@ from golem.core.common import to_unicode
 from golem.core.fileshelper import has_ext
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
+from golem.task.taskbase import TaskPurpose, TaskTypeInfo
 from golem.task.taskstate import SubtaskStatus, TaskStatus
 from golem_verificator.blender_verifier import BlenderVerifier
 
@@ -341,6 +342,12 @@ class BlenderNVGPUTaskTypeInfo(RenderingTaskTypeInfo):
 
         self.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
         self.output_file_ext = ["blend"]
+
+    def for_purpose(self, purpose: TaskPurpose) -> TaskTypeInfo:
+        # Testing the task shouldn't require a compatible GPU + OS
+        if purpose == TaskPurpose.TESTING:
+            return BlenderTaskTypeInfo()
+        return self
 
 
 class BlenderRendererOptions(FrameRendererOptions):

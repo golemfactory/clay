@@ -2,6 +2,7 @@ import abc
 import hashlib
 import logging
 import time
+from enum import Enum
 from typing import List, Type, Optional, Tuple, Any
 
 from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
@@ -14,6 +15,11 @@ from golem.task.masking import Mask
 from golem.task.taskstate import TaskState
 
 logger = logging.getLogger("golem.task")
+
+
+class TaskPurpose(Enum):
+    TESTING = "testing"
+    REQUESTING = "requesting"
 
 
 class TaskTypeInfo(object):
@@ -30,6 +36,9 @@ class TaskTypeInfo(object):
         self.options = options
         self.definition = definition
         self.task_builder_type = task_builder_type
+
+    def for_purpose(self, purpose: TaskPurpose) -> 'TaskTypeInfo':
+        return self
 
 
 # TODO change types to enums - for now it gets

@@ -25,7 +25,7 @@ from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener, Task, TaskHeader
+from golem.task.taskbase import TaskEventListener, Task, TaskHeader, TaskPurpose
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
@@ -129,8 +129,9 @@ class TaskManager(TaskEventListener):
         return self.root_path
 
     def create_task(self, dictionary, minimal=False):
+        purpose = TaskPurpose.TESTING if minimal else TaskPurpose.REQUESTING
         type_name = dictionary['type'].lower()
-        task_type = self.task_types[type_name]
+        task_type = self.task_types[type_name].for_purpose(purpose)
         builder_type = task_type.task_builder_type
 
         definition = builder_type.build_definition(task_type, dictionary,
