@@ -37,7 +37,7 @@ class ConversionStatus(Enum):
 
 
 # pylint:disable=too-many-instance-attributes
-class EthereumTransactionSystem(LoopingCallService):
+class TransactionSystem(LoopingCallService):
     """ Transaction system connected with Ethereum """
 
     TX_FILENAME: ClassVar[str] = 'transactions.json'

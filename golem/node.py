@@ -20,7 +20,7 @@ from golem.core.async import async_run, AsyncRequest
 from golem.core.variables import PRIVATE_KEY
 from golem.database import Database
 from golem.docker.manager import DockerManager
-from golem.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
+from golem.ethereum.transactionsystem import TransactionSystem
 from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher, Component, Stage
@@ -74,7 +74,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             if use_talkback is None else use_talkback
 
         self._keys_auth: Optional[KeysAuth] = None
-        self._ets = EthereumTransactionSystem(
+        self._ets = TransactionSystem(
             Path(datadir) / 'transaction_system',
             EthereumConfig,
         )

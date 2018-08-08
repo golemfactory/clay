@@ -575,7 +575,7 @@ class TestOptNode(TempDirFixture):
         assert reactor.addSystemEventTrigger.call_args[0] == (
             'before', 'shutdown', self.node.rpc_router.stop)
 
-    @patch('golem.node.EthereumTransactionSystem')
+    @patch('golem.node.TransactionSystem')
     def test_start_creates_client(self, _ets, reactor, mock_gather_results, *_):
         mock_gather_results.return_value = mock_gather_results
         mock_gather_results.addCallbacks.side_effect = \
@@ -595,7 +595,7 @@ class TestOptNode(TempDirFixture):
         assert reactor.addSystemEventTrigger.call_args_list[1][0] == (
             'before', 'shutdown', self.node.client.quit)
 
-    @patch('golem.node.EthereumTransactionSystem')
+    @patch('golem.node.TransactionSystem')
     @patch('golem.node.Node._run')
     def test_start_creates_client_and_calls_run(
             self,

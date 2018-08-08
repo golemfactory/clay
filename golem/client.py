@@ -48,7 +48,7 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
-from golem.ethereum.ethereumtransactionsystem import EthereumTransactionSystem
+from golem.ethereum.transactionsystem import TransactionSystem
 from golem.ethereum.exceptions import NotEnoughFunds
 from golem.ethereum.fundslocker import FundsLocker
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
@@ -108,7 +108,7 @@ class Client(HardwarePresetsMixin):
             config_desc: ClientConfigDescriptor,
             keys_auth: KeysAuth,
             database: Database,
-            transaction_system: EthereumTransactionSystem,
+            transaction_system: TransactionSystem,
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
