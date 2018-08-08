@@ -70,13 +70,6 @@ class IncomesKeeper:
                 subtask_id=e.subtask,
             )
 
-        dispatcher.send(
-            signal='golem.monitor',
-            event='income',
-            addr=sender,
-            value=amount,
-        )
-
     @staticmethod
     def expect(
             sender_node: str,
