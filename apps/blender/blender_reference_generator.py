@@ -30,7 +30,7 @@ class VerificationContext:
         self.error_callback = callbacks['errback']
         self.crop_size = crops_data['position'][2]
 
-    def get_crop_path(self, crop_number):
+    def get_crop_path(self, crop_number: int) -> str:
         return os.path.join(self.crops_path, str(crop_number))
 
 
@@ -66,8 +66,8 @@ class BlenderReferenceGenerator:
                             crop_size_as_fraction: Optional[Tuple[int, int]] = None):
         """
         This function will generate split data for performing random crops.
-        Crops will be rendered from blend files using calculated values (
-        floats that indicate position in original blender file ).
+        Crops will be rendered from blend files using calculated values
+        (floats that indicate position in original blender file).
 
         :param resolution: This is the x, y resolution of whole image from
         which split data should be generated
@@ -99,7 +99,7 @@ class BlenderReferenceGenerator:
 
         return self.crops_blender_borders, self.crops_pixel_coordinates, crop_size_as_fraction
 
-    def generate_single_crop_data(self, subtask_pixel_coordinates: Dict, resolution: Tuple[int, int]) -> None:
+    def generate_single_crop_data(self, subtask_pixel_coordinates: Dict[str, int], resolution: Tuple[int, int]) -> None:
         crop_horizontal_pixel_coordinates = BlenderReferenceGenerator \
             ._get_random_interval_within_boundaries(subtask_pixel_coordinates["left"],
                                                     subtask_pixel_coordinates["right"],
@@ -113,8 +113,10 @@ class BlenderReferenceGenerator:
                                                               crop_vertical_pixel_coordinates,
                                                               resolution)
         # Recalculate pixel after converting to float
-        crop_horizontal_pixel_coordinates[0] = math.floor(blender_crop_border["left"] * numpy.float32(resolution[0]))
-        crop_vertical_pixel_coordinates[1] = math.floor(blender_crop_border["bottom"] * numpy.float32(resolution[1]))
+        crop_horizontal_pixel_coordinates = math.floor(blender_crop_border["left"] * numpy.float32(resolution[0])), \
+                                            crop_horizontal_pixel_coordinates[1]
+        crop_vertical_pixel_coordinates = crop_vertical_pixel_coordinates, \
+                                             math.floor(blender_crop_border["bottom"] * numpy.float32(resolution[1]))
         self.crops_blender_borders.append((blender_crop_border["left"],
                                            blender_crop_border["right"],
                                            blender_crop_border["top"],
@@ -126,7 +128,7 @@ class BlenderReferenceGenerator:
 
     @staticmethod
     def convert_blender_crop_border_to_pixel_coordinates(subtask_border: List[float],
-                                                         resolution: Tuple[int, int]) -> Dict:
+                                                         resolution: Tuple[int, int]) -> Dict[str, int]:
         logger.debug("Values left=%r, right=%r, top=%r, bottom=%r",
                      subtask_border[0], subtask_border[1], subtask_border[3], subtask_border[2])
         # This is how Blender is calculating pixel check
@@ -144,7 +146,9 @@ class BlenderReferenceGenerator:
         return {"left": left, "right": right, "bottom": bottom, "top": top}
 
     @staticmethod
-    def convert_pixel_coordinates_to_blender_crop_border(horizontal_pixel_coordinates, vertical_pixel_coordinates, resolution):
+    def convert_pixel_coordinates_to_blender_crop_border(horizontal_pixel_coordinates: Tuple[int, int],
+                                                         vertical_pixel_coordinates: Tuple[int, int],
+                                                         resolution: Tuple[int, int]) -> Dict[str, float]:
         left = numpy.float32(numpy.float32(horizontal_pixel_coordinates[0]) / numpy.float32(resolution[0]))
         right = numpy.float32(numpy.float32(horizontal_pixel_coordinates[1]) / numpy.float32(resolution[0]))
         top = numpy.float32(numpy.float32(vertical_pixel_coordinates[0]) / numpy.float32(resolution[1]))
@@ -157,7 +161,7 @@ class BlenderReferenceGenerator:
                      crop_render_failure_callback: CropRenderedFailureCallbackType,
                      subtask_info: Dict[str, Any],
                      num_crops: int = DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP,
-                     crop_size: Optional[Tuple[int, int]] = None):
+                     crop_size: Optional[Tuple[int, int]] = None) -> Tuple[int, int]:
 
         crops_path = os.path.join(subtask_info['tmp_dir'],
                                   subtask_info['subtask_id'])
@@ -168,8 +172,12 @@ class BlenderReferenceGenerator:
         verification_context = VerificationContext({'paths': crops_path, 'position': crops_info},
                                                    computer,
                                                    {'resources': resources, 'subtask_info': subtask_info},
-                                                   {'success': crop_rendered_callback, 'errback': crop_render_failure_callback})
-        self._render_one_crop(verification_context, self.crop_rendered_callback, crop_render_failure_callback, self.crop_counter)
+                                                   {'success': crop_rendered_callback,
+                                                    'errback': crop_render_failure_callback})
+        self._render_one_crop(verification_context,
+                              self.crop_rendered_callback,
+                              crop_render_failure_callback,
+                              self.crop_counter)
         return self.crop_size_in_pixels
 
     # FIXME it would be better to make this subtask agnostic, pass only data
@@ -177,22 +185,12 @@ class BlenderReferenceGenerator:
     # Issue # 2447
     # pylint: disable-msg=too-many-arguments
     # pylint: disable=R0914
-    def _render_one_crop(self, verification_context: VerificationContext,
+    def _render_one_crop(self,
+                         verification_context: VerificationContext,
                          crop_rendered: CropRenderedSuccessCallbackType,
                          crop_render_failure: CropRenderedFailureCallbackType,
-                         crop_number: int):
-        minx, maxx, miny, maxy = verification_context.crops_floating_point_coordinates[
-            crop_number - self.crop_counter]
-
-        def generate_ctd(subtask_info, script_src):
-            ctd = deepcopy(subtask_info['ctd'])
-
-            ctd['extra_data']['outfilebasename'] = \
-                "ref_" + subtask_info['outfilebasename']
-            ctd['extra_data']['script_src'] = script_src
-            ctd['deadline'] = timeout_to_deadline(
-                subtask_info['subtask_timeout'])
-            return ctd
+                         crop_number: int) -> None:
+        minx, maxx, miny, maxy = verification_context.crops_floating_point_coordinates[crop_number - self.crop_counter]
 
         script_src = generate_blender_crop_file(
             resolution=(verification_context.subtask_info['res_x'],
@@ -202,7 +200,8 @@ class BlenderReferenceGenerator:
             use_compositing=False,
             samples=verification_context.subtask_info['samples']
         )
-        ctd = generate_ctd(verification_context.subtask_info, script_src)
+        task_definition = BlenderReferenceGenerator\
+            .generate_computational_task_definition(verification_context.subtask_info, script_src)
         # FIXME issue #1955
         verification_context.computer.start_computation(
             root_path=verification_context.get_crop_path(crop_number),
@@ -210,10 +209,19 @@ class BlenderReferenceGenerator:
                                      verification_context=verification_context,
                                      crop_number=crop_number),
             error_callback=crop_render_failure,
-            compute_task_def=ctd,
+            compute_task_def=task_definition,
             resources=verification_context.resources,
             additional_resources=[]
         )
+
+    @staticmethod
+    def generate_computational_task_definition(subtask_info: Dict[str, Any], script_src: str) -> Dict[str, Any]:
+        task_definition = deepcopy(subtask_info['ctd'])
+
+        task_definition['extra_data']['outfilebasename'] = "ref_" + subtask_info['outfilebasename']
+        task_definition['extra_data']['script_src'] = script_src
+        task_definition['deadline'] = timeout_to_deadline(subtask_info['subtask_timeout'])
+        return task_definition
 
     def crop_rendering_finished(self, begin: int, end: int) -> None:
         for i in range(begin, end):
@@ -224,10 +232,10 @@ class BlenderReferenceGenerator:
 
     def crop_rendered_callback(self,
                                results: List[str],
-                               time_spend: float,
+                               time_spent: float,
                                verification_context: VerificationContext,
                                crop_number: int) -> None:
-        self.rendered_crops_results[crop_number] = [results, time_spend, verification_context]
+        self.rendered_crops_results[crop_number] = [results, time_spent, verification_context]
         crop_number += 1
         if crop_number == BlenderReferenceGenerator.DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP \
                 or crop_number == BlenderReferenceGenerator.DEFAULT_CROPS_NUMBER_SECOND_VERIFICATION_STEP:
@@ -240,7 +248,7 @@ class BlenderReferenceGenerator:
                               verification_context.error_callback, crop_number)
 
     @staticmethod
-    def _get_random_interval_within_boundaries(begin: int, end: int, interval_length: int) -> List[int]:
+    def _get_random_interval_within_boundaries(begin: int, end: int, interval_length: int) -> Tuple[int, int]:
         # survive in edge cases
         end -= 1
         begin += 1
@@ -250,13 +258,14 @@ class BlenderReferenceGenerator:
         interval_begin = random.randint(begin, max_possible_interval_end)
         interval_end = interval_begin + interval_length
         logger.info("interval_begin=%r, interval_end=%r", interval_begin, interval_end)
-        return [interval_begin, interval_end]
+        return interval_begin, interval_end
 
     @staticmethod
-    def convert_bitmap_coordinates_to_traditional_y_direction(crop_x_min: int, crop_y_max: int, top: int) -> Tuple[int, int]:
-        # In metrics calculation, y=0 is located on top but blender uses classic vertical axis direction
+    def convert_bitmap_coordinates_to_traditional_y_direction(x: int,
+                                                              crop_y_max: int,
+                                                              top: int) -> Tuple[int, int]:
+        # In bitmap terms y=0 is located on top but blender uses classic vertical axis direction with y=0 at the bottom
         y = top - crop_y_max
-        x = crop_x_min
         logger.info("X=%r, Y=%r", x, y)
         return x, y
 
