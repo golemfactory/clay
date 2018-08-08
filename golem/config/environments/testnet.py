@@ -62,7 +62,3 @@ APP_MANAGER_CONFIG_FILES = [
     os.path.join('apps', 'registered.ini'),
     os.path.join('apps', 'registered_test.ini')
 ]
-
-# MONITOR
-
-SEND_PAYMENT_INFO_TO_MONITOR = True
