@@ -99,10 +99,14 @@ class IncomesKeeper:
         )
 
     @staticmethod
-    def reject(subtask_id: str) -> None:
+    def reject(sender_node: str, subtask_id: str) -> None:
         try:
-            income = Income.get(subtask=subtask_id, accepted_ts=None,
-                                overdue=False)
+            income = Income.get(
+                sender_node=sender_node,
+                subtask=subtask_id,
+                accepted_ts=None,
+                overdue=False,
+            )
         except Income.DoesNotExist:
             logger.error(
                 "Income.DoesNotExist subtask_id: %r",
@@ -110,11 +114,6 @@ class IncomesKeeper:
             return
 
         income.delete_instance()
-        dispatcher.send(
-            signal='golem.income',
-            event='rejected',
-            subtask_id=subtask_id
-        )
 
     @staticmethod
     def settled(

@@ -238,7 +238,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         subtask_id3 = generate_new_id_from_id(task_id)
         with self.assertLogs(logger, level='WARNING'):
-            ts.subtask_rejected(subtask_id3)
+            ts.subtask_rejected(keys_auth.key_id, subtask_id3)
         self.assertIsNotNone(ts.task_keeper.task_headers.get(task_id))
 
         prev_call_count = trust.PAYMENT.increase.call_count

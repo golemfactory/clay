@@ -396,7 +396,7 @@ class TaskServer(
     def get_task_computer_root(self):
         return os.path.join(self.client.datadir, "ComputerRes")
 
-    def subtask_rejected(self, subtask_id):
+    def subtask_rejected(self, sender_node_id, subtask_id):
         """My (providers) results were rejected"""
         logger.debug("Subtask %r result rejected", subtask_id)
         self.task_result_sent(subtask_id)
@@ -406,7 +406,11 @@ class TaskServer(
             logger.warning("Not my subtask rejected %r", subtask_id)
             return
 
-        self.client.transaction_system.incomes_keeper.reject(subtask_id)
+        self.client.transaction_system.incomes_keeper.reject(
+            sender_node_id,
+            subtask_id,
+        )
+        self.decrease_trust_payment(task_id)
         # self.remove_task_header(task_id)
         # TODO Inform transaction system and task manager about rejected
         # subtask. Issue #2405
@@ -465,7 +469,7 @@ class TaskServer(
 
         if event == 'confirmed':
             self.increase_trust_payment(task_id)
-        elif event in ['rejected', 'overdue']:
+        elif event == 'overdue':
             self.decrease_trust_payment(task_id)
 
     def finished_task_listener(self, event='default', task_id=None, op=None,

@@ -429,7 +429,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         srr = self._get_srr()
         self.__call_react_to_srr(srr)
         self.task_session.task_server.subtask_rejected.assert_called_once_with(
-            subtask_id=srr.report_computed_task.subtask_id)  # noqa pylint:disable=no-member
+            sender_node_id=self.task_session.key_id,
+            subtask_id=srr.report_computed_task.subtask_id,  # noqa pylint:disable=no-member
+        )
 
     def test_result_rejected_with_wrong_key(self):
         srr = self._get_srr(key2='notmine')
