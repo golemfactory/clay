@@ -469,7 +469,7 @@ class TaskServer(
 
         if event == 'confirmed':
             self.increase_trust_payment(task_id)
-        elif event == 'overdue':
+        elif event == 'overdue_single':
             self.decrease_trust_payment(task_id)
 
     def finished_task_listener(self, event='default', task_id=None, op=None,

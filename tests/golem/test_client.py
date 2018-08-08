@@ -547,25 +547,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert task_manager.tasks_states[new_task_id].status \
             == TaskStatus.waiting
 
-    @patch('golem.client.Trust', autospec=True)
-    def test_check_payments(self, trust, *_):
-
-        self.client = client = Client(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=ClientConfigDescriptor(),
-            keys_auth=Mock(),
-            database=Mock(),
-            transaction_system=Mock(),
-            connect_to_known_hosts=False,
-            use_docker_manager=False,
-            use_monitor=False
-        )
-        client.transaction_system\
-            .get_nodes_with_overdue_payments.return_value = ['a', 'b']
-        client.check_payments()
-        trust.PAYMENT.decrease.assert_has_calls((call('a'), call('b')))
-
     @patch('golem.client.get_timestamp_utc')
     def test_clean_old_tasks_no_tasks(self, *_):
         self.client = Client(
@@ -723,7 +704,6 @@ class TestDoWorkService(TestWithReactor):
         c.task_server = Mock()
         c.resource_server = Mock()
         c.ranking = Mock()
-        c.check_payments = Mock()
         c.config_desc.send_pings = False
 
         do_work_service = DoWorkService(c)
@@ -734,7 +714,6 @@ class TestDoWorkService(TestWithReactor):
         assert c.p2pservice.sync_network.called
         assert c.resource_server.sync_network.called
         assert c.ranking.sync_network.called
-        assert c.check_payments.called
 
     @patch('golem.client.logger')
     def test_pings(self, logger):
@@ -744,7 +723,6 @@ class TestDoWorkService(TestWithReactor):
         c.task_server = Mock()
         c.resource_server = Mock()
         c.ranking = Mock()
-        c.check_payments = Mock()
         c.config_desc.send_pings = True
 
         # Make methods throw exceptions
@@ -755,13 +733,12 @@ class TestDoWorkService(TestWithReactor):
         c.task_server.sync_network = raise_exc
         c.resource_server.sync_network = raise_exc
         c.ranking.sync_network = raise_exc
-        c.check_payments = raise_exc
 
         do_work_service = DoWorkService(c)
         do_work_service._run()
 
         assert c.p2pservice.ping_peers.called
-        assert logger.exception.call_count == 5
+        assert logger.exception.call_count == 4
 
     @freeze_time("2018-01-01 00:00:00")
     def test_time_for(self):
@@ -795,7 +772,6 @@ class TestDoWorkService(TestWithReactor):
         assert client.task_server.sync_network.called
         assert client.resource_server.sync_network.called
         assert client.ranking.sync_network.called
-        assert client.check_payments.called
 
         client.reset_mock()
 
@@ -806,7 +782,6 @@ class TestDoWorkService(TestWithReactor):
             assert client.task_server.sync_network.called
             assert client.resource_server.sync_network.called
             assert client.ranking.sync_network.called
-            assert not client.check_payments.called
 
         with freeze_time("2018-01-01 00:01:00"):
             do_work_service._run()
@@ -815,7 +790,6 @@ class TestDoWorkService(TestWithReactor):
             assert client.task_server.sync_network.called
             assert client.resource_server.sync_network.called
             assert client.ranking.sync_network.called
-            assert client.check_payments.called
 
 
 class TestMonitoringPublisherService(TestWithReactor):

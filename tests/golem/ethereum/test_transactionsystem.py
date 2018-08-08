@@ -342,14 +342,7 @@ class TestTransactionSystem(TestWithDatabase):
         with patch.object(
             self.ets.incomes_keeper, 'update_overdue_incomes'
         ) as incomes:
-            incomes.return_value = [
-                Mock(sender_node='a'),
-                Mock(sender_node='b'),
-            ]
-            self.assertEqual(
-                self.ets.get_nodes_with_overdue_payments(),
-                ['a', 'b']
-            )
+            self.ets._run()
             incomes.assert_called_once()
 
     def test_no_password(self):

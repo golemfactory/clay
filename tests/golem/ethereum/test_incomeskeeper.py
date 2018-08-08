@@ -190,52 +190,47 @@ class TestIncomesKeeper(TestWithDatabase):
         income.save(force_insert=True)
         return income
 
-    def test_update_overdue_incomes_none(self):
-        incomes = self.incomes_keeper.update_overdue_incomes()
-        self.assertSequenceEqual(incomes, ())
-
     @freeze_time()
     def test_update_overdue_incomes_all_paid(self):
-        self._create_income(
+        income1 = self._create_income(
             accepted_ts=int(time.time()),
             transaction='transaction')
-        self._create_income(
+        income2 = self._create_income(
             created_date=datetime.now() - timedelta(seconds=2*PAYMENT_DEADLINE),
             accepted_ts=int(time.time()) - 2*PAYMENT_DEADLINE,
             transaction='transaction')
-        incomes = self.incomes_keeper.update_overdue_incomes()
-        self.assertSequenceEqual(incomes, ())
+        self.incomes_keeper.update_overdue_incomes()
+        self.assertFalse(income1.refresh().overdue)
+        self.assertFalse(income2.refresh().overdue)
 
     @freeze_time()
     def test_update_overdue_incomes_accepted_deadline_passed(self):
         overdue_income = self._create_income(
             created_date=datetime.now() - timedelta(seconds=2*PAYMENT_DEADLINE),
             accepted_ts=int(time.time()) - 2*PAYMENT_DEADLINE)
-        incomes = self.incomes_keeper.update_overdue_incomes()
-        self.assertSequenceEqual(incomes, (overdue_income,))
+        self.incomes_keeper.update_overdue_incomes()
         self.assertTrue(overdue_income.refresh().overdue)
 
     @freeze_time()
     def test_update_overdue_incomes_unaccepted_deadline_passed(self):
         overdue_income = self._create_income(
             created_date=datetime.now() - timedelta(seconds=2*PAYMENT_DEADLINE))
-        incomes = self.incomes_keeper.update_overdue_incomes()
-        self.assertSequenceEqual(incomes, (overdue_income,))
+        self.incomes_keeper.update_overdue_incomes()
         self.assertTrue(overdue_income.refresh().overdue)
 
     @freeze_time()
     def test_update_overdue_incomes_old_but_recently_accepted(self):
-        self._create_income(
+        income = self._create_income(
             created_date=datetime.now() - timedelta(seconds=2*PAYMENT_DEADLINE),
             accepted_ts=int(time.time()))
-        incomes = self.incomes_keeper.update_overdue_incomes()
-        self.assertSequenceEqual(incomes, ())
+        self.incomes_keeper.update_overdue_incomes()
+        self.assertFalse(income.refresh().overdue)
 
     @freeze_time()
     def test_update_overdue_incomes_already_marked_as_overdue(self):
-        self._create_income(
+        income = self._create_income(
             created_date=datetime.now() - timedelta(seconds=2*PAYMENT_DEADLINE),
             accepted_ts=int(time.time()) - 2*PAYMENT_DEADLINE,
             overdue=True)
-        incomes = self.incomes_keeper.update_overdue_incomes()
-        self.assertSequenceEqual(incomes, ())
+        self.incomes_keeper.update_overdue_incomes()
+        self.assertTrue(income.refresh().overdue)
