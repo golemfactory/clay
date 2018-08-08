@@ -63,6 +63,7 @@ CORE_METHOD_MAP = dict(
     restart_task=           'comp.task.restart',
     get_subtasks_count = 'comp.task.subtasks_count',
     restart_subtasks_from_task='comp.task.restart_subtasks',
+    receive_state_update_from_subtask='comp.task.state_update',
 
     get_subtasks=           'comp.task.subtasks',
     get_subtasks_borders=   'comp.task.subtasks.borders',

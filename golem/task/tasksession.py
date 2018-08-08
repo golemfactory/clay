@@ -2,7 +2,9 @@ import datetime
 import functools
 import logging
 import os
+import threading
 import time
+from typing import Dict
 
 from golem_messages import message
 from golem_messages import helpers as msg_helpers
@@ -24,6 +26,7 @@ from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import TaskState
+from golem.task.taskstateupdate import StateUpdateData, StateUpdateProcessor, StateUpdateInfo
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +104,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.err_msg = None  # Keep track of errors
         self.__set_msg_interpretations()
 
+        # during-the-task-communication
+        self.state_update_response = StateUpdateProcessor()
         # self.threads = []
     ########################
     # BasicSession methods #
@@ -844,6 +849,40 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            "an unknown task (subtask_id='%s')",
                            self.key_id, msg.subtask_id)
 
+    def _react_to_state_update(self, msg: message.tasks.StateUpdate):
+        if msg.direction == msg.DIRECTION.Call:
+            self._react_to_state_update_call(msg)
+        else:
+            self._react_to_state_update_response(msg)
+
+    def _react_to_state_update_call(self, msg: message.tasks.StateUpdate):  # noqa
+        # TODO Reusing old message structure - may be unwise, if, for example, task modifies data
+        task = self.task_server.task_manager.tasks[msg.task_id]
+        msg = message.tasks.StateUpdate(
+            task_id=msg.task_id,
+            subtask_id=msg.subtask_id,
+            state_update_id=msg.state_update_id,
+            data=task.react_to_message(msg.subtask_id, msg.data),
+            direction=msg.DIRECTION.Response
+        )
+        response_sess = self
+        response_sess.send(msg)
+
+    def _react_to_state_update_response(self, msg: message.tasks.StateUpdate):  # noqa
+        resp = self.state_update_response.get(StateUpdateInfo.from_state_update_msg(msg))
+        resp.data = msg.data
+        resp.event.set()
+
+    def send_state_update(self, update: StateUpdateData):
+        msg = message.tasks.StateUpdate(
+            **update.to_dict(),
+            direction=message.tasks.StateUpdate.DIRECTION.Call
+        )
+        response_sess = self.task_server.task_sessions[msg.subtask_id]
+        response_sess.send(msg)
+        self.state_update_response.initialize(update)
+        return self.state_update_response.get(update.info)
+
     def send(self, msg, send_unverified=False):
         if not self.verified and not send_unverified:
             self.msgs_to_send.append(msg)
@@ -954,6 +993,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.RandVal.TYPE: self._react_to_rand_val,
             message.StartSessionResponse.TYPE: self._react_to_start_session_response,  # noqa
             message.WaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
+            message.tasks.StateUpdate.TYPE:
+                self._react_to_state_update,
 
             # Concent messages
             message.tasks.AckReportComputedTask.TYPE:

@@ -2,7 +2,7 @@ import logging
 import os
 import random
 from copy import copy
-from typing import Optional
+from typing import Optional, Dict
 
 import enforce
 from golem_messages.message import ComputeTaskDef
@@ -72,6 +72,10 @@ class DummyTask(CoreTask):
             "result_size": self.task_definition.result_size,
             "result_file": self.__get_result_file_name(subtask_id),
             "subtask_data_size": sbs,
+
+            # TODO it shouldn't be there
+            "subtask_id": subtask_id,
+            "task_id": self.task_definition.task_id
         }
 
         return self._new_compute_task_def(subtask_id,
@@ -118,6 +122,10 @@ class DummyTask(CoreTask):
         char = self.TESTING_CHAR
         exd['extra_data']["subtask_data"] = char * size
         return exd
+
+    # Temporary testing for communications
+    def react_to_message(self, subtask_id: str, data: Dict):
+        return {"got_message": True, "from": subtask_id}
 
 
 class DummyTaskBuilder(CoreTaskBuilder):
