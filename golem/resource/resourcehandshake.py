@@ -53,7 +53,7 @@ class ResourceHandshake:
 
 class ResourceHandshakeSessionMixin:
 
-    HANDSHAKE_TIMEOUT = 2000 # 20  # s # TODO zmienić z powrotem
+    HANDSHAKE_TIMEOUT = 2000 # 20  # s # TODODEBUG zmienić z powrotem
     PEER_BLOCK_TIMEOUT = 2 * 3600  # s
     NONCE_TASK = 'nonce'
 
