@@ -26,6 +26,7 @@ class VerificationQueue:
         self._lock = threading.Lock()
         self._jobs: Dict[str, Deferred] = dict()
         self._paused = False
+        self.already_handled = False
 
     def submit(self,
                verifier_class: Type[Verifier],
@@ -71,6 +72,7 @@ class VerificationQueue:
             return None
 
     def _run(self, entry: Entry) -> None:
+        self.already_handled = False
         deferred_job = Deferred()
         subtask_id = entry.subtask_id
 
@@ -81,8 +83,12 @@ class VerificationQueue:
 
         def callback(*args, **kwargs):
             with self._lock:
-                deferred_job.callback(True)
-                self._jobs.pop(subtask_id, None)
+                if not self.already_handled:
+                    deferred_job.callback(True)
+                    self.already_handled = True
+                    self._jobs.pop(subtask_id, None)
+                else:
+                    deferred_job.cancel()
 
             logger.info("Finished verification of subtask %r", subtask_id)
             try:

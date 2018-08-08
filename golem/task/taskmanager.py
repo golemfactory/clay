@@ -608,36 +608,39 @@ class TaskManager(TaskEventListener):
         subtask_state.subtask_status = SubtaskStatus.verifying
 
         def verification_finished():
-            ss = self.__set_subtask_state_finished(subtask_id)
+            try:
+                ss = self.__set_subtask_state_finished(subtask_id)
+                if not self.tasks[task_id].verify_subtask(subtask_id):
+                    logger.debug("Subtask %r not accepted\n", subtask_id)
+                    ss.subtask_status = SubtaskStatus.failure
+                    self.notice_task_updated(
+                        task_id,
+                        subtask_id=subtask_id,
+                        op=SubtaskOp.NOT_ACCEPTED)
+                    verification_finished_()
+                    return
 
-            if not self.tasks[task_id].verify_subtask(subtask_id):
-                logger.debug("Subtask %r not accepted\n", subtask_id)
-                ss.subtask_status = SubtaskStatus.failure
-                self.notice_task_updated(
-                    task_id,
-                    subtask_id=subtask_id,
-                    op=SubtaskOp.NOT_ACCEPTED)
-                verification_finished_()
-                return
+                self.notice_task_updated(task_id,
+                                         subtask_id=subtask_id,
+                                         op=SubtaskOp.FINISHED)
 
-            self.notice_task_updated(task_id,
-                                     subtask_id=subtask_id,
-                                     op=SubtaskOp.FINISHED)
-
-            if self.tasks_states[task_id].status in self.activeStatus:
-                if not self.tasks[task_id].finished_computation():
-                    self.tasks_states[task_id].status = TaskStatus.computing
-                else:
-                    if self.tasks[task_id].verify_task():
-                        logger.debug("Task %r accepted", task_id)
-                        self.tasks_states[task_id].status = TaskStatus.finished
-                        self.notice_task_updated(task_id, op=TaskOp.FINISHED)
+                if self.tasks_states[task_id].status in self.activeStatus:
+                    if not self.tasks[task_id].finished_computation():
+                        self.tasks_states[task_id].status = TaskStatus.computing
                     else:
-                        logger.debug("Task %r not accepted", task_id)
-                        self.notice_task_updated(task_id,
-                                                 op=TaskOp.NOT_ACCEPTED)
-
-            verification_finished_()
+                        if self.tasks[task_id].verify_task():
+                            logger.debug("Task %r accepted", task_id)
+                            self.tasks_states[task_id].status =\
+                                TaskStatus.finished
+                            self.notice_task_updated(task_id,
+                                                     op=TaskOp.FINISHED)
+                        else:
+                            logger.debug("Task %r not accepted", task_id)
+                            self.notice_task_updated(task_id,
+                                                     op=TaskOp.NOT_ACCEPTED)
+                verification_finished_()
+            except KeyError as e:
+                log_subtask_key_error(e)
 
         self.tasks[task_id].computation_finished(
             subtask_id, result, result_type, verification_finished
