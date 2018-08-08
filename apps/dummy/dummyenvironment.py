@@ -5,7 +5,7 @@ from golem.docker.environment import DockerEnvironment
 
 
 class DummyTaskEnvironment(DockerEnvironment):
-    DOCKER_IMAGE = "dummy"
+    DOCKER_IMAGE = "jacekjacekjacekg/dummymessages"
     DOCKER_TAG = "latest"
     ENV_ID = "DUMMYPOW"
     APP_DIR = path.join(get_golem_path(), 'apps', 'dummy')
