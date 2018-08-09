@@ -8,7 +8,6 @@ from golem.rpc.session import Session, Client, WebSocketAddress
 
 
 class WebSocketCLI(object):
-
     class NoConnection(object):
         # pylint: disable=too-few-public-methods
 
@@ -36,6 +35,8 @@ class WebSocketCLI(object):
             return deferred
 
     def __init__(self, cli,  # pylint: disable=too-many-arguments
+                 principal: str,
+                 principal_ticket: str,
                  host: str = CROSSBAR_HOST,
                  port: int = CROSSBAR_PORT,
                  realm: str = CROSSBAR_REALM,
@@ -44,7 +45,11 @@ class WebSocketCLI(object):
         address = WebSocketAddress(host, port, realm, ssl)
 
         self.cli = cli
-        self.session = Session(address)
+        self.session = Session(
+            address,
+            principal=principal,
+            principal_ticket=principal_ticket
+        )
 
     def execute(self, *args, **kwargs):
         from twisted.internet import reactor, threads

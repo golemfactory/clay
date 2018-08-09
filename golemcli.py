@@ -74,7 +74,13 @@ def start():
         cli = CLI(main_parser=parser, main_parser_options=flag_options)
 
     # run the cli
-    ws_cli = WebSocketCLI(cli, host=parsed.address, port=parsed.port)
+    ws_cli = WebSocketCLI(
+        cli,
+        principal="golemcli",
+        principal_ticket="clisecret",
+        host=parsed.address,
+        port=parsed.port
+    )
     ws_cli.execute(forwarded, interactive=interactive)
 
 

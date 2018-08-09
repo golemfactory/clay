@@ -20,7 +20,6 @@ CrossbarRouterOptions = namedtuple(
 
 
 class CrossbarRouter(object):
-
     serializers = ['msgpack']
 
     def __init__(self,  # pylint: disable=too-many-arguments
@@ -134,6 +133,29 @@ class CrossbarRouter(object):
                     'options': {
                         'allowed_origins': allowed_origins,
                         'enable_webstatus': enable_webstatus,
+                    },
+                    "auth": {
+                        "ticket": {
+                            "type": "static",
+                            "principals": {
+                                "golemapp": {
+                                    "ticket": "appsecret",
+                                    "role": "golem_admin"
+                                },
+                                "golemcli": {
+                                    "ticket": "clisecret",
+                                    "role": "golem_admin"
+                                },
+                                "golem_electron": {
+                                    "ticket": "electronsecret",
+                                    "role": "golem_admin"
+                                },
+                                "golem_docker": {
+                                    "ticket": "dockersecret",
+                                    "role": "golem_docker"
+                                },
+                            }
+                        }
                     }
                 }],
                 'components': [],
@@ -150,6 +172,39 @@ class CrossbarRouter(object):
                                 "subscribe": True
                             }
                         }]
+                    },
+                    {
+                        "name": 'golem_admin',
+                        "permissions": [{
+                            "uri": '*',
+                            "allow": {
+                                "call": True,
+                                "register": True,
+                                "publish": True,
+                                "subscribe": True
+                            }
+                        }]
+                    },
+                    {
+                        "name": 'golem_docker',
+                        "permissions": [{
+                            "uri": '*',
+                            "allow": {
+                                "call": False,
+                                "register": False,
+                                "publish": False,
+                                "subscribe": False
+                            }
+                        },
+                        {
+                            "uri": 'comp.tasks.state_update',
+                            "allow": {
+                                "call": True,
+                                "register": False,
+                                "publish": False,
+                                "subscribe": False
+                            }}
+                        ]
                     }]
                 }],
             }]

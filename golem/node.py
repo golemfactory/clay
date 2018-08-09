@@ -50,12 +50,15 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  config_desc: ClientConfigDescriptor,
                  # SEE golem.core.variables.CONCENT_CHOICES
                  concent_variant: dict,
+                 principal: str,
+                 principal_ticket: str,
                  peers: Optional[List[SocketAddress]] = None,
                  use_monitor: bool = None,
                  use_talkback: bool = None,
                  use_docker_manager: bool = True,
                  geth_address: Optional[str] = None,
-                 password: Optional[str] = None) -> None:
+                 password: Optional[str] = None
+                 ) -> None:
 
         # DO NOT MAKE THIS IMPORT GLOBAL
         # otherwise, reactor will install global signal handlers on import
@@ -83,6 +86,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self.rpc_router: Optional[CrossbarRouter] = None
         self.rpc_session: Optional[Session] = None
         self._rpc_publisher: Optional[Publisher] = None
+        self.principal = principal
+        self.principal_ticket = principal_ticket
+
 
         self._peers: List[SocketAddress] = peers or []
 
@@ -192,7 +198,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         self.rpc_session = Session(self.rpc_router.address,
                                    cert_manager=self.rpc_router.cert_manager,
-                                   use_ipv6=self._config_desc.use_ipv6)
+                                   use_ipv6=self._config_desc.use_ipv6,
+                                   principal=self.principal,
+                                   principal_ticket=self.principal_ticket)
         deferred = self.rpc_session.connect()
 
         def on_connect(*_):

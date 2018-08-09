@@ -44,7 +44,8 @@ class WebSocketAddress(RPCAddress):
 
     def __init__(self, host, port, realm, ssl=True):
         self.realm = str(realm)
-        self.ssl = ssl
+        self.ssl = False # ssl
+
 
         protocol = 'wss' if ssl else 'ws'
         super(WebSocketAddress, self).__init__(protocol, host, port)
@@ -53,7 +54,8 @@ class WebSocketAddress(RPCAddress):
 class Session(ApplicationSession):
 
     def __init__(self, address, methods=None, events=None,  # noqa # pylint: disable=too-many-arguments
-                 cert_manager=None, use_ipv6=False) -> None:
+                 cert_manager=None, use_ipv6=False,
+                 principal=None, principal_ticket=None) -> None:
 
         self.address = address
         self.methods = methods or []
@@ -70,6 +72,9 @@ class Session(ApplicationSession):
         self._use_ipv6 = use_ipv6
 
         self.config = types.ComponentConfig(realm=address.realm)
+        self.principal = principal
+        self.principal_ticket = principal_ticket
+
         super(Session, self).__init__(self.config)
 
     def connect(self, auto_reconnect=True):
@@ -141,6 +146,20 @@ class Session(ApplicationSession):
         deferred.addErrback(self.ready.errback)
 
         return self.ready
+
+    #TODO change logging level
+    def onConnect(self):
+        logger.warning("Client connected. Starting WAMP-Ticket authentication on realm '{}' as principal '{}'".format(
+            self.config.realm, self.principal))
+        self.join(self.config.realm, [u"ticket"], self.principal)
+
+    # TODO change logging level
+    def onChallenge(self, challenge):
+        if challenge.method == u"ticket":
+            logger.warning("WAMP-Ticket challenge received: {}".format(challenge))
+            return self.principal_ticket
+        else:
+            raise Exception("Invalid authmethod {}".format(challenge.method))
 
     @inlineCallbacks
     def onJoin(self, details):
