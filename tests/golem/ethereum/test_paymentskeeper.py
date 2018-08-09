@@ -2,8 +2,8 @@ from eth_utils import encode_hex
 from os import urandom
 
 from golem.model import PaymentStatus
+from golem.ethereum.paymentskeeper import PaymentsDatabase, PaymentsKeeper
 from golem.tools.testwithdatabase import TestWithDatabase
-from golem.transactions.paymentskeeper import PaymentsDatabase, PaymentsKeeper
 from golem.tools.ci import ci_skip
 from tests.factories.model import Payment as PaymentFactory
 

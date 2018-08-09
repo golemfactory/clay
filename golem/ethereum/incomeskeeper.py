@@ -9,9 +9,8 @@ from pydispatch import dispatcher
 
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import Income
-from golem.utils import pubkeytoaddr
 
-logger = logging.getLogger("golem.transactions.incomeskeeper")
+logger = logging.getLogger(__name__)
 
 
 class IncomesKeeper:
@@ -35,12 +34,11 @@ class IncomesKeeper:
             amount: int,
             closure_time: int) -> None:
         expected = Income.select().where(
+            Income.payer_address == sender,
             Income.accepted_ts > 0,
             Income.accepted_ts <= closure_time,
             Income.transaction.is_null(),
             Income.settled_ts.is_null())
-        expected = \
-            [e for e in expected if pubkeytoaddr(e.sender_node) == sender]
 
         expected_value = sum([e.value for e in expected])
         if expected_value == 0:
@@ -72,31 +70,36 @@ class IncomesKeeper:
                 subtask_id=e.subtask,
             )
 
-        dispatcher.send(
-            signal='golem.monitor',
-            event='income',
-            addr=sender,
-            value=amount,
-        )
-
-    def expect(self, sender_node_id, subtask_id, value):
-        logger.debug(
-            "expect(%r, %r, %r)",
-            sender_node_id,
+    @staticmethod
+    def expect(
+            sender_node: str,
+            subtask_id: str,
+            payer_address: str,
+            value: int) -> Income:
+        logger.info(
+            "Expected income - sender_node: %s, subtask: %s, "
+            "payer: %s, value: %f",
+            sender_node,
             subtask_id,
-            value
+            payer_address,
+            value / denoms.ether,
         )
         return Income.create(
-            sender_node=sender_node_id,
+            sender_node=sender_node,
             subtask=subtask_id,
-            value=value
+            payer_address=payer_address,
+            value=value,
         )
 
     @staticmethod
-    def reject(subtask_id):
+    def reject(sender_node: str, subtask_id: str) -> None:
         try:
-            income = Income.get(subtask=subtask_id, accepted_ts=None,
-                                overdue=False)
+            income = Income.get(
+                sender_node=sender_node,
+                subtask=subtask_id,
+                accepted_ts=None,
+                overdue=False,
+            )
         except Income.DoesNotExist:
             logger.error(
                 "Income.DoesNotExist subtask_id: %r",
@@ -104,14 +107,12 @@ class IncomesKeeper:
             return
 
         income.delete_instance()
-        dispatcher.send(
-            signal='golem.income',
-            event='rejected',
-            subtask_id=subtask_id
-        )
 
     @staticmethod
-    def settled(sender_node, subtask_id, settled_ts):
+    def settled(
+            sender_node: str,
+            subtask_id: str,
+            settled_ts: int) -> None:
         try:
             income = Income.get(sender_node=sender_node, subtask=subtask_id)
         except Income.DoesNotExist:
@@ -128,9 +129,10 @@ class IncomesKeeper:
             sender_addr: str,
             subtask_id: str,
             value: int) -> None:
-        expected = Income.select().where(Income.subtask_id == subtask_id)
-        expected = \
-            [e for e in expected if pubkeytoaddr(e.sender_node) == sender_addr]
+        expected = Income.select().where(
+            Income.payer_address == sender_addr,
+            Income.subtask_id == subtask_id,
+        )
         if not expected:
             logger.info(
                 "Received forced subtask payment but there's no entry for "
@@ -151,7 +153,11 @@ class IncomesKeeper:
             income.value = value
         income.save()
 
-    def update_awaiting(self, sender_node, subtask_id, accepted_ts):
+    @staticmethod
+    def update_awaiting(
+            sender_node: str,
+            subtask_id: str,
+            accepted_ts: int) -> None:
         try:
             income = Income.get(sender_node=sender_node, subtask=subtask_id)
         except Income.DoesNotExist:

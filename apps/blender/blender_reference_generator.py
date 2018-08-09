@@ -9,6 +9,7 @@ from typing import Dict, Tuple, List, Callable, Optional, Any
 import numpy
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from golem.core.common import timeout_to_deadline
+from golem.task.localcomputer import ComputerAdapter
 
 logger = logging.getLogger("blendercroppper")
 
@@ -44,7 +45,8 @@ class BlenderReferenceGenerator:
     DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP = 3
     DEFAULT_CROPS_NUMBER_SECOND_VERIFICATION_STEP = 6
 
-    def __init__(self):
+    def __init__(self, computer: Optional[ComputerAdapter] = None) -> None:
+        self.computer = computer or ComputerAdapter()
         self.crop_counter: int = 0
         self.crop_size_in_pixels: Tuple[int, int] = ()
         self.crops_blender_borders: List[Tuple[float, float, float, float]] = []
@@ -156,7 +158,8 @@ class BlenderReferenceGenerator:
         return {"left": left, "right": right, "bottom": bottom, "top": top}
 
     # pylint: disable-msg=too-many-arguments
-    def render_crops(self, computer, resources: List[str],
+
+    def render_crops(self, resources: List[str],
                      crop_rendered_callback: CropRenderedSuccessCallbackType,
                      crop_render_failure_callback: CropRenderedFailureCallbackType,
                      subtask_info: Dict[str, Any],
@@ -169,15 +172,15 @@ class BlenderReferenceGenerator:
                                               subtask_info['crop_window'],
                                               num_crops,
                                               crop_size)
+
         verification_context = VerificationContext({'paths': crops_path, 'position': crops_info},
-                                                   computer,
-                                                   {'resources': resources, 'subtask_info': subtask_info},
-                                                   {'success': crop_rendered_callback,
-                                                    'errback': crop_render_failure_callback})
-        self._render_one_crop(verification_context,
-                              self.crop_rendered_callback,
-                              crop_render_failure_callback,
-                              self.crop_counter)
+                                 self.computer,
+                                 {'resources': resources,
+                                  'subtask_info': subtask_info},
+                                 {'success': crop_rendered_callback,
+                                  'errback': crop_render_failure_callback})
+        self._render_one_crop(verification_context, self.crop_rendered_callback,
+                              crop_render_failure_callback, self.crop_counter)
         return self.crop_size_in_pixels
 
     # FIXME it would be better to make this subtask agnostic, pass only data

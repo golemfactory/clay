@@ -7,7 +7,7 @@ import uuid
 from threading import Lock
 
 from pydispatch import dispatcher
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, TimeoutError
 
 from golem.core.common import deadline_to_timeout
 from golem.core.deferred import sync_wait
@@ -429,9 +429,11 @@ class TaskComputer(object):
 
         if docker_images:
             docker_images = [DockerImage(**did) for did in docker_images]
+            dir_mapping = DockerTaskThread.generate_dir_mapping(resource_dir,
+                                                                temp_dir)
             tt = DockerTaskThread(subtask_id, docker_images, working_dir,
                                   src_code, extra_data, short_desc,
-                                  resource_dir, temp_dir, task_timeout)
+                                  dir_mapping, task_timeout)
         elif self.support_direct_computation:
             tt = PyTaskThread(subtask_id, working_dir, src_code,
                               extra_data, short_desc, resource_dir, temp_dir,
