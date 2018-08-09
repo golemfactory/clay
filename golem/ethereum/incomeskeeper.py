@@ -2,7 +2,6 @@
 from datetime import datetime, timedelta
 import logging
 import time
-from typing import List
 
 from ethereum.utils import denoms
 from pydispatch import dispatcher
@@ -186,7 +185,7 @@ class IncomesKeeper:
         ).order_by(Income.created_date.desc())
 
     @staticmethod
-    def update_overdue_incomes() -> List[Income]:
+    def update_overdue_incomes() -> None:
         """
         Set overdue flag for all incomes that have been waiting for too long.
         :return: Updated incomes
@@ -204,16 +203,19 @@ class IncomesKeeper:
         ))
 
         if not incomes:
-            return incomes
+            return
 
         for income in incomes:
             income.overdue = True
             income.save()
+            dispatcher.send(
+                signal='golem.income',
+                event='overdue_single',
+                subtask_id=income.subtask,
+            )
 
         dispatcher.send(
             signal='golem.income',
             event='overdue',
             incomes=incomes,
         )
-
-        return incomes
