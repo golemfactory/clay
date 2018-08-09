@@ -138,20 +138,20 @@ class CrossbarRouter(object):
                         "ticket": {
                             "type": "static",
                             "principals": {
-                                "golemapp": {
-                                    "ticket": "appsecret",
+                                cert_manager.GOLEMAPP_PRINCIPAL: {
+                                    "ticket": cert_manager.GOLEMAPP_TICKET,
                                     "role": "golem_admin"
                                 },
-                                "golemcli": {
-                                    "ticket": "clisecret",
+                                cert_manager.GOLEMCLI_PRINCIPAL: {
+                                    "ticket": cert_manager.GOLEMCLI_TICKET,
                                     "role": "golem_admin"
                                 },
-                                "golem_electron": {
-                                    "ticket": "electronsecret",
+                                cert_manager.ELECTRON_PRINCIPAL: {
+                                    "ticket": cert_manager.ELECTRON_TICKET,
                                     "role": "golem_admin"
                                 },
-                                "golem_docker": {
-                                    "ticket": "dockersecret",
+                                cert_manager.DOCKER_PRINCIPAL: {
+                                    "ticket": cert_manager.DOCKER_TICKET,
                                     "role": "golem_docker"
                                 },
                             }

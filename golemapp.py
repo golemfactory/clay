@@ -180,8 +180,6 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         concent_variant=CONCENT_VARIANT,
         geth_address=geth_address,
         password=password,
-        principal="golemapp",
-        principal_ticket="appsecret"
     )
 
     if accept_terms:

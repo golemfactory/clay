@@ -2,6 +2,7 @@ import sys
 
 from twisted.internet.defer import Deferred
 
+from golem.rpc.cert import CertificateManager
 from golem.rpc.common import CROSSBAR_REALM, CROSSBAR_PORT, CROSSBAR_HOST
 from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP, NODE_METHOD_MAP
 from golem.rpc.session import Session, Client, WebSocketAddress
@@ -35,8 +36,6 @@ class WebSocketCLI(object):
             return deferred
 
     def __init__(self, cli,  # pylint: disable=too-many-arguments
-                 principal: str,
-                 principal_ticket: str,
                  host: str = CROSSBAR_HOST,
                  port: int = CROSSBAR_PORT,
                  realm: str = CROSSBAR_REALM,
@@ -47,8 +46,8 @@ class WebSocketCLI(object):
         self.cli = cli
         self.session = Session(
             address,
-            principal=principal,
-            principal_ticket=principal_ticket
+            principal=CertificateManager.GOLEMCLI_PRINCIPAL,
+            principal_ticket=CertificateManager.GOLEMCLI_TICKET
         )
 
     def execute(self, *args, **kwargs):

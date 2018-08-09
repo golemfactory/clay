@@ -24,6 +24,7 @@ from golem.ethereum.transactionsystem import TransactionSystem
 from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher, Component, Stage
+from golem.rpc.cert import CertificateManager
 from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP, NODE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import object_method_map, Session, Publisher
@@ -50,8 +51,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  config_desc: ClientConfigDescriptor,
                  # SEE golem.core.variables.CONCENT_CHOICES
                  concent_variant: dict,
-                 principal: str,
-                 principal_ticket: str,
                  peers: Optional[List[SocketAddress]] = None,
                  use_monitor: bool = None,
                  use_talkback: bool = None,
@@ -86,9 +85,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self.rpc_router: Optional[CrossbarRouter] = None
         self.rpc_session: Optional[Session] = None
         self._rpc_publisher: Optional[Publisher] = None
-        self.principal = principal
-        self.principal_ticket = principal_ticket
-
 
         self._peers: List[SocketAddress] = peers or []
 
@@ -129,6 +125,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
                 keys = self._start_keys_auth()
                 docker = self._start_docker()
                 return gatherResults([terms, keys, docker], consumeErrors=True)
+
             chain_function(rpc, on_rpc_ready).addCallbacks(
                 self._setup_client,
                 self._error('keys or docker'),
@@ -196,11 +193,13 @@ class Node(object):  # pylint: disable=too-few-public-methods
             self._stop_on_error("rpc", "RPC router is not available")
             return None
 
-        self.rpc_session = Session(self.rpc_router.address,
-                                   cert_manager=self.rpc_router.cert_manager,
-                                   use_ipv6=self._config_desc.use_ipv6,
-                                   principal=self.principal,
-                                   principal_ticket=self.principal_ticket)
+        self.rpc_session = Session(
+            self.rpc_router.address,
+            cert_manager=self.rpc_router.cert_manager,
+            use_ipv6=self._config_desc.use_ipv6,
+            principal=CertificateManager.GOLEMAPP_PRINCIPAL,
+            principal_ticket=CertificateManager.GOLEMAPP_TICKET
+        )
         deferred = self.rpc_session.connect()
 
         def on_connect(*_):

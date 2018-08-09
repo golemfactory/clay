@@ -23,6 +23,16 @@ class CertificateManager:
     PRIVATE_KEY_FILE_NAME = "rpc_key.pem"
     CERTIFICATE_FILE_NAME = "rpc_cert.pem"
 
+    GOLEMCLI_TICKET = "clisecret"
+    ELECTRON_TICKET = "electronsecret"
+    GOLEMAPP_TICKET = "appsecret"
+    DOCKER_TICKET = "dockersecret"
+
+    GOLEMCLI_PRINCIPAL = "golemcli"
+    ELECTRON_PRINCIPAL = "golem_electron"
+    GOLEMAPP_PRINCIPAL = "golemapp"
+    DOCKER_PRINCIPAL = "golem_docker"
+
     def __init__(self, dest_dir, setup_forward_secrecy=False):
         self.forward_secrecy = setup_forward_secrecy
         self.use_dh_params = self.forward_secrecy or is_windows()
