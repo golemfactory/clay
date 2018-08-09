@@ -507,6 +507,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         task_dict = {
             'bid': 5.0,
+            'compute_on': 'cpu',
             'name': 'test task',
             'options': {
                 'difficulty': 1337,
@@ -1047,6 +1048,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     @patch('golem.client.async_run', side_effect=mock_async_run)
     def test_enqueue_new_task(self, *_):
         t_dict = {
+            'compute_on': 'cpu',
             'resources': [
                 '/Users/user/Desktop/folder/texture.tex',
                 '/Users/user/Desktop/folder/model.mesh',

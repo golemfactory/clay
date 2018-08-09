@@ -780,6 +780,7 @@ class Client(HardwarePresetsMixin):
             task_dict = deepcopy(
                 task_manager.get_task_definition_dict(
                     task_manager.tasks[task_id]))
+            print("all dicts here", task_dict)
         except KeyError:
             return False, "Task not found: '{}'".format(task_id)
 

@@ -108,6 +108,7 @@ class TaskDefinition(object):
         return {
             'id': self.task_id,
             'type': self.task_type,
+            'compute_on': self.compute_on,
             'name': self.task_name,
             'timeout': task_timeout,
             'subtask_timeout': subtask_timeout,

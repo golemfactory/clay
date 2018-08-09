@@ -583,6 +583,7 @@ class CoreTaskBuilder(TaskBuilder):
         definition = task_type.definition()
         definition.options = task_type.options()
         definition.task_type = task_type.name
+        definition.compute_on = dictionary['compute_on']
         definition.resources = set(dictionary['resources'])
         definition.total_subtasks = int(dictionary['subtasks'])
         definition.main_program_file = task_type.defaults.main_program_file
