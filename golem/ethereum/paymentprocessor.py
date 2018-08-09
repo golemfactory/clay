@@ -7,14 +7,13 @@ from typing import List
 from sortedcontainers import SortedListWithKey
 from eth_utils import encode_hex
 from ethereum.utils import denoms
-from pydispatch import dispatcher
 from twisted.internet import threads
 
 import golem_sci
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import Payment, PaymentStatus
 
-log = logging.getLogger("golem.pay")
+log = logging.getLogger(__name__)
 
 # We reserve 30 minutes for the payment to go through
 PAYMENT_MAX_DELAY = PAYMENT_DEADLINE - 30 * 60
@@ -111,12 +110,6 @@ class PaymentProcessor:
             p.details.fee = fee
             p.save()
             self._gntb_reserved -= p.value
-            dispatcher.send(
-                signal='golem.monitor',
-                event='payment',
-                addr=encode_hex(p.payee),
-                value=p.value
-            )
             log.debug(
                 "- %.6f confirmed fee %.6f",
                 p.subtask,

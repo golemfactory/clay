@@ -48,6 +48,9 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
+from golem.ethereum.transactionsystem import TransactionSystem
+from golem.ethereum.exceptions import NotEnoughFunds
+from golem.ethereum.fundslocker import FundsLocker
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -78,10 +81,6 @@ from golem.task.taskstate import TaskTestStatus, SubtaskStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.tools.talkback import enable_sentry_logger
-from golem.transactions.ethereum.ethereumtransactionsystem import \
-    EthereumTransactionSystem
-from golem.transactions.ethereum.exceptions import NotEnoughFunds
-from golem.transactions.ethereum.fundslocker import FundsLocker
 
 
 logger = logging.getLogger(__name__)
@@ -109,7 +108,7 @@ class Client(HardwarePresetsMixin):
             config_desc: ClientConfigDescriptor,
             keys_auth: KeysAuth,
             database: Database,
-            transaction_system: EthereumTransactionSystem,
+            transaction_system: TransactionSystem,
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
