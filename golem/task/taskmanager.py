@@ -131,6 +131,13 @@ class TaskManager(TaskEventListener):
     def create_task(self, dictionary, minimal=False):
         purpose = TaskPurpose.TESTING if minimal else TaskPurpose.REQUESTING
         type_name = dictionary['type'].lower()
+        render_on = dictionary['render_on'].lower()
+
+        if type_name == "blender" \
+            and purpose == TaskPurpose.REQUESTING \
+            and render_on == "gpu":
+            type_name = type_name + "_nvgpu"
+
         task_type = self.task_types[type_name].for_purpose(purpose)
         builder_type = task_type.task_builder_type
 
