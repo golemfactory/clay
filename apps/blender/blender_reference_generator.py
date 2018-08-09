@@ -48,7 +48,7 @@ class BlenderReferenceGenerator:
     def __init__(self, computer: Optional[ComputerAdapter] = None) -> None:
         self.computer = computer or ComputerAdapter()
         self.crop_counter: int = 0
-        self.crop_size_in_pixels: Tuple[int, int] = ()
+        self.crop_size_in_pixels: Tuple[int, int] = (0, 0)
         self.crops_blender_borders: List[Tuple[float, float, float, float]] = []
         self.crops_pixel_coordinates: List[Tuple[int, int]] = []
         self.rendered_crops_results: Dict[int, List[Any]] = {}
@@ -65,7 +65,7 @@ class BlenderReferenceGenerator:
                             resolution: Tuple[int, int],
                             subtask_border: List[float],
                             crops_number: int,
-                            crop_size_as_fraction: Optional[Tuple[int, int]] = None):
+                            crop_size_as_fraction: Optional[Tuple[float, float]] = None):
         """
         This function will generate split data for performing random crops.
         Crops will be rendered from blend files using calculated values
@@ -117,7 +117,7 @@ class BlenderReferenceGenerator:
         # Recalculate pixel after converting to float
         crop_horizontal_pixel_coordinates = math.floor(blender_crop_border["left"] * numpy.float32(resolution[0])), \
                                             crop_horizontal_pixel_coordinates[1]
-        crop_vertical_pixel_coordinates = crop_vertical_pixel_coordinates, \
+        crop_vertical_pixel_coordinates = crop_vertical_pixel_coordinates[0], \
                                              math.floor(blender_crop_border["bottom"] * numpy.float32(resolution[1]))
         self.crops_blender_borders.append((blender_crop_border["left"],
                                            blender_crop_border["right"],
