@@ -161,10 +161,10 @@ function install_dependencies()
     if [[ ${INSTALL_NVIDIA_DOCKER} -eq 1 ]]; then
         info_msg "INSTALLING NVIDIA-DOCKER"
 
-        curl -s -L https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
+        wget -qO- https://nvidia.github.io/nvidia-docker/gpgkey | sudo apt-key add -
         distribution=$(. /etc/os-release;echo ${ID}${VERSION_ID})
 
-        curl -s -L https://nvidia.github.io/nvidia-docker/${distribution}/nvidia-docker.list | \
+        wget -qO- https://nvidia.github.io/nvidia-docker/${distribution}/nvidia-docker.list | \
             sudo tee /etc/apt/sources.list.d/nvidia-docker.list
 
         packages+=(nvidia-docker2)
