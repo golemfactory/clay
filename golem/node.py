@@ -193,12 +193,13 @@ class Node(object):  # pylint: disable=too-few-public-methods
             self._stop_on_error("rpc", "RPC router is not available")
             return None
 
+        principal = self.rpc_router.cert_manager.Principals.golemapp
         self.rpc_session = Session(
             self.rpc_router.address,
             cert_manager=self.rpc_router.cert_manager,
             use_ipv6=self._config_desc.use_ipv6,
-            principal=CertificateManager.GOLEMAPP_PRINCIPAL,
-            principal_ticket=CertificateManager.GOLEMAPP_TICKET
+            principal=principal,
+            principal_ticket=self.rpc_router.cert_manager.get_ticket(principal)
         )
         deferred = self.rpc_session.connect()
 

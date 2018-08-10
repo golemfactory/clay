@@ -2,7 +2,9 @@ import logging
 
 import os
 import random
+import secrets
 
+import enum
 from OpenSSL import crypto
 from OpenSSL._util import ffi, lib
 
@@ -23,15 +25,15 @@ class CertificateManager:
     PRIVATE_KEY_FILE_NAME = "rpc_key.pem"
     CERTIFICATE_FILE_NAME = "rpc_cert.pem"
 
-    GOLEMCLI_TICKET = "clisecret"
-    ELECTRON_TICKET = "electronsecret"
-    GOLEMAPP_TICKET = "appsecret"
-    DOCKER_TICKET = "dockersecret"
+    @enum.unique
+    class Principals(enum.Enum):
+        golemcli = enum.auto()
+        electron = enum.auto()
+        golemapp = enum.auto()
+        docker = enum.auto()
 
-    GOLEMCLI_PRINCIPAL = "golemcli"
-    ELECTRON_PRINCIPAL = "golem_electron"
-    GOLEMAPP_PRINCIPAL = "golemapp"
-    DOCKER_PRINCIPAL = "golem_docker"
+    TICKET_EXT = "tck"
+    TICKETS_DIR = "tickets"
 
     def __init__(self, dest_dir, setup_forward_secrecy=False):
         self.forward_secrecy = setup_forward_secrecy
@@ -39,6 +41,7 @@ class CertificateManager:
 
         self.key_path = os.path.join(dest_dir, self.PRIVATE_KEY_FILE_NAME)
         self.cert_path = os.path.join(dest_dir, self.CERTIFICATE_FILE_NAME)
+        self.tickets_path = os.path.join(dest_dir, self.TICKETS_DIR)
 
         if self.use_dh_params:
             self.dh_path = os.path.join(dest_dir, self.DH_FILE_NAME)
@@ -65,6 +68,28 @@ class CertificateManager:
 
         import gc
         gc.collect()
+
+        self._generate_tickets(self.tickets_path)
+
+    def __tickets_paths(self, tickets_path: str):
+        return [os.path.join(tickets_path, f"{p}.{self.TICKET_EXT}")
+                for p in self.Principals.__members__.keys()]
+
+    def _generate_tickets(self, tickets_path: str):
+        os.makedirs(tickets_path, exist_ok=True)
+        for p in self.__tickets_paths(tickets_path):
+            if not os.path.exists(p):
+                ticket = secrets.token_hex(16)
+                with open(p, "w") as f:
+                    f.write(ticket)
+
+    def get_ticket(self, p: 'CertificateManager.Principals') -> str:
+        path = os.path.join(self.tickets_path, f"{p.name}.{self.TICKET_EXT}")
+        if not os.path.isfile(path):
+            raise Exception(f"No ticket for {p.name} in {path}. "
+                            f"Maybe you forgot to create tickets?")
+        with open(path, "r") as f:
+            return f.read()
 
     def read_key(self) -> crypto.PKey:
         with open(self.key_path, 'r') as key_file:

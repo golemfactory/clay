@@ -5,8 +5,12 @@ import argparse
 import sys
 
 from multiprocessing import freeze_support
+from pathlib import Path
 
-from golem.rpc.common import CROSSBAR_HOST, CROSSBAR_PORT
+from golem.core.simpleenv import get_local_datadir
+from golem.rpc.cert import CertificateManager
+
+from golem.rpc.common import CROSSBAR_HOST, CROSSBAR_PORT, CROSSBAR_DIR
 
 # Export pbr version for peewee_migrate user
 os.environ["PBR_VERSION"] = '3.1.1'
@@ -35,6 +39,8 @@ def start():
         address=('-a', '--address'),
         port=('-p', '--port'),
         trust=('-t', '--verify-trust'),
+        crossbar_dir=("-c", "--crossbar-dir"),
+        data_dir=("-d", "--data-dir")
     )
 
     flag_options = dict(
@@ -44,6 +50,9 @@ def start():
                      help="Golem node's RPC address"),
         port=dict(dest="port", type=int, default=CROSSBAR_PORT,
                   help="Golem node's RPC port"),
+        # TODO Change the default value here
+        datadir=dict(dest="datadir", type=Path, default="~/.golem/data",
+                  help="Golem node's data dir"),
         trust=dict(dest="verify_trust", action="store_true", default=False,
                    help="Verify Golem node's certificate"),
     )
@@ -73,9 +82,13 @@ def start():
         logging.raiseExceptions = 0
         cli = CLI(main_parser=parser, main_parser_options=flag_options)
 
+    datadir = get_local_datadir('default', root_dir=parsed.datadir)
+    working_dir = os.path.join(datadir, parsed.crossbar_dir)
+
     # run the cli
     ws_cli = WebSocketCLI(
         cli,
+        CertificateManager(working_dir),
         host=parsed.address,
         port=parsed.port
     )

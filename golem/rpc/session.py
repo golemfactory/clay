@@ -151,7 +151,7 @@ class Session(ApplicationSession):
     def onConnect(self):
         logger.warning("Client connected. Starting WAMP-Ticket authentication on realm '{}' as principal '{}'".format(
             self.config.realm, self.principal))
-        self.join(self.config.realm, [u"ticket"], self.principal)
+        self.join(self.config.realm, [u"ticket"], self.principal.name)
 
     # TODO change logging level
     def onChallenge(self, challenge):

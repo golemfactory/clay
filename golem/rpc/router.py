@@ -113,6 +113,23 @@ class CrossbarRouter(object):
                 "dhparam": cert_manager.dh_path,
             }
 
+        # configuration for principals with admin priviliges
+        principals = {
+            p.name: {
+                "ticket": cert_manager.get_ticket(p),
+                "role": "golem_admin"
+            } for p in [cert_manager.Principals.golemapp,
+                        cert_manager.Principals.golemcli,
+                        cert_manager.Principals.electron]
+        }
+
+        # and for docker, without admin priviliges
+        docker = cert_manager.Principals.docker
+        principals[docker.name] = {
+            "ticket": cert_manager.get_ticket(docker),
+            "role": "golem_docker"
+        }
+
         return {
             'version': 2,
             'controller': {
@@ -137,75 +154,47 @@ class CrossbarRouter(object):
                     "auth": {
                         "ticket": {
                             "type": "static",
-                            "principals": {
-                                cert_manager.GOLEMAPP_PRINCIPAL: {
-                                    "ticket": cert_manager.GOLEMAPP_TICKET,
-                                    "role": "golem_admin"
-                                },
-                                cert_manager.GOLEMCLI_PRINCIPAL: {
-                                    "ticket": cert_manager.GOLEMCLI_TICKET,
-                                    "role": "golem_admin"
-                                },
-                                cert_manager.ELECTRON_PRINCIPAL: {
-                                    "ticket": cert_manager.ELECTRON_TICKET,
-                                    "role": "golem_admin"
-                                },
-                                cert_manager.DOCKER_PRINCIPAL: {
-                                    "ticket": cert_manager.DOCKER_TICKET,
-                                    "role": "golem_docker"
-                                },
-                            }
+                            "principals": principals
                         }
                     }
                 }],
                 'components': [],
                 "realms": [{
                     "name": realm,
-                    "roles": [{
-                        "name": 'anonymous',
-                        "permissions": [{
-                            "uri": '*',
-                            "allow": {
-                                "call": True,
-                                "register": True,
-                                "publish": True,
-                                "subscribe": True
-                            }
-                        }]
-                    },
-                    {
-                        "name": 'golem_admin',
-                        "permissions": [{
-                            "uri": '*',
-                            "allow": {
-                                "call": True,
-                                "register": True,
-                                "publish": True,
-                                "subscribe": True
-                            }
-                        }]
-                    },
-                    {
-                        "name": 'golem_docker',
-                        "permissions": [{
-                            "uri": '*',
-                            "allow": {
-                                "call": False,
-                                "register": False,
-                                "publish": False,
-                                "subscribe": False
-                            }
+                    "roles": [
+                        {
+                            "name": 'golem_admin',
+                            "permissions": [{
+                                "uri": '*',
+                                "allow": {
+                                    "call": True,
+                                    "register": True,
+                                    "publish": True,
+                                    "subscribe": True
+                                }
+                            }]
                         },
                         {
-                            "uri": 'comp.tasks.state_update',
-                            "allow": {
-                                "call": True,
-                                "register": False,
-                                "publish": False,
-                                "subscribe": False
-                            }}
-                        ]
-                    }]
+                            "name": 'golem_docker',
+                            "permissions": [{
+                                "uri": '*',
+                                "allow": {
+                                    "call": False,
+                                    "register": False,
+                                    "publish": False,
+                                    "subscribe": False
+                                }
+                            },
+                                {
+                                    "uri": 'comp.tasks.state_update',
+                                    "allow": {
+                                        "call": True,
+                                        "register": False,
+                                        "publish": False,
+                                        "subscribe": False
+                                    }
+                                }]
+                        }]
                 }],
             }]
         }

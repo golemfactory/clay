@@ -36,6 +36,7 @@ class WebSocketCLI(object):
             return deferred
 
     def __init__(self, cli,  # pylint: disable=too-many-arguments
+                 cert_manager: CertificateManager,
                  host: str = CROSSBAR_HOST,
                  port: int = CROSSBAR_PORT,
                  realm: str = CROSSBAR_REALM,
@@ -44,10 +45,11 @@ class WebSocketCLI(object):
         address = WebSocketAddress(host, port, realm, ssl)
 
         self.cli = cli
+        principal = cert_manager.Principals.golemcli
         self.session = Session(
             address,
-            principal=CertificateManager.GOLEMCLI_PRINCIPAL,
-            principal_ticket=CertificateManager.GOLEMCLI_TICKET
+            principal=principal,
+            principal_ticket=cert_manager.get_ticket(principal)
         )
 
     def execute(self, *args, **kwargs):
