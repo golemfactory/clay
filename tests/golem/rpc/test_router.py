@@ -113,7 +113,7 @@ class TestRouter(TestDirFixtureWithReactor):
                                            ssl=False,
                                            generate_tickets=True)
         # set a new role for admin
-        self.state.router.config["workers"][0]["transports"][0]["auth"]["ticket"]["principals"][self.PRINCIPAL] = { # noqa pylint: disable=line-too-long
+        self.state.router.config["workers"][0]["transports"][0]["auth"]["wampcra"]["users"][self.PRINCIPAL] = { # noqa pylint: disable=line-too-long
             "ticket": self.PRINCIPAL_TICKET,
             "role": "golem_admin"
         }

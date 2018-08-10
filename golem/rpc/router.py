@@ -122,7 +122,7 @@ class CrossbarRouter(object):
 
         principals = {
             p.name: {
-                "ticket": cert_manager.get_ticket(p),
+                "secret": cert_manager.get_ticket(p),
                 "role": "golem_admin"
             } for p in [cert_manager.Principals.golemapp,
                         cert_manager.Principals.golemcli,
@@ -132,7 +132,7 @@ class CrossbarRouter(object):
         # and for docker, without admin priviliges
         docker = cert_manager.Principals.docker
         principals[docker.name] = {
-            "ticket": cert_manager.get_ticket(docker),
+            "secret": cert_manager.get_ticket(docker),
             "role": "golem_docker"
         }
 
@@ -158,9 +158,9 @@ class CrossbarRouter(object):
                         'enable_webstatus': enable_webstatus,
                     },
                     "auth": {
-                        "ticket": {
+                        "wampcra": {
                             "type": "static",
-                            "principals": principals
+                            "users": principals
                         }
                     }
                 }],

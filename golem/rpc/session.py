@@ -2,7 +2,7 @@ import logging
 
 from autobahn.twisted import ApplicationSession
 from autobahn.twisted.websocket import WampWebSocketClientFactory
-from autobahn.wamp import ProtocolError
+from autobahn.wamp import ProtocolError, auth
 from autobahn.wamp import types
 from twisted.application.internet import ClientService, backoffPolicy
 from twisted.internet import ssl as twisted_ssl
@@ -45,7 +45,6 @@ class WebSocketAddress(RPCAddress):
     def __init__(self, host, port, realm, ssl=True):
         self.realm = str(realm)
         self.ssl = ssl
-
 
         protocol = 'wss' if ssl else 'ws'
         super(WebSocketAddress, self).__init__(protocol, host, port)
@@ -151,12 +150,15 @@ class Session(ApplicationSession):
         logger.info(f"Client connected. Starting WAMP-Ticket \
                     authentication on realm {self.config.realm} \
                     as principal {self.principal}")
-        self.join(self.config.realm, ["ticket"], self.principal.name)
+        self.join(self.config.realm, ["wampcra"], self.principal.name)
 
     def onChallenge(self, challenge):
-        if challenge.method == "ticket":
+        if challenge.method == "wampcra":
             logger.info(f"WAMP-Ticket challenge received: {challenge}")
-            return self.principal_ticket
+            signature = auth.compute_wcs(self.principal_ticket.encode('utf8'),
+                                         challenge.extra['challenge'].encode('utf8'))
+            return signature.decode('ascii')
+
         else:
             raise Exception("Invalid authmethod {}".format(challenge.method))
 
