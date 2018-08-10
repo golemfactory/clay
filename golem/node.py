@@ -20,15 +20,15 @@ from golem.core.async import async_run, AsyncRequest
 from golem.core.variables import PRIVATE_KEY
 from golem.database import Database
 from golem.docker.manager import DockerManager
+from golem.ethereum.transactionsystem import TransactionSystem
 from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher, Component, Stage
+from golem.rpc.cert import CertificateManager
 from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP, NODE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import object_method_map, Session, Publisher
 from golem.terms import TermsOfUse
-from golem.transactions.ethereum.ethereumtransactionsystem import \
-    EthereumTransactionSystem
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  use_talkback: bool = None,
                  use_docker_manager: bool = True,
                  geth_address: Optional[str] = None,
-                 password: Optional[str] = None) -> None:
+                 password: Optional[str] = None
+                 ) -> None:
 
         # DO NOT MAKE THIS IMPORT GLOBAL
         # otherwise, reactor will install global signal handlers on import
@@ -75,7 +76,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             if use_talkback is None else use_talkback
 
         self._keys_auth: Optional[KeysAuth] = None
-        self._ets = EthereumTransactionSystem(
+        self._ets = TransactionSystem(
             Path(datadir) / 'transaction_system',
             EthereumConfig,
         )
@@ -124,6 +125,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
                 keys = self._start_keys_auth()
                 docker = self._start_docker()
                 return gatherResults([terms, keys, docker], consumeErrors=True)
+
             chain_function(rpc, on_rpc_ready).addCallbacks(
                 self._setup_client,
                 self._error('keys or docker'),
@@ -191,9 +193,14 @@ class Node(object):  # pylint: disable=too-few-public-methods
             self._stop_on_error("rpc", "RPC router is not available")
             return None
 
-        self.rpc_session = Session(self.rpc_router.address,
-                                   cert_manager=self.rpc_router.cert_manager,
-                                   use_ipv6=self._config_desc.use_ipv6)
+        crsb_user = self.rpc_router.cert_manager.Principals.golemapp
+        self.rpc_session = Session(
+            self.rpc_router.address,
+            cert_manager=self.rpc_router.cert_manager,
+            use_ipv6=self._config_desc.use_ipv6,
+            crsb_user=crsb_user,
+            crsb_user_secret=self.rpc_router.cert_manager.get_secret(crsb_user)
+        )
         deferred = self.rpc_session.connect()
 
         def on_connect(*_):

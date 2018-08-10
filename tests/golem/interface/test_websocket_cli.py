@@ -1,6 +1,6 @@
 from contextlib import contextmanager
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 
 from golem.interface.websockets import WebSocketCLI
 from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
@@ -31,7 +31,7 @@ class TestWebSocketCLI(unittest.TestCase):
 
         with rpc_context():
 
-            ws_cli = WebSocketCLI(Mock(), '127.0.0.1', '12345', realm='golem')
+            ws_cli = WebSocketCLI(Mock(), MagicMock(), '127.0.0.1', 12345, realm='golem')
             ws_cli.execute()
 
             assert isinstance(ws_cli.cli.register_client.call_args_list[0][0][0], Client)
@@ -41,7 +41,7 @@ class TestWebSocketCLI(unittest.TestCase):
             deferred.result = Failure(Exception("Failure"))
             deferred.called = True
 
-            ws_cli = WebSocketCLI(Mock(), '127.0.0.1', '12345', realm='golem')
+            ws_cli = WebSocketCLI(Mock(), MagicMock(), '127.0.0.1', 12345, realm='golem')
             ws_cli.execute()
 
             assert isinstance(ws_cli.cli.register_client.call_args_list[0][0][0], WebSocketCLI.NoConnection)

@@ -2,7 +2,7 @@ import logging
 
 from autobahn.twisted import ApplicationSession
 from autobahn.twisted.websocket import WampWebSocketClientFactory
-from autobahn.wamp import ProtocolError
+from autobahn.wamp import ProtocolError, auth
 from autobahn.wamp import types
 from twisted.application.internet import ClientService, backoffPolicy
 from twisted.internet import ssl as twisted_ssl
@@ -53,7 +53,8 @@ class WebSocketAddress(RPCAddress):
 class Session(ApplicationSession):
 
     def __init__(self, address, methods=None, events=None,  # noqa # pylint: disable=too-many-arguments
-                 cert_manager=None, use_ipv6=False) -> None:
+                 cert_manager=None, use_ipv6=False,
+                 crsb_user=None, crsb_user_secret=None) -> None:
 
         self.address = address
         self.methods = methods or []
@@ -70,6 +71,9 @@ class Session(ApplicationSession):
         self._use_ipv6 = use_ipv6
 
         self.config = types.ComponentConfig(realm=address.realm)
+        self.crsb_user = crsb_user
+        self.crsb_user_secret = crsb_user_secret
+
         super(Session, self).__init__(self.config)
 
     def connect(self, auto_reconnect=True):
@@ -141,6 +145,22 @@ class Session(ApplicationSession):
         deferred.addErrback(self.ready.errback)
 
         return self.ready
+
+    def onConnect(self):
+        logger.info(f"Client connected. Starting WAMP-Ticket \
+                    authentication on realm {self.config.realm} \
+                    as crsb_user {self.crsb_user}")
+        self.join(self.config.realm, ["wampcra"], self.crsb_user.name)
+
+    def onChallenge(self, challenge):
+        if challenge.method == "wampcra":
+            logger.info(f"WAMP-Ticket challenge received: {challenge}")
+            signature = auth.compute_wcs(self.crsb_user_secret.encode('utf8'),
+                                         challenge.extra['challenge'].encode('utf8'))
+            return signature.decode('ascii')
+
+        else:
+            raise Exception("Invalid authmethod {}".format(challenge.method))
 
     @inlineCallbacks
     def onJoin(self, details):

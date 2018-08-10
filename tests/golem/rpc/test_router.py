@@ -1,3 +1,4 @@
+import json
 import time
 from threading import Thread
 
@@ -52,6 +53,9 @@ TIMEOUT = 40
 
 class TestRouter(TestDirFixtureWithReactor):
 
+    CRSBUSER = "user"
+    CRSBUSER_SECRET = "secret"
+
     class State(object):
 
         def __init__(self, reactor):
@@ -83,12 +87,15 @@ class TestRouter(TestDirFixtureWithReactor):
         from os.path import join, exists
 
         crossbar_dir = join(self.path, 'definitely_not_exists')
-        router = CrossbarRouter(datadir=crossbar_dir)
+        router = CrossbarRouter(datadir=crossbar_dir,
+                                generate_secrets=True)
         assert exists(crossbar_dir)
         self.assertIsInstance(router, CrossbarRouter)
         self.assertEqual(router.working_dir, join(crossbar_dir, 'crossbar'))
 
-        router = CrossbarRouter(datadir=self.path, crossbar_dir='crozzbar')
+        router = CrossbarRouter(datadir=self.path,
+                                crossbar_dir='crozzbar',
+                                generate_secrets=True)
         self.assertEqual(router.working_dir, join(self.path, 'crozzbar'))
         self.assertIsNone(router.node)
         self.assertIsNone(router.pubkey)
@@ -102,7 +109,16 @@ class TestRouter(TestDirFixtureWithReactor):
 
     def _start_router(self):
         # pylint: disable=no-member
-        self.state.router = CrossbarRouter(datadir=self.path, ssl=False)
+        self.state.router = CrossbarRouter(datadir=self.path,
+                                           ssl=False,
+                                           generate_secrets=True)
+        # set a new role for admin
+        self.state.router.config["workers"][0]["transports"][0]["auth"]["wampcra"]["users"][self.CRSBUSER] = { # noqa pylint: disable=line-too-long
+            "secret": self.CRSBUSER_SECRET,
+            "role": "golem_admin"
+        }
+        print(json.dumps(self.state.router.config))
+
         deferred = self.state.router.start(self.state.reactor)
         deferred.addCallbacks(self._start_backend_session,
                               self.state.add_errors)
@@ -113,7 +129,9 @@ class TestRouter(TestDirFixtureWithReactor):
             methods=object_method_map(
                 self.state.backend,
                 MockService.methods
-            )
+            ),
+            crsb_user=self.CRSBUSER,
+            crsb_user_secret=self.CRSBUSER_SECRET
         )
 
         self.state.backend_deferred = self.state.backend_session.connect()
@@ -127,7 +145,9 @@ class TestRouter(TestDirFixtureWithReactor):
             events=object_method_map(
                 self.state.frontend,
                 MockService.events
-            )
+            ),
+            crsb_user=self.CRSBUSER,
+            crsb_user_secret=self.CRSBUSER_SECRET
         )
 
         self.state.frontend_deferred = self.state.frontend_session.connect()

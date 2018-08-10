@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from collections import namedtuple
@@ -20,7 +21,6 @@ CrossbarRouterOptions = namedtuple(
 
 
 class CrossbarRouter(object):
-
     serializers = ['msgpack']
 
     def __init__(self,  # pylint: disable=too-many-arguments
@@ -30,7 +30,8 @@ class CrossbarRouter(object):
                  datadir: Optional[str] = None,
                  crossbar_dir: str = CROSSBAR_DIR,
                  crossbar_log_level: str = 'info',
-                 ssl: bool = True) -> None:
+                 ssl: bool = True,
+                 generate_secrets: bool = False) -> None:
 
         if datadir:
             self.working_dir = os.path.join(datadir, crossbar_dir)
@@ -42,6 +43,9 @@ class CrossbarRouter(object):
             raise IOError("'{}' is not a directory".format(self.working_dir))
 
         self.cert_manager = CertificateManager(self.working_dir)
+        if generate_secrets:
+            self.cert_manager.generate_secrets()
+
         self.address = WebSocketAddress(host, port, realm, ssl)
 
         self.log_level = crossbar_log_level
@@ -53,7 +57,7 @@ class CrossbarRouter(object):
                                          self.serializers,
                                          self.cert_manager)
 
-        logger.debug('xbar init with cfg: %s', self.config)
+        logger.debug('xbar init with cfg: %s', json.dumps(self.config))
 
     def start(self, reactor, options=None):
         # imports reactor
@@ -114,6 +118,24 @@ class CrossbarRouter(object):
                 "dhparam": cert_manager.dh_path,
             }
 
+        # configuration for crsb_users with admin priviliges
+
+        crsb_users = {
+            p.name: {
+                "secret": cert_manager.get_secret(p),
+                "role": "golem_admin"
+            } for p in [cert_manager.Principals.golemapp,
+                        cert_manager.Principals.golemcli,
+                        cert_manager.Principals.electron]
+        }
+
+        # and for docker, without admin priviliges
+        docker = cert_manager.Principals.docker
+        crsb_users[docker.name] = {
+            "secret": cert_manager.get_secret(docker),
+            "role": "golem_docker"
+        }
+
         return {
             'version': 2,
             'controller': {
@@ -134,23 +156,51 @@ class CrossbarRouter(object):
                     'options': {
                         # 'allowed_origins': allowed_origins,
                         'enable_webstatus': enable_webstatus,
+                    },
+                    "auth": {
+                        "wampcra": {
+                            "type": "static",
+                            "users": crsb_users
+                        }
                     }
                 }],
                 'components': [],
                 "realms": [{
                     "name": realm,
-                    "roles": [{
-                        "name": 'anonymous',
-                        "permissions": [{
-                            "uri": '*',
-                            "allow": {
-                                "call": True,
-                                "register": True,
-                                "publish": True,
-                                "subscribe": True
-                            }
+                    "roles": [
+                        {
+                            "name": 'golem_admin',
+                            "permissions": [{
+                                "uri": '*',
+                                "allow": {
+                                    "call": True,
+                                    "register": True,
+                                    "publish": True,
+                                    "subscribe": True
+                                }
+                            }]
+                        },
+                        {
+                            "name": 'golem_docker',
+                            "permissions": [{
+                                "uri": '*',
+                                "allow": {
+                                    "call": False,
+                                    "register": False,
+                                    "publish": False,
+                                    "subscribe": False
+                                }
+                            },
+                                {
+                                    "uri": 'comp.tasks.state_update',
+                                    "allow": {
+                                        "call": True,
+                                        "register": False,
+                                        "publish": False,
+                                        "subscribe": False
+                                    }
+                                }]
                         }]
-                    }]
                 }],
             }]
         }

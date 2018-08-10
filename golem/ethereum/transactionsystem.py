@@ -19,10 +19,10 @@ import requests
 from golem.core.service import LoopingCallService
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
+from golem.ethereum.exceptions import NotEnoughFunds
+from golem.ethereum.incomeskeeper import IncomesKeeper
+from golem.ethereum.paymentskeeper import PaymentsKeeper
 from golem.model import GenericKeyValue, Payment
-from golem.transactions.ethereum.exceptions import NotEnoughFunds
-from golem.transactions.incomeskeeper import IncomesKeeper
-from golem.transactions.paymentskeeper import PaymentsKeeper
 from golem.utils import privkeytoaddr
 
 
@@ -37,7 +37,7 @@ class ConversionStatus(Enum):
 
 
 # pylint:disable=too-many-instance-attributes
-class EthereumTransactionSystem(LoopingCallService):
+class TransactionSystem(LoopingCallService):
     """ Transaction system connected with Ethereum """
 
     TX_FILENAME: ClassVar[str] = 'transactions.json'
@@ -274,10 +274,6 @@ class EthereumTransactionSystem(LoopingCallService):
         :return list: list of dictionaries describing incomes
         """
         return self.incomes_keeper.get_list_of_all_incomes()
-
-    def get_nodes_with_overdue_payments(self) -> List[str]:
-        overdue_incomes = self.incomes_keeper.update_overdue_incomes()
-        return [x.sender_node for x in overdue_incomes]
 
     def get_available_eth(self) -> int:
         return self._eth_balance - self.get_locked_eth()
@@ -580,6 +576,7 @@ class EthereumTransactionSystem(LoopingCallService):
         self._get_funds_from_faucet()
         self._try_convert_gnt()
         self.payment_processor.sendout()
+        self.incomes_keeper.update_overdue_incomes()
 
 
 def tETH_faucet_donate(addr: str):

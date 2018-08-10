@@ -1,3 +1,4 @@
+import os
 from unittest.mock import patch
 
 from OpenSSL import crypto
@@ -101,3 +102,21 @@ class TestCertificateManager(TempDirFixture):
         key = cert_manager.read_key()
         cert_manager._create_and_sign_certificate(key, cert_manager.cert_path)
         assert cert_manager.read_certificate()
+
+    def test_generate_secrets(self):
+        cert_manager = CertificateManager(self.tempdir)
+        cert_manager.generate_secrets()
+
+        assert set(os.listdir(cert_manager.secrets_path)) == \
+            set(f"{x}.{cert_manager.SECRET_EXT}"
+                for x in cert_manager.Principals.__members__.keys())
+
+    @patch("secrets.token_hex", return_value="secret")
+    def test_get_secret(self, *_):
+        cert_manager = CertificateManager(self.tempdir)
+        cert_manager.generate_secrets()
+
+        assert all("secret" == cert_manager.get_secret(x)
+                   for x in cert_manager.Principals.__members__.values())
+
+

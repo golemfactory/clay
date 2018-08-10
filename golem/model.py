@@ -238,6 +238,7 @@ class Payment(BaseModel):
 class Income(BaseModel):
     sender_node = CharField()
     subtask = CharField()
+    payer_address = CharField()
     value = HexIntegerField()
     accepted_ts = IntegerField(null=True)
     transaction = CharField(null=True)
