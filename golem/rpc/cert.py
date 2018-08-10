@@ -32,8 +32,8 @@ class CertificateManager:
         golemapp = enum.auto()
         docker = enum.auto()
 
-    TICKET_EXT = "tck"
-    TICKETS_DIR = "tickets"
+    SECRET_EXT = "tck"
+    SECRETS_DIR = "secrets"
 
     def __init__(self, dest_dir, setup_forward_secrecy=False):
         self.forward_secrecy = setup_forward_secrecy
@@ -41,7 +41,7 @@ class CertificateManager:
 
         self.key_path = os.path.join(dest_dir, self.PRIVATE_KEY_FILE_NAME)
         self.cert_path = os.path.join(dest_dir, self.CERTIFICATE_FILE_NAME)
-        self.tickets_path = os.path.join(dest_dir, self.TICKETS_DIR)
+        self.secrets_path = os.path.join(dest_dir, self.SECRETS_DIR)
 
         if self.use_dh_params:
             self.dh_path = os.path.join(dest_dir, self.DH_FILE_NAME)
@@ -69,25 +69,25 @@ class CertificateManager:
         import gc
         gc.collect()
 
-        self.generate_tickets()
+        self.generate_secrets()
 
-    def __tickets_paths(self):
-        return [os.path.join(self.tickets_path, f"{p}.{self.TICKET_EXT}")
+    def __secrets_paths(self):
+        return [os.path.join(self.secrets_path, f"{p}.{self.SECRET_EXT}")
                 for p in self.Principals.__members__.keys()]
 
-    def generate_tickets(self):
-        os.makedirs(self.tickets_path, exist_ok=True)
-        for p in self.__tickets_paths():
+    def generate_secrets(self):
+        os.makedirs(self.secrets_path, exist_ok=True)
+        for p in self.__secrets_paths():
             if not os.path.exists(p):
-                ticket = secrets.token_hex(16)
+                secret = secrets.token_hex(16)
                 with open(p, "w") as f:
-                    f.write(ticket)
+                    f.write(secret)
 
-    def get_ticket(self, p: 'CertificateManager.Principals') -> str:
-        path = os.path.join(self.tickets_path, f"{p.name}.{self.TICKET_EXT}")
+    def get_secret(self, p: 'CertificateManager.Principals') -> str:
+        path = os.path.join(self.secrets_path, f"{p.name}.{self.SECRET_EXT}")
         if not os.path.isfile(path):
-            raise Exception(f"No ticket for {p.name} in {path}. "
-                            f"Maybe you forgot to create tickets?")
+            raise Exception(f"No secret for {p.name} in {path}. "
+                            f"Maybe you forgot to create secrets?")
         with open(path, "r") as f:
             return f.read()
 

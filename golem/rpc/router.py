@@ -31,7 +31,7 @@ class CrossbarRouter(object):
                  crossbar_dir: str = CROSSBAR_DIR,
                  crossbar_log_level: str = 'info',
                  ssl: bool = True,
-                 generate_tickets: bool = False) -> None:
+                 generate_secrets: bool = False) -> None:
 
         if datadir:
             self.working_dir = os.path.join(datadir, crossbar_dir)
@@ -43,8 +43,8 @@ class CrossbarRouter(object):
             raise IOError("'{}' is not a directory".format(self.working_dir))
 
         self.cert_manager = CertificateManager(self.working_dir)
-        if generate_tickets:
-            self.cert_manager.generate_tickets()
+        if generate_secrets:
+            self.cert_manager.generate_secrets()
 
         self.address = WebSocketAddress(host, port, realm, ssl)
 
@@ -118,11 +118,11 @@ class CrossbarRouter(object):
                 "dhparam": cert_manager.dh_path,
             }
 
-        # configuration for principals with admin priviliges
+        # configuration for crsb_users with admin priviliges
 
-        principals = {
+        crsb_users = {
             p.name: {
-                "secret": cert_manager.get_ticket(p),
+                "secret": cert_manager.get_secret(p),
                 "role": "golem_admin"
             } for p in [cert_manager.Principals.golemapp,
                         cert_manager.Principals.golemcli,
@@ -131,8 +131,8 @@ class CrossbarRouter(object):
 
         # and for docker, without admin priviliges
         docker = cert_manager.Principals.docker
-        principals[docker.name] = {
-            "secret": cert_manager.get_ticket(docker),
+        crsb_users[docker.name] = {
+            "secret": cert_manager.get_secret(docker),
             "role": "golem_docker"
         }
 
@@ -160,7 +160,7 @@ class CrossbarRouter(object):
                     "auth": {
                         "wampcra": {
                             "type": "static",
-                            "users": principals
+                            "users": crsb_users
                         }
                     }
                 }],

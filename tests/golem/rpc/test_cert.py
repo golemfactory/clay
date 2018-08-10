@@ -103,20 +103,20 @@ class TestCertificateManager(TempDirFixture):
         cert_manager._create_and_sign_certificate(key, cert_manager.cert_path)
         assert cert_manager.read_certificate()
 
-    def test_generate_tickets(self):
+    def test_generate_secrets(self):
         cert_manager = CertificateManager(self.tempdir)
-        cert_manager.generate_tickets()
+        cert_manager.generate_secrets()
 
-        assert set(os.listdir(cert_manager.tickets_path)) == \
-            set(f"{x}.{cert_manager.TICKET_EXT}"
+        assert set(os.listdir(cert_manager.secrets_path)) == \
+            set(f"{x}.{cert_manager.SECRET_EXT}"
                 for x in cert_manager.Principals.__members__.keys())
 
     @patch("secrets.token_hex", return_value="secret")
-    def test_get_ticket(self, *_):
+    def test_get_secret(self, *_):
         cert_manager = CertificateManager(self.tempdir)
-        cert_manager.generate_tickets()
+        cert_manager.generate_secrets()
 
-        assert all("secret" == cert_manager.get_ticket(x)
+        assert all("secret" == cert_manager.get_secret(x)
                    for x in cert_manager.Principals.__members__.values())
 
 

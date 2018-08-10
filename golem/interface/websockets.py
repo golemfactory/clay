@@ -46,11 +46,11 @@ class WebSocketCLI(object):
 
         self.cli = cli
 
-        principal = cert_manager.Principals.golemcli
+        crsb_user = cert_manager.Principals.golemcli
         self.session = Session(
             address,
-            principal=principal,
-            principal_ticket=cert_manager.get_ticket(principal)
+            crsb_user=crsb_user,
+            crsb_user_secret=cert_manager.get_secret(crsb_user)
         )
 
     def execute(self, *args, **kwargs):

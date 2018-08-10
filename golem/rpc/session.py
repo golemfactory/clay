@@ -54,7 +54,7 @@ class Session(ApplicationSession):
 
     def __init__(self, address, methods=None, events=None,  # noqa # pylint: disable=too-many-arguments
                  cert_manager=None, use_ipv6=False,
-                 principal=None, principal_ticket=None) -> None:
+                 crsb_user=None, crsb_user_secret=None) -> None:
 
         self.address = address
         self.methods = methods or []
@@ -71,8 +71,8 @@ class Session(ApplicationSession):
         self._use_ipv6 = use_ipv6
 
         self.config = types.ComponentConfig(realm=address.realm)
-        self.principal = principal
-        self.principal_ticket = principal_ticket
+        self.crsb_user = crsb_user
+        self.crsb_user_secret = crsb_user_secret
 
         super(Session, self).__init__(self.config)
 
@@ -149,13 +149,13 @@ class Session(ApplicationSession):
     def onConnect(self):
         logger.info(f"Client connected. Starting WAMP-Ticket \
                     authentication on realm {self.config.realm} \
-                    as principal {self.principal}")
-        self.join(self.config.realm, ["wampcra"], self.principal.name)
+                    as crsb_user {self.crsb_user}")
+        self.join(self.config.realm, ["wampcra"], self.crsb_user.name)
 
     def onChallenge(self, challenge):
         if challenge.method == "wampcra":
             logger.info(f"WAMP-Ticket challenge received: {challenge}")
-            signature = auth.compute_wcs(self.principal_ticket.encode('utf8'),
+            signature = auth.compute_wcs(self.crsb_user_secret.encode('utf8'),
                                          challenge.extra['challenge'].encode('utf8'))
             return signature.decode('ascii')
 

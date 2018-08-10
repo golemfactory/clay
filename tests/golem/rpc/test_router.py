@@ -53,8 +53,8 @@ TIMEOUT = 40
 
 class TestRouter(TestDirFixtureWithReactor):
 
-    PRINCIPAL = "user"
-    PRINCIPAL_TICKET = "secret"
+    CRSBUSER = "user"
+    CRSBUSER_SECRET = "secret"
 
     class State(object):
 
@@ -88,14 +88,14 @@ class TestRouter(TestDirFixtureWithReactor):
 
         crossbar_dir = join(self.path, 'definitely_not_exists')
         router = CrossbarRouter(datadir=crossbar_dir,
-                                generate_tickets=True)
+                                generate_secrets=True)
         assert exists(crossbar_dir)
         self.assertIsInstance(router, CrossbarRouter)
         self.assertEqual(router.working_dir, join(crossbar_dir, 'crossbar'))
 
         router = CrossbarRouter(datadir=self.path,
                                 crossbar_dir='crozzbar',
-                                generate_tickets=True)
+                                generate_secrets=True)
         self.assertEqual(router.working_dir, join(self.path, 'crozzbar'))
         self.assertIsNone(router.node)
         self.assertIsNone(router.pubkey)
@@ -111,10 +111,10 @@ class TestRouter(TestDirFixtureWithReactor):
         # pylint: disable=no-member
         self.state.router = CrossbarRouter(datadir=self.path,
                                            ssl=False,
-                                           generate_tickets=True)
+                                           generate_secrets=True)
         # set a new role for admin
-        self.state.router.config["workers"][0]["transports"][0]["auth"]["wampcra"]["users"][self.PRINCIPAL] = { # noqa pylint: disable=line-too-long
-            "ticket": self.PRINCIPAL_TICKET,
+        self.state.router.config["workers"][0]["transports"][0]["auth"]["wampcra"]["users"][self.CRSBUSER] = { # noqa pylint: disable=line-too-long
+            "secret": self.CRSBUSER_SECRET,
             "role": "golem_admin"
         }
         print(json.dumps(self.state.router.config))
@@ -130,8 +130,8 @@ class TestRouter(TestDirFixtureWithReactor):
                 self.state.backend,
                 MockService.methods
             ),
-            principal=self.PRINCIPAL,
-            principal_ticket=self.PRINCIPAL_TICKET
+            crsb_user=self.CRSBUSER,
+            crsb_user_secret=self.CRSBUSER_SECRET
         )
 
         self.state.backend_deferred = self.state.backend_session.connect()
@@ -146,8 +146,8 @@ class TestRouter(TestDirFixtureWithReactor):
                 self.state.frontend,
                 MockService.events
             ),
-            principal=self.PRINCIPAL,
-            principal_ticket=self.PRINCIPAL_TICKET
+            crsb_user=self.CRSBUSER,
+            crsb_user_secret=self.CRSBUSER_SECRET
         )
 
         self.state.frontend_deferred = self.state.frontend_session.connect()
