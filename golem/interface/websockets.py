@@ -46,7 +46,7 @@ class WebSocketCLI(object):
 
         self.cli = cli
 
-        crsb_user = cert_manager.Principals.golemcli
+        crsb_user = cert_manager.Crossbar_users.golemcli
         self.session = Session(
             address,
             crsb_user=crsb_user,

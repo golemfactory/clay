@@ -109,7 +109,7 @@ class TestCertificateManager(TempDirFixture):
 
         assert set(os.listdir(cert_manager.secrets_path)) == \
             set(f"{x}.{cert_manager.SECRET_EXT}"
-                for x in cert_manager.Principals.__members__.keys())
+                for x in cert_manager.Crossbar_users.__members__.keys())
 
     @patch("secrets.token_hex", return_value="secret")
     def test_get_secret(self, *_):
@@ -117,6 +117,6 @@ class TestCertificateManager(TempDirFixture):
         cert_manager.generate_secrets()
 
         assert all("secret" == cert_manager.get_secret(x)
-                   for x in cert_manager.Principals.__members__.values())
+                   for x in cert_manager.Crossbar_users.__members__.values())
 
 

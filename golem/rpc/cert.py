@@ -26,7 +26,7 @@ class CertificateManager:
     CERTIFICATE_FILE_NAME = "rpc_cert.pem"
 
     @enum.unique
-    class Principals(enum.Enum):
+    class Crossbar_users(enum.Enum):
         golemcli = enum.auto()
         electron = enum.auto()
         golemapp = enum.auto()
@@ -73,7 +73,7 @@ class CertificateManager:
 
     def __secrets_paths(self):
         return [os.path.join(self.secrets_path, f"{p}.{self.SECRET_EXT}")
-                for p in self.Principals.__members__.keys()]
+                for p in self.Crossbar_users.__members__.keys()]
 
     def generate_secrets(self):
         os.makedirs(self.secrets_path, exist_ok=True)
@@ -83,7 +83,7 @@ class CertificateManager:
                 with open(p, "w") as f:
                     f.write(secret)
 
-    def get_secret(self, p: 'CertificateManager.Principals') -> str:
+    def get_secret(self, p: 'CertificateManager.Crossbar_users') -> str:
         path = os.path.join(self.secrets_path, f"{p.name}.{self.SECRET_EXT}")
         if not os.path.isfile(path):
             raise Exception(f"No secret for {p.name} in {path}. "
