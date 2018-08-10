@@ -69,15 +69,15 @@ class CertificateManager:
         import gc
         gc.collect()
 
-        self._generate_tickets(self.tickets_path)
+        self.generate_tickets()
 
-    def __tickets_paths(self, tickets_path: str):
-        return [os.path.join(tickets_path, f"{p}.{self.TICKET_EXT}")
+    def __tickets_paths(self):
+        return [os.path.join(self.tickets_path, f"{p}.{self.TICKET_EXT}")
                 for p in self.Principals.__members__.keys()]
 
-    def _generate_tickets(self, tickets_path: str):
-        os.makedirs(tickets_path, exist_ok=True)
-        for p in self.__tickets_paths(tickets_path):
+    def generate_tickets(self):
+        os.makedirs(self.tickets_path, exist_ok=True)
+        for p in self.__tickets_paths():
             if not os.path.exists(p):
                 ticket = secrets.token_hex(16)
                 with open(p, "w") as f:

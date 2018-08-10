@@ -10,6 +10,7 @@ class TestGolemCLI(unittest.TestCase):
     @patch('golemcli.install_reactor')
     @patch('golem.interface.websockets.WebSocketCLI.execute')
     @patch('golem.core.common.config_logging')
+    @patch('golem.rpc.cert.CertificateManager.get_ticket')
     def test_golem_cli(self, *_):
 
         with patch.object(sys, 'argv', ["program"]):

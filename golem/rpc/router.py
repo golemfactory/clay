@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 from collections import namedtuple
@@ -29,7 +30,8 @@ class CrossbarRouter(object):
                  datadir: Optional[str] = None,
                  crossbar_dir: str = CROSSBAR_DIR,
                  crossbar_log_level: str = 'info',
-                 ssl: bool = True) -> None:
+                 ssl: bool = True,
+                 generate_tickets: bool = False) -> None:
 
         if datadir:
             self.working_dir = os.path.join(datadir, crossbar_dir)
@@ -41,6 +43,8 @@ class CrossbarRouter(object):
             raise IOError("'{}' is not a directory".format(self.working_dir))
 
         self.cert_manager = CertificateManager(self.working_dir)
+        if generate_tickets:
+            self.cert_manager.generate_tickets()
         self.address = WebSocketAddress(host, port, realm, ssl)
 
         self.log_level = crossbar_log_level
@@ -52,7 +56,7 @@ class CrossbarRouter(object):
                                          self.serializers,
                                          self.cert_manager)
 
-        logger.debug('xbar init with cfg: %s', self.config)
+        logger.debug('xbar init with cfg: %s', json.dumps(self.config))
 
     def start(self, reactor, options=None):
         # imports reactor
@@ -114,6 +118,7 @@ class CrossbarRouter(object):
             }
 
         # configuration for principals with admin priviliges
+
         principals = {
             p.name: {
                 "ticket": cert_manager.get_ticket(p),

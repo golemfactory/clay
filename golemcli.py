@@ -39,8 +39,7 @@ def start():
         address=('-a', '--address'),
         port=('-p', '--port'),
         trust=('-t', '--verify-trust'),
-        crossbar_dir=("-c", "--crossbar-dir"),
-        data_dir=("-d", "--data-dir")
+        datadir=("-d", "--datadir")
     )
 
     flag_options = dict(
@@ -83,7 +82,7 @@ def start():
         cli = CLI(main_parser=parser, main_parser_options=flag_options)
 
     datadir = get_local_datadir('default', root_dir=parsed.datadir)
-    working_dir = os.path.join(datadir, parsed.crossbar_dir)
+    working_dir = os.path.join(datadir, CROSSBAR_DIR)
 
     # run the cli
     ws_cli = WebSocketCLI(
