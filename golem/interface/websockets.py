@@ -45,6 +45,7 @@ class WebSocketCLI(object):
         address = WebSocketAddress(host, port, realm, ssl)
 
         self.cli = cli
+
         principal = cert_manager.Principals.golemcli
         self.session = Session(
             address,

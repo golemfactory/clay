@@ -45,6 +45,7 @@ class CrossbarRouter(object):
         self.cert_manager = CertificateManager(self.working_dir)
         if generate_tickets:
             self.cert_manager.generate_tickets()
+
         self.address = WebSocketAddress(host, port, realm, ssl)
 
         self.log_level = crossbar_log_level

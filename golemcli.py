@@ -7,6 +7,8 @@ import sys
 from multiprocessing import freeze_support
 from pathlib import Path
 
+import click
+
 from golem.core.simpleenv import get_local_datadir
 from golem.rpc.cert import CertificateManager
 
@@ -49,9 +51,12 @@ def start():
                      help="Golem node's RPC address"),
         port=dict(dest="port", type=int, default=CROSSBAR_PORT,
                   help="Golem node's RPC port"),
-        # TODO Change the default value here
-        datadir=dict(dest="datadir", type=Path, default="~/.golem/data",
-                  help="Golem node's data dir"),
+        datadir=dict(dest="datadir", default=None,
+                     type=click.Path(
+                         file_okay=False,
+                         writable=True
+                     ),
+                     help="Golem node's data dir"),
         trust=dict(dest="verify_trust", action="store_true", default=False,
                    help="Verify Golem node's certificate"),
     )
