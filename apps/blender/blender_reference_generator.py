@@ -12,7 +12,7 @@ from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from golem.core.common import timeout_to_deadline
 from golem.task.localcomputer import ComputerAdapter
 
-logger = logging.getLogger("blendercroppper")
+logger = logging.getLogger("blender_reference_generator")
 
 
 # FIXME #2086
@@ -62,6 +62,10 @@ class BlenderReferenceGenerator:
         self.split_pixels = []
         self.rendered_crops_results = {}
 
+    @staticmethod
+    def get_pixel_centers_offset(res):
+        return numpy.float32(1/(2*res))
+
     # pylint: disable=R0914
     def generate_split_data(self, resolution: Tuple[int, int],
                             image_border: List[float],
@@ -86,9 +90,11 @@ class BlenderReferenceGenerator:
         useful for cropping with blender, second one are corresponding
         pixels. Each list has splits_num elements, one for each split.
         """
-        logger.info("Values left=%r, right=%r, top=%r, bottom=%r",
-                    image_border[0], image_border[1], image_border[3],
-                    image_border[2])
+        logger.debug(
+            "Values left={:.32f}, right={:.32f},"
+            " top={:.32f}, bottom={:.32f}".format(
+                image_border[0], image_border[1],
+                image_border[3], image_border[2]))
 
         #  This is how Blender is calculating pixel check
         #  BlenderSync::get_buffer_params in blender_camers.cpp file
@@ -99,14 +105,23 @@ class BlenderReferenceGenerator:
         #  that means single precision 4 bytes floats, python is not
         #  it is using double precision values. Here numpy is used to emulate
         #  that loss of precision when assigning double to float.
+
         left_p = math.floor(numpy.float32(image_border[0]) *
-                            numpy.float32(resolution[0]))
+                            numpy.float32(resolution[0]) +
+                            BlenderReferenceGenerator.get_pixel_centers_offset(
+                                resolution[0]))
         right_p = math.floor(numpy.float32(image_border[1]) *
-                             numpy.float32(resolution[0]))
+                             numpy.float32(resolution[0]) +
+                             BlenderReferenceGenerator.get_pixel_centers_offset(
+                                 resolution[0]))
         bottom_p = math.floor(numpy.float32(image_border[2]) *
-                              numpy.float32(resolution[1]))
+                              numpy.float32(resolution[1]) +
+                              BlenderReferenceGenerator.
+                              get_pixel_centers_offset(resolution[1]))
         top_p = math.floor(numpy.float32(image_border[3]) *
-                           numpy.float32(resolution[1]))
+                           numpy.float32(resolution[1]) +
+                           BlenderReferenceGenerator.get_pixel_centers_offset(
+                               resolution[1]))
 
         logger.info("Pixels left=%r, right=%r, top=%r, bottom=%r", left_p,
                     right_p, top_p, bottom_p)
@@ -129,18 +144,25 @@ class BlenderReferenceGenerator:
             split_y = self._random_split(bottom_p, top_p, crop_size[1])
 
             # Here another conversion from double to float
-            x_f = numpy.float32(numpy.float32(split_x[0])
-                                / numpy.float32(resolution[0]))
+            x_f = numpy.float32(numpy.float32(split_x[0]) /
+                                numpy.float32(resolution[0]) +
+                                self.get_pixel_centers_offset(resolution[0]))
             right_f = numpy.float32(numpy.float32(split_x[1]) /
-                                    numpy.float32(resolution[0]))
-            y_f = numpy.float32(numpy.float32(split_y[0])
-                                / numpy.float32(resolution[1]))
-            bottom_f = numpy.float32(numpy.float32(split_y[1])
-                                     / numpy.float32(resolution[1]))
+                                    numpy.float32(resolution[0]) +
+                                    self.get_pixel_centers_offset(
+                                        resolution[0]))
+            y_f = numpy.float32(numpy.float32(split_y[0]) /
+                                numpy.float32(resolution[1]) +
+                                self.get_pixel_centers_offset(resolution[1]))
+            bottom_f = numpy.float32(numpy.float32(split_y[1]) /
+                                     numpy.float32(resolution[1]) +
+                                     self.get_pixel_centers_offset(
+                                         resolution[1]))
 
-            # Recalculate pixel after converting to float
-            split_x[0] = math.floor(x_f * numpy.float32(resolution[0]))
-            split_y[1] = math.floor(bottom_f * numpy.float32(resolution[1]))
+            logger.debug(
+                "Crop values x={:.32f}, right={:.32f},"
+                " y={:.32f}, bottom={:.32f}".format(
+                    x_f, right_f, y_f, bottom_f))
 
             self.split_values.append((x_f, right_f, y_f, bottom_f))
             self.split_pixels.append(self._pixel(split_x[0], split_y[1], top_p))
