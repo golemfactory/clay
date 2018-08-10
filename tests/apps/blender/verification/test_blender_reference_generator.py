@@ -17,11 +17,11 @@ class TestBlenderReferenceGenerator(TempDirFixture):
         assert BlenderReferenceGenerator\
                    ._get_default_crop_size((800, 8000)) == (8, 80)
 
-        assert BlenderReferenceGenerator\
-                   ._get_default_crop_size((400, 799)) == (8, 8)
+        assert BlenderReferenceGenerator.\
+            _get_default_crop_size((400, 799)) == (8, 8)
 
         assert BlenderReferenceGenerator\
-                   ._get_default_crop_size((399, 9000)) == (8, 90)
+            ._get_default_crop_size((399, 9000)) == (8, 90)
 
     def test_get_random_interval_within_boundaries(self):
         def _test_crop(min_, max_, step):

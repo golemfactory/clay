@@ -83,8 +83,8 @@ class BlenderReferenceGenerator:
         floats, where left, right, top, bottom. Values from 0 to 1. Where 1
         means top or right and 0 bottom or left.
         :param crops_number: Number of split data, sets
-        :param crop_size_as_fraction: Crop size, in blender float values, width, 
-        heightin percentage of particular dimension. Can be none so function 
+        :param crop_size_as_fraction: Crop size, in blender float values, width,
+        heightin percentage of particular dimension. Can be none so function
         will calculate smallest possible crop.
         :return: Tuple of two list. First list is filled with float values
         useful for cropping with blender, second one are corresponding
