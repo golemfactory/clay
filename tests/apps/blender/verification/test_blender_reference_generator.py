@@ -14,13 +14,20 @@ class TestBlenderReferenceGenerator(TempDirFixture):
         super().setUp()
 
     def test_get_default_crop_size(self):
-        assert BlenderReferenceGenerator._get_default_crop_size((800, 8000)) == (8, 80)
-        assert BlenderReferenceGenerator._get_default_crop_size((400, 799)) == (8, 8)
-        assert BlenderReferenceGenerator._get_default_crop_size((399, 9000)) == (8, 90)
+        assert BlenderReferenceGenerator\
+                   ._get_default_crop_size((800, 8000)) == (8, 80)
+
+        assert BlenderReferenceGenerator\
+                   ._get_default_crop_size((400, 799)) == (8, 8)
+
+        assert BlenderReferenceGenerator\
+                   ._get_default_crop_size((399, 9000)) == (8, 90)
 
     def test_get_random_interval_within_boundaries(self):
         def _test_crop(min_, max_, step):
-            crop_min, crop_max = BlenderReferenceGenerator._get_random_interval_within_boundaries(min_, max_, step)
+            crop_min, crop_max = BlenderReferenceGenerator\
+                ._get_random_interval_within_boundaries(min_, max_, step)
+
             assert round(crop_min, 2) >= round(min_, 2)
             assert round(crop_max, 2) <= round(max_, 2)
             assert abs(crop_max - crop_min - step) <= 0.01
@@ -29,17 +36,25 @@ class TestBlenderReferenceGenerator(TempDirFixture):
         _test_crop(550, 570, 10)
 
     def test_convert_bitmap_coordinates_to_traditional_y_direction(self):
-        assert BlenderReferenceGenerator.convert_bitmap_coordinates_to_traditional_y_direction(40, 20, 80) == (40, 60)
-        assert BlenderReferenceGenerator.convert_bitmap_coordinates_to_traditional_y_direction(40, 30, 90) == (40, 60)
-        assert BlenderReferenceGenerator.convert_bitmap_coordinates_to_traditional_y_direction(40, 10, 70) == (40, 60)
+        convert_to_traditional_y_direction = \
+            BlenderReferenceGenerator\
+            .convert_bitmap_coordinates_to_traditional_y_direction
+
+        assert convert_to_traditional_y_direction(40, 20, 80) == (40, 60)
+        assert convert_to_traditional_y_direction(40, 30, 90) == (40, 60)
+        assert convert_to_traditional_y_direction(40, 10, 70) == (40, 60)
 
     def test_generate_crops_data(self):
+
         def _test_crop(resolution, crop, num, ncrop_size=None):
             blender_reference_generator = BlenderReferenceGenerator()
             if ncrop_size is None:
-                crops_info = blender_reference_generator.generate_crops_data(resolution, crop, num)
+                crops_info = blender_reference_generator\
+                    .generate_crops_data(resolution, crop, num)
             else:
-                crops_info = blender_reference_generator.generate_crops_data(resolution, crop, num, ncrop_size)
+                crops_info = blender_reference_generator\
+                    .generate_crops_data(resolution, crop, num, ncrop_size)
+
             assert len(crops_info) == 3
             crops, pixels, _ = crops_info
             assert len(crops) == num
@@ -99,8 +114,8 @@ class TestBlenderReferenceGenerator(TempDirFixture):
                 top_p = math.floor(numpy.float32(crop_window[3]) *
                                    numpy.float32(res[1]))
                 blender_reference_generator = BlenderReferenceGenerator()
-                values, pixels, _ = blender_reference_generator.generate_crops_data(
-                    (res[0], res[1]), crop_window, 3)
+                values, pixels, _ = blender_reference_generator\
+                    .generate_crops_data((res[0], res[1]), crop_window, 3)
                 for j in range(0, 3):
                     height_p = math.floor(numpy.float32(
                         values[j][3] - values[j][2]) *

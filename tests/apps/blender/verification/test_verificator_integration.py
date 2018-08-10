@@ -22,7 +22,8 @@ class TestVerificatorModuleIntegration(TempDirFixture):
     def setUp(self):
         # pylint: disable=R0915
         super().setUp()
-        BlenderReferenceGenerator.DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP = 1
+        BlenderReferenceGenerator\
+            .DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP = 1
         self.blender_reference_generator = BlenderReferenceGenerator()
         self.golem_dir = get_golem_path()
         self.resources = ['tests/apps/blender/verification/test_data/bmw.blend']
@@ -120,7 +121,8 @@ class TestVerificatorModuleIntegration(TempDirFixture):
             verifier._crop_rendered,
             verifier._crop_render_failure,
             self.subtask_info,
-            BlenderReferenceGenerator.DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP
+            BlenderReferenceGenerator
+                .DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP
         )
 
         sync_wait(d, TestVerificatorModuleIntegration.TIMEOUT)
@@ -148,7 +150,8 @@ class TestVerificatorModuleIntegration(TempDirFixture):
 
         verifier = BlenderRenderTask.VERIFIER_CLASS(verification_finished,
                                                     verification_data)
-        verifier.current_results_files = ['tests/apps/blender/verification/test_data/GolemTask_10001.png']
+        verifier.current_results_files = \
+            ['tests/apps/blender/verification/test_data/GolemTask_10001.png']
 
         verifier.success = success
         verifier.failure = failure
@@ -160,7 +163,8 @@ class TestVerificatorModuleIntegration(TempDirFixture):
             verifier._crop_rendered,
             verifier._crop_render_failure,
             self.subtask_info,
-            BlenderReferenceGenerator.DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP
+            BlenderReferenceGenerator
+                .DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP
         )
 
         sync_wait(d, TestVerificatorModuleIntegration.TIMEOUT)
@@ -190,7 +194,8 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         verifier = BlenderRenderTask.VERIFIER_CLASS(verification_finished,
                                                     verification_data)
 
-        verifier.current_results_files = ['tests/apps/blender/verification/test_data/almost_good_image.png']
+        verifier.current_results_files = \
+            ['tests/apps/blender/verification/test_data/almost_good_image.png']
 
         verifier.success = success
         verifier.failure = failure
@@ -202,7 +207,8 @@ class TestVerificatorModuleIntegration(TempDirFixture):
             verifier._crop_rendered,
             verifier._crop_render_failure,
             self.subtask_info,
-            BlenderReferenceGenerator.DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP
+            BlenderReferenceGenerator
+                .DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP
         )
 
         sync_wait(d, TestVerificatorModuleIntegration.TIMEOUT)
@@ -230,14 +236,16 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         verification_data['results'] = []
         verification_data['reference_data'] = []
         verification_data['resources'] = self.resources
-        verification_data["reference_generator"] = self.blender_reference_generator
+        verification_data["reference_generator"] = \
+            self.blender_reference_generator
         verification_data['paths'] = os.path.dirname(self.resources[0])
 
         verifier = BlenderRenderTask.VERIFIER_CLASS(verification_finished,
                                                     verification_data)
 
-        verifier.current_results_files = ['tests/apps/blender/verification/test_data/GolemTask_10001.png',
-                                          'tests/apps/blender/verification/test_data/GolemTask_10002.png']
+        verifier.current_results_files = [
+            'tests/apps/blender/verification/test_data/GolemTask_10001.png',
+            'tests/apps/blender/verification/test_data/GolemTask_10002.png']
 
         verifier.success = success
         verifier.failure = failure
@@ -249,7 +257,8 @@ class TestVerificatorModuleIntegration(TempDirFixture):
             verifier._crop_rendered,
             verifier._crop_render_failure,
             self.subtask_info,
-            BlenderReferenceGenerator.DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP
+            BlenderReferenceGenerator
+                .DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP
         )
 
         sync_wait(d, TestVerificatorModuleIntegration.TIMEOUT)
