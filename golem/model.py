@@ -19,8 +19,6 @@ from golem.database import GolemSqliteDatabase
 from golem.network.p2p.node import Node
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
 
-# Indicates how many KnownHosts can be stored in the DB
-MAX_STORED_HOSTS = 4
 
 # TODO: migrate to golem.database. issue #2415
 db = GolemSqliteDatabase(None, threadlocals=True,
@@ -240,6 +238,7 @@ class Payment(BaseModel):
 class Income(BaseModel):
     sender_node = CharField()
     subtask = CharField()
+    payer_address = CharField()
     value = HexIntegerField()
     accepted_ts = IntegerField(null=True)
     transaction = CharField(null=True)
@@ -314,6 +313,7 @@ class KnownHosts(BaseModel):
     port = IntegerField()
     last_connected = DateTimeField(default=datetime.datetime.now)
     is_seed = BooleanField(default=False)
+    metadata = JsonField(default='{}')
 
     class Meta:
         database = db

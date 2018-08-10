@@ -4,7 +4,7 @@ import time
 
 from golem.core.service import LoopingCallService
 from golem.core.variables import PAYMENT_DEADLINE
-from golem.transactions.ethereum.exceptions import NotEnoughFunds
+from golem.ethereum.exceptions import NotEnoughFunds
 
 logger = logging.getLogger(__name__)
 
