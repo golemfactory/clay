@@ -4,6 +4,7 @@ import logging
 import time
 from typing import List, Optional, Callable, Any
 
+from pathlib import Path
 from twisted.internet import threads
 from twisted.internet.defer import gatherResults, Deferred
 from twisted.python.failure import Failure
@@ -12,13 +13,14 @@ from apps.appsmanager import AppsManager
 from golem.appconfig import AppConfig
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.config.active import IS_MAINNET
+from golem.config.active import IS_MAINNET, EthereumConfig
 from golem.core.deferred import chain_function
 from golem.core.keysauth import KeysAuth, WrongPassword
 from golem.core.async import async_run, AsyncRequest
 from golem.core.variables import PRIVATE_KEY
 from golem.database import Database
 from golem.docker.manager import DockerManager
+from golem.ethereum.transactionsystem import TransactionSystem
 from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher, Component, Stage
@@ -72,6 +74,11 @@ class Node(object):  # pylint: disable=too-few-public-methods
             if use_talkback is None else use_talkback
 
         self._keys_auth: Optional[KeysAuth] = None
+        self._ets = TransactionSystem(
+            Path(datadir) / 'transaction_system',
+            EthereumConfig,
+        )
+        self._ets.backwards_compatibility_tx_storage(Path(datadir))
 
         self.rpc_router: Optional[CrossbarRouter] = None
         self.rpc_session: Optional[Session] = None
@@ -93,6 +100,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             config_desc=config_desc,
             keys_auth=keys_auth,
             database=self._db,
+            transaction_system=self._ets,
             use_docker_manager=use_docker_manager,
             use_monitor=self._use_monitor,
             concent_variant=concent_variant,
@@ -144,6 +152,14 @@ class Node(object):  # pylint: disable=too-few-public-methods
                 password=password,
                 difficulty=self._config_desc.key_difficulty,
             )
+            # When Golem is ready to use different Ethereum account for
+            # payments and identity this should be called only when
+            # idendity was not just created above for the first time.
+            self._ets.backwards_compatibility_privkey(
+                self._keys_auth._private_key,
+                password,
+            )
+            self._ets.set_password(password)
         except WrongPassword:
             logger.info("Password incorrect")
             return False

@@ -1,8 +1,11 @@
 import logging
+import os
 from pathlib import Path
-from typing import ClassVar, Optional, TYPE_CHECKING
+from typing import ClassVar, Optional, TYPE_CHECKING, Tuple, Dict, Union, List
 
 import requests
+
+from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob
 from golem.task.taskbase import ResultType
 from golem.task.taskthread import TaskThread, JobException, TimeoutException
@@ -25,6 +28,36 @@ class ImageException(RuntimeError):
     pass
 
 
+class DockerDirMapping:
+
+    def __init__(self,   # pylint: disable=too-many-arguments
+                 resources: str, temporary: str,
+                 work: Path, output: Path, logs: Path) -> None:
+
+        self.resources = resources
+        self.temporary = temporary
+
+        self.work: Path = work
+        self.output: Path = output
+        self.logs: Path = logs
+
+    @classmethod
+    def generate(cls, resources: str, temporary: str) -> 'DockerDirMapping':
+        work = Path(temporary) / "work"
+        output = Path(temporary) / "output"
+        logs = output
+
+        return cls(resources, temporary, work, output, logs)
+
+    def mkdirs(self, exist_ok: bool = True) -> None:
+        os.makedirs(self.resources, exist_ok=exist_ok)
+        os.makedirs(self.temporary, exist_ok=exist_ok)
+
+        self.work.mkdir(exist_ok=exist_ok)
+        self.output.mkdir(exist_ok=exist_ok)
+        self.logs.mkdir(exist_ok=exist_ok)
+
+
 class DockerTaskThread(TaskThread):
 
     # These files will be placed in the output dir (self.tmp_path)
@@ -34,29 +67,46 @@ class DockerTaskThread(TaskThread):
 
     docker_manager: ClassVar[Optional['DockerManager']] = None
 
-    def __init__(self, task_computer, subtask_id, docker_images,
-                 orig_script_dir, src_code, extra_data, short_desc,
-                 res_path, tmp_path, timeout, check_mem=False):
+    def __init__(self, subtask_id: str,  # pylint: disable=too-many-arguments
+                 docker_images: List[Union[DockerImage, Dict, Tuple]],
+                 orig_script_dir: str,
+                 src_code: str,
+                 extra_data: Dict,
+                 short_desc: str,
+                 dir_mapping: DockerDirMapping,
+                 timeout: int,
+                 check_mem: bool = False) -> None:
 
         if not docker_images:
             raise AttributeError("docker images is None")
         super(DockerTaskThread, self).__init__(
-            task_computer, subtask_id, orig_script_dir, src_code, extra_data,
-            short_desc, res_path, tmp_path, timeout)
+            subtask_id, orig_script_dir, src_code, extra_data,
+            short_desc, dir_mapping.resources, dir_mapping.temporary,
+            timeout)
 
         # Find available image
         self.image = None
         logger.debug("Checking docker images %s", docker_images)
         for img in docker_images:
+            img = DockerImage.build(img)
             if img.is_available():
                 self.image = img
                 break
 
-        self.job = None
+        self.job: Optional[DockerJob] = None
         self.check_mem = check_mem
+        self.dir_mapping = dir_mapping
 
-        self.work_dir_path: Path = Path(self.tmp_path) / "work"
-        self.output_dir_path: Path = Path(self.tmp_path) / "output"
+    @staticmethod
+    def specify_dir_mapping(resources: str, temporary: str, work: str,
+                            output: str, logs: str) -> DockerDirMapping:
+        return DockerDirMapping(resources, temporary,
+                                Path(work), Path(output), Path(logs))
+
+    @staticmethod
+    def generate_dir_mapping(resources: str,
+                             temporary: str) -> DockerDirMapping:
+        return DockerDirMapping.generate(resources, temporary)
 
     def run(self) -> None:
         try:
@@ -88,37 +138,39 @@ class DockerTaskThread(TaskThread):
             self.job = None
 
     def _run_docker_job(self) -> Optional[int]:
-        self.work_dir_path.mkdir(exist_ok=True)
-        self.output_dir_path.mkdir(exist_ok=True)
+        self.dir_mapping.mkdirs()
 
-        host_config = self.docker_manager.container_host_config \
-            if self.docker_manager else None
+        params = dict(
+            image=self.image,
+            script_src=self.src_code,
+            parameters=self.extra_data,
+            resources_dir=str(self.dir_mapping.resources),
+            work_dir=str(self.dir_mapping.work),
+            output_dir=str(self.dir_mapping.output),
+            host_config=(self.docker_manager.container_host_config
+                         if self.docker_manager else None),
+        )
 
-        with DockerJob(self.image, self.src_code, self.extra_data,
-                       self.res_path, str(self.work_dir_path),
-                       str(self.output_dir_path), host_config=host_config) \
-                as job, \
-                MemoryChecker(self.check_mem) as mc:
+        with DockerJob(**params) as job, MemoryChecker(self.check_mem) as mc:
             self.job = job
-            self.job.start()
-            exit_code = self.job.wait()
+            job.start()
 
-            self.job.dump_logs(str(self.output_dir_path / self.STDOUT_FILE),
-                               str(self.output_dir_path / self.STDERR_FILE))
-
+            exit_code = job.wait()
             estm_mem = mc.estm_mem
 
+            job.dump_logs(str(self.dir_mapping.logs / self.STDOUT_FILE),
+                          str(self.dir_mapping.logs / self.STDERR_FILE))
+
             if exit_code != 0:
-                logger.warning(
-                    'Task stderr:\n%s',
-                    (self.output_dir_path / self.STDERR_FILE).read_text())
+                std_err = (self.dir_mapping.logs / self.STDERR_FILE).read_text()
+                logger.warning(f'Task stderr:\n{std_err}')
                 raise JobException(self._exit_code_message(exit_code))
 
         return estm_mem
 
     def _task_computed(self, estm_mem: Optional[int]) -> None:
         out_files = [
-            str(path) for path in self.output_dir_path.glob("**/*")
+            str(path) for path in self.dir_mapping.output.glob("**/*")
             if path.is_file()
         ]
         self.result = {
@@ -127,7 +179,7 @@ class DockerTaskThread(TaskThread):
         }
         if estm_mem is not None:
             self.result = (self.result, estm_mem)
-        self.task_computer.task_computed(self)
+        self._deferred.callback(self)
 
     def get_progress(self):
         # TODO: make the container update some status file? Issue #56

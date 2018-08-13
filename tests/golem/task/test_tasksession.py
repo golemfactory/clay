@@ -12,6 +12,7 @@ from unittest.mock import patch, ANY, Mock, MagicMock
 
 from golem_messages import factories as msg_factories
 from golem_messages import message
+from twisted.internet.defer import Deferred
 
 from golem import model, testutils
 from golem.core.databuffer import DataBuffer
@@ -428,7 +429,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         srr = self._get_srr()
         self.__call_react_to_srr(srr)
         self.task_session.task_server.subtask_rejected.assert_called_once_with(
-            subtask_id=srr.report_computed_task.subtask_id)  # noqa pylint:disable=no-member
+            sender_node_id=self.task_session.key_id,
+            subtask_id=srr.report_computed_task.subtask_id,  # noqa pylint:disable=no-member
+        )
 
     def test_result_rejected_with_wrong_key(self):
         srr = self._get_srr(key2='notmine')
@@ -440,14 +443,13 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.task_session.task_server.client.funds_locker\
             .sum_locks.return_value = (0,)
 
-        def on_trans(**kwargs):
-            receipt = Mock()
-            receipt.status = True
-            kwargs['cb']()
-            return 'txhash'
+        def concent_deposit(**_):
+            result = Deferred()
+            result.callback(None)
+            return result
 
         self.task_session.task_server.client.transaction_system\
-            .concent_deposit.side_effect = on_trans
+            .concent_deposit.side_effect = concent_deposit
         self.__call_react_to_srr(srr)
         stm = self.task_session.concent_service.submit_task_message
         stm.assert_called()

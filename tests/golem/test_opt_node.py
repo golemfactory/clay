@@ -2,7 +2,6 @@ from os import path
 from unittest.mock import patch, Mock, ANY, MagicMock
 
 from click.testing import CliRunner
-import pytest
 from twisted.internet.defer import Deferred
 
 import golem.argsparser as argsparser
@@ -94,6 +93,7 @@ class TestNode(TestWithDatabase):
                                        ],
                                        keys_auth=keys_auth,
                                        database=ANY,
+                                       transaction_system=ANY,
                                        geth_address=None,
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
@@ -155,6 +155,7 @@ class TestNode(TestWithDatabase):
                                        config_desc=ANY,
                                        keys_auth=None,
                                        database=ANY,
+                                       transaction_system=ANY,
                                        geth_address=geth_address,
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
@@ -235,6 +236,7 @@ class TestNode(TestWithDatabase):
                                        config_desc=ANY,
                                        keys_auth=None,
                                        database=ANY,
+                                       transaction_system=ANY,
                                        geth_address=None,
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
@@ -309,8 +311,6 @@ class TestNode(TestWithDatabase):
             assert a.P2P_SEEDS == m.P2P_SEEDS
             assert a.PROTOCOL_CONST.ID == m.PROTOCOL_CONST.ID
             assert a.APP_MANAGER_CONFIG_FILES == m.APP_MANAGER_CONFIG_FILES
-            assert a.SEND_PAYMENT_INFO_TO_MONITOR == \
-                m.SEND_PAYMENT_INFO_TO_MONITOR
 
         with mock_config():
             args = self.args + ['--net', 'mainnet']
@@ -572,7 +572,7 @@ class TestOptNode(TempDirFixture):
         assert reactor.addSystemEventTrigger.call_args[0] == (
             'before', 'shutdown', self.node.rpc_router.stop)
 
-    @patch('golem.client.EthereumTransactionSystem')
+    @patch('golem.node.TransactionSystem')
     def test_start_creates_client(self, _ets, reactor, mock_gather_results, *_):
         mock_gather_results.return_value = mock_gather_results
         mock_gather_results.addCallbacks.side_effect = \
@@ -592,7 +592,7 @@ class TestOptNode(TempDirFixture):
         assert reactor.addSystemEventTrigger.call_args_list[1][0] == (
             'before', 'shutdown', self.node.client.quit)
 
-    @patch('golem.client.EthereumTransactionSystem')
+    @patch('golem.node.TransactionSystem')
     @patch('golem.node.Node._run')
     def test_start_creates_client_and_calls_run(
             self,
