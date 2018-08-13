@@ -50,7 +50,7 @@ class TestIncomesKeeper(TestWithDatabase):
         assert expected_income.accepted_ts is None
         assert expected_income.transaction is None
 
-    @mock.patch("golem.transactions.incomeskeeper.IncomesKeeper"
+    @mock.patch("golem.ethereum.incomeskeeper.IncomesKeeper"
                 ".received_batch_transfer")
     def test_received_forced_payment(self, batch_mock):
         kwargs = {
