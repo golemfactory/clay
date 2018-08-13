@@ -3,7 +3,7 @@
 # pylint: disable=too-few-public-methods
 from golem import model
 
-SCHEMA_VERSION = 17
+SCHEMA_VERSION = 20
 
 
 def migrate(migrator, database, fake=False, **kwargs):
