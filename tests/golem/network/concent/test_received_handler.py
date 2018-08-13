@@ -820,11 +820,6 @@ class SubtaskResultsSettledTest(TaskServerMessageHandlerTestBase):
 
 
 class ForcePaymentTest(TaskServerMessageHandlerTestBase):
-    def setUp(self):
-        super().setUp()
-        self.client.transaction_system = mock.Mock()
-        self.client.transaction_system.incomes_keeper = IncomesKeeper()
-
     @mock.patch('golem.network.concent.received_handler.logger.warning')
     def test_committed_requestor(self, log_mock):
         fpc = msg_factories.concents.ForcePaymentCommittedFactory.to_requestor()
