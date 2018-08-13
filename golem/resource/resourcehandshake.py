@@ -3,6 +3,7 @@ import os
 import uuid
 
 from golem_messages import message
+from golem_messages.register import library
 
 logger = logging.getLogger('golem.resources')
 
@@ -336,10 +337,10 @@ class ResourceHandshakeSessionMixin:
 
     def __set_msg_interpretations(self):
         self._interpretation.update({
-            message.ResourceHandshakeStart.TYPE:
+            library.get_type(message.ResourceHandshakeStart):
                 self._react_to_resource_handshake_start,
-            message.ResourceHandshakeNonce.TYPE:
+            library.get_type(message.ResourceHandshakeNonce):
                 self._react_to_resource_handshake_nonce,
-            message.ResourceHandshakeVerdict.TYPE:
+            library.get_type(message.ResourceHandshakeVerdict):
                 self._react_to_resource_handshake_verdict
         })

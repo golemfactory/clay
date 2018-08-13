@@ -6,6 +6,7 @@ import time
 
 from golem_messages import message
 from golem_messages import helpers as msg_helpers
+from golem_messages.register import library
 
 from golem.core.common import HandleAttributeError
 from golem.core.keysauth import KeysAuth
@@ -16,7 +17,6 @@ from golem.docker.image import DockerImage
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
-from golem.network.p2p import node as p2p_node
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
@@ -339,7 +339,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # the `ForceReportComputedTask` message to the Concent will be
         # cancelled and thus, never sent to the Concent.
 
-        delayed_forcing_msg = message.ForceReportComputedTask(
+        delayed_forcing_msg = message.concents.ForceReportComputedTask(
             report_computed_task=report_computed_task,
             result_hash='sha1:' + task_result.package_sha1
         )
@@ -937,37 +937,48 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def __set_msg_interpretations(self):
         self._interpretation.update({
-            message.WantToComputeTask.TYPE: self._react_to_want_to_compute_task,
-            message.TaskToCompute.TYPE: self._react_to_task_to_compute,
-            message.CannotAssignTask.TYPE: self._react_to_cannot_assign_task,
-            message.CannotComputeTask.TYPE: self._react_to_cannot_compute_task,
-            message.ReportComputedTask.TYPE:
+            library.get_type(message.WantToComputeTask):
+                self._react_to_want_to_compute_task,
+            library.get_type(message.TaskToCompute):
+                self._react_to_task_to_compute,
+            library.get_type(message.CannotAssignTask):
+                self._react_to_cannot_assign_task,
+            library.get_type(message.CannotComputeTask):
+                self._react_to_cannot_compute_task,
+            library.get_type(message.ReportComputedTask):
                 self._react_to_report_computed_task,
-            message.GetResource.TYPE: self._react_to_get_resource,
-            message.ResourceList.TYPE: self._react_to_resource_list,
-            message.tasks.SubtaskResultsAccepted.TYPE:
+            library.get_type(message.GetResource):
+                self._react_to_get_resource,
+            library.get_type(message.ResourceList):
+                self._react_to_resource_list,
+            library.get_type(message.tasks.SubtaskResultsAccepted):
                 self._react_to_subtask_result_accepted,
-            message.tasks.SubtaskResultsRejected.TYPE:
+            library.get_type(message.tasks.SubtaskResultsRejected):
                 self._react_to_subtask_results_rejected,
-            message.TaskFailure.TYPE: self._react_to_task_failure,
-            message.Hello.TYPE: self._react_to_hello,
-            message.RandVal.TYPE: self._react_to_rand_val,
-            message.StartSessionResponse.TYPE: self._react_to_start_session_response,  # noqa
-            message.WaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
+            library.get_type(message.TaskFailure):
+                self._react_to_task_failure,
+            library.get_type(message.Hello):
+                self._react_to_hello,
+            library.get_type(message.RandVal):
+                self._react_to_rand_val,
+            library.get_type(message.StartSessionResponse):
+                self._react_to_start_session_response,
+            library.get_type(message.WaitingForResults):
+                self._react_to_waiting_for_results,
 
             # Concent messages
-            message.tasks.AckReportComputedTask.TYPE:
+            library.get_type(message.tasks.AckReportComputedTask):
                 self._react_to_ack_report_computed_task,
-            message.tasks.RejectReportComputedTask.TYPE:
+            library.get_type(message.tasks.RejectReportComputedTask):
                 self._react_to_reject_report_computed_task,
         })
 
-        # self.can_be_not_encrypted.append(message.Hello.TYPE)
         self.can_be_unverified.extend(
             [
-                message.Hello.TYPE,
-                message.RandVal.TYPE,
-                message.ChallengeSolution.TYPE
+                library.get_type(message.Hello),
+                library.get_type(message.RandVal),
+                library.get_type(message.ChallengeSolution)
             ]
         )
-        self.can_be_not_encrypted.extend([message.Hello.TYPE])
+
+        self.can_be_not_encrypted.extend([library.get_type(message.Hello)])

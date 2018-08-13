@@ -4,6 +4,7 @@ import time
 
 import semantic_version
 from golem_messages import message
+from golem_messages.register import library
 from pydispatch import dispatcher
 
 import golem
@@ -80,12 +81,12 @@ class PeerSession(BasicSafeSession):
 
         self.can_be_unverified.extend(
             [
-                message.Hello.TYPE,
-                message.RandVal.TYPE,
-                message.ChallengeSolution.TYPE
+                library.get_type(message.Hello),
+                library.get_type(message.RandVal),
+                library.get_type(message.ChallengeSolution),
             ]
         )
-        self.can_be_not_encrypted.append(message.Hello.TYPE)
+        self.can_be_not_encrypted.append(library.get_type(message.Hello))
 
         self.__set_msg_interpretations()
 
@@ -569,27 +570,29 @@ class PeerSession(BasicSafeSession):
 
     def __set_basic_msg_interpretations(self):
         self._interpretation.update({
-            message.Ping.TYPE: self._react_to_ping,
-            message.Pong.TYPE: self._react_to_pong,
-            message.Hello.TYPE: self._react_to_hello,
-            message.ChallengeSolution.TYPE: self._react_to_challenge_solution,
-            message.GetPeers.TYPE: self._react_to_get_peers,
-            message.Peers.TYPE: self._react_to_peers,
-            message.GetTasks.TYPE: self._react_to_get_tasks,
-            message.Tasks.TYPE: self._react_to_tasks,
-            message.RemoveTask.TYPE: self._react_to_remove_task,
-            message.RemoveTaskContainer.TYPE:
+            library.get_type(message.Ping): self._react_to_ping,
+            library.get_type(message.Pong): self._react_to_pong,
+            library.get_type(message.Hello): self._react_to_hello,
+            library.get_type(message.ChallengeSolution):
+                self._react_to_challenge_solution,
+            library.get_type(message.GetPeers): self._react_to_get_peers,
+            library.get_type(message.Peers): self._react_to_peers,
+            library.get_type(message.GetTasks): self._react_to_get_tasks,
+            library.get_type(message.Tasks): self._react_to_tasks,
+            library.get_type(message.RemoveTask): self._react_to_remove_task,
+            library.get_type(message.RemoveTaskContainer):
                 self._react_to_remove_task_container,
-            message.FindNode.TYPE: self._react_to_find_node,
-            message.RandVal.TYPE: self._react_to_rand_val,
-            message.WantToStartTaskSession.TYPE:
+            library.get_type(message.FindNode): self._react_to_find_node,
+            library.get_type(message.RandVal): self._react_to_rand_val,
+            library.get_type(message.WantToStartTaskSession):
                 self._react_to_want_to_start_task_session,
-            message.SetTaskSession.TYPE: self._react_to_set_task_session,
+            library.get_type(message.SetTaskSession):
+                self._react_to_set_task_session,
         })
 
     def __set_ranking_msg_interpretations(self):
         self._interpretation.update({
-            message.Gossip.TYPE: self._react_to_gossip,
-            message.LocRank.TYPE: self._react_to_loc_rank,
-            message.StopGossip.TYPE: self._react_to_stop_gossip,
+            library.get_type(message.Gossip): self._react_to_gossip,
+            library.get_type(message.LocRank): self._react_to_loc_rank,
+            library.get_type(message.StopGossip): self._react_to_stop_gossip,
         })

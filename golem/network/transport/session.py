@@ -211,7 +211,7 @@ class BasicSafeSession(BasicSession):
         if not BasicSession._check_msg(self, msg):
             return False
 
-        type_ = msg.TYPE
+        type_ = msg.header.type_
 
         if not self.verified and type_ not in self.can_be_unverified:
             self.disconnect(message.Disconnect.REASON.Unverified)
