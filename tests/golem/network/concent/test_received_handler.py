@@ -840,3 +840,12 @@ class ForcePaymentTest(TaskServerMessageHandlerTestBase):
             "Forced payment from",
             log_mock.call_args[0][0],
         )
+
+    @mock.patch('golem.network.concent.received_handler.logger.debug')
+    def test_committed_unknown(self, log_mock):
+        fpc = msg_factories.concents.ForcePaymentCommittedFactory(
+            amount_pending=31337,
+            recipient_type=None,
+        )
+        with self.assertRaises(ValueError):
+            library.interpret(fpc)

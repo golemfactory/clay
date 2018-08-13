@@ -541,10 +541,15 @@ class TaskServerMessageHandler():
 
     @handler_for(message.concents.ForcePaymentCommitted)
     def on_force_payment_committed(self, msg, **_):
-        handler_name = 'on_force_payment_committed_for_{}'.format(
-            msg.recipient_type.value,
-        )
-        getattr(self, handler_name)(msg)
+        if msg.recipient_type == msg.Actor.Requestor:
+            handler = self.on_force_payment_committed_for_requestor
+        elif msg.recipient_type == msg.Actor.Provider:
+            handler = self.on_force_payment_committed_for_provider
+        else:
+            raise ValueError(
+                "Unknown Actor: {!r}".format(msg.recipient_type),
+            )
+        handler(msg)
 
     def on_force_payment_committed_for_requestor(self, msg):  # noqa pylint: disable=no-self-use
         logger.warning(
