@@ -66,13 +66,6 @@ class IncomesKeeper:
                     subtask_id=e.subtask,
                 )
 
-        dispatcher.send(
-            signal='golem.monitor',
-            event='income',
-            addr=sender,
-            value=amount,
-        )
-
     def received_forced_payment(
             self,
             tx_hash: str,
