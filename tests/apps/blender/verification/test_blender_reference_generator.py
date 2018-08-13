@@ -1,17 +1,16 @@
 import logging
 import math
+
 import numpy
+from golem_verificator.common.rendering_task_utils import get_min_max_y
+
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 from golem.testutils import TempDirFixture
-from golem_verificator.common.rendering_task_utils import get_min_max_y
 
 logger = logging.getLogger(__name__)
 
 
 class TestBlenderReferenceGenerator(TempDirFixture):
-    def setUp(self):
-        # pylint: disable=R0915
-        super().setUp()
 
     def test_get_default_crop_size(self):
         assert BlenderReferenceGenerator\

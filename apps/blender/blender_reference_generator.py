@@ -7,6 +7,7 @@ from functools import partial
 from typing import Dict, Tuple, List, Callable, Optional, Any
 
 import numpy
+
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from golem.core.common import timeout_to_deadline
 from golem.task.localcomputer import ComputerAdapter
