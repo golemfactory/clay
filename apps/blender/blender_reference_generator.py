@@ -71,7 +71,7 @@ class BlenderReferenceGenerator:
                             subtask_border: List[float],
                             crops_number: int,
                             crop_size_as_fraction:
-                            Optional[Tuple[float, float]] = None):
+                            Optional[Tuple[float, float]]=None):
         """
         This function will generate split data for performing random crops.
         Crops will be rendered from blend files using calculated values
@@ -229,7 +229,7 @@ class BlenderReferenceGenerator:
                      crop_render_fail_callback: CropRenderedFailureCallbackType,
                      subtask_info: Dict[str, Any],
                      num_crops: int
-                     = DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP,
+                     =DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP,
                      crop_size: Optional[Tuple[int, int]] = None) \
             -> Tuple[int, int]:
 
@@ -243,10 +243,10 @@ class BlenderReferenceGenerator:
 
         verification_context = \
             VerificationContext({'paths': crops_path,
-                                'position': crops_info},
+                                 'position': crops_info},
                                 self.computer,
                                 {'resources': resources,
-                                'subtask_info': subtask_info},
+                                 'subtask_info': subtask_info},
                                 {'success': crop_rendered_callback,
                                  'errback': crop_render_fail_callback})
 
