@@ -817,3 +817,35 @@ class SubtaskResultsSettledTest(TaskServerMessageHandlerTestBase):
 
         self.assertEqual(
             Income.get(subtask=srs.subtask_id).settled_ts, srs.timestamp)
+
+
+class ForcePaymentTest(TaskServerMessageHandlerTestBase):
+    @mock.patch('golem.network.concent.received_handler.logger.warning')
+    def test_committed_requestor(self, log_mock):
+        fpc = msg_factories.concents.ForcePaymentCommittedFactory.to_requestor()
+        library.interpret(fpc)
+        log_mock.assert_called_once()
+        self.assertIn(
+            "Our deposit was used to cover payment",
+            log_mock.call_args[0][0],
+        )
+
+    @mock.patch('golem.network.concent.received_handler.logger.debug')
+    def test_committed_provider(self, log_mock):
+        fpc = msg_factories.concents.ForcePaymentCommittedFactory.to_provider(
+            amount_pending=31337,
+        )
+        library.interpret(fpc)
+        self.assertIn(
+            "Forced payment from",
+            log_mock.call_args[0][0],
+        )
+
+    @mock.patch('golem.network.concent.received_handler.logger.debug')
+    def test_committed_unknown(self, log_mock):
+        fpc = msg_factories.concents.ForcePaymentCommittedFactory(
+            amount_pending=31337,
+            recipient_type=None,
+        )
+        with self.assertRaises(ValueError):
+            library.interpret(fpc)

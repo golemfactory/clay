@@ -213,6 +213,17 @@ class TransactionSystem(LoopingCallService):
                     event.amount,
                 )
             )
+            self._sci.subscribe_to_forced_payments(
+                requestor_address=None,
+                provider_address=self._sci.get_eth_address(),
+                from_block=from_block,
+                cb=lambda event: ik.received_forced_payment(
+                    tx_hash=event.tx_hash,
+                    sender=event.requestor,
+                    amount=event.amount,
+                    closure_time=event.closure_time,
+                ),
+            )
         except AttributeError as e:
             log.info("Can't use GNTDeposit on mainnet yet: %r", e)
 

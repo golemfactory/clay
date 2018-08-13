@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import functools
 from contextlib import contextmanager
 from unittest import TestCase
@@ -306,6 +307,49 @@ class TestSavedMigrations(TempDirFixture):
             database._migrate_schema(Database.SCHEMA_VERSION,
                                      Database.SCHEMA_VERSION)
             assert all(m.table_exists() for m in DB_MODELS)
+
+    @patch('golem.database.Database._create_tables')
+    def test_18(self, _create_tables_mock):
+        with self.database_context() as database:
+            database._migrate_schema(6, 17)
+            database.db.execute_sql(
+                "INSERT INTO income ("
+                "sender_node, subtask, value, created_date, modified_date,"
+                " overdue"
+                ")"
+                " VALUES ('0xdead', '0xdead', 10, datetime('now'),"
+                "         datetime('now'), 0)"
+            )
+            database._migrate_schema(17, 18)
+            cursor = database.db.execute_sql(
+                "SELECT payer_address FROM income"
+                " WHERE sender_node = '0xdead' AND subtask = '0xdead'"
+                " LIMIT 1"
+            )
+            value = cursor.fetchone()[0]
+            self.assertEqual(value, '0eeA941c1244ADC31F53525D0eC1397ff6951C9C')
+
+    @patch('golem.database.Database._create_tables')
+    def test_20_income_value_received(self, _create_tables_mock):
+        with self.database_context() as database:
+            database._migrate_schema(6, 19)
+            database.db.execute_sql(
+                "INSERT INTO income ("
+                "sender_node, subtask, value, created_date, modified_date,"
+                " overdue, payer_address, \"transaction\")"
+                " VALUES ('0xdead', '0xdead', 10, datetime('now'),"
+                "         datetime('now'), 0,"
+                "         '0eeA941c1244ADC31F53525D0eC1397ff6951C9C',"
+                "         'transid')"
+            )
+            database._migrate_schema(19, 20)
+            cursor = database.db.execute_sql(
+                "SELECT value_received FROM income"
+                " WHERE sender_node = '0xdead' AND subtask = '0xdead'"
+                " LIMIT 1"
+            )
+            value = cursor.fetchone()[0]
+            self.assertEqual(value, '10')
 
 
 def generate(start, stop):
