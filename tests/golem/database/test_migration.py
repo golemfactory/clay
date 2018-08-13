@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import functools
 from contextlib import contextmanager
 from unittest import TestCase
@@ -316,7 +317,8 @@ class TestSavedMigrations(TempDirFixture):
                 "sender_node, subtask, value, created_date, modified_date,"
                 " overdue"
                 ")"
-                " VALUES ('0xdead', '0xdead', 10, datetime('now'), datetime('now'), 0)"
+                " VALUES ('0xdead', '0xdead', 10, datetime('now'),"
+                "         datetime('now'), 0)"
             )
             database._migrate_schema(17, 18)
             cursor = database.db.execute_sql(
