@@ -451,15 +451,15 @@ class TaskServer(
             logger.info("Invaluable subtask: %r value: %r", subtask_id, value)
             return
 
-        payment = self.client.transaction_system.add_payment_info(
+        payment_processed_ts = self.client.transaction_system.add_payment_info(
             subtask_id,
             value,
             eth_address,
         )
         self.client.funds_locker.remove_subtask(task_id)
-        logger.debug('Result accepted for subtask: %s Created payment: %r',
-                     subtask_id, payment)
-        return payment
+        logger.debug('Result accepted for subtask: %s Created payment ts: %r',
+                     subtask_id, payment_processed_ts)
+        return payment_processed_ts
 
     def income_listener(self, event='default', subtask_id=None, **_kwargs):
         task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(

@@ -241,7 +241,11 @@ class TransactionSystem(LoopingCallService):
         self._sci.stop()
         super().stop()
 
-    def add_payment_info(self, subtask_id: str, value: int, eth_address: str):
+    def add_payment_info(
+            self,
+            subtask_id: str,
+            value: int,
+            eth_address: str) -> int:
         if not self._payment_processor:
             raise Exception('Start was not called')
         payee = decode_hex(eth_address)
@@ -253,8 +257,7 @@ class TransactionSystem(LoopingCallService):
             payee=payee,
             value=value,
         )
-        self._payment_processor.add(payment)
-        return payment
+        return self._payment_processor.add(payment)
 
     def get_payment_address(self):
         """ Human readable Ethereum address for incoming payments."""
