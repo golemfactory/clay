@@ -166,7 +166,6 @@ class HandleForwardedError:
         return func_wrapper
 
 
-
 class HandleKeyError(HandleError):
     def __init__(self, handle_error):
         super(HandleKeyError, self).__init__(
