@@ -16,6 +16,7 @@ from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 class BlenderBenchmark(RenderingBenchmark):
     RENDERER_OPTIONS_CLASS = BlenderRendererOptions
     ENVIRONMENT_CLASS: Type[BlenderEnvironment] = BlenderEnvironment
+    SCENE_FILE_NAME: str = "bmw27_cpu.blend"
 
     def __init__(self):
         super(BlenderBenchmark, self).__init__()
@@ -34,7 +35,7 @@ class BlenderBenchmark(RenderingBenchmark):
         task_def.options = self.RENDERER_OPTIONS_CLASS()
         task_def.options.frames = "1"
         main_scene_file = pathlib.Path(self.blender_task_path)
-        main_scene_file /= "bmw27_cpu.blend"
+        main_scene_file /= self.SCENE_FILE_NAME
         task_def.main_scene_file = str(main_scene_file)
         task_def.main_program_file = self.ENVIRONMENT_CLASS().main_program_file
         task_def.resources.add(str(main_scene_file.resolve()))
@@ -43,3 +44,4 @@ class BlenderBenchmark(RenderingBenchmark):
 class BlenderNVGPUBenchmark(BlenderBenchmark):
     RENDERER_OPTIONS_CLASS = BlenderNVGPURendererOptions
     ENVIRONMENT_CLASS: Type[BlenderEnvironment] = BlenderNVGPUEnvironment
+    SCENE_FILE_NAME: str = "bmw27_gpu.blend"
