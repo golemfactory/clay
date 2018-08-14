@@ -29,5 +29,3 @@ RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C /opt && \
 
 ENV BLENDER_DEVICE_TYPE GPU
 ENV PATH=/opt/blender:$PATH
-
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
