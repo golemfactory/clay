@@ -7,9 +7,10 @@ import uuid
 from threading import Lock
 
 from pydispatch import dispatcher
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, TimeoutError
 
 from golem.core.common import deadline_to_timeout
+from golem.core.deferred import sync_wait
 from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
@@ -26,6 +27,8 @@ if TYPE_CHECKING:
 
 
 logger = logging.getLogger(__name__)
+
+BENCHMARK_TIMEOUT = 60  # s
 
 
 class CompStats(object):
@@ -77,8 +80,14 @@ class TaskComputer(object):
 
         self.use_docker_manager = use_docker_manager
         run_benchmarks = self.task_server.benchmark_manager.benchmarks_needed()
-        self.change_config(task_server.config_desc, in_background=False,
-                           run_benchmarks=run_benchmarks)
+        deferred = self.change_config(
+            task_server.config_desc, in_background=False,
+            run_benchmarks=run_benchmarks)
+        try:
+            sync_wait(deferred, BENCHMARK_TIMEOUT)
+        except TimeoutError:
+            logger.warning('Benchmark computation timed out')
+
         self.stats = IntStatsKeeper(CompStats)
 
         self.assigned_subtasks = {}
@@ -414,11 +423,13 @@ class TaskComputer(object):
 
         if docker_images:
             docker_images = [DockerImage(**did) for did in docker_images]
-            tt = DockerTaskThread(self, subtask_id, docker_images, working_dir,
+            dir_mapping = DockerTaskThread.generate_dir_mapping(resource_dir,
+                                                                temp_dir)
+            tt = DockerTaskThread(subtask_id, docker_images, working_dir,
                                   src_code, extra_data, short_desc,
-                                  resource_dir, temp_dir, task_timeout)
+                                  dir_mapping, task_timeout)
         elif self.support_direct_computation:
-            tt = PyTaskThread(self, subtask_id, working_dir, src_code,
+            tt = PyTaskThread(subtask_id, working_dir, src_code,
                               extra_data, short_desc, resource_dir, temp_dir,
                               task_timeout)
         else:
@@ -436,7 +447,7 @@ class TaskComputer(object):
             return
 
         self.counting_thread = tt
-        tt.start()
+        tt.start().addBoth(lambda _: self.task_computed(tt))
 
     def quit(self):
         if self.counting_thread is not None:
@@ -454,18 +465,20 @@ class AssignedSubTask(object):
 
 
 class PyTaskThread(TaskThread):
-    def __init__(self, task_computer, subtask_id, working_directory, src_code,
+    # pylint: disable=too-many-arguments
+    def __init__(self, subtask_id, working_directory, src_code,
                  extra_data, short_desc, res_path, tmp_path, timeout):
         super(PyTaskThread, self).__init__(
-            task_computer, subtask_id, working_directory, src_code, extra_data,
+            subtask_id, working_directory, src_code, extra_data,
             short_desc, res_path, tmp_path, timeout)
         self.vm = PythonProcVM()
 
 
 class PyTestTaskThread(PyTaskThread):
-    def __init__(self, task_computer, subtask_id, working_directory, src_code,
+    # pylint: disable=too-many-arguments
+    def __init__(self, subtask_id, working_directory, src_code,
                  extra_data, short_desc, res_path, tmp_path, timeout):
         super(PyTestTaskThread, self).__init__(
-            task_computer, subtask_id, working_directory, src_code, extra_data,
+            subtask_id, working_directory, src_code, extra_data,
             short_desc, res_path, tmp_path, timeout)
         self.vm = PythonTestVM()

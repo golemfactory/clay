@@ -1,9 +1,12 @@
 # pylint: disable=protected-access, no-self-use
 import datetime
+import gc
 import logging
 import time
 from unittest import mock, TestCase
 import urllib
+
+from pydispatch import dispatcher
 import requests
 from requests.exceptions import RequestException
 from freezegun import freeze_time
@@ -17,6 +20,7 @@ from golem_messages import factories as msg_factories
 from golem import testutils
 from golem.core import keysauth
 from golem.core import variables
+from golem.network import history
 from golem.network.concent import client
 from golem.network.concent import exceptions
 
@@ -195,8 +199,9 @@ class TestConcentClientService(testutils.TempDirFixture):
         )
         self.msg = message.ForceReportComputedTask()
 
-    def tarDown(self):
+    def tearDown(self):
         self.assertFalse(self.concent_service.isAlive())
+        self.concent_service.stop()
 
     @mock.patch('golem.network.concent.client.ConcentClientService.receive')
     @mock.patch('golem.network.concent.client.ConcentClientService._loop')
@@ -402,10 +407,87 @@ class ConcentCallLaterTestCase(testutils.TempDirFixture):
         )
         self.msg = message.ForceReportComputedTask()
 
+    def tearDown(self):
+        self.concent_service.stop()
+
     def test_submit(self):
         # Shouldn't fail
         self.concent_service.submit(
             'key',
             self.msg,
             datetime.timedelta(seconds=1)
+        )
+
+
+class OverdueIncomeTestCase(testutils.DatabaseFixture):
+    maxDiff = None
+
+    def setUp(self):
+        super().setUp()
+        gc.collect()
+        # unfortunately dispatcher.disconnect won't do the job
+        dispatcher.connections = {}
+        dispatcher.senders = {}
+        dispatcher.sendersBack = {}
+        self.concent_service = client.ConcentClientService(
+            keys_auth=keysauth.KeysAuth(
+                datadir=self.path,
+                private_key_name='priv_key',
+                password='password',
+            ),
+            variant=variables.CONCENT_CHOICES['dev'],
+        )
+        from golem.ethereum.incomeskeeper import IncomesKeeper
+        self.incomes_keeper = IncomesKeeper()
+        self.history = history.MessageHistoryService()
+
+    def tearDown(self):
+        self.history.stop()
+        self.concent_service.stop()
+        history.MessageHistoryService.instance = None
+
+    @mock.patch(
+        'golem.network.concent.client.ConcentClientService'
+        '.submit_task_message')
+    def test_submit(self, submit_mock):
+        sra1 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
+            payment_ts=int(time.time()) - 3600*26,
+        )
+        sra2 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
+            payment_ts=int(time.time()) - 3600*25,
+        )
+        local_role = history.Actor.Provider
+        remote_role = history.Actor.Requestor
+        for msg in (sra1, sra2):
+            history.add(
+                msg=msg,
+                node_id='requestor_id',
+                local_role=local_role,
+                remote_role=remote_role,
+                sync=True,
+            )
+            self.incomes_keeper.expect(
+                sender_node='requestor_id',
+                subtask_id=msg.subtask_id,
+                payer_address='0x1234',
+                value=msg.task_to_compute.price,  # pylint: disable=no-member
+            )
+            self.incomes_keeper.update_awaiting(
+                sender_node='requestor_id',
+                subtask_id=msg.subtask_id,
+                accepted_ts=msg.payment_ts,
+            )
+        self.incomes_keeper.update_overdue_incomes()
+        submit_mock.assert_called_once_with(
+            subtask_id=mock.ANY,
+            msg=mock.ANY,
+        )
+        fp = submit_mock.call_args[1]['msg']
+        self.assertIsInstance(fp, message.concents.ForcePayment)
+        self.assertEqual(
+            fp.subtask_results_accepted_list,
+            [
+                sra1,
+                sra2,
+            ],
         )

@@ -10,6 +10,7 @@ from golem_messages.message import ComputeTaskDef
 from golem.client import ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
+from golem.core.deferred import sync_wait
 from golem.network.p2p.node import Node as P2PNode
 from golem.task.taskbase import ResultType
 from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
@@ -324,6 +325,8 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
     def __wait_for_tasks(tc):
         if tc.counting_thread is not None:
             tc.counting_thread.join()
+        else:
+            print('counting thread is None')
 
     def test_request_rejected(self):
         task_server = self.task_server
@@ -343,11 +346,10 @@ class TestTaskThread(DatabaseFixture):
         tc.waiting_for_task = None
 
         tt = self._new_task_thread(tc)
-        tt.run()
+        sync_wait(tt.start())
 
         self.assertGreater(tt.end_time - tt.start_time, 0)
         self.assertLess(tt.end_time - tt.start_time, 20)
-        self.assertFalse(tc.counting_task)
 
     def test_fail(self):
         first_error = Exception("First error message")
@@ -374,8 +376,7 @@ class TestTaskThread(DatabaseFixture):
                    output = cnt
                    """
 
-        return PyTaskThread(task_computer,
-                            subtask_id="xxyyzz",
+        return PyTaskThread(subtask_id="xxyyzz",
                             working_directory=self.path,
                             src_code=src_code,
                             extra_data={},

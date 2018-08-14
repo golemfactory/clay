@@ -36,7 +36,7 @@ class LocalComputer:
                  resources: list = None,
                  additional_resources=None) -> None:
         self.res_path = None
-        self.tmp_dir = None
+        self.tmp_dir: Optional[str] = None
         self.success = False
         self.lock = Lock()
         self.tt: Optional[DockerTaskThread] = None
@@ -56,7 +56,7 @@ class LocalComputer:
         self.additional_resources = additional_resources
         self.start_time = None
         self.end_time = None
-        self.test_task_res_path = None
+        self.test_task_res_path: Optional[str] = None
 
     def run(self) -> None:
         try:
@@ -70,7 +70,7 @@ class LocalComputer:
                 ctd = self.compute_task_def
 
             self.tt = self._get_task_thread(ctd)
-            self.tt.start()
+            self.tt.start().addBoth(lambda _: self.task_computed(self.tt))
 
         except Exception as exc:  # pylint: disable=broad-except
             logger.warning("%s", self.comp_failed_warning, exc_info=True)
@@ -175,16 +175,23 @@ class LocalComputer:
         os.makedirs(self.tmp_dir)
 
     def _get_task_thread(self, ctd: ComputeTaskDef) -> DockerTaskThread:
+        if self.test_task_res_path is None:
+            raise RuntimeError('Resource path is set to None')
+        if self.tmp_dir is None:
+            raise RuntimeError('Temporary directory is set to None')
+
+        dir_mapping = DockerTaskThread.generate_dir_mapping(
+            resources=self.test_task_res_path,
+            temporary=self.tmp_dir,
+        )
         return DockerTaskThread(
-            self,
             ctd['subtask_id'],
-            [DockerImage(**did) for did in ctd['docker_images']],
+            ctd['docker_images'],
             ctd['working_directory'],
             ctd['src_code'],
             ctd['extra_data'],
             ctd['short_description'],
-            self.test_task_res_path,
-            self.tmp_dir,
+            dir_mapping,
             0,
             check_mem=self.check_mem,
         )
@@ -195,6 +202,7 @@ class ComputerAdapter(object):
     def __init__(self):
         self.computer = None
 
+    # pylint: disable=too-many-arguments
     def start_computation(self, root_path, success_callback, error_callback,
                           compute_task_def, resources, additional_resources):
         self.computer = LocalComputer(root_path=root_path,

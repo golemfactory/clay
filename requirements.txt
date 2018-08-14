@@ -29,9 +29,9 @@ eth-keys==0.2.0b3
 eth-tester==0.1.0-beta.24
 eth-utils==1.0.3
 ethereum==1.6.1
-Golem-Messages==2.10.0
-Golem-Verificator==1.1.0
-Golem-Smart-Contracts-Interface==1.4.2
+Golem-Messages==2.10.1
+Golem-Verificator==1.2.3
+Golem-Smart-Contracts-Interface==1.5.1
 h2==3.0.1
 hpack==3.0.0
 html2text==2018.1.9
