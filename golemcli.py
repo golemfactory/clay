@@ -19,7 +19,6 @@ from golem.interface.client.account import Account  # noqa
 from golem.interface.client.environments import Environments  # noqa
 from golem.interface.client.network import Network  # noqa
 from golem.interface.client.payments import payments, incomes  # noqa
-from golem.interface.client.provider import provider_status  # noqa
 from golem.interface.client.resources import Resources  # noqa
 from golem.interface.client.settings import Settings  # noqa
 from golem.interface.client.tasks import Tasks, Subtasks  # noqa

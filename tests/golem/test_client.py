@@ -1270,6 +1270,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         result = c.get_task_stats()
         expected = {
             'host_state': "Idle",
+            'provider_state': {'status': 'idle'},
             'in_network': 0,
             'supported': 0,
             'subtasks_computed': (0, 0),

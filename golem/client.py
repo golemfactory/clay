@@ -1000,6 +1000,7 @@ class Client(HardwarePresetsMixin):
     def get_task_stats(self) -> Dict[str, int]:
         return {
             'host_state': self.get_task_state(),
+            'provider_state': self.get_provider_status(),
             'in_network': self.get_task_count(),
             'supported': self.get_supported_task_count(),
             'subtasks_computed': self.get_computed_task_count(),

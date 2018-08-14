@@ -93,8 +93,6 @@ CORE_METHOD_MAP = dict(
 
     resume=                 'ui.start',
     pause=                  'ui.stop',
-
-    get_provider_status=    'provider.status',
 )
 
 NODE_METHOD_MAP = dict(
