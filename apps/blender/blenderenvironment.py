@@ -38,21 +38,12 @@ class BlenderNVGPUEnvironment(BlenderEnvironment):
         return super().check_support()
 
     def get_container_config(self) -> Dict:
-        devices = [f'/dev/nvidia{d}:/dev/nvidia{d}' for d in get_devices()]
         return dict(
             runtime='nvidia',
-            volumes=[
-                '/tmp/.X11-unix',
-            ],
-            binds={
-                posix_path('/tmp/.X11-unix'): {
-                    "bind": '/tmp/.X11-unix',
-                    "mode": "rw"
-                }
+            volumes=[],
+            binds={},
+            devices=[],
+            environment={
+                'NVIDIA_VISIBLE_DEVICES': ','.join(map(str, get_devices()))
             },
-            devices=[
-                '/dev/nvidiactl:/dev/nvidiactl',
-                '/dev/nvidia-uvm:/dev/nvidia-uvm',
-            ] + devices,
-            environment={},
         )
