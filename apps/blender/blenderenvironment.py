@@ -3,7 +3,7 @@ from typing import Dict
 
 from apps.core import nvgpu
 from apps.core.nvgpu import get_devices
-from golem.core.common import get_golem_path, posix_path
+from golem.core.common import get_golem_path
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.environments.environment import SupportStatus
