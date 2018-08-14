@@ -369,6 +369,7 @@ class TransactionSystem(LoopingCallService):
         self._payments_locked -= num
 
     def expect_income(
+            self,
             sender_node: str,
             subtask_id: str,
             payer_address: str,
@@ -380,10 +381,11 @@ class TransactionSystem(LoopingCallService):
             value,
         )
 
-    def reject_income(sender_node: str, subtask_id: str) -> None:
+    def reject_income(self, sender_node: str, subtask_id: str) -> None:
         self._incomes_keeper.reject(sender_node, subtask_id)
 
     def accept_income(
+            self,
             sender_node: str,
             subtask_id: str,
             accepted_ts: int) -> None:
@@ -394,6 +396,7 @@ class TransactionSystem(LoopingCallService):
         )
 
     def settle_income(
+            self,
             sender_node: str,
             subtask_id: str,
             settled_ts: int) -> None:
