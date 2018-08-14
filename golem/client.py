@@ -1094,7 +1094,8 @@ class Client(HardwarePresetsMixin):
             self,
             amount: Union[str, int],
             destination: str,
-            currency: str) -> List[str]:
+            currency: str,
+            gas_price: Optional[int] = None) -> List[str]:
         if isinstance(amount, str):
             amount = int(amount)
         # It returns a list for backwards compatibility with Electron.
@@ -1102,6 +1103,7 @@ class Client(HardwarePresetsMixin):
             amount,
             destination,
             currency,
+            gas_price,
         )]
 
     # It's defined here only for RPC exposure in

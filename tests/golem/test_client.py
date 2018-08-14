@@ -151,8 +151,8 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_docker_manager=False,
             use_monitor=False,
         )
-        self.client.withdraw('123', '0xdead', 'ETH')
-        ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH')
+        self.client.withdraw('123', '0xdead', 'ETH', 123)
+        ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH', 123)
 
     def test_get_withdraw_gas_cost(self, *_):
         dest = '0x' + 40 * '0'

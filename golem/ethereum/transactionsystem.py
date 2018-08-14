@@ -385,19 +385,18 @@ class TransactionSystem(LoopingCallService):
             currency: str) -> int:
         if not self._sci:
             raise Exception('Start was not called')
-        gas_price = self._sci.get_current_gas_price()
         if currency == 'ETH':
-            return self._sci.estimate_transfer_eth_gas(destination, amount) * \
-                gas_price
+            return self._sci.estimate_transfer_eth_gas(destination, amount)
         if currency == 'GNT':
-            return self._sci.GAS_WITHDRAW * gas_price
+            return self._sci.GAS_WITHDRAW
         raise ValueError('Unknown currency {}'.format(currency))
 
     def withdraw(
             self,
             amount: int,
             destination: str,
-            currency: str) -> str:
+            currency: str,
+            gas_price: Optional[int] = None) -> str:
         if not self._sci:
             raise Exception('Start was not called')
         if not self._config.WITHDRAWALS_ENABLED:
@@ -418,7 +417,7 @@ class TransactionSystem(LoopingCallService):
                 amount / denoms.ether,
                 destination,
             )
-            return self._sci.transfer_eth(destination, amount)
+            return self._sci.transfer_eth(destination, amount, gas_price)
 
         if currency == 'GNT':
             if amount > self.get_available_gnt():
@@ -432,7 +431,7 @@ class TransactionSystem(LoopingCallService):
                 amount / denoms.ether,
                 destination,
             )
-            return self._sci.convert_gntb_to_gnt(destination, amount)
+            return self._sci.convert_gntb_to_gnt(destination, amount, gas_price)
 
         raise ValueError('Unknown currency {}'.format(currency))
 
