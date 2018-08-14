@@ -168,13 +168,15 @@ class DockerJob(object):
             try:
                 client.remove_container(self.container_id, force=True)
                 logger.debug("Container {} removed".format(self.container_id))
-            except docker.errors.APIError:
-                pass  # Already removed? Sometimes happens in CircleCI.
+            except docker.errors.APIError as e:
+                logger.debug("There were docker api errors %r", e)
             self.container = None
             self.container_id = None
             self.state = self.STATE_REMOVED
         if self.logging_thread:
-            self.logging_thread.join()
+            self.logging_thread.join(1)
+            if self.logging_thread.is_alive():
+                logger.warning("Logging thread still running")
             self.logging_thread = None
 
     def __enter__(self):
