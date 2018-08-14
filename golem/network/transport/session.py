@@ -53,7 +53,7 @@ class BasicSession(FileSession):
         self._disconnect_sent = False
         self._interpretation = {
             library.get_type(message.Disconnect): self._react_to_disconnect,
-            library.get_type(message.Hello): self._react_to_hello,
+            library.get_type(message.Hello): self._react_to_hello,  # fixme  # noqa pylint:disable=no-member
         }
         # Message interpretation - dictionary where keys are message types
         # and values are functions that should
