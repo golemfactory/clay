@@ -44,7 +44,7 @@ class WebSocketAddress(RPCAddress):
 
     def __init__(self, host, port, realm, ssl=True):
         self.realm = str(realm)
-        self.ssl = False  # ssl
+        self.ssl = True # ssl
 
         protocol = 'wss' if ssl else 'ws'
         super(WebSocketAddress, self).__init__(protocol, host, port)
