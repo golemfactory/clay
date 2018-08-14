@@ -2,7 +2,6 @@ from os import path
 from unittest.mock import patch, Mock, ANY, MagicMock
 
 from click.testing import CliRunner
-import pytest
 from twisted.internet.defer import Deferred
 
 import golem.argsparser as argsparser
@@ -312,8 +311,6 @@ class TestNode(TestWithDatabase):
             assert a.P2P_SEEDS == m.P2P_SEEDS
             assert a.PROTOCOL_CONST.ID == m.PROTOCOL_CONST.ID
             assert a.APP_MANAGER_CONFIG_FILES == m.APP_MANAGER_CONFIG_FILES
-            assert a.SEND_PAYMENT_INFO_TO_MONITOR == \
-                m.SEND_PAYMENT_INFO_TO_MONITOR
 
         with mock_config():
             args = self.args + ['--net', 'mainnet']

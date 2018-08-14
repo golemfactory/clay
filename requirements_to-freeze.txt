@@ -49,7 +49,7 @@ py-cpuinfo==3.3.0
 humanize==0.5.1
 raven
 Golem-Messages==2.10.1
-Golem-Verificator==1.2.1
+Golem-Verificator==1.2.3
 Golem-Smart-Contracts-Interface==1.5.1
 html2text==2018.1.9
 zxcvbn-python

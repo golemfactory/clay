@@ -25,8 +25,7 @@ import golem
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from apps.rendering.task import framerenderingtask
-from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
-                             PAYMENT_CHECK_INTERVAL, AppConfig)
+from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.config.presets import HardwarePresetsMixin
 from golem.core import variables
@@ -1296,12 +1295,6 @@ class Client(HardwarePresetsMixin):
     def push_local_rank(self, node_id, loc_rank):
         self.p2pservice.push_local_rank(node_id, loc_rank)
 
-    def check_payments(self):
-        after_deadline_nodes = \
-            self.transaction_system.get_nodes_with_overdue_payments()
-        for node_id in after_deadline_nodes:
-            Trust.PAYMENT.decrease(node_id)
-
     @staticmethod
     def save_task_preset(preset_name, task_type, data):
         taskpreset.save_task_preset(preset_name, task_type, data)
@@ -1486,12 +1479,6 @@ class DoWorkService(LoopingCallService):
             self._client.ranking.sync_network()
         except Exception:
             logger.exception("ranking.sync_network failed")
-
-        if self._time_for('payments', PAYMENT_CHECK_INTERVAL):
-            try:
-                self._client.check_payments()
-            except Exception:  # pylint: disable=broad-except
-                logger.exception("check_payments failed")
 
     def _time_for(self, key: Hashable, interval_seconds: float):
         now = time.time()

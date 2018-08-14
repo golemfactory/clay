@@ -213,6 +213,17 @@ class TransactionSystem(LoopingCallService):
                     event.amount,
                 )
             )
+            self._sci.subscribe_to_forced_payments(
+                requestor_address=None,
+                provider_address=self._sci.get_eth_address(),
+                from_block=from_block,
+                cb=lambda event: ik.received_forced_payment(
+                    tx_hash=event.tx_hash,
+                    sender=event.requestor,
+                    amount=event.amount,
+                    closure_time=event.closure_time,
+                ),
+            )
         except AttributeError as e:
             log.info("Can't use GNTDeposit on mainnet yet: %r", e)
 
@@ -274,10 +285,6 @@ class TransactionSystem(LoopingCallService):
         :return list: list of dictionaries describing incomes
         """
         return self.incomes_keeper.get_list_of_all_incomes()
-
-    def get_nodes_with_overdue_payments(self) -> List[str]:
-        overdue_incomes = self.incomes_keeper.update_overdue_incomes()
-        return [x.sender_node for x in overdue_incomes]
 
     def get_available_eth(self) -> int:
         return self._eth_balance - self.get_locked_eth()
@@ -580,6 +587,7 @@ class TransactionSystem(LoopingCallService):
         self._get_funds_from_faucet()
         self._try_convert_gnt()
         self.payment_processor.sendout()
+        self.incomes_keeper.update_overdue_incomes()
 
 
 def tETH_faucet_donate(addr: str):
