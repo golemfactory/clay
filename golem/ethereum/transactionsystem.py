@@ -1,4 +1,6 @@
+import json
 import logging
+import os
 import random
 import time
 from enum import Enum
@@ -7,6 +9,7 @@ from pathlib import Path
 from typing import Any, ClassVar, Dict, Iterable, List, Optional, Tuple
 
 from ethereum.utils import denoms
+from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
 from eth_utils import decode_hex, is_address
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import new_sci, SmartContractsInterface, JsonTransactionsStorage
@@ -16,10 +19,10 @@ import requests
 from golem.core.service import LoopingCallService
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
+from golem.ethereum.exceptions import NotEnoughFunds
+from golem.ethereum.incomeskeeper import IncomesKeeper
+from golem.ethereum.paymentskeeper import PaymentsKeeper
 from golem.model import GenericKeyValue, Payment
-from golem.transactions.ethereum.exceptions import NotEnoughFunds
-from golem.transactions.incomeskeeper import IncomesKeeper
-from golem.transactions.paymentskeeper import PaymentsKeeper
 from golem.utils import privkeytoaddr
 
 
@@ -34,26 +37,23 @@ class ConversionStatus(Enum):
 
 
 # pylint:disable=too-many-instance-attributes
-class EthereumTransactionSystem(LoopingCallService):
+class TransactionSystem(LoopingCallService):
     """ Transaction system connected with Ethereum """
 
     TX_FILENAME: ClassVar[str] = 'transactions.json'
+    KEYSTORE_FILENAME: ClassVar[str] = 'wallet.json'
 
     BLOCK_NUMBER_DB_KEY: ClassVar[str] = 'ets_subscriptions_block_number'
 
     LOOP_INTERVAL: ClassVar[int] = 13
 
-    def __init__(
-            self,
-            datadir: Path,
-            privkey: bytes,
-            config) -> None:
+    def __init__(self, datadir: Path, config) -> None:
         super().__init__(self.LOOP_INTERVAL)
         datadir.mkdir(exist_ok=True)
 
         self._datadir = datadir
-        self._privkey = privkey
         self._config = config
+        self._privkey = b''
 
         node_list = config.NODE_LIST.copy()
         random.shuffle(node_list)
@@ -92,15 +92,41 @@ class EthereumTransactionSystem(LoopingCallService):
         new_storage_path = self._datadir / self.TX_FILENAME
         if new_storage_path.exists():
             raise Exception("Storage already exists, can't override")
-        import json
-        import os
         with open(old_storage_path, 'r') as f:
             json_content = json.load(f)
         with open(new_storage_path, 'w') as f:
             json.dump(json_content, f)
         os.remove(old_storage_path)
 
+    def backwards_compatibility_privkey(
+            self,
+            privkey: bytes,
+            password: str) -> None:
+        keystore_path = self._datadir / self.KEYSTORE_FILENAME
+
+        # Sanity check that this is in fact still the same key
+        if keystore_path.exists():
+            self.set_password(password)
+            try:
+                if privkey != self._privkey:
+                    raise Exception("Private key is not backward compatible")
+            finally:
+                self._privkey = b''
+            return
+
+        log.info("Initializing keystore with backward compatible value")
+        keystore = create_keyfile_json(
+            privkey,
+            password.encode('utf-8'),
+            iterations=1024,
+        )
+        with open(keystore_path, 'w') as f:
+            json.dump(keystore, f)
+
     def _init(self) -> None:
+        if len(self._privkey) != 32:
+            raise Exception(
+                "Invalid private key. Did you forget to set password?")
         eth_addr = privkeytoaddr(self._privkey)
         log.info("Node Ethereum address: %s", eth_addr)
 
@@ -135,6 +161,24 @@ class EthereumTransactionSystem(LoopingCallService):
         self._init()
         super().start(now)
 
+    def set_password(self, password: str) -> None:
+        keystore_path = self._datadir / self.KEYSTORE_FILENAME
+        if keystore_path.exists():
+            self._privkey = extract_key_from_keyfile(
+                str(keystore_path),
+                password.encode('utf-8'),
+            )
+        else:
+            log.info("Generating new Ethereum private key")
+            self._privkey = os.urandom(32)
+            keystore = create_keyfile_json(
+                self._privkey,
+                password.encode('utf-8'),
+                iterations=1024,
+            )
+            with open(keystore_path, 'w') as f:
+                json.dump(keystore, f)
+
     def _subscribe_to_events(self) -> None:
         if not self._sci:
             raise Exception('Start was not called')
@@ -168,6 +212,17 @@ class EthereumTransactionSystem(LoopingCallService):
                     str(bytes32_to_uuid(event.subtask_id)),
                     event.amount,
                 )
+            )
+            self._sci.subscribe_to_forced_payments(
+                requestor_address=None,
+                provider_address=self._sci.get_eth_address(),
+                from_block=from_block,
+                cb=lambda event: ik.received_forced_payment(
+                    tx_hash=event.tx_hash,
+                    sender=event.requestor,
+                    amount=event.amount,
+                    closure_time=event.closure_time,
+                ),
             )
         except AttributeError as e:
             log.info("Can't use GNTDeposit on mainnet yet: %r", e)
@@ -230,10 +285,6 @@ class EthereumTransactionSystem(LoopingCallService):
         :return list: list of dictionaries describing incomes
         """
         return self.incomes_keeper.get_list_of_all_incomes()
-
-    def get_nodes_with_overdue_payments(self) -> List[str]:
-        overdue_incomes = self.incomes_keeper.update_overdue_incomes()
-        return [x.sender_node for x in overdue_incomes]
 
     def get_available_eth(self) -> int:
         return self._eth_balance - self.get_locked_eth()
@@ -536,6 +587,7 @@ class EthereumTransactionSystem(LoopingCallService):
         self._get_funds_from_faucet()
         self._try_convert_gnt()
         self.payment_processor.sendout()
+        self.incomes_keeper.update_overdue_incomes()
 
 
 def tETH_faucet_donate(addr: str):

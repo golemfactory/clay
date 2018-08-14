@@ -2,16 +2,14 @@
 from datetime import datetime, timedelta
 import logging
 import time
-from typing import List
 
 from ethereum.utils import denoms
 from pydispatch import dispatcher
 
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import Income
-from golem.utils import pubkeytoaddr
 
-logger = logging.getLogger("golem.transactions.incomeskeeper")
+logger = logging.getLogger(__name__)
 
 
 class IncomesKeeper:
@@ -35,22 +33,18 @@ class IncomesKeeper:
             amount: int,
             closure_time: int) -> None:
         expected = Income.select().where(
+            Income.payer_address == sender,
             Income.accepted_ts > 0,
             Income.accepted_ts <= closure_time,
             Income.transaction.is_null(),
             Income.settled_ts.is_null())
-        expected = \
-            [e for e in expected if pubkeytoaddr(e.sender_node) == sender]
 
-        expected_value = sum([e.value for e in expected])
+        expected_value = sum([e.value_expected for e in expected])
         if expected_value == 0:
             # Probably already handled event
             return
 
         if expected_value != amount:
-            # TODO Need to report this to Concent if expected is greater
-            # and probably move all these expected incomes to a different table
-            # issue #2255
             logger.warning(
                 'Batch transfer amount does not match, expected %r, got %r',
                 expected_value / denoms.ether,
@@ -59,44 +53,66 @@ class IncomesKeeper:
         amount_left = amount
 
         for e in expected:
-            value = min(amount_left, e.value)
-            amount_left -= value
+            received = min(amount_left, e.value_expected)
+            e.value_received += received
+            amount_left -= received
             e.transaction = tx_hash[2:]
-            # TODO don't change the value, wait for Concent. issue #2255
-            e.value = value
             e.save()
 
-            dispatcher.send(
-                signal='golem.income',
-                event='confirmed',
-                subtask_id=e.subtask,
-            )
+            if e.value_expected == 0:
+                dispatcher.send(
+                    signal='golem.income',
+                    event='confirmed',
+                    subtask_id=e.subtask,
+                )
 
-        dispatcher.send(
-            signal='golem.monitor',
-            event='income',
-            addr=sender,
-            value=amount,
+    def received_forced_payment(
+            self,
+            tx_hash: str,
+            sender: str,
+            amount: int,
+            closure_time: int) -> None:
+        logger.info(
+            "Received forced payment from %s",
+            sender,
         )
-
-    def expect(self, sender_node_id, subtask_id, value):
-        logger.debug(
-            "expect(%r, %r, %r)",
-            sender_node_id,
-            subtask_id,
-            value
-        )
-        return Income.create(
-            sender_node=sender_node_id,
-            subtask=subtask_id,
-            value=value
+        self.received_batch_transfer(
+            tx_hash=tx_hash,
+            sender=sender,
+            amount=amount,
+            closure_time=closure_time,
         )
 
     @staticmethod
-    def reject(subtask_id):
+    def expect(
+            sender_node: str,
+            subtask_id: str,
+            payer_address: str,
+            value: int) -> Income:
+        logger.info(
+            "Expected income - sender_node: %s, subtask: %s, "
+            "payer: %s, value: %f",
+            sender_node,
+            subtask_id,
+            payer_address,
+            value / denoms.ether,
+        )
+        return Income.create(
+            sender_node=sender_node,
+            subtask=subtask_id,
+            payer_address=payer_address,
+            value=value,
+        )
+
+    @staticmethod
+    def reject(sender_node: str, subtask_id: str) -> None:
         try:
-            income = Income.get(subtask=subtask_id, accepted_ts=None,
-                                overdue=False)
+            income = Income.get(
+                sender_node=sender_node,
+                subtask=subtask_id,
+                accepted_ts=None,
+                overdue=False,
+            )
         except Income.DoesNotExist:
             logger.error(
                 "Income.DoesNotExist subtask_id: %r",
@@ -104,14 +120,12 @@ class IncomesKeeper:
             return
 
         income.delete_instance()
-        dispatcher.send(
-            signal='golem.income',
-            event='rejected',
-            subtask_id=subtask_id
-        )
 
     @staticmethod
-    def settled(sender_node, subtask_id, settled_ts):
+    def settled(
+            sender_node: str,
+            subtask_id: str,
+            settled_ts: int) -> None:
         try:
             income = Income.get(sender_node=sender_node, subtask=subtask_id)
         except Income.DoesNotExist:
@@ -128,9 +142,10 @@ class IncomesKeeper:
             sender_addr: str,
             subtask_id: str,
             value: int) -> None:
-        expected = Income.select().where(Income.subtask_id == subtask_id)
-        expected = \
-            [e for e in expected if pubkeytoaddr(e.sender_node) == sender_addr]
+        expected = Income.select().where(
+            Income.payer_address == sender_addr,
+            Income.subtask_id == subtask_id,
+        )
         if not expected:
             logger.info(
                 "Received forced subtask payment but there's no entry for "
@@ -151,7 +166,11 @@ class IncomesKeeper:
             income.value = value
         income.save()
 
-    def update_awaiting(self, sender_node, subtask_id, accepted_ts):
+    @staticmethod
+    def update_awaiting(
+            sender_node: str,
+            subtask_id: str,
+            accepted_ts: int) -> None:
         try:
             income = Income.get(sender_node=sender_node, subtask=subtask_id)
         except Income.DoesNotExist:
@@ -180,7 +199,7 @@ class IncomesKeeper:
         ).order_by(Income.created_date.desc())
 
     @staticmethod
-    def update_overdue_incomes() -> List[Income]:
+    def update_overdue_incomes() -> None:
         """
         Set overdue flag for all incomes that have been waiting for too long.
         :return: Updated incomes
@@ -198,16 +217,19 @@ class IncomesKeeper:
         ))
 
         if not incomes:
-            return incomes
+            return
 
         for income in incomes:
             income.overdue = True
             income.save()
+            dispatcher.send(
+                signal='golem.income',
+                event='overdue_single',
+                subtask_id=income.subtask,
+            )
 
         dispatcher.send(
             signal='golem.income',
             event='overdue',
             incomes=incomes,
         )
-
-        return incomes

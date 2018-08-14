@@ -25,10 +25,8 @@ import golem
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from apps.rendering.task import framerenderingtask
-from golem.appconfig import (TASKARCHIVE_MAINTENANCE_INTERVAL,
-                             PAYMENT_CHECK_INTERVAL, AppConfig)
+from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
-from golem.config.active import EthereumConfig
 from golem.config.presets import HardwarePresetsMixin
 from golem.core import variables
 from golem.core.async import AsyncRequest, async_run
@@ -49,6 +47,9 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
+from golem.ethereum.transactionsystem import TransactionSystem
+from golem.ethereum.exceptions import NotEnoughFunds
+from golem.ethereum.fundslocker import FundsLocker
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -79,10 +80,6 @@ from golem.task.taskstate import TaskTestStatus, SubtaskStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.tools.talkback import enable_sentry_logger
-from golem.transactions.ethereum.ethereumtransactionsystem import \
-    EthereumTransactionSystem
-from golem.transactions.ethereum.exceptions import NotEnoughFunds
-from golem.transactions.ethereum.fundslocker import FundsLocker
 
 
 logger = logging.getLogger(__name__)
@@ -110,6 +107,7 @@ class Client(HardwarePresetsMixin):
             config_desc: ClientConfigDescriptor,
             keys_auth: KeysAuth,
             database: Database,
+            transaction_system: TransactionSystem,
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
@@ -191,14 +189,7 @@ class Client(HardwarePresetsMixin):
 
         self.ranking = Ranking(self)
 
-        self.transaction_system = EthereumTransactionSystem(
-            Path(datadir) / 'transaction_system',
-            self.keys_auth._private_key,
-            EthereumConfig,
-        )
-        self.transaction_system.backwards_compatibility_tx_storage(
-            Path(datadir),
-        )
+        self.transaction_system = transaction_system
         self.transaction_system.start()
 
         self.funds_locker = FundsLocker(self.transaction_system,
@@ -332,6 +323,8 @@ class Client(HardwarePresetsMixin):
             self.keys_auth,
             connect_to_known_hosts=self.connect_to_known_hosts
         )
+        self.p2pservice.add_metadata_provider(
+            'performance', self.environments_manager.get_performance_values)
 
         self.task_server = TaskServer(
             self.node,
@@ -657,7 +650,8 @@ class Client(HardwarePresetsMixin):
 
         network_size = self.p2pservice.get_estimated_network_size()
         min_perf = self.task_server.get_min_performance_for_task(task)
-        perf_rank = self.p2pservice.get_performance_percentile_rank(min_perf)
+        perf_rank = self.p2pservice.get_performance_percentile_rank(
+            min_perf, task.header.environment)
         potential_num_workers = int(network_size * (1 - perf_rank))
 
         mask = Mask.get_mask_for_task(
@@ -667,7 +661,7 @@ class Client(HardwarePresetsMixin):
         logger.info(
             f'Task {task.header.task_id} '
             f'initial mask size: {mask.num_bits} '
-            f'expected number of providers: {desired_num_workers}'
+            f'expected number of providers: {desired_num_workers} '
             f'potential number of providers: {potential_num_workers}'
         )
 
@@ -1301,12 +1295,6 @@ class Client(HardwarePresetsMixin):
     def push_local_rank(self, node_id, loc_rank):
         self.p2pservice.push_local_rank(node_id, loc_rank)
 
-    def check_payments(self):
-        after_deadline_nodes = \
-            self.transaction_system.get_nodes_with_overdue_payments()
-        for node_id in after_deadline_nodes:
-            Trust.PAYMENT.decrease(node_id)
-
     @staticmethod
     def save_task_preset(preset_name, task_type, data):
         taskpreset.save_task_preset(preset_name, task_type, data)
@@ -1491,12 +1479,6 @@ class DoWorkService(LoopingCallService):
             self._client.ranking.sync_network()
         except Exception:
             logger.exception("ranking.sync_network failed")
-
-        if self._time_for('payments', PAYMENT_CHECK_INTERVAL):
-            try:
-                self._client.check_payments()
-            except Exception:  # pylint: disable=broad-except
-                logger.exception("check_payments failed")
 
     def _time_for(self, key: Hashable, interval_seconds: float):
         now = time.time()

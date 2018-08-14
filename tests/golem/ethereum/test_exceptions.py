@@ -2,7 +2,7 @@ from unittest import TestCase
 
 from ethereum.utils import denoms
 
-from golem.transactions.ethereum.exceptions import NotEnoughFunds
+from golem.ethereum.exceptions import NotEnoughFunds
 
 
 class TestNotEnoughFunds(TestCase):

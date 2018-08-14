@@ -721,6 +721,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         else:
             self.task_server.subtask_rejected(
+                sender_node_id=self.key_id,
                 subtask_id=subtask_id,
             )
 
