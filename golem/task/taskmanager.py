@@ -132,10 +132,9 @@ class TaskManager(TaskEventListener):
         purpose = TaskPurpose.TESTING if minimal else TaskPurpose.REQUESTING
         type_name = dictionary['type'].lower()
         compute_on = dictionary['compute_on'].lower()
+        is_requesting = purpose == TaskPurpose.REQUESTING
 
-        if type_name == "blender" \
-            and purpose == TaskPurpose.REQUESTING \
-            and compute_on == "gpu":
+        if type_name == "blender" and is_requesting and compute_on == "gpu":
             type_name = type_name + "_nvgpu"
 
         task_type = self.task_types[type_name].for_purpose(purpose)

@@ -50,6 +50,7 @@ class TaskDefinition(object):
         self.verification_options = None
         self.options = Options()
         self.docker_images = None
+        self.compute_on = "cpu"
 
     def is_valid(self):
         if not path.exists(self.main_program_file):
