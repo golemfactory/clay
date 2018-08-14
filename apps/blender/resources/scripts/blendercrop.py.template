@@ -44,6 +44,12 @@ def get_device_type():
     return os.environ.get('BLENDER_DEVICE_TYPE', 'cpu').strip().lower()
 
 
+tile_size = 0
+
+use_gpu = get_device_type() == 'gpu'
+if use_gpu:
+    tile_size = 512
+
 bpy.utils.register_class(EngineWarning)
 engine = bpy.context.scene.render.engine
 if engine not in ("BLENDER_RENDER", "CYCLES"):
@@ -52,8 +58,8 @@ if engine not in ("BLENDER_RENDER", "CYCLES"):
 bpy.utils.register_class(ShowInformation)
 bpy.ops.wm.scene_information()
 
-bpy.context.scene.render.tile_x = 0
-bpy.context.scene.render.tile_y = 0
+bpy.context.scene.render.tile_x = tile_size
+bpy.context.scene.render.tile_y = tile_size
 bpy.context.scene.render.resolution_x = %(resolution_x)d
 bpy.context.scene.render.resolution_y = %(resolution_y)d
 bpy.context.scene.render.resolution_percentage = 100
@@ -69,7 +75,7 @@ if engine == "CYCLES":
     samples = %(samples)d
     if samples != 0:
         bpy.context.scene.cycles.samples = samples
-    if get_device_type() == 'gpu':
+    if use_gpu:
         preferences = bpy.context.user_preferences.addons['cycles'].preferences
         preferences.compute_device_type = 'CUDA'
         bpy.context.scene.cycles.device = 'GPU'
