@@ -4,6 +4,8 @@ import imp
 import os
 
 import params  # This module is generated before this script is run
+from autobahn.wamp import auth
+from twisted.internet import _sslverify
 
 OUTPUT_DIR = "/golem/output"
 WORK_DIR = "/golem/work"  # we don't need that, all the work is done in memory
@@ -38,17 +40,36 @@ def run(data_files, subtask_data, difficulty, result_size, result_file):
         u"data": {u"aa": u"bb"}
     }
 
+    SECRET = "secret123"
+
     print(message)
 
     from twisted.internet import reactor
     from twisted.internet.defer import inlineCallbacks
-
     from autobahn.twisted.wamp import ApplicationSession, ApplicationRunner
+    from twisted.internet._sslverify import optionsForClientTLS
 
     class Component(ApplicationSession):
         """
         An application component using the time service.
         """
+
+        def onConnect(self):
+            print("Client connected. Starting WAMP-Ticket \
+                        authentication on realm {} \
+                        as crsb_user {}".format(
+                "golem", "docker"))
+            self.join(u"golem", [u"wampcra"], u"docker")
+
+        def onChallenge(self, challenge):
+            print("aaa")
+            if challenge.method == "wampcra":
+                print("WAMP-Ticket challenge received: {}".format(challenge))
+                signature = auth.compute_wcs(SECRET.encode('utf8'),
+                                             challenge.extra['challenge'].encode('utf8'))
+                return signature.decode('ascii')
+            else:
+                raise Exception("Invalid authmethod {}".format(challenge.method))
 
         @inlineCallbacks
         def onJoin(self, details):
@@ -68,13 +89,17 @@ def run(data_files, subtask_data, difficulty, result_size, result_file):
             print("disconnected")
             reactor.stop()
 
+
     if __name__ == '__main__':
         import six
-        url = u"ws://172.17.0.1:61000"
+
+        _sslverify.platformTrust = lambda: None
+
+        url = u"wss://172.17.0.1:61000"
         if six.PY2 and type(url) == six.binary_type:
             url = url.decode('utf8')
         realm = u"golem"
-        runner = ApplicationRunner(url, realm)
+        runner = ApplicationRunner(url, realm, ssl=optionsForClientTLS(u"golem.local", trustRoot=None))
         runner.run(Component)
 
 

@@ -132,7 +132,7 @@ class CrossbarRouter(object):
         # and for docker, without admin priviliges
         docker = cert_manager.Crossbar_users.docker
         crsb_users[docker.name] = {
-            "secret": cert_manager.get_secret(docker),
+            "secret": "secret123", # TODO change that cert_manager.get_secret(docker),
             "role": "golem_docker"
         }
 
@@ -185,7 +185,7 @@ class CrossbarRouter(object):
                             "permissions": [{
                                 "uri": '*',
                                 "allow": {
-                                    "call": False,
+                                    "call": True, # TODO change that
                                     "register": False,
                                     "publish": False,
                                     "subscribe": False
