@@ -100,7 +100,6 @@ class TestDummyTaskBuilder(TestCase):
             dictionary['resources'] = {"aa"}
             dictionary['subtasks'] = 5
             dictionary['name'] = "name"
-            dictionary['compute_on'] = "cpu"
             dictionary['bid'] = 5
             dictionary['timeout'] = "5:11:11"
             dictionary['subtask_timeout'] = "5:11:11"
