@@ -152,7 +152,7 @@ class DockerTaskThread(TaskThread):
                          if self.docker_manager else None),
         )
 
-        with DockerJob(**params) as job, MemoryChecker(self.check_mem) as mc:
+        with DockerJob(**params) as job, MemoryChecker(self.check_mem) as mc:  # type: ignore
             self.job = job
             job.start()
 

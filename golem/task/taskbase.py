@@ -26,7 +26,7 @@ class TaskTypeInfo(object):
                  definition: Type[TaskDefinition],
                  defaults: TaskDefaults,
                  options: Type[Options],
-                 task_builder_type: 'Type[TaskBuilder]'):
+                 task_builder_type: 'Type[TaskBuilder]') -> None:
         self.name = name
         self.defaults = defaults
         self.options = options
@@ -281,12 +281,15 @@ class Task(abc.ABC):
             for key, value in kwargs.items():
                 setattr(self, key, value)
 
-    def __init__(self, header: TaskHeader, src_code: str, task_definition):
+    def __init__(self,
+                 header: TaskHeader,
+                 src_code: str,
+                 task_definition: TaskDefinition) -> None:
         self.src_code = src_code
         self.header = header
         self.task_definition = task_definition
 
-        self.listeners = []
+        self.listeners: 'List[Union[ClientTaskComputerEventListener, TaskManager]]' = []  # noqa disable=line-too-long
 
     def __getstate__(self):
         state = self.__dict__.copy()

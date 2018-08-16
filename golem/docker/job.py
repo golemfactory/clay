@@ -57,7 +57,7 @@ class DockerJob(object):
                  work_dir: str,
                  output_dir: str,
                  host_config: Optional[Dict]=None,
-                 container_log_level: Optional[int]=None):
+                 container_log_level: Optional[int]=None) -> None:
         """
         :param DockerImage image: Docker image to use
         :param str script_src: source of the task script file

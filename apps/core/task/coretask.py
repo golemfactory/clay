@@ -376,7 +376,7 @@ class CoreTask(Task):
             subtask_id]['node_id']].finish()
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
 
-    def load_task_results(self, task_result, result_type: int, subtask_id):
+    def load_task_results(self, task_result, result_type, subtask_id):
         """ Change results to a list of files. If result_type is equal to ResultType.files this
         function only return task_results without making any changes. If result_type is equal to
         ResultType.data tham task_result is cbor and unzipped and files are saved in tmp_dir.
