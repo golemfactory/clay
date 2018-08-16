@@ -1,38 +1,51 @@
+import subprocess
 
+import houdini_python
 
-
-
-
-# Copied from http://www.sidefx.com/docs/houdini/hom/commandline.html
-def enableHouModule():
-    '''Set up the environment so that "import hou" works.'''
-    import sys, os
-
-    # Importing hou will load in Houdini's libraries and initialize Houdini.
-    # In turn, Houdini will load any HDK extensions written in C++.  These
-    # extensions need to link against Houdini's libraries, so we need to
-    # make sure that the symbols from Houdini's libraries are visible to
-    # other libraries that Houdini loads.  So, we adjust Python's dlopen
-    # flags before importing hou.
-    if hasattr(sys, "setdlopenflags"):
-        old_dlopen_flags = sys.getdlopenflags()
-        import DLFCN
-        sys.setdlopenflags(old_dlopen_flags | DLFCN.RTLD_GLOBAL)
-
-    try:
-        import hou
-    except ImportError:
-        # Add $HFS/houdini/python2.7libs to sys.path so Python can find the
-        # hou module.
-        sys.path.append(os.environ['HFS'] + "/houdini/python%d.%dlibs" % sys.version_info[:2])
-        import hou
-    finally:
-        if hasattr(sys, "setdlopenflags"):
-            sys.setdlopenflags(old_dlopen_flags)
-
-enableHouModule()
+houdini_python.enableHouModule()
 import hou
+
+
+def exec_cmd(cmd):
+    pc = subprocess.Popen(cmd)
+    return pc.wait()
+
+
 
 print( "Imported hou" )
 
 
+# ================================
+#
+def build_renderer_param( renderer ):
+    return [ "-d", renderer ]
+
+# ================================
+#
+def build_frames_params( start_frame, end_frame ):
+    return [  "-f", str( start_frame ), str( end_frame ) ]
+
+# ================================
+#
+def build_command( file, renderer, start_frame, end_frame ):
+
+    hrender_path = "/opt/hfs16.5.536/bin/hrender.py"
+    #hrender_path = "apps/houdini/resources/scripts/hrender.py"
+
+    command = [ "hython" ]
+    command += [ hrender_path ]
+    command += ["-e"]
+    command += build_renderer_param( renderer )
+    command += [ file ]
+    command += build_frames_params( start_frame, end_frame )
+
+    return command
+
+# hython /opt/hfs16.5.536/bin/hrender.py -e -d /out/mantra_ipr /home/nieznanysprawiciel/Data/Houdini-examples/rop_example_bakeanimation.hipnc -f 0 30
+
+
+command = build_command( "/home/nieznanysprawiciel/Data/Houdini-examples/rop_example_bakeanimation.hipnc", "/out/mantra_ipr", 0, 30 )
+print( "Executing command: " + str( command ) )
+
+
+exec_cmd( command )
