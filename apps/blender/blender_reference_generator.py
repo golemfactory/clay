@@ -10,6 +10,7 @@ import numpy
 
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from golem.core.common import timeout_to_deadline
+from golem.task.localcomputer import ComputerAdapter
 
 logger = logging.getLogger("blendercroppper")
 
@@ -46,7 +47,8 @@ class BlenderReferenceGenerator:
     CROPS_NO_FIRST = 3
     CROPS_NO_SECOND = 6
 
-    def __init__(self):
+    def __init__(self, computer: Optional[ComputerAdapter] = None) -> None:
+        self.computer = computer or ComputerAdapter()
         self.crop_counter: int = 0
         self.crop_size: Tuple[float, float] = ()
         self.split_values: List[Tuple[float, float, float, float]] = []
@@ -145,7 +147,7 @@ class BlenderReferenceGenerator:
         return self.split_values, self.split_pixels, self.crop_size
 
     # pylint: disable-msg=too-many-arguments
-    def render_crops(self, computer, resources: List[str],
+    def render_crops(self, resources: List[str],
                      crop_rendered: CropRenderedSuccessCallback,
                      crop_render_failure: CropRenderedFailureCallback,
                      subtask_info: Dict[str, Any],
@@ -162,7 +164,7 @@ class BlenderReferenceGenerator:
                                               crop_size)
 
         verify_ctx = CropContext({'paths': crops_path, 'position': crops_info},
-                                 computer,
+                                 self.computer,
                                  {'resources': resources,
                                   'subtask_info': subtask_info},
                                  {'success': crop_rendered,

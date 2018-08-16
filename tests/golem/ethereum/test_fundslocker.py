@@ -3,9 +3,12 @@ from unittest import mock
 
 from golem.core.common import timeout_to_deadline
 from golem.core.variables import PAYMENT_DEADLINE
+from golem.ethereum.fundslocker import (
+    logger,
+    FundsLocker,
+    TaskFundsLock,
+)
 from golem.testutils import TempDirFixture
-from golem.transactions.ethereum.fundslocker import (logger, FundsLocker,
-                                                     TaskFundsLock)
 
 
 class TestFundsLocker(TempDirFixture):
@@ -48,7 +51,7 @@ class TestFundsLocker(TempDirFixture):
         tfl = fl.task_lock['abc']
         test_params(tfl)
 
-    @mock.patch("golem.transactions.ethereum.fundslocker.time")
+    @mock.patch("golem.ethereum.fundslocker.time")
     def test_remove_old(self, time_mock):
         time_mock.time.return_value = time.time()
         fl = FundsLocker(self.ts, self.new_path)
