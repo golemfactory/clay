@@ -1,6 +1,6 @@
 import unittest
 
-from golem.docker.config_manager import DockerConfigManager
+from golem.docker.config import DockerConfigManager
 from golem.tools.ci import ci_skip
 
 

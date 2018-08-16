@@ -14,6 +14,7 @@ import requests
 from golem.core.common import config_logging
 from golem.core.common import is_windows, nt_path_to_posix_path
 from golem.core.simpleenv import get_local_datadir
+from golem.docker.client import local_client
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob, container_logger
 from golem.tools.ci import ci_skip
@@ -72,7 +73,7 @@ class TestDockerJob(DockerTestCase):
 
     def tearDown(self):
         if self.test_job and self.test_job.container:
-            client = self.test_client()
+            client = local_client()
             try:
                 client.remove_container(self.test_job.container_id, force=True)
             except docker.errors.APIError:
@@ -150,7 +151,7 @@ class TestBaseDockerJob(TestDockerJob):
     def test_container_created(self):
         with self._create_test_job() as job:
             self.assertIsNotNone(job.container_id)
-            docker = self.test_client()
+            docker = local_client()
             info = docker.inspect_container(job.container_id)
             self.assertEqual(info["Id"], job.container_id)
             self.assertEqual(info["State"]["Status"], "created")
@@ -161,7 +162,7 @@ class TestBaseDockerJob(TestDockerJob):
 
     def test_mounts(self):
         with self._create_test_job() as job:
-            docker = self.test_client()
+            docker = local_client()
             info = docker.inspect_container(job.container_id)
 
             work_mount = None
@@ -199,7 +200,7 @@ class TestBaseDockerJob(TestDockerJob):
 
         self.assertIsNone(job.container_id)
         with self.assertRaises(docker.errors.NotFound):
-            client = self.test_client()
+            client = local_client()
             client.inspect_container(container_id)
 
     def test_status(self):
@@ -220,7 +221,7 @@ class TestBaseDockerJob(TestDockerJob):
     def test_start(self):
         with self._create_test_job() as job:
             job.start()
-            client = self.test_client()
+            client = local_client()
             info = client.inspect_container(job.container_id)
             self.assertIn("Path", info)
             self.assertEqual(info["Path"], "/usr/local/bin/entrypoint.sh")
@@ -264,7 +265,7 @@ class TestBaseDockerJob(TestDockerJob):
 
     def test_wait_timeout(self):
         src = "import time\ntime.sleep(10)\n"
-        with self.assertRaises(requests.exceptions.ReadTimeout):
+        with self.assertRaises(requests.exceptions.ConnectionError):
             with self._create_test_job(script=src) as job:
                 job.start()
                 self.assertEqual(job.get_status(), DockerJob.STATE_RUNNING)
