@@ -262,12 +262,12 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         self.task_session.task_manager.got_want_to_compute.assert_not_called()
 
     def assert_allowed(self, send_mock):
-        self.task_session.task_manager.get_next_subtask.return_value = (
-            None, True, True)
+        self.task_session.task_manager.check_next_subtask.return_value = (
+            False, True, True)
         self.task_session._react_to_want_to_compute_task(self.msg)
         send_mock.assert_called()
         # ctd, wrong_task, wait
-        self.task_session.task_manager.get_next_subtask.assert_called_once()
+        self.task_session.task_manager.check_next_subtask.assert_called_once()
 
     def test_provider_with_concent_requestor_without_concent(
             self, send_mock):
@@ -296,6 +296,8 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
     def test_concent_disabled_wtct_concent_flag_none(self, send_mock):
         self.msg.concent_enabled = None
         self.task_session.concent_service.enabled = False
+        self.task_session.task_manager.check_next_subtask.return_value = (
+            True, False, False)
         self.task_session.task_manager.get_next_subtask.return_value = (
             factories.tasks.ComputeTaskDefFactory(),
             False,

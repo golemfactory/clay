@@ -151,6 +151,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertIsInstance(ms, message.CannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
         ts2.task_server.should_accept_provider.return_value = True
+        ts2.task_manager.check_next_subtask.return_value = (True, False, False)
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.TaskToCompute)

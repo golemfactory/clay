@@ -14,7 +14,7 @@ from twisted.internet.defer import fail
 from twisted.trial.unittest import TestCase as TwistedTestCase
 
 from apps.appsmanager import AppsManager
-from apps.core.task.coretask import CoreTask
+from apps.core.task.coretask import CoreTask, AcceptClientVerdict
 from apps.core.task.coretaskstate import TaskDefinition
 from apps.blender.task.blenderrendertask import BlenderRenderTask
 from golem import testutils
@@ -130,6 +130,9 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             should_wait=False, ctd=ctd)
         Task.get_progress = Mock()
         task_mock.get_progress.return_value = 0.3
+        task_mock.should_accept_client = Mock()
+        task_mock.should_accept_client.return_value = \
+            AcceptClientVerdict.ACCEPTED
 
         return task_mock
 
@@ -432,6 +435,9 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
             def restart_subtask(self, subtask_id):
                 self.restarted[subtask_id] = True
+
+            def should_accept_client(self, node_id):
+                return AcceptClientVerdict.ACCEPTED
 
         t = TestTask(th, "print 'Hello world'", ["xxyyzz"],
                      verify_subtasks={"xxyyzz": True})
