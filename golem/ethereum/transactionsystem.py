@@ -436,10 +436,24 @@ class TransactionSystem(LoopingCallService):
 
         raise ValueError('Unknown currency {}'.format(currency))
 
-    def concent_balance(self) -> int:
+    def concent_balance(self, account_address: Optional[str] = None) -> int:
         if not self._sci:
             raise Exception('Start was not called')
-        return self._sci.get_deposit_value(self._sci.get_eth_address())
+        if account_address is None:
+            account_address = self._sci.get_eth_address()
+        return self._sci.get_deposit_value(
+            account_address=account_address,
+        )
+
+    def concent_timelock(self, account_address: Optional[str] = None) -> int:
+        # FIXME Use decorator to DRY #3190
+        if not self._sci:
+            raise Exception('Start was not called')
+        if account_address is None:
+            account_address = self._sci.get_eth_address()
+        return self._sci.get_deposit_locked_until(
+            account_address=account_address,
+        )
 
     def concent_deposit(self, required: int, expected: int) -> Deferred:
         if not self._sci:
@@ -506,6 +520,17 @@ class TransactionSystem(LoopingCallService):
             self._last_gnt_update = now
         except Exception as e:  # pylint: disable=broad-except
             log.warning('Failed to update balances: %r', e)
+
+    def balance(self, account_address) -> int:
+        """Returns GNTB balance
+
+        Use this method only if you want uncached value.
+        Use self._gntb_balance otherwise.
+        """
+        # FIXME Use decorator to DRY #3190
+        if not self._sci:
+            raise Exception('Start was not called')
+        return self._sci.get_gntb_balance(account_address=account_address)
 
     def _try_convert_gnt(self) -> None:  # pylint: disable=too-many-branches
         if not self._sci:

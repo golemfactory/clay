@@ -551,6 +551,31 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if not self.concent_service.enabled and msg.concent_enabled:
             # We can't provide what requestors wants
             _cannot_compute(reasons.ConcentDisabled)
+            return
+
+        # TODO number_of_subtasks
+        total_task_price = msg.price * number_of_subtasks
+        transaction_system = self.task_server.client.transaction_system
+        requestors_gntb_balance = transaction_system.balance(
+            account_address=msg.requestor_ethereum_public_key,
+        )
+        if requestors_gntb_balance < total_task_price:
+            _cannot_compute(reasons.InsufficientBalance)
+            return
+        if msg.concent_enabled:
+            requestors_deposit_value = transaction_system.concent_balance(
+                account_address=msg.requestor_ethereum_public_key,
+            )
+            if requestors_deposit_value < (total_task_price * 2):
+                _cannot_compute(reasons.InsufficientDeposit)
+                return
+            requestors_deposit_timelock = transaction_system.concent_timelock(
+                account_address=msg.requestor_ethereum_public_key,
+            )
+            if requestors_deposit_timelock < 48 * 3600:
+                _cannot_compute(reasons.TooShortDeposit)
+                return
+
         if self._check_ctd_params(ctd)\
                 and self._set_env_params(ctd)\
                 and self.task_manager.comp_task_keeper.receive_subtask(msg):
