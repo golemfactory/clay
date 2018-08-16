@@ -484,7 +484,7 @@ class CoreTask(Task):
         prefix = os.path.commonprefix(task_resources)
         return os.path.dirname(prefix)
 
-    def _accept_client(self, node_id):
+    def should_accept_client(self, node_id):
         client = TaskClient.assert_exists(node_id, self.counting_nodes)
         finishing = client.finishing()
         max_finishing = self.max_pending_client_results
@@ -495,8 +495,16 @@ class CoreTask(Task):
                 client.started() - finishing >= max_finishing:
             return AcceptClientVerdict.SHOULD_WAIT
 
-        client.start()
         return AcceptClientVerdict.ACCEPTED
+
+    def _accept_client(self, node_id):
+        verdict = self.should_accept_client(node_id)
+
+        if verdict == AcceptClientVerdict.ACCEPTED:
+            client = TaskClient.assert_exists(node_id, self.counting_nodes)
+            client.start()
+
+        return verdict
 
     def copy_subtask_results(self, subtask_id, old_subtask_info, results):
         new_subtask = self.subtasks_given[subtask_id]
