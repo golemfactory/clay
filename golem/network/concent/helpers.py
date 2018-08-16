@@ -135,3 +135,10 @@ def process_report_computed_task(
         )
 
     return process_report_computed_task_no_time_check(msg=msg, ecc=ecc)
+
+
+def ssl_kwargs(concent_variant: dict) -> dict:
+    """Returns additional ssl related kwargs for requests"""
+    if 'certificate' not in concent_variant:
+        return {}
+    return {'verify': concent_variant['certificate'], }
