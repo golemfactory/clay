@@ -15,15 +15,11 @@ class DockerTestCase(unittest.TestCase):
     TEST_ENV_ID = None
 
     @classmethod
-    def new_client(cls, *_):
-        return local_client()
-
-    @classmethod
     def setUpClass(cls):
         """Disable all tests if Docker or the test image is not available."""
         try:
-            client = cls.new_client()
-            images = client.api.images()
+            client = local_client()
+            images = client.images()
             repo_tags = sum([img["RepoTags"]
                              for img in images
                              if img["RepoTags"]], [])
@@ -31,7 +27,7 @@ class DockerTestCase(unittest.TestCase):
                 raise unittest.SkipTest(
                     "Skipping tests: Image {} not available".format(
                         cls.TEST_IMAGE))
-            cls.TEST_ENV_ID = client.api.inspect_image(cls.TEST_IMAGE)["Id"]
+            cls.TEST_ENV_ID = client.inspect_image(cls.TEST_IMAGE)["Id"]
         except requests.exceptions.ConnectionError:
             raise unittest.SkipTest(
                 "Skipping tests: Cannot connect with Docker daemon")
@@ -41,10 +37,10 @@ class DockerTestCase(unittest.TestCase):
 class TestDockerImage(DockerTestCase):
 
     def tearDown(self):
-        client = self.new_client()
-        for c in client.api.containers(all=True):
+        client = local_client()
+        for c in client.containers(all=True):
             if c["Image"] == self.TEST_IMAGE:
-                client.api.remove_container(c["Id"], force=True)
+                client.remove_container(c["Id"], force=True)
 
     def _is_test_image(self, img):
         self.assertEqual(img.name, self.TEST_IMAGE)

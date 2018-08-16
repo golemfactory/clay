@@ -14,6 +14,7 @@ import requests
 from golem.core.common import config_logging
 from golem.core.common import is_windows, nt_path_to_posix_path
 from golem.core.simpleenv import get_local_datadir
+from golem.docker.client import local_client
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob, container_logger
 from golem.tools.ci import ci_skip
@@ -72,10 +73,10 @@ class TestDockerJob(DockerTestCase):
 
     def tearDown(self):
         if self.test_job and self.test_job.container:
-            client = self.new_client()
+            client = local_client()
             try:
-                client.api.remove_container(self.test_job.container_id,
-                                            force=True)
+                client.remove_container(self.test_job.container_id,
+                                        force=True)
             except docker.errors.APIError:
                 pass  # Already removed?
         self.test_job = None
@@ -151,19 +152,19 @@ class TestBaseDockerJob(TestDockerJob):
     def test_container_created(self):
         with self._create_test_job() as job:
             self.assertIsNotNone(job.container_id)
-            docker = self.new_client()
-            info = docker.api.inspect_container(job.container_id)
+            docker = local_client()
+            info = docker.inspect_container(job.container_id)
             self.assertEqual(info["Id"], job.container_id)
             self.assertEqual(info["State"]["Status"], "created")
             self.assertFalse(info["State"]["Running"])
 
-            image_id = docker.api.inspect_image(self.image.name)["Id"]
+            image_id = docker.inspect_image(self.image.name)["Id"]
             self.assertEqual(info["Image"], image_id)
 
     def test_mounts(self):
         with self._create_test_job() as job:
-            docker = self.new_client()
-            info = docker.api.inspect_container(job.container_id)
+            docker = local_client()
+            info = docker.inspect_container(job.container_id)
 
             work_mount = None
             resources_mount = None
@@ -200,8 +201,8 @@ class TestBaseDockerJob(TestDockerJob):
 
         self.assertIsNone(job.container_id)
         with self.assertRaises(docker.errors.NotFound):
-            client = self.new_client()
-            client.api.inspect_container(container_id)
+            client = local_client()
+            client.inspect_container(container_id)
 
     def test_status(self):
         job = self._create_test_job()
@@ -221,8 +222,8 @@ class TestBaseDockerJob(TestDockerJob):
     def test_start(self):
         with self._create_test_job() as job:
             job.start()
-            client = self.new_client()
-            info = client.api.inspect_container(job.container_id)
+            client = local_client()
+            info = client.inspect_container(job.container_id)
             self.assertIn("Path", info)
             self.assertEqual(info["Path"], "/usr/local/bin/entrypoint.sh")
             self.assertIn("Args", info)
@@ -364,18 +365,18 @@ with open("../output/out.txt", "w") as f:
             job = self._create_test_job("test_script")
             job.kill()
             assert not local_client.called
-            assert not client.api.kill.called
+            assert not client.kill.called
 
         with mock.patch('golem.docker.job.DockerJob.get_status',
                         return_value=DockerJob.STATE_KILLED):
             job = self._create_test_job("test_script")
             job.kill()
             assert not local_client.called
-            assert not client.api.kill.called
+            assert not client.kill.called
 
         with mock.patch('golem.docker.job.DockerJob.get_status',
                         return_value=DockerJob.STATE_RUNNING):
             job = self._create_test_job("test_script")
             job.kill()
             assert local_client.called
-            assert client.api.kill.called
+            assert client.kill.called

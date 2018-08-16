@@ -9,5 +9,4 @@ def local_client():
     """
     kwargs = kwargs_from_env(assert_hostname=False)
     kwargs["timeout"] = 600
-    client = DockerClient(**kwargs)
-    return client
+    return DockerClient(**kwargs).api

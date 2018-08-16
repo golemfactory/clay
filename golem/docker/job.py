@@ -149,7 +149,7 @@ class DockerJob(object):
             devices = None
             runtime = None
 
-        host_cfg = client.api.create_host_config(
+        host_cfg = client.create_host_config(
             cpuset_cpus=cpuset,
             devices=devices,
             binds=binds,
@@ -159,7 +159,7 @@ class DockerJob(object):
 
         # The location of the task script when mounted in the container
         container_script_path = self._get_container_script_path()
-        self.container = client.api.create_container(
+        self.container = client.create_container(
             image=self.image.name,
             volumes=volumes,
             host_config=host_cfg,
@@ -183,7 +183,7 @@ class DockerJob(object):
             self._host_dir_chmod(self.resources_dir, self.resources_dir_mod)
             self._host_dir_chmod(self.output_dir, self.output_dir_mod)
             try:
-                client.api.remove_container(self.container_id, force=True)
+                client.remove_container(self.container_id, force=True)
                 logger.debug("Container {} removed".format(self.container_id))
             except docker.errors.APIError:
                 pass  # Already removed? Sometimes happens in CircleCI.
@@ -243,8 +243,8 @@ class DockerJob(object):
             for chunk in s:
                 container_logger.debug(chunk)
 
-        stream = client.api.attach(self.container_id, stdout=True, stderr=True,
-                                   stream=True, logs=True)
+        stream = client.attach(self.container_id, stdout=True, stderr=True,
+                               stream=True, logs=True)
         self.logging_thread = threading.Thread(
             target=log_stream, args=(stream,), name="ContainerLoggingThread")
         self.logging_thread.start()
@@ -252,8 +252,8 @@ class DockerJob(object):
     def start(self):
         if self.get_status() == self.STATE_CREATED:
             client = local_client()
-            client.api.start(self.container_id)
-            result = client.api.inspect_container(self.container_id)
+            client.start(self.container_id)
+            result = client.inspect_container(self.container_id)
             self.state = result["State"]["Status"]
             logger.debug("Container {} started".format(self.container_id))
             if self.log_std_streams:
@@ -270,7 +270,7 @@ class DockerJob(object):
         """
         if self.get_status() in [self.STATE_RUNNING, self.STATE_EXITED]:
             client = local_client()
-            return client.api.wait(self.container_id, timeout).get('StatusCode')
+            return client.wait(self.container_id, timeout).get('StatusCode')
         logger.debug("Cannot wait for container {}, status = {}"
                      .format(self.container_id, self.get_status()))
         return -1
@@ -288,7 +288,7 @@ class DockerJob(object):
 
         try:
             client = local_client()
-            client.api.kill(self.container_id)
+            client.kill(self.container_id)
         except Exception as exc:
             logger.error("Couldn't kill container {}: {}"
                          .format(self.container_id, exc))
@@ -306,17 +306,17 @@ class DockerJob(object):
                 f.flush()
 
         if stdout_file:
-            stdout = client.api.logs(self.container_id,
-                                     stream=True, stdout=True, stderr=False)
+            stdout = client.logs(self.container_id,
+                                 stream=True, stdout=True, stderr=False)
             dump_stream(stdout, stdout_file)
         if stderr_file:
-            stderr = client.api.logs(self.container_id,
-                                     stream=True, stdout=False, stderr=True)
+            stderr = client.logs(self.container_id,
+                                 stream=True, stdout=False, stderr=True)
             dump_stream(stderr, stderr_file)
 
     def get_status(self):
         if self.container:
             client = local_client()
-            inspect = client.api.inspect_container(self.container_id)
+            inspect = client.inspect_container(self.container_id)
             return inspect["State"]["Status"]
         return self.state
