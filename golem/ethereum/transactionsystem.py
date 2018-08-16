@@ -271,17 +271,10 @@ class TransactionSystem(LoopingCallService):
         """
         return self._payments_keeper.get_list_of_all_payments()
 
-    def get_total_payment_for_subtasks(
+    def get_subtasks_payments(
             self,
-            subtask_ids: Iterable[str]) -> Tuple[Optional[int], Optional[int]]:
-        """
-        Get total value and total fee for payments for the given subtask IDs
-        **if all payments for the given subtasks are sent**
-        :param subtask_ids: subtask IDs
-        :return: (total_value, total_fee) if all payments are sent,
-                (None, None) otherwise
-        """
-        return self._payments_keeper.get_total_payment_for_subtasks(subtask_ids)
+            subtask_ids: Iterable[str]) -> List[Payment]:
+        return self._payments_keeper.get_subtasks_payments(subtask_ids)
 
     def get_incomes_list(self):
         """ Return list of all expected and received incomes
