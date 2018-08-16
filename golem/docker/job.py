@@ -123,6 +123,7 @@ class DockerJob(object):
             environment = dict(LOCAL_USER_ID=os.getuid())
 
         host_cfg = client.create_host_config(
+            cpuset_cpus=cpuset,
             binds={
                 posix_path(self.work_dir): {
                     "bind": self.WORK_DIR,
@@ -148,8 +149,7 @@ class DockerJob(object):
             host_config=host_cfg,
             command=[container_script_path],
             working_dir=self.WORK_DIR,
-            cpuset=cpuset,
-            environment=environment
+            environment=environment,
         )
         self.container_id = self.container["Id"]
         if self.container_id is None:
@@ -261,7 +261,7 @@ class DockerJob(object):
         """
         if self.get_status() in [self.STATE_RUNNING, self.STATE_EXITED]:
             client = local_client()
-            return client.wait(self.container_id, timeout)
+            return client.wait(self.container_id, timeout).get('StatusCode')
         logger.debug("Cannot wait for container {}, status = {}"
                      .format(self.container_id, self.get_status()))
         return -1
