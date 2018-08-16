@@ -157,6 +157,21 @@ class HandleError(object):
         return func_wrapper
 
 
+class HandleForwardedError:
+    def __init__(self, error, handle_error):
+        self.handle_error = handle_error
+        self.error = error
+
+    def __call__(self, func):
+        def func_wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except self.error as err:
+                return self.handle_error(err)
+
+        return func_wrapper
+
+
 class HandleKeyError(HandleError):
     def __init__(self, handle_error):
         super(HandleKeyError, self).__init__(

@@ -217,7 +217,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         subtask_id = generate_new_id_from_id(task_id)
         subtask_id2 = generate_new_id_from_id(task_id)
         self.assertTrue(ts.send_results(subtask_id, task_id, results))
-        ts.client.transaction_system.incomes_keeper.expect.reset_mock()
+        ts.client.transaction_system.expect_income.reset_mock()
         self.assertTrue(ts.send_results(subtask_id2, task_id, results))
         wtr = ts.results_to_send[subtask_id]
         self.assertIsInstance(wtr, WaitingTaskResult)
@@ -228,8 +228,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertEqual(wtr.delay_time, 0)
         self.assertEqual(wtr.owner, n)
         self.assertEqual(wtr.already_sending, False)
-        incomes_keeper = ts.client.transaction_system.incomes_keeper
-        incomes_keeper.expect.assert_called_once_with(
+        ts.client.transaction_system.expect_income.assert_called_once_with(
             sender_node=keys_auth.key_id,
             subtask_id=subtask_id2,
             payer_address=pubkeytoaddr(keys_auth.key_id),
@@ -240,10 +239,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         with self.assertLogs(logger, level='WARNING'):
             ts.subtask_rejected(keys_auth.key_id, subtask_id3)
         self.assertIsNotNone(ts.task_keeper.task_headers.get(task_id))
-
-        prev_call_count = trust.PAYMENT.increase.call_count
-        ts.client.transaction_system.incomes_keeper.received.assert_not_called()
-        self.assertEqual(trust.PAYMENT.increase.call_count, prev_call_count)
 
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
@@ -257,11 +252,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             payer_address=pubkeytoaddr(keys_auth.key_id),
             value=1
         )
-
-        from golem.model import Income
-        ts.client.transaction_system. \
-            incomes_keeper.received. \
-            return_value = Income()
 
         prev_call_count = trust.PAYMENT.increase.call_count
         ts.increase_trust_payment("xyz")

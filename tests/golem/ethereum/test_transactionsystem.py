@@ -69,7 +69,7 @@ class TestTransactionSystem(TestWithDatabase):
 
             mock_is_service_running.return_value = True
             e.stop()
-            e.payment_processor.sendout.assert_called_once_with(0)  # noqa pylint: disable=no-member
+            e._payment_processor.sendout.assert_called_once_with(0)  # noqa pylint: disable=no-member
 
     @patch('golem.ethereum.transactionsystem.NodeProcess', Mock())
     @patch('golem.ethereum.transactionsystem.new_sci')
@@ -340,16 +340,9 @@ class TestTransactionSystem(TestWithDatabase):
 
     def test_check_payments(self):
         with patch.object(
-            self.ets.incomes_keeper, 'update_overdue_incomes'
+            self.ets._incomes_keeper, 'update_overdue_incomes'
         ) as incomes:
-            incomes.return_value = [
-                Mock(sender_node='a'),
-                Mock(sender_node='b'),
-            ]
-            self.assertEqual(
-                self.ets.get_nodes_with_overdue_payments(),
-                ['a', 'b']
-            )
+            self.ets._run()
             incomes.assert_called_once()
 
     def test_no_password(self):
