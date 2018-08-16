@@ -31,7 +31,7 @@ class CrossbarRouter(object):
                  crossbar_dir: str = CROSSBAR_DIR,
                  crossbar_log_level: str = 'info',
                  ssl: bool = True,
-                 generate_secrets: bool = True) -> None:
+                 generate_secrets: bool = False) -> None:
 
         if datadir:
             self.working_dir = os.path.join(datadir, crossbar_dir)
@@ -132,7 +132,7 @@ class CrossbarRouter(object):
         # and for docker, without admin priviliges
         docker = cert_manager.Crossbar_users.docker
         crsb_users[docker.name] = {
-            "secret": "secret123", # TODO change this back to cert_manager.get_secret(docker)
+            "secret": cert_manager.get_secret(docker),
             "role": "golem_docker"
         }
 
@@ -156,7 +156,6 @@ class CrossbarRouter(object):
                     'options': {
                         # 'allowed_origins': allowed_origins,
                         'enable_webstatus': enable_webstatus,
-                        'open_handshake_timeout': 60000
                     },
                     "auth": {
                         "wampcra": {

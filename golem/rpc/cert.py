@@ -79,7 +79,7 @@ class CertificateManager:
         os.makedirs(self.secrets_path, exist_ok=True)
         for p in self.__secrets_paths():
             if not os.path.exists(p):
-                secret = secrets.token_hex(1024)
+                secret = secrets.token_hex(16)
                 with open(p, "w") as f:
                     f.write(secret)
 

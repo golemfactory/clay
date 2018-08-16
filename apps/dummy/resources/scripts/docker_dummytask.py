@@ -40,13 +40,6 @@ def run(data_files, subtask_data, difficulty, result_size, result_file):
 
     print(message)
 
-    import subprocess
-    process = subprocess.Popen(['pip', 'freeze'], stdout=subprocess.PIPE)
-    out, err = process.communicate()
-    with open(os.path.join(OUTPUT_DIR, "freeze"), "w") as f:
-        f.write(out)
-
-    from autobahn.wamp import auth
     from twisted.internet import reactor
     from twisted.internet.defer import inlineCallbacks
 
@@ -57,35 +50,10 @@ def run(data_files, subtask_data, difficulty, result_size, result_file):
         An application component using the time service.
         """
 
-        def onConnect(self):
-            with open(os.path.join(OUTPUT_DIR, "out2"), "w") as f:
-                f.write("conn")
-
-            print("Client connected. Starting WAMP-Ticket \
-                        authentication on realm {} \
-                        as crsb_user {}".format(
-                self.config.realm, self.crsb_user))
-            self.join(u"golem", [u"wampcra"], u"docker")
-
-        def onChallenge(self, challenge):
-            with open(os.path.join(OUTPUT_DIR, "out3"), "w") as f:
-                f.write("chall")
-
-            if challenge.method == "wampcra":
-                print("WAMP-Ticket challenge received: {}".format(challenge))
-                signature = auth.compute_wcs(u"secret123".encode('utf8'),
-                                             challenge.extra['challenge'].encode('utf8'))
-                return signature.decode('ascii')
-            else:
-                raise Exception("Invalid authmethod {}".format(challenge.method))
-
         @inlineCallbacks
         def onJoin(self, details):
             print("session attached")
             try:
-                with open(os.path.join(OUTPUT_DIR, "out4"), "w") as f:
-                    f.write("join")
-
                 now = yield self.call(u'comp.task.state_update', message)
                 # now = yield self.call(u'comp.environments', message)
 
@@ -100,16 +68,14 @@ def run(data_files, subtask_data, difficulty, result_size, result_file):
             print("disconnected")
             reactor.stop()
 
-    with open(os.path.join(OUTPUT_DIR, "out1"), "w") as f:
-        f.write("before")
-
-    import six
-    url = u"wss://172.17.0.1:61000"
-    if six.PY2 and type(url) == six.binary_type:
-        url = url.decode('utf8')
-    realm = u"golem"
-    runner = ApplicationRunner(url, realm)
-    runner.run(Component)
+    if __name__ == '__main__':
+        import six
+        url = u"ws://172.17.0.1:61000"
+        if six.PY2 and type(url) == six.binary_type:
+            url = url.decode('utf8')
+        realm = u"golem"
+        runner = ApplicationRunner(url, realm)
+        runner.run(Component)
 
 
 run(params.data_files,
