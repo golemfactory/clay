@@ -16,7 +16,7 @@ from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
-from apps.core.task.coretask import CoreTask
+from apps.core.task.coretask import CoreTask, AcceptClientVerdict
 from golem.core.common import HandleKeyError, get_timestamp_utc, \
     to_unicode, update_dict, HandleForwardedError
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
@@ -374,19 +374,15 @@ class TaskManager(TaskEventListener):
             node_id, node_name, task_id, estimated_performance, price,
             max_resource_size, max_memory_size, num_cores, address,
         )
-        if task_id not in self.tasks:
-            logger.info("Cannot find task {} in my tasks".format(task_id))
-            return None, True, False
+
+        check_subtask = self.check_next_subtask(
+            node_id, node_name, task_id, estimated_performance, price,
+            max_resource_size, max_memory_size, num_cores,
+        )
+        if not check_subtask == (True, False, False):
+            return None, check_subtask[1], check_subtask[2]
 
         task = self.tasks[task_id]
-
-        if task.header.max_price < price:
-            return None, False, False
-
-        if not self.task_needs_computation(task_id):
-            logger.info(f'Task does not need computation; '
-                        f'provider: {node_name} - {node_id}')
-            return None, False, False
 
         extra_data = task.query_extra_data(
             estimated_performance,
@@ -394,9 +390,6 @@ class TaskManager(TaskEventListener):
             node_id,
             node_name
         )
-        if extra_data.should_wait:
-            return None, False, True
-
         ctd = extra_data.ctd
 
         def check_compute_task_def():
@@ -426,7 +419,57 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id,
                                  subtask_id=ctd['subtask_id'],
                                  op=SubtaskOp.ASSIGNED)
-        return ctd, False, extra_data.should_wait
+        return ctd, False, False
+
+
+    def check_next_subtask(
+            self, node_id, node_name, task_id, estimated_performance, price,
+            max_resource_size, max_memory_size, num_cores=0):
+        """ Check next subtask from task <task_id> to give to node with
+        id <node_id> and name. The returned tuple can be used to find the reason
+        and handle accordingly.
+        :param node_id:
+        :param node_name:
+        :param task_id:
+        :param estimated_performance:
+        :param price:
+        :param max_resource_size:
+        :param max_memory_size:
+        :param num_cores:
+        :return (Bool, bool, bool): Function returns a triplet.
+        First element describes if the task is able to be assigned
+        The second element describes whether the task_id is a wrong
+        task that isn't in task manager register. If task with <task_id> it's
+        a known task then second element of a pair is always False (regardless
+        new subtask was assigned or not). The third element describes whether
+        we're waiting for client's other task results.
+        """
+        logger.debug(
+            'check_next_subtask(%r, %r, %r, %r, %r, %r, %r, %r)',
+            node_id, node_name, task_id, estimated_performance, price,
+            max_resource_size, max_memory_size, num_cores,
+        )
+        if task_id not in self.tasks:
+            logger.info("Cannot find task {} in my tasks".format(task_id))
+            return False, True, False
+
+        task = self.tasks[task_id]
+
+        if task.header.max_price < price:
+            return False, False, False
+
+        if not self.task_needs_computation(task_id):
+            logger.info(f'Task does not need computation; '
+                        f'provider: {node_name} - {node_id}')
+            return False, False, False
+
+        verdict = task.should_accept_client(node_id)
+        if verdict == AcceptClientVerdict.SHOULD_WAIT:
+            return False, False, True
+        elif verdict == AcceptClientVerdict.REJECTED:
+            return False, False, False
+
+        return True, False, False
 
     def copy_results(
             self,
