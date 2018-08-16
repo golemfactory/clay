@@ -46,7 +46,7 @@ CropRenderedFailureCallbackType = Callable[[Exception], None]
 
 class BlenderReferenceGenerator:
     MIN_CROP_SIZE = 8
-    CROP_RELATIVE_SIZE = 0.01
+    CROP_RELATIVE_SIZE = 0.1
     DEFAULT_CROPS_NUMBER = 3
 
     def __init__(self, computer: Optional[ComputerAdapter] = None) -> None:
