@@ -1,20 +1,22 @@
 import json
+import os
 import time
 from threading import Thread
 
 from autobahn.twisted import util
 from autobahn.wamp import ApplicationError
 
+from golem.rpc.common import CROSSBAR_DIR
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import Session, object_method_map, Client, Publisher
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.defer import setDebugging
+
 setDebugging(True)
 
 
 class MockService(object):
-
     methods = dict(
         multiply='mock.multiply',
         divide='mock.divide',
@@ -53,9 +55,6 @@ TIMEOUT = 40
 
 class TestRouter(TestDirFixtureWithReactor):
 
-    CRSBUSER = "user"
-    CRSBUSER_SECRET = "secret"
-
     class State(object):
 
         def __init__(self, reactor):
@@ -83,6 +82,7 @@ class TestRouter(TestDirFixtureWithReactor):
         super(TestRouter, self).setUp()
         self.state = TestRouter.State(self.reactor_thread.reactor)
 
+
     def test_init(self):
         from os.path import join, exists
 
@@ -93,10 +93,11 @@ class TestRouter(TestDirFixtureWithReactor):
         self.assertIsInstance(router, CrossbarRouter)
         self.assertEqual(router.working_dir, join(crossbar_dir, 'crossbar'))
 
-        router = CrossbarRouter(datadir=self.path,
-                                crossbar_dir='crozzbar',
+        router = CrossbarRouter(datadir=join(self.path, "crozzbar"),
                                 generate_secrets=True)
-        self.assertEqual(router.working_dir, join(self.path, 'crozzbar'))
+        self.assertEqual(router.working_dir, join(self.path,
+                                                  'crozzbar',
+                                                  CROSSBAR_DIR))
         self.assertIsNone(router.node)
         self.assertIsNone(router.pubkey)
 
@@ -105,7 +106,7 @@ class TestRouter(TestDirFixtureWithReactor):
             f.write('tmp data')
 
         with self.assertRaises(IOError):
-            CrossbarRouter(crossbar_dir=tmp_file)
+            CrossbarRouter(datadir=tmp_file)
 
     def _start_router(self):
         # pylint: disable=no-member
@@ -113,10 +114,31 @@ class TestRouter(TestDirFixtureWithReactor):
                                            ssl=False,
                                            generate_secrets=True)
         # set a new role for admin
-        self.state.router.config["workers"][0]["transports"][0]["auth"]["wampcra"]["users"][self.CRSBUSER] = { # noqa pylint: disable=line-too-long
-            "secret": self.CRSBUSER_SECRET,
+        self.state.router.config["workers"][0]["transports"][0]["auth"]["anonymous"] = {
+            "type": "static",
             "role": "golem_admin"
         }
+
+        self.state.router.config["workers"][0]["realms"][0]["roles"].append(
+            {
+                "name": 'anonymous',
+                "permissions": [{
+                    "uri": '*',
+                    "allow": {
+                        "call": True,
+                        "register": True,
+                        "publish": True,
+                        "subscribe": True
+                    }
+                }]
+            }
+        )
+
+        # These methods are for auth, which is not used in this test
+        # and with them, crossbar doesn't work
+        del Session.onChallenge
+        del Session.onConnect
+
         print(json.dumps(self.state.router.config))
 
         deferred = self.state.router.start(self.state.reactor)
@@ -124,15 +146,17 @@ class TestRouter(TestDirFixtureWithReactor):
                               self.state.add_errors)
 
     def _start_backend_session(self, *_):
-        self.state.backend_session = Session(
+        print("bckd")
+
+        s = Session(
             self.state.router.address,
             methods=object_method_map(
                 self.state.backend,
                 MockService.methods
-            ),
-            crsb_user=self.CRSBUSER,
-            crsb_user_secret=self.CRSBUSER_SECRET
+            )
         )
+
+        self.state.backend_session = s
 
         self.state.backend_deferred = self.state.backend_session.connect()
         self.state.backend_deferred.addCallbacks(
@@ -140,15 +164,15 @@ class TestRouter(TestDirFixtureWithReactor):
         )
 
     def _backend_session_started(self, *_):
-        self.state.frontend_session = Session(
+        s = Session(
             self.state.router.address,
             events=object_method_map(
                 self.state.frontend,
                 MockService.events
-            ),
-            crsb_user=self.CRSBUSER,
-            crsb_user_secret=self.CRSBUSER_SECRET
+            )
         )
+
+        self.state.frontend_session = s
 
         self.state.frontend_deferred = self.state.frontend_session.connect()
         self.state.frontend_deferred.addCallbacks(
@@ -173,7 +197,6 @@ class TestRouter(TestDirFixtureWithReactor):
         yield publisher.publish('mock.event.hello')
         yield util.sleep(0.5)
         assert self.state.frontend.n_hello_received > 0
-
         with self.assertRaises(ApplicationError):
             yield client.exception()
 

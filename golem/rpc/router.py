@@ -33,10 +33,7 @@ class CrossbarRouter(object):
                  ssl: bool = True,
                  generate_secrets: bool = False) -> None:
 
-        if datadir:
-            self.working_dir = os.path.join(datadir, crossbar_dir)
-        else:
-            self.working_dir = crossbar_dir
+        self.working_dir = os.path.join(datadir, CROSSBAR_DIR)
 
         os.makedirs(self.working_dir, exist_ok=True)
         if not os.path.isdir(self.working_dir):
@@ -191,15 +188,15 @@ class CrossbarRouter(object):
                                     "subscribe": False
                                 }
                             },
-                                {
-                                    "uri": 'comp.tasks.state_update',
-                                    "allow": {
-                                        "call": True,
-                                        "register": False,
-                                        "publish": False,
-                                        "subscribe": False
-                                    }
-                                }]
+                            {
+                                "uri": 'comp.tasks.state_update',
+                                "allow": {
+                                    "call": True,
+                                    "register": False,
+                                    "publish": False,
+                                    "subscribe": False
+                                }
+                            }]
                         }]
                 }],
             }]

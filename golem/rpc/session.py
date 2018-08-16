@@ -147,10 +147,13 @@ class Session(ApplicationSession):
         return self.ready
 
     def onConnect(self):
-        logger.info(f"Client connected. Starting WAMP-Ticket \
-                    authentication on realm {self.config.realm} \
-                    as crsb_user {self.crsb_user}")
-        self.join(self.config.realm, ["wampcra"], self.crsb_user.name)
+        if self.crsb_user and self.crsb_user_secret:
+            logger.info(f"Client connected. Starting WAMP-Ticket "
+                        f"authentication on realm {self.config.realm} "
+                        f"as crsb_user {self.crsb_user}")
+            self.join(self.config.realm, ["wampcra"], self.crsb_user.name)
+        else:
+            logger.info("Attempting to log in as anonymous")
 
     def onChallenge(self, challenge):
         if challenge.method == "wampcra":
