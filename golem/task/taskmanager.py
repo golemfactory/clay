@@ -421,8 +421,7 @@ class TaskManager(TaskEventListener):
                                  op=SubtaskOp.ASSIGNED)
         return ctd, False, False
 
-
-    def check_next_subtask(
+    def check_next_subtask(  # noqa pylint: disable=too-many-arguments
             self, node_id, node_name, task_id, estimated_performance, price,
             max_resource_size, max_memory_size, num_cores=0):
         """ Check next subtask from task <task_id> to give to node with
@@ -450,7 +449,7 @@ class TaskManager(TaskEventListener):
             max_resource_size, max_memory_size, num_cores,
         )
         if task_id not in self.tasks:
-            logger.info("Cannot find task {} in my tasks".format(task_id))
+            logger.info("Cannot find task in my tasks. task_id=%r", task_id)
             return False, True, False
 
         task = self.tasks[task_id]
@@ -459,8 +458,8 @@ class TaskManager(TaskEventListener):
             return False, False, False
 
         if not self.task_needs_computation(task_id):
-            logger.info(f'Task does not need computation; '
-                        f'provider: {node_name} - {node_id}')
+            logger.info('Task does not need computation. provider=%r - %r',
+                        node_name, node_id)
             return False, False, False
 
         verdict = task.should_accept_client(node_id)
