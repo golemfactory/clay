@@ -5,8 +5,6 @@ import argparse
 import sys
 
 from multiprocessing import freeze_support
-from pathlib import Path
-
 import click
 
 from golem.core.simpleenv import get_local_datadir

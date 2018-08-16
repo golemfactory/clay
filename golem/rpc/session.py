@@ -159,7 +159,7 @@ class Session(ApplicationSession):
         if challenge.method == "wampcra":
             logger.info(f"WAMP-Ticket challenge received: {challenge}")
             signature = auth.compute_wcs(self.crsb_user_secret.encode('utf8'),
-                                         challenge.extra['challenge'].encode('utf8'))
+                                         challenge.extra['challenge'].encode('utf8')) # noqa # pylint: disable=line-too-long
             return signature.decode('ascii')
 
         else:
