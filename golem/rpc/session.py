@@ -59,7 +59,7 @@ class Session(ApplicationSession):
         self.address = address
         self.methods = methods or []
         self.events = events or []
-        self.subs = {}
+        self.subs = {}  # type: ignore
 
         self.ready = Deferred()
         self.connected = False

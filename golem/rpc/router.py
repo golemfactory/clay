@@ -24,11 +24,10 @@ class CrossbarRouter(object):
     serializers = ['msgpack']
 
     def __init__(self,  # pylint: disable=too-many-arguments
+                 datadir: str,
                  host: str = CROSSBAR_HOST,
                  port: int = CROSSBAR_PORT,
                  realm: str = CROSSBAR_REALM,
-                 datadir: Optional[str] = None,
-                 crossbar_dir: str = CROSSBAR_DIR,
                  crossbar_log_level: str = 'info',
                  ssl: bool = True,
                  generate_secrets: bool = False) -> None:
