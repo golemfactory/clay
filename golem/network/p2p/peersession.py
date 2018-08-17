@@ -4,7 +4,6 @@ import time
 
 import semantic_version
 from golem_messages import message
-from golem_messages.register import library
 from pydispatch import dispatcher
 
 import golem

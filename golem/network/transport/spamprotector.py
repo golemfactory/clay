@@ -1,7 +1,6 @@
 import time
 import logging
-from golem_messages.register import library
-from golem_messages.message import Message, SetTaskSession
+from golem_messages.message import SetTaskSession
 
 logger = logging.getLogger(__name__)
 

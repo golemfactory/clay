@@ -4,7 +4,6 @@ import time
 from typing import Optional
 
 from golem_messages import message
-from golem_messages.register import library
 
 from golem import utils
 from golem.core.keysauth import get_random_float

@@ -3,7 +3,6 @@ import os
 import uuid
 
 from golem_messages import message
-from golem_messages.register import library
 
 logger = logging.getLogger('golem.resources')
 

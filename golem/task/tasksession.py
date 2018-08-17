@@ -6,7 +6,6 @@ import time
 
 from golem_messages import message
 from golem_messages import helpers as msg_helpers
-from golem_messages.register import library
 
 from golem.core.common import HandleAttributeError
 from golem.core.keysauth import KeysAuth
