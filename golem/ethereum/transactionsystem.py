@@ -302,8 +302,14 @@ class TransactionSystem(LoopingCallService):
             eth += self._eth_base_for_batch_payment()
         return min(eth, self._eth_balance)
 
-    def get_available_gnt(self) -> int:
-        return self._gntb_balance - self.get_locked_gnt()
+    def get_available_gnt(self, account_address: Optional[str] = None) -> int:
+        # FIXME Use decorator to DRY #3190
+        if not self._sci:
+            raise Exception('Start was not called')
+        if (account_address is None) \
+                or (account_address == self._sci.get_eth_address()):
+            return self._gntb_balance - self.get_locked_gnt()
+        return self._sci.get_gntb_balance(account_address=account_address)
 
     def get_locked_gnt(self) -> int:
         if not self.payment_processor:
@@ -520,17 +526,6 @@ class TransactionSystem(LoopingCallService):
             self._last_gnt_update = now
         except Exception as e:  # pylint: disable=broad-except
             log.warning('Failed to update balances: %r', e)
-
-    def balance(self, account_address) -> int:
-        """Returns GNTB balance
-
-        Use this method only if you want uncached value.
-        Use self._gntb_balance otherwise.
-        """
-        # FIXME Use decorator to DRY #3190
-        if not self._sci:
-            raise Exception('Start was not called')
-        return self._sci.get_gntb_balance(account_address=account_address)
 
     def _try_convert_gnt(self) -> None:  # pylint: disable=too-many-branches
         if not self._sci:

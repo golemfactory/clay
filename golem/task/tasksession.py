@@ -556,7 +556,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             .get_total_tasks()
         total_task_price = msg.price * number_of_subtasks
         transaction_system = self.task_server.client.transaction_system
-        requestors_gntb_balance = transaction_system.balance(
+        requestors_gntb_balance = transaction_system.get_available_gnt(
             account_address=msg.requestor_ethereum_address,
         )
         if requestors_gntb_balance < total_task_price:
