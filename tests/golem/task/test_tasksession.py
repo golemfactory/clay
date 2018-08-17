@@ -484,7 +484,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             conn.reset_mock()
 
         # msg.ctd is None -> failure
-        msg = message.TaskToCompute()
+        msg = msg_factories.tasks.TaskToComputeFactory(compute_task_def=None)
         ts._react_to_task_to_compute(msg)
         ts.task_server.add_task_session.assert_not_called()
         ts.task_computer.task_given.assert_not_called()
@@ -505,8 +505,18 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ctd['docker_images'] = [
             DockerImage("dockerix/xiii", tag="323").to_dict(),
         ]
-        msg = message.TaskToCompute(compute_task_def=ctd)
-        ts._react_to_task_to_compute(msg)
+
+        def _prepare_and_react(compute_task_def):
+            msg = msg_factories.tasks.TaskToComputeFactory(
+                compute_task_def=compute_task_def,
+            )
+            ts.task_manager.tasks[msg.task_id].get_total_tasks.return_value = 10
+            ts.task_server.client.transaction_system.get_available_gnt\
+                .return_value = msg.price * 10
+            ts._react_to_task_to_compute(msg)
+            return msg
+
+        _prepare_and_react(ctd)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
@@ -514,7 +524,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         # Source code from local environment -> proper execution
         __reset_mocks()
         env.get_source_code.return_value = "print 'Hello world'"
-        ts._react_to_task_to_compute(msg)
+        msg = _prepare_and_react(ctd)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_called_with(msg)
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)
@@ -525,9 +535,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         __reset_mocks()
         header.task_owner.key = 'KEY_ID2'
 
-        ts._react_to_task_to_compute(message.TaskToCompute(
-            compute_task_def=ctd,
-        ))
+        _prepare_and_react(ctd)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
@@ -536,9 +544,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         __reset_mocks()
         header.task_owner.key = 'KEY_ID2'
 
-        ts._react_to_task_to_compute(message.TaskToCompute(
-            compute_task_def=ctd,
-        ))
+        _prepare_and_react(ctd)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
@@ -548,9 +554,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         header.task_owner.key = 'KEY_ID'
         header.task_owner.pub_port = 0
 
-        ts._react_to_task_to_compute(message.TaskToCompute(
-            compute_task_def=ctd,
-        ))
+        _prepare_and_react(ctd)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
@@ -559,18 +563,14 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         __reset_mocks()
         header.task_owner.pub_port = 1112
 
-        ts._react_to_task_to_compute(message.TaskToCompute(
-            compute_task_def=ctd,
-        ))
+        _prepare_and_react(ctd)
         conn.close.assert_not_called()
 
         # Allow custom code / no code in message.ComputeTaskDef -> failure
         __reset_mocks()
         env.allow_custom_main_program_file = True
         ctd['src_code'] = ""
-        ts._react_to_task_to_compute(message.TaskToCompute(
-            compute_task_def=ctd,
-        ))
+        _prepare_and_react(ctd)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
@@ -578,9 +578,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         # Allow custom code / code in ComputerTaskDef -> proper execution
         __reset_mocks()
         ctd['src_code'] = "print 'Hello world!'"
-        ts._react_to_task_to_compute(message.TaskToCompute(
-            compute_task_def=ctd,
-        ))
+        _prepare_and_react(ctd)
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)
         ts.task_computer.task_given.assert_called_with(ctd)
@@ -589,9 +587,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         # No environment available -> failure
         __reset_mocks()
         ts.task_server.get_environment_by_id.return_value = None
-        ts._react_to_task_to_compute(message.TaskToCompute(
-            compute_task_def=ctd,
-        ))
+        _prepare_and_react(ctd)
         assert ts.err_msg == reasons.WrongEnvironment
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -605,9 +601,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 DockerImage("dockerix/xiii", tag="325"),
                 DockerImage("dockerix/xiii")
             ])
-        ts._react_to_task_to_compute(message.TaskToCompute(
-            compute_task_def=ctd,
-        ))
+        _prepare_and_react(ctd)
         assert ts.err_msg == reasons.WrongDockerImages
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -622,9 +616,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             DockerImage("dockerix/xiii", tag="323")
         ])
         ts.task_server.get_environment_by_id.return_value = de
-        ts._react_to_task_to_compute(message.TaskToCompute(
-            compute_task_def=ctd,
-        ))
+        _prepare_and_react(ctd)
         assert ts.err_msg == reasons.NoSourceCode
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -636,9 +628,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         with open(file_name, 'w') as f:
             f.write("Hello world!")
         de.main_program_file = file_name
-        ts._react_to_task_to_compute(message.TaskToCompute(
-            compute_task_def=ctd,
-        ))
+        _prepare_and_react(ctd)
         ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)
         ts.task_computer.task_given.assert_called_with(ctd)
         conn.close.assert_not_called()
