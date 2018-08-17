@@ -80,12 +80,12 @@ class PeerSession(BasicSafeSession):
 
         self.can_be_unverified.extend(
             [
-                message.Hello,
-                message.RandVal,
-                message.ChallengeSolution,
+                message.base.Hello,
+                message.base.RandVal,
+                message.base.ChallengeSolution,
             ]
         )
-        self.can_be_not_encrypted.append(message.Hello)
+        self.can_be_not_encrypted.append(message.base.Hello)
 
         self.__set_msg_interpretations()
 
@@ -166,33 +166,33 @@ class PeerSession(BasicSafeSession):
 
     def send_get_peers(self):
         """  Send get peers message """
-        self.send(message.GetPeers())
+        self.send(message.p2p.GetPeers())
 
     def send_get_tasks(self):
         """  Send get tasks message """
-        self.send(message.GetTasks())
+        self.send(message.p2p.GetTasks())
 
     def send_remove_task(self, task_id):
         """  Send remove task  message
          :param str task_id: task to be removed
         """
-        self.send(message.RemoveTask(task_id=task_id))
+        self.send(message.p2p.RemoveTask(task_id=task_id))
 
     def send_degree(self, degree):
         """ Send degree message
          :param int degree: degree of this node
         """
-        self.send(message.Degree(degree=degree))
+        self.send(message.p2p.Degree(degree=degree))
 
     def send_gossip(self, gossip):
         """ Send message with gossip
          :param list gossip: gossip to be send
         """
-        self.send(message.Gossip(gossip=gossip))
+        self.send(message.p2p.Gossip(gossip=gossip))
 
     def send_stop_gossip(self):
         """ Send stop gossip message """
-        self.send(message.StopGossip())
+        self.send(message.p2p.StopGossip())
 
     def send_loc_rank(self, node_id, loc_rank):
         """ Send local opinion about given node
@@ -200,12 +200,12 @@ class PeerSession(BasicSafeSession):
         :param LocalRank loc_rank: opinion bout node
         :return:
         """
-        self.send(message.LocRank(node_id=node_id, loc_rank=loc_rank))
+        self.send(message.p2p.LocRank(node_id=node_id, loc_rank=loc_rank))
 
     def send_find_node(self, key_num):
         """ Send find node message
         :param long key_num: key of a node to be find """
-        self.send(message.FindNode(node_key_id=key_num))
+        self.send(message.p2p.FindNode(node_key_id=key_num))
 
     def send_want_to_start_task_session(
             self,
@@ -221,7 +221,7 @@ class PeerSession(BasicSafeSession):
 
         sni = None if super_node_info is None else super_node_info.to_dict()
         self.send(
-            message.WantToStartTaskSession(
+            message.p2p.WantToStartTaskSession(
                 node_info=node_info.to_dict(),
                 conn_id=conn_id,
                 super_node_info=sni
@@ -246,7 +246,7 @@ class PeerSession(BasicSafeSession):
                      node_info.key, key_id, self.key_id)
         sni = None if super_node_info is None else super_node_info.to_dict()
         self.send(
-            message.SetTaskSession(
+            message.p2p.SetTaskSession(
                 key_id=key_id,
                 node_info=node_info.to_dict(),
                 conn_id=conn_id,
@@ -286,7 +286,7 @@ class PeerSession(BasicSafeSession):
                 self.address,
                 self.port
             )
-            self.disconnect(message.Disconnect.REASON.ProtocolVersion)
+            self.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
             return
 
         self.node_info = Node.from_dict(msg.node_info)
@@ -299,7 +299,7 @@ class PeerSession(BasicSafeSession):
                 self.node_info.node_name, self.address, self.port,
                 KeysAuth.get_difficulty(self.node_info.key),
                 self.p2p_service.key_difficulty)
-            self.disconnect(message.Disconnect.REASON.KeyNotDifficult)
+            self.disconnect(message.base.Disconnect.REASON.KeyNotDifficult)
             return
 
         self.node_name = msg.node_name
@@ -318,7 +318,7 @@ class PeerSession(BasicSafeSession):
         if solve_challenge:
             self._solve_challenge(challenge, difficulty)
         else:
-            self.send(message.RandVal(rand_val=msg.rand_val))
+            self.send(message.base.RandVal(rand_val=msg.rand_val))
 
     def _solve_challenge(self, challenge, difficulty):
         solution = self.p2p_service.solve_challenge(
@@ -326,7 +326,7 @@ class PeerSession(BasicSafeSession):
             challenge,
             difficulty
         )
-        self.send(message.ChallengeSolution(solution=solution))
+        self.send(message.base.ChallengeSolution(solution=solution))
 
     def _react_to_get_peers(self, msg):
         self._send_peers()
@@ -365,13 +365,13 @@ class PeerSession(BasicSafeSession):
         except TypeError:
             logger.debug("Unexpected format of other task list %r", other_tasks)
 
-        self.send(message.Tasks(tasks=tasks_to_send))
+        self.send(message.p2p.Tasks(tasks=tasks_to_send))
 
     def _react_to_tasks(self, msg):
         for t in msg.tasks:
             if not self.p2p_service.add_task_header(t):
                 self.disconnect(
-                    message.Disconnect.REASON.BadProtocol
+                    message.base.Disconnect.REASON.BadProtocol
                 )
 
     def _react_to_remove_task(self, msg):
@@ -431,7 +431,7 @@ class PeerSession(BasicSafeSession):
             self.__set_verified_conn()
         else:
             self.disconnect(
-                message.Disconnect.REASON.Unverified
+                message.base.Disconnect.REASON.Unverified
             )
 
     def _react_to_challenge_solution(self, msg):
@@ -442,7 +442,7 @@ class PeerSession(BasicSafeSession):
 
         if not self.solve_challenge:
             self.disconnect(
-                message.Disconnect.REASON.BadProtocol
+                message.base.Disconnect.REASON.BadProtocol
             )
             return
         good_solution = self.p2p_service.check_solution(
@@ -455,7 +455,7 @@ class PeerSession(BasicSafeSession):
             self.solve_challenge = False
         else:
             self.disconnect(
-                message.Disconnect.REASON.Unverified
+                message.base.Disconnect.REASON.Unverified
             )
 
     def _react_to_want_to_start_task_session(self, msg):
@@ -483,7 +483,7 @@ class PeerSession(BasicSafeSession):
         super(PeerSession, self)._react_to_disconnect(msg)
 
     def _send_pong(self):
-        self.send(message.Pong())
+        self.send(message.p2p.Pong())
 
     def __send_hello(self):
         self.solve_challenge = self.key_id and \
@@ -494,7 +494,7 @@ class PeerSession(BasicSafeSession):
             self.challenge = challenge_kwargs['challenge'] = challenge
             difficulty = self.p2p_service._get_difficulty(self.key_id)
             self.difficulty = challenge_kwargs['difficulty'] = difficulty
-        msg = message.Hello(
+        msg = message.base.Hello(
             proto_id=variables.PROTOCOL_CONST.ID,
             port=self.p2p_service.cur_port,
             node_name=self.p2p_service.node_name,
@@ -509,14 +509,14 @@ class PeerSession(BasicSafeSession):
         self.send(msg, send_unverified=True)
 
     def __send_ping(self):
-        self.send(message.Ping())
+        self.send(message.p2p.Ping())
 
     def _send_peers(self, node_key_id=None):
         nodes_info = self.p2p_service.find_node(node_key_id=node_key_id,
                                                 alpha=SEND_PEERS_NUM)
         for ni in nodes_info:
             ni['node'] = ni['node'].to_dict()
-        self.send(message.Peers(peers=nodes_info))
+        self.send(message.p2p.Peers(peers=nodes_info))
 
     def __set_verified_conn(self):
         self.verified = True
@@ -526,7 +526,7 @@ class PeerSession(BasicSafeSession):
                 .format(self.node_name, self.address, self.port)
             logger.info(logger_msg)
             self._send_peers(node_key_id=self.p2p_service.get_key_id())
-            self.disconnect(message.Disconnect.REASON.TooManyPeers)
+            self.disconnect(message.base.Disconnect.REASON.TooManyPeers)
 
             self.p2p_service.try_to_add_peer({"address": self.address,
                                               "port": self.listen_port,
@@ -547,7 +547,7 @@ class PeerSession(BasicSafeSession):
                     self.node_name,
                     self.port
                 )
-                self.disconnect(message.Disconnect.REASON.DuplicatePeers)
+                self.disconnect(message.base.Disconnect.REASON.DuplicatePeers)
                 return
 
         self.p2p_service.add_to_peer_keeper(self.node_info)
@@ -571,26 +571,26 @@ class PeerSession(BasicSafeSession):
 
     def __set_basic_msg_interpretations(self):
         self._interpretation.update({
-            message.Ping: self._react_to_ping,
-            message.Pong: self._react_to_pong,
-            message.Hello: self._react_to_hello,
-            message.ChallengeSolution: self._react_to_challenge_solution,
-            message.GetPeers: self._react_to_get_peers,
-            message.Peers: self._react_to_peers,
-            message.GetTasks: self._react_to_get_tasks,
-            message.Tasks: self._react_to_tasks,
-            message.RemoveTask: self._react_to_remove_task,
-            message.RemoveTaskContainer: self._react_to_remove_task_container,
-            message.FindNode: self._react_to_find_node,
-            message.RandVal: self._react_to_rand_val,
-            message.WantToStartTaskSession:
+            message.p2p.Ping: self._react_to_ping,
+            message.p2p.Pong: self._react_to_pong,
+            message.base.Hello: self._react_to_hello,
+            message.base.ChallengeSolution: self._react_to_challenge_solution,
+            message.p2p.GetPeers: self._react_to_get_peers,
+            message.p2p.Peers: self._react_to_peers,
+            message.p2p.GetTasks: self._react_to_get_tasks,
+            message.p2p.Tasks: self._react_to_tasks,
+            message.p2p.RemoveTask: self._react_to_remove_task,
+            message.p2p.RemoveTaskContainer: self._react_to_remove_task_container,
+            message.p2p.FindNode: self._react_to_find_node,
+            message.base.RandVal: self._react_to_rand_val,
+            message.p2p.WantToStartTaskSession:
                 self._react_to_want_to_start_task_session,
-            message.SetTaskSession: self._react_to_set_task_session,
+            message.p2p.SetTaskSession: self._react_to_set_task_session,
         })
 
     def __set_ranking_msg_interpretations(self):
         self._interpretation.update({
-            message.Gossip: self._react_to_gossip,
-            message.LocRank: self._react_to_loc_rank,
-            message.StopGossip: self._react_to_stop_gossip,
+            message.p2p.Gossip: self._react_to_gossip,
+            message.p2p.LocRank: self._react_to_loc_rank,
+            message.p2p.StopGossip: self._react_to_stop_gossip,
         })

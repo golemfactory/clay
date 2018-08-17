@@ -65,7 +65,7 @@ def verify_response(response: requests.Response) -> None:
 
 
 def send_to_concent(
-        msg: message.Message,
+        msg: message.base.Message,
         signing_key,
         concent_variant: dict) -> typing.Optional[bytes]:
     """Sends a message to the concent server
@@ -223,7 +223,7 @@ class ConcentClientService(threading.Thread):
         logger.info('%s stopped', self)
 
     def submit_task_message(
-            self, subtask_id: str, msg: message.Message,
+            self, subtask_id: str, msg: message.base.Message,
             delay: typing.Optional[datetime.timedelta] = None
     ) -> None:
         """
@@ -257,12 +257,13 @@ class ConcentClientService(threading.Thread):
 
     def submit(self,
                key: typing.Hashable,
-               msg: message.Message,
+               msg: message.base.Message,
                delay: typing.Optional[datetime.timedelta] = None) -> None:
         """
         Submit a message to Concent.
 
         :param key: Request identifier
+        :param msg: the message to send
         :param delay: Time to wait before sending the message
         :return: None
         """

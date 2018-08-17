@@ -197,7 +197,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             session.start()
         else:
             session.disconnect(
-                message.Disconnect.REASON.NoMoreMessages
+                message.base.Disconnect.REASON.NoMoreMessages
             )
 
     def add_known_peer(self, node, ip_address, port, metadata=None):
@@ -710,7 +710,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
 
     def send_remove_task_container(self, msg_remove_task):
         for p in list(self.peers.values()):
-            p.send(message.RemoveTaskContainer(remove_tasks=[msg_remove_task]))
+            p.send(
+                message.p2p.RemoveTaskContainer(remove_tasks=[msg_remove_task])
+            )
 
     def want_to_start_task_session(
             self,
@@ -926,7 +928,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             if delta > self.last_message_time_threshold:
                 self.remove_peer(peer)
                 peer.disconnect(
-                    message.Disconnect.REASON.Timeout
+                    message.base.Disconnect.REASON.Timeout
                 )
 
     def _sync_forward_requests(self):
@@ -1039,7 +1041,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             logger.info('Disconnecting peer %r', peer.key_id)
             self.remove_peer(peer)
             peer.disconnect(
-                message.Disconnect.REASON.Refresh
+                message.base.Disconnect.REASON.Refresh
             )
 
     @staticmethod

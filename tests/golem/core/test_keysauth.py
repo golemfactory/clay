@@ -180,13 +180,15 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
         ek.key_id = encode_hex(ek.public_key)[2:]
         ek.ecc = ECCx(ek._private_key)
 
-        msg = message.WantToComputeTask(node_name='node_name',
-                                        task_id='task_id',
-                                        perf_index=2200,
-                                        price=5 * 10 ** 18,
-                                        max_resource_size=250000000,
-                                        max_memory_size=300000000,
-                                        num_cores=4)
+        msg = message.tasks.WantToComputeTask(
+            node_name='node_name',
+            task_id='task_id',
+            perf_index=2200,
+            price=5 * 10 ** 18,
+            max_resource_size=250000000,
+            max_memory_size=300000000,
+            num_cores=4,
+        )
 
         data = msg.get_short_hash()
         signature = ek.sign(data)
