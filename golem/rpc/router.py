@@ -10,6 +10,7 @@ from twisted.internet.defer import inlineCallbacks
 from golem.rpc.cert import CertificateManager
 from golem.rpc.common import CROSSBAR_DIR, CROSSBAR_REALM, CROSSBAR_HOST, \
     CROSSBAR_PORT
+from golem.rpc.mapping.rpcmethodnames import DOCKER_URI
 from golem.rpc.session import WebSocketAddress
 
 logger = logging.getLogger('golem.rpc.crossbar')
@@ -188,7 +189,7 @@ class CrossbarRouter(object):
                                 }
                             },
                             {
-                                "uri": 'comp.tasks.state_update',
+                                "uri": f'{DOCKER_URI}.*',
                                 "allow": {
                                     "call": True,
                                     "register": False,

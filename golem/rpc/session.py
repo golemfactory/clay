@@ -55,7 +55,6 @@ class Session(ApplicationSession):
     def __init__(self, address, methods=None, events=None,  # noqa # pylint: disable=too-many-arguments
                  cert_manager=None, use_ipv6=False,
                  crsb_user=None, crsb_user_secret=None) -> None:
-
         self.address = address
         self.methods = methods or []
         self.events = events or []
@@ -73,11 +72,10 @@ class Session(ApplicationSession):
         self.config = types.ComponentConfig(realm=address.realm)
         self.crsb_user = crsb_user
         self.crsb_user_secret = crsb_user_secret
-
-        super(Session, self).__init__(self.config)
+        super(self.__class__, self).__init__(self.config)
 
     def connect(self, auto_reconnect=True):
-
+        print("session connect")
         def init(proto):
             reactor.addSystemEventTrigger('before', 'shutdown', cleanup, proto)
             return proto
@@ -143,7 +141,7 @@ class Session(ApplicationSession):
 
         deferred.addCallback(init)
         deferred.addErrback(self.ready.errback)
-
+        print("session connect end")
         return self.ready
 
     def onConnect(self):
