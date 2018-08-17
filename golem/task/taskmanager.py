@@ -18,7 +18,7 @@ from twisted.internet.threads import deferToThread
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
 from golem.core.common import HandleKeyError, get_timestamp_utc, \
-    to_unicode, update_dict
+    to_unicode, update_dict, HandleForwardedError
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
@@ -36,6 +36,11 @@ logger = logging.getLogger(__name__)
 
 def log_subtask_key_error(*args, **kwargs):
     logger.warning("This is not my subtask %r", args[1])
+    return None
+
+
+def log_generic_key_error(err):
+    logger.warning("Subtask key error: %r", err)
     return None
 
 
@@ -61,6 +66,8 @@ class TaskManager(TaskEventListener):
     """
     handle_task_key_error = HandleKeyError(log_task_key_error)
     handle_subtask_key_error = HandleKeyError(log_subtask_key_error)
+    handle_generic_key_error = HandleForwardedError(KeyError,
+                                                    log_generic_key_error)
 
     class Error(Exception):
         pass
@@ -607,9 +614,9 @@ class TaskManager(TaskEventListener):
             return
         subtask_state.subtask_status = SubtaskStatus.verifying
 
+        @TaskManager.handle_generic_key_error
         def verification_finished():
             ss = self.__set_subtask_state_finished(subtask_id)
-
             if not self.tasks[task_id].verify_subtask(subtask_id):
                 logger.debug("Subtask %r not accepted\n", subtask_id)
                 ss.subtask_status = SubtaskStatus.failure
@@ -630,13 +637,14 @@ class TaskManager(TaskEventListener):
                 else:
                     if self.tasks[task_id].verify_task():
                         logger.debug("Task %r accepted", task_id)
-                        self.tasks_states[task_id].status = TaskStatus.finished
-                        self.notice_task_updated(task_id, op=TaskOp.FINISHED)
+                        self.tasks_states[task_id].status =\
+                            TaskStatus.finished
+                        self.notice_task_updated(task_id,
+                                                 op=TaskOp.FINISHED)
                     else:
                         logger.debug("Task %r not accepted", task_id)
                         self.notice_task_updated(task_id,
                                                  op=TaskOp.NOT_ACCEPTED)
-
             verification_finished_()
 
         self.tasks[task_id].computation_finished(

@@ -131,7 +131,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
         self.task_session_1.send = lambda x: send_buf.append(x)
 
         # session_2 [GetResource] -> session_1
-        msg_get = message.GetResource(task_id=self.task_id)
+        msg_get = message.tasks.GetResource(task_id=self.task_id)
         self.task_session_1._react_to_get_resource(msg_get)
 
         # session_1 [ResourceList] -> session_2
