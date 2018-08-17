@@ -6,7 +6,7 @@ import time
 from enum import Enum
 from datetime import datetime
 from pathlib import Path
-from typing import Any, ClassVar, Dict, Iterable, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, Iterable, Optional, Tuple
 
 from ethereum.utils import denoms
 from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
@@ -309,7 +309,7 @@ class TransactionSystem(LoopingCallService):
         if (account_address is None) \
                 or (account_address == self._sci.get_eth_address()):
             return self._gntb_balance - self.get_locked_gnt()
-        return self._sci.get_gntb_balance(account_address=account_address)
+        return self._sci.get_gntb_balance(address=account_address)
 
     def get_locked_gnt(self) -> int:
         if not self.payment_processor:
