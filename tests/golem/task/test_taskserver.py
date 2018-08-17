@@ -858,8 +858,6 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states[task_id].status = \
             ts.task_manager.activeStatus[0]
-        wrong_task = not ts.task_manager.is_my_task(task_id)
-        wait = ts.task_manager.should_wait_for_node(task_id,"DEF")
         subtask = ts.task_manager.get_next_subtask(
             "DEF",
             "DEF",
@@ -867,6 +865,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
             1000, 10,
             5, 10, 2,
             "10.10.10.10")
+        assert subtask is not None
         expected_value = ceil(1031 * 1010 / 3600)
         ts.task_manager.set_subtask_value("xxyyzz", expected_value)
         prev_calls = trust.COMPUTED.increase.call_count
@@ -900,11 +899,10 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states[task_id].status = \
             ts.task_manager.activeStatus[0]
-        wrong_task = not ts.task_manager.is_my_task(task_id)
-        wait = ts.task_manager.should_wait_for_node(task_id,"DEF")
         subtask = ts.task_manager.get_next_subtask(
             "DEF", "DEF", task_id, 1000, 10, 5, 10, 2, "10.10.10.10")
 
+        assert subtask is not None
         ts.accept_result("xxyyzz", "key", "eth_address")
         self.assertEqual(
             ts.client.transaction_system.add_payment_info.call_count, 0)
