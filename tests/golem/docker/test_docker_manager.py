@@ -1,19 +1,17 @@
 import json
 import os
-import unittest
-from typing import Optional
-from unittest import mock
 import sys
+import unittest
+import uuid
+from unittest import mock
 from contextlib import contextmanager
 from subprocess import CalledProcessError
 
-from golem.docker.manager import DockerManager, DOCKER_VM_NAME, \
+from golem.docker.manager import DockerManager, DOCKER_VM_NAME as VM_NAME, \
     VirtualBoxHypervisor, XhyveHypervisor, \
     Hypervisor, logger, DockerMachineCommandHandler, DockerMachineHypervisor
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-
-VM_NAME = DOCKER_VM_NAME
 
 
 class MockConfig(object):
@@ -106,28 +104,21 @@ class MockThreadExecutor(mock.Mock):
     pass
 
 
-class MockHypervisor(mock.Mock(spec=DockerMachineHypervisor)):
+class MockHypervisor(DockerMachineHypervisor):
 
-    def __init__(self):
+    def __init__(self, manager=None, **_kwargs):
+        super().__init__(manager)
         self.recover_ctx = self.ctx
         self.restart_ctx = self.ctx
         self.constrain = mock.Mock()
 
     @contextmanager
-    def ctx(self, name, *_):
+    def ctx(self, name=None, *_):
         yield name
 
     @staticmethod
     def constraints(*_):
         return dict()
-
-    @contextmanager
-    def restart_ctx(self, name: Optional[str] = None):
-        yield name
-
-    @contextmanager
-    def recover_ctx(self, name: Optional[str] = None):
-        yield name
 
 
 class MockDockerManager(DockerManager):
@@ -173,10 +164,6 @@ class MockDockerManager(DockerManager):
             raise KeyError(key)
 
         return VM_NAME
-
-    @staticmethod
-    def _set_env_variable(name, value):
-        pass
 
 
 def raise_exception(msg, *args, **kwargs):
@@ -230,15 +217,16 @@ class TestDockerManager(unittest.TestCase):
             with self.assertLogs(logger, 'WARN'):
                 dmm.hypervisor.stop_vm(VM_NAME)
 
-    def test_running(self):
-        dmm = MockDockerManager()
-        dmm.hypervisor = DockerMachineHypervisor(dmm)
+    def test_vm_not_running(self):
+        hypervisor = DockerMachineHypervisor(mock.Mock())
+        hypervisor._docker_vm = str(uuid.uuid4())
+        assert not hypervisor.vm_running()
 
-        with self.assertRaises(EnvironmentError):
-            dmm.hypervisor.vm_running()
-
-        dmm.hypervisor._docker_vm = VM_NAME
-        assert dmm.hypervisor.vm_running()
+    def test_vm_running(self):
+        docker_manager = mock.Mock(command=mock.Mock(return_value='Running'))
+        hypervisor = DockerMachineHypervisor(docker_manager)
+        hypervisor._docker_vm = VM_NAME
+        assert hypervisor.vm_running()
 
     def test_build_config(self):
         dmm = MockDockerManager()
@@ -294,28 +282,29 @@ class TestDockerManager(unittest.TestCase):
         dmm.update_config(status_cb, done_cb, in_background=False)
         dmm.update_config(status_cb, done_cb, in_background=True)
 
-    def test_constrain(self):
+    def test_constrain_not_called(self):
         dmm = MockDockerManager()
-        dmm.hypervisor = MockHypervisor()
-        dmm._diff_constraints = mock.Mock()
+        dmm._diff_constraints = mock.Mock(return_value=dict())
 
-        def reset():
-            dmm.hypervisor.constrain.called = False
+        dmm.hypervisor = MockHypervisor(dmm)
 
-        dmm._diff_constraints.return_value = dict()
         dmm.constrain()
         assert not dmm.hypervisor.constrain.called
 
-        reset()
-
+    def test_constrain_called(self):
         diff = dict(cpu_count=0)
-        dmm._diff_constraints.return_value = dict(diff)
+        dmm = MockDockerManager()
+        dmm._diff_constraints = mock.Mock(return_value=diff)
+
+        dmm.hypervisor = MockHypervisor(dmm)
+        dmm.hypervisor._set_env = mock.Mock()
+
         dmm.constrain()
+        assert dmm.hypervisor.constrain.called
 
         args, kwargs = dmm.hypervisor.constrain.call_args_list.pop()
 
-        assert dmm.hypervisor._set_env.called
-        assert len(kwargs) > len(diff)
+        assert len(kwargs) == len(diff)
         assert kwargs['cpu_count'] == dmm.defaults['cpu_count']
         assert kwargs['memory_size'] == dmm.defaults['memory_size']
 
@@ -341,11 +330,13 @@ class TestDockerManager(unittest.TestCase):
 
     def test_command(self):
         dmm = MockDockerManager(use_parent_methods=True)
-        DockerMachineCommandHandler.commands['test'] = [sys.executable,
-                                                        '--version']
 
-        assert dmm.command('test').startswith('Python')
-        assert not dmm.command('deadbeef')
+        with mock.patch.dict(
+            'golem.docker.commands.DockerCommandHandler.commands',
+            dict(test=[sys.executable, '--version'])
+        ):
+            assert dmm.command('test').startswith('Python')
+            assert not dmm.command('deadbeef')
 
     @mock.patch('golem.docker.manager.DockerForMac.is_available',
                 return_value=False)
@@ -393,25 +384,16 @@ class TestDockerManager(unittest.TestCase):
     @mock.patch('golem.docker.manager.is_osx', return_value=False)
     def test_check_environment_windows(self, *_):
         dmm = MockDockerManager()
-
-        dmm.start_vm = mock.Mock()
-        dmm.stop_vm = mock.Mock()
-        dmm.is_vm_running = lambda *_: False
         dmm.pull_images = mock.Mock()
         dmm.build_images = mock.Mock()
 
-        pythoncom = mock.Mock()
-
-        with mock.patch('golem.docker.manager.VirtualBoxHypervisor.instance'), \
-                mock.patch.dict('sys.modules', {'pythoncom': pythoncom}):
+        with mock.patch('golem.docker.manager.VirtualBoxHypervisor.instance',
+                        mock.Mock(vm_running=mock.Mock(return_value=False))):
 
             dmm.check_environment()
 
-            assert pythoncom.CoInitialize.called
-            assert dmm.hypervisor._docker_vm == VM_NAME
-            assert not dmm.hypervisor.create.called
-            assert dmm.hypervisor.start_vm.called
-            assert dmm.hypervisor._set_env.called
+            assert dmm.hypervisor
+            assert dmm.hypervisor.setup.called
             assert dmm.pull_images.called
             assert not dmm.build_images.called
 
@@ -534,7 +516,6 @@ class TestDockerManager(unittest.TestCase):
         dmm = MockDockerManager()
         dmm._save_and_resume = mock.Mock()
         dmm.check_environment = mock.Mock()
-        dmm.hypervisor = MockHypervisor()
 
         def reset():
             callback.called = False
@@ -542,7 +523,6 @@ class TestDockerManager(unittest.TestCase):
             dmm._save_and_resume.called = False
 
         dmm._env_checked = True
-        dmm.hypervisor._docker_vm = None
 
         dmm.recover_vm_connectivity(callback, in_background=False)
         assert not dmm._save_and_resume.called
@@ -550,7 +530,6 @@ class TestDockerManager(unittest.TestCase):
         reset()
 
         dmm._env_checked = False
-        dmm.hypervisor._docker_vm = None
 
         dmm.recover_vm_connectivity(callback, in_background=False)
         assert not dmm._save_and_resume.called
@@ -558,7 +537,7 @@ class TestDockerManager(unittest.TestCase):
         reset()
 
         dmm._env_checked = True
-        dmm.hypervisor._docker_vm = VM_NAME
+        dmm.hypervisor = MockHypervisor(dmm)
 
         dmm.recover_vm_connectivity(callback, in_background=False)
         assert dmm._save_and_resume.called
@@ -568,7 +547,8 @@ class TestDockerManager(unittest.TestCase):
 
     def test_save_and_resume(self):
         dmm = MockDockerManager()
-        dmm.hypervisor = MockHypervisor()
+        dmm.hypervisor = MockHypervisor(dmm)
+        dmm.hypervisor._set_env_from_output = mock.Mock()
         dmm.hypervisor._set_env()
 
         callback = mock.Mock()
@@ -577,7 +557,7 @@ class TestDockerManager(unittest.TestCase):
 
     def test_set_env(self):
         dmm = MockDockerManager()
-        dmm.hypervisor = MockHypervisor()
+        dmm.hypervisor = MockHypervisor(dmm)
         environ = dict()
 
         def raise_on_env(key, *args, **kwargs):
@@ -676,9 +656,12 @@ class TestVirtualBoxHypervisor(LogTestCase):
         session.machine.state = self.hypervisor.power_down_states[0]
         machine.create_session.return_value = session
 
-        self.hypervisor._machine_from_arg = mock.Mock()
+        self.hypervisor._machine_from_arg = mock.Mock(return_value=machine)
         self.hypervisor._session_from_arg = lambda o, **_: o
-        self.hypervisor._machine_from_arg.return_value = machine
+        self.hypervisor._set_env_from_output = mock.Mock()
+        self.hypervisor.start_vm = mock.Mock()
+        self.hypervisor.stop_vm = mock.Mock()
+        self.hypervisor.vm_running = mock.Mock(return_value=True)
 
         vms = [None]
         with self.hypervisor.restart_ctx(VM_NAME) as vm:
@@ -703,18 +686,20 @@ class TestVirtualBoxHypervisor(LogTestCase):
         machine = mock.Mock()
         session = mock.Mock()
 
-        session.machine.state = self.hypervisor.power_down_states[0]
+        session.machine.state = self.hypervisor.running_states[0]
         machine.create_session.return_value = session
 
-        self.hypervisor._machine_from_arg = mock.Mock()
+        self.hypervisor._machine_from_arg = mock.Mock(return_value=machine)
         self.hypervisor._session_from_arg = lambda o, **_: o
-        self.hypervisor._machine_from_arg.return_value = machine
         self.hypervisor._save_state = mock.Mock()
+        self.hypervisor._set_env_from_output = mock.Mock()
+        self.hypervisor.start_vm = mock.Mock()
+        self.hypervisor.stop_vm = mock.Mock()
 
         with self.hypervisor.recover_ctx(VM_NAME) as vm:
+            assert vm
             assert machine.create_session.called
             assert self.hypervisor._save_state.called
-            assert vm
 
         assert session.unlock_machine.called
         assert self.hypervisor.start_vm.called
@@ -738,8 +723,7 @@ class TestVirtualBoxHypervisor(LogTestCase):
             memory_size=1024
         )
 
-        self.hypervisor._machine_from_arg = mock.Mock()
-        self.hypervisor._machine_from_arg.return_value = machine
+        self.hypervisor._machine_from_arg = mock.Mock(return_value=machine)
         self.hypervisor.constrain(**constraints)
 
         read = self.hypervisor.constraints(VM_NAME)
@@ -846,12 +830,15 @@ class TestXhyveHypervisor(TempDirFixture, LogTestCase):
 
         constraints = dict(
             Driver=dict(
-                CPU=4,
-                Memory=4096
+                CPU="4",
+                Memory="4096",
             )
         )
 
+        constraints_str = str(constraints).replace('\'', '"')
+
         self.hypervisor._config_dir = self.tempdir
+        self.hypervisor._docker_vm = VM_NAME
 
         config_dir = os.path.join(self.hypervisor._config_dir, VM_NAME)
         config_file = os.path.join(config_dir, 'config.json')
@@ -860,11 +847,14 @@ class TestXhyveHypervisor(TempDirFixture, LogTestCase):
         with open(config_file, 'w') as f:
             json.dump(constraints, f)
 
-        self.hypervisor.constrain(**config)
-        assert config == self.hypervisor.constraints(VM_NAME)
+        with mock.patch.object(self.hypervisor._docker_manager, 'command',
+                               mock.Mock(return_value=constraints_str)):
 
-        self.hypervisor.constrain()
-        assert config == self.hypervisor.constraints(VM_NAME)
+            self.hypervisor.constrain(**config)
+            assert config == self.hypervisor.constraints(VM_NAME)
+
+            self.hypervisor.constrain()
+            assert config == self.hypervisor.constraints(VM_NAME)
 
         # errors
         with mock.patch.object(self.hypervisor._docker_manager, 'command',
@@ -876,9 +866,10 @@ class TestXhyveHypervisor(TempDirFixture, LogTestCase):
         self.hypervisor.vm_running = mock.Mock()
         self.hypervisor.stop_vm = mock.Mock()
         self.hypervisor.start_vm = mock.Mock()
+        self.hypervisor._set_env_from_output = mock.Mock()
 
         with self.hypervisor.recover_ctx(VM_NAME) as name:
             assert name == VM_NAME
-            assert self.docker_manager.hypervisor.vm_running.called
-            assert self.docker_manager.hypervisor.stop_vm.called
-        assert self.docker_manager.hypervisor.start_vm.called
+            assert self.hypervisor.vm_running.called
+            assert self.hypervisor.stop_vm.called
+        assert self.hypervisor.start_vm.called
