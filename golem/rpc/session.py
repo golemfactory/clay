@@ -75,7 +75,6 @@ class Session(ApplicationSession):
         super(self.__class__, self).__init__(self.config)
 
     def connect(self, auto_reconnect=True):
-        print("session connect")
         def init(proto):
             reactor.addSystemEventTrigger('before', 'shutdown', cleanup, proto)
             return proto
@@ -141,7 +140,6 @@ class Session(ApplicationSession):
 
         deferred.addCallback(init)
         deferred.addErrback(self.ready.errback)
-        print("session connect end")
         return self.ready
 
     def onConnect(self):

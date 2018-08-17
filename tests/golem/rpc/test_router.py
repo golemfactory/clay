@@ -7,6 +7,7 @@ from unittest import mock
 import pytest
 from autobahn.twisted import util
 from autobahn.wamp import ApplicationError
+from twisted.internet.threads import deferToThread
 
 from golem.rpc.cert import CertificateManager
 from golem.rpc.common import CROSSBAR_DIR
@@ -82,6 +83,7 @@ class TestRouter(TestDirFixtureWithReactor):
             self.frontend_deferred = None
 
         def add_errors(self, *errors):
+            raise Exception("Error")
             print('Errors: {}'.format(errors))
             if errors:
                 self.errors += errors
@@ -233,7 +235,7 @@ class TestRouter(TestDirFixtureWithReactor):
         yield self.state.router.stop()
         self.state.done = True
 
-    def _wait_for_thread(self, expect_error=False):
+    def _wait_for_thread(self, thread, expect_error=False):
         deadline = time.time() + self.TIMEOUT
         # self.state.done = False
         # self.state.errors = []
@@ -256,27 +258,31 @@ class TestRouter(TestDirFixtureWithReactor):
         if self.state.errors and not expect_error:
             raise Exception(*self.state.errors)
 
-        if expect_error and not self.state.errors:
-            raise Exception("Expected error")
+        # if expect_error and not self.state.errors:
+        #     raise Exception("Expected error")
 
     def test_rpc_no_auth(self):
         self._frontend_session_started_method = self._frontend_session_started
         self.state.subscribe = True
 
-        thread = Thread(target=self._start_router_no_auth)
-        thread.daemon = True
-        thread.start()
+        self._start_router_no_auth()
+        # thread = Thread(target=self._start_router_no_auth)
+        # thread.daemon = True
+        # thread.start()
+        # thread.join()
 
-        self._wait_for_thread(thread, expect_error=False)
+        self._wait_for_thread(None, expect_error=False)
 
     @mock.patch("golem.rpc.cert.CertificateManager.get_secret", lambda *_: "secret")
     def _start_router_auth(self):
+        print("start_router_auth1")
         self.state.router = CrossbarRouter(datadir=self.path,
                                            ssl=False,
                                            generate_secrets=False)
 
         self.Session = Session
         deferred = self.state.router.start(self.state.reactor)
+        print("start_router_auth2")
         deferred.addCallbacks(self._start_backend_session,
                               self.state.add_errors)
 
@@ -284,11 +290,10 @@ class TestRouter(TestDirFixtureWithReactor):
         self._frontend_session_started_method = self._frontend_session_started_auth
         self.state.subscribe = False
         print("STARTING")
-        thread = Thread(target=self._start_router_auth)
-        thread.daemon = True
-        thread.start()
-
-        self._wait_for_thread(thread, expect_error=expect_error)
+        # from multiprocessing import Process
+        deferToThread(self._start_router_auth)
+        # thread.daemon = True
+        self._wait_for_thread(None, expect_error=expect_error)
         print("EXITING")
 
     @inlineCallbacks
@@ -314,30 +319,30 @@ class TestRouter(TestDirFixtureWithReactor):
         docker_method = "docker_echo"
         non_docker_method = "non_docker_echo"
         testing_set = [
-            # {
-            #     "frontend": docker,
-            #     "backend": golemapp,
-            #     "method": docker_method,
-            #     "error": False,
-            # },
-            # {
-            #     "frontend": docker,
-            #     "backend": golemapp,
-            #     "method": non_docker_method,
-            #     "error": True,
-            # },
+            {
+                "frontend": docker,
+                "backend": golemapp,
+                "method": docker_method,
+                "error": False,
+            },
+            {
+                "frontend": docker,
+                "backend": golemapp,
+                "method": non_docker_method,
+                "error": True,
+            },
             # {
             #     "frontend": golemcli,
             #     "backend": docker,
             #     "method": docker_method,
             #     "error": True,
             # },
-            {
-                "frontend": golemcli,
-                "backend": golemapp,
-                "method": non_docker_method,
-                "error": False,
-            },
+            # {
+            #     "frontend": golemcli,
+            #     "backend": golemapp,
+            #     "method": non_docker_method,
+            #     "error": False,
+            # },
             # {
             #     "frontend": golemcli,
             #     "backend": golemapp,
@@ -359,14 +364,13 @@ class TestRouter(TestDirFixtureWithReactor):
             #     print("Reactor exception: ", e)
 
             print(elem)
-
+            self.state = TestRouter.State(self.reactor_thread.reactor)
             self.state.crsb_frontend = elem["frontend"]
             self.state.crsb_backend = elem["backend"]
             self.state.crsb_frontend_secret = "secret"
             self.state.crsb_backend_secret = "secret"
             self.state.method = elem["method"]
             self._start_test_auth(elem["error"])
-
 
         self.TIMEOUT = tm
 
