@@ -90,6 +90,8 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         )
 
     def test_requestor_low_balance(self, send_mock, *_):
+        self.task_session.concent_service.enabled = True
+        self.msg.concent_enabled = True
         self.task_session.task_server.client.transaction_system\
             .get_available_gnt.return_value = self.msg.price * 9
         self.task_session._react_to_task_to_compute(self.msg)
@@ -113,6 +115,8 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         )
 
     def test_requestor_low_deposit(self, send_mock, *_):
+        self.task_session.concent_service.enabled = True
+        self.msg.concent_enabled = True
         self.task_session.task_server.client.transaction_system\
             .concent_balance.return_value = int((self.msg.price * 10) * 1.5)
         self.task_session._react_to_task_to_compute(self.msg)
@@ -122,6 +126,8 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         )
 
     def test_requestor_short_deposit(self, send_mock, *_):
+        self.task_session.concent_service.enabled = True
+        self.msg.concent_enabled = True
         self.task_session.task_server.client.transaction_system\
             .concent_timelock.return_value = 1
         self.task_session._react_to_task_to_compute(self.msg)
