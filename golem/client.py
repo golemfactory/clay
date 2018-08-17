@@ -70,6 +70,7 @@ from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.resource.resource import get_resources_for_task, ResourceType
+from golem.rpc.cert import CrossbarAuthManager
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.task import taskpreset
 from golem.task.masking import Mask
@@ -110,6 +111,7 @@ class Client(HardwarePresetsMixin):
             keys_auth: KeysAuth,
             database: Database,
             transaction_system: TransactionSystem,
+            crossbar_auth_manager: CrossbarAuthManager,
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
@@ -117,7 +119,8 @@ class Client(HardwarePresetsMixin):
             concent_variant: dict = variables.CONCENT_CHOICES['disabled'],
             geth_address: Optional[str] = None,
             apps_manager: AppsManager = AppsManager(),
-            task_finished_cb=None) -> None:
+            task_finished_cb=None,
+    ) -> None:
 
         self.apps_manager = apps_manager
         self.datadir = datadir
@@ -127,6 +130,7 @@ class Client(HardwarePresetsMixin):
 
         self.task_archiver = TaskArchiver(datadir)
 
+        self.crossbar_auth_manager = crossbar_auth_manager
         # Read and validate configuration
         self.app_config = app_config
         self.config_desc = config_desc

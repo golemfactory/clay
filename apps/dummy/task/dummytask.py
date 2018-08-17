@@ -72,10 +72,6 @@ class DummyTask(CoreTask):
             "result_size": self.task_definition.result_size,
             "result_file": self.__get_result_file_name(subtask_id),
             "subtask_data_size": sbs,
-
-            # TODO it shouldn't be there
-            "subtask_id": subtask_id,
-            "task_id": self.task_definition.task_id
         }
 
         return self._new_compute_task_def(subtask_id,

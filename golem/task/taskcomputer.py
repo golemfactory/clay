@@ -18,10 +18,10 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
+from golem.rpc.cert import CertificateManager, CrossbarAuthManager
 from golem.vm.vm import PythonProcVM, PythonTestVM
 
 from .taskthread import TaskThread
-
 
 logger = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ class TaskComputer(object):
         self.support_direct_computation = False
         # Should this node behave as provider and compute tasks?
         self.compute_tasks = task_server.config_desc.accept_tasks \
-            and not task_server.config_desc.in_shutdown
+                             and not task_server.config_desc.in_shutdown
         self.finished_cb = finished_cb
 
     def task_given(self, ctd):
@@ -303,7 +303,7 @@ class TaskComputer(object):
         self.waiting_for_task_session_timeout = \
             config_desc.waiting_for_task_session_timeout
         self.compute_tasks = config_desc.accept_tasks \
-            and not config_desc.in_shutdown
+                             and not config_desc.in_shutdown
         return self.change_docker_config(config_desc, run_benchmarks,
                                          in_background)
 
@@ -331,9 +331,9 @@ class TaskComputer(object):
 
             def done_callback(config_differs):
                 if run_benchmarks or config_differs:
-                        self.task_server.benchmark_manager.run_all_benchmarks(
-                            deferred.callback, deferred.errback
-                        )
+                    self.task_server.benchmark_manager.run_all_benchmarks(
+                        deferred.callback, deferred.errback
+                    )
                 else:
                     deferred.callback('Benchmarks not executed')
                 logger.debug("Resuming new task computation")
@@ -395,6 +395,17 @@ class TaskComputer(object):
         if not self.task_server.request_resource(task_id, subtask_id):
             self.reset()
 
+    def __add_state_update_info(self, task_id, subtask_id):
+        info = {}
+        info["subtask_id"] = subtask_id,
+        info["task_id"] = task_id
+
+        auth_manager: CrossbarAuthManager = self.task_server.client.crossbar_auth_manager
+        user = auth_manager.Users.docker
+        info["user"] = user.name
+        info["secret"] = auth_manager.get_secret(user)
+        return info
+
     def __compute_task(self, subtask_id, docker_images,
                        src_code, extra_data, short_desc, subtask_deadline):
         task_id = self.assigned_subtasks[subtask_id]['task_id']
@@ -417,6 +428,13 @@ class TaskComputer(object):
                     docker_images)
 
         self.reset(counting_task=task_id)
+
+        extra_data = {**extra_data,
+                      **self.__add_state_update_info(
+                            task_id=task_id,
+                            subtask_id=subtask_id
+                      )
+        }
 
         with self.dir_lock:
             resource_dir = self.resource_manager.get_resource_dir(task_id)

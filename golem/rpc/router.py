@@ -7,7 +7,7 @@ from typing import Iterable, Optional
 from crossbar.common import checkconfig
 from twisted.internet.defer import inlineCallbacks
 
-from golem.rpc.cert import CertificateManager
+from golem.rpc.cert import CertificateManager, CrossbarAuthManager
 from golem.rpc.common import CROSSBAR_DIR, CROSSBAR_REALM, CROSSBAR_HOST, \
     CROSSBAR_PORT
 from golem.rpc.session import WebSocketAddress
@@ -28,23 +28,21 @@ class CrossbarRouter(object):
                  port: int = CROSSBAR_PORT,
                  realm: str = CROSSBAR_REALM,
                  datadir: Optional[str] = None,
-                 crossbar_dir: str = CROSSBAR_DIR,
                  crossbar_log_level: str = 'info',
                  ssl: bool = True,
                  generate_secrets: bool = False) -> None:
 
-        if datadir:
-            self.working_dir = os.path.join(datadir, crossbar_dir)
-        else:
-            self.working_dir = crossbar_dir
+        self.working_dir = os.path.join(datadir, CROSSBAR_DIR)
 
         os.makedirs(self.working_dir, exist_ok=True)
         if not os.path.isdir(self.working_dir):
             raise IOError("'{}' is not a directory".format(self.working_dir))
 
         self.cert_manager = CertificateManager(self.working_dir)
-        if generate_secrets:
-            self.cert_manager.generate_secrets()
+        self.auth_manager = CrossbarAuthManager(
+            self.working_dir,
+            generate_secrets=generate_secrets
+        )
 
         self.address = WebSocketAddress(host, port, realm, ssl)
 
@@ -55,7 +53,8 @@ class CrossbarRouter(object):
         self.options = self._build_options()
         self.config = self._build_config(self.address,
                                          self.serializers,
-                                         self.cert_manager)
+                                         self.cert_manager,
+                                         self.auth_manager)
 
         logger.debug('xbar init with cfg: %s', json.dumps(self.config))
 
@@ -93,6 +92,7 @@ class CrossbarRouter(object):
     def _build_config(address: WebSocketAddress,
                       serializers: Iterable[str],
                       cert_manager: CertificateManager,
+                      auth_manager: CrossbarAuthManager,
                       realm: str = CROSSBAR_REALM,
                       enable_webstatus: bool = False):
 
@@ -122,17 +122,17 @@ class CrossbarRouter(object):
 
         crsb_users = {
             p.name: {
-                "secret": cert_manager.get_secret(p),
+                "secret": auth_manager.get_secret(p),
                 "role": "golem_admin"
-            } for p in [cert_manager.Crossbar_users.golemapp,
-                        cert_manager.Crossbar_users.golemcli,
-                        cert_manager.Crossbar_users.electron]
+            } for p in [auth_manager.Users.golemapp,
+                        auth_manager.Users.golemcli,
+                        auth_manager.Users.electron]
         }
 
         # and for docker, without admin priviliges
-        docker = cert_manager.Crossbar_users.docker
+        docker = auth_manager.Users.docker
         crsb_users[docker.name] = {
-            "secret": "secret123", # TODO change that cert_manager.get_secret(docker),
+            "secret": auth_manager.get_secret(docker),
             "role": "golem_docker"
         }
 
@@ -185,7 +185,7 @@ class CrossbarRouter(object):
                             "permissions": [{
                                 "uri": '*',
                                 "allow": {
-                                    "call": True, # TODO change that
+                                    "call": False,
                                     "register": False,
                                     "publish": False,
                                     "subscribe": False

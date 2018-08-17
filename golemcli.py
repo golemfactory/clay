@@ -10,7 +10,7 @@ from pathlib import Path
 import click
 
 from golem.core.simpleenv import get_local_datadir
-from golem.rpc.cert import CertificateManager
+from golem.rpc.cert import CertificateManager, CrossbarAuthManager
 
 from golem.rpc.common import CROSSBAR_HOST, CROSSBAR_PORT, CROSSBAR_DIR
 
@@ -92,7 +92,7 @@ def start():
     # run the cli
     ws_cli = WebSocketCLI(
         cli,
-        CertificateManager(working_dir),
+        CrossbarAuthManager(working_dir),
         host=parsed.address,
         port=parsed.port
     )

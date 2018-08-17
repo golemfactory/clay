@@ -24,7 +24,7 @@ from golem.ethereum.transactionsystem import TransactionSystem
 from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher, Component, Stage
-from golem.rpc.cert import CertificateManager
+from golem.rpc.cert import CrossbarAuthManager
 from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP, NODE_METHOD_MAP
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import object_method_map, Session, Publisher
@@ -96,6 +96,10 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         self.apps_manager = AppsManager()
 
+        # Initialize crossbar auth manager
+        # TODO maybe generate secrets?
+        self.crossbar_auth_manager = CrossbarAuthManager(self._datadir)
+
         self._client_factory = lambda keys_auth: Client(
             datadir=datadir,
             app_config=app_config,
@@ -108,7 +112,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
             concent_variant=concent_variant,
             geth_address=geth_address,
             apps_manager=self.apps_manager,
-            task_finished_cb=self._try_shutdown
+            task_finished_cb=self._try_shutdown,
+            crossbar_auth_manager=self.crossbar_auth_manager,
         )
 
         if password is not None:
@@ -193,13 +198,13 @@ class Node(object):  # pylint: disable=too-few-public-methods
             self._stop_on_error("rpc", "RPC router is not available")
             return None
 
-        crsb_user = self.rpc_router.cert_manager.Crossbar_users.golemapp
+        crsb_user = self.rpc_router.auth_manager.Users.golemapp
         self.rpc_session = Session(
             self.rpc_router.address,
             cert_manager=self.rpc_router.cert_manager,
             use_ipv6=self._config_desc.use_ipv6,
             crsb_user=crsb_user,
-            crsb_user_secret=self.rpc_router.cert_manager.get_secret(crsb_user)
+            crsb_user_secret=self.rpc_router.auth_manager.get_secret(crsb_user)
         )
         deferred = self.rpc_session.connect()
 

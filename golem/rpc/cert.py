@@ -13,24 +13,62 @@ from golem.rpc.common import X509_COMMON_NAME
 
 logger = logging.getLogger(__name__)
 
-
 DH_PARAM_BITS = 2048
 DH_PARAM_BITS_LOW = 1024
 KEY_BITS = 2048
 
 
-class CertificateManager:
-
-    DH_FILE_NAME = "rpc_dh_param.pem"
-    PRIVATE_KEY_FILE_NAME = "rpc_key.pem"
-    CERTIFICATE_FILE_NAME = "rpc_cert.pem"
-
+class CrossbarAuthManager:
     @enum.unique
-    class Crossbar_users(enum.Enum):
+    class Users(enum.Enum):
         golemcli = enum.auto()
         electron = enum.auto()
         golemapp = enum.auto()
         docker = enum.auto()
+
+    SECRET_EXT = "tck"
+    SECRETS_DIR = "secrets"
+
+    def __init__(self, dest_dir, generate_secrets=False):
+        self.secrets_path = os.path.join(dest_dir, self.SECRETS_DIR)
+        if generate_secrets:
+            self.generate_secrets()
+        self.secrets = self.__read_secrets()
+
+    def get_secret(self, user: 'CrossbarAuthManager.Users'):
+        if not (user.name in self.secrets):
+            raise KeyError(f"Secret for {user} not found."
+                           f"Maybe you forgot to create it?")
+        return self.secrets[user.name]
+
+    def __secrets_paths(self):
+        return {p: os.path.join(self.secrets_path, f"{p}.{self.SECRET_EXT}")
+                for p in self.Users.__members__.keys()}
+
+    def generate_secrets(self):
+        os.makedirs(self.secrets_path, exist_ok=True)
+        for _, path in self.__secrets_paths().items():
+            if not os.path.exists(path):
+                secret = secrets.token_hex(16)
+                with open(path, "w") as f:
+                    f.write(secret)
+
+    def __read_secret(self, path: str) -> str:
+        if not os.path.isfile(path):
+            raise Exception(f"No secret in {path}. "
+                            f"Maybe you forgot to create secrets?")
+        with open(path, "r") as f:
+            return f.read()
+
+    def __read_secrets(self):
+        return {u: self.__read_secret(path)
+                for u, path in self.__secrets_paths().items()}
+
+
+class CertificateManager:
+    DH_FILE_NAME = "rpc_dh_param.pem"
+    PRIVATE_KEY_FILE_NAME = "rpc_key.pem"
+    CERTIFICATE_FILE_NAME = "rpc_cert.pem"
 
     SECRET_EXT = "tck"
     SECRETS_DIR = "secrets"
@@ -68,28 +106,6 @@ class CertificateManager:
 
         import gc
         gc.collect()
-
-        self.generate_secrets()
-
-    def __secrets_paths(self):
-        return [os.path.join(self.secrets_path, f"{p}.{self.SECRET_EXT}")
-                for p in self.Crossbar_users.__members__.keys()]
-
-    def generate_secrets(self):
-        os.makedirs(self.secrets_path, exist_ok=True)
-        for p in self.__secrets_paths():
-            if not os.path.exists(p):
-                secret = secrets.token_hex(16)
-                with open(p, "w") as f:
-                    f.write(secret)
-
-    def get_secret(self, p: 'CertificateManager.Crossbar_users') -> str:
-        path = os.path.join(self.secrets_path, f"{p.name}.{self.SECRET_EXT}")
-        if not os.path.isfile(path):
-            raise Exception(f"No secret for {p.name} in {path}. "
-                            f"Maybe you forgot to create secrets?")
-        with open(path, "r") as f:
-            return f.read()
 
     def read_key(self) -> crypto.PKey:
         with open(self.key_path, 'r') as key_file:

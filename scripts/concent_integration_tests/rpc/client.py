@@ -16,6 +16,8 @@ class RPCClient:
                  ssl: bool = True) -> None:
 
         address = WebSocketAddress(host, port, realm, ssl)
+
+        # TODO jacek
         self.session = Session(address)
 
     def call(self,

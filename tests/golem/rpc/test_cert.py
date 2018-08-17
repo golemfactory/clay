@@ -1,9 +1,10 @@
 import os
 from unittest.mock import patch
 
+import pytest
 from OpenSSL import crypto
 
-from golem.rpc.cert import CertificateManager
+from golem.rpc.cert import CertificateManager, CrossbarAuthManager
 from golem.testutils import TempDirFixture
 
 
@@ -103,20 +104,28 @@ class TestCertificateManager(TempDirFixture):
         cert_manager._create_and_sign_certificate(key, cert_manager.cert_path)
         assert cert_manager.read_certificate()
 
-    def test_generate_secrets(self):
-        cert_manager = CertificateManager(self.tempdir)
-        cert_manager.generate_secrets()
 
-        assert set(os.listdir(cert_manager.secrets_path)) == \
-            set(f"{x}.{cert_manager.SECRET_EXT}"
-                for x in cert_manager.Crossbar_users.__members__.keys())
+class TestCrossbarAuthManager(TempDirFixture):
+    def test_init(self):
+        with pytest.raises(Exception):
+            CrossbarAuthManager(self.tempdir)
+
+        auth_manager = CrossbarAuthManager(self.tempdir, generate_secrets=True)
+        assert bool(auth_manager.secrets)
+        assert bool(auth_manager.secrets_path)
+
+    def test_generate_secrets(self):
+        auth_manager = CrossbarAuthManager(self.tempdir, generate_secrets=True)
+        auth_manager.generate_secrets()
+
+        assert set(os.listdir(auth_manager.secrets_path)) == \
+            set(f"{x}.{auth_manager.SECRET_EXT}"
+                for x in auth_manager.Users.__members__.keys())
 
     @patch("secrets.token_hex", return_value="secret")
     def test_get_secret(self, *_):
-        cert_manager = CertificateManager(self.tempdir)
+        cert_manager = CrossbarAuthManager(self.tempdir, generate_secrets=True)
         cert_manager.generate_secrets()
 
         assert all("secret" == cert_manager.get_secret(x)
-                   for x in cert_manager.Crossbar_users.__members__.values())
-
-
+                   for x in cert_manager.Users.__members__.values())
