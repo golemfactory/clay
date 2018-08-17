@@ -42,6 +42,7 @@ class TestBlenderDefaults(unittest.TestCase):
 
 
 class BlenderTaskInitTest(TempDirFixture, LogTestCase):
+
     def test_compositing(self):
         task_definition = RenderingTaskDefinition()
         task_definition.options = BlenderRendererOptions()
@@ -86,6 +87,7 @@ class BlenderTaskInitTest(TempDirFixture, LogTestCase):
 
 
 class TestBlenderFrameTask(TempDirFixture):
+
     def setUp(self):
         super(TestBlenderFrameTask, self).setUp()
         task_definition = RenderingTaskDefinition()
@@ -130,8 +132,8 @@ class TestBlenderFrameTask(TempDirFixture):
         self.bt.computation_finished(extra_data1.ctd['subtask_id'], [],
                                      ResultType.DATA)
         assert self.bt.subtasks_given[extra_data1.ctd['subtask_id']][
-                   'status'] == \
-               SubtaskStatus.failure
+            'status'] == \
+            SubtaskStatus.failure
 
         # Successful computation
         extra_data3 = self.bt.query_extra_data(1000, 2, "FGH", "fgh")
@@ -160,10 +162,13 @@ class TestBlenderFrameTask(TempDirFixture):
             'golem_verificator.rendering_verifier.RenderingVerifier.'
                 'start_verification',
                 side_effect=verification_finished1):
-            self.bt.computation_finished(extra_data3.ctd['subtask_id'], [file1],
-                                         ResultType.FILES, lambda: None)
+            self.bt.computation_finished(
+                extra_data3.ctd['subtask_id'],
+                [file1],
+                ResultType.FILES,
+                lambda: None)
             assert self.bt.subtasks_given[extra_data3.ctd['subtask_id']][
-                       'status'] == SubtaskStatus.finished
+                'status'] == SubtaskStatus.finished
 
         BlenderRenderTask.VERIFICATION_QUEUE._reset()
 
@@ -190,10 +195,13 @@ class TestBlenderFrameTask(TempDirFixture):
             'golem_verificator.rendering_verifier.RenderingVerifier.'
                 'start_verification',
                 side_effect=verification_finished2):
-            self.bt.computation_finished(extra_data4.ctd['subtask_id'], [file2],
-                                         ResultType.FILES, lambda: None)
+            self.bt.computation_finished(
+                extra_data4.ctd['subtask_id'],
+                [file2],
+                ResultType.FILES,
+                lambda: None)
             assert self.bt.subtasks_given[extra_data4.ctd['subtask_id']][
-                       'status'] == SubtaskStatus.finished
+                'status'] == SubtaskStatus.finished
 
         str_ = self.temp_file_name(self.bt.outfilebasename) + '0008.PNG'
         assert path.isfile(str_)
@@ -233,6 +241,7 @@ class TestBlenderFrameTask(TempDirFixture):
 
 
 class TestBlenderTask(TempDirFixture, LogTestCase):
+
     def build_bt(self, res_x, res_y, total_tasks, frames=None):
         output_file = self.temp_file_name('output')
         if frames is None:
@@ -298,11 +307,17 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         results = {"data": {notalog, outlog, errlog}}
         after_test_data = self.bt.after_test(results, None)
         warnings = after_test_data["warnings"]
-        self.assertTrue([f for f in warnings['missing_files'] if f['baseName'] == "f1.png"])
-        self.assertTrue([f for f in warnings['missing_files'] if f['baseName'] == "file2.png"])
-        self.assertTrue([f for f in warnings['missing_files'] if f['baseName'] == "file3.png"])
-        self.assertEqual(sum(f['baseName'] == "file2.png" for f in warnings['missing_files']), 1)
-        self.assertFalse([f for f in warnings['missing_files'] if f['baseName'] == "file4.png"])
+        self.assertTrue([f for f in warnings['missing_files']
+                         if f['baseName'] == "f1.png"])
+        self.assertTrue([f for f in warnings['missing_files']
+                         if f['baseName'] == "file2.png"])
+        self.assertTrue([f for f in warnings['missing_files']
+                         if f['baseName'] == "file3.png"])
+        self.assertEqual(
+            sum(f['baseName'] ==
+                "file2.png" for f in warnings['missing_files']), 1)
+        self.assertFalse([f for f in warnings['missing_files']
+                          if f['baseName'] == "file4.png"])
 
         with open(outlog, 'w') as fd_out:
             fd_out.write("Error: engine COMPLETELY UNKNOWN ENGINE not found")
@@ -312,7 +327,8 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
 
         after_test_data = self.bt.after_test(results, None)
         warnings = after_test_data["warnings"]
-        self.assertTrue(warnings['wrong_engine'] == " COMPLETELY UNKNOWN ENGINE not found")
+        self.assertTrue(warnings['wrong_engine'] ==
+                        " COMPLETELY UNKNOWN ENGINE not found")
 
     def test_query_extra_data_for_test_task(self):
         self.bt.use_frames = True
@@ -591,6 +607,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
 
 
 class TestPreviewUpdater(TempDirFixture, LogTestCase):
+
     def test_update_preview(self):
         preview_file = self.temp_file_name('sample_img.png')
         res_x = 200
@@ -635,18 +652,22 @@ class TestPreviewUpdater(TempDirFixture, LogTestCase):
 
 
 class TestBlenderRenderTaskBuilder(TempDirFixture):
+
     def test_build(self):
         definition = RenderingTaskDefinition()
         definition.total_subtasks = 1
         definition.options = BlenderRendererOptions()
-        builder = BlenderRenderTaskBuilder(owner=Node(),
-                                           task_definition=definition,
-                                           dir_manager=DirManager(self.tempdir))
+        builder = BlenderRenderTaskBuilder(
+            owner=Node(),
+            task_definition=definition,
+            dir_manager=DirManager(
+                self.tempdir))
         blender_task = builder.build()
         self.assertIsInstance(blender_task, BlenderRenderTask)
 
 
 class TestHelpers(unittest.TestCase):
+
     @staticmethod
     def _get_task_border(as_path=False):
         offsets = generate_expected_offsets(30, 800, 600)
@@ -680,13 +701,12 @@ class TestHelpers(unittest.TestCase):
         definition.options.use_frames = True
         definition.options.frames = list(range(30))
         if as_path:
-            assert BlenderTaskTypeInfo.get_task_border(subtask, definition,
-                                                       30, as_path=as_path) == \
-                   [(0, 600), (800, 600), (800, 0), (0, 0)]
+            assert BlenderTaskTypeInfo.get_task_border(
+                subtask, definition, 30, as_path=as_path) == [
+                (0, 600), (800, 600), (800, 0), (0, 0)]
         else:
-            assert BlenderTaskTypeInfo.get_task_border(subtask, definition,
-                                                       30, as_path=as_path) == \
-                   []
+            assert BlenderTaskTypeInfo.get_task_border(
+                subtask, definition, 30, as_path=as_path) == []
 
         definition.options.use_frames = False
         definition.resolution = (0, 0)

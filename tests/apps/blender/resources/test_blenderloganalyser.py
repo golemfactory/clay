@@ -7,6 +7,7 @@ LOG_FILE = "stdout.log_for_test"
 
 
 class TestBlenderLogAnalyser(TestCase):
+
     @classmethod
     def _get_log_file(cls):
         log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -17,9 +18,12 @@ class TestBlenderLogAnalyser(TestCase):
 
     def test_find_missing_files(self):
         missing_files = bla.find_missing_files(self._get_log_file())
-        assert [f for f in missing_files if f['baseName'] == "VSE_copy_proxy_path_to_all_strips.py"]
-        assert [f for f in missing_files if f['baseName'] == "subsurf_change_level.py"]
-        assert [f for f in missing_files if f['baseName'] == "set_ray_visibilities_for_selected_objects.py"]
+        assert [f for f in missing_files if f['baseName']
+                == "VSE_copy_proxy_path_to_all_strips.py"]
+        assert [f for f in missing_files if f[
+            'baseName'] == "subsurf_change_level.py"]
+        assert [f for f in missing_files if f['baseName'] ==
+                "set_ray_visibilities_for_selected_objects.py"]
 
     def test_find_rendering_time(self):
         time_rendering = bla.find_rendering_time(self._get_log_file())
