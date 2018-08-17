@@ -994,8 +994,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.RandVal.TYPE: self._react_to_rand_val,
             message.StartSessionResponse.TYPE: self._react_to_start_session_response,  # noqa
             message.WaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
-            message.tasks.StateUpdate.TYPE:
-                self._react_to_state_update,
+            message.tasks.StateUpdate.TYPE: self._react_to_state_update,
 
             # Concent messages
             message.tasks.AckReportComputedTask.TYPE:

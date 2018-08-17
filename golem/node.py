@@ -96,9 +96,10 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         self.apps_manager = AppsManager()
 
-        # Initialize crossbar auth manager
-        # TODO maybe generate secrets?
-        self.crossbar_auth_manager = CrossbarAuthManager(self._datadir)
+        self.crossbar_auth_manager = CrossbarAuthManager(
+            self._datadir,
+            generate_secrets=True
+        )
 
         self._client_factory = lambda keys_auth: Client(
             datadir=datadir,

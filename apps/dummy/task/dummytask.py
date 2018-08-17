@@ -119,7 +119,6 @@ class DummyTask(CoreTask):
         exd['extra_data']["subtask_data"] = char * size
         return exd
 
-    # Temporary testing for communications
     def react_to_message(self, subtask_id: str, data: Dict):
         return {"got_message": True, "from": subtask_id}
 

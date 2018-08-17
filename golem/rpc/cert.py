@@ -70,16 +70,12 @@ class CertificateManager:
     PRIVATE_KEY_FILE_NAME = "rpc_key.pem"
     CERTIFICATE_FILE_NAME = "rpc_cert.pem"
 
-    SECRET_EXT = "tck"
-    SECRETS_DIR = "secrets"
-
     def __init__(self, dest_dir, setup_forward_secrecy=False):
         self.forward_secrecy = setup_forward_secrecy
         self.use_dh_params = self.forward_secrecy or is_windows()
 
         self.key_path = os.path.join(dest_dir, self.PRIVATE_KEY_FILE_NAME)
         self.cert_path = os.path.join(dest_dir, self.CERTIFICATE_FILE_NAME)
-        self.secrets_path = os.path.join(dest_dir, self.SECRETS_DIR)
 
         if self.use_dh_params:
             self.dh_path = os.path.join(dest_dir, self.DH_FILE_NAME)

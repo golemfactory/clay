@@ -3,25 +3,6 @@ from typing import Dict, Optional
 from golem_messages import message
 
 
-# StateUpdateId = str  # probably not really Pythonic
-#
-# class TaskInfo(NamedTuple):
-#     task_id: str
-#     subtask_id: str
-#
-#
-# class StateUpdateCall(NamedTuple):
-#     task_info: TaskInfo
-#     state_update_id: StateUpdateId
-#     data: Dict
-#
-#
-# class StateUpdateReturn(NamedTuple):
-#     task_info: TaskInfo
-#     state_update_id: StateUpdateId
-#     data: Dict
-
-
 class StateUpdateInfo:
     def __init__(self, task_id: str, subtask_id: str, state_update_id: str):
         self.task_id = task_id

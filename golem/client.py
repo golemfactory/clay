@@ -1251,9 +1251,6 @@ class Client(HardwarePresetsMixin):
         return headers
 
     def get_environments(self):
-        logger.warning("starting sleeping")
-        time.sleep(4)
-        logger.warning("finished sleeping")
         envs = copy(self.environments_manager.get_environments())
         return [{
             'id': env_id,
@@ -1263,24 +1260,6 @@ class Client(HardwarePresetsMixin):
             'min_accepted': env.get_min_accepted_performance(),
             'description': str(env.short_description)
         } for env_id, env in envs.items()]
-        # def _get_envs(*args, **kwargs):
-        #     logger.warning("starting sleeping")
-        #     time.sleep(4)
-        #     logger.warning("finished sleeping")
-        #     envs = copy(self.environments_manager.get_environments())
-        #     return [{
-        #         'id': env_id,
-        #         'supported': bool(env.check_support()),
-        #         'accepted': env.is_accepted(),
-        #         'performance': env.get_performance(),
-        #         'min_accepted': env.get_min_accepted_performance(),
-        #         'description': str(env.short_description)
-        #     } for env_id, env in envs.items()]
-        # d = defer.Deferred()
-        # d.addCallback(_get_envs)
-        # from twisted.internet import reactor
-        # reactor.callInThread(d.callback, None)
-        # return d
 
     @inlineCallbacks
     def run_benchmark(self, env_id):
@@ -1472,15 +1451,13 @@ class Client(HardwarePresetsMixin):
         return False, 'Client is not ready'
 
     def receive_state_update_from_subtask(self, data: Dict) -> Deferred:
-        # TODO ensure to throw an error if types are wrong
-        print(f"ABCD 1, {data}")
+        STATE_UPDATE_TIMEOUT = 10
         update = StateUpdateData.from_dict(data)
-        print(f"ABCD 2, {update}")
 
         def process_value(*args, **kwargs):
-            ts: 'TaskSession' = self.task_server.task_sessions[update.info.subtask_id]
+            ts: 'TaskSession' = self.task_server.task_sessions[update.info.subtask_id]  # noqa pylint: disable=line-too-long
             resp = ts.send_state_update(update)
-            resp.event.wait(timeout=10)
+            resp.event.wait(timeout=STATE_UPDATE_TIMEOUT)
             update.data = resp.data
             return update.to_dict()
 

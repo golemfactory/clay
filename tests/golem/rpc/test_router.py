@@ -146,8 +146,6 @@ class TestRouter(TestDirFixtureWithReactor):
                               self.state.add_errors)
 
     def _start_backend_session(self, *_):
-        print("bckd")
-
         s = Session(
             self.state.router.address,
             methods=object_method_map(
