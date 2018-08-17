@@ -337,10 +337,10 @@ class ResourceHandshakeSessionMixin:
 
     def __set_msg_interpretations(self):
         self._interpretation.update({
-            library.get_type(message.ResourceHandshakeStart):
+            message.ResourceHandshakeStart:
                 self._react_to_resource_handshake_start,
-            library.get_type(message.ResourceHandshakeNonce):
+            message.ResourceHandshakeNonce:
                 self._react_to_resource_handshake_nonce,
-            library.get_type(message.ResourceHandshakeVerdict):
+            message.ResourceHandshakeVerdict:
                 self._react_to_resource_handshake_verdict
         })

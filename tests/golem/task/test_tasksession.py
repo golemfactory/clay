@@ -120,7 +120,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts2.concent_service.enabled = use_concent
         ts2.verified = True
         ts2.key_id = provider_key = "DEF"
-        ts2.can_be_not_encrypted.append(mt.header.type_)
+        ts2.can_be_not_encrypted.append(mt.__class__)
         ts2.task_server.should_accept_provider.return_value = False
         ts2.task_server.config_desc.max_price = 100
 
@@ -232,7 +232,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts2 = TaskSession(Mock())
         ts2.verified = True
         ts2.key_id = "DEF"
-        ts2.can_be_not_encrypted.append(rct.header.type_)
+        ts2.can_be_not_encrypted.append(rct.__class__)
         ts2.task_manager.subtask2task_mapping = {wtr.subtask_id: wtr.task_id}
         task_state = taskstate.TaskState()
         task_state.subtask_states[wtr.subtask_id] = taskstate.SubtaskState()

@@ -81,12 +81,12 @@ class PeerSession(BasicSafeSession):
 
         self.can_be_unverified.extend(
             [
-                library.get_type(message.Hello),
-                library.get_type(message.RandVal),
-                library.get_type(message.ChallengeSolution),
+                message.Hello,
+                message.RandVal,
+                message.ChallengeSolution,
             ]
         )
-        self.can_be_not_encrypted.append(library.get_type(message.Hello))
+        self.can_be_not_encrypted.append(message.Hello)
 
         self.__set_msg_interpretations()
 
@@ -572,29 +572,26 @@ class PeerSession(BasicSafeSession):
 
     def __set_basic_msg_interpretations(self):
         self._interpretation.update({
-            library.get_type(message.Ping): self._react_to_ping,
-            library.get_type(message.Pong): self._react_to_pong,
-            library.get_type(message.Hello): self._react_to_hello,
-            library.get_type(message.ChallengeSolution):
-                self._react_to_challenge_solution,
-            library.get_type(message.GetPeers): self._react_to_get_peers,
-            library.get_type(message.Peers): self._react_to_peers,
-            library.get_type(message.GetTasks): self._react_to_get_tasks,
-            library.get_type(message.Tasks): self._react_to_tasks,
-            library.get_type(message.RemoveTask): self._react_to_remove_task,
-            library.get_type(message.RemoveTaskContainer):
-                self._react_to_remove_task_container,
-            library.get_type(message.FindNode): self._react_to_find_node,
-            library.get_type(message.RandVal): self._react_to_rand_val,
-            library.get_type(message.WantToStartTaskSession):
+            message.Ping: self._react_to_ping,
+            message.Pong: self._react_to_pong,
+            message.Hello: self._react_to_hello,
+            message.ChallengeSolution: self._react_to_challenge_solution,
+            message.GetPeers: self._react_to_get_peers,
+            message.Peers: self._react_to_peers,
+            message.GetTasks: self._react_to_get_tasks,
+            message.Tasks: self._react_to_tasks,
+            message.RemoveTask: self._react_to_remove_task,
+            message.RemoveTaskContainer: self._react_to_remove_task_container,
+            message.FindNode: self._react_to_find_node,
+            message.RandVal: self._react_to_rand_val,
+            message.WantToStartTaskSession:
                 self._react_to_want_to_start_task_session,
-            library.get_type(message.SetTaskSession):
-                self._react_to_set_task_session,
+            message.SetTaskSession: self._react_to_set_task_session,
         })
 
     def __set_ranking_msg_interpretations(self):
         self._interpretation.update({
-            library.get_type(message.Gossip): self._react_to_gossip,
-            library.get_type(message.LocRank): self._react_to_loc_rank,
-            library.get_type(message.StopGossip): self._react_to_stop_gossip,
+            message.Gossip: self._react_to_gossip,
+            message.LocRank: self._react_to_loc_rank,
+            message.StopGossip: self._react_to_stop_gossip,
         })

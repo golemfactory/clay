@@ -938,48 +938,48 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def __set_msg_interpretations(self):
         self._interpretation.update({
-            library.get_type(message.WantToComputeTask):
+            message.WantToComputeTask:
                 self._react_to_want_to_compute_task,
-            library.get_type(message.TaskToCompute):
+            message.TaskToCompute:
                 self._react_to_task_to_compute,
-            library.get_type(message.CannotAssignTask):
+            message.CannotAssignTask:
                 self._react_to_cannot_assign_task,
-            library.get_type(message.CannotComputeTask):
+            message.CannotComputeTask:
                 self._react_to_cannot_compute_task,
-            library.get_type(message.ReportComputedTask):
+            message.ReportComputedTask:
                 self._react_to_report_computed_task,
-            library.get_type(message.GetResource):
+            message.GetResource:
                 self._react_to_get_resource,
-            library.get_type(message.ResourceList):
+            message.ResourceList:
                 self._react_to_resource_list,
-            library.get_type(message.tasks.SubtaskResultsAccepted):
+            message.tasks.SubtaskResultsAccepted:
                 self._react_to_subtask_result_accepted,
-            library.get_type(message.tasks.SubtaskResultsRejected):
+            message.tasks.SubtaskResultsRejected:
                 self._react_to_subtask_results_rejected,
-            library.get_type(message.TaskFailure):
+            message.TaskFailure:
                 self._react_to_task_failure,
-            library.get_type(message.Hello):
+            message.Hello:
                 self._react_to_hello,
-            library.get_type(message.RandVal):
+            message.RandVal:
                 self._react_to_rand_val,
-            library.get_type(message.StartSessionResponse):
+            message.StartSessionResponse:
                 self._react_to_start_session_response,
-            library.get_type(message.WaitingForResults):
+            message.WaitingForResults:
                 self._react_to_waiting_for_results,
 
             # Concent messages
-            library.get_type(message.tasks.AckReportComputedTask):
+            message.tasks.AckReportComputedTask:
                 self._react_to_ack_report_computed_task,
-            library.get_type(message.tasks.RejectReportComputedTask):
+            message.tasks.RejectReportComputedTask:
                 self._react_to_reject_report_computed_task,
         })
 
         self.can_be_unverified.extend(
             [
-                library.get_type(message.Hello),
-                library.get_type(message.RandVal),
-                library.get_type(message.ChallengeSolution)
+                message.Hello,
+                message.RandVal,
+                message.ChallengeSolution
             ]
         )
 
-        self.can_be_not_encrypted.extend([library.get_type(message.Hello)])
+        self.can_be_not_encrypted.extend([message.Hello])

@@ -52,7 +52,7 @@ class BasicSession(FileSession):
         self.last_message_time = time.time()
         self._disconnect_sent = False
         self._interpretation = {
-            library.get_type(message.Disconnect): self._react_to_disconnect,
+            message.Disconnect: self._react_to_disconnect,
         }
         # Message interpretation - dictionary where keys are message types
         # and values are functions that should
@@ -71,7 +71,7 @@ class BasicSession(FileSession):
         if not self._check_msg(msg):
             return
 
-        action = self._interpretation.get(msg.header.type_)
+        action = self._interpretation.get(msg.__class__)
         if action:
             action(msg)
         else:
@@ -167,9 +167,9 @@ class BasicSafeSession(BasicSession):
         self.rand_val = get_random_float()
         self.verified = False
         # React to message even if it's self.verified is set to False
-        self.can_be_unverified = [library.get_type(message.Disconnect)]
+        self.can_be_unverified = [message.Disconnect]
         # React to message even if it's not encrypted.
-        self.can_be_not_encrypted = [library.get_type(message.Disconnect)]
+        self.can_be_not_encrypted = [message.Disconnect]
 
     @property
     def theirs_public_key(self):
@@ -204,19 +204,17 @@ class BasicSafeSession(BasicSession):
     def _can_send(self, msg: message.Message, send_unverified):
         return self.verified \
             or send_unverified \
-            or msg.header.type_ in self.can_be_unverified
+            or msg.__class__ in self.can_be_unverified
 
     def _check_msg(self, msg):
         if not BasicSession._check_msg(self, msg):
             return False
 
-        type_ = msg.header.type_
-
-        if not self.verified and type_ not in self.can_be_unverified:
+        if not self.verified and msg.__class__ not in self.can_be_unverified:
             self.disconnect(message.Disconnect.REASON.Unverified)
             return False
 
-        if not msg.encrypted and type_ not in self.can_be_not_encrypted:
+        if not msg.encrypted and msg.__class__ not in self.can_be_not_encrypted:
             self.disconnect(message.Disconnect.REASON.BadProtocol)
             return False
 

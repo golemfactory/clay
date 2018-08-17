@@ -10,7 +10,7 @@ class SpamProtector:
 
     SetTaskSessionInterval = 20
 
-    INTERVALS = {library.get_type(SetTaskSession): SetTaskSessionInterval}
+    INTERVALS = {SetTaskSession: SetTaskSessionInterval}
 
     def __init__(self):
 
@@ -20,7 +20,7 @@ class SpamProtector:
         if msg is None:
             return False
 
-        msg_type, _, _ = Message.deserialize_header(msg[:Message.HDR_LEN])
+        msg_type = msg.__class__
 
         if msg_type not in self.INTERVALS:
             return True
