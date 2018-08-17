@@ -572,9 +572,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             requestors_deposit_timelock = transaction_system.concent_timelock(
                 account_address=msg.requestor_ethereum_address,
             )
-            expected_timelock = time.time() \
-                + variables.CONCENT_MIN_DEPOSIT_TIMELOCK
-            if requestors_deposit_timelock < expected_timelock:
+            # 0 - safe to use
+            # <anything else> - withdrawal procedure has started
+            if requestors_deposit_timelock != 0:
                 _cannot_compute(reasons.TooShortDeposit)
                 return
 

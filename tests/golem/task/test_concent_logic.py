@@ -42,7 +42,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         self.task_session.task_server.client.transaction_system\
             .concent_balance.return_value = (self.msg.price * 10) * 2
         self.task_session.task_server.client.transaction_system\
-            .concent_timelock.return_value = float('infinity')
+            .concent_timelock.return_value = 0
 
     def assert_accepted(self, send_mock):  # pylint: disable=no-self-use
         send_mock.assert_not_called()
@@ -123,7 +123,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
 
     def test_requestor_short_deposit(self, send_mock, *_):
         self.task_session.task_server.client.transaction_system\
-            .concent_timelock.return_value = 0
+            .concent_timelock.return_value = 1
         self.task_session._react_to_task_to_compute(self.msg)
         self.assert_rejected(
             send_mock,
@@ -139,7 +139,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         self.task_session.task_server.client.transaction_system\
             .concent_balance.return_value = int((self.msg.price * 10) * 1.5)
         self.task_session.task_server.client.transaction_system\
-            .concent_timelock.return_value = 0
+            .concent_timelock.return_value = 1
         self.task_session._react_to_task_to_compute(self.msg)
         self.assert_accepted(send_mock)
 
