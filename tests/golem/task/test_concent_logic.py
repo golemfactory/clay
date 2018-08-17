@@ -305,7 +305,7 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         task_manager.should_wait_for_node.return_value = False
         task_manager.get_next_subtask.return_value = \
             factories.tasks.ComputeTaskDefFactory()
-        
+
         task_session._react_to_want_to_compute_task(self.msg)
         send_mock.assert_called()
         ttc = send_mock.call_args_list[2][0][0]
