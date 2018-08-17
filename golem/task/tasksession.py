@@ -572,8 +572,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             requestors_deposit_timelock = transaction_system.concent_timelock(
                 account_address=msg.requestor_ethereum_public_key,
             )
-            if requestors_deposit_timelock < \
-                    variables.CONCENT_MIN_DEPOSIT_TIMELOCK:
+            expected_timelock = time.time() \
+                + variables.CONCENT_MIN_DEPOSIT_TIMELOCK
+            if requestors_deposit_timelock < expected_timelock:
                 _cannot_compute(reasons.TooShortDeposit)
                 return
 
