@@ -1,5 +1,6 @@
 import logging
 import subprocess
+import time
 from typing import List, Optional
 
 from golem.core.common import SUBPROCESS_STARTUP_INFO, DEVNULL, to_unicode
@@ -33,6 +34,24 @@ class DockerCommandHandler:
         elif callable(command):
             return command(vm_name, args, shell)
         return str()
+
+    @classmethod
+    def wait_until_started(cls):
+        started = time.time()
+        done = None
+
+        while not done:
+            try:
+                subprocess.check_output(['docker', 'info'],
+                                        stderr=subprocess.DEVNULL)
+            except subprocess.CalledProcessError:
+                time.sleep(1)
+            else:
+                done = True
+
+            if time.time() - started >= cls.TIMEOUT:
+                logger.error('Docker: VM start timeout')
+                return
 
     @classmethod
     def _command(cls,

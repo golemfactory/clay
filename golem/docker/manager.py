@@ -1,7 +1,6 @@
 import json
 import logging
 import os
-import re
 import subprocess
 import sys
 import time
@@ -80,6 +79,21 @@ class DockerManager(DockerConfigManager):
         self._env_checked = True
 
         try:
+            if not is_linux():
+                self.hypervisor = self._select_hypervisor()
+                self.hypervisor.setup()
+        except Exception:  # pylint: disable=broad-except
+            logger.error(
+                """
+                ***************************************************************
+                No supported VM hypervisor was found.
+                Golem will not be able to compute anything.
+                ***************************************************************
+                """
+            )
+            raise EnvironmentError
+
+        try:
             # We're checking the availability of "docker" command line utility
             # (other commands may result in an error if docker env variables
             # are set incorrectly)
@@ -93,21 +107,6 @@ class DockerManager(DockerConfigManager):
                 Command 'docker info' returned {}
                 ***************************************************************
                 """.format(err)
-            )
-            raise EnvironmentError
-
-        try:
-            if not is_linux():
-                self.hypervisor = self._select_hypervisor()
-                self.hypervisor.setup()
-        except Exception:  # pylint: disable=broad-except
-            logger.error(
-                """
-                ***************************************************************
-                No supported hypervisor was found.
-                Golem will not be able to compute anything.
-                ***************************************************************
-                """
             )
             raise EnvironmentError
 
@@ -202,7 +201,7 @@ class DockerManager(DockerConfigManager):
         """
         self.check_environment()
 
-        if self.hypervisor and self.hypervisor._docker_vm:
+        if self.hypervisor:
             if in_background:
                 thread = Thread(target=self._save_and_resume,
                                 args=(done_callback,))
@@ -239,11 +238,11 @@ class DockerManager(DockerConfigManager):
 
             try:
                 os.chdir(APPS_DIR)
-                logger.warn('Docker: building image {}'
-                            .format(version))
+                logger.warning('Docker: building image %s', version)
+
                 self.command('build', args=['-t', image,
-                                           '-f', docker_file,
-                                           build_dir])
+                                            '-f', docker_file,
+                                            build_dir])
                 self.command('tag', args=[image, version])
             finally:
                 os.chdir(cwd)
@@ -323,7 +322,8 @@ class Hypervisor(object):
         return True
 
     def setup(self) -> None:
-        pass
+        if not self.vm_running():
+            self.start_vm()
 
     @classmethod
     def instance(cls, docker_manager):
@@ -381,10 +381,10 @@ class Hypervisor(object):
             logger.warning("Docker: failed to stop the VM: %r", e)
         return False
 
-    def constrain(self, name: Optional[str] = None, **params):
+    def constrain(self, name: Optional[str] = None, **params) -> None:
         raise NotImplementedError
 
-    def constraints(self, name: Optional[str] = None):
+    def constraints(self, name: Optional[str] = None) -> Dict:
         raise NotImplementedError
 
     @contextmanager
@@ -396,7 +396,8 @@ class Hypervisor(object):
         raise NotImplementedError
 
     @classmethod
-    def _new_instance(cls, docker_manager):
+    def _new_instance(cls,
+                      docker_manager: DockerManager) -> Optional['Hypervisor']:
         raise NotImplementedError
 
 
@@ -602,7 +603,7 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
             logger.debug("Hypervisor_output: %s", e.output)
         return False
 
-    def constraints(self, name: Optional[str] = None):
+    def constraints(self, name: Optional[str] = None) -> Dict:
         result = {}
         try:
             vm = self._machine_from_arg(name)
@@ -613,7 +614,7 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
                          .format(e))
         return result
 
-    def constrain(self, name: Optional[str] = None, **params):
+    def constrain(self, name: Optional[str] = None, **params) -> None:
         vm = self._machine_from_arg(name)
         if not vm:
             return
@@ -708,13 +709,15 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
         return machine_obj
 
     @classmethod
-    def _new_instance(cls, docker_manager):
+    def _new_instance(cls,
+                      docker_manager: DockerManager) -> Optional[Hypervisor]:
         try:
             from virtualbox import VirtualBox
             from virtualbox.library import ISession, LockType
         except ImportError:
             return None
-        return VirtualBoxHypervisor(docker_manager, VirtualBox(), ISession, LockType)
+        return VirtualBoxHypervisor(docker_manager, VirtualBox(),
+                                    ISession, LockType)
 
 
 class XhyveHypervisor(DockerMachineHypervisor):
@@ -731,6 +734,7 @@ class XhyveHypervisor(DockerMachineHypervisor):
 
     @report_calls(Component.hypervisor, 'vm.create')
     def create(self, name: Optional[str] = None, **params):
+        name = name or self._docker_vm
         cpu = params.get(CONSTRAINT_KEYS['cpu'], None)
         mem = params.get(CONSTRAINT_KEYS['mem'], None)
 
@@ -755,7 +759,8 @@ class XhyveHypervisor(DockerMachineHypervisor):
                          .format(name, e))
             return False
 
-    def constrain(self, name: Optional[str] = None, **params):
+    def constrain(self, name: Optional[str] = None, **params) -> None:
+        name = name or self._docker_vm
         cpu = params.get(CONSTRAINT_KEYS['cpu'])
         mem = params.get(CONSTRAINT_KEYS['mem'])
 
@@ -792,7 +797,7 @@ class XhyveHypervisor(DockerMachineHypervisor):
         self.start_vm(name)
         self._set_env()
 
-    def constraints(self, name: Optional[str] = None):
+    def constraints(self, name: Optional[str] = None) -> Dict:
         name = name or self._docker_vm
         config = dict()
 
@@ -819,7 +824,7 @@ class XhyveHypervisor(DockerMachineHypervisor):
         return config
 
     def _config(self, name):
-        config_path = os.path.join(self.config_dir, name, 'config.json')
+        config_path = os.path.join(self._config_dir, name, 'config.json')
         config = None
 
         try:
@@ -832,7 +837,8 @@ class XhyveHypervisor(DockerMachineHypervisor):
         return config_path, config
 
     @classmethod
-    def _new_instance(cls, docker_manager):
+    def _new_instance(cls,
+                      docker_manager: DockerManager) -> Optional[Hypervisor]:
         return XhyveHypervisor(docker_manager)
 
 
@@ -874,24 +880,6 @@ class DockerForMacCommandHandler(DockerCommandHandler):
     @classmethod
     def status(cls) -> str:
         return 'Running' if cls._pid() else ''
-
-    @classmethod
-    def wait_until_started(cls):
-        started = time.time()
-        done = None
-
-        while not done:
-            try:
-                subprocess.check_output(['docker', 'info'],
-                                        stderr=subprocess.DEVNULL)
-            except subprocess.CalledProcessError:
-                time.sleep(1)
-            else:
-                done = True
-
-            if time.time() - started >= cls.TIMEOUT:
-                logger.error('Docker for Mac: VM start timeout')
-                return
 
     @classmethod
     def wait_until_stopped(cls):
@@ -945,9 +933,9 @@ class DockerForMac(Hypervisor):
 
     COMMAND_HANDLER = DockerForMacCommandHandler
 
-    CONFIG_FILE = os.path.join(os.path.expanduser(
+    CONFIG_FILE = os.path.expanduser(
         "~/Library/Group Containers/group.com.docker/settings.json"
-    ))
+    )
 
     def __init__(self, docker_manager: DockerManager,
                  docker_vm: str = DOCKER_VM_NAME) -> None:
@@ -972,7 +960,7 @@ class DockerForMac(Hypervisor):
         # We do not control VM removal
         return False
 
-    def constrain(self, name: Optional[str] = None, **params):
+    def constrain(self, name: Optional[str] = None, **params) -> None:
         cpu = params.get(CONSTRAINT_KEYS['cpu'])
         mem = params.get(CONSTRAINT_KEYS['mem'])
         update = dict(cpus=cpu, memoryMiB=mem)
@@ -980,18 +968,9 @@ class DockerForMac(Hypervisor):
         try:
             self._update_config(update)
         except Exception as e:  # pylint: disable=broad-except
-            logger.error("Docker for Mac: error config: %r", e)
+            logger.error("Docker for Mac: unable to update config: %r", e)
 
-    def _update_config(self, update: Dict) -> None:
-        with open(self.CONFIG_FILE) as config_file:
-            config = json.load(config_file)
-
-        config.update(update)
-
-        with open(self.CONFIG_FILE, 'w') as config_file:
-            json.dump(config, config_file)
-
-    def constraints(self, name: Optional[str] = None):
+    def constraints(self, name: Optional[str] = None) -> Dict:
         if not os.path.exists(self.CONFIG_FILE):
             self.start_vm()
         if not os.path.exists(self.CONFIG_FILE):
@@ -1014,6 +993,15 @@ class DockerForMac(Hypervisor):
 
         return constraints
 
+    def _update_config(self, update: Dict) -> None:
+        with open(self.CONFIG_FILE) as config_file:
+            config = json.load(config_file)
+
+        config.update(update)
+
+        with open(self.CONFIG_FILE, 'w') as config_file:
+            json.dump(config, config_file)
+
     @contextmanager
     @report_calls(Component.hypervisor, 'vm.restart')
     def restart_ctx(self, name: Optional[str] = None):
@@ -1028,5 +1016,6 @@ class DockerForMac(Hypervisor):
         self.restart_ctx(name)
 
     @classmethod
-    def _new_instance(cls, docker_manager):
+    def _new_instance(cls,
+                      docker_manager: DockerManager) -> Optional[Hypervisor]:
         return DockerForMac(docker_manager)
