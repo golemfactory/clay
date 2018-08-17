@@ -580,7 +580,8 @@ class PeerSession(BasicSafeSession):
             message.p2p.GetTasks: self._react_to_get_tasks,
             message.p2p.Tasks: self._react_to_tasks,
             message.p2p.RemoveTask: self._react_to_remove_task,
-            message.p2p.RemoveTaskContainer: self._react_to_remove_task_container,
+            message.p2p.RemoveTaskContainer:
+                self._react_to_remove_task_container,
             message.p2p.FindNode: self._react_to_find_node,
             message.base.RandVal: self._react_to_rand_val,
             message.p2p.WantToStartTaskSession:
