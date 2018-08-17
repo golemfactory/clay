@@ -1,6 +1,8 @@
 import time
 import logging
-from golem_messages.message import SetTaskSession
+from golem_messages.register import library
+from golem_messages import message
+from golem_messages.message.base import Message
 
 logger = logging.getLogger(__name__)
 
@@ -9,17 +11,25 @@ class SpamProtector:
 
     SetTaskSessionInterval = 20
 
-    INTERVALS = {SetTaskSession: SetTaskSessionInterval}
+    INTERVALS = {
+        library.get_type(message.p2p.SetTaskSession): SetTaskSessionInterval,
+    }
 
     def __init__(self):
 
         self.last_msg_map = dict()
 
-    def check_msg(self, msg):
-        if msg is None:
+    def check_msg(self, msg_data):
+        if msg_data is None:
             return False
 
-        msg_type = msg.__class__
+        # fixme: pull unpacking of the `MessageHeader` to a separate
+        # class method of Message and use that method instead here
+        # to save on unnecessary operations
+        #
+        # https://github.com/golemfactory/golem/issues/3195
+        #
+        msg_type, _, _ = Message.deserialize_header(msg_data[:Message.HDR_LEN])
 
         if msg_type not in self.INTERVALS:
             return True
