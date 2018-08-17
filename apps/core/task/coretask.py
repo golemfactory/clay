@@ -555,7 +555,7 @@ class CoreTaskBuilder(TaskBuilder):
     def __init__(self,
                  owner: Node,
                  task_definition: TaskDefinition,
-                 dir_manager: DirManager):
+                 dir_manager: DirManager) -> None:
         super(CoreTaskBuilder, self).__init__()
         self.task_definition = task_definition
         self.root_path = dir_manager.root_path
@@ -587,8 +587,8 @@ class CoreTaskBuilder(TaskBuilder):
         return definition
 
     @classmethod
-    def build_definition(cls,
-                         task_type: CoreTaskTypeInfo, # type: ignore
+    def build_definition(cls, # type: ignore
+                         task_type: CoreTaskTypeInfo,
                          dictionary: Dict[str, Any],
                          minimal=False):
         # dictionary comes from the GUI
@@ -601,8 +601,8 @@ class CoreTaskBuilder(TaskBuilder):
         return definition
 
     @classmethod
-    def build_full_definition(cls,
-                              task_type: CoreTaskTypeInfo, # type: ignore
+    def build_full_definition(cls, # type: ignore
+                              task_type: CoreTaskTypeInfo,
                               dictionary: Dict[str, Any]):
         definition = cls.build_minimal_definition(task_type, dictionary)
         definition.task_name = dictionary['name']

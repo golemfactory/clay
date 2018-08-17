@@ -289,7 +289,7 @@ class Task(abc.ABC):
         self.header = header
         self.task_definition = task_definition
 
-        self.listeners: 'List[Union[ClientTaskComputerEventListener, TaskManager]]' = []  # noqa disable=line-too-long
+        self.listeners: 'List[Union[ClientTaskComputerEventListener, TaskManager]]' = []  # noqa disable=line-too-long # type: ignore
 
     def __getstate__(self):
         state = self.__dict__.copy()
