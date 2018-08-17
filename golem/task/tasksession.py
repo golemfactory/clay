@@ -10,13 +10,12 @@ from golem_messages import helpers as msg_helpers
 from golem.core.common import HandleAttributeError
 from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import CBORSerializer
-from golem.core.variables import PROTOCOL_CONST
+from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
-from golem.network.p2p import node as p2p_node
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
@@ -412,7 +411,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.Hello(
                 client_key_id=self.task_server.get_key_id(),
                 rand_val=self.rand_val,
-                proto_id=PROTOCOL_CONST.ID,
+                proto_id=variables.PROTOCOL_CONST.ID,
             ),
             send_unverified=True
         )
@@ -572,7 +571,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             requestors_deposit_timelock = transaction_system.concent_timelock(
                 account_address=msg.requestor_ethereum_public_key,
             )
-            if requestors_deposit_timelock < 48 * 3600:
+            if requestors_deposit_timelock < \
+                    variables.CONCENT_MIN_DEPOSIT_TIMELOCK:
                 _cannot_compute(reasons.TooShortDeposit)
                 return
 
@@ -777,11 +777,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.key_id = msg.client_key_id
             send_hello = True
 
-        if msg.proto_id != PROTOCOL_CONST.ID:
+        if msg.proto_id != variables.PROTOCOL_CONST.ID:
             logger.info(
                 "Task protocol version mismatch %r (msg) vs %r (local)",
                 msg.proto_id,
-                PROTOCOL_CONST.ID
+                variables.PROTOCOL_CONST.ID
             )
             self.disconnect(message.Disconnect.REASON.ProtocolVersion)
             return
