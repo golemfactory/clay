@@ -99,7 +99,7 @@ class ResourceHandshakeSessionMixin:
             self._start_handshake(key_id)
 
         else:
-            self.send(message.WantToComputeTask(**msg_d))
+            self.send(message.tasks.WantToComputeTask(**msg_d))
 
     # ########################
     #     MESSAGE HANDLERS
@@ -118,8 +118,8 @@ class ResourceHandshakeSessionMixin:
         elif handshake.success():  # handle inconsistent state between peers
             options = self.task_server.get_share_options(handshake.nonce,
                                                          self.address)
-            self.send(message.ResourceHandshakeStart(resource=handshake.hash,
-                                                     options=options.__dict__))
+            self.send(message.resources.ResourceHandshakeStart(
+                resource=handshake.hash, options=options.__dict__))
 
         self._download_handshake_nonce(key_id, msg.resource, msg.options)
 
@@ -129,7 +129,7 @@ class ResourceHandshakeSessionMixin:
         accepted = handshake and handshake.verify_local(msg.nonce)
         nonce = handshake.nonce if handshake else None
 
-        self.send(message.ResourceHandshakeVerdict(
+        self.send(message.resources.ResourceHandshakeVerdict(
             nonce=msg.nonce,
             accepted=accepted,
         ))
@@ -149,7 +149,8 @@ class ResourceHandshakeSessionMixin:
             self._finalize_handshake(key_id)
         else:
             self._handshake_error(key_id, 'handshake not started')
-            self.disconnect(message.Disconnect.REASON.ResourceHandshakeTimeout)
+            self.disconnect(
+                message.base.Disconnect.REASON.ResourceHandshakeTimeout)
 
     # ########################
     #     START HANDSHAKE
@@ -212,7 +213,7 @@ class ResourceHandshakeSessionMixin:
         if handshake.finished():
             logger.info('Finished resource handshake with %r', key_id)
         if handshake.success() and handshake.message:
-            self.send(message.WantToComputeTask(**handshake.message))
+            self.send(message.tasks.WantToComputeTask(**handshake.message))
 
     def _stop_handshake_timer(self):
         if self._handshake_timer:
@@ -251,8 +252,8 @@ class ResourceHandshakeSessionMixin:
                      "%r to peer %r", handshake.hash, key_id)
 
         os.remove(handshake.file)
-        self.send(message.ResourceHandshakeStart(resource=handshake.hash,
-                                                 options=options.__dict__))
+        self.send(message.resources.ResourceHandshakeStart(
+            resource=handshake.hash, options=options.__dict__))
 
     # ########################
     #      DOWNLOAD NONCE
@@ -286,7 +287,7 @@ class ResourceHandshakeSessionMixin:
                                   .format(files, err))
         else:
             os.remove(path)
-            self.send(message.ResourceHandshakeNonce(nonce=nonce))
+            self.send(message.resources.ResourceHandshakeNonce(nonce=nonce))
 
     # ########################
     #     ERROR HANDLERS
@@ -336,10 +337,10 @@ class ResourceHandshakeSessionMixin:
 
     def __set_msg_interpretations(self):
         self._interpretation.update({
-            message.ResourceHandshakeStart.TYPE:
+            message.resources.ResourceHandshakeStart:
                 self._react_to_resource_handshake_start,
-            message.ResourceHandshakeNonce.TYPE:
+            message.resources.ResourceHandshakeNonce:
                 self._react_to_resource_handshake_nonce,
-            message.ResourceHandshakeVerdict.TYPE:
+            message.resources.ResourceHandshakeVerdict:
                 self._react_to_resource_handshake_verdict
         })

@@ -22,7 +22,7 @@ from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.ethereum.exceptions import NotEnoughFunds
 from golem.ethereum.incomeskeeper import IncomesKeeper
 from golem.ethereum.paymentskeeper import PaymentsKeeper
-from golem.model import GenericKeyValue, Payment
+from golem.model import GenericKeyValue, Payment, Income
 from golem.utils import privkeytoaddr
 
 
@@ -61,9 +61,9 @@ class TransactionSystem(LoopingCallService):
         self._node = NodeProcess(node_list)
         self._sci: Optional[SmartContractsInterface] = None
 
-        self.payments_keeper = PaymentsKeeper()
-        self.incomes_keeper = IncomesKeeper()
-        self.payment_processor: Optional[PaymentProcessor] = None
+        self._payments_keeper = PaymentsKeeper()
+        self._incomes_keeper = IncomesKeeper()
+        self._payment_processor: Optional[PaymentProcessor] = None
 
         self._gnt_faucet_requested = False
         self._gnt_conversion_status = ConversionStatus.NONE
@@ -145,7 +145,7 @@ class TransactionSystem(LoopingCallService):
             if self._sci.get_gnt_balance(gate_address):
                 self._gnt_conversion_status = ConversionStatus.UNFINISHED
 
-        self.payment_processor = PaymentProcessor(self._sci)
+        self._payment_processor = PaymentProcessor(self._sci)
 
         self._subscribe_to_events()
 
@@ -186,7 +186,7 @@ class TransactionSystem(LoopingCallService):
             GenericKeyValue.key == self.BLOCK_NUMBER_DB_KEY)
         from_block = int(values.get().value) if values.count() == 1 else 0
 
-        ik = self.incomes_keeper
+        ik = self._incomes_keeper
         self._sci.subscribe_to_batch_transfers(
             None,
             self._sci.get_eth_address(),
@@ -236,7 +236,7 @@ class TransactionSystem(LoopingCallService):
         kv.save()
 
     def stop(self):
-        self.payment_processor.sendout(0)
+        self._payment_processor.sendout(0)
         self._save_subscription_block_number()
         self._sci.stop()
         super().stop()
@@ -246,7 +246,7 @@ class TransactionSystem(LoopingCallService):
             subtask_id: str,
             value: int,
             eth_address: str) -> int:
-        if not self.payment_processor:
+        if not self._payment_processor:
             raise Exception('Start was not called')
         payee = decode_hex(eth_address)
         if len(payee) != 20:
@@ -257,7 +257,7 @@ class TransactionSystem(LoopingCallService):
             payee=payee,
             value=value,
         )
-        return self.payment_processor.add(payment)
+        return self._payment_processor.add(payment)
 
     def get_payment_address(self):
         """ Human readable Ethereum address for incoming payments."""
@@ -269,36 +269,29 @@ class TransactionSystem(LoopingCallService):
         """ Return list of all planned and made payments
         :return list: list of dictionaries describing payments
         """
-        return self.payments_keeper.get_list_of_all_payments()
+        return self._payments_keeper.get_list_of_all_payments()
 
-    def get_total_payment_for_subtasks(
+    def get_subtasks_payments(
             self,
-            subtask_ids: Iterable[str]) -> Tuple[Optional[int], Optional[int]]:
-        """
-        Get total value and total fee for payments for the given subtask IDs
-        **if all payments for the given subtasks are sent**
-        :param subtask_ids: subtask IDs
-        :return: (total_value, total_fee) if all payments are sent,
-                (None, None) otherwise
-        """
-        return self.payments_keeper.get_total_payment_for_subtasks(subtask_ids)
+            subtask_ids: Iterable[str]) -> List[Payment]:
+        return self._payments_keeper.get_subtasks_payments(subtask_ids)
 
     def get_incomes_list(self):
         """ Return list of all expected and received incomes
         :return list: list of dictionaries describing incomes
         """
-        return self.incomes_keeper.get_list_of_all_incomes()
+        return self._incomes_keeper.get_list_of_all_incomes()
 
     def get_available_eth(self) -> int:
         return self._eth_balance - self.get_locked_eth()
 
     def get_locked_eth(self) -> int:
-        if not self.payment_processor:
+        if not self._payment_processor:
             raise Exception('Start was not called')
-        eth = self.payment_processor.reserved_eth + \
+        eth = self._payment_processor.reserved_eth + \
             self.eth_for_batch_payment(self._payments_locked)
         if self._payments_locked > 0 and \
-           self.payment_processor.reserved_eth == 0:
+           self._payment_processor.reserved_eth == 0:
             eth += self._eth_base_for_batch_payment()
         return min(eth, self._eth_balance)
 
@@ -312,9 +305,9 @@ class TransactionSystem(LoopingCallService):
         return self._sci.get_gntb_balance(address=account_address)
 
     def get_locked_gnt(self) -> int:
-        if not self.payment_processor:
+        if not self._payment_processor:
             raise Exception('Start was not called')
-        return self._gntb_locked + self.payment_processor.reserved_gntb
+        return self._gntb_locked + self._payment_processor.reserved_gntb
 
     def get_balance(self) -> Dict[str, Any]:
         if not self._sci:
@@ -331,7 +324,7 @@ class TransactionSystem(LoopingCallService):
         }
 
     def lock_funds_for_payments(self, price: int, num: int) -> None:
-        if not self.payment_processor:
+        if not self._payment_processor:
             raise Exception('Start was not called')
         gnt = price * num
         if gnt > self.get_available_gnt():
@@ -339,7 +332,7 @@ class TransactionSystem(LoopingCallService):
 
         eth = self.eth_for_batch_payment(num)
         if self._payments_locked == 0 and \
-           self.payment_processor.reserved_eth == 0:
+           self._payment_processor.reserved_eth == 0:
             eth += self._eth_base_for_batch_payment()
         eth_available = self.get_available_eth()
         if eth > eth_available:
@@ -374,15 +367,49 @@ class TransactionSystem(LoopingCallService):
         self._gntb_locked -= gnt
         self._payments_locked -= num
 
+    def expect_income(
+            self,
+            sender_node: str,
+            subtask_id: str,
+            payer_address: str,
+            value: int) -> Income:
+        return self._incomes_keeper.expect(
+            sender_node,
+            subtask_id,
+            payer_address,
+            value,
+        )
+
+    def reject_income(self, sender_node: str, subtask_id: str) -> None:
+        self._incomes_keeper.reject(sender_node, subtask_id)
+
+    def accept_income(
+            self,
+            sender_node: str,
+            subtask_id: str,
+            accepted_ts: int) -> None:
+        self._incomes_keeper.update_awaiting(
+            sender_node,
+            subtask_id,
+            accepted_ts,
+        )
+
+    def settle_income(
+            self,
+            sender_node: str,
+            subtask_id: str,
+            settled_ts: int) -> None:
+        self._incomes_keeper.settled(sender_node, subtask_id, settled_ts)
+
     def eth_for_batch_payment(self, num_payments: int) -> int:
-        if not self.payment_processor:
+        if not self._payment_processor:
             raise Exception('Start was not called')
-        return self.payment_processor.get_gas_cost_per_payment() * num_payments
+        return self._payment_processor.get_gas_cost_per_payment() * num_payments
 
     def _eth_base_for_batch_payment(self) -> int:
-        if not self.payment_processor:
+        if not self._payment_processor:
             raise Exception('Start was not called')
-        return self.payment_processor.ETH_BATCH_PAYMENT_BASE
+        return self._payment_processor.ETH_BATCH_PAYMENT_BASE
 
     def get_withdraw_gas_cost(
             self,
@@ -604,13 +631,13 @@ class TransactionSystem(LoopingCallService):
                 )
 
     def _run(self) -> None:
-        if not self.payment_processor:
+        if not self._payment_processor:
             raise Exception('Start was not called')
         self._refresh_balances()
         self._get_funds_from_faucet()
         self._try_convert_gnt()
-        self.payment_processor.sendout()
-        self.incomes_keeper.update_overdue_incomes()
+        self._payment_processor.sendout()
+        self._incomes_keeper.update_overdue_incomes()
 
 
 def tETH_faucet_donate(addr: str):

@@ -225,7 +225,7 @@ class TaskServer(
 
         if subtask_id not in self.results_to_send:
             value = self.task_manager.comp_task_keeper.get_value(task_id)
-            self.client.transaction_system.incomes_keeper.expect(
+            self.client.transaction_system.expect_income(
                 sender_node=header.task_owner.key,
                 subtask_id=subtask_id,
                 payer_address=pubkeytoaddr(header.task_owner.key),
@@ -285,7 +285,7 @@ class TaskServer(
         if self.active:
             self.task_sessions_incoming.add(session)
         else:
-            session.disconnect(message.Disconnect.REASON.NoMoreMessages)
+            session.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
 
     def disconnect(self):
         task_sessions = dict(self.task_sessions)
@@ -406,7 +406,7 @@ class TaskServer(
             logger.warning("Not my subtask rejected %r", subtask_id)
             return
 
-        self.client.transaction_system.incomes_keeper.reject(
+        self.client.transaction_system.reject_income(
             sender_node_id,
             subtask_id,
         )
@@ -419,7 +419,7 @@ class TaskServer(
         """My (providers) results were accepted"""
         logger.debug("Subtask %r result accepted", subtask_id)
         self.task_result_sent(subtask_id)
-        self.client.transaction_system.incomes_keeper.update_awaiting(
+        self.client.transaction_system.accept_income(
             sender_node_id,
             subtask_id,
             accepted_ts,
@@ -429,7 +429,7 @@ class TaskServer(
         """My (provider's) results were accepted by the Concent"""
         logger.debug("Subtask %r settled by the Concent", subtask_id)
         self.task_result_sent(subtask_id)
-        self.client.transaction_system.incomes_keeper.settled(
+        self.client.transaction_system.settle_income(
             sender_node_id, subtask_id, settled_ts)
 
     def subtask_failure(self, subtask_id, err):

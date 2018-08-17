@@ -22,6 +22,8 @@ from golem.core import variables
 from golem.network.concent import exceptions
 from golem.network.concent.handlers_library import library
 
+from .helpers import ssl_kwargs
+
 logger = logging.getLogger(__name__)
 
 
@@ -62,15 +64,8 @@ def verify_response(response: requests.Response) -> None:
         )
 
 
-def ssl_kwargs(concent_variant: dict) -> dict:
-    """Returns additional ssl related kwargs for requests"""
-    if 'certificate' not in concent_variant:
-        return {}
-    return {'verify': concent_variant['certificate'], }
-
-
 def send_to_concent(
-        msg: message.Message,
+        msg: message.base.Message,
         signing_key,
         concent_variant: dict) -> typing.Optional[bytes]:
     """Sends a message to the concent server
@@ -228,7 +223,7 @@ class ConcentClientService(threading.Thread):
         logger.info('%s stopped', self)
 
     def submit_task_message(
-            self, subtask_id: str, msg: message.Message,
+            self, subtask_id: str, msg: message.base.Message,
             delay: typing.Optional[datetime.timedelta] = None
     ) -> None:
         """
@@ -262,12 +257,13 @@ class ConcentClientService(threading.Thread):
 
     def submit(self,
                key: typing.Hashable,
-               msg: message.Message,
+               msg: message.base.Message,
                delay: typing.Optional[datetime.timedelta] = None) -> None:
         """
         Submit a message to Concent.
 
         :param key: Request identifier
+        :param msg: the message to send
         :param delay: Time to wait before sending the message
         :return: None
         """

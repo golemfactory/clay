@@ -435,7 +435,7 @@ class NetworkMessage(BaseModel):
     msg_cls = CharField(null=False)
     msg_data = BlobField(null=False)
 
-    def as_message(self) -> message.Message:
+    def as_message(self) -> message.base.Message:
         msg = pickle.loads(self.msg_data)
         return msg
 
