@@ -945,11 +945,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self._react_to_cannot_assign_task,
             message.tasks.CannotComputeTask:
                 self._react_to_cannot_compute_task,
-            message.tasksReportComputedTask:
+            message.tasks.ReportComputedTask:
                 self._react_to_report_computed_task,
             message.tasks.GetResource:
                 self._react_to_get_resource,
-            message.tasks.ResourceList:
+            message.resources.ResourceList:
                 self._react_to_resource_list,
             message.tasks.SubtaskResultsAccepted:
                 self._react_to_subtask_result_accepted,
@@ -957,9 +957,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self._react_to_subtask_results_rejected,
             message.tasks.TaskFailure:
                 self._react_to_task_failure,
-            message.tasks.Hello:
+            message.base.Hello:
                 self._react_to_hello,
-            message.tasks.RandVal:
+            message.base.RandVal:
                 self._react_to_rand_val,
             message.tasks.StartSessionResponse:
                 self._react_to_start_session_response,
