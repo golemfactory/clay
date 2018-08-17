@@ -557,20 +557,20 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         total_task_price = msg.price * number_of_subtasks
         transaction_system = self.task_server.client.transaction_system
         requestors_gntb_balance = transaction_system.balance(
-            account_address=msg.requestor_ethereum_public_key,
+            account_address=msg.requestor_ethereum_address,
         )
         if requestors_gntb_balance < total_task_price:
             _cannot_compute(reasons.InsufficientBalance)
             return
         if msg.concent_enabled:
             requestors_deposit_value = transaction_system.concent_balance(
-                account_address=msg.requestor_ethereum_public_key,
+                account_address=msg.requestor_ethereum_address,
             )
             if requestors_deposit_value < (total_task_price * 2):
                 _cannot_compute(reasons.InsufficientDeposit)
                 return
             requestors_deposit_timelock = transaction_system.concent_timelock(
-                account_address=msg.requestor_ethereum_public_key,
+                account_address=msg.requestor_ethereum_address,
             )
             expected_timelock = time.time() \
                 + variables.CONCENT_MIN_DEPOSIT_TIMELOCK
