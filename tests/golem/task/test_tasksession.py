@@ -145,13 +145,15 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         task_state.package_size = 42
         conn.server.task_manager.tasks_states[ctd['task_id']] = task_state
 
-        ts2.task_manager.get_next_subtask.return_value = (ctd, False, False)
+        ts2.task_manager.is_my_task.return_value = True
+        ts2.task_manager.should_wait_for_node.return_value = False
+        ts2.task_manager.get_next_subtask.return_value = ctd
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.CannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
         ts2.task_server.should_accept_provider.return_value = True
-        ts2.task_manager.check_next_subtask.return_value = (True, False, False)
+        ts2.task_manager.check_next_subtask.return_value = True
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.TaskToCompute)
@@ -169,7 +171,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             ['size', task_state.package_size],
         ]
         self.assertCountEqual(ms.slots(), expected)
-        ts2.task_manager.get_next_subtask.return_value = (ctd, True, False)
+        ts2.task_manager.is_my_task.return_value = False
+        ts2.task_manager.should_wait_for_node.return_value = False
+        ts2.task_manager.get_next_subtask.return_value = ctd
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.CannotAssignTask)

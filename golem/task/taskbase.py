@@ -526,3 +526,7 @@ class Task(abc.ABC):
         Copy results of a single subtask from another task
         """
         raise NotImplementedError()
+
+    @abc.abstractmethod
+    def should_accept_client(self, node_id):
+        pass

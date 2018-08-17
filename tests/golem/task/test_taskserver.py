@@ -858,7 +858,9 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states[task_id].status = \
             ts.task_manager.activeStatus[0]
-        subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
+        wrong_task = not ts.task_manager.is_my_task(task_id)
+        wait = ts.task_manager.should_wait_for_node(task_id,"DEF")
+        subtask = ts.task_manager.get_next_subtask(
             "DEF",
             "DEF",
             task_id,
@@ -898,7 +900,9 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states[task_id].status = \
             ts.task_manager.activeStatus[0]
-        subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
+        wrong_task = not ts.task_manager.is_my_task(task_id)
+        wait = ts.task_manager.should_wait_for_node(task_id,"DEF")
+        subtask = ts.task_manager.get_next_subtask(
             "DEF", "DEF", task_id, 1000, 10, 5, 10, 2, "10.10.10.10")
 
         ts.accept_result("xxyyzz", "key", "eth_address")

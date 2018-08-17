@@ -265,7 +265,9 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     def test_get_next_subtask(self, *_):
         assert isinstance(self.tm, TaskManager)
 
-        subtask, wrong_task, wait = self.tm.get_next_subtask(
+        wrong_task = not self.tm.is_my_task("xyz")
+        should_wait = self.tm.should_wait_for_node("xyz","DEF")
+        subtask = self.tm.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         assert subtask is None
         assert wrong_task
@@ -277,7 +279,9 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.tm.start_task(task_mock.header.task_id)
 
         (handler, checker) = self._connect_signal_handler()
-        subtask, wrong_task, wait = self.tm.get_next_subtask(
+        wrong_task = not self.tm.is_my_task("xyz")
+        should_wait = self.tm.should_wait_for_node("xyz","DEF")
+        subtask = self.tm.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         assert subtask is not None
         assert not wrong_task
@@ -285,23 +289,31 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         del handler
 
         self.tm.tasks_states["xyz"].status = self.tm.activeStatus[0]
-        subtask, wrong_task, wait = self.tm.get_next_subtask(
+        wrong_task = not self.tm.is_my_task("xyz")
+        should_wait = self.tm.should_wait_for_node("xyz","DEF")
+        subtask = self.tm.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 1, 10, 2, "10.10.10.10")
         assert subtask is None
         assert not wrong_task
 
-        subtask, wrong_task, wait = self.tm.get_next_subtask(
+        wrong_task = not self.tm.is_my_task("xyz")
+        should_wait = self.tm.should_wait_for_node("xyz","DEF")
+        subtask = self.tm.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 5, 2, 2, "10.10.10.10")
         assert subtask is None
         assert not wrong_task
 
-        subtask, wrong_task, wait = self.tm.get_next_subtask(
+        wrong_task = not self.tm.is_my_task("xyz")
+        should_wait = self.tm.should_wait_for_node("xyz","DEF")
+        subtask = self.tm.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         assert subtask is None
         assert not wrong_task
 
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "xyzxyz"
-        subtask, wrong_task, wait = self.tm.get_next_subtask(
+        wrong_task = not self.tm.is_my_task("xyz")
+        should_wait = self.tm.should_wait_for_node("xyz","DEF")
+        subtask = self.tm.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         task_state = self.tm.tasks_states["xyz"]
         self.assertIsInstance(subtask, ComputeTaskDef)
@@ -310,23 +322,31 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert subtask_state.computer.price == 1010
 
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "xyzxyz2"
-        subtask, wrong_task, wait = self.tm.get_next_subtask(
+        wrong_task = not self.tm.is_my_task("xyz")
+        should_wait = self.tm.should_wait_for_node("xyz","DEF")
+        subtask = self.tm.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 20000, 5, 10, 2, "10.10.10.10")
         assert subtask is None
         assert not wrong_task
 
-        subtask, wrong_task, wait = self.tm.get_next_subtask(
+        wrong_task = not self.tm.is_my_task("xyz")
+        should_wait = self.tm.should_wait_for_node("xyz","DEF")
+        subtask = self.tm.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         assert isinstance(subtask, ComputeTaskDef)
         assert not wrong_task
 
         del self.tm.subtask2task_mapping["xyzxyz2"]
-        subtask, wrong_task, wait = self.tm.get_next_subtask(
+        wrong_task = not self.tm.is_my_task("xyz")
+        should_wait = self.tm.should_wait_for_node("xyz","DEF")
+        subtask = self.tm.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         assert subtask is None
 
         del self.tm.tasks_states["xyz"].subtask_states["xyzxyz2"]
-        subtask, wrong_task, wait = self.tm.get_next_subtask(
+        wrong_task = not self.tm.is_my_task("xyz")
+        should_wait = self.tm.should_wait_for_node("xyz","DEF")
+        subtask = self.tm.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
         assert isinstance(subtask, ComputeTaskDef)
 
@@ -361,7 +381,9 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.tm.tasks_states["xyz"].status = self.tm.activeStatus[0]
         with patch('golem.task.taskbase.Task.needs_computation',
                    return_value=True):
-            subtask, wrong_task, wait = self.tm.get_next_subtask(
+            wrong_task = not self.tm.is_my_task("xyz")
+            should_wait = self.tm.should_wait_for_node("xyz","DEF")
+            subtask = self.tm.get_next_subtask(
                 node_id="DEF",
                 node_name="DEF",
                 task_id="xyz",
@@ -443,10 +465,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                      verify_subtasks={"xxyyzz": True})
         self.tm.add_new_task(t)
         self.tm.start_task(t.header.task_id)
-        ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF",
-                                                                "xyz", 1030, 10,
-                                                                10000, 10000,
-                                                                10000)
+        wrong_task = not self.tm.is_my_task("xyz")
+        should_wait = self.tm.should_wait_for_node("xyz","DEF")
+        ctd = self.tm.get_next_subtask("DEF", "DEF", "xyz", 1030, 10, 10000,
+                                       10000, 10000)
         assert not wrong_task
         assert ctd['subtask_id'] == "xxyyzz"
         assert not should_wait
@@ -475,10 +497,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.tm.start_task(t2.header.task_id)
         progress = self.tm.get_progresses()
         assert progress != {}
-        ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF",
-                                                                "abc", 1030, 10,
-                                                                10000, 10000,
-                                                                10000)
+        wrong_task = not self.tm.is_my_task("abc")
+        should_wait = self.tm.should_wait_for_node("abc","DEF")
+        ctd = self.tm.get_next_subtask("DEF", "DEF", "abc", 1030, 10, 10000,
+                                       10000, 10000)
         assert not wrong_task
         assert ctd['subtask_id'] == "aabbcc"
         assert not should_wait
@@ -501,10 +523,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                       {"qqwwee": True, "rrttyy": True})
         self.tm.add_new_task(t3)
         self.tm.start_task(t3.header.task_id)
-        ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF",
-                                                                "qwe", 1030, 10,
-                                                                10000, 10000,
-                                                                10000)
+        wrong_task = not self.tm.is_my_task("qwe")
+        should_wait = self.tm.should_wait_for_node("qwe","DEF")
+        ctd = self.tm.get_next_subtask("DEF", "DEF", "qwe", 1030, 10, 10000,
+                                       10000, 10000)
         assert not wrong_task
         assert ctd['subtask_id'] == "qqwwee"
         (handler, checker) = self._connect_signal_handler()
@@ -530,10 +552,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                       {'ttt4': False, 'sss4': True})
         self.tm.add_new_task(t2)
         self.tm.start_task(t2.header.task_id)
-        ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF",
-                                                                "task4", 1000,
-                                                                10, 5, 10, 2,
-                                                                "10.10.10.10")
+        wrong_task = not self.tm.is_my_task("task4")
+        should_wait = self.tm.should_wait_for_node("task4","DEF")
+        ctd = self.tm.get_next_subtask("DEF", "DEF", "task4", 1000, 10, 5, 10,
+                                       2, "10.10.10.10")
         assert not wrong_task
         assert ctd['subtask_id'] == "ttt4"
         (handler, checker) = self._connect_signal_handler()
@@ -545,10 +567,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.tm.computed_task_received("ttt4", [], 0,
                                        self.tm.verification_finished)
         assert self.tm.verification_finished.call_count == 5
-        ctd, wrong_task, should_wait = self.tm.get_next_subtask("DEF", "DEF",
-                                                                "task4", 1000,
-                                                                10, 5, 10, 2,
-                                                                "10.10.10.10")
+        wrong_task = not self.tm.is_my_task("task4")
+        should_wait = self.tm.should_wait_for_node("task4","DEF")
+        ctd = self.tm.get_next_subtask("DEF", "DEF", "task4", 1000, 10, 5, 10,
+                                       2, "10.10.10.10")
         assert not wrong_task
         assert ctd['subtask_id'] == "sss4"
         self.tm.computed_task_received("sss4", [], 0,
