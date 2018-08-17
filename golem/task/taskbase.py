@@ -8,11 +8,13 @@ import golem_messages
 
 from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
 import golem
+from golem.client import ClientTaskComputerEventListener
 from golem.core import common
 from golem.core.common import get_timestamp_utc
 from golem.core.simpleserializer import CBORSerializer, DictSerializer
 from golem.network.p2p.node import Node
 from golem.task.masking import Mask
+from golem.task.taskmanager import TaskManager
 from golem.task.taskstate import TaskState
 
 logger = logging.getLogger("golem.task")
@@ -289,7 +291,7 @@ class Task(abc.ABC):
         self.header = header
         self.task_definition = task_definition
 
-        self.listeners: 'List[Union[ClientTaskComputerEventListener, TaskManager]]' = []  # noqa disable=line-too-long # type: ignore
+        self.listeners: 'List[Union[ClientTaskComputerEventListener, TaskManager]]' = []  # noqa disable=line-too-long
 
     def __getstate__(self):
         state = self.__dict__.copy()

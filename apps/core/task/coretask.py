@@ -587,7 +587,7 @@ class CoreTaskBuilder(TaskBuilder):
         return definition
 
     @classmethod
-    def build_definition(cls, # type: ignore
+    def build_definition(cls,
                          task_type: CoreTaskTypeInfo,
                          dictionary: Dict[str, Any],
                          minimal=False):
@@ -601,7 +601,7 @@ class CoreTaskBuilder(TaskBuilder):
         return definition
 
     @classmethod
-    def build_full_definition(cls, # type: ignore
+    def build_full_definition(cls,
                               task_type: CoreTaskTypeInfo,
                               dictionary: Dict[str, Any]):
         definition = cls.build_minimal_definition(task_type, dictionary)
