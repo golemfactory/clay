@@ -159,8 +159,8 @@ class TestBlenderFrameTask(TempDirFixture):
                 result)
 
         with mock.patch(
-            'golem_verificator.rendering_verifier.RenderingVerifier.'
-                'start_verification',
+                'golem_verificator.rendering_verifier.'
+                'RenderingVerifier.start_verification',
                 side_effect=verification_finished1):
             self.bt.computation_finished(
                 extra_data3.ctd['subtask_id'],
@@ -192,8 +192,8 @@ class TestBlenderFrameTask(TempDirFixture):
         img.close()
 
         with mock.patch(
-            'golem_verificator.rendering_verifier.RenderingVerifier.'
-                'start_verification',
+                'golem_verificator.rendering_verifier.'
+                'RenderingVerifier.start_verification',
                 side_effect=verification_finished2):
             self.bt.computation_finished(
                 extra_data4.ctd['subtask_id'],
@@ -259,11 +259,11 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         task_definition.resolution = [res_x, res_y]
         task_definition.main_scene_file = path.join(self.path, "example.blend")
         task_definition.task_id = str(uuid.uuid4())
-        bt = BlenderRenderTask(owner=Node(node_name="example-node-name"),
-                               task_definition=task_definition,
-                               total_tasks=total_tasks,
-                               root_path=self.tempdir,
-                               )
+        bt = BlenderRenderTask(
+            owner=Node(node_name="example-node-name"),
+            task_definition=task_definition,
+            total_tasks=total_tasks,
+            root_path=self.tempdir)
         bt.initialize(DirManager(self.tempdir))
         return bt
 
@@ -702,8 +702,8 @@ class TestHelpers(unittest.TestCase):
         definition.options.frames = list(range(30))
         if as_path:
             assert BlenderTaskTypeInfo.get_task_border(
-                subtask, definition, 30, as_path=as_path) == [
-                (0, 600), (800, 600), (800, 0), (0, 0)]
+                subtask, definition, 30, as_path=as_path) == \
+                [(0, 600), (800, 600), (800, 0), (0, 0)]
         else:
             assert BlenderTaskTypeInfo.get_task_border(
                 subtask, definition, 30, as_path=as_path) == []
