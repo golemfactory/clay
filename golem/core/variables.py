@@ -53,7 +53,8 @@ CONCENT_CHOICES = {
 }
 
 CONCENT_PULL_INTERVAL = (MAX_CONCENT_PING_INTERVAL / 2).total_seconds()
-CONCENT_MIN_DEPOSIT_TIMELOCK = 48 * 3600  # 48 hours to accept requestors deposit
+# 48 hours to accept requestors deposit
+CONCENT_MIN_DEPOSIT_TIMELOCK = 48 * 3600
 
 # Number of task headers transmitted per message
 TASK_HEADERS_LIMIT = 20
