@@ -285,7 +285,7 @@ class TaskServer(
         if self.active:
             self.task_sessions_incoming.add(session)
         else:
-            session.disconnect(message.Disconnect.REASON.NoMoreMessages)
+            session.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
 
     def disconnect(self):
         task_sessions = dict(self.task_sessions)

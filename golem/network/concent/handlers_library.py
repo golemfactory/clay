@@ -54,7 +54,7 @@ class HandlersLibrary():
             return f
         return _wrapped
 
-    def interpret(self, msg, response_to: message.Message = None) -> None:
+    def interpret(self, msg, response_to: message.base.Message = None) -> None:
         try:
             ref = self._handlers[msg.__class__]
             handler = ref()
