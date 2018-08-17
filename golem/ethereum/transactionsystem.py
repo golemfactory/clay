@@ -6,7 +6,7 @@ import time
 from enum import Enum
 from datetime import datetime
 from pathlib import Path
-from typing import Any, ClassVar, Dict, Iterable, Optional, Tuple
+from typing import Any, ClassVar, Dict, Iterable, Optional, List
 
 from ethereum.utils import denoms
 from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
