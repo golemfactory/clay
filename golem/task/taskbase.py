@@ -2,7 +2,7 @@ import abc
 import hashlib
 import logging
 import time
-from typing import List, Type, Optional, Tuple, Any
+from typing import List, Type, Optional, Tuple, Any, Union
 
 import golem_messages
 

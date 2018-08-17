@@ -3,7 +3,7 @@ import decimal
 import logging
 import os
 from enum import Enum
-from typing import Type
+from typing import Type, Optional, Dict, Any
 
 import golem_messages.message
 from ethereum.utils import denoms
@@ -523,8 +523,8 @@ def accepting(query_extra_data_func):
     def accepting_qed(self,
                       perf_index: float,
                       num_cores=1,
-                      node_id: str = None,
-                      node_name: str = None) -> Task.ExtraData:
+                      node_id: Optional[str] = None,
+                      node_name: Optional[str] = None) -> Task.ExtraData:
         verdict = self._accept_client(node_id)
         if verdict != AcceptClientVerdict.ACCEPTED:
 
@@ -552,7 +552,10 @@ def accepting(query_extra_data_func):
 class CoreTaskBuilder(TaskBuilder):
     TASK_CLASS = CoreTask
 
-    def __init__(self, owner, task_definition, dir_manager):
+    def __init__(self,
+                 owner: Node,
+                 task_definition: TaskDefinition,
+                 dir_manager: DirManager):
         super(CoreTaskBuilder, self).__init__()
         self.task_definition = task_definition
         self.root_path = dir_manager.root_path
@@ -581,11 +584,13 @@ class CoreTaskBuilder(TaskBuilder):
         definition.resources = set(dictionary['resources'])
         definition.total_subtasks = int(dictionary['subtasks'])
         definition.main_program_file = task_type.defaults.main_program_file
-
         return definition
 
     @classmethod
-    def build_definition(cls, task_type: CoreTaskTypeInfo, dictionary, minimal=False):
+    def build_definition(cls,
+                         task_type: CoreTaskTypeInfo, # type: ignore
+                         dictionary: Dict[str, Any],
+                         minimal=False):
         # dictionary comes from the GUI
         if not minimal:
             definition = cls.build_full_definition(task_type, dictionary)
@@ -596,7 +601,9 @@ class CoreTaskBuilder(TaskBuilder):
         return definition
 
     @classmethod
-    def build_full_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
+    def build_full_definition(cls,
+                              task_type: CoreTaskTypeInfo, # type: ignore
+                              dictionary: Dict[str, Any]):
         definition = cls.build_minimal_definition(task_type, dictionary)
         definition.task_name = dictionary['name']
         definition.max_price = \
