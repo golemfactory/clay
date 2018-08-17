@@ -16,16 +16,6 @@ class IncomesKeeper:
     """Keeps information about payments received from other nodes
     """
 
-    def start(self):
-        pass
-
-    def stop(self):
-        pass
-
-    def run_once(self):
-        # TODO Check for unpaid incomes and ask Concent for them. issue #2194
-        pass
-
     def received_batch_transfer(
             self,
             tx_hash: str,

@@ -47,19 +47,17 @@ CropRenderedFailureCallbackType = Callable[[Exception], None]
 class BlenderReferenceGenerator:
     MIN_CROP_SIZE = 8
     CROP_RELATIVE_SIZE = 0.01
-    DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP = 3
-    DEFAULT_CROPS_NUMBER_SECOND_VERIFICATION_STEP = 6
+    DEFAULT_CROPS_NUMBER = 3
 
     def __init__(self, computer: Optional[ComputerAdapter] = None) -> None:
         self.computer = computer or ComputerAdapter()
-        self.crop_counter: int = 0
         self.crop_size_in_pixels: Tuple[int, int] = (0, 0)
         self.crops_blender_borders: List[Tuple[float, float, float, float]] = []
         self.crops_pixel_coordinates: List[Tuple[int, int]] = []
         self.rendered_crops_results: Dict[int, List[Any]] = {}
+        self.crop_count = BlenderReferenceGenerator.DEFAULT_CROPS_NUMBER
 
     def clear(self):
-        self.crop_counter = 0
         self.crop_size_in_pixels = ()
         self.crops_blender_borders = []
         self.crops_pixel_coordinates = []
@@ -228,11 +226,10 @@ class BlenderReferenceGenerator:
                      crop_rendered_callback: CropRenderedSuccessCallbackType,
                      crop_render_fail_callback: CropRenderedFailureCallbackType,
                      subtask_info: Dict[str, Any],
-                     num_crops: int
-                     =DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP,
+                     num_crops: int = DEFAULT_CROPS_NUMBER,
                      crop_size: Optional[Tuple[int, int]] = None) \
             -> Tuple[int, int]:
-
+        self.crop_count = num_crops
         crops_path = os.path.join(subtask_info['tmp_dir'],
                                   subtask_info['subtask_id'])
         crops_info = self.generate_crops_data((subtask_info['res_x'],
@@ -253,7 +250,7 @@ class BlenderReferenceGenerator:
         self._render_one_crop(verification_context,
                               self.crop_rendered_callback,
                               crop_render_fail_callback,
-                              self.crop_counter)
+                              0)
 
         return self.crop_size_in_pixels
 
@@ -269,7 +266,7 @@ class BlenderReferenceGenerator:
                          crop_number: int) -> None:
 
         minx, maxx, miny, maxy = verification_context \
-            .crops_floating_point_coordinates[crop_number - self.crop_counter]
+            .crops_floating_point_coordinates[crop_number]
 
         script_src = generate_blender_crop_file(
             resolution=(verification_context.subtask_info['res_x'],
@@ -313,12 +310,12 @@ class BlenderReferenceGenerator:
 
         return task_definition
 
-    def crop_rendering_finished(self, begin: int, end: int) -> None:
-        for i in range(begin, end):
+    def crop_rendering_finished(self) -> None:
+        for i in range(0, self.crop_count):
             self.rendered_crops_results[i][2].success(
                 self.rendered_crops_results[i][0],
                 self.rendered_crops_results[i][1],
-                self.rendered_crops_results[i][2], i-self.crop_counter)
+                self.rendered_crops_results[i][2], i)
 
     def crop_rendered_callback(self,
                                results: List[str],
@@ -330,15 +327,8 @@ class BlenderReferenceGenerator:
                                                     verification_context]
         crop_number += 1
 
-        crops_number_first_step = BlenderReferenceGenerator\
-            .DEFAULT_CROPS_NUMBER_FIRST_VERIFICATION_STEP
-        crops_number_second_step = BlenderReferenceGenerator \
-            .DEFAULT_CROPS_NUMBER_SECOND_VERIFICATION_STEP
-
-        if crop_number == crops_number_first_step \
-                or crop_number == crops_number_second_step:
-            self.crop_rendering_finished(crop_number - crops_number_first_step,
-                                         crop_number)
+        if crop_number == self.crop_count:
+            self.crop_rendering_finished()
             return
 
         self._render_one_crop(verification_context,
