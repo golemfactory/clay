@@ -6,7 +6,7 @@ from apps.core.nvgpu import get_devices
 from golem.core.common import get_golem_path
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.environments.environment import SupportStatus
+from golem.environments.environment import SupportStatus, UnsupportReason
 
 
 class BlenderEnvironment(DockerEnvironment):
@@ -34,7 +34,9 @@ class BlenderNVGPUEnvironment(BlenderEnvironment):
 
     def check_support(self) -> SupportStatus:
         if not nvgpu.is_supported():
-            return SupportStatus.err('NVIDIA GPU environment is not supported')
+            return SupportStatus.err({
+                UnsupportReason.ENVIRONMENT_UNSUPPORTED: self.ENV_ID
+            })
         return super().check_support()
 
     def get_container_config(self) -> Dict:
