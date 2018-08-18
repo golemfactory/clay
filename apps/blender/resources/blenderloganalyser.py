@@ -51,8 +51,8 @@ def _get_warnings(log_content, return_data):
         if return_data.get("warnings"):
             return_warnings = return_data.get("warnings")
             if return_warnings.get("missing_files"):
-                return_data["warnings"]["missing_files"] = return_data.get(
-                    "warnings")['missing_files'] + warnings['missing_files']
+                return_data["warnings"]["missing_files"].extend(
+                    warnings['missing_files'])
         else:
             return_data["warnings"] = warnings
 
@@ -73,12 +73,16 @@ def find_missing_files(log_content):
         if missing_file:
             # extract filename from warning message
             missing_path = missing_file.group(1)
-            fileInfo = {
-                'baseName': os.path.basename(missing_path),
-                'dirName': os.path.dirname(missing_path)
-            }
+            fileInfo = (
+                ('baseName', os.path.basename(missing_path)),
+                ('dirName', os.path.dirname(missing_path))
+            )
             warnings.append(fileInfo)
-    return list(map(dict, set(tuple(sorted(f.items())) for f in warnings)))
+
+    if bool(warnings):
+        warnings = sorted(warnings, key=lambda t: (t[0][1]))
+        return list(map(dict, set(warnings)))
+    return warnings
 
 
 def _format_missing_files_warning(missing_files):
