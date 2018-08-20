@@ -1,5 +1,4 @@
 import logging
-from contextlib import contextmanager
 
 from golem.core.hardware import cpu_cores_available
 from golem.docker.task_thread import DockerTaskThread
@@ -29,6 +28,7 @@ class DockerConfigManager(object):
 
     def __init__(self):
         self.container_host_config = dict(DEFAULT_HOST_CONFIG)
+        self.hypervisor = None
 
     def build_config(self, config_desc):
         host_config = dict()
@@ -37,14 +37,18 @@ class DockerConfigManager(object):
             num_cores = config_desc.num_cores
             max_memory_size = config_desc.max_memory_size
 
-            with self._try():
+            try:
                 cpu_cores = cpu_cores_available()
                 max_cpus = min(len(cpu_cores), max(int(num_cores), 1))
                 cpu_set = [str(c) for c in cpu_cores[:max_cpus]]
                 host_config['cpuset'] = ','.join(cpu_set)
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.warning('Cannot set the CPU set: %r', exc)
 
-            with self._try():
+            try:
                 host_config['mem_limit'] = int(max_memory_size) * 1024
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.warning('Cannot set the CPU set: %r', exc)
 
         self.container_host_config.update(host_config)
 
@@ -54,10 +58,3 @@ class DockerConfigManager(object):
             docker_manager = cls(*args, **kwargs)
             DockerTaskThread.docker_manager = docker_manager
         return DockerTaskThread.docker_manager
-
-    @contextmanager
-    def _try(self):
-        try:
-            yield
-        except Exception:
-            pass

@@ -10,7 +10,7 @@ from typing import List, Optional, Dict
 
 from golem.core.common import is_linux, is_windows, is_osx, get_golem_path
 from golem.core.threads import ThreadQueueExecutor
-from golem.docker.commands import DockerCommandHandler
+from golem.docker.commands import DockerCommandHandler, CommandDict
 from golem.docker.config import DockerConfigManager
 from golem.report import report_calls, Component
 
@@ -30,7 +30,7 @@ CONSTRAINT_KEYS = dict(
 
 class DockerMachineCommandHandler(DockerCommandHandler):
 
-    commands = dict(
+    commands: CommandDict = dict(
         create=['docker-machine', 'create'],
         rm=['docker-machine', 'rm', '-y'],
         start=['docker-machine', 'restart'],
@@ -49,9 +49,7 @@ class DockerMachineCommandHandler(DockerCommandHandler):
 class DockerManager(DockerConfigManager):
 
     def __init__(self, config_desc=None):
-
         super(DockerManager, self).__init__()
-        self.hypervisor = None
 
         self.min_constraints = dict(
             memory_size=1024,
@@ -98,7 +96,7 @@ class DockerManager(DockerConfigManager):
             # (other commands may result in an error if docker env variables
             # are set incorrectly)
             self.command('help')
-        except Exception as err:
+        except Exception as err:  # pylint: disable=broad-except
             logger.error(
                 """
                 ***************************************************************
@@ -112,7 +110,7 @@ class DockerManager(DockerConfigManager):
 
         try:
             self.pull_images()
-        except Exception as err:
+        except Exception as err:  # pylint: disable=broad-except
             logger.warning("Docker: error pulling images: %r", err)
             self.build_images()
 
@@ -147,12 +145,16 @@ class DockerManager(DockerConfigManager):
         cpu_count = self.min_constraints['cpu_count']
         memory_size = self.min_constraints['memory_size']
 
-        with self._try():
+        try:
             cpu_count = max(int(config_desc.num_cores), cpu_count)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning('Cannot read the CPU count: %r', exc)
 
-        with self._try():
+        try:
             memory_size = max(int(config_desc.max_memory_size) // 1024,
                               memory_size)
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning('Cannot read the memory amount: %r', exc)
 
         self._config = dict(
             memory_size=memory_size,
@@ -308,7 +310,7 @@ class Hypervisor(object):
 
     POWER_UP_DOWN_TIMEOUT = 30 * 1000  # milliseconds
     SAVE_STATE_TIMEOUT = 120 * 1000  # milliseconds
-    COMMAND_HANDLER = None
+    COMMAND_HANDLER = DockerCommandHandler
 
     _instance = None
 
@@ -372,7 +374,7 @@ class Hypervisor(object):
     @report_calls(Component.docker, 'instance.stop')
     def stop_vm(self, name: Optional[str] = None) -> bool:
         name = name or self._docker_vm
-        logger.info("Docker: stopping '{}'".format(name))
+        logger.info("Docker: stopping %s", name)
 
         try:
             self._docker_manager.command('stop', name)
@@ -503,6 +505,28 @@ Ensure that you try the following before reporting an issue:
                 split = val.replace('"', '').split(os.path.sep)
                 self._config_dir = os.path.sep.join(split[:-1])
 
+    def create(self, name: Optional[str] = None, **params):
+        raise NotImplementedError
+
+    def constrain(self, name: Optional[str] = None, **params) -> None:
+        raise NotImplementedError
+
+    def constraints(self, name: Optional[str] = None) -> Dict:
+        raise NotImplementedError
+
+    @contextmanager
+    def restart_ctx(self, name: Optional[str] = None):
+        raise NotImplementedError
+
+    @contextmanager
+    def recover_ctx(self, name: Optional[str] = None):
+        raise NotImplementedError
+
+    @classmethod
+    def _new_instance(cls,
+                      docker_manager: DockerManager) -> Optional['Hypervisor']:
+        raise NotImplementedError
+
 
 class VirtualBoxHypervisor(DockerMachineHypervisor):
 
@@ -518,7 +542,7 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
         super(VirtualBoxHypervisor, self).__init__(docker_manager)
 
         if is_windows():
-            import pythoncom
+            import pythoncom  # noqa # pylint: disable=import-error
             pythoncom.CoInitialize()
 
         self.virtualbox = virtualbox
@@ -852,10 +876,8 @@ class DockerForMacCommandHandler(DockerCommandHandler):
         'vpnkit': 'com.docker.vpnkit',
     }
 
-    TIMEOUT = 180
-
     @classmethod
-    def start(cls, *_args, **_kwargs):
+    def start(cls, *_args, **_kwargs) -> None:
         try:
             subprocess.check_call(['open', '-g', '-a', cls.PROCESSES['app']])
             cls.wait_until_started()
@@ -864,18 +886,17 @@ class DockerForMacCommandHandler(DockerCommandHandler):
             sys.exit(1)
 
     @classmethod
-    def stop(cls) -> bool:
+    def stop(cls) -> None:
         pid = cls._pid()
         if not pid:
-            return False
+            return
 
         try:
             subprocess.check_call(['kill', str(pid)])
         except subprocess.CalledProcessError:
-            return False
+            return
 
         cls.wait_until_stopped()
-        return True
 
     @classmethod
     def status(cls) -> str:
@@ -919,7 +940,8 @@ class DockerForMacCommandHandler(DockerCommandHandler):
         stdout, _ = proc_pipe.communicate()
         return stdout.strip().decode('utf-8')
 
-    commands = dict(
+    # pylint: disable=undefined-variable
+    commands: CommandDict = dict(
         start=lambda *_: DockerForMacCommandHandler.start(),
         stop=lambda *_: DockerForMacCommandHandler.stop(),
         status=lambda *_: DockerForMacCommandHandler.status(),
@@ -936,10 +958,6 @@ class DockerForMac(Hypervisor):
     CONFIG_FILE = os.path.expanduser(
         "~/Library/Group Containers/group.com.docker/settings.json"
     )
-
-    def __init__(self, docker_manager: DockerManager,
-                 docker_vm: str = DOCKER_VM_NAME) -> None:
-        super().__init__(docker_manager, docker_vm)
 
     def setup(self) -> None:
         if self.vm_running():

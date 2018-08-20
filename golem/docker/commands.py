@@ -1,7 +1,7 @@
 import logging
 import subprocess
 import time
-from typing import List, Optional
+from typing import List, Optional, Dict, Union, Callable
 
 from golem.core.common import SUBPROCESS_STARTUP_INFO, DEVNULL, to_unicode
 
@@ -9,9 +9,19 @@ from golem.core.common import SUBPROCESS_STARTUP_INFO, DEVNULL, to_unicode
 logger = logging.getLogger(__name__)
 
 
+CallableCommand = Callable[
+    [Optional[str], Optional[List[str]], Optional[bool]],  # args
+    Optional[str]  # return value
+]
+
+CommandDict = Dict[str, Union[List[str], CallableCommand]]
+
+
 class DockerCommandHandler:
 
-    commands = dict(
+    TIMEOUT = 180
+
+    commands: CommandDict = dict(
         build=['docker', 'build'],
         tag=['docker', 'tag'],
         pull=['docker', 'pull'],
@@ -26,10 +36,12 @@ class DockerCommandHandler:
             command_name: str,
             vm_name: Optional[str] = None,
             args: Optional[List[str]] = None,
-            shell: bool = False) -> str:
+            shell: bool = False) -> Optional[str]:
 
         command = cls.commands.get(command_name)
-        if isinstance(command, list):
+        if not command:
+            logger.warning('Unknown command: %s', command_name)
+        elif isinstance(command, list):
             return cls._command(command[:], vm_name, args, shell)
         elif callable(command):
             return command(vm_name, args, shell)

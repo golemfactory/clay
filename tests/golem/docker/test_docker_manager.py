@@ -1,12 +1,11 @@
 import json
 import os
 import sys
-import unittest
 import uuid
 from contextlib import contextmanager
 from subprocess import CalledProcessError
 from typing import Optional
-from unittest import mock
+from unittest import mock, TestCase
 
 from golem.docker.manager import DOCKER_VM_NAME as VM_NAME, \
     DockerMachineCommandHandler, DockerMachineHypervisor, DockerManager, \
@@ -106,6 +105,7 @@ class MockThreadExecutor(mock.Mock):
 
 
 class MockHypervisor(DockerMachineHypervisor):
+    # pylint: disable=method-hidden
 
     def __init__(self, manager=None, **_kwargs):
         super().__init__(manager)
@@ -203,7 +203,7 @@ class Erroneous(mock.Mock):
         raise_exception("Write")
 
 
-class TestDockerManager(unittest.TestCase):
+class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
     def test_status(self):
         dmm = MockDockerManager()
@@ -320,7 +320,7 @@ class TestDockerManager(unittest.TestCase):
         dmm.constrain()
         assert dmm.hypervisor.constrain.called
 
-        args, kwargs = dmm.hypervisor.constrain.call_args_list.pop()
+        _, kwargs = dmm.hypervisor.constrain.call_args_list.pop()
 
         assert len(kwargs) == len(diff)
         assert kwargs['cpu_count'] == dmm.defaults['cpu_count']

@@ -40,8 +40,3 @@ class TestDockerConfigManager(unittest.TestCase):
 
         self.assertFalse('cpuset' in cm.container_host_config)
         self.assertFalse('mem_limit' in cm.container_host_config)
-
-    def test_try(self):
-        cm = DockerConfigManager()
-        with cm._try():
-            raise Exception("Not supposed to be raised further")
