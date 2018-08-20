@@ -1,5 +1,6 @@
 import os
 import re
+from bisect import insort
 
 from golem.core.common import to_unicode
 
@@ -77,10 +78,9 @@ def find_missing_files(log_content):
                 ('baseName', os.path.basename(missing_path)),
                 ('dirName', os.path.dirname(missing_path))
             )
-            warnings.append(fileInfo)
+            insort(warnings, fileInfo)
 
     if warnings:
-        warnings = sorted(warnings, key=lambda t: (t[0][1]))
         return list(map(dict, set(warnings)))
     return warnings
 
