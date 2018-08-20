@@ -67,6 +67,7 @@ class TestTaskHeader(TestCase):
                 "last_checking": time.time(),
                 "deadline": timeout_to_deadline(1201),
                 "subtask_timeout": 120,
+                "subtasks_count": 21,
                 "max_price": 10,
                 "min_version": golem.__version__,
                 "resource_size": 0,
