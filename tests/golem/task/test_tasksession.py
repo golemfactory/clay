@@ -514,7 +514,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             msg = msg_factories.tasks.TaskToComputeFactory(
                 compute_task_def=compute_task_def,
             )
-            ts.task_manager.tasks[msg.task_id].get_total_tasks.return_value = 10
+            ts.task_server.task_keeper.task_headers = {
+                msg.task_id: MagicMock(),
+            }
+            ts.task_server.task_keeper\
+                .task_headers[msg.task_id].subtasks_count = 10
             ts.task_server.client.transaction_system.get_available_gnt\
                 .return_value = msg.price * 10
             ts._react_to_task_to_compute(msg)
