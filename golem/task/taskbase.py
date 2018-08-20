@@ -92,7 +92,7 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
 
     @staticmethod
     def from_dict(dictionary) -> 'TaskFixedHeader':
-        if not 'subtasks_count' in dictionary:
+        if 'subtasks_count' not in dictionary:
             logger.debug(
                 "Subtasks count missing. Implicit 1. dictionary=%r",
                 dictionary,
