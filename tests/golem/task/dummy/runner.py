@@ -112,7 +112,7 @@ def _make_mock_ets():
         available_gntb,  # GNTB
         1000 * denoms.ether,  # locked
         1000 * denoms.ether,  # GNT
-        time.time(),  # 
+        time.time(),
         time.time(),
     )
     ets.get_available_gnt.return_value = available_gntb
