@@ -92,16 +92,18 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
 
     @staticmethod
     def from_dict(dictionary) -> 'TaskFixedHeader':
+        if not ('subtasks_count' in dictionary):
+            logger.debug(
+                "Subtasks count missing. Implicit 1. dictionary=%r",
+                dictionary,
+            )
+            dictionary['subtasks_count'] = 1
         th: TaskFixedHeader = \
             DictSerializer.load(dictionary, as_class=TaskFixedHeader)
         th.last_checking = time.time()
 
         if isinstance(th.task_owner, dict):
             th.task_owner = Node.from_dict(th.task_owner)
-
-        if not hasattr(th, 'subtasks_count'):
-            logger.debug("Subtasks count missing. Implicit 1. th=%r", th)
-            th.subtasks_count = 1
 
         th.update_checksum()
         return th
@@ -186,7 +188,7 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
                        th_dict_repr['task_id'],
                        th_dict_repr['task_owner']['node_name'])
                 raise ValueError(msg)
-        except KeyError:
+        except (KeyError, TypeError):
             msg = "Subtasks count is missing\n" \
                   "task_id = %s \n" \
                   "node name = %s" % \

@@ -8,7 +8,6 @@ import golem
 from golem.core.common import timeout_to_deadline, get_timestamp_utc
 from golem.core.idgenerator import generate_id
 from golem.core.simpleserializer import CBORSerializer
-from golem.docker.image import DockerImage
 from golem.network.p2p.node import Node
 from golem.task.taskbase import Task, TaskBuilder, TaskHeader
 from golem.tools.assertlogs import LogTestCase
@@ -55,6 +54,7 @@ class TestTaskHeader(TestCase):
     def setUp(self):
         self.key_id = b'key_id'
         self.th_dict_repr = {
+            'mask': None,
             'fixed_header': {
                 "task_id": generate_id(self.key_id),
                 "task_owner": {
@@ -121,3 +121,25 @@ class TestTaskHeader(TestCase):
         del self.th_dict_repr['fixed_header']['task_owner']['node_name']
         with self.assertRaisesRegex(ValueError, "node name missing"):
             TaskHeader.validate(self.th_dict_repr)
+
+    def test_validate_no_subtasks_count(self):
+        del self.th_dict_repr['fixed_header']['subtasks_count']
+        with self.assertRaisesRegex(ValueError, r"^Subtasks count is missing"):
+            TaskHeader.validate(self.th_dict_repr)
+
+    def test_validate_subtasks_count_invalid_type(self):
+        self.th_dict_repr['fixed_header']['subtasks_count'] = None
+        with self.assertRaisesRegex(ValueError, r"^Subtasks count is missing"):
+            TaskHeader.validate(self.th_dict_repr)
+
+    def test_validate_subtasks_count_too_low(self):
+        self.th_dict_repr['fixed_header']['subtasks_count'] = -1
+        with self.assertRaisesRegex(ValueError,
+                                    r"^Subtasks count is less than 1 \(-1\)"):
+            TaskHeader.validate(self.th_dict_repr)
+
+    def test_from_dict_no_subtasks_count(self):
+        del self.th_dict_repr['fixed_header']['subtasks_count']
+        with mock.patch("golem.task.taskbase.logger.debug") as log_mock:
+            TaskHeader.from_dict(self.th_dict_repr)
+            log_mock.assert_called_once()
