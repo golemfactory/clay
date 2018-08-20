@@ -79,7 +79,7 @@ def find_missing_files(log_content):
             )
             warnings.append(fileInfo)
 
-    if bool(warnings):
+    if warnings:
         warnings = sorted(warnings, key=lambda t: (t[0][1]))
         return list(map(dict, set(warnings)))
     return warnings
