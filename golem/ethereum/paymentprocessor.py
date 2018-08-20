@@ -116,7 +116,7 @@ class PaymentProcessor:
                 fee / denoms.ether
             )
 
-    def add(self, payment: Payment) -> None:
+    def add(self, payment: Payment) -> int:
         if payment.status is not PaymentStatus.awaiting:
             raise RuntimeError(
                 "Invalid payment status: {}".format(payment.status))
@@ -135,6 +135,7 @@ class PaymentProcessor:
         self._gntb_reserved += payment.value
 
         log.info("GNTB reserved %.6f", self._gntb_reserved / denoms.ether)
+        return payment.processed_ts
 
     def __get_next_batch(self, closure_time: int) -> int:
         gntb_balance = self._sci.get_gntb_balance(self._sci.get_eth_address())

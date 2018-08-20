@@ -106,7 +106,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.concent_service.enabled = use_concent = True
         ts.request_task("ABC", "xyz", 1030, 30, 3, 1, 8)
         mt = ts.conn.send_message.call_args[0][0]
-        self.assertIsInstance(mt, message.WantToComputeTask)
+        self.assertIsInstance(mt, message.tasks.WantToComputeTask)
         self.assertEqual(mt.node_name, "ABC")
         self.assertEqual(mt.task_id, "xyz")
         self.assertEqual(mt.perf_index, 1030)
@@ -120,7 +120,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts2.concent_service.enabled = use_concent
         ts2.verified = True
         ts2.key_id = provider_key = "DEF"
-        ts2.can_be_not_encrypted.append(mt.TYPE)
+        ts2.can_be_not_encrypted.append(mt.__class__)
         ts2.task_server.should_accept_provider.return_value = False
         ts2.task_server.config_desc.max_price = 100
 
@@ -148,12 +148,12 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts2.task_manager.get_next_subtask.return_value = (ctd, False, False)
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
-        self.assertIsInstance(ms, message.CannotAssignTask)
+        self.assertIsInstance(ms, message.tasks.CannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
         ts2.task_server.should_accept_provider.return_value = True
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
-        self.assertIsInstance(ms, message.TaskToCompute)
+        self.assertIsInstance(ms, message.tasks.TaskToCompute)
         expected = [
             ['requestor_id', requestor_key],
             ['provider_id', provider_key],
@@ -171,18 +171,18 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts2.task_manager.get_next_subtask.return_value = (ctd, True, False)
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
-        self.assertIsInstance(ms, message.CannotAssignTask)
+        self.assertIsInstance(ms, message.tasks.CannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
         ts2.task_manager.get_node_id_for_subtask.return_value = "DEF"
-        ts2._react_to_cannot_compute_task(message.CannotComputeTask(
-            reason=message.CannotComputeTask.REASON.WrongCTD,
+        ts2._react_to_cannot_compute_task(message.tasks.CannotComputeTask(
+            reason=message.tasks.CannotComputeTask.REASON.WrongCTD,
             task_to_compute=None,
         ))
         assert ts2.task_manager.task_computation_failure.called
         ts2.task_manager.task_computation_failure.called = False
         ts2.task_manager.get_node_id_for_subtask.return_value = "___"
-        ts2._react_to_cannot_compute_task(message.CannotComputeTask(
-            reason=message.CannotComputeTask.REASON.WrongCTD,
+        ts2._react_to_cannot_compute_task(message.tasks.CannotComputeTask(
+            reason=message.tasks.CannotComputeTask.REASON.WrongCTD,
             task_to_compute=None,
         ))
         assert not ts2.task_manager.task_computation_failure.called
@@ -208,8 +208,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.send_report_computed_task(
             wtr, wtr.owner.pub_addr, wtr.owner.pub_port, "0x00", wtr.owner)
 
-        rct: message.ReportComputedTask = ts.conn.send_message.call_args[0][0]
-        self.assertIsInstance(rct, message.ReportComputedTask)
+        rct: message.tasks.ReportComputedTask = \
+            ts.conn.send_message.call_args[0][0]
+        self.assertIsInstance(rct, message.tasks.ReportComputedTask)
         self.assertEqual(rct.subtask_id, wtr.subtask_id)
         self.assertEqual(rct.result_type, ResultType.DATA)
         self.assertEqual(rct.node_name, "ABC")
@@ -232,7 +233,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts2 = TaskSession(Mock())
         ts2.verified = True
         ts2.key_id = "DEF"
-        ts2.can_be_not_encrypted.append(rct.TYPE)
+        ts2.can_be_not_encrypted.append(rct.__class__)
         ts2.task_manager.subtask2task_mapping = {wtr.subtask_id: wtr.task_id}
         task_state = taskstate.TaskState()
         task_state.subtask_states[wtr.subtask_id] = taskstate.SubtaskState()
@@ -267,8 +268,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         key_id = 'deadbeef'
         peer_info = MagicMock()
         peer_info.key = key_id
-        msg = message.Hello(port=1, node_name='node2', client_key_id=key_id,
-                            node_info=peer_info, proto_id=-1)
+        msg = message.base.Hello(
+            port=1, node_name='node2', client_key_id=key_id,
+            node_info=peer_info, proto_id=-1)
         fill_slots(msg)
 
         # when
@@ -277,7 +279,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # then
         ts.disconnect.assert_called_with(
-            message.Disconnect.REASON.ProtocolVersion)
+            message.base.Disconnect.REASON.ProtocolVersion)
 
         # re-given
         msg.proto_id = PROTOCOL_CONST.ID
@@ -302,8 +304,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         key_id = 'deadbeef'
         peer_info = MagicMock()
         peer_info.key = key_id
-        msg = message.Hello(port=1, node_name='node2', client_key_id=key_id,
-                            node_info=peer_info, proto_id=PROTOCOL_CONST.ID)
+        msg = message.base.Hello(
+            port=1, node_name='node2', client_key_id=key_id,
+            node_info=peer_info, proto_id=PROTOCOL_CONST.ID)
         fill_slots(msg)
 
         # when
@@ -312,7 +315,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # then
         ts.disconnect.assert_called_with(
-            message.Disconnect.REASON.KeyNotDifficult)
+            message.base.Disconnect.REASON.KeyNotDifficult)
 
     def test_react_to_hello_key_difficult(self):
         # given
@@ -329,8 +332,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                       private_key_name='prv', password='')
         peer_info = MagicMock()
         peer_info.key = ka.key_id
-        msg = message.Hello(port=1, node_name='node2', client_key_id=ka.key_id,
-                            node_info=peer_info, proto_id=PROTOCOL_CONST.ID)
+        msg = message.base.Hello(
+            port=1, node_name='node2', client_key_id=ka.key_id,
+            node_info=peer_info, proto_id=PROTOCOL_CONST.ID)
         fill_slots(msg)
 
         # when
@@ -476,7 +480,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         env.get_source_code.return_value = None
         ts.task_server.get_environment_by_id.return_value = env
 
-        reasons = message.CannotComputeTask.REASON
+        reasons = message.tasks.CannotComputeTask.REASON
 
         def __reset_mocks():
             ts.task_manager.reset_mock()
@@ -484,7 +488,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             conn.reset_mock()
 
         # msg.ctd is None -> failure
-        msg = message.TaskToCompute()
+        msg = message.tasks.TaskToCompute()
         ts._react_to_task_to_compute(msg)
         ts.task_server.add_task_session.assert_not_called()
         ts.task_computer.task_given.assert_not_called()
@@ -500,12 +504,12 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         header.task_owner.pub_addr = '10.10.10.10'
         header.task_owner.pub_port = 1112
 
-        ctd = message.ComputeTaskDef()
+        ctd = message.tasks.ComputeTaskDef()
         ctd['subtask_id'] = "SUBTASKID"
         ctd['docker_images'] = [
             DockerImage("dockerix/xiii", tag="323").to_dict(),
         ]
-        msg = message.TaskToCompute(compute_task_def=ctd)
+        msg = message.tasks.TaskToCompute(compute_task_def=ctd)
         ts._react_to_task_to_compute(msg)
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -525,7 +529,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         __reset_mocks()
         header.task_owner.key = 'KEY_ID2'
 
-        ts._react_to_task_to_compute(message.TaskToCompute(
+        ts._react_to_task_to_compute(message.tasks.TaskToCompute(
             compute_task_def=ctd,
         ))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
@@ -536,7 +540,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         __reset_mocks()
         header.task_owner.key = 'KEY_ID2'
 
-        ts._react_to_task_to_compute(message.TaskToCompute(
+        ts._react_to_task_to_compute(message.tasks.TaskToCompute(
             compute_task_def=ctd,
         ))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
@@ -548,7 +552,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         header.task_owner.key = 'KEY_ID'
         header.task_owner.pub_port = 0
 
-        ts._react_to_task_to_compute(message.TaskToCompute(
+        ts._react_to_task_to_compute(message.tasks.TaskToCompute(
             compute_task_def=ctd,
         ))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
@@ -559,16 +563,16 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         __reset_mocks()
         header.task_owner.pub_port = 1112
 
-        ts._react_to_task_to_compute(message.TaskToCompute(
+        ts._react_to_task_to_compute(message.tasks.TaskToCompute(
             compute_task_def=ctd,
         ))
         conn.close.assert_not_called()
 
-        # Allow custom code / no code in message.ComputeTaskDef -> failure
+        # Allow custom code / no code in ComputeTaskDef -> failure
         __reset_mocks()
         env.allow_custom_main_program_file = True
         ctd['src_code'] = ""
-        ts._react_to_task_to_compute(message.TaskToCompute(
+        ts._react_to_task_to_compute(message.tasks.TaskToCompute(
             compute_task_def=ctd,
         ))
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
@@ -578,7 +582,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         # Allow custom code / code in ComputerTaskDef -> proper execution
         __reset_mocks()
         ctd['src_code'] = "print 'Hello world!'"
-        ts._react_to_task_to_compute(message.TaskToCompute(
+        ts._react_to_task_to_compute(message.tasks.TaskToCompute(
             compute_task_def=ctd,
         ))
         ts.task_computer.session_closed.assert_not_called()
@@ -589,7 +593,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         # No environment available -> failure
         __reset_mocks()
         ts.task_server.get_environment_by_id.return_value = None
-        ts._react_to_task_to_compute(message.TaskToCompute(
+        ts._react_to_task_to_compute(message.tasks.TaskToCompute(
             compute_task_def=ctd,
         ))
         assert ts.err_msg == reasons.WrongEnvironment
@@ -605,7 +609,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 DockerImage("dockerix/xiii", tag="325"),
                 DockerImage("dockerix/xiii")
             ])
-        ts._react_to_task_to_compute(message.TaskToCompute(
+        ts._react_to_task_to_compute(message.tasks.TaskToCompute(
             compute_task_def=ctd,
         ))
         assert ts.err_msg == reasons.WrongDockerImages
@@ -622,7 +626,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             DockerImage("dockerix/xiii", tag="323")
         ])
         ts.task_server.get_environment_by_id.return_value = de
-        ts._react_to_task_to_compute(message.TaskToCompute(
+        ts._react_to_task_to_compute(message.tasks.TaskToCompute(
             compute_task_def=ctd,
         ))
         assert ts.err_msg == reasons.NoSourceCode
@@ -636,7 +640,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         with open(file_name, 'w') as f:
             f.write("Hello world!")
         de.main_program_file = file_name
-        ts._react_to_task_to_compute(message.TaskToCompute(
+        ts._react_to_task_to_compute(message.tasks.TaskToCompute(
             compute_task_def=ctd,
         ))
         ts.task_server.add_task_session.assert_called_with("SUBTASKID", ts)
@@ -660,7 +664,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         sess.request_resource(str(uuid.uuid4()))
 
         self.assertTrue(
-            message.Message.deserialize(db.buffered_data, lambda x: x)
+            message.base.Message.deserialize(db.buffered_data, lambda x: x)
         )
 
     def test_react_to_ack_reject_report_computed_task(self):
@@ -726,8 +730,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         client = 'test_client'
         version = 1.0
         peers = [{'TCP': ('127.0.0.1', 3282)}]
-        msg = message.ResourceList(resources=[['1'], ['2']],
-                                   options=None)
+        msg = message.resources.ResourceList(resources=[['1'], ['2']],
+                                             options=None)
 
         # Use locally saved hyperdrive client options
         self.task_session._react_to_resource_list(msg)
@@ -783,7 +787,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                                            task_owner=task_owner), 20)
         assert task_keeper.active_tasks["abc"].requests == 1
         self.task_session.task_manager.comp_task_keeper = task_keeper
-        msg_cat = message.CannotAssignTask(task_id="abc")
+        msg_cat = message.tasks.CannotAssignTask(task_id="abc")
         self.task_session.key_id = key_id
         self.task_session._react_to_cannot_assign_task(msg_cat)
         assert task_keeper.active_tasks["abc"].requests == expected_requests
@@ -808,7 +812,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
 
     @staticmethod
     def _mock_task_to_compute(task_id, subtask_id, node_id, **kwargs):
-        task_to_compute = message.TaskToCompute(**kwargs)
+        task_to_compute = message.tasks.TaskToCompute(**kwargs)
         nmsg_dict = dict(
             task=task_id,
             subtask=subtask_id,

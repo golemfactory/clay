@@ -48,9 +48,10 @@ from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
-from golem.ethereum.transactionsystem import TransactionSystem
 from golem.ethereum.exceptions import NotEnoughFunds
 from golem.ethereum.fundslocker import FundsLocker
+from golem.ethereum.paymentskeeper import PaymentStatus
+from golem.ethereum.transactionsystem import TransactionSystem
 from golem.monitor.model.nodemetadatamodel import NodeMetadataModel
 from golem.monitor.monitor import SystemMonitor
 from golem.monitorconfig import MONITOR_CONFIG
@@ -945,8 +946,21 @@ class Client(HardwarePresetsMixin):
 
         task_state = self.task_server.task_manager.query_task_state(task_id)
         subtask_ids = list(task_state.subtask_states.keys())
-        task_dict['cost'], task_dict['fee'] = \
-            self.transaction_system.get_total_payment_for_subtasks(subtask_ids)
+
+        # Get total value and total fee for payments for the given subtask IDs
+        subtasks_payments = \
+            self.transaction_system.get_subtasks_payments(subtask_ids)
+        all_sent = all(
+            p.status in [PaymentStatus.sent, PaymentStatus.confirmed]
+            for p in subtasks_payments)
+        if not subtasks_payments or not all_sent:
+            task_dict['cost'] = None
+            task_dict['fee'] = None
+        else:
+            # Because details are JSON field
+            task_dict['cost'] = sum(p.value or 0 for p in subtasks_payments)
+            task_dict['fee'] = \
+                sum(p.details.fee or 0 for p in subtasks_payments)
 
         # Convert to string because RPC serializer fails on big numbers
         for k in ('cost', 'fee', 'estimated_cost', 'estimated_fee'):
