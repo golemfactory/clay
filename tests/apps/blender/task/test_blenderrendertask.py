@@ -305,17 +305,19 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         results = {"data": {notalog, outlog, errlog}}
         after_test_data = self.bt.after_test(results, None)
         warnings = after_test_data["warnings"]
-        self.assertTrue([f for f in warnings['missing_files']
-                         if f['baseName'] == "f1.png"])
-        self.assertTrue([f for f in warnings['missing_files']
-                         if f['baseName'] == "file2.png"])
-        self.assertTrue([f for f in warnings['missing_files']
-                         if f['baseName'] == "file3.png"])
-        self.assertEqual(
-            sum(f['baseName'] ==
-                "file2.png" for f in warnings['missing_files']), 1)
-        self.assertFalse([f for f in warnings['missing_files']
-                          if f['baseName'] == "file4.png"])
+
+        self.assertIn({'baseName': 'f1.png',
+                       'dirName': 'example/directory/to/file'},
+                      warnings['missing_files'])
+        self.assertIn({'baseName': 'file2.png',
+                       'dirName': 'example/directory/to'},
+                      warnings['missing_files'])
+        self.assertIn({'baseName': 'file3.png',
+                       'dirName': 'example/directory/to/another'},
+                      warnings['missing_files'])
+        self.assertNotIn({'baseName': 'file4.png',
+                          'dirName': 'not found\nexample/to'},
+                         warnings['missing_files'])
 
         with open(outlog, 'w') as fd_out:
             fd_out.write("Error: engine COMPLETELY UNKNOWN ENGINE not found")
