@@ -59,6 +59,7 @@ def get_example_task_header(key_id):
             "estimated_memory": 3 * 1024,
             "signature": None,
             "min_version": golem.__version__,
+            "subtasks_count": 21,
         },
         "mask": {
             "byte_repr": Mask().to_bytes()
