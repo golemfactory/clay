@@ -3,13 +3,14 @@ import os
 import sys
 import unittest
 import uuid
-from unittest import mock
 from contextlib import contextmanager
 from subprocess import CalledProcessError
+from typing import Optional
+from unittest import mock
 
-from golem.docker.manager import DockerManager, DOCKER_VM_NAME as VM_NAME, \
-    VirtualBoxHypervisor, XhyveHypervisor, \
-    Hypervisor, logger, DockerMachineCommandHandler, DockerMachineHypervisor
+from golem.docker.manager import DOCKER_VM_NAME as VM_NAME, \
+    DockerMachineCommandHandler, DockerMachineHypervisor, DockerManager, \
+    Hypervisor, VirtualBoxHypervisor, XhyveHypervisor, logger
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
@@ -119,6 +120,23 @@ class MockHypervisor(DockerMachineHypervisor):
     @staticmethod
     def constraints(*_):
         return dict()
+
+    def create(self, name: Optional[str] = None, **params):
+        pass
+
+    def constrain(self, name: Optional[str] = None, **params) -> None:
+        pass
+
+    def restart_ctx(self, name: Optional[str] = None):
+        self.ctx(name)
+
+    def recover_ctx(self, name: Optional[str] = None):
+        self.ctx(name)
+
+    @classmethod
+    def _new_instance(cls,
+                      docker_manager: DockerManager) -> Optional['Hypervisor']:
+        return MockHypervisor(docker_manager)
 
 
 class MockDockerManager(DockerManager):

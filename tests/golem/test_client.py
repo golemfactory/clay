@@ -866,8 +866,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
                 apps_manager=apps_manager
             )
         client.monitor = Mock()
-        # skip benchmarks
-        client.task_server.change_config = Mock()
 
         self.client = client
 
