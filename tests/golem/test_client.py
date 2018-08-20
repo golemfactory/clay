@@ -539,12 +539,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
             'type': 'Dummy',
         }
 
-        task_id, error = sync_wait(self.client.create_task(task_dict))
+        task_id, error = self.client.create_task(task_dict)
 
         assert task_id
         assert not error
 
-        new_task_id, error = sync_wait(self.client.restart_task(task_id))
+        new_task_id, error = self.client.restart_task(task_id)
         assert new_task_id
         assert not error
         assert len(task_manager.tasks_states) == 2
@@ -1023,13 +1023,13 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             side_effect=add_task)
         c.p2pservice.get_estimated_network_size.return_value = 0
 
-        deferred = c.enqueue_new_task(t_dict)
+        deferred, task_id = c.enqueue_new_task(t_dict)
         task = sync_wait(deferred)
         assert isinstance(task, Task)
         assert task.header.task_id
+        assert task.header.task_id == task_id
         assert c.resource_server.add_task.called
 
-        task_id = task.header.task_id
         c.task_server.task_manager.tasks[task_id] = task
         c.task_server.task_manager.tasks_states[task_id] = TaskState()
         frames = c.get_subtasks_frames(task_id)

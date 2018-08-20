@@ -100,11 +100,6 @@ class ClientTaskComputerEventListener(object):
         self.client.config_changed()
 
 
-class CreatingTaskFailed(Exception):
-    def __init__(self, task_id: str) -> None:
-        self.task_id = task_id
-
-
 class Client(HardwarePresetsMixin):
     _services = []  # type: List[IService]
 
@@ -554,7 +549,11 @@ class Client(HardwarePresetsMixin):
             self.db.close()
         self._unlock_datadir()
 
-    def enqueue_new_task(self, task_dict):
+    def enqueue_new_task(self, task_dict) -> Tuple[Deferred, str]:
+        """
+        :return: (deferred, task_id) - deferred returns Task object when it's
+        successfully created.
+        """
         if self.config_desc.in_shutdown:
             raise Exception('Can not enqueue task: shutdown is in progress, '
                             'toggle shutdown mode off to create a new tasks.')
@@ -646,13 +645,11 @@ class Client(HardwarePresetsMixin):
 
         def error(exception):
             logger.error("Task '%s' creation failed: %r", task_id, exception)
-            e = CreatingTaskFailed(task_id)
-            e.__cause__ = exception
-            _result.errback(e)
+            _result.errback(exception)
 
         _package = self.resource_server.create_resource_package(files, task_id)
         _package.addCallbacks(package_created, error)
-        return _result
+        return _result, task_id
 
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
@@ -735,19 +732,14 @@ class Client(HardwarePresetsMixin):
             return result
         return self.task_test_result
 
-    @inlineCallbacks
-    def create_task(self, t_dict):
+    def create_task(self, t_dict) -> Tuple[Optional[str], Optional[str]]:
         """
-        -> Tuple[Optional[str], Optional[str]]
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
         try:
-            task = yield self.enqueue_new_task(t_dict)
-            return task.header.task_id, None
-        except CreatingTaskFailed as ex:
-            logger.error("Cannot create task %r: %s", t_dict, str(ex.__cause__))
-            return ex.task_id, str(ex.__cause__)
+            _, task_id = self.enqueue_new_task(t_dict)
+            return task_id, None
         except Exception as ex:  # pylint: disable=broad-except
             logger.error("Cannot create task %r: %s", t_dict, str(ex))
             return None, str(ex)
@@ -756,10 +748,8 @@ class Client(HardwarePresetsMixin):
         logger.debug('Aborting task "%r" ...', task_id)
         self.task_server.task_manager.abort_task(task_id)
 
-    @inlineCallbacks
-    def restart_task(self, task_id: str):
+    def restart_task(self, task_id: str) -> Tuple[Optional[str], Optional[str]]:
         """
-        -> Tuple[Optional[str], Optional[str]]
         :return: (new_task_id, None) on success; (None, error_message)
                  on failure
         """
@@ -783,7 +773,7 @@ class Client(HardwarePresetsMixin):
             return None, "Task not found: '{}'".format(task_id)
 
         task_dict.pop('id', None)
-        new_task_id, msg = yield self.create_task(task_dict)
+        new_task_id, msg = self.create_task(task_dict)
         if new_task_id:
             task_manager.put_task_in_restarted_state(task_id)
 
@@ -820,7 +810,7 @@ class Client(HardwarePresetsMixin):
                 subtask_ids_to_copy=subtask_ids_to_copy
             )
 
-        deferred = self.enqueue_new_task(task_dict)
+        deferred, _ = self.enqueue_new_task(task_dict)
 
         deferred.addCallbacks(
             copy_results,
