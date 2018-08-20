@@ -65,7 +65,3 @@ PROTOCOL_CONST.patch_protocol_id(value=PROTOCOL_CONST.NUM)
 APP_MANAGER_CONFIG_FILES = [
     os.path.join('apps', 'registered.ini')
 ]
-
-# MONITOR
-
-SEND_PAYMENT_INFO_TO_MONITOR = False

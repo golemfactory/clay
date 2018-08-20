@@ -32,8 +32,7 @@ from golem.core import variables
 from golem.network.concent import client
 from golem.utils import privkeytoaddr
 
-from golem.transactions.ethereum.ethereumtransactionsystem import (
-    tETH_faucet_donate)
+from golem.ethereum.transactionsystem import tETH_faucet_donate
 
 logger = logging.getLogger(__name__)
 
@@ -210,7 +209,7 @@ class ConcentBaseTest:
 
 class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
     """
-    Base test providing instances of EthereumTransactionSystem
+    Base test providing instances of TransactionSystem
     for the provider and the requestor
     """
 

@@ -22,6 +22,8 @@ from golem.core import variables
 from golem.network.concent import exceptions
 from golem.network.concent.handlers_library import library
 
+from .helpers import ssl_kwargs
+
 logger = logging.getLogger(__name__)
 
 
@@ -60,13 +62,6 @@ def verify_response(response: requests.Response) -> None:
                 response.text
             )
         )
-
-
-def ssl_kwargs(concent_variant: dict) -> dict:
-    """Returns additional ssl related kwargs for requests"""
-    if 'certificate' not in concent_variant:
-        return {}
-    return {'verify': concent_variant['certificate'], }
 
 
 def send_to_concent(

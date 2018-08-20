@@ -208,7 +208,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 task_id,
                 subtask_id,
             ).eth_account
-            payment = self.task_server.accept_result(
+            payment_processed_ts = self.task_server.accept_result(
                 subtask_id,
                 self.key_id,
                 eth_address,
@@ -216,7 +216,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             response_msg = message.tasks.SubtaskResultsAccepted(
                 task_to_compute=task_to_compute,
-                payment_ts=payment.processed_ts
+                payment_ts=payment_processed_ts,
             )
             self.send(response_msg)
             history.add(
@@ -721,6 +721,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         else:
             self.task_server.subtask_rejected(
+                sender_node_id=self.key_id,
                 subtask_id=subtask_id,
             )
 
