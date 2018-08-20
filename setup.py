@@ -3,6 +3,7 @@
 import sys
 
 from setuptools import setup
+from setuptools_rust import Binding, RustExtension
 
 from setup_util.setup_commons import (
     path, parse_requirements, get_version,
@@ -56,6 +57,13 @@ setup(
             'golemcli = golemcli:start',
         ]
     },
+    rust_extensions=[
+        RustExtension(
+            'rust.golem',
+            'rust/golem/Cargo.toml',
+            binding=Binding.RustCPython,
+        ),
+    ],
     data_files=[
         (path.normpath('../../'), [
             'golemapp.py', 'golemcli.py', 'loggingconfig.py'
