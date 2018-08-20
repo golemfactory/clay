@@ -10,7 +10,7 @@ from golem_messages import helpers as msg_helpers
 from golem.core.common import HandleAttributeError
 from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import CBORSerializer
-from golem.core.variables import PROTOCOL_CONST
+from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.model import Actor
@@ -411,7 +411,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.base.Hello(
                 client_key_id=self.task_server.get_key_id(),
                 rand_val=self.rand_val,
-                proto_id=PROTOCOL_CONST.ID,
+                proto_id=variables.PROTOCOL_CONST.ID,
             ),
             send_unverified=True
         )
@@ -550,6 +550,35 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if not self.concent_service.enabled and msg.concent_enabled:
             # We can't provide what requestors wants
             _cannot_compute(reasons.ConcentDisabled)
+            return
+
+        number_of_subtasks = self.task_server.task_keeper\
+            .task_headers[msg.task_id]\
+            .subtasks_count
+        total_task_price = msg.price * number_of_subtasks
+        transaction_system = self.task_server.client.transaction_system
+        requestors_gntb_balance = transaction_system.get_available_gnt(
+            account_address=msg.requestor_ethereum_address,
+        )
+        if requestors_gntb_balance < total_task_price:
+            _cannot_compute(reasons.InsufficientBalance)
+            return
+        if msg.concent_enabled:
+            requestors_deposit_value = transaction_system.concent_balance(
+                account_address=msg.requestor_ethereum_address,
+            )
+            if requestors_deposit_value < (total_task_price * 2):
+                _cannot_compute(reasons.InsufficientDeposit)
+                return
+            requestors_deposit_timelock = transaction_system.concent_timelock(
+                account_address=msg.requestor_ethereum_address,
+            )
+            # 0 - safe to use
+            # <anything else> - withdrawal procedure has started
+            if requestors_deposit_timelock != 0:
+                _cannot_compute(reasons.TooShortDeposit)
+                return
+
         if self._check_ctd_params(ctd)\
                 and self._set_env_params(ctd)\
                 and self.task_manager.comp_task_keeper.receive_subtask(msg):
@@ -751,11 +780,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.key_id = msg.client_key_id
             send_hello = True
 
-        if msg.proto_id != PROTOCOL_CONST.ID:
+        if msg.proto_id != variables.PROTOCOL_CONST.ID:
             logger.info(
                 "Task protocol version mismatch %r (msg) vs %r (local)",
                 msg.proto_id,
-                PROTOCOL_CONST.ID
+                variables.PROTOCOL_CONST.ID
             )
             self.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
             return

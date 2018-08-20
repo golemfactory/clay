@@ -106,14 +106,16 @@ def create_client(datadir):
 
 
 def _make_mock_ets():
+    available_gntb = 1000 * denoms.ether
     ets = mock.Mock()
     ets.get_balance.return_value = (
-        1000 * denoms.ether,
-        1000 * denoms.ether,
-        1000 * denoms.ether,
+        available_gntb,  # GNTB
+        1000 * denoms.ether,  # locked
+        1000 * denoms.ether,  # GNT
         time.time(),
         time.time(),
     )
+    ets.get_available_gnt.return_value = available_gntb
     ets.eth_for_batch_payment.return_value = 0.0001 * denoms.ether
     ets.eth_base_for_batch_payment.return_value = 0.001 * denoms.ether
     ets.get_payment_address.return_value = '0x' + 40 * '6'

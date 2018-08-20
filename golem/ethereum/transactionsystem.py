@@ -6,7 +6,7 @@ import time
 from enum import Enum
 from datetime import datetime
 from pathlib import Path
-from typing import Any, ClassVar, Dict, Iterable, List, Optional, Tuple
+from typing import Any, ClassVar, Dict, Iterable, Optional, List
 
 from ethereum.utils import denoms
 from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
@@ -295,8 +295,14 @@ class TransactionSystem(LoopingCallService):
             eth += self._eth_base_for_batch_payment()
         return min(eth, self._eth_balance)
 
-    def get_available_gnt(self) -> int:
-        return self._gntb_balance - self.get_locked_gnt()
+    def get_available_gnt(self, account_address: Optional[str] = None) -> int:
+        # FIXME Use decorator to DRY #3190
+        if not self._sci:
+            raise Exception('Start was not called')
+        if (account_address is None) \
+                or (account_address == self._sci.get_eth_address()):
+            return self._gntb_balance - self.get_locked_gnt()
+        return self._sci.get_gntb_balance(address=account_address)
 
     def get_locked_gnt(self) -> int:
         if not self._payment_processor:
@@ -463,10 +469,24 @@ class TransactionSystem(LoopingCallService):
 
         raise ValueError('Unknown currency {}'.format(currency))
 
-    def concent_balance(self) -> int:
+    def concent_balance(self, account_address: Optional[str] = None) -> int:
         if not self._sci:
             raise Exception('Start was not called')
-        return self._sci.get_deposit_value(self._sci.get_eth_address())
+        if account_address is None:
+            account_address = self._sci.get_eth_address()
+        return self._sci.get_deposit_value(
+            account_address=account_address,
+        )
+
+    def concent_timelock(self, account_address: Optional[str] = None) -> int:
+        # FIXME Use decorator to DRY #3190
+        if not self._sci:
+            raise Exception('Start was not called')
+        if account_address is None:
+            account_address = self._sci.get_eth_address()
+        return self._sci.get_deposit_locked_until(
+            account_address=account_address,
+        )
 
     def concent_deposit(self, required: int, expected: int) -> Deferred:
         if not self._sci:
