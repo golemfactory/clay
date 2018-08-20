@@ -1,28 +1,39 @@
-from datetime import datetime
+from copy import copy
+from pathlib import Path
+from typing import List
 
 
-class TaskChunkStateSnapshot:
-    def __init__(self, chunk_id, cpu_power, est_time_left, progress, chunk_short_desc):
-        self.chunk_id = chunk_id
-        self.cpu_power = cpu_power
-        self.est_time_left = est_time_left
+# pylint: disable=too-few-public-methods
+# pylint: disable=too-many-instance-attributes
+class ComputingSubtaskStateSnapshot:
+    def __init__(
+            self, *,
+            subtask_id: str,
+            progress: float,
+            seconds_to_timeout: float,
+            running_time_seconds: float,
+            # extra_data:
+            outfilebasename: str,
+            output_format: str,
+            scene_file: str,
+            frames: List[int],
+            start_task: int,
+            end_task: int,
+            total_tasks: int,
+            # if there's something more in extra_data, just ignore it
+            **_kwargs
+    ) -> None:
+        self.subtask_id = subtask_id
         self.progress = progress
-        self.chunk_short_desc = chunk_short_desc
-
-    def get_chunk_id(self):
-        return self.chunk_id
-
-    def get_cpu_power(self):
-        return self.cpu_power
-
-    def get_estimated_time_left(self):
-        return self.est_time_left
-
-    def get_progress(self):
-        return self.progress
-
-    def get_chunk_short_descr(self):
-        return self.chunk_short_desc
+        self.seconds_to_timeout = seconds_to_timeout
+        self.running_time_seconds = running_time_seconds
+        self.outfilebasename = outfilebasename
+        self.output_format = output_format
+        self.scene_file = Path(scene_file).name
+        self.frames = copy(frames)
+        self.start_task = start_task
+        self.end_task = end_task
+        self.total_tasks = total_tasks
 
 
 class LocalTaskStateSnapshot:

@@ -28,6 +28,7 @@ from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
+from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -253,46 +254,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
                    keys_auth=Mock(),
                    database=Mock(),
                    transaction_system=Mock())
-
-    def test_get_status(self, *_):
-        self.client = Client(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=ClientConfigDescriptor(),
-            keys_auth=Mock(),
-            database=Mock(),
-            transaction_system=Mock(),
-            connect_to_known_hosts=False,
-            use_docker_manager=False,
-            use_monitor=False
-        )
-        c = self.client
-        c.task_server = MagicMock()
-        c.task_server.task_computer.get_progresses.return_value = {}
-        c.p2pservice = MagicMock()
-        c.p2pservice.get_peers.return_value = ["ABC", "DEF"]
-        c.transaction_system = MagicMock()
-        status = c.get_status()
-        self.assertIn("Waiting for tasks", status)
-        self.assertIn("Active peers in network: 2", status)
-        mock1 = MagicMock()
-        mock1.get_progress.return_value = 0.25
-        mock2 = MagicMock()
-        mock2.get_progress.return_value = 0.33
-        c.task_server.task_computer.get_progresses.return_value = \
-            {"id1": mock1, "id2": mock2}
-        c.p2pservice.get_peers.return_value = []
-        status = c.get_status()
-        self.assertIn("Computing 2 subtask(s)", status)
-        self.assertIn("id1 (25.0%)", status)
-        self.assertIn("id2 (33.0%)", status)
-        self.assertIn("Active peers in network: 0", status)
-        c.config_desc.accept_tasks = 0
-        status = c.get_status()
-        self.assertIn("Computing 2 subtask(s)", status)
-        c.task_server.task_computer.get_progresses.return_value = {}
-        status = c.get_status()
-        self.assertIn("Not accepting tasks", status)
 
     def test_quit(self, *_):
         self.client = Client(
@@ -1309,6 +1270,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         result = c.get_task_stats()
         expected = {
             'host_state': "Idle",
+            'provider_state': {'status': 'idle'},
             'in_network': 0,
             'supported': 0,
             'subtasks_computed': (0, 0),
@@ -1367,6 +1329,90 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertTrue(
             c.connection_status().startswith("Application not listening")
         )
+
+    def test_provider_status_starting(self, *_):
+        # given
+        self.client.task_server = None
+
+        # when
+        status = self.client.get_provider_status()
+
+        # then
+        expected_status = {
+            'status': 'golem is starting',
+        }
+        assert status == expected_status
+
+    def test_provider_status_computing(self, *_):
+        # given
+        task_computer = Mock()
+        state_snapshot_dict = {
+            'subtask_id': str(uuid.uuid4()),
+            'progress': 0.0,
+            'seconds_to_timeout': 0.0,
+            'running_time_seconds': 0.0,
+            'outfilebasename': "Test Task",
+            'output_format': "PNG",
+            'scene_file': "/golem/resources/cube.blend",
+            'frames': [1],
+            'start_task': 1,
+            'end_task': 1,
+            'total_tasks': 1,
+        }
+        task_computer.get_progress.return_value = \
+            ComputingSubtaskStateSnapshot(**state_snapshot_dict)
+        self.client.task_server.task_computer = task_computer
+
+        # when
+        status = self.client.get_provider_status()
+
+        # then
+        state_snapshot_dict['scene_file'] = "cube.blend"
+        expected_status = {
+            'status': 'computing',
+            'subtask': state_snapshot_dict,
+        }
+        assert status == expected_status
+
+    def test_provider_status_waiting_for_task(self, *_):
+        # given
+        task_computer = Mock()
+        task_computer.get_progress.return_value = None
+        task_computer.waiting_for_task = str(uuid.uuid4())
+        self.client.task_server.task_computer = task_computer
+
+        # when
+        status = self.client.get_provider_status()
+
+        # then
+        expected_status = {
+            'status': 'waiting for task',
+            'task_id_waited_for': task_computer.waiting_for_task,
+        }
+        assert status == expected_status
+
+    def test_provider_status_not_accepting_tasks(self, *_):
+        # given
+        self.client.config_desc.accept_tasks = False
+
+        # when
+        status = self.client.get_provider_status()
+
+        # then
+        expected_status = {
+            'status': 'not accepting tasks',
+        }
+        assert status == expected_status
+
+    def test_provider_status_idle(self, *_):
+        # when
+        status = self.client.get_provider_status()
+
+        # then
+        expected_status = {
+            'status': 'idle',
+        }
+        assert status == expected_status
 
     def test_golem_version(self, *_):
         assert self.client.get_golem_version() == golem.__version__

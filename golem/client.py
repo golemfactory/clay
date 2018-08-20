@@ -11,7 +11,7 @@ from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
 from threading import Lock
-from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
+from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -47,6 +47,7 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
+from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.ethereum.exceptions import NotEnoughFunds
 from golem.ethereum.fundslocker import FundsLocker
 from golem.ethereum.paymentskeeper import PaymentStatus
@@ -1013,6 +1014,7 @@ class Client(HardwarePresetsMixin):
     def get_task_stats(self) -> Dict[str, int]:
         return {
             'host_state': self.get_task_state(),
+            'provider_state': self.get_provider_status(),
             'in_network': self.get_task_count(),
             'supported': self.get_supported_task_count(),
             'subtasks_computed': self.get_computed_task_count(),
@@ -1386,21 +1388,41 @@ class Client(HardwarePresetsMixin):
 
         return ' '.join(messages)
 
-    def get_status(self):
-        progress = self.task_server.task_computer.get_progresses()
-        if len(progress) > 0:
-            msg = "Computing {} subtask(s):".format(len(progress))
-            for k, v in list(progress.items()):
-                msg = "{} \n {} ({}%)\n".format(msg, k, v.get_progress() * 100)
-        elif self.config_desc.accept_tasks:
-            msg = "Waiting for tasks...\n"
-        else:
-            msg = "Not accepting tasks\n"
+    def get_provider_status(self) -> Dict[str, Any]:
+        # golem is starting
+        if self.task_server is None:
+            return {
+                'status': 'golem is starting',
+            }
 
-        peers = self.p2pservice.get_peers()
+        task_computer = self.task_server.task_computer
 
-        msg += "Active peers in network: {}\n".format(len(peers))
-        return msg
+        # computing
+        subtask_progress: Optional[ComputingSubtaskStateSnapshot] = \
+            task_computer.get_progress()
+        if subtask_progress is not None:
+            return {
+                'status': 'computing',
+                'subtask': subtask_progress.__dict__,
+            }
+
+        # trying to get subtask from task
+        waiting_for_task: Optional[str] = task_computer.waiting_for_task
+        if waiting_for_task is not None:
+            return {
+                'status': 'waiting for task',
+                'task_id_waited_for': waiting_for_task,
+            }
+
+        # not accepting tasks
+        if not self.config_desc.accept_tasks:
+            return {
+                'status': 'not accepting tasks',
+            }
+
+        return {
+            'status': 'idle',
+        }
 
     @staticmethod
     def get_golem_version():
