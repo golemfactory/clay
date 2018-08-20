@@ -35,8 +35,9 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         super().setUp()
         self.msg = factories.tasks.TaskToComputeFactory()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
-        self.task_session.task_manager.tasks[self.msg.task_id]\
-            .get_total_tasks.return_value = 10
+        self.task_session.task_server.task_keeper\
+            .task_headers[self.msg.task_id]\
+            .subtasks_count = 10
         self.task_session.task_server.client.transaction_system\
             .get_available_gnt.return_value = self.msg.price * 10
         self.task_session.task_server.client.transaction_system\

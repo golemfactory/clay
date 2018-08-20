@@ -552,8 +552,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             _cannot_compute(reasons.ConcentDisabled)
             return
 
-        number_of_subtasks = self.task_manager.tasks[msg.task_id]\
-            .get_total_tasks()
+        number_of_subtasks = self.task_server.task_keeper\
+            .task_headers[msg.task_id]\
+            .subtasks_count
         total_task_price = msg.price * number_of_subtasks
         transaction_system = self.task_server.client.transaction_system
         requestors_gntb_balance = transaction_system.get_available_gnt(

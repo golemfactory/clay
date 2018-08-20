@@ -55,7 +55,9 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
                  resource_size=0,
                  estimated_memory=0,
                  min_version=golem.__version__,
-                 max_price: int = 0) -> None:
+                 max_price: int = 0,
+                 subtasks_count: int = 0,
+                 ) -> None:
         """
         :param max_price: maximum price that this (requestor) node may
         pay for an hour of computation
@@ -68,6 +70,7 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
         self.last_checking = time.time()
         self.deadline = deadline
         self.subtask_timeout = subtask_timeout
+        self.subtasks_count = subtasks_count
         self.resource_size = resource_size
         self.environment = environment
         self.estimated_memory = estimated_memory
@@ -96,6 +99,10 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
 
         if isinstance(th.task_owner, dict):
             th.task_owner = Node.from_dict(th.task_owner)
+
+        if not hasattr(th, 'subtasks_count'):
+            logger.debug("Subtasks count missing. Implicit 1. th=%r", th)
+            th.subtasks_count = 1
 
         th.update_checksum()
         return th
@@ -167,6 +174,23 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
             msg = "Subtask timeout is less than 0 \n " \
                   "task_id = %s \n " \
                   "node name = %s " % \
+                  (th_dict_repr['task_id'],
+                   th_dict_repr['task_owner']['node_name'])
+            raise ValueError(msg)
+
+        try:
+            if th_dict_repr['subtasks_count'] < 1:
+                msg = "Subtasks count is less than 1 (%r)\n" \
+                      "task_id = %s \n" \
+                      "node name = %s" % \
+                      (th_dict_repr['subtasks_count'],
+                       th_dict_repr['task_id'],
+                       th_dict_repr['task_owner']['node_name'])
+                raise ValueError(msg)
+        except KeyError:
+            msg = "Subtasks count is missing\n" \
+                  "task_id = %s \n" \
+                  "node name = %s" % \
                   (th_dict_repr['task_id'],
                    th_dict_repr['task_owner']['node_name'])
             raise ValueError(msg)
