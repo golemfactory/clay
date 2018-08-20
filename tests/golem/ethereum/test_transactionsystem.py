@@ -1,95 +1,107 @@
 from os import urandom
-import unittest
+from pathlib import Path
+from typing import Optional
 from unittest.mock import patch, Mock, ANY, PropertyMock
+from unittest import TestCase
 
 from eth_utils import encode_hex
 from ethereum.utils import denoms
-import golem_sci
 import requests
 
-from golem import testutils
-from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
-from golem.transactions.ethereum.ethereumtransactionsystem import (
-    EthereumTransactionSystem,
+from golem.ethereum.transactionsystem import (
+    TransactionSystem,
     tETH_faucet_donate,
 )
-from golem.transactions.ethereum.exceptions import NotEnoughFunds
+from golem.ethereum.exceptions import NotEnoughFunds
 
-PRIV_KEY = '07' * 32
+PASSWORD = 'derp'
 
 
-class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
-                                    testutils.PEP8MixIn):
-    PEP8_FILES = ['golem/transactions/ethereum/ethereumtransactionsystem.py', ]
-
+class TestTransactionSystem(TestWithDatabase):
     def setUp(self):
         super().setUp()
         self.sci = Mock()
         self.sci.GAS_PRICE = 10 ** 9
         self.sci.GAS_BATCH_PAYMENT_BASE = 30000
         self.sci.get_gate_address.return_value = None
+        self.sci.get_block_number.return_value = 1223
         self.sci.get_current_gas_price.return_value = 10 ** 9
+        self.sci.get_eth_balance.return_value = 0
+        self.sci.get_gnt_balance.return_value = 0
+        self.sci.get_gntb_balance.return_value = 0
         self.sci.GAS_PER_PAYMENT = 20000
-        with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                   'new_sci', return_value=self.sci),\
-            patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                  'NodeProcess'):
-            self.ets = self._make_ets()
+        self.sci.REQUIRED_CONFS = 6
+        self.ets = self._make_ets()
 
-    def _make_ets(self):
-        return EthereumTransactionSystem(
-            self.tempdir,
-            PRIV_KEY,
-            [],
-            'test_chain',
-            False,
-        )
-
-    def test_invalid_private_key(self):
-        with self.assertRaises(ValueError):
-            EthereumTransactionSystem(
-                self.tempdir,
-                "not a private key",
-                [],
-                'test_chain',
-                False,
+    def _make_ets(
+            self,
+            datadir: Optional[Path] = None,
+            withdrawals: bool = True,
+            password: str = PASSWORD,
+            just_create: bool = False):
+        with patch('golem.ethereum.transactionsystem.NodeProcess'),\
+            patch('golem.ethereum.transactionsystem.new_sci',
+                  return_value=self.sci):
+            ets = TransactionSystem(
+                datadir or self.new_path,
+                Mock(
+                    NODE_LIST=[],
+                    FALLBACK_NODE_LIST=[],
+                    CHAIN='test_chain',
+                    FAUCET_ENABLED=False,
+                    WITHDRAWALS_ENABLED=withdrawals,
+                )
             )
+            if not just_create:
+                ets.set_password(password)
+                ets._init()
+            return ets
 
     @patch('golem.core.service.LoopingCallService.running',
            new_callable=PropertyMock)
     def test_stop(self, mock_is_service_running):
         with patch('twisted.internet.task.LoopingCall.start'), \
                 patch('twisted.internet.task.LoopingCall.stop'), \
-                patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                      'new_sci'), \
-                patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                      'PaymentProcessor'), \
-                patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                      'NodeProcess') as node_mock:
-            node_mock.return_value = node_mock
-
+                patch('golem.ethereum.transactionsystem.PaymentProcessor'):
             mock_is_service_running.return_value = False
             e = self._make_ets()
-            node_mock.start.assert_called_once_with()
-            e.start()
 
             mock_is_service_running.return_value = True
             e.stop()
-            e.payment_processor.sendout.assert_called_once_with(0)  # noqa pylint: disable=no-member
+            e._payment_processor.sendout.assert_called_once_with(0)  # noqa pylint: disable=no-member
 
-    @patch('golem.transactions.ethereum.ethereumtransactionsystem.NodeProcess',
-           Mock())
-    @patch('golem.transactions.ethereum.ethereumtransactionsystem.new_sci')
+    @patch('golem.ethereum.transactionsystem.NodeProcess', Mock())
+    @patch('golem.ethereum.transactionsystem.new_sci')
     def test_chain_arg(self, new_sci):
-        self._make_ets()
+        ets = TransactionSystem(
+            self.new_path,
+            Mock(
+                NODE_LIST=[],
+                FALLBACK_NODE_LIST=[],
+                CHAIN='test_chain',
+            )
+        )
+        ets.set_password(PASSWORD)
+        ets._init()
         new_sci.assert_called_once_with(
             ANY,
             ANY,
-            ANY,
-            ANY,
             'test_chain',
+            ANY,
+            ANY,
         )
+
+    def test_payment(self):
+        subtask_id = 'derp'
+        value = 10
+        payee = '0x' + 40 * '1'
+        self.ets.add_payment_info(subtask_id, value, payee)
+        payments = self.ets.get_payments_list()
+        assert len(payments) == 1
+        assert payments[0]['subtask'] == subtask_id
+        assert payments[0]['value'] == str(value)
+        assert payments[0]['payee'] == payee
 
     def test_get_withdraw_gas_cost(self):
         dest = '0x' + 40 * '0'
@@ -138,7 +150,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
         # Enough GNTB
         res = self.ets.withdraw(gntb_balance - 1, dest, 'GNT')
-        assert res == [gntb_tx]
+        assert res == gntb_tx
         self.sci.convert_gntb_to_gnt.assert_called_once_with(
             dest,
             gntb_balance - 1,
@@ -152,7 +164,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
         # Enough ETH
         res = self.ets.withdraw(eth_balance - 1, dest, 'ETH')
-        assert res == [eth_tx]
+        assert res == eth_tx
         self.sci.transfer_eth.assert_called_once_with(dest, eth_balance - 1)
         self.sci.reset_mock()
 
@@ -163,7 +175,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         assert 0 < locked_eth < eth_balance
         assert 0 < locked_gnt < gnt_balance
         res = self.ets.withdraw(eth_balance - locked_eth, dest, 'ETH')
-        assert res == [eth_tx]
+        assert res == eth_tx
         self.sci.transfer_eth.assert_called_once_with(
             dest,
             eth_balance - locked_eth,
@@ -188,6 +200,11 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
             self.ets.withdraw(gntb_balance + locked_gnt + 1, dest, 'GNT')
         self.sci.reset_mock()
 
+    def test_withdraw_disabled(self):
+        ets = self._make_ets(withdrawals=False)
+        with self.assertRaisesRegex(Exception, 'Withdrawals are disabled'):
+            ets.withdraw(1, '0x' + 40 * '0', 'GNT')
+
     def test_locking_funds(self):
         eth_balance = 10 * denoms.ether
         gnt_balance = 1000 * denoms.ether
@@ -203,13 +220,13 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
 
         self.ets.lock_funds_for_payments(price, num)
         assert self.ets.get_locked_eth() == \
-            self.ets._eth_for_batch_payment(num) + \
+            self.ets.eth_for_batch_payment(num) + \
             self.ets._eth_base_for_batch_payment()
         assert self.ets.get_locked_gnt() == price * num
 
         self.ets.unlock_funds_for_payments(price, num - 1)
         assert self.ets.get_locked_eth() == \
-            self.ets._eth_for_batch_payment(1) + \
+            self.ets.eth_for_batch_payment(1) + \
             self.ets._eth_base_for_batch_payment()
         assert self.ets.get_locked_gnt() == price
 
@@ -261,11 +278,7 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         self.sci.get_gnt_balance.side_effect = \
             lambda addr: amount if addr == gate_addr else 0
         self.sci.get_eth_balance.return_value = denoms.ether
-        with patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                   'new_sci', return_value=self.sci),\
-            patch('golem.transactions.ethereum.ethereumtransactionsystem.'
-                  'NodeProcess'):
-            ets = self._make_ets()
+        ets = self._make_ets()
         ets._refresh_balances()
         ets._try_convert_gnt()
         self.sci.transfer_from_gate.assert_called_once_with()
@@ -273,28 +286,46 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         ets._try_convert_gnt()
         self.sci.transfer_from_gate.assert_not_called()
 
+    def test_subscriptions(self):
+        self.sci.subscribe_to_batch_transfers.assert_called_once_with(
+            None,
+            self.sci.get_eth_address(),
+            0,
+            ANY,
+        )
+
+        block_number = 123
+        self.sci.get_block_number.return_value = block_number
+        with patch('golem.ethereum.transactionsystem.LoopingCallService.stop'):
+            self.ets.stop()
+
+        self.sci.reset_mock()
+        self._make_ets()
+        self.sci.subscribe_to_batch_transfers.assert_called_once_with(
+            None,
+            self.sci.get_eth_address(),
+            block_number - self.sci.REQUIRED_CONFS - 1,
+            ANY,
+        )
+
     def test_concent_deposit_enough(self):
         self.sci.get_deposit_value.return_value = 10
-        cb = Mock()
-        self.ets.concent_deposit(
+        deferred = self.ets.concent_deposit(
             required=10,
             expected=40,
-            cb=cb,
         )
-        cb.assert_called_once_with()
+        deferred.addErrback(lambda _: self.fail('shoud not fail'))
+        assert deferred.called
         self.sci.deposit_payment.assert_not_called()
 
     def test_concent_deposit_not_enough(self):
         self.sci.get_deposit_value.return_value = 0
         self.ets._gntb_balance = 0
-        cb = Mock()
         with self.assertRaises(NotEnoughFunds):
             self.ets.concent_deposit(
                 required=10,
                 expected=40,
-                cb=cb,
             )
-        cb.assert_not_called()
 
     def test_concent_deposit_done(self):
         self.sci.get_deposit_value.return_value = 0
@@ -307,8 +338,43 @@ class TestEthereumTransactionSystem(TestWithDatabase, LogTestCase,
         )
         self.sci.deposit_payment.assert_called_once_with(20 - 1)
 
+    def test_check_payments(self):
+        with patch.object(
+            self.ets._incomes_keeper, 'update_overdue_incomes'
+        ) as incomes:
+            self.ets._run()
+            incomes.assert_called_once()
 
-class FaucetTest(unittest.TestCase):
+    def test_no_password(self):
+        ets = self._make_ets(just_create=True)
+        with self.assertRaisesRegex(Exception, 'Invalid private key'):
+            ets.start()
+
+    def test_invalid_password(self):
+        ets = self._make_ets(just_create=True)
+        with self.assertRaisesRegex(Exception, 'MAC mismatch'):
+            ets.set_password(PASSWORD + 'nope')
+
+    def test_backwards_compatibility_privkey(self):
+        ets = self._make_ets(datadir=self.new_path / 'other', just_create=True)
+        privkey = b'\x21' * 32
+        other_privkey = b'\x13' * 32
+        address = '0x2BD0C9FE079c8FcA0E3352eb3D02839c371E5c41'
+        password = 'Password1'
+        ets.backwards_compatibility_privkey(privkey, password)
+        with self.assertRaisesRegex(Exception, 'backward compatible'):
+            ets.backwards_compatibility_privkey(other_privkey, password)
+        ets.set_password(password)
+        with patch('golem.ethereum.transactionsystem.new_sci',
+                   return_value=self.sci) as new_sci:
+            ets._init()
+            new_sci.assert_called_once_with(ANY, address, ANY, ANY, ANY)
+
+        # Shouldn't throw
+        self._make_ets(datadir=self.new_path / 'other', password=password)
+
+
+class FaucetTest(TestCase):
 
     @patch('requests.get')
     def test_error_code(self, get):

@@ -57,8 +57,6 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
         """Just check if all signal handlers run without errors"""
         self.monitor.on_login()
 
-        self.monitor.on_payment(addr="some address", value=30139019301)
-        self.monitor.on_income("different address", 319031904194810)
         self.monitor.on_peer_snapshot([
             {"node_id": "first node", "port": 19301},
             {"node_id": "second node", "port": 3193}])

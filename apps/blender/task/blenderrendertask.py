@@ -1,3 +1,4 @@
+import functools
 import logging
 import math
 import os
@@ -11,6 +12,7 @@ import numpy
 from PIL import Image, ImageChops, ImageFile
 
 import apps.blender.resources.blenderloganalyser as log_analyser
+from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.core.task import coretask
@@ -26,6 +28,7 @@ from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, \
     RendererDefaults
 from golem.core.common import to_unicode
 from golem.core.fileshelper import has_ext
+from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus, TaskStatus
 from golem_verificator.blender_verifier import BlenderVerifier
@@ -327,7 +330,9 @@ class BlenderRendererOptions(FrameRendererOptions):
 
 class BlenderRenderTask(FrameRenderingTask):
     ENVIRONMENT_CLASS = BlenderEnvironment
-    VERIFIER_CLASS = BlenderVerifier
+    VERIFIER_CLASS = functools.partial(BlenderVerifier,
+                                       cropper_cls=BlenderReferenceGenerator,
+                                       docker_task_cls=DockerTaskThread)
 
     BLENDER_MIN_BOX = [8, 8]
     BLENDER_MIN_SAMPLE = 5

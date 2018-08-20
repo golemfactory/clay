@@ -33,6 +33,7 @@ from golem.task.tasksession import TaskSession
 from golem.task.taskstate import TaskState, TaskOp
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
+from golem.utils import pubkeytoaddr
 
 from tests.factories.p2p import Node as NodeFactory
 from tests.factories.resultpackage import ExtractedPackageFactory
@@ -216,7 +217,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         subtask_id = generate_new_id_from_id(task_id)
         subtask_id2 = generate_new_id_from_id(task_id)
         self.assertTrue(ts.send_results(subtask_id, task_id, results))
-        ts.client.transaction_system.incomes_keeper.expect.reset_mock()
+        ts.client.transaction_system.expect_income.reset_mock()
         self.assertTrue(ts.send_results(subtask_id2, task_id, results))
         wtr = ts.results_to_send[subtask_id]
         self.assertIsInstance(wtr, WaitingTaskResult)
@@ -227,21 +228,17 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertEqual(wtr.delay_time, 0)
         self.assertEqual(wtr.owner, n)
         self.assertEqual(wtr.already_sending, False)
-        incomes_keeper = ts.client.transaction_system.incomes_keeper
-        incomes_keeper.expect.assert_called_once_with(
-            sender_node_id=keys_auth.key_id,
+        ts.client.transaction_system.expect_income.assert_called_once_with(
+            sender_node=keys_auth.key_id,
             subtask_id=subtask_id2,
+            payer_address=pubkeytoaddr(keys_auth.key_id),
             value=1,
         )
 
         subtask_id3 = generate_new_id_from_id(task_id)
         with self.assertLogs(logger, level='WARNING'):
-            ts.subtask_rejected(subtask_id3)
+            ts.subtask_rejected(keys_auth.key_id, subtask_id3)
         self.assertIsNotNone(ts.task_keeper.task_headers.get(task_id))
-
-        prev_call_count = trust.PAYMENT.increase.call_count
-        ts.client.transaction_system.incomes_keeper.received.assert_not_called()
-        self.assertEqual(trust.PAYMENT.increase.call_count, prev_call_count)
 
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
@@ -251,15 +248,10 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.task_manager.comp_task_keeper.receive_subtask(ttc)
         model.Income.create(
             sender_node=keys_auth.public_key,
-            task=ctd['task_id'],
             subtask=ctd['subtask_id'],
+            payer_address=pubkeytoaddr(keys_auth.key_id),
             value=1
         )
-
-        from golem.model import Income
-        ts.client.transaction_system. \
-            incomes_keeper.received. \
-            return_value = Income()
 
         prev_call_count = trust.PAYMENT.increase.call_count
         ts.increase_trust_payment("xyz")
@@ -875,15 +867,12 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
             "10.10.10.10")
         expected_value = ceil(1031 * 1010 / 3600)
         ts.task_manager.set_subtask_value("xxyyzz", expected_value)
-        account_info = Mock()
-        account_info.key_id = "key"
         prev_calls = trust.COMPUTED.increase.call_count
-        ts.accept_result("xxyyzz", account_info)
+        ts.accept_result("xxyyzz", "key", "eth_address")
         ts.client.transaction_system.add_payment_info.assert_called_with(
-            task_id,
             "xxyyzz",
             expected_value,
-            account_info)
+            "eth_address")
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 
     @patch("golem.task.taskmanager.TaskManager.dump_task")
@@ -912,12 +901,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
             "DEF", "DEF", task_id, 1000, 10, 5, 10, 2, "10.10.10.10")
 
-        account_info = Mock()
-        account_info.key_id = "key"
-        account_info.eth_account = Mock()
-        account_info.eth_account.address = None
-
-        ts.accept_result("xxyyzz", account_info)
+        ts.accept_result("xxyyzz", "key", "eth_address")
         self.assertEqual(
             ts.client.transaction_system.add_payment_info.call_count, 0)
 

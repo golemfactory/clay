@@ -1,5 +1,4 @@
 import time
-from pathlib import Path
 
 from unittest import mock
 
@@ -78,7 +77,7 @@ class SubtaskResultsVerifyFiletransferTest(SubtaskResultsVerifyBaseTest):
                 return
             time.sleep(self.INTERVAL)
 
-        self.assertFalse(True, "Verification timed out")
+        raise AssertionError("Verification timed out")
 
     def test_verify_negative(self):
         srv = self.get_srv_with_deposit(self.results_corrupt_filename)
@@ -104,4 +103,4 @@ class SubtaskResultsVerifyFiletransferTest(SubtaskResultsVerifyBaseTest):
                 return
             time.sleep(self.INTERVAL)
 
-        self.assertFalse(True, "Verification timed out")
+        raise AssertionError("Verification timed out")

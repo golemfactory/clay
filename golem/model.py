@@ -4,8 +4,7 @@ import inspect
 import json
 import pickle
 import sys
-# Type is used for old-style (pre Python 3.6) type annotation
-from typing import Optional, Type  # pylint: disable=unused-import
+from typing import Optional
 
 from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
@@ -19,8 +18,6 @@ from golem.database import GolemSqliteDatabase
 from golem.network.p2p.node import Node
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
 
-# Indicates how many KnownHosts can be stored in the DB
-MAX_STORED_HOSTS = 4
 
 # TODO: migrate to golem.database. issue #2415
 db = GolemSqliteDatabase(None, threadlocals=True,
@@ -128,7 +125,7 @@ class JsonField(TextField):
 
 class DictSerializableJSONField(TextField):
     """ Database field that stores a Node in JSON format. """
-    objtype = None  # type: Type[DictSerializable]
+    objtype: Optional[DictSerializable] = None
 
     def db_value(self, value: Optional[DictSerializable]) -> str:
         if value is None:
@@ -240,7 +237,9 @@ class Payment(BaseModel):
 class Income(BaseModel):
     sender_node = CharField()
     subtask = CharField()
+    payer_address = CharField()
     value = HexIntegerField()
+    value_received = HexIntegerField(default=0)
     accepted_ts = IntegerField(null=True)
     transaction = CharField(null=True)
     overdue = BooleanField(default=False)
@@ -259,6 +258,9 @@ class Income(BaseModel):
                 self.transaction,
             )
 
+    @property
+    def value_expected(self):
+        return self.value - self.value_received
 
 ##################
 # RANKING MODELS #
@@ -314,6 +316,7 @@ class KnownHosts(BaseModel):
     port = IntegerField()
     last_connected = DateTimeField(default=datetime.datetime.now)
     is_seed = BooleanField(default=False)
+    metadata = JsonField(default='{}')
 
     class Meta:
         database = db
@@ -432,7 +435,7 @@ class NetworkMessage(BaseModel):
     msg_cls = CharField(null=False)
     msg_data = BlobField(null=False)
 
-    def as_message(self) -> message.Message:
+    def as_message(self) -> message.base.Message:
         msg = pickle.loads(self.msg_data)
         return msg
 

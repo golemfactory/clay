@@ -191,7 +191,7 @@ class NodeTestPlaybook:
                 self.next()
             else:
                 msg = result[1]
-                if re.match('Not enough GNTB', msg):
+                if re.match('Not enough GNT', msg):
                     print("Waiting for Requestor's GNTB...")
                     time.sleep(30)
                     self.task_in_creation = False
