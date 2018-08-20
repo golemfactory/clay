@@ -110,7 +110,7 @@ txtorcon==0.20.0
 u-msgpack-python==2.5.0
 urllib3==1.22
 watchdog==0.8.3
--e git+https://github.com/mfranciszkiewicz/web3.py@pypiwin32_220#egg=web3
+web3==4.2.1
 websocket-client==0.47.0
 wrapt==1.10.11
 zope.interface==4.4.2

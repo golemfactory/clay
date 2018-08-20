@@ -2,7 +2,7 @@
 setuptools>=36.0.1,<39.0.0
 appdirs>=1.4
 click>=4.0
-docker-py==1.7.2
+docker==3.5.0
 netifaces==0.10.4
 peewee<2.11,>=2.8
 peewee_migrate==0.14.0
