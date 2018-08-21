@@ -162,6 +162,9 @@ class DockerManager(DockerConfigManager):
         )
 
     def constrain(self, **params) -> bool:
+        if not self.hypervisor:
+            return False
+
         constraints = self.hypervisor.constraints()
         diff = self._diff_constraints(constraints, params)
 

@@ -29,7 +29,7 @@ class DockerTestCase(unittest.TestCase):
                     "Skipping tests: Image {} not available".format(
                         cls.TEST_IMAGE))
             cls.TEST_ENV_ID = client.inspect_image(cls.TEST_IMAGE)["Id"]
-        except (requests.exceptions.ConnectionError, errors.APIError):
+        except (requests.exceptions.ConnectionError, errors.DockerException):
             raise unittest.SkipTest(
                 "Skipping tests: Cannot connect with Docker daemon")
 

@@ -291,9 +291,11 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
         dmm = MockDockerManager()
         dmm.pull_images = mock.Mock()
         dmm.build_images = mock.Mock()
-        dmm.hypervisor = mock.Mock()
-        dmm.hypervisor.constraints.return_value = dmm.defaults
 
+        hypervisor = mock.Mock()
+        hypervisor.constraints.return_value = dmm.defaults
+
+        dmm._select_hypervisor = mock.Mock(return_value=hypervisor)
         dmm.build_config(config)
         dmm.check_environment()
 
