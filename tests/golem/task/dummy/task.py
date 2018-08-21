@@ -163,9 +163,6 @@ class DummyTask(Task):
         subtask_id = generate_new_id_from_id(self.header.task_id)
 
         with self._lock:
-            # check if a task has been assigned to this node
-            if node_id in self.assigned_nodes:
-                return self.ExtraData(should_wait=True)
             # assign a task
             self.assigned_nodes[node_id] = subtask_id
             self.assigned_subtasks[subtask_id] = node_id
@@ -267,4 +264,4 @@ class DummyTask(Task):
         print('DummyTask.copy_subtask_results called')
 
     def should_accept_client(self, node_id):
-        return True
+        return node_id in self.assigned_nodes
