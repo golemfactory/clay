@@ -321,7 +321,7 @@ class DockerManager(DockerConfigManager):
             version = cls._image_version(entry)
 
             if not cls._image_supported(entry):
-                logger.warning(f'Image {version} is not supported')
+                logger.warning('Image %s is not supported', version)
                 continue
 
             if not cls.command('images', args=[version]):
@@ -358,7 +358,7 @@ class DockerManager(DockerConfigManager):
             version = cls._image_version(entry)
 
             if not cls._image_supported(entry):
-                logger.warning(f'Image {version} is not supported')
+                logger.warning('Image %s is not supported', version)
                 continue
 
             if not cls.command('images', args=[version]):
