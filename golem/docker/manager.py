@@ -1004,12 +1004,12 @@ class DockerForMac(Hypervisor):
 
         try:
             constraints[CONSTRAINT_KEYS['cpu']] = int(config['cpus'])
-        except (KeyError, ValueError) as e:
+        except (KeyError, ValueError, TypeError) as e:
             logger.error("Docker for Mac: error reading CPU count: %r", e)
 
         try:
             constraints[CONSTRAINT_KEYS['mem']] = int(config['memoryMiB'])
-        except (KeyError, ValueError) as e:
+        except (KeyError, ValueError, TypeError) as e:
             logger.error("Docker for Mac: error reading memory size: %r", e)
 
         return constraints

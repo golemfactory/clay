@@ -1,3 +1,5 @@
+# pylint: disable=too-many-lines
+
 import json
 import os
 import sys
@@ -9,7 +11,7 @@ from unittest import mock, TestCase
 
 from golem.docker.manager import DOCKER_VM_NAME as VM_NAME, \
     DockerMachineCommandHandler, DockerMachineHypervisor, DockerManager, \
-    Hypervisor, VirtualBoxHypervisor, XhyveHypervisor, logger
+    Hypervisor, VirtualBoxHypervisor, XhyveHypervisor, logger, DockerForMac
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
@@ -409,6 +411,7 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         with mock.patch('golem.docker.manager.VirtualBoxHypervisor.instance',
                         mock.Mock(vm_running=mock.Mock(return_value=False))):
+            # pylint: disable=no-member
 
             dmm.check_environment()
 
@@ -448,6 +451,7 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         with mock.patch('golem.docker.manager.XhyveHypervisor.instance',
                         hypervisor):
+            # pylint: disable=no-member
             dmm.check_environment()
 
             assert not dmm.hypervisor.create.called
@@ -893,3 +897,93 @@ class TestXhyveHypervisor(TempDirFixture, LogTestCase):
             assert self.hypervisor.vm_running.called
             assert self.hypervisor.stop_vm.called
         assert self.hypervisor.start_vm.called
+
+
+class TestDockerForMacHypervisor(TempDirFixture):
+
+    HANDLER = 'golem.docker.manager.DockerForMacCommandHandler'
+
+    def test_new_instance(self):
+        docker_manager = mock.Mock()
+        docker_manager.return_value = docker_manager
+
+        with mock.patch('golem.docker.manager.DockerForMac._instance', None):
+            hypervisor = DockerForMac.instance(docker_manager)
+            assert hypervisor
+            assert hypervisor._docker_manager is docker_manager
+
+    def test_setup_when_running(self):
+        # pylint: disable=no-member
+
+        docker_manager = DockerManager()
+        hypervisor = DockerForMac(docker_manager)
+        docker_manager.hypervisor = hypervisor
+
+        with mock.patch(f'{self.HANDLER}.status', return_value='Running'):
+            with mock.patch(f'{self.HANDLER}.wait_until_started') as wait:
+                with mock.patch(f'{self.HANDLER}.start') as start:
+
+                    hypervisor.setup()
+
+                    assert wait.called
+                    assert not start.called
+
+    def test_setup_when_not_running(self):
+        # pylint: disable=no-member
+
+        docker_manager = DockerManager()
+        hypervisor = DockerForMac(docker_manager)
+        docker_manager.hypervisor = hypervisor
+
+        with mock.patch(f'{self.HANDLER}.status', return_value=''):
+            with mock.patch(f'{self.HANDLER}.wait_until_started') as wait:
+                with mock.patch(f'{self.HANDLER}.start') as start:
+
+                    hypervisor.setup()
+
+                    assert not wait.called
+                    assert start.called
+
+    def test_is_available(self):
+
+        hypervisor = DockerForMac.instance(mock.Mock())
+
+        app_existing = self.tempdir
+        app_missing = os.path.join(self.tempdir, str(uuid.uuid4()))
+
+        with mock.patch(f'{self.HANDLER}.APP', app_existing):
+            assert hypervisor.is_available()
+
+        with mock.patch(f'{self.HANDLER}.APP', app_missing):
+            assert not hypervisor.is_available()
+
+    def test_create(self):
+
+        hypervisor = DockerForMac.instance(mock.Mock())
+
+        assert not hypervisor.create()
+        assert not hypervisor.create("golem")
+        assert not hypervisor.create("other name")
+        assert not hypervisor.create("other name", cpus=[0, 1, 2])
+
+    def test_remove(self):
+
+        hypervisor = DockerForMac.instance(mock.Mock())
+
+        assert not hypervisor.remove()
+        assert not hypervisor.remove("golem")
+        assert not hypervisor.remove("other name")
+
+    def test_constrain(self):
+
+        hypervisor = DockerForMac.instance(mock.Mock())
+
+        update_dict = dict(cpu_count=3, memory_size=2048)
+        config_file = os.path.join(self.tempdir, 'config_file.json')
+
+        with open(config_file, 'w') as f:
+            json.dump(dict(), f)
+
+        with mock.patch.object(hypervisor, 'CONFIG_FILE', config_file):
+            hypervisor.constrain(**update_dict)
+            assert hypervisor.constraints() == update_dict
