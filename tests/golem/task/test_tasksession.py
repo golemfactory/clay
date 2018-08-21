@@ -12,6 +12,9 @@ from unittest.mock import patch, ANY, Mock, MagicMock
 
 from golem_messages import factories as msg_factories
 from golem_messages import message
+from golem_messages import cryptography
+from golem_messages.utils import encode_hex
+
 from twisted.internet.defer import Deferred
 
 from golem import model, testutils
@@ -73,7 +76,8 @@ class TaskSessionTaskToComputeTest(TestCase):
         self.use_concent = True
         self.task_id = uuid.uuid4().hex
         self.node_name = 'ABC'
-        self.requestor_key = 'req pubkey'
+        self.requestor_keys = cryptography.ECCx(None)
+        self.requestor_key = encode_hex(self.requestor_keys.raw_pubkey)
 
     def _get_task_session(self):
         ts = TaskSession(self.conn)
@@ -88,6 +92,8 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts.can_be_not_encrypted.append(message.tasks.WantToComputeTask)
         ts.task_server.should_accept_provider.return_value = accept_provider
         ts.task_server.config_desc.max_price = 100
+        ts.task_server.keys_auth.ecc.raw_privkey = \
+            self.requestor_keys.raw_privkey
         return ts
 
     def _get_task_parameters(self):
@@ -226,6 +232,21 @@ class TaskSessionTaskToComputeTest(TestCase):
             ['size', task_state.package_size],
         ]
         self.assertCountEqual(ms.slots(), expected)
+
+    def test_task_to_compute_eth_signature(self):
+        wtct = self._get_wtct()
+        ts2 = self._get_requestor_tasksession(accept_provider=True)
+        self._fake_add_task()
+
+        ctd = message.tasks.ComputeTaskDef(task_id=wtct.task_id)
+        self._set_task_state()
+
+        ts2.task_manager.get_next_subtask.return_value = (ctd, False, False)
+        ts2.interpret(wtct)
+        ttc = ts2.conn.send_message.call_args[0][0]
+        self.assertIsInstance(ttc, message.tasks.TaskToCompute)
+        self.assertEqual(ttc.requestor_ethereum_public_key, self.requestor_key)
+        self.assertTrue(ttc.verify_ethsig())
 
 
 class TestTaskSession(ConcentMessageMixin, LogTestCase,
