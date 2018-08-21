@@ -7,12 +7,11 @@ import time
 from hashlib import sha256
 from typing import Optional, Tuple, Union
 
-import ethereum.keys
-from ethereum.keys import decode_keystore_json, make_keystore_json
+from eth_keyfile import create_keyfile_json, decode_keyfile_json
+from eth_utils import encode_hex, decode_hex
 from golem_messages.cryptography import ECCx, mk_privkey, ecdsa_verify, \
     privtopub
 
-from golem.utils import encode_hex, decode_hex
 
 logger = logging.getLogger(__name__)
 
@@ -45,18 +44,6 @@ def get_random_float() -> float:
 
     random = get_random(min_value=1, max_value=sys.maxsize - 1)
     return float(random) / sys.maxsize
-
-
-def _serialize_keystore(keystore):
-    def encode_bytes(obj):
-        if isinstance(obj, bytes):
-            return ''.join([chr(c) for c in obj])
-        if isinstance(obj, dict):
-            for k, v in obj.items():
-                obj[k] = encode_bytes(v)
-        return obj
-
-    return json.dumps(encode_bytes(keystore))
 
 
 class WrongPassword(Exception):
@@ -97,7 +84,7 @@ class KeysAuth:
         self._private_key = prv
         self.ecc = ECCx(prv)
         self.public_key = pub
-        self.key_id = encode_hex(pub)
+        self.key_id = encode_hex(pub)[2:]
         self.difficulty = KeysAuth.get_difficulty(self.key_id)
 
     @staticmethod
@@ -149,7 +136,7 @@ class KeysAuth:
         keystore = json.loads(keystore)
 
         try:
-            priv_key = decode_keystore_json(keystore, password)
+            priv_key = decode_keyfile_json(keystore, password.encode('utf-8'))
         except ValueError:
             raise WrongPassword
 
@@ -182,17 +169,13 @@ class KeysAuth:
 
     @staticmethod
     def _save_private_key(key, key_path, password: str):
-        # The default c parameter is quite large and makes the decryption take
-        # more than 10 seconds which is annoying.
-        ethereum.keys.PBKDF2_CONSTANTS["c"] = 1024
-        keystore = make_keystore_json(
+        keystore = create_keyfile_json(
             key,
-            password,
-            kdf="pbkdf2",
-            cipher="aes-128-ctr",
+            password.encode('utf-8'),
+            iterations=1024,
         )
         with open(key_path, 'w') as f:
-            f.write(_serialize_keystore(keystore))
+            f.write(json.dumps(keystore))
 
     @staticmethod
     def _count_max_hash(difficulty: int) -> int:

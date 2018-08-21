@@ -8,8 +8,9 @@ from typing import Type
 import golem_messages.message
 from ethereum.utils import denoms
 
+from apps.blender.verification_queue import VerificationQueue
 from apps.core.task.coretaskstate import TaskDefinition, Options
-from golem_verificator.core_verifier import CoreVerifier, VerificationQueue
+from golem_verificator.core_verifier import CoreVerifier
 from golem_verificator.verifier import SubtaskVerificationState
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
@@ -143,6 +144,7 @@ class CoreTask(Task):
             task_owner=owner,
             deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
+            subtasks_count=total_tasks,
             resource_size=self.resource_size,
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
@@ -169,10 +171,6 @@ class CoreTask(Task):
         self.res_files = {}
         self.tmp_dir = None
         self.max_pending_client_results = max_pending_client_results
-
-    @property
-    def price(self) -> int:
-        return self.subtask_price * self.total_tasks
 
     @staticmethod
     def create_task_id(public_key: bytes) -> str:
@@ -615,6 +613,7 @@ class CoreTaskBuilder(TaskBuilder):
         definition.subtask_timeout = string_to_timeout(
             dictionary['subtask_timeout'])
         definition.output_file = cls.get_output_path(dictionary, definition)
+        definition.estimated_memory = dictionary.get('estimated_memory', 0)
 
         return definition
 

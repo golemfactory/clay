@@ -1,4 +1,5 @@
 import os
+from typing import List
 
 from golem_sci.chains import RINKEBY
 
@@ -19,23 +20,25 @@ os.environ[CONCENT_ENVIRONMENT_VARIABLE] = os.environ.get(
     CONCENT_ENVIRONMENT_VARIABLE, 'test'
 )
 
+
 # ETH
 
-ETHEREUM_NODE_LIST = [
-    'https://rinkeby.golem.network:55555',
-    'http://188.165.227.180:55555',
-    'http://94.23.17.170:55555',
-    'http://94.23.57.58:55555',
-]
+class EthereumConfig:  # pylint:disable=too-few-public-methods
+    NODE_LIST = [
+        'https://rinkeby.golem.network:55555',
+        'http://188.165.227.180:55555',
+        'http://94.23.17.170:55555',
+        'http://94.23.57.58:55555',
+    ]
 
-ETHEREUM_CHAIN = RINKEBY
-ETHEREUM_FAUCET_ENABLED = True
+    FALLBACK_NODE_LIST: List[str] = [
+    ]
 
-GETH_FLAGS = [
-    '--rinkeby',
-]
+    CHAIN = RINKEBY
+    FAUCET_ENABLED = True
 
-ENABLE_WITHDRAWALS = False
+    WITHDRAWALS_ENABLED = False
+
 
 # P2P
 
@@ -59,7 +62,3 @@ APP_MANAGER_CONFIG_FILES = [
     os.path.join('apps', 'registered.ini'),
     os.path.join('apps', 'registered_test.ini')
 ]
-
-# MONITOR
-
-SEND_PAYMENT_INFO_TO_MONITOR = True

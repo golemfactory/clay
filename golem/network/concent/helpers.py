@@ -4,6 +4,7 @@ import logging
 import time
 import typing
 
+from eth_utils import decode_hex
 from ethereum.utils import privtoaddr
 from golem_messages import constants as msg_constants
 from golem_messages import cryptography
@@ -11,7 +12,6 @@ from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 
 from golem.network import history
-from golem.utils import decode_hex
 
 
 logger = logging.getLogger(__name__)
@@ -135,3 +135,10 @@ def process_report_computed_task(
         )
 
     return process_report_computed_task_no_time_check(msg=msg, ecc=ecc)
+
+
+def ssl_kwargs(concent_variant: dict) -> dict:
+    """Returns additional ssl related kwargs for requests"""
+    if 'certificate' not in concent_variant:
+        return {}
+    return {'verify': concent_variant['certificate'], }

@@ -12,8 +12,7 @@ from golem.core.keysauth import (
     KeysAuth, get_random, get_random_float, sha2, WrongPassword)
 from golem.core.simpleserializer import CBORSerializer
 from golem.tools.testwithreactor import TestWithReactor
-from golem.utils import decode_hex
-from golem.utils import encode_hex
+from eth_utils import decode_hex, encode_hex
 
 
 class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
@@ -168,26 +167,28 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
             assert args[0][0].startswith('Cannot verify signature: ')
 
     def test_fixed_sign_verify(self):  # pylint: disable=too-many-locals
-        public_key = b"cdf2fa12bef915b85d94a9f210f2e432542f249b8225736d923fb0" \
-                     b"7ac7ce38fa29dd060f1ea49c75881b6222d26db1c8b0dd1ad4e934" \
-                     b"263cc00ed03f9a781444"
-        private_key = b"1aab847dd0aa9c3993fea3c858775c183a588ac328e5deb9ceeee" \
-                      b"3b4ac6ef078"
+        public_key = "0xcdf2fa12bef915b85d94a9f210f2e432542f249b8225736d923fb0"\
+                     "7ac7ce38fa29dd060f1ea49c75881b6222d26db1c8b0dd1ad4e934"  \
+                     "263cc00ed03f9a781444"
+        private_key = "0x1aab847dd0aa9c3993fea3c858775c183a588ac328e5deb9ceeee"\
+                      "3b4ac6ef078"
 
         ek = self._create_keysauth()
 
         ek.public_key = decode_hex(public_key)
         ek._private_key = decode_hex(private_key)
-        ek.key_id = encode_hex(ek.public_key)
+        ek.key_id = encode_hex(ek.public_key)[2:]
         ek.ecc = ECCx(ek._private_key)
 
-        msg = message.WantToComputeTask(node_name='node_name',
-                                        task_id='task_id',
-                                        perf_index=2200,
-                                        price=5 * 10 ** 18,
-                                        max_resource_size=250000000,
-                                        max_memory_size=300000000,
-                                        num_cores=4)
+        msg = message.tasks.WantToComputeTask(
+            node_name='node_name',
+            task_id='task_id',
+            perf_index=2200,
+            price=5 * 10 ** 18,
+            max_resource_size=250000000,
+            max_memory_size=300000000,
+            num_cores=4,
+        )
 
         data = msg.get_short_hash()
         signature = ek.sign(data)

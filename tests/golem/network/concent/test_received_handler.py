@@ -22,8 +22,6 @@ from golem.network.concent import received_handler
 from golem.network.concent.received_handler import TaskServerMessageHandler
 from golem.network.concent.handlers_library import library
 from golem.network.concent.filetransfers import ConcentFiletransferService
-from golem.transactions.incomeskeeper import (
-    IncomesKeeper, Income)
 
 
 from tests.factories import taskserver as taskserver_factories
@@ -187,7 +185,8 @@ class TaskServerMessageHandlerTestBase(
 class IsOursTest(TaskServerMessageHandlerTestBase):
     def setUp(self):
         super().setUp()
-        self.task_server.keys_auth.raw_pubkey = self.provider_keys.raw_pubkey
+        self.task_server.keys_auth.ecc.raw_pubkey = \
+            self.provider_keys.raw_pubkey
         with mock.patch('golem.network.concent.'
                         'received_handler.register_handlers'):
             self.tsmh = TaskServerMessageHandler(task_server=self.task_server)
@@ -225,7 +224,8 @@ class ServiceRefusedTest(TaskServerMessageHandlerTestBase):
 class VerdictReportComputedTaskFactory(TaskServerMessageHandlerTestBase):
     def setUp(self):
         super().setUp()
-        self.task_server.keys_auth.raw_pubkey = self.requestor_keys.raw_pubkey
+        self.task_server.keys_auth.ecc.raw_pubkey = \
+            self.requestor_keys.raw_pubkey
 
     def get_vrct(self):
         ttc = msg_factories.tasks.TaskToComputeFactory(
@@ -376,7 +376,6 @@ class ForceSubtaskResultsResponseTest(TaskServerMessageHandlerTestBase):
     def setUp(self):
         super().setUp()
         self.client.transaction_system = mock.Mock()
-        self.client.transaction_system.incomes_keeper = IncomesKeeper()
 
     def test_force_subtask_results_response_empty(self):
         msg = message.concents.ForceSubtaskResultsResponse()
@@ -394,18 +393,11 @@ class ForceSubtaskResultsResponseTest(TaskServerMessageHandlerTestBase):
         msg = msg_factories.concents.\
             ForceSubtaskResultsResponseFactory.with_accepted()
 
-        IncomesKeeper().expect(
-            sender_node_id=msg.task_to_compute.requestor_id,
-            subtask_id=msg.subtask_id,
-            value=42
-        )
-        self.assertIsNone(Income.get(subtask=msg.subtask_id).accepted_ts)
-
         library.interpret(msg)
-
-        self.assertEqual(
-            Income.get(subtask=msg.subtask_id).accepted_ts,
-            msg.subtask_results_accepted.payment_ts
+        self.client.transaction_system.accept_income.assert_called_once_with(
+            msg.task_to_compute.requestor_id,
+            msg.subtask_id,
+            msg.subtask_results_accepted.payment_ts,
         )
 
         add_mock.assert_called_once_with(
@@ -465,7 +457,7 @@ class FileTransferTokenTestsBase:  # noqa pylint:disable=too-few-public-methods
         super().setUp()  # noqa: pylint:disable=no-member
 
         self.wtr = taskserver_factories.WaitingTaskResultFactory(
-            result_path=self.path)
+            package_path=self.path)
         self.rct = msg_factories.tasks.ReportComputedTaskFactory(
             task_to_compute__compute_task_def__subtask_id=self.wtr.subtask_id,
             task_to_compute__compute_task_def__task_id=self.wtr.task_id,
@@ -517,7 +509,7 @@ class ForceGetTaskResultUploadTest(FileTransferTokenTests,  # noqa pylint:disabl
 
         library.interpret(fgtru)
 
-        response = ''
+        response = mock.Mock(ok=True)
 
         with mock.patch(
             'golem.network.concent.filetransfers'
@@ -529,7 +521,7 @@ class ForceGetTaskResultUploadTest(FileTransferTokenTests,  # noqa pylint:disabl
         upload_mock.assert_called_once()
         self.assertEqual(
             upload_mock.call_args[0][0].file_path,
-            self.wtr.result_path)
+            self.wtr.package_path)
         self.assertEqual(
             upload_mock.call_args[0][0].file_transfer_token,
             fgtru.file_transfer_token)
@@ -575,7 +567,8 @@ class ForceGetTaskResultDownloadTest(FileTransferTokenTests,  # noqa pylint:disa
 
     def setUp(self):
         super().setUp()
-        self.task_server.keys_auth.raw_pubkey = self.requestor_keys.raw_pubkey
+        self.task_server.keys_auth.ecc.raw_pubkey = \
+            self.requestor_keys.raw_pubkey
 
     def _get_message_ftt_wrong_type(self):
         return self.MSG_FACTORY(file_transfer_token__download=False,
@@ -598,7 +591,7 @@ class ForceGetTaskResultDownloadTest(FileTransferTokenTests,  # noqa pylint:disa
         ep = ExtractedPackageFactory()
 
         extract = \
-            self.task_server.task_manager.task_result_manager.extract = \
+            self.task_server.task_manager.task_result_manager.extract_zip = \
             mock.Mock(return_value=ep)
 
         verify_results = self.task_server.verify_results = mock.Mock()
@@ -647,7 +640,7 @@ class ForceGetTaskResultDownloadTest(FileTransferTokenTests,  # noqa pylint:disa
 
         exception = Exception()
         extract = \
-            self.task_server.task_manager.task_result_manager.extract = \
+            self.task_server.task_manager.task_result_manager.extract_zip = \
             mock.Mock(side_effect=exception)
 
         with mock.patch(
@@ -703,7 +696,8 @@ class SubtaskResultsVerifyTest(FileTransferTokenTestsBase,  # noqa pylint:disabl
                                FiletransfersTestBase):
     def setUp(self):
         super().setUp()
-        self.task_server.keys_auth.raw_pubkey = self.provider_keys.raw_pubkey
+        self.task_server.keys_auth.ecc.raw_pubkey = \
+            self.provider_keys.raw_pubkey
 
     def get_asrv(self, sign=True, **kwargs):
         provider_privkey = self.provider_keys.raw_privkey
@@ -796,19 +790,46 @@ class SubtaskResultsSettledTest(TaskServerMessageHandlerTestBase):
     def setUp(self):
         super().setUp()
         self.client.transaction_system = mock.Mock()
-        self.client.transaction_system.incomes_keeper = IncomesKeeper()
 
     def test_settled(self):
         srs = msg_factories.concents.SubtaskResultsSettledFactory()
         self.task_server.client.node.key = srs.task_to_compute.provider_id
-        IncomesKeeper().expect(
-            sender_node_id=srs.task_to_compute.requestor_id,
-            subtask_id=srs.subtask_id,
-            value=42
-        )
-        self.assertIsNone(Income.get(subtask=srs.subtask_id).settled_ts)
 
         library.interpret(srs)
+        self.client.transaction_system.settle_income.assert_called_once_with(
+            srs.task_to_compute.requestor_id,
+            srs.subtask_id,
+            srs.timestamp,
+        )
 
-        self.assertEqual(
-            Income.get(subtask=srs.subtask_id).settled_ts, srs.timestamp)
+
+class ForcePaymentTest(TaskServerMessageHandlerTestBase):
+    @mock.patch('golem.network.concent.received_handler.logger.warning')
+    def test_committed_requestor(self, log_mock):
+        fpc = msg_factories.concents.ForcePaymentCommittedFactory.to_requestor()
+        library.interpret(fpc)
+        log_mock.assert_called_once()
+        self.assertIn(
+            "Our deposit was used to cover payment",
+            log_mock.call_args[0][0],
+        )
+
+    @mock.patch('golem.network.concent.received_handler.logger.debug')
+    def test_committed_provider(self, log_mock):
+        fpc = msg_factories.concents.ForcePaymentCommittedFactory.to_provider(
+            amount_pending=31337,
+        )
+        library.interpret(fpc)
+        self.assertIn(
+            "Forced payment from",
+            log_mock.call_args[0][0],
+        )
+
+    @mock.patch('golem.network.concent.received_handler.logger.debug')
+    def test_committed_unknown(self, log_mock):
+        fpc = msg_factories.concents.ForcePaymentCommittedFactory(
+            amount_pending=31337,
+            recipient_type=None,
+        )
+        with self.assertRaises(ValueError):
+            library.interpret(fpc)

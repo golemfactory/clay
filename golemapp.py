@@ -75,12 +75,6 @@ slogging.SManager.getLogger = monkey_patched_getLogger
               help='Whether to run on Ethereum mainnet (shorthand '
                    'for --net mainnet)')
 @click.option('--net', default=None, type=click.Choice(['mainnet', 'testnet']),)
-# Local geth is currently experimental, see issue #2476
-# @click.option('--start-geth', is_flag=True, default=False, is_eager=True,
-#               help="Start local geth node")
-# @click.option('--start-geth-port', default=None, type=int,
-#               callback=argsparser.enforce_start_geth_used, metavar="<port>",
-#               help="Port number to be used by locally started geth node")
 @click.option('--geth-address', default=None, metavar="http://<host>:<port>",
               callback=argsparser.parse_http_addr,
               help="Connect with given geth node")
@@ -184,8 +178,6 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         use_monitor=monitor,
         use_talkback=enable_talkback,
         concent_variant=CONCENT_VARIANT,
-        start_geth=False,
-        start_geth_port=None,
         geth_address=geth_address,
         password=password,
     )
@@ -245,8 +237,8 @@ def log_platform_info():
 
 
 def log_ethereum_chain():
-    from golem.config.active import ETHEREUM_CHAIN
-    logger.info("Ethereum chain: %s", ETHEREUM_CHAIN)
+    from golem.config.active import EthereumConfig
+    logger.info("Ethereum chain: %s", EthereumConfig.CHAIN)
 
 
 def log_concent_choice(value: dict):

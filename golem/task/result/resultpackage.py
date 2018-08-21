@@ -203,7 +203,7 @@ class TaskResultDescriptor(PrintableObject):  # noqa pylint:disable=too-few-publ
         self.owner = task_result.owner
 
 
-class EncryptingTaskResultPackager(EncryptingPackager):
+class TaskResultPackager:
 
     descriptor_file_name = '.package_desc'
     result_file_name = '.result_cbor'
@@ -271,6 +271,14 @@ class EncryptingTaskResultPackager(EncryptingPackager):
                              .format(result.result_type))
 
         return disk_files, cbor_files
+
+
+class EncryptingTaskResultPackager(TaskResultPackager, EncryptingPackager):
+    pass
+
+
+class ZipTaskResultPackager(TaskResultPackager, ZipPackager):
+    pass
 
 
 class ExtractedPackage(PrintableObject):  # noqa pylint:disable=too-few-public-methods

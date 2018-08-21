@@ -19,7 +19,7 @@ from golem.network import history
 from golem.task import taskbase
 from golem.task import tasksession
 from golem.task import taskstate
-
+from tests.factories.p2p import Node
 
 reject_reasons = message.tasks.RejectReportComputedTask.REASON
 cannot_reasons = message.tasks.CannotComputeTask.REASON
@@ -35,6 +35,15 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         super().setUp()
         self.msg = factories.tasks.TaskToComputeFactory()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
+        self.task_session.task_server.task_keeper\
+            .task_headers[self.msg.task_id]\
+            .subtasks_count = 10
+        self.task_session.task_server.client.transaction_system\
+            .get_available_gnt.return_value = self.msg.price * 10
+        self.task_session.task_server.client.transaction_system\
+            .concent_balance.return_value = (self.msg.price * 10) * 2
+        self.task_session.task_server.client.transaction_system\
+            .concent_timelock.return_value = 0
 
     def assert_accepted(self, send_mock):  # pylint: disable=no-self-use
         send_mock.assert_not_called()
@@ -81,6 +90,66 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
             reason=cannot_reasons.ConcentDisabled,
         )
 
+    def test_requestor_low_balance(self, send_mock, *_):
+        self.task_session.concent_service.enabled = True
+        self.msg.concent_enabled = True
+        self.task_session.task_server.client.transaction_system\
+            .get_available_gnt.return_value = self.msg.price * 9
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_rejected(
+            send_mock,
+            reason=cannot_reasons.InsufficientBalance,
+        )
+
+    def test_requestor_low_balance_no_concent(
+            self,
+            send_mock,
+            *_):
+        self.task_session.task_server.client.transaction_system\
+            .get_available_gnt.return_value = self.msg.price * 9
+        self.task_session.concent_service.enabled = False
+        self.msg.concent_enabled = False
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_rejected(
+            send_mock,
+            reason=cannot_reasons.InsufficientBalance,
+        )
+
+    def test_requestor_low_deposit(self, send_mock, *_):
+        self.task_session.concent_service.enabled = True
+        self.msg.concent_enabled = True
+        self.task_session.task_server.client.transaction_system\
+            .concent_balance.return_value = int((self.msg.price * 10) * 1.5)
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_rejected(
+            send_mock,
+            reason=cannot_reasons.InsufficientDeposit,
+        )
+
+    def test_requestor_short_deposit(self, send_mock, *_):
+        self.task_session.concent_service.enabled = True
+        self.msg.concent_enabled = True
+        self.task_session.task_server.client.transaction_system\
+            .concent_timelock.return_value = 1
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_rejected(
+            send_mock,
+            reason=cannot_reasons.TooShortDeposit,
+        )
+
+    def test_requestor_low_short_deposit_no_concent(
+            self,
+            send_mock,
+            *_):
+        self.task_session.concent_service.enabled = False
+        self.msg.concent_enabled = False
+        self.task_session.task_server.client.transaction_system\
+            .concent_balance.return_value = int((self.msg.price * 10) * 1.5)
+        self.task_session.task_server.client.transaction_system\
+            .concent_timelock.return_value = 1
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_accepted(send_mock)
+
 
 class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
     def setUp(self):
@@ -101,7 +170,11 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
             inputb=self.msg.task_to_compute.get_short_hash(),
         )
         task_id = self.msg.task_to_compute.compute_task_def['task_id']
-        task_header = taskbase.TaskHeader(*(None,)*6)
+        task_header = taskbase.TaskHeader(
+            task_id='task_id',
+            environment='env',
+            task_owner=Node()
+        )
         task_header.deadline = now_ts + 3600
         task = mock.Mock()
         task.header = task_header

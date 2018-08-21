@@ -1,60 +1,13 @@
-import logging
-from os import path
 from unittest.mock import patch, Mock
+from unittest import TestCase
 
-from eth_utils import encode_hex, to_checksum_address
-from ethereum.transactions import Transaction
-
-from golem.ethereum.node import log, NodeProcess
-from golem.testutils import PEP8MixIn, TempDirFixture
-from golem.tools.assertlogs import LogTestCase
-from golem_sci.client import Client
+from golem.ethereum.node import NodeProcess
 
 
-class EthereumNodeTest(TempDirFixture, LogTestCase, PEP8MixIn):
-    PEP8_FILES = ["golem/ethereum/node.py"]
-
-    def test_ethereum_node(self):
-        np = NodeProcess(self.tempdir, start_node=True)
-        np.web3 = Mock()
-        assert np.is_running() is False
-        np.start()
-        assert np.is_running() is True
-        with self.assertRaises(RuntimeError):
-            np.start()
-        assert np.is_running() is True
-        np.stop()
-        assert np.is_running() is False
-
-        # Test different port option
-        port = 8182
-        with self.assertLogs(log, level="INFO") as l:
-            np.start(port)
-            assert any("--port=8182" in log for log in l.output)
-        assert np.is_running() is True
-        np.stop()
-        assert np.is_running() is False
-
-    def test_ethereum_node_reuse(self):
-        np = NodeProcess(self.tempdir, start_node=True)
-        np.web3 = Mock()
-        np.start()
-
-        # Reuse but with different directory
-        ndir = path.join(self.tempdir, "ndir")
-        np1 = NodeProcess(ndir, start_node=True)
-        np1.web3 = Mock()
-        np1.start()
-        assert np.is_running() is True
-        assert np1.is_running() is True
-        np.stop()
-        np1.stop()
-
-
-class TestPublicNodeList(TempDirFixture):
+class TestPublicNodeList(TestCase):
 
     def test_node_start(self):
-        node = NodeProcess(self.tempdir)
+        node = NodeProcess(['addr1', 'addr2'])
         node.web3 = Mock()
         node.is_connected = Mock()
         node._handle_remote_rpc_provider_failure = Mock()
@@ -67,7 +20,7 @@ class TestPublicNodeList(TempDirFixture):
     @patch('golem.core.async.async_run',
            side_effect=lambda r, *_: r.method(*r.args, **r.kwargs))
     def test_handle_remote_rpc_provider(self, _async_run):
-        node = NodeProcess(self.tempdir, start_node=True)
+        node = NodeProcess(['addr'])
         node.start = Mock()
 
         assert node.provider_proxy
@@ -76,64 +29,7 @@ class TestPublicNodeList(TempDirFixture):
 
         node.provider_proxy.provider = Mock()
         node.addr_list = []
-        node._handle_remote_rpc_provider_failure(Exception('test exception'))
+        node._handle_remote_rpc_provider_failure()
 
         assert node.provider_proxy.provider is None
         assert node.start.called
-
-
-class EthereumClientNodeTest(TempDirFixture):
-    def setUp(self):
-        super().setUp()
-        # Show information about Ethereum node starting and terminating.
-        logging.basicConfig(level=logging.INFO)
-        self.node = NodeProcess(self.tempdir, start_node=True)
-        self.node.web3 = Mock()
-        self.node.start()
-        self.client = Client(self.node.web3)
-
-    def tearDown(self):
-        self.node.stop()
-        super().tearDown()
-
-    def test_client(self):
-        client = self.client
-        p = client.get_peer_count()
-        assert type(p) is int
-        s = client.is_syncing()
-        assert type(s) is bool
-        addr = b'FakeEthereumAddress!'
-        assert len(addr) == 20
-        hex_addr = to_checksum_address(encode_hex(addr))
-        c = client.get_transaction_count(hex_addr)
-        assert type(c) is int
-        assert c == 0
-        b = client.get_balance(hex_addr)
-        assert b == 0
-
-    def test_send_raw_transaction(self):
-        client = self.client
-        with self.assertRaises(ValueError):
-            client.send("fake data")
-
-    def test_send_transaction(self):
-        client = self.client
-        addr = b'\xff' * 20
-        priv = b'\xee' * 32
-        tx = Transaction(1, 20 * 10**9, 21000, to=addr, value=0, data=b'')
-        tx.sign(priv)
-        with self.assertRaisesRegex(ValueError, "[Ii]nsufficient funds"):
-            client.send(tx)
-
-    def test_filters(self):
-        """ Test creating filter and getting logs """
-        client = self.client
-        filter_id = client.new_filter()
-        assert type(filter_id) is str
-        # Filter id is hex encoded 256-bit integer.
-        assert filter_id.startswith('0x')
-        number = int(filter_id, 16)
-        assert 0 < number < 2**256
-
-        entries = client.get_filter_changes(filter_id)
-        assert not entries

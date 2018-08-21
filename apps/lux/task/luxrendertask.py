@@ -1,3 +1,4 @@
+import functools
 import glob
 import logging
 import math
@@ -27,7 +28,7 @@ from golem.core.common import timeout_to_deadline, get_golem_path, to_unicode
 from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
 from golem.resource import dirmanager
 from golem.resource.dirmanager import DirManager
-from golem.task.localcomputer import LocalComputer
+from golem.task.localcomputer import LocalComputer, ComputerAdapter
 from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("apps.lux")
@@ -125,9 +126,11 @@ class LuxRenderOptions(Options):
         self.haltspp = 10
 
 
+# pylint: disable=too-many-instance-attributes
 class LuxTask(renderingtask.RenderingTask):
     ENVIRONMENT_CLASS = LuxRenderEnvironment
-    VERIFIER_CLASS = LuxRenderVerifier
+    VERIFIER_CLASS = functools.partial(LuxRenderVerifier,
+                                       computer_cls=ComputerAdapter)
 
     ################
     # Task methods #

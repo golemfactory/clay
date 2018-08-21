@@ -1,10 +1,12 @@
+import time
 import unittest
 
 from freezegun import freeze_time
 
 from golem.core.common import timeout_to_deadline, deadline_to_timeout, \
     get_timestamp_utc
-from golem.task.taskstate import SubtaskState, SubtaskStatus
+from golem.task.taskstate import SubtaskState, SubtaskStatus, TaskState, \
+    TaskStatus
 
 
 class TestSubtaskState(unittest.TestCase):
@@ -66,3 +68,25 @@ class TestSubtaskState(unittest.TestCase):
         assert ss_dict['node_performance'] == "180"
         assert ss_dict['node_ip_address'] == "10.10.10.1"
         assert ss_dict['node_port'] == 1311
+
+
+class TestTaskState(unittest.TestCase):
+
+    @freeze_time(as_arg=True)
+    def test_last_update_time(  # pylint: disable=no-self-argument
+            frozen_time, self):
+        ts = TaskState()
+        self.assertEqual(ts.last_update_time, time.time())
+
+        frozen_time.tick()  # pylint: disable=no-member
+
+        ts.status = TaskStatus.restarted
+        self.assertNotEqual(ts.last_update_time, time.time())
+
+        frozen_time.tick()  # pylint: disable=no-member
+
+        ts.status = TaskStatus.finished
+        self.assertEqual(ts.last_update_time, time.time())
+
+        ts_dict = ts.to_dictionary()
+        self.assertEqual(ts_dict.get('last_updated'), time.time())

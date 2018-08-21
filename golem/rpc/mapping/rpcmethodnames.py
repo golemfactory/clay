@@ -76,7 +76,6 @@ CORE_METHOD_MAP = dict(
     get_res_dirs_sizes=     'res.dirs.size',
     clear_dir=              'res.dir.clear',
 
-    get_status=             'comp.status',
     get_environments=       'comp.environments',
     enable_environment=     'comp.environment.enable',
     disable_environment=    'comp.environment.disable',
@@ -97,6 +96,7 @@ CORE_METHOD_MAP = dict(
 )
 
 NODE_METHOD_MAP = dict(
+    is_account_unlocked=    'golem.password.unlocked',
     set_password=           'golem.password.set',
     key_exists=             'golem.password.key_exists',
     is_mainnet=             'golem.mainnet',
@@ -104,5 +104,6 @@ NODE_METHOD_MAP = dict(
     accept_terms=           'golem.terms.accept',
     show_terms=             'golem.terms.show',
 
+    graceful_shutdown=      'golem.graceful_shutdown',
     quit=                   'ui.quit',
 )

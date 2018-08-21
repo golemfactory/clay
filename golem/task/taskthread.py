@@ -3,6 +3,9 @@ import logging
 import os
 import threading
 import time
+from typing import Any, Dict, Tuple, Union
+
+from twisted.internet.defer import Deferred
 
 
 logger = logging.getLogger("golem.task.taskthread")
@@ -17,11 +20,14 @@ class TimeoutException(JobException):
 
 
 class TaskThread(threading.Thread):
-    def __init__(self, task_computer, subtask_id, working_directory, src_code,
-                 extra_data, short_desc, res_path, tmp_path, timeout=0):
+    result: Union[None, Dict[str, Any], Tuple[Dict[str, Any], int]] = None
+
+    # pylint:disable=too-many-arguments
+    # pylint:disable=too-many-instance-attributes
+    def __init__(self, subtask_id, working_directory, src_code, extra_data,
+                 short_desc, res_path, tmp_path, timeout=0) -> None:
         super(TaskThread, self).__init__()
 
-        self.task_computer = task_computer
         self.vm = None
         self.subtask_id = subtask_id
         self.src_code = src_code
@@ -44,6 +50,7 @@ class TaskThread(threading.Thread):
         self.last_time_checking = time.time()
 
         self._parent_thread = threading.current_thread()
+        self._deferred = Deferred()
 
     def check_timeout(self):
         if not self._parent_thread.is_alive():
@@ -76,6 +83,10 @@ class TaskThread(threading.Thread):
         with self.lock:
             return self.error
 
+    def start(self) -> Deferred:
+        super().start()
+        return self._deferred
+
     def run(self):
         logger.info("RUNNING ")
         try:
@@ -84,7 +95,7 @@ class TaskThread(threading.Thread):
             logger.exception("__do_work failed")
             self._fail(exc)
         else:
-            self.task_computer.task_computed(self)
+            self._deferred.callback(self)
 
     def end_comp(self):
         self.end_time = time.time()
@@ -98,12 +109,12 @@ class TaskThread(threading.Thread):
         # Terminate computation (if any)
         self.end_comp()
 
-        logger.exception("Task computing error")
+        logger.warning("Task computing error")
 
         self.error = True
         self.error_msg = str(exception)
         self.done = True
-        self.task_computer.task_computed(self)
+        self._deferred.errback(exception)
 
     def __do_work(self):
         extra_data = copy.copy(self.extra_data)

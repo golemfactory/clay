@@ -47,7 +47,7 @@ PUBLISH_BALANCE_INTERVAL = 3.0
 PUBLISH_TASKS_INTERVAL = 1.0
 NODE_SNAPSHOT_INTERVAL = 10.0
 NETWORK_CHECK_INTERVAL = 10.0
-PAYMENT_CHECK_INTERVAL = 10.0
+MASK_UPDATE_INTERVAL = 30.0
 MAX_SENDING_DELAY = 360
 # How frequently task archive should be saved to disk (in seconds)
 TASKARCHIVE_MAINTENANCE_INTERVAL = 30
@@ -70,6 +70,14 @@ CLEAN_TASKS_OLDER_THAN_SECONDS = 3*24*60*60  # 3 days
 MAX_PRICE = int(1.0 * denoms.ether)
 # Default min price per hour of computation to accept
 MIN_PRICE = MAX_PRICE // 10
+
+NET_MASKING_ENABLED = 1
+# Expected number of workers =
+# max(number of subtasks * INITIAL_MASK_SIZE_FACTOR, MIN_NUM_WORKERS_FOR_MASK)
+INITIAL_MASK_SIZE_FACTOR = 1.0
+MIN_NUM_WORKERS_FOR_MASK = 20
+# Updating by 1 bit increases number of workers 2x
+MASK_UPDATE_NUM_BITS = 1
 
 
 class NodeConfig:
@@ -124,6 +132,7 @@ class AppConfig:
             opt_peer_num=OPTIMAL_PEER_NUM,
             key_difficulty=KEY_DIFFICULTY,
             # flags
+            in_shutdown=0,
             accept_tasks=ACCEPT_TASKS,
             send_pings=SEND_PINGS,
             enable_talkback=ENABLE_TALKBACK,
@@ -142,6 +151,7 @@ class AppConfig:
             task_request_interval=TASK_REQUEST_INTERVAL,
             node_snapshot_interval=NODE_SNAPSHOT_INTERVAL,
             network_check_interval=NETWORK_CHECK_INTERVAL,
+            mask_update_interval=MASK_UPDATE_INTERVAL,
             max_results_sending_delay=MAX_SENDING_DELAY,
             # timeouts
             p2p_session_timeout=P2P_SESSION_TIMEOUT,
@@ -151,7 +161,13 @@ class AppConfig:
             forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT,
             clean_resources_older_than_seconds=CLEAN_RESOURES_OLDER_THAN_SECS,
             clean_tasks_older_than_seconds=CLEAN_TASKS_OLDER_THAN_SECONDS,
-            debug_third_party=DEBUG_THIRD_PARTY)
+            debug_third_party=DEBUG_THIRD_PARTY,
+            # network masking
+            net_masking_enabled=NET_MASKING_ENABLED,
+            initial_mask_size_factor=INITIAL_MASK_SIZE_FACTOR,
+            min_num_workers_for_mask=MIN_NUM_WORKERS_FOR_MASK,
+            mask_update_num_bits=MASK_UPDATE_NUM_BITS
+        )
 
         cfg = SimpleConfig(node_config, cfg_file, keep_old=False)
         return AppConfig(cfg, cfg_file)

@@ -1,6 +1,7 @@
 import inspect
 import logging
 
+from ethereum.utils import denoms
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 
@@ -99,6 +100,16 @@ def on_force_subtask_results_rejected(msg):
     logger.warning("[CONCENT] %r", msg)
 
 
+@library.register_handler(message.concents.ForcePaymentRejected)
+def on_force_payment_rejected(msg):
+    logger.warning("[CONCENT] ForcePaymentRejected by %r", msg)
+    if msg.reason is msg.REASON.TimestampError:
+        logger.warning(
+            "[CONCENT] Payment rejected due to time issue."
+            " Please check your clock",
+        )
+
+
 class TaskServerMessageHandler():
     """Container for received message handlers that require TaskServer."""
     def __init__(self, task_server: taskserver.TaskServer) -> None:
@@ -127,8 +138,11 @@ class TaskServerMessageHandler():
 
         if child_msg:
             try:
+                pubkey = self.task_server.keys_auth.ecc.raw_pubkey
+                logger.debug("Verifying message %s against our pubkey: %s",
+                             child_msg, pubkey)
                 return child_msg.verify_signature(
-                    public_key=self.task_server.keys_auth.raw_pubkey)
+                    public_key=pubkey)
             except msg_exceptions.InvalidSignature:
                 pass
 
@@ -138,7 +152,7 @@ class TaskServerMessageHandler():
 
     @handler_for(message.concents.ServiceRefused)
     def on_service_refused(self, msg,
-                           response_to: message.Message = None):
+                           response_to: message.base.Message = None):
         logger.warning(
             "Concent service (%s) refused for subtask_id: %r %s",
             response_to.__class__.__name__ if response_to else '',
@@ -166,7 +180,7 @@ class TaskServerMessageHandler():
             msg.is_valid()
             concent_key = self.task_server.client.concent_variant['pubkey']
             msg.verify_owners(
-                requestor_public_key=self.task_server.keys_auth.raw_pubkey,
+                requestor_public_key=self.task_server.keys_auth.ecc.raw_pubkey,
                 concent_public_key=concent_key,
             )
         except msg_exceptions.ValidationError as e:
@@ -355,7 +369,7 @@ class TaskServerMessageHandler():
                            subtask_id, exc)
 
         self.concent_filetransfers.transfer(
-            file_path=wtr.result_path,
+            file_path=wtr.package_path,
             file_transfer_token=ftt,
             success=success,
             error=error,
@@ -428,10 +442,13 @@ class TaskServerMessageHandler():
             self._log_ftt_invalid(msg)
             return
 
-        # verify if the attached `ForceGetTaskResult` bears our
-        # (the requestor's) signature
-        if not self.is_ours(msg, 'force_get_task_result'):
-            return
+        # ugh... for some reason, the Concent rewrites the FGTR
+        # instead of passing it along...
+        #
+        # # verify if the attached `ForceGetTaskResult` bears our
+        # # (the requestor's) signature
+        # if not self.is_ours(msg, 'force_get_task_result'):
+        #     return
 
         # everything okay, so we can proceed with download
         # and should download succeed,
@@ -453,8 +470,8 @@ class TaskServerMessageHandler():
                          msg.subtask_id, response)
 
             try:
-                extracted_package = result_manager.extract(
-                    file_path, output_dir, rct.secret)
+                extracted_package = result_manager.extract_zip(
+                    file_path, output_dir)
             except Exception as e:  # noqa pylint:disable=broad-except
                 logger.error("Concent results extraction failure: %r, %s",
                              msg.subtask_id, e)
@@ -521,3 +538,35 @@ class TaskServerMessageHandler():
                 subtask_id=msg.subtask_id,
                 settled_ts=msg.timestamp,
             )
+
+    @handler_for(message.concents.ForcePaymentCommitted)
+    def on_force_payment_committed(self, msg, **_):
+        if msg.recipient_type == msg.Actor.Requestor:
+            handler = self.on_force_payment_committed_for_requestor
+        elif msg.recipient_type == msg.Actor.Provider:
+            handler = self.on_force_payment_committed_for_provider
+        else:
+            raise ValueError(
+                "Unknown Actor: {!r}".format(msg.recipient_type),
+            )
+        handler(msg)
+
+    def on_force_payment_committed_for_requestor(self, msg):  # noqa pylint: disable=no-self-use
+        logger.warning(
+            "[CONCENT] Our deposit was used to cover payment of %.6f GNT"
+            " for eth address: %s",
+            msg.amount_paid / denoms.ether,
+            msg.provider_eth_account,
+        )
+        # Stopping of awaiting payment will be handled
+        # when blockchain event is detected
+
+    def on_force_payment_committed_for_provider(self, msg):  # noqa pylint: disable=no-self-use
+        # This informative/redundant.
+        # SEE: golem.transactions.ethereum.ethereumincomeskeeper
+        #      ._on_forced_payment
+        logger.debug(
+            "[CONCENT] Forced payment from % should be on blockchain."
+            " Will wait for that.",
+            msg.task_owner_key,
+        )

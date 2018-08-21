@@ -1,3 +1,4 @@
+import functools
 import logging
 import math
 import os
@@ -5,11 +6,13 @@ import random
 import time
 from collections import OrderedDict
 from copy import copy
+from typing import Optional
 
 import numpy
 from PIL import Image, ImageChops, ImageFile
 
 import apps.blender.resources.blenderloganalyser as log_analyser
+from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.core.task import coretask
@@ -25,6 +28,7 @@ from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, \
     RendererDefaults
 from golem.core.common import to_unicode
 from golem.core.fileshelper import has_ext
+from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus, TaskStatus
 from golem_verificator.blender_verifier import BlenderVerifier
@@ -126,7 +130,7 @@ class PreviewUpdater(object):
 
 
 class BlenderTaskTypeInfo(CoreTaskTypeInfo):
-    """ Blender App descryption that can be used by interface to define
+    """ Blender App description that can be used by interface to define
     parameters and task build
     """
 
@@ -326,7 +330,9 @@ class BlenderRendererOptions(FrameRendererOptions):
 
 class BlenderRenderTask(FrameRenderingTask):
     ENVIRONMENT_CLASS = BlenderEnvironment
-    VERIFIER_CLASS = BlenderVerifier
+    VERIFIER_CLASS = functools.partial(BlenderVerifier,
+                                       cropper_cls=BlenderReferenceGenerator,
+                                       docker_task_cls=DockerTaskThread)
 
     BLENDER_MIN_BOX = [8, 8]
     BLENDER_MIN_SAMPLE = 5
@@ -391,8 +397,10 @@ class BlenderRenderTask(FrameRenderingTask):
 
     @coretask.accepting
     # pylint: disable-msg=too-many-locals
-    def query_extra_data(self, perf_index, num_cores=0, node_id=None,
-                         node_name=None):
+    def query_extra_data(self, perf_index: float, num_cores: int = 0,
+                         node_id: Optional[str] = None,
+                         node_name: Optional[str] = None) \
+            -> FrameRenderingTask.ExtraData:
 
         start_task, end_task = self._get_next_task()
         scene_file = self._get_scene_file_rel_path()

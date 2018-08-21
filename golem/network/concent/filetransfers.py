@@ -13,6 +13,8 @@ from golem_messages.message.concents import (
 from golem.core import keysauth
 from golem.core.service import LoopingCallService
 
+from .helpers import ssl_kwargs
+
 logger = logging.getLogger(__name__)
 
 
@@ -38,6 +40,10 @@ class ConcentFileRequest():  # noqa pylint:disable=too-few-public-methods
             self.file_transfer_token,
             self.file_category,
         )
+
+
+class ConcentFiletransferError(Exception):
+    pass
 
 
 class ConcentFiletransferService(LoopingCallService):
@@ -95,14 +101,17 @@ class ConcentFiletransferService(LoopingCallService):
         try:
             if request.file_transfer_token.is_upload:
                 response = self.upload(request)
-            elif request.file_transfer_token.is_download:
+            else:
                 response = self.download(request)
+            if not response.ok:
+                raise ConcentFiletransferError(
+                    '{}: {}'.format(response.status_code, response.text))
         except Exception as e:  # noqa pylint:disable=broad-except
             if request.error:
                 request.error(e)
                 return None
             else:
-                raise
+                raise e
 
         return request.success(response) if request.success else response
 
@@ -154,14 +163,16 @@ class ConcentFiletransferService(LoopingCallService):
                      request.file_path, uri, headers)
 
         with open(request.file_path, mode='rb') as f:
-            response = requests.post(uri, data=f, headers=headers)
+            response = requests.post(
+                uri, data=f, headers=headers, **ssl_kwargs(self.variant))
         return response
 
     def download(self, request: ConcentFileRequest):
         uri = self._get_download_uri(request.file_transfer_token,
                                      request.file_category)
         headers = self._get_auth_headers(request.file_transfer_token)
-        response = requests.get(uri, stream=True, headers=headers)
+        response = requests.get(
+            uri, stream=True, headers=headers, **ssl_kwargs(self.variant))
         with open(request.file_path, mode='wb') as f:
             for chunk in response.iter_content(chunk_size=None):
                 f.write(chunk)

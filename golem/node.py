@@ -1,22 +1,26 @@
+from enum import IntEnum
 import functools
 import logging
 import time
 from typing import List, Optional, Callable, Any
 
+from pathlib import Path
 from twisted.internet import threads
 from twisted.internet.defer import gatherResults, Deferred
+from twisted.python.failure import Failure
 
 from apps.appsmanager import AppsManager
 from golem.appconfig import AppConfig
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.config.active import IS_MAINNET
+from golem.config.active import IS_MAINNET, EthereumConfig
 from golem.core.deferred import chain_function
 from golem.core.keysauth import KeysAuth, WrongPassword
 from golem.core.async import async_run, AsyncRequest
 from golem.core.variables import PRIVATE_KEY
 from golem.database import Database
 from golem.docker.manager import DockerManager
+from golem.ethereum.transactionsystem import TransactionSystem
 from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher, Component, Stage
@@ -26,6 +30,12 @@ from golem.rpc.session import object_method_map, Session, Publisher
 from golem.terms import TermsOfUse
 
 logger = logging.getLogger(__name__)
+
+
+class ShutdownResponse(IntEnum):
+    quit = 0
+    off = 1
+    on = 2
 
 
 # pylint: disable=too-many-instance-attributes
@@ -44,8 +54,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  use_monitor: bool = None,
                  use_talkback: bool = None,
                  use_docker_manager: bool = True,
-                 start_geth: bool = False,
-                 start_geth_port: Optional[int] = None,
                  geth_address: Optional[str] = None,
                  password: Optional[str] = None) -> None:
 
@@ -66,6 +74,11 @@ class Node(object):  # pylint: disable=too-few-public-methods
             if use_talkback is None else use_talkback
 
         self._keys_auth: Optional[KeysAuth] = None
+        self._ets = TransactionSystem(
+            Path(datadir) / 'transaction_system',
+            EthereumConfig,
+        )
+        self._ets.backwards_compatibility_tx_storage(Path(datadir))
 
         self.rpc_router: Optional[CrossbarRouter] = None
         self.rpc_session: Optional[Session] = None
@@ -87,13 +100,13 @@ class Node(object):  # pylint: disable=too-few-public-methods
             config_desc=config_desc,
             keys_auth=keys_auth,
             database=self._db,
+            transaction_system=self._ets,
             use_docker_manager=use_docker_manager,
             use_monitor=self._use_monitor,
             concent_variant=concent_variant,
-            start_geth=start_geth,
-            start_geth_port=start_geth_port,
             geth_address=geth_address,
-            apps_manager=self.apps_manager
+            apps_manager=self.apps_manager,
+            task_finished_cb=self._try_shutdown
         )
 
         if password is not None:
@@ -122,8 +135,6 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         def _quit():
             reactor = self._reactor
-            if self.client:
-                self.client.quit()
             if reactor.running:
                 reactor.callFromThread(reactor.stop)
 
@@ -141,6 +152,14 @@ class Node(object):  # pylint: disable=too-few-public-methods
                 password=password,
                 difficulty=self._config_desc.key_difficulty,
             )
+            # When Golem is ready to use different Ethereum account for
+            # payments and identity this should be called only when
+            # idendity was not just created above for the first time.
+            self._ets.backwards_compatibility_privkey(
+                self._keys_auth._private_key,
+                password,
+            )
+            self._ets.set_password(password)
         except WrongPassword:
             logger.info("Password incorrect")
             return False
@@ -148,6 +167,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def key_exists(self) -> bool:
         return KeysAuth.key_exists(self._datadir, PRIVATE_KEY)
+
+    def is_account_unlocked(self) -> bool:
+        return self._keys_auth is not None
 
     def is_mainnet(self) -> bool:
         return IS_MAINNET
@@ -205,6 +227,68 @@ class Node(object):  # pylint: disable=too-few-public-methods
     def show_terms():
         return TermsOfUse.show_terms()
 
+    def graceful_shutdown(self) -> ShutdownResponse:
+        if self.client is None:
+            logger.warning('Shutdown called when client=None, try again later')
+            return ShutdownResponse.off
+
+        # is in shutdown? turn off as toggle
+        if self._config_desc.in_shutdown:
+            self.client.update_setting('in_shutdown', False)
+            logger.info('Turning off shutdown mode')
+            return ShutdownResponse.off
+
+        # is not providing nor requesting, normal shutdown
+        if not self._is_task_in_progress():
+            logger.info('Node not working, executing normal shutdown')
+            self.quit()
+            return ShutdownResponse.quit
+
+        # configure in_shutdown
+        logger.info('Enabling shutdown mode, no more tasks can be started')
+        self.client.update_setting('in_shutdown', True)
+
+        # subscribe to events
+
+        return ShutdownResponse.on
+
+    def _try_shutdown(self) -> None:
+        # is not in shutdown?
+        if not self._config_desc.in_shutdown:
+            logger.debug('Checking shutdown, no shutdown configure')
+            return
+
+        if self._is_task_in_progress():
+            logger.info('Shutdown checked, a task is still in progress')
+            return
+
+        logger.info('Node done with all tasks, shutting down')
+        self.quit()
+
+    def _is_task_in_progress(self) -> bool:
+        if self.client is None:
+            logger.debug('_is_task_in_progress? False: client=None')
+            return False
+
+        task_server = self.client.task_server
+        if task_server is None or task_server.task_manager is None:
+            logger.debug('_is_task_in_progress? False: task_manager=None')
+            return False
+
+        task_requestor_progress = task_server.task_manager.get_progresses()
+        if task_requestor_progress:
+            logger.debug('_is_task_in_progress? requestor=%r', True)
+            return True
+
+        if task_server.task_computer is None:
+            logger.debug('_is_task_in_progress? False: task_computer=None')
+            return False
+
+        task_provider_progress = task_server.task_computer.assigned_subtasks
+        logger.debug('_is_task_in_progress? provider=%r, requestor=False',
+                     task_provider_progress)
+        return task_provider_progress != {}
+
     def _check_terms(self) -> Optional[Deferred]:
         if not self.rpc_session:
             self._error("RPC session is not available")
@@ -228,21 +312,22 @@ class Node(object):  # pylint: disable=too-few-public-methods
         def create_keysauth():
             # If keys_auth already exists it means we used command line flag
             # and don't need to inform client about required password
-            if self._keys_auth is not None:
+            if self.is_account_unlocked():
                 return
 
             tip_msg = 'Run `golemcli account unlock` and enter your password.'
 
             if self.key_exists():
                 event = 'get_password'
-                logger.info('Waiting for password to unlock the account. '
-                            f'{tip_msg}')
+                tip_msg = 'Waiting for password to unlock the account. ' \
+                          f'{tip_msg}'
             else:
                 event = 'new_password'
-                logger.info('New account, waiting for password to be set. '
-                            f'{tip_msg}')
+                tip_msg = 'New account, waiting for password to be set. ' \
+                          f'{tip_msg}'
 
-            while self._keys_auth is None and self._reactor.running:
+            while not self.is_account_unlocked() and self._reactor.running:
+                logger.info(tip_msg)
                 StatusPublisher.publish(Component.client, event, Stage.pre)
                 time.sleep(5)
 
@@ -314,5 +399,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
     def _stop_on_error(self, msg: str, err: Any) -> None:
         if self._reactor.running:
-            logger.error("Stopping because of %r error: %r", msg, err)
+            exc_info = (err.type, err.value, err.getTracebackObject()) \
+                if isinstance(err, Failure) else None
+            logger.error(
+                "Stopping because of %r error: %r", msg, err, exc_info=exc_info)
             self._reactor.callFromThread(self._reactor.stop)

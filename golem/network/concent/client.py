@@ -1,5 +1,6 @@
 import calendar
 import datetime
+import functools
 import logging
 import queue
 import threading
@@ -7,13 +8,12 @@ import time
 import typing
 from urllib.parse import urljoin
 
+from pydispatch import dispatcher
 import requests
 import golem_messages
 from golem_messages import message
 from golem_messages import datastructures as msg_datastructures
-from golem_messages.constants import (
-    DEFAULT_MSG_LIFETIME, MSG_DELAYS, MSG_LIFETIMES
-)
+from golem_messages.constants import MSG_DELAYS
 
 from golem import constants as gconst
 from golem import utils
@@ -21,6 +21,8 @@ from golem.core import keysauth
 from golem.core import variables
 from golem.network.concent import exceptions
 from golem.network.concent.handlers_library import library
+
+from .helpers import ssl_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -62,15 +64,8 @@ def verify_response(response: requests.Response) -> None:
         )
 
 
-def ssl_kwargs(concent_variant: dict) -> dict:
-    """Returns additional ssl related kwargs for requests"""
-    if 'certificate' not in concent_variant:
-        return {}
-    return {'verify': concent_variant['certificate'], }
-
-
 def send_to_concent(
-        msg: message.Message,
+        msg: message.base.Message,
         signing_key,
         concent_variant: dict) -> typing.Optional[bytes]:
     """Sends a message to the concent server
@@ -127,8 +122,9 @@ def send_to_concent(
 def receive_from_concent(
         signing_key,
         public_key,
-        concent_variant: dict) -> typing.Optional[bytes]:
-    concent_receive_url = urljoin(concent_variant['url'], '/api/v1/receive/')
+        concent_variant: dict,
+        path: str = '/api/v1/receive/') -> typing.Optional[bytes]:
+    concent_receive_url = urljoin(concent_variant['url'], path)
     headers = {
         'Content-Type': 'application/octet-stream',
         'X-Golem-Messages': golem_messages.__version__,
@@ -159,11 +155,16 @@ def receive_from_concent(
     return response.content or None
 
 
+receive_out_of_band = functools.partial(
+    receive_from_concent,
+    path='/api/v1/receive-out-of-band/',
+)
+
+
 class ConcentRequest(msg_datastructures.FrozenDict):
     ITEMS = {
         'key': '',
         'msg': None,
-        'deadline_at': None,
     }
 
     @staticmethod
@@ -197,6 +198,11 @@ class ConcentClientService(threading.Thread):
         self._delayed: dict = dict()
         self.received_messages: queue.Queue = queue.Queue(maxsize=100)
 
+        dispatcher.connect(
+            self.income_listener,
+            signal='golem.income',
+        )
+
     @property
     def enabled(self):
         return None not in self.variant.values()
@@ -217,7 +223,7 @@ class ConcentClientService(threading.Thread):
         logger.info('%s stopped', self)
 
     def submit_task_message(
-            self, subtask_id: str, msg: message.Message,
+            self, subtask_id: str, msg: message.base.Message,
             delay: typing.Optional[datetime.timedelta] = None
     ) -> None:
         """
@@ -251,22 +257,19 @@ class ConcentClientService(threading.Thread):
 
     def submit(self,
                key: typing.Hashable,
-               msg: message.Message,
+               msg: message.base.Message,
                delay: typing.Optional[datetime.timedelta] = None) -> None:
         """
         Submit a message to Concent.
 
         :param key: Request identifier
+        :param msg: the message to send
         :param delay: Time to wait before sending the message
         :return: None
         """
         from twisted.internet import reactor
 
         msg_cls = msg.__class__
-        lifetime = MSG_LIFETIMES.get(
-            msg_cls,
-            DEFAULT_MSG_LIFETIME
-        )
         if (delay is not None) and delay < datetime.timedelta(seconds=0):
             logger.warning(
                 '[CONCENT] Negative delay for %r. Assuming default...',
@@ -279,7 +282,6 @@ class ConcentClientService(threading.Thread):
         req = ConcentRequest(
             key=key,
             msg=msg,
-            deadline_at=datetime.datetime.now() + lifetime,
         )
 
         if delay:
@@ -319,12 +321,6 @@ class ConcentClientService(threading.Thread):
             logger.debug('Concent disabled. Dropping %r', req)
             return
 
-        now = datetime.datetime.now()
-
-        if req['deadline_at'] < now:
-            logger.debug('Concent request lifetime has ended: %r', req)
-            return
-
         try:
             res = send_to_concent(
                 req['msg'],
@@ -345,21 +341,23 @@ class ConcentClientService(threading.Thread):
         if not self.enabled:
             return
 
-        try:
-            res = receive_from_concent(
-                signing_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
-                public_key=self.keys_auth.public_key,
-                concent_variant=self.variant,
-            )
-        except exceptions.ConcentError as e:
-            logger.warning("Can't receive message from Concent: %s", e)
-            self._grace_sleep()
-            return
-        except Exception:  # pylint: disable=broad-except
-            logger.exception('receive_from_concent() failed')
-            self._grace_sleep()
-            return
-        self.react_to_concent_message(res)
+        for receive_function in (receive_from_concent, receive_out_of_band):
+            try:
+                # mypy, why u so silly?
+                res = receive_function(  # type: ignore
+                    signing_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
+                    public_key=self.keys_auth.public_key,
+                    concent_variant=self.variant,
+                )
+            except exceptions.ConcentError as e:
+                logger.warning("Can't receive message from Concent: %s", e)
+                self._grace_sleep()
+                return
+            except Exception:  # pylint: disable=broad-except
+                logger.exception('receive_from_concent() failed')
+                self._grace_sleep()
+                return
+            self.react_to_concent_message(res)
 
     @staticmethod
     def process_synchronous_response(
@@ -372,6 +370,7 @@ class ConcentClientService(threading.Thread):
     def react_to_concent_message(self, data: typing.Optional[bytes],
                                  response_to: message.Message = None):
         if data is None:
+            logger.debug('Received nothing from Concent')
             return
         try:
             msg = golem_messages.load(
@@ -379,6 +378,7 @@ class ConcentClientService(threading.Thread):
                 self.keys_auth.ecc.raw_privkey,
                 self.variant['pubkey'],
             )
+            logger.debug('Concent Message received: %s', msg)
         except golem_messages.exceptions.MessageError as e:
             logger.warning("Can't deserialize concent message %s:%r", e, data)
             logger.debug('Problem parsing msg', exc_info=True)
@@ -400,3 +400,38 @@ class ConcentClientService(threading.Thread):
         logger.debug("_enqueue(%r)", req)
         self._delayed.pop(req['key'], None)
         self._queue.put(req)
+
+    def income_listener(self, event, **kwargs):
+        if event != 'overdue':
+            return
+
+        from golem.network import history
+        sra_l = []
+        for income in kwargs['incomes']:
+            sra = history.get(
+                node_id=income.sender_node,
+                subtask_id=income.subtask,
+                message_class_name='SubtaskResultsAccepted',
+            )
+            if sra is None:
+                logger.debug(
+                    '[CONCENT] SRA missing subtask_id=%r node_id=%r',
+                    income.subtask,
+                    income.sender_node,
+                )
+                continue
+            sra_l.append(sra)
+        if not sra_l:
+            return
+        sra_l.sort(key=lambda x: x.payment_ts)
+        fp = message.concents.ForcePayment(
+            subtask_results_accepted_list=sra_l,
+        )
+        self.submit_task_message(
+            subtask_id='-'.join((
+                'force-payment',
+                min(sra.subtask_id for sra in sra_l),
+                max(sra.subtask_id for sra in sra_l),
+            )),
+            msg=fp,
+        )

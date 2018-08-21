@@ -5,6 +5,7 @@ from collections import deque
 from math import ceil
 from unittest.mock import Mock, MagicMock, patch, ANY
 
+from eth_utils import encode_hex
 from golem_messages.message import ComputeTaskDef
 from golem_messages import factories as msg_factories
 from requests import HTTPError
@@ -24,6 +25,7 @@ from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import tasksession
+from golem.task.masking import Mask
 from golem.task.taskbase import TaskHeader, ResultType
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
@@ -31,30 +33,38 @@ from golem.task.tasksession import TaskSession
 from golem.task.taskstate import TaskState, TaskOp
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
-from golem.utils import encode_hex
+from golem.utils import pubkeytoaddr
 
+from tests.factories.p2p import Node as NodeFactory
 from tests.factories.resultpackage import ExtractedPackageFactory
 
 
 def get_example_task_header(key_id):
     return {
-        "task_id": generate_id(key_id),
-        "environment": "DEFAULT",
-        "task_owner": dict(
-            key=encode_hex(key_id),
-            node_name="ABC",
-            prv_port=40103,
-            prv_addr='10.0.0.10',
-            pub_port=40103,
-            pub_addr='1.2.3.4'
-        ),
-        "deadline": timeout_to_deadline(1201),
-        "subtask_timeout": 120,
-        "max_price": 20,
-        "resource_size": 2 * 1024,
-        "estimated_memory": 3 * 1024,
-        "signature": None,
-        "min_version": golem.__version__,
+        "fixed_header": {
+            "task_id": generate_id(key_id),
+            "environment": "DEFAULT",
+            "task_owner": dict(
+                key=encode_hex(key_id)[2:],
+                node_name="ABC",
+                prv_port=40103,
+                prv_addr='10.0.0.10',
+                pub_port=40103,
+                pub_addr='1.2.3.4'
+            ),
+            "deadline": timeout_to_deadline(1201),
+            "subtask_timeout": 120,
+            "max_price": 20,
+            "resource_size": 2 * 1024,
+            "estimated_memory": 3 * 1024,
+            "signature": None,
+            "min_version": golem.__version__,
+            "subtasks_count": 21,
+        },
+        "mask": {
+            "byte_repr": Mask().to_bytes()
+        },
+        "timestamp": 0,
     }
 
 
@@ -82,7 +92,7 @@ class TaskServerTestBase(LogTestCase,
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
             self.ts = TaskServer(
-                node=Node(),
+                node=NodeFactory(),
                 config_desc=self.ccd,
                 client=self.client,
                 use_docker_manager=False,
@@ -105,7 +115,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
     def test_request(self, tar, *_):
         ccd = ClientConfigDescriptor()
         ccd.min_price = 10
-        n = Node()
+        n = NodeFactory()
         ts = TaskServer(
             node=n,
             config_desc=ccd,
@@ -124,14 +134,14 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         keys_auth = KeysAuth(self.path, 'prv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
-        task_id = task_header["task_id"]
+        task_id = task_header["fixed_header"]["task_id"]
         ts.add_task_header(task_header)
         self.assertEqual(ts.request_task(), task_id)
         assert ts.remove_task_header(task_id)
 
         task_header = get_example_task_header(keys_auth.public_key)
-        task_header["task_owner"]["pub_port"] = 0
-        task_id2 = task_header["task_id"]
+        task_header["fixed_header"]["task_owner"]["pub_port"] = 0
+        task_id2 = task_header["fixed_header"]["task_id"]
         self.assertTrue(ts.add_task_header(task_header))
         self.assertIsNotNone(ts.task_keeper.task_headers[task_id2])
         # FIXME FIx this test
@@ -147,7 +157,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         tar.reset_mock()
         ts.config_desc.requesting_trust = 0.5
         task_header = get_example_task_header(keys_auth.public_key)
-        task_id3 = task_header["task_id"]
+        task_id3 = task_header["fixed_header"]["task_id"]
         ts.add_task_header(task_header)
         self.assertIsNone(ts.request_task())
         tar.add_support_status.assert_called_with(
@@ -161,8 +171,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         tar.reset_mock()
         ts.config_desc.requesting_trust = 0.0
         task_header = get_example_task_header(keys_auth.public_key)
-        task_id4 = task_header["task_id"]
-        task_header["max_price"] = 1
+        task_id4 = task_header["fixed_header"]["task_id"]
+        task_header["fixed_header"]["max_price"] = 1
         ts.add_task_header(task_header)
         self.assertIsNone(ts.request_task())
         tar.add_support_status.assert_called_with(
@@ -176,7 +186,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         tar.reset_mock()
         ts.acl.disallow(keys_auth.key_id)
         task_header = get_example_task_header(keys_auth.public_key)
-        task_id5 = task_header["task_id"]
+        task_id5 = task_header["fixed_header"]["task_id"]
         ts.add_task_header(task_header)
         self.assertIsNone(ts.request_task())
         tar.add_support_status.assert_called_with(
@@ -192,7 +202,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ccd.min_price = 11
         keys_auth = KeysAuth(self.path, 'priv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
-        n = Node.from_dict(task_header['task_owner'])
+        n = Node.from_dict(task_header["fixed_header"]['task_owner'])
 
         ts = self.ts
         ts._is_address_accessible = Mock(return_value=True)
@@ -202,13 +212,13 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         results = {"data": "", "result_type": ResultType.DATA}
         task_header = get_example_task_header(keys_auth.public_key)
-        task_id = task_header["task_id"]
+        task_id = task_header["fixed_header"]["task_id"]
         assert ts.add_task_header(task_header)
         assert ts.request_task()
         subtask_id = generate_new_id_from_id(task_id)
         subtask_id2 = generate_new_id_from_id(task_id)
         self.assertTrue(ts.send_results(subtask_id, task_id, results))
-        ts.client.transaction_system.incomes_keeper.expect.reset_mock()
+        ts.client.transaction_system.expect_income.reset_mock()
         self.assertTrue(ts.send_results(subtask_id2, task_id, results))
         wtr = ts.results_to_send[subtask_id]
         self.assertIsInstance(wtr, WaitingTaskResult)
@@ -219,21 +229,17 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertEqual(wtr.delay_time, 0)
         self.assertEqual(wtr.owner, n)
         self.assertEqual(wtr.already_sending, False)
-        incomes_keeper = ts.client.transaction_system.incomes_keeper
-        incomes_keeper.expect.assert_called_once_with(
-            sender_node_id=keys_auth.key_id,
+        ts.client.transaction_system.expect_income.assert_called_once_with(
+            sender_node=keys_auth.key_id,
             subtask_id=subtask_id2,
+            payer_address=pubkeytoaddr(keys_auth.key_id),
             value=1,
         )
 
         subtask_id3 = generate_new_id_from_id(task_id)
         with self.assertLogs(logger, level='WARNING'):
-            ts.subtask_rejected(subtask_id3)
+            ts.subtask_rejected(keys_auth.key_id, subtask_id3)
         self.assertIsNotNone(ts.task_keeper.task_headers.get(task_id))
-
-        prev_call_count = trust.PAYMENT.increase.call_count
-        ts.client.transaction_system.incomes_keeper.received.assert_not_called()
-        self.assertEqual(trust.PAYMENT.increase.call_count, prev_call_count)
 
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
@@ -243,15 +249,10 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.task_manager.comp_task_keeper.receive_subtask(ttc)
         model.Income.create(
             sender_node=keys_auth.public_key,
-            task=ctd['task_id'],
             subtask=ctd['subtask_id'],
+            payer_address=pubkeytoaddr(keys_auth.key_id),
             value=1
         )
-
-        from golem.model import Income
-        ts.client.transaction_system. \
-            incomes_keeper.received. \
-            return_value = Income()
 
         prev_call_count = trust.PAYMENT.increase.call_count
         ts.increase_trust_payment("xyz")
@@ -313,30 +314,31 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_header["signature"] = keys_auth_2.sign(
             TaskHeader.dict_to_binary(task_header))
 
-        self.assertIsNotNone(ts.add_task_header(task_header))
+        self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 1)
 
         task_header = get_example_task_header(keys_auth_2.public_key)
-        task_id2 = task_header["task_id"]
+        task_id2 = task_header["fixed_header"]["task_id"]
         task_header["signature"] = keys_auth_2.sign(
             TaskHeader.dict_to_binary(task_header))
 
-        self.assertIsNotNone(ts.add_task_header(task_header))
+        self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
 
-        self.assertIsNotNone(ts.add_task_header(task_header))
+        self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
 
         new_header = dict(task_header)
-        new_header["task_owner"]["pub_port"] = 9999
+        new_header["fixed_header"]["task_owner"]["pub_port"] = 9999
         new_header["signature"] = keys_auth_2.sign(
             TaskHeader.dict_to_binary(new_header))
 
-        self.assertIsNotNone(ts.add_task_header(new_header))
+        # An attempt to update fixed header should *not* succeed
+        self.assertFalse(ts.add_task_header(new_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
         saved_task = next(th for th in ts.get_others_tasks_headers()
-                          if th["task_id"] == task_id2)
-        self.assertEqual(saved_task["signature"], new_header["signature"])
+                          if th["fixed_header"]["task_id"] == task_id2)
+        self.assertEqual(saved_task["signature"], task_header["signature"])
 
     def test_sync(self, *_):
         self.ts.sync_network()
@@ -586,6 +588,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts = self.ts
 
         task = get_mock_task()
+        node_id = "0xdeadbeef"
         task_id = task.header.task_id
         ts.task_manager.tasks[task_id] = task
 
@@ -593,66 +596,89 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         env = Mock()
         env.get_min_accepted_performance.return_value = min_accepted_perf
         ts.get_environment_by_id = Mock(return_value=env)
-        ids = f'provider_id: ABC, task_id: {task_id}'
+        ids = f'provider_id: {node_id}, task_id: {task_id}'
+
+        def _assert_log_msg(logger_mock, msg):
+            self.assertEqual(len(logger_mock.output), 1)
+            self.assertEqual(logger_mock.output[0].strip(), msg)
 
         # then
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider("ABC", 'tid', 27.18, 1, 1, 7)
-            self.assertEqual(cm.output, [
+            assert not ts.should_accept_provider(
+                node_id, 'tid', 27.18, 1, 1, 7)
+            _assert_log_msg(
+                cm,
                 f'INFO:{logger.name}:Cannot find task in my tasks: '
-                f'provider_id: ABC, task_id: tid'])
+                f'provider_id: {node_id}, task_id: tid')
 
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider("ABC", task_id, 27.18, 1, 1, 7)
-            self.assertEqual(cm.output, [
+            assert not ts.should_accept_provider(
+                node_id, task_id, 27.18, 1, 1, 7)
+            _assert_log_msg(
+                cm,
                 f'INFO:{logger.name}:insufficient provider performance: '
-                f'27.18 < {min_accepted_perf}; {ids}'])
+                f'27.18 < {min_accepted_perf}; {ids}')
 
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider("ABC", task_id, 99, 1.72, 1, 4)
-            self.assertEqual(cm.output, [
+            assert not ts.should_accept_provider(
+                node_id, task_id, 99, 1.72, 1, 4)
+            _assert_log_msg(
+                cm,
                 f'INFO:{logger.name}:insufficient provider disk size:'
-                f' 1.72 KiB; {ids}'])
+                f' 1.72 KiB; {ids}')
 
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider("ABC", task_id, 999, 3, 2.7, 1)
-            self.assertEqual(cm.output, [
+            assert not ts.should_accept_provider(
+                node_id, task_id, 999, 3, 2.7, 1)
+            _assert_log_msg(
+                cm,
                 f'INFO:{logger.name}:insufficient provider memory size:'
-                f' 2.7 KiB; {ids}'])
+                f' 2.7 KiB; {ids}')
 
         # given
         self.client.get_computing_trust = Mock(return_value=0.4)
         ts.config_desc.computing_trust = 0.2
         # then
-        assert ts.should_accept_provider("ABC", task_id, 99, 3, 4, 5)
+        assert ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
 
         # given
         ts.config_desc.computing_trust = 0.4
         # then
-        assert ts.should_accept_provider("ABC", task_id, 99, 3, 4, 5)
+        assert ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
 
         # given
         ts.config_desc.computing_trust = 0.5
         # then
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider("ABC", task_id, 99, 3, 4, 5)
-            self.assertEqual(cm.output, [
+            assert not ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
+            _assert_log_msg(
+                cm,
                 f'INFO:{logger.name}:insufficient provider trust level:'
-                f' 0.4; {ids}'])
+                f' 0.4; {ids}')
 
         # given
         ts.config_desc.computing_trust = 0.2
         # then
-        assert ts.should_accept_provider("ABC", task_id, 99, 3, 4, 5)
+        assert ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
+
+        task.header.mask = Mask(b'\xff' * Mask.MASK_BYTES)
+        with self.assertLogs(logger, level='INFO') as cm:
+            assert not ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
+            _assert_log_msg(
+                cm,
+                f'INFO:{logger.name}:network mask mismatch: {ids}')
 
         # given
-        ts.acl.disallow("ABC")
+        task.header.mask = Mask()
+        ts.acl.disallow(node_id)
         # then
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider("ABC", task_id, 99, 3, 4, 5)
-            self.assertEqual(cm.output, [
+            assert not ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
+            _assert_log_msg(
+                cm,
                 f'INFO:{logger.name}:provider node is blacklisted; '
-                f'provider_id: ABC, task_id: {task_id}'])
+                f'provider_id: {node_id}, task_id: {task_id}')
+
 
     def test_should_accept_requestor(self, *_):
         ts = self.ts
@@ -782,7 +808,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
             self.ts = TaskServer(
-                node=Node(),
+                node=NodeFactory(),
                 config_desc=self.ccd,
                 client=self.client,
                 use_docker_manager=False,
@@ -842,15 +868,12 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
             "10.10.10.10")
         expected_value = ceil(1031 * 1010 / 3600)
         ts.task_manager.set_subtask_value("xxyyzz", expected_value)
-        account_info = Mock()
-        account_info.key_id = "key"
         prev_calls = trust.COMPUTED.increase.call_count
-        ts.accept_result("xxyyzz", account_info)
+        ts.accept_result("xxyyzz", "key", "eth_address")
         ts.client.transaction_system.add_payment_info.assert_called_with(
-            task_id,
             "xxyyzz",
             expected_value,
-            account_info)
+            "eth_address")
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 
     @patch("golem.task.taskmanager.TaskManager.dump_task")
@@ -879,12 +902,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
             "DEF", "DEF", task_id, 1000, 10, 5, 10, 2, "10.10.10.10")
 
-        account_info = Mock()
-        account_info.key_id = "key"
-        account_info.eth_account = Mock()
-        account_info.eth_account.address = None
-
-        ts.accept_result("xxyyzz", account_info)
+        ts.accept_result("xxyyzz", "key", "eth_address")
         self.assertEqual(
             ts.client.transaction_system.add_payment_info.call_count, 0)
 
