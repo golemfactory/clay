@@ -448,7 +448,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         def add_task(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
-            result = resource_manager_result, 'res_file_1', 'package_hash'
+            result = resource_manager_result, 'res_file_1', 'package_hash', 0
             return done_deferred(result)
 
         self.client.resource_server = Mock(
@@ -480,23 +480,15 @@ class TestClient(TestWithDatabase, TestWithReactor):
             'type': 'Dummy',
         }
 
-        created, error = self.client.create_task(task_dict)
+        task_id, error = self.client.create_task(task_dict)
 
-        assert created
+        assert task_id
         assert not error
 
-        time.sleep(1)
-        task_id = list(task_manager.tasks_states)[0]
-
-        created, error = sync_wait(self.client.restart_task(task_id))
-        assert created
+        new_task_id, error = self.client.restart_task(task_id)
+        assert new_task_id
         assert not error
         assert len(task_manager.tasks_states) == 2
-        new_task_id = None
-        for i in task_manager.tasks_states.keys():
-            if i != task_id:
-                new_task_id = i
-                return
 
         assert task_id != new_task_id
         assert task_manager.tasks_states[
@@ -1031,13 +1023,13 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             side_effect=add_task)
         c.p2pservice.get_estimated_network_size.return_value = 0
 
-        deferred = c.enqueue_new_task(t_dict)
+        deferred, task_id = c.enqueue_new_task(t_dict)
         task = sync_wait(deferred)
         assert isinstance(task, Task)
         assert task.header.task_id
+        assert task.header.task_id == task_id
         assert c.resource_server.add_task.called
 
-        task_id = task.header.task_id
         c.task_server.task_manager.tasks[task_id] = task
         c.task_server.task_manager.tasks_states[task_id] = TaskState()
         frames = c.get_subtasks_frames(task_id)
