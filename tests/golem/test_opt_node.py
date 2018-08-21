@@ -703,6 +703,7 @@ class TestOptNode(TempDirFixture):
         node = Node.__new__(Node)
 
         setattr(node, '_reactor', reactor)
+        setattr(node, '_docker_manager', Mock())
         setattr(node, 'client', None)
 
         node.quit()

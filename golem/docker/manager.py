@@ -330,6 +330,9 @@ class Hypervisor(object):
         if not self.vm_running():
             self.start_vm()
 
+    def quit(self) -> None:
+        pass
+
     @classmethod
     def instance(cls, docker_manager):
         if not cls._instance:
@@ -968,6 +971,9 @@ class DockerForMac(Hypervisor):
             self.COMMAND_HANDLER.wait_until_started()
         else:
             self.start_vm()
+
+    def quit(self) -> None:
+        self.stop_vm()
 
     @classmethod
     def is_available(cls):

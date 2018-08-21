@@ -58,3 +58,7 @@ class DockerConfigManager(object):
             docker_manager = cls(*args, **kwargs)
             DockerTaskThread.docker_manager = docker_manager
         return DockerTaskThread.docker_manager
+
+    def quit(self):
+        if self.hypervisor:
+            self.hypervisor.quit()
