@@ -738,7 +738,11 @@ class Client(HardwarePresetsMixin):
                  on failure
         """
         try:
-            _, task_id = self.enqueue_new_task(t_dict)
+            deferred, task_id = self.enqueue_new_task(t_dict)
+            # We want to return quickly from create_task without waiting for
+            # deferred completion.
+            deferred.addErrback(
+                lambda err: logger.error("Cannot create task: %r", err))
             return task_id, None
         except Exception as ex:  # pylint: disable=broad-except
             logger.error("Cannot create task %r: %s", t_dict, str(ex))
