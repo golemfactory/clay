@@ -67,6 +67,7 @@ class ConcentMessageMixin():
         self.assertIsInstance(mock_call[1], message_class)
 
 
+# pylint:disable=no-member
 class TaskSessionTaskToComputeTest(TestCase):
     def setUp(self):
         self.task_manager = Mock(tasks_states={}, tasks={})
@@ -178,7 +179,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         self._fake_add_task()
 
         ctd = message.tasks.ComputeTaskDef(task_id=mt.task_id)
-        task_state = self._set_task_state()
+        self._set_task_state()
 
         ts2.task_manager.get_next_subtask.return_value = (ctd, True, False)
         ts2.interpret(mt)
@@ -247,6 +248,8 @@ class TaskSessionTaskToComputeTest(TestCase):
         self.assertIsInstance(ttc, message.tasks.TaskToCompute)
         self.assertEqual(ttc.requestor_ethereum_public_key, self.requestor_key)
         self.assertTrue(ttc.verify_ethsig())
+
+# pylint:enable=no-member
 
 
 class TestTaskSession(ConcentMessageMixin, LogTestCase,
