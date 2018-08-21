@@ -464,6 +464,9 @@ class SafeProtocol(ServerProtocol):
             logger.error("Wrong session, not sending message")
             return None
 
+        logger.info(
+            'Sending %r, using session %r: %r',
+            msg.__class__, self.session.__class__, self.session)
         serialized = golem_messages.dump(
             msg,
             self.session.my_private_key,
