@@ -16,7 +16,6 @@ from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from apps.dummy.task.verifier import DummyTaskVerifier
 from golem.task.taskbase import Task
 from golem.task.taskstate import SubtaskStatus
-from golem.task.taskclient import TaskClient
 
 logger = logging.getLogger("apps.dummy")
 
@@ -84,7 +83,6 @@ class DummyTask(CoreTask):
                          node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
         logger.debug("Query extra data on dummytask")
-        TaskClient.assert_exists(node_id, self.counting_nodes)
 
         ctd = self._extra_data(perf_index)
         sid = ctd['subtask_id']
