@@ -1,5 +1,7 @@
+import abc
 import json
 import os
+import tempfile
 import time
 from threading import Thread
 from unittest import mock
@@ -10,7 +12,7 @@ from autobahn.wamp import ApplicationError
 from twisted.internet.threads import deferToThread
 
 from golem.rpc.cert import CertificateManager
-from golem.rpc.common import CROSSBAR_DIR
+from golem.rpc.common import CROSSBAR_DIR, CROSSBAR_PORT
 from golem.rpc.mapping.rpcmethodnames import DOCKER_URI
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import Session, object_method_map, Client, Publisher
@@ -63,7 +65,7 @@ class MockService(object):
         self.n_hello_received += 1
 
 
-class TestRouter(TestDirFixtureWithReactor):
+class _TestRouter(TestDirFixtureWithReactor):
     TIMEOUT = 20
 
     class State(object):
@@ -82,8 +84,14 @@ class TestRouter(TestDirFixtureWithReactor):
             self.frontend_session = None
             self.frontend_deferred = None
 
+            self.generate_secrets = True
+            self.crsb_frontend = None
+            self.crsb_frontend_secret = None
+            self.crsb_backend = None
+            self.crsb_backend_secret = None
+            self.subscribe = False
+
         def add_errors(self, *errors):
-            raise Exception("Error")
             print('Errors: {}'.format(errors))
             if errors:
                 self.errors += errors
@@ -91,10 +99,95 @@ class TestRouter(TestDirFixtureWithReactor):
                 self.errors += ['Unknown error']
 
     def setUp(self):
-        # super().tearDownClass()
-        # super().setUpClass()
         super().setUp()
-        self.state = TestRouter.State(self.reactor_thread.reactor)
+        self.state = _TestRouter.State(self.reactor_thread.reactor)
+
+    def _start_backend_session(self, *_):
+
+        user = self.state.crsb_backend
+        secret = self.state.crsb_backend_secret
+
+        s = self.Session(
+            self.state.router.address,
+            methods=object_method_map(
+                self.state.backend,
+                MockService.methods
+            ),
+            crsb_user=user,
+            crsb_user_secret=secret
+        )
+        self.state.backend_session = s
+
+        self.state.backend_deferred = self.state.backend_session.connect()
+        self.state.backend_deferred.addCallbacks(
+            self._backend_session_started, self.state.add_errors
+        )
+
+    def _backend_session_started(self, *_):
+        user = self.state.crsb_frontend
+        secret = self.state.crsb_frontend_secret if user else None
+        events = object_method_map(
+            self.state.frontend,
+            MockService.events
+        ) if self.state.subscribe else None
+
+        s = self.Session(
+            self.state.router.address,
+            events=events,
+            crsb_user=user,
+            crsb_user_secret=secret
+        )
+        self.state.frontend_session = s
+
+        self.state.frontend_deferred = self.state.frontend_session.connect()
+        self.state.frontend_deferred.addCallbacks(
+            self._frontend_session_started, self.state.add_errors
+        )
+
+    def _wait_for_thread(self, expect_error=False):
+        deadline = time.time() + self.TIMEOUT
+
+        while True:
+            time.sleep(0.5)
+            if time.time() > deadline:
+                self.state.errors.append(Exception("Test timed out"))
+            if self.state.errors or self.state.done:
+                break
+
+        if self.state.frontend_session:
+            self.state.frontend_session.disconnect()
+
+        if self.state.backend_session:
+            self.state.backend_session.disconnect()
+
+        time.sleep(0.5)
+
+        if self.state.errors and not expect_error:
+            raise Exception(*self.state.errors)
+
+        if expect_error and not self.state.errors:
+            raise Exception("Expected error")
+        self.reactor_thread.reactor.stop()
+
+    def _run_test(self, expect_error, *args, **kwargs):
+        thread = Thread(target=self._start_router, args=args, kwargs=kwargs)
+        thread.daemon = True
+        thread.run()
+
+        self._wait_for_thread(expect_error=expect_error)
+
+    def _start_router(self, *args, **kwargs):
+        raise NotImplementedError()
+
+    def _frontend_session_started(self):
+        raise NotImplementedError()
+
+
+class TestRPCNoAuth(_TestRouter):
+
+    def test_rpc_no_auth(self):
+        self.state.subscribe = True
+        self._run_test(False)
 
     def test_init(self):
         from os.path import join, exists
@@ -121,13 +214,42 @@ class TestRouter(TestDirFixtureWithReactor):
         with self.assertRaises(IOError):
             CrossbarRouter(datadir=tmp_file)
 
-    def _start_router_no_auth(self):
+    @inlineCallbacks
+    def _frontend_session_started(self, *_):
+        client = Client(self.state.frontend_session, MockService.methods)
+        publisher = Publisher(self.state.backend_session)
+
+        multiply_result = yield client.multiply(2, 3)
+        assert multiply_result == 6
+
+        divide_result = yield client.divide(4)
+        assert divide_result == 2
+
+        divide_result = yield client.divide(8, 4)
+        assert divide_result == 2
+
+        assert self.state.frontend.n_hello_received == 0
+        yield publisher.publish('mock.event.hello')
+        yield util.sleep(0.5)
+        assert self.state.frontend.n_hello_received > 0
+        with self.assertRaises(ApplicationError):
+            yield client.exception()
+
+        ping_result = yield client.ping()
+        assert ping_result == 'pong'
+        yield self.state.router.stop()
+        self.state.done = True
+
+    def _start_router(self):
         # pylint: disable=no-member
-        self.state.router = CrossbarRouter(datadir=self.path,
-                                           ssl=False,
-                                           generate_secrets=True)
+        self.state.router = CrossbarRouter(
+            datadir=self.path,
+            ssl=False,
+            generate_secrets=self.state.generate_secrets
+        )
         # set a new role for admin
         self.state.router.config["workers"][0]["transports"][0]["auth"]["anonymous"] = {
+        # noqa pylint ignore:line-too-long
             "type": "static",
             "role": "golem_admin"
         }
@@ -159,243 +281,109 @@ class TestRouter(TestDirFixtureWithReactor):
         deferred.addCallbacks(self._start_backend_session,
                               self.state.add_errors)
 
-    def _start_backend_session(self, *_):
-        print("start_backend_session1")
 
-        user = self.state.crsb_backend if hasattr(self.state, "crsb_backend") else None
-        secret = self.state.crsb_backend_secret if user else None
-        print("start_backend_session2")
+class _TestRPCAuth(_TestRouter):
+    DOCKER = CertificateManager.Crossbar_users.docker
+    GOLEMAPP = CertificateManager.Crossbar_users.golemapp
+    GOLEMCLI = CertificateManager.Crossbar_users.golemcli
+    DOCKER_METHOD = "docker_echo"
+    NON_DOCKER_METHOD = "non_docker_echo"
+    TIMEOUT = 10
 
-        s = self.Session(
-            self.state.router.address,
-            methods=object_method_map(
-                self.state.backend,
-                MockService.methods
-            ),
-            crsb_user=user,
-            crsb_user_secret=secret
-        )
-        print("start_backend_session3")
-        self.state.backend_session = s
-
-        self.state.backend_deferred = self.state.backend_session.connect()
-        self.state.backend_deferred.addCallbacks(
-            self._backend_session_started, self.state.add_errors
-        )
-        print("start_backend_session4")
-
-    def _backend_session_started(self, *_):
-        print("_backend_session_started1")
-        user = self.state.crsb_frontend if hasattr(self.state, "crsb_frontend") else None
-        secret = self.state.crsb_frontend_secret if user else None
-        events = object_method_map(
-                self.state.frontend,
-                MockService.events
-            ) if self.state.subscribe else None
-
-        s = self.Session(
-            self.state.router.address,
-            events=events,
-            crsb_user=user,
-            crsb_user_secret=secret
-        )
-        print("_backend_session_started2")
-        self.state.frontend_session = s
-
-        self.state.frontend_deferred = self.state.frontend_session.connect()
-        self.state.frontend_deferred.addCallbacks(
-            self._frontend_session_started_method, self.state.add_errors
-        )
-        print("_backend_session_started3")
-
-    @inlineCallbacks
-    def _frontend_session_started(self, *_):
-        print("_frontend_session_started")
-        client = Client(self.state.frontend_session, MockService.methods)
-        publisher = Publisher(self.state.backend_session)
-
-        multiply_result = yield client.multiply(2, 3)
-        assert multiply_result == 6
-
-        divide_result = yield client.divide(4)
-        assert divide_result == 2
-
-        divide_result = yield client.divide(8, 4)
-        assert divide_result == 2
-
-        assert self.state.frontend.n_hello_received == 0
-        yield publisher.publish('mock.event.hello')
-        yield util.sleep(0.5)
-        assert self.state.frontend.n_hello_received > 0
-        with self.assertRaises(ApplicationError):
-            yield client.exception()
-
-        ping_result = yield client.ping()
-        assert ping_result == 'pong'
-        yield self.state.router.stop()
-        self.state.done = True
-
-    def _wait_for_thread(self, thread, expect_error=False):
-        deadline = time.time() + self.TIMEOUT
-        # self.state.done = False
-        # self.state.errors = []
-
-        while True:
-            time.sleep(0.5)
-            if time.time() > deadline:
-                self.state.errors.append(Exception("Test timed out"))
-            if self.state.errors or self.state.done:
-                break
-
-        if self.state.frontend_session:
-            self.state.frontend_session.disconnect()
-
-        if self.state.backend_session:
-            self.state.backend_session.disconnect()
-
-        time.sleep(0.5)
-
-        if self.state.errors and not expect_error:
-            raise Exception(*self.state.errors)
-
-        # if expect_error and not self.state.errors:
-        #     raise Exception("Expected error")
-
-    def test_rpc_no_auth(self):
-        self._frontend_session_started_method = self._frontend_session_started
-        self.state.subscribe = True
-
-        self._start_router_no_auth()
-        # thread = Thread(target=self._start_router_no_auth)
-        # thread.daemon = True
-        # thread.start()
-        # thread.join()
-
-        self._wait_for_thread(None, expect_error=False)
-
-    @mock.patch("golem.rpc.cert.CertificateManager.get_secret", lambda *_: "secret")
-    def _start_router_auth(self):
-        print("start_router_auth1")
-        self.state.router = CrossbarRouter(datadir=self.path,
+    @mock.patch("golem.rpc.cert.CertificateManager.get_secret", lambda *_: "secret")  # noqa pylint ignore:line-too-long
+    def _start_router(self, port=CROSSBAR_PORT, path=None):
+        self.state.subscribe = False
+        path = path if path else self.path
+        self.state.router = CrossbarRouter(datadir=path,
                                            ssl=False,
-                                           generate_secrets=False)
+                                           generate_secrets=False,
+                                           port=port)
 
         self.Session = Session
         deferred = self.state.router.start(self.state.reactor)
-        print("start_router_auth2")
         deferred.addCallbacks(self._start_backend_session,
                               self.state.add_errors)
 
-    def _start_test_auth(self, expect_error):
-        self._frontend_session_started_method = self._frontend_session_started_auth
-        self.state.subscribe = False
-        print("STARTING")
-        # from multiprocessing import Process
-        deferToThread(self._start_router_auth)
-        # thread.daemon = True
-        self._wait_for_thread(None, expect_error=expect_error)
-        print("EXITING")
-
     @inlineCallbacks
-    def _frontend_session_started_auth(self, *_):
-        print("_frontend_session_started_auth1")
+    def _frontend_session_started(self, *_):
         client = Client(self.state.frontend_session, MockService.methods)
-        print("_frontend_session_started_auth2")
         result = yield getattr(client, self.state.method)("something")
         assert result == "something"
-        print("_frontend_session_started_auth3")
         yield self.state.router.stop()
         self.state.done = True
-        print("_frontend_session_started_auth4")
 
-    # @pytest.mark.slow
+    def _test_rpc_auth_method_access(self, frontend, backend, method, error):
+        self.state = _TestRouter.State(self.reactor_thread.reactor)
+        self.state.crsb_frontend = frontend
+        self.state.crsb_backend = backend
+        self.state.crsb_frontend_secret = "secret"
+        self.state.crsb_backend_secret = "secret"
+        self.state.method = method
+        self._run_test(error, port=CROSSBAR_PORT, path=self.path)
+
+
+class TestRPCAuthDockerGolemappDockermethod(_TestRPCAuth):
     def test_rpc_auth_method_access(self):
-        tm = self.TIMEOUT
-        self.TIMEOUT = 10
+        self._test_rpc_auth_method_access(
+            self.DOCKER, self.GOLEMAPP, self.DOCKER_METHOD, False
+        )
 
-        docker = CertificateManager.Crossbar_users.docker
-        golemapp = CertificateManager.Crossbar_users.golemapp
-        golemcli = CertificateManager.Crossbar_users.golemcli
-        docker_method = "docker_echo"
-        non_docker_method = "non_docker_echo"
-        testing_set = [
-            {
-                "frontend": docker,
-                "backend": golemapp,
-                "method": docker_method,
-                "error": False,
-            },
-            {
-                "frontend": docker,
-                "backend": golemapp,
-                "method": non_docker_method,
-                "error": True,
-            },
-            # {
-            #     "frontend": golemcli,
-            #     "backend": docker,
-            #     "method": docker_method,
-            #     "error": True,
-            # },
-            # {
-            #     "frontend": golemcli,
-            #     "backend": golemapp,
-            #     "method": non_docker_method,
-            #     "error": False,
-            # },
-            # {
-            #     "frontend": golemcli,
-            #     "backend": golemapp,
-            #     "method": docker_method,
-            #     "error": False,
-            # }
-        ]
 
-        for elem in testing_set:
-            # if self.reactor_thread and self.reactor_thread.isAlive():
-            #     self.reactor_thread.stop()
-            #     # uninstall_reactor()
-            # try:
-            #     _reactor, self.prev_reactor = replace_reactor()
-            #     _reactor.installed = True
-            #     self.reactor_thread = MockReactorThread(_reactor)
-            #     self.reactor_thread.start()
-            # except Exception as e:
-            #     print("Reactor exception: ", e)
+class TestRPCAuthCliGolemappNondockermethod(_TestRPCAuth):
+    def test_rpc_auth_method_access(self):
+        self._test_rpc_auth_method_access(
+            self.GOLEMCLI, self.GOLEMAPP, self.NON_DOCKER_METHOD, False
+        )
 
-            print(elem)
-            self.state = TestRouter.State(self.reactor_thread.reactor)
-            self.state.crsb_frontend = elem["frontend"]
-            self.state.crsb_backend = elem["backend"]
-            self.state.crsb_frontend_secret = "secret"
-            self.state.crsb_backend_secret = "secret"
-            self.state.method = elem["method"]
-            self._start_test_auth(elem["error"])
 
-        self.TIMEOUT = tm
+class TestRPCAuthCliGolemappDockermethod(_TestRPCAuth):
+    def test_rpc_auth_method_access(self):
+        self._test_rpc_auth_method_access(
+            self.GOLEMCLI, self.GOLEMAPP, self.DOCKER_METHOD, False
+        )
 
-    def test_rpc_auth_wrong_secret(self):
-        tm = self.TIMEOUT
-        self.TIMEOUT = 5
 
+class TestRPCAuthDockerGolemappNondockermethod(_TestRPCAuth):
+    def test_rpc_auth_method_access(self):
+        self._test_rpc_auth_method_access(
+            self.DOCKER, self.GOLEMAPP, self.NON_DOCKER_METHOD, True
+        )
+
+
+class TestRPCAuthCliDockerDockermethod(_TestRPCAuth):
+    def test_rpc_auth_method_access(self):
+        self._test_rpc_auth_method_access(
+            self.GOLEMCLI, self.DOCKER, self.DOCKER_METHOD, True
+        )
+
+
+class _TestRPCAuthWrongSecret(_TestRPCAuth):
+    def _prepare_wrong_secret(self):
         self.state.router = CrossbarRouter(datadir=self.path,
                                            ssl=False,
                                            generate_secrets=True)
-        cmanager = CertificateManager(os.path.join(self.path, CROSSBAR_DIR))
+        self.cmanager = CertificateManager(
+            os.path.join(self.path, CROSSBAR_DIR)
+        )
+        self.state.crsb_frontend = self.GOLEMCLI
+        self.state.crsb_backend = self.GOLEMAPP
 
-        golemcli = cmanager.Crossbar_users.golemcli
-        golemapp = cmanager.Crossbar_users.golemapp
 
-        self.state.crsb_frontend = golemcli
-        self.state.crsb_backend = golemapp
-        self.state.crsb_frontend_secret = "wrong_secret"
-        self.state.crsb_backend_secret = cmanager.get_secret(self.state.crsb_backend)
-        self._start_test_auth(True)
-
-        self.state.crsb_frontend = golemcli
-        self.state.crsb_backend = golemapp
-        self.state.crsb_frontend_secret = cmanager.get_secret(self.state.crsb_frontend)
+class TestRPCAuthWrongBackendSecret(_TestRPCAuthWrongSecret):
+    def test_rpc_auth_wrong_backend_secret(self):
+        self._prepare_wrong_secret()
+        self.state.crsb_frontend_secret = self.cmanager.get_secret(
+            self.state.crsb_frontend
+        )
         self.state.crsb_backend_secret = "wrong_secret"
-        self._start_test_auth(True)
+        self._run_test(True, port=CROSSBAR_PORT, path=self.path)
 
-        self.TIMEOUT = tm
+
+class TestRPCAuthWrongFrontendSecret(_TestRPCAuthWrongSecret):
+    def test_rpc_auth_wrong_backend_secret(self):
+        self._prepare_wrong_secret()
+        self.state.crsb_frontend_secret = self.cmanager.get_secret(
+            self.state.crsb_frontend
+        )
+        self.state.crsb_backend_secret = "wrong_secret"
+        self._run_test(True, port=CROSSBAR_PORT, path=self.path)
