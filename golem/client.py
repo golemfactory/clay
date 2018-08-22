@@ -680,25 +680,25 @@ class Client(HardwarePresetsMixin):
 
     def run_test_task(self, t_dict) -> bool:
         logger.info('Running test task "%r" ...', t_dict)
-        if self.task_tester is None:
-            try:
-                self._validate_task_dict(t_dict)
-            except Exception as e:  # pylint: disable=broad-except
-                self.task_test_result = {
-                    "status": TaskTestStatus.error,
-                    "error": str(e),
-                }
-                return False
-            request = AsyncRequest(self._run_test_task, t_dict)
-            async_run(request)
-            return True
-
-        if not self.task_test_result:
+        if self.task_tester is not None:
             self.task_test_result = {
                 "status": TaskTestStatus.error,
                 "error": "Another test is running",
             }
-        return False
+            return False
+
+        self.task_test_result = None
+        try:
+            self._validate_task_dict(t_dict)
+        except Exception as e:  # pylint: disable=broad-except
+            self.task_test_result = {
+                "status": TaskTestStatus.error,
+                "error": str(e),
+            }
+            return False
+        request = AsyncRequest(self._run_test_task, t_dict)
+        async_run(request)
+        return True
 
     def _run_test_task(self, t_dict) -> None:
 
@@ -739,6 +739,8 @@ class Client(HardwarePresetsMixin):
 
     def abort_test_task(self) -> bool:
         logger.debug('Aborting test task ...')
+        self.task_test_result = None
+
         if self.task_tester is not None:
             self.task_tester.end_comp()
             return True
