@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<DOCUMENT Type="Advanced Installer" CreateVersion="14.5.2" version="14.5.2" Modules="professional" RootPath="..\..*" Language="en_GB" Id="{DD7ACB8E-6560-4C11-BE2E-BB2A4150EDC1}">
+<DOCUMENT Type="Advanced Installer" CreateVersion="14.5.2" version="15.2" Modules="professional" RootPath="..\..*" Language="en_GB" Id="{DD7ACB8E-6560-4C11-BE2E-BB2A4150EDC1}">
   <COMPONENT cid="caphyon.advinst.msicomp.ProjectOptionsComponent">
     <ROW Name="HiddenItems" Value="AppXProductDetailsComponent;AppXDependenciesComponent;AppXAppDetailsComponent;AppXVisualAssetsComponent;AppXCapabilitiesComponent;AppXAppDeclarationsComponent;AppXUriRulesComponent;MsiJavaComponent;MsiDriverPackagesComponent;UserAccountsComponent;ScheduledTasksComponent;SqlConnectionComponent;AutorunComponent;FirewallExceptionComponent;GameUxComponent;MsiDirectEditorComponent;SharePointSlnComponent;SilverlightSlnComponent;MultipleInstancesComponent;SccmComponent;ActSyncAppComponent"/>
   </COMPONENT>
@@ -23,10 +23,10 @@
     <ROW Property="ExtractFilesFirst" Value="1"/>
     <ROW Property="Manufacturer" Value="Golem Factory GmbH"/>
     <ROW Property="MsiLogging" MultiBuildValue="DefaultBuild:vp"/>
-    <ROW Property="ProductCode" Value="2057:{ECEA9A59-17FE-4E1F-80E9-DB1E0C21ACAB} " Type="16"/>
+    <ROW Property="ProductCode" Value="2057:{2832ED92-4094-4914-B499-A224B5D6A364} " Type="16"/>
     <ROW Property="ProductLanguage" Value="2057"/>
     <ROW Property="ProductName" Value="Golem"/>
-    <ROW Property="ProductVersion" Value="0.16.1" Type="32"/>
+    <ROW Property="ProductVersion" Value="0.17.1" Type="32"/>
     <ROW Property="REBOOT" MultiBuildValue="DefaultBuild:Force"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND;AI_SETUPEXEPATH;SETUPEXEDIR"/>
     <ROW Property="UpgradeCode" Value="{3D57CAE4-2890-4BA4-961E-1BDA1630B605}"/>
@@ -666,7 +666,7 @@
     <ROW UpgradeCode="[|UpgradeCode]" VersionMin="[|ProductVersion]" Attributes="2" ActionProperty="AI_NEWERPRODUCTFOUND"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.PreReqComponent">
-    <ROW PrereqKey="DockerToolbox" DisplayName="Docker Toolbox" VersionMin="18.3.0" SetupFileUrl="C:\BuildResources\DockerToolbox-18.03.0-ce.exe" Location="0" ExactSize="0" WinNTVersions="Windows 9x/ME/NT/2000/XP/Vista/Windows 7/Windows 8 x86/Windows 8.1 x86/Windows 10 x86" Operator="1" ComLine="/VERYSILENT" Options="zym" TargetName="DockerToolbox-18.03.0-ce.exe"/>
+    <ROW PrereqKey="DockerToolbox" DisplayName="Docker Toolbox" VersionMin="18.6.0" SetupFileUrl="C:\BuildResources\DockerToolbox-18.06.0-ce.exe" Location="0" ExactSize="0" WinNTVersions="Windows 9x/ME/NT/2000/XP/Vista/Windows 7/Windows 8 x86/Windows 8.1 x86/Windows 10 x86" Operator="1" ComLine="/VERYSILENT" Options="zym" TargetName="DockerToolbox-18.06.0-ce.exe"/>
     <ROW PrereqKey="MicrosoftVisualC" DisplayName="Microsoft Visual C++ 2015 Redistributable (x64) - 14.0.23026" VersionMin="14.0.23026.0" SetupFileUrl="C:\BuildResources\vc_redist.x64.exe" Location="0" ExactSize="0" WinNTVersions="Windows 9x/ME/NT/2000/XP/Vista/Windows 7/Windows 8 x86/Windows 8.1 x86/Windows 10 x86" Operator="1" ComLine="/install /passive /norestart" BasicUiComLine="/install /passive /norestart" NoUiComLine="/install /passive /norestart" Options="zym" TargetName="vc_redist.x64.exe"/>
     <ATTRIBUTE name="PrereqsOrder" value="DockerToolbox MicrosoftVisualC"/>
   </COMPONENT>
