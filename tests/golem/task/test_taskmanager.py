@@ -126,10 +126,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         ctd['subtask_id'] = subtask_id
         ctd['deadline'] = timeout_to_deadline(subtask_timeout)
 
-        task_mock.query_extra_data_return_value = Task.ExtraData(
-            should_wait=False, ctd=ctd)
+        task_mock.query_extra_data_return_value = Task.ExtraData(ctd=ctd)
         Task.get_progress = Mock()
         task_mock.get_progress.return_value = 0.3
+        task_mock.accept_client = Mock()
         task_mock.should_accept_client = Mock()
         task_mock.should_accept_client.return_value = \
             AcceptClientVerdict.ACCEPTED
@@ -419,7 +419,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                 ctd['task_id'] = self.header.task_id
                 ctd['subtask_id'] = self.subtasks_id[0]
                 self.subtasks_id = self.subtasks_id[1:]
-                e = self.ExtraData(False, ctd)
+                e = self.ExtraData(ctd=ctd)
                 return e
 
             def get_total_tasks(self):
@@ -448,6 +448,9 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                 self.restarted[subtask_id] = True
 
             def should_accept_client(self, node_id):
+                return AcceptClientVerdict.ACCEPTED
+
+            def accept_client(self, node_id):
                 return AcceptClientVerdict.ACCEPTED
 
         t = TestTask(th, "print 'Hello world'", ["xxyyzz"],

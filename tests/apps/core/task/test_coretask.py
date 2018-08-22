@@ -6,7 +6,7 @@ from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 
 from apps.core.task.coretask import (
-    accepting, CoreTask, logger, log_key_error,
+    CoreTask, logger, log_key_error,
     CoreTaskTypeInfo, CoreTaskBuilder, AcceptClientVerdict)
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.common import is_linux
@@ -28,7 +28,6 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         ENVIRONMENT_CLASS = MagicMock()
         EXTRA_DATA = CoreTask.ExtraData(sth="sth")
 
-        @accepting
         def query_extra_data(self, *args, **kwargs):
             return self.EXTRA_DATA
 
@@ -432,89 +431,16 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         c = self._get_core_task()
         assert c.query_extra_data_for_test_task() is None
 
-    @patch('apps.core.task.coretask.logger')
-    def test_accepting_wrapper_on_query_extra_data_rejected(self, logg):
-        # given
-        c = self._get_core_task()
-        c._accept_client = Mock()
-        c._accept_client.return_value = AcceptClientVerdict.REJECTED
-        node_name = "client name"
-
-        # when
-        result = c.query_extra_data(0, node_name=node_name)
-
-        # then
-        assert result.ctd is None
-        assert not result.should_wait
-        assert logg.warning.call_count == 1
-        assert logg.warning.call_args[0] == (
-            "Client %s has failed on subtask within task %s and is banned"
-            " from it", node_name, c.task_definition.task_id
-        )
-
-    @patch('apps.core.task.coretask.logger')
-    def test_accepting_wrapper_on_query_extra_data_should_wait(self, logg):
-        # given
-        c = self._get_core_task()
-        c._accept_client = Mock()
-        c._accept_client.return_value = AcceptClientVerdict.SHOULD_WAIT
-        node_name = "client name"
-
-        # when
-        result = c.query_extra_data(0, node_name=node_name)
-
-        # then
-        assert result.ctd is None
-        assert result.should_wait
-        assert logg.warning.call_count == 1
-        assert logg.warning.call_args[0] == (
-            "Waiting for results from %s on %s",
-            node_name, c.task_definition.task_id
-        )
-
-    @patch('apps.core.task.coretask.logger')
-    def test_accepting_wrapper_on_query_extra_data_already_computed(self, logg):
-        # given
-        c = self._get_core_task()
-        c._accept_client = Mock()
-        c._accept_client.return_value = AcceptClientVerdict.ACCEPTED
-        c.get_progress = 1.0
-        node_name = "client name"
-
-        # when
-        result = c.query_extra_data(0, node_name=node_name)
-
-        # then
-        assert result.ctd is None
-        assert not result.should_wait
-        assert logg.error.call_count == 1
-        assert logg.error.call_args[0] == ("Task already computed", )
-
-    @patch('apps.core.task.coretask.logger')
-    def test_accepting_wrapper_on_query_extra_data_normal(self, logg):
-        # given
-        c = self._get_core_task()
-        c._accept_client = Mock()
-        c._accept_client.return_value = AcceptClientVerdict.ACCEPTED
-        node_name = "client name"
-
-        # when
-        result = c.query_extra_data(0, node_name=node_name)
-
-        # then
-        assert result == c.EXTRA_DATA
-        assert not logg.called
-
     def test_result_incoming(self):
         c = self._get_core_task()
-        assert c._accept_client("Node 1") == AcceptClientVerdict.ACCEPTED
+        assert c.accept_client("Node 1") == AcceptClientVerdict.ACCEPTED
         c.subtasks_given["subtask1"] = {"node_id": "Node 1"}
         assert c.counting_nodes["Node 1"]._finishing == 0
         c.result_incoming("subtask1")
         assert c.counting_nodes["Node 1"]._finishing == 1
-        assert c._accept_client("Node 1") == AcceptClientVerdict.SHOULD_WAIT
+        assert c.accept_client("Node 1") == AcceptClientVerdict.SHOULD_WAIT
         c._mark_subtask_failed("subtask1")
-        assert c._accept_client("Node 1") == AcceptClientVerdict.REJECTED
+        assert c.accept_client("Node 1") == AcceptClientVerdict.REJECTED
 
     def test_accept_results(self):
         c = self._get_core_task()

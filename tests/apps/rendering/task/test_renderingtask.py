@@ -189,13 +189,13 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         with self.assertLogs(core_logger, level="WARNING"):
             task.restart_subtask("Not existing")
 
-        task._accept_client("node_ABC")
+        task.accept_client("node_ABC")
         task.subtasks_given["ABC"] = {'status': SubtaskStatus.starting, 'end_task':3,
                                       'start_task': 3, "node_id": "node_ABC"}
         task.restart_subtask("ABC")
         assert task.subtasks_given["ABC"]["status"] == SubtaskStatus.restarted
 
-        task._accept_client("node_DEF")
+        task.accept_client("node_DEF")
         task.subtasks_given["DEF"] = {'status': SubtaskStatus.finished, 'end_task': 3,
                                       'start_task': 3, "node_id": "node_DEF"}
         task.restart_subtask("DEF")
@@ -204,19 +204,19 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         assert path.isfile(task.preview_file_path)
         assert task.num_tasks_received == -1
 
-        task._accept_client("node_GHI")
+        task.accept_client("node_GHI")
         task.subtasks_given["GHI"] = {'status': SubtaskStatus.failure, 'end_task': 3,
                                       'start_task': 3, "node_id": "node_GHI"}
         task.restart_subtask("GHI")
         assert task.subtasks_given["GHI"]["status"] == SubtaskStatus.failure
 
-        task._accept_client("node_JKL")
+        task.accept_client("node_JKL")
         task.subtasks_given["JKL"] = {'status': SubtaskStatus.resent, 'end_task': 3,
                                       'start_task': 3, "node_id": "node_JKL"}
         task.restart_subtask("JKL")
         assert task.subtasks_given["JKL"]["status"] == SubtaskStatus.resent
 
-        task._accept_client("node_MNO")
+        task.accept_client("node_MNO")
         task.subtasks_given["MNO"] = {'status': SubtaskStatus.restarted, 'end_task': 3,
                                       'start_task': 3, "node_id": "node_MNO"}
         task.restart_subtask("MNO")

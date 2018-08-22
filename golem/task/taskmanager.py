@@ -383,6 +383,10 @@ class TaskManager(TaskEventListener):
 
         task = self.tasks[task_id]
 
+        if task.get_progress == 1.0:
+            logger.error("Task already computed")
+            return None
+
         extra_data = task.query_extra_data(
             estimated_performance,
             num_cores,
@@ -411,6 +415,8 @@ class TaskManager(TaskEventListener):
         if not check_compute_task_def():
             return None
 
+        task.accept_client(node_id)
+
         self.subtask2task_mapping[ctd['subtask_id']] = task_id
         self.__add_subtask_to_tasks_states(
             node_name, node_id, ctd, address,
@@ -432,7 +438,16 @@ class TaskManager(TaskEventListener):
         task = self.tasks[task_id]
 
         verdict = task.should_accept_client(node_id)
-        return verdict == AcceptClientVerdict.SHOULD_WAIT
+        if verdict == AcceptClientVerdict.ACCEPTED:
+            return False
+        elif verdict == AcceptClientVerdict.SHOULD_WAIT:
+            logger.warning("Waiting for results from %s on %s", node_id,
+                           task_id)
+        else:
+            logger.warning("Client %s has failed on subtask within task %s"
+                           " and is banned from it", node_id, task_id)
+
+        return True
 
     def check_next_subtask(  # noqa pylint: disable=too-many-arguments
             self, node_id, node_name, task_id, price):

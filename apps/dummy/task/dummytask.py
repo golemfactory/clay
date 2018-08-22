@@ -7,7 +7,6 @@ from typing import Optional
 import enforce
 from golem_messages.message import ComputeTaskDef
 
-from apps.core.task import coretask
 from apps.core.task.coretask import (CoreTask,
                                      CoreTaskBuilder,
                                      CoreTaskTypeInfo)
@@ -17,6 +16,7 @@ from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from apps.dummy.task.verifier import DummyTaskVerifier
 from golem.task.taskbase import Task
 from golem.task.taskstate import SubtaskStatus
+from golem.task.taskclient import TaskClient
 
 logger = logging.getLogger("apps.dummy")
 
@@ -78,13 +78,13 @@ class DummyTask(CoreTask):
                                           extra_data,
                                           perf_index=perf_index)
 
-    @coretask.accepting
     def query_extra_data(self,
                          perf_index: float,
                          num_cores: int = 1,
                          node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
         logger.debug("Query extra data on dummytask")
+        TaskClient.assert_exists(node_id, self.counting_nodes)
 
         ctd = self._extra_data(perf_index)
         sid = ctd['subtask_id']

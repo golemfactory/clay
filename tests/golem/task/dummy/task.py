@@ -6,6 +6,7 @@ from typing import Optional
 from eth_utils import encode_hex
 from golem_messages.message import ComputeTaskDef
 
+from apps.core.task.coretask import AcceptClientVerdict
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.core.idgenerator import generate_id, generate_new_id_from_id
@@ -264,4 +265,13 @@ class DummyTask(Task):
         print('DummyTask.copy_subtask_results called')
 
     def should_accept_client(self, node_id):
-        return node_id in self.assigned_nodes
+        if node_id in self.assigned_nodes:
+            return AcceptClientVerdict.SHOULD_WAIT
+        else:
+            return AcceptClientVerdict.ACCEPTED
+
+    def accept_client(self, node_id):
+        print('DummyTask.accept_client called node_id=%r '
+              '- WIP: move more responsibilities from query_extra_data',
+              node_id)
+        return
