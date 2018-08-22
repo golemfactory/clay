@@ -267,8 +267,7 @@ class DummyTask(Task):
     def should_accept_client(self, node_id):
         if node_id in self.assigned_nodes:
             return AcceptClientVerdict.SHOULD_WAIT
-        else:
-            return AcceptClientVerdict.ACCEPTED
+        return AcceptClientVerdict.ACCEPTED
 
     def accept_client(self, node_id):
         print('DummyTask.accept_client called node_id=%r '
