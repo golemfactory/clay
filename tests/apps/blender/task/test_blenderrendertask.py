@@ -20,6 +20,7 @@ from apps.blender.task.blenderrendertask import (BlenderDefaults,
                                                  BlenderTaskTypeInfo,
                                                  PreviewUpdater,
                                                  logger)
+from apps.core.task.coretask import AcceptClientVerdict
 from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
@@ -30,7 +31,6 @@ from golem.task.taskbase import ResultType
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-from apps.core.task.coretask import logger as logger_core, AcceptClientVerdict
 from golem_verificator.verifier import SubtaskVerificationState
 
 
@@ -359,7 +359,8 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         assert ctd['extra_data']['end_task'] == 1
         self.bt.last_task = self.bt.total_tasks
         self.bt.subtasks_given[1] = {'status': SubtaskStatus.finished}
-        assert self.bt.should_accept_client("ABC") != AcceptClientVerdict.ACCEPTED
+        assert self.bt.should_accept_client("ABC") != \
+            AcceptClientVerdict.ACCEPTED
 
     def test_get_min_max_y(self):
         self.assertEqual(self.bt.res_x, 2)

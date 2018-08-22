@@ -188,7 +188,6 @@ class LuxTask(renderingtask.RenderingTask):
                          node_id=None,
                          node_name=None
                          ):
-        TaskClient.should_exist(node_id, self.counting_tasks)
         start_task, end_task = self._get_next_task()
         if start_task is None or end_task is None:
             logger.error("Task already computed")

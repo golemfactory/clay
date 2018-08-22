@@ -30,7 +30,6 @@ from golem.core.fileshelper import has_ext
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus, TaskStatus
-from golem.task.taskclient import TaskClient
 from golem_verificator.blender_verifier import BlenderVerifier
 
 # Allow loading truncated images.
@@ -400,10 +399,6 @@ class BlenderRenderTask(FrameRenderingTask):
                          node_id: Optional[str] = None,
                          node_name: Optional[str] = None) \
             -> FrameRenderingTask.ExtraData:
-
-        # Make sure the client exists in counting nodes
-        # TODO: split query data and assign task to node
-        TaskClient.assert_exists(node_id, self.counting_nodes)
 
         start_task, end_task = self._get_next_task()
         scene_file = self._get_scene_file_rel_path()

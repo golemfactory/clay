@@ -854,7 +854,8 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         extra_data.ctd['subtask_id'] = "xxyyzz"
         task_mock.query_extra_data.return_value = extra_data
         task_mock.task_definition.subtask_timeout = 3600
-        task_mock.should_accept_client.return_value = AcceptClientVerdict.ACCEPTED
+        task_mock.should_accept_client.return_value = \
+            AcceptClientVerdict.ACCEPTED
 
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states[task_id].status = \
@@ -895,7 +896,8 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         extra_data.ctd['task_id'] = task_id
         task_mock.query_extra_data.return_value = extra_data
         task_mock.task_definition.subtask_timeout = 3600
-        task_mock.should_accept_client.return_value = AcceptClientVerdict.ACCEPTED
+        task_mock.should_accept_client.return_value = \
+            AcceptClientVerdict.ACCEPTED
 
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states[task_id].status = \
