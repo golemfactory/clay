@@ -250,8 +250,7 @@ class TestRPCNoAuth(_TestRouter):
             generate_secrets=self.state.generate_secrets
         )
         # set a new role for admin
-        self.state.router.config["workers"][0]["transports"][0]["auth"]["anonymous"] = {
-            # noqa pylint ignore:line-too-long
+        self.state.router.config["workers"][0]["transports"][0]["auth"]["anonymous"] = { # noqa pylint disable=line-too-long
             "type": "static",
             "role": "golem_admin"
         }
@@ -292,7 +291,7 @@ class _TestRPCAuth(_TestRouter):
     NON_DOCKER_METHOD = "non_docker_echo"
     TIMEOUT = 10
 
-    @mock.patch("golem.rpc.cert.CertificateManager.get_secret", lambda *_: "secret")  # noqa pylint ignore:line-too-long
+    @mock.patch("golem.rpc.cert.CertificateManager.get_secret", lambda *_: "secret")  # noqa pylint disable=line-too-long
     def _start_router(self, port=CROSSBAR_PORT, path=None):
         self.state.subscribe = False
         path = path if path else self.path
