@@ -15,7 +15,6 @@ import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
-from apps.core.task import coretask
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import \
@@ -31,6 +30,7 @@ from golem.core.fileshelper import has_ext
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus, TaskStatus
+from golem.task.taskclient import TaskClient
 from golem_verificator.blender_verifier import BlenderVerifier
 
 # Allow loading truncated images.
@@ -395,12 +395,15 @@ class BlenderRenderTask(FrameRenderingTask):
                                                   preview_y,
                                                   expected_offsets)
 
-    @coretask.accepting
     # pylint: disable-msg=too-many-locals
     def query_extra_data(self, perf_index: float, num_cores: int = 0,
                          node_id: Optional[str] = None,
                          node_name: Optional[str] = None) \
             -> FrameRenderingTask.ExtraData:
+
+        # Make sure the client exists in counting nodes
+        # TODO: split query data and assign task to node
+        TaskClient.assert_exists(node_id, self.counting_nodes)
 
         start_task, end_task = self._get_next_task()
         scene_file = self._get_scene_file_rel_path()
@@ -448,6 +451,9 @@ class BlenderRenderTask(FrameRenderingTask):
                       }
 
         subtask_id = self.create_subtask_id()
+        logger.debug('Created new subtask for task. task_id=%r, subtask_id=%r'
+                     ', node_id=%r',
+                     self.header.task_id, subtask_id, node_id)
         self.subtasks_given[subtask_id] = copy(extra_data)
         self.subtasks_given[subtask_id]['subtask_id'] = subtask_id
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.starting

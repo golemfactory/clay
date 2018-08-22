@@ -12,7 +12,6 @@ from pathlib import Path
 from PIL import Image, ImageChops, ImageOps
 
 import apps.lux.resources.scenefilereader as sfr
-from apps.core.task import coretask
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.core.task.coretaskstate import Options
 from apps.lux.luxenvironment import LuxRenderEnvironment
@@ -183,13 +182,13 @@ class LuxTask(renderingtask.RenderingTask):
 
         return write_interval
 
-    @coretask.accepting
     def query_extra_data(self,
                          perf_index,
                          num_cores=0,
                          node_id=None,
                          node_name=None
                          ):
+        TaskClient.should_exist(node_id, self.counting_tasks)
         start_task, end_task = self._get_next_task()
         if start_task is None or end_task is None:
             logger.error("Task already computed")

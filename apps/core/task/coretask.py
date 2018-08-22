@@ -497,7 +497,7 @@ class CoreTask(Task):
 
         return AcceptClientVerdict.ACCEPTED
 
-    def _accept_client(self, node_id):
+    def accept_client(self, node_id):
         verdict = self.should_accept_client(node_id)
 
         if verdict == AcceptClientVerdict.ACCEPTED:
@@ -514,7 +514,7 @@ class CoreTask(Task):
         new_subtask['ctd']['performance'] = \
             old_subtask_info['ctd']['performance']
 
-        self._accept_client(new_subtask['node_id'])
+        self.accept_client(new_subtask['node_id'])
         self.result_incoming(subtask_id)
         self.interpret_task_results(
             subtask_id=subtask_id,
@@ -523,43 +523,6 @@ class CoreTask(Task):
         self.accept_results(
             subtask_id=subtask_id,
             result_files=self.results[subtask_id])
-
-
-def accepting(query_extra_data_func):
-    """
-    A function decorator which wraps given function with a verification code.
-
-    :param query_extra_data_func: query_extra_data function from Task
-    :return:
-    """
-
-    def accepting_qed(self,
-                      perf_index: float,
-                      num_cores=1,
-                      node_id: str = None,
-                      node_name: str = None) -> Task.ExtraData:
-        verdict = self._accept_client(node_id)
-        if verdict != AcceptClientVerdict.ACCEPTED:
-
-            should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
-            if should_wait:
-                logger.warning("Waiting for results from %s on %s", node_name,
-                               self.task_definition.task_id)
-            else:
-                logger.warning("Client %s has failed on subtask within task %s"
-                               " and is banned from it", node_name,
-                               self.task_definition.task_id)
-
-            return self.ExtraData(should_wait=should_wait)
-
-        if self.get_progress == 1.0:
-            logger.error("Task already computed")
-            return self.ExtraData()
-
-        return query_extra_data_func(self, perf_index, num_cores,
-                                     node_id, node_name)
-
-    return accepting_qed
 
 
 class CoreTaskBuilder(TaskBuilder):

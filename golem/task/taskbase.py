@@ -272,8 +272,7 @@ class TaskEventListener(object):
 class Task(abc.ABC):
 
     class ExtraData(object):
-        def __init__(self, should_wait=False, ctd=None, **kwargs):
-            self.should_wait = should_wait
+        def __init__(self, ctd=None, **kwargs):
             self.ctd = ctd
 
             for key, value in kwargs.items():
