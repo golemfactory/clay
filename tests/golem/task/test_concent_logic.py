@@ -24,8 +24,6 @@ from golem.task import taskstate
 
 from tests.factories.p2p import Node
 
-from apps.core.task.coretask import CoreTask
-
 reject_reasons = message.tasks.RejectReportComputedTask.REASON
 cannot_reasons = message.tasks.CannotComputeTask.REASON
 
