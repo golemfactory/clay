@@ -1,24 +1,26 @@
-import abc
-import json
+# The code below is organised in classes, each class running one test only.
+# This is because closing reactor and router and running them again ends with
+# a timeout error during session.connect(). This proved to be challenging
+# to debug, so this not-so-pretty solution of running tests separately
+# was used.
+
+
 import os
-import tempfile
 import time
 from threading import Thread
 from unittest import mock
 
-import pytest
 from autobahn.twisted import util
 from autobahn.wamp import ApplicationError
-from twisted.internet.threads import deferToThread
+from twisted.internet.defer import inlineCallbacks
+from twisted.internet.defer import setDebugging
 
 from golem.rpc.cert import CertificateManager
 from golem.rpc.common import CROSSBAR_DIR, CROSSBAR_PORT
 from golem.rpc.mapping.rpcmethodnames import DOCKER_URI
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import Session, object_method_map, Client, Publisher
-from golem.tools.testwithreactor import TestDirFixtureWithReactor, replace_reactor, MockReactorThread, uninstall_reactor
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet.defer import setDebugging
+from golem.tools.testwithreactor import TestDirFixtureWithReactor
 
 setDebugging(True)
 
@@ -249,7 +251,7 @@ class TestRPCNoAuth(_TestRouter):
         )
         # set a new role for admin
         self.state.router.config["workers"][0]["transports"][0]["auth"]["anonymous"] = {
-        # noqa pylint ignore:line-too-long
+            # noqa pylint ignore:line-too-long
             "type": "static",
             "role": "golem_admin"
         }

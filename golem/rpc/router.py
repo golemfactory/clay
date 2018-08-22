@@ -116,7 +116,6 @@ class CrossbarRouter(object):
             }
 
         # configuration for crsb_users with admin priviliges
-
         crsb_users = {
             p.name: {
                 "secret": cert_manager.get_secret(p),
@@ -189,6 +188,7 @@ class CrossbarRouter(object):
                                 }
                             },
                             {
+                                # more specific config takes precedence
                                 "uri": f'{DOCKER_URI}.*',
                                 "allow": {
                                     "call": True,
