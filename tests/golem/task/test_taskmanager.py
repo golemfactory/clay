@@ -288,7 +288,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         task_mock = self._get_task_mock()
         task_mock.should_accept_client.return_value = \
             AcceptClientVerdict.ACCEPTED
-        task_mock.get_progress = 1.0
+        task_mock.get_progress.return_value = 1.0
 
         self.tm.add_new_task(task_mock)
         self.tm.start_task(task_mock.header.task_id)
@@ -381,7 +381,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
     def test_should_wait_for_node_not_my_task(self):
         should_wait = self.tm.should_wait_for_node("aaa", "aaa")
-        assert should_wait
+        assert not should_wait
 
     def test_delete_task_with_dump(self):
         task_id = "xyz"
