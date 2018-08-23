@@ -30,4 +30,5 @@ datas = [
     ('golem/database/schemas/*.py', 'golem/database/schemas/'),
     ('golem/network/concent/resources/ssl/certs/*.crt',
      'golem/network/concent/resources/ssl/certs/'),
+    ('scripts/create-share.ps1', 'scripts/'),
 ]
