@@ -255,8 +255,10 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
         hypervisor.constraints.return_value = DEFAULTS
 
         dmm._select_hypervisor = mock.Mock(return_value=hypervisor)
-        dmm.build_config(config)
-        dmm.check_environment()
+
+        with mock.patch.object(dmm, 'command'):
+            dmm.build_config(config)
+            dmm.check_environment()
 
         dmm.update_config(status_cb, done_cb, in_background=False)
         dmm.update_config(status_cb, done_cb, in_background=True)
@@ -369,12 +371,13 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
                         mock.Mock(vm_running=mock.Mock(return_value=False))):
             # pylint: disable=no-member
 
-            dmm.check_environment()
+            with mock.patch.object(dmm, 'command'):
+                dmm.check_environment()
 
-            assert dmm.hypervisor
-            assert dmm.hypervisor.setup.called
-            assert dmm.pull_images.called
-            assert not dmm.build_images.called
+                assert dmm.hypervisor
+                assert dmm.hypervisor.setup.called
+                assert dmm.pull_images.called
+                assert not dmm.build_images.called
 
     @mock.patch('golem.docker.manager.is_windows', return_value=False)
     @mock.patch('golem.docker.manager.is_linux', return_value=True)
@@ -383,11 +386,13 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
         dmm = MockDockerManager()
         dmm.pull_images = mock.Mock()
         dmm.build_images = mock.Mock()
-        assert not dmm.check_environment()
-        assert dmm.pull_images.called
-        assert not dmm.build_images.called
-        assert not dmm.hypervisor
-        assert dmm._env_checked
+
+        with mock.patch.object(dmm, 'command'):
+            assert not dmm.check_environment()
+            assert dmm.pull_images.called
+            assert not dmm.build_images.called
+            assert not dmm.hypervisor
+            assert dmm._env_checked
 
     @mock.patch('golem.docker.manager.DockerForMac.is_available',
                 return_value=False)
@@ -408,13 +413,15 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
         with mock.patch('golem.docker.manager.XhyveHypervisor.instance',
                         hypervisor):
             # pylint: disable=no-member
-            dmm.check_environment()
 
-            assert not dmm.hypervisor.create.called
-            assert dmm.pull_images.called
-            assert not dmm.build_images.called
-            assert not dmm.hypervisor.start_vm.called
-            assert not dmm.hypervisor._set_env.called
+            with mock.patch.object(dmm, 'command'):
+                dmm.check_environment()
+
+                assert not dmm.hypervisor.create.called
+                assert dmm.pull_images.called
+                assert not dmm.build_images.called
+                assert not dmm.hypervisor.start_vm.called
+                assert not dmm.hypervisor._set_env.called
 
     @mock.patch('golem.docker.manager.is_windows', return_value=False)
     @mock.patch('golem.docker.manager.is_linux', return_value=False)
