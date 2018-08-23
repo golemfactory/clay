@@ -29,13 +29,6 @@ class DockerJob(object):
     STATE_KILLED = "killed"
     STATE_REMOVED = "removed"
 
-
-    # TODO refactor that out
-    GOLEM_BASE_PATH = "/golem"
-    RESOURCES_DIR_E = "resources"
-    WORK_DIR_E = "work"
-    OUTPUT_DIR_E = "output"
-
     # This dir contains static task resources.
     # Mounted read-only in the container.
     RESOURCES_DIR = "/golem/resources"
@@ -72,13 +65,11 @@ class DockerJob(object):
         self.script_src = script_src
         self.parameters = parameters if parameters else {}
 
-        # NOT os.path.join, because here we build directory structure inside Docker
-        # (OS outside can be different than OS inside)
         paths_params = {k: v for k, v in {
-                            "RESOURCES_DIR": self.RESOURCES_DIR,
-                            "WORK_DIR": self.WORK_DIR,
-                            "OUTPUT_DIR": self.OUTPUT_DIR
-                        }.items()}
+            "RESOURCES_DIR": self.RESOURCES_DIR,
+            "WORK_DIR": self.WORK_DIR,
+            "OUTPUT_DIR": self.OUTPUT_DIR
+        }.items()}
         self.parameters.update(paths_params)
 
         self.host_config = host_config or {}
@@ -217,7 +208,7 @@ class DockerJob(object):
     def _host_dir_chmod(dst_dir, mod):
         if isinstance(mod, str):
             mod = 0o770 if mod == 'rw' else \
-                  0o550 if mod == 'ro' else 0
+                0o550 if mod == 'ro' else 0
         prev_mod = None
 
         try:

@@ -103,9 +103,6 @@ class DockerTaskThread(TaskThread):
         return DockerDirMapping(resources, temporary,
                                 Path(work), Path(output), Path(logs))
 
-        # self.work_dir_path: Path = Path(self.tmp_path) / DockerJob.WORK_DIR_E
-        # self.output_dir_path: Path = Path(self.tmp_path) / DockerJob.RESOURCES_DIR_E
-
     @staticmethod
     def generate_dir_mapping(resources: str,
                              temporary: str) -> DockerDirMapping:
