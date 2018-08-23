@@ -1,7 +1,7 @@
 import logging
 import subprocess
 import time
-from typing import List, Optional, Dict, Union, Callable
+from typing import List, Optional, Dict, Union, Callable, Tuple
 
 from golem.core.common import SUBPROCESS_STARTUP_INFO, DEVNULL, to_unicode
 
@@ -35,12 +35,12 @@ class DockerCommandHandler:
     def run(cls,
             command_name: str,
             vm_name: Optional[str] = None,
-            args: Optional[List[str]] = None,
+            args: Optional[Union[Tuple, List[str]]] = None,
             shell: bool = False) -> Optional[str]:
 
         command = cls.commands.get(command_name)
         if not command:
-            logger.warning('Unknown command: %s', command_name)
+            logger.error('Unknown command: %s', command_name)
         elif isinstance(command, list):
             return cls._command(command[:], vm_name, args, shell)
         elif callable(command):

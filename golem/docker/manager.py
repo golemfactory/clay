@@ -4,6 +4,7 @@ import os
 import subprocess
 import sys
 import time
+from abc import ABCMeta
 from contextlib import contextmanager
 from threading import Thread
 from typing import List, Optional, Dict
@@ -53,7 +54,7 @@ class DockerManager(DockerConfigManager):
 
         self.min_constraints = dict(
             memory_size=1024,
-            cpu_execution_cap=1,
+            cpu_execution_cap=10,
             cpu_count=1
         )
         self.defaults = dict(
@@ -118,11 +119,13 @@ class DockerManager(DockerConfigManager):
 
     def _select_hypervisor(self):
         if is_windows():
-            return VirtualBoxHypervisor.instance(self)
+            if VirtualBoxHypervisor.is_available():
+                return VirtualBoxHypervisor.instance(self)
         elif is_osx():
             if DockerForMac.is_available():
                 return DockerForMac.instance(self)
-            return XhyveHypervisor.instance(self)
+            if XhyveHypervisor.is_available():
+                return XhyveHypervisor.instance(self)
         return None
 
     @property
@@ -216,11 +219,10 @@ class DockerManager(DockerConfigManager):
         else:
             done_callback()
 
-    def command(self, key, machine_name=None, args=None, shell=False):
-        args = key, machine_name, args, shell
-        if self.hypervisor:
-            return self.hypervisor.COMMAND_HANDLER.run(*args)
-        return DockerCommandHandler.run(*args)
+    @staticmethod
+    def command(*args, **kwargs) -> Optional[str]:
+        kwargs.pop('machine_name', None)
+        return DockerCommandHandler.run(*args, **kwargs)
 
     def build_images(self):
         entries = []
@@ -304,12 +306,13 @@ class DockerManager(DockerConfigManager):
         cb(config_differs)
 
     def _save_and_resume(self, cb):
-        with self.hypervisor.recover_ctx():
-            logger.info("DockerMachine: attempting VM recovery")
+        if self.hypervisor:
+            with self.hypervisor.recover_ctx():
+                logger.info("DockerMachine: attempting VM recovery")
         cb()
 
 
-class Hypervisor(object):
+class Hypervisor(metaclass=ABCMeta):
 
     POWER_UP_DOWN_TIMEOUT = 30 * 1000  # milliseconds
     SAVE_STATE_TIMEOUT = 120 * 1000  # milliseconds
@@ -331,7 +334,8 @@ class Hypervisor(object):
             self.start_vm()
 
     def quit(self) -> None:
-        pass
+        if self.vm_running():
+            self.stop_vm()
 
     @classmethod
     def instance(cls, docker_manager):
@@ -339,13 +343,13 @@ class Hypervisor(object):
             cls._instance = cls._new_instance(docker_manager)
         return cls._instance
 
-    def create(self, name: Optional[str] = None, **params):
-        raise NotImplementedError
+    def command(self, *args, **kwargs) -> Optional[str]:
+        return self.COMMAND_HANDLER.run(*args, **kwargs)
 
     def remove(self, name: Optional[str] = None) -> bool:
         logger.info("Hypervisor: removing VM '%s'", name)
         try:
-            self._docker_manager.command('rm', name)
+            self.command('rm', name)
             return True
         except subprocess.CalledProcessError as e:
             logger.warning("Hypervisor: error removing VM '%s': %s", name, e)
@@ -359,7 +363,7 @@ class Hypervisor(object):
             raise EnvironmentError("Invalid Docker VM name")
 
         try:
-            status = self._docker_manager.command('status', name)
+            status = self.command('status', name)
             status = status.strip().replace("\n", "")
             return status == 'Running'
         except subprocess.CalledProcessError as e:
@@ -372,7 +376,7 @@ class Hypervisor(object):
         logger.info("Docker: starting VM %s", name)
 
         try:
-            self._docker_manager.command('start', name)
+            self.command('start', name)
         except subprocess.CalledProcessError as e:
             logger.error("Docker: failed to start the VM: %r", e)
             raise
@@ -383,11 +387,14 @@ class Hypervisor(object):
         logger.info("Docker: stopping %s", name)
 
         try:
-            self._docker_manager.command('stop', name)
+            self.command('stop', name)
             return True
         except subprocess.CalledProcessError as e:
             logger.warning("Docker: failed to stop the VM: %r", e)
         return False
+
+    def create(self, name: Optional[str] = None, **params):
+        raise NotImplementedError
 
     def constrain(self, name: Optional[str] = None, **params) -> None:
         raise NotImplementedError
@@ -409,7 +416,7 @@ class Hypervisor(object):
         raise NotImplementedError
 
 
-class DockerMachineHypervisor(Hypervisor):
+class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
 
     COMMAND_HANDLER = DockerMachineCommandHandler
 
@@ -429,7 +436,7 @@ class DockerMachineHypervisor(Hypervisor):
     @property
     def vms(self):
         try:
-            output = self._docker_manager.command('list')
+            output = self.command('list')
         except subprocess.CalledProcessError as e:
             logger.warning("DockerMachine: failed to list VMs: %r", e)
         else:
@@ -444,8 +451,8 @@ class DockerMachineHypervisor(Hypervisor):
     @report_calls(Component.docker, 'instance.env')
     def _set_env(self, retried=False):
         try:
-            output = self._docker_manager.command('env', self._docker_vm,
-                                                  args=('--shell', 'cmd'))
+            output = self.command('env', self._docker_vm,
+                                  args=('--shell', 'cmd'))
         except subprocess.CalledProcessError as e:
             logger.warning("DockerMachine: failed to update env for VM: %s", e)
             logger.debug("DockerMachine_output: %s", e.output)
@@ -472,7 +479,7 @@ Ensure that you try the following before reporting an issue:
 
     def _recover(self):
         try:
-            self._docker_manager.command('regenerate_certs', self._docker_vm)
+            self.command('regenerate_certs', self._docker_vm)
         except subprocess.CalledProcessError as e:
             logger.warning("DockerMachine:"
                            " failed to env the VM: %s -- %s",
@@ -481,7 +488,7 @@ Ensure that you try the following before reporting an issue:
             return self._set_env(retried=True)
 
         try:
-            self._docker_manager.command('start', self._docker_vm)
+            self.command('start', self._docker_vm)
         except subprocess.CalledProcessError as e:
             logger.warning("DockerMachine:"
                            " failed to restart the VM: %s -- %s",
@@ -514,28 +521,6 @@ Ensure that you try the following before reporting an issue:
             if var == 'DOCKER_CERT_PATH':
                 split = val.replace('"', '').split(os.path.sep)
                 self._config_dir = os.path.sep.join(split[:-1])
-
-    def create(self, name: Optional[str] = None, **params):
-        raise NotImplementedError
-
-    def constrain(self, name: Optional[str] = None, **params) -> None:
-        raise NotImplementedError
-
-    def constraints(self, name: Optional[str] = None) -> Dict:
-        raise NotImplementedError
-
-    @contextmanager
-    def restart_ctx(self, name: Optional[str] = None):
-        raise NotImplementedError
-
-    @contextmanager
-    def recover_ctx(self, name: Optional[str] = None):
-        raise NotImplementedError
-
-    @classmethod
-    def _new_instance(cls,
-                      docker_manager: DockerManager) -> Optional['Hypervisor']:
-        raise NotImplementedError
 
 
 class VirtualBoxHypervisor(DockerMachineHypervisor):
@@ -629,8 +614,7 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
         logger.info("VirtualBox: creating VM '{}'".format(name))
 
         try:
-            self._docker_manager.command('create', name,
-                                         args=('--driver', 'virtualbox'))
+            self.command('create', name, args=('--driver', 'virtualbox'))
             return True
         except subprocess.CalledProcessError as e:
             logger.error("VirtualBox: error creating VM '%s': %s", name, e)
@@ -785,8 +769,7 @@ class XhyveHypervisor(DockerMachineHypervisor):
         logger.info("Xhyve: creating VM '{}'".format(name))
 
         try:
-            self._docker_manager.command('create', name,
-                                         args=args)
+            self.command('create', name, args=args)
             return True
         except Exception as e:
             logger.error("Xhyve: error creating VM '{}': {}"
@@ -836,7 +819,7 @@ class XhyveHypervisor(DockerMachineHypervisor):
         config = dict()
 
         try:
-            output = self._docker_manager.command('inspect', name)
+            output = self.command('inspect', name)
             driver = json.loads(output)['Driver']
         except (TypeError, ValueError) as e:
             logger.error("Xhyve: invalid driver configuration: {}"
@@ -975,9 +958,6 @@ class DockerForMac(Hypervisor):
             self.COMMAND_HANDLER.wait_until_started()
         else:
             self.start_vm()
-
-    def quit(self) -> None:
-        self.stop_vm()
 
     @classmethod
     def is_available(cls):
