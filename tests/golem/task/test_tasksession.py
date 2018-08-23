@@ -796,7 +796,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
     def test_react_to_want_to_compute_no_handshake(self):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
-        
+
         self._prepare_handshake_test()
 
         ts = self.task_session
@@ -814,7 +814,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
     def test_react_to_want_to_compute_handshake_busy(self):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
-        
+
         self._prepare_handshake_test()
 
         ts = self.task_session
@@ -837,13 +837,13 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         tm.is_my_task = Mock()
         tm.is_my_task.return_value = True
-        
+
         tm.should_wait_for_node = Mock()
         tm.should_wait_for_node.return_value = False
 
         ts.should_accept_provider = Mock()
         ts.should_accept_provider.return_value = True
-        
+
         tm.check_next_subtask = Mock()
         tm.check_next_subtask.return_value = True
 
