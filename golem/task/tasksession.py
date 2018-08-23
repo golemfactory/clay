@@ -14,6 +14,7 @@ from golem.core.variables import PROTOCOL_CONST
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.model import Actor
+from golem.market.queue import MarketQueue
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
 from golem.network.p2p import node as p2p_node
@@ -95,6 +96,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.task_id = None  # current task id
         self.subtask_id = None  # current subtask id
         self.conn_id = None  # connection id
+        self.market_queue = MarketQueue()
         # messages waiting to be send (because connection hasn't been
         # verified yet)
         self.msgs_to_send = []
@@ -477,7 +479,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                                'handshake is in progress', self.key_id)
                 return
 
-            # TODO: Queue requests here
+            self.market_queue.push(msg)
+
+            msg = self.market_queue.tick()
 
             ctd = self.task_manager.get_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.perf_index,
