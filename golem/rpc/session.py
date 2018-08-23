@@ -72,7 +72,7 @@ class Session(ApplicationSession):
         self.config = types.ComponentConfig(realm=address.realm)
         self.crsb_user = crsb_user
         self.crsb_user_secret = crsb_user_secret
-        super(self.__class__, self).__init__(self.config) # type: ignore
+        super(self.__class__, self).__init__(self.config)  # noqa type: ignore
 
     def connect(self, auto_reconnect=True):
         def init(proto):

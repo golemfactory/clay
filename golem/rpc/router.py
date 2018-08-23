@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from collections import namedtuple
-from typing import Iterable, Optional
+from typing import Iterable
 
 from crossbar.common import checkconfig
 from twisted.internet.defer import inlineCallbacks
@@ -187,16 +187,16 @@ class CrossbarRouter(object):
                                     "subscribe": False
                                 }
                             },
-                            {
-                                # more specific config takes precedence
-                                "uri": f'{DOCKER_URI}.*',
-                                "allow": {
-                                    "call": True,
-                                    "register": False,
-                                    "publish": False,
-                                    "subscribe": False
-                                }
-                            }]
+                                {
+                                    # more specific config takes precedence
+                                    "uri": f'{DOCKER_URI}.*',
+                                    "allow": {
+                                        "call": True,
+                                        "register": False,
+                                        "publish": False,
+                                        "subscribe": False
+                                    }
+                                }]
                         }]
                 }],
             }]
