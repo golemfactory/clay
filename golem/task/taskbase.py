@@ -6,8 +6,8 @@ from typing import List, Type, Optional, Tuple, Any, Union
 
 import golem_messages
 
-from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
 import golem
+from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
 from golem.core import common
 from golem.core.common import get_timestamp_utc
 from golem.core.simpleserializer import CBORSerializer, DictSerializer
@@ -289,7 +289,7 @@ class Task(abc.ABC):
         self.header = header
         self.task_definition = task_definition
 
-        self.listeners: 'List[Union[ClientTaskComputerEventListener, TaskManager]]' = []  # noqa disable=line-too-long # type: ignore
+        self.listeners: 'List[Union[ClientTaskComputerEventListener, TaskManager]]' = []  # pylint:disable=line-too-long type: ignore
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -348,7 +348,7 @@ class Task(abc.ABC):
         pass  # Implement in derived class
 
     @abc.abstractmethod
-    def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa
+    def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # pylint:disable=line-too-long
         pass  # Implement in derived methods
 
     def create_reference_data_for_task_validation(self):

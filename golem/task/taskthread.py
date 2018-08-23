@@ -31,7 +31,7 @@ class TaskThread(threading.Thread):
                  short_desc: str,
                  res_path: str,
                  tmp_path: str,
-                 timeout: float=0) -> None:
+                 timeout: float = 0) -> None:
 
         super(TaskThread, self).__init__()
 

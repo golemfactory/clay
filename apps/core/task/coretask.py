@@ -1,4 +1,4 @@
-import abc
+import decimal
 import decimal
 import logging
 import os
@@ -7,11 +7,11 @@ from typing import Type, Optional, Dict, Any
 
 import golem_messages.message
 from ethereum.utils import denoms
+from golem_verificator.core_verifier import CoreVerifier
+from golem_verificator.verifier import SubtaskVerificationState
 
 from apps.blender.verification_queue import VerificationQueue
 from apps.core.task.coretaskstate import TaskDefinition, Options
-from golem_verificator.core_verifier import CoreVerifier
-from golem_verificator.verifier import SubtaskVerificationState
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.compress import decompress

@@ -336,7 +336,7 @@ class TaskServer(
     def add_task_session(self, subtask_id, session: TaskSession):
         self.task_sessions[subtask_id] = session
 
-    def remove_task_session(self, task_session:TaskSession):
+    def remove_task_session(self, task_session: TaskSession):
         self.remove_pending_conn(task_session.conn_id)
         self.remove_responses(task_session.conn_id)
 

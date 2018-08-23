@@ -49,6 +49,7 @@ class DockerJob(object):
     # Name of the parameters file, relative to WORK_DIR
     PARAMS_FILE = "params.py"
 
+    # pylint:disable=too-many-arguments
     def __init__(self,
                  image: DockerImage,
                  script_src: str,
@@ -56,8 +57,8 @@ class DockerJob(object):
                  resources_dir: str,
                  work_dir: str,
                  output_dir: str,
-                 host_config: Optional[Dict]=None,
-                 container_log_level: Optional[int]=None) -> None:
+                 host_config: Optional[Dict] = None,
+                 container_log_level: Optional[int] = None) -> None:
         """
         :param DockerImage image: Docker image to use
         :param str script_src: source of the task script file
