@@ -8,12 +8,18 @@ import uuid
 from contextlib import contextmanager
 from subprocess import CalledProcessError
 from typing import Optional
-from unittest import mock, TestCase
+from unittest import TestCase, mock
 
-from golem.docker.manager import DOCKER_VM_NAME as VM_NAME, \
-    DockerMachineCommandHandler, DockerMachineHypervisor, DockerManager, \
-    Hypervisor, VirtualBoxHypervisor, XhyveHypervisor, logger, DockerForMac, \
-    DockerForMacCommandHandler, DEFAULTS, MIN_CONSTRAINTS
+from golem.docker.commands.docker_for_mac import DockerForMacCommandHandler
+from golem.docker.commands.docker_machine import DockerMachineCommandHandler
+from golem.docker.config import DEFAULTS, DOCKER_VM_NAME as VM_NAME, \
+    MIN_CONSTRAINTS
+from golem.docker.hypervisor import Hypervisor
+from golem.docker.hypervisor.docker_for_mac import DockerForMac
+from golem.docker.hypervisor.docker_machine import DockerMachineHypervisor
+from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
+from golem.docker.hypervisor.xhyve import XhyveHypervisor
+from golem.docker.manager import DockerManager
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
@@ -312,7 +318,7 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
         dmm = MockDockerManager(use_parent_methods=True)
 
         with mock.patch.dict(
-            'golem.docker.commands.DockerCommandHandler.commands',
+            'golem.docker.commands.docker.DockerCommandHandler.commands',
             dict(test=[sys.executable, '--version'])
         ):
             assert dmm.command('test').startswith('Python')
@@ -585,7 +591,7 @@ class TestHypervisor(LogTestCase):
             assert ('status', VM_NAME) == cmd.call_args[0]
 
         with mock.patch.object(hypervisor, 'command', raise_process_exception):
-            with self.assertLogs(logger, 'ERROR'):
+            with self.assertLogs(level='ERROR'):
                 hypervisor.vm_running(VM_NAME)
 
     def test_start(self):
@@ -607,7 +613,7 @@ class TestHypervisor(LogTestCase):
             assert ('stop', VM_NAME) == cmd.call_args[0]
 
         with mock.patch.object(hypervisor, 'command', raise_process_exception):
-            with self.assertLogs(logger, 'WARN'):
+            with self.assertLogs(level='WARN'):
                 hypervisor.stop_vm(VM_NAME)
 
     def test_vm_not_running(self):
@@ -634,7 +640,7 @@ class TestHypervisor(LogTestCase):
 
         # errors
         with mock.patch.object(hypervisor, 'command', raise_process_exception):
-            with self.assertLogs(logger, 'WARN'):
+            with self.assertLogs(level='WARN'):
                 assert not hypervisor.remove('test')
 
     def test_not_implemented(self):
@@ -745,7 +751,7 @@ class TestVirtualBoxHypervisor(LogTestCase):
         # errors
         with mock.patch.object(self.hypervisor, 'command',
                                raise_process_exception):
-            with self.assertLogs(logger, 'ERROR'):
+            with self.assertLogs(level='ERROR'):
                 assert not self.hypervisor.create('test')
 
     def test_constraints(self):
@@ -765,7 +771,7 @@ class TestVirtualBoxHypervisor(LogTestCase):
         # errors
         with mock.patch.object(self.hypervisor, '_machine_from_arg',
                                return_value=Erroneous()):
-            with self.assertLogs(logger, 'ERROR'):
+            with self.assertLogs(level='ERROR'):
                 self.hypervisor.constrain(VM_NAME, cpu_count=1)
 
     def test_session_from_arg(self):
@@ -802,7 +808,7 @@ class TestVirtualBoxHypervisor(LogTestCase):
 
         with mock.patch.object(self.hypervisor, '_machine_from_arg',
                                raise_exception):
-            with self.assertLogs(logger, 'ERROR'):
+            with self.assertLogs(level='ERROR'):
                 assert not self.hypervisor.power_up(VM_NAME)
 
     def test_power_down(self):
@@ -813,7 +819,7 @@ class TestVirtualBoxHypervisor(LogTestCase):
 
         with mock.patch.object(self.hypervisor, '_session_from_arg',
                                raise_exception):
-            with self.assertLogs(logger, 'ERROR'):
+            with self.assertLogs(level='ERROR'):
                 assert not self.hypervisor.power_down(VM_NAME)
 
 
@@ -855,7 +861,7 @@ class TestXhyveHypervisor(TempDirFixture, LogTestCase):
         # errors
         with mock.patch.object(self.hypervisor, 'command',
                                raise_process_exception):
-            with self.assertLogs(logger, 'ERROR'):
+            with self.assertLogs(level='ERROR'):
                 assert not self.hypervisor.create('test')
 
     def test_constraints(self):
@@ -896,7 +902,7 @@ class TestXhyveHypervisor(TempDirFixture, LogTestCase):
         # errors
         with mock.patch.object(self.hypervisor, 'command',
                                lambda *_: raise_exception(TypeError)):
-            with self.assertLogs(logger, 'ERROR'):
+            with self.assertLogs(level='ERROR'):
                 self.hypervisor.constraints(VM_NAME)
 
     def test_recover_ctx(self):
@@ -914,7 +920,7 @@ class TestXhyveHypervisor(TempDirFixture, LogTestCase):
 
 class TestDockerForMacHypervisor(TempDirFixture):
 
-    HANDLER = 'golem.docker.manager.DockerForMacCommandHandler'
+    HANDLER = 'golem.docker.commands.docker_for_mac.DockerForMacCommandHandler'
 
     def test_setup_when_running(self):
         # pylint: disable=no-member
@@ -997,7 +1003,7 @@ class TestDockerForMacHypervisor(TempDirFixture):
 @mock.patch('subprocess.check_call')
 class TestDockerForMacCommandHandler(TestCase):
 
-    PKG_PATH = 'golem.docker.manager.DockerForMacCommandHandler'
+    PKG_PATH = 'golem.docker.commands.docker_for_mac.DockerForMacCommandHandler'
 
     @mock.patch('sys.exit')
     def test_start_success(self, _sys_exit, check_call, _):

@@ -3,7 +3,7 @@ import subprocess
 import time
 from typing import List, Optional, Dict, Union, Callable, Tuple
 
-from golem.core.common import SUBPROCESS_STARTUP_INFO, DEVNULL, to_unicode
+from golem.core.common import SUBPROCESS_STARTUP_INFO, to_unicode
 
 
 logger = logging.getLogger(__name__)
@@ -86,7 +86,7 @@ class DockerCommandHandler:
                 command,
                 startupinfo=SUBPROCESS_STARTUP_INFO,
                 shell=shell,
-                stdin=DEVNULL,
+                stdin=subprocess.DEVNULL,
                 stderr=subprocess.STDOUT
             )
         except FileNotFoundError as exc:
