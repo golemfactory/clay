@@ -481,7 +481,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             self.market_queue.push(msg)
 
-            msg = self.market_queue.pop()
+            msg = self.market_queue.tick()
 
             ctd = self.task_manager.get_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.perf_index,
