@@ -113,6 +113,16 @@ def _make_mock_ets():
     return ets
 
 
+def _print_golem_log(datadir):
+    """ Prints the log file at the end of the test
+        TODO: Check why it is not always triggered
+    """
+    logfile = path.join(datadir, "logs", "golem.log")
+    with open(logfile, 'r') as file:
+        data = file.read()
+        report("golem.log: >>>\n{}\n<<<end golem.log".format(data))
+
+
 def run_requesting_node(datadir, num_subtasks=3):
     client = None
 
@@ -121,10 +131,7 @@ def run_requesting_node(datadir, num_subtasks=3):
         reactor.running and reactor.callFromThread(reactor.stop)
         logging.shutdown()
         if os.path.exists(datadir):
-            logfile = path.join(datadir, "logs", "golem.log")
-            with open(logfile, 'r') as file:
-                data = file.read()
-                report("golem.log: >>>\n{}\n<<<end golem.log".format(data))
+            _print_golem_log(datadir)
             shutil.rmtree(datadir)
 
     atexit.register(shutdown)
@@ -180,10 +187,7 @@ def run_computing_node(datadir, peer_address, fail_after=None):
         reactor.running and reactor.callFromThread(reactor.stop)
         logging.shutdown()
         if os.path.exists(datadir):
-            logfile = path.join(datadir, "logs", "golem.log")
-            with open(logfile, 'r') as file:
-                data = file.read()
-                report("golem.log: >>>\n{}\n<<<end golem.log".format(data))
+            _print_golem_log(datadir)
             shutil.rmtree(datadir)
 
     atexit.register(shutdown)

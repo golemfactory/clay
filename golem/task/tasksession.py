@@ -457,34 +457,32 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         self.task_manager.got_wants_to_compute(msg.task_id, self.key_id,
                                                msg.node_name)
-        if self.task_server.should_accept_provider(
-                self.key_id, msg.task_id, msg.perf_index,
-                msg.max_resource_size, msg.max_memory_size, msg.num_cores):
 
-            if self.task_manager.check_next_subtask(
-                    self.key_id, msg.node_name, msg.task_id, msg.price):
+        ctd = None
+        task_server_ok = self.task_server.should_accept_provider(
+            self.key_id, msg.task_id, msg.perf_index, msg.max_resource_size,
+            msg.max_memory_size, msg.num_cores)
 
-                if self._handshake_required(self.key_id):
-                    logger.warning('Cannot yet assign task for %r: resource '
-                                   'handshake is required', self.key_id)
-                    self._start_handshake(self.key_id)
-                    return
+        if task_server_ok and self.task_manager.check_next_subtask(
+                self.key_id, msg.node_name, msg.task_id, msg.price):
 
-                elif self._handshake_in_progress(self.key_id):
-                    logger.warning('Cannot yet assign task for %r: resource '
-                                   'handshake is in progress', self.key_id)
-                    return
+            if self._handshake_required(self.key_id):
+                logger.warning('Cannot yet assign task for %r: resource '
+                               'handshake is required', self.key_id)
+                self._start_handshake(self.key_id)
+                return
 
-                # TODO: Queue requests here
+            elif self._handshake_in_progress(self.key_id):
+                logger.warning('Cannot yet assign task for %r: resource '
+                               'handshake is in progress', self.key_id)
+                return
 
-                ctd = self.task_manager.get_next_subtask(
-                    self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-                    msg.price, msg.max_resource_size, msg.max_memory_size,
-                    msg.num_cores, self.address)
-            else:
-                ctd = None
-        else:
-            ctd = None
+            # TODO: Queue requests here
+
+            ctd = self.task_manager.get_next_subtask(
+                self.key_id, msg.node_name, msg.task_id, msg.perf_index,
+                msg.price, msg.max_resource_size, msg.max_memory_size,
+                msg.num_cores, self.address)
 
         if ctd:
             task = self.task_manager.tasks[ctd['task_id']]

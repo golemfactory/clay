@@ -383,8 +383,10 @@ class TaskManager(TaskEventListener):
 
         task = self.tasks[task_id]
 
-        if task.get_progress == 1.0:
-            logger.error("Task already computed")
+        if task.get_progress() == 1.0:
+            logger.error("Task already computed. "
+                         "task_id=%r, node_name=%r, node_id=%r",
+                         task_id, node_name, node_id)
             return None
 
         extra_data = task.query_extra_data(
@@ -433,21 +435,20 @@ class TaskManager(TaskEventListener):
     def should_wait_for_node(self, task_id, node_id) -> bool:
         """ Check if the node has too many tasks assigned already """
         if not self.is_my_task(task_id):
-            return True
+            return False
 
         task = self.tasks[task_id]
 
         verdict = task.should_accept_client(node_id)
-        if verdict == AcceptClientVerdict.ACCEPTED:
-            return False
-        elif verdict == AcceptClientVerdict.SHOULD_WAIT:
+        if verdict == AcceptClientVerdict.SHOULD_WAIT:
             logger.warning("Waiting for results from %s on %s", node_id,
                            task_id)
-        else:
+            return True
+        elif verdict == AcceptClientVerdict.REJECTED:
             logger.warning("Client %s has failed on subtask within task %s"
                            " and is banned from it", node_id, task_id)
 
-        return True
+        return False
 
     def check_next_subtask(  # noqa pylint: disable=too-many-arguments
             self, node_id, node_name, task_id, price):
