@@ -13,7 +13,7 @@ from unittest import mock, TestCase
 from golem.docker.manager import DOCKER_VM_NAME as VM_NAME, \
     DockerMachineCommandHandler, DockerMachineHypervisor, DockerManager, \
     Hypervisor, VirtualBoxHypervisor, XhyveHypervisor, logger, DockerForMac, \
-    DockerForMacCommandHandler
+    DockerForMacCommandHandler, DEFAULTS, MIN_CONSTRAINTS
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
@@ -105,6 +105,7 @@ class MockState(mock.MagicMock):
 
 
 def command(self, key, machine_name=None, args=None, shell=False):
+    # pylint: disable=too-many-return-statements
     command_calls = getattr(self, 'command_calls', None)
     if command_calls:
         command_calls.append([key, machine_name, args, shell])
@@ -143,7 +144,7 @@ def command(self, key, machine_name=None, args=None, shell=False):
 class MockHypervisor(DockerMachineHypervisor):
     # pylint: disable=method-hidden
 
-    def __init__(self, manager=None, use_parent_methods=False, **_kwargs):
+    def __init__(self, manager=None, **_kwargs):
         super().__init__(manager or mock.Mock())
         self.recover_ctx = self.ctx
         self.restart_ctx = self.ctx
@@ -169,11 +170,6 @@ class MockHypervisor(DockerMachineHypervisor):
     def recover_ctx(self, name: Optional[str] = None):
         self.ctx(name)
 
-    @classmethod
-    def _new_instance(cls,
-                      docker_manager: DockerManager) -> Optional['Hypervisor']:
-        return MockHypervisor(docker_manager)
-
 
 class MockDockerManager(DockerManager):
     # pylint: disable=too-few-public-methods
@@ -185,7 +181,7 @@ class MockDockerManager(DockerManager):
         super(MockDockerManager, self).__init__(config_desc)
 
         self._threads = mock.Mock()
-        self._config = dict(self.defaults)
+        self._config = dict(DEFAULTS)
 
 
 def raise_exception(msg, *args, **kwargs):
@@ -211,24 +207,24 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
     def test_build_config(self):
         dmm = MockDockerManager()
-        assert dmm._config == dmm.defaults
+        assert dmm._config == DEFAULTS
 
         dmm.build_config(None)
 
         config_item_list = list(dmm._config.items())
-        assert all([val == dmm.defaults[key] for key, val in config_item_list])
+        assert all([val == DEFAULTS[key] for key, val in config_item_list])
 
         config = MockConfig(0, 1024 * 1024, 512)
 
         dmm.build_config(config)
         assert len(dmm._config) < len(config.to_dict())
-        assert dmm._config != dmm.defaults
+        assert dmm._config != DEFAULTS
 
         self.assertEqual(dmm._config.get('cpu_count'),
-                         dmm.min_constraints.get('cpu_count'))
+                         MIN_CONSTRAINTS.get('cpu_count'))
 
         assert dmm._config.get('memory_size') \
-            == dmm.min_constraints.get('memory_size')
+            == MIN_CONSTRAINTS.get('memory_size')
 
         config = MockConfig(10, 10000 * 1024, 20000)
 
@@ -256,7 +252,7 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
         dmm.build_images = mock.Mock()
 
         hypervisor = mock.Mock()
-        hypervisor.constraints.return_value = dmm.defaults
+        hypervisor.constraints.return_value = DEFAULTS
 
         dmm._select_hypervisor = mock.Mock(return_value=hypervisor)
         dmm.build_config(config)
@@ -288,27 +284,26 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
         _, kwargs = dmm.hypervisor.constrain.call_args_list.pop()
 
         assert len(kwargs) == len(diff)
-        assert kwargs['cpu_count'] == dmm.defaults['cpu_count']
-        assert kwargs['memory_size'] == dmm.defaults['memory_size']
+        assert kwargs['cpu_count'] == DEFAULTS['cpu_count']
+        assert kwargs['memory_size'] == DEFAULTS['memory_size']
 
     def test_diff_constraints(self):
         dmm = MockDockerManager()
         diff = dmm._diff_constraints
 
-        assert diff(dmm.defaults, dmm.defaults) == dict()
-        assert diff(dmm.defaults, dict()) == dict()
-        assert diff(dict(), dmm.defaults) == dmm.defaults
+        assert diff(DEFAULTS, dict()) == dict()
+        assert diff(dict(), DEFAULTS) == DEFAULTS
 
-        old = dmm.defaults
-        new = dict(cpu_count=dmm.defaults['cpu_count'])
+        old = DEFAULTS
+        new = dict(cpu_count=DEFAULTS['cpu_count'])
         expected = dict()
         assert diff(old, new) == expected
 
-        old = dmm.defaults
+        old = DEFAULTS
         new = dict(
-            cpu_count=dmm.defaults['cpu_count'] + 1, unknown_key='value'
+            cpu_count=DEFAULTS['cpu_count'] + 1, unknown_key='value'
         )
-        expected = dict(cpu_count=dmm.defaults['cpu_count'] + 1)
+        expected = dict(cpu_count=DEFAULTS['cpu_count'] + 1)
         assert diff(old, new) == expected
 
     def test_command(self):
@@ -652,9 +647,6 @@ class TestHypervisor(LogTestCase):
             with hypervisor.recover_ctx(VM_NAME):
                 pass
 
-        with self.assertRaises(NotImplementedError):
-            hypervisor._new_instance(None)
-
 
 class TestVirtualBoxHypervisor(LogTestCase):
 
@@ -895,7 +887,7 @@ class TestXhyveHypervisor(TempDirFixture, LogTestCase):
             assert config == self.hypervisor.constraints(VM_NAME)
 
         # errors
-        with mock.patch.object(self.hypervisor._docker_manager, 'command',
+        with mock.patch.object(self.hypervisor, 'command',
                                lambda *_: raise_exception(TypeError)):
             with self.assertLogs(logger, 'ERROR'):
                 self.hypervisor.constraints(VM_NAME)
@@ -916,15 +908,6 @@ class TestXhyveHypervisor(TempDirFixture, LogTestCase):
 class TestDockerForMacHypervisor(TempDirFixture):
 
     HANDLER = 'golem.docker.manager.DockerForMacCommandHandler'
-
-    def test_new_instance(self):
-        docker_manager = mock.Mock()
-        docker_manager.return_value = docker_manager
-
-        with mock.patch('golem.docker.manager.DockerForMac._instance', None):
-            hypervisor = DockerForMac.instance(docker_manager)
-            assert hypervisor
-            assert hypervisor._docker_manager is docker_manager
 
     def test_setup_when_running(self):
         # pylint: disable=no-member

@@ -7,7 +7,7 @@ import time
 from abc import ABCMeta
 from contextlib import contextmanager
 from threading import Thread
-from typing import List, Optional, Dict
+from typing import List, Optional, Dict, Callable, Any
 
 from golem.core.common import is_linux, is_windows, is_osx, get_golem_path
 from golem.core.threads import ThreadQueueExecutor
@@ -22,11 +22,25 @@ APPS_DIR = os.path.join(ROOT_DIR, 'apps')
 IMAGES_INI = os.path.join(APPS_DIR, 'images.ini')
 
 DOCKER_VM_NAME = 'golem'
+
 CONSTRAINT_KEYS = dict(
     mem='memory_size',
     cpu='cpu_count',
     cpu_cap='cpu_execution_cap'
 )
+MIN_CONSTRAINTS = dict(
+    memory_size=1024,
+    cpu_execution_cap=10,
+    cpu_count=1
+)
+DEFAULTS = dict(
+    memory_size=1024,
+    cpu_execution_cap=100,
+    cpu_count=1
+)
+
+
+GetConfigFunction = Callable[[], Dict[str, Any]]
 
 
 class DockerMachineCommandHandler(DockerCommandHandler):
@@ -52,18 +66,7 @@ class DockerManager(DockerConfigManager):
     def __init__(self, config_desc=None):
         super(DockerManager, self).__init__()
 
-        self.min_constraints = dict(
-            memory_size=1024,
-            cpu_execution_cap=10,
-            cpu_count=1
-        )
-        self.defaults = dict(
-            memory_size=1024,
-            cpu_execution_cap=100,
-            cpu_count=1
-        )
-
-        self._config = dict(self.defaults)
+        self._config = dict(DEFAULTS)
         self._env_checked = False
         self._threads = ThreadQueueExecutor(queue_name='docker-machine')
 
@@ -120,16 +123,15 @@ class DockerManager(DockerConfigManager):
     def _select_hypervisor(self):
         if is_windows():
             if VirtualBoxHypervisor.is_available():
-                return VirtualBoxHypervisor.instance(self)
+                return VirtualBoxHypervisor.instance(self.get_config)
         elif is_osx():
             if DockerForMac.is_available():
-                return DockerForMac.instance(self)
+                return DockerForMac.instance(self.get_config)
             if XhyveHypervisor.is_available():
-                return XhyveHypervisor.instance(self)
+                return XhyveHypervisor.instance(self.get_config)
         return None
 
-    @property
-    def config(self) -> dict:
+    def get_config(self) -> dict:
         return dict(self._config)
 
     def update_config(self, status_callback, done_callback, in_background=True):
@@ -145,8 +147,8 @@ class DockerManager(DockerConfigManager):
     def build_config(self, config_desc):
         super(DockerManager, self).build_config(config_desc)
 
-        cpu_count = self.min_constraints['cpu_count']
-        memory_size = self.min_constraints['memory_size']
+        cpu_count = MIN_CONSTRAINTS['cpu_count']
+        memory_size = MIN_CONSTRAINTS['memory_size']
 
         try:
             cpu_count = max(int(config_desc.num_cores), cpu_count)
@@ -174,14 +176,14 @@ class DockerManager(DockerConfigManager):
         if diff:
 
             for constraint, value in diff.items():
-                min_val = self.min_constraints.get(constraint)
+                min_val = MIN_CONSTRAINTS.get(constraint)
                 diff[constraint] = max(min_val, value)
 
             for constraint, value in constraints.items():
                 if constraint not in diff:
                     diff[constraint] = value
 
-            for constraint, value in self.min_constraints.items():
+            for constraint, value in MIN_CONSTRAINTS.items():
                 if constraint not in diff:
                     diff[constraint] = value
 
@@ -320,9 +322,11 @@ class Hypervisor(metaclass=ABCMeta):
 
     _instance = None
 
-    def __init__(self, docker_manager: DockerManager,
+    def __init__(self,
+                 get_config: GetConfigFunction,
                  docker_vm: str = DOCKER_VM_NAME) -> None:
-        self._docker_manager = docker_manager
+
+        self._get_config = get_config
         self._docker_vm = docker_vm
 
     @classmethod
@@ -338,10 +342,18 @@ class Hypervisor(metaclass=ABCMeta):
             self.stop_vm()
 
     @classmethod
-    def instance(cls, docker_manager):
+    def instance(cls, get_config_fn: GetConfigFunction,
+                 docker_vm: str = DOCKER_VM_NAME) -> 'Hypervisor':
         if not cls._instance:
-            cls._instance = cls._new_instance(docker_manager)
+            cls._instance = cls._new_instance(get_config_fn, docker_vm)
         return cls._instance
+
+    @classmethod
+    def _new_instance(
+            cls,
+            get_config_fn: GetConfigFunction,
+            docker_vm: str = DOCKER_VM_NAME) -> Optional['Hypervisor']:
+        return cls(get_config_fn, docker_vm=docker_vm)
 
     def command(self, *args, **kwargs) -> Optional[str]:
         return self.COMMAND_HANDLER.run(*args, **kwargs)
@@ -410,24 +422,21 @@ class Hypervisor(metaclass=ABCMeta):
     def recover_ctx(self, name: Optional[str] = None):
         raise NotImplementedError
 
-    @classmethod
-    def _new_instance(cls,
-                      docker_manager: DockerManager) -> Optional['Hypervisor']:
-        raise NotImplementedError
-
 
 class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
 
     COMMAND_HANDLER = DockerMachineCommandHandler
 
-    def __init__(self, docker_manager: DockerManager) -> None:
-        super().__init__(docker_manager)
+    def __init__(self,
+                 get_config_fn: GetConfigFunction,
+                 docker_vm: str = DOCKER_VM_NAME) -> None:
+        super().__init__(get_config_fn, docker_vm)
         self._config_dir = None
 
     def setup(self) -> None:
         if self._docker_vm not in self.vms:
             logger.info("Creating Docker VM '%r'", self._docker_vm)
-            self.create(self._docker_vm, **self._docker_manager.config)
+            self.create(self._docker_vm, **self._get_config())
 
         if not self.vm_running():
             self.start_vm()
@@ -533,8 +542,12 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
         'Running', 'FirstOnline', 'LastOnline'
     ]
 
-    def __init__(self, docker_manager, virtualbox, ISession, LockType):
-        super(VirtualBoxHypervisor, self).__init__(docker_manager)
+    # noqa # pylint: disable=too-many-arguments
+    def __init__(self,
+                 get_config_fn: GetConfigFunction,
+                 virtualbox, ISession, LockType,
+                 docker_vm: str = DOCKER_VM_NAME) -> None:
+        super(VirtualBoxHypervisor, self).__init__(get_config_fn, docker_vm)
 
         if is_windows():
             import pythoncom  # noqa # pylint: disable=import-error
@@ -728,14 +741,15 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
 
     @classmethod
     def _new_instance(cls,
-                      docker_manager: DockerManager) -> Optional[Hypervisor]:
+                      get_config_fn: GetConfigFunction,
+                      docker_vm: str = DOCKER_VM_NAME) -> Optional[Hypervisor]:
         try:
             from virtualbox import VirtualBox
             from virtualbox.library import ISession, LockType
         except ImportError:
             return None
-        return VirtualBoxHypervisor(docker_manager, VirtualBox(),
-                                    ISession, LockType)
+        return VirtualBoxHypervisor(get_config_fn, docker_vm,
+                                    VirtualBox(), ISession, LockType)
 
 
 class XhyveHypervisor(DockerMachineHypervisor):
@@ -746,9 +760,6 @@ class XhyveHypervisor(DockerMachineHypervisor):
         disk='--xhyve-disk-size',
         storage='--xhyve-virtio-9p'
     )
-
-    def __init__(self, docker_manager):
-        super(XhyveHypervisor, self).__init__(docker_manager)
 
     @report_calls(Component.hypervisor, 'vm.create')
     def create(self, name: Optional[str] = None, **params):
@@ -853,21 +864,16 @@ class XhyveHypervisor(DockerMachineHypervisor):
 
         return config_path, config
 
-    @classmethod
-    def _new_instance(cls,
-                      docker_manager: DockerManager) -> Optional[Hypervisor]:
-        return XhyveHypervisor(docker_manager)
-
 
 class DockerForMacCommandHandler(DockerCommandHandler):
 
     APP = '/Applications/Docker.app'
-    PROCESSES = {
-        'app': f'{APP}/Contents/MacOS/Docker',
-        'driver': 'com.docker.driver',
-        'hyperkit': 'com.docker.hyperkit',
-        'vpnkit': 'com.docker.vpnkit',
-    }
+    PROCESSES = dict(
+        app=f'{APP}/Contents/MacOS/Docker',
+        driver='com.docker.driver',
+        hyperkit='com.docker.hyperkit',
+        vpnkit='com.docker.vpnkit',
+    )
 
     @classmethod
     def start(cls, *_args, **_kwargs) -> None:
@@ -1025,8 +1031,3 @@ class DockerForMac(Hypervisor):
     @report_calls(Component.hypervisor, 'vm.recover')
     def recover_ctx(self, name: Optional[str] = None):
         self.restart_ctx(name)
-
-    @classmethod
-    def _new_instance(cls,
-                      docker_manager: DockerManager) -> Optional[Hypervisor]:
-        return DockerForMac(docker_manager)
