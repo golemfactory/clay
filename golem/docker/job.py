@@ -41,6 +41,12 @@ class DockerJob(object):
     # Mounted read-write in the container.
     OUTPUT_DIR = "/golem/output"
 
+    PATH_PARAMS = {
+        "RESOURCES_DIR": RESOURCES_DIR,
+        "WORK_DIR": WORK_DIR,
+        "OUTPUT_DIR": OUTPUT_DIR
+    }
+
     # Name of the script file, relative to WORK_DIR
     TASK_SCRIPT = "job.py"
 
@@ -65,12 +71,7 @@ class DockerJob(object):
         self.script_src = script_src
         self.parameters = parameters if parameters else {}
 
-        paths_params = {k: v for k, v in {
-            "RESOURCES_DIR": self.RESOURCES_DIR,
-            "WORK_DIR": self.WORK_DIR,
-            "OUTPUT_DIR": self.OUTPUT_DIR
-        }.items()}
-        self.parameters.update(paths_params)
+        self.parameters.update(self.PATH_PARAMS)
 
         self.host_config = host_config or {}
 
