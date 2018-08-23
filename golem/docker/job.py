@@ -41,6 +41,9 @@ class DockerJob(object):
     # Mounted read-write in the container.
     OUTPUT_DIR = "/golem/output"
 
+    # these keys/values pairs will be saved in "params" module - it is
+    # dynamically created during docker setup and available for import
+    # inside docker
     PATH_PARAMS = {
         "RESOURCES_DIR": RESOURCES_DIR,
         "WORK_DIR": WORK_DIR,

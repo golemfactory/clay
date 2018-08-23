@@ -111,7 +111,7 @@ class TestDockerLuxrenderTask(
         ctd = task.query_extra_data(10000).ctd
 
         ctd["extra_data"].update(DockerJob.PATH_PARAMS)
-        
+
         # act
         computer = LocalComputer(
             root_path=self.tempdir,
