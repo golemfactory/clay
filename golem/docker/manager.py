@@ -428,9 +428,13 @@ class DockerMachineHypervisor(Hypervisor):
 
     @property
     def vms(self):
-        output = self._docker_manager.command('list')
-        if output:
-            return [i.strip() for i in output.split("\n") if i]
+        try:
+            output = self._docker_manager.command('list')
+        except subprocess.CalledProcessError as e:
+            logger.warning("DockerMachine: failed to list VMs: %r", e)
+        else:
+            if output:
+                return [i.strip() for i in output.split("\n") if i]
         return []
 
     @property
@@ -443,7 +447,7 @@ class DockerMachineHypervisor(Hypervisor):
             output = self._docker_manager.command('env', self._docker_vm,
                                                   args=('--shell', 'cmd'))
         except subprocess.CalledProcessError as e:
-            logger.warning("DockerMachine: failed to env the VM: %s", e)
+            logger.warning("DockerMachine: failed to update env for VM: %s", e)
             logger.debug("DockerMachine_output: %s", e.output)
             if not retried:
                 return self._recover()
@@ -887,7 +891,7 @@ class DockerForMacCommandHandler(DockerCommandHandler):
         try:
             subprocess.check_call(['open', '-g', '-a', cls.PROCESSES['app']])
             cls.wait_until_started()
-        except subprocess.CalledProcessError:
+        except (FileNotFoundError, subprocess.CalledProcessError):
             logger.error('Docker for Mac: unable to start the app')
             sys.exit(1)
 
@@ -926,7 +930,7 @@ class DockerForMacCommandHandler(DockerCommandHandler):
 
         try:
             line = cls._pipe(['ps', 'ux'], ['grep', '-i', process_name])
-        except subprocess.CalledProcessError:
+        except (FileNotFoundError, subprocess.CalledProcessError):
             return None
 
         try:

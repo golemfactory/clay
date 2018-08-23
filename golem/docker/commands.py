@@ -56,10 +56,12 @@ class DockerCommandHandler:
             try:
                 subprocess.check_output(['docker', 'info'],
                                         stderr=subprocess.DEVNULL)
+                done = True
             except subprocess.CalledProcessError:
                 time.sleep(1)
-            else:
-                done = True
+            except FileNotFoundError:
+                logger.error('Docker: no such command: "docker"')
+                return
 
             if time.time() - started >= cls.TIMEOUT:
                 logger.error('Docker: VM start timeout')
@@ -87,10 +89,8 @@ class DockerCommandHandler:
                 stdin=DEVNULL,
                 stderr=subprocess.STDOUT
             )
-        except subprocess.CalledProcessError as exc:
-            logger.error("Docker: error executing command: %r", command)
-            logger.debug("Docker error output: %r", exc.output)
-            output = str()
+        except FileNotFoundError as exc:
+            raise subprocess.CalledProcessError(127, str(exc))
 
         logger.debug('Docker command output: %s', output)
         return to_unicode(output)
