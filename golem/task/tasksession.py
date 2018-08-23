@@ -10,13 +10,12 @@ from golem_messages import helpers as msg_helpers
 from golem.core.common import HandleAttributeError
 from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import CBORSerializer
-from golem.core.variables import PROTOCOL_CONST
+from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
-from golem.network.p2p import node as p2p_node
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
@@ -24,7 +23,8 @@ from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import TaskState
-from golem.transactions.ethereum.ethereumpaymentskeeper import EthAccountInfo
+
+from .taskmanager import TaskManager
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,11 @@ def get_task_message(message_class_name, task_id, subtask_id, log_prefix=None):
     if log_prefix:
         log_prefix = '%s ' % log_prefix
 
-    msg = history.get(message_class_name, task_id, subtask_id)
+    msg = history.get(
+        message_class_name=message_class_name,
+        task_id=task_id,
+        subtask_id=subtask_id,
+    )
     if msg is None:
         logger.debug(
             '%s%s message not found for task %r, subtask: %r',
@@ -86,7 +90,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
         self.task_server = self.conn.server
-        self.task_manager = self.task_server.task_manager  # type: TaskManager
+        self.task_manager: TaskManager = self.task_server.task_manager
         self.task_computer = self.task_server.task_computer
         self.concent_service = self.task_server.client.concent_service
         self.task_id = None  # current task id
@@ -200,14 +204,20 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task_to_compute = get_task_message(
                 'TaskToCompute', task_id, subtask_id)
 
-            payment = self.task_server.accept_result(
+            eth_address = get_task_message(
+                'ReportComputedTask',
+                task_id,
                 subtask_id,
-                self.get_result_owner(subtask_id),
+            ).eth_account
+            payment_processed_ts = self.task_server.accept_result(
+                subtask_id,
+                self.key_id,
+                eth_address,
             )
 
             response_msg = message.tasks.SubtaskResultsAccepted(
                 task_to_compute=task_to_compute,
-                payment_ts=payment.processed_ts
+                payment_ts=payment_processed_ts,
             )
             self.send(response_msg)
             history.add(
@@ -225,33 +235,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             verification_finished
         )
 
-    def get_result_owner(self, subtask_id) -> EthAccountInfo:
-        """Returns information about user that should be rewarded (or punished)
-        for the result.
-        """
-
-        task_id = self._subtask_to_task(subtask_id, Actor.Requestor)
-        report_computed_task = get_task_message(
-            'ReportComputedTask',
-            task_id,
-            subtask_id,
-        )
-
-        result_owner = EthAccountInfo(
-            self.key_id,
-            report_computed_task.node_name,
-            p2p_node.Node.from_dict(report_computed_task.node_info),
-            report_computed_task.eth_account
-        )
-        return result_owner
-
     def _reject_subtask_result(self, subtask_id, reason):
         logger.debug('_reject_subtask_result(%r, %r)', subtask_id, reason)
 
-        self.task_server.reject_result(
-            subtask_id,
-            self.get_result_owner(subtask_id),
-        )
+        self.task_server.reject_result(subtask_id, self.key_id)
         self.send_result_rejected(subtask_id, reason)
 
     def request_resource(self, task_id):
@@ -264,7 +251,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         :return:
         """
         self.send(
-            message.GetResource(
+            message.tasks.GetResource(
                 task_id=task_id,
                 resource_header=None,  # unused slot
             )
@@ -312,7 +299,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         client_options = self.task_server.get_share_options(task_result.task_id,
                                                             self.address)
 
-        report_computed_task = message.ReportComputedTask(
+        report_computed_task = message.tasks.ReportComputedTask(
             task_to_compute=task_to_compute,
             result_type=task_result.result_type,
             node_name=node_name,
@@ -353,7 +340,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # the `ForceReportComputedTask` message to the Concent will be
         # cancelled and thus, never sent to the Concent.
 
-        delayed_forcing_msg = message.ForceReportComputedTask(
+        delayed_forcing_msg = message.concents.ForceReportComputedTask(
             report_computed_task=report_computed_task,
             result_hash='sha1:' + task_result.package_sha1
         )
@@ -385,7 +372,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         self.send(
-            message.TaskFailure(
+            message.tasks.TaskFailure(
                 task_to_compute=task_to_compute,
                 err=err_msg
             )
@@ -423,10 +410,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def send_hello(self):
         """ Send first hello message, that should begin the communication """
         self.send(
-            message.Hello(
+            message.base.Hello(
                 client_key_id=self.task_server.get_key_id(),
                 rand_val=self.rand_val,
-                proto_id=PROTOCOL_CONST.ID,
+                proto_id=variables.PROTOCOL_CONST.ID,
             ),
             send_unverified=True
         )
@@ -436,18 +423,18 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
            to start task session
         :param uuid conn_id: connection id for reference
         """
-        self.send(message.StartSessionResponse(conn_id=conn_id))
+        self.send(message.tasks.StartSessionResponse(conn_id=conn_id))
 
     #########################
     # Reactions to messages #
     #########################
 
     def _react_to_want_to_compute_task(self, msg):
-        reasons = message.CannotAssignTask.REASON
+        reasons = message.tasks.CannotAssignTask.REASON
 
         if msg.concent_enabled and not self.concent_service.enabled:
             self.send(
-                message.CannotAssignTask(
+                message.tasks.CannotAssignTask(
                     task_id=msg.task_id,
                     reason=reasons.ConcentDisabled,
                 )
@@ -481,7 +468,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         if wrong_task:
             self.send(
-                message.CannotAssignTask(
+                message.tasks.CannotAssignTask(
                     task_id=msg.task_id,
                     reason=reasons.NotMyTask,
                 )
@@ -510,6 +497,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 price=price,
                 size=task_state.package_size
             )
+            ttc.generate_ethsig(self.my_private_key)
             self.task_manager.set_subtask_value(
                 subtask_id=ttc.subtask_id,
                 price=price,
@@ -524,11 +512,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         if wait:
-            self.send(message.WaitingForResults())
+            self.send(message.tasks.WaitingForResults())
             return
 
         self.send(
-            message.CannotAssignTask(
+            message.tasks.CannotAssignTask(
                 task_id=msg.task_id,
                 reason=reasons.NoMoreSubtasks,
             )
@@ -556,7 +544,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.task_computer.session_closed()
             self.dropped()
 
-        reasons = message.CannotComputeTask.REASON
+        reasons = message.tasks.CannotComputeTask.REASON
 
         if self.concent_service.enabled and not msg.concent_enabled:
             # Provider requires concent if it's enabed locally
@@ -565,6 +553,35 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if not self.concent_service.enabled and msg.concent_enabled:
             # We can't provide what requestors wants
             _cannot_compute(reasons.ConcentDisabled)
+            return
+
+        number_of_subtasks = self.task_server.task_keeper\
+            .task_headers[msg.task_id]\
+            .subtasks_count
+        total_task_price = msg.price * number_of_subtasks
+        transaction_system = self.task_server.client.transaction_system
+        requestors_gntb_balance = transaction_system.get_available_gnt(
+            account_address=msg.requestor_ethereum_address,
+        )
+        if requestors_gntb_balance < total_task_price:
+            _cannot_compute(reasons.InsufficientBalance)
+            return
+        if msg.concent_enabled:
+            requestors_deposit_value = transaction_system.concent_balance(
+                account_address=msg.requestor_ethereum_address,
+            )
+            if requestors_deposit_value < (total_task_price * 2):
+                _cannot_compute(reasons.InsufficientDeposit)
+                return
+            requestors_deposit_timelock = transaction_system.concent_timelock(
+                account_address=msg.requestor_ethereum_address,
+            )
+            # 0 - safe to use
+            # <anything else> - withdrawal procedure has started
+            if requestors_deposit_timelock != 0:
+                _cannot_compute(reasons.TooShortDeposit)
+                return
+
         if self._check_ctd_params(ctd)\
                 and self._set_env_params(ctd)\
                 and self.task_manager.comp_task_keeper.receive_subtask(msg):
@@ -578,7 +595,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def _react_to_waiting_for_results(self, _):
         self.task_computer.session_closed()
         if not self.msgs_to_send:
-            self.disconnect(message.Disconnect.REASON.NoMoreMessages)
+            self.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
 
     def _react_to_cannot_compute_task(self, msg):
         if self.check_provider_for_subtask(msg.subtask_id):
@@ -626,7 +643,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         def after_success():
-            self.disconnect(message.Disconnect.REASON.NoMoreMessages)
+            self.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
 
         def after_error():
             if msg.task_to_compute.concent_enabled:
@@ -666,7 +683,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             address=self.address
         )
 
-        self.send(message.ResourceList(
+        self.send(message.resources.ResourceList(
             resources=resources,
             options=options.__dict__,  # This slot will be used in #1768
         ))
@@ -679,7 +696,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg,
                 self.key_id,
             )
-            self.disconnect(message.Disconnect.REASON.BadProtocol)
+            self.disconnect(message.base.Disconnect.REASON.BadProtocol)
             return
 
         if not self.check_requestor_for_subtask(msg.subtask_id):
@@ -718,7 +735,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 subtask_price=msg.task_to_compute.price,
             )
 
-            def ask_for_verification():
+            def ask_for_verification(_):
                 srv = message.concents.SubtaskResultsVerify(
                     subtask_results_rejected=msg
                 )
@@ -731,11 +748,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.task_server.client.transaction_system.concent_deposit(
                 required=amount,
                 expected=expected,
-                cb=ask_for_verification,
-            )
+            ).addCallback(ask_for_verification)
 
         else:
             self.task_server.subtask_rejected(
+                sender_node_id=self.key_id,
                 subtask_id=subtask_id,
             )
 
@@ -766,13 +783,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.key_id = msg.client_key_id
             send_hello = True
 
-        if msg.proto_id != PROTOCOL_CONST.ID:
+        if msg.proto_id != variables.PROTOCOL_CONST.ID:
             logger.info(
                 "Task protocol version mismatch %r (msg) vs %r (local)",
                 msg.proto_id,
-                PROTOCOL_CONST.ID
+                variables.PROTOCOL_CONST.ID
             )
-            self.disconnect(message.Disconnect.REASON.ProtocolVersion)
+            self.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
             return
 
         if not KeysAuth.is_pubkey_difficult(
@@ -783,13 +800,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.node_info.node_name, self.address, self.port,
                 KeysAuth.get_difficulty(self.key_id),
                 self.task_server.config_desc.key_difficulty)
-            self.disconnect(message.Disconnect.REASON.KeyNotDifficult)
+            self.disconnect(message.base.Disconnect.REASON.KeyNotDifficult)
             return
 
         if send_hello:
             self.send_hello()
         self.send(
-            message.RandVal(rand_val=msg.rand_val),
+            message.base.RandVal(rand_val=msg.rand_val),
             send_unverified=True
         )
 
@@ -806,7 +823,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self.send(msg_)
             self.msgs_to_send = []
         else:
-            self.disconnect(message.Disconnect.REASON.Unverified)
+            self.disconnect(message.base.Disconnect.REASON.Unverified)
 
     def _react_to_start_session_response(self, msg):
         self.task_server.respond_to(self.key_id, self, msg.conn_id)
@@ -901,7 +918,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             ctd['task_id'])
         owner = header.task_owner
 
-        reasons = message.CannotComputeTask.REASON
+        reasons = message.tasks.CannotComputeTask.REASON
         if owner.key != self.key_id:
             self.err_msg = reasons.WrongKey
             return False
@@ -920,7 +937,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def _set_env_params(self, ctd):
         environment = self.task_manager.comp_task_keeper.get_task_env(ctd['task_id'])  # noqa
         env = self.task_server.get_environment_by_id(environment)
-        reasons = message.CannotComputeTask.REASON
+        reasons = message.tasks.CannotComputeTask.REASON
         if not env:
             self.err_msg = reasons.WrongEnvironment
             return False
@@ -946,43 +963,54 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     ctd['docker_images'] = [image_dict]
                     return True
 
-        reasons = message.CannotComputeTask.REASON
+        reasons = message.tasks.CannotComputeTask.REASON
         self.err_msg = reasons.WrongDockerImages
         return False
 
     def __set_msg_interpretations(self):
         self._interpretation.update({
-            message.WantToComputeTask.TYPE: self._react_to_want_to_compute_task,
-            message.TaskToCompute.TYPE: self._react_to_task_to_compute,
-            message.CannotAssignTask.TYPE: self._react_to_cannot_assign_task,
-            message.CannotComputeTask.TYPE: self._react_to_cannot_compute_task,
-            message.ReportComputedTask.TYPE:
+            message.tasks.WantToComputeTask:
+                self._react_to_want_to_compute_task,
+            message.tasks.TaskToCompute:
+                self._react_to_task_to_compute,
+            message.tasks.CannotAssignTask:
+                self._react_to_cannot_assign_task,
+            message.tasks.CannotComputeTask:
+                self._react_to_cannot_compute_task,
+            message.tasks.ReportComputedTask:
                 self._react_to_report_computed_task,
-            message.GetResource.TYPE: self._react_to_get_resource,
-            message.ResourceList.TYPE: self._react_to_resource_list,
-            message.tasks.SubtaskResultsAccepted.TYPE:
+            message.tasks.GetResource:
+                self._react_to_get_resource,
+            message.resources.ResourceList:
+                self._react_to_resource_list,
+            message.tasks.SubtaskResultsAccepted:
                 self._react_to_subtask_result_accepted,
-            message.tasks.SubtaskResultsRejected.TYPE:
+            message.tasks.SubtaskResultsRejected:
                 self._react_to_subtask_results_rejected,
-            message.TaskFailure.TYPE: self._react_to_task_failure,
-            message.Hello.TYPE: self._react_to_hello,
-            message.RandVal.TYPE: self._react_to_rand_val,
-            message.StartSessionResponse.TYPE: self._react_to_start_session_response,  # noqa
-            message.WaitingForResults.TYPE: self._react_to_waiting_for_results,  # noqa
+            message.tasks.TaskFailure:
+                self._react_to_task_failure,
+            message.base.Hello:
+                self._react_to_hello,
+            message.base.RandVal:
+                self._react_to_rand_val,
+            message.tasks.StartSessionResponse:
+                self._react_to_start_session_response,
+            message.tasks.WaitingForResults:
+                self._react_to_waiting_for_results,
 
             # Concent messages
-            message.tasks.AckReportComputedTask.TYPE:
+            message.tasks.AckReportComputedTask:
                 self._react_to_ack_report_computed_task,
-            message.tasks.RejectReportComputedTask.TYPE:
+            message.tasks.RejectReportComputedTask:
                 self._react_to_reject_report_computed_task,
         })
 
-        # self.can_be_not_encrypted.append(message.Hello.TYPE)
         self.can_be_unverified.extend(
             [
-                message.Hello.TYPE,
-                message.RandVal.TYPE,
-                message.ChallengeSolution.TYPE
+                message.base.Hello,
+                message.base.RandVal,
+                message.base.ChallengeSolution
             ]
         )
-        self.can_be_not_encrypted.extend([message.Hello.TYPE])
+
+        self.can_be_not_encrypted.extend([message.base.Hello])

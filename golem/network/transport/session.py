@@ -51,15 +51,14 @@ class BasicSession(FileSession):
         self.last_message_time = time.time()
         self._disconnect_sent = False
         self._interpretation = {
-            message.Disconnect.TYPE: self._react_to_disconnect,
-            message.Hello.TYPE: self._react_to_hello,
+            message.base.Disconnect: self._react_to_disconnect,
         }
         # Message interpretation - dictionary where keys are message types
         # and values are functions that should
         # be called after receiving specific message
         self.conn.server.pending_sessions.add(self)
 
-    def interpret(self, msg):
+    def interpret(self, msg: message.base.Message):
         """
         React to specific message. Disconnect, if message type is unknown
         for that session.
@@ -71,11 +70,11 @@ class BasicSession(FileSession):
         if not self._check_msg(msg):
             return
 
-        action = self._interpretation.get(msg.TYPE)
+        action = self._interpretation.get(msg.__class__)
         if action:
             action(msg)
         else:
-            self.disconnect(message.Disconnect.REASON.BadProtocol)
+            self.disconnect(message.base.Disconnect.REASON.BadProtocol)
 
     def dropped(self):
         """ Close connection """
@@ -95,7 +94,7 @@ class BasicSession(FileSession):
         except KeyError:
             pass
 
-    def disconnect(self, reason: message.Disconnect.REASON):
+    def disconnect(self, reason: message.base.Disconnect.REASON):
         """ Send "disconnect" message to the peer and drop the connection.
         :param string reason: Reason for disconnecting.
         """
@@ -134,15 +133,15 @@ class BasicSession(FileSession):
     def full_data_received(self, extra_data=None):
         pass
 
-    def _send_disconnect(self, reason: message.Disconnect.REASON):
+    def _send_disconnect(self, reason: message.base.Disconnect.REASON):
         """ :param string reason: reason to disconnect """
         if not self._disconnect_sent:
             self._disconnect_sent = True
-            self.send(message.Disconnect(reason=reason))
+            self.send(message.base.Disconnect(reason=reason))
 
     def _check_msg(self, msg):
-        if msg is None or not isinstance(msg, message.Message):
-            self.disconnect(message.Disconnect.REASON.BadProtocol)
+        if msg is None or not isinstance(msg, message.base.Message):
+            self.disconnect(message.base.Disconnect.REASON.BadProtocol)
             return False
         return True
 
@@ -167,9 +166,9 @@ class BasicSafeSession(BasicSession):
         self.rand_val = get_random_float()
         self.verified = False
         # React to message even if it's self.verified is set to False
-        self.can_be_unverified = [message.Disconnect.TYPE]
+        self.can_be_unverified = [message.base.Disconnect]
         # React to message even if it's not encrypted.
-        self.can_be_not_encrypted = [message.Disconnect.TYPE]
+        self.can_be_not_encrypted = [message.base.Disconnect]
 
     @property
     def theirs_public_key(self):
@@ -196,28 +195,26 @@ class BasicSafeSession(BasicSession):
             )
             self.unverified_cnt -= 1
             if self.unverified_cnt <= 0:
-                self.disconnect(message.Disconnect.REASON.Unverified)
+                self.disconnect(message.base.Disconnect.REASON.Unverified)
             return
 
         BasicSession.send(self, msg)
 
-    def _can_send(self, msg, send_unverified):
+    def _can_send(self, msg: message.base.Message, send_unverified):
         return self.verified \
             or send_unverified \
-            or msg.TYPE in self.can_be_unverified
+            or msg.__class__ in self.can_be_unverified
 
     def _check_msg(self, msg):
         if not BasicSession._check_msg(self, msg):
             return False
 
-        type_ = msg.TYPE
-
-        if not self.verified and type_ not in self.can_be_unverified:
-            self.disconnect(message.Disconnect.REASON.Unverified)
+        if not self.verified and msg.__class__ not in self.can_be_unverified:
+            self.disconnect(message.base.Disconnect.REASON.Unverified)
             return False
 
-        if not msg.encrypted and type_ not in self.can_be_not_encrypted:
-            self.disconnect(message.Disconnect.REASON.BadProtocol)
+        if not msg.encrypted and msg.__class__ not in self.can_be_not_encrypted:
+            self.disconnect(message.base.Disconnect.REASON.BadProtocol)
             return False
 
         return True

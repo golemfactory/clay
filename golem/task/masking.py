@@ -83,9 +83,11 @@ class Mask:
 
     @classmethod
     def get_mask_for_task(
-            cls, desired_num_workers: int, network_size: int) -> 'Mask':
-        if network_size < 1:
+            cls, desired_num_workers: int, potential_num_workers: int) \
+            -> 'Mask':
+        if potential_num_workers < 1:
             return Mask()
         num_bits = max(
-            -math.floor(math.log2(desired_num_workers / network_size)), 0)
+            -math.floor(math.log2(desired_num_workers / potential_num_workers)),
+            0)
         return cls.generate(num_bits)

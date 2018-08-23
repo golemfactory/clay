@@ -8,6 +8,7 @@ import time
 import typing
 from urllib.parse import urljoin
 
+from pydispatch import dispatcher
 import requests
 import golem_messages
 from golem_messages import message
@@ -20,6 +21,8 @@ from golem.core import keysauth
 from golem.core import variables
 from golem.network.concent import exceptions
 from golem.network.concent.handlers_library import library
+
+from .helpers import ssl_kwargs
 
 logger = logging.getLogger(__name__)
 
@@ -61,15 +64,8 @@ def verify_response(response: requests.Response) -> None:
         )
 
 
-def ssl_kwargs(concent_variant: dict) -> dict:
-    """Returns additional ssl related kwargs for requests"""
-    if 'certificate' not in concent_variant:
-        return {}
-    return {'verify': concent_variant['certificate'], }
-
-
 def send_to_concent(
-        msg: message.Message,
+        msg: message.base.Message,
         signing_key,
         concent_variant: dict) -> typing.Optional[bytes]:
     """Sends a message to the concent server
@@ -202,6 +198,11 @@ class ConcentClientService(threading.Thread):
         self._delayed: dict = dict()
         self.received_messages: queue.Queue = queue.Queue(maxsize=100)
 
+        dispatcher.connect(
+            self.income_listener,
+            signal='golem.income',
+        )
+
     @property
     def enabled(self):
         return None not in self.variant.values()
@@ -222,7 +223,7 @@ class ConcentClientService(threading.Thread):
         logger.info('%s stopped', self)
 
     def submit_task_message(
-            self, subtask_id: str, msg: message.Message,
+            self, subtask_id: str, msg: message.base.Message,
             delay: typing.Optional[datetime.timedelta] = None
     ) -> None:
         """
@@ -256,12 +257,13 @@ class ConcentClientService(threading.Thread):
 
     def submit(self,
                key: typing.Hashable,
-               msg: message.Message,
+               msg: message.base.Message,
                delay: typing.Optional[datetime.timedelta] = None) -> None:
         """
         Submit a message to Concent.
 
         :param key: Request identifier
+        :param msg: the message to send
         :param delay: Time to wait before sending the message
         :return: None
         """
@@ -398,3 +400,38 @@ class ConcentClientService(threading.Thread):
         logger.debug("_enqueue(%r)", req)
         self._delayed.pop(req['key'], None)
         self._queue.put(req)
+
+    def income_listener(self, event, **kwargs):
+        if event != 'overdue':
+            return
+
+        from golem.network import history
+        sra_l = []
+        for income in kwargs['incomes']:
+            sra = history.get(
+                node_id=income.sender_node,
+                subtask_id=income.subtask,
+                message_class_name='SubtaskResultsAccepted',
+            )
+            if sra is None:
+                logger.debug(
+                    '[CONCENT] SRA missing subtask_id=%r node_id=%r',
+                    income.subtask,
+                    income.sender_node,
+                )
+                continue
+            sra_l.append(sra)
+        if not sra_l:
+            return
+        sra_l.sort(key=lambda x: x.payment_ts)
+        fp = message.concents.ForcePayment(
+            subtask_results_accepted_list=sra_l,
+        )
+        self.submit_task_message(
+            subtask_id='-'.join((
+                'force-payment',
+                min(sra.subtask_id for sra in sra_l),
+                max(sra.subtask_id for sra in sra_l),
+            )),
+            msg=fp,
+        )

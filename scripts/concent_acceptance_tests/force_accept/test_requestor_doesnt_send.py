@@ -12,7 +12,7 @@ from golem_messages import message
 
 from golem.network.concent import exceptions as concent_exceptions
 
-from ..base import ETSBaseTest
+from ..base import SCIBaseTest
 
 
 reasons = message.concents.ForceSubtaskResultsRejected.REASON
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 moment = datetime.timedelta(seconds=2)
 
 
-class RequestorDoesntSendTestCase(ETSBaseTest):
+class RequestorDoesntSendTestCase(SCIBaseTest):
     """Requestor doesn't send Ack/Reject of SubtaskResults"""
 
     def prepare_report_computed_task(self, mode, **kwargs):

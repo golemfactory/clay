@@ -7,10 +7,8 @@ from collections import namedtuple
 
 from twisted.internet.defer import Deferred, gatherResults
 
-from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 from golem_verificator.verifier import Verifier
 from golem.core.common import deadline_to_timeout
-from golem.task.localcomputer import ComputerAdapter
 
 logger = logging.getLogger("apps.blender.verification")
 
@@ -28,6 +26,7 @@ class VerificationQueue:
         self._lock = threading.Lock()
         self._jobs: Dict[str, Deferred] = dict()
         self._paused = False
+        self.already_handled = False
 
     def submit(self,
                verifier_class: Type[Verifier],
@@ -35,6 +34,12 @@ class VerificationQueue:
                deadline: int,
                cb: FunctionType,
                **kwargs) -> None:
+
+        logger.debug(
+            "Verification Queue submit: "
+            "(verifier_class: %s, subtask: %s, deadline: %s, kwargs: %s)",
+            verifier_class, subtask_id, deadline, kwargs
+        )
 
         entry = self.Entry(verifier_class, subtask_id, deadline, kwargs, cb)
         self._queue.put(entry)
@@ -67,6 +72,7 @@ class VerificationQueue:
             return None
 
     def _run(self, entry: Entry) -> None:
+        self.already_handled = False
         deferred_job = Deferred()
         subtask_id = entry.subtask_id
 
@@ -77,8 +83,12 @@ class VerificationQueue:
 
         def callback(*args, **kwargs):
             with self._lock:
-                deferred_job.callback(True)
-                self._jobs.pop(subtask_id, None)
+                if not self.already_handled:
+                    deferred_job.callback(True)
+                    self.already_handled = True
+                    self._jobs.pop(subtask_id, None)
+                else:
+                    deferred_job.cancel()
 
             logger.info("Finished verification of subtask %r", subtask_id)
             try:
@@ -87,14 +97,12 @@ class VerificationQueue:
                 self._process_queue()
 
         try:
-            entry.kwargs["reference_generator"] = BlenderReferenceGenerator()
             verifier = entry.verifier_class(callback, entry.kwargs)
-            verifier.computer = ComputerAdapter()
             if deadline_to_timeout(entry.deadline) > 0:
-                if not verifier.simple_verification(entry.kwargs):
-                    verifier.verification_completed()
-                else:
+                if verifier.simple_verification(entry.kwargs):
                     verifier.start_verification(entry.kwargs)
+                else:
+                    verifier.verification_completed()
             else:
                 verifier.task_timeout(subtask_id)
                 raise Exception("Task deadline passed")
