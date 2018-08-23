@@ -4,8 +4,8 @@ import logging
 import os
 import time
 
-from golem_messages import message
 from golem_messages import helpers as msg_helpers
+from golem_messages import message
 from golem_messages.message import ComputeTaskDef
 
 from golem.core.common import HandleAttributeError
@@ -17,7 +17,6 @@ from golem.docker.image import DockerImage
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
-from golem.network.p2p import node as p2p_node
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
