@@ -223,11 +223,13 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
     @classmethod
     def _new_instance(cls,
                       get_config_fn: GetConfigFunction,
-                      docker_vm: str = DOCKER_VM_NAME) -> Optional[Hypervisor]:
+                      docker_vm: str = DOCKER_VM_NAME) -> Hypervisor:
         try:
             from virtualbox import VirtualBox
             from virtualbox.library import ISession, LockType
-        except ImportError:
-            return None
+        except ImportError as err:
+            logger.error('Error importing VirtualBox libraries: %r', err)
+            raise
+
         return VirtualBoxHypervisor(get_config_fn, docker_vm,
                                     VirtualBox(), ISession, LockType)

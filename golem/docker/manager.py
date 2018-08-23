@@ -158,10 +158,12 @@ class DockerManager(DockerConfigManager):
 
     def recover_vm_connectivity(self, done_callback, in_background=True):
         """
-        This method tries to resolve issues with VirtualBox network adapters (mainly on Windows)
-        by saving VM's state and resuming it afterwards with docker-machine. This reestablishes
-        SSH connectivity with docker machine VM.
-        :param done_callback: Function to run on completion. Takes vbox session as an argument.
+        This method tries to resolve issues with VirtualBox network adapters
+        (mainly on Windows) by saving VM's state and resuming it afterwards with
+        docker-machine. This reestablishes SSH connectivity with docker machine
+        VM.
+        :param done_callback: Function to run on completion. Takes vbox session
+        as an argument.
         :param in_background: Run the recovery process in a separate thread.
         :return:
         """

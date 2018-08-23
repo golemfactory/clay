@@ -89,7 +89,7 @@ class XhyveHypervisor(DockerMachineHypervisor):
         config = dict()
 
         try:
-            output = self.command('inspect', name)
+            output = self.command('inspect', name) or ''
             driver = json.loads(output)['Driver']
         except (TypeError, ValueError) as e:
             logger.error("Xhyve: invalid driver configuration: {}"

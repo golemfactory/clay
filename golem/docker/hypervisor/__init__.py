@@ -49,7 +49,7 @@ class Hypervisor(metaclass=ABCMeta):
     def _new_instance(
             cls,
             get_config_fn: GetConfigFunction,
-            docker_vm: str = DOCKER_VM_NAME) -> Optional['Hypervisor']:
+            docker_vm: str = DOCKER_VM_NAME) -> 'Hypervisor':
         return cls(get_config_fn, docker_vm=docker_vm)
 
     def command(self, *args, **kwargs) -> Optional[str]:
@@ -72,7 +72,7 @@ class Hypervisor(metaclass=ABCMeta):
             raise EnvironmentError("Invalid Docker VM name")
 
         try:
-            status = self.command('status', name)
+            status = self.command('status', name) or ''
             status = status.strip().replace("\n", "")
             return status == 'Running'
         except subprocess.CalledProcessError as e:

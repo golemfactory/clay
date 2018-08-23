@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 
 CallableCommand = Callable[
-    [Optional[str], Optional[List[str]], Optional[bool]],  # args
+    [Optional[str], Union[Tuple, List[str], None], Optional[bool]],  # args
     Optional[str]  # return value
 ]
 
@@ -71,11 +71,11 @@ class DockerCommandHandler:
     def _command(cls,
                  command: List[str],
                  vm_name: Optional[str] = None,
-                 args: Optional[List[str]] = None,
+                 args: Optional[Union[Tuple, List[str]]] = None,
                  shell: bool = False) -> str:
 
         if args:
-            command += args
+            command += list(args)
         if vm_name:
             command += [vm_name]
 
