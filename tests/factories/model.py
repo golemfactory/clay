@@ -10,6 +10,7 @@ class Income(Factory):
         model = model.Income
 
     sender_node = Faker('binary', length=64)
+    payer_address = '0x' + 40 * '3'
     subtask = Faker('uuid4')
     value = Faker('pyint')
 

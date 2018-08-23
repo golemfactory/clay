@@ -50,7 +50,7 @@ class TestBasicProtocol(LogTestCase):
         self.protocol.db.clear_buffer()
         self.assertEqual(load_mock.call_count, 0)
 
-        m = message.Disconnect(reason=None)
+        m = message.base.Disconnect(reason=None)
         data = m.serialize()
         packed_data = struct.pack("!L", len(data)) + data
         load_mock.return_value = m
@@ -95,7 +95,7 @@ class TestBasicProtocol(LogTestCase):
         send_mock.assert_called_once_with(mock.ANY)
         self.assertEqual(
             send_mock.call_args[0][0].reason,
-            message.Disconnect.REASON.ProtocolVersion,
+            message.base.Disconnect.REASON.ProtocolVersion,
         )
 
 
@@ -112,7 +112,7 @@ class SafeProtocolTestCase(unittest.TestCase):
         with freeze_time("2017-01-14 10:30:20") as frozen_datetime:
             node = p2p_factories.Node()
 
-            msg = message.SetTaskSession(
+            msg = message.p2p.SetTaskSession(
                 key_id=None,
                 node_info=node.to_dict(),
                 conn_id=None,

@@ -1,4 +1,6 @@
+import json
 import logging
+import os
 import random
 import time
 from enum import Enum
@@ -6,19 +8,21 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, ClassVar, Dict, Iterable, List, Optional, Tuple
 
-from ethereum.utils import denoms, decode_hex
-from eth_utils import is_address
+from ethereum.utils import denoms
+from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
+from eth_utils import decode_hex, is_address
 from golem_messages.utils import bytes32_to_uuid
-from golem_sci import new_sci, JsonTransactionsStorage
+from golem_sci import new_sci, SmartContractsInterface, JsonTransactionsStorage
+from twisted.internet.defer import Deferred
 import requests
 
 from golem.core.service import LoopingCallService
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
-from golem.model import GenericKeyValue, Payment
-from golem.transactions.ethereum.exceptions import NotEnoughFunds
-from golem.transactions.incomeskeeper import IncomesKeeper
-from golem.transactions.paymentskeeper import PaymentsKeeper
+from golem.ethereum.exceptions import NotEnoughFunds
+from golem.ethereum.incomeskeeper import IncomesKeeper
+from golem.ethereum.paymentskeeper import PaymentsKeeper
+from golem.model import GenericKeyValue, Payment, Income
 from golem.utils import privkeytoaddr
 
 
@@ -33,60 +37,117 @@ class ConversionStatus(Enum):
 
 
 # pylint:disable=too-many-instance-attributes
-class EthereumTransactionSystem(LoopingCallService):
+class TransactionSystem(LoopingCallService):
     """ Transaction system connected with Ethereum """
 
     TX_FILENAME: ClassVar[str] = 'transactions.json'
+    KEYSTORE_FILENAME: ClassVar[str] = 'wallet.json'
 
     BLOCK_NUMBER_DB_KEY: ClassVar[str] = 'ets_subscriptions_block_number'
 
     LOOP_INTERVAL: ClassVar[int] = 13
 
-    def __init__(
-            self,
-            datadir: str,
-            node_priv_key: bytes,
-            config) -> None:
+    def __init__(self, datadir: Path, config) -> None:
         super().__init__(self.LOOP_INTERVAL)
-        eth_addr = privkeytoaddr(node_priv_key)
-        log.info("Node Ethereum address: %s", eth_addr)
+        datadir.mkdir(exist_ok=True)
 
+        self._datadir = datadir
         self._config = config
+        self._privkey = b''
 
         node_list = config.NODE_LIST.copy()
         random.shuffle(node_list)
         node_list += config.FALLBACK_NODE_LIST
         self._node = NodeProcess(node_list)
+        self._sci: Optional[SmartContractsInterface] = None
+
+        self._payments_keeper = PaymentsKeeper()
+        self._incomes_keeper = IncomesKeeper()
+        self._payment_processor: Optional[PaymentProcessor] = None
+
+        self._gnt_faucet_requested = False
+        self._gnt_conversion_status = ConversionStatus.NONE
+
+        self._eth_balance: int = 0
+        self._gnt_balance: int = 0
+        self._gntb_balance: int = 0
+        self._last_eth_update: Optional[float] = None
+        self._last_gnt_update: Optional[float] = None
+        self._payments_locked: int = 0
+        self._gntb_locked: int = 0
+
+    def backwards_compatibility_tx_storage(self, old_datadir: Path) -> None:
+        if self.running:
+            raise Exception(
+                "Service already started, can't do backwards compatibility")
+        # Filename is the same as TX_FILENAME, but the constant shouldn't be
+        # used here as if it ever changes this value below should stay the same.
+        old_storage_path = old_datadir / 'transactions.json'
+        if not old_storage_path.exists():
+            return
+        log.info(
+            "Initializing transaction storage from old path: %s",
+            old_storage_path,
+        )
+        new_storage_path = self._datadir / self.TX_FILENAME
+        if new_storage_path.exists():
+            raise Exception("Storage already exists, can't override")
+        with open(old_storage_path, 'r') as f:
+            json_content = json.load(f)
+        with open(new_storage_path, 'w') as f:
+            json.dump(json_content, f)
+        os.remove(old_storage_path)
+
+    def backwards_compatibility_privkey(
+            self,
+            privkey: bytes,
+            password: str) -> None:
+        keystore_path = self._datadir / self.KEYSTORE_FILENAME
+
+        # Sanity check that this is in fact still the same key
+        if keystore_path.exists():
+            self.set_password(password)
+            try:
+                if privkey != self._privkey:
+                    raise Exception("Private key is not backward compatible")
+            finally:
+                self._privkey = b''
+            return
+
+        log.info("Initializing keystore with backward compatible value")
+        keystore = create_keyfile_json(
+            privkey,
+            password.encode('utf-8'),
+            iterations=1024,
+        )
+        with open(keystore_path, 'w') as f:
+            json.dump(keystore, f)
+
+    def _init(self) -> None:
+        if len(self._privkey) != 32:
+            raise Exception(
+                "Invalid private key. Did you forget to set password?")
+        eth_addr = privkeytoaddr(self._privkey)
+        log.info("Node Ethereum address: %s", eth_addr)
+
         self._node.start()
 
         self._sci = new_sci(
             self._node.web3,
             eth_addr,
-            config.CHAIN,
-            JsonTransactionsStorage(Path(datadir) / self.TX_FILENAME),
-            lambda tx: tx.sign(node_priv_key),
+            self._config.CHAIN,
+            JsonTransactionsStorage(self._datadir / self.TX_FILENAME),
+            lambda tx: tx.sign(self._privkey),
         )
-        self._gnt_faucet_requested = False
 
-        self._gnt_conversion_status = ConversionStatus.NONE
         gate_address = self._sci.get_gate_address()
         if gate_address is not None:
             if self._sci.get_gnt_balance(gate_address):
                 self._gnt_conversion_status = ConversionStatus.UNFINISHED
 
-        self.payments_keeper = PaymentsKeeper()
-        self.incomes_keeper = IncomesKeeper()
-        self.payment_processor = PaymentProcessor(self._sci)
+        self._payment_processor = PaymentProcessor(self._sci)
 
         self._subscribe_to_events()
-
-        self._eth_balance: int = 0
-        self._gnt_balance: int = 0
-        self._gntb_balance: int = 0
-        self._last_eth_update = None
-        self._last_gnt_update = None
-        self._payments_locked: int = 0
-        self._gntb_locked: int = 0
 
         self._refresh_balances()
         log.info(
@@ -96,12 +157,36 @@ class EthereumTransactionSystem(LoopingCallService):
             self._eth_balance / denoms.ether,
         )
 
+    def start(self, now: bool = True) -> None:
+        self._init()
+        super().start(now)
+
+    def set_password(self, password: str) -> None:
+        keystore_path = self._datadir / self.KEYSTORE_FILENAME
+        if keystore_path.exists():
+            self._privkey = extract_key_from_keyfile(
+                str(keystore_path),
+                password.encode('utf-8'),
+            )
+        else:
+            log.info("Generating new Ethereum private key")
+            self._privkey = os.urandom(32)
+            keystore = create_keyfile_json(
+                self._privkey,
+                password.encode('utf-8'),
+                iterations=1024,
+            )
+            with open(keystore_path, 'w') as f:
+                json.dump(keystore, f)
+
     def _subscribe_to_events(self) -> None:
+        if not self._sci:
+            raise Exception('Start was not called')
         values = GenericKeyValue.select().where(
             GenericKeyValue.key == self.BLOCK_NUMBER_DB_KEY)
         from_block = int(values.get().value) if values.count() == 1 else 0
 
-        ik = self.incomes_keeper
+        ik = self._incomes_keeper
         self._sci.subscribe_to_batch_transfers(
             None,
             self._sci.get_eth_address(),
@@ -128,22 +213,41 @@ class EthereumTransactionSystem(LoopingCallService):
                     event.amount,
                 )
             )
+            self._sci.subscribe_to_forced_payments(
+                requestor_address=None,
+                provider_address=self._sci.get_eth_address(),
+                from_block=from_block,
+                cb=lambda event: ik.received_forced_payment(
+                    tx_hash=event.tx_hash,
+                    sender=event.requestor,
+                    amount=event.amount,
+                    closure_time=event.closure_time,
+                ),
+            )
         except AttributeError as e:
             log.info("Can't use GNTDeposit on mainnet yet: %r", e)
 
     def _save_subscription_block_number(self) -> None:
+        if not self._sci:
+            raise Exception('Start was not called')
         block_number = self._sci.get_block_number() - self._sci.REQUIRED_CONFS
         kv, _ = GenericKeyValue.get_or_create(key=self.BLOCK_NUMBER_DB_KEY)
         kv.value = block_number - 1
         kv.save()
 
     def stop(self):
-        self.payment_processor.sendout(0)
+        self._payment_processor.sendout(0)
         self._save_subscription_block_number()
         self._sci.stop()
         super().stop()
 
-    def add_payment_info(self, subtask_id: str, value: int, eth_address: str):
+    def add_payment_info(
+            self,
+            subtask_id: str,
+            value: int,
+            eth_address: str) -> int:
+        if not self._payment_processor:
+            raise Exception('Start was not called')
         payee = decode_hex(eth_address)
         if len(payee) != 20:
             raise ValueError(
@@ -153,49 +257,41 @@ class EthereumTransactionSystem(LoopingCallService):
             payee=payee,
             value=value,
         )
-        self.payment_processor.add(payment)
-        return payment
+        return self._payment_processor.add(payment)
 
     def get_payment_address(self):
         """ Human readable Ethereum address for incoming payments."""
+        if not self._sci:
+            raise Exception('Start was not called')
         return self._sci.get_eth_address()
 
     def get_payments_list(self):
         """ Return list of all planned and made payments
         :return list: list of dictionaries describing payments
         """
-        return self.payments_keeper.get_list_of_all_payments()
+        return self._payments_keeper.get_list_of_all_payments()
 
-    def get_total_payment_for_subtasks(
+    def get_subtasks_payments(
             self,
-            subtask_ids: Iterable[str]) -> Tuple[Optional[int], Optional[int]]:
-        """
-        Get total value and total fee for payments for the given subtask IDs
-        **if all payments for the given subtasks are sent**
-        :param subtask_ids: subtask IDs
-        :return: (total_value, total_fee) if all payments are sent,
-                (None, None) otherwise
-        """
-        return self.payments_keeper.get_total_payment_for_subtasks(subtask_ids)
+            subtask_ids: Iterable[str]) -> List[Payment]:
+        return self._payments_keeper.get_subtasks_payments(subtask_ids)
 
     def get_incomes_list(self):
         """ Return list of all expected and received incomes
         :return list: list of dictionaries describing incomes
         """
-        return self.incomes_keeper.get_list_of_all_incomes()
-
-    def get_nodes_with_overdue_payments(self) -> List[str]:
-        overdue_incomes = self.incomes_keeper.update_overdue_incomes()
-        return [x.sender_node for x in overdue_incomes]
+        return self._incomes_keeper.get_list_of_all_incomes()
 
     def get_available_eth(self) -> int:
         return self._eth_balance - self.get_locked_eth()
 
     def get_locked_eth(self) -> int:
-        eth = self.payment_processor.reserved_eth + \
+        if not self._payment_processor:
+            raise Exception('Start was not called')
+        eth = self._payment_processor.reserved_eth + \
             self.eth_for_batch_payment(self._payments_locked)
         if self._payments_locked > 0 and \
-           self.payment_processor.reserved_eth == 0:
+           self._payment_processor.reserved_eth == 0:
             eth += self._eth_base_for_batch_payment()
         return min(eth, self._eth_balance)
 
@@ -203,9 +299,13 @@ class EthereumTransactionSystem(LoopingCallService):
         return self._gntb_balance - self.get_locked_gnt()
 
     def get_locked_gnt(self) -> int:
-        return self._gntb_locked + self.payment_processor.reserved_gntb
+        if not self._payment_processor:
+            raise Exception('Start was not called')
+        return self._gntb_locked + self._payment_processor.reserved_gntb
 
     def get_balance(self) -> Dict[str, Any]:
+        if not self._sci:
+            raise Exception('Start was not called')
         return {
             'gnt_available': self.get_available_gnt(),
             'gnt_locked': self.get_locked_gnt(),
@@ -218,13 +318,15 @@ class EthereumTransactionSystem(LoopingCallService):
         }
 
     def lock_funds_for_payments(self, price: int, num: int) -> None:
+        if not self._payment_processor:
+            raise Exception('Start was not called')
         gnt = price * num
         if gnt > self.get_available_gnt():
             raise NotEnoughFunds(gnt, self.get_available_gnt(), 'GNT')
 
         eth = self.eth_for_batch_payment(num)
         if self._payments_locked == 0 and \
-           self.payment_processor.reserved_eth == 0:
+           self._payment_processor.reserved_eth == 0:
             eth += self._eth_base_for_batch_payment()
         eth_available = self.get_available_eth()
         if eth > eth_available:
@@ -259,17 +361,57 @@ class EthereumTransactionSystem(LoopingCallService):
         self._gntb_locked -= gnt
         self._payments_locked -= num
 
+    def expect_income(
+            self,
+            sender_node: str,
+            subtask_id: str,
+            payer_address: str,
+            value: int) -> Income:
+        return self._incomes_keeper.expect(
+            sender_node,
+            subtask_id,
+            payer_address,
+            value,
+        )
+
+    def reject_income(self, sender_node: str, subtask_id: str) -> None:
+        self._incomes_keeper.reject(sender_node, subtask_id)
+
+    def accept_income(
+            self,
+            sender_node: str,
+            subtask_id: str,
+            accepted_ts: int) -> None:
+        self._incomes_keeper.update_awaiting(
+            sender_node,
+            subtask_id,
+            accepted_ts,
+        )
+
+    def settle_income(
+            self,
+            sender_node: str,
+            subtask_id: str,
+            settled_ts: int) -> None:
+        self._incomes_keeper.settled(sender_node, subtask_id, settled_ts)
+
     def eth_for_batch_payment(self, num_payments: int) -> int:
-        return self.payment_processor.get_gas_cost_per_payment() * num_payments
+        if not self._payment_processor:
+            raise Exception('Start was not called')
+        return self._payment_processor.get_gas_cost_per_payment() * num_payments
 
     def _eth_base_for_batch_payment(self) -> int:
-        return self.payment_processor.ETH_BATCH_PAYMENT_BASE
+        if not self._payment_processor:
+            raise Exception('Start was not called')
+        return self._payment_processor.ETH_BATCH_PAYMENT_BASE
 
     def get_withdraw_gas_cost(
             self,
             amount: int,
             destination: str,
             currency: str) -> int:
+        if not self._sci:
+            raise Exception('Start was not called')
         gas_price = self._sci.get_current_gas_price()
         if currency == 'ETH':
             return self._sci.estimate_transfer_eth_gas(destination, amount) * \
@@ -282,7 +424,9 @@ class EthereumTransactionSystem(LoopingCallService):
             self,
             amount: int,
             destination: str,
-            currency: str) -> List[str]:
+            currency: str) -> str:
+        if not self._sci:
+            raise Exception('Start was not called')
         if not self._config.WITHDRAWALS_ENABLED:
             raise Exception("Withdrawals are disabled")
 
@@ -301,7 +445,7 @@ class EthereumTransactionSystem(LoopingCallService):
                 amount / denoms.ether,
                 destination,
             )
-            return [self._sci.transfer_eth(destination, amount)]
+            return self._sci.transfer_eth(destination, amount)
 
         if currency == 'GNT':
             if amount > self.get_available_gnt():
@@ -315,22 +459,23 @@ class EthereumTransactionSystem(LoopingCallService):
                 amount / denoms.ether,
                 destination,
             )
-            return [self._sci.convert_gntb_to_gnt(destination, amount)]
+            return self._sci.convert_gntb_to_gnt(destination, amount)
 
         raise ValueError('Unknown currency {}'.format(currency))
 
     def concent_balance(self) -> int:
+        if not self._sci:
+            raise Exception('Start was not called')
         return self._sci.get_deposit_value(self._sci.get_eth_address())
 
-    def concent_deposit(self, required: int, expected: int, cb=None) -> None:
-        if cb is None:
-            def noop():
-                pass
-            cb = noop
+    def concent_deposit(self, required: int, expected: int) -> Deferred:
+        if not self._sci:
+            raise Exception('Start was not called')
+        result = Deferred()
         current = self.concent_balance()
         if current >= required:
-            cb()
-            return
+            result.callback(None)
+            return result
         required -= current
         expected -= current
         gntb_balance = self.get_available_gnt()
@@ -346,13 +491,16 @@ class EthereumTransactionSystem(LoopingCallService):
 
         def transaction_receipt(receipt):
             if not receipt.status:
-                log.critical("Deposit failed. Receipt: %r", receipt)
+                result.errback(Exception(f"Deposit failed. Receipt: {receipt}"))
                 return
-            cb()
+            result.callback(None)
 
         self._sci.on_transaction_confirmed(tx_hash, transaction_receipt)
+        return result
 
     def _get_funds_from_faucet(self) -> None:
+        if not self._sci:
+            raise Exception('Start was not called')
         if not self._config.FAUCET_ENABLED:
             return
         if self._eth_balance < 0.01 * denoms.ether:
@@ -369,6 +517,8 @@ class EthereumTransactionSystem(LoopingCallService):
             self._gnt_faucet_requested = False
 
     def _refresh_balances(self) -> None:
+        if not self._sci:
+            raise Exception('Start was not called')
         now = time.mktime(datetime.today().timetuple())
         addr = self._sci.get_eth_address()
 
@@ -385,6 +535,8 @@ class EthereumTransactionSystem(LoopingCallService):
             log.warning('Failed to update balances: %r', e)
 
     def _try_convert_gnt(self) -> None:  # pylint: disable=too-many-branches
+        if not self._sci:
+            raise Exception('Start was not called')
         if self._gnt_conversion_status == ConversionStatus.UNFINISHED:
             if self._gnt_balance > 0:
                 self._gnt_conversion_status = ConversionStatus.NONE
@@ -459,10 +611,13 @@ class EthereumTransactionSystem(LoopingCallService):
                 )
 
     def _run(self) -> None:
+        if not self._payment_processor:
+            raise Exception('Start was not called')
         self._refresh_balances()
         self._get_funds_from_faucet()
         self._try_convert_gnt()
-        self.payment_processor.sendout()
+        self._payment_processor.sendout()
+        self._incomes_keeper.update_overdue_incomes()
 
 
 def tETH_faucet_donate(addr: str):
