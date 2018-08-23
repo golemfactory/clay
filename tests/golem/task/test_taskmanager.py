@@ -261,9 +261,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         checker([("xyz", None, TaskOp.WORK_OFFER_RECEIVED)])
         del handler
 
-    @patch('golem.task.taskbase.Task.needs_computation', return_value=True)
-    def test_get_next_subtask(self, *_):
-        assert isinstance(self.tm, TaskManager)
+    def test_get_next_subtask_not_my_task(self):
 
         wrong_task = not self.tm.is_my_task("xyz")
         subtask = self.tm.get_next_subtask(
@@ -271,6 +269,39 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert subtask is None
         assert wrong_task
 
+    def test_get_next_subtask_wait_for_node(self):
+        task_mock = self._get_task_mock()
+        task_mock.should_accept_client.return_value = \
+            AcceptClientVerdict.REJECTED
+
+        self.tm.add_new_task(task_mock)
+        self.tm.start_task(task_mock.header.task_id)
+
+        wrong_task = not self.tm.is_my_task("xyz")
+        subtask = self.tm.get_next_subtask(
+            "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
+
+        assert subtask is None
+        assert not wrong_task
+
+    def test_get_next_subtask_progress_completed(self):
+        task_mock = self._get_task_mock()
+        task_mock.should_accept_client.return_value = \
+            AcceptClientVerdict.ACCEPTED
+        task_mock.get_progress = 1.0
+
+        self.tm.add_new_task(task_mock)
+        self.tm.start_task(task_mock.header.task_id)
+
+        wrong_task = not self.tm.is_my_task("xyz")
+        assert not wrong_task
+        subtask = self.tm.get_next_subtask(
+            "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
+
+        assert subtask is None
+
+    @patch('golem.task.taskbase.Task.needs_computation', return_value=True)
+    def test_get_next_subtask(self, *_):
         task_mock = self._get_task_mock()
 
         # Task's initial state is set to 'notStarted' (found in activeStatus)
@@ -343,6 +374,14 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.tm.delete_task("xyz")
         assert self.tm.tasks.get("xyz") is None
         assert self.tm.tasks_states.get("xyz") is None
+
+    def test_check_next_subtask_not_my_task(self):
+        checked = self.tm.check_next_subtask("aaa", "aaa", "aaa", 1)
+        assert not checked
+
+    def test_should_wait_for_node_not_my_task(self):
+        should_wait = self.tm.should_wait_for_node("aaa", "aaa")
+        assert should_wait
 
     def test_delete_task_with_dump(self):
         task_id = "xyz"
