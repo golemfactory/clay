@@ -1,5 +1,6 @@
 # pylint: disable=protected-access
 import calendar
+import contextlib
 import datetime
 import os
 import pathlib
@@ -666,6 +667,90 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertTrue(
             message.base.Message.deserialize(db.buffered_data, lambda x: x)
         )
+
+    def test_react_to_state_update_call(self):
+        mock_task = MagicMock()
+        mock_task._react_to_message = lambda *_: "response"
+        mock_send = MagicMock()
+
+        with patch("golem.task.tasksession.TaskSession.send", mock_send):
+            with patch("golem.task.taskmanager.TaskManager.tasks",
+                       {"someid", mock_task}):
+
+                msg = message.tasks.StateUpdate()
+                msg.DIRECTION = msg.DIRECTION.Call
+                msg.task_id  = task_id = "someid"
+                msg.subtask_id  = subtask_id = "someotherstrangeid"
+                msg.state_update_id  = state_update_id = "evenstrangerid"
+
+                self.task_session._react_to_state_update_call(msg)
+
+                resp_data = dict(
+                    task_id=task_id,
+                    subtask_id=subtask_id,
+                    state_update_id=state_update_id,
+                    data="response",
+                    direction=msg.DIRECTION.Response
+                )
+                mock_send.assert_called_once_with(resp_data)
+
+    def test_react_to_state_update(self):
+        mock_call = MagicMock()
+        mock_resp = MagicMock()
+
+        def assert_nothing_called():
+            mock_resp.assert_not_called()
+            mock_call.assert_not_called()
+
+        with patch("golem.task.tasksession.TaskSession._react_to_state_update_response", mock_resp):
+            with patch("golem.task.tasksession.TaskSession._react_to_state_update_call", mock_call):
+                msg = message.tasks.StateUpdate()
+                assert_nothing_called()
+
+                msg.direction = None
+                with self.assertRaises(KeyError):
+                    self.task_session._react_to_state_update(msg)
+                assert_nothing_called()
+
+                msg.direction = "aaa"
+                with self.assertRaises(KeyError):
+                    self.task_session._react_to_state_update(msg)
+                assert_nothing_called()
+
+                msg.direction = msg.DIRECTION.Call
+                self.task_session._react_to_state_update(msg)
+                mock_call.assert_called_once_with(msg)
+
+                msg.direction = msg.DIRECTION.Response
+                self.task_session._react_to_state_update(msg)
+                mock_call.assert_called_once_with(msg)
+                mock_resp.assert_called_once_with(msg)
+
+    def test_react_to_state_update_response(self):
+        msg = message.tasks.StateUpdate()
+        msg.data = "some data"
+        self.task_session.state_update_response = suresponse_mock =  MagicMock()
+        resp_mock = MagicMock()
+        resp_mock.event.set = MagicMock()
+        suresponse_mock.get = MagicMock(return_value=resp_mock)
+        with patch("golem.task.taskstateupdate.StateUpdateInfo.from_state_update", lambda x: "called"):
+            self.task_session._react_to_state_update_response(msg)
+
+        suresponse_mock.get.assert_called_with("called")
+        assert resp_mock.data == "some data"
+        resp_mock.event.set.assert_called_once()
+
+    # TODO
+    # def test_send_state_update(self):
+    #     update =
+    #     msg = message.tasks.StateUpdate(
+    #         **update.to_dict(),
+    #         direction=message.tasks.StateUpdate.DIRECTION.Call
+    #     )
+    #     response_sess = self.task_server.task_sessions[msg.subtask_id]
+    #     response_sess.send(msg)
+    #     self.state_update_response.initialize(update)
+    #     return self.state_update_response.get(update.info)
 
     def test_react_to_ack_reject_report_computed_task(self):
         task_keeper = CompTaskKeeper(pathlib.Path(self.path))

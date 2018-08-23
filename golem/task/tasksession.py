@@ -852,11 +852,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def _react_to_state_update(self, msg: message.tasks.StateUpdate):
         if msg.direction == msg.DIRECTION.Call:
             self._react_to_state_update_call(msg)
-        else:
+        elif msg.direction == msg.DIRECTION.Response:
             self._react_to_state_update_response(msg)
+        else:
+            raise KeyError(f"Unknown state update direction: {msg.direction}")
 
-    def _react_to_state_update_call(self, msg: message.tasks.StateUpdate):  # noqa
-        # TODO Reusing old message structure - may be unwise, if, for example, task modifies data
+    def _react_to_state_update_call(self, msg: message.tasks.StateUpdate):
         task = self.task_server.task_manager.tasks[msg.task_id]
         msg = message.tasks.StateUpdate(
             task_id=msg.task_id,
@@ -868,8 +869,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         response_sess = self
         response_sess.send(msg)
 
-    def _react_to_state_update_response(self, msg: message.tasks.StateUpdate):  # noqa
-        resp = self.state_update_response.get(StateUpdateInfo.from_state_update_msg(msg))
+    def _react_to_state_update_response(self, msg: message.tasks.StateUpdate):
+        resp = self.state_update_response.get(
+            StateUpdateInfo.from_state_update_msg(msg)
+        )
         resp.data = msg.data
         resp.event.set()
 
