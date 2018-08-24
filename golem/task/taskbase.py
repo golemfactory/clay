@@ -272,8 +272,7 @@ class TaskEventListener(object):
 class Task(abc.ABC):
 
     class ExtraData(object):
-        def __init__(self, should_wait=False, ctd=None, **kwargs):
-            self.should_wait = should_wait
+        def __init__(self, ctd=None, **kwargs):
             self.ctd = ctd
 
             for key, value in kwargs.items():
@@ -526,3 +525,7 @@ class Task(abc.ABC):
         Copy results of a single subtask from another task
         """
         raise NotImplementedError()
+
+    @abc.abstractmethod
+    def should_accept_client(self, node_id):
+        pass

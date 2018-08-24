@@ -68,6 +68,9 @@ class DummyTask(Task):
     def copy_subtask_results(self, subtask_id, old_subtask_info, results):
         pass
 
+    def should_accept_client(self, node_id):
+        pass
+
 
 class BenchmarkRunnerFixture(TempDirFixture):
     def _success(self):
