@@ -1,13 +1,11 @@
 #!/usr/bin/env python
 
-import os
 import argparse
+import click
+import os
 import sys
 
 from multiprocessing import freeze_support
-from pathlib import Path
-
-import click
 
 from golem.core.simpleenv import get_local_datadir
 from golem.rpc.cert import CertificateManager, CrossbarAuthManager

@@ -16,7 +16,6 @@ from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
-from twisted.internet import defer
 from twisted.internet.defer import (
     inlineCallbacks,
     gatherResults,

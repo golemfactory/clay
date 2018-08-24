@@ -103,6 +103,7 @@ class CrossbarRouter(object):
             'http://' + address.host + ':*',
             'https://' + address.host,
             'https://' + address.host + ':*',
+            '172.*.*.*:*'  # for docker network
         ]
 
         ws_endpoint = {
@@ -154,7 +155,7 @@ class CrossbarRouter(object):
                     'endpoint': ws_endpoint,
                     'url': str(address),
                     'options': {
-                        # 'allowed_origins': allowed_origins,
+                        'allowed_origins': allowed_origins,
                         'enable_webstatus': enable_webstatus,
                     },
                     "auth": {

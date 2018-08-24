@@ -2,7 +2,7 @@ import sys
 
 from twisted.internet.defer import Deferred
 
-from golem.rpc.cert import CertificateManager, CrossbarAuthManager
+from golem.rpc.cert import CrossbarAuthManager
 from golem.rpc.common import CROSSBAR_REALM, CROSSBAR_PORT, CROSSBAR_HOST
 from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP, NODE_METHOD_MAP
 from golem.rpc.session import Session, Client, WebSocketAddress

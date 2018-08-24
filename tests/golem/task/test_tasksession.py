@@ -1,6 +1,5 @@
 # pylint: disable=protected-access
 import calendar
-import contextlib
 import datetime
 import os
 import pathlib

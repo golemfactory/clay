@@ -18,7 +18,7 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
-from golem.rpc.cert import CertificateManager, CrossbarAuthManager
+from golem.rpc.cert import CrossbarAuthManager
 from golem.vm.vm import PythonProcVM, PythonTestVM
 
 from .taskthread import TaskThread

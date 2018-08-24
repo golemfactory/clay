@@ -2,9 +2,7 @@ import datetime
 import functools
 import logging
 import os
-import threading
 import time
-from typing import Dict
 
 from golem_messages import message
 from golem_messages import helpers as msg_helpers
