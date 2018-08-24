@@ -47,6 +47,9 @@ class DockerJob(object):
     # Name of the parameters file, relative to WORK_DIR
     PARAMS_FILE = "params.py"
 
+    # Flags are used to pass container-related info to tasks running in docker
+    FLAGS = {"MESSAGES_AVAILABLE": True}
+
     def __init__(self, image, script_src, parameters,
                  resources_dir, work_dir, output_dir,
                  host_config=None, container_log_level=None):
@@ -64,6 +67,9 @@ class DockerJob(object):
         self.image = image
         self.script_src = script_src
         self.parameters = parameters if parameters else {}
+
+        self.parameters["FLAGS"].update(self.FLAGS)
+
         self.host_config = host_config or {}
 
         self.resources_dir = resources_dir

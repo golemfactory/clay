@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import imp
 import os
+import sys
 
 import params  # This module is generated before this script is run
 
@@ -33,6 +34,11 @@ run(params.data_files,
     params.result_size,
     params.result_file)
 
+
+# We don't send messages if the task is run in LocalComputer
+if "MESSAGES_AVAILABLE" not in params.FLAGS or \
+        not params.FLASG["MESSAGES_AVAILABLE"]:
+    sys.exit(0)
 
 # -------------------------------------------------------------------
 # Dummy messages
