@@ -30,6 +30,7 @@ from golem.task import taskstate
 from golem.task.taskbase import ResultType, TaskHeader
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
+from golem.task.taskstateupdate import StateUpdateData, StateUpdateInfo
 from golem.tools.assertlogs import LogTestCase
 from tests import factories
 from tests.factories.taskserver import WaitingTaskResultFactory
@@ -733,24 +734,35 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         resp_mock = MagicMock()
         resp_mock.event.set = MagicMock()
         suresponse_mock.get = MagicMock(return_value=resp_mock)
-        with patch("golem.task.taskstateupdate.StateUpdateInfo.from_state_update", lambda x: "called"):
+        with patch("golem.task.taskstateupdate.StateUpdateInfo.from_state_update", lambda x: "called"):  # pylint:disable=line-too-long
             self.task_session._react_to_state_update_response(msg)
 
         suresponse_mock.get.assert_called_with("called")
         assert resp_mock.data == "some data"
         resp_mock.event.set.assert_called_once()
 
-    # TODO
-    # def test_send_state_update(self):
-    #     update =
-    #     msg = message.tasks.StateUpdate(
-    #         **update.to_dict(),
-    #         direction=message.tasks.StateUpdate.DIRECTION.Call
-    #     )
-    #     response_sess = self.task_server.task_sessions[msg.subtask_id]
-    #     response_sess.send(msg)
-    #     self.state_update_response.initialize(update)
-    #     return self.state_update_response.get(update.info)
+    def test_send_state_update(self):
+        update = StateUpdateData(StateUpdateInfo(task_id="a",
+                                                 subtask_id="b",
+                                                 state_update_id="c"),
+                                 data={"aaa": "bbb"})
+        mock_sess = MagicMock()
+        mock_sess.__getitem__.return_value(mock_sess)
+        mock_sup = MagicMock()
+        mock_sup.get = MagicMock(return_value="abc")
+        with patch("golem.task.TaskServer.task_sessions", mock_sess):  # pylint:disable=line-too-long
+            with patch("golem.task.taskstateupdate.StateUpdateProcessor", mock_sup):  # pylint:disable=line-too-long
+                resp = self.task_session.send_state_update(update)
+        mock_sess.__getitem__.assert_called_with("b")
+
+        msg = message.tasks.StateUpdate(
+            **update.to_dict(),
+            direction=message.tasks.StateUpdate.DIRECTION.Call
+        )
+
+        mock_sess.send.assert_called_once_with(msg)
+        mock_sup.initialize.assert_called_once_with(update)
+        assert resp == "abc"
 
     def test_react_to_ack_reject_report_computed_task(self):
         task_keeper = CompTaskKeeper(pathlib.Path(self.path))

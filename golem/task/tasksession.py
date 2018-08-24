@@ -25,7 +25,8 @@ from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import TaskState
-from golem.task.taskstateupdate import StateUpdateData, StateUpdateProcessor, StateUpdateInfo
+from golem.task.taskstateupdate import StateUpdateData, StateUpdateProcessor,\
+    StateUpdateInfo
 
 logger = logging.getLogger(__name__)
 
@@ -737,7 +738,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.dropped()
 
     def _react_to_resource_list(self, msg):
-        resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
+        resource_manager = self.task_server.client.resource_server.resource_manager  # pylint:disable=line-too-long
         resources = resource_manager.from_wire(msg.resources)
 
         client_options = self.task_server.get_download_options(msg.options,
