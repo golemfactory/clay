@@ -51,6 +51,7 @@ class DummyTask(CoreTask):
             root_path=root_path,
             total_tasks=total_tasks
         )
+        self.messages_received = {}
 
     def short_extra_data_repr(self, extra_data):
         return "Dummytask extra_data: {}".format(extra_data)
@@ -98,6 +99,8 @@ class DummyTask(CoreTask):
             self.task_definition.shared_data_files
         self.subtasks_given[sid]["subtask_id"] = sid
 
+        self.messages_received[sid] = []
+
         return self.ExtraData(ctd=ctd)
 
     def accept_results(self, subtask_id, result_files):
@@ -120,7 +123,11 @@ class DummyTask(CoreTask):
         return exd
 
     def react_to_message(self, subtask_id: str, data: Dict):
-        return {"got_message": True, "from": subtask_id}
+        if subtask_id not in self.subtasks_given:
+            raise KeyError(f"Received message from subtask {subtask_id}"
+                           "which is not in subtasks_given")
+        self.messages_received[subtask_id].append(data)
+        return {"got_message": True, "from": subtask_id, "data": data}
 
 
 class DummyTaskBuilder(CoreTaskBuilder):

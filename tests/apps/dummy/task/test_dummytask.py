@@ -81,6 +81,18 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
         with self.assertRaises(Exception):
             dt.accept_results(subtask_id, [])
 
+    def test_react_to_message(self):
+        dt, _ = self._get_new_dummy()
+        with self.assertRaises(KeyError):
+            _ = dt.react_to_message(None, None)
+
+        with self.assertRaises(KeyError):
+            _ = dt.react_to_message("aa", None)
+
+        dt.subtasks_given["aa"] = "bb"
+        resp = dt.react_to_message("aa", {"data": "bbb"})
+        assert not (resp is None)
+        assert dt.messages_received["aa"] == [{"data": "bbb"}]
 
 class TestDummyTaskBuilder(TestCase):
 
