@@ -289,7 +289,8 @@ class Task(abc.ABC):
         self.header = header
         self.task_definition = task_definition
 
-        self.listeners: 'List[Union[ClientTaskComputerEventListener, TaskManager]]' = []  # pylint:disable=line-too-long type: ignore
+        self.listeners: 'List[Union[ClientTaskComputerEventListener, TaskManager]]' = [
+            ]  # pylint:disable=line-too-long type: ignore
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -317,14 +318,16 @@ class Task(abc.ABC):
 
     def register_listener(self, listener):
         if not isinstance(listener, TaskEventListener):
-            raise TypeError("Incorrect 'listener' type: {}. Should be: TaskEventListener".format(type(listener)))
+            raise TypeError(
+                "Incorrect 'listener' type: {}. Should be: TaskEventListener".format(type(listener)))
         self.listeners.append(listener)
 
     def unregister_listener(self, listener):
         if listener in self.listeners:
             self.listeners.remove(listener)
         else:
-            logger.warning("Trying to unregister listener that wasn't registered.")
+            logger.warning(
+                "Trying to unregister listener that wasn't registered.")
 
     @abc.abstractmethod
     def initialize(self, dir_manager):
@@ -385,7 +388,7 @@ class Task(abc.ABC):
     @abc.abstractmethod
     def computation_finished(self, subtask_id, task_result,
                              result_type=ResultType.DATA,
-                             verification_finished=None):
+                             verification_finished_=None):
         """ Inform about finished subtask
         :param subtask_id: finished subtask id
         :param task_result: task result, can be binary data or list of files
