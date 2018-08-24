@@ -1,8 +1,11 @@
 import threading
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
+
+import enforce
 from golem_messages import message
 
 
+@enforce.runtime_validation(group="taskstateupdate")
 class StateUpdateInfo:
     def __init__(self, task_id: str, subtask_id: str, state_update_id: str):
         self.task_id = task_id
@@ -16,7 +19,7 @@ class StateUpdateInfo:
         )
 
     @staticmethod
-    def from_dict(d):
+    def from_dict(d: Dict[str, Any]):
         return StateUpdateInfo(
             task_id=d["task_id"],
             subtask_id=d["subtask_id"],
@@ -32,6 +35,7 @@ class StateUpdateInfo:
         return hash(self) == hash(other)
 
 
+@enforce.runtime_validation(group="taskstateupdate")
 class StateUpdateData():
     def __init__(self, info: StateUpdateInfo, data: Dict):
         self.info = info
@@ -44,18 +48,26 @@ class StateUpdateData():
                 "data": self.data}
 
     @staticmethod
-    def from_dict(d: Dict):
+    def from_dict(d: Dict[str, Any]):
         return StateUpdateData(
             info=StateUpdateInfo.from_dict(d["info"]),
             data=d["data"])
 
 
+# this is a class and not a namedtuple because we need mutability
+# but, in the future (after python 3.7), it probably should be changed
+# to dataclass
+@enforce.runtime_validation(group="taskstateupdate")
 class StateUpdateResponse():
     def __init__(self, event: threading.Event, data: Optional[Dict]):
+        if not isinstance(event, threading.Event):
+            raise TypeError("Event should be of type threading.Event."
+                            f"instead got {event}")
         self.event = event
         self.data = data
 
 
+@enforce.runtime_validation(group="taskstateupdate")
 class StateUpdateProcessor():
     def __init__(self):
         self._msg_dict = {}
