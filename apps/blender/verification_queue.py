@@ -3,7 +3,7 @@ import threading
 import queue
 from types import FunctionType
 from typing import Optional, Type, Dict
-from collections import namedtuple
+from apps.blender.verification_task import VerificationTask
 
 from twisted.internet.defer import Deferred, gatherResults
 
@@ -15,9 +15,6 @@ logger = logging.getLogger("apps.blender.verification")
 
 class VerificationQueue:
 
-    Entry = namedtuple('Entry', ['verifier_class', 'subtask_id',
-                                 'deadline', 'kwargs', 'cb'])
-
     def __init__(self, concurrency: int = 1) -> None:
 
         self._concurrency = concurrency
@@ -25,6 +22,7 @@ class VerificationQueue:
 
         self._lock = threading.Lock()
         self._jobs: Dict[str, Deferred] = dict()
+        self.callbacks: Dict[VerificationTask, FunctionType] = dict()
         self._paused = False
         self.already_handled = False
 
@@ -41,7 +39,8 @@ class VerificationQueue:
             verifier_class, subtask_id, deadline, kwargs
         )
 
-        entry = self.Entry(verifier_class, subtask_id, deadline, kwargs, cb)
+        entry = VerificationTask(verifier_class, subtask_id, deadline, kwargs)
+        self.callbacks[entry] = cb
         self._queue.put(entry)
         self._process_queue()
 
@@ -71,7 +70,7 @@ class VerificationQueue:
         except queue.Empty:
             return None
 
-    def _run(self, entry: Entry) -> None:
+    def _run(self, entry: VerificationTask) -> None:
         self.already_handled = False
         deferred_job = Deferred()
         subtask_id = entry.subtask_id
@@ -92,21 +91,12 @@ class VerificationQueue:
 
             logger.info("Finished verification of subtask %r", subtask_id)
             try:
-                entry.cb(*args, **kwargs)
+                self.callbacks[entry](*args, ** kwargs)
             finally:
                 self._process_queue()
 
         try:
-            verifier = entry.verifier_class(callback, entry.kwargs)
-            if deadline_to_timeout(entry.deadline) > 0:
-                if verifier.simple_verification(entry.kwargs):
-                    verifier.start_verification(entry.kwargs)
-                else:
-                    verifier.verification_completed()
-            else:
-                verifier.task_timeout(subtask_id)
-                raise Exception("Task deadline passed")
-
+            entry.start(callback)
         except Exception as exc:  # pylint: disable=broad-except
             with self._lock:
                 deferred_job.errback(exc)
