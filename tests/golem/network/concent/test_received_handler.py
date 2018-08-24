@@ -16,7 +16,6 @@ from golem_messages.message.concents import FileTransferToken
 from golem import testutils
 from golem.core import keysauth
 from golem.core import variables
-from golem.ethereum.incomeskeeper import IncomesKeeper, Income
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import received_handler
@@ -377,7 +376,6 @@ class ForceSubtaskResultsResponseTest(TaskServerMessageHandlerTestBase):
     def setUp(self):
         super().setUp()
         self.client.transaction_system = mock.Mock()
-        self.client.transaction_system.incomes_keeper = IncomesKeeper()
 
     def test_force_subtask_results_response_empty(self):
         msg = message.concents.ForceSubtaskResultsResponse()
@@ -395,19 +393,11 @@ class ForceSubtaskResultsResponseTest(TaskServerMessageHandlerTestBase):
         msg = msg_factories.concents.\
             ForceSubtaskResultsResponseFactory.with_accepted()
 
-        IncomesKeeper().expect(
-            sender_node=msg.task_to_compute.requestor_id,
-            subtask_id=msg.subtask_id,
-            payer_address='0xdead',
-            value=42
-        )
-        self.assertIsNone(Income.get(subtask=msg.subtask_id).accepted_ts)
-
         library.interpret(msg)
-
-        self.assertEqual(
-            Income.get(subtask=msg.subtask_id).accepted_ts,
-            msg.subtask_results_accepted.payment_ts
+        self.client.transaction_system.accept_income.assert_called_once_with(
+            msg.task_to_compute.requestor_id,
+            msg.subtask_id,
+            msg.subtask_results_accepted.payment_ts,
         )
 
         add_mock.assert_called_once_with(
@@ -800,20 +790,46 @@ class SubtaskResultsSettledTest(TaskServerMessageHandlerTestBase):
     def setUp(self):
         super().setUp()
         self.client.transaction_system = mock.Mock()
-        self.client.transaction_system.incomes_keeper = IncomesKeeper()
 
     def test_settled(self):
         srs = msg_factories.concents.SubtaskResultsSettledFactory()
         self.task_server.client.node.key = srs.task_to_compute.provider_id
-        IncomesKeeper().expect(
-            sender_node=srs.task_to_compute.requestor_id,
-            subtask_id=srs.subtask_id,
-            payer_address='0xdead',
-            value=42
-        )
-        self.assertIsNone(Income.get(subtask=srs.subtask_id).settled_ts)
 
         library.interpret(srs)
+        self.client.transaction_system.settle_income.assert_called_once_with(
+            srs.task_to_compute.requestor_id,
+            srs.subtask_id,
+            srs.timestamp,
+        )
 
-        self.assertEqual(
-            Income.get(subtask=srs.subtask_id).settled_ts, srs.timestamp)
+
+class ForcePaymentTest(TaskServerMessageHandlerTestBase):
+    @mock.patch('golem.network.concent.received_handler.logger.warning')
+    def test_committed_requestor(self, log_mock):
+        fpc = msg_factories.concents.ForcePaymentCommittedFactory.to_requestor()
+        library.interpret(fpc)
+        log_mock.assert_called_once()
+        self.assertIn(
+            "Our deposit was used to cover payment",
+            log_mock.call_args[0][0],
+        )
+
+    @mock.patch('golem.network.concent.received_handler.logger.debug')
+    def test_committed_provider(self, log_mock):
+        fpc = msg_factories.concents.ForcePaymentCommittedFactory.to_provider(
+            amount_pending=31337,
+        )
+        library.interpret(fpc)
+        self.assertIn(
+            "Forced payment from",
+            log_mock.call_args[0][0],
+        )
+
+    @mock.patch('golem.network.concent.received_handler.logger.debug')
+    def test_committed_unknown(self, log_mock):
+        fpc = msg_factories.concents.ForcePaymentCommittedFactory(
+            amount_pending=31337,
+            recipient_type=None,
+        )
+        with self.assertRaises(ValueError):
+            library.interpret(fpc)
