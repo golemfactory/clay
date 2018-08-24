@@ -5,6 +5,7 @@ import os
 
 import params  # This module is generated before this script is run
 
+
 def run(data_files, subtask_data, difficulty, result_size, result_file):
     code_file = os.path.join(params.RESOURCES_DIR, "code", "computing.py")
     computing = imp.load_source("code", code_file)

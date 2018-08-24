@@ -55,7 +55,8 @@ class TestLuxRenderDockerJob(TestDockerJob):
             "num_threads": 1
         }
 
-        with self._create_test_job(script=task_script_src, params=params) as job:
+        with self._create_test_job(script=task_script_src,
+                                   params=params) as job:
             job.start()
             exit_code = job.wait()
             self.assertEqual(exit_code, 0)

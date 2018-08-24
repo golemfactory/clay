@@ -218,14 +218,14 @@ class DockerJob(object):
         try:
             import stat
             prev_mod = stat.S_IMODE(os.stat(dst_dir).st_mode)
-        except Exception as e: # pylint:disable=broad-except
+        except Exception as e:  # pylint:disable=broad-except
             logger.debug("Cannot get mode for %s, "
                          "reason: %s", dst_dir, e)
 
         if mod is not None:
             try:
                 os.chmod(dst_dir, mod)
-            except Exception as e: # pylint:disable=broad-except
+            except Exception as e:  # pylint:disable=broad-except
                 logger.debug("Cannot chmod %s (%s): %s", dst_dir, mod, e)
 
         return prev_mod

@@ -34,7 +34,7 @@ def find_flm(directory):
             for names in files:
                 if names.upper().endswith(".FLM"):
                     return os.path.join(root, names)
-    except Exception: # pylint:disable=broad-except
+    except Exception:  # pylint:disable=broad-except
         import traceback
         # Print the stack traceback
         traceback.print_exc()
