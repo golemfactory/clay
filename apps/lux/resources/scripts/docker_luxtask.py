@@ -7,8 +7,8 @@ import sys
 import tempfile
 from multiprocessing import cpu_count
 
+# pylint: disable=import-error
 import params  # This module is generated before this script is run
-
 
 LUXRENDER_COMMAND = "luxconsole"
 
@@ -30,11 +30,11 @@ def find_flm(directory):
     if not os.path.exists(directory):
         return None
     try:
-        for root, dirs, files in os.walk(directory):
+        for root, _, files in os.walk(directory):
             for names in files:
                 if names.upper().endswith(".FLM"):
                     return os.path.join(root, names)
-    except:
+    except Exception: # pylint:disable=broad-except
         import traceback
         # Print the stack traceback
         traceback.print_exc()
@@ -56,7 +56,9 @@ def format_lux_renderer_cmd(start_task, output_basename, output_format,
         cmd = [
             "{}".format(LUXRENDER_COMMAND),
             "{}".format(scene_file),
-            "-o", "{}/{}{}.{}".format(params.OUTPUT_DIR, output_basename, start_task,
+            "-o", "{}/{}{}.{}".format(params.OUTPUT_DIR,
+                                      output_basename,
+                                      start_task,
                                       output_format),
             "-t", "{}".format(num_cores)
         ]
@@ -71,8 +73,9 @@ def exec_cmd(cmd):
 
 def run_lux_renderer_task(start_task, outfilebasename, output_format,
                           scene_file_src, scene_dir):
-
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".lxs", dir=params.WORK_DIR,
+    with tempfile.NamedTemporaryFile(mode="w",
+                                     suffix=".lxs",
+                                     dir=params.WORK_DIR,
                                      delete=False) as tmp_scene_file:
         tmp_scene_file.write(scene_file_src)
 
@@ -95,7 +98,9 @@ def run_lux_renderer_task(start_task, outfilebasename, output_format,
     if exit_code is not 0:
         sys.exit(exit_code)
     else:
-        outfile = "{}/{}{}.{}".format(params.OUTPUT_DIR, outfilebasename, start_task,
+        outfile = "{}/{}{}.{}".format(params.OUTPUT_DIR,
+                                      outfilebasename,
+                                      start_task,
                                       output_format)
         if not os.path.isfile(outfile):
             flm_file = find_flm(params.WORK_DIR)
@@ -111,5 +116,3 @@ def run_lux_renderer_task(start_task, outfilebasename, output_format,
 run_lux_renderer_task(params.start_task, params.outfilebasename,
                       params.output_format, params.scene_file_src,
                       params.scene_dir)
-
-

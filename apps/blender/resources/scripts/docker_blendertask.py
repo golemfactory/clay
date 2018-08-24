@@ -24,7 +24,9 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
         "-b", "{}".format(scene_file),
         "-y",  # enable scripting by default
         "-P", "{}".format(script_file),
-        "-o", "{}/{}_{}".format(params.OUTPUT_DIR, outfilebasename, start_task),
+        "-o", "{}/{}_{}".format(params.OUTPUT_DIR,
+                                outfilebasename,
+                                start_task),
         "-noaudio",
         "-F", "{}".format(output_format.upper()),
         "-t", "{}".format(cpu_count()),
@@ -58,4 +60,3 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task,
 
 run_blender_task(params.outfilebasename, params.scene_file, params.script_src,
                  params.start_task, params.frames, params.output_format)
-
