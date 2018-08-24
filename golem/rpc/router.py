@@ -192,7 +192,7 @@ class CrossbarRouter(object):
                                 }
                             },
                                 {
-                                    "uri": 'comp.tasks.state_update',
+                                    "uri": 'comp.task.state_update',
                                     "allow": {
                                         "call": True,
                                         "register": False,

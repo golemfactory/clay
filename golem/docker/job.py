@@ -48,6 +48,7 @@ class DockerJob(object):
     PARAMS_FILE = "params.py"
 
     # Flags are used to pass container-related info to tasks running in docker
+    # they are available in params.FLAGS dictionary
     FLAGS = {"MESSAGES_AVAILABLE": True}
 
     def __init__(self, image, script_src, parameters,

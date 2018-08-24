@@ -1468,8 +1468,8 @@ class Client(HardwarePresetsMixin):
         STATE_UPDATE_TIMEOUT = 10
         update = StateUpdateData.from_dict(data)
 
-        def process_value(*args, **kwargs):
-            ts: 'TaskSession' = self.task_server.task_sessions[update.info.subtask_id]  # noqa pylint: disable=line-too-long
+        def process_value(*_, **__):
+            ts: 'TaskSession' = self.task_server.task_sessions[update.info.subtask_id]  # pylint:disable=line-too-long
             resp = ts.send_state_update(update)
             resp.event.wait(timeout=STATE_UPDATE_TIMEOUT)
             update.data = resp.data

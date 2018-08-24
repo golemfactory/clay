@@ -117,7 +117,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
             use_monitor=False
         )
         assert self.client.get_payments_list() == \
-            ets.get_payments_list.return_value
+               ets.get_payments_list.return_value
 
     def test_get_incomes(self, *_):
         ets = Mock()
@@ -363,7 +363,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         self.client.task_server = Mock()
         self.client.restart_frame_subtasks('tid', 10)
 
-        self.client.task_server.task_manager.restart_frame_subtasks.\
+        self.client.task_server.task_manager.restart_frame_subtasks. \
             assert_called_with('tid', 10)
 
     def test_presets(self, *_):
@@ -539,13 +539,13 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         assert task_id != new_task_id
         assert task_manager.tasks_states[
-            task_id].status == TaskStatus.restarted
+                   task_id].status == TaskStatus.restarted
         assert all(
             ss.subtask_status == SubtaskStatus.restarted
             for ss
             in task_manager.tasks_states[task_id].subtask_states.values())
         assert task_manager.tasks_states[new_task_id].status \
-            == TaskStatus.waiting
+               == TaskStatus.waiting
 
     @patch('golem.client.get_timestamp_utc')
     def test_clean_old_tasks_no_tasks(self, *_):
@@ -638,14 +638,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
                 perf_rank=0.0,
                 exp_desired_workers=0,
                 exp_potential_workers=0):
-
             client.config_desc.initial_mask_size_factor = mask_size_factor
             client.config_desc.min_num_workers_for_mask = min_num_workers
 
             with patch.object(client, 'p2pservice', spec=P2PService) as p2p, \
                     patch.object(client, 'task_server', spec=TaskServer), \
                     patch('golem.client.Mask') as mask:
-
                 p2p.get_estimated_network_size.return_value = network_size
                 p2p.get_performance_percentile_rank.return_value = perf_rank
 
@@ -874,8 +872,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         super(TestClientRPCMethods, self).setUp()
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler'), \
-                patch('golem.client.TransactionSystem',
-                      return_value=Mock()):
+             patch('golem.client.TransactionSystem',
+                   return_value=Mock()):
             apps_manager = AppsManager()
             apps_manager.load_all_apps()
             client = Client(
@@ -967,9 +965,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
              "subtask_time": 2.5,
              "num_subtasks": 5}
         ) == {
-            "GNT": 1875.0,
-            "ETH": 0.0001,
-        }
+                   "GNT": 1875.0,
+                   "ETH": 0.0001,
+               }
 
     @patch('golem.client.get_resources_for_task')
     def test_enqueue_new_task_from_type(self, *_):
@@ -980,7 +978,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.p2pservice.get_estimated_network_size.return_value = 0
 
         task_header = Mock(
-            max_price=1 * 10**18,
+            max_price=1 * 10 ** 18,
             task_id=str(uuid.uuid4()),
             subtask_timeout=37
         )
@@ -995,7 +993,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.enqueue_new_task(task)
         assert not c.task_server.task_manager.create_task.called
         task_mock = MagicMock()
-        task_mock.header.max_price = 1 * 10**18
+        task_mock.header.max_price = 1 * 10 ** 18
         task_mock.header.subtask_timeout = 158
         task_mock.total_tasks = 3
         price = task_mock.header.max_price * task_mock.total_tasks
@@ -1005,7 +1003,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         c.concent_service = Mock()
         c.concent_service.enabled = True
         c.enqueue_new_task(dict(
-            max_price=1 * 10**18,
+            max_price=1 * 10 ** 18,
             task_id=str(uuid.uuid4())
         ))
         c.funds_locker.persist = True
@@ -1151,9 +1149,9 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
         with patch("golem.docker.image.DockerImage.is_available",
                    return_value=True), \
-                patch("golem.docker.job.DockerJob.__init__",
-                      side_effect=raise_exc), \
-                self.assertRaisesRegex(Exception, 'Test exception'):
+             patch("golem.docker.job.DockerJob.__init__",
+                   side_effect=raise_exc), \
+             self.assertRaisesRegex(Exception, 'Test exception'):
             sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
 
     def test_config_changed(self, *_):
@@ -1416,6 +1414,38 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.client.task_server.acl.disallow.assert_called_once_with(
             'node_id', persist=True)
 
+    def test_receive_state_update_from_subtask(self):
+        message = {
+            "info": {"task_id": "abc",
+                     "subtask_id": "subabc",
+                     "state_update_id": "1"},
+            "data": {"aa": "bb"}
+        }
+        reactor_mock = MagicMock()
+
+        with patch("twisted.internet.reactor", reactor_mock):
+            self.client.receive_state_update_from_subtask(message)
+            reactor_mock.callInThread.assert_called_once()
+
+        with patch("twisted.internet.reactor", reactor_mock):
+            self.client.receive_state_update_from_subtask(message)
+            reactor_mock.callInThread.assert_called_once()
+
+        # TODO
+        # def process_value(*_, **__):
+        #     ts: 'TaskSession' = self.task_server.task_sessions[update.info.subtask_id]  # pylint:disable=line-too-long
+        #     resp = ts.send_state_update(update)
+        #     resp.event.wait(timeout=STATE_UPDATE_TIMEOUT)
+        #     update.data = resp.data
+        #     return update.to_dict()
+        #
+        # d = Deferred()
+        # d.addCallback(process_value)
+        #
+        # from twisted.internet import reactor
+        # reactor.callInThread(d.callback, None)
+        # return d
+
     def test_run_test_task_success(self, *_):
         result = {'result': 'result'}
         estimated_memory = 1234
@@ -1432,8 +1462,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
             _self.success_callback(result, estimated_memory, time_spent, **more)
 
-        with patch.object(self.client.task_server.task_manager, 'create_task'),\
-                patch('golem.client.TaskTester.run', _run):
+        with patch.object(self.client.task_server.task_manager, 'create_task'), \
+             patch('golem.client.TaskTester.run', _run):
             self.client._run_test_task({})
 
         self.assertIsInstance(self.client.task_test_result, str)
@@ -1460,8 +1490,8 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
 
             _self.error_callback(*error, **more)
 
-        with patch.object(self.client.task_server.task_manager, 'create_task'),\
-                patch('golem.client.TaskTester.run', _run):
+        with patch.object(self.client.task_server.task_manager, 'create_task'), \
+             patch('golem.client.TaskTester.run', _run):
             self.client._run_test_task({})
 
         self.assertIsInstance(self.client.task_test_result, str)
