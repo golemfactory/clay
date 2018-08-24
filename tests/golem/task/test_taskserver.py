@@ -11,6 +11,7 @@ from golem_messages import factories as msg_factories
 from requests import HTTPError
 
 import golem
+from apps.core.task.coretask import AcceptClientVerdict
 from golem import model
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -852,20 +853,22 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         extra_data.ctd = ComputeTaskDef()
         extra_data.ctd['task_id'] = task_mock.header.task_id
         extra_data.ctd['subtask_id'] = "xxyyzz"
-        extra_data.should_wait = False
         task_mock.query_extra_data.return_value = extra_data
         task_mock.task_definition.subtask_timeout = 3600
+        task_mock.should_accept_client.return_value = \
+            AcceptClientVerdict.ACCEPTED
 
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states[task_id].status = \
             ts.task_manager.activeStatus[0]
-        subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
+        subtask = ts.task_manager.get_next_subtask(
             "DEF",
             "DEF",
             task_id,
             1000, 10,
             5, 10, 2,
             "10.10.10.10")
+        assert subtask is not None
         expected_value = ceil(1031 * 1010 / 3600)
         ts.task_manager.set_subtask_value("xxyyzz", expected_value)
         prev_calls = trust.COMPUTED.increase.call_count
@@ -887,7 +890,6 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         extra_data = Mock()
         extra_data.ctd = ComputeTaskDef()
         extra_data.ctd['subtask_id'] = "xxyyzz"
-        extra_data.should_wait = False
 
         task_mock = get_mock_task("xyz", "xxyyzz")
         task_id = task_mock.header.task_id
@@ -895,13 +897,16 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         extra_data.ctd['task_id'] = task_id
         task_mock.query_extra_data.return_value = extra_data
         task_mock.task_definition.subtask_timeout = 3600
+        task_mock.should_accept_client.return_value = \
+            AcceptClientVerdict.ACCEPTED
 
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states[task_id].status = \
             ts.task_manager.activeStatus[0]
-        subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
+        subtask = ts.task_manager.get_next_subtask(
             "DEF", "DEF", task_id, 1000, 10, 5, 10, 2, "10.10.10.10")
 
+        assert subtask is not None
         ts.accept_result("xxyyzz", "key", "eth_address")
         self.assertEqual(
             ts.client.transaction_system.add_payment_info.call_count, 0)
