@@ -28,8 +28,8 @@ def run_lux_merger_task(output_filename, flm_files):
     cmd = format_lux_merger_cmd(output_filename, flm_files)
     # Create symlinks for all the resources from the scene dir
     # (from which scene_file_src is read) to the work dir:
-    for f in os.listdir(params.RESOURCE_DIR):
-        source = os.path.join(params.RESOURCE_DIR, f)
+    for f in os.listdir(params.RESOURCES_DIR):
+        source = os.path.join(params.RESOURCES_DIR, f)
         target = os.path.join(params.WORK_DIR, f)
         try:
             os.symlink(source, target)
