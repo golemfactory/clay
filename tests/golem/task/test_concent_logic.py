@@ -392,7 +392,7 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
             'golem.task.tasksession.taskkeeper.compute_subtask_value',
             mock.Mock(return_value=667),
         ):
-        task_session._react_to_want_to_compute_task(self.msg)
+            task_session._react_to_want_to_compute_task(self.msg)
 
         send_mock.assert_called()
         ttc = send_mock.call_args_list[2][0][0]
