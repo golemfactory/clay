@@ -672,7 +672,7 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.PreReqSearchComponent">
     <ROW SearchKey="SystemFolderfile.dll" Prereq="MicrosoftVisualC" SearchType="2" SearchString="HKLM\Software\Wow6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\x64\Version" VerMin="14.0.23026" Order="1" Property="PreReqSearch"/>
-    <ROW SearchKey="SystemFolderfile.dll_1" Prereq="DockerToolbox" SearchType="0" SearchString="[ProgramFiles64Folder]\Docker Toolbox\docker.exe" VerMin="18.3" Order="1" Property="PreReqSearch_1"/>
+    <ROW SearchKey="SystemFolderfile.dll_1" Prereq="DockerToolbox" SearchType="0" SearchString="[ProgramFiles64Folder]\Docker Toolbox\docker.exe" VerMin="18.6" Order="1" Property="PreReqSearch_1"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.SynchronizedFolderComponent">
     <ROW Directory_="APPDIR" SourcePath="Installer\Installer_Win\install_tmp" Feature="MainFeature" ExcludePattern="*~|#*#|%*%|._|CVS|.cvsignore|SCCS|vssver.scc|mssccprj.scc|vssver2.scc|.svn|.DS_Store" ExcludeFlags="6"/>
