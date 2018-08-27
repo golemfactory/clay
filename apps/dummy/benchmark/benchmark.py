@@ -60,6 +60,8 @@ class DummyTaskBenchmark(CoreBenchmark):
         verification_data["subtask_info"] = sd
         verification_data["results"] = results
 
-        self.verifier.start_verification(verification_data)
+        self.verifier.start_verification(verification_data,
+                                         lambda subtask_id, verdict,
+                                                result: None)
 
         return self.verifier.state == SubtaskVerificationState.VERIFIED

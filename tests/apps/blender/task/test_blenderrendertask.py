@@ -115,7 +115,7 @@ class TestBlenderFrameTask(TempDirFixture):
         self.assertEqual(len(self.bt.preview_task_file_path),
                          len(self.bt.frames))
 
-    @mock.patch('apps.blender.verification_queue.deadline_to_timeout')
+    @mock.patch('apps.blender.verification_task.deadline_to_timeout')
     def test_computation_failed_or_finished(self, mock_dtt):
         mock_dtt.return_value = 1.0
         assert self.bt.total_tasks == 6
@@ -144,7 +144,7 @@ class TestBlenderFrameTask(TempDirFixture):
         img = Image.new("RGB", (self.bt.res_x, self.bt.res_y // 2))
         img.save(file1, "PNG")
 
-        def verification_finished1(verification_data):
+        def verification_finished1(verification_data, callback):
             result = {'reference_data': None,
                       'message': "",
                       'time_started': None,
@@ -167,7 +167,7 @@ class TestBlenderFrameTask(TempDirFixture):
 
         BlenderRenderTask.VERIFICATION_QUEUE._reset()
 
-        def verification_finished2(verification_data):
+        def verification_finished2(verification_data, callback):
             result = {'reference_data': None,
                       'message': "",
                       'time_started': None,

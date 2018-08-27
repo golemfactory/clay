@@ -1,5 +1,4 @@
 import logging
-import threading
 import queue
 from types import FunctionType
 from typing import Optional, Type, Dict
@@ -8,7 +7,6 @@ from apps.blender.verification_task import VerificationTask
 from twisted.internet.defer import Deferred, gatherResults
 
 from golem_verificator.verifier import Verifier
-from golem.core.common import deadline_to_timeout
 
 logger = logging.getLogger("apps.blender.verification")
 
@@ -16,15 +14,11 @@ logger = logging.getLogger("apps.blender.verification")
 class VerificationQueue:
 
     def __init__(self, concurrency: int = 1) -> None:
-
         self._concurrency = concurrency
         self._queue: queue.Queue = queue.Queue()
-
-        self._lock = threading.Lock()
         self._jobs: Dict[str, Deferred] = dict()
         self.callbacks: Dict[VerificationTask, FunctionType] = dict()
         self._paused = False
-        self.already_handled = False
 
     def submit(self,
                verifier_class: Type[Verifier],
@@ -55,8 +49,7 @@ class VerificationQueue:
 
     @property
     def can_run(self) -> bool:
-        with self._lock:
-            return not self._paused and len(self._jobs) < self._concurrency
+        return not self._paused and len(self._jobs) < self._concurrency
 
     def _process_queue(self) -> None:
         if self.can_run:
@@ -71,40 +64,21 @@ class VerificationQueue:
             return None
 
     def _run(self, entry: VerificationTask) -> None:
-        self.already_handled = False
-        deferred_job = Deferred()
         subtask_id = entry.subtask_id
-
-        with self._lock:
-            self._jobs[subtask_id] = deferred_job
 
         logger.info("Running verification of subtask %r", subtask_id)
 
         def callback(*args, **kwargs):
-            with self._lock:
-                if not self.already_handled:
-                    deferred_job.callback(True)
-                    self.already_handled = True
-                    self._jobs.pop(subtask_id, None)
-                else:
-                    deferred_job.cancel()
-
             logger.info("Finished verification of subtask %r", subtask_id)
             try:
                 self.callbacks[entry](*args, ** kwargs)
             finally:
+                self._jobs.pop(subtask_id, None)
                 self._process_queue()
 
-        try:
-            entry.start(callback)
-        except Exception as exc:  # pylint: disable=broad-except
-            with self._lock:
-                deferred_job.errback(exc)
-                self._jobs.pop(subtask_id, None)
-
-            logger.error("Failed to start verification of subtask %r: %r",
-                         subtask_id, exc)
-            self._process_queue()
+        result = entry.start(callback)
+        if result:
+            self._jobs[subtask_id] = result
 
     def _reset(self) -> None:
         self._queue = queue.Queue()

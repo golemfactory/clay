@@ -294,6 +294,9 @@ class BlenderReferenceGenerator:
                     self.rendered_crops_results[i][1],
                     self.rendered_crops_results[i][2], i)
 
+    def stop(self):
+        self.stopped = True
+
     def schedule_crop_job(self, verification_context, task_definition,
                           crop_number, crop_failure):
 

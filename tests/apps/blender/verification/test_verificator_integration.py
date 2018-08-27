@@ -96,9 +96,6 @@ class TestVerificatorModuleIntegration(TempDirFixture):
             # pylint: disable=unused-argument
             d.callback(True)
 
-        def verification_finished():
-            print("Verification finished")
-
         verification_data = {}
         verification_data['subtask_info'] = self.subtask_info
         verification_data['results'] = []
@@ -106,14 +103,13 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         verification_data['resources'] = self.resources
         verification_data['paths'] = os.path.dirname(self.resources[0])
 
-        verifier = BlenderRenderTask.VERIFIER_CLASS(verification_finished,
-                                                    verification_data)
+        verifier = BlenderRenderTask.VERIFIER_CLASS(verification_data)
         verifier.default_crops_number = 1
         verifier.current_results_files = ['tests/apps/blender/verification/'
                                           'test_data/very_bad_image.png']
 
-        verifier.success = success
-        verifier.failure = failure
+        verifier.finished.addCallback(success)
+        verifier.finished.addErrback(failure)
         verifier.subtask_info = self.subtask_info
         verifier.resources = self.resources
 
@@ -138,9 +134,6 @@ class TestVerificatorModuleIntegration(TempDirFixture):
             # pylint: disable=unused-argument
             assert False
 
-        def verification_finished():
-            logger.info("Verification finished")
-
         verification_data = {}
         verification_data['subtask_info'] = self.subtask_info
         verification_data['results'] = []
@@ -148,14 +141,13 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         verification_data['resources'] = self.resources
         verification_data['paths'] = os.path.dirname(self.resources[0])
 
-        verifier = BlenderRenderTask.VERIFIER_CLASS(verification_finished,
-                                                    verification_data)
+        verifier = BlenderRenderTask.VERIFIER_CLASS(verification_data)
         verifier.default_crops_number = 1
         verifier.current_results_files = \
             ['tests/apps/blender/verification/test_data/GolemTask_10001.png']
 
-        verifier.success = success
-        verifier.failure = failure
+        verifier.finished.addCallback(success)
+        verifier.finished.addErrback(failure)
         verifier.subtask_info = self.subtask_info
         verifier.resources = self.resources
 
@@ -181,9 +173,6 @@ class TestVerificatorModuleIntegration(TempDirFixture):
             # pylint: disable=unused-argument
             d.callback(True)
 
-        def verification_finished():
-            logger.info("Verification finished")
-
         verification_data = {}
         verification_data['subtask_info'] = self.subtask_info
         verification_data['results'] = []
@@ -191,14 +180,13 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         verification_data['resources'] = self.resources
         verification_data['paths'] = os.path.dirname(self.resources[0])
 
-        verifier = BlenderRenderTask.VERIFIER_CLASS(verification_finished,
-                                                    verification_data)
+        verifier = BlenderRenderTask.VERIFIER_CLASS(verification_data)
         verifier.default_crops_number = 1
         verifier.current_results_files = \
             ['tests/apps/blender/verification/test_data/almost_good_image.png']
 
-        verifier.success = success
-        verifier.failure = failure
+        verifier.finished.addCallback(success)
+        verifier.finished.addErrback(failure)
         verifier.subtask_info = self.subtask_info
         verifier.resources = self.resources
 
@@ -227,9 +215,6 @@ class TestVerificatorModuleIntegration(TempDirFixture):
             # pylint: disable=unused-argument
             assert False
 
-        def verification_finished():
-            logger.info("Verification finished")
-
         verification_data = {}
         verification_data['subtask_info'] = self.subtask_info
         verification_data['results'] = []
@@ -239,15 +224,14 @@ class TestVerificatorModuleIntegration(TempDirFixture):
             self.blender_reference_generator
         verification_data['paths'] = os.path.dirname(self.resources[0])
 
-        verifier = BlenderRenderTask.VERIFIER_CLASS(verification_finished,
-                                                    verification_data)
+        verifier = BlenderRenderTask.VERIFIER_CLASS(verification_data)
         verifier.default_crops_number = 1
         verifier.current_results_files = [
             'tests/apps/blender/verification/test_data/GolemTask_10001.png',
             'tests/apps/blender/verification/test_data/GolemTask_10002.png']
 
-        verifier.success = success
-        verifier.failure = failure
+        verifier.finished.addCallback(success)
+        verifier.finished.addErrback(failure)
         verifier.subtask_info = self.subtask_info
         verifier.resources = self.resources
 
