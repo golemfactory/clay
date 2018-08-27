@@ -21,10 +21,12 @@ CrossbarRouterOptions = namedtuple(
 )
 
 
+# pylint: disable=too-many-instance-attributes
 class CrossbarRouter(object):
     serializers = ['msgpack']
 
-    def __init__(self,  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments
+    def __init__(self,
                  datadir: str,
                  host: str = CROSSBAR_HOST,
                  port: int = CROSSBAR_PORT,
@@ -178,15 +180,16 @@ class CrossbarRouter(object):
                         },
                         {
                             "name": 'golem_docker',
-                            "permissions": [{
-                                "uri": '*',
-                                "allow": {
-                                    "call": False,
-                                    "register": False,
-                                    "publish": False,
-                                    "subscribe": False
-                                }
-                            },
+                            "permissions": [
+                                {
+                                    "uri": '*',
+                                    "allow": {
+                                        "call": False,
+                                        "register": False,
+                                        "publish": False,
+                                        "subscribe": False
+                                    }
+                                },
                                 {
                                     # more specific config takes precedence
                                     "uri": f'{DOCKER_URI}.*',
@@ -196,7 +199,8 @@ class CrossbarRouter(object):
                                         "publish": False,
                                         "subscribe": False
                                     }
-                                }]
+                                }
+                            ]
                         }]
                 }],
             }]

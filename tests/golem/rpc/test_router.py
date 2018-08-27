@@ -70,6 +70,7 @@ class MockService(object):
 class _TestRouter(TestDirFixtureWithReactor):
     TIMEOUT = 20
 
+    # pylint: disable=too-many-instance-attributes
     class State(object):
 
         def __init__(self, reactor):
@@ -93,6 +94,9 @@ class _TestRouter(TestDirFixtureWithReactor):
             self.crsb_backend_secret = None
             self.subscribe = False
 
+            self.cmanager = None
+            self.method = None
+
         def add_errors(self, *errors):
             print('Errors: {}'.format(errors))
             if errors:
@@ -109,7 +113,7 @@ class _TestRouter(TestDirFixtureWithReactor):
         user = self.state.crsb_backend
         secret = self.state.crsb_backend_secret
 
-        s = self.Session(
+        s = self.Session(  # pylint: disable=no-member
             self.state.router.address,
             methods=object_method_map(
                 self.state.backend,
@@ -133,7 +137,7 @@ class _TestRouter(TestDirFixtureWithReactor):
             MockService.events
         ) if self.state.subscribe else None
 
-        s = self.Session(
+        s = self.Session(  # pylint: disable=no-member
             self.state.router.address,
             events=events,
             crsb_user=user,
@@ -181,7 +185,7 @@ class _TestRouter(TestDirFixtureWithReactor):
     def _start_router(self, *args, **kwargs):
         raise NotImplementedError()
 
-    def _frontend_session_started(self):
+    def _frontend_session_started(self, *_):
         raise NotImplementedError()
 
 
@@ -242,6 +246,7 @@ class TestRPCNoAuth(_TestRouter):
         yield self.state.router.stop()
         self.state.done = True
 
+    # pylint: disable=arguments-differ
     def _start_router(self):
         # pylint: disable=no-member
         self.state.router = CrossbarRouter(
@@ -250,7 +255,7 @@ class TestRPCNoAuth(_TestRouter):
             generate_secrets=self.state.generate_secrets
         )
         # set a new role for admin
-        self.state.router.config["workers"][0]["transports"][0]["auth"]["anonymous"] = { # noqa pylint disable=line-too-long
+        self.state.router.config["workers"][0]["transports"][0]["auth"]["anonymous"] = {  # noqa pylint: disable=line-too-long
             "type": "static",
             "role": "golem_admin"
         }
@@ -272,6 +277,7 @@ class TestRPCNoAuth(_TestRouter):
 
         # These methods are for auth, which is not used in this test
         # and with them, crossbar doesn't work
+        # pylint: disable=attribute-defined-outside-init
         self.Session = type("Session_no_auth",
                             Session.__bases__,
                             dict(Session.__dict__))
@@ -291,19 +297,24 @@ class _TestRPCAuth(_TestRouter):
     NON_DOCKER_METHOD = "non_docker_echo"
     TIMEOUT = 10
 
-    @mock.patch("golem.rpc.cert.CertificateManager.get_secret", lambda *_: "secret")  # noqa pylint disable=line-too-long
-    def _start_router(self, port=CROSSBAR_PORT, path=None):
+    @mock.patch("golem.rpc.cert.CertificateManager.get_secret",
+                lambda *_: "secret")
+    # pylint: disable=arguments-differ
+    def _start_router(self, *args, port=CROSSBAR_PORT, path=None, **kwargs):
         self.state.subscribe = False
         path = path if path else self.path
         self.state.router = CrossbarRouter(datadir=path,
                                            ssl=False,
                                            generate_secrets=False,
                                            port=port)
-
+        # pylint: disable=attribute-defined-outside-init
         self.Session = Session
         deferred = self.state.router.start(self.state.reactor)
-        deferred.addCallbacks(self._start_backend_session,
-                              self.state.add_errors)
+
+        deferred.addCallbacks(  # pylint: disable=no-member
+            self._start_backend_session,
+            self.state.add_errors
+        )
 
     @inlineCallbacks
     def _frontend_session_started(self, *_):
@@ -363,27 +374,29 @@ class _TestRPCAuthWrongSecret(_TestRPCAuth):
         self.state.router = CrossbarRouter(datadir=self.path,
                                            ssl=False,
                                            generate_secrets=True)
-        self.cmanager = CertificateManager(
+        self.state.cmanager = CertificateManager(
             os.path.join(self.path, CROSSBAR_DIR)
         )
         self.state.crsb_frontend = self.GOLEMCLI
         self.state.crsb_backend = self.GOLEMAPP
 
 
+# pylint: disable=too-many-ancestors
 class TestRPCAuthWrongBackendSecret(_TestRPCAuthWrongSecret):
     def test_rpc_auth_wrong_backend_secret(self):
         self._prepare_wrong_secret()
-        self.state.crsb_frontend_secret = self.cmanager.get_secret(
+        self.state.crsb_frontend_secret = self.state.cmanager.get_secret(
             self.state.crsb_frontend
         )
         self.state.crsb_backend_secret = "wrong_secret"
         self._run_test(True, port=CROSSBAR_PORT, path=self.path)
 
 
+# pylint: disable=too-many-ancestors
 class TestRPCAuthWrongFrontendSecret(_TestRPCAuthWrongSecret):
     def test_rpc_auth_wrong_backend_secret(self):
         self._prepare_wrong_secret()
-        self.state.crsb_frontend_secret = self.cmanager.get_secret(
+        self.state.crsb_frontend_secret = self.state.cmanager.get_secret(
             self.state.crsb_frontend
         )
         self.state.crsb_backend_secret = "wrong_secret"

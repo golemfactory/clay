@@ -56,7 +56,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  use_docker_manager: bool = True,
                  geth_address: Optional[str] = None,
                  password: Optional[str] = None
-                 ) -> None:
+                ) -> None:
 
         # DO NOT MAKE THIS IMPORT GLOBAL
         # otherwise, reactor will install global signal handlers on import

@@ -52,7 +52,8 @@ class WebSocketAddress(RPCAddress):
 
 class Session(ApplicationSession):
 
-    def __init__(self, address, methods=None, events=None,  # noqa # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments
+    def __init__(self, address, methods=None, events=None,
                  cert_manager=None, use_ipv6=False,
                  crsb_user=None, crsb_user_secret=None) -> None:
         self.address = address
@@ -72,7 +73,9 @@ class Session(ApplicationSession):
         self.config = types.ComponentConfig(realm=address.realm)
         self.crsb_user = crsb_user
         self.crsb_user_secret = crsb_user_secret
-        super(self.__class__, self).__init__(self.config)  # noqa type: ignore
+
+        # pylint:disable=bad-super-call
+        super(self.__class__, self).__init__(self.config)  # type: ignore
 
     def connect(self, auto_reconnect=True):
         def init(proto):
