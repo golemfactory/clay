@@ -1,3 +1,7 @@
+import datetime
+
+from mock import patch
+
 from golem.task.taskpreset import (get_task_presets, logger,
                                    delete_task_preset, save_task_preset,
                                    TaskPreset)
@@ -40,7 +44,9 @@ class TestTaskPresets(TestWithDatabase, LogTestCase):
         presets = get_task_presets("NewTask")
         assert len(presets) == 1
 
-    def test_preset_errors(self):
+    @patch('golem.database.database.GolemSqliteDatabase.RETRY_TIMEOUT',
+           datetime.timedelta(seconds=1))
+    def test_preset_errors(self, *_):
         TaskPreset.drop_table()
         with self.assertLogs(logger, level="WARNING"):
             delete_task_preset("NewTask", "NewPreset")
