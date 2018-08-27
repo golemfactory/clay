@@ -70,7 +70,7 @@ class Session(ApplicationSession):
         self._use_ipv6 = use_ipv6
 
         self.config = types.ComponentConfig(realm=address.realm)
-        super(Session, self).__init__(self.config)  # type: ignore
+        super(Session, self).__init__(self.config)
 
     def connect(self, auto_reconnect=True):
 

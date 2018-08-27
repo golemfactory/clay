@@ -69,7 +69,8 @@ class DockerJob(object):
         """
         if not isinstance(image, DockerImage):
             raise TypeError(
-                'Incorrect image type: {}. Should be: DockerImage'.format(type(image)))
+                'Incorrect image type: {}. '
+                'Should be: DockerImage'.format(type(image)))
         self.image = image
         self.script_src = script_src
         self.parameters = parameters if parameters else {}
@@ -217,7 +218,7 @@ class DockerJob(object):
             prev_mod = stat.S_IMODE(os.stat(dst_dir).st_mode)
         except Exception as e:
             logger.debug(
-                "Cannot get mode for {}, reason: {}".format(dst_dir, e))
+                "Cannot get mode for %s, reason: %s", dst_dir, e)
 
         if mod is not None:
             try:

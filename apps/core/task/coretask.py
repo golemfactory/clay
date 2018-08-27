@@ -107,8 +107,7 @@ class CoreTask(Task):
                  max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
                  resource_size=None,
                  root_path=None,
-                 total_tasks=0
-                ):
+                 total_tasks=0):
         """Create more specific task implementation
         """
 
@@ -125,7 +124,8 @@ class CoreTask(Task):
         else:
             self.resource_size = resource_size
 
-        self.environment = self.ENVIRONMENT_CLASS()  # pylint:disable=not-callable
+        # pylint: disable=not-callable
+        self.environment = self.ENVIRONMENT_CLASS()
 
         # src_code stuff
         self.main_program_file = self.environment.main_program_file
@@ -169,11 +169,11 @@ class CoreTask(Task):
 
         self.root_path = root_path
         # for each subtask keep info about stdout received from computing node
-        self.stdout = {}
+        self.stdout: Dict[str, str] = {}
         # for each subtask keep info about stderr received from computing node
-        self.stderr = {}
+        self.stderr: Dict[str, str] = {}
         # for each subtask keep info about files containing results
-        self.results = {}
+        self.results: Dict[str, list] = {}
 
         self.res_files = {}
         self.tmp_dir = None
@@ -542,7 +542,8 @@ def accepting(query_extra_data_func):
                       num_cores=1,
                       node_id: Optional[str] = None,
                       node_name: Optional[str] = None) -> Task.ExtraData:
-        verdict = self._accept_client(node_id)  # pylint:disable=protected-access
+        # pylint:disable=protected-access
+        verdict = self._accept_client(node_id)
         if verdict != AcceptClientVerdict.ACCEPTED:
 
             should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
@@ -582,7 +583,9 @@ class CoreTaskBuilder(TaskBuilder):
         self.environment = None
 
     def build(self):
-        task = self.TASK_CLASS(**self.get_task_kwargs())  # pylint:disable=abstract-class-instantiated
+        # pylint:disable=abstract-class-instantiated
+        task = self.TASK_CLASS(**self.get_task_kwargs())
+
         task.initialize(self.dir_manager)
         return task
 
@@ -604,7 +607,7 @@ class CoreTaskBuilder(TaskBuilder):
         return definition
 
     @classmethod
-    def build_definition(cls,
+    def build_definition(cls,  # type: ignore
                          task_type: CoreTaskTypeInfo,
                          dictionary: Dict[str, Any],
                          minimal=False):

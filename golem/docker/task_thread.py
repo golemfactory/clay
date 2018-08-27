@@ -152,7 +152,7 @@ class DockerTaskThread(TaskThread):
                          if self.docker_manager else None),
         )
 
-        with DockerJob(**params) as job, MemoryChecker(self.check_mem) as mc:  # pylint:disable=line-too-long type: ignore
+        with DockerJob(**params) as job, MemoryChecker(self.check_mem) as mc:
             self.job = job
             job.start()
 

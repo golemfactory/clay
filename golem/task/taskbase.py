@@ -2,7 +2,7 @@ import abc
 import hashlib
 import logging
 import time
-from typing import List, Type, Optional, Tuple, Any, Union
+from typing import List, Type, Optional, Tuple, Any
 
 import golem_messages
 
@@ -289,8 +289,7 @@ class Task(abc.ABC):
         self.header = header
         self.task_definition = task_definition
 
-        self.listeners: 'List[Union[ClientTaskComputerEventListener, TaskManager]]' = [
-            ]  # pylint:disable=line-too-long type: ignore
+        self.listeners = []  # type: List[TaskEventListener]
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -319,7 +318,8 @@ class Task(abc.ABC):
     def register_listener(self, listener):
         if not isinstance(listener, TaskEventListener):
             raise TypeError(
-                "Incorrect 'listener' type: {}. Should be: TaskEventListener".format(type(listener)))
+                "Incorrect 'listener' type: {}. "
+                "Should be: TaskEventListener".format(type(listener)))
         self.listeners.append(listener)
 
     def unregister_listener(self, listener):
@@ -351,7 +351,7 @@ class Task(abc.ABC):
         pass  # Implement in derived class
 
     @abc.abstractmethod
-    def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # pylint:disable=line-too-long
+    def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa pylint:disable=line-too-long
         pass  # Implement in derived methods
 
     def create_reference_data_for_task_validation(self):
