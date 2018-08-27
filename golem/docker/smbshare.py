@@ -14,11 +14,13 @@ def create_share(user_name: str, shared_dir_path: str) -> None:
         raise OSError
 
     try:
-        subprocess.run([
-            'powershell.exe',
-            '-File', SCRIPT_PATH,
-            '-UserName', user_name,
-            '-SharedDirPath', shared_dir_path],
+        subprocess.run(
+            [
+                'powershell.exe',
+                '-File', SCRIPT_PATH,
+                '-UserName', user_name,
+                '-SharedDirPath', shared_dir_path
+            ],
             timeout=SCRIPT_TIMEOUT,
             check=True,
             stdout=subprocess.PIPE,
