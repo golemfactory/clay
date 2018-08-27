@@ -565,11 +565,17 @@ class Client(HardwarePresetsMixin):
         _result = Deferred()
 
         # FIXME: Statement only for old DummyTask compatibility #2467
+        task: TaskBase
         if isinstance(task_dict, dict):
             logger.warning('enqueue_new_task called with deprecated dict type')
             task = task_manager.create_task(task_dict)
         else:
             task = task_dict
+
+        if task.header.fixed_header.concent_enabled and \
+                not self.concent_service.enabled:
+            raise Exception("Cannot create task with concent enabled when "
+                            "concent service is disabled")
 
         task_id = task.header.task_id
         self.funds_locker.lock_funds(task)

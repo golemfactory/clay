@@ -56,7 +56,8 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
                  estimated_memory=0,
                  min_version=golem.__version__,
                  max_price: int = 0,
-                 subtasks_count: int = 0) -> None:
+                 subtasks_count: int = 0,
+                 concent_enabled: bool = False) -> None:
         """
         :param max_price: maximum price that this (requestor) node may
         pay for an hour of computation
@@ -75,6 +76,7 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
         self.estimated_memory = estimated_memory
         self.min_version = min_version
         self.max_price = max_price
+        self.concent_enabled = concent_enabled
 
         self.update_checksum()
 
