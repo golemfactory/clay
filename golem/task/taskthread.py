@@ -116,7 +116,7 @@ class TaskThread(threading.Thread):
         # Terminate computation (if any)
         self.end_comp()
 
-        logger.exception("Task computing error")
+        logger.warning("Task computing error")
 
         self.error = True
         self.error_msg = str(exception)

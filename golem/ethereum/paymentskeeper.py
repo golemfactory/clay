@@ -1,6 +1,6 @@
 import logging
 from datetime import datetime
-from typing import Iterable, Tuple, Optional
+from typing import Iterable, List
 
 from eth_utils import encode_hex
 
@@ -29,31 +29,15 @@ class PaymentsDatabase(object):
             return 0
 
     @staticmethod
-    def get_total_payment_for_subtasks(subtask_ids: Iterable[str])\
-            -> Tuple[Optional[int], Optional[int]]:
-        """
-        Get total value and total fee for payments for the given subtask IDs
-        **if all payments for the given subtasks are sent**
-        :param subtask_ids: subtask IDs
-        :return: (total_value, total_fee) if all payments are sent,
-                (None, None) otherwise
-        """
-        payments = Payment.select(
+    def get_subtasks_payments(subtask_ids: Iterable[str]) -> List[Payment]:
+        return list(Payment.select(
+            Payment.subtask,
             Payment.value,
             Payment.details,
-            Payment.status
+            Payment.status,
         ).where(
             Payment.subtask.in_(subtask_ids),
-        )
-        all_sent = all(
-            p.status in [PaymentStatus.sent, PaymentStatus.confirmed]
-            for p in payments)
-        if not payments or not all_sent:
-            return None, None
-
-        # Because details are JSON field
-        return sum(p.value or 0 for p in payments), \
-            sum(p.details.fee or 0 for p in payments)
+        ))
 
     @staticmethod
     def add_payment(subtask_id: str, eth_address: bytes, value: int):
@@ -136,13 +120,7 @@ class PaymentsKeeper:
         """
         return self.db.get_payment_for_subtask(subtask_id)
 
-    def get_total_payment_for_subtasks(self, subtask_ids: Iterable[str]) \
-            -> Tuple[Optional[int], Optional[int]]:
-        """
-        Get total value and total fee for payments for the given subtask IDs
-        **if all payments for the given subtasks are sent**
-        :param subtask_ids: subtask IDs
-        :return: (total_value, total_fee) if all payments are sent,
-                (None, None) otherwise
-        """
-        return self.db.get_total_payment_for_subtasks(subtask_ids)
+    def get_subtasks_payments(
+            self,
+            subtask_ids: Iterable[str]) -> List[Payment]:
+        return self.db.get_subtasks_payments(subtask_ids)

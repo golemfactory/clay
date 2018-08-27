@@ -92,6 +92,7 @@ class DockerJob(object):
             container_log_level = container_logger.getEffectiveLevel()
         self.log_std_streams = 0 < container_log_level <= logging.DEBUG
         self.logging_thread = None
+        self.stop_logging_thread = False
 
     def _prepare(self):
         self.work_dir_mod = self._host_dir_chmod(self.work_dir, "rw")
@@ -183,7 +184,12 @@ class DockerJob(object):
             self.container_id = None
             self.state = self.STATE_REMOVED
         if self.logging_thread:
-            self.logging_thread.join()
+            self.stop_logging_thread = True
+            self.logging_thread.join(1)
+            if self.logging_thread.is_alive():
+                logger.warning("Docker logging thread still running")
+            else:
+                logger.debug("Docker logging stopped")
             self.logging_thread = None
 
     def __enter__(self):
@@ -235,6 +241,8 @@ class DockerJob(object):
         def log_stream(s):
             for chunk in s:
                 container_logger.debug(chunk)
+                if self.stop_logging_thread:
+                    break
 
         stream = client.attach(self.container_id, stdout=True, stderr=True,
                                stream=True, logs=True)
