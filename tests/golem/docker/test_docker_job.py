@@ -29,6 +29,7 @@ class TestDockerJob(DockerTestCase):
         """Abstract method, should be overriden by subclasses"""
         pass
 
+    # pylint:disable=no-self-use
     def _get_test_tag(self):
         return "latest"
 
@@ -41,22 +42,30 @@ class TestDockerJob(DockerTestCase):
 
         self.test_dir = tempfile.mkdtemp(dir=main_dir)
         self.work_dir = tempfile.mkdtemp(prefix="golem-", dir=self.test_dir)
-        self.resources_dir = tempfile.mkdtemp(prefix="golem-", dir=self.test_dir)
+        self.resources_dir = tempfile.mkdtemp(
+            prefix="golem-", dir=self.test_dir)
         self.output_dir = tempfile.mkdtemp(prefix="golem-", dir=self.test_dir)
 
         if not is_windows():
             os.chmod(self.test_dir, 0o770)
 
-        self.image = DockerImage(self._get_test_repository(), tag=self._get_test_tag())
+        self.image = DockerImage(self._get_test_repository(),
+                                 tag=self._get_test_tag())
         self.test_job = None
 
     def testDockerJobInit(self):
         with self.assertRaises(TypeError):
-            DockerJob(None, "scr", [], '/var/lib/resources/', '/var/lib/work', '/var/lib/out')
-        job = DockerJob(self.image, self.TEST_SCRIPT, None, self.resources_dir, self.work_dir, self.output_dir)
+            DockerJob(None, "scr", [], '/var/lib/resources/',
+                      '/var/lib/work', '/var/lib/out')
+        job = DockerJob(self.image, self.TEST_SCRIPT, None, self.resources_dir,
+                        self.work_dir, self.output_dir)
         self.assertEqual(job.image, self.image)
         self.assertEqual(job.script_src, self.TEST_SCRIPT)
-        self.assertEqual(job.parameters, {})
+
+        parameters = {'OUTPUT_DIR': '/golem/output',
+                      'RESOURCES_DIR': '/golem/resources',
+                      'WORK_DIR': '/golem/work'}
+        self.assertEqual(job.parameters, parameters)
         self.assertEqual(job.host_config, {})
         self.assertEqual(job.resources_dir, self.resources_dir)
         self.assertEqual(job.work_dir, self.work_dir)
@@ -359,21 +368,21 @@ with open("../output/out.txt", "w") as f:
             raise Exception("Test exception")
 
         with mock.patch('golem.docker.job.DockerJob.get_status',
-                   side_effect=raise_exception):
+                        side_effect=raise_exception):
             job = self._create_test_job("test_script")
             job.kill()
             assert not local_client.called
             assert not client.kill.called
 
         with mock.patch('golem.docker.job.DockerJob.get_status',
-                   return_value=DockerJob.STATE_KILLED):
+                        return_value=DockerJob.STATE_KILLED):
             job = self._create_test_job("test_script")
             job.kill()
             assert not local_client.called
             assert not client.kill.called
 
         with mock.patch('golem.docker.job.DockerJob.get_status',
-                   return_value=DockerJob.STATE_RUNNING):
+                        return_value=DockerJob.STATE_RUNNING):
             job = self._create_test_job("test_script")
             job.kill()
             assert local_client.called

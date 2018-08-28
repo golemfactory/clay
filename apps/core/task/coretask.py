@@ -150,6 +150,7 @@ class CoreTask(Task):
             task_owner=owner,
             deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
+            subtasks_count=total_tasks,
             resource_size=self.resource_size,
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
