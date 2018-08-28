@@ -288,11 +288,12 @@ class TransactionSystem(LoopingCallService):
     def get_locked_eth(self) -> int:
         if not self._payment_processor:
             raise Exception('Start was not called')
-        eth = self._payment_processor.reserved_eth + \
-            self.eth_for_batch_payment(self._payments_locked)
-        if self._payments_locked > 0 and \
-           self._payment_processor.reserved_eth == 0:
-            eth += self._eth_base_for_batch_payment()
+        payments_num = self._payments_locked + \
+            self._payment_processor.recipients_count
+        if payments_num == 0:
+            return 0
+        eth = self.eth_for_batch_payment(payments_num) + \
+            self._eth_base_for_batch_payment()
         return min(eth, self._eth_balance)
 
     def get_available_gnt(self, account_address: Optional[str] = None) -> int:
@@ -331,8 +332,7 @@ class TransactionSystem(LoopingCallService):
             raise NotEnoughFunds(gnt, self.get_available_gnt(), 'GNT')
 
         eth = self.eth_for_batch_payment(num)
-        if self._payments_locked == 0 and \
-           self._payment_processor.reserved_eth == 0:
+        if self.get_locked_eth() == 0:
             eth += self._eth_base_for_batch_payment()
         eth_available = self.get_available_eth()
         if eth > eth_available:
@@ -402,14 +402,16 @@ class TransactionSystem(LoopingCallService):
         self._incomes_keeper.settled(sender_node, subtask_id, settled_ts)
 
     def eth_for_batch_payment(self, num_payments: int) -> int:
-        if not self._payment_processor:
+        if not self._sci:
             raise Exception('Start was not called')
-        return self._payment_processor.get_gas_cost_per_payment() * num_payments
+        gas_price = \
+            min(self._sci.GAS_PRICE, 2 * self._sci.get_current_gas_price())
+        return gas_price * self._sci.GAS_PER_PAYMENT * num_payments
 
     def _eth_base_for_batch_payment(self) -> int:
-        if not self._payment_processor:
+        if not self._sci:
             raise Exception('Start was not called')
-        return self._payment_processor.ETH_BATCH_PAYMENT_BASE
+        return self._sci.GAS_BATCH_PAYMENT_BASE * self._sci.GAS_PRICE
 
     def get_withdraw_gas_cost(
             self,
