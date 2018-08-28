@@ -84,6 +84,29 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         task = CoreTaskDeabstractedEnv(task_def, node)
         self.assertIsInstance(task, CoreTask)
 
+    def test_init(self):
+        task_def = TestCoreTask._get_core_task_definition()
+        wrong_file = MagicMock()
+        wrong_file.main_program_file = "abcde"
+        self.CoreTaskDeabstracted.ENVIRONMENT_CLASS.return_value = wrong_file
+
+        with patch("logging.Logger.warning") as mock:
+            task = self.CoreTaskDeabstracted(
+                task_definition=task_def,
+                owner=Node(
+                    node_name="ABC",
+                    pub_addr="10.10.10.10",
+                    pub_port=123,
+                    key="key",
+                ),
+                resource_size=1024
+            )
+        mock.assert_called_once()
+        self.assert_("Wrong main program file" in mock.call_args[0][0])
+        self.assert_(task.src_code == "")
+
+        self.CoreTaskDeabstracted.ENVIRONMENT_CLASS = MagicMock()
+
     def _get_core_task(self):
         task_def = TestCoreTask._get_core_task_definition()
         task = self.CoreTaskDeabstracted(

@@ -132,7 +132,7 @@ class CoreTask(Task):
         try:
             with open(self.main_program_file, "r") as src_file:
                 src_code = src_file.read()
-        except IOError as err:
+        except OSError as err:
             logger.warning("Wrong main program file: %s", err)
             src_code = ""
 
