@@ -22,7 +22,7 @@ class XhyveHypervisor(DockerMachineHypervisor):
 
     @report_calls(Component.hypervisor, 'vm.create')
     def create(self, name: Optional[str] = None, **params):
-        name = name or self._docker_vm
+        name = name or self._vm_name
         cpu = params.get(CONSTRAINT_KEYS['cpu'], None)
         mem = params.get(CONSTRAINT_KEYS['mem'], None)
 
@@ -47,7 +47,7 @@ class XhyveHypervisor(DockerMachineHypervisor):
             return False
 
     def constrain(self, name: Optional[str] = None, **params) -> None:
-        name = name or self._docker_vm
+        name = name or self._vm_name
         cpu = params.get(CONSTRAINT_KEYS['cpu'])
         mem = params.get(CONSTRAINT_KEYS['mem'])
 
@@ -69,7 +69,7 @@ class XhyveHypervisor(DockerMachineHypervisor):
     @contextmanager
     @report_calls(Component.hypervisor, 'vm.recover')
     def recover_ctx(self, name: Optional[str] = None):
-        name = name or self._docker_vm
+        name = name or self._vm_name
         with self.restart_ctx(name) as _name:
             yield _name
         self._set_env()
@@ -77,7 +77,7 @@ class XhyveHypervisor(DockerMachineHypervisor):
     @contextmanager
     @report_calls(Component.hypervisor, 'vm.restart')
     def restart_ctx(self, name: Optional[str] = None):
-        name = name or self._docker_vm
+        name = name or self._vm_name
         if self.vm_running(name):
             self.stop_vm(name)
         yield name
@@ -85,7 +85,7 @@ class XhyveHypervisor(DockerMachineHypervisor):
         self._set_env()
 
     def constraints(self, name: Optional[str] = None) -> Dict:
-        name = name or self._docker_vm
+        name = name or self._vm_name
         config = dict()
 
         try:

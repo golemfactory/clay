@@ -21,10 +21,10 @@ class Hypervisor(metaclass=ABCMeta):
 
     def __init__(self,
                  get_config: GetConfigFunction,
-                 docker_vm: str = DOCKER_VM_NAME) -> None:
+                 vm_name: str = DOCKER_VM_NAME) -> None:
 
         self._get_config = get_config
-        self._docker_vm = docker_vm
+        self._vm_name = vm_name
 
     @classmethod
     def is_available(cls):
@@ -49,8 +49,8 @@ class Hypervisor(metaclass=ABCMeta):
     def _new_instance(
             cls,
             get_config_fn: GetConfigFunction,
-            docker_vm: str = DOCKER_VM_NAME) -> 'Hypervisor':
-        return cls(get_config_fn, docker_vm=docker_vm)
+            vm_name: str = DOCKER_VM_NAME) -> 'Hypervisor':
+        return cls(get_config_fn, vm_name=vm_name)
 
     def command(self, *args, **kwargs) -> Optional[str]:
         return self.COMMAND_HANDLER.run(*args, **kwargs)
@@ -67,7 +67,7 @@ class Hypervisor(metaclass=ABCMeta):
 
     @report_calls(Component.docker, 'instance.check')
     def vm_running(self, name: Optional[str] = None) -> bool:
-        name = name or self._docker_vm
+        name = name or self._vm_name
         if not name:
             raise EnvironmentError("Invalid Docker VM name")
 
@@ -81,7 +81,7 @@ class Hypervisor(metaclass=ABCMeta):
 
     @report_calls(Component.docker, 'instance.start')
     def start_vm(self, name: Optional[str] = None) -> None:
-        name = name or self._docker_vm
+        name = name or self._vm_name
         logger.info("Docker: starting VM %s", name)
 
         try:
@@ -92,7 +92,7 @@ class Hypervisor(metaclass=ABCMeta):
 
     @report_calls(Component.docker, 'instance.stop')
     def stop_vm(self, name: Optional[str] = None) -> bool:
-        name = name or self._docker_vm
+        name = name or self._vm_name
         logger.info("Docker: stopping %s", name)
 
         try:

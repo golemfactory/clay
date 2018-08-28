@@ -27,8 +27,8 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
     def __init__(self,
                  get_config_fn: GetConfigFunction,
                  virtualbox, ISession, LockType,
-                 docker_vm: str = DOCKER_VM_NAME) -> None:
-        super(VirtualBoxHypervisor, self).__init__(get_config_fn, docker_vm)
+                 vm_name: str = DOCKER_VM_NAME) -> None:
+        super(VirtualBoxHypervisor, self).__init__(get_config_fn, vm_name)
 
         if is_windows():
             import pythoncom  # noqa # pylint: disable=import-error
@@ -41,7 +41,7 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
     @contextmanager
     @report_calls(Component.hypervisor, 'vm.restart')
     def restart_ctx(self, name: Optional[str] = None):
-        name = name or self._docker_vm
+        name = name or self._vm_name
         immutable_vm = self._machine_from_arg(name)
         if not immutable_vm:
             yield None
@@ -76,7 +76,7 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
     @contextmanager
     @report_calls(Component.hypervisor, 'vm.recover')
     def recover_ctx(self, name: Optional[str] = None):
-        name = name or self._docker_vm
+        name = name or self._vm_name
         immutable_vm = self._machine_from_arg(name)
         if not immutable_vm:
             yield None

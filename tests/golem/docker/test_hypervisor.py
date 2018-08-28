@@ -153,12 +153,12 @@ class TestDockerMachineHypervisor(LogTestCase):
 
     def test_vm_not_running(self):
         hypervisor = MockHypervisor(mock.Mock())
-        hypervisor._docker_vm = str(uuid.uuid4())
+        hypervisor._vm_name = str(uuid.uuid4())
         assert not hypervisor.vm_running()
 
     def test_vm_running(self):
         hypervisor = MockHypervisor(mock.Mock())
-        hypervisor._docker_vm = VM_NAME
+        hypervisor._vm_name = VM_NAME
 
         with mock.patch.object(
             hypervisor, 'command',
@@ -416,7 +416,7 @@ class TestXhyveHypervisor(TempDirFixture, LogTestCase):
         constraints_str = str(constraints).replace('\'', '"')
 
         self.hypervisor._config_dir = self.tempdir
-        self.hypervisor._docker_vm = VM_NAME
+        self.hypervisor._vm_name = VM_NAME
 
         config_dir = os.path.join(self.hypervisor._config_dir, VM_NAME)
         config_file = os.path.join(config_dir, 'config.json')

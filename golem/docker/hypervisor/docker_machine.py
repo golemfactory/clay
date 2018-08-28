@@ -17,14 +17,14 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
 
     def __init__(self,
                  get_config_fn: GetConfigFunction,
-                 docker_vm: str = DOCKER_VM_NAME) -> None:
-        super().__init__(get_config_fn, docker_vm)
+                 vm_name: str = DOCKER_VM_NAME) -> None:
+        super().__init__(get_config_fn, vm_name)
         self._config_dir = None
 
     def setup(self) -> None:
-        if self._docker_vm not in self.vms:
-            logger.info("Creating Docker VM '%r'", self._docker_vm)
-            self.create(self._docker_vm, **self._get_config())
+        if self._vm_name not in self.vms:
+            logger.info("Creating Docker VM '%r'", self._vm_name)
+            self.create(self._vm_name, **self._get_config())
 
         if not self.vm_running():
             self.start_vm()
@@ -48,7 +48,7 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
     @report_calls(Component.docker, 'instance.env')
     def _set_env(self, retried=False):
         try:
-            output = self.command('env', self._docker_vm,
+            output = self.command('env', self._vm_name,
                                   args=('--shell', 'cmd'))
         except subprocess.CalledProcessError as e:
             logger.warning("DockerMachine: failed to update env for VM: %s", e)
@@ -78,7 +78,7 @@ Ensure that you try the following before reporting an issue:
 
     def _recover(self):
         try:
-            self.command('regenerate_certs', self._docker_vm)
+            self.command('regenerate_certs', self._vm_name)
         except subprocess.CalledProcessError as e:
             logger.warning("DockerMachine:"
                            " failed to env the VM: %s -- %s",
@@ -87,7 +87,7 @@ Ensure that you try the following before reporting an issue:
             return self._set_env(retried=True)
 
         try:
-            self.command('start', self._docker_vm)
+            self.command('start', self._vm_name)
         except subprocess.CalledProcessError as e:
             logger.warning("DockerMachine:"
                            " failed to restart the VM: %s -- %s",
@@ -96,8 +96,8 @@ Ensure that you try the following before reporting an issue:
             return self._set_env(retried=True)
 
         try:
-            if self.remove(self._docker_vm):
-                self.create(self._docker_vm)
+            if self.remove(self._vm_name):
+                self.create(self._vm_name)
         except subprocess.CalledProcessError as e:
             logger.warning("DockerMachine:"
                            " failed to re-create the VM: %s -- %s",
