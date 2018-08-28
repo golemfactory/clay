@@ -1006,7 +1006,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self._react_to_start_session_response,
             message.tasks.WaitingForResults:
                 self._react_to_waiting_for_results,
-            message.tasks.StateUpdate.TYPE:
+            message.tasks.StateUpdate:
                 self._react_to_state_update,
 
             # Concent messages
