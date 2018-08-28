@@ -56,6 +56,7 @@ class Hypervisor(metaclass=ABCMeta):
         return self.COMMAND_HANDLER.run(*args, **kwargs)
 
     def remove(self, name: Optional[str] = None) -> bool:
+        name = name or self._vm_name
         logger.info("Hypervisor: removing VM '%s'", name)
         try:
             self.command('rm', name)
