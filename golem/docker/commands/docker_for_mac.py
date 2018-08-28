@@ -2,8 +2,8 @@ import logging
 import subprocess
 import sys
 import time
-from typing import List, Optional
 
+from golem.core.common import unix_pid
 from golem.docker.commands.docker import CommandDict, DockerCommandHandler
 
 logger = logging.getLogger(__name__)
@@ -30,58 +30,35 @@ class DockerForMacCommandHandler(DockerCommandHandler):
 
     @classmethod
     def stop(cls) -> None:
-        pid = cls._pid()
+        pid = cls.pid()
         if not pid:
             return
 
         try:
             subprocess.check_call(['kill', str(pid)])
         except subprocess.CalledProcessError:
+            logger.error('Docker for Mac: unable to stop the app')
             return
 
         cls.wait_until_stopped()
 
     @classmethod
+    def pid(cls):
+        return unix_pid(cls.PROCESSES['app'])
+
+    @classmethod
     def status(cls) -> str:
-        return 'Running' if cls._pid() else ''
+        return 'Running' if cls.pid() else ''
 
     @classmethod
     def wait_until_stopped(cls):
         started = time.time()
 
-        while any(map(cls._pid, cls.PROCESSES)):
+        while any(map(unix_pid, cls.PROCESSES.values())):
             if time.time() - started >= cls.TIMEOUT:
                 logger.error('Docker for Mac: VM start timeout')
                 return
             time.sleep(0.5)
-
-    @classmethod
-    def _pid(cls, key: str = 'app') -> Optional[int]:
-
-        process_name = cls.PROCESSES[key]
-        process_name = f'[{process_name[0]}]{process_name[1:]}'
-
-        try:
-            line = cls._pipe(['ps', 'ux'], ['grep', '-i', process_name])
-        except (FileNotFoundError, subprocess.CalledProcessError):
-            return None
-
-        try:
-            return int(line.split()[1])
-        except (IndexError, TypeError, ValueError):
-            return None
-
-    @staticmethod
-    def _pipe(cmd: List[str], pipe: List[str]):
-        proc_cmd = subprocess.Popen(cmd,
-                                    stdout=subprocess.PIPE)
-        proc_pipe = subprocess.Popen(pipe,
-                                     stdout=subprocess.PIPE,
-                                     stderr=subprocess.PIPE,
-                                     stdin=proc_cmd.stdout)
-        proc_cmd.stdout.close()
-        stdout, _ = proc_pipe.communicate()
-        return stdout.strip().decode('utf-8')
 
     # pylint: disable=undefined-variable
     commands: CommandDict = dict(
