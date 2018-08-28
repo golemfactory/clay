@@ -258,8 +258,6 @@ def generate_rpc_certificate(datadir: str):
     cert_manager = CertificateManager(cert_dir)
     cert_manager.generate_if_needed()
 
-    print('RPC self-signed certificate has been created')
-
 
 if __name__ == '__main__':
     start()  # pylint: disable=no-value-for-parameter
