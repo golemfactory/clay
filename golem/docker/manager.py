@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 class DockerManager(DockerConfigManager):
 
     def __init__(self, config_desc=None):
-        super(DockerManager, self).__init__()
+        super().__init__()
 
         self._config = dict(DEFAULTS)
         self._env_checked = False
@@ -108,13 +108,13 @@ class DockerManager(DockerConfigManager):
 
         try:
             cpu_count = max(int(config_desc.num_cores), cpu_count)
-        except Exception as exc:  # pylint: disable=broad-except
+        except TypeError as exc:
             logger.warning('Cannot read the CPU count: %r', exc)
 
         try:
             memory_size = max(int(config_desc.max_memory_size) // 1024,
                               memory_size)
-        except Exception as exc:  # pylint: disable=broad-except
+        except TypeError as exc:
             logger.warning('Cannot read the memory amount: %r', exc)
 
         self._config = dict(
