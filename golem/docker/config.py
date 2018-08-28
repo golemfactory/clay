@@ -48,7 +48,7 @@ class DockerConfigManager(object):
             try:
                 host_config['mem_limit'] = int(max_memory_size) * 1024
             except Exception as exc:  # pylint: disable=broad-except
-                logger.warning('Cannot set the CPU set: %r', exc)
+                logger.warning('Cannot set the memory limit: %r', exc)
 
         self.container_host_config.update(host_config)
 
