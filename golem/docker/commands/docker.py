@@ -45,7 +45,7 @@ class DockerCommandHandler:
             return cls._command(command[:], vm_name, args, shell)
         elif callable(command):
             return command(vm_name, args, shell)
-        return str()
+        return None
 
     @classmethod
     def wait_until_started(cls):
