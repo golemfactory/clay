@@ -9,8 +9,6 @@ from multiprocessing import cpu_count
 import params  # This module is generated before this script is run
 
 BLENDER_COMMAND = "blender"
-WORK_DIR = "/golem/work"
-OUTPUT_DIR = "/golem/output"
 
 
 def exec_cmd(cmd):
@@ -26,7 +24,9 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
         "-b", "{}".format(scene_file),
         "-y",  # enable scripting by default
         "-P", "{}".format(script_file),
-        "-o", "{}/{}_{}".format(OUTPUT_DIR, outfilebasename, start_task),
+        "-o", "{}/{}_{}".format(params.OUTPUT_DIR,
+                                outfilebasename,
+                                start_task),
         "-noaudio",
         "-F", "{}".format(output_format.upper()),
         "-t", "{}".format(cpu_count()),
@@ -44,7 +44,7 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task,
               file=sys.stderr)
         sys.exit(1)
 
-    blender_script_path = WORK_DIR + "/blenderscript.py"
+    blender_script_path = "{}/blenderscript.py".format(params.WORK_DIR)
     with open(blender_script_path, "w") as script_file:
         script_file.write(script_src)
 
@@ -60,4 +60,3 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task,
 
 run_blender_task(params.outfilebasename, params.scene_file, params.script_src,
                  params.start_task, params.frames, params.output_format)
-
