@@ -33,7 +33,7 @@ class TestDockerForMacCommandHandler(TestCase):
         with mock.patch.object(DockerForMacCommandHandler,
                                'wait_until_stopped') as wait:
             with mock.patch.object(DockerForMacCommandHandler,
-                                   '_pid', return_value=1234):
+                                   'pid', return_value=1234):
 
                 DockerForMacCommandHandler.stop()
                 assert wait.called
@@ -43,17 +43,17 @@ class TestDockerForMacCommandHandler(TestCase):
 
         with mock.patch(f'{self.PKG_PATH}.wait_until_stopped') as wait:
             with mock.patch.object(DockerForMacCommandHandler,
-                                   '_pid', return_value=1234):
+                                   'pid', return_value=1234):
 
                 DockerForMacCommandHandler.stop()
                 assert not wait.called
 
     def test_status(self, *_):
 
-        with mock.patch(f'{self.PKG_PATH}._pid', return_value=1234):
+        with mock.patch(f'{self.PKG_PATH}.pid', return_value=1234):
             assert DockerForMacCommandHandler.status() == 'Running'
 
-        with mock.patch(f'{self.PKG_PATH}._pid', return_value=None):
+        with mock.patch(f'{self.PKG_PATH}.pid', return_value=None):
             assert DockerForMacCommandHandler.status() == ''
 
     def test_pid(self, _, popen):
@@ -64,7 +64,7 @@ class TestDockerForMacCommandHandler(TestCase):
         ))
 
         stdout.strip.return_value = b'user 1234'
-        assert DockerForMacCommandHandler._pid() == 1234
+        assert DockerForMacCommandHandler.pid() == 1234
 
         stdout.strip.return_value = b''
-        assert DockerForMacCommandHandler._pid() is None
+        assert DockerForMacCommandHandler.pid() is None

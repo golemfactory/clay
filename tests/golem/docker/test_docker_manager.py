@@ -30,8 +30,6 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
         dmm = MockDockerManager()
         assert dmm._config == DEFAULTS
 
-        dmm.build_config(None)
-
         config_item_list = list(dmm._config.items())
         assert all([val == DEFAULTS[key] for key, val in config_item_list])
 
@@ -130,7 +128,7 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
         assert diff(old, new) == expected
 
     def test_command(self):
-        dmm = MockDockerManager(use_parent_methods=True)
+        dmm = MockDockerManager()
 
         with mock.patch.dict(
             'golem.docker.commands.docker.DockerCommandHandler.commands',

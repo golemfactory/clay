@@ -5,7 +5,7 @@ import types
 import uuid
 from contextlib import contextmanager
 from subprocess import CalledProcessError
-from typing import Optional
+from typing import Optional, Dict
 from unittest import mock
 
 from golem.docker.commands.docker_machine import DockerMachineCommandHandler
@@ -26,11 +26,7 @@ def command(self, key, machine_name=None, args=None, shell=False):
     if command_calls:
         command_calls.append([key, machine_name, args, shell])
 
-    if getattr(self, 'use_parent_methods', False):
-        tmp_super = super(MockDockerManager, self)
-        return tmp_super.command(key, machine_name=machine_name, args=args,
-                                 shell=shell)
-    elif key == 'env':
+    if key == 'env':
         return '\n'.join([
             'SET GOLEM_TEST=1',
             '',
@@ -67,8 +63,7 @@ class MockHypervisor(DockerMachineHypervisor):
     def ctx(self, name=None, *_):
         yield name
 
-    @staticmethod
-    def constraints(*_):
+    def constraints(self, name: Optional[str] = None) -> Dict:
         return dict()
 
     def create(self, name: Optional[str] = None, **params):
@@ -87,9 +82,7 @@ class MockHypervisor(DockerMachineHypervisor):
 class MockDockerManager(DockerManager):
     # pylint: disable=too-few-public-methods
 
-    def __init__(self,
-                 use_parent_methods=False,
-                 config_desc=None):
+    def __init__(self, config_desc=None) -> None:
 
         super(MockDockerManager, self).__init__(config_desc)
 
@@ -97,11 +90,11 @@ class MockDockerManager(DockerManager):
         self._config = dict(DEFAULTS)
 
 
-def raise_exception(msg, *args, **kwargs):
+def raise_exception(msg, *_a, **_kw):
     raise TypeError(msg)
 
 
-def raise_process_exception(msg, *args, **kwargs):
+def raise_process_exception(msg, *_a, **_kw):
     raise CalledProcessError(1, msg)
 
 
@@ -112,7 +105,7 @@ class Erroneous(mock.Mock):
         raise_exception("Read")
 
     @cpu_count.setter
-    def cpu_count(self, value):
+    def cpu_count(self, _):
         raise_exception("Write")
 
 
