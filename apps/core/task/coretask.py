@@ -148,6 +148,7 @@ class CoreTask(Task):
             resource_size=self.resource_size,
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
+            concent_enabled=task_definition.concent_enabled,
         )
 
         Task.__init__(self, th, src_code, task_definition)
