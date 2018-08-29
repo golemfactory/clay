@@ -550,10 +550,17 @@ class Client(HardwarePresetsMixin):
             self.db.close()
         self._unlock_datadir()
 
-    def enqueue_new_task(self, task_dict):
+    def enqueue_new_task(self, task_dict) -> Tuple[Deferred, str]:
+        """
+        :return: (deferred, task_id) - deferred returns Task object when it's
+        successfully created.
+        """
         if self.config_desc.in_shutdown:
             raise Exception('Can not enqueue task: shutdown is in progress, '
                             'toggle shutdown mode off to create a new tasks.')
+        if self.task_server is None:
+            raise Exception("Golem is not ready")
+
         task_manager = self.task_server.task_manager
         _result = Deferred()
 
@@ -639,7 +646,7 @@ class Client(HardwarePresetsMixin):
 
         _package = self.resource_server.create_resource_package(files, task_id)
         _package.addCallbacks(package_created, error)
-        return _result
+        return _result, task_id
 
     def _get_mask_for_task(self, task: CoreTask) -> Mask:
         desired_num_workers = max(
@@ -750,21 +757,31 @@ class Client(HardwarePresetsMixin):
             return result
         return self.task_test_result
 
-    def create_task(self, t_dict):
+    def create_task(self, t_dict) -> Tuple[Optional[str], Optional[str]]:
+        """
+        :return: (task_id, None) on success; (task_id or None, error_message)
+                 on failure
+        """
         try:
-            deferred = self.enqueue_new_task(t_dict)
+            deferred, task_id = self.enqueue_new_task(t_dict)
+            # We want to return quickly from create_task without waiting for
+            # deferred completion.
             deferred.addErrback(
                 lambda err: logger.error("Cannot create task: %r", err))
-            return True, ''
-        except Exception as ex:
-            logger.exception("Cannot create task %r", t_dict)
-            return False, str(ex)
+            return task_id, None
+        except Exception as ex:  # pylint: disable=broad-except
+            logger.error("Cannot create task %r: %s", t_dict, str(ex))
+            return None, str(ex)
 
     def abort_task(self, task_id):
         logger.debug('Aborting task "%r" ...', task_id)
         self.task_server.task_manager.abort_task(task_id)
 
-    def restart_task(self, task_id: str) -> Tuple[bool, Optional[str]]:
+    def restart_task(self, task_id: str) -> Tuple[Optional[str], Optional[str]]:
+        """
+        :return: (new_task_id, None) on success; (None, error_message)
+                 on failure
+        """
         logger.debug('Restarting task "%r" ...', task_id)
         task_manager = self.task_server.task_manager
 
@@ -773,7 +790,7 @@ class Client(HardwarePresetsMixin):
         try:
             task_manager.assert_task_can_be_restarted(task_id)
         except task_manager.AlreadyRestartedError:
-            return False, "Task already restarted: '{}'".format(task_id)
+            return None, "Task already restarted: '{}'".format(task_id)
 
         # Create new task that is a copy of the definition of the old one.
         # It has a new deadline and a new task id.
@@ -782,14 +799,14 @@ class Client(HardwarePresetsMixin):
                 task_manager.get_task_definition_dict(
                     task_manager.tasks[task_id]))
         except KeyError:
-            return False, "Task not found: '{}'".format(task_id)
+            return None, "Task not found: '{}'".format(task_id)
 
         task_dict.pop('id', None)
-        success, msg = self.create_task(task_dict)
-        if success:
+        new_task_id, msg = self.create_task(task_dict)
+        if new_task_id:
             task_manager.put_task_in_restarted_state(task_id)
 
-        return success, msg
+        return new_task_id, msg
 
     def restart_subtasks_from_task(
             self, task_id: str, subtask_ids: Iterable[str]):
@@ -822,7 +839,7 @@ class Client(HardwarePresetsMixin):
                 subtask_ids_to_copy=subtask_ids_to_copy
             )
 
-        deferred = self.enqueue_new_task(task_dict)
+        deferred, _ = self.enqueue_new_task(task_dict)
 
         deferred.addCallbacks(
             copy_results,

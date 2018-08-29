@@ -13,9 +13,6 @@ if __name__ == '__main__':
 else:
     from apps.rendering.resources.scripts import img_metrics_calculator
 
-WORK_DIR = "/golem/work"
-OUTPUT_DIR = "/golem/output"
-
 
 def run_img_compare_task(cropped_img_path, rendered_scene_path, xres, yres):
     """
@@ -47,9 +44,9 @@ def run_img_compare_task(cropped_img_path, rendered_scene_path, xres, yres):
         sys.exit(1)
 
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    results_path = os.path.join(dir_path, OUTPUT_DIR[1:])
+    results_path = os.path.join(dir_path, params.OUTPUT_DIR[1:])
     # file_path = os.path.join(results_path, 'result.txt' )
-    file_path = os.path.join(OUTPUT_DIR, 'result.txt')
+    file_path = os.path.join(params.OUTPUT_DIR, 'result.txt')
     if not os.path.exists(results_path):
         os.makedirs(results_path)
 

@@ -3,7 +3,7 @@
 from datetime import timedelta
 import json
 import re
-from typing import Any, Optional
+from typing import Any, Optional, Tuple
 
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.deferred import sync_wait
@@ -112,10 +112,10 @@ class Tasks:
     @command(argument=id_req, help="Restart a task")
     def restart(self, id):
         deferred = Tasks.client.restart_task(id)
-        ok, error = sync_wait(deferred)
-        if not ok:
-            return error
-        return None
+        new_task_id, error = sync_wait(deferred)
+        if error:
+            return CommandResult(error=error)
+        return new_task_id
 
     @command(arguments=(id_req, subtask_ids),
              help="Restart given subtasks from a task")
@@ -140,7 +140,13 @@ class Tasks:
     """)
     def create(self, file_name: str) -> Any:
         with open(file_name) as f:
-            self.__create_from_json(f.read())
+            task_id, error = self.__create_from_json(f.read())
+        if error:
+            if task_id:
+                return CommandResult(error="task {} failed: {}"
+                                     .format(task_id, error))
+            return CommandResult(error=error)
+        return task_id
 
     @command(arguments=(id_req, outfile), help="Dump an existing task")
     def dump(self, id: str, outfile: Optional[str]) -> None:
@@ -190,7 +196,8 @@ class Tasks:
             return progress
         return '{:.2f} %'.format(progress * 100.0)
 
-    def __create_from_json(self, jsondata: str) -> Any:
+    def __create_from_json(self, jsondata: str) \
+            -> Tuple[Optional[str], Optional[str]]:
         task_name = ""
         dictionary = json.loads(jsondata)
         if 'name' in dictionary.keys():

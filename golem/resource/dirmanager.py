@@ -2,6 +2,7 @@ import logging
 import os
 import shutil
 import time
+from typing import Iterator
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +54,12 @@ def find_task_script(task_dir, script_name):
         return script_file
 
     logger.error("Script file {} does not exist!".format(script_file))
+
+
+def list_dir_recursive(dir: str) -> Iterator[str]:
+    for dirpath, dirnames, filenames in os.walk(dir, followlinks=True):
+        for name in filenames:
+            yield os.path.join(dirpath, name)
 
 
 class DirManager(object):
