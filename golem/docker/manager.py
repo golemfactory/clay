@@ -108,13 +108,13 @@ class DockerManager(DockerConfigManager):
 
         try:
             cpu_count = max(int(config_desc.num_cores), cpu_count)
-        except TypeError as exc:
+        except (TypeError, ValueError) as exc:
             logger.warning('Cannot read the CPU count: %r', exc)
 
         try:
             memory_size = max(int(config_desc.max_memory_size) // 1024,
                               memory_size)
-        except TypeError as exc:
+        except (TypeError, ValueError) as exc:
             logger.warning('Cannot read the memory amount: %r', exc)
 
         self._config = dict(
