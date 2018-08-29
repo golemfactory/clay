@@ -452,7 +452,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.dropped()
             return
 
+        logger.info("Received offer to compute. task_id=%r, node_id=%r",
+                    msg.task_id, self.key_id)
+
         if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
+            logger.warning("Can not accept offer: Still waiting on results."
+                           "task_id=%r, node_id=%r", msg.task_id, self.key_id)
             self.send(message.tasks.WaitingForResults())
             return
 
@@ -471,24 +476,28 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self.key_id, msg.node_name, msg.task_id, msg.price):
 
             if self._handshake_required(self.key_id):
-                logger.warning('Cannot yet assign task for %r: resource '
-                               'handshake is required', self.key_id)
+                logger.warning('Can not accept offer: Resource handshake is in'
+                               ' required. task_id=%r, node_id=%r',
+                               msg.task_id, self.key_id)
                 self._start_handshake(self.key_id)
                 return
 
             elif self._handshake_in_progress(self.key_id):
-                logger.warning('Cannot yet assign task for %r: resource '
-                               'handshake is in progress', self.key_id)
+                logger.warning('Can not accept offer: Resource handshake is in'
+                               ' progress. task_id=%r, node_id=%r',
+                               msg.task_id, self.key_id)
                 return
 
             # TODO: Queue requests here
 
+            logger.info("Offer confirmed, assigning subtask")
             ctd = self.task_manager.get_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.perf_index,
                 msg.price, msg.max_resource_size, msg.max_memory_size,
                 msg.num_cores, self.address)
 
         if ctd:
+            logger.info("Subtask assigned. subtask_id=%r", ctd["subtask_id"])
             task = self.task_manager.tasks[ctd['task_id']]
             task_state: TaskState = self.task_manager.tasks_states[
                 ctd['task_id']]
@@ -522,6 +531,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
             self.send(ttc)
             return
+        elif not task_server_ok:
+            logger.warning("Can not accept offer: Taskserver rejected provider."
+                           "task_id=%r, node_id=%r", msg.task_id, self.key_id)
+        else:
+            logger.warning("Can not accept offer: Taskmanager rejected "
+                           "provider. task_id=%r, node_id=%r", msg.task_id,
+                           self.key_id)
 
         self.send(
             message.tasks.CannotAssignTask(
