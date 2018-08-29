@@ -166,7 +166,9 @@ class TaskSessionTaskToComputeTest(TestCase):
         ctd = message.tasks.ComputeTaskDef(task_id=mt.task_id)
         self._set_task_state()
 
-        ts2.task_manager.get_next_subtask.return_value = (ctd, False, False)
+        ts2.task_manager.get_next_subtask.return_value = ctd
+        ts2.task_manager.should_wait_for_node.return_value = False
+        ts2.task_server.should_accept_provider.return_value = False
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.tasks.CannotAssignTask)
@@ -181,7 +183,8 @@ class TaskSessionTaskToComputeTest(TestCase):
         ctd = message.tasks.ComputeTaskDef(task_id=mt.task_id)
         self._set_task_state()
 
-        ts2.task_manager.get_next_subtask.return_value = (ctd, True, False)
+        ts2.task_manager.should_wait_for_node.return_value = False
+        ts2.task_manager.check_next_subtask.return_value = False
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.tasks.CannotAssignTask)
@@ -215,7 +218,8 @@ class TaskSessionTaskToComputeTest(TestCase):
         ctd = message.tasks.ComputeTaskDef(task_id=mt.task_id)
         task_state = self._set_task_state()
 
-        ts2.task_manager.get_next_subtask.return_value = (ctd, False, False)
+        ts2.task_manager.get_next_subtask.return_value = ctd
+        ts2.task_manager.should_wait_for_node.return_value = False
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.tasks.TaskToCompute)
@@ -242,7 +246,8 @@ class TaskSessionTaskToComputeTest(TestCase):
         ctd = message.tasks.ComputeTaskDef(task_id=wtct.task_id)
         self._set_task_state()
 
-        ts2.task_manager.get_next_subtask.return_value = (ctd, False, False)
+        ts2.task_manager.get_next_subtask.return_value = ctd
+        ts2.task_manager.should_wait_for_node.return_value = False
         ts2.interpret(wtct)
         ttc = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ttc, message.tasks.TaskToCompute)
