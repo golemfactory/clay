@@ -422,6 +422,11 @@
     <ROW Action="AI_DeleteRLzma" Description="Deleting files extracted from archive" DescriptionLocId="ActionText.Description.AI_DeleteLzma" TemplateLocId="-"/>
     <ROW Action="AI_ExtractFiles" Description="Extracting files from archive" DescriptionLocId="ActionText.Description.AI_ExtractLzma" TemplateLocId="-"/>
     <ROW Action="AI_ExtractLzma" Description="Extracting files from archive" DescriptionLocId="ActionText.Description.AI_ExtractLzma" TemplateLocId="-"/>
+    <ROW Action="AI_WinOptFeaturesConfig" Description="Configuring Windows features." DescriptionLocId="ActionText.Description.AI_WinOptFeaturesConfig" Template="Configuring Windows features." TemplateLocId="ActionText.Template.AI_WinOptFeaturesConfig"/>
+    <ROW Action="AI_WinOptFeaturesInstall" Description="Generating actions to configure Windows features." DescriptionLocId="ActionText.Description.AI_WinOptFeaturesInstall" Template="Configuring Windows features." TemplateLocId="ActionText.Template.AI_WinOptFeaturesInstall"/>
+    <ROW Action="AI_WinOptFeaturesRemove" Description="Removing configured Windows features." DescriptionLocId="ActionText.Description.AI_WinOptFeaturesRemove" Template="Removing configured Windows features." TemplateLocId="ActionText.Template.AI_WinOptFeaturesRemove"/>
+    <ROW Action="AI_WinOptFeaturesRollback" Description="Rolling back configured Windows features." DescriptionLocId="ActionText.Description.AI_WinOptFeaturesRollback" Template="Rolling back configured Windows features." TemplateLocId="ActionText.Template.AI_WinOptFeaturesRollback"/>
+    <ROW Action="AI_WinOptFeaturesUninstall" Description="Generating actions to configure Windows features." DescriptionLocId="ActionText.Description.AI_WinOptFeaturesUninstall" Template="Removing configured Windows features." TemplateLocId="ActionText.Template.AI_WinOptFeaturesUninstall"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiAppSearchComponent">
     <ROW Property="AI_SETUPEXEPATH" Signature_="AI_EXE_PATH_CU" Builds="DefaultBuild"/>
@@ -429,11 +434,13 @@
     <ROW Property="AI_SHORTCUTSREG" Signature_="AI_ShRegOptionMachine"/>
     <ROW Property="AI_SHORTCUTSREG" Signature_="AI_ShRegOptionUser"/>
     <ROW Property="GOLEM_UNINSTALL" Signature_="AppSearchSign"/>
+    <ROW Property="DOCKER_TB_UNINSTALL" Signature_="AppSearchSign_1"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiBinaryComponent">
     <ROW Name="PowerShellScriptLauncher.dll" SourcePath="&lt;AI_CUSTACTS&gt;PowerShellScriptLauncher.dll"/>
     <ROW Name="Prereq.dll" SourcePath="&lt;AI_CUSTACTS&gt;Prereq.dll"/>
     <ROW Name="ResourceCleaner.dll" SourcePath="&lt;AI_CUSTACTS&gt;ResourceCleaner.dll"/>
+    <ROW Name="WinOptionalFeatures.dll" SourcePath="&lt;AI_CUSTACTS&gt;WinOptionalFeatures.dll"/>
     <ROW Name="aicustact.dll" SourcePath="&lt;AI_CUSTACTS&gt;aicustact.dll"/>
     <ROW Name="bannerfull01.jpg" SourcePath="Installer\Installer_Win\banner-full-01.jpg"/>
     <ROW Name="bannertop01.jpg" SourcePath="Installer\Installer_Win\banner-top-01.jpg"/>
@@ -522,6 +529,13 @@
     <ROW Action="AI_ResolveKnownFolders" Type="1" Source="aicustact.dll" Target="AI_ResolveKnownFolders"/>
     <ROW Action="AI_SHOW_LOG" Type="65" Source="aicustact.dll" Target="LaunchLogFile" WithoutSeq="true"/>
     <ROW Action="AI_STORE_LOCATION" Type="51" Source="ARPINSTALLLOCATION" Target="[APPDIR]"/>
+    <ROW Action="AI_WinOptFeaturesCheckReboot" Type="1" Source="WinOptionalFeatures.dll" Target="OnWinOptFeaturesCheckReboot"/>
+    <ROW Action="AI_WinOptFeaturesConfig" Type="11265" Source="WinOptionalFeatures.dll" Target="OnWinOptFeaturesConfig" WithoutSeq="true"/>
+    <ROW Action="AI_WinOptFeaturesInstall" Type="1" Source="WinOptionalFeatures.dll" Target="OnWinOptFeaturesInstall"/>
+    <ROW Action="AI_WinOptFeaturesRemove" Type="11265" Source="WinOptionalFeatures.dll" Target="OnWinOptFeaturesRemove" WithoutSeq="true"/>
+    <ROW Action="AI_WinOptFeaturesRollback" Type="11521" Source="WinOptionalFeatures.dll" Target="OnWinOptFeaturesRollback" WithoutSeq="true"/>
+    <ROW Action="AI_WinOptFeaturesUninstall" Type="1" Source="WinOptionalFeatures.dll" Target="OnWinOptFeaturesUninstall"/>
+    <ROW Action="ExecuteUninstallDockerTb" Type="3122" Source="DOCKER_UNINSTALL_CLEAN" Target="/SILENT"/>
     <ROW Action="ExecuteUninstallPre011" Type="3122" Source="GOLEM_UNINSTALL_CLEAN" Target="/SILENT"/>
     <ROW Action="Execute_CleanDockerVM" Type="65" Source="PowerShellScriptLauncher.dll" Target="RunPowerShellScript" Options="1" AdditionalSeq="AI_DATA_SETTER_10"/>
     <ROW Action="ForceReboot" Type="51" Source="REBOOT" Target="Force"/>
@@ -537,6 +551,7 @@
     <ROW Action="StopProcess_VirtualBoxInterface" Type="3073" Source="aicustact.dll" Target="StopProcess" Options="1" AdditionalSeq="AI_DATA_SETTER_6"/>
     <ROW Action="StopProcess_hyperg" Type="3073" Source="aicustact.dll" Target="StopProcess" Options="1" AdditionalSeq="AI_DATA_SETTER_3"/>
     <ROW Action="StripQuotesFromUninstallPath" Type="4134" Target="Script Text" TargetUnformatted="txt = Session.Property(&quot;GOLEM_UNINSTALL&quot;)&#13;&#10;Session.Property(&quot;GOLEM_UNINSTALL_CLEAN&quot;) = replace(txt,&quot;&quot;&quot;&quot;,&quot;&quot;)"/>
+    <ROW Action="StripQuotesFromUninstallPath_1" Type="4134" Target="txt = Session.Property(&quot;GOLEM_UNINSTALL&quot;)&#13;&#10;Session.Property(&quot;GOLEM_UNINSTALL_CLEAN&quot;) = replace(txt,&quot;&quot;&quot;&quot;,&quot;&quot;)" TargetUnformatted="txt = Session.Property(&quot;DOCKER_TB_UNINSTALL&quot;)&#13;&#10;Session.Property(&quot;DOCKER_UNINSTALL_CLEAN&quot;) = replace(txt,&quot;&quot;&quot;&quot;,&quot;&quot;)"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiEnvComponent">
     <ROW Environment="PATH" Name="=-*Path" Value="[~];[APPDIR]" Component_="ProductInformation"/>
@@ -549,7 +564,7 @@
   <COMPONENT cid="caphyon.advinst.msicomp.MsiInstExSeqComponent">
     <ROW Action="AI_DOWNGRADE" Condition="AI_NEWERPRODUCTFOUND AND (UILevel &lt;&gt; 5)" Sequence="210"/>
     <ROW Action="AI_RESTORE_LOCATION" Condition="APPDIR=&quot;&quot;" Sequence="749"/>
-    <ROW Action="AI_STORE_LOCATION" Condition="(Not Installed) OR REINSTALL" Sequence="1501"/>
+    <ROW Action="AI_STORE_LOCATION" Condition="(Not Installed) OR REINSTALL" Sequence="1502"/>
     <ROW Action="AI_PREPARE_UPGRADE" Condition="AI_UPGRADE=&quot;No&quot; AND (Not Installed)" Sequence="1399"/>
     <ROW Action="AI_ResolveKnownFolders" Sequence="54"/>
     <ROW Action="AI_EnableDebugLog" Sequence="53"/>
@@ -585,11 +600,16 @@
     <ROW Action="AI_DEL_EMPTY_SHORTCUTDIR" Condition="NOT (REMOVE=&quot;ALL&quot;)" Sequence="6402"/>
     <ROW Action="AI_DATA_SETTER_8" Condition="NOT (REMOVE=&quot;ALL&quot;)" Sequence="6401"/>
     <ROW Action="AI_GetArpIconPath" Sequence="1401"/>
-    <ROW Action="ExecuteUninstallPre011" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL_CLEAN &lt;&gt; &quot;&quot; )" Sequence="1618"/>
+    <ROW Action="ExecuteUninstallPre011" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL_CLEAN &lt;&gt; &quot;&quot; )" Sequence="1619"/>
     <ROW Action="StripQuotesFromUninstallPath" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="1617"/>
-    <ROW Action="AI_AiRemoveFilesImmediate" Sequence="3499"/>
     <ROW Action="Execute_CleanDockerVM" Condition="(VersionNT &gt; 501) OR (VersionNT = 501 AND ServicePackLevel &gt;= 2)" Sequence="1608"/>
     <ROW Action="AI_DATA_SETTER_10" Condition="(VersionNT &gt; 501) OR (VersionNT = 501 AND ServicePackLevel &gt;= 2)" Sequence="1607"/>
+    <ROW Action="AI_WinOptFeaturesInstall" Condition="(VersionNT &gt;= 600) AND (REMOVE &lt;&gt; &quot;ALL&quot;)" Sequence="1501"/>
+    <ROW Action="AI_WinOptFeaturesUninstall" Condition="(VersionNT &gt;= 600) AND (REMOVE=&quot;ALL&quot;)" Sequence="1699"/>
+    <ROW Action="AI_WinOptFeaturesCheckReboot" Condition="(VersionNT &gt;= 600)" Sequence="6501"/>
+    <ROW Action="ExecuteUninstallDockerTb" Condition="( NOT Installed ) AND ( DOCKER_UNINSTALL_CLEAN &lt;&gt; &quot;&quot; )" Sequence="1620"/>
+    <ROW Action="StripQuotesFromUninstallPath_1" Condition="( NOT Installed ) AND ( DOCKER_TB_UNINSTALL  &lt;&gt; &quot;&quot; )" Sequence="1618"/>
+    <ROW Action="AI_AiRemoveFilesImmediate" Sequence="3499"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiInstallUISequenceComponent">
     <ROW Action="AI_RESTORE_LOCATION" Condition="APPDIR=&quot;&quot;" Sequence="749"/>
@@ -617,6 +637,7 @@
     <ROW Signature_="AI_ShRegOptionMachine" Root="2" Key="Software\Caphyon\Advanced Installer\Installs\[ProductCode]" Name="AIShRegAnswer" Type="2"/>
     <ROW Signature_="AI_ShRegOptionUser" Root="1" Key="Software\Caphyon\Advanced Installer\Installs\[ProductCode]" Name="AIShRegAnswer" Type="2"/>
     <ROW Signature_="AppSearchSign" Root="2" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{C8E494CC-06C7-40CB-827A-20D07903013F}_is1" Name="UninstallString" Type="18"/>
+    <ROW Signature_="AppSearchSign_1" Root="2" Key="SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{FC4417F0-D7F3-48DB-BCE1-F5ED5BAFFD91}_is1" Name="UninstallString" Type="18"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiRegsComponent">
     <ROW Registry="AIShRegAnswer" Root="-1" Key="Software\Caphyon\Advanced Installer\Installs\[ProductCode]" Name="AIShRegAnswer" Value="[AI_SHORTCUTSREG]" Component_="AIShRegAnswer"/>
@@ -666,15 +687,18 @@
     <ROW UpgradeCode="[|UpgradeCode]" VersionMin="[|ProductVersion]" Attributes="2" ActionProperty="AI_NEWERPRODUCTFOUND"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.PreReqComponent">
-    <ROW PrereqKey="DockerToolbox" DisplayName="Docker Toolbox" VersionMin="18.3.0" SetupFileUrl="C:\BuildResources\DockerToolbox-18.03.0-ce.exe" Location="0" ExactSize="0" WinNTVersions="Windows 9x/ME/NT/2000/XP/Vista/Windows 7/Windows 8 x86/Windows 8.1 x86/Windows 10 x86" Operator="1" ComLine="/VERYSILENT" Options="zym" TargetName="DockerToolbox-18.03.0-ce.exe"/>
+    <ROW PrereqKey="LightweightInstaller" DisplayName="Docker for Windows Installer" VersionMin="18.6.0.19098" SetupFileUrl="C:\BuildResources\Docker for Windows Installer.exe" Location="0" ExactSize="0" WinNTVersions="Windows 9x/ME/NT/2000/XP/Vista/Windows 7/Windows 8 x86/Windows 8.1 x86/Windows 10 x86" Operator="1" ComLine="install  --quiet" BasicUiComLine="install  --quiet" NoUiComLine="install  --quiet" Options="yxmz" TargetName="Docker for Windows Installer.exe"/>
     <ROW PrereqKey="MicrosoftVisualC" DisplayName="Microsoft Visual C++ 2015 Redistributable (x64) - 14.0.23026" VersionMin="14.0.23026.0" SetupFileUrl="C:\BuildResources\vc_redist.x64.exe" Location="0" ExactSize="0" WinNTVersions="Windows 9x/ME/NT/2000/XP/Vista/Windows 7/Windows 8 x86/Windows 8.1 x86/Windows 10 x86" Operator="1" ComLine="/install /passive /norestart" BasicUiComLine="/install /passive /norestart" NoUiComLine="/install /passive /norestart" Options="zym" TargetName="vc_redist.x64.exe"/>
-    <ATTRIBUTE name="PrereqsOrder" value="DockerToolbox MicrosoftVisualC"/>
+    <ATTRIBUTE name="PrereqsOrder" value="LightweightInstaller MicrosoftVisualC"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.PreReqSearchComponent">
     <ROW SearchKey="SystemFolderfile.dll" Prereq="MicrosoftVisualC" SearchType="2" SearchString="HKLM\Software\Wow6432Node\Microsoft\VisualStudio\14.0\VC\Runtimes\x64\Version" VerMin="14.0.23026" Order="1" Property="PreReqSearch"/>
-    <ROW SearchKey="SystemFolderfile.dll_1" Prereq="DockerToolbox" SearchType="0" SearchString="[ProgramFiles64Folder]\Docker Toolbox\docker.exe" VerMin="18.3" Order="1" Property="PreReqSearch_1"/>
+    <ROW SearchKey="SystemFolderfile.dll_1" Prereq="LightweightInstaller" SearchType="0" SearchString="[ProgramFiles64Folder]\Docker\Docker\Docker for Windows.exe" VerMin="18.06.0" Order="1" Property="PreReqSearch_1"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.SynchronizedFolderComponent">
     <ROW Directory_="APPDIR" SourcePath="Installer\Installer_Win\install_tmp" Feature="MainFeature" ExcludePattern="*~|#*#|%*%|._|CVS|.cvsignore|SCCS|vssver.scc|mssccprj.scc|vssver2.scc|.svn|.DS_Store" ExcludeFlags="6"/>
+  </COMPONENT>
+  <COMPONENT cid="caphyon.advinst.msicomp.WinOptionalFeatureBundleComponent">
+    <ROW Name="HyperV" FeatureList="Microsoft-Hyper-V-Management-PowerShell,Microsoft-Hyper-V-Hypervisor,Microsoft-Hyper-V-Services,Microsoft-Hyper-V-Management-Clients" OSTargets="256" Condition="1" Flags="1"/>
   </COMPONENT>
 </DOCUMENT>
