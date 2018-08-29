@@ -24,7 +24,7 @@ class TaskThread(threading.Thread):
 
     # pylint:disable=too-many-arguments
     # pylint:disable=too-many-instance-attributes
-    def __init__(self, subtask_id, working_directory, src_code, extra_data,
+    def __init__(self, subtask_id, src_code, extra_data,
                  short_desc, res_path, tmp_path, timeout=0) -> None:
         super(TaskThread, self).__init__()
 
@@ -37,8 +37,6 @@ class TaskThread(threading.Thread):
         self.done = False
         self.res_path = res_path
         self.tmp_path = tmp_path
-        self.working_directory = working_directory
-        self.prev_working_directory = ""
         self.lock = threading.Lock()
         self.error = False
         self.error_msg = ""
@@ -122,9 +120,6 @@ class TaskThread(threading.Thread):
         abs_res_path = os.path.abspath(os.path.normpath(self.res_path))
         abs_tmp_path = os.path.abspath(os.path.normpath(self.tmp_path))
 
-        self.prev_working_directory = os.getcwd()
-        os.chdir(os.path.join(abs_res_path,
-                              os.path.normpath(self.working_directory)))
         try:
             extra_data["resourcePath"] = abs_res_path
             extra_data["tmp_path"] = abs_tmp_path
@@ -134,4 +129,3 @@ class TaskThread(threading.Thread):
             )
         finally:
             self.end_time = time.time()
-            os.chdir(self.prev_working_directory)
