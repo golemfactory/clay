@@ -397,10 +397,10 @@ class TaskComputer(object):
 
     def __add_state_update_info(self, task_id, subtask_id):
         info = {}
-        info["subtask_id"] = subtask_id,
+        info["subtask_id"] = subtask_id
         info["task_id"] = task_id
 
-        auth_manager: CrossbarAuthManager = self.task_server.client.crossbar_auth_manager
+        auth_manager: CrossbarAuthManager = self.task_server.client.crossbar_auth_manager  # pylint: disable=line-too-long
         user = auth_manager.Users.docker
         info["user"] = user.name
         info["secret"] = auth_manager.get_secret(user)

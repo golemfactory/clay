@@ -40,7 +40,7 @@ class CrossbarRouter(object):
 
         self.cert_manager = CertificateManager(self.working_dir)
         self.auth_manager = CrossbarAuthManager(
-            self.working_dir,
+            datadir,
             generate_secrets=generate_secrets
         )
 

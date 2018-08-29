@@ -80,3 +80,6 @@ class StateUpdateProcessor():
 
     def get(self, state_update_info: StateUpdateInfo):
         return self._msg_dict[state_update_info]
+
+
+enforce.config({'groups': {'set': {'taskstateupdate': True}}})

@@ -110,13 +110,14 @@ class TestCrossbarAuthManager(TempDirFixture):
         with pytest.raises(Exception):
             CrossbarAuthManager(self.tempdir)
 
-        auth_manager = CrossbarAuthManager(self.tempdir, generate_secrets=True)
+        auth_manager = CrossbarAuthManager(self.tempdir,
+                                           generate_secrets=True)
         assert bool(auth_manager.secrets)
         assert bool(auth_manager.secrets_path)
 
     def test_generate_secrets(self):
-        auth_manager = CrossbarAuthManager(self.tempdir, generate_secrets=True)
-        auth_manager.generate_secrets()
+        auth_manager = CrossbarAuthManager(self.tempdir,
+                                           generate_secrets=True)
 
         assert set(os.listdir(auth_manager.secrets_path)) == \
             set(f"{x}.{auth_manager.SECRET_EXT}"
@@ -124,8 +125,8 @@ class TestCrossbarAuthManager(TempDirFixture):
 
     @patch("secrets.token_hex", return_value="secret")
     def test_get_secret(self, *_):
-        cert_manager = CrossbarAuthManager(self.tempdir, generate_secrets=True)
-        cert_manager.generate_secrets()
+        cert_manager = CrossbarAuthManager(self.tempdir,
+                                           generate_secrets=True)
 
         assert all("secret" == cert_manager.get_secret(x)
                    for x in cert_manager.Users.__members__.values())

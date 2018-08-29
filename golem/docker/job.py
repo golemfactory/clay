@@ -69,7 +69,7 @@ class DockerJob(object):
         self.script_src = script_src
         self.parameters = parameters if parameters else {}
 
-        self.parameters["FLAGS"].update(self.FLAGS)
+        self.parameters["FLAGS"] = self.FLAGS
 
         self.host_config = host_config or {}
 

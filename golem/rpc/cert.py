@@ -9,7 +9,7 @@ from OpenSSL import crypto
 from OpenSSL._util import ffi, lib
 
 from golem.core.common import is_windows
-from golem.rpc.common import X509_COMMON_NAME
+from golem.rpc.common import X509_COMMON_NAME, CROSSBAR_DIR
 
 logger = logging.getLogger(__name__)
 
@@ -29,11 +29,13 @@ class CrossbarAuthManager:
     SECRET_EXT = "tck"
     SECRETS_DIR = "secrets"
 
-    def __init__(self, dest_dir, generate_secrets=False):
-        self.secrets_path = os.path.join(dest_dir, self.SECRETS_DIR)
+    def __init__(self, dest_dir, generate_secrets=False, force=False):
+        self.secrets_path = os.path.join(dest_dir,
+                                         CROSSBAR_DIR,
+                                         self.SECRETS_DIR)
         if generate_secrets:
-            self.generate_secrets()
-        self.secrets = self.__read_secrets()
+            self.generate_secrets(force)
+        self.secrets = self._read_secrets()
 
     def get_secret(self, user: 'CrossbarAuthManager.Users'):
         if not (user.name in self.secrets):
@@ -41,28 +43,28 @@ class CrossbarAuthManager:
                            f"Maybe you forgot to create it?")
         return self.secrets[user.name]
 
-    def __secrets_paths(self):
+    def _secrets_paths(self):
         return {p: os.path.join(self.secrets_path, f"{p}.{self.SECRET_EXT}")
                 for p in self.Users.__members__.keys()}
 
-    def generate_secrets(self):
+    def generate_secrets(self, force=False):
         os.makedirs(self.secrets_path, exist_ok=True)
-        for _, path in self.__secrets_paths().items():
-            if not os.path.exists(path):
-                secret = secrets.token_hex(16)
+        for _, path in self._secrets_paths().items():
+            if not os.path.exists(path) or force:
+                secret = secrets.token_hex(256)
                 with open(path, "w") as f:
                     f.write(secret)
 
-    def __read_secret(self, path: str) -> str:
+    def _read_secret(self, path: str) -> str:
         if not os.path.isfile(path):
             raise Exception(f"No secret in {path}. "
                             f"Maybe you forgot to create secrets?")
         with open(path, "r") as f:
             return f.read()
 
-    def __read_secrets(self):
-        return {u: self.__read_secret(path)
-                for u, path in self.__secrets_paths().items()}
+    def _read_secrets(self):
+        return {u: self._read_secret(p)
+                for u, p in self._secrets_paths().items()}
 
 
 class CertificateManager:

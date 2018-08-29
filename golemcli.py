@@ -85,12 +85,11 @@ def start():
         cli = CLI(main_parser=parser, main_parser_options=flag_options)
 
     datadir = get_local_datadir('default', root_dir=parsed.datadir)
-    working_dir = os.path.join(datadir, CROSSBAR_DIR)
 
     # run the cli
     ws_cli = WebSocketCLI(
         cli,
-        CrossbarAuthManager(working_dir),
+        CrossbarAuthManager(datadir),
         host=parsed.address,
         port=parsed.port
     )

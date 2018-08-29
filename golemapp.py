@@ -13,6 +13,7 @@ from cpuinfo import get_cpu_info
 from ethereum import slogging
 
 # Export pbr version for peewee_migrate user
+from golem.rpc.cert import CrossbarAuthManager
 
 os.environ["PBR_VERSION"] = '3.1.1'
 
@@ -139,9 +140,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     # We should use different directories for different chains
     datadir = get_local_datadir('default', root_dir=datadir)
 
-    if generate_rpc_cert:
-        generate_rpc_certificate(datadir)
-        return 0
+    generate_rpc_certificate(datadir)
 
     # Workarounds for pyinstaller executable
     sys.modules['win32com.gen_py.os'] = None
@@ -261,6 +260,8 @@ def generate_rpc_certificate(datadir: str):
 
     cert_manager = CertificateManager(cert_dir)
     cert_manager.generate_if_needed()
+
+    _ = CrossbarAuthManager(datadir, generate_secrets=True)
 
     print('RPC self-signed certificate has been created')
 

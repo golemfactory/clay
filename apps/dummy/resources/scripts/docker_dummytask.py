@@ -36,9 +36,13 @@ run(params.data_files,
 
 
 # We don't send messages if the task is run in LocalComputer
-if "MESSAGES_AVAILABLE" not in params.FLAGS or \
-        not params.FLASG["MESSAGES_AVAILABLE"]:
+if not hasattr(params, "FLAGS") or \
+   not "MESSAGES_AVAILABLE" in params.FLAGS or \
+   not params.FLAGS["MESSAGES_AVAILABLE"]:
+    print("Messages not available")
     sys.exit(0)
+else:
+    print("Messages available")
 
 # -------------------------------------------------------------------
 # Dummy messages
@@ -51,6 +55,7 @@ message = {
     u"info": state_update_info,
     u"data": {u"aa": u"bb"}
 }
+
 
 USER = params.user
 SECRET = params.secret
@@ -66,15 +71,13 @@ from twisted.internet._sslverify import optionsForClientTLS
 from autobahn.wamp import auth
 from twisted.internet import _sslverify
 
-
 class Component(ApplicationSession):
 
     def onConnect(self):
-        print("Client connected. Starting WAMP-Ticket \
-                    authentication on realm {} \
-                    as crsb_user {}".format(
-            REALM, USER))
-        self.join(REALM, [u"wampcra"], USER)
+        print("Client connected. Starting WAMP-Ticket authentication on "
+              "realm {} as crsb_user {}".format(REALM, USER))
+        # TODO change back "docker" to USER.encode("utf8"))
+        self.join(REALM, [u"wampcra"], u"docker")
 
     def onChallenge(self, challenge):
         if challenge.method == "wampcra":
@@ -87,7 +90,6 @@ class Component(ApplicationSession):
 
     @inlineCallbacks
     def onJoin(self, details):
-        print("session attached")
         try:
             now = yield self.call(u'comp.task.state_update', message)
         except Exception as e:
@@ -100,8 +102,11 @@ class Component(ApplicationSession):
         print("disconnected")
         reactor.stop()
 
-
 _sslverify.platformTrust = lambda: None
-runner = ApplicationRunner(URL, REALM,
-                           ssl=optionsForClientTLS(X509_COMMON_NAME, trustRoot=None))
+runner = ApplicationRunner(
+    URL,
+    REALM,
+    ssl=optionsForClientTLS(X509_COMMON_NAME, trustRoot=None)
+)
+
 runner.run(Component)
