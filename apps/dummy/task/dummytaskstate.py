@@ -6,16 +6,7 @@ from apps.core.task.coretaskstate import (TaskDefinition,
                                           TaskDefaults, Options)
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from golem.core.common import get_golem_path
-from golem.resource.dirmanager import symlink_or_copy
-
-
-# moved it to dir_manager and created tests, in PR#1297
-def ls_R(dir):
-    files = []
-    for dirpath, dirnames, filenames in os.walk(dir, followlinks=True):
-        for name in filenames:
-            files.append(os.path.join(dirpath, name))
-    return files
+from golem.resource.dirmanager import symlink_or_copy, list_dir_recursive
 
 
 class DummyTaskDefaults(TaskDefaults):
@@ -74,7 +65,7 @@ class DummyTaskDefinition(TaskDefinition):
         self.tmp_dir = tempfile.mkdtemp()
 
         self.shared_data_files = list(self.resources)
-        self.code_files = ls_R(self.code_dir)
+        self.code_files = list(list_dir_recursive(self.code_dir))
 
         symlink_or_copy(self.code_dir, os.path.join(self.tmp_dir, "code"))
 
@@ -92,7 +83,7 @@ class DummyTaskDefinition(TaskDefinition):
         symlink_or_copy(data_file,
                         os.path.join(data_path, os.path.basename(data_file)))
 
-        self.resources = set(ls_R(self.tmp_dir))
+        self.resources = set(list_dir_recursive(self.tmp_dir))
 
     # TODO maybe move it to the CoreTask? Issue #2428
     def set_defaults(self, defaults: DummyTaskDefaults):
