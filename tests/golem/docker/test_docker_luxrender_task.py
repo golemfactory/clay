@@ -10,6 +10,7 @@ import pytest
 
 from apps.lux.task.luxrendertask import LuxRenderTaskBuilder, LuxTask
 from golem.core.fileshelper import find_file_with_ext
+from golem.docker.job import DockerJob
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ResultType
 from golem.task.taskcomputer import DockerTaskThread
@@ -108,6 +109,9 @@ class TestDockerLuxrenderTask(
 
     def _test_luxrender_real_task(self, task: LuxTask):
         ctd = task.query_extra_data(10000).ctd
+
+        ctd["extra_data"].update(DockerJob.PATH_PARAMS)
+
         # act
         computer = LocalComputer(
             root_path=self.tempdir,

@@ -3,8 +3,9 @@ import os
 import shutil
 import time
 
+from golem.core.common import is_linux, is_osx
 from golem.resource.dirmanager import symlink_or_copy, DirManager, \
-    find_task_script, logger
+    find_task_script, logger, list_dir_recursive
 from golem.tools.assertlogs import LogTestCase
 from golem.testutils import TempDirFixture
 
@@ -275,3 +276,34 @@ class TestFindTaskScript(TempDirFixture, LogTestCase):
         self.assertEqual(os.path.basename(path), "bla")
         with self.assertLogs(logger, level="ERROR"):
             find_task_script(self.path, "notexisting")
+
+
+class TestUtilityFunction(TempDirFixture):
+    def test_ls_r(self):
+        os.makedirs(os.path.join(self.tempdir, "aa", "bb", "cc"))
+        os.makedirs(os.path.join(self.tempdir, "ddd", "bb", "cc"))
+        os.makedirs(os.path.join(self.tempdir, "ee", "ff"))
+
+        with open(os.path.join(self.tempdir, "ee", "f1"), "w") as f:
+            f.write("content")
+        with open(os.path.join(self.tempdir, "f2"), "w") as f:
+            f.write("content")
+        with open(os.path.join(self.tempdir, "aa", "bb", "f3"), "w") as f:
+            f.write("content")
+
+        # Depending on os, we are testing symlinks or not
+        if is_osx() or is_linux():
+            os.symlink(os.path.join(self.tempdir, "f2"),
+                       os.path.join(self.tempdir, "ee", "ff", "f4"))
+            dirs = list(list_dir_recursive(self.tempdir))
+            true_dirs = {os.path.join(*[self.tempdir, *x])
+                         for x in [["ee", "f1"],
+                                   ["f2"],
+                                   ["aa", "bb", "f3"],
+                                   ["ee", "ff", "f4"]]}
+            self.assertEqual(set(dirs), true_dirs)
+        else:
+            dirs = list(list_dir_recursive(self.tempdir))
+            true_dirs = {os.path.join(*[self.tempdir, *x])
+                         for x in [["ee", "f1"], ["f2"], ["aa", "bb", "f3"]]}
+            self.assertEqual(set(dirs), true_dirs)
