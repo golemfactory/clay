@@ -3,7 +3,6 @@
 import collections
 import json
 import logging
-import random
 import sys
 import time
 import uuid
@@ -64,7 +63,6 @@ from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.network.upnp.mapper import PortMapperManager
-from golem.ranking.helper.trust import Trust
 from golem.ranking.ranking import Ranking
 from golem.report import Component, Stage, StatusPublisher, report_calls
 from golem.resource.base.resourceserver import BaseResourceServer
@@ -574,29 +572,13 @@ class Client(HardwarePresetsMixin):
         task_id = task.header.task_id
         self.funds_locker.lock_funds(task)
 
-        if self.concent_service.enabled:
-            min_amount, opt_amount = msg_helpers.requestor_deposit_amount(
-                task.price,
-            )
-            # This is a bandaid solution for unlocking funds when task creation
-            # fails. This case is most common but, the better way it to always
-            # unlock them when the task fails regardless of the reason.
-            try:
-                self.transaction_system.concent_deposit(
-                    required=min_amount,
-                    expected=opt_amount,
-                )
-            except NotEnoughFunds:
-                self.funds_locker.remove_task(task_id)
-                raise
-
         logger.info('Enqueue new task "%r"', task_id)
-        files = get_resources_for_task(resource_header=None,
-                                       resource_type=ResourceType.HASHES,
-                                       tmp_dir=getattr(task, 'tmp_dir', None),
-                                       resources=task.get_resources())
 
         def package_created(packager_result):
+            logger.info(
+                "Resource package created. Creating task. task_id=%r",
+                task_id,
+            )
             package_path, package_sha1 = packager_result
             task.header.resource_size = path.getsize(package_path)
 
@@ -618,6 +600,7 @@ class Client(HardwarePresetsMixin):
             _resources.addCallbacks(task_created, error)
 
         def task_created(resource_server_result):
+            logger.info("Task created. Starting... task_id=%r", task_id)
             resource_manager_result, package_path,\
                 package_hash, package_size = resource_server_result
 
@@ -644,8 +627,54 @@ class Client(HardwarePresetsMixin):
             logger.error("Task '%s' creation failed: %r", task_id, exception)
             _result.errback(exception)
 
-        _package = self.resource_server.create_resource_package(files, task_id)
-        _package.addCallbacks(package_created, error)
+        def deposit_created(_):
+            logger.info(
+                "Deposit confirmed. Creating resource package. task_id=%r",
+                task_id,
+            )
+            files = get_resources_for_task(
+                resource_header=None,
+                resource_type=ResourceType.HASHES,
+                tmp_dir=getattr(task, 'tmp_dir', None),
+                resources=task.get_resources(),
+            )
+
+            _package = self.resource_server.create_resource_package(
+                files,
+                task_id,
+            )
+            _package.addCallbacks(package_created, error)
+
+        if self.concent_service.enabled:
+            min_amount, opt_amount = msg_helpers.requestor_deposit_amount(
+                task.price,
+            )
+            logger.info(
+                "Ensuring deposit. min=%.8f optimal=%.8f task_id=%r",
+                min_amount / denoms.ether,
+                opt_amount / denoms.ether,
+                task_id,
+            )
+            # This is a bandaid solution for unlocking funds when task creation
+            # fails. This case is most common but, the better way it to always
+            # unlock them when the task fails regardless of the reason.
+            try:
+                self.transaction_system.concent_deposit(
+                    required=min_amount,
+                    expected=opt_amount,
+                ).addCallback(deposit_created).addErrback(
+                    lambda err: logger.error(
+                        "Deposit creation failed: %r, task_id=%r",
+                        err,
+                        task_id,
+                    ),
+                )
+            except NotEnoughFunds:
+                self.funds_locker.remove_task(task_id)
+                raise
+        else:
+            deposit_created(None)
+
         return _result, task_id
 
     def _get_mask_for_task(self, task: CoreTask) -> Mask:

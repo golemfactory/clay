@@ -4,6 +4,7 @@ import logging
 import os
 import time
 
+from ethereum.utils import denoms
 from golem_messages import message
 from golem_messages import helpers as msg_helpers
 
@@ -570,7 +571,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             requestors_deposit_value = transaction_system.concent_balance(
                 account_address=msg.requestor_ethereum_address,
             )
-            if requestors_deposit_value < (total_task_price * 2):
+            requestors_expected_deposit_value = msg_helpers \
+                .requestor_deposit_amount(
+                    total_task_price=total_task_price,
+                )[0]
+            if requestors_deposit_value < requestors_expected_deposit_value:
+                logger.info(
+                    "Requestors deposit is too small (%.8f < %.8f)",
+                    requestors_deposit_value / denoms.ether,
+                    requestors_expected_deposit_value / denoms.ether,
+                )
                 _cannot_compute(reasons.InsufficientDeposit)
                 return
             requestors_deposit_timelock = transaction_system.concent_timelock(
