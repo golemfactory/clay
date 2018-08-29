@@ -1,16 +1,16 @@
 import logging
 import subprocess
 import time
-from typing import List, Optional, Dict, Union, Callable
+from typing import List, Optional, Dict, Union, Callable, Tuple
 
-from golem.core.common import SUBPROCESS_STARTUP_INFO, DEVNULL, to_unicode
+from golem.core.common import SUBPROCESS_STARTUP_INFO, to_unicode
 
 
 logger = logging.getLogger(__name__)
 
 
 CallableCommand = Callable[
-    [Optional[str], Optional[List[str]], Optional[bool]],  # args
+    [Optional[str], Union[Tuple, List[str], None], Optional[bool]],  # args
     Optional[str]  # return value
 ]
 
@@ -35,17 +35,17 @@ class DockerCommandHandler:
     def run(cls,
             command_name: str,
             vm_name: Optional[str] = None,
-            args: Optional[List[str]] = None,
+            args: Optional[Union[Tuple, List[str]]] = None,
             shell: bool = False) -> Optional[str]:
 
         command = cls.commands.get(command_name)
         if not command:
-            logger.warning('Unknown command: %s', command_name)
+            logger.error('Unknown command: %s', command_name)
         elif isinstance(command, list):
             return cls._command(command[:], vm_name, args, shell)
         elif callable(command):
             return command(vm_name, args, shell)
-        return str()
+        return None
 
     @classmethod
     def wait_until_started(cls):
@@ -71,11 +71,11 @@ class DockerCommandHandler:
     def _command(cls,
                  command: List[str],
                  vm_name: Optional[str] = None,
-                 args: Optional[List[str]] = None,
+                 args: Optional[Union[Tuple, List[str]]] = None,
                  shell: bool = False) -> str:
 
         if args:
-            command += args
+            command += list(args)
         if vm_name:
             command += [vm_name]
 
@@ -86,7 +86,7 @@ class DockerCommandHandler:
                 command,
                 startupinfo=SUBPROCESS_STARTUP_INFO,
                 shell=shell,
-                stdin=DEVNULL,
+                stdin=subprocess.DEVNULL,
                 stderr=subprocess.STDOUT
             )
         except FileNotFoundError as exc:
