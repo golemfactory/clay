@@ -1,10 +1,18 @@
 import logging
+import os
+from typing import Callable, Dict, Any
 
+from golem.core.common import get_golem_path
 from golem.core.hardware import cpu_cores_available
 from golem.docker.task_thread import DockerTaskThread
 
-__all__ = ['DockerConfigManager']
 logger = logging.getLogger(__name__)
+
+ROOT_DIR = get_golem_path()
+APPS_DIR = os.path.join(ROOT_DIR, 'apps')
+IMAGES_INI = os.path.join(APPS_DIR, 'images.ini')
+
+DOCKER_VM_NAME = 'golem'
 
 DEFAULT_HOST_CONFIG = dict(
     privileged=False,
@@ -22,6 +30,25 @@ DEFAULT_HOST_CONFIG = dict(
               'sys_module', 'sys_nice', 'sys_pacct',
               'sys_resource', 'sys_time', 'sys_tty_config']
 )
+
+CONSTRAINT_KEYS = dict(
+    mem='memory_size',
+    cpu='cpu_count',
+    cpu_cap='cpu_execution_cap'
+)
+MIN_CONSTRAINTS = dict(
+    memory_size=1024,
+    cpu_execution_cap=10,
+    cpu_count=1
+)
+DEFAULTS = dict(
+    memory_size=1024,
+    cpu_execution_cap=100,
+    cpu_count=1
+)
+
+
+GetConfigFunction = Callable[[], Dict[str, Any]]
 
 
 class DockerConfigManager(object):
@@ -47,7 +74,7 @@ class DockerConfigManager(object):
 
             try:
                 host_config['mem_limit'] = int(max_memory_size) * 1024
-            except Exception as exc:  # pylint: disable=broad-except
+            except (TypeError, ValueError) as exc:
                 logger.warning('Cannot set the CPU set: %r', exc)
 
         self.container_host_config.update(host_config)

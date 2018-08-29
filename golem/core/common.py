@@ -6,6 +6,7 @@ import sys
 from calendar import timegm
 from datetime import datetime
 from multiprocessing import cpu_count
+from typing import Optional, List
 
 import pytz
 
@@ -273,6 +274,33 @@ def install_reactor():
     from golem.core.variables import REACTOR_THREAD_POOL_SIZE
     reactor.suggestThreadPoolSize(REACTOR_THREAD_POOL_SIZE)
     return reactor
+
+
+def unix_pid(process_name: str) -> Optional[int]:
+    # Excludes 'grep -i' from the result list
+    process_name = f'[{process_name[0]}]{process_name[1:]}'
+
+    try:
+        line = unix_pipe(['ps', 'ux'], ['grep', '-i', process_name])
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        return None
+
+    try:
+        return int(line.split()[1])
+    except (IndexError, TypeError, ValueError):
+        return None
+
+
+def unix_pipe(source_cmd: List[str], sink_cmd: List[str]) -> str:
+    proc_source = subprocess.Popen(source_cmd,
+                                   stdout=subprocess.PIPE)
+    proc_sink = subprocess.Popen(sink_cmd,
+                                 stdout=subprocess.PIPE,
+                                 stderr=subprocess.PIPE,
+                                 stdin=proc_source.stdout)
+    proc_source.stdout.close()
+    stdout, _ = proc_sink.communicate()
+    return stdout.strip().decode('utf-8')
 
 
 if is_windows():
