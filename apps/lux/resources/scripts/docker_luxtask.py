@@ -115,4 +115,3 @@ run_lux_renderer_task(params.start_task, params.outfilebasename,
                       params.output_format, params.scene_file_src,
                       params.scene_dir)
 
-

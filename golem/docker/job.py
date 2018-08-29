@@ -2,7 +2,6 @@ import logging
 import os
 import posixpath
 import threading
-from os import path
 
 import docker.errors
 
@@ -165,7 +164,7 @@ class DockerJob(object):
         logger.debug("Container {} prepared, image: {}, dirs: {}; {}; {}"
                      .format(self.container_id, self.image.name,
                              self.work_dir, self.resources_dir, self.output_dir)
-                     )
+                    )
 
     def _cleanup(self):
         if self.container:
@@ -198,10 +197,10 @@ class DockerJob(object):
         self._cleanup()
 
     def _get_host_script_path(self):
-        return path.join(self.work_dir, self.TASK_SCRIPT)
+        return os.path.join(self.work_dir, self.TASK_SCRIPT)
 
     def _get_host_params_path(self):
-        return path.join(self.work_dir, self.PARAMS_FILE)
+        return os.path.join(self.work_dir, self.PARAMS_FILE)
 
     @staticmethod
     def _host_dir_chmod(dst_dir, mod):
@@ -214,7 +213,7 @@ class DockerJob(object):
             import stat
             prev_mod = stat.S_IMODE(os.stat(dst_dir).st_mode)
         except Exception as e:
-            logger.debug("Cannot get mode for {}, reason: {}".format(dst_dir, e))
+            logger.debug("Cannot get mode for %s, reason: %s", dst_dir, e)
 
         if mod is not None:
             try:

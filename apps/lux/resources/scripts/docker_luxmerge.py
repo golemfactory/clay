@@ -16,7 +16,8 @@ RESOURCE_DIR = "/golem/resources"
 def format_lux_merger_cmd(output_filename, flm_files):
 
     cmd = ["{}".format(LUXMERGER_COMMAND),
-           "-o", "{}/{}.flm".format(OUTPUT_DIR, os.path.basename(output_filename))]
+           "-o", "{}/{}.flm".format(OUTPUT_DIR,
+                                    os.path.basename(output_filename))]
     for file_ in flm_files:
         cmd.append("{}".format(file_))
     print(cmd, file=sys.stderr)

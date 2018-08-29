@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 
 import argparse
-import click
 import os
 import sys
+
+import click
 
 from multiprocessing import freeze_support
 

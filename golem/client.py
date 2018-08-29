@@ -1393,7 +1393,7 @@ class Client(HardwarePresetsMixin):
 
     def get_status(self):
         progress = self.task_server.task_computer.get_progresses()
-        if len(progress) > 0:
+        if progress:
             msg = "Computing {} subtask(s):".format(len(progress))
             for k, v in list(progress.items()):
                 msg = "{} \n {} ({}%)\n".format(msg, k, v.get_progress() * 100)

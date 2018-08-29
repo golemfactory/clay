@@ -64,6 +64,7 @@ REALM = u"golem"
 
 X509_COMMON_NAME = u"golem.local"
 
+# pylint: disable=wrong-import-position
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
 from autobahn.twisted.wamp import ApplicationSession, ApplicationRunner
@@ -83,7 +84,7 @@ class Component(ApplicationSession):
         if challenge.method == "wampcra":
             print("WAMP-Ticket challenge received: {}".format(challenge))
             signature = auth.compute_wcs(SECRET.encode('utf8'),
-                                         challenge.extra['challenge'].encode('utf8'))
+                                         challenge.extra['challenge'].encode('utf8'))  # pylint: disable=line-too-long
             return signature.decode('ascii')
         else:
             raise Exception("Invalid authmethod {}".format(challenge.method))
