@@ -29,7 +29,7 @@ class SpamProtector:
         #
         # https://github.com/golemfactory/golem/issues/3195
         #
-        msg_type, _, _ = Message.deserialize_header(msg_data[:Message.HDR_LEN])
+        msg_type, _, _ = Message.unpack_header(msg_data[:Message.HDR_LEN])
 
         if msg_type not in self.INTERVALS:
             return True
