@@ -6,7 +6,6 @@ import time
 
 from golem_messages import helpers as msg_helpers
 from golem_messages import message
-from golem_messages.message import ComputeTaskDef
 
 from golem.core.common import HandleAttributeError
 from golem.core.keysauth import KeysAuth
@@ -914,7 +913,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             subtask_id)
         return self.check_requestor_for_task(task_id, "Subtask %r" % subtask_id)
 
-    def _check_ctd_params(self, ctd: ComputeTaskDef):
+    def _check_ctd_params(self, ctd: message.ComputeTaskDef):
         header = self.task_manager.comp_task_keeper.get_task_header(
             ctd['task_id'])
         owner = header.task_owner
@@ -957,7 +956,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return True
 
     def __check_docker_images(self,
-                              ctd: ComputeTaskDef,
+                              ctd: message.ComputeTaskDef,
                               env: DockerEnvironment):
         for image_dict in ctd['docker_images']:
             image = DockerImage(**image_dict)

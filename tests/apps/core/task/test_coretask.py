@@ -87,11 +87,13 @@ class TestCoreTask(LogTestCase, TestDirFixture):
     def test_init(self):
         task_def = TestCoreTask._get_core_task_definition()
         wrong_file = MagicMock()
-        wrong_file.main_program_file = "abcde"
-        self.CoreTaskDeabstracted.ENVIRONMENT_CLASS.return_value = wrong_file
+        wrong_file.return_value.main_program_file = "abcde"
 
-        with patch("logging.Logger.warning") as mock:
-            task = self.CoreTaskDeabstracted(
+        class CoreTaskWrongFile(self.CoreTaskDeabstracted):
+            ENVIRONMENT_CLASS = wrong_file
+
+        with patch("logging.Logger.warning") as log_mock:
+            task = CoreTaskWrongFile(
                 task_definition=task_def,
                 owner=Node(
                     node_name="ABC",
@@ -101,11 +103,9 @@ class TestCoreTask(LogTestCase, TestDirFixture):
                 ),
                 resource_size=1024
             )
-        mock.assert_called_once()
-        self.assert_("Wrong main program file" in mock.call_args[0][0])
-        self.assert_(task.src_code == "")
-
-        self.CoreTaskDeabstracted.ENVIRONMENT_CLASS = MagicMock()
+        log_mock.assert_called_once()
+        self.assertIn("Wrong main program file", log_mock.call_args[0][0])
+        self.assertEqual(task.src_code, "")
 
     def _get_core_task(self):
         task_def = TestCoreTask._get_core_task_definition()

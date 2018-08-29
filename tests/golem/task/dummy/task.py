@@ -217,7 +217,7 @@ class DummyTask(Task):
 
     def computation_finished(self, subtask_id, task_result,
                              result_type=ResultType.DATA,
-                             verification_finished=None):
+                             verification_finished_=None):
         with self._lock:
             if subtask_id in self.assigned_subtasks:
                 node_id = self.assigned_subtasks.pop(subtask_id, None)
