@@ -87,6 +87,10 @@ from golem.tools.talkback import enable_sentry_logger
 logger = logging.getLogger(__name__)
 
 
+class CreateTaskError(Exception):
+    pass
+
+
 class ClientTaskComputerEventListener(object):
 
     def __init__(self, client):
@@ -556,10 +560,11 @@ class Client(HardwarePresetsMixin):
         successfully created.
         """
         if self.config_desc.in_shutdown:
-            raise Exception('Can not enqueue task: shutdown is in progress, '
-                            'toggle shutdown mode off to create a new tasks.')
+            raise CreateTaskError(
+                'Can not enqueue task: shutdown is in progress, '
+                'toggle shutdown mode off to create a new tasks.')
         if self.task_server is None:
-            raise Exception("Golem is not ready")
+            raise CreateTaskError("Golem is not ready")
 
         task_manager = self.task_server.task_manager
         _result = Deferred()
@@ -574,8 +579,9 @@ class Client(HardwarePresetsMixin):
 
         if task.header.fixed_header.concent_enabled and \
                 not self.concent_service.enabled:
-            raise Exception("Cannot create task with concent enabled when "
-                            "concent service is disabled")
+            raise CreateTaskError(
+                "Cannot create task with concent enabled when "
+                "concent service is disabled")
 
         task_id = task.header.task_id
         self.funds_locker.lock_funds(task)
