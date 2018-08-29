@@ -149,12 +149,11 @@ class TransactionSystem(LoopingCallService):
 
         self._payment_processor = PaymentProcessor(self._sci)
         self._eth_per_payment = self._current_eth_per_payment()
-        if self._payment_processor.recipients_count > 0:
-            required_eth = \
-                self._payment_processor.recipients_count * self._eth_per_payment
+        recipients_count = self._payment_processor.recipients_count
+        if recipients_count > 0:
+            required_eth = recipients_count * self._eth_per_payment
             if required_eth > self._eth_balance:
-                self._eth_per_payment = self._eth_balance // \
-                    self._payment_processor.recipients_count
+                self._eth_per_payment = self._eth_balance // recipients_count
 
         self._subscribe_to_events()
 
