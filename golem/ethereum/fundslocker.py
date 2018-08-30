@@ -26,7 +26,7 @@ class FundsLocker(LoopingCallService):
         super().__init__(interval_seconds)
         self.task_lock = {}
         self.transaction_system = transaction_system
-        self.dump_path = datadir / "fundslockv1.pickle"
+        self.dump_path = datadir / "fundslockv2.pickle"
         self.persist = persist
         self.restore()
 
