@@ -1,8 +1,8 @@
 import logging
 import time
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Union
 
-from twisted.internet import task, defer
+from twisted.internet import task
 from twisted.internet.defer import Deferred
 
 from golem.core.common import each
