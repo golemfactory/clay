@@ -44,12 +44,12 @@ class FundsLocker(LoopingCallService):
             tfl.price,
             tfl.num_tasks,
         )
-        self.task_lock[task_id] = tfl
-        self.dump_locks()
         self.transaction_system.lock_funds_for_payments(
             tfl.price,
             tfl.num_tasks,
         )
+        self.task_lock[task_id] = tfl
+        self.dump_locks()
 
     def remove_old(self):
         time_ = time.time()
