@@ -416,10 +416,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
             def computation_finished(self, subtask_id, task_result,
                                      result_type=ResultType.DATA,
-                                     verification_finished_=None):
+                                     verification_finished=None):
                 if not self.restarted[subtask_id]:
                     self.finished[subtask_id] = True
-                verification_finished_()
+                verification_finished()
 
             def verify_subtask(self, subtask_id):
                 return self.verify_subtasks[subtask_id]
