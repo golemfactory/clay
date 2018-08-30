@@ -5,7 +5,8 @@ from contextlib import contextmanager
 from typing import Dict, Optional
 
 from golem.docker.commands.docker import DockerCommandHandler
-from golem.docker.config import DOCKER_VM_NAME, GetConfigFunction
+from golem.docker.config import DOCKER_VM_NAME, GetConfigFunction, \
+    DOCKER_VM_STATUS_RUNNING
 from golem.report import Component, report_calls
 
 logger = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ class Hypervisor(metaclass=ABCMeta):
         self._vm_name = vm_name
 
     @classmethod
-    def is_available(cls):
+    def is_available(cls) -> bool:
         return True
 
     def setup(self) -> None:
@@ -75,7 +76,7 @@ class Hypervisor(metaclass=ABCMeta):
         try:
             status = self.command('status', name) or ''
             status = status.strip().replace("\n", "")
-            return status == 'Running'
+            return status == DOCKER_VM_STATUS_RUNNING
         except subprocess.CalledProcessError as e:
             logger.error("DockerMachine: failed to check status: %s", e)
         return False
@@ -103,7 +104,7 @@ class Hypervisor(metaclass=ABCMeta):
             logger.warning("Docker: failed to stop the VM: %r", e)
         return False
 
-    def create(self, name: Optional[str] = None, **params):
+    def create(self, name: Optional[str] = None, **params) -> bool:
         raise NotImplementedError
 
     def constrain(self, name: Optional[str] = None, **params) -> None:

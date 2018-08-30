@@ -20,6 +20,10 @@ class DockerForMac(Hypervisor):
     CONFIG_FILE = os.path.expanduser(
         "~/Library/Group Containers/group.com.docker/settings.json"
     )
+    CONFIG_KEYS = dict(
+        cpu='cpus',
+        mem='memoryMiB',
+    )
 
     def setup(self) -> None:
         if self.vm_running():
@@ -29,7 +33,7 @@ class DockerForMac(Hypervisor):
             self.start_vm()
 
     @classmethod
-    def is_available(cls):
+    def is_available(cls) -> bool:
         return os.path.exists(cls.COMMAND_HANDLER.APP)
 
     def create(self, name: Optional[str] = None, **params) -> bool:
@@ -41,9 +45,10 @@ class DockerForMac(Hypervisor):
         return False
 
     def constrain(self, name: Optional[str] = None, **params) -> None:
-        cpu = params.get(CONSTRAINT_KEYS['cpu'])
-        mem = params.get(CONSTRAINT_KEYS['mem'])
-        update = dict(cpus=cpu, memoryMiB=mem)
+        update = {
+            config_key: params.get(CONSTRAINT_KEYS[key])
+            for key, config_key in self.CONFIG_KEYS.items()
+        }
 
         try:
             self._update_config(update)
@@ -51,14 +56,7 @@ class DockerForMac(Hypervisor):
             logger.error("Docker for Mac: unable to update config: %r", e)
 
     def constraints(self, name: Optional[str] = None) -> Dict:
-        if not os.path.exists(self.CONFIG_FILE):
-            self.start_vm()
-        if not os.path.exists(self.CONFIG_FILE):
-            raise RuntimeError('Docker for Mac: unable to read VM config')
-
-        with open(self.CONFIG_FILE) as config_file:
-            config = json.load(config_file)
-
+        config = self._get_config()
         constraints = dict()
 
         try:
@@ -73,10 +71,17 @@ class DockerForMac(Hypervisor):
 
         return constraints
 
-    def _update_config(self, update: Dict) -> None:
-        with open(self.CONFIG_FILE) as config_file:
-            config = json.load(config_file)
+    def _get_config(self) -> Dict:
+        if not os.path.exists(self.CONFIG_FILE):
+            self.start_vm()
+        if not os.path.exists(self.CONFIG_FILE):
+            raise RuntimeError('Docker for Mac: unable to read VM config')
 
+        with open(self.CONFIG_FILE) as config_file:
+            return json.load(config_file)
+
+    def _update_config(self, update: Dict) -> None:
+        config = self._get_config()
         config.update(update)
 
         with open(self.CONFIG_FILE, 'w') as config_file:

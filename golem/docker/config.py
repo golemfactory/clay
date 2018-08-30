@@ -1,6 +1,6 @@
 import logging
 import os
-from typing import Callable, Dict, Any
+from typing import Callable, Dict, Any, Optional
 
 from golem.core.common import get_golem_path
 from golem.core.hardware import cpu_cores_available
@@ -13,6 +13,7 @@ APPS_DIR = os.path.join(ROOT_DIR, 'apps')
 IMAGES_INI = os.path.join(APPS_DIR, 'images.ini')
 
 DOCKER_VM_NAME = 'golem'
+DOCKER_VM_STATUS_RUNNING = 'Running'
 
 DEFAULT_HOST_CONFIG = dict(
     privileged=False,
@@ -55,9 +56,9 @@ class DockerConfigManager(object):
 
     def __init__(self):
         self.container_host_config = dict(DEFAULT_HOST_CONFIG)
-        self.hypervisor = None
+        self.hypervisor: Optional['Hypervisor'] = None
 
-    def build_config(self, config_desc):
+    def build_config(self, config_desc) -> None:
         host_config = dict()
 
         if config_desc:
@@ -86,6 +87,6 @@ class DockerConfigManager(object):
             DockerTaskThread.docker_manager = docker_manager
         return DockerTaskThread.docker_manager
 
-    def quit(self):
+    def quit(self) -> None:
         if self.hypervisor:
             self.hypervisor.quit()

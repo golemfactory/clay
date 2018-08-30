@@ -48,7 +48,7 @@ class DockerCommandHandler:
         return None
 
     @classmethod
-    def wait_until_started(cls):
+    def wait_until_started(cls) -> None:
         started = time.time()
         done = None
 

@@ -2,9 +2,11 @@ import logging
 import subprocess
 import sys
 import time
+from typing import Optional
 
 from golem.core.common import unix_pid
 from golem.docker.commands.docker import CommandDict, DockerCommandHandler
+from golem.docker.config import DOCKER_VM_STATUS_RUNNING
 
 logger = logging.getLogger(__name__)
 
@@ -43,15 +45,15 @@ class DockerForMacCommandHandler(DockerCommandHandler):
         cls.wait_until_stopped()
 
     @classmethod
-    def pid(cls):
+    def pid(cls) -> Optional[int]:
         return unix_pid(cls.PROCESSES['app'])
 
     @classmethod
     def status(cls) -> str:
-        return 'Running' if cls.pid() else ''
+        return DOCKER_VM_STATUS_RUNNING if cls.pid() else ''
 
     @classmethod
-    def wait_until_stopped(cls):
+    def wait_until_stopped(cls) -> None:
         started = time.time()
 
         while any(map(unix_pid, cls.PROCESSES.values())):
