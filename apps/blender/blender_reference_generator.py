@@ -49,7 +49,7 @@ class BlenderReferenceGenerator:
     CROP_RELATIVE_SIZE = 0.01
     DEFAULT_CROPS_NUMBER = 3
     PIXEL_OFFSET = numpy.float32(0.5)
-    
+
     def __init__(self, computer: Optional[ComputerAdapter] = None) -> None:
         self.computer = computer or ComputerAdapter()
         self.crop_size_in_pixels: Tuple[int, int] = (0, 0)
@@ -208,22 +208,22 @@ class BlenderReferenceGenerator:
 
         left = numpy.float32(
             (numpy.float32(horizontal_pixel_coordinates[0]) +
-            BlenderReferenceGenerator.PIXEL_OFFSET) /
+             BlenderReferenceGenerator.PIXEL_OFFSET) /
             numpy.float32(resolution[0]))
 
         right = numpy.float32(
             (numpy.float32(horizontal_pixel_coordinates[1]) +
-            BlenderReferenceGenerator.PIXEL_OFFSET) /
+             BlenderReferenceGenerator.PIXEL_OFFSET) /
             numpy.float32(resolution[0]))
 
         top = numpy.float32(
             (numpy.float32(vertical_pixel_coordinates[0]) +
-            BlenderReferenceGenerator.PIXEL_OFFSET) /
+             BlenderReferenceGenerator.PIXEL_OFFSET) /
             numpy.float32(resolution[1]))
 
         bottom = numpy.float32(
             (numpy.float32(vertical_pixel_coordinates[1]) +
-            BlenderReferenceGenerator.PIXEL_OFFSET) /
+             BlenderReferenceGenerator.PIXEL_OFFSET) /
             numpy.float32(resolution[1]))
 
         return {"left": left, "right": right, "bottom": bottom, "top": top}
