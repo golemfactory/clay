@@ -23,7 +23,7 @@ class DummyTask(Task):
         pass
 
     def computation_finished(self, subtask_id, task_result, result_type,
-                             verification_finished_):
+                             verification_finished):
         pass
 
     def computation_failed(self, subtask_id):

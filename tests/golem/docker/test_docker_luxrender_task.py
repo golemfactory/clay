@@ -134,7 +134,7 @@ class TestDockerLuxrenderTask(
         task.computation_finished(ctd['subtask_id'],
                                   [str(new_flm_file), str(new_preview_file)],
                                   result_type=ResultType.FILES,
-                                  verification_finished_=lambda: None)
+                                  verification_finished=lambda: None)
 
         is_subtask_verified = task.verify_subtask(ctd['subtask_id'])
         self.assertTrue(is_subtask_verified)
@@ -146,7 +146,7 @@ class TestDockerLuxrenderTask(
         task.computation_finished(ctd['subtask_id'],
                                   [str(bad_flm_file), str(new_preview_file)],
                                   result_type=ResultType.FILES,
-                                  verification_finished_=lambda: None)
+                                  verification_finished=lambda: None)
 
         self.assertFalse(task.verify_subtask(ctd['subtask_id']))
         self.assertEqual(task.num_tasks_received, 1)

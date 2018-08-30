@@ -207,7 +207,7 @@ class CoreTask(Task):
 
     def computation_finished(self, subtask_id, task_result,
                              result_type=ResultType.DATA,
-                             verification_finished_=None):
+                             verification_finished=None):
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for %s", subtask_id)
             return
@@ -215,15 +215,15 @@ class CoreTask(Task):
         self.interpret_task_results(subtask_id, task_result, result_type)
         result_files = self.results.get(subtask_id)
 
-        def verification_finished(subtask_id, verdict, result):
+        def verification_finished_(subtask_id, verdict, result):
             self.verification_finished(subtask_id, verdict, result)
-            verification_finished_()
+            verification_finished()
 
         self.VERIFICATION_QUEUE.submit(
             self.VERIFIER_CLASS,
             subtask_id,
             self._deadline,
-            verification_finished,
+            verification_finished_,
             subtask_info={**self.subtasks_given[subtask_id],
                           **{'owner': self.header.task_owner.key}},
             results=result_files,

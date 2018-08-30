@@ -598,7 +598,7 @@ class TaskManager(TaskEventListener):
 
     @handle_subtask_key_error
     def computed_task_received(self, subtask_id, result, result_type,
-                               verification_finished_):
+                               verification_finished):
         task_id = self.subtask2task_mapping[subtask_id]
 
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
@@ -610,7 +610,7 @@ class TaskManager(TaskEventListener):
             self.notice_task_updated(task_id,
                                      subtask_id=subtask_id,
                                      op=OtherOp.UNEXPECTED)
-            verification_finished_()
+            verification_finished()
             return
         subtask_state.subtask_status = SubtaskStatus.verifying
 
@@ -624,7 +624,7 @@ class TaskManager(TaskEventListener):
                     task_id,
                     subtask_id=subtask_id,
                     op=SubtaskOp.NOT_ACCEPTED)
-                verification_finished_()
+                verification_finished()
                 return
 
             self.notice_task_updated(task_id,
@@ -645,7 +645,7 @@ class TaskManager(TaskEventListener):
                         logger.debug("Task %r not accepted", task_id)
                         self.notice_task_updated(task_id,
                                                  op=TaskOp.NOT_ACCEPTED)
-            verification_finished_()
+            verification_finished()
 
         self.tasks[task_id].computation_finished(
             subtask_id, result, result_type, verification_finished
