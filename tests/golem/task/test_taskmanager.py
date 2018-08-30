@@ -1055,7 +1055,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             'short_description': 'desc1',
             'src_code': 'code1',
             'performance': 1000,
-            'working_directory': '/workdir1/',
             'deadline': 1000000000
         }, {
             'task_id': 'new_task_id',
@@ -1064,7 +1063,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             'short_description': 'desc2',
             'src_code': 'code2',
             'performance': 2000,
-            'working_directory': '/workdir2/',
             'deadline': 2000000000
         }]
         ctd_iterator = iter(ctds)

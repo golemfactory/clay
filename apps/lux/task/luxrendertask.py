@@ -234,7 +234,7 @@ class LuxTask(renderingtask.RenderingTask):
         self.subtasks_given[subtask_id]['merge_ctd'] = self.__get_merge_ctd([])
 
         ctd = self._new_compute_task_def(
-            subtask_id, extra_data, None, perf_index)
+            subtask_id, extra_data, perf_index)
         return self.ExtraData(ctd=ctd)
 
     # GG propably same as query_extra_data_for_merge
@@ -265,7 +265,6 @@ class LuxTask(renderingtask.RenderingTask):
         ctd = self._new_compute_task_def(
             "ReferenceMergingTask",
             extra_data,
-            scene_dir,
             0)
         return ctd
 
@@ -299,7 +298,6 @@ class LuxTask(renderingtask.RenderingTask):
         ctd = self._new_compute_task_def(
             "".join(["ReferenceTask", str(counter)]),
             extra_data,
-            scene_dir,
             0)
 
         return ctd
@@ -371,7 +369,7 @@ class LuxTask(renderingtask.RenderingTask):
 
         hash = "{}".format(random.getrandbits(128))
 
-        return self._new_compute_task_def(hash, extra_data, None, 0)
+        return self._new_compute_task_def(hash, extra_data, 0)
 
     ###################
     # CoreTask methods #
@@ -413,7 +411,6 @@ class LuxTask(renderingtask.RenderingTask):
         return self._new_compute_task_def(
             "FINALTASK",
             extra_data,
-            scene_dir,
             0
         )
 

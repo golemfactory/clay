@@ -533,7 +533,7 @@ class BlenderRenderTask(FrameRenderingTask):
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
 
-        return self._new_compute_task_def(hash, extra_data, None, 0)
+        return self._new_compute_task_def(hash, extra_data, 0)
 
     def _get_min_max_y(self, start_task):
         if self.use_frames:
