@@ -615,7 +615,7 @@ class TaskManager(TaskEventListener):
         subtask_state.subtask_status = SubtaskStatus.verifying
 
         @TaskManager.handle_generic_key_error
-        def verification_finished():
+        def verification_finished_():
             ss = self.__set_subtask_state_finished(subtask_id)
             if not self.tasks[task_id].verify_subtask(subtask_id):
                 logger.debug("Subtask %r not accepted\n", subtask_id)
@@ -648,7 +648,7 @@ class TaskManager(TaskEventListener):
             verification_finished()
 
         self.tasks[task_id].computation_finished(
-            subtask_id, result, result_type, verification_finished
+            subtask_id, result, result_type, verification_finished_
         )
 
     @handle_subtask_key_error
