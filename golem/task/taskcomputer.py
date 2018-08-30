@@ -403,7 +403,6 @@ class TaskComputer(object):
         deadline = min(task_header.deadline, subtask_deadline)
         task_timeout = deadline_to_timeout(deadline)
 
-        working_dir = self.assigned_subtasks[subtask_id]['working_directory']
         unique_str = str(uuid.uuid4())
 
         logger.info("Starting computation of subtask %r (task: %r, deadline: "
@@ -425,11 +424,11 @@ class TaskComputer(object):
             docker_images = [DockerImage(**did) for did in docker_images]
             dir_mapping = DockerTaskThread.generate_dir_mapping(resource_dir,
                                                                 temp_dir)
-            tt = DockerTaskThread(subtask_id, docker_images, working_dir,
+            tt = DockerTaskThread(subtask_id, docker_images,
                                   src_code, extra_data, short_desc,
                                   dir_mapping, task_timeout)
         elif self.support_direct_computation:
-            tt = PyTaskThread(subtask_id, working_dir, src_code,
+            tt = PyTaskThread(subtask_id, src_code,
                               extra_data, short_desc, resource_dir, temp_dir,
                               task_timeout)
         else:
@@ -466,19 +465,19 @@ class AssignedSubTask(object):
 
 class PyTaskThread(TaskThread):
     # pylint: disable=too-many-arguments
-    def __init__(self, subtask_id, working_directory, src_code,
+    def __init__(self, subtask_id, src_code,
                  extra_data, short_desc, res_path, tmp_path, timeout):
         super(PyTaskThread, self).__init__(
-            subtask_id, working_directory, src_code, extra_data,
+            subtask_id, src_code, extra_data,
             short_desc, res_path, tmp_path, timeout)
         self.vm = PythonProcVM()
 
 
 class PyTestTaskThread(PyTaskThread):
     # pylint: disable=too-many-arguments
-    def __init__(self, subtask_id, working_directory, src_code,
+    def __init__(self, subtask_id, src_code,
                  extra_data, short_desc, res_path, tmp_path, timeout):
         super(PyTestTaskThread, self).__init__(
-            subtask_id, working_directory, src_code, extra_data,
+            subtask_id, src_code, extra_data,
             short_desc, res_path, tmp_path, timeout)
         self.vm = PythonTestVM()

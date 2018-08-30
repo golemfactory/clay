@@ -379,7 +379,6 @@ class TestTaskThread(DatabaseFixture):
                    """
 
         return PyTaskThread(subtask_id="xxyyzz",
-                            working_directory=self.path,
                             src_code=src_code,
                             extra_data={},
                             short_desc="hello thread",

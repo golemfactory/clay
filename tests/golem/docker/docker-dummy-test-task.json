@@ -55,5 +55,6 @@
       "name": "golemfactory/base:1.2",
       "id": null
     }
-  ]
+  ],
+  "concent_enabled": false
 }

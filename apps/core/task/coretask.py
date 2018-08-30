@@ -148,6 +148,7 @@ class CoreTask(Task):
             resource_size=self.resource_size,
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
+            concent_enabled=task_definition.concent_enabled,
         )
 
         Task.__init__(self, th, src_code, task_definition)
@@ -331,7 +332,7 @@ class CoreTask(Task):
         }
 
     def _new_compute_task_def(self, subtask_id, extra_data,
-                              working_directory=".", perf_index=0):
+                              perf_index=0):
         ctd = golem_messages.message.ComputeTaskDef()
         ctd['task_id'] = self.header.task_id
         ctd['subtask_id'] = subtask_id
@@ -339,7 +340,6 @@ class CoreTask(Task):
         ctd['short_description'] = self.short_extra_data_repr(extra_data)
         ctd['src_code'] = self.src_code
         ctd['performance'] = perf_index
-        ctd['working_directory'] = working_directory
         if self.docker_images:
             ctd['docker_images'] = [di.to_dict() for di in self.docker_images]
         ctd['deadline'] = min(timeout_to_deadline(self.header.subtask_timeout),
