@@ -161,18 +161,19 @@ class CompTaskKeeper:
         if not self.dump_path.exists():
             logger.debug('No previous comptask dump found.')
             return
-        with self.dump_path.open('rb') as f:
-            try:
+        try:
+            with self.dump_path.open('rb') as f:
                 data = pickle.load(f)
                 active_tasks = data[0]
                 subtask_to_task = data[1]
                 task_package_paths = data[2] if len(data) > 2 else {}
-            except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
-                logger.exception(
-                    'Problem restoring dumpfile: %s',
-                    self.dump_path
-                )
-                return
+        except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
+            logger.exception(
+                'Problem restoring dumpfile: %s; deleting broken file',
+                self.dump_path
+            )
+            self.dump_path.unlink()
+            return
         self.active_tasks.update(active_tasks)
         self.subtask_to_task.update(subtask_to_task)
         self.task_package_paths.update(task_package_paths)
