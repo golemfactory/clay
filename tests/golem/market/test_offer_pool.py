@@ -9,23 +9,20 @@ from golem.market.offer_pool import OfferPool
 
 class TestOfferPool(TestCase):
 
-    @mock.patch('twisted.internet.reactor', create=True)
-    def test_add_and_drain(self, _):
-        pool = OfferPool()
+    def test_add_and_drain(self):
         key = str(uuid.uuid4())
         data = list(range(1, 11))
 
-        pool.add(key, *data)
-        assert pool.get(key) == data
-        assert key in pool
+        OfferPool.add(key, *data)
+        assert OfferPool.get(key) == data
+        assert OfferPool.contains(key)
 
-        assert pool.drain(key) == data
-        assert key not in pool
-        assert not pool.drain(key)
+        assert OfferPool.drain(key) == data
+        assert not OfferPool.contains(key)
+        assert not OfferPool.drain(key)
 
-    @mock.patch('twisted.internet.reactor', new=Clock(), create=True)
-    def test_drain_after(self):
-        pool = OfferPool()
+    @mock.patch('twisted.internet.reactor', new_callable=Clock, create=True)
+    def test_drain_after(self, clock):
         key = str(uuid.uuid4())
         data = list(range(1, 11))
         result = []
@@ -33,11 +30,10 @@ class TestOfferPool(TestCase):
         def callback(r):
             each(result.append, *r)
 
-        pool.add(key, data)
-        deferred = pool.drain_after(key, 3.50)
+        OfferPool.add(key, data)
+        deferred = OfferPool.drain_after(key, 3.50)
         deferred.addCallback(callback)
-
-        pool._reactor.advance(10)
+        clock.advance(10)
 
         assert deferred.called
         assert result == data

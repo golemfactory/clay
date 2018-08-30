@@ -11,43 +11,37 @@ logger = logging.getLogger(__name__)
 
 class OfferPool:
 
-    __instance = None
+    _pools: Dict[str, List[Any]] = dict()
 
-    def __new__(cls):
-        if not cls.__instance:
-            cls.__instance = super().__new__(cls)
-        return cls.__instance
+    @classmethod
+    def contains(cls, key: str) -> bool:
+        return key in cls._pools
 
-    def __init__(self):
-        from twisted.internet import reactor
-
-        self._reactor = reactor
-        self._pools: Dict[str, List[Any]] = dict()
-
-    def __contains__(self, key: str) -> bool:
-        return key in self._pools
-
-    def add(self, key: str, *items) -> None:
-        pool = self._pool(key)
+    @classmethod
+    def add(cls, key: str, *items) -> None:
+        pool = cls._pool(key)
         each(pool.append, items)
 
-    def get(self, key: str) -> List[Any]:
-        if key in self:
-            return self._pools[key][:]
+    @classmethod
+    def get(cls, key: str) -> List[Any]:
+        if key in cls._pools:
+            return cls._pools[key][:]
         return []
 
-    def drain(self, key: str) -> List[Any]:
-        elements: List[Any] = self.get(key)
-        if key in self:
-            del self._pools[key]
+    @classmethod
+    def drain(cls, key: str) -> List[Any]:
+        elements: List[Any] = cls.get(key)
+        if key in cls._pools:
+            del cls._pools[key]
         return elements
 
-    def drain_after(self, key: str, timeout: float) -> Deferred:
-        if key not in self._pools:
-            return defer.fail(KeyError(key))
-        return task.deferLater(self._reactor, timeout, self.drain, key)
+    @classmethod
+    def drain_after(cls, key: str, timeout: float) -> Deferred:
+        from twisted.internet import reactor
+        return task.deferLater(reactor, timeout, cls.drain, key)
 
-    def _pool(self, key: str) -> List[Any]:
-        if key not in self:
-            self._pools[key] = list()
-        return self._pools[key]
+    @classmethod
+    def _pool(cls, key: str) -> List[Any]:
+        if key not in cls._pools:
+            cls._pools[key] = list()
+        return cls._pools[key]
