@@ -56,7 +56,7 @@ class DockerForMac(Hypervisor):
             logger.error("Docker for Mac: unable to update config: %r", e)
 
     def constraints(self, name: Optional[str] = None) -> Dict:
-        config = self._get_config()
+        config = self._read_config()
         constraints = dict()
 
         try:
@@ -71,7 +71,7 @@ class DockerForMac(Hypervisor):
 
         return constraints
 
-    def _get_config(self) -> Dict:
+    def _read_config(self) -> Dict:
         if not os.path.exists(self.CONFIG_FILE):
             self.start_vm()
         if not os.path.exists(self.CONFIG_FILE):
@@ -81,7 +81,7 @@ class DockerForMac(Hypervisor):
             return json.load(config_file)
 
     def _update_config(self, update: Dict) -> None:
-        config = self._get_config()
+        config = self._read_config()
         config.update(update)
 
         with open(self.CONFIG_FILE, 'w') as config_file:
