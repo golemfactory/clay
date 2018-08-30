@@ -32,6 +32,7 @@ from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
 from golem.utils import decode_hex, pubkeytoaddr
 
+from . import exceptions
 from .result.resultmanager import ExtractedPackage
 from .server import resources
 from .server import concent
@@ -337,8 +338,11 @@ class TaskServer(
 
             return self.task_keeper.add_task_header(header)
 
-        except ValueError:
-            logger.warning("Wrong task header received", exc_info=True)
+        except exceptions.TaskHeaderError as e:
+            logger.warning("Wrong task header received: %s", e)
+            return False
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Task header validation failed")
             return False
 
     def verify_header_sig(self, header: TaskHeader):

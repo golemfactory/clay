@@ -13,6 +13,8 @@ from golem.network.p2p.node import Node
 from golem.task.masking import Mask
 from golem.task.taskstate import TaskState
 
+from . import exceptions
+
 logger = logging.getLogger("golem.task")
 
 
@@ -145,58 +147,83 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
            defined parameters
          :param dict th_dict_repr: task header dictionary representation
         """
-        if not isinstance(th_dict_repr.get('task_id'), str):
-            raise ValueError('Task ID missing')
+        task_id = th_dict_repr.get('task_id')
+        task_owner = th_dict_repr.get('task_owner')
 
-        if not isinstance(th_dict_repr.get('task_owner'), dict):
-            raise ValueError('Task owner missing')
+        try:
+            node_name = task_owner['node_name']
+        except (TypeError, KeyError):
+            node_name = task_owner
 
-        if not isinstance(th_dict_repr['task_owner'].get('node_name'), str):
-            raise ValueError('Task owner node name missing')
+        if not isinstance(task_id, str):
+            raise exceptions.TaskHeaderError(
+                'Task ID missing',
+                task_id=task_id,
+                node_name=node_name,
+            )
+
+        if not isinstance(task_owner, dict):
+            raise exceptions.TaskHeaderError(
+                'Task owner missing',
+                task_id=task_id,
+                node_name=node_name,
+            )
+
+        if not isinstance(node_name, str):
+            raise exceptions.TaskHeaderError(
+                'Task owner node name missing',
+                task_id=task_id,
+                node_name=node_name,
+            )
 
         if not isinstance(th_dict_repr['deadline'], (int, float)):
-            raise ValueError("Deadline is not a timestamp")
+            raise exceptions.TaskHeaderError(
+                "Deadline is not a timestamp",
+                task_id=task_id,
+                node_name=node_name,
+                deadline=th_dict_repr['deadline'],
+            )
 
         if th_dict_repr['deadline'] < common.get_timestamp_utc():
-            msg = "Deadline already passed \n " \
-                  "task_id = %s \n " \
-                  "node name = %s " % \
-                  (th_dict_repr['task_id'],
-                   th_dict_repr['task_owner']['node_name'])
-            raise ValueError(msg)
+            raise exceptions.TaskHeaderError(
+                "Deadline already passed",
+                task_id=task_id,
+                node_name=node_name,
+                deadline=th_dict_repr['deadline'],
+                now=common.get_timestamp_utc(),
+            )
 
         if not isinstance(th_dict_repr['subtask_timeout'], int):
-            msg = "Subtask timeout is not a number \n " \
-                  "task_id = %s \n " \
-                  "node name = %s " % \
-                  (th_dict_repr['task_id'],
-                   th_dict_repr['task_owner']['node_name'])
-            raise ValueError(msg)
+            raise exceptions.TaskHeaderError(
+                "Subtask timeout is not a number",
+                task_id=task_id,
+                node_name=node_name,
+                subtask_timeout=th_dict_repr['subtask_timeout'],
+            )
 
         if th_dict_repr['subtask_timeout'] < 0:
-            msg = "Subtask timeout is less than 0 \n " \
-                  "task_id = %s \n " \
-                  "node name = %s " % \
-                  (th_dict_repr['task_id'],
-                   th_dict_repr['task_owner']['node_name'])
-            raise ValueError(msg)
+            raise exceptions.TaskHeaderError(
+                "Subtask timeout is less than 0",
+                task_id=task_id,
+                node_name=node_name,
+                subtask_timeout=th_dict_repr['subtask_timeout'],
+            )
 
         try:
             if th_dict_repr['subtasks_count'] < 1:
-                msg = "Subtasks count is less than 1 (%r)\n" \
-                      "task_id = %s \n" \
-                      "node name = %s" % \
-                      (th_dict_repr['subtasks_count'],
-                       th_dict_repr['task_id'],
-                       th_dict_repr['task_owner']['node_name'])
-                raise ValueError(msg)
+                raise exceptions.TaskHeaderError(
+                    "Subtasks count is less than 1",
+                    task_id=task_id,
+                    node_name=node_name,
+                    subtasks_count=th_dict_repr['subtasks_count'],
+                )
         except (KeyError, TypeError):
-            msg = "Subtasks count is missing\n" \
-                  "task_id = %s \n" \
-                  "node name = %s" % \
-                  (th_dict_repr['task_id'],
-                   th_dict_repr['task_owner']['node_name'])
-            raise ValueError(msg)
+            raise exceptions.TaskHeaderError(
+                "Subtasks count is missing",
+                task_id=task_id,
+                node_name=node_name,
+                subtask_count=th_dict_repr.get('subtask_count'),
+            )
 
     @staticmethod
     def _ordered(dictionary: dict) -> List[tuple]:
@@ -260,7 +287,10 @@ class TaskHeader(object):
         fixed_header = th_dict_repr.get('fixed_header')
         if fixed_header:
             return TaskFixedHeader.validate(fixed_header)
-        raise ValueError('Fixed header is missing')
+        raise exceptions.TaskHeaderError(
+            'Fixed header is missing',
+            header=th_dict_repr,
+        )
 
     @staticmethod
     def _ordered(dictionary: dict) -> List[Tuple]:
