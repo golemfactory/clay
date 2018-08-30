@@ -16,9 +16,10 @@ def get_datadir(role: str):
 def params_from_dict(d: dict) -> list:
     return list(
         itertools.chain.from_iterable(
-            [(k, v) if v else (k, ) for k, v in d.items()]
+            [(k, v) if v else (k, ) for k, v in d.items()]  # type: ignore
         )
     )
+
 
 PROVIDER_RPC_PORT = os.environ.get('GOLEM_PROVIDER_RPC_PORT', '61001')
 REQUESTOR_RPC_PORT = os.environ.get('GOLEM_REQUESTOR_RPC_PORT', '61000')
