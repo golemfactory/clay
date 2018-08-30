@@ -199,9 +199,10 @@ class RenderingTask(CoreTask):
     def _get_working_directory(self):
         common_path_prefix = os.path.commonprefix(self.task_resources)
         common_path_prefix = os.path.dirname(common_path_prefix)
-        working_directory = os.path.relpath(self.main_scene_file, common_path_prefix)
+        working_directory = os.path.relpath(self.main_scene_file,
+                                            common_path_prefix)
         working_directory = os.path.dirname(working_directory)
-        logger.debug("Working directory {}".format(working_directory))
+        logger.debug("Working directory %s", working_directory)
         return self.__get_path(working_directory)
 
     def _get_scene_file_rel_path(self):

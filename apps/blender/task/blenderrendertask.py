@@ -62,8 +62,8 @@ class PreviewUpdater(object):
         self.preview_file_path = preview_file_path
         self.expected_offsets = expected_offsets
 
-        # where the match ends - since the chunks have unexpectable sizes, we 
-        # don't know where to paste new chunk unless all of the above are in 
+        # where the match ends - since the chunks have unexpectable sizes, we
+        # don't know where to paste new chunk unless all of the above are in
         # their correct places
         self.perfect_match_area_y = 0
         self.perfectly_placed_subtasks = 0
