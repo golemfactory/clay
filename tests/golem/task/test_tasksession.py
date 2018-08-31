@@ -789,9 +789,10 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             mock_resp.assert_not_called()
             mock_call.assert_not_called()
 
-        # noqa
-        with patch("golem.task.tasksession.TaskSession._react_to_state_update_response", mock_resp), \
-             patch("golem.task.tasksession.TaskSession._react_to_state_update_call", mock_call):  # pylint: disable=line-too-long
+        with patch("golem.task.tasksession.TaskSession"
+                   "._react_to_state_update_response", mock_resp), \
+             patch("golem.task.tasksession.TaskSession"  # noqa
+                   "._react_to_state_update_call", mock_call):
             msg = message.tasks.StateUpdate()
             assert_nothing_called()
 
