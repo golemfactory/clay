@@ -422,9 +422,7 @@ class TaskHeaderKeeper:
         """
         remote = Version(remote)
         local = Version(self.app_version, partial=True)
-        if local.major != remote.major or local.minor != remote.minor:
-            return False
-        return True
+        return local.major == remote.major and local.minor == remote.minor
 
     def get_support_status(self, task_id) -> typing.Optional[SupportStatus]:
         """Return SupportStatus stating if and why the task is supported or not.
