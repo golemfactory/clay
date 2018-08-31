@@ -18,6 +18,7 @@ class RunFDefinition(TaskDefinition):
         self.task_type = "RUNF"
         self.args = []
         self.kwargs = {}
+        self.function = b''
 
         if defaults:
             self.set_defaults(defaults)
@@ -26,10 +27,11 @@ class RunFDefinition(TaskDefinition):
     def set_defaults(self, defaults: RunFDefaults):
         self.options = deepcopy(defaults.options)
 
+
 class RunFOptions(Options):
     def __init__(self):
         super().__init__()
         self.environment = RunFEnvironment()
-        self.main_file = "func"
         self.args = []
         self.kwargs = {}
+        self.function = b''

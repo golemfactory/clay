@@ -18,7 +18,7 @@ with open(code_file, "rb") as f:
     func = pickle.load(f)
 
 solution = func(*params.args, **params.kwargs)
-result_path = os.path.join(params.OUTPUT_DIR, params.out_file)
+result_path = os.path.join(params.OUTPUT_DIR, f"{params.subtask_id}.{params.RESULT_EXT}")
 
 with open(result_path, "w") as f:
-    f.write("{}".format(solution))
+    pickle.dump(solution, f)
