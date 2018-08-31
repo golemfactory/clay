@@ -9,6 +9,7 @@ class KwargsError(Exception):
             kwargs=self.kwargs,
         )
 
+
 class TaskError(KwargsError):
     pass
 
