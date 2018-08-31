@@ -184,13 +184,14 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
                 deadline=th_dict_repr['deadline'],
             )
 
-        if th_dict_repr['deadline'] < common.get_timestamp_utc():
+        now = common.get_timestamp_utc()
+        if th_dict_repr['deadline'] < now:
             raise exceptions.TaskHeaderError(
                 "Deadline already passed",
                 task_id=task_id,
                 node_name=node_name,
                 deadline=th_dict_repr['deadline'],
-                now=common.get_timestamp_utc(),
+                now=now,
             )
 
         if not isinstance(th_dict_repr['subtask_timeout'], int):
