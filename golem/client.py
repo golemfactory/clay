@@ -1422,18 +1422,6 @@ class Client(HardwarePresetsMixin):
 
         return ' '.join(messages)
 
-<<<<<<< HEAD
-    def get_status(self):
-        progress = self.task_server.task_computer.get_progresses()
-        if progress:
-            msg = "Computing {} subtask(s):".format(len(progress))
-            for k, v in list(progress.items()):
-                msg = "{} \n {} ({}%)\n".format(msg, k, v.get_progress() * 100)
-        elif self.config_desc.accept_tasks:
-            msg = "Waiting for tasks...\n"
-        else:
-            msg = "Not accepting tasks\n"
-=======
     def get_provider_status(self) -> Dict[str, Any]:
         # golem is starting
         if self.task_server is None:
@@ -1442,7 +1430,6 @@ class Client(HardwarePresetsMixin):
             }
 
         task_computer = self.task_server.task_computer
->>>>>>> develop
 
         # computing
         subtask_progress: Optional[ComputingSubtaskStateSnapshot] = \
