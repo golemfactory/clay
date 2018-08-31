@@ -790,29 +790,30 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             mock_resp.assert_not_called()
             mock_call.assert_not_called()
 
+        # noqa
         with patch("golem.task.tasksession.TaskSession._react_to_state_update_response", mock_resp), \
-             patch("golem.task.tasksession.TaskSession._react_to_state_update_call", mock_call):  # noqa pylint: disable=line-too-long
-                msg = message.tasks.StateUpdate()
-                assert_nothing_called()
+             patch("golem.task.tasksession.TaskSession._react_to_state_update_call", mock_call):  # pylint: disable=line-too-long
+            msg = message.tasks.StateUpdate()
+            assert_nothing_called()
 
-                msg.direction = None
-                with self.assertRaises(KeyError):
-                    self.task_session._react_to_state_update(msg)
-                assert_nothing_called()
-
-                msg.direction = "aaa"
-                with self.assertRaises(KeyError):
-                    self.task_session._react_to_state_update(msg)
-                assert_nothing_called()
-
-                msg.direction = msg.DIRECTION.Call
+            msg.direction = None
+            with self.assertRaises(KeyError):
                 self.task_session._react_to_state_update(msg)
-                mock_call.assert_called_once_with(msg)
+            assert_nothing_called()
 
-                msg.direction = msg.DIRECTION.Response
+            msg.direction = "aaa"
+            with self.assertRaises(KeyError):
                 self.task_session._react_to_state_update(msg)
-                mock_call.assert_called_once_with(msg)
-                mock_resp.assert_called_once_with(msg)
+            assert_nothing_called()
+
+            msg.direction = msg.DIRECTION.Call
+            self.task_session._react_to_state_update(msg)
+            mock_call.assert_called_once_with(msg)
+
+            msg.direction = msg.DIRECTION.Response
+            self.task_session._react_to_state_update(msg)
+            mock_call.assert_called_once_with(msg)
+            mock_resp.assert_called_once_with(msg)
 
     def test_react_to_state_update_response(self):
         msg = message.tasks.StateUpdate()

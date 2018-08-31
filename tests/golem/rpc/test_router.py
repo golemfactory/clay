@@ -223,31 +223,6 @@ class TestRPCNoAuth(_TestRouter):
         self.state.subscribe = True
         self._run_test(False)
 
-    def test_init(self):
-        from os.path import join, exists
-
-        crossbar_dir = join(self.path, 'definitely_not_exists')
-        router = CrossbarRouter(datadir=crossbar_dir,
-                                generate_secrets=True)
-        assert exists(crossbar_dir)
-        self.assertIsInstance(router, CrossbarRouter)
-        self.assertEqual(router.working_dir, join(crossbar_dir, 'crossbar'))
-
-        router = CrossbarRouter(datadir=join(self.path, "crozzbar"),
-                                generate_secrets=True)
-        self.assertEqual(router.working_dir, join(self.path,
-                                                  'crozzbar',
-                                                  CROSSBAR_DIR))
-        self.assertIsNone(router.node)
-        self.assertIsNone(router.pubkey)
-
-        tmp_file = join(self.path, 'tmp_file')
-        with open(tmp_file, 'w') as f:
-            f.write('tmp data')
-
-        with self.assertRaises(IOError):
-            CrossbarRouter(datadir=tmp_file)
-
     @inlineCallbacks
     def _frontend_session_started(self, *_):
         client = Client(self.state.frontend_session, MockService.methods)

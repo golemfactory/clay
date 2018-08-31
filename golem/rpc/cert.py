@@ -38,7 +38,7 @@ class CrossbarAuthManager:
         self.secrets = self._read_secrets()
 
     def get_secret(self, user: 'CrossbarAuthManager.Users'):
-        if not (user.name in self.secrets):
+        if user.name not in self.secrets:
             raise KeyError(f"Secret for {user} not found."
                            f"Maybe you forgot to create it?")
         return self.secrets[user.name]

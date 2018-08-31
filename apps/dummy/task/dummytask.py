@@ -51,7 +51,7 @@ class DummyTask(CoreTask):
             root_path=root_path,
             total_tasks=total_tasks
         )
-        self.messages_received = {}
+        self.messages_received: Dict[str, dict] = {}
 
     def short_extra_data_repr(self, extra_data):
         return "Dummytask extra_data: {}".format(extra_data)

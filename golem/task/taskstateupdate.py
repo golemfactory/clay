@@ -7,7 +7,9 @@ from golem_messages import message
 
 @enforce.runtime_validation(group="taskstateupdate")
 class StateUpdateInfo:
-    def __init__(self, task_id: str, subtask_id: str, state_update_id: str):
+    def __init__(self, task_id: str,
+                 subtask_id: str,
+                 state_update_id: str) -> None:
         self.task_id = task_id
         self.subtask_id = subtask_id
         self.state_update_id = state_update_id
@@ -37,7 +39,7 @@ class StateUpdateInfo:
 
 @enforce.runtime_validation(group="taskstateupdate")
 class StateUpdateData():
-    def __init__(self, info: StateUpdateInfo, data: Dict):
+    def __init__(self, info: StateUpdateInfo, data: Dict) -> None:
         self.info = info
         self.data = data
 
@@ -60,7 +62,7 @@ class StateUpdateData():
 # pylint: disable=too-few-public-methods
 @enforce.runtime_validation(group="taskstateupdate")
 class StateUpdateResponse():
-    def __init__(self, event: threading.Event, data: Optional[Dict]):
+    def __init__(self, event: threading.Event, data: Optional[Dict]) -> None:
         if not isinstance(event, threading.Event):
             raise TypeError("Event should be of type threading.Event."
                             f"instead got {event}")
@@ -70,7 +72,7 @@ class StateUpdateResponse():
 
 @enforce.runtime_validation(group="taskstateupdate")
 class StateUpdateProcessor():
-    def __init__(self):
+    def __init__(self) -> None:
         self._msg_dict = {}
 
     def initialize(self, state_update: StateUpdateData):

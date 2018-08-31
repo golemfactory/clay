@@ -34,7 +34,7 @@ run(params.data_files,
 
 # We don't send messages if the task is run in LocalComputer
 if not hasattr(params, "FLAGS") or \
-   not "MESSAGES_AVAILABLE" in params.FLAGS or \
+   "MESSAGES_AVAILABLE" not in params.FLAGS or \
    not params.FLAGS["MESSAGES_AVAILABLE"]:
     print("Messages not available")
     sys.exit(0)
@@ -61,13 +61,13 @@ REALM = u"golem"
 
 X509_COMMON_NAME = u"golem.local"
 
-# pylint: disable=wrong-import-position
-from twisted.internet import reactor
-from twisted.internet.defer import inlineCallbacks
-from twisted.internet import _sslverify
 
-from autobahn.twisted.wamp import ApplicationSession, ApplicationRunner
-from autobahn.wamp import auth
+# pylint: disable=wrong-import-position
+from twisted.internet import reactor  # noqa
+from twisted.internet.defer import inlineCallbacks  # noqa
+from twisted.internet import _sslverify  # noqa
+from autobahn.twisted.wamp import ApplicationSession, ApplicationRunner  # noqa
+from autobahn.wamp import auth  # noqa
 
 
 class Component(ApplicationSession):
@@ -81,8 +81,10 @@ class Component(ApplicationSession):
     def onChallenge(self, challenge):
         if challenge.method == "wampcra":
             print("WAMP-Ticket challenge received: {}".format(challenge))
-            signature = auth.compute_wcs(SECRET.encode('utf8'),
-                                         challenge.extra['challenge'].encode('utf8'))  # pylint: disable=line-too-long
+            signature = auth.compute_wcs(
+                SECRET.encode('utf8'),
+                challenge.extra['challenge'].encode('utf8')
+            )
             return signature.decode('ascii')
         else:
             raise Exception("Invalid authmethod {}".format(challenge.method))
@@ -100,6 +102,7 @@ class Component(ApplicationSession):
     def onDisconnect(self):
         print("disconnected")
         reactor.stop()
+
 
 _sslverify.platformTrust = lambda: None
 runner = ApplicationRunner(
