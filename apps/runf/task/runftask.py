@@ -24,7 +24,7 @@ logger = logging.getLogger("apps.runf")
 class RunFTypeInfo(CoreTaskTypeInfo):
     def __init__(self):
         super().__init__(
-            "Dummy",
+            "RunF",
             RunFDefinition,
             RunFDefaults(),
             RunFOptions,
@@ -125,7 +125,7 @@ class RunF(CoreTask):
                          node_name: Optional[str] = None) -> Task.ExtraData:
         if self.finished:
             return None  # TODO what should I do in such situation?
-        
+
         logger.debug("Query extra data on runftask")
 
         ctd = self._extra_data(perf_index)
