@@ -337,8 +337,10 @@ class TaskManager(TaskEventListener):
                                      persist=False)
 
     def task_needs_computation(self, task_id: str) -> bool:
-        if self.tasks_states[task_id].status not in self.activeStatus:
-            logger.info(f'task is not active: {task_id}')
+        task_status = self.tasks_states[task_id].status
+        if task_status not in self.activeStatus:
+            logger.info(
+                f'task is not active: {task_id}, status: {task_status}')
             return False
         task = self.tasks[task_id]
         if not task.needs_computation():
