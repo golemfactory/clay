@@ -91,7 +91,7 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
         dt.subtasks_given["aa"] = "bb"
         resp = dt.react_to_message("aa", {"data": "bbb"})
-        assert not (resp is None)
+        assert resp is not None
         assert dt.messages_received["aa"] == [{"data": "bbb"}]
 
 class TestDummyTaskBuilder(TestCase):

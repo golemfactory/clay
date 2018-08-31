@@ -57,6 +57,7 @@ class StateUpdateData():
 # this is a class and not a namedtuple because we need mutability
 # but, in the future (after python 3.7), it probably should be changed
 # to dataclass
+# pylint: disable=too-few-public-methods
 @enforce.runtime_validation(group="taskstateupdate")
 class StateUpdateResponse():
     def __init__(self, event: threading.Event, data: Optional[Dict]):

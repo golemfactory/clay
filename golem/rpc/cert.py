@@ -55,6 +55,7 @@ class CrossbarAuthManager:
                 with open(path, "w") as f:
                     f.write(secret)
 
+    # pylint: disable=no-self-use
     def _read_secret(self, path: str) -> str:
         if not os.path.isfile(path):
             raise Exception(f"No secret in {path}. "

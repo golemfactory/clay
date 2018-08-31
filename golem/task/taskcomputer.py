@@ -422,12 +422,10 @@ class TaskComputer(object):
 
         self.reset(counting_task=task_id)
 
-        extra_data = {**extra_data,
-                      **self.__add_state_update_info(
-                            task_id=task_id,
-                            subtask_id=subtask_id
-                      )
-        }
+        extra_data = {**extra_data, **self.__add_state_update_info(
+            task_id=task_id,
+            subtask_id=subtask_id
+        )}
 
         with self.dir_lock:
             resource_dir = self.resource_manager.get_resource_dir(task_id)

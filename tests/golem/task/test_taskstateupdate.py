@@ -64,13 +64,13 @@ class TestStateUpdateInfo(TestCase):
         d1 = {"task_id": task_id,
               "subtask_id": subtask_id,
               "state_update_id": state_update_id
-              }
+             }
         resp = StateUpdateInfo.from_dict(d1)
         assert resp.task_id == task_id and \
                resp.subtask_id == subtask_id and \
                resp.state_update_id == state_update_id
 
-        for missing in d1.keys():
+        for missing in d1:
             d2 = d1.copy()
             del d2[missing]
             with self.assertRaises(KeyError):
@@ -102,7 +102,7 @@ class TestStateUpdateData(TestCase):
 
     kwargs = {"info": StateUpdateInfo("aa", "bb", "cc"),
               "data": {"abc": "def"}
-              }
+             }
 
     def test_init(self):
         res = StateUpdateData(**self.kwargs)
@@ -129,13 +129,13 @@ class TestStateUpdateData(TestCase):
         d1 = {"info": {"task_id": "aaa",
                        "subtask_id": "bbb",
                        "state_update_id": "ccc"
-                       },
+                      },
               "data": {"aaa": "bbb"}}
         resp = StateUpdateData.from_dict(d1)
         assert resp.data == d1["data"] and \
                resp.info == StateUpdateInfo.from_dict(d1["info"])
 
-        for key in d1.keys():
+        for key in d1:
             d2 = d1.copy()
             del d2[key]
             with self.assertRaises(KeyError):

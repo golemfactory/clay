@@ -3,8 +3,6 @@
 # a timeout error during session.connect(). This proved to be challenging
 # to debug, so this not-so-pretty solution of running tests separately
 # was used.
-import json
-import os
 import time
 from threading import Thread
 from unittest import mock
@@ -108,39 +106,6 @@ class _TestRouter(TestDirFixtureWithReactor):
         super().setUp()
         self.state = _TestRouter.State(self.reactor_thread.reactor)
 
-    def _start_router(self):
-        # pylint: disable=no-member
-        self.state.router = CrossbarRouter(datadir=self.path,
-                                           ssl=False,
-                                           generate_secrets=True)
-        # set a new role for admin
-        self.state.router.config["workers"][0]["transports"][0]["auth"]["anonymous"] = {
-            "type": "static",
-            "role": "golem_admin"
-        }
-
-        self.state.router.config["workers"][0]["realms"][0]["roles"].append(
-            {
-                "name": 'anonymous',
-                "permissions": [{
-                    "uri": '*',
-                    "allow": {
-                        "call": True,
-                        "register": True,
-                        "publish": True,
-                        "subscribe": True
-                    }
-                }]
-            }
-        )
-
-        # These methods are for auth, which is not used in this test
-        # and with them, crossbar doesn't work
-        del Session.onChallenge
-        del Session.onConnect
-
-        print(json.dumps(self.state.router.config))
-
     def _start_backend_session(self, *_):
 
         user = self.state.crsb_backend
@@ -219,6 +184,7 @@ class _TestRouter(TestDirFixtureWithReactor):
 
         self._wait_for_thread(expect_error=expect_error)
 
+    # pylint: disable=unused-argument
     def _start_router(self, *args, **kwargs):
         raise NotImplementedError()
 

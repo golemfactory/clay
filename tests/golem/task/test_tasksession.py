@@ -767,9 +767,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
                 msg = message.tasks.StateUpdate()
                 msg.DIRECTION = msg.DIRECTION.Call
-                msg.task_id  = task_id = "someid"
-                msg.subtask_id  = subtask_id = "someotherstrangeid"
-                msg.state_update_id  = state_update_id = "evenstrangerid"
+                msg.task_id = task_id = "someid"
+                msg.subtask_id = subtask_id = "someotherstrangeid"
+                msg.state_update_id = state_update_id = "evenstrangerid"
 
                 self.task_session._react_to_state_update_call(msg)
 
@@ -790,8 +790,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             mock_resp.assert_not_called()
             mock_call.assert_not_called()
 
-        with patch("golem.task.tasksession.TaskSession._react_to_state_update_response", mock_resp):
-            with patch("golem.task.tasksession.TaskSession._react_to_state_update_call", mock_call):
+        with patch("golem.task.tasksession.TaskSession._react_to_state_update_response", mock_resp), \
+             patch("golem.task.tasksession.TaskSession._react_to_state_update_call", mock_call):  # noqa pylint: disable=line-too-long
                 msg = message.tasks.StateUpdate()
                 assert_nothing_called()
 
@@ -817,11 +817,12 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
     def test_react_to_state_update_response(self):
         msg = message.tasks.StateUpdate()
         msg.data = "some data"
-        self.task_session.state_update_response = suresponse_mock =  MagicMock()
+        self.task_session.state_update_response = suresponse_mock = MagicMock()
         resp_mock = MagicMock()
         resp_mock.event.set = MagicMock()
         suresponse_mock.get = MagicMock(return_value=resp_mock)
-        with patch("golem.task.taskstateupdate.StateUpdateInfo.from_state_update", lambda x: "called"):  # pylint:disable=line-too-long
+        with patch("golem.task.taskstateupdate.StateUpdateInfo.from_state_update",  # noqa pylint: disable=line-too-long
+                   lambda x: "called"):
             self.task_session._react_to_state_update_response(msg)
 
         suresponse_mock.get.assert_called_with("called")
@@ -837,8 +838,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         mock_sess.__getitem__.return_value(mock_sess)
         mock_sup = MagicMock()
         mock_sup.get = MagicMock(return_value="abc")
-        with patch("golem.task.TaskServer.task_sessions", mock_sess):  # pylint:disable=line-too-long
-            with patch("golem.task.taskstateupdate.StateUpdateProcessor", mock_sup):  # pylint:disable=line-too-long
+        with patch("golem.task.TaskServer.task_sessions", mock_sess), \
+             patch("golem.task.taskstateupdate.StateUpdateProcessor", mock_sup):  # noqa pylint:disable=line-too-long
                 resp = self.task_session.send_state_update(update)
         mock_sess.__getitem__.assert_called_with("b")
 

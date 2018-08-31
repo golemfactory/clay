@@ -491,8 +491,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert len(task_manager.tasks_states) == 2
 
         assert task_id != new_task_id
-        assert task_manager.tasks_states[
-                   task_id].status == TaskStatus.restarted
+        assert task_manager.tasks_states[task_id].status == TaskStatus.restarted
         assert all(
             ss.subtask_status == SubtaskStatus.restarted
             for ss
@@ -917,10 +916,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             {"price": 150,
              "subtask_time": 2.5,
              "num_subtasks": 5}
-        ) == {
-                   "GNT": 1875.0,
-                   "ETH": 0.0001,
-               }
+        ) == {"GNT": 1875.0, "ETH": 0.0001}
 
     @patch('golem.client.get_resources_for_task')
     def test_enqueue_new_task_from_type(self, *_):

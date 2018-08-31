@@ -4,6 +4,7 @@ import imp
 import os
 import sys
 
+# pylint: disable=import-error
 import params  # This module is generated before this script is run
 
 
@@ -63,10 +64,11 @@ X509_COMMON_NAME = u"golem.local"
 # pylint: disable=wrong-import-position
 from twisted.internet import reactor
 from twisted.internet.defer import inlineCallbacks
-from autobahn.twisted.wamp import ApplicationSession, ApplicationRunner
-from twisted.internet._sslverify import optionsForClientTLS
-from autobahn.wamp import auth
 from twisted.internet import _sslverify
+
+from autobahn.twisted.wamp import ApplicationSession, ApplicationRunner
+from autobahn.wamp import auth
+
 
 class Component(ApplicationSession):
 
@@ -89,7 +91,7 @@ class Component(ApplicationSession):
     def onJoin(self, details):
         try:
             now = yield self.call(u'comp.task.state_update', message)
-        except Exception as e:
+        except Exception as e:  # pylint: disable=broad-except
             print("Error: {}".format(e))
         else:
             print("Message response: {}".format(now))
@@ -103,7 +105,7 @@ _sslverify.platformTrust = lambda: None
 runner = ApplicationRunner(
     URL,
     REALM,
-    ssl=optionsForClientTLS(X509_COMMON_NAME, trustRoot=None)
+    ssl=_sslverify.optionsForClientTLS(X509_COMMON_NAME, trustRoot=None)
 )
 
 runner.run(Component)
