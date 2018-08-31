@@ -73,7 +73,7 @@ class StateUpdateResponse():
 @enforce.runtime_validation(group="taskstateupdate")
 class StateUpdateProcessor():
     def __init__(self) -> None:
-        self._msg_dict = {}
+        self._msg_dict: Dict[StateUpdateInfo, StateUpdateResponse] = {}
 
     def initialize(self, state_update: StateUpdateData):
         self._msg_dict[state_update.info] = StateUpdateResponse(
@@ -81,7 +81,7 @@ class StateUpdateProcessor():
             data=None
         )
 
-    def get(self, state_update_info: StateUpdateInfo):
+    def get(self, state_update_info: StateUpdateInfo) -> StateUpdateResponse:
         return self._msg_dict[state_update_info]
 
 

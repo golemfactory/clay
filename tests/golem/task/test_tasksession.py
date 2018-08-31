@@ -841,7 +841,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         mock_sup.get = MagicMock(return_value="abc")
         with patch("golem.task.TaskServer.task_sessions", mock_sess), \
              patch("golem.task.taskstateupdate.StateUpdateProcessor", mock_sup):  # noqa pylint:disable=line-too-long
-                resp = self.task_session.send_state_update(update)
+            resp = self.task_session.send_state_update(update)
         mock_sess.__getitem__.assert_called_with("b")
 
         msg = message.tasks.StateUpdate(
