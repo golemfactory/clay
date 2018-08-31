@@ -14,13 +14,13 @@ class TestBlenderReferenceGenerator(TempDirFixture):
 
     def test_get_default_crop_size(self):
         assert BlenderReferenceGenerator\
-                   ._get_default_crop_size((800, 8000)) == (8, 80)
+                   ._get_default_crop_size((800, 8000)) == (80, 800)
 
         assert BlenderReferenceGenerator.\
-            _get_default_crop_size((400, 799)) == (8, 8)
+            _get_default_crop_size((400, 799)) == (40, 79)
 
         assert BlenderReferenceGenerator\
-            ._get_default_crop_size((399, 9000)) == (8, 90)
+            ._get_default_crop_size((399, 9000)) == (39, 900)
 
     def test_get_random_interval_within_boundaries(self):
         def _test_crop(min_, max_, step):
@@ -29,7 +29,7 @@ class TestBlenderReferenceGenerator(TempDirFixture):
 
             assert round(crop_min, 2) >= round(min_, 2)
             assert round(crop_max, 2) <= round(max_, 2)
-            assert abs(crop_max - crop_min - step) <= 0.01
+            assert abs(crop_max - crop_min - step) <= 0.1
 
         _test_crop(40, 60, 8)
         _test_crop(550, 570, 10)
@@ -72,9 +72,9 @@ class TestBlenderReferenceGenerator(TempDirFixture):
 
         for _ in range(100):
             _test_crop([800, 600], (numpy.float32(0.0),
-                                    numpy.float32(0.1),
+                                    numpy.float32(0.3),
                                     numpy.float32(0.0),
-                                    numpy.float32(0.1)), 3)
+                                    numpy.float32(0.3)), 3)
             _test_crop([800, 600], (numpy.float32(0.5),
                                     numpy.float32(0.8),
                                     numpy.float32(0.2),
@@ -96,11 +96,10 @@ class TestBlenderReferenceGenerator(TempDirFixture):
     def test_generate_crops_data_for_strange_resolutions(self):
         # pylint: disable=R0914
         strange_res = [313, 317, 953, 967, 1949, 1951, 3319, 3323, 9949, 9967]
-
-        for l in range(0, 8):
+        for l in range(0, 9):
             res = (strange_res[l], strange_res[l + 1])
-            for i in range(1, 14):
-                min_y, max_y = get_min_max_y(i, 13, res[1])
+            for i in range(1, 10):
+                min_y, max_y = get_min_max_y(i, 9, res[1])
                 min_y = numpy.float32(min_y)
                 max_y = numpy.float32(max_y)
                 crop_window = (0.0, 1.0, min_y, max_y)

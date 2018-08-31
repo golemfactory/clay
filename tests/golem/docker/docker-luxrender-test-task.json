@@ -103,5 +103,6 @@
       "name": "golemfactory/luxrender:1.2",
       "id": null
     }
-  ]
+  ],
+  "concent_enabled": false
 }

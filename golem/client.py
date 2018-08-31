@@ -11,7 +11,7 @@ from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
 from threading import Lock
-from typing import Dict, Hashable, Optional, Union, List, Iterable, Tuple
+from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -47,6 +47,7 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
+from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.ethereum.exceptions import NotEnoughFunds
 from golem.ethereum.fundslocker import FundsLocker
 from golem.ethereum.paymentskeeper import PaymentStatus
@@ -84,6 +85,10 @@ from golem.tools.talkback import enable_sentry_logger
 
 
 logger = logging.getLogger(__name__)
+
+
+class CreateTaskError(Exception):
+    pass
 
 
 class ClientTaskComputerEventListener(object):
@@ -549,19 +554,34 @@ class Client(HardwarePresetsMixin):
             self.db.close()
         self._unlock_datadir()
 
-    def enqueue_new_task(self, task_dict):
+    def enqueue_new_task(self, task_dict) -> Tuple[Deferred, str]:
+        """
+        :return: (deferred, task_id) - deferred returns Task object when it's
+        successfully created.
+        """
         if self.config_desc.in_shutdown:
-            raise Exception('Can not enqueue task: shutdown is in progress, '
-                            'toggle shutdown mode off to create a new tasks.')
+            raise CreateTaskError(
+                'Can not enqueue task: shutdown is in progress, '
+                'toggle shutdown mode off to create a new tasks.')
+        if self.task_server is None:
+            raise CreateTaskError("Golem is not ready")
+
         task_manager = self.task_server.task_manager
         _result = Deferred()
 
         # FIXME: Statement only for old DummyTask compatibility #2467
+        task: TaskBase
         if isinstance(task_dict, dict):
             logger.warning('enqueue_new_task called with deprecated dict type')
             task = task_manager.create_task(task_dict)
         else:
             task = task_dict
+
+        if task.header.fixed_header.concent_enabled and \
+                not self.concent_service.enabled:
+            raise CreateTaskError(
+                "Cannot create task with concent enabled when "
+                "concent service is disabled")
 
         task_id = task.header.task_id
         self.funds_locker.lock_funds(task)
@@ -638,7 +658,7 @@ class Client(HardwarePresetsMixin):
 
         _package = self.resource_server.create_resource_package(files, task_id)
         _package.addCallbacks(package_created, error)
-        return _result
+        return _result, task_id
 
     def _get_mask_for_task(self, task: CoreTask) -> Mask:
         desired_num_workers = max(
@@ -749,21 +769,31 @@ class Client(HardwarePresetsMixin):
             return result
         return self.task_test_result
 
-    def create_task(self, t_dict):
+    def create_task(self, t_dict) -> Tuple[Optional[str], Optional[str]]:
+        """
+        :return: (task_id, None) on success; (task_id or None, error_message)
+                 on failure
+        """
         try:
-            deferred = self.enqueue_new_task(t_dict)
+            deferred, task_id = self.enqueue_new_task(t_dict)
+            # We want to return quickly from create_task without waiting for
+            # deferred completion.
             deferred.addErrback(
                 lambda err: logger.error("Cannot create task: %r", err))
-            return True, ''
-        except Exception as ex:
-            logger.exception("Cannot create task %r", t_dict)
-            return False, str(ex)
+            return task_id, None
+        except Exception as ex:  # pylint: disable=broad-except
+            logger.error("Cannot create task %r: %s", t_dict, str(ex))
+            return None, str(ex)
 
     def abort_task(self, task_id):
         logger.debug('Aborting task "%r" ...', task_id)
         self.task_server.task_manager.abort_task(task_id)
 
-    def restart_task(self, task_id: str) -> Tuple[bool, Optional[str]]:
+    def restart_task(self, task_id: str) -> Tuple[Optional[str], Optional[str]]:
+        """
+        :return: (new_task_id, None) on success; (None, error_message)
+                 on failure
+        """
         logger.debug('Restarting task "%r" ...', task_id)
         task_manager = self.task_server.task_manager
 
@@ -772,7 +802,7 @@ class Client(HardwarePresetsMixin):
         try:
             task_manager.assert_task_can_be_restarted(task_id)
         except task_manager.AlreadyRestartedError:
-            return False, "Task already restarted: '{}'".format(task_id)
+            return None, "Task already restarted: '{}'".format(task_id)
 
         # Create new task that is a copy of the definition of the old one.
         # It has a new deadline and a new task id.
@@ -781,14 +811,14 @@ class Client(HardwarePresetsMixin):
                 task_manager.get_task_definition_dict(
                     task_manager.tasks[task_id]))
         except KeyError:
-            return False, "Task not found: '{}'".format(task_id)
+            return None, "Task not found: '{}'".format(task_id)
 
         task_dict.pop('id', None)
-        success, msg = self.create_task(task_dict)
-        if success:
+        new_task_id, msg = self.create_task(task_dict)
+        if new_task_id:
             task_manager.put_task_in_restarted_state(task_id)
 
-        return success, msg
+        return new_task_id, msg
 
     def restart_subtasks_from_task(
             self, task_id: str, subtask_ids: Iterable[str]):
@@ -821,7 +851,7 @@ class Client(HardwarePresetsMixin):
                 subtask_ids_to_copy=subtask_ids_to_copy
             )
 
-        deferred = self.enqueue_new_task(task_dict)
+        deferred, _ = self.enqueue_new_task(task_dict)
 
         deferred.addCallbacks(
             copy_results,
@@ -1013,6 +1043,7 @@ class Client(HardwarePresetsMixin):
     def get_task_stats(self) -> Dict[str, int]:
         return {
             'host_state': self.get_task_state(),
+            'provider_state': self.get_provider_status(),
             'in_network': self.get_task_count(),
             'supported': self.get_supported_task_count(),
             'subtasks_computed': self.get_computed_task_count(),
@@ -1386,21 +1417,41 @@ class Client(HardwarePresetsMixin):
 
         return ' '.join(messages)
 
-    def get_status(self):
-        progress = self.task_server.task_computer.get_progresses()
-        if len(progress) > 0:
-            msg = "Computing {} subtask(s):".format(len(progress))
-            for k, v in list(progress.items()):
-                msg = "{} \n {} ({}%)\n".format(msg, k, v.get_progress() * 100)
-        elif self.config_desc.accept_tasks:
-            msg = "Waiting for tasks...\n"
-        else:
-            msg = "Not accepting tasks\n"
+    def get_provider_status(self) -> Dict[str, Any]:
+        # golem is starting
+        if self.task_server is None:
+            return {
+                'status': 'golem is starting',
+            }
 
-        peers = self.p2pservice.get_peers()
+        task_computer = self.task_server.task_computer
 
-        msg += "Active peers in network: {}\n".format(len(peers))
-        return msg
+        # computing
+        subtask_progress: Optional[ComputingSubtaskStateSnapshot] = \
+            task_computer.get_progress()
+        if subtask_progress is not None:
+            return {
+                'status': 'computing',
+                'subtask': subtask_progress.__dict__,
+            }
+
+        # trying to get subtask from task
+        waiting_for_task: Optional[str] = task_computer.waiting_for_task
+        if waiting_for_task is not None:
+            return {
+                'status': 'waiting for task',
+                'task_id_waited_for': waiting_for_task,
+            }
+
+        # not accepting tasks
+        if not self.config_desc.accept_tasks:
+            return {
+                'status': 'not accepting tasks',
+            }
+
+        return {
+            'status': 'idle',
+        }
 
     @staticmethod
     def get_golem_version():

@@ -78,7 +78,6 @@ CORE_METHOD_MAP = dict(
     get_res_dirs_sizes=     'res.dirs.size',
     clear_dir=              'res.dir.clear',
 
-    get_status=             'comp.status',
     get_environments=       'comp.environments',
     enable_environment=     'comp.environment.enable',
     disable_environment=    'comp.environment.disable',
