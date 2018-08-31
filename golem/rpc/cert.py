@@ -34,6 +34,7 @@ class CertificateManager:
 
     SECRET_EXT = "tck"
     SECRETS_DIR = "secrets"
+    SECRET_LENGTH = 128
 
     def __init__(self, dest_dir, setup_forward_secrecy=False):
         self.forward_secrecy = setup_forward_secrecy
@@ -80,7 +81,7 @@ class CertificateManager:
         os.makedirs(self.secrets_path, exist_ok=True)
         for p in self.__secrets_paths():
             if not os.path.exists(p):
-                secret = secrets.token_hex(16)
+                secret = secrets.token_hex(self.SECRET_LENGTH)
                 with open(p, "w") as f:
                     f.write(secret)
 
