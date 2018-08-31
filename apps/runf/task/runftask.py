@@ -44,6 +44,9 @@ class RunF(CoreTask):
 
     RESULT_EXT = ".result"
 
+    SIGNAL_DIR = "signal"
+    QUEUE_DIR = "queue"
+
     def __init__(self,
                  total_tasks: int,
                  task_definition: RunFDefinition,
@@ -67,11 +70,11 @@ class RunF(CoreTask):
 
     def __local_ctd(self) -> ComputeTaskDef:
         """
-        Returns parameters for spearmint task run.
+        Returns parameters for queue in local computer task run.
         In particular, extra_data structure containing:
-        - EXPERIMENT_DIR - dir with config.json (and then results.dat)
+        - QUEUE_DIR - dir to which we save and read subtasks
         - SIGNAL_DIR - dir in which we add signal files
-                       when requesting an update of results.dat
+                       when requesting an updates
         - EVENT_LOOP_SLEEP - that's how long time.sleep()
                              waits in each repetition of event loop
         :return: ComputeTaskDef with extra_data specified above
@@ -89,8 +92,8 @@ class RunF(CoreTask):
         ctd.deadline = timeout_to_deadline(self.INFTY)
 
         # TODO change that, take "/golem" from DockerTaskThread
-        ctd["extra_data"]["SIGNAL_DIR"] = "/golem/" + self.SPEARMINT_SIGNAL_DIR
-        ctd["extra_data"]["SIGNAL_DIR"] = "/golem/" + self.SPEARMINT_SIGNAL_DIR
+        ctd["extra_data"]["SIGNAL_DIR"] = "/golem/" + self.SIGNAL_DIR
+        ctd["extra_data"]["QUEUE_DIR"] = "/golem/" + self.QUEUE_DIR
 
         ctd["extra_data"]["EVENT_LOOP_SLEEP"] = 0.5
         return ctd
@@ -105,20 +108,20 @@ class RunF(CoreTask):
             get_compute_task_def=self.__local_ctd,
             additional_resources=None,
         )
-        self.experiment_dir = os.path.join(local_comp_path,
-                                           self.SPEARMINT_EXP_DIR)
+        self.queue_dir = os.path.join(local_comp_path,
+                                           self.QUEUE_DIR)
         self.signal_dir = os.path.join(local_comp_path,
-                                       self.SPEARMINT_SIGNAL_DIR)
+                                       self.SIGNAL_DIR)
 
         # experiment dir has to be created AFTER local_computer
         # LocalComputer.tmp_dir destroys it
-        os.makedirs(self.experiment_dir)
+        os.makedirs(self.queue_dir)
 
         # signal dir has to be created AFTER local_computer
         # LocalComputer.tmp_dir destroys it
         os.makedirs(self.signal_dir)
 
-        queue_utils.create_conf(self.experiment_dir)
+        queue_utils.create_conf(self.queue_dir)
         return local_computer
 
     def __update_queue_state(self, subtask_id):
@@ -129,7 +132,7 @@ class RunF(CoreTask):
         :return:
         """
         queue_utils.subtask_finished(
-            self.experiment_dir,
+            self.queue_dir,
             subtask_id
         )
 
