@@ -1,25 +1,34 @@
-from datetime import datetime
 from unittest import TestCase
 
-from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot, \
+from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot, \
                                             LocalTaskStateSnapshot
 
 
-class TestTaskChunkStateSnapshot(TestCase):
+class TestComputingSubtaskStateSnapshot(TestCase):
     def test_state(self):
-        tcss = TaskChunkStateSnapshot("xxyyzz", 1032, 240, 0.8, "some work")
-        assert isinstance(tcss, TaskChunkStateSnapshot)
-        assert tcss.chunk_id == "xxyyzz"
-        assert tcss.cpu_power == 1032
-        assert tcss.est_time_left == 240
-        assert tcss.progress == 0.8
-        assert tcss.chunk_short_desc == "some work"
+        # given
+        state_snapshot_dict = {
+            'subtask_id': "some-subtask_id",
+            'progress': 0.0,
+            'seconds_to_timeout': 0.0,
+            'running_time_seconds': 0.0,
+            'outfilebasename': "Test Task",
+            'output_format': "PNG",
+            'scene_file': "/golem/resources/cube.blend",
+            'frames': [1],
+            'start_task': 1,
+            'end_task': 1,
+            'total_tasks': 1,
+            'some_unused_field': 1234,
+        }
 
-        assert tcss.get_chunk_id() == "xxyyzz"
-        assert tcss.get_cpu_power() == 1032
-        assert tcss.get_estimated_time_left() == 240
-        assert tcss.get_progress() == 0.8
-        assert tcss.get_chunk_short_descr() == "some work"
+        # when
+        tcss = ComputingSubtaskStateSnapshot(**state_snapshot_dict)
+
+        # then
+        state_snapshot_dict['scene_file'] = "cube.blend"
+        del state_snapshot_dict['some_unused_field']
+        assert tcss.__dict__ == state_snapshot_dict
 
 
 class TestLocalTaskStateSnapshot(TestCase):

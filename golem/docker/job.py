@@ -2,10 +2,12 @@ import logging
 import os
 import posixpath
 import threading
+from typing import Dict, Optional
 
 import docker.errors
 
 from golem.core.common import is_windows, nt_path_to_posix_path, is_osx
+from golem.docker.image import DockerImage
 from .client import local_client
 
 __all__ = ['DockerJob']
@@ -18,12 +20,12 @@ The logger used for logging std streams of the process running in container.
 container_logger = logging.getLogger(__name__ + ".container")
 
 
+# pylint:disable=too-many-instance-attributes
 class DockerJob(object):
-
     STATE_NEW = "new"
     STATE_CREATED = "created"  # container created by docker
     STATE_RUNNING = "running"  # docker container running
-    STATE_EXITED = "exited"    # docker container finished running
+    STATE_EXITED = "exited"  # docker container finished running
     STATE_STOPPED = "stopped"
     STATE_KILLED = "killed"
     STATE_REMOVED = "removed"
@@ -40,19 +42,36 @@ class DockerJob(object):
     # Mounted read-write in the container.
     OUTPUT_DIR = "/golem/output"
 
+    # these keys/values pairs will be saved in "params" module - it is
+    # dynamically created during docker setup and available for import
+    # inside docker
+    PATH_PARAMS = {
+        "RESOURCES_DIR": RESOURCES_DIR,
+        "WORK_DIR": WORK_DIR,
+        "OUTPUT_DIR": OUTPUT_DIR
+    }
+
     # Name of the script file, relative to WORK_DIR
     TASK_SCRIPT = "job.py"
 
     # Name of the parameters file, relative to WORK_DIR
     PARAMS_FILE = "params.py"
 
+
     # Flags are used to pass container-related info to tasks running in docker
     # they are available in params.FLAGS dictionary
     FLAGS = {"MESSAGES_AVAILABLE": True}
 
-    def __init__(self, image, script_src, parameters,
-                 resources_dir, work_dir, output_dir,
-                 host_config=None, container_log_level=None):
+    # pylint:disable=too-many-arguments
+    def __init__(self,
+                 image: DockerImage,
+                 script_src: str,
+                 parameters: Dict,
+                 resources_dir: str,
+                 work_dir: str,
+                 output_dir: str,
+                 host_config: Optional[Dict] = None,
+                 container_log_level: Optional[int] = None) -> None:
         """
         :param DockerImage image: Docker image to use
         :param str script_src: source of the task script file
@@ -61,14 +80,15 @@ class DockerJob(object):
         :param str work_dir: directory for temporary work files
         :param str output_dir: directory for output files
         """
-        from golem.docker.image import DockerImage
         if not isinstance(image, DockerImage):
-            raise TypeError('Incorrect image type: {}. Should be: DockerImage'.format(type(image)))
+            raise TypeError('Incorrect image type: {}. '
+                            'Should be: DockerImage'.format(type(image)))
         self.image = image
         self.script_src = script_src
         self.parameters = parameters if parameters else {}
 
         self.parameters["FLAGS"] = self.FLAGS
+        self.parameters.update(self.PATH_PARAMS)
 
         self.host_config = host_config or {}
 
@@ -161,10 +181,9 @@ class DockerJob(object):
         if self.container_id is None:
             raise KeyError("container does not have key: Id")
 
-        logger.debug("Container {} prepared, image: {}, dirs: {}; {}; {}"
-                     .format(self.container_id, self.image.name,
-                             self.work_dir, self.resources_dir, self.output_dir)
-                    )
+        logger.debug("Container %s prepared, image: %s, dirs: %s; %s; %s",
+                     self.container_id, self.image.name, self.work_dir,
+                     self.resources_dir, self.output_dir)
 
     def _cleanup(self):
         if self.container:
@@ -174,7 +193,7 @@ class DockerJob(object):
             self._host_dir_chmod(self.output_dir, self.output_dir_mod)
             try:
                 client.remove_container(self.container_id, force=True)
-                logger.debug("Container {} removed".format(self.container_id))
+                logger.debug("Container %s removed", self.container_id)
             except docker.errors.APIError:
                 pass  # Already removed? Sometimes happens in CircleCI.
             self.container = None
@@ -206,20 +225,21 @@ class DockerJob(object):
     def _host_dir_chmod(dst_dir, mod):
         if isinstance(mod, str):
             mod = 0o770 if mod == 'rw' else \
-                  0o550 if mod == 'ro' else 0
+                0o550 if mod == 'ro' else 0
         prev_mod = None
 
         try:
             import stat
             prev_mod = stat.S_IMODE(os.stat(dst_dir).st_mode)
-        except Exception as e:
-            logger.debug("Cannot get mode for %s, reason: %s", dst_dir, e)
+        except Exception as e:  # pylint:disable=broad-except
+            logger.debug("Cannot get mode for %s, "
+                         "reason: %s", dst_dir, e)
 
         if mod is not None:
             try:
                 os.chmod(dst_dir, mod)
-            except Exception as e:
-                logger.debug("Cannot chmod {} ({}): {}".format(dst_dir, mod, e))
+            except Exception as e:  # pylint:disable=broad-except
+                logger.debug("Cannot chmod %s (%s): %s", dst_dir, mod, e)
 
         return prev_mod
 
@@ -252,12 +272,12 @@ class DockerJob(object):
             client.start(self.container_id)
             result = client.inspect_container(self.container_id)
             self.state = result["State"]["Status"]
-            logger.debug("Container {} started".format(self.container_id))
+            logger.debug("Container %s started", self.container_id)
             if self.log_std_streams:
                 self._start_logging_thread(client)
             return result
-        logger.debug("Container {} not started, status = {}"
-                     .format(self.container_id, self.get_status()))
+        logger.debug("Container %s not started, status = %s",
+                     self.container_id, self.get_status())
         return None
 
     def wait(self, timeout=None):
@@ -268,17 +288,17 @@ class DockerJob(object):
         if self.get_status() in [self.STATE_RUNNING, self.STATE_EXITED]:
             client = local_client()
             return client.wait(self.container_id, timeout)
-        logger.debug("Cannot wait for container {}, status = {}"
-                     .format(self.container_id, self.get_status()))
+        logger.debug("Cannot wait for container %s, status = %s",
+                     self.container_id, self.get_status())
         return -1
 
     def kill(self):
         try:
             status = self.get_status()
-        except Exception as exc:
+        except Exception as exc:  # pylint:disable=broad-except
             status = None
-            logger.error("Error retrieving status for container {}: {}"
-                         .format(self.container_id, exc))
+            logger.error("Error retrieving status for container %s: %s",
+                         self.container_id, exc)
 
         if status != self.STATE_RUNNING:
             return
@@ -286,9 +306,9 @@ class DockerJob(object):
         try:
             client = local_client()
             client.kill(self.container_id)
-        except Exception as exc:
-            logger.error("Couldn't kill container {}: {}"
-                         .format(self.container_id, exc))
+        except docker.errors.APIError as exc:
+            logger.error("Couldn't kill container %s: %s",
+                         self.container_id, exc)
 
     def dump_logs(self, stdout_file=None, stderr_file=None):
         if not self.container:

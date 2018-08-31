@@ -6,6 +6,7 @@ import time
 import weakref
 from collections import deque
 from pathlib import Path
+from typing import Optional
 
 from golem_messages import message
 from pydispatch import dispatcher
@@ -82,7 +83,6 @@ class TaskServer(
         self.benchmark_manager = BenchmarkManager(config_desc.node_name, self,
                                                   client.datadir, benchmarks)
         self.task_computer = TaskComputer(
-            config_desc.node_name,
             task_server=self,
             use_docker_manager=use_docker_manager,
             finished_cb=task_finished_cb)
@@ -161,7 +161,7 @@ class TaskServer(
             env_id)
 
     # This method chooses random task from the network to compute on our machine
-    def request_task(self):
+    def request_task(self) -> Optional[str]:
         theader = self.task_keeper.get_task()
         if theader is None:
             return None
@@ -333,10 +333,10 @@ class TaskServer(
     def remove_task_header(self, task_id) -> bool:
         return self.task_keeper.remove_task_header(task_id)
 
-    def add_task_session(self, subtask_id, session):
+    def add_task_session(self, subtask_id, session: TaskSession):
         self.task_sessions[subtask_id] = session
 
-    def remove_task_session(self, task_session):
+    def remove_task_session(self, task_session: TaskSession):
         self.remove_pending_conn(task_session.conn_id)
         self.remove_responses(task_session.conn_id)
 
@@ -678,7 +678,7 @@ class TaskServer(
     #   CONNECTION REACTIONS    #
     #############################
     def __connection_for_task_request_established(
-            self, session, conn_id, node_name, key_id, task_id,
+            self, session: TaskSession, conn_id, node_name, key_id, task_id,
             estimated_performance, price, max_resource_size, max_memory_size,
             num_cores):
         self.new_session_prepare(
@@ -836,7 +836,11 @@ class TaskServer(
         self.remove_pending_conn(ans_conn_id)
         self.remove_responses(ans_conn_id)
 
-    def new_session_prepare(self, session, subtask_id, key_id, conn_id):
+    def new_session_prepare(self,
+                            session: TaskSession,
+                            subtask_id: str,
+                            key_id: str,
+                            conn_id: str):
         self.remove_forwarded_session_request(key_id)
         session.task_id = subtask_id
         session.key_id = key_id

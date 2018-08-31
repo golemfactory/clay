@@ -73,6 +73,7 @@ class DummyTask(Task):
             ),
             deadline=timeout_to_deadline(14400),
             subtask_timeout=1200,
+            subtasks_count=num_subtasks,
             resource_size=params.shared_data_size + params.subtask_data_size,
             estimated_memory=0,
             max_price=MIN_PRICE)
@@ -265,3 +266,6 @@ class DummyTask(Task):
 
     def copy_subtask_results(self, subtask_id, old_subtask_info, results):
         print('DummyTask.copy_subtask_results called')
+
+    def query_extra_data_for_test_task(self):
+        pass

@@ -4,8 +4,10 @@ import logging
 import time
 from typing import List, Type, Optional, Tuple, Any, Dict
 
-from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
+import golem_messages
+
 import golem
+from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
 from golem.core import common
 from golem.core.common import get_timestamp_utc
 from golem.core.simpleserializer import CBORSerializer, DictSerializer
@@ -24,7 +26,7 @@ class TaskTypeInfo(object):
                  definition: Type[TaskDefinition],
                  defaults: TaskDefaults,
                  options: Type[Options],
-                 task_builder_type: 'Type[TaskBuilder]'):
+                 task_builder_type: 'Type[TaskBuilder]') -> None:
         self.name = name
         self.defaults = defaults
         self.options = options
@@ -55,7 +57,9 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
                  resource_size=0,
                  estimated_memory=0,
                  min_version=golem.__version__,
-                 max_price: int = 0) -> None:
+                 max_price: int = 0,
+                 subtasks_count: int = 0,
+                 concent_enabled: bool = False) -> None:
         """
         :param max_price: maximum price that this (requestor) node may
         pay for an hour of computation
@@ -68,11 +72,13 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
         self.last_checking = time.time()
         self.deadline = deadline
         self.subtask_timeout = subtask_timeout
+        self.subtasks_count = subtasks_count
         self.resource_size = resource_size
         self.environment = environment
         self.estimated_memory = estimated_memory
         self.min_version = min_version
         self.max_price = max_price
+        self.concent_enabled = concent_enabled
 
         self.update_checksum()
 
@@ -90,6 +96,12 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
 
     @staticmethod
     def from_dict(dictionary) -> 'TaskFixedHeader':
+        if 'subtasks_count' not in dictionary:
+            logger.debug(
+                "Subtasks count missing. Implicit 1. dictionary=%r",
+                dictionary,
+            )
+            dictionary['subtasks_count'] = 1
         th: TaskFixedHeader = \
             DictSerializer.load(dictionary, as_class=TaskFixedHeader)
         th.last_checking = time.time()
@@ -167,6 +179,23 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
             msg = "Subtask timeout is less than 0 \n " \
                   "task_id = %s \n " \
                   "node name = %s " % \
+                  (th_dict_repr['task_id'],
+                   th_dict_repr['task_owner']['node_name'])
+            raise ValueError(msg)
+
+        try:
+            if th_dict_repr['subtasks_count'] < 1:
+                msg = "Subtasks count is less than 1 (%r)\n" \
+                      "task_id = %s \n" \
+                      "node name = %s" % \
+                      (th_dict_repr['subtasks_count'],
+                       th_dict_repr['task_id'],
+                       th_dict_repr['task_owner']['node_name'])
+                raise ValueError(msg)
+        except (KeyError, TypeError):
+            msg = "Subtasks count is missing\n" \
+                  "task_id = %s \n" \
+                  "node name = %s" % \
                   (th_dict_repr['task_id'],
                    th_dict_repr['task_owner']['node_name'])
             raise ValueError(msg)
@@ -279,12 +308,15 @@ class Task(abc.ABC):
             for key, value in kwargs.items():
                 setattr(self, key, value)
 
-    def __init__(self, header: TaskHeader, src_code: str, task_definition):
+    def __init__(self,
+                 header: TaskHeader,
+                 src_code: str,
+                 task_definition: TaskDefinition) -> None:
         self.src_code = src_code
         self.header = header
         self.task_definition = task_definition
 
-        self.listeners = []
+        self.listeners = []  # type: List[TaskEventListener]
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -312,14 +344,17 @@ class Task(abc.ABC):
 
     def register_listener(self, listener):
         if not isinstance(listener, TaskEventListener):
-            raise TypeError("Incorrect 'listener' type: {}. Should be: TaskEventListener".format(type(listener)))
+            raise TypeError(
+                "Incorrect 'listener' type: {}. "
+                "Should be: TaskEventListener".format(type(listener)))
         self.listeners.append(listener)
 
     def unregister_listener(self, listener):
         if listener in self.listeners:
             self.listeners.remove(listener)
         else:
-            logger.warning("Trying to unregister listener that wasn't registered.")
+            logger.warning(
+                "Trying to unregister listener that wasn't registered.")
 
     @abc.abstractmethod
     def initialize(self, dir_manager):
@@ -341,6 +376,10 @@ class Task(abc.ABC):
         :param node_name: name of a node that wants to get a next subtask
         """
         pass  # Implement in derived class
+
+    @abc.abstractmethod
+    def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa pylint:disable=line-too-long
+        pass  # Implement in derived methods
 
     def create_reference_data_for_task_validation(self):
         """

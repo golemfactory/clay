@@ -4,13 +4,13 @@ import logging
 import os
 import time
 
-from golem_messages import message
 from golem_messages import helpers as msg_helpers
+from golem_messages import message
 
 from golem.core.common import HandleAttributeError
 from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import CBORSerializer
-from golem.core.variables import PROTOCOL_CONST
+from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.model import Actor
@@ -25,6 +25,8 @@ from golem.task.taskbase import ResultType
 from golem.task.taskstate import TaskState
 from golem.task.taskstateupdate import StateUpdateData, StateUpdateProcessor,\
     StateUpdateInfo
+
+from .taskmanager import TaskManager
 
 logger = logging.getLogger(__name__)
 
@@ -90,7 +92,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
         self.task_server = self.conn.server
-        self.task_manager = self.task_server.task_manager  # type: TaskManager
+        self.task_manager: TaskManager = self.task_server.task_manager
         self.task_computer = self.task_server.task_computer
         self.concent_service = self.task_server.client.concent_service
         self.task_id = None  # current task id
@@ -415,7 +417,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.base.Hello(
                 client_key_id=self.task_server.get_key_id(),
                 rand_val=self.rand_val,
-                proto_id=PROTOCOL_CONST.ID,
+                proto_id=variables.PROTOCOL_CONST.ID,
             ),
             send_unverified=True
         )
@@ -499,6 +501,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 price=price,
                 size=task_state.package_size
             )
+            ttc.generate_ethsig(self.my_private_key)
             self.task_manager.set_subtask_value(
                 subtask_id=ttc.subtask_id,
                 price=price,
@@ -554,6 +557,35 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if not self.concent_service.enabled and msg.concent_enabled:
             # We can't provide what requestors wants
             _cannot_compute(reasons.ConcentDisabled)
+            return
+
+        number_of_subtasks = self.task_server.task_keeper\
+            .task_headers[msg.task_id]\
+            .subtasks_count
+        total_task_price = msg.price * number_of_subtasks
+        transaction_system = self.task_server.client.transaction_system
+        requestors_gntb_balance = transaction_system.get_available_gnt(
+            account_address=msg.requestor_ethereum_address,
+        )
+        if requestors_gntb_balance < total_task_price:
+            _cannot_compute(reasons.InsufficientBalance)
+            return
+        if msg.concent_enabled:
+            requestors_deposit_value = transaction_system.concent_balance(
+                account_address=msg.requestor_ethereum_address,
+            )
+            if requestors_deposit_value < (total_task_price * 2):
+                _cannot_compute(reasons.InsufficientDeposit)
+                return
+            requestors_deposit_timelock = transaction_system.concent_timelock(
+                account_address=msg.requestor_ethereum_address,
+            )
+            # 0 - safe to use
+            # <anything else> - withdrawal procedure has started
+            if requestors_deposit_timelock != 0:
+                _cannot_compute(reasons.TooShortDeposit)
+                return
+
         if self._check_ctd_params(ctd)\
                 and self._set_env_params(ctd)\
                 and self.task_manager.comp_task_keeper.receive_subtask(msg):
@@ -755,11 +787,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.key_id = msg.client_key_id
             send_hello = True
 
-        if msg.proto_id != PROTOCOL_CONST.ID:
+        if msg.proto_id != variables.PROTOCOL_CONST.ID:
             logger.info(
                 "Task protocol version mismatch %r (msg) vs %r (local)",
                 msg.proto_id,
-                PROTOCOL_CONST.ID
+                variables.PROTOCOL_CONST.ID
             )
             self.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
             return
@@ -922,7 +954,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             subtask_id)
         return self.check_requestor_for_task(task_id, "Subtask %r" % subtask_id)
 
-    def _check_ctd_params(self, ctd):
+    def _check_ctd_params(self, ctd: message.ComputeTaskDef):
         header = self.task_manager.comp_task_keeper.get_task_header(
             ctd['task_id'])
         owner = header.task_owner
@@ -964,7 +996,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         return True
 
-    def __check_docker_images(self, ctd, env):
+    def __check_docker_images(self,
+                              ctd: message.ComputeTaskDef,
+                              env: DockerEnvironment):
         for image_dict in ctd['docker_images']:
             image = DockerImage(**image_dict)
             for env_image in env.docker_images:
