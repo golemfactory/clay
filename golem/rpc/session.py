@@ -52,14 +52,14 @@ class WebSocketAddress(RPCAddress):
 
 class Session(ApplicationSession):
 
-    def __init__(self, address, methods=None, events=None,  # noqa # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments
+    def __init__(self, address, methods=None, events=None,
                  cert_manager=None, use_ipv6=False,
                  crsb_user=None, crsb_user_secret=None) -> None:
-
         self.address = address
         self.methods = methods or []
         self.events = events or []
-        self.subs = {}
+        self.subs = {}  # type: ignore
 
         self.ready = Deferred()
         self.connected = False
@@ -74,10 +74,10 @@ class Session(ApplicationSession):
         self.crsb_user = crsb_user
         self.crsb_user_secret = crsb_user_secret
 
-        super(Session, self).__init__(self.config)
+        # pylint:disable=bad-super-call
+        super(self.__class__, self).__init__(self.config)  # type: ignore
 
     def connect(self, auto_reconnect=True):
-
         def init(proto):
             reactor.addSystemEventTrigger('before', 'shutdown', cleanup, proto)
             return proto
@@ -143,7 +143,6 @@ class Session(ApplicationSession):
 
         deferred.addCallback(init)
         deferred.addErrback(self.ready.errback)
-
         return self.ready
 
     def onConnect(self):
@@ -159,7 +158,7 @@ class Session(ApplicationSession):
         if challenge.method == "wampcra":
             logger.info(f"WAMP-Ticket challenge received: {challenge}")
             signature = auth.compute_wcs(self.crsb_user_secret.encode('utf8'),
-                                         challenge.extra['challenge'].encode('utf8'))
+                                         challenge.extra['challenge'].encode('utf8')) # noqa # pylint: disable=line-too-long
             return signature.decode('ascii')
 
         else:

@@ -4,14 +4,14 @@ import argparse
 import os
 import sys
 
-import click
-
 from multiprocessing import freeze_support
 
-from golem.core.simpleenv import get_local_datadir
-from golem.rpc.cert import CertificateManager, CrossbarAuthManager
+import click
 
-from golem.rpc.common import CROSSBAR_HOST, CROSSBAR_PORT, CROSSBAR_DIR
+from golem.core.simpleenv import get_local_datadir
+from golem.rpc.cert import CrossbarAuthManager
+
+from golem.rpc.common import CROSSBAR_HOST, CROSSBAR_PORT
 
 # Export pbr version for peewee_migrate user
 os.environ["PBR_VERSION"] = '3.1.1'

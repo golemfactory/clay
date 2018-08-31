@@ -31,20 +31,34 @@ class TestWebSocketCLI(unittest.TestCase):
 
         with rpc_context():
 
-            ws_cli = WebSocketCLI(Mock(), MagicMock(), '127.0.0.1', 12345, realm='golem')
+            ws_cli = WebSocketCLI(Mock(),
+                                  MagicMock(),
+                                  '127.0.0.1',
+                                  12345,
+                                  realm='golem')
             ws_cli.execute()
 
-            assert isinstance(ws_cli.cli.register_client.call_args_list[0][0][0], Client)
+            assert isinstance(
+                ws_cli.cli.register_client.call_args_list[0][0][0],
+                Client
+            )
 
         with rpc_context():
 
             deferred.result = Failure(Exception("Failure"))
             deferred.called = True
 
-            ws_cli = WebSocketCLI(Mock(), MagicMock(), '127.0.0.1', 12345, realm='golem')
+            ws_cli = WebSocketCLI(Mock(),
+                                  MagicMock(),
+                                  '127.0.0.1',
+                                  12345,
+                                  realm='golem')
             ws_cli.execute()
 
-            assert isinstance(ws_cli.cli.register_client.call_args_list[0][0][0], WebSocketCLI.NoConnection)
+            assert isinstance(
+                ws_cli.cli.register_client.call_args_list[0][0][0],
+                WebSocketCLI.NoConnection
+            )
 
     def test_no_connection(self):
 

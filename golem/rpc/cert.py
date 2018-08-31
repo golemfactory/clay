@@ -101,6 +101,7 @@ class CertificateManager:
             key = self.read_key()
             self._create_and_sign_certificate(key, self.cert_path)
             del key
+            logger.info('RPC self-signed certificate has been created')
 
         import gc
         gc.collect()

@@ -2,7 +2,7 @@ import json
 import logging
 import os
 from collections import namedtuple
-from typing import Iterable, Optional
+from typing import Iterable
 
 from crossbar.common import checkconfig
 from twisted.internet.defer import inlineCallbacks
@@ -10,6 +10,7 @@ from twisted.internet.defer import inlineCallbacks
 from golem.rpc.cert import CertificateManager, CrossbarAuthManager
 from golem.rpc.common import CROSSBAR_DIR, CROSSBAR_REALM, CROSSBAR_HOST, \
     CROSSBAR_PORT
+from golem.rpc.mapping.rpcmethodnames import DOCKER_URI
 from golem.rpc.session import WebSocketAddress
 
 logger = logging.getLogger('golem.rpc.crossbar')
@@ -20,14 +21,16 @@ CrossbarRouterOptions = namedtuple(
 )
 
 
+# pylint: disable=too-many-instance-attributes
 class CrossbarRouter(object):
     serializers = ['msgpack']
 
-    def __init__(self,  # pylint: disable=too-many-arguments
+    # pylint: disable=too-many-arguments
+    def __init__(self,
+                 datadir: str,
                  host: str = CROSSBAR_HOST,
                  port: int = CROSSBAR_PORT,
                  realm: str = CROSSBAR_REALM,
-                 datadir: Optional[str] = None,
                  crossbar_log_level: str = 'info',
                  ssl: bool = True,
                  generate_secrets: bool = False) -> None:
@@ -120,7 +123,6 @@ class CrossbarRouter(object):
             }
 
         # configuration for crsb_users with admin priviliges
-
         crsb_users = {
             p.name: {
                 "secret": auth_manager.get_secret(p),
@@ -183,24 +185,27 @@ class CrossbarRouter(object):
                         },
                         {
                             "name": 'golem_docker',
-                            "permissions": [{
-                                "uri": '*',
-                                "allow": {
-                                    "call": False,
-                                    "register": False,
-                                    "publish": False,
-                                    "subscribe": False
-                                }
-                            },
+                            "permissions": [
                                 {
-                                    "uri": 'comp.task.state_update',
+                                    "uri": '*',
+                                    "allow": {
+                                        "call": False,
+                                        "register": False,
+                                        "publish": False,
+                                        "subscribe": False
+                                    }
+                                },
+                                {
+                                    # more specific config takes precedence
+                                    "uri": f'{DOCKER_URI}.*',
                                     "allow": {
                                         "call": True,
                                         "register": False,
                                         "publish": False,
                                         "subscribe": False
                                     }
-                                }]
+                                }
+                            ]
                         }]
                 }],
             }]

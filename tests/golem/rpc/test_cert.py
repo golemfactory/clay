@@ -41,7 +41,6 @@ class TestCertificateManager(TempDirFixture):
     @patch('golem.rpc.cert.CertificateManager._create_and_sign_certificate')
     def test_generate_if_needed(self, create_cert, gen_key_pair, gen_dh_params,
                                 *_):
-
         cert_manager = CertificateManager(self.tempdir,
                                           setup_forward_secrecy=True)
         with patch('builtins.open'):
@@ -58,7 +57,6 @@ class TestCertificateManager(TempDirFixture):
     @patch('golem.rpc.cert.CertificateManager._create_and_sign_certificate')
     def test_generate_if_needed_windows(self, create_cert, gen_key_pair,
                                         gen_dh_params, *_):
-
         cert_manager = CertificateManager(self.tempdir)
         with patch('builtins.open'):
             cert_manager.generate_if_needed()
@@ -74,7 +72,6 @@ class TestCertificateManager(TempDirFixture):
     @patch('golem.rpc.cert.CertificateManager._create_and_sign_certificate')
     def test_generate_if_needed_no_fw_secrecy(self, create_cert, gen_key_pair,
                                               gen_dh_params, *_):
-
         cert_manager = CertificateManager(self.tempdir,
                                           setup_forward_secrecy=False)
         with patch('builtins.open'):
@@ -120,13 +117,12 @@ class TestCrossbarAuthManager(TempDirFixture):
                                            generate_secrets=True)
 
         assert set(os.listdir(auth_manager.secrets_path)) == \
-            set(f"{x}.{auth_manager.SECRET_EXT}"
+            set(f"{x}.{auth_manager.SECRET_EXT}"  # noqa
                 for x in auth_manager.Users.__members__.keys())
 
     @patch("secrets.token_hex", return_value="secret")
     def test_get_secret(self, *_):
         cert_manager = CrossbarAuthManager(self.tempdir,
                                            generate_secrets=True)
-
-        assert all("secret" == cert_manager.get_secret(x)
+        assert all(cert_manager.get_secret(x) == "secret"
                    for x in cert_manager.Users.__members__.values())

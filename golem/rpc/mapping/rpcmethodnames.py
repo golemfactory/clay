@@ -1,6 +1,8 @@
 # pylint: disable=bad-whitespace
 # flake8: noqa
 
+DOCKER_URI = "docker"
+
 CORE_METHOD_MAP = dict(
     get_golem_version=      'golem.version',
     get_golem_status=       'golem.status',
