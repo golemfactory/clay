@@ -761,26 +761,25 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         mock_task._react_to_message = lambda *_: "response"
         mock_send = MagicMock()
 
-        with patch("golem.task.tasksession.TaskSession.send", mock_send):
-            with patch("golem.task.taskmanager.TaskManager.tasks",
-                       {"someid", mock_task}):
+        with patch("golem.task.tasksession.TaskSession.send", mock_send), \
+             patch("golem.task.taskmanager.TaskManager.tasks",
+                   {"someid", mock_task}):
+            msg = message.tasks.StateUpdate()
+            msg.direction = msg.DIRECTION.Call
+            msg.task_id = task_id = "someid"
+            msg.subtask_id = subtask_id = "someotherstrangeid"
+            msg.state_update_id = state_update_id = "evenstrangerid"
 
-                msg = message.tasks.StateUpdate()
-                msg.DIRECTION = msg.DIRECTION.Call
-                msg.task_id = task_id = "someid"
-                msg.subtask_id = subtask_id = "someotherstrangeid"
-                msg.state_update_id = state_update_id = "evenstrangerid"
+            self.task_session._react_to_state_update_call(msg)
 
-                self.task_session._react_to_state_update_call(msg)
-
-                resp_data = dict(
-                    task_id=task_id,
-                    subtask_id=subtask_id,
-                    state_update_id=state_update_id,
-                    data="response",
-                    direction=msg.DIRECTION.Response
-                )
-                mock_send.assert_called_once_with(resp_data)
+            resp_data = dict(
+                task_id=task_id,
+                subtask_id=subtask_id,
+                state_update_id=state_update_id,
+                data="response",
+                direction=msg.DIRECTION.Response
+            )
+            mock_send.assert_called_once_with(resp_data)
 
     def test_react_to_state_update(self):
         mock_call = MagicMock()
