@@ -1,51 +1,64 @@
 import subprocess
-
-import houdini_python
-
-houdini_python.enableHouModule()
-import hou
+import sys
+import os
+import json
 
 
+######################################################################################
+## This is entry point for houdini rendering task. This file makes 2 things:
+## - setups Houdini environment variables
+## - runs rendering
+##
+## To set environment we must execute houdini_setup_bash script. But this scripts
+## sets environment variables, that must be visible for rendering python script. We can't just
+## source houdini_setup_bash from this file, because such operation spawns child subprocess
+## and after execution, variables are no longer visible.
+## The solution is a little bit tricky and cumbersome. docker_houdinitask.py spawns new process,
+## that executes houdini_invoker.sh script, which source houdini_setup_bash and then runs python
+## rendering script. Since python is executed as a child process, it sees all environment variables
+## that were set previously.
+
+
+# ================================
+#
 def exec_cmd(cmd):
     pc = subprocess.Popen(cmd)
     return pc.wait()
 
 
+# ================================
+#
+def get_houdini_setup_dir( file ):
 
-print( "Imported hou" )
+    houdini_installation = dict()
+
+    with open( file, 'r' ) as infile:
+        houdini_installation = json.load( infile )
+
+    return houdini_installation[ "install_dir" ] + houdini_installation[ "version" ]
 
 
 # ================================
 #
-def build_renderer_param( renderer ):
-    return [ "-d", renderer ]
+def setup_houdini_end_render( installation_info, task_definition_file ):
+
+    houdini_dir = get_houdini_setup_dir( installation_info )
+
+    command = [ "./houdini_invoker.sh", houdini_dir, task_definition_file ]
+    exec_cmd( command )
+
 
 # ================================
 #
-def build_frames_params( start_frame, end_frame ):
-    return [  "-f", str( start_frame ), str( end_frame ) ]
+def run():
 
-# ================================
-#
-def build_command( file, renderer, start_frame, end_frame ):
+    # Docker image build script saves installation info in this file.
+    # Change this variable to test scripts locally (outside docker container).
+    installation_info = "/home/nieznanysprawiciel/Repos/Golem/HoudiniDockerBuild/install/houdini-installation.json"
+    #installation_info = "/houdini/houdini-installation.json"
 
-    hrender_path = "/opt/hfs16.5.536/bin/hrender.py"
-    #hrender_path = "apps/houdini/resources/scripts/hrender.py"
-
-    command = [ "hython" ]
-    command += [ hrender_path ]
-    command += ["-e"]
-    command += build_renderer_param( renderer )
-    command += [ file ]
-    command += build_frames_params( start_frame, end_frame )
-
-    return command
-
-# hython /opt/hfs16.5.536/bin/hrender.py -e -d /out/mantra_ipr /home/nieznanysprawiciel/Data/Houdini-examples/rop_example_bakeanimation.hipnc -f 0 30
+    setup_houdini_end_render( installation_info, sys.argv[ 1 ] )
 
 
-command = build_command( "/home/nieznanysprawiciel/Data/Houdini-examples/rop_example_bakeanimation.hipnc", "/out/mantra_ipr", 0, 30 )
-print( "Executing command: " + str( command ) )
-
-
-exec_cmd( command )
+if __name__ == "__main__":
+    run()

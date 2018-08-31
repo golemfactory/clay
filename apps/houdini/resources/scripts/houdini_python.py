@@ -1,9 +1,10 @@
+import sys, os
+import subprocess
 
 
 # Copied from http://www.sidefx.com/docs/houdini/hom/commandline.html
 def enableHouModule():
     '''Set up the environment so that "import hou" works.'''
-    import sys, os
 
     # Importing hou will load in Houdini's libraries and initialize Houdini.
     # In turn, Houdini will load any HDK extensions written in C++.  These
@@ -26,5 +27,3 @@ def enableHouModule():
     finally:
         if hasattr(sys, "setdlopenflags"):
             sys.setdlopenflags(old_dlopen_flags)
-
-
