@@ -68,6 +68,8 @@ class DummyTask(Task):
     def copy_subtask_results(self, subtask_id, old_subtask_info, results):
         pass
 
+    def query_extra_data_for_test_task(self):
+        pass
 
 class BenchmarkRunnerFixture(TempDirFixture):
     def _success(self):

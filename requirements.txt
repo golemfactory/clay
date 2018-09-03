@@ -30,7 +30,7 @@ eth-tester==0.1.0-beta.24
 eth-utils==1.0.3
 ethereum==1.6.1
 -e git://github.com/golemfactory/golem-verificator.git@task_interface#egg=golem_verificator
-Golem-Messages==2.12.2
+Golem-Messages==2.12.3
 Golem-Smart-Contracts-Interface==1.5.1
 h2==3.0.1
 hpack==3.0.0
@@ -69,7 +69,7 @@ py-ubjson==0.11.0
 pyasn1==0.4.1
 pyasn1-modules==0.2.1
 pycparser==2.17
-pycryptodome==3.5.1
+pycryptodome==3.6.6
 PyDispatcher==2.0.5
 pyelliptic==1.5.10
 pyethash==0.1.27

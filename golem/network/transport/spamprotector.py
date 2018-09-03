@@ -23,13 +23,7 @@ class SpamProtector:
         if msg_data is None:
             return False
 
-        # fixme: pull unpacking of the `MessageHeader` to a separate
-        # class method of Message and use that method instead here
-        # to save on unnecessary operations
-        #
-        # https://github.com/golemfactory/golem/issues/3195
-        #
-        msg_type, _, _ = Message.deserialize_header(msg_data[:Message.HDR_LEN])
+        msg_type, _, _ = Message.unpack_header(msg_data[:Message.HDR_LEN])
 
         if msg_type not in self.INTERVALS:
             return True

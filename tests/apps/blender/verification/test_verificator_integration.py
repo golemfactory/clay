@@ -82,7 +82,6 @@ class TestVerificatorModuleIntegration(TempDirFixture):
                 'apps/blender/resources/scripts/docker_blendertask.py'),
             'r').read()
         self.subtask_info['ctd']['subtask_id'] = self.subtask_info['subtask_id']
-        self.subtask_info['ctd']['working_directory'] = self.tempdir
 
     def test_bad_image(self):
 

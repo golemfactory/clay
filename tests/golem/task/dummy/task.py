@@ -266,3 +266,6 @@ class DummyTask(Task):
 
     def copy_subtask_results(self, subtask_id, old_subtask_info, results):
         print('DummyTask.copy_subtask_results called')
+
+    def query_extra_data_for_test_task(self):
+        pass
