@@ -295,7 +295,6 @@ class BlenderReferenceGenerator:
         defer = Deferred()
 
         def success(results: List[str], time_spent: float):
-            logger.warning("Success callback %r", crop_number)
             self.rendered_crops_results[crop_number] = [results,
                                                         time_spent,
                                                         verification_context]

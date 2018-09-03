@@ -107,18 +107,18 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         verifier.current_results_files = ['tests/apps/blender/verification/'
                                           'test_data/very_bad_image.png']
 
-        verifier.finished.addCallback(success)
-        verifier.finished.addErrback(failure)
         verifier.subtask_info = self.subtask_info
         verifier.resources = self.resources
 
-        self.blender_reference_generator.render_crops(
+        finished = self.blender_reference_generator.render_crops(
             self.resources,
-            verifier._crop_rendered,
-            verifier._crop_render_failure,
             self.subtask_info,
             1
         )
+
+        for deferred in finished:
+            deferred.addCallback(success)
+            deferred.addErrback(failure)
 
         sync_wait(d, TestVerificatorModuleIntegration.TIMEOUT)
 
@@ -145,18 +145,18 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         verifier.current_results_files = \
             ['tests/apps/blender/verification/test_data/GolemTask_10001.png']
 
-        verifier.finished.addCallback(success)
-        verifier.finished.addErrback(failure)
         verifier.subtask_info = self.subtask_info
         verifier.resources = self.resources
 
-        self.blender_reference_generator.render_crops(
+        finished = self.blender_reference_generator.render_crops(
             self.resources,
-            verifier._crop_rendered,
-            verifier._crop_render_failure,
             self.subtask_info,
             1
         )
+
+        for deferred in finished:
+            deferred.addCallback(success)
+            deferred.addErrback(failure)
 
         sync_wait(d, TestVerificatorModuleIntegration.TIMEOUT)
 
@@ -165,7 +165,6 @@ class TestVerificatorModuleIntegration(TempDirFixture):
 
         def success(*args, **kwargs):
             # pylint: disable=unused-argument
-            d.errback(False)
             assert False
 
         def failure(*args, **kwargs):
@@ -184,18 +183,18 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         verifier.current_results_files = \
             ['tests/apps/blender/verification/test_data/almost_good_image.png']
 
-        verifier.finished.addCallback(success)
-        verifier.finished.addErrback(failure)
         verifier.subtask_info = self.subtask_info
         verifier.resources = self.resources
 
-        self.blender_reference_generator.render_crops(
+        finished = self.blender_reference_generator.render_crops(
             self.resources,
-            verifier._crop_rendered,
-            verifier._crop_render_failure,
             self.subtask_info,
             1
         )
+
+        for deferred in finished:
+            deferred.addCallback(success)
+            deferred.addErrback(failure)
 
         sync_wait(d, TestVerificatorModuleIntegration.TIMEOUT)
 
@@ -229,17 +228,17 @@ class TestVerificatorModuleIntegration(TempDirFixture):
             'tests/apps/blender/verification/test_data/GolemTask_10001.png',
             'tests/apps/blender/verification/test_data/GolemTask_10002.png']
 
-        verifier.finished.addCallback(success)
-        verifier.finished.addErrback(failure)
         verifier.subtask_info = self.subtask_info
         verifier.resources = self.resources
 
-        self.blender_reference_generator.render_crops(
+        finished = self.blender_reference_generator.render_crops(
             self.resources,
-            verifier._crop_rendered,
-            verifier._crop_render_failure,
             self.subtask_info,
             1
         )
+
+        for deferred in finished:
+            deferred.addCallback(success)
+            deferred.addErrback(failure)
 
         sync_wait(d, TestVerificatorModuleIntegration.TIMEOUT)
