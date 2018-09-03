@@ -1,7 +1,7 @@
 import logging
 import queue
 from types import FunctionType
-from typing import Optional, Type, Dict
+from typing import Optional, Type, Dict, Tuple
 from apps.blender.verification_task import VerificationTask
 
 from twisted.internet.defer import Deferred, gatherResults
@@ -17,7 +17,8 @@ class VerificationQueue:
         self._concurrency = concurrency
         self._queue: queue.Queue = queue.Queue()
         self._jobs: Dict[str, Deferred] = dict()
-        self.callbacks: Dict[VerificationTask, FunctionType] = dict()
+        self.callbacks: Dict[VerificationTask, Tuple[FunctionType,
+                                                     Type[Verifier]]] = dict()
         self._paused = False
 
     def submit(self,
@@ -33,9 +34,9 @@ class VerificationQueue:
             verifier_class, subtask_id, deadline, kwargs
         )
 
-        entry = VerificationTask(verifier_class, subtask_id, deadline, kwargs)
+        entry = VerificationTask(subtask_id, deadline, kwargs)
         self.callbacks[entry] = cb
-        self._queue.put(entry)
+        self._queue.put((entry, verifier_class))
         self._process_queue()
 
     def pause(self) -> Deferred:
@@ -53,9 +54,13 @@ class VerificationQueue:
 
     def _process_queue(self) -> None:
         if self.can_run:
-            entry = self._next()
-            if entry:
-                self._run(entry)
+            try:
+                entry, verifier_cls = self._next()
+                if entry:
+                    self._run(entry, verifier_cls)
+            except TypeError:
+                # If queue is empty we can't assign None to Tuple
+                pass
 
     def _next(self) -> Optional['Entry']:
         try:
@@ -63,7 +68,8 @@ class VerificationQueue:
         except queue.Empty:
             return None
 
-    def _run(self, entry: VerificationTask) -> None:
+    def _run(self, entry: VerificationTask,
+             verifier_cls: Type[Verifier]) -> None:
         subtask_id = entry.subtask_id
 
         logger.info("Running verification of subtask %r", subtask_id)
@@ -76,7 +82,7 @@ class VerificationQueue:
                 self._jobs.pop(subtask_id, None)
                 self._process_queue()
 
-        result = entry.start(callback)
+        result = entry.start(callback, verifier_cls)
         if result:
             self._jobs[subtask_id] = result
 

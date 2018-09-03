@@ -3,7 +3,6 @@ import math
 import os
 import random
 from copy import deepcopy
-from functools import partial
 from typing import Dict, Tuple, List, Callable, Optional, Any
 from twisted.internet.defer import Deferred, inlineCallbacks
 
@@ -21,17 +20,15 @@ logger = logging.getLogger("blender_reference_generator")
 # pylint: disable=R0902
 class VerificationContext:
     def __init__(self, crops_data: Dict[str, Any], computer,
-                 subtask_data: Dict[str, Any],
-                 callbacks: Dict[str, Callable]) -> None:
+                 subtask_data: Dict[str, Any], crops_number) -> None:
         self.crops_path = crops_data['paths']
         self.crops_floating_point_coordinates = crops_data['position'][0]
         self.crops_pixel_coordinates = crops_data['position'][1]
         self.computer = computer
         self.resources = subtask_data['resources']
         self.subtask_info = subtask_data['subtask_info']
-        self.success = callbacks['success']
-        self.error_callback = callbacks['errback']
         self.crop_size = crops_data['position'][2]
+        self.finished = [Deferred() for _ in range(3)]
 
     def get_crop_path(self, crop_number: int) -> str:
         return os.path.join(self.crops_path, str(crop_number))
@@ -226,8 +223,6 @@ class BlenderReferenceGenerator:
 
     def render_crops(self,
                      resources: List[str],
-                     crop_rendered_callback: CropRenderedSuccessCallbackType,
-                     crop_render_fail_callback: CropRenderedFailureCallbackType,
                      subtask_info: Dict[str, Any],
                      num_crops: int = DEFAULT_CROPS_NUMBER,
                      crop_size: Optional[Tuple[int, int]] = None) \
@@ -245,13 +240,11 @@ class BlenderReferenceGenerator:
                                  'position': crops_info},
                                 self.computer,
                                 {'resources': resources,
-                                 'subtask_info': subtask_info},
-                                {'success': crop_rendered_callback,
-                                 'errback': crop_render_fail_callback})
+                                 'subtask_info': subtask_info}, num_crops)
 
-        self.start(verification_context, crop_render_fail_callback, num_crops)
+        self.start(verification_context, num_crops)
 
-        return self.crop_size_in_pixels
+        return verification_context.finished
 
     # FIXME it would be better to make this subtask agnostic, pass only data
     # needed to generate crops. Drop local computer.
@@ -261,7 +254,6 @@ class BlenderReferenceGenerator:
     @inlineCallbacks
     def start(self,
               verification_context: VerificationContext,
-              crop_render_failure: CropRenderedFailureCallbackType,
               crop_count: int) -> None:
 
         for i in range(0, crop_count):
@@ -285,20 +277,20 @@ class BlenderReferenceGenerator:
                     script_src)
 
             yield self.schedule_crop_job(verification_context, task_definition,
-                                         i, crop_render_failure)
+                                         i)
 
         if not self.stopped:
             for i in range(0, crop_count):
-                self.rendered_crops_results[i][2].success(
+                verification_context.finished[i].callback((
                     self.rendered_crops_results[i][0],
                     self.rendered_crops_results[i][1],
-                    self.rendered_crops_results[i][2], i)
+                    self.rendered_crops_results[i][2], i))
 
     def stop(self):
         self.stopped = True
 
     def schedule_crop_job(self, verification_context, task_definition,
-                          crop_number, crop_failure):
+                          crop_number):
 
         defer = Deferred()
 
@@ -312,9 +304,7 @@ class BlenderReferenceGenerator:
         def failure(exc):
             self.stopped = True
             logger.error(exc)
-            defer.errback(False)
-
-        defer.addErrback(crop_failure)
+            verification_context.finished[crop_number].errback(False)
 
         verification_context.computer.start_computation(
             root_path=verification_context.get_crop_path(crop_number),
