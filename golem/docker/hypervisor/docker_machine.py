@@ -2,9 +2,12 @@ import logging
 import os
 import subprocess
 from abc import ABCMeta
+from contextlib import contextmanager
+from typing import Optional, ClassVar, Any, List
 
 from golem.docker.commands.docker_machine import DockerMachineCommandHandler
-from golem.docker.config import DOCKER_VM_NAME, GetConfigFunction
+from golem.docker.config import DOCKER_VM_NAME, GetConfigFunction, \
+    CONSTRAINT_KEYS
 from golem.docker.hypervisor import Hypervisor
 from golem.report import Component, report_calls
 
@@ -14,6 +17,8 @@ logger = logging.getLogger(__name__)
 class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
 
     COMMAND_HANDLER = DockerMachineCommandHandler
+    DRIVER_PARAM_NAME = "--driver"
+    DRIVER_NAME: ClassVar[str]
 
     def __init__(self,
                  get_config_fn: GetConfigFunction,
@@ -28,6 +33,47 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
 
         if not self.vm_running():
             self.start_vm()
+        self._set_env()
+
+    def _parse_create_params(self, **params: Any) -> List[str]:
+        return [self.DRIVER_PARAM_NAME, self.DRIVER_NAME]
+
+    @report_calls(Component.hypervisor, 'vm.create')
+    def create(self, vm_name: Optional[str] = None, **params) -> bool:
+        vm_name = vm_name or self._vm_name
+        constraints = {
+            k: params.pop(v, None)
+            for k, v in CONSTRAINT_KEYS.items()
+        }
+        command_args = self._parse_create_params(**constraints, **params)
+
+        logger.info(f'{self.DRIVER_NAME}: creating VM "{vm_name}"')
+
+        try:
+            self.command('create', vm_name, args=command_args)
+            return True
+        except subprocess.CalledProcessError as e:
+            logger.exception(
+                f'{self.DRIVER_NAME}: error creating VM "{vm_name}"')
+            logger.debug(f'Hypervisor output: {e.output}')
+            return False
+
+    @contextmanager
+    @report_calls(Component.hypervisor, 'vm.recover')
+    def recover_ctx(self, name: Optional[str] = None):
+        name = name or self._vm_name
+        with self.restart_ctx(name) as _name:
+            yield _name
+        self._set_env()
+
+    @contextmanager
+    @report_calls(Component.hypervisor, 'vm.restart')
+    def restart_ctx(self, name: Optional[str] = None):
+        name = name or self._vm_name
+        if self.vm_running(name):
+            self.stop_vm(name)
+        yield name
+        self.start_vm(name)
         self._set_env()
 
     @property

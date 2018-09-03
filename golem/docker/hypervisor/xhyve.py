@@ -1,50 +1,39 @@
 import json
 import logging
 import os
-from contextlib import contextmanager
-from typing import Dict, Optional
+from typing import Dict, Optional, Any, List, Union
 
 from golem.docker.config import CONSTRAINT_KEYS
 from golem.docker.hypervisor.docker_machine import DockerMachineHypervisor
-from golem.report import Component, report_calls
 
 logger = logging.getLogger(__name__)
 
 
 class XhyveHypervisor(DockerMachineHypervisor):
 
-    options = dict(
+    DRIVER_NAME = 'xhyve'
+    OPTIONS = dict(
         mem='--xhyve-memory-size',
         cpu='--xhyve-cpu-count',
         disk='--xhyve-disk-size',
         storage='--xhyve-virtio-9p'
     )
 
-    @report_calls(Component.hypervisor, 'vm.create')
-    def create(self, name: Optional[str] = None, **params):
-        name = name or self._vm_name
-        cpu = params.get(CONSTRAINT_KEYS['cpu'], None)
-        mem = params.get(CONSTRAINT_KEYS['mem'], None)
+    def _parse_create_params(
+            self,
+            cpu: Optional[Union[str, int]] = None,
+            mem: Optional[Union[str, int]] = None,
+            **params: Any) -> List[str]:
 
-        args = [
-            '--driver', 'xhyve',
-            self.options['storage']
-        ]
+        args = super()._parse_create_params(**params)
+        args += [self.OPTIONS['storage']]
 
         if cpu is not None:
-            args += [self.options['cpu'], str(cpu)]
+            args += [self.OPTIONS['cpu'], str(cpu)]
         if mem is not None:
-            args += [self.options['mem'], str(mem)]
+            args += [self.OPTIONS['mem'], str(mem)]
 
-        logger.info("Xhyve: creating VM '{}'".format(name))
-
-        try:
-            self.command('create', name, args=args)
-            return True
-        except Exception as e:
-            logger.error("Xhyve: error creating VM '{}': {}"
-                         .format(name, e))
-            return False
+        return args
 
     def constrain(self, name: Optional[str] = None, **params) -> None:
         name = name or self._vm_name
@@ -65,24 +54,6 @@ class XhyveHypervisor(DockerMachineHypervisor):
         except Exception as e:
             logger.error("Xhyve: error updating '{}' configuration: {}"
                          .format(name, e))
-
-    @contextmanager
-    @report_calls(Component.hypervisor, 'vm.recover')
-    def recover_ctx(self, name: Optional[str] = None):
-        name = name or self._vm_name
-        with self.restart_ctx(name) as _name:
-            yield _name
-        self._set_env()
-
-    @contextmanager
-    @report_calls(Component.hypervisor, 'vm.restart')
-    def restart_ctx(self, name: Optional[str] = None):
-        name = name or self._vm_name
-        if self.vm_running(name):
-            self.stop_vm(name)
-        yield name
-        self.start_vm(name)
-        self._set_env()
 
     def constraints(self, name: Optional[str] = None) -> Dict:
         name = name or self._vm_name
