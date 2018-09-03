@@ -17,6 +17,7 @@ from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask, AcceptClientVerdict
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
+from golem.core.common import node_info_str
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.p2p import node as p2p_node
 from golem.network.transport.network import ProtocolFactory, SessionFactory
@@ -608,13 +609,16 @@ class TaskServer(
     def should_accept_provider(  # noqa pylint: disable=too-many-arguments,too-many-return-statements,unused-argument
             self,
             node_id,
+            node_name,
             task_id,
             provider_perf,
             max_resource_size,
             max_memory_size,
             num_cores):
 
-        ids = f'provider_id: {node_id}, task_id: {task_id}'
+        ids = 'provider={}, task_id={}'.format(node_info_str(node_name,
+                                                             node_id),
+                                               task_id)
 
         if task_id not in self.task_manager.tasks:
             logger.info(f'Cannot find task in my tasks: {ids}')

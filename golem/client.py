@@ -36,6 +36,7 @@ from golem.core.common import (
     get_timestamp_utc,
     string_to_timeout,
     to_unicode,
+    node_info_str,
 )
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
@@ -138,10 +139,10 @@ class Client(HardwarePresetsMixin):
 
         if self.config_desc.in_shutdown:
             self.update_setting('in_shutdown', False)
-
         logger.info(
-            'Client "%s", datadir: %s',
-            self.config_desc.node_name,
+            'Client %s, datadir: %s',
+            node_info_str(self.config_desc.node_name,
+                          keys_auth.key_id),
             datadir
         )
         self.db = database
