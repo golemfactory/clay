@@ -592,6 +592,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         node_id = "0xdeadbeef"
         task_id = task.header.task_id
         ts.task_manager.tasks[task_id] = task
+        task.should_accept_client.return_value = AcceptClientVerdict.ACCEPTED
 
         min_accepted_perf = 77
         env = Mock()
@@ -671,6 +672,19 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         # given
         task.header.mask = Mask()
+        task.should_accept_client.return_value = AcceptClientVerdict.REJECTED
+        # then
+        with self.assertLogs(logger, level='INFO') as cm:
+            assert not ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
+            _assert_log_msg(
+                cm,
+                f'INFO:{logger.name}:provider {node_id}'
+                f' is not allowed for this task at this moment '
+                f'(either waiting for results or previously failed)'
+            )
+
+        # given
+        task.header.mask = Mask()
         ts.acl.disallow(node_id)
         # then
         with self.assertLogs(logger, level='INFO') as cm:
@@ -679,7 +693,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 cm,
                 f'INFO:{logger.name}:provider node is blacklisted; '
                 f'provider_id: {node_id}, task_id: {task_id}')
-
 
     def test_should_accept_requestor(self, *_):
         ts = self.ts
