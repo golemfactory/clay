@@ -463,6 +463,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.key_id, msg.task_id, msg.perf_index, msg.max_resource_size,
             msg.max_memory_size, msg.num_cores)
 
+        logger.debug("Task Server ok?: %s, key_id: %s, task_id: %s, ",
+                     task_server_ok, self.key_id, msg.task_id)
+
         if task_server_ok and self.task_manager.check_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.price):
 
