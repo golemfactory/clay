@@ -881,7 +881,7 @@ class TaskManager(TaskEventListener):
                                      op=SubtaskOp.RESTARTED,
                                      persist=False)
 
-        task.status = TaskStatus.computing
+        task_state.status = TaskStatus.computing
         self.notice_task_updated(task_id, op=OtherOp.FRAME_RESTARTED)
 
     @handle_task_key_error
