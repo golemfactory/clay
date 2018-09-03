@@ -35,7 +35,7 @@ def get_houdini_setup_dir( file ):
     with open( file, 'r' ) as infile:
         houdini_installation = json.load( infile )
 
-    return houdini_installation[ "install_dir" ] + houdini_installation[ "version" ]
+    return os.path.join( houdini_installation[ "install_dir" ], houdini_installation[ "version" ] )
 
 
 # ================================
@@ -54,10 +54,12 @@ def run():
 
     # Docker image build script saves installation info in this file.
     # Change this variable to test scripts locally (outside docker container).
-    installation_info = "/home/nieznanysprawiciel/Repos/Golem/HoudiniDockerBuild/install/houdini-installation.json"
-    #installation_info = "/houdini/houdini-installation.json"
+    #installation_info = "/home/nieznanysprawiciel/Repos/Golem/HoudiniDockerBuild/install/houdini-installation.json"
+    installation_info = "/houdini/houdini-installation.json"
 
-    setup_houdini_end_render( installation_info, sys.argv[ 1 ] )
+    task_definition_file = "/golem/work/task_definition.json"
+
+    setup_houdini_end_render( installation_info, task_definition_file )
 
 
 if __name__ == "__main__":
