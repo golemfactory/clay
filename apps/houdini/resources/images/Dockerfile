@@ -11,12 +11,12 @@ RUN pip install beautifulsoup4 requests
 
 RUN exec python /golem/scripts/install/houdini_install.py -u nieznanysprawiciel -p 3F9WbKaHmYdkowzX5zhw -i /opt/houdini
 
-ADD ./scripts /golem/scripts
-WORKDIR /golem/scripts
-
 RUN apt-get install libpython2.7 -y && \
     apt install libgl1-mesa-glx -y && \
     apt-get install libxmu6 -y && \
     apt-get install libxi6 -y
+
+ADD ./scripts /golem/scripts
+WORKDIR /golem/scripts
 
 RUN pip uninstall beautifulsoup4 requests -y
