@@ -945,6 +945,15 @@ class TaskManager(TaskEventListener):
         subtask_states = list(task_state.subtask_states.values())
         return [subtask_state.subtask_id for subtask_state in subtask_states]
 
+    def get_frame_subtasks(self, task_id: str, frame) \
+            -> Optional[Dict[str, SubtaskState]]:
+        task: Optional[Task] = self.tasks.get(task_id)
+        if not task:
+            return None
+        if not isinstance(task, CoreTask):
+            return None
+        return task.get_subtasks(frame)
+
     def change_config(self, root_path, use_distributed_resource_management):
         self.dir_manager = DirManager(root_path)
         self.use_distributed_resources = use_distributed_resource_management
