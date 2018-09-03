@@ -677,7 +677,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             assert not ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
             _assert_log_msg(
                 cm,
-                f'INFO:{logger.name}:provider {node_id} is not allowed for this task at this moment')
+                f'INFO:{logger.name}:provider {node_id}'
+                f' is not allowed for this task at this moment')
 
         # given
         task.header.mask = Mask()
