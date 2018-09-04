@@ -1,4 +1,3 @@
-# pylint: disable=protected-access, too-many-lines
 import os
 import random
 import uuid
@@ -11,8 +10,8 @@ from golem_messages.message import ComputeTaskDef
 from golem_messages import factories as msg_factories
 from requests import HTTPError
 
-import golem
 from apps.core.task.coretask import AcceptClientVerdict
+import golem
 from golem import model
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -841,9 +840,8 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
             parent.setUp(self)
         random.seed()
         self.ccd = self._get_config_desc()
-        with patch(
-                'golem.network.concent.handlers_library.HandlersLibrary'
-                '.register_handler',):
+        with patch('golem.network.concent.handlers_library.HandlersLibrary'
+                   '.register_handler',):
             self.ts = TaskServer(
                 node=NodeFactory(),
                 config_desc=self.ccd,
@@ -877,7 +875,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
 
     @patch("golem.task.taskmanager.TaskManager.dump_task")
     @patch("golem.task.taskserver.Trust")
-    def test_results(self, trust, dump_mock, *_):
+    def test_results(self, trust, *_):
         ts = self.ts
         ts.task_manager.listen_port = 1111
         ts.task_manager.listen_address = "10.10.10.10"
@@ -973,9 +971,8 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         self.resource_manager = Mock(
             add_task=Mock(side_effect=lambda *a, **b: ([], "a1b2c3"))
         )
-        with patch(
-                'golem.network.concent.handlers_library.HandlersLibrary'
-                '.register_handler',):
+        with patch('golem.network.concent.handlers_library.HandlersLibrary'
+                   '.register_handler',):
             self.ts = TaskServer(
                 node=self.node,
                 config_desc=ClientConfigDescriptor(),
