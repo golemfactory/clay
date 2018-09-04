@@ -13,7 +13,7 @@ from pydispatch import dispatcher
 from twisted.internet.defer import inlineCallbacks
 
 from apps.appsmanager import AppsManager
-from apps.core.task.coretask import CoreTask
+from apps.core.task.coretask import CoreTask, AcceptClientVerdict
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
@@ -631,6 +631,13 @@ class TaskServer(
             logger.info(f'network mask mismatch: {ids}')
             return False
 
+        if task.should_accept_client(node_id) != AcceptClientVerdict.ACCEPTED:
+            logger.info(f'provider {node_id} is not allowed'
+                        f' for this task at this moment '
+                        f'(either waiting for results or previously failed)')
+            return False
+
+        logger.debug(f'provider {node_id} can be accepted')
         return True
 
     def should_accept_requestor(self, node_id):
