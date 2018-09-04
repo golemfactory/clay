@@ -7,7 +7,7 @@ import time
 from golem_messages import helpers as msg_helpers
 from golem_messages import message
 
-from golem.core.common import HandleAttributeError
+from golem.core.common import HandleAttributeError, node_info_str
 from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import CBORSerializer
 from golem.core import variables
@@ -452,12 +452,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.dropped()
             return
 
-        logger.info("Received offer to compute. task_id=%r, node_id=%r",
-                    msg.task_id, self.key_id)
+        node_name_id = node_info_str(msg.node_name, self.key_id)
+        logger.info("Received offer to compute. task_id=%r, node=%r",
+                    msg.task_id, node_name_id)
 
         if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
             logger.warning("Can not accept offer: Still waiting on results."
-                           "task_id=%r, node_id=%r", msg.task_id, self.key_id)
+                           "task_id=%r, node=%r", msg.task_id, node_name_id)
             self.send(message.tasks.WaitingForResults())
             return
 
@@ -469,23 +470,20 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.key_id, msg.node_name, msg.task_id, msg.perf_index,
             msg.max_resource_size, msg.max_memory_size, msg.num_cores)
 
-        logger.debug("Task Server ok?: %s, key_id: %s, task_id: %s, ",
-                     task_server_ok, self.key_id, msg.task_id)
-
         if task_server_ok and self.task_manager.check_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.price):
 
             if self._handshake_required(self.key_id):
-                logger.warning('Can not accept offer: Resource handshake is in'
-                               ' required. task_id=%r, node_id=%r',
-                               msg.task_id, self.key_id)
+                logger.warning('Can not accept offer: Resource handshake is'
+                               ' required. task_id=%r, node=%r',
+                               msg.task_id, node_name_id)
                 self._start_handshake(self.key_id)
                 return
 
             elif self._handshake_in_progress(self.key_id):
                 logger.warning('Can not accept offer: Resource handshake is in'
-                               ' progress. task_id=%r, node_id=%r',
-                               msg.task_id, self.key_id)
+                               ' progress. task_id=%r, node=%r',
+                               msg.task_id, node_name_id)
                 return
 
             # TODO: Queue requests here
@@ -533,11 +531,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
         elif not task_server_ok:
             logger.warning("Can not accept offer: Taskserver rejected provider."
-                           "task_id=%r, node_id=%r", msg.task_id, self.key_id)
+                           "task_id=%r, node=%r", msg.task_id, node_name_id)
         else:
             logger.warning("Can not accept offer: Taskmanager rejected "
-                           "provider. task_id=%r, node_id=%r", msg.task_id,
-                           self.key_id)
+                           "provider. task_id=%r, node=%r", msg.task_id,
+                           node_name_id)
 
         self.send(
             message.tasks.CannotAssignTask(

@@ -885,7 +885,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.task_session._react_to_cannot_assign_task(msg_cat)
         assert task_keeper.active_tasks["abc"].requests == expected_requests
 
-    def test_react_to_want_to_compute_no_handshake(self):
+    @patch('golem.task.tasksession.node_info_str')
+    def test_react_to_want_to_compute_no_handshake(self, _):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
 
@@ -903,7 +904,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         ts._start_handshake.assert_called_with(ts.key_id)
 
-    def test_react_to_want_to_compute_handshake_busy(self):
+    @patch('golem.task.tasksession.node_info_str')
+    def test_react_to_want_to_compute_handshake_busy(self, _):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
 

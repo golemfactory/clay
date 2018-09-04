@@ -316,6 +316,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.assertEqual(ack_msg.report_computed_task, self.msg)
 
 
+@mock.patch('golem.task.tasksession.node_info_str')
 @mock.patch('golem.task.tasksession.TaskSession.send')
 class ReactToWantToComputeTaskTestCase(unittest.TestCase):
     def setUp(self):
@@ -346,30 +347,30 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         self.task_session.task_manager.check_next_subtask.assert_called_once()
 
     def test_provider_with_concent_requestor_without_concent(
-            self, send_mock):
+            self, send_mock, _):
         self.msg.concent_enabled = True
         self.task_session.concent_service.enabled = False
         self.assert_blocked(send_mock)
 
     def test_provider_with_concent_requestor_with_concent(
-            self, send_mock):
+            self, send_mock, _):
         self.msg.concent_enabled = True
         self.task_session.concent_service.enabled = True
         self.assert_allowed(send_mock)
 
     def test_provider_without_concent_requestor_without_concent(
-            self, send_mock):
+            self, send_mock, _):
         self.msg.concent_enabled = False
         self.task_session.concent_service.enabled = False
         self.assert_allowed(send_mock)
 
     def test_provider_without_concent_requestor_with_concent(
-            self, send_mock):
+            self, send_mock, _):
         self.msg.concent_enabled = False
         self.task_session.concent_service.enabled = True
         self.assert_allowed(send_mock)
 
-    def test_concent_disabled_wtct_concent_flag_none(self, send_mock):
+    def test_concent_disabled_wtct_concent_flag_none(self, send_mock, _):
         task_manager = self.task_session.task_manager
         self.msg.concent_enabled = None
         task_session = self.task_session
