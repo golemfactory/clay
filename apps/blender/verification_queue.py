@@ -17,8 +17,7 @@ class VerificationQueue:
         self._concurrency = concurrency
         self._queue: queue.Queue = queue.Queue()
         self._jobs: Dict[str, Deferred] = dict()
-        self.callbacks: Dict[VerificationTask, Tuple[FunctionType,
-                                                     Type[Verifier]]] = dict()
+        self.callbacks: Dict[VerificationTask, FunctionType] = dict()
         self._paused = False
 
     def submit(self,
@@ -54,19 +53,15 @@ class VerificationQueue:
 
     def _process_queue(self) -> None:
         if self.can_run:
-            try:
-                entry, verifier_cls = self._next()
-                if entry:
-                    self._run(entry, verifier_cls)
-            except TypeError:
-                # If queue is empty we can't assign None to Tuple
-                pass
+            entry, verifier_cls = self._next()
+            if entry and verifier_cls:
+                self._run(entry, verifier_cls)
 
-    def _next(self) -> Optional['Entry']:
+    def _next(self) -> Tuple[Optional[VerificationTask], Optional[Verifier]]:
         try:
             return self._queue.get(block=False)
         except queue.Empty:
-            return None
+            return None, None
 
     def _run(self, entry: VerificationTask,
              verifier_cls: Type[Verifier]) -> None:

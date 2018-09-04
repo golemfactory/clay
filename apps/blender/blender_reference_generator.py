@@ -3,7 +3,7 @@ import math
 import os
 import random
 from copy import deepcopy
-from typing import Dict, Tuple, List, Callable, Optional, Any
+from typing import Dict, Tuple, List, Callable, Optional, Any, Generator
 from twisted.internet.defer import Deferred, inlineCallbacks
 
 import numpy
@@ -28,7 +28,7 @@ class VerificationContext:
         self.resources = subtask_data['resources']
         self.subtask_info = subtask_data['subtask_info']
         self.crop_size = crops_data['position'][2]
-        self.finished = [Deferred() for _ in range(3)]
+        self.finished = [Deferred() for _ in range(crops_number)]
 
     def get_crop_path(self, crop_number: int) -> str:
         return os.path.join(self.crops_path, str(crop_number))
@@ -226,7 +226,7 @@ class BlenderReferenceGenerator:
                      subtask_info: Dict[str, Any],
                      num_crops: int = DEFAULT_CROPS_NUMBER,
                      crop_size: Optional[Tuple[int, int]] = None) \
-            -> Tuple[int, int]:
+            -> List[Deferred]:
         crops_path = os.path.join(subtask_info['tmp_dir'],
                                   subtask_info['subtask_id'])
         crops_info = self.generate_crops_data((subtask_info['res_x'],
@@ -254,7 +254,7 @@ class BlenderReferenceGenerator:
     @inlineCallbacks
     def start(self,
               verification_context: VerificationContext,
-              crop_count: int) -> None:
+              crop_count: int) -> Generator:
 
         for i in range(0, crop_count):
             if self.stopped:
