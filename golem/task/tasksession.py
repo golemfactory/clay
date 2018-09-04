@@ -461,8 +461,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         ctd = None
         task_server_ok = self.task_server.should_accept_provider(
-        	self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-            msg.max_memory_size, msg.num_cores)
+            self.key_id, msg.node_name, msg.task_id, msg.perf_index,
+            msg.max_resource_size, msg.max_memory_size, msg.num_cores)
 
         logger.debug("Task Server ok?: %s, key_id: %s, task_id: %s, ",
                      task_server_ok, self.key_id, msg.task_id)
