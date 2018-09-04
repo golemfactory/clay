@@ -1,24 +1,41 @@
+import base64
+import codecs
+import json
 import os
-import sys
-import cloudpickle as pickle
+from typing import Any
 
+import cloudpickle as pickle
+# pylint: disable=import-error
 import params  # This module is generated before this script is run
 
-sys.path.append(os.path.join(params.RESOURCES_DIR, "code"))
-sys.path.append(os.path.join(params.WORK_DIR))  # for messages.py
+# sys.path.append(os.path.join(params.RESOURCES_DIR, "code"))
+# sys.path.append(os.path.join(params.WORK_DIR))  # for messages.py
 
 
-# actually, what this is supposed to do is to:
-# 1. copy code from resources_dir to output_dir
-# 2. run python3 on main_file in output_dir
+# source: golem_remote/encoding.py
+# TODO change that to normal import when golem_remote will be published on pypi
+def decode_str_to_obj(s: str):
+    result = json.loads(s)
+    result = result["r"]
+    result = codecs.encode(result, "ascii")
+    result = base64.b64decode(result)
+    result = pickle.loads(result)
+    return result
 
+def encode_obj_to_str(obj: Any):
+    result = pickle.dumps(obj)
+    result = base64.b64encode(result)
+    result = codecs.decode(result, "ascii")
+    result = {"r": result}
+    result = json.dumps(result)
+    return result
 
-code_file = os.path.join(params.RESOURCES_DIR, params.main_file)
-with open(code_file, "rb") as f:
-    func = pickle.load(f)
+data = decode_str_to_obj(params.data)
 
-solution = func(*params.args, **params.kwargs)
+solution = data.function(*data.args, **data.kwargs)
+solution = encode_obj_to_str(solution)
+
 result_path = os.path.join(params.OUTPUT_DIR, f"{params.subtask_id}.{params.RESULT_EXT}")
 
 with open(result_path, "w") as f:
-    pickle.dump(solution, f)
+    f.write(solution)

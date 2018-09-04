@@ -16,9 +16,6 @@ class RunFDefinition(TaskDefinition):
         super().__init__()
         self.options = RunFOptions()
         self.task_type = "RUNF"
-        self.args = []
-        self.kwargs = {}
-        self.function = b''
 
         if defaults:
             self.set_defaults(defaults)
@@ -32,6 +29,5 @@ class RunFOptions(Options):
     def __init__(self):
         super().__init__()
         self.environment = RunFEnvironment()
-        self.args = []
-        self.kwargs = {}
-        self.function = b''
+        self.queue_host = "localhost"
+        self.queue_port = 6397
