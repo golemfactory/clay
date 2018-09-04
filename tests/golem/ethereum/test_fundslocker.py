@@ -14,10 +14,7 @@ from golem.testutils import TempDirFixture
 class TestFundsLocker(TempDirFixture):
     def setUp(self):
         super().setUp()
-        self.ts = mock.MagicMock()
-        val = 1000000
-        time_ = time.time()
-        self.ts.get_balance.return_value = val, val, val, time_, time_
+        self.ts = mock.Mock()
 
     def test_init(self):
         fl = FundsLocker(self.ts, self.new_path)
@@ -120,7 +117,7 @@ class TestFundsLocker(TempDirFixture):
         self.ts.lock_funds_for_payments.assert_not_called()
 
     def test_remove_task(self):
-        fl = FundsLocker(self.ts, self.new_path)
+        fl = FundsLocker(self.ts, self.new_path, persist=False)
         self._add_tasks(fl)
         assert fl.task_lock['ghi']
         fl.remove_task('ghi')
@@ -139,7 +136,7 @@ class TestFundsLocker(TempDirFixture):
         assert fl.task_lock.get('ghi') is None
 
     def test_remove_subtask(self):
-        fl = FundsLocker(self.ts, self.new_path)
+        fl = FundsLocker(self.ts, self.new_path, persist=False)
         self._add_tasks(fl)
         assert fl.task_lock.get("ghi")
         assert fl.task_lock["ghi"].num_tasks == 4
@@ -153,3 +150,23 @@ class TestFundsLocker(TempDirFixture):
         with self.assertLogs(logger, level="WARNING"):
             fl.remove_subtask("NONEXISTING")
             self.ts.unlock_funds_for_payments.assert_not_called()
+
+    def test_add_subtask(self):
+        fl = FundsLocker(self.ts, self.new_path, persist=False)
+
+        task = mock.Mock()
+        task.header.task_id = "abc"
+        task.subtask_price = 320
+        task.total_tasks = 10
+        task.header.deadline = timeout_to_deadline(0.5)
+        fl.lock_funds(task)
+
+        self.ts.reset_mock()
+
+        with self.assertLogs(logger, level="WARNING"):
+            fl.add_subtask("NONEXISTING")
+            self.ts.lock_funds_for_payments.assert_not_called()
+
+        fl.add_subtask("abc", num=3)
+        self.ts.lock_funds_for_payments.assert_called_with(320, 3)
+        assert fl.task_lock["abc"].num_tasks == 13

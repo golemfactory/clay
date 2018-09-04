@@ -25,7 +25,7 @@ class TaskFundsLock:  # pylint: disable=too-few-public-methods
 
 class FundsLocker(LoopingCallService):
     def __init__(self, transaction_system: TransactionSystem, datadir: Path,
-                 persist: bool = True, interval_seconds: int = 60):
+                 persist: bool = True, interval_seconds: int = 60) -> None:
         super().__init__(interval_seconds)
         self.task_lock = {}
         self.transaction_system = transaction_system

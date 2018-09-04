@@ -348,27 +348,73 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert config.max_resource_size > 0
 
     def test_restart_by_frame(self, *_):
+        # given
+        ts = Mock()
         self.client = Client(
             datadir=self.path,
             app_config=Mock(),
             config_desc=ClientConfigDescriptor(),
             keys_auth=Mock(),
             database=Mock(),
-            transaction_system=Mock(),
+            transaction_system=ts,
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
         )
+        self.client.funds_locker.persist = False
+
+        task = Mock()
+        task.header.task_id = 'tid'
+        task.subtask_price = 100
+        task.total_tasks = 10
+        self.client.funds_locker.lock_funds(task)
 
         self.client.task_server = Mock()
         self.client.task_server.task_manager.get_frame_subtasks.return_value = {
-            'subtask_id': Mock(),
+            'subtask_id1': Mock(),
+            'subtask_id2': Mock(),
         }
 
+        # when
         self.client.restart_frame_subtasks('tid', 10)
 
+        # then
         self.client.task_server.task_manager.restart_frame_subtasks.\
             assert_called_with('tid', 10)
+        ts.lock_funds_for_payments.assert_called_with(task.subtask_price, 2)
+
+    def test_restart_subtask(self, *_):
+        # given
+        ts = Mock()
+        self.client = Client(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
+            database=Mock(),
+            transaction_system=ts,
+            connect_to_known_hosts=False,
+            use_docker_manager=False,
+            use_monitor=False
+        )
+        self.client.funds_locker.persist = False
+
+        task = Mock()
+        task.header.task_id = 'tid'
+        task.subtask_price = 100
+        task.total_tasks = 10
+        self.client.funds_locker.lock_funds(task)
+
+        self.client.task_server = Mock()
+        self.client.task_server.task_manager.get_task_id.return_value = 'tid'
+
+        # when
+        self.client.restart_subtask('subtask_id')
+
+        # then
+        self.client.task_server.task_manager.restart_subtask.\
+            assert_called_with('subtask_id')
+        ts.lock_funds_for_payments.assert_called_with(task.subtask_price, 1)
 
     def test_presets(self, *_):
         Client.save_task_preset("Preset1", "TaskType1", "data1")

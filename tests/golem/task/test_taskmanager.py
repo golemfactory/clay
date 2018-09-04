@@ -973,6 +973,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
         for task in list(tm.tasks.values()):
             task_state = tm.tasks_states[task.header.task_id]
+            assert task_state.status == TaskStatus.computing
             subtask_states.update(task_state.subtask_states)
 
         for subtask_id, subtask_state in list(subtask_states.items()):
