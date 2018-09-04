@@ -1,9 +1,7 @@
-import enum
 import logging
 from copy import copy
-from typing import Optional, Dict, List, NamedTuple, Set
+from typing import Optional, Dict, Set
 
-import cloudpickle as pickle
 import enforce
 from golem_messages.message import ComputeTaskDef
 
@@ -13,9 +11,7 @@ from apps.core.task.coretask import (CoreTask,
                                      CoreTaskTypeInfo)
 from apps.runf.runfenvironment import RunFEnvironment
 from apps.runf.task.queue_helpers import Queue
-from apps.runf.task.runf_helpers import SubtaskID, SubtaskDefinition, \
-    PickledObject, SubtaskData, RunFSubtaskStatus, CheckSubtaskStatus, \
-    FinishComputations
+from apps.runf.task.runf_helpers import SubtaskID, SubtaskDefinition
 from apps.runf.task.runftaskstate import RunFDefaults, RunFOptions
 from apps.runf.task.runftaskstate import RunFDefinition
 from apps.runf.task.verifier import RunFVerifier

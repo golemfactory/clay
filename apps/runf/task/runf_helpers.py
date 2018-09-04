@@ -1,18 +1,18 @@
-from typing import NamedTuple, List, Dict, Optional
-
-import enum
+from typing import NamedTuple, List, Dict, Callable, Any
 
 SubtaskID = str
 QueueID = str
-PickledObject = bytes
-PickledCallable = bytes
+TaskID = str
+
+Host = str
+Port = int
 
 
+# TODO should be typed differently
 class SubtaskData(NamedTuple):
-    args: List[PickledObject]
-    kwargs: Dict[str, PickledObject]
-    function: PickledCallable
-    TYPE: str = "SubmitNewTask"
+    args: List[Any]
+    kwargs: Dict[str, Any]
+    function: Callable[..., Any]
 
 
 class SubtaskDefinition(NamedTuple):
@@ -21,28 +21,5 @@ class SubtaskDefinition(NamedTuple):
     data: SubtaskData
 
 
-class CheckSubtaskStatus(NamedTuple):
-    subtask_id: SubtaskID
-    TYPE: str = "CheckSubtaskStatus"
-
-
 class FinishComputations(NamedTuple):
-    TYPE: str = "FinishComputations"
-
-
-class RunFSubtaskStatus(NamedTuple):
-    """
-        :status indicates status of subtask
-        :result contains serialized output from function. it is present only
-        if status == finished
-        """
-
-    class Status(enum.Enum):
-        started = enum.auto()
-        computing = enum.auto()
-        timeout = enum.auto()
-        finished = enum.auto()
-
-    status: Status
-    subtask_id: SubtaskID
-    result: Optional[PickledObject]
+    pass

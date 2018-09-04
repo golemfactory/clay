@@ -4,18 +4,18 @@ from typing import Any, Tuple
 
 import redis
 
-from apps.runf.task.runf_helpers import QueueID
+from apps.runf.task.runf_helpers import QueueID, Host, Port
 
 
 class _RedisQueue:
     """Simple Queue with Redis Backend"""
-    def __init__(self, name, host="localhost", port=6379):
-        self.__db = redis.Redis(host=host, port=port)
+    def __init__(self, name, host: Host="localhost", port: Port=6379):
+        self._db = redis.Redis(host=host, port=port)
         self.key = f"{name}"
 
     def queue_size(self):
         """Return the approximate size of the queue."""
-        return self.__db.llen(self.key)
+        return self._db.llen(self.key)
 
     def empty(self):
         """Return True if the queue is empty, False otherwise."""
@@ -27,13 +27,18 @@ class _RedisQueue:
         If optional args block is true and timeout is None (the default), block
         if necessary until an item is available."""
         if block:
-            item = self.__db.blpop(self.key, timeout=timeout)
+            item = self._db.blpop(self.key, timeout=timeout)
         else:
-            item = self.__db.lpop(self.key)
+            item = self._db.lpop(self.key)
 
         if item:
             item = item[1]
         return item
+
+    def push(self, item):
+        """Put item into the queue."""
+        self._db.rpush(self.key, item)
+
 
 class Queue(_RedisQueue):
 
@@ -45,7 +50,9 @@ class Queue(_RedisQueue):
         super().pop(False)
 
     def set(self, key, item):
-        self.__db.set(key, item)
+        print(f"Setting {key} to {item}")
+        self._db.set(key, item)
 
     def get(self, key):
-        self.__db.get(key)
+        print(f"Getting {key}")
+        return self._db.get(key)
