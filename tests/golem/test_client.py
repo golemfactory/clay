@@ -5,6 +5,7 @@ import time
 import uuid
 from random import Random
 from types import MethodType
+from unittest import mock
 from unittest import TestCase
 from unittest.mock import call, Mock, MagicMock, patch
 
@@ -819,6 +820,7 @@ class TestTaskCleanerService(TestWithReactor):
         )
         service._run()
         client.clean_old_tasks.assert_called_once()
+
 
 @patch('golem.client.node_info_str')
 @patch('signal.signal')
