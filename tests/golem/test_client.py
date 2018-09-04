@@ -44,6 +44,9 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
 
+from .ethereum.test_fundslocker import make_mock_task as \
+    make_fundslocker_mock_task
+
 random = Random(__name__)
 
 
@@ -363,25 +366,27 @@ class TestClient(TestWithDatabase, TestWithReactor):
         )
         self.client.funds_locker.persist = False
 
-        task = Mock()
-        task.header.task_id = 'tid'
-        task.subtask_price = 100
-        task.total_tasks = 10
+        task = make_fundslocker_mock_task()
         self.client.funds_locker.lock_funds(task)
 
         self.client.task_server = Mock()
-        self.client.task_server.task_manager.get_frame_subtasks.return_value = {
+        frame_subtasks = {
             'subtask_id1': Mock(),
             'subtask_id2': Mock(),
         }
+        self.client.task_server.task_manager.get_frame_subtasks.return_value = \
+            frame_subtasks
+
+        frame = 10
 
         # when
-        self.client.restart_frame_subtasks('tid', 10)
+        self.client.restart_frame_subtasks(task.header.task_id, frame)
 
         # then
         self.client.task_server.task_manager.restart_frame_subtasks.\
-            assert_called_with('tid', 10)
-        ts.lock_funds_for_payments.assert_called_with(task.subtask_price, 2)
+            assert_called_with(task.header.task_id, frame)
+        ts.lock_funds_for_payments.assert_called_with(task.subtask_price,
+                                                      len(frame_subtasks))
 
     def test_restart_subtask(self, *_):
         # given
@@ -399,14 +404,12 @@ class TestClient(TestWithDatabase, TestWithReactor):
         )
         self.client.funds_locker.persist = False
 
-        task = Mock()
-        task.header.task_id = 'tid'
-        task.subtask_price = 100
-        task.total_tasks = 10
+        task = make_fundslocker_mock_task()
         self.client.funds_locker.lock_funds(task)
 
         self.client.task_server = Mock()
-        self.client.task_server.task_manager.get_task_id.return_value = 'tid'
+        self.client.task_server.task_manager.get_task_id.return_value = \
+            task.header.task_id
 
         # when
         self.client.restart_subtask('subtask_id')

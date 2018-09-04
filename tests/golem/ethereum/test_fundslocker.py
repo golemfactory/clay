@@ -11,6 +11,16 @@ from golem.ethereum.fundslocker import (
 from golem.testutils import TempDirFixture
 
 
+def make_mock_task(*_, task_id: str = 'tid', subtask_price: int = 100,
+                   total_tasks: int = 10, timeout: float = 3600) -> mock.Mock:
+    task = mock.Mock()
+    task.header.deadline = timeout_to_deadline(timeout)
+    task.header.task_id = task_id
+    task.subtask_price = subtask_price
+    task.total_tasks = total_tasks
+    return task
+
+
 class TestFundsLocker(TempDirFixture):
     def setUp(self):
         super().setUp()
@@ -23,28 +33,23 @@ class TestFundsLocker(TempDirFixture):
 
     def test_lock_funds(self):
         fl = FundsLocker(self.ts, self.new_path)
-        task_deadline = timeout_to_deadline(3600)
-        task = mock.MagicMock()
-        task.header.task_id = "abc"
-        task.subtask_price = 320
-        task.total_tasks = 10
-        task.header.deadline = task_deadline
+        task = make_mock_task(task_id="abc", subtask_price=320, total_tasks=10)
         fl.lock_funds(task)
-        self.ts.lock_funds_for_payments.assert_called_once_with(320, 10)
-        tfl = fl.task_lock['abc']
+        self.ts.lock_funds_for_payments.assert_called_once_with(
+            task.subtask_price, task.total_tasks)
+        tfl = fl.task_lock[task.header.task_id]
 
         def test_params(tfl):
             assert isinstance(tfl, TaskFundsLock)
-            assert tfl.gnt_lock == 320 * 10
-            assert tfl.num_tasks == 10
-            assert tfl.task_deadline == task_deadline
+            assert tfl.gnt_lock == task.subtask_price * task.total_tasks
+            assert tfl.num_tasks == task.total_tasks
+            assert tfl.task_deadline == task.header.deadline
 
         test_params(tfl)
 
-        task.header.max_price = 111
-        task.total_tasks = 5
-        task.header.deadline = task_deadline + 4
-        fl.lock_funds(task)
+        task2 = make_mock_task(task_id="abc", subtask_price=111, total_tasks=5)
+        with self.assertLogs(logger, "ERROR"):
+            fl.lock_funds(task2)
         tfl = fl.task_lock['abc']
         test_params(tfl)
 
@@ -79,36 +84,26 @@ class TestFundsLocker(TempDirFixture):
 
     @staticmethod
     def _add_tasks(fl):
-        task = mock.MagicMock()
-        task.header.task_id = "abc"
-        task.subtask_price = 320
-        task.total_tasks = 10
-        task.header.deadline = timeout_to_deadline(0.5)
+        task = make_mock_task(task_id="abc", subtask_price=320, total_tasks=10,
+                              timeout=0.5)
         fl.lock_funds(task)
-        task.header.task_id = "def"
-        task.subtask_price = 140
-        task.total_tasks = 7
-        task.header.deadline = timeout_to_deadline(2)
+
+        task = make_mock_task(task_id="def", subtask_price=140, total_tasks=7,
+                              timeout=2)
         fl.lock_funds(task)
-        task.header.task_id = "ghi"
-        task.subtask_price = 10
-        task.total_tasks = 4
-        task.header.deadline = timeout_to_deadline(0.2)
+
+        task = make_mock_task(task_id="ghi", subtask_price=10, total_tasks=4,
+                              timeout=0.2)
         fl.lock_funds(task)
-        task.header.task_id = "jkl"
-        task.subtask_price = 13
-        task.total_tasks = 1
-        task.header.deadline = timeout_to_deadline(3.5)
+
+        task = make_mock_task(task_id="jkl", subtask_price=13, total_tasks=1,
+                              timeout=3.5)
         fl.lock_funds(task)
 
     def test_exception(self):
         self.ts.lock_funds_for_payments.side_effect = Exception
         fl = FundsLocker(self.ts, self.new_path)
-        task = mock.MagicMock()
-        task.header.task_id = "abc"
-        task.subtask_price = 320
-        task.total_tasks = 10
-        task.header.deadline = timeout_to_deadline(0.5)
+        task = make_mock_task()
         with self.assertRaises(Exception):
             fl.lock_funds(task)
         self.ts.lock_funds_for_payments.reset_mock()
@@ -154,11 +149,7 @@ class TestFundsLocker(TempDirFixture):
     def test_add_subtask(self):
         fl = FundsLocker(self.ts, self.new_path, persist=False)
 
-        task = mock.Mock()
-        task.header.task_id = "abc"
-        task.subtask_price = 320
-        task.total_tasks = 10
-        task.header.deadline = timeout_to_deadline(0.5)
+        task = make_mock_task()
         fl.lock_funds(task)
 
         self.ts.reset_mock()
@@ -167,6 +158,9 @@ class TestFundsLocker(TempDirFixture):
             fl.add_subtask("NONEXISTING")
             self.ts.lock_funds_for_payments.assert_not_called()
 
-        fl.add_subtask("abc", num=3)
-        self.ts.lock_funds_for_payments.assert_called_with(320, 3)
-        assert fl.task_lock["abc"].num_tasks == 13
+        num = 3
+        fl.add_subtask(task.header.task_id, num)
+        self.ts.lock_funds_for_payments.assert_called_with(task.subtask_price,
+                                                           num)
+        assert fl.task_lock[task.header.task_id].num_tasks == \
+            task.total_tasks + num
