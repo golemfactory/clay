@@ -1,10 +1,13 @@
 import logging
 import pickle
 import time
+from pathlib import Path
 
 from golem.core.service import LoopingCallService
 from golem.core.variables import PAYMENT_DEADLINE
-from golem.ethereum.exceptions import NotEnoughFunds
+
+from .exceptions import NotEnoughFunds
+from .transactionsystem import TransactionSystem
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +24,8 @@ class TaskFundsLock:  # pylint: disable=too-few-public-methods
 
 
 class FundsLocker(LoopingCallService):
-    def __init__(self, transaction_system, datadir, persist=True,
-                 interval_seconds=60):
+    def __init__(self, transaction_system: TransactionSystem, datadir: Path,
+                 persist: bool = True, interval_seconds: int = 60):
         super().__init__(interval_seconds)
         self.task_lock = {}
         self.transaction_system = transaction_system
