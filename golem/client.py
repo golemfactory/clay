@@ -139,6 +139,7 @@ class Client(HardwarePresetsMixin):
 
         if self.config_desc.in_shutdown:
             self.update_setting('in_shutdown', False)
+
         logger.info(
             'Client %s, datadir: %s',
             node_info_str(self.config_desc.node_name,
