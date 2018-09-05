@@ -510,13 +510,18 @@ class TaskManager(TaskEventListener):
         # Generate all subtasks for the new task
         while new_task.needs_computation():
             extra_data = new_task.query_extra_data(0, node_id=str(uuid.uuid4()))
-            self.subtask2task_mapping[extra_data.ctd['subtask_id']] = \
+            new_subtask_id = extra_data.ctd['subtask_id']
+            self.subtask2task_mapping[new_subtask_id] = \
                 new_task_id
             self.__add_subtask_to_tasks_states(
                 node_name=None,
                 node_id=None,
                 address=None,
                 ctd=extra_data.ctd)
+            self.tasks_states[new_task_id].subtask_states[new_subtask_id]\
+                .subtask_status = SubtaskStatus.failure
+            new_task.subtasks_given[new_subtask_id]['status'] \
+                = SubtaskStatus.failure
 
         def handle_copy_error(subtask_id, error):
             logger.error(
