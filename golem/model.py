@@ -9,9 +9,20 @@ from typing import Optional
 from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
 from golem_messages import message
-from peewee import (Field, BooleanField, CharField, CompositeKey, DateTimeField,
-                    FloatField, IntegerField, Model, SmallIntegerField,
-                    TextField, BlobField)
+from peewee import (
+    BlobField,
+    BooleanField,
+    CharField,
+    CompositeKey,
+    DateTimeField,
+    Field,
+    FloatField,
+    IntegerField,
+    Model,
+    PrimaryKeyField,
+    SmallIntegerField,
+    TextField,
+)
 
 from golem.core.simpleserializer import DictSerializable
 from golem.database import GolemSqliteDatabase
@@ -75,6 +86,35 @@ class HexIntegerField(CharField):
     def python_value(self, value):
         if value is not None:
             return int(value, 16)
+
+
+class FixedLengthHexField(HexIntegerField):
+    EXPECTED_LENGTH: int = 0
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, max_length=self.EXPECTED_LENGTH, **kwargs)
+
+    def db_value(self, value):
+        value = super().db_value(value)
+        current_len = len(value)
+        if len(value) != 64:
+            raise ValueError(
+                "Value {value} has length of {has}"
+                " not {should} characters".format(
+                    value=value,
+                    has=current_len,
+                    should=self.EXPECTED_LENGTH,
+                ),
+            )
+        return value
+
+
+class BlockchainHashField(FixedLengthHexField):
+    EXPECTED_LENGTH = 64
+
+
+class BlockchainTransactionField(FixedLengthHexField):
+    EXPECTED_LENGTH = 64
 
 
 class EnumFieldBase:
@@ -231,6 +271,27 @@ class Payment(BaseModel):
                 tx,
                 bn,
                 self.processed_ts
+            )
+
+
+class DepositPayment(BaseModel):
+    dbid = PrimaryKeyField()
+    value = HexIntegerField()
+    status = PaymentStatusField(index=True, default=PaymentStatus.awaiting)
+    fee = HexIntegerField()
+    block_hash = BlockchainHashField()
+    block_number = HexIntegerField()
+    tx = BlockchainTransactionField()
+
+    class Meta:  # pylint: disable=too-few-public-methods
+        database = db
+
+    def __repr__(self):
+        return "<DepositPayment: {value} s:{status} tx:{tx}>"\
+            .format(
+                value=self.value,
+                status=self.status,
+                tx=self.tx,
             )
 
 
