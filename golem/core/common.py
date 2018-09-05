@@ -137,7 +137,7 @@ def string_to_timeout(string):
 
 
 def node_info_str(name, node_id):
-    return "'{}'({}..{})".format(name, node_id[:8], node_id[-8:])
+    return f"'{name}'({node_id[:8]}..{node_id[-8:]})"
 
 
 class HandleError(object):

@@ -616,12 +616,11 @@ class TaskServer(
             max_memory_size,
             num_cores):
 
-        ids = 'provider={}, task_id={}'.format(node_info_str(node_name,
-                                                             node_id),
-                                               task_id)
+        node_name_id = node_info_str(node_name, node_id)
+        ids = f'provider={node_name_id}, task_id={task_id}'
 
         if task_id not in self.task_manager.tasks:
-            logger.info(f'Cannot find task in my tasks: {ids}')
+            logger.info('Cannot find task in my tasks: %s', ids)
             return False
 
         task = self.task_manager.tasks[task_id]
@@ -662,7 +661,7 @@ class TaskServer(
                         f'(either waiting for results or previously failed)')
             return False
 
-        logger.debug(f'provider {node_id} can be accepted')
+        logger.debug('provider can be accepted %s', ids)
         return True
 
     def should_accept_requestor(self, node_id):
