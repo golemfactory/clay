@@ -4,8 +4,8 @@ import logging
 import os
 import time
 
-from golem_messages import message
 from golem_messages import helpers as msg_helpers
+from golem_messages import message
 
 from golem.core.common import HandleAttributeError
 from golem.core.keysauth import KeysAuth
@@ -442,11 +442,33 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.dropped()
             return
 
+        if not self.task_manager.is_my_task(msg.task_id):
+            self.send(
+                message.tasks.CannotAssignTask(
+                    task_id=msg.task_id,
+                    reason=reasons.NotMyTask,
+                )
+            )
+            self.dropped()
+            return
+
+        if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
+            self.send(message.tasks.WaitingForResults())
+            return
+
         self.task_manager.got_wants_to_compute(msg.task_id, self.key_id,
                                                msg.node_name)
-        if self.task_server.should_accept_provider(
-                self.key_id, msg.task_id, msg.perf_index,
-                msg.max_resource_size, msg.max_memory_size, msg.num_cores):
+
+        ctd = None
+        task_server_ok = self.task_server.should_accept_provider(
+            self.key_id, msg.task_id, msg.perf_index, msg.max_resource_size,
+            msg.max_memory_size, msg.num_cores)
+
+        logger.debug("Task Server ok?: %s, key_id: %s, task_id: %s, ",
+                     task_server_ok, self.key_id, msg.task_id)
+
+        if task_server_ok and self.task_manager.check_next_subtask(
+                self.key_id, msg.node_name, msg.task_id, msg.price):
 
             if self._handshake_required(self.key_id):
                 logger.warning('Cannot yet assign task for %r: resource '
@@ -459,22 +481,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                                'handshake is in progress', self.key_id)
                 return
 
-            ctd, wrong_task, wait = self.task_manager.get_next_subtask(
+            # TODO: Queue requests here
+
+            ctd = self.task_manager.get_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.perf_index,
                 msg.price, msg.max_resource_size, msg.max_memory_size,
                 msg.num_cores, self.address)
-        else:
-            ctd, wrong_task, wait = None, False, False
-
-        if wrong_task:
-            self.send(
-                message.tasks.CannotAssignTask(
-                    task_id=msg.task_id,
-                    reason=reasons.NotMyTask,
-                )
-            )
-            self.dropped()
-            return
 
         if ctd:
             task = self.task_manager.tasks[ctd['task_id']]
@@ -509,10 +521,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 remote_role=Actor.Provider,
             )
             self.send(ttc)
-            return
-
-        if wait:
-            self.send(message.tasks.WaitingForResults())
             return
 
         self.send(
@@ -913,7 +921,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             subtask_id)
         return self.check_requestor_for_task(task_id, "Subtask %r" % subtask_id)
 
-    def _check_ctd_params(self, ctd):
+    def _check_ctd_params(self, ctd: message.ComputeTaskDef):
         header = self.task_manager.comp_task_keeper.get_task_header(
             ctd['task_id'])
         owner = header.task_owner
@@ -955,7 +963,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         return True
 
-    def __check_docker_images(self, ctd, env):
+    def __check_docker_images(self,
+                              ctd: message.ComputeTaskDef,
+                              env: DockerEnvironment):
         for image_dict in ctd['docker_images']:
             image = DockerImage(**image_dict)
             for env_image in env.docker_images:

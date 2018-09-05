@@ -12,7 +12,6 @@ from pathlib import Path
 from PIL import Image, ImageChops, ImageOps
 
 import apps.lux.resources.scenefilereader as sfr
-from apps.core.task import coretask
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.core.task.coretaskstate import Options
 from apps.lux.luxenvironment import LuxRenderEnvironment
@@ -28,6 +27,7 @@ from golem.core.common import timeout_to_deadline, get_golem_path, to_unicode
 from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
 from golem.resource import dirmanager
 from golem.resource.dirmanager import DirManager
+from golem.task.taskclient import TaskClient
 from golem.task.localcomputer import LocalComputer, ComputerAdapter
 from golem.task.taskstate import SubtaskStatus
 
@@ -183,7 +183,6 @@ class LuxTask(renderingtask.RenderingTask):
 
         return write_interval
 
-    @coretask.accepting
     def query_extra_data(self,
                          perf_index,
                          num_cores=0,
@@ -336,9 +335,6 @@ class LuxTask(renderingtask.RenderingTask):
         test_flm = glob.glob(os.path.join(dir, '*.flm'))
         return test_flm.pop()
 
-    ###################
-    # CoreTask methods #
-    ###################
     def query_extra_data_for_test_task(self):
         self.test_task_res_path = \
             self.dirManager.get_task_test_dir(
@@ -374,6 +370,9 @@ class LuxTask(renderingtask.RenderingTask):
 
         return self._new_compute_task_def(hash, extra_data, 0)
 
+    ###################
+    # CoreTask methods #
+    ###################
     def after_test(self, results, tmp_dir):
         FLM_NOT_FOUND_MSG = "Flm file was not found, check scene."
         return_data = dict()
@@ -426,9 +425,8 @@ class LuxTask(renderingtask.RenderingTask):
         for tr_file in result_files:
             if has_ext(tr_file, ".flm"):
                 self.collected_file_names[num_start] = tr_file
-                self.counting_nodes[
-                    self.subtasks_given[subtask_id]['node_id']
-                ].accept()
+                node_id = self.subtasks_given[subtask_id]['node_id']
+                TaskClient.assert_exists(node_id, self.counting_nodes).accept()
                 self.num_tasks_received += 1
             elif not has_ext(tr_file, '.log'):
                 self.subtasks_given[subtask_id]['preview_file'] = tr_file
