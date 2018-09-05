@@ -155,18 +155,15 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
         try:
             node_name = task_owner['node_name']  # type: ignore
         except (TypeError, KeyError):
-            node_name = task_owner
+            raise exceptions.TaskHeaderError(
+                'Task owner missing',
+                task_id=task_id,
+                task_owner=task_owner,
+            )
 
         if not isinstance(task_id, str):
             raise exceptions.TaskHeaderError(
                 'Task ID missing',
-                task_id=task_id,
-                node_name=node_name,
-            )
-
-        if not isinstance(task_owner, dict):
-            raise exceptions.TaskHeaderError(
-                'Task owner missing',
                 task_id=task_id,
                 node_name=node_name,
             )
