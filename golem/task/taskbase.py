@@ -153,8 +153,8 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
         task_owner = th_dict_repr.get('task_owner')
 
         try:
-            node_name = task_owner['node_name']  # type: ignore
-        except (TypeError, KeyError):
+            node_name = task_owner.get('node_name')  # type: ignore
+        except AttributeError:
             raise exceptions.TaskHeaderError(
                 'Task owner missing',
                 task_id=task_id,
