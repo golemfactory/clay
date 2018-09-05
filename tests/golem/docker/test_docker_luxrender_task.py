@@ -11,6 +11,7 @@ import pytest
 
 from apps.lux.task.luxrendertask import LuxRenderTaskBuilder, LuxTask
 from golem.core.fileshelper import find_file_with_ext
+from golem.core.deferred import sync_wait
 from golem.docker.job import DockerJob
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ResultType
@@ -18,7 +19,6 @@ from golem.task.taskcomputer import DockerTaskThread
 from golem.task.tasktester import TaskTester
 from golem.tools.ci import ci_skip
 from .test_docker_task import DockerTaskTestCase
-from golem.core.deferred import sync_wait
 
 # Make peewee logging less verbose
 logging.getLogger("peewee").setLevel("INFO")
@@ -95,7 +95,7 @@ class TestDockerLuxrenderTask(
         task, subtask_id, flm, preview = self.get_computer_task(task)
 
         self._test_luxrender_real_task_good(task, subtask_id, flm, preview)
-        self._test_luxrender_real_task_bad(task, subtask_id, flm, preview)
+        self._test_luxrender_real_task_bad(task, flm, preview)
 
     @pytest.mark.slow
     @patch('golem.core.common.deadline_to_timeout')
@@ -115,7 +115,7 @@ class TestDockerLuxrenderTask(
         task, subtask_id, flm, preview = self.get_computer_task(task)
 
         self._test_luxrender_real_task_good(task, subtask_id, flm, preview)
-        self._test_luxrender_real_task_bad(task, subtask_id, flm, preview)
+        self._test_luxrender_real_task_bad(task, flm, preview)
 
     def get_computer_task(self, task):
         ctd = task.query_extra_data(10000).ctd
@@ -165,9 +165,7 @@ class TestDockerLuxrenderTask(
         reactor.iterate()
         sync_wait(d, 40)
 
-
     def _test_luxrender_real_task_bad(self, task: LuxTask,
-                                      subtask_id,
                                       new_flm_file,
                                       new_preview_file):
 

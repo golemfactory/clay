@@ -70,7 +70,7 @@ class VerificationQueue:
 
         logger.info("Running verification of subtask %r", subtask_id)
 
-        def callback(*args, **kwargs):
+        def callback(*args):
             logger.info("Finished verification of subtask %r", subtask_id)
             try:
                 self.callbacks[entry](subtask_id=args[0][0], verdict=args[0][1],
