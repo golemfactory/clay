@@ -10,13 +10,15 @@ class VerificationTask:
         self.kwargs = kwargs
         self.subtask_id = subtask_id
 
-    def start(self, callback, verifier_class) -> Optional[Deferred]:
+    def start(self, verifier_class) -> Optional[Deferred]:
         verifier = verifier_class(self.kwargs)
         if deadline_to_timeout(self.deadline) > 0:
             if verifier.simple_verification(self.kwargs):
-                return verifier.start_verification(self.kwargs, callback)
+                return verifier.start_verification(self.kwargs)
             else:
-                verifier.verification_completed(callback)
+                deferred = Deferred()
+                deferred.callback(verifier.verification_completed())
+                return deferred
         else:
             verifier.task_timeout(self.subtask_id)
         return None

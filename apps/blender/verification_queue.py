@@ -1,5 +1,6 @@
 import logging
 import queue
+from functools import partial
 from types import FunctionType
 from typing import Optional, Type, Dict, Tuple
 from apps.blender.verification_task import VerificationTask
@@ -72,15 +73,20 @@ class VerificationQueue:
         def callback(*args, **kwargs):
             logger.info("Finished verification of subtask %r", subtask_id)
             try:
-                self.callbacks[entry](*args, ** kwargs)
+                self.callbacks[entry](subtask_id=args[0][0], verdict=args[0][1],
+                                      result=args[0][2])
             finally:
                 self._jobs.pop(subtask_id, None)
                 self._process_queue()
 
-        result = entry.start(callback, verifier_cls)
+        from twisted.internet import reactor
+        result = entry.start(verifier_cls)
         if result:
+            result.addCallbacks(partial(reactor.callFromThread, callback))
+            result.addErrback(partial(reactor.callFromThread, callback))
             self._jobs[subtask_id] = result
 
     def _reset(self) -> None:
         self._queue = queue.Queue()
         self._jobs = dict()
+        self.callbacks = dict()

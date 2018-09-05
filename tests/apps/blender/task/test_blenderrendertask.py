@@ -146,7 +146,7 @@ class TestBlenderFrameTask(TempDirFixture):
         img = Image.new("RGB", (self.bt.res_x, self.bt.res_y // 2))
         img.save(file1, "PNG")
 
-        def verification_finished1(verification_data, callback):
+        def verification_finished1(verification_data):
             result = {'reference_data': None,
                       'message': "",
                       'time_started': None,
@@ -171,7 +171,7 @@ class TestBlenderFrameTask(TempDirFixture):
 
         BlenderRenderTask.VERIFICATION_QUEUE._reset()
 
-        def verification_finished2(verification_data, callback):
+        def verification_finished2(verification_data):
             result = {'reference_data': None,
                       'message': "",
                       'time_started': None,

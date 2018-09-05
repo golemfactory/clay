@@ -2,16 +2,16 @@ import logging
 import os
 import time
 
-from golem_verificator.common.ci import ci_skip
-from golem_verificator.common.common import sync_wait
 from twisted.internet.defer import Deferred
 
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 from apps.blender.task.blenderrendertask import BlenderRenderTask
+from golem_verificator.common.ci import ci_skip
 from golem.core.common import get_golem_path
 from golem.docker.image import DockerImage
 from golem.task.localcomputer import ComputerAdapter
 from golem.testutils import TempDirFixture
+from golem.core.deferred import sync_wait
 
 logger = logging.getLogger(__name__)
 
