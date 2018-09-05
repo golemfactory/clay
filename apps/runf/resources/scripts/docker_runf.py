@@ -2,7 +2,7 @@ import base64
 import codecs
 import json
 import os
-from typing import Any
+from typing import Any, NamedTuple, List, Dict, Callable
 
 import cloudpickle as pickle
 # pylint: disable=import-error
@@ -30,12 +30,20 @@ def encode_obj_to_str(obj: Any):
     result = json.dumps(result)
     return result
 
+# class SubtaskData(NamedTuple):
+#     args: List[Any]
+#     kwargs: Dict[str, Any]
+#     function: Callable[..., Any]
+
+
 data = decode_str_to_obj(params.data)
 
-solution = data.function(*data.args, **data.kwargs)
+# solution = data.function(*data.args, **data.kwargs)
+solution = data["function"](*data["args"], **data["kwargs"])
 solution = encode_obj_to_str(solution)
 
-result_path = os.path.join(params.OUTPUT_DIR, f"{params.subtask_id}.{params.RESULT_EXT}")
+# result_path = os.path.join(params.OUTPUT_DIR, f"{params.subtask_id}.{params.RESULT_EXT}")
+result_path = os.path.join(params.OUTPUT_DIR, f"out.{params.RESULT_EXT}")
 
 with open(result_path, "w") as f:
     f.write(solution)

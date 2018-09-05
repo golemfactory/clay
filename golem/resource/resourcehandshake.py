@@ -53,8 +53,8 @@ class ResourceHandshake:
 
 class ResourceHandshakeSessionMixin:
 
-    HANDSHAKE_TIMEOUT = 20  # s
-    PEER_BLOCK_TIMEOUT = 2 * 3600  # s
+    HANDSHAKE_TIMEOUT = 1 # 20  # s TODO change back
+    PEER_BLOCK_TIMEOUT = 1 #  2 * 3600  # s TODO change back
     NONCE_TASK = 'nonce'
 
     def __init__(self):
