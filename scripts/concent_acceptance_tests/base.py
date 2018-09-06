@@ -44,8 +44,8 @@ def dump_balance(sci: SmartContractsInterface):
     eth = sci.get_eth_balance(sci.get_eth_address())
     deposit = sci.get_deposit_value(sci.get_eth_address())
     balance_str = (
-        "[Balance] ETH=%.8f GNT=%.8f"
-        "GNTB=%.8f DEPOSIT=%.18f ADDR:%s\n"
+        "[Balance] ETH=%.18 GNT=%.18"
+        " GNTB=%.18f DEPOSIT=%.18f ADDR:%s\n"
     )
     balance_str %= (
         eth / denoms.ether,
@@ -362,7 +362,8 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
 
         if sci.get_deposit_value(sci.get_eth_address()) < amount:
             raise RuntimeError("Deposit failed")
-        time.sleep(15)
+        #sys.stderr.write('Long sleep. hrrrr\n')
+        #time.sleep(120)
         dump_balance(sci)
 
     def requestor_put_deposit(self, price: int):
