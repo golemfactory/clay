@@ -508,6 +508,7 @@ class TaskManager(TaskEventListener):
         }
 
         # Generate all subtasks for the new task
+        new_subtasks_ids = []
         while new_task.needs_computation():
             extra_data = new_task.query_extra_data(0, node_id=str(uuid.uuid4()))
             new_subtask_id = extra_data.ctd['subtask_id']
@@ -518,10 +519,16 @@ class TaskManager(TaskEventListener):
                 node_id=None,
                 address=None,
                 ctd=extra_data.ctd)
+            new_subtasks_ids.append(new_subtask_id)
+
+        # it's important to do this step separately, to not disturb
+        # 'needs_computation' condition above
+        for new_subtask_id in new_subtasks_ids:
             self.tasks_states[new_task_id].subtask_states[new_subtask_id]\
                 .subtask_status = SubtaskStatus.failure
             new_task.subtasks_given[new_subtask_id]['status'] \
                 = SubtaskStatus.failure
+            new_task.num_failed_subtasks += 1
 
         def handle_copy_error(subtask_id, error):
             logger.error(
