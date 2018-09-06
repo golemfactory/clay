@@ -6,13 +6,26 @@ import time
 from enum import Enum
 from datetime import datetime
 from pathlib import Path
-from typing import Any, ClassVar, Dict, Iterable, Optional, List
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+)
 
 from ethereum.utils import denoms
 from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
 from eth_utils import decode_hex, is_address
 from golem_messages.utils import bytes32_to_uuid
-from golem_sci import new_sci, SmartContractsInterface, JsonTransactionsStorage
+from golem_sci import (
+    JsonTransactionsStorage,
+    new_sci,
+    SmartContractsInterface,
+    TransactionReceipt,
+)
 from twisted.internet import defer
 import requests
 
@@ -509,7 +522,8 @@ class TransactionSystem(LoopingCallService):
         )
 
     @defer.inlineCallbacks
-    def concent_deposit(self, required: int, expected: int) -> Optional[int]:
+    def concent_deposit(self, required: int, expected: int) \
+            -> Generator[defer.Deferred, TransactionReceipt, Optional[int]]:
         if not self._sci:
             raise Exception('Start was not called')
         current = self.concent_balance()
