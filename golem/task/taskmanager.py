@@ -163,7 +163,8 @@ class TaskManager(TaskEventListener):
             raise ValueError("'key_id' is not set")
         if not SocketAddress.is_proper_address(self.listen_address,
                                                self.listen_port):
-            raise IOError("Incorrect socket address")
+            raise IOError("Incorrect socket address: %s:%s" % (
+                self.listen_address, self.listen_port))
 
         task.header.fixed_header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)

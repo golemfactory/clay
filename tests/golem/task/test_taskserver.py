@@ -1,3 +1,4 @@
+# pylint: disable=protected-access, too-many-lines
 import os
 import random
 import uuid
@@ -27,6 +28,7 @@ from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import tasksession
 from golem.task.masking import Mask
+from golem.task.server import concent as server_concent
 from golem.task.taskbase import TaskHeader, ResultType
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
@@ -341,8 +343,21 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                           if th["fixed_header"]["task_id"] == task_id2)
         self.assertEqual(saved_task["signature"], task_header["signature"])
 
+    @patch("golem.task.taskserver.TaskServer._sync_pending")
     def test_sync(self, *_):
         self.ts.sync_network()
+        self.ts._sync_pending.assert_called_once_with()
+
+    @patch("golem.task.taskserver.TaskServer._sync_pending",
+           side_effect=RuntimeError("Intentional failure"))
+    @patch("golem.task.server.concent.process_messages_received_from_concent")
+    def test_sync_job_fails(self, *_):
+        self.ts.sync_network()
+        # Other jobs should be called even in case of failure of previous ones
+        # pylint: disable=no-member
+        server_concent.process_messages_received_from_concent\
+            .assert_called_once()
+        # pylint: enable=no-member
 
     def test_forwarded_session_requests(self, *_):
         ts = self.ts
