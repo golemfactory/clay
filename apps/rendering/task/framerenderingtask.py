@@ -20,6 +20,7 @@ from apps.rendering.task.renderingtaskstate import RendererDefaults
 from golem_verificator.rendering_verifier import FrameRenderingVerifier
 from golem.core.common import update_dict, to_unicode
 from golem.task.taskbase import ResultType
+from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus, TaskStatus, SubtaskState
 
 logger = logging.getLogger("apps.rendering")
@@ -186,7 +187,8 @@ class FrameRenderingTask(RenderingTask):
 
     def accept_results(self, subtask_id, result_files):
         super().accept_results(subtask_id, result_files)
-        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
+        node_id = self.subtasks_given[subtask_id]['node_id']
+        TaskClient.assert_exists(node_id, self.counting_nodes).accept()
         num_start = self.subtasks_given[subtask_id]['start_task']
         parts = self.subtasks_given[subtask_id]['parts']
         num_end = self.subtasks_given[subtask_id]['end_task']

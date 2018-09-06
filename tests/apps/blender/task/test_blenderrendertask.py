@@ -20,6 +20,7 @@ from apps.blender.task.blenderrendertask import (BlenderDefaults,
                                                  BlenderTaskTypeInfo,
                                                  PreviewUpdater,
                                                  logger)
+from apps.core.task.coretask import AcceptClientVerdict
 from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
@@ -30,7 +31,6 @@ from golem.task.taskbase import ResultType
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-from apps.core.task.coretask import logger as logger_core
 from golem_verificator.verifier import SubtaskVerificationState
 
 
@@ -215,7 +215,6 @@ class TestBlenderFrameTask(TempDirFixture):
         extra_data = self.bt.query_extra_data(100, node_id="node1",
                                               node_name="node11",
                                               num_cores=0)
-        assert not extra_data.should_wait
         assert extra_data.ctd is not None
         assert "border_max_y = 1" in extra_data.ctd['extra_data']['script_src']
         assert "border_min_y = 0" in extra_data.ctd['extra_data']['script_src']
@@ -354,12 +353,14 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.assertEqual(self.bt.main_scene_file,
                          path.join(self.path, "example.blend"))
         extra_data = self.bt.query_extra_data(1000, 2, "ABC", "abc")
+        self.bt.accept_client("ABC")
         ctd = extra_data.ctd
         assert ctd['extra_data']['start_task'] == 1
         assert ctd['extra_data']['end_task'] == 1
         self.bt.last_task = self.bt.total_tasks
         self.bt.subtasks_given[1] = {'status': SubtaskStatus.finished}
-        assert self.bt.query_extra_data(1000, 2, "ABC", "abc").ctd is None
+        assert self.bt.should_accept_client("ABC") != \
+            AcceptClientVerdict.ACCEPTED
 
     def test_get_min_max_y(self):
         self.assertEqual(self.bt.res_x, 2)
@@ -565,23 +566,6 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
                                               node_id='node',
                                               node_name='node')
         assert extra_data.ctd
-        subtask_id = extra_data.ctd['subtask_id']
-        assert not extra_data.should_wait
-
-        extra_data = self.bt.query_extra_data(100000, num_cores=0,
-                                              node_id='node',
-                                              node_name='node')
-        assert extra_data.should_wait
-
-        # Write log with warning and don't return data or should wait
-        # if client was banned
-        self.bt.computation_failed(subtask_id)
-        with self.assertLogs(logger_core, level="WARNING"):
-            extra_data = self.bt.query_extra_data(100000, num_cores=0,
-                                                  node_id='node',
-                                                  node_name='node')
-        assert extra_data.ctd is None
-        assert not extra_data.should_wait
 
     def test_update_preview(self):
         bt = self.build_bt(300, 200, 10)
