@@ -13,16 +13,16 @@ from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
 from eth_utils import decode_hex, is_address
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import new_sci, SmartContractsInterface, JsonTransactionsStorage
-from twisted.internet.defer import Deferred
+from twisted.internet import defer
 import requests
 
+from golem import model
 from golem.core.service import LoopingCallService
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.ethereum.exceptions import NotEnoughFunds
 from golem.ethereum.incomeskeeper import IncomesKeeper
 from golem.ethereum.paymentskeeper import PaymentsKeeper
-from golem.model import GenericKeyValue, Payment, Income
 from golem.utils import privkeytoaddr
 
 
@@ -190,8 +190,8 @@ class TransactionSystem(LoopingCallService):
     def _subscribe_to_events(self) -> None:
         if not self._sci:
             raise Exception('Start was not called')
-        values = GenericKeyValue.select().where(
-            GenericKeyValue.key == self.BLOCK_NUMBER_DB_KEY)
+        values = model.GenericKeyValue.select().where(
+            model.GenericKeyValue.key == self.BLOCK_NUMBER_DB_KEY)
         from_block = int(values.get().value) if values.count() == 1 else 0
 
         ik = self._incomes_keeper
@@ -239,7 +239,9 @@ class TransactionSystem(LoopingCallService):
         if not self._sci:
             raise Exception('Start was not called')
         block_number = self._sci.get_block_number() - self._sci.REQUIRED_CONFS
-        kv, _ = GenericKeyValue.get_or_create(key=self.BLOCK_NUMBER_DB_KEY)
+        kv, _ = model.GenericKeyValue.get_or_create(
+            key=self.BLOCK_NUMBER_DB_KEY,
+        )
         kv.value = block_number - 1
         kv.save()
 
@@ -260,7 +262,7 @@ class TransactionSystem(LoopingCallService):
         if len(payee) != 20:
             raise ValueError(
                 "Incorrect 'payee' length: {}. Should be 20".format(len(payee)))
-        payment = Payment.create(
+        payment = model.Payment.create(
             subtask=subtask_id,
             payee=payee,
             value=value,
@@ -281,7 +283,7 @@ class TransactionSystem(LoopingCallService):
 
     def get_subtasks_payments(
             self,
-            subtask_ids: Iterable[str]) -> List[Payment]:
+            subtask_ids: Iterable[str]) -> List[model.Payment]:
         return self._payments_keeper.get_subtasks_payments(subtask_ids)
 
     def get_incomes_list(self):
@@ -379,7 +381,7 @@ class TransactionSystem(LoopingCallService):
             sender_node: str,
             subtask_id: str,
             payer_address: str,
-            value: int) -> Income:
+            value: int) -> model.Income:
         return self._incomes_keeper.expect(
             sender_node,
             subtask_id,
@@ -506,14 +508,13 @@ class TransactionSystem(LoopingCallService):
             account_address=account_address,
         )
 
-    def concent_deposit(self, required: int, expected: int) -> Deferred:
+    @defer.inlineCallbacks
+    def concent_deposit(self, required: int, expected: int) -> Optional[int]:
         if not self._sci:
             raise Exception('Start was not called')
-        result = Deferred()
         current = self.concent_balance()
         if current >= required:
-            result.callback(None)
-            return result
+            return None
         required -= current
         expected -= current
         gntb_balance = self.get_available_gnt()
@@ -526,15 +527,33 @@ class TransactionSystem(LoopingCallService):
             max_possible_amount / denoms.ether,
             tx_hash,
         )
+        dpayment = model.DepositPayment.create(
+            value=max_possible_amount,
+            tx=tx_hash,
+        )
+        log.error('DEPOSIT PAYMENT %s', dpayment)
 
-        def transaction_receipt(receipt):
-            if not receipt.status:
-                result.errback(Exception(f"Deposit failed. Receipt: {receipt}"))
-                return
-            result.callback(None)
+        transaction_receipt = defer.Deferred()
+        self._sci.on_transaction_confirmed(
+            tx_hash=tx_hash,
+            cb=transaction_receipt.callback,
+        )
 
-        self._sci.on_transaction_confirmed(tx_hash, transaction_receipt)
-        return result
+        receipt = yield transaction_receipt
+        if not receipt.status:
+            dpayment.update(
+                status=model.PaymentStatus.awaiting,
+            )
+            raise Exception(f"Deposit failed. Receipt: {receipt}")
+
+        gas_price = self._sci.get_transaction_gas_price(receipt.tx_hash)
+        fee = receipt.gas_used * gas_price
+        dpayment.update(
+            fee=fee,
+            block_hash=receipt.block_hash[2:],
+            block_number=receipt.block_number,
+        )
+        return dpayment.dbid
 
     def _get_funds_from_faucet(self) -> None:
         if not self._sci:
