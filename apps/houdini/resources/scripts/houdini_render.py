@@ -43,7 +43,8 @@ def build_output( output, input ):
 #
 def build_command( file, renderer, start_frame, end_frame, output ):
 
-    hrender_path = "/opt/hfs16.5.536/bin/hrender.py"
+    # We can load this path from /houdini/installation-info.json
+    hrender_path = "/opt/hfs16.5/bin/hrender.py"
     #hrender_path = "apps/houdini/resources/scripts/hrender.py"
 
     command = [ "hython" ]
