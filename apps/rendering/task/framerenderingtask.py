@@ -144,8 +144,8 @@ class FrameRenderingTask(RenderingTask):
             verification_finished)
 
     def verification_finished(self, subtask_id, verdict, result):
-        super(FrameRenderingTask, self).verification_finished(subtask_id,
-                                                              verdict, result)
+        super().verification_finished(subtask_id,
+                                      verdict, result)
         if self.use_frames:
             self._update_subtask_frame_status(subtask_id)
 

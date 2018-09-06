@@ -5,11 +5,13 @@ from pathlib import Path
 import shutil
 from typing import Tuple
 from unittest.mock import Mock, patch
+from twisted.internet.defer import Deferred
 
 import pytest
 
 from apps.lux.task.luxrendertask import LuxRenderTaskBuilder, LuxTask
 from golem.core.fileshelper import find_file_with_ext
+from golem.core.deferred import sync_wait
 from golem.docker.job import DockerJob
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import ResultType
@@ -89,7 +91,11 @@ class TestDockerLuxrenderTask(
         # this is a know issue in lux:
         # http: // www.luxrender.net / forum / viewtopic.php?f = 16 & t = 13389
         task.random_crop_window_for_verification = (0.05, 0.95, 0.05, 0.95)
-        self._test_luxrender_real_task(task)
+
+        task, subtask_id, flm, preview = self.get_computer_task(task)
+
+        self._test_luxrender_real_task_good(task, subtask_id, flm, preview)
+        self._test_luxrender_real_task_bad(task, flm, preview)
 
     @pytest.mark.slow
     @patch('golem.core.common.deadline_to_timeout')
@@ -105,9 +111,13 @@ class TestDockerLuxrenderTask(
         # this is a known issue in lux:
         # http: // www.luxrender.net / forum / viewtopic.php?f = 16 & t = 13389
         task.random_crop_window_for_verification = (0.05, 0.95, 0.05, 0.95)
-        self._test_luxrender_real_task(task)
 
-    def _test_luxrender_real_task(self, task: LuxTask):
+        task, subtask_id, flm, preview = self.get_computer_task(task)
+
+        self._test_luxrender_real_task_good(task, subtask_id, flm, preview)
+        self._test_luxrender_real_task_bad(task, flm, preview)
+
+    def get_computer_task(self, task):
         ctd = task.query_extra_data(10000).ctd
 
         ctd["extra_data"].update(DockerJob.PATH_PARAMS)
@@ -124,32 +134,62 @@ class TestDockerLuxrenderTask(
         computer.run()
         computer.tt.join()
 
-        new_flm_file, new_preview_file = self._extract_results(
+        flm, preview = self._extract_results(
             computer, task, ctd['subtask_id'])
 
         task.create_reference_data_for_task_validation()
 
+        return task, ctd['subtask_id'], flm, preview
+
+    def _test_luxrender_real_task_good(self, task: LuxTask,
+                                       subtask_id,
+                                       new_flm_file,
+                                       new_preview_file):
+        from twisted.internet import reactor
+
+        d = Deferred()
+
+        def success(*args, **kwargs):
+            # pylint: disable=unused-argument
+            is_subtask_verified = task.verify_subtask(subtask_id)
+            self.assertTrue(is_subtask_verified)
+            self.assertEqual(task.num_tasks_received, 1)
+            d.callback(True)
+
         # assert good results - should pass
         self.assertEqual(task.num_tasks_received, 0)
-        task.computation_finished(ctd['subtask_id'],
+        task.computation_finished(subtask_id,
                                   [str(new_flm_file), str(new_preview_file)],
                                   result_type=ResultType.FILES,
-                                  verification_finished=lambda: None)
+                                  verification_finished=success)
+        reactor.iterate()
+        sync_wait(d, 40)
 
-        is_subtask_verified = task.verify_subtask(ctd['subtask_id'])
-        self.assertTrue(is_subtask_verified)
-        self.assertEqual(task.num_tasks_received, 1)
+    def _test_luxrender_real_task_bad(self, task: LuxTask,
+                                      new_flm_file,
+                                      new_preview_file):
+
+        d = Deferred()
+
+        from twisted.internet import reactor
+
+        ctd = task.query_extra_data(10000).ctd
+
+        def failure(*args, **kwargs):
+            # pylint: disable=unused-argument
+            self.assertFalse(task.verify_subtask(ctd['subtask_id']))
+            self.assertEqual(task.num_tasks_received, 1)
+            d.callback(True)
 
         # assert bad results - should fail
         bad_flm_file = new_flm_file.parent / "badfile.flm"
-        ctd = task.query_extra_data(10000).ctd
+        task.VERIFICATION_QUEUE._reset()
         task.computation_finished(ctd['subtask_id'],
                                   [str(bad_flm_file), str(new_preview_file)],
                                   result_type=ResultType.FILES,
-                                  verification_finished=lambda: None)
-
-        self.assertFalse(task.verify_subtask(ctd['subtask_id']))
-        self.assertEqual(task.num_tasks_received, 1)
+                                  verification_finished=failure)
+        reactor.iterate()
+        sync_wait(d, 40)
 
     def test_luxrender_TaskTester_should_pass(self):
         task = self._get_test_task()

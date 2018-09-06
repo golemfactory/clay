@@ -3,8 +3,8 @@ import math
 import os
 import random
 from copy import deepcopy
-from functools import partial
-from typing import Dict, Tuple, List, Callable, Optional, Any
+from typing import Dict, Tuple, List, Callable, Optional, Any, Generator
+from twisted.internet.defer import Deferred, inlineCallbacks
 
 import numpy
 
@@ -20,17 +20,15 @@ logger = logging.getLogger("blender_reference_generator")
 # pylint: disable=R0902
 class VerificationContext:
     def __init__(self, crops_data: Dict[str, Any], computer,
-                 subtask_data: Dict[str, Any],
-                 callbacks: Dict[str, Callable]) -> None:
+                 subtask_data: Dict[str, Any], crops_number) -> None:
         self.crops_path = crops_data['paths']
         self.crops_floating_point_coordinates = crops_data['position'][0]
         self.crops_pixel_coordinates = crops_data['position'][1]
         self.computer = computer
         self.resources = subtask_data['resources']
         self.subtask_info = subtask_data['subtask_info']
-        self.success = callbacks['success']
-        self.error_callback = callbacks['errback']
         self.crop_size = crops_data['position'][2]
+        self.finished = [Deferred() for _ in range(crops_number)]
 
     def get_crop_path(self, crop_number: int) -> str:
         return os.path.join(self.crops_path, str(crop_number))
@@ -55,13 +53,15 @@ class BlenderReferenceGenerator:
         self.crops_blender_borders: List[Tuple[float, float, float, float]] = []
         self.crops_pixel_coordinates: List[Tuple[int, int]] = []
         self.rendered_crops_results: Dict[int, List[Any]] = {}
-        self.crop_count = BlenderReferenceGenerator.DEFAULT_CROPS_NUMBER
+        self.crop_jobs: Dict[str, Deferred] = dict()
+        self.stopped = False
 
     def clear(self):
         self.crop_size_in_pixels = ()
         self.crops_blender_borders = []
         self.crops_pixel_coordinates = []
         self.rendered_crops_results = {}
+        self.stopped = False
 
     # pylint: disable=R0914
     def generate_crops_data(self,
@@ -223,13 +223,10 @@ class BlenderReferenceGenerator:
 
     def render_crops(self,
                      resources: List[str],
-                     crop_rendered_callback: CropRenderedSuccessCallbackType,
-                     crop_render_fail_callback: CropRenderedFailureCallbackType,
                      subtask_info: Dict[str, Any],
                      num_crops: int = DEFAULT_CROPS_NUMBER,
                      crop_size: Optional[Tuple[int, int]] = None) \
-            -> Tuple[int, int]:
-        self.crop_count = num_crops
+            -> List[Deferred]:
         crops_path = os.path.join(subtask_info['tmp_dir'],
                                   subtask_info['subtask_id'])
         crops_info = self.generate_crops_data((subtask_info['res_x'],
@@ -243,55 +240,81 @@ class BlenderReferenceGenerator:
                                  'position': crops_info},
                                 self.computer,
                                 {'resources': resources,
-                                 'subtask_info': subtask_info},
-                                {'success': crop_rendered_callback,
-                                 'errback': crop_render_fail_callback})
+                                 'subtask_info': subtask_info}, num_crops)
 
-        self._render_one_crop(verification_context,
-                              self.crop_rendered_callback,
-                              crop_render_fail_callback,
-                              0)
+        self.start(verification_context, num_crops)
 
-        return self.crop_size_in_pixels
+        return verification_context.finished
 
     # FIXME it would be better to make this subtask agnostic, pass only data
     # needed to generate crops. Drop local computer.
     # Issue # 2447
     # pylint: disable-msg=too-many-arguments
     # pylint: disable=R0914
-    def _render_one_crop(self,
-                         verification_context: VerificationContext,
-                         crop_rendered: CropRenderedSuccessCallbackType,
-                         crop_render_failure: CropRenderedFailureCallbackType,
-                         crop_number: int) -> None:
+    @inlineCallbacks
+    def start(self,
+              verification_context: VerificationContext,
+              crop_count: int) -> Generator:
 
-        minx, maxx, miny, maxy = verification_context \
-            .crops_floating_point_coordinates[crop_number]
+        for i in range(0, crop_count):
+            if self.stopped:
+                break
 
-        script_src = generate_blender_crop_file(
-            resolution=(verification_context.subtask_info['res_x'],
-                        verification_context.subtask_info['res_y']),
-            borders_x=(minx, maxx),
-            borders_y=(miny, maxy),
-            use_compositing=False,
-            samples=verification_context.subtask_info['samples']
-        )
-        task_definition = BlenderReferenceGenerator\
-            .generate_computational_task_definition(
-                verification_context.subtask_info,
-                script_src)
+            minx, maxx, miny, maxy = verification_context \
+                .crops_floating_point_coordinates[i]
 
-        # FIXME issue #1955
+            script_src = generate_blender_crop_file(
+                resolution=(verification_context.subtask_info['res_x'],
+                            verification_context.subtask_info['res_y']),
+                borders_x=(minx, maxx),
+                borders_y=(miny, maxy),
+                use_compositing=False,
+                samples=verification_context.subtask_info['samples']
+            )
+            task_definition = BlenderReferenceGenerator\
+                .generate_computational_task_definition(
+                    verification_context.subtask_info,
+                    script_src)
+
+            yield self.schedule_crop_job(verification_context, task_definition,
+                                         i)
+
+        if not self.stopped:
+            for i in range(0, crop_count):
+                verification_context.finished[i].callback((
+                    self.rendered_crops_results[i][0],
+                    self.rendered_crops_results[i][1],
+                    self.rendered_crops_results[i][2], i))
+
+    def stop(self):
+        self.stopped = True
+
+    def schedule_crop_job(self, verification_context, task_definition,
+                          crop_number):
+
+        defer = Deferred()
+
+        def success(results: List[str], time_spent: float):
+            self.rendered_crops_results[crop_number] = [results,
+                                                        time_spent,
+                                                        verification_context]
+            defer.callback(True)
+
+        def failure(exc):
+            self.stopped = True
+            logger.error(exc)
+            verification_context.finished[crop_number].errback(False)
+
         verification_context.computer.start_computation(
             root_path=verification_context.get_crop_path(crop_number),
-            success_callback=partial(crop_rendered,
-                                     verification_context=verification_context,
-                                     crop_number=crop_number),
-            error_callback=crop_render_failure,
+            success_callback=success,
+            error_callback=failure,
             compute_task_def=task_definition,
             resources=verification_context.resources,
             additional_resources=[]
         )
+
+        return defer
 
     @staticmethod
     def generate_computational_task_definition(subtask_info: Dict[str, Any],
@@ -309,32 +332,6 @@ class BlenderReferenceGenerator:
             subtask_info['subtask_timeout'])
 
         return task_definition
-
-    def crop_rendering_finished(self) -> None:
-        for i in range(0, self.crop_count):
-            self.rendered_crops_results[i][2].success(
-                self.rendered_crops_results[i][0],
-                self.rendered_crops_results[i][1],
-                self.rendered_crops_results[i][2], i)
-
-    def crop_rendered_callback(self,
-                               results: List[str],
-                               time_spent: float,
-                               verification_context: VerificationContext,
-                               crop_number: int) -> None:
-        self.rendered_crops_results[crop_number] = [results,
-                                                    time_spent,
-                                                    verification_context]
-        crop_number += 1
-
-        if crop_number == self.crop_count:
-            self.crop_rendering_finished()
-            return
-
-        self._render_one_crop(verification_context,
-                              self.crop_rendered_callback,
-                              verification_context.error_callback,
-                              crop_number)
 
     @staticmethod
     def _get_random_interval_within_boundaries(begin: int,
