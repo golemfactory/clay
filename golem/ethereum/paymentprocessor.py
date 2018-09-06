@@ -111,7 +111,7 @@ class PaymentProcessor:
             p.save()
             self._gntb_reserved -= p.value
             log.debug(
-                "- %.6f confirmed fee %.6f",
+                "- %s confirmed fee %.6f",
                 p.subtask,
                 fee / denoms.ether
             )
