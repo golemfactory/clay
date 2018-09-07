@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta
 from random import Random
 import time
+import unittest.mock as mock
 
 from freezegun import freeze_time
 
@@ -48,6 +49,20 @@ class TestIncomesKeeper(TestWithDatabase):
         assert expected_income.value == value
         assert expected_income.accepted_ts is None
         assert expected_income.transaction is None
+
+    @mock.patch("golem.ethereum.incomeskeeper.IncomesKeeper"
+                ".received_batch_transfer")
+    def test_received_forced_payment(self, batch_mock):
+        kwargs = {
+            'tx_hash': object(),
+            'sender': object(),
+            'amount': object(),
+            'closure_time': object(),
+        }
+        self.incomes_keeper.received_forced_payment(
+            **kwargs,
+        )
+        batch_mock.assert_called_once_with(**kwargs)
 
     def test_received_batch_transfer_closure_time(self):
         sender_node = 64 * 'a'

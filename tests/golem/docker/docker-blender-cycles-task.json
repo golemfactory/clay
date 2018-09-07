@@ -61,5 +61,6 @@
       "name": "golemfactory/blender:1.4",
       "id": null
     }
-  ]
+  ],
+  "concent_enabled": false
 }

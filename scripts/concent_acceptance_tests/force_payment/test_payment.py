@@ -69,7 +69,7 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
             )
         )
         response = self.provider_load_response(self.provider_send(fp))
-        self.assertEqual(response, message.concents.ServiceRefused)
+        self.assertIsInstance(response, message.concents.ServiceRefused)
 
     def test_multiple_eth_accounts(self):
         sra1 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
@@ -99,7 +99,7 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
         )
         print(fp)
         response = self.provider_load_response(self.provider_send(fp))
-        self.assertEqual(response, message.concents.ServiceRefused)
+        self.assertIsInstance(response, message.concents.ServiceRefused)
 
     def test_provider_asks_too_early(self):
         """Test messages due date

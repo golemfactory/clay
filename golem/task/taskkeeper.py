@@ -105,7 +105,7 @@ class CompSubtaskInfo:
 
 
 def log_key_error(*args, **_):
-    if isinstance(args[1], message.ComputeTaskDef):
+    if isinstance(args[1], message.tasks.ComputeTaskDef):
         task_id = args[1]['task_id']
     else:
         task_id = args[1]
@@ -198,7 +198,7 @@ class CompTaskKeeper:
         return self.active_tasks[task_id].header
 
     @handle_key_error
-    def receive_subtask(self, task_to_compute: message.TaskToCompute):
+    def receive_subtask(self, task_to_compute: message.tasks.TaskToCompute):
         comp_task_def = task_to_compute.compute_task_def
         logger.debug('CT.receive_subtask()')
         if not self.check_comp_task_def(comp_task_def):
@@ -587,8 +587,7 @@ class TaskHeaderKeeper:
 
     def get_task(self) -> typing.Optional[TaskHeader]:
         """ Returns random task from supported tasks that may be computed
-        :return TaskHeader|None: returns either None if there are no tasks
-                                 that this node may want to compute
+        :return: None if there are no tasks that this node may want to compute
         """
         if self.supported_tasks:
             tn = random.randrange(0, len(self.supported_tasks))

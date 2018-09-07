@@ -28,6 +28,7 @@ from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
 from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
+from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -254,46 +255,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
                    database=Mock(),
                    transaction_system=Mock())
 
-    def test_get_status(self, *_):
-        self.client = Client(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=ClientConfigDescriptor(),
-            keys_auth=Mock(),
-            database=Mock(),
-            transaction_system=Mock(),
-            connect_to_known_hosts=False,
-            use_docker_manager=False,
-            use_monitor=False
-        )
-        c = self.client
-        c.task_server = MagicMock()
-        c.task_server.task_computer.get_progresses.return_value = {}
-        c.p2pservice = MagicMock()
-        c.p2pservice.get_peers.return_value = ["ABC", "DEF"]
-        c.transaction_system = MagicMock()
-        status = c.get_status()
-        self.assertIn("Waiting for tasks", status)
-        self.assertIn("Active peers in network: 2", status)
-        mock1 = MagicMock()
-        mock1.get_progress.return_value = 0.25
-        mock2 = MagicMock()
-        mock2.get_progress.return_value = 0.33
-        c.task_server.task_computer.get_progresses.return_value = \
-            {"id1": mock1, "id2": mock2}
-        c.p2pservice.get_peers.return_value = []
-        status = c.get_status()
-        self.assertIn("Computing 2 subtask(s)", status)
-        self.assertIn("id1 (25.0%)", status)
-        self.assertIn("id2 (33.0%)", status)
-        self.assertIn("Active peers in network: 0", status)
-        c.config_desc.accept_tasks = 0
-        status = c.get_status()
-        self.assertIn("Computing 2 subtask(s)", status)
-        c.task_server.task_computer.get_progresses.return_value = {}
-        status = c.get_status()
-        self.assertIn("Not accepting tasks", status)
-
     def test_quit(self, *_):
         self.client = Client(
             datadir=self.path,
@@ -487,7 +448,7 @@ class TestClient(TestWithDatabase, TestWithReactor):
 
         def add_task(*_args, **_kwargs):
             resource_manager_result = 'res_hash', ['res_file_1']
-            result = resource_manager_result, 'res_file_1', 'package_hash'
+            result = resource_manager_result, 'res_file_1', 'package_hash', 0
             return done_deferred(result)
 
         self.client.resource_server = Mock(
@@ -519,23 +480,15 @@ class TestClient(TestWithDatabase, TestWithReactor):
             'type': 'Dummy',
         }
 
-        created, error = self.client.create_task(task_dict)
+        task_id, error = self.client.create_task(task_dict)
 
-        assert created
+        assert task_id
         assert not error
 
-        time.sleep(1)
-        task_id = list(task_manager.tasks_states)[0]
-
-        created, error = sync_wait(self.client.restart_task(task_id))
-        assert created
+        new_task_id, error = self.client.restart_task(task_id)
+        assert new_task_id
         assert not error
         assert len(task_manager.tasks_states) == 2
-        new_task_id = None
-        for i in task_manager.tasks_states.keys():
-            if i != task_id:
-                new_task_id = i
-                return
 
         assert task_id != new_task_id
         assert task_manager.tasks_states[
@@ -974,15 +927,20 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
     @patch('golem.client.get_resources_for_task')
     def test_enqueue_new_task_from_type(self, *_):
         c = self.client
+        c.concent_service = Mock()
         c.funds_locker.persist = False
         c.resource_server = Mock()
         c.task_server = Mock()
         c.p2pservice.get_estimated_network_size.return_value = 0
 
+        task_fixed_header = Mock(
+            concent_enabled=False,
+        )
         task_header = Mock(
             max_price=1 * 10**18,
             task_id=str(uuid.uuid4()),
-            subtask_timeout=37
+            subtask_timeout=37,
+            fixed_header=task_fixed_header,
         )
         task = Mock(
             header=task_header,
@@ -992,6 +950,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             subtask_price=1000,
         )
 
+        c.concent_service.enabled = False
         c.enqueue_new_task(task)
         assert not c.task_server.task_manager.create_task.called
         task_mock = MagicMock()
@@ -1002,7 +961,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         task_mock.get_price.return_value = price
         task_mock.subtask_price = 1000
         c.task_server.task_manager.create_task.return_value = task_mock
-        c.concent_service = Mock()
         c.concent_service.enabled = True
         c.enqueue_new_task(dict(
             max_price=1 * 10**18,
@@ -1070,17 +1028,50 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             side_effect=add_task)
         c.p2pservice.get_estimated_network_size.return_value = 0
 
-        deferred = c.enqueue_new_task(t_dict)
+        deferred, task_id = c.enqueue_new_task(t_dict)
         task = sync_wait(deferred)
         assert isinstance(task, Task)
         assert task.header.task_id
+        assert task.header.task_id == task_id
         assert c.resource_server.add_task.called
 
-        task_id = task.header.task_id
         c.task_server.task_manager.tasks[task_id] = task
         c.task_server.task_manager.tasks_states[task_id] = TaskState()
         frames = c.get_subtasks_frames(task_id)
         assert frames is not None
+
+    def test_enqueue_new_task_concent_service_disabled(self, *_):
+        c = self.client
+
+        t_dict = {
+            'resources': [
+                '/Users/user/Desktop/folder/texture.tex',
+                '/Users/user/Desktop/folder/model.mesh',
+                '/Users/user/Desktop/folder/stylized_levi.blend'
+            ],
+            'name': 'Golem Task 17:41:45 GMT+0200 (CEST)',
+            'type': 'blender',
+            'timeout': '09:25:00',
+            'subtasks': '6',
+            'subtask_timeout': '4:10:00',
+            'bid': '0.000032',
+            'options': {
+                'resolution': [1920, 1080],
+                'frames': '1-10',
+                'format': 'EXR',
+                'output_path': '/Users/user/Desktop/',
+                'compositing': True,
+            },
+            'concent_enabled': True,
+        }
+
+        c.concent_service = Mock()
+        c.concent_service.enabled = False
+
+        msg = "Cannot create task with concent enabled when " \
+              "concent service is disabled"
+        with self.assertRaises(Exception, msg=msg):
+            c.enqueue_new_task(t_dict)
 
     def test_get_balance(self, *_):
         c = self.client
@@ -1309,6 +1300,7 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         result = c.get_task_stats()
         expected = {
             'host_state': "Idle",
+            'provider_state': {'status': 'idle'},
             'in_network': 0,
             'supported': 0,
             'subtasks_computed': (0, 0),
@@ -1367,6 +1359,90 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         self.assertTrue(
             c.connection_status().startswith("Application not listening")
         )
+
+    def test_provider_status_starting(self, *_):
+        # given
+        self.client.task_server = None
+
+        # when
+        status = self.client.get_provider_status()
+
+        # then
+        expected_status = {
+            'status': 'golem is starting',
+        }
+        assert status == expected_status
+
+    def test_provider_status_computing(self, *_):
+        # given
+        task_computer = Mock()
+        state_snapshot_dict = {
+            'subtask_id': str(uuid.uuid4()),
+            'progress': 0.0,
+            'seconds_to_timeout': 0.0,
+            'running_time_seconds': 0.0,
+            'outfilebasename': "Test Task",
+            'output_format': "PNG",
+            'scene_file': "/golem/resources/cube.blend",
+            'frames': [1],
+            'start_task': 1,
+            'end_task': 1,
+            'total_tasks': 1,
+        }
+        task_computer.get_progress.return_value = \
+            ComputingSubtaskStateSnapshot(**state_snapshot_dict)
+        self.client.task_server.task_computer = task_computer
+
+        # when
+        status = self.client.get_provider_status()
+
+        # then
+        state_snapshot_dict['scene_file'] = "cube.blend"
+        expected_status = {
+            'status': 'computing',
+            'subtask': state_snapshot_dict,
+        }
+        assert status == expected_status
+
+    def test_provider_status_waiting_for_task(self, *_):
+        # given
+        task_computer = Mock()
+        task_computer.get_progress.return_value = None
+        task_computer.waiting_for_task = str(uuid.uuid4())
+        self.client.task_server.task_computer = task_computer
+
+        # when
+        status = self.client.get_provider_status()
+
+        # then
+        expected_status = {
+            'status': 'waiting for task',
+            'task_id_waited_for': task_computer.waiting_for_task,
+        }
+        assert status == expected_status
+
+    def test_provider_status_not_accepting_tasks(self, *_):
+        # given
+        self.client.config_desc.accept_tasks = False
+
+        # when
+        status = self.client.get_provider_status()
+
+        # then
+        expected_status = {
+            'status': 'not accepting tasks',
+        }
+        assert status == expected_status
+
+    def test_provider_status_idle(self, *_):
+        # when
+        status = self.client.get_provider_status()
+
+        # then
+        expected_status = {
+            'status': 'idle',
+        }
+        assert status == expected_status
 
     def test_golem_version(self, *_):
         assert self.client.get_golem_version() == golem.__version__

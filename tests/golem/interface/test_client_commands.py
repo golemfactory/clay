@@ -538,18 +538,18 @@ class TestTasks(TempDirFixture):
 
     def test_restart_success(self):
         with client_ctx(Tasks, self.client):
-            self.client.restart_task.return_value = True, 'whatever'
+            self.client.restart_task.return_value = 'new_task_id', None
             tasks = Tasks()
             result = tasks.restart('task_id')
-            self.assertIsNone(result)
+            self.assertEqual(result, 'new_task_id')
             self.client.restart_task.assert_called_once_with('task_id')
 
     def test_restart_error(self):
         with client_ctx(Tasks, self.client):
-            self.client.restart_task.return_value = False, 'error'
+            self.client.restart_task.return_value = None, 'error'
             tasks = Tasks()
-            result = tasks.restart('task_id')
-            self.assertEqual(result, 'error')
+            with self.assertRaises(CommandException):
+                tasks.restart('task_id')
             self.client.restart_task.assert_called_once_with('task_id')
 
     def test_create(self) -> None:
@@ -582,6 +582,7 @@ class TestTasks(TempDirFixture):
             with patch(patched_open, mock_open(
                 read_data='{"name": "Golem task"}'
             )):
+                client.create_task.return_value = ('task_id', None)
                 tasks.create("foo")
                 task_def = json.loads('{"name": "Golem task"}')
                 client.create_task.assert_called_with(task_def)

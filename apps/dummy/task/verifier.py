@@ -8,9 +8,9 @@ from apps.dummy.resources.code_dir import computing
 class DummyTaskVerifier(CoreVerifier):
     # subtask_info is what sits in the task.subtasks_given["subtask_id"]
     # it is set in the query_extra_data
-    def __init__(self, callback: Callable,
-                 verification_data: Optional[Dict[str, Any]] = None) -> None:
-        super().__init__(callback)
+    def __init__(self, verification_data: Optional[Dict[str, Any]] = None) ->\
+            None:
+        super().__init__()
         if verification_data:
             self.subtask_info = verification_data["subtask_info"]
         else:
