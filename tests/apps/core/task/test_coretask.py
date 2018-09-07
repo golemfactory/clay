@@ -83,6 +83,29 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         task = CoreTaskDeabstractedEnv(task_def, node)
         self.assertIsInstance(task, CoreTask)
 
+    def test_init(self):
+        task_def = TestCoreTask._get_core_task_definition()
+        wrong_file = MagicMock()
+        wrong_file.return_value.main_program_file = "abcde"
+
+        class CoreTaskWrongFile(self.CoreTaskDeabstracted):
+            ENVIRONMENT_CLASS = wrong_file
+
+        with patch("logging.Logger.warning") as log_mock:
+            task = CoreTaskWrongFile(
+                task_definition=task_def,
+                owner=Node(
+                    node_name="ABC",
+                    pub_addr="10.10.10.10",
+                    pub_port=123,
+                    key="key",
+                ),
+                resource_size=1024
+            )
+        log_mock.assert_called_once()
+        self.assertIn("Wrong main program file", log_mock.call_args[0][0])
+        self.assertEqual(task.src_code, "")
+
     def _get_core_task(self):
         task_def = TestCoreTask._get_core_task_definition()
         task = self.CoreTaskDeabstracted(
@@ -479,18 +502,16 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
         hash = "aaa"
         extra_data = Mock()
-        working_directory = "."
         perf_index = 0
 
         ctd = c._new_compute_task_def(
-            hash, extra_data, working_directory, perf_index)
+            hash, extra_data, perf_index)
         assert ctd['task_id'] == c.header.task_id
         assert ctd['subtask_id'] == hash
         assert ctd['extra_data'] == extra_data
         assert ctd['short_description'] == c.short_extra_data_repr(extra_data)
         assert ctd['src_code'] == c.src_code
         assert ctd['performance'] == perf_index
-        assert ctd['working_directory'] == working_directory
         assert ctd['docker_images'] == c.docker_images
 
 

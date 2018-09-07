@@ -163,7 +163,8 @@ class TaskManager(TaskEventListener):
             raise ValueError("'key_id' is not set")
         if not SocketAddress.is_proper_address(self.listen_address,
                                                self.listen_port):
-            raise IOError("Incorrect socket address")
+            raise IOError("Incorrect socket address: %s:%s" % (
+                self.listen_address, self.listen_port))
 
         task.header.fixed_header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
@@ -654,7 +655,7 @@ class TaskManager(TaskEventListener):
 
     @handle_subtask_key_error
     def computed_task_received(self, subtask_id, result, result_type,
-                               verification_finished_):
+                               verification_finished):
         task_id = self.subtask2task_mapping[subtask_id]
 
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
@@ -666,12 +667,12 @@ class TaskManager(TaskEventListener):
             self.notice_task_updated(task_id,
                                      subtask_id=subtask_id,
                                      op=OtherOp.UNEXPECTED)
-            verification_finished_()
+            verification_finished()
             return
         subtask_state.subtask_status = SubtaskStatus.verifying
 
         @TaskManager.handle_generic_key_error
-        def verification_finished():
+        def verification_finished_():
             ss = self.__set_subtask_state_finished(subtask_id)
             if not self.tasks[task_id].verify_subtask(subtask_id):
                 logger.debug("Subtask %r not accepted\n", subtask_id)
@@ -680,7 +681,7 @@ class TaskManager(TaskEventListener):
                     task_id,
                     subtask_id=subtask_id,
                     op=SubtaskOp.NOT_ACCEPTED)
-                verification_finished_()
+                verification_finished()
                 return
 
             self.notice_task_updated(task_id,
@@ -701,10 +702,10 @@ class TaskManager(TaskEventListener):
                         logger.debug("Task %r not accepted", task_id)
                         self.notice_task_updated(task_id,
                                                  op=TaskOp.NOT_ACCEPTED)
-            verification_finished_()
+            verification_finished()
 
         self.tasks[task_id].computation_finished(
-            subtask_id, result, result_type, verification_finished
+            subtask_id, result, result_type, verification_finished_
         )
 
     @handle_subtask_key_error

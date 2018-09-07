@@ -7,13 +7,10 @@ import sys
 import tempfile
 from multiprocessing import cpu_count
 
+# pylint: disable=import-error
 import params  # This module is generated before this script is run
 
-
 LUXRENDER_COMMAND = "luxconsole"
-OUTPUT_DIR = "/golem/output"
-WORK_DIR = "/golem/work"
-RESOURCES_DIR = "/golem/resources"
 
 
 def symlink_or_copy(source, target):
@@ -33,11 +30,11 @@ def find_flm(directory):
     if not os.path.exists(directory):
         return None
     try:
-        for root, dirs, files in os.walk(directory):
+        for root, _, files in os.walk(directory):
             for names in files:
                 if names.upper().endswith(".FLM"):
                     return os.path.join(root, names)
-    except:
+    except Exception:  # pylint:disable=broad-except
         import traceback
         # Print the stack traceback
         traceback.print_exc()
@@ -47,7 +44,7 @@ def find_flm(directory):
 def format_lux_renderer_cmd(start_task, output_basename, output_format,
                             scene_file):
     num_cores = cpu_count()
-    flm_file = find_flm(WORK_DIR)
+    flm_file = find_flm(params.WORK_DIR)
     if flm_file is not None:
         cmd = [
             "{}".format(LUXRENDER_COMMAND),
@@ -59,7 +56,9 @@ def format_lux_renderer_cmd(start_task, output_basename, output_format,
         cmd = [
             "{}".format(LUXRENDER_COMMAND),
             "{}".format(scene_file),
-            "-o", "{}/{}{}.{}".format(OUTPUT_DIR, output_basename, start_task,
+            "-o", "{}/{}{}.{}".format(params.OUTPUT_DIR,
+                                      output_basename,
+                                      start_task,
                                       output_format),
             "-t", "{}".format(num_cores)
         ]
@@ -74,8 +73,9 @@ def exec_cmd(cmd):
 
 def run_lux_renderer_task(start_task, outfilebasename, output_format,
                           scene_file_src, scene_dir):
-
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".lxs", dir=WORK_DIR,
+    with tempfile.NamedTemporaryFile(mode="w",
+                                     suffix=".lxs",
+                                     dir=params.WORK_DIR,
                                      delete=False) as tmp_scene_file:
         tmp_scene_file.write(scene_file_src)
 
@@ -83,12 +83,12 @@ def run_lux_renderer_task(start_task, outfilebasename, output_format,
     # (from which scene_file_src is read) to the work dir:
     for f in os.listdir(scene_dir):
         source = os.path.join(scene_dir, f)
-        target = os.path.join(WORK_DIR, f)
+        target = os.path.join(params.WORK_DIR, f)
         symlink_or_copy(source, target)
 
-    flm_file = find_flm(RESOURCES_DIR)
+    flm_file = find_flm(params.RESOURCES_DIR)
     if flm_file:
-        symlink_or_copy(flm_file, os.path.join(WORK_DIR,
+        symlink_or_copy(flm_file, os.path.join(params.WORK_DIR,
                                                os.path.basename(flm_file)))
 
     cmd = format_lux_renderer_cmd(start_task, outfilebasename, output_format,
@@ -98,10 +98,12 @@ def run_lux_renderer_task(start_task, outfilebasename, output_format,
     if exit_code is not 0:
         sys.exit(exit_code)
     else:
-        outfile = "{}/{}{}.{}".format(OUTPUT_DIR, outfilebasename, start_task,
+        outfile = "{}/{}{}.{}".format(params.OUTPUT_DIR,
+                                      outfilebasename,
+                                      start_task,
                                       output_format)
         if not os.path.isfile(outfile):
-            flm_file = find_flm(WORK_DIR)
+            flm_file = find_flm(params.WORK_DIR)
             print(flm_file, file=sys.stdout)
             img = flm_file[:-4] + "." + output_format.lower()
             if not os.path.isfile(img):
@@ -114,5 +116,3 @@ def run_lux_renderer_task(start_task, outfilebasename, output_format,
 run_lux_renderer_task(params.start_task, params.outfilebasename,
                       params.output_format, params.scene_file_src,
                       params.scene_dir)
-
-

@@ -3,8 +3,10 @@ from unittest import TestCase
 from unittest.mock import patch
 
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
-from apps.dummy.task.dummytaskstate import DummyTaskDefaults, DummyTaskOptions, DummyTaskDefinition, ls_R
+from apps.dummy.task.dummytaskstate import DummyTaskDefaults, \
+    DummyTaskOptions, DummyTaskDefinition
 from golem.core.common import get_golem_path
+from golem.resource.dirmanager import list_dir_recursive
 from golem.testutils import PEP8MixIn, TempDirFixture
 
 
@@ -53,7 +55,7 @@ class TestDummyTaskDefinition(TempDirFixture):
         assert tdd.options.subtask_data_size == 128
         assert tdd.options.difficulty == 0xffff0000
         assert tdd.code_dir == os.path.join(get_golem_path(), "apps", "dummy", "resources", "code_dir")
-        for c in ls_R(tdd.code_dir):
+        for c in list_dir_recursive(tdd.code_dir):
             assert os.path.isfile(c)
         assert tdd.result_size == 256
         assert tdd.total_subtasks == 5
@@ -72,4 +74,4 @@ class TestDummyTaskDefinition(TempDirFixture):
             assert os.path.isdir(os.path.join(td.tmp_dir, "code"))
             assert os.path.isdir(os.path.join(td.tmp_dir, "data"))
             assert os.path.commonpath(list(td.resources)) == self.tempdir
-            assert td.resources == set(ls_R(td.tmp_dir))
+            assert td.resources == set(list_dir_recursive(td.tmp_dir))

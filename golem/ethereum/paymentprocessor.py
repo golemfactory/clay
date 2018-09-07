@@ -40,28 +40,18 @@ class PaymentProcessor:
     BLOCK_GAS_LIMIT_RATIO = 0.75
 
     def __init__(self, sci) -> None:
-        self.ETH_BATCH_PAYMENT_BASE = \
-            sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
         self._sci = sci
         self._gntb_reserved = 0
         self._awaiting = SortedListWithKey(key=lambda p: p.processed_ts)
         self.load_from_db()
 
     @property
-    def reserved_eth(self) -> int:
-        if not self._awaiting:
-            return 0
-        return self.ETH_BATCH_PAYMENT_BASE + \
-            len(self._awaiting) * self.get_gas_cost_per_payment()
+    def recipients_count(self) -> int:
+        return len(self._awaiting)
 
     @property
     def reserved_gntb(self) -> int:
         return self._gntb_reserved
-
-    def get_gas_cost_per_payment(self) -> int:
-        gas_price = \
-            min(self._sci.GAS_PRICE, 2 * self._sci.get_current_gas_price())
-        return gas_price * self._sci.GAS_PER_PAYMENT
 
     def load_from_db(self):
         sent = {}
@@ -140,9 +130,9 @@ class PaymentProcessor:
     def __get_next_batch(self, closure_time: int) -> int:
         gntb_balance = self._sci.get_gntb_balance(self._sci.get_eth_address())
         eth_balance = self._sci.get_eth_balance(self._sci.get_eth_address())
-        eth_balance = eth_balance - self.ETH_BATCH_PAYMENT_BASE
+        gas_price = self._sci.get_current_gas_price()
+
         ind = 0
-        eth_per_payment = self.get_gas_cost_per_payment()
         gas_limit = \
             self._sci.get_latest_block().gas_limit * self.BLOCK_GAS_LIMIT_RATIO
         payees = set()
@@ -154,11 +144,11 @@ class PaymentProcessor:
                 break
 
             payees.add(p.payee)
-            if len(payees) * eth_per_payment > eth_balance:
-                break
             gas = len(payees) * self._sci.GAS_PER_PAYMENT + \
                 self._sci.GAS_BATCH_PAYMENT_BASE
             if gas > gas_limit:
+                break
+            if gas * gas_price > eth_balance:
                 break
 
             ind += 1
