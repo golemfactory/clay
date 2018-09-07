@@ -300,7 +300,8 @@ class TransactionSystem(LoopingCallService):
     @classmethod
     def get_deposit_payments_list(cls):
         result = []
-        for dpayment in model.DepositPayment.select().order_by('dbid').limit(1000):
+        query = model.DepositPayment.select().order_by('dbid').limit(1000)
+        for dpayment in query:
             entry = {}
             entry["pk"] = common.to_unicode(dpayment.dbid)
             entry["value"] = common.to_unicode(dpayment.value)
