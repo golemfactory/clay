@@ -95,9 +95,11 @@ class FixedLengthHexField(HexIntegerField):
         super().__init__(*args, max_length=self.EXPECTED_LENGTH, **kwargs)
 
     def db_value(self, value):
+        if isinstance(value, str):
+            value = int(value, 16)
         value = super().db_value(value)
         current_len = len(value)
-        if len(value) != 64:
+        if len(value) != self.EXPECTED_LENGTH:
             raise ValueError(
                 "Value {value} has length of {has}"
                 " not {should} characters".format(
@@ -278,20 +280,24 @@ class DepositPayment(BaseModel):
     dbid = PrimaryKeyField()
     value = HexIntegerField()
     status = PaymentStatusField(index=True, default=PaymentStatus.awaiting)
-    fee = HexIntegerField()
-    block_hash = BlockchainHashField()
-    block_number = HexIntegerField()
-    tx = BlockchainTransactionField()
+    fee = HexIntegerField(null=True)
+    block_hash = BlockchainHashField(null=True)
+    block_number = HexIntegerField(null=True)
+    tx = BlockchainTransactionField(null=True)
 
     class Meta:  # pylint: disable=too-few-public-methods
         database = db
 
     def __repr__(self):
+        try:
+            tx = '0x{:x}'.format(self.tx)
+        except TypeError:
+            tx = self.tx
         return "<DepositPayment: {value} s:{status} tx:{tx}>"\
             .format(
                 value=self.value,
                 status=self.status,
-                tx=self.tx,
+                tx=tx,
             )
 
 

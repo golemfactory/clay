@@ -38,6 +38,8 @@ from golem.ethereum.incomeskeeper import IncomesKeeper
 from golem.ethereum.paymentskeeper import PaymentsKeeper
 from golem.utils import privkeytoaddr
 
+from . import exceptions
+
 
 log = logging.getLogger(__name__)
 
@@ -533,7 +535,7 @@ class TransactionSystem(LoopingCallService):
         expected -= current
         gntb_balance = self.get_available_gnt()
         if gntb_balance < required:
-            raise NotEnoughFunds(required, gntb_balance, 'GNTB')
+            raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
         max_possible_amount = min(expected, gntb_balance)
         tx_hash = self._sci.deposit_payment(max_possible_amount)
         log.info(
@@ -542,10 +544,11 @@ class TransactionSystem(LoopingCallService):
             tx_hash,
         )
         dpayment = model.DepositPayment.create(
+            status=model.PaymentStatus.sent,
             value=max_possible_amount,
-            tx=tx_hash,
+            tx=int(tx_hash, 16),
         )
-        log.error('DEPOSIT PAYMENT %s', dpayment)
+        log.debug('DEPOSIT PAYMENT %s', dpayment)
 
         transaction_receipt = defer.Deferred()
         self._sci.on_transaction_confirmed(
@@ -555,18 +558,19 @@ class TransactionSystem(LoopingCallService):
 
         receipt = yield transaction_receipt
         if not receipt.status:
-            dpayment.update(
-                status=model.PaymentStatus.awaiting,
+            dpayment.status = model.PaymentStatus.awaiting
+            dpayment.save()
+            raise exceptions.DepositError(
+                "Deposit failed",
+                transaction_receipt=receipt,
             )
-            raise Exception(f"Deposit failed. Receipt: {receipt}")
 
         gas_price = self._sci.get_transaction_gas_price(receipt.tx_hash)
-        fee = receipt.gas_used * gas_price
-        dpayment.update(
-            fee=fee,
-            block_hash=receipt.block_hash[2:],
-            block_number=receipt.block_number,
-        )
+        dpayment.fee = receipt.gas_used * gas_price
+        dpayment.block_hash = receipt.block_hash
+        dpayment.block_number = receipt.block_number
+        dpayment.status = model.PaymentStatus.confirmed
+        dpayment.save()
         return dpayment.dbid
 
     def _get_funds_from_faucet(self) -> None:
