@@ -49,7 +49,8 @@ py-cpuinfo==3.3.0
 humanize==0.5.1
 raven
 Golem-Messages==2.12.3
-Golem-Verificator==1.4.0
+-e git://github.com/golemfactory/golem-verificator.git@canceling_notification#egg=golem_verificator
+#Golem-Verificator==1.4.0
 Golem-Smart-Contracts-Interface==1.5.1
 html2text==2018.1.9
 zxcvbn-python
