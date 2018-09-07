@@ -6,6 +6,7 @@ from golem.interface.command import command, Argument, CommandResult
 
 incomes_table_headers = ['payer', 'status', 'value']
 payments_table_headers = ['subtask', 'payee', 'status', 'value', 'fee']
+deposit_payments_table_headers = ['pk', 'status', 'value', 'fee']
 
 sort_incomes = Argument(
     '--sort',
@@ -21,6 +22,14 @@ sort_payments = Argument(
     optional=True,
     default=None,
     help="Sort payments"
+)
+
+sort_deposit_payments = Argument(
+    '--sort',
+    choices=deposit_payments_table_headers,
+    optional=True,
+    default=None,
+    help="Sort deposit payments",
 )
 
 
@@ -61,7 +70,7 @@ def payments(sort):
 
         if payment_fee:
             payment_fee = "{:.1f}%".format(float(payment_fee) * 100 /
-                                            payment_value)
+                                           payment_value)
 
         entry = [
             to_unicode(payment["subtask"]),
@@ -74,3 +83,40 @@ def payments(sort):
         values.append(entry)
 
     return CommandResult.to_tabular(payments_table_headers, values, sort=sort)
+
+
+@command(
+    argument=sort_deposit_payments,
+    help="Display deposit payments",
+    root=True,
+)
+def deposit_payments(sort):
+
+    deferred = payments.client.get_deposit_payments_list()
+    result = sync_wait(deferred) or []
+
+    values = []
+
+    for payment in result:
+
+        payment_value = float(payment["value"])
+        payment_fee = payment["fee"] or ""
+
+        if payment_fee:
+            payment_fee = "{:.1f}%".format(float(payment_fee) * 100 /
+                                           payment_value)
+
+        entry = [
+            to_unicode(payment["pk"]),
+            to_unicode(payment["status"]),
+            __value(payment_value),
+            to_unicode(payment_fee)
+        ]
+
+        values.append(entry)
+
+    return CommandResult.to_tabular(
+        deposit_payments_table_headers,
+        values,
+        sort=sort
+    )

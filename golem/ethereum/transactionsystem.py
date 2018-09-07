@@ -30,6 +30,7 @@ from twisted.internet import defer
 import requests
 
 from golem import model
+from golem.core import common
 from golem.core.service import LoopingCallService
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
@@ -295,6 +296,30 @@ class TransactionSystem(LoopingCallService):
         :return list: list of dictionaries describing payments
         """
         return self._payments_keeper.get_list_of_all_payments()
+
+    @classmethod
+    def get_deposit_payments_list(cls):
+        result = []
+        for dpayment in model.DepositPayment.select().order_by('dbid').limit(1000):
+            entry = {}
+            entry["pk"] = common.to_unicode(dpayment.dbid)
+            entry["value"] = common.to_unicode(dpayment.value)
+            entry["status"] = common.to_unicode(dpayment.status.name)
+            entry["fee"] = common.to_unicode(dpayment.fee)
+            entry["block_number"] = common.to_unicode(dpayment.block_number)
+            try:
+                tx_hash = "{:x}".format(dpayment.tx)
+            except (ValueError, TypeError):
+                tx_hash = dpayment.tx
+            entry["transaction"] = common.to_unicode(tx_hash)
+            entry["created"] = common.datetime_to_timestamp_utc(
+                dpayment.created_date,
+            )
+            entry["modified"] = common.datetime_to_timestamp_utc(
+                dpayment.modified_date,
+            )
+            result.append(entry)
+        return result
 
     def get_subtasks_payments(
             self,

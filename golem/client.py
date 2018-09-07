@@ -1151,6 +1151,9 @@ class Client(HardwarePresetsMixin):
 
         return [item(income) for income in incomes]
 
+    def get_deposit_payments_list(self):
+        return self.transaction_system.get_deposit_payments_list()
+
     def get_withdraw_gas_cost(
             self,
             amount: Union[str, int],
