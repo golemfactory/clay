@@ -38,8 +38,8 @@ def encode_obj_to_str(obj: Any):
 
 data = decode_str_to_obj(params.data)
 
-# solution = data.function(*data.args, **data.kwargs)
-solution = data["function"](*data["args"], **data["kwargs"])
+solution = data.function(*data.args, **data.kwargs)
+# solution = data["function"](*data["args"], **data["kwargs"])
 solution = encode_obj_to_str(solution)
 
 # result_path = os.path.join(params.OUTPUT_DIR, f"{params.subtask_id}.{params.RESULT_EXT}")

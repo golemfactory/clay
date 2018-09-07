@@ -14,5 +14,5 @@ class RunFVerifier(CoreVerifier):
         else:
             self.subtask_info = None
 
-    def _verify_result(self, results: Dict[str, Any]):
-        pass
+    # def start_verification(self, verification_data):
+    #     self.results = verification_data["results"]

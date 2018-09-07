@@ -16,5 +16,5 @@ RUN echo 'export PATH=/opt/conda/bin:$PATH' > /etc/profile.d/conda.sh && \
 ENV PATH /opt/conda/bin:$PATH
 
 RUN pip install cloudpickle
-
+RUN pip install git+https://github.com/inexxt/golem_remote.git
 RUN rm /usr/bin/python && ln -s /opt/conda/bin/python /usr/bin/python

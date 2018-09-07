@@ -39,7 +39,6 @@ class RunFTypeInfo(CoreTaskTypeInfo):
 class RunF(CoreTask):
     ENVIRONMENT_CLASS = RunFEnvironment
     VERIFIER_CLASS = RunFVerifier
-    VERIFICATION_QUEUE = None
 
     RESULT_EXT = "result"
 
@@ -70,19 +69,12 @@ class RunF(CoreTask):
         )
         self.finished = False
 
-    # S = 0
-    # E = 1000
-
     def __getstate__(self):
         state = self.__dict__.copy()
         del state["submitted_subtasks"]
         del state["finished_subtasks"]
-        # if "VERIFICATION_QUEUE" in state:  # TODO why do I need this
-        #     del state["VERIFICATION_QUEUE"]
-        # l = list(state.items())
-        # S = self.S
-        # E = self.E
-        # return dict(l[S:E])
+        if "VERIFICATION_QUEUE" in state:  # TODO why do I need this
+            del state["VERIFICATION_QUEUE"]
         del state["listeners"]  # TODO why?
         return state
 
@@ -100,15 +92,15 @@ class RunF(CoreTask):
             port=td.options.queue_port
         )
         self.listeners = []
-        # self.VERIFICATION_QUEUE = VerificationQueue()  # TODO why do I need this
+        self.VERIFICATION_QUEUE = VerificationQueue()  # TODO why do I need this
 
     def short_extra_data_repr(self, extra_data):
         return "Runf extra_data: {}".format(extra_data)
 
     def _extra_data(self, perf_index=0.0) -> ComputeTaskDef:
-        data = self._get_example_data()
-        queue_id = str(uuid4())
-        # queue_id, data = self.submitted_subtasks.get_nowait()
+        # data = self._get_example_data()
+        # queue_id = str(uuid4())
+        queue_id, data = self.submitted_subtasks.pop_nowait()
 
         subtask_id = self.create_subtask_id()
 
@@ -162,7 +154,8 @@ class RunF(CoreTask):
         ].accept()
         self.num_tasks_received += 1
 
-        result_file = [t for t in result_files if self.RESULT_EXT in t]
+        # result_file = [t for t in result_files if self.RESULT_EXT in t]
+        result_file = [t for t  in self.results[subtask_id] if self.RESULT_EXT in t]  # TODO what the ...?
         assert len(result_file) == 1
         result_file = result_file[0]
 
