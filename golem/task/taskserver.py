@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import functools
 import itertools
 import logging
 import os
@@ -13,7 +14,7 @@ from pydispatch import dispatcher
 from twisted.internet.defer import inlineCallbacks
 
 from apps.appsmanager import AppsManager
-from apps.core.task.coretask import CoreTask
+from apps.core.task.coretask import CoreTask, AcceptClientVerdict
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.environments.environment import SupportStatus, UnsupportReason
@@ -31,6 +32,7 @@ from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
 from golem.utils import decode_hex, pubkeytoaddr
 
+from . import exceptions
 from .result.resultmanager import ExtractedPackage
 from .server import resources
 from .server import concent
@@ -130,18 +132,34 @@ class TaskServer(
             signal='golem.taskmanager'
         )
 
-    def sync_network(self):
-        super().sync_network(timeout=self.last_message_time_threshold)
-        self._sync_pending()
-        self.__send_waiting_results()
-        self.task_computer.run()
-        self.task_connections_helper.sync()
-        self._sync_forwarded_session_requests()
-        self.__remove_old_tasks()
-        self.__remove_old_sessions()
-        concent.process_messages_received_from_concent(
-            concent_service=self.client.concent_service,
+    def sync_network(self, timeout=None):
+        if timeout is None:
+            timeout = self.last_message_time_threshold
+        jobs = (
+            functools.partial(
+                super().sync_network,
+                timeout=timeout,
+            ),
+            self._sync_pending,
+            self.__send_waiting_results,
+            self.task_computer.run,
+            self.task_connections_helper.sync,
+            self._sync_forwarded_session_requests,
+            self.__remove_old_tasks,
+            self.__remove_old_sessions,
+            functools.partial(
+                concent.process_messages_received_from_concent,
+                concent_service=self.client.concent_service,
+            ),
         )
+
+        for job in jobs:
+            try:
+                logger.debug("TServer sync running: job=%r", job)
+                job()
+            except Exception:  # pylint: disable=broad-except
+                logger.exception("TaskServer.sync_network job %r failed", job)
+
         if next(tmp_cycler) == 0:
             logger.debug('TASK SERVER TASKS DUMP: %r', self.task_manager.tasks)
             logger.debug('TASK SERVER TASKS STATES: %r',
@@ -320,8 +338,11 @@ class TaskServer(
 
             return self.task_keeper.add_task_header(header)
 
-        except ValueError:
-            logger.warning("Wrong task header received", exc_info=True)
+        except exceptions.TaskHeaderError as e:
+            logger.warning("Wrong task header received: %s", e)
+            return False
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Task header validation failed")
             return False
 
     def verify_header_sig(self, header: TaskHeader):
@@ -333,10 +354,10 @@ class TaskServer(
     def remove_task_header(self, task_id) -> bool:
         return self.task_keeper.remove_task_header(task_id)
 
-    def add_task_session(self, subtask_id, session):
+    def add_task_session(self, subtask_id, session: TaskSession):
         self.task_sessions[subtask_id] = session
 
-    def remove_task_session(self, task_session):
+    def remove_task_session(self, task_session: TaskSession):
         self.remove_pending_conn(task_session.conn_id)
         self.remove_responses(task_session.conn_id)
 
@@ -631,6 +652,13 @@ class TaskServer(
             logger.info(f'network mask mismatch: {ids}')
             return False
 
+        if task.should_accept_client(node_id) != AcceptClientVerdict.ACCEPTED:
+            logger.info(f'provider {node_id} is not allowed'
+                        f' for this task at this moment '
+                        f'(either waiting for results or previously failed)')
+            return False
+
+        logger.debug(f'provider {node_id} can be accepted')
         return True
 
     def should_accept_requestor(self, node_id):
@@ -678,7 +706,7 @@ class TaskServer(
     #   CONNECTION REACTIONS    #
     #############################
     def __connection_for_task_request_established(
-            self, session, conn_id, node_name, key_id, task_id,
+            self, session: TaskSession, conn_id, node_name, key_id, task_id,
             estimated_performance, price, max_resource_size, max_memory_size,
             num_cores):
         self.new_session_prepare(
@@ -836,7 +864,11 @@ class TaskServer(
         self.remove_pending_conn(ans_conn_id)
         self.remove_responses(ans_conn_id)
 
-    def new_session_prepare(self, session, subtask_id, key_id, conn_id):
+    def new_session_prepare(self,
+                            session: TaskSession,
+                            subtask_id: str,
+                            key_id: str,
+                            conn_id: str):
         self.remove_forwarded_session_request(key_id)
         session.task_id = subtask_id
         session.key_id = key_id

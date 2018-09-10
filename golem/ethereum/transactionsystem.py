@@ -75,6 +75,8 @@ class TransactionSystem(LoopingCallService):
         self._last_gnt_update: Optional[float] = None
         self._payments_locked: int = 0
         self._gntb_locked: int = 0
+        # Amortized gas cost per payment used when dealing with locks
+        self._eth_per_payment: int = 0
 
     def backwards_compatibility_tx_storage(self, old_datadir: Path) -> None:
         if self.running:
@@ -146,6 +148,12 @@ class TransactionSystem(LoopingCallService):
                 self._gnt_conversion_status = ConversionStatus.UNFINISHED
 
         self._payment_processor = PaymentProcessor(self._sci)
+        self._eth_per_payment = self._current_eth_per_payment()
+        recipients_count = self._payment_processor.recipients_count
+        if recipients_count > 0:
+            required_eth = recipients_count * self._eth_per_payment
+            if required_eth > self._eth_balance:
+                self._eth_per_payment = self._eth_balance // recipients_count
 
         self._subscribe_to_events()
 
@@ -288,12 +296,11 @@ class TransactionSystem(LoopingCallService):
     def get_locked_eth(self) -> int:
         if not self._payment_processor:
             raise Exception('Start was not called')
-        eth = self._payment_processor.reserved_eth + \
-            self.eth_for_batch_payment(self._payments_locked)
-        if self._payments_locked > 0 and \
-           self._payment_processor.reserved_eth == 0:
-            eth += self._eth_base_for_batch_payment()
-        return min(eth, self._eth_balance)
+        payments_num = self._payments_locked + \
+            self._payment_processor.recipients_count
+        if payments_num == 0:
+            return 0
+        return payments_num * self._eth_per_payment
 
     def get_available_gnt(self, account_address: Optional[str] = None) -> int:
         # FIXME Use decorator to DRY #3190
@@ -331,9 +338,6 @@ class TransactionSystem(LoopingCallService):
             raise NotEnoughFunds(gnt, self.get_available_gnt(), 'GNT')
 
         eth = self.eth_for_batch_payment(num)
-        if self._payments_locked == 0 and \
-           self._payment_processor.reserved_eth == 0:
-            eth += self._eth_base_for_batch_payment()
         eth_available = self.get_available_eth()
         if eth > eth_available:
             raise NotEnoughFunds(eth, eth_available, 'ETH')
@@ -343,8 +347,11 @@ class TransactionSystem(LoopingCallService):
             gnt / denoms.ether,
             num,
         )
+        locked_eth = self.get_locked_eth()
         self._gntb_locked += gnt
         self._payments_locked += num
+        self._eth_per_payment = (eth + locked_eth) // \
+            (self._payments_locked + self._payment_processor.recipients_count)
 
     def unlock_funds_for_payments(self, price: int, num: int) -> None:
         gnt = price * num
@@ -404,12 +411,23 @@ class TransactionSystem(LoopingCallService):
     def eth_for_batch_payment(self, num_payments: int) -> int:
         if not self._payment_processor:
             raise Exception('Start was not called')
-        return self._payment_processor.get_gas_cost_per_payment() * num_payments
+        num_payments += self._payments_locked + \
+            self._payment_processor.recipients_count
+        required = self._current_eth_per_payment() * num_payments + \
+            self._eth_base_for_batch_payment()
+        return required - self.get_locked_eth()
 
     def _eth_base_for_batch_payment(self) -> int:
-        if not self._payment_processor:
+        if not self._sci:
             raise Exception('Start was not called')
-        return self._payment_processor.ETH_BATCH_PAYMENT_BASE
+        return self._sci.GAS_BATCH_PAYMENT_BASE * self._sci.GAS_PRICE
+
+    def _current_eth_per_payment(self) -> int:
+        if not self._sci:
+            raise Exception('Start was not called')
+        gas_price = \
+            min(self._sci.GAS_PRICE, 2 * self._sci.get_current_gas_price())
+        return gas_price * self._sci.GAS_PER_PAYMENT
 
     def get_withdraw_gas_cost(
             self,

@@ -62,18 +62,19 @@ class TestTransactionSystem(TestWithDatabase):
            new_callable=PropertyMock)
     def test_stop(self, mock_is_service_running):
         with patch('twisted.internet.task.LoopingCall.start'), \
-                patch('twisted.internet.task.LoopingCall.stop'), \
-                patch('golem.ethereum.transactionsystem.PaymentProcessor'):
+                patch('twisted.internet.task.LoopingCall.stop'):
             mock_is_service_running.return_value = False
             e = self._make_ets()
 
             mock_is_service_running.return_value = True
+            e._payment_processor = Mock()  # noqa pylint: disable=no-member
             e.stop()
             e._payment_processor.sendout.assert_called_once_with(0)  # noqa pylint: disable=no-member
 
     @patch('golem.ethereum.transactionsystem.NodeProcess', Mock())
     @patch('golem.ethereum.transactionsystem.new_sci')
     def test_chain_arg(self, new_sci):
+        new_sci.return_value = self.sci
         ets = TransactionSystem(
             self.new_path,
             Mock(
@@ -218,16 +219,14 @@ class TestTransactionSystem(TestWithDatabase):
         price = 5 * denoms.ether
         num = 3
 
+        eth_estimation = self.ets.eth_for_batch_payment(num)
         self.ets.lock_funds_for_payments(price, num)
-        assert self.ets.get_locked_eth() == \
-            self.ets.eth_for_batch_payment(num) + \
-            self.ets._eth_base_for_batch_payment()
+        locked_eth = self.ets.get_locked_eth()
+        assert locked_eth == eth_estimation
         assert self.ets.get_locked_gnt() == price * num
 
         self.ets.unlock_funds_for_payments(price, num - 1)
-        assert self.ets.get_locked_eth() == \
-            self.ets.eth_for_batch_payment(1) + \
-            self.ets._eth_base_for_batch_payment()
+        assert self.ets.get_locked_eth() == locked_eth // num
         assert self.ets.get_locked_gnt() == price
 
         self.ets.unlock_funds_for_payments(price, 1)
@@ -239,6 +238,21 @@ class TestTransactionSystem(TestWithDatabase):
 
         with self.assertRaisesRegex(Exception, "Can't unlock .* GNT"):
             self.ets.unlock_funds_for_payments(1, 1)
+
+    def test_locking_funds_changing_gas_price(self):
+        eth_balance = 10 * denoms.ether
+        gnt_balance = 1000 * denoms.ether
+        self.sci.get_eth_balance.return_value = eth_balance
+        self.sci.get_gntb_balance.return_value = gnt_balance
+        self.ets._refresh_balances()
+
+        assert self.ets.get_locked_eth() == 0
+        assert self.ets.get_locked_gnt() == 0
+
+        self.ets.lock_funds_for_payments(5, 3)
+        locked_eth = self.ets.get_locked_eth()
+        self.sci.get_current_gas_price.return_value = 111
+        assert self.ets.get_locked_eth() == locked_eth
 
     def test_convert_gnt(self):
         amount = 1000 * denoms.ether
