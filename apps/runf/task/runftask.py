@@ -5,6 +5,7 @@ from uuid import uuid4
 
 import enforce
 from golem_messages.message import ComputeTaskDef
+from golem_remote import encode_obj_to_str
 
 from apps.blender.verification_queue import VerificationQueue
 from apps.core.task import coretask
@@ -12,9 +13,8 @@ from apps.core.task.coretask import (CoreTask,
                                      CoreTaskBuilder,
                                      CoreTaskTypeInfo)
 from apps.runf.runfenvironment import RunFEnvironment
-from apps.runf.task.queue_helpers import Queue
-from apps.runf.task.runf_helpers import SubtaskID, SubtaskDefinition, \
-    SubtaskData
+from golem_remote.queue_helpers import Queue
+from golem_remote.runf_helpers import SubtaskID, SubtaskDefinition, SubtaskData
 from apps.runf.task.runftaskstate import RunFDefaults, RunFOptions
 from apps.runf.task.runftaskstate import RunFDefinition
 from apps.runf.task.verifier import RunFVerifier
@@ -178,37 +178,14 @@ class RunF(CoreTask):
         self.subtasks_being_processed = set()  # TODO I should send "abort" signal
 
     def _get_example_data(self):
-        ###################################################
-        # TODO code from golem_remote/encoding.py
-        # change that when golem_remote will be published to pypi
-        import base64
-        import codecs
-        import cloudpickle as pickle
-        import json
-        from typing import Any
-
-        def encode_obj_to_str(obj: Any):
-            result = pickle.dumps(obj)
-            result = base64.b64encode(result)
-            result = codecs.decode(result, "ascii")
-            result = {"r": result}
-            result = json.dumps(result)
-            return result
-        ###################################################
-
         f = lambda x: x + x
         args = [2]
         kwargs = {}
-        # data = SubtaskData(
-        #     function=f,
-        #     args=args,
-        #     kwargs=kwargs
-        # )
-        data = {
-            "function": f,
-            "args": args,
-            "kwargs": kwargs
-        }
+        data = SubtaskData(
+            function=f,
+            args=args,
+            kwargs=kwargs
+        )
         return encode_obj_to_str(data)
 
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:

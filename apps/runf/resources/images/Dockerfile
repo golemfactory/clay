@@ -15,6 +15,12 @@ RUN echo 'export PATH=/opt/conda/bin:$PATH' > /etc/profile.d/conda.sh && \
 
 ENV PATH /opt/conda/bin:$PATH
 
+# Python default pickler doesn't support closures
 RUN pip install cloudpickle
+
+# This is needed to unpack the data and pack the result
 RUN pip install git+https://github.com/inexxt/golem_remote.git
+
+# TODO it is temporarly done like that because Golem just runs
+# /usr/bin/python in the entrypoint.sh
 RUN rm /usr/bin/python && ln -s /opt/conda/bin/python /usr/bin/python
