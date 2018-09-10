@@ -36,6 +36,7 @@ from golem.core.common import (
     string_to_timeout,
     to_unicode,
 )
+from golem.core.deferred import sync_wait
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import KeysAuth
@@ -798,8 +799,10 @@ class Client(HardwarePresetsMixin):
             return result
         return self.task_test_result
 
-    def create_task(self, t_dict) -> Tuple[Optional[str], Optional[str]]:
+    def create_task(self, t_dict, sync: bool = False) \
+            -> Tuple[Optional[str], Optional[str]]:
         """
+        :param sync: Wait for creating task completion. Used in tests.
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
@@ -809,6 +812,8 @@ class Client(HardwarePresetsMixin):
             # deferred completion.
             deferred.addErrback(
                 lambda err: logger.error("Cannot create task: %r", err))
+            if sync:
+                sync_wait(deferred)
             return task_id, None
         except Exception as ex:  # pylint: disable=broad-except
             logger.error("Cannot create task %r: %s", t_dict, str(ex))
@@ -818,8 +823,10 @@ class Client(HardwarePresetsMixin):
         logger.debug('Aborting task "%r" ...', task_id)
         self.task_server.task_manager.abort_task(task_id)
 
-    def restart_task(self, task_id: str) -> Tuple[Optional[str], Optional[str]]:
+    def restart_task(self, task_id: str, sync: bool = False) \
+            -> Tuple[Optional[str], Optional[str]]:
         """
+        :param sync: Wait for creating task completion. Used in tests.
         :return: (new_task_id, None) on success; (None, error_message)
                  on failure
         """
@@ -843,7 +850,7 @@ class Client(HardwarePresetsMixin):
             return None, "Task not found: '{}'".format(task_id)
 
         task_dict.pop('id', None)
-        new_task_id, msg = self.create_task(task_dict)
+        new_task_id, msg = self.create_task(task_dict, sync)
         if new_task_id:
             task_manager.put_task_in_restarted_state(task_id)
 

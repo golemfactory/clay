@@ -480,12 +480,12 @@ class TestClient(TestDatabaseWithReactor):
             'type': 'Dummy',
         }
 
-        task_id, error = self.client.create_task(task_dict)
+        task_id, error = self.client.create_task(task_dict, sync=True)
 
         assert task_id
         assert not error
 
-        new_task_id, error = self.client.restart_task(task_id)
+        new_task_id, error = self.client.restart_task(task_id, sync=True)
         assert new_task_id
         assert not error
         assert len(task_manager.tasks_states) == 2
@@ -1224,7 +1224,7 @@ class TestClientRPCMethods(TestDatabaseWithReactor, LogTestCase):
 
         c = self.client
         c.enqueue_new_task = Mock()
-        c.create_task(DictSerializer.dump(t))
+        c.create_task(DictSerializer.dump(t), sync=True)
         self.assertTrue(c.enqueue_new_task.called)
 
     def test_delete_task(self, *_):
