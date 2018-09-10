@@ -10,6 +10,7 @@ from golem.docker.commands.docker import DockerCommandHandler
 from golem.docker.config import DockerConfigManager, APPS_DIR, IMAGES_INI, \
     CONSTRAINT_KEYS, MIN_CONSTRAINTS, DEFAULTS
 from golem.docker.hypervisor.docker_for_mac import DockerForMac
+from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.docker.hypervisor.xhyve import XhyveHypervisor
 from golem.report import report_calls, Component
@@ -78,8 +79,12 @@ class DockerManager(DockerConfigManager):
 
     def _select_hypervisor(self):
         if is_windows():
-            if VirtualBoxHypervisor.is_available():
-                return VirtualBoxHypervisor.instance(self.get_config)
+            if HyperVHypervisor.is_available():
+                return HyperVHypervisor.instance(self.get_config)
+            # TODO: Re-enable when the installer is updated
+            # to include Docker Toolbox as a fallback option
+            # if VirtualBoxHypervisor.is_available():
+            #     return VirtualBoxHypervisor.instance(self.get_config)
         elif is_osx():
             if DockerForMac.is_available():
                 return DockerForMac.instance(self.get_config)
