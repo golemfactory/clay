@@ -2,10 +2,12 @@ import logging
 import os
 import posixpath
 import threading
+from typing import Dict, Optional
 
 import docker.errors
 
 from golem.core.common import is_windows, nt_path_to_posix_path, is_osx
+from golem.docker.image import DockerImage
 from .client import local_client
 
 __all__ = ['DockerJob']
@@ -56,9 +58,15 @@ class DockerJob(object):
     PARAMS_FILE = "params.py"
 
     # pylint:disable=too-many-arguments
-    def __init__(self, image, script_src, parameters,
-                 resources_dir, work_dir, output_dir,
-                 host_config=None, container_log_level=None):
+    def __init__(self,
+                 image: DockerImage,
+                 script_src: str,
+                 parameters: Dict,
+                 resources_dir: str,
+                 work_dir: str,
+                 output_dir: str,
+                 host_config: Optional[Dict] = None,
+                 container_log_level: Optional[int] = None) -> None:
         """
         :param DockerImage image: Docker image to use
         :param str script_src: source of the task script file
@@ -67,7 +75,6 @@ class DockerJob(object):
         :param str work_dir: directory for temporary work files
         :param str output_dir: directory for output files
         """
-        from golem.docker.image import DockerImage
         if not isinstance(image, DockerImage):
             raise TypeError('Incorrect image type: {}. '
                             'Should be: DockerImage'.format(type(image)))

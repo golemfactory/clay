@@ -1,3 +1,4 @@
+# pylint: disable=protected-access, too-many-lines
 import os
 import random
 import uuid
@@ -11,6 +12,7 @@ from golem_messages import factories as msg_factories
 from requests import HTTPError
 
 import golem
+from apps.core.task.coretask import AcceptClientVerdict
 from golem import model
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -26,6 +28,7 @@ from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import tasksession
 from golem.task.masking import Mask
+from golem.task.server import concent as server_concent
 from golem.task.taskbase import TaskHeader, ResultType
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
@@ -340,8 +343,21 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                           if th["fixed_header"]["task_id"] == task_id2)
         self.assertEqual(saved_task["signature"], task_header["signature"])
 
+    @patch("golem.task.taskserver.TaskServer._sync_pending")
     def test_sync(self, *_):
         self.ts.sync_network()
+        self.ts._sync_pending.assert_called_once_with()
+
+    @patch("golem.task.taskserver.TaskServer._sync_pending",
+           side_effect=RuntimeError("Intentional failure"))
+    @patch("golem.task.server.concent.process_messages_received_from_concent")
+    def test_sync_job_fails(self, *_):
+        self.ts.sync_network()
+        # Other jobs should be called even in case of failure of previous ones
+        # pylint: disable=no-member
+        server_concent.process_messages_received_from_concent\
+            .assert_called_once()
+        # pylint: enable=no-member
 
     def test_forwarded_session_requests(self, *_):
         ts = self.ts
@@ -591,6 +607,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         node_id = "0xdeadbeef"
         task_id = task.header.task_id
         ts.task_manager.tasks[task_id] = task
+        task.should_accept_client.return_value = AcceptClientVerdict.ACCEPTED
 
         min_accepted_perf = 77
         env = Mock()
@@ -670,6 +687,19 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         # given
         task.header.mask = Mask()
+        task.should_accept_client.return_value = AcceptClientVerdict.REJECTED
+        # then
+        with self.assertLogs(logger, level='INFO') as cm:
+            assert not ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
+            _assert_log_msg(
+                cm,
+                f'INFO:{logger.name}:provider {node_id}'
+                f' is not allowed for this task at this moment '
+                f'(either waiting for results or previously failed)'
+            )
+
+        # given
+        task.header.mask = Mask()
         ts.acl.disallow(node_id)
         # then
         with self.assertLogs(logger, level='INFO') as cm:
@@ -678,7 +708,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 cm,
                 f'INFO:{logger.name}:provider node is blacklisted; '
                 f'provider_id: {node_id}, task_id: {task_id}')
-
 
     def test_should_accept_requestor(self, *_):
         ts = self.ts
@@ -852,20 +881,22 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         extra_data.ctd = ComputeTaskDef()
         extra_data.ctd['task_id'] = task_mock.header.task_id
         extra_data.ctd['subtask_id'] = "xxyyzz"
-        extra_data.should_wait = False
         task_mock.query_extra_data.return_value = extra_data
         task_mock.task_definition.subtask_timeout = 3600
+        task_mock.should_accept_client.return_value = \
+            AcceptClientVerdict.ACCEPTED
 
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states[task_id].status = \
             ts.task_manager.activeStatus[0]
-        subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
+        subtask = ts.task_manager.get_next_subtask(
             "DEF",
             "DEF",
             task_id,
             1000, 10,
             5, 10, 2,
             "10.10.10.10")
+        assert subtask is not None
         expected_value = ceil(1031 * 1010 / 3600)
         ts.task_manager.set_subtask_value("xxyyzz", expected_value)
         prev_calls = trust.COMPUTED.increase.call_count
@@ -887,7 +918,6 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         extra_data = Mock()
         extra_data.ctd = ComputeTaskDef()
         extra_data.ctd['subtask_id'] = "xxyyzz"
-        extra_data.should_wait = False
 
         task_mock = get_mock_task("xyz", "xxyyzz")
         task_id = task_mock.header.task_id
@@ -895,13 +925,16 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         extra_data.ctd['task_id'] = task_id
         task_mock.query_extra_data.return_value = extra_data
         task_mock.task_definition.subtask_timeout = 3600
+        task_mock.should_accept_client.return_value = \
+            AcceptClientVerdict.ACCEPTED
 
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states[task_id].status = \
             ts.task_manager.activeStatus[0]
-        subtask, wrong_task, wait = ts.task_manager.get_next_subtask(
+        subtask = ts.task_manager.get_next_subtask(
             "DEF", "DEF", task_id, 1000, 10, 5, 10, 2, "10.10.10.10")
 
+        assert subtask is not None
         ts.accept_result("xxyyzz", "key", "eth_address")
         self.assertEqual(
             ts.client.transaction_system.add_payment_info.call_count, 0)
