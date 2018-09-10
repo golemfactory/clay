@@ -1,3 +1,4 @@
+# pylint: disable=protected-access,too-many-lines
 import json
 import os
 import time
@@ -6,7 +7,11 @@ from random import Random
 from types import MethodType
 from unittest import mock
 from unittest import TestCase
-from unittest.mock import call, Mock, MagicMock, patch
+from unittest.mock import (
+    MagicMock,
+    Mock,
+    patch,
+)
 
 from ethereum.utils import denoms
 from freezegun import freeze_time
@@ -42,7 +47,6 @@ from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     TaskTestStatus
 from golem.task.tasktester import TaskTester
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.testwithdatabase import TestWithDatabase
 from golem.tools.testwithreactor import TestWithReactor
 
 random = Random(__name__)
@@ -95,7 +99,7 @@ def make_mock_ets(eth=100, gnt=100):
 )
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
-class TestClient(TestWithDatabase, TestWithReactor):
+class TestClient(testutils.DatabaseFixture, TestWithReactor):
     # FIXME: if we someday decide to run parallel tests,
     # this may completely break. Issue #2456
     # pylint: disable=attribute-defined-outside-init
@@ -822,7 +826,7 @@ class TestTaskCleanerService(TestWithReactor):
 
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
-class TestClientRPCMethods(TestWithDatabase, LogTestCase):
+class TestClientRPCMethods(testutils.DatabaseFixture, LogTestCase):
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
@@ -1560,17 +1564,59 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
         return session
 
 
-class TestEventListener(TestCase):
+def test_task_computer_event_listener():
+    client = Mock()
+    listener = ClientTaskComputerEventListener(client)
 
-    def test_task_computer_event_listener(self):
-        client = Mock()
-        listener = ClientTaskComputerEventListener(client)
+    listener.lock_config(True)
+    client.lock_config.assert_called_with(True)
 
-        listener.lock_config(True)
-        client.lock_config.assert_called_with(True)
+    listener.lock_config(False)
+    client.lock_config.assert_called_with(False)
 
-        listener.lock_config(False)
-        client.lock_config.assert_called_with(False)
+
+@patch(
+    'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
+)
+class TestDepositBalance(testutils.DatabaseFixture):
+    def setUp(self):
+        super().setUp()
+        self.client = Client(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=(Mock(_private_key='a' * 32)),
+            database=Mock(),
+            transaction_system=Mock(),
+            connect_to_known_hosts=False,
+            use_docker_manager=False,
+            use_monitor=False
+        )
+
+    def tearDown(self):
+        self.client.quit()
+
+    @freeze_time("2018-01-01 01:00:00")
+    def test_unlocking(self, *_):
+        self.client.transaction_system.concent_timelock\
+            .return_value = int(time.time())
+        with freeze_time("2018-01-01 00:59:59"):
+            result = sync_wait(self.client.get_deposit_balance())
+        self.assertEqual(result['status'], 'unlocking')
+
+    @freeze_time("2018-01-01 01:00:00")
+    def test_unlocked(self, *_):
+        self.client.transaction_system.concent_timelock\
+            .return_value = int(time.time())
+        with freeze_time("2018-01-01 01:00:01"):
+            result = sync_wait(self.client.get_deposit_balance())
+        self.assertEqual(result['status'], 'unlocked')
+
+    def test_locked(self, *_):
+        self.client.transaction_system.concent_timelock\
+            .return_value = 0
+        result = sync_wait(self.client.get_deposit_balance())
+        self.assertEqual(result['status'], 'locked')
 
 
 class TestClientPEP8(TestCase, testutils.PEP8MixIn):

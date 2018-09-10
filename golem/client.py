@@ -1145,9 +1145,9 @@ class Client(HardwarePresetsMixin):
         if timelock == 0:
             status = DepositStatus.locked
         elif timelock < now:
-            status = DepositStatus.unlocking
-        else:
             status = DepositStatus.unlocked
+        else:
+            status = DepositStatus.unlocking
         return {
             'value': str(balance),
             'status': status.value,
