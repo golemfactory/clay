@@ -6,7 +6,7 @@ from random import Random
 from types import MethodType
 from unittest import mock
 from unittest import TestCase
-from unittest.mock import call, Mock, MagicMock, patch
+from unittest.mock import Mock, MagicMock, patch
 
 from ethereum.utils import denoms
 from freezegun import freeze_time
