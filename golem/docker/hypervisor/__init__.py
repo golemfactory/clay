@@ -2,6 +2,7 @@ import logging
 import subprocess
 from abc import ABCMeta
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Dict, Optional
 
 from golem.docker.commands.docker import DockerCommandHandler
@@ -120,3 +121,6 @@ class Hypervisor(metaclass=ABCMeta):
     @contextmanager
     def recover_ctx(self, name: Optional[str] = None):
         raise NotImplementedError
+
+    def check_work_dir(self, work_dir: Path) -> None:
+        pass

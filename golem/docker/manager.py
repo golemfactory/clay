@@ -1,8 +1,9 @@
 import logging
 import os
 import time
+from pathlib import Path
 from threading import Thread
-from typing import Optional
+from typing import Optional, Callable, Any
 
 from golem.core.common import is_linux, is_windows, is_osx
 from golem.core.threads import ThreadQueueExecutor
@@ -95,8 +96,17 @@ class DockerManager(DockerConfigManager):
     def get_config(self) -> dict:
         return dict(self._config)
 
-    def update_config(self, status_callback, done_callback, in_background=True):
+    def update_config(
+            self,
+            status_callback: Callable[[], Any],
+            done_callback: Callable[[bool], Any],
+            work_dir: Path,
+            in_background: bool = True
+    ) -> None:
         self.check_environment()
+
+        if self.hypervisor:
+            self.hypervisor.check_work_dir(work_dir)
 
         if in_background:
             thread = Thread(target=self._wait_for_tasks,

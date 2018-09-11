@@ -1,9 +1,11 @@
 import logging
+from pathlib import Path
 from typing import Optional, Union, Any, List, Dict
 
 from os_win.exceptions import OSWinException
 from os_win.utils.compute.vmutils import VMUtils
 
+from golem.docker import smbshare
 from golem.docker.config import CONSTRAINT_KEYS
 from golem.docker.hypervisor.docker_machine import DockerMachineHypervisor
 
@@ -26,6 +28,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
     )
     BOOT2DOCKER_URL = "https://github.com/golemfactory/boot2docker/releases/" \
                       "download/v18.06.0-ce%2Bdvm-v0.35/boot2docker.iso"
+    GOLEM_DOCKER_USER = "golem-docker"
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -77,3 +80,6 @@ class HyperVHypervisor(DockerMachineHypervisor):
             logger.exception(f'Hyper-V: reconfiguration of VM "{name}" failed')
 
         logger.info(f'Hyper-V: reconfiguration of VM "{name}" finished')
+
+    def check_work_dir(self, work_dir: Path) -> None:
+        smbshare.create_share(self.GOLEM_DOCKER_USER, work_dir)
