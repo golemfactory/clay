@@ -26,7 +26,7 @@ class FundsLocker(LoopingCallService):
         super().__init__(interval_seconds)
         self.task_lock = {}
         self.transaction_system = transaction_system
-        self.dump_path = datadir / "fundslockv1.pickle"
+        self.dump_path = datadir / "fundslockv2.pickle"
         self.persist = persist
         self.restore()
 
@@ -44,12 +44,12 @@ class FundsLocker(LoopingCallService):
             tfl.price,
             tfl.num_tasks,
         )
-        self.task_lock[task_id] = tfl
-        self.dump_locks()
         self.transaction_system.lock_funds_for_payments(
             tfl.price,
             tfl.num_tasks,
         )
+        self.task_lock[task_id] = tfl
+        self.dump_locks()
 
     def remove_old(self):
         time_ = time.time()
@@ -114,3 +114,14 @@ class FundsLocker(LoopingCallService):
             task_lock.price,
             task_lock.num_tasks,
         )
+
+    def add_subtask(self, task_id, num=1):
+        task_lock = self.task_lock.get(task_id)
+        if task_lock is None:
+            logger.warning("I can't add payment lock for subtask from task "
+                           "%r: unkown task.", task_id)
+            return
+        logger.info('Adding subtask lock for task %r', task_id)
+        task_lock.num_tasks += num
+        self.dump_locks()
+        self.transaction_system.lock_funds_for_payments(task_lock.price, num)

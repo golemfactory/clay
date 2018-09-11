@@ -324,6 +324,10 @@ class TestClient(TestWithDatabase, TestWithReactor):
         )
 
         self.client.task_server = Mock()
+        self.client.task_server.task_manager.get_frame_subtasks.return_value = {
+            'subtask_id': Mock(),
+        }
+
         self.client.restart_frame_subtasks('tid', 10)
 
         self.client.task_server.task_manager.restart_frame_subtasks.\

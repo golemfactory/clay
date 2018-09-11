@@ -104,6 +104,21 @@ class TestFundsLocker(TempDirFixture):
         task.header.deadline = timeout_to_deadline(3.5)
         fl.lock_funds(task)
 
+    def test_exception(self):
+        self.ts.lock_funds_for_payments.side_effect = Exception
+        fl = FundsLocker(self.ts, self.new_path)
+        task = mock.MagicMock()
+        task.header.task_id = "abc"
+        task.subtask_price = 320
+        task.total_tasks = 10
+        task.header.deadline = timeout_to_deadline(0.5)
+        with self.assertRaises(Exception):
+            fl.lock_funds(task)
+        self.ts.lock_funds_for_payments.reset_mock()
+        # that restores locks from the storage
+        fl = FundsLocker(self.ts, self.new_path)
+        self.ts.lock_funds_for_payments.assert_not_called()
+
     def test_remove_task(self):
         fl = FundsLocker(self.ts, self.new_path)
         self._add_tasks(fl)

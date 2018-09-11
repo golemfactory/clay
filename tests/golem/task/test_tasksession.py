@@ -180,7 +180,6 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts2 = self._get_requestor_tasksession()
         self._fake_add_task()
 
-        ctd = message.tasks.ComputeTaskDef(task_id=mt.task_id)
         self._set_task_state()
 
         ts2.task_manager.should_wait_for_node.return_value = False
