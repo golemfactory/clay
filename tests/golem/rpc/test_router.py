@@ -257,7 +257,7 @@ class TestRPCNoAuth(_TestRouter):
         # set a new role for admin
         self.state.router.config["workers"][0]["transports"][0]["auth"]["anonymous"] = {  # noqa pylint: disable=line-too-long
             "type": "static",
-            "role": "golem_admin"
+            "role": CrossbarRouter.CrossbarRoles.admin.name
         }
 
         self.state.router.config["workers"][0]["realms"][0]["roles"].append(
