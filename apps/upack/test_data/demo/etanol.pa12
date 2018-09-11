@@ -1,0 +1,5 @@
+spgr pc
+ngr 2
+dexp -20
+rand 500
+print 1

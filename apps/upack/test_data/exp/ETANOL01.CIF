@@ -1,0 +1,70 @@
+data_CSD_CIF_ETANOL01
+_audit_creation_date 2003-04-15
+_audit_creation_method CSD-ConQuest-V1
+_database_code_CSD ETANOL01
+_chemical_formula_sum 'C2 H6 O1'
+_chemical_formula_moiety
+;
+C2 H6 O1
+;
+_journal_coden_Cambridge 640
+_journal_volume 60
+_journal_year 1999
+_journal_page_first 6328
+_journal_name_full 'Phys.Rev.B,Condens.Mat. '
+loop_
+_publ_author_name
+"D.R.Allan"
+"S.J.Clark"
+_chemical_name_systematic
+;
+Ethanol
+;
+_cell_volume    238.995
+_exptl_special_details
+;
+P21/c polymorph
+
+;
+_diffrn_ambient_temperature ?
+_diffrn_ambient_pressure 3000000.0
+_diffrn_special_details
+;
+The study was carried out at room temperature,in the range 283-303K
+
+;
+#These two values have been output from a single CSD field.
+_refine_ls_R_factor_gt 0.17
+_refine_ls_wR_factor_gt 0.17
+_symmetry_cell_setting monoclinic
+_symmetry_space_group_name_H-M 'P 21/c'
+_symmetry_Int_Tables_number 14
+loop_
+_symmetry_equiv_pos_site_id
+_symmetry_equiv_pos_as_xyz
+1 x,y,z
+2 -x,1/2+y,1/2-z
+3 -x,-y,-z
+4 x,-1/2-y,-1/2+z
+_cell_length_a 7.602(3)
+_cell_length_b 4.767(3)
+_cell_length_c 7.265(3)
+_cell_angle_alpha 90
+_cell_angle_beta 114.80(3)
+_cell_angle_gamma 90
+_cell_formula_units_Z 4
+loop_
+_atom_type_symbol
+_atom_type_radius_bond
+C 0.68
+O 0.68
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+O1 O 0.9323(6) 0.3022(13) 0.1618(6)
+C1 C 0.6985(9) -0.0219(21) -0.0554(9)
+C2 C 0.7525(11) 0.2754(25) -0.0025(10)
+#END

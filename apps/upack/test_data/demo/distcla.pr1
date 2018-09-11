@@ -1,0 +1,68 @@
+  
+  D I S T C L U S
+          54  entries read from space group file
+ Reading topology data from:   Ethanol, all atoms                                                            
+  No file IN.DCL present
+      Atom   Type   Molecule
+   1    C1      1       1
+   2    H4      2       1
+   3    H5      2       1
+   4    H6      2       1
+   5    C2      3       1
+   6    H7      2       1
+   7    H8      2       1
+   8    O1      4       1
+   9    H1      5       1
+        9  atoms in each group
+        1  molecules in each group
+     0.50  cutoff limit for pair list
+        0  acceptable number of missed contacts
+     1.00  acceptable energy difference
+   0.0100  acceptable relative volume difference
+   0.0050  allowed distance tolerance
+  No file IN.EXP present, do clustering
+
+ Space group    7  Pc        having importance    7
+ File name Pc                  
+ There were   500 structures read from parameter  file  201
+ NGR =   2 was determined from the coordinate file  (compare Z =  2)
+ There were   500 structures read from coordinate file  201
+
+ No (more) PACK-type parameter files
+ Total number of structures on PACK-files    500   Lowest energy   -55.903
+ No (more) SPF-type files present
+ Importance order -43
+
+Starting DCLUS; maximum number of contacts    1090
+    icount    istruc     mpow      mdiff      mcut    margin      isel
+         1       500    100000       500     49450         0         1
+      14 structures removed out of   500
+  Writing list of clusters
+  Total         486  clusters with         500  entries
+
+ List of  20 best structures
+ Rank  Number    Energy    Volume  List    Z"  Nclus            Title
+    1     427   -55.903   0.07113     1     2      1             Pc-00427                      
+    2     326   -55.472   0.06827     1     1      1             Pc-00326                      
+    3     153   -55.424   0.06830     1     2      1             Pc-00153                      
+    4     229   -55.094   0.07286     1     2      1             Pc-00229                      
+    5     132   -55.048   0.06951     1     2      1             Pc-00132                      
+    6     338   -55.048   0.07287     1     2      1             Pc-00338                      
+    7       2   -55.017   0.07303     1     2      1             Pc-00002                      
+    8     260   -54.851   0.07078     1     2      1             Pc-00260                      
+    9     143   -54.679   0.07094     1     2      1             Pc-00143                      
+   10       1   -54.573   0.07406     1     2      1             Pc-00001                      
+   11     329   -54.304   0.07192     1     2      1             Pc-00329                      
+   12      60   -54.254   0.07172     1     2      1             Pc-00060                      
+   13     200   -54.246   0.07175     1     2      3             Pc-00200                      
+   14     193   -54.236   0.07187     1     2      1             Pc-00193                      
+   15     252   -54.225   0.07351     1     2      1             Pc-00252                      
+   16     311   -54.191   0.07178     1     2      1             Pc-00311                      
+   17       4   -54.174   0.07165     1     2      1             Pc-00004                      
+   18     271   -53.976   0.07308     1     2      1             Pc-00271                      
+   19      61   -53.975   0.07307     1     2      1             Pc-00061                      
+   20     435   -53.677   0.07426     1     2      1             Pc-00435                      
+
+ Clustering done, writing    1 parameter file(s).            Frequencies for Z" =      1     2     3     4 ...
+ File  201   space group Pc           has   500 entries, of which   486 are left:     15   471
+0.620u 0.028s 0:00.96 66.6%	0+0k 0+424io 0pf+0w

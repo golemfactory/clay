@@ -1,0 +1,5 @@
+maxinp 10
+cutoff 1.0  3  3  2  2  0 0
+print 1
+files 1 0 0 1
+latvib 50

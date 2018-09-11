@@ -1,0 +1,16 @@
+ Ethanol, all atoms
+9
+ C1   CS   584
+ H4   HC   551
+ H5   HC   551
+ H6   HC  -551
+ C2   CE   564
+ H7   HC   554
+ H8   HC   554
+ O1   OE   531
+ H1   HO  -521
+ 2 1 3 1 4 1 5 6 5 7 5 8 9
+0
+1
+ 1 5 8 9
+1 5 8

@@ -1,0 +1,120 @@
+  
+  P A C K 1 2
+ Code SPGR   found: SPGR PC                                                                         
+ Code NGR    found: NGR 2                                                                           
+ Code DEXP   found: DEXP -20                                                                        
+ Code PRINT  found: PRINT 1                                                                         
+ Code RAND   found: RAND 500                                                                        
+ Space group    7    Pc      
+ Dipole coefficients    2    0    2
+ LEEST: Reading force field data from: All-atom OPLS, pol. Applequist, TIP3P water, Cl/Br/I adjusted.                  
+    Lennard-Jones potential, Gromos-recipe for combination rule
+ Scaling factors for 1...4 interactions:   0.500   0.500
+ Dielectric constant   1.000
+          19  lines with van der Waals parameters found
+ LEEST: Reading topology data from:   Ethanol, all atoms                                                            
+           5  atom types found
+   0 conformation-determining dihedrals without H and    1 with H
+ Reference atoms for rotational matrices:   1   5   8
+  Molecule           1  from           1  to           9
+  Molecule           2  from          10  to          18
+  cutoff    tole   pressure(atm)
+   0.800  0.0200             0.0
+   inner   intra   icoul  iprint
+       0       1       1       1
+   nrand   emax1   emax2
+     500    40.0 10000.0
+    nrpt   ndihz   ndihh  ireftr...
+      18       0       1       1       5       8
+  Dihedrals:
+   9   8   5   1
+    nrpt  itest1  itest2  itest3
+      18       0       0       0
+  ncycsd   tolsd   stpsd   nresd   shmsd       dtest
+     100  1.0000  0.0010      10  1.0000   0.0000000
+  ncyccg   tolcg   stpcg   depcg   shmcg
+    1000  1.0000  0.0100  1.0000  0.0500
+  stcin:       1.00      1.00      1.00
+ Number of cell parameters            4
+ Steepest descent parameters:
+    1.0000    1.0000    1.0000    1.0000
+ Total mass:   92.138800000000003     
+ Searching connections for dihedral   9   8   5   1
+    Connected to atom   8 are atoms   9
+    Connected to atom   5 are atoms   1   6   7   2   3   4
+ Searching connections for dihedral  18  17  14  10
+    Connected to atom  17 are atoms  18
+    Connected to atom  14 are atoms  10  15  16  11  12  13
+
+-------------------------------------------------------------------------------------
+ Determine cell volume by random search for   20 structures
+ Start with twice the estimated volume:    0.5735
+ LEESX. Reading coordinate file, first line:
+    Constructed by subroutine CART                                               
+   9 atoms found on coordinate file,   9 in topology
+  No cell given, non-fractional coordinates assumed
+    1 groups of    9 atoms found from    9 atoms on ordered coordinate file
+            Molecule   1     Center -0.0000  0.0000  0.0000     Eulers    0.0    0.0   -0.0
+            Molecule   2     Center -0.0000  0.0000  0.0000     Eulers    0.0    0.0   -0.0
+    Group   1      Dihedrals from COR file:   180.000
+    Group   2      Dihedrals from COR file:   180.000
+ Smaller volume found:    0.3037   (density    1.0074)    with energy   -38.535 at structure     0
+ Smaller volume found:    0.2848   (density    1.0744)    with energy   -51.137 at structure     1
+ Smaller volume found:    0.2841   (density    1.0771)    with energy   -44.372 at structure    15
+        2357  random cells tried
+         304  accepted and randomly filled
+          20  remain after initial energy calculation
+          20  remain after energy optimization
+ Smallest volume for this conformation    0.2841   (density    1.0771)
+ No (further) coordinate files COR present
+ Searching connections for dihedral   9   8   5   1
+    Connected to atom   8 are atoms   9
+    Connected to atom   5 are atoms   1   6   7   2   3   4
+ Searching connections for dihedral  18  17  14  10
+    Connected to atom  17 are atoms  18
+    Connected to atom  14 are atoms  10  15  16  11  12  13
+
+-------------------------------------------------------------------------------------
+ Estimated maximum cell length     2.06834
+ Start random search for       500 structures
+ Search limits:
+       1        0.400     2.500
+       1        0.400     2.500
+       1        0.400     2.500
+       0        0.000     1.000
+       1        0.000     1.000
+       0        0.000     1.000
+ Search limited by expected density  0.9792 and volume   0.3125 which is an expansion by  1.10
+
+ N E X T    G E O M E T R Y    cor.001 
+ LEESX. Reading coordinate file, first line:
+    Constructed by subroutine CART                                               
+   9 atoms found on coordinate file,   9 in topology
+    1 groups of    9 atoms found from    9 atoms on ordered coordinate file
+            Molecule   1     Center -0.0000  0.0000  0.0000     Eulers    0.0    0.0   -0.0
+            Molecule   2     Center -0.0000  0.0000  0.0000     Eulers    0.0    0.0   -0.0
+    Group   1      Dihedrals from COR file:   180.000
+    Group   2      Dihedrals from COR file:   180.000
+    1     C1       1  0.1164 -0.0449  0.0000
+    2     H4       2  0.1527  0.0061  0.0881
+    3     H5       2  0.1528 -0.1466  0.0000
+    4     H6       2  0.1527  0.0061 -0.0881
+    5     C2       3 -0.0357 -0.0449  0.0000
+    6     H7       2 -0.0719 -0.0958 -0.0883
+    7     H8       2 -0.0719 -0.0958  0.0883
+    8     O1       4 -0.0808  0.0898  0.0000
+    9     H1       5 -0.1760  0.0907  0.0000
+ Smaller volume found:    0.2839   (density    1.0778)    with energy   -52.925 at structure    80
+ Smaller volume found:    0.2780   (density    1.1005)    with energy   -55.048 at structure   131
+ Smaller volume found:    0.2732   (density    1.1200)    with energy   -55.424 at structure   152
+ Smaller volume found:    0.2731   (density    1.1205)    with energy   -55.472 at structure   325
+       45725  random cells tried
+        6398  accepted and randomly filled
+         500  remain after initial energy calculation
+         500  remain after energy optimization
+ Smallest volume for this conformation    0.2731   (density    1.1205)
+ No (further) coordinate files COR present
+         500  structures found from all conformations
+ Smallest volume encountered:    0.2731   (density    1.1205)
+Computer name    /home/vaneyck/upack/data/etanol/opls
+235.294u 0.456s 4:20.60 90.4%	0+0k 0+696io 0pf+0w

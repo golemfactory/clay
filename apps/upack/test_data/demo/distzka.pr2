@@ -1,0 +1,43 @@
+  
+  D I S T C L U S
+          54  entries read from space group file
+ Reading topology data from:   Ethanol, all atoms                                                            
+  No file IN.DCL present
+      Atom   Type   Molecule
+   1    C1      1       1
+   2    H4      2       1
+   3    H5      2       1
+   4    H6      2       1
+   5    C2      3       1
+   6    H7      2       1
+   7    H8      2       1
+   8    O1      4       1
+   9    H1      5       1
+        9  atoms in each group
+        1  molecules in each group
+     0.50  cutoff limit for pair list
+        0  acceptable number of missed contacts
+     1.00  acceptable energy difference
+   0.0100  acceptable relative volume difference
+   0.0200  allowed distance tolerance
+  File IN.EXP present, do search
+           4    group(s) found on file IN.EXP
+ Structure       1  has Z" =  2 independent molecules with 2076 distances:   511  527
+          This is the experimental structure titled:   ETANOL.CIF                                                                    
+
+ Space group    7  Pc        having importance    7
+ File name Pc                  
+ There were   378 structures read from parameter  file  201
+ NGR =   2 was determined from the coordinate file  (compare Z =  2)
+ Experimental structure corresponds to structure   121 from list  1 Z" =  2   Energy diff.    0.772     Rel.vol.diff.   0.00284
+ There were   378 structures read from coordinate file  201
+
+ No (more) PACK-type parameter files
+ Total number of structures on PACK-files    378   Lowest energy   -54.943
+ No (more) SPF-type files present
+ Maximum number of contacts        2076
+ Experimental energy    -54.640
+           1  hits found out of         378
+ List of hits compared to lowest energy   -54.943
+ Number   121     Energy   -53.868       Delta-E     1.075
+0.344u 0.012s 0:00.55 63.6%	0+0k 0+8io 0pf+0w
