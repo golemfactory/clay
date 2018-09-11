@@ -2,6 +2,7 @@ import os
 from unittest import TestCase
 
 import apps.blender.resources.blenderloganalyser as bla
+from golem.docker.job import DockerJob
 
 LOG_FILE = "stdout.log_for_test"
 
@@ -34,7 +35,7 @@ class TestBlenderLogAnalyser(TestCase):
 
     def test_find_output_file(self):
         output_file = bla.find_output_file(self._get_log_file())
-        assert output_file == "/golem/output/kitty_10001.png"
+        assert output_file == f"{DockerJob.OUTPUT_DIR}/kitty_10001.png"
 
         output_file = bla.find_output_file("No time in this log")
         assert output_file is None

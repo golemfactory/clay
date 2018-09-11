@@ -469,10 +469,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
             def computation_finished(self, subtask_id, task_result,
                                      result_type=ResultType.DATA,
-                                     verification_finished_=None):
+                                     verification_finished=None):
                 if not self.restarted[subtask_id]:
                     self.finished[subtask_id] = True
-                verification_finished_()
+                verification_finished()
 
             def verify_subtask(self, subtask_id):
                 return self.verify_subtasks[subtask_id]
@@ -1114,7 +1114,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             'short_description': 'desc1',
             'src_code': 'code1',
             'performance': 1000,
-            'working_directory': '/workdir1/',
             'deadline': 1000000000
         }, {
             'task_id': 'new_task_id',
@@ -1123,7 +1122,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             'short_description': 'desc2',
             'src_code': 'code2',
             'performance': 2000,
-            'working_directory': '/workdir2/',
             'deadline': 2000000000
         }]
         ctd_iterator = iter(ctds)

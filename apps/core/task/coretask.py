@@ -1,17 +1,16 @@
-import abc
 import decimal
 import logging
 import os
 from enum import Enum
-from typing import Type
+from typing import Type, Optional, Dict, Any
 
 import golem_messages.message
 from ethereum.utils import denoms
+from golem_verificator.core_verifier import CoreVerifier
+from golem_verificator.verifier import SubtaskVerificationState
 
 from apps.blender.verification_queue import VerificationQueue
 from apps.core.task.coretaskstate import TaskDefinition, Options
-from golem_verificator.core_verifier import CoreVerifier
-from golem_verificator.verifier import SubtaskVerificationState
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.compress import decompress
@@ -29,8 +28,8 @@ from golem.task.taskstate import SubtaskStatus
 logger = logging.getLogger("apps.core")
 
 
-def log_key_error(*args, **kwargs):
-    logger.warning("This is not my subtask {}".format(args[1]), exc_info=True)
+def log_key_error(*args, **_):
+    logger.warning("This is not my subtask %s", args[1], exc_info=True)
     return False
 
 
@@ -47,6 +46,7 @@ class CoreTaskTypeInfo(TaskTypeInfo):
     """ Information about task that allows to define and build a new task,
     display outputs and previews. """
 
+    # pylint:disable=too-many-arguments
     def __init__(self,
                  name: str,
                  definition: 'Type[TaskDefinition]',
@@ -58,19 +58,23 @@ class CoreTaskTypeInfo(TaskTypeInfo):
         self.output_file_ext = []
 
     @classmethod
+    # pylint:disable=unused-argument
     def get_task_num_from_pixels(cls, x, y, definition, total_subtasks,
                                  output_num=1):
         return 0
 
     @classmethod
+    # pylint:disable=unused-argument
     def get_task_border(cls, subtask, definition, total_subtasks,
                         output_num=1, as_path=False):
         return []
 
     @classmethod
+    # pylint:disable=unused-argument
     def get_preview(cls, task, single=False):
         pass
 
+    # pylint:disable=no-else-return
     @staticmethod
     def _preview_result(result, single=False):
         if single:
@@ -83,6 +87,7 @@ class CoreTaskTypeInfo(TaskTypeInfo):
         return {}
 
 
+# pylint:disable=too-many-instance-attributes,too-many-public-methods
 class CoreTask(Task):
     VERIFIER_CLASS = CoreVerifier  # type: Type[CoreVerifier]
     VERIFICATION_QUEUE = VerificationQueue()
@@ -95,14 +100,14 @@ class CoreTask(Task):
     # Task methods #
     ################
 
+    # pylint:disable=too-many-arguments
     def __init__(self,
                  task_definition: TaskDefinition,
                  owner: Node,
                  max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
                  resource_size=None,
                  root_path=None,
-                 total_tasks=0
-                 ):
+                 total_tasks=0):
         """Create more specific task implementation
         """
 
@@ -119,6 +124,7 @@ class CoreTask(Task):
         else:
             self.resource_size = resource_size
 
+        # pylint: disable=not-callable
         self.environment = self.ENVIRONMENT_CLASS()
 
         # src_code stuff
@@ -126,8 +132,8 @@ class CoreTask(Task):
         try:
             with open(self.main_program_file, "r") as src_file:
                 src_code = src_file.read()
-        except Exception as err:
-            logger.warning("Wrong main program file: {}".format(err))
+        except OSError as err:
+            logger.warning("Wrong main program file: %s", err)
             src_code = ""
 
         # docker_images stuff
@@ -144,9 +150,11 @@ class CoreTask(Task):
             task_owner=owner,
             deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
+            subtasks_count=total_tasks,
             resource_size=self.resource_size,
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
+            concent_enabled=task_definition.concent_enabled,
         )
 
         Task.__init__(self, th, src_code, task_definition)
@@ -162,10 +170,12 @@ class CoreTask(Task):
         self.counting_nodes = {}
 
         self.root_path = root_path
-
-        self.stdout = {}  # for each subtask keep info about stdout received from computing node
-        self.stderr = {}  # for each subtask keep info about stderr received from computing node
-        self.results = {}  # for each subtask keep info about files containing results
+        # for each subtask keep info about stdout received from computing node
+        self.stdout: Dict[str, str] = {}
+        # for each subtask keep info about stderr received from computing node
+        self.stderr: Dict[str, str] = {}
+        # for each subtask keep info about files containing results
+        self.results: Dict[str, list] = {}
 
         self.res_files = {}
         self.tmp_dir = None
@@ -179,7 +189,7 @@ class CoreTask(Task):
         return generate_new_id_from_id(self.header.task_id)
 
     def is_docker_task(self):
-        return len(self.docker_images or ()) > 0
+        return bool(self.docker_images)
 
     def initialize(self, dir_manager: DirManager) -> None:
         dir_manager.clear_temporary(self.header.task_id)
@@ -187,7 +197,8 @@ class CoreTask(Task):
                                                           create=True)
 
     def needs_computation(self):
-        return (self.last_task != self.total_tasks) or (self.num_failed_subtasks > 0)
+        return (self.last_task != self.total_tasks) or \
+               (self.num_failed_subtasks > 0)
 
     def finished_computation(self):
         return self.num_tasks_received == self.total_tasks
@@ -197,23 +208,23 @@ class CoreTask(Task):
 
     def computation_finished(self, subtask_id, task_result,
                              result_type=ResultType.DATA,
-                             verification_finished_=None):
+                             verification_finished=None):
         if not self.should_accept(subtask_id):
-            logger.info("Not accepting results for {}".format(subtask_id))
+            logger.info("Not accepting results for %s", subtask_id)
             return
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.verifying
         self.interpret_task_results(subtask_id, task_result, result_type)
         result_files = self.results.get(subtask_id)
 
-        def verification_finished(subtask_id, verdict, result):
+        def verification_finished_(subtask_id, verdict, result):
             self.verification_finished(subtask_id, verdict, result)
-            verification_finished_()
+            verification_finished()
 
         self.VERIFICATION_QUEUE.submit(
             self.VERIFIER_CLASS,
             subtask_id,
             self._deadline,
-            verification_finished,
+            verification_finished_,
             subtask_info={**self.subtasks_given[subtask_id],
                           **{'owner': self.header.task_owner.key}},
             results=result_files,
@@ -221,6 +232,7 @@ class CoreTask(Task):
             reference_data=self.get_reference_data()
         )
 
+    # pylint:disable=no-self-use
     def get_reference_data(self):
         return []
 
@@ -231,13 +243,12 @@ class CoreTask(Task):
         else:
             self.computation_failed(subtask_id)
 
+    # pylint:disable=unused-argument
     def accept_results(self, subtask_id, result_files):
         subtask = self.subtasks_given[subtask_id]
         if "status" not in subtask:
-            # logger.warning("Subtask %r hasn't started", subtask_id)
             raise Exception("Subtask {} hasn't started".format(subtask_id))
         if subtask.get("status", None) == SubtaskStatus.finished:
-            # logger.warning("Subtask %r already accepted", subtask_id)
             raise Exception("Subtask {} already accepted".format(subtask_id))
         if subtask.get("status", None) not in [SubtaskStatus.starting,
                                                SubtaskStatus.downloading,
@@ -246,14 +257,14 @@ class CoreTask(Task):
                                                SubtaskStatus.finished,
                                                SubtaskStatus.failure,
                                                SubtaskStatus.restarted]:
-            # logger.warning("Subtask %r has wrong type", subtask_id)
             raise Exception("Subtask {} has wrong type".format(subtask_id))
 
         subtask["status"] = SubtaskStatus.finished
 
     @handle_key_error
     def verify_subtask(self, subtask_id):
-        return self.subtasks_given[subtask_id]['status'] == SubtaskStatus.finished
+        return self.subtasks_given[subtask_id]['status'] == \
+            SubtaskStatus.finished
 
     def verify_task(self):
         return self.finished_computation()
@@ -267,6 +278,7 @@ class CoreTask(Task):
     def get_tasks_left(self):
         return (self.total_tasks - self.last_task) + self.num_failed_subtasks
 
+    # pylint:disable=unused-argument,no-self-use
     def get_subtasks(self, part):
         return dict()
 
@@ -300,7 +312,6 @@ class CoreTask(Task):
             return 0.0
         return self.num_tasks_received / self.total_tasks
 
-
     def update_task_state(self, task_state):
         pass
 
@@ -308,8 +319,8 @@ class CoreTask(Task):
     def get_trust_mod(self, subtask_id):
         return 1.0
 
-    def add_resources(self, res_files):
-        self.res_files = res_files
+    def add_resources(self, resources):
+        self.res_files = resources
 
     def get_stderr(self, subtask_id):
         return self.stderr.get(subtask_id, "")
@@ -330,7 +341,7 @@ class CoreTask(Task):
         }
 
     def _new_compute_task_def(self, subtask_id, extra_data,
-                              working_directory=".", perf_index=0):
+                              perf_index=0):
         ctd = golem_messages.message.ComputeTaskDef()
         ctd['task_id'] = self.header.task_id
         ctd['subtask_id'] = subtask_id
@@ -338,7 +349,6 @@ class CoreTask(Task):
         ctd['short_description'] = self.short_extra_data_repr(extra_data)
         ctd['src_code'] = self.src_code
         ctd['performance'] = perf_index
-        ctd['working_directory'] = working_directory
         if self.docker_images:
             ctd['docker_images'] = [di.to_dict() for di in self.docker_images]
         ctd['deadline'] = min(timeout_to_deadline(self.header.subtask_timeout),
@@ -350,15 +360,17 @@ class CoreTask(Task):
     # Specific task methods #
     #########################
 
-    def interpret_task_results(self, subtask_id, task_results, result_type: int, sort=True):
-        """Filter out ".log" files from received results. Log files should represent
-        stdout and stderr from computing machine. Other files should represent subtask results.
+    def interpret_task_results(self, subtask_id, task_results, result_type: int,
+                               sort=True):
+        """Filter out ".log" files from received results.
+        Log files should represent stdout and stderr from computing machine.
+        Other files should represent subtask results.
         :param subtask_id: id of a subtask for which results are received
-        :param task_results: it may be a list of files, if result_type is equal to
-        ResultType.files or it may be a cbor serialized zip file containing all files,
-        if result_type is equal to ResultType.data
-        :param result_type: a number from ResultType, it may represents data format or files
-        format
+        :param task_results: it may be a list of files, if result_type is equal
+        to ResultType.files or it may be a cbor serialized zip file containing
+        all files, if result_type is equal to ResultType.data
+        :param result_type: a number from ResultType, it may represents data
+        format or files format
         :param bool sort: *default: True* Sort results, if set to True
         """
         self.stdout[subtask_id] = ""
@@ -376,16 +388,13 @@ class CoreTask(Task):
             subtask_id]['node_id']].finish()
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
 
-    # TODO why is it here and not in the Task? Issue #1355
-    @abc.abstractmethod
-    def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa
-        pass  # Implement in derived methods
-
-    def load_task_results(self, task_result, result_type: int, subtask_id):
-        """ Change results to a list of files. If result_type is equal to ResultType.files this
-        function only return task_results without making any changes. If result_type is equal to
-        ResultType.data tham task_result is cbor and unzipped and files are saved in tmp_dir.
-        :param task_result: list of files of cbor serialized ziped file with files
+    def load_task_results(self, task_result, result_type, subtask_id):
+        """ Change results to a list of files. If result_type is equal to
+        ResultType.files this function only return task_results without making
+        any changes. If result_type is equal to ResultType.data tham task_result
+         is cbor and unzipped and files are saved in tmp_dir.
+        :param task_result: list of files of cbor serialized ziped file with
+        files
         :param result_type: int, ResultType element
         :param str subtask_id:
         :return:
@@ -394,7 +403,8 @@ class CoreTask(Task):
             output_dir = os.path.join(self.tmp_dir, subtask_id)
             if not os.path.exists(output_dir):
                 os.makedirs(output_dir)
-            return [self._unpack_task_result(trp, output_dir) for trp in task_result]
+            return [self._unpack_task_result(trp, output_dir)
+                    for trp in task_result]
         elif result_type == ResultType.FILES:
             return task_result
         else:
@@ -406,11 +416,13 @@ class CoreTask(Task):
                 .format(result_type)
             return []
 
-    def filter_task_results(self, task_results, subtask_id, log_ext=".log", err_log_ext="err.log"):
-        """ From a list of files received in task_results, return only files that don't
-        have extension <log_ext> or <err_log_ext>. File with log_ext is saved as stdout
-        for this subtask (only one file is currently supported). File with err_log_ext is save
-        as stderr for this subtask (only one file is currently supported).
+    def filter_task_results(self, task_results, subtask_id, log_ext=".log",
+                            err_log_ext="err.log"):
+        """ From a list of files received in task_results, return only files
+        that don't have extension <log_ext> or <err_log_ext>. File with log_ext
+        is saved as stdout for this subtask (only one file is currently
+        supported). File with err_log_ext is save as stderr for this subtask
+        (only one file is currently supported).
         :param list task_results: list of files
         :param str subtask_id: if of a given subtask
         :param str log_ext: extension that stdout files have
@@ -432,11 +444,12 @@ class CoreTask(Task):
                     os.rename(tr, new_tr)
                     filtered_task_results.append(new_tr)
                 except (IOError, OSError) as err:
-                    logger.warning("Cannot move file {} to new location: "
-                                   "{}".format(tr, err))
+                    logger.warning("Cannot move file %s to new location: %s",
+                                   tr, err)
 
         return filtered_task_results
 
+    # pylint:disable=unused-argument,no-self-use
     def after_test(self, results, tmp_dir):
         return {}
 
@@ -460,7 +473,7 @@ class CoreTask(Task):
                 res = f.read()
             return res
         except IOError as err:
-            logger.error("Can't read file {}: {}".format(log, err))
+            logger.error("Can't read file %s: %s", log, err)
             return ""
 
     @handle_key_error
@@ -529,7 +542,10 @@ class CoreTask(Task):
 class CoreTaskBuilder(TaskBuilder):
     TASK_CLASS = CoreTask
 
-    def __init__(self, owner, task_definition, dir_manager):
+    def __init__(self,
+                 owner: Node,
+                 task_definition: TaskDefinition,
+                 dir_manager: DirManager) -> None:
         super(CoreTaskBuilder, self).__init__()
         self.task_definition = task_definition
         self.root_path = dir_manager.root_path
@@ -539,7 +555,9 @@ class CoreTaskBuilder(TaskBuilder):
         self.environment = None
 
     def build(self):
+        # pylint:disable=abstract-class-instantiated
         task = self.TASK_CLASS(**self.get_task_kwargs())
+
         task.initialize(self.dir_manager)
         return task
 
@@ -558,11 +576,13 @@ class CoreTaskBuilder(TaskBuilder):
         definition.resources = set(dictionary['resources'])
         definition.total_subtasks = int(dictionary['subtasks'])
         definition.main_program_file = task_type.defaults.main_program_file
-
         return definition
 
     @classmethod
-    def build_definition(cls, task_type: CoreTaskTypeInfo, dictionary, minimal=False):
+    def build_definition(cls,  # type: ignore
+                         task_type: CoreTaskTypeInfo,
+                         dictionary: Dict[str, Any],
+                         minimal=False):
         # dictionary comes from the GUI
         if not minimal:
             definition = cls.build_full_definition(task_type, dictionary)
@@ -573,7 +593,9 @@ class CoreTaskBuilder(TaskBuilder):
         return definition
 
     @classmethod
-    def build_full_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
+    def build_full_definition(cls,
+                              task_type: CoreTaskTypeInfo,
+                              dictionary: Dict[str, Any]):
         definition = cls.build_minimal_definition(task_type, dictionary)
         definition.task_name = dictionary['name']
         definition.max_price = \
@@ -599,7 +621,7 @@ class CoreTaskBuilder(TaskBuilder):
     def get_output_path(cls, dictionary, definition):
         options = dictionary['options']
 
-        absolute_path = cls.get_nonexistant_path(
+        absolute_path = cls.get_nonexistent_path(
             options['output_path'],
             definition.task_name,
             options.get('format', ''))
@@ -607,7 +629,7 @@ class CoreTaskBuilder(TaskBuilder):
         return absolute_path
 
     @classmethod
-    def get_nonexistant_path(cls, path, name, extension=""):
+    def get_nonexistent_path(cls, path, name, extension=""):
         """
         Prevent overwriting with incremental filename
         @ref https://stackoverflow.com/a/43167607/1763249
@@ -615,7 +637,7 @@ class CoreTaskBuilder(TaskBuilder):
         Example
         --------
 
-        >>> get_nonexistant_path('/documents/golem/', 'task1', 'png')
+        >>> get_nonexistent_path('/documents/golem/', 'task1', 'png')
 
         # if path is not exist
         '/documents/golem/task1'

@@ -99,24 +99,6 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task.initialize(dm)
         self.task = task
 
-    def test_paths(self):
-        rt = self.task
-        res1 = path.join(self.path, "dir1", "dir2", "name1")
-        res2 = path.join(self.path, "dir1", "dir2", "name2")
-        rt.task_resources = [res1, res2]
-        assert rt._get_working_directory() == "../.."
-
-    @patch("apps.rendering.task.renderingtask.is_windows")
-    def test_paths2(self, mock_is_windows):
-        rt = self.task
-        npath = "\\".join(path.split(self.path))
-        res1 = "{}\\dir1\\dir2\\name1".format(npath)
-        res2 = "{}\\dir1\\dir2\\name2".format(npath)
-        rt.task_resources = [res1, res2]
-        mock_is_windows.return_value = True
-        with patch("apps.rendering.task.renderingtask.os.path", ntpath):
-            assert rt._get_working_directory() == "../.."
-
     def test_remove_from_preview(self):
         rt = self.task
         rt.subtasks_given["xxyyzz"] = {"start_task": 2, "end_task": 2}

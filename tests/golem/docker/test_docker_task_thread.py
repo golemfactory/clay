@@ -31,7 +31,7 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
         task_server.client.get_node_name.return_value = "test_node"
         task_server.get_task_computer_root.return_value = \
             task_server.client.datadir
-        task_computer = TaskComputer("node", task_server,
+        task_computer = TaskComputer(task_server,
                                      use_docker_manager=False)
         image = DockerImage("golemfactory/base", tag="1.2")
 
@@ -39,14 +39,14 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
             dir_mapping = DockerTaskThread.generate_dir_mapping(
                 self.resources_dir, self.output_dir)
             DockerTaskThread("subtask_id", None,
-                             self.work_dir, script, None, "test task thread",
+                             script, None, "test task thread",
                              dir_mapping, timeout=30)
 
         def test():
             dir_mapping = DockerTaskThread.generate_dir_mapping(
                 self.resources_dir, self.output_dir)
             tt = DockerTaskThread("subtask_id", [image],
-                                  self.work_dir, script, None,
+                                  script, None,
                                   "test task thread", dir_mapping, timeout=30)
             task_computer.counting_thread = tt
             task_computer.counting_task = True

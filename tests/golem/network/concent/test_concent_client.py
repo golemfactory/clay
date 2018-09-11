@@ -197,7 +197,7 @@ class TestConcentClientService(testutils.TempDirFixture):
             keys_auth=keys_auth,
             variant=variables.CONCENT_CHOICES['dev'],
         )
-        self.msg = message.ForceReportComputedTask()
+        self.msg = message.concents.ForceReportComputedTask()
 
     def tearDown(self):
         self.assertFalse(self.concent_service.isAlive())
@@ -405,7 +405,7 @@ class ConcentCallLaterTestCase(testutils.TempDirFixture):
             ),
             variant=variables.CONCENT_CHOICES['dev'],
         )
-        self.msg = message.ForceReportComputedTask()
+        self.msg = message.concents.ForceReportComputedTask()
 
     def tearDown(self):
         self.concent_service.stop()
