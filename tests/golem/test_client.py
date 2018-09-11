@@ -7,7 +7,7 @@ from random import Random
 from types import MethodType
 from unittest import mock
 from unittest import TestCase
-from unittest.mock import call, Mock, MagicMock, patch
+from unittest.mock import Mock, MagicMock, patch
 
 from ethereum.utils import denoms
 from freezegun import freeze_time
@@ -44,7 +44,10 @@ from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
 from golem.task.tasktester import TaskTester
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithdatabase import TestWithDatabase
-from golem.tools.testwithreactor import TestWithReactor
+from golem.tools.testwithreactor import TestWithReactor, TestDatabaseWithReactor
+
+from .ethereum.test_fundslocker import make_mock_task as \
+    make_fundslocker_mock_task
 
 random = Random(__name__)
 
@@ -97,14 +100,17 @@ def make_mock_ets(eth=100, gnt=100):
 )
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
-class TestClient(TestWithDatabase, TestWithReactor):
-    # FIXME: if we someday decide to run parallel tests,
-    # this may completely break. Issue #2456
-    # pylint: disable=attribute-defined-outside-init
-
+class TestClientBase(TestDatabaseWithReactor):
     def tearDown(self):
         if hasattr(self, 'client'):
             self.client.quit()
+        super().tearDown()
+
+
+class TestClient(TestClientBase):
+    # FIXME: if we someday decide to run parallel tests,
+    # this may completely break. Issue #2456
+    # pylint: disable=attribute-defined-outside-init
 
     def test_get_payments(self, *_):
         ets = Mock()
@@ -309,29 +315,6 @@ class TestClient(TestWithDatabase, TestWithReactor):
         assert config.num_cores > 0
         assert config.max_memory_size > 0
         assert config.max_resource_size > 0
-
-    def test_restart_by_frame(self, *_):
-        self.client = Client(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=ClientConfigDescriptor(),
-            keys_auth=Mock(),
-            database=Mock(),
-            transaction_system=Mock(),
-            connect_to_known_hosts=False,
-            use_docker_manager=False,
-            use_monitor=False
-        )
-
-        self.client.task_server = Mock()
-        self.client.task_server.task_manager.get_frame_subtasks.return_value = {
-            'subtask_id': Mock(),
-        }
-
-        self.client.restart_frame_subtasks('tid', 10)
-
-        self.client.task_server.task_manager.restart_frame_subtasks.\
-            assert_called_with('tid', 10)
 
     def test_presets(self, *_):
         Client.save_task_preset("Preset1", "TaskType1", "data1")
@@ -652,6 +635,63 @@ class TestClient(TestWithDatabase, TestWithReactor):
             network_size=10,
             perf_rank=0.2,
             exp_potential_workers=8)
+
+
+class TestClientRestartSubtasks(TestClientBase):
+    def setUp(self):
+        super().setUp()
+        self.ts = Mock()
+        self.client = Client(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
+            database=Mock(),
+            transaction_system=self.ts,
+            connect_to_known_hosts=False,
+            use_docker_manager=False,
+            use_monitor=False
+        )
+        self.client.funds_locker.persist = False
+
+        self.task = make_fundslocker_mock_task()
+        self.client.funds_locker.lock_funds(self.task)
+
+        self.client.task_server = Mock()
+
+    def test_restart_by_frame(self):
+        # given
+        frame_subtasks = {
+            'subtask_id1': Mock(),
+            'subtask_id2': Mock(),
+        }
+        self.client.task_server.task_manager.get_frame_subtasks.return_value = \
+            frame_subtasks
+
+        frame = 10
+
+        # when
+        self.client.restart_frame_subtasks(self.task.header.task_id, frame)
+
+        # then
+        self.client.task_server.task_manager.restart_frame_subtasks.\
+            assert_called_with(self.task.header.task_id, frame)
+        self.ts.lock_funds_for_payments.assert_called_with(
+            self.task.subtask_price, len(frame_subtasks))
+
+    def test_restart_subtask(self):
+        # given
+        self.client.task_server.task_manager.get_task_id.return_value = \
+            self.task.header.task_id
+
+        # when
+        self.client.restart_subtask('subtask_id')
+
+        # then
+        self.client.task_server.task_manager.restart_subtask.\
+            assert_called_with('subtask_id')
+        self.ts.lock_funds_for_payments.assert_called_with(
+            self.task.subtask_price, 1)
 
 
 class TestDoWorkService(TestWithReactor):
