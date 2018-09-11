@@ -4,6 +4,7 @@ import os
 from collections import namedtuple
 from typing import Iterable
 
+import enum
 from crossbar.common import checkconfig
 from twisted.internet.defer import inlineCallbacks
 
@@ -24,6 +25,11 @@ CrossbarRouterOptions = namedtuple(
 # pylint: disable=too-many-instance-attributes
 class CrossbarRouter(object):
     serializers = ['msgpack']
+
+    @enum.unique
+    class CrossbarRoles(enum.Enum):
+        admin = enum.auto()
+        docker = enum.auto()
 
     # pylint: disable=too-many-arguments
     def __init__(self,
@@ -89,6 +95,26 @@ class CrossbarRouter(object):
         )
 
     @staticmethod
+    def _users_config(cert_manager: CertificateManager):
+        # configuration for crsb_users with admin priviliges
+        crsb_users = {
+            p.name: {
+                "secret": cert_manager.get_secret(p),
+                "role": CrossbarRouter.CrossbarRoles.admin.name
+            } for p in [cert_manager.CrossbarUsers.golemapp,
+                        cert_manager.CrossbarUsers.golemcli,
+                        cert_manager.CrossbarUsers.electron]
+        }
+
+        # and for docker, without admin priviliges
+        docker = cert_manager.CrossbarUsers.docker
+        crsb_users[docker.name] = {
+            "secret": cert_manager.get_secret(docker),
+            "role": CrossbarRouter.CrossbarRoles.docker.name
+        }
+        return crsb_users
+
+    @staticmethod
     def _build_config(address: WebSocketAddress,
                       serializers: Iterable[str],
                       cert_manager: CertificateManager,
@@ -117,23 +143,6 @@ class CrossbarRouter(object):
                 "dhparam": cert_manager.dh_path,
             }
 
-        # configuration for crsb_users with admin priviliges
-        crsb_users = {
-            p.name: {
-                "secret": cert_manager.get_secret(p),
-                "role": "golem_admin"
-            } for p in [cert_manager.CrossbarUsers.golemapp,
-                        cert_manager.CrossbarUsers.golemcli,
-                        cert_manager.CrossbarUsers.electron]
-        }
-
-        # and for docker, without admin priviliges
-        docker = cert_manager.CrossbarUsers.docker
-        crsb_users[docker.name] = {
-            "secret": cert_manager.get_secret(docker),
-            "role": "golem_docker"
-        }
-
         return {
             'version': 2,
             'controller': {
@@ -158,7 +167,7 @@ class CrossbarRouter(object):
                     "auth": {
                         "wampcra": {
                             "type": "static",
-                            "users": crsb_users
+                            "users": CrossbarRouter._users_config(cert_manager)
                         }
                     }
                 }],
@@ -167,7 +176,7 @@ class CrossbarRouter(object):
                     "name": realm,
                     "roles": [
                         {
-                            "name": 'golem_admin',
+                            "name": CrossbarRouter.CrossbarRoles.admin.name,
                             "permissions": [{
                                 "uri": '*',
                                 "allow": {
@@ -179,7 +188,7 @@ class CrossbarRouter(object):
                             }]
                         },
                         {
-                            "name": 'golem_docker',
+                            "name": CrossbarRouter.CrossbarRoles.docker.name,
                             "permissions": [
                                 {
                                     "uri": '*',
