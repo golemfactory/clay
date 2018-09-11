@@ -192,7 +192,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             self._stop_on_error("rpc", "RPC router is not available")
             return None
 
-        crsb_user = self.rpc_router.cert_manager.Crossbar_users.golemapp
+        crsb_user = self.rpc_router.cert_manager.CrossbarUsers.golemapp
         self.rpc_session = Session(
             self.rpc_router.address,
             cert_manager=self.rpc_router.cert_manager,

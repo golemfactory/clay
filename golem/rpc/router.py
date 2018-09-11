@@ -122,13 +122,13 @@ class CrossbarRouter(object):
             p.name: {
                 "secret": cert_manager.get_secret(p),
                 "role": "golem_admin"
-            } for p in [cert_manager.Crossbar_users.golemapp,
-                        cert_manager.Crossbar_users.golemcli,
-                        cert_manager.Crossbar_users.electron]
+            } for p in [cert_manager.CrossbarUsers.golemapp,
+                        cert_manager.CrossbarUsers.golemcli,
+                        cert_manager.CrossbarUsers.electron]
         }
 
         # and for docker, without admin priviliges
-        docker = cert_manager.Crossbar_users.docker
+        docker = cert_manager.CrossbarUsers.docker
         crsb_users[docker.name] = {
             "secret": cert_manager.get_secret(docker),
             "role": "golem_docker"

@@ -290,9 +290,9 @@ class TestRPCNoAuth(_TestRouter):
 
 
 class _TestRPCAuth(_TestRouter):
-    DOCKER = CertificateManager.Crossbar_users.docker
-    GOLEMAPP = CertificateManager.Crossbar_users.golemapp
-    GOLEMCLI = CertificateManager.Crossbar_users.golemcli
+    DOCKER = CertificateManager.CrossbarUsers.docker
+    GOLEMAPP = CertificateManager.CrossbarUsers.golemapp
+    GOLEMCLI = CertificateManager.CrossbarUsers.golemcli
     DOCKER_METHOD = "docker_echo"
     NON_DOCKER_METHOD = "non_docker_echo"
     TIMEOUT = 10
