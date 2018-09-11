@@ -1,3 +1,4 @@
+# pylint: disable=too-many-lines
 import json
 import os
 import time
@@ -90,6 +91,7 @@ def make_mock_ets(eth=100, gnt=100):
     return ets
 
 
+@patch('golem.client.node_info_str')
 @patch(
     'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
 )
@@ -820,9 +822,11 @@ class TestTaskCleanerService(TestWithReactor):
         client.clean_old_tasks.assert_called_once()
 
 
+@patch('golem.client.node_info_str')
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestWithDatabase, LogTestCase):
+    # pylint: disable=too-many-public-methods
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
         with patch('golem.network.concent.handlers_library.HandlersLibrary'

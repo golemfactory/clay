@@ -103,7 +103,8 @@ class DockerTaskTestCase(
                 use_docker_manager=False,
                 concent_variant={'url': None, 'pubkey': None},
             )
-        self.node.client = self.node._client_factory(Mock())
+        with patch('golem.client.node_info_str'):
+            self.node.client = self.node._client_factory(Mock())
         self.node.client.start = Mock()
         self.node._run()
 
