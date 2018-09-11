@@ -6,6 +6,7 @@ from uuid import uuid4
 import enforce
 from golem_messages.message import ComputeTaskDef
 from golem_remote import encode_obj_to_str
+from golem_remote.golem_client import get_result_key
 
 from apps.blender.verification_queue import VerificationQueue
 from apps.core.task import coretask
@@ -73,9 +74,9 @@ class RunF(CoreTask):
         state = self.__dict__.copy()
         del state["submitted_subtasks"]
         del state["finished_subtasks"]
-        if "VERIFICATION_QUEUE" in state:  # TODO why do I need this
+        if "VERIFICATION_QUEUE" in state:
             del state["VERIFICATION_QUEUE"]
-        del state["listeners"]  # TODO why?
+        del state["listeners"]
         return state
 
     def __setstate__(self, state):
@@ -92,14 +93,12 @@ class RunF(CoreTask):
             port=td.options.queue_port
         )
         self.listeners = []
-        self.VERIFICATION_QUEUE = VerificationQueue()  # TODO why do I need this
+        self.VERIFICATION_QUEUE = VerificationQueue()
 
     def short_extra_data_repr(self, extra_data):
         return "Runf extra_data: {}".format(extra_data)
 
     def _extra_data(self, perf_index=0.0) -> ComputeTaskDef:
-        # data = self._get_example_data()
-        # queue_id = str(uuid4())
         queue_id, data = self.submitted_subtasks.pop_nowait()
 
         subtask_id = self.create_subtask_id()
@@ -167,7 +166,7 @@ class RunF(CoreTask):
         logger.info("Subtask finished")
 
         queue_id = self.subtasks_definitions[subtask_id].queue_id
-        self.finished_subtasks.set(f"{queue_id}-OUT", result)  # TODO document this
+        self.finished_subtasks.set(get_result_key(queue_id), result)
         self.subtasks_being_processed.remove(subtask_id)
 
     def _end_computation(self):
@@ -186,7 +185,7 @@ class RunF(CoreTask):
             args=args,
             kwargs=kwargs
         )
-        return encode_obj_to_str(data)
+        return data
 
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
         queue_id = str(uuid4())
@@ -201,7 +200,7 @@ class RunF(CoreTask):
         self.subtasks_being_processed.add(subtask_id)
 
         extra_data = {
-            "data": data,
+            "data": encode_obj_to_str(data),
             "RESULT_EXT": self.RESULT_EXT
         }
 

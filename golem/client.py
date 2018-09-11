@@ -602,7 +602,7 @@ class Client(HardwarePresetsMixin):
                 self.funds_locker.remove_task(task_id)
                 raise
 
-        logger.info('Enqueue new task "%r"', task_id)
+        logger.info('Enqueue new task %r', task_id)
         files = get_resources_for_task(resource_header=None,
                                        resource_type=ResourceType.HASHES,
                                        tmp_dir=getattr(task, 'tmp_dir', None),
