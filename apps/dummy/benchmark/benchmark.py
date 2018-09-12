@@ -38,8 +38,7 @@ class DummyTaskBenchmark(CoreBenchmark):
         verification_data = dict()
         self.verification_options["subtask_id"] = "DummyBenchmark"
         verification_data['subtask_info'] = self.verification_options
-        self.verifier = DummyTaskVerifier(lambda **kwargs: None,
-                                          verification_data)
+        self.verifier = DummyTaskVerifier(verification_data)
         self.subtask_data = DummyTask.TESTING_CHAR * td.options.subtask_data_size  # noqa
 
     @property

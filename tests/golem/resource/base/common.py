@@ -85,15 +85,16 @@ class AddGetResources(TempDirFixture, LogTestCase):
             models=DB_MODELS,
             db_dir=directory)
 
-        client = Client(datadir=dir_manager.root_path,
-                        app_config=mock.Mock(),
-                        config_desc=ClientConfigDescriptor(),
-                        keys_auth=mock.Mock(),
-                        database=database,
-                        transaction_system=mock.Mock(),
-                        connect_to_known_hosts=False,
-                        use_docker_manager=False,
-                        use_monitor=False)
+        with mock.patch('golem.client.node_info_str'):
+            client = Client(datadir=dir_manager.root_path,
+                            app_config=mock.Mock(),
+                            config_desc=ClientConfigDescriptor(),
+                            keys_auth=mock.Mock(),
+                            database=database,
+                            transaction_system=mock.Mock(),
+                            connect_to_known_hosts=False,
+                            use_docker_manager=False,
+                            use_monitor=False)
 
         client.resource_server = BaseResourceServer(resource_manager,
                                                     dir_manager,
