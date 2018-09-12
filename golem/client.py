@@ -1,6 +1,7 @@
 # pylint: disable=too-many-lines
 
 import collections
+import enum
 import json
 import logging
 import sys
@@ -13,6 +14,7 @@ from threading import Lock
 from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from ethereum.utils import denoms
+from golem_messages import datastructures as msg_datastructures
 from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -33,6 +35,7 @@ from golem.core.common import (
     deadline_to_timeout,
     datetime_to_timestamp_utc,
     get_timestamp_utc,
+    node_info_str,
     string_to_timeout,
     to_unicode,
 )
@@ -138,8 +141,9 @@ class Client(HardwarePresetsMixin):
             self.update_setting('in_shutdown', False)
 
         logger.info(
-            'Client "%s", datadir: %s',
-            self.config_desc.node_name,
+            'Client %s, datadir: %s',
+            node_info_str(self.config_desc.node_name,
+                          keys_auth.key_id),
             datadir
         )
         self.db = database
@@ -887,10 +891,27 @@ class Client(HardwarePresetsMixin):
             lambda err: logger.error('Task creation failed: %r', err))
 
     def restart_frame_subtasks(self, task_id, frame):
-        self.task_server.task_manager.restart_frame_subtasks(task_id, frame)
+        logger.debug("restarting frame subtasks: task_id = %s, frame = %r",
+                     task_id, frame)
+        task_manager = self.task_server.task_manager
+
+        subtasks: Dict = task_manager.get_frame_subtasks(task_id, frame)
+        if subtasks is None:
+            logger.error("frame has no subtasks (task_id = %s, frame = %r",
+                         task_id, frame)
+            return
+
+        self.funds_locker.add_subtask(task_id, len(subtasks))
+        task_manager.restart_frame_subtasks(task_id, frame)
 
     def restart_subtask(self, subtask_id):
-        self.task_server.task_manager.restart_subtask(subtask_id)
+        logger.debug("restarting subtask %s", subtask_id)
+        task_manager = self.task_server.task_manager
+
+        task_id = task_manager.get_task_id(subtask_id)
+        self.funds_locker.add_subtask(task_id)
+
+        task_manager.restart_subtask(subtask_id)
 
     def delete_task(self, task_id):
         logger.debug('Deleting task "%r" ...', task_id)
@@ -1128,6 +1149,28 @@ class Client(HardwarePresetsMixin):
             'block_number': str(balances['block_number']),
             'last_gnt_update': str(balances['gnt_update_time']),
             'last_eth_update': str(balances['eth_update_time']),
+        }
+
+    def get_deposit_balance(self):
+        balance: int = self.transaction_system.concent_balance()
+        timelock: int = self.transaction_system.concent_timelock()
+
+        class DepositStatus(msg_datastructures.StringEnum):
+            locked = enum.auto()
+            unlocking = enum.auto()
+            unlocked = enum.auto()
+
+        now = time.time()
+        if timelock == 0:
+            status = DepositStatus.locked
+        elif timelock < now:
+            status = DepositStatus.unlocked
+        else:
+            status = DepositStatus.unlocking
+        return {
+            'value': str(balance),
+            'status': status.value,
+            'timelock': str(timelock),
         }
 
     def get_payments_list(self):

@@ -44,7 +44,7 @@ def dump_balance(sci: SmartContractsInterface):
     eth = sci.get_eth_balance(sci.get_eth_address())
     deposit = sci.get_deposit_value(sci.get_eth_address())
     balance_str = (
-        "[Balance] ETH=%.18 GNT=%.18"
+        "[Balance] ETH=%.18f GNT=%.18f"
         " GNTB=%.18f DEPOSIT=%.18f ADDR:%s\n"
     )
     balance_str %= (
