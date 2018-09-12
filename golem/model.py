@@ -277,7 +277,6 @@ class Payment(BaseModel):
 
 
 class DepositPayment(BaseModel):
-    dbid = PrimaryKeyField()
     value = HexIntegerField()
     status = PaymentStatusField(index=True, default=PaymentStatus.awaiting)
     fee = HexIntegerField(null=True)

@@ -395,7 +395,7 @@ class TestTransactionSystem(TestWithDatabase):
         dpayment = model.DepositPayment.get()
         for field, value in (
                 ('status', model.PaymentStatus.awaiting),
-                ('dbid', 1),
+                ('id', 1),
                 ('value', deposit_value),
                 ('fee', None),
                 ('block_hash', None),
@@ -442,7 +442,7 @@ class TestTransactionSystem(TestWithDatabase):
         dpayment = model.DepositPayment.get()
         for field, value in (
                 ('status', model.PaymentStatus.confirmed),
-                ('dbid', dbid),
+                ('id', dbid),
                 ('value', deposit_value),
                 ('fee', 42000),
                 (

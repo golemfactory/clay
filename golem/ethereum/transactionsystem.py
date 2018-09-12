@@ -300,10 +300,10 @@ class TransactionSystem(LoopingCallService):
     @classmethod
     def get_deposit_payments_list(cls):
         result = []
-        query = model.DepositPayment.select().order_by('dbid').limit(1000)
+        query = model.DepositPayment.select().order_by('id').limit(1000)
         for dpayment in query:
             entry = {}
-            entry["pk"] = common.to_unicode(dpayment.dbid)
+            entry["pk"] = common.to_unicode(dpayment.id)
             entry["value"] = common.to_unicode(dpayment.value)
             entry["status"] = common.to_unicode(dpayment.status.name)
             entry["fee"] = common.to_unicode(dpayment.fee)
@@ -597,7 +597,7 @@ class TransactionSystem(LoopingCallService):
         dpayment.block_number = receipt.block_number
         dpayment.status = model.PaymentStatus.confirmed
         dpayment.save()
-        return dpayment.dbid
+        return dpayment.id
 
     def _get_funds_from_faucet(self) -> None:
         if not self._sci:

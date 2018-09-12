@@ -11,7 +11,6 @@ SCHEMA_VERSION = 21
 def migrate(migrator, database, fake=False, **kwargs):
     @migrator.create_model  # pylint: disable=unused-variable
     class DepositPayment(pw.Model):
-        dbid = pw.PrimaryKeyField()
         value = pw.CharField()
         status = pw.IntegerField()
         fee = pw.CharField(null=True)
