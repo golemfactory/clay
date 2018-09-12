@@ -1,8 +1,9 @@
 import from apps.core.task.coretaskstate import (TaskDefinition, TaskDefaults, Options)
 
 import from apps.houdini.houdinienvironment import HoudiniEnvironment
+from golem.resource.dirmanager import list_dir_recursive
 
-
+import os
 
 
 
@@ -21,6 +22,23 @@ class HoudiniTaskDefinition(TaskDefinition):
         self.task_type = 'HOUDINI'
 
 
+    def is_valid(self):
+        is_valid, err = super(TaskDefinition, self).is_valid()
+        if is_valid and not os.path.exists(self.self.options.scene_file):
+            return False, "Main scene file {} is not properly set".format(
+                self.options.scene_file)
+        return is_valid, err
+
+
+    def add_to_resources(self):
+        super(HoudiniTaskDefinition, self).add_to_resources()
+
+        scene_file_path = self.options.scene_file
+        assets_dir = os.path.dirname( scene_file_path )
+
+        self.resources = set(list_dir_recursive(assets_dir))
+
+
 class HoudiniTaskOptions(Options):
 
 
@@ -29,11 +47,11 @@ class HoudiniTaskOptions(Options):
 
         self.environment = HoudiniEnvironment()
 
-        self.scene_file = ""        # .hip file name
-        self.render_node = ""       # for example: /out/mantra_ipr
+        self.scene_file = ""                    # .hip file name
+        self.render_node = ""                   # for example: /out/mantra_ipr
         self.start_frame = 0
         self.end_frame = 0
-        #self.output = ""           # output defined in base class
+        self.output_file = "output-$F4.png"     # output defined in base class
 
 
     def build_from_dictionary( self, task_definition_dict ):

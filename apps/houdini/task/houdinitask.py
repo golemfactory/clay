@@ -1,11 +1,9 @@
 import logging
-import os
-import random
 import math
+import os
 from copy import copy
 from typing import Optional
 
-import enforce
 from golem_messages.message import ComputeTaskDef
 
 from apps.core.task.coretask import (CoreTask,
@@ -14,9 +12,8 @@ from apps.core.task.coretask import (CoreTask,
 from apps.houdini.houdinienvironment import HoudiniEnvironment
 from apps.houdini.task.houdinitaskstate import HoudiniTaskDefaults, HoudiniTaskOptions
 from apps.houdini.task.houdinitaskstate import HoudiniTaskDefinition
-from apps.dummy.task.verifier import DummyTaskVerifier
+from apps.houdini.task.houdiniverifier import HoudiniTaskVerifier
 from golem.task.taskbase import Task
-from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("apps.houdini")
@@ -82,12 +79,18 @@ class HoudiniTask(CoreTask):
     def _next_task_extra_data(self, perf_index=0.0) -> ComputeTaskDef:
 
         subtask_id = self.create_subtask_id()
-        extra_data = self.task_definition.options.build_dict()
+
+        extra_data = dict()
+        extra_data[ "render_params" ] = self.task_definition.options.build_dict()
+
+        render_params = extra_data[ "render_params" ]
 
         start_frame, end_frame = self._next_frame_range()
 
-        extra_data["start_frame"] = start_frame
-        extra_data["end_frame"] = end_frame
+        render_params["scene_file"] = os.path.join( "/golem/resources/", os.path.basename( render_params[ "output_file" ] ) )
+        render_params["start_frame"] = start_frame
+        render_params["end_frame"] = end_frame
+        render_params["output"] = os.path.join( "/golem/output/", render_params[ "output_file" ] )
 
         return self._new_compute_task_def(subtask_id,
                                           extra_data,

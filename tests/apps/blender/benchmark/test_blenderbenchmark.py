@@ -20,7 +20,7 @@ from golem.tools.ci import ci_skip
 
 class TestBlenderBenchmark(unittest.TestCase, testutils.PEP8MixIn):
     PEP8_FILES = [
-        "apps/blender/benchmark/benchmark.py",
+        "apps/blender/benchmark/houdinibenchmark.py",
     ]
 
     def setUp(self):

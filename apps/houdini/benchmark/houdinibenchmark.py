@@ -1,0 +1,65 @@
+import uuid
+from os.path import join
+from pathlib import Path
+
+from apps.core.benchmark.benchmarkrunner import CoreBenchmark
+from apps.houdini.houdinienvironment import HoudiniEnvironment
+from apps.houdini.task.houdinitask import HoudiniTask
+from apps.houdini.task.houdinitaskstate import HoudiniTaskDefinition, \
+    HoudiniTaskDefaults
+from apps.houdini.task.houdiniverifier import HoudiniTaskVerifier
+from golem.core.common import get_golem_path
+from golem_verificator.verifier import SubtaskVerificationState
+
+APP_DIR = join(get_golem_path(), 'apps', 'houdini')
+
+
+class HoudiniTaskBenchmark(CoreBenchmark):
+    def __init__(self):
+        self._normalization_constant = 1000  # TODO tweak that. issue #1356
+        self.dummy_task_path = join(get_golem_path(),
+                                    "apps", "dummy", "test_data")
+
+        td = self._task_definition = HoudiniTaskDefinition(HoudiniTaskDefaults())
+        td.shared_data_files = [join(self.dummy_task_path, x) for x in
+                                td.shared_data_files]
+
+        td.out_file_basename = td.out_file_basename
+
+        td.task_id = str(uuid.uuid4())
+        td.main_program_file = HoudiniEnvironment().main_program_file
+        td.resources = {join(self.dummy_task_path, "in.data")}
+        td.add_to_resources()
+
+        self.verification_options = {"difficulty": td.options.difficulty,
+                                     "shared_data_files": td.shared_data_files,
+                                     "result_size": td.result_size,
+                                     "result_extension": DummyTask.RESULT_EXT}
+        verification_data = dict()
+        self.verification_options["subtask_id"] = "HoudiniBenchmark"
+        verification_data['subtask_info'] = self.verification_options
+        self.verifier = DummyTaskVerifier(verification_data)
+        self.subtask_data = DummyTask.TESTING_CHAR * td.options.subtask_data_size  # noqa
+
+    @property
+    def normalization_constant(self):
+        return self._normalization_constant
+
+    @property
+    def task_definition(self):
+        return self._task_definition
+
+    def verify_result(self, result):
+        sd = self.verification_options.copy()
+        sd["subtask_data"] = self.subtask_data
+
+        results = [filepath for filepath in result
+                   if Path(filepath).suffix.lower() == '.result']
+
+        verification_data = dict()
+        verification_data["subtask_info"] = sd
+        verification_data["results"] = results
+
+        self.verifier.start_verification(verification_data)
+
+        return self.verifier.state == SubtaskVerificationState.VERIFIED
