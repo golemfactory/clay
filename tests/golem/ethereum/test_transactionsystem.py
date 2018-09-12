@@ -392,16 +392,7 @@ class TestTransactionSystem(TestWithDatabase):
             )
         deposit_value = 20 - 1
         self.sci.deposit_payment.assert_called_once_with(deposit_value)
-        dpayment = model.DepositPayment.get()
-        for field, value in (
-                ('status', model.PaymentStatus.awaiting),
-                ('id', 1),
-                ('value', deposit_value),
-                ('fee', None),
-                ('block_hash', None),
-                ('block_number', None),
-                ('tx', tx_hash),):
-            self.assertEqual(getattr(dpayment, field), value)
+        self.assertFalse(model.DepositPayment.select().exists())
 
     def test_concent_deposit_done(self):
         self.sci.get_deposit_value.return_value = 0

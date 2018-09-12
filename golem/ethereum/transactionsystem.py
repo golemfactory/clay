@@ -589,8 +589,7 @@ class TransactionSystem(LoopingCallService):
 
         receipt = yield transaction_receipt
         if not receipt.status:
-            dpayment.status = model.PaymentStatus.awaiting
-            dpayment.save()
+            dpayment.delete_instance()
             raise exceptions.DepositError(
                 "Deposit failed",
                 transaction_receipt=receipt,

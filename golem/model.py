@@ -285,15 +285,11 @@ class DepositPayment(BaseModel):
         database = db
 
     def __repr__(self):
-        try:
-            tx = '0x{:x}'.format(self.tx)
-        except TypeError:
-            tx = self.tx
         return "<DepositPayment: {value} s:{status} tx:{tx}>"\
             .format(
                 value=self.value,
                 status=self.status,
-                tx=tx,
+                tx=self.tx,
             )
 
 
