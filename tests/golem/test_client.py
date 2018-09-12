@@ -46,8 +46,11 @@ from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     TaskTestStatus
 from golem.task.tasktester import TaskTester
+from golem.tools import testwithreactor
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.testwithreactor import TestWithReactor
+
+from .ethereum.test_fundslocker import make_mock_task as \
+    make_fundslocker_mock_task
 
 random = Random(__name__)
 
@@ -94,19 +97,23 @@ def make_mock_ets(eth=100, gnt=100):
     return ets
 
 
+@patch('golem.client.node_info_str')
 @patch(
     'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
 )
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
-class TestClient(testutils.DatabaseFixture, TestWithReactor):
-    # FIXME: if we someday decide to run parallel tests,
-    # this may completely break. Issue #2456
-    # pylint: disable=attribute-defined-outside-init
-
+class TestClientBase(testwithreactor.TestDatabaseWithReactor):
     def tearDown(self):
         if hasattr(self, 'client'):
             self.client.quit()
+        super().tearDown()
+
+
+class TestClient(TestClientBase):
+    # FIXME: if we someday decide to run parallel tests,
+    # this may completely break. Issue #2456
+    # pylint: disable=attribute-defined-outside-init
 
     def test_get_payments(self, *_):
         ets = Mock()
@@ -311,25 +318,6 @@ class TestClient(testutils.DatabaseFixture, TestWithReactor):
         assert config.num_cores > 0
         assert config.max_memory_size > 0
         assert config.max_resource_size > 0
-
-    def test_restart_by_frame(self, *_):
-        self.client = Client(
-            datadir=self.path,
-            app_config=Mock(),
-            config_desc=ClientConfigDescriptor(),
-            keys_auth=Mock(),
-            database=Mock(),
-            transaction_system=Mock(),
-            connect_to_known_hosts=False,
-            use_docker_manager=False,
-            use_monitor=False
-        )
-
-        self.client.task_server = Mock()
-        self.client.restart_frame_subtasks('tid', 10)
-
-        self.client.task_server.task_manager.restart_frame_subtasks.\
-            assert_called_with('tid', 10)
 
     def test_presets(self, *_):
         Client.save_task_preset("Preset1", "TaskType1", "data1")
@@ -652,7 +640,64 @@ class TestClient(testutils.DatabaseFixture, TestWithReactor):
             exp_potential_workers=8)
 
 
-class TestDoWorkService(TestWithReactor):
+class TestClientRestartSubtasks(TestClientBase):
+    def setUp(self):
+        super().setUp()
+        self.ts = Mock()
+        self.client = Client(
+            datadir=self.path,
+            app_config=Mock(),
+            config_desc=ClientConfigDescriptor(),
+            keys_auth=Mock(),
+            database=Mock(),
+            transaction_system=self.ts,
+            connect_to_known_hosts=False,
+            use_docker_manager=False,
+            use_monitor=False
+        )
+        self.client.funds_locker.persist = False
+
+        self.task = make_fundslocker_mock_task()
+        self.client.funds_locker.lock_funds(self.task)
+
+        self.client.task_server = Mock()
+
+    def test_restart_by_frame(self):
+        # given
+        frame_subtasks = {
+            'subtask_id1': Mock(),
+            'subtask_id2': Mock(),
+        }
+        self.client.task_server.task_manager.get_frame_subtasks.return_value = \
+            frame_subtasks
+
+        frame = 10
+
+        # when
+        self.client.restart_frame_subtasks(self.task.header.task_id, frame)
+
+        # then
+        self.client.task_server.task_manager.restart_frame_subtasks.\
+            assert_called_with(self.task.header.task_id, frame)
+        self.ts.lock_funds_for_payments.assert_called_with(
+            self.task.subtask_price, len(frame_subtasks))
+
+    def test_restart_subtask(self):
+        # given
+        self.client.task_server.task_manager.get_task_id.return_value = \
+            self.task.header.task_id
+
+        # when
+        self.client.restart_subtask('subtask_id')
+
+        # then
+        self.client.task_server.task_manager.restart_subtask.\
+            assert_called_with('subtask_id')
+        self.ts.lock_funds_for_payments.assert_called_with(
+            self.task.subtask_price, 1)
+
+
+class TestDoWorkService(testwithreactor.TestWithReactor):
 
     @patch('golem.client.logger')
     def test_run(self, logger):
@@ -749,7 +794,7 @@ class TestDoWorkService(TestWithReactor):
             assert client.ranking.sync_network.called
 
 
-class TestMonitoringPublisherService(TestWithReactor):
+class TestMonitoringPublisherService(testwithreactor.TestWithReactor):
 
     @patch('golem.client.logger')
     @patch('golem.client.dispatcher.send')
@@ -769,7 +814,7 @@ class TestMonitoringPublisherService(TestWithReactor):
         assert send.call_count == 3
 
 
-class TestNetworkConnectionPublisherService(TestWithReactor):
+class TestNetworkConnectionPublisherService(testwithreactor.TestWithReactor):
 
     @patch('golem.client.logger')
     def test_run(self, logger):
@@ -782,7 +827,7 @@ class TestNetworkConnectionPublisherService(TestWithReactor):
         assert c._publish.call_count == 1
 
 
-class TestTaskArchiverService(TestWithReactor):
+class TestTaskArchiverService(testwithreactor.TestWithReactor):
 
     @patch('golem.client.logger')
     def test_run(self, logger):
@@ -795,7 +840,7 @@ class TestTaskArchiverService(TestWithReactor):
         assert task_archiver.do_maintenance.call_count == 1
 
 
-class TestResourceCleanerService(TestWithReactor):
+class TestResourceCleanerService(testwithreactor.TestWithReactor):
 
     def test_run(self):
         older_than_seconds = 5
@@ -812,7 +857,7 @@ class TestResourceCleanerService(TestWithReactor):
         c.remove_received_files.assert_called_with(older_than_seconds)
 
 
-class TestTaskCleanerService(TestWithReactor):
+class TestTaskCleanerService(testwithreactor.TestWithReactor):
 
     def test_run(self):
         client = Mock(spec=Client)
@@ -824,9 +869,11 @@ class TestTaskCleanerService(TestWithReactor):
         client.clean_old_tasks.assert_called_once()
 
 
+@patch('golem.client.node_info_str')
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(testutils.DatabaseFixture, LogTestCase):
+    # pylint: disable=too-many-public-methods
     def setUp(self):
         super(TestClientRPCMethods, self).setUp()
         with patch('golem.network.concent.handlers_library.HandlersLibrary'

@@ -1,4 +1,4 @@
-# pylint: disable=protected-access
+# pylint: disable=too-many-lines
 import calendar
 import datetime
 import os
@@ -180,7 +180,6 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts2 = self._get_requestor_tasksession()
         self._fake_add_task()
 
-        ctd = message.tasks.ComputeTaskDef(task_id=mt.task_id)
         self._set_task_state()
 
         ts2.task_manager.should_wait_for_node.return_value = False
@@ -885,7 +884,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.task_session._react_to_cannot_assign_task(msg_cat)
         assert task_keeper.active_tasks["abc"].requests == expected_requests
 
-    def test_react_to_want_to_compute_no_handshake(self):
+    @patch('golem.task.tasksession.node_info_str')
+    def test_react_to_want_to_compute_no_handshake(self, _):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
 
@@ -903,7 +903,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         ts._start_handshake.assert_called_with(ts.key_id)
 
-    def test_react_to_want_to_compute_handshake_busy(self):
+    @patch('golem.task.tasksession.node_info_str')
+    def test_react_to_want_to_compute_handshake_busy(self, _):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
 

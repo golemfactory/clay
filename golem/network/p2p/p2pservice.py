@@ -14,6 +14,7 @@ from scipy.stats import stats
 from golem.config.active import P2P_SEEDS
 from golem.core import simplechallenge
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
+from golem.core.common import node_info_str
 from golem.diag.service import DiagnosticsProvider
 from golem.model import KnownHosts, db
 from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
@@ -328,8 +329,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         """
         key_id = peer.key_id
         logger.info(
-            "Adding peer %r, key id difficulty: %r",
-            key_id,
+            "Adding peer %s, key id difficulty: %r",
+            node_info_str(peer.node_name, key_id),
             self.keys_auth.get_difficulty(key_id)
         )
         with self._peer_lock:

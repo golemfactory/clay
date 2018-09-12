@@ -338,8 +338,10 @@ class TaskManager(TaskEventListener):
                                      persist=False)
 
     def task_needs_computation(self, task_id: str) -> bool:
-        if self.tasks_states[task_id].status not in self.activeStatus:
-            logger.info(f'task is not active: {task_id}')
+        task_status = self.tasks_states[task_id].status
+        if task_status not in self.activeStatus:
+            logger.info(
+                f'task is not active: {task_id}, status: {task_status}')
             return False
         task = self.tasks[task_id]
         if not task.needs_computation():
@@ -880,7 +882,7 @@ class TaskManager(TaskEventListener):
                                      op=SubtaskOp.RESTARTED,
                                      persist=False)
 
-        task.status = TaskStatus.computing
+        task_state.status = TaskStatus.computing
         self.notice_task_updated(task_id, op=OtherOp.FRAME_RESTARTED)
 
     @handle_task_key_error
@@ -943,6 +945,15 @@ class TaskManager(TaskEventListener):
 
         subtask_states = list(task_state.subtask_states.values())
         return [subtask_state.subtask_id for subtask_state in subtask_states]
+
+    def get_frame_subtasks(self, task_id: str, frame) \
+            -> Optional[Dict[str, SubtaskState]]:
+        task: Optional[Task] = self.tasks.get(task_id)
+        if not task:
+            return None
+        if not isinstance(task, CoreTask):
+            return None
+        return task.get_subtasks(frame)
 
     def change_config(self, root_path, use_distributed_resource_management):
         self.dir_manager = DirManager(root_path)
