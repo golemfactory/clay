@@ -110,6 +110,7 @@ class TestClientBase(testwithreactor.TestDatabaseWithReactor):
 )
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
+@patch('golem.client.node_info_str')
 class TestClient(TestClientBase):
     # FIXME: if we someday decide to run parallel tests,
     # this may completely break. Issue #2456
