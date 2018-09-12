@@ -72,6 +72,7 @@ class HoudiniTaskOptions(Options):
         opts["render_node"] = self.render_node
         opts["start_frame"] = self.start_frame
         opts["end_frame"] = self.end_frame
+        opts["output_file"] = self.output_file
 
         return opts
 

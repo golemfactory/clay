@@ -56,6 +56,10 @@ class HoudiniTask(CoreTask):
         super(HoudiniTask, self).initialize(dir_manager)
 
 
+    def short_extra_data_repr(self, extra_data):
+        return "Dummytask extra_data: {}".format(extra_data)
+
+
     def _next_frame_range(self):
 
         num_subtask_frames = math.ceil( self.num_frames / self.total_tasks )
@@ -112,11 +116,15 @@ class HoudiniTask(CoreTask):
         self.subtasks_given[sid]["status"] = SubtaskStatus.starting
         self.subtasks_given[sid]["perf"] = perf_index
         self.subtasks_given[sid]["node_id"] = node_id
-        #self.subtasks_given[sid]["result_extension"] = self.RESULT_EXT
-        #self.subtasks_given[sid]["shared_data_files"] = self.task_definition.shared_data_files
         self.subtasks_given[sid]["subtask_id"] = sid
 
         return self.ExtraData(ctd=ctd)
+
+
+    def query_extra_data_for_test_task(self) -> ComputeTaskDef:
+        # What performance index should be used ?
+        return self._next_task_extra_data( 0.0 )
+
 
 
 class HoudiniTaskBuilder(CoreTaskBuilder):

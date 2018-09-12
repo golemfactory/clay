@@ -24,6 +24,9 @@ class HoudiniBenchmark(CoreBenchmark):
 
         definition = self._task_definition = HoudiniTaskDefinition(HoudiniTaskDefaults())
 
+        definition.task_id = str(uuid.uuid4())
+        definition.total_subtasks = 8
+
         definition.options.scene_file = ""
         definition.options.start_frame = 30
         definition.options.end_frame = 35

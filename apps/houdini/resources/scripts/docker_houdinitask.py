@@ -2,6 +2,7 @@ import subprocess
 import sys
 import os
 import json
+import params
 
 
 ######################################################################################
@@ -22,9 +23,20 @@ import json
 # ================================
 #
 def exec_cmd(cmd):
-    pc = subprocess.Popen(cmd)
-    return pc.wait()
 
+    try:
+        pc = subprocess.Popen(cmd)
+        return pc.wait()
+    except Exception as e:
+        message = "While executing command: " + str( cmd ) + "\nWorking directory: " +  os.getcwd()
+        raise type(e), type(e)(e.message + message), sys.exc_info()[2]
+
+
+# ================================
+#
+def save_task_definition( file, dict ):
+    with open(file, 'w') as outfile:
+        json.dump(dict, outfile)
 
 # ================================
 #
@@ -44,6 +56,9 @@ def setup_houdini_end_render( installation_info, task_definition_file ):
 
     houdini_dir = get_houdini_setup_dir( installation_info )
 
+    print( os.getcwd() )
+    os.chdir( "/golem/scripts/" )
+
     command = [ "./houdini_invoker.sh", houdini_dir, task_definition_file ]
     exec_cmd( command )
 
@@ -59,6 +74,7 @@ def run():
 
     task_definition_file = "/golem/work/task_definition.json"
 
+    save_task_definition( task_definition_file, params.render_params )
     setup_houdini_end_render( installation_info, task_definition_file )
 
 
