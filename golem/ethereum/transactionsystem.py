@@ -298,9 +298,12 @@ class TransactionSystem(LoopingCallService):
         return self._payments_keeper.get_list_of_all_payments()
 
     @classmethod
-    def get_deposit_payments_list(cls):
+    def get_deposit_payments_list(cls, limit=1000, offset=0):
         result = []
-        query = model.DepositPayment.select().order_by('id').limit(1000)
+        query = model.DepositPayment.select() \
+            .order_by('id') \
+            .limit(limit) \
+            .offset(offset)
         for dpayment in query:
             entry = {}
             entry["pk"] = common.to_unicode(dpayment.id)
