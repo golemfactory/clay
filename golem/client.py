@@ -920,6 +920,12 @@ class Client(HardwarePresetsMixin):
         self.task_server.task_manager.delete_task(task_id)
         self.funds_locker.remove_task(task_id)
 
+    def purge_tasks(self):
+        tasks = self.get_tasks()
+        logger.debug('Deleting %d tasks ...', len(tasks))
+        for t in tasks:
+            self.delete_task(t['id'])
+
     def get_node(self):
         return self.node.to_dict()
 
