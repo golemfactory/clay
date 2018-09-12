@@ -1,6 +1,7 @@
 # pylint: disable=too-many-lines
 
 import collections
+import enum
 import json
 import logging
 import sys
@@ -13,6 +14,7 @@ from threading import Lock
 from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from ethereum.utils import denoms
+from golem_messages import datastructures as msg_datastructures
 from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -33,9 +35,9 @@ from golem.core.common import (
     deadline_to_timeout,
     datetime_to_timestamp_utc,
     get_timestamp_utc,
+    node_info_str,
     string_to_timeout,
     to_unicode,
-    node_info_str,
 )
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
@@ -1147,6 +1149,28 @@ class Client(HardwarePresetsMixin):
             'block_number': str(balances['block_number']),
             'last_gnt_update': str(balances['gnt_update_time']),
             'last_eth_update': str(balances['eth_update_time']),
+        }
+
+    def get_deposit_balance(self):
+        balance: int = self.transaction_system.concent_balance()
+        timelock: int = self.transaction_system.concent_timelock()
+
+        class DepositStatus(msg_datastructures.StringEnum):
+            locked = enum.auto()
+            unlocking = enum.auto()
+            unlocked = enum.auto()
+
+        now = time.time()
+        if timelock == 0:
+            status = DepositStatus.locked
+        elif timelock < now:
+            status = DepositStatus.unlocked
+        else:
+            status = DepositStatus.unlocking
+        return {
+            'value': str(balance),
+            'status': status.value,
+            'timelock': str(timelock),
         }
 
     def get_payments_list(self):
