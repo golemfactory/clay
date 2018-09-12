@@ -19,7 +19,6 @@ from peewee import (
     FloatField,
     IntegerField,
     Model,
-    PrimaryKeyField,
     SmallIntegerField,
     TextField,
 )
