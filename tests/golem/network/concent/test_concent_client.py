@@ -182,7 +182,6 @@ class TestReceiveFromConcent(TestCase):
 
 
 @mock.patch('twisted.internet.reactor', create=True)
-@mock.patch('golem.network.concent.client.receive_out_of_band')
 @mock.patch('golem.network.concent.client.receive_from_concent')
 @mock.patch('golem.network.concent.client.send_to_concent')
 class TestConcentClientService(testutils.TempDirFixture):
