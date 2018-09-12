@@ -336,8 +336,7 @@ class ConcentClientService(threading.Thread):
             return
 
         try:
-            # mypy, why u so silly?
-            res = receive_from_concent(  # type: ignore
+            res = receive_from_concent(
                 signing_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
                 public_key=self.keys_auth.public_key,
                 concent_variant=self.variant,
