@@ -1,7 +1,7 @@
 import logging
 import socket
 
-from types import MethodType
+from types import Any, Callable
 
 from web3.exceptions import CannotHandleRequest
 
@@ -17,12 +17,11 @@ class RemoteRPCErrorMiddlewareBuilder:
     """
 
     def __init__(self,
-                 error_listener: MethodType,
+                 error_listener: Callable[[], Any],
                  retries: int = RETRIES) -> None:
         """
         :param error_listener: Function to execute when the maximum number of
         consecutive errors is reached
-        :param max_errors: Maximum number of consecutive unrecoverable errors
         """
         self._retries = retries
         self._cur_errors = 0
