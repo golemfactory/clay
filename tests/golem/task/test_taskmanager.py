@@ -1106,6 +1106,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         new_task.header = MagicMock(max_price=42)
         new_task.subtasks_given = {}
         new_task.last_task = 0
+        new_task.num_failed_subtasks = 0
 
         ctds = [{
             'task_id': 'new_task_id',
@@ -1138,6 +1139,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         with patch.object(self.tm, 'notice_task_updated'):
             self.tm.copy_results('old_task_id', 'new_task_id', [])
 
+            self.assertEqual(new_task.num_failed_subtasks, len(ctds))
             self.assertEqual(
                 self.tm.subtask2task_mapping.get('subtask_id1'), 'new_task_id')
             self.assertEqual(
