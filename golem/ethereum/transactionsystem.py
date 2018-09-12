@@ -34,7 +34,6 @@ from golem.core import common
 from golem.core.service import LoopingCallService
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
-from golem.ethereum.exceptions import NotEnoughFunds
 from golem.ethereum.incomeskeeper import IncomesKeeper
 from golem.ethereum.paymentskeeper import PaymentsKeeper
 from golem.utils import privkeytoaddr
@@ -381,12 +380,12 @@ class TransactionSystem(LoopingCallService):
             raise Exception('Start was not called')
         gnt = price * num
         if gnt > self.get_available_gnt():
-            raise NotEnoughFunds(gnt, self.get_available_gnt(), 'GNT')
+            raise exceptions.NotEnoughFunds(gnt, self.get_available_gnt(), 'GNT')
 
         eth = self.eth_for_batch_payment(num)
         eth_available = self.get_available_eth()
         if eth > eth_available:
-            raise NotEnoughFunds(eth, eth_available, 'ETH')
+            raise exceptions.NotEnoughFunds(eth, eth_available, 'ETH')
 
         log.info(
             "Locking %f GNT and ETH for %d payments",
@@ -505,7 +504,7 @@ class TransactionSystem(LoopingCallService):
 
         if currency == 'ETH':
             if amount > self.get_available_eth():
-                raise NotEnoughFunds(
+                raise exceptions.NotEnoughFunds(
                     amount,
                     self.get_available_eth(),
                     currency,
@@ -519,7 +518,7 @@ class TransactionSystem(LoopingCallService):
 
         if currency == 'GNT':
             if amount > self.get_available_gnt():
-                raise NotEnoughFunds(
+                raise exceptions.NotEnoughFunds(
                     amount,
                     self.get_available_gnt(),
                     currency,
