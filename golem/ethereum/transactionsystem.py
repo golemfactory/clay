@@ -380,7 +380,10 @@ class TransactionSystem(LoopingCallService):
             raise Exception('Start was not called')
         gnt = price * num
         if gnt > self.get_available_gnt():
-            raise exceptions.NotEnoughFunds(gnt, self.get_available_gnt(), 'GNT')
+            raise exceptions.NotEnoughFunds(
+                gnt,
+                self.get_available_gnt(), 'GNT',
+            )
 
         eth = self.eth_for_batch_payment(num)
         eth_available = self.get_available_eth()
