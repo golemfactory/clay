@@ -87,15 +87,13 @@ class HexIntegerField(CharField):
             return int(value, 16)
 
 
-class FixedLengthHexField(HexIntegerField):
+class FixedLengthHexField(CharField):
     EXPECTED_LENGTH: int = 0
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, max_length=self.EXPECTED_LENGTH, **kwargs)
 
-    def db_value(self, value):
-        if isinstance(value, str):
-            value = int(value, 16)
+    def db_value(self, value: str):
         value = super().db_value(value)
         current_len = len(value)
         if len(value) != self.EXPECTED_LENGTH:

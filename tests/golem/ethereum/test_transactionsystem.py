@@ -400,10 +400,7 @@ class TestTransactionSystem(TestWithDatabase):
                 ('fee', None),
                 ('block_hash', None),
                 ('block_number', None),
-                (
-                    'tx',
-                    42786856794595602737089826615569335124530206270629956721696313704773860331694, # noqa pylint: disable=line-too-long
-                ),):
+                ('tx', tx_hash),):
             self.assertEqual(getattr(dpayment, field), value)
 
     def test_concent_deposit_done(self):
@@ -447,13 +444,10 @@ class TestTransactionSystem(TestWithDatabase):
                 ('fee', 42000),
                 (
                     'block_hash',
-                    92176921968600410671803669125866255996563864972251080109244454944866383116700, # noqa pylint: disable=line-too-long
+                    'cbca49fb2c75ba2fada56c6ea7df5979444127d29b6b4e93a7797dc22e97399c', # noqa pylint: disable=line-too-long
                 ),
                 ('block_number', 2940769),
-                (
-                    'tx',
-                    42786856794595602737089826615569335124530206270629956721696313704773860331694, # noqa pylint: disable=line-too-long
-                ),):
+                ('tx', tx_hash),):
             self.assertEqual(getattr(dpayment, field), value)
 
     def test_check_payments(self):

@@ -577,7 +577,7 @@ class TransactionSystem(LoopingCallService):
         dpayment = model.DepositPayment.create(
             status=model.PaymentStatus.sent,
             value=max_possible_amount,
-            tx=int(tx_hash, 16),
+            tx=tx_hash,
         )
         log.debug('DEPOSIT PAYMENT %s', dpayment)
 
