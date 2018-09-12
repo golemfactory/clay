@@ -19,7 +19,6 @@ from golem.core import variables
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import received_handler
-from golem.network.concent.received_handler import TaskServerMessageHandler
 from golem.network.concent.handlers_library import library
 from golem.network.concent.filetransfers import ConcentFiletransferService
 
@@ -56,6 +55,7 @@ class FrctResponseTestBase(unittest.TestCase):
         raise NotImplementedError()
 
     def setUp(self):
+        library._handlers = {}
         self.msg = self._get_frctr()
         self.reasons = message.concents.ForceReportComputedTaskResponse.REASON
         ttc = self.msg.task_to_compute
@@ -158,6 +158,7 @@ class TaskServerMessageHandlerTestBase(
         testutils.DatabaseFixture, testutils.TestWithClient):
 
     def setUp(self):
+        library._handlers = {}  # noqa Avoid warnings caused by previous tests leaving handlers pylint: disable=line-too-long
         gc.collect()
         super().setUp()
         self.task_server = taskserver_factories.TaskServer(
@@ -189,7 +190,9 @@ class IsOursTest(TaskServerMessageHandlerTestBase):
             self.provider_keys.raw_pubkey
         with mock.patch('golem.network.concent.'
                         'received_handler.register_handlers'):
-            self.tsmh = TaskServerMessageHandler(task_server=self.task_server)
+            self.tsmh = received_handler.TaskServerMessageHandler(
+                task_server=self.task_server,
+            )
 
     def test_is_ours(self):
         provider_priv_key = self.provider_keys.raw_privkey
@@ -826,7 +829,7 @@ class ForcePaymentTest(TaskServerMessageHandlerTestBase):
         )
 
     @mock.patch('golem.network.concent.received_handler.logger.debug')
-    def test_committed_unknown(self, log_mock):
+    def test_committed_unknown(self, _log_mock):
         fpc = msg_factories.concents.ForcePaymentCommittedFactory(
             amount_pending=31337,
             recipient_type=None,
