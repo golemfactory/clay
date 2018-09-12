@@ -504,11 +504,11 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_clean_old_tasks_no_tasks(self, *_):
         self.client = Client(
             datadir=self.path,
-            app_config=Mock(),
+            app_config=MagicMock(),
             config_desc=ClientConfigDescriptor(),
-            keys_auth=Mock(),
-            database=Mock(),
-            transaction_system=Mock(),
+            keys_auth=MagicMock(),
+            database=MagicMock(),
+            transaction_system=MagicMock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -522,11 +522,11 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_clean_old_tasks_only_new(self, get_timestamp, *_):
         self.client = Client(
             datadir=self.path,
-            app_config=Mock(),
+            app_config=MagicMock(),
             config_desc=ClientConfigDescriptor(),
-            keys_auth=Mock(),
-            database=Mock(),
-            transaction_system=Mock(),
+            keys_auth=MagicMock(),
+            database=MagicMock(),
+            transaction_system=MagicMock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
@@ -546,11 +546,11 @@ class TestClient(TestWithDatabase, TestWithReactor):
     def test_clean_old_tasks_old_and_new(self, get_timestamp, *_):
         self.client = Client(
             datadir=self.path,
-            app_config=Mock(),
+            app_config=MagicMock(),
             config_desc=ClientConfigDescriptor(),
-            keys_auth=Mock(),
-            database=Mock(),
-            transaction_system=Mock(),
+            keys_auth=MagicMock(),
+            database=MagicMock(),
+            transaction_system=MagicMock(),
             connect_to_known_hosts=False,
             use_docker_manager=False,
             use_monitor=False
