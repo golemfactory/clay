@@ -643,7 +643,8 @@ class TestClient(TestClientBase):
 class TestClientRestartSubtasks(TestClientBase):
     @patch('golem.client.node_info_str')
     @patch(
-        'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
+        'golem.network.concent.handlers_library.HandlersLibrary'
+        '.register_handler',
     )
     @patch('signal.signal')
     @patch('golem.network.p2p.node.Node.collect_network_info')
@@ -1634,7 +1635,8 @@ def test_task_computer_event_listener():
 class TestDepositBalance(TestClientBase):
     @patch('golem.client.node_info_str')
     @patch(
-        'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
+        'golem.network.concent.handlers_library.HandlersLibrary'
+        '.register_handler',
     )
     @patch('signal.signal')
     @patch('golem.network.p2p.node.Node.collect_network_info')
