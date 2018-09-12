@@ -1,9 +1,9 @@
 # pylint: disable=too-many-lines
 
 import collections
+import enum
 import json
 import logging
-import random
 import sys
 import time
 import uuid
@@ -14,6 +14,7 @@ from threading import Lock
 from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from ethereum.utils import denoms
+from golem_messages import datastructures as msg_datastructures
 from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -34,6 +35,7 @@ from golem.core.common import (
     deadline_to_timeout,
     datetime_to_timestamp_utc,
     get_timestamp_utc,
+    node_info_str,
     string_to_timeout,
     to_unicode,
 )
@@ -64,7 +66,6 @@ from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.network.upnp.mapper import PortMapperManager
-from golem.ranking.helper.trust import Trust
 from golem.ranking.ranking import Ranking
 from golem.report import Component, Stage, StatusPublisher, report_calls
 from golem.resource.base.resourceserver import BaseResourceServer
@@ -140,8 +141,9 @@ class Client(HardwarePresetsMixin):
             self.update_setting('in_shutdown', False)
 
         logger.info(
-            'Client "%s", datadir: %s',
-            self.config_desc.node_name,
+            'Client %s, datadir: %s',
+            node_info_str(self.config_desc.node_name,
+                          keys_auth.key_id),
             datadir
         )
         self.db = database
@@ -586,29 +588,13 @@ class Client(HardwarePresetsMixin):
         task_id = task.header.task_id
         self.funds_locker.lock_funds(task)
 
-        if self.concent_service.enabled:
-            min_amount, opt_amount = msg_helpers.requestor_deposit_amount(
-                task.price,
-            )
-            # This is a bandaid solution for unlocking funds when task creation
-            # fails. This case is most common but, the better way it to always
-            # unlock them when the task fails regardless of the reason.
-            try:
-                self.transaction_system.concent_deposit(
-                    required=min_amount,
-                    expected=opt_amount,
-                )
-            except NotEnoughFunds:
-                self.funds_locker.remove_task(task_id)
-                raise
-
         logger.info('Enqueue new task "%r"', task_id)
-        files = get_resources_for_task(resource_header=None,
-                                       resource_type=ResourceType.HASHES,
-                                       tmp_dir=getattr(task, 'tmp_dir', None),
-                                       resources=task.get_resources())
 
         def package_created(packager_result):
+            logger.info(
+                "Resource package created. Creating task. task_id=%r",
+                task_id,
+            )
             package_path, package_sha1 = packager_result
             task.header.resource_size = path.getsize(package_path)
 
@@ -630,6 +616,7 @@ class Client(HardwarePresetsMixin):
             _resources.addCallbacks(task_created, error)
 
         def task_created(resource_server_result):
+            logger.info("Task created. Starting... task_id=%r", task_id)
             resource_manager_result, package_path,\
                 package_hash, package_size = resource_server_result
 
@@ -656,8 +643,54 @@ class Client(HardwarePresetsMixin):
             logger.error("Task '%s' creation failed: %r", task_id, exception)
             _result.errback(exception)
 
-        _package = self.resource_server.create_resource_package(files, task_id)
-        _package.addCallbacks(package_created, error)
+        def deposit_created(_):
+            logger.info(
+                "Deposit confirmed. Creating resource package. task_id=%r",
+                task_id,
+            )
+            files = get_resources_for_task(
+                resource_header=None,
+                resource_type=ResourceType.HASHES,
+                tmp_dir=getattr(task, 'tmp_dir', None),
+                resources=task.get_resources(),
+            )
+
+            _package = self.resource_server.create_resource_package(
+                files,
+                task_id,
+            )
+            _package.addCallbacks(package_created, error)
+
+        if self.concent_service.enabled:
+            min_amount, opt_amount = msg_helpers.requestor_deposit_amount(
+                task.price,
+            )
+            logger.info(
+                "Ensuring deposit. min=%.8f optimal=%.8f task_id=%r",
+                min_amount / denoms.ether,
+                opt_amount / denoms.ether,
+                task_id,
+            )
+            # This is a bandaid solution for unlocking funds when task creation
+            # fails. This case is most common but, the better way it to always
+            # unlock them when the task fails regardless of the reason.
+            try:
+                self.transaction_system.concent_deposit(
+                    required=min_amount,
+                    expected=opt_amount,
+                ).addCallback(deposit_created).addErrback(
+                    lambda err: logger.error(
+                        "Deposit creation failed: %r, task_id=%r",
+                        err,
+                        task_id,
+                    ),
+                )
+            except NotEnoughFunds:
+                self.funds_locker.remove_task(task_id)
+                raise
+        else:
+            deposit_created(None)
+
         return _result, task_id
 
     def _get_mask_for_task(self, task: CoreTask) -> Mask:
@@ -858,10 +891,27 @@ class Client(HardwarePresetsMixin):
             lambda err: logger.error('Task creation failed: %r', err))
 
     def restart_frame_subtasks(self, task_id, frame):
-        self.task_server.task_manager.restart_frame_subtasks(task_id, frame)
+        logger.debug("restarting frame subtasks: task_id = %s, frame = %r",
+                     task_id, frame)
+        task_manager = self.task_server.task_manager
+
+        subtasks: Dict = task_manager.get_frame_subtasks(task_id, frame)
+        if subtasks is None:
+            logger.error("frame has no subtasks (task_id = %s, frame = %r",
+                         task_id, frame)
+            return
+
+        self.funds_locker.add_subtask(task_id, len(subtasks))
+        task_manager.restart_frame_subtasks(task_id, frame)
 
     def restart_subtask(self, subtask_id):
-        self.task_server.task_manager.restart_subtask(subtask_id)
+        logger.debug("restarting subtask %s", subtask_id)
+        task_manager = self.task_server.task_manager
+
+        task_id = task_manager.get_task_id(subtask_id)
+        self.funds_locker.add_subtask(task_id)
+
+        task_manager.restart_subtask(subtask_id)
 
     def delete_task(self, task_id):
         logger.debug('Deleting task "%r" ...', task_id)
@@ -1099,6 +1149,28 @@ class Client(HardwarePresetsMixin):
             'block_number': str(balances['block_number']),
             'last_gnt_update': str(balances['gnt_update_time']),
             'last_eth_update': str(balances['eth_update_time']),
+        }
+
+    def get_deposit_balance(self):
+        balance: int = self.transaction_system.concent_balance()
+        timelock: int = self.transaction_system.concent_timelock()
+
+        class DepositStatus(msg_datastructures.StringEnum):
+            locked = enum.auto()
+            unlocking = enum.auto()
+            unlocked = enum.auto()
+
+        now = time.time()
+        if timelock == 0:
+            status = DepositStatus.locked
+        elif timelock < now:
+            status = DepositStatus.unlocked
+        else:
+            status = DepositStatus.unlocking
+        return {
+            'value': str(balance),
+            'status': status.value,
+            'timelock': str(timelock),
         }
 
     def get_payments_list(self):

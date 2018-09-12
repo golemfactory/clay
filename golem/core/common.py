@@ -137,6 +137,10 @@ def string_to_timeout(string):
     return int(values[0]) * 3600 + int(values[1]) * 60 + int(values[2])
 
 
+def node_info_str(name, node_id):
+    return f"'{name}'({node_id[:8]}..{node_id[-8:]})"
+
+
 class HandleError(object):
     def __init__(self, error, handle_error):
         self.handle_error = handle_error
