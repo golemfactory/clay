@@ -56,6 +56,11 @@ class DockerForMac(Hypervisor):
             logger.error("Docker for Mac: unable to update config: %r", e)
 
     def constraints(self, name: Optional[str] = None) -> Dict:
+        if self.vm_running():
+            return self._parse_process_config()
+        return self._constraints()
+
+    def _constraints(self) -> Dict:
         config = self._read_config()
         constraints = dict()
 
@@ -79,6 +84,23 @@ class DockerForMac(Hypervisor):
 
         with open(self.CONFIG_FILE) as config_file:
             return json.load(config_file)
+
+    def _parse_process_config(self) -> Dict:
+        constraints = dict()
+        process_cmd = self.COMMAND_HANDLER.process_cmd()
+
+        for i, part in enumerate(process_cmd):
+
+            if part == '-c':
+                constraints[CONSTRAINT_KEYS['cpu']] = int(process_cmd[i + 1])
+            elif part == '-m':
+                memory = process_cmd[i + 1].replace('M', '')
+                constraints[CONSTRAINT_KEYS['mem']] = int(memory)
+
+            if len(constraints) == 2:
+                break
+
+        return constraints
 
     def _update_config(self, update: Dict) -> None:
         config = self._read_config()

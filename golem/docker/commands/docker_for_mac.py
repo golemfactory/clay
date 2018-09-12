@@ -2,9 +2,11 @@ import logging
 import subprocess
 import sys
 import time
-from typing import Optional
 
-from golem.core.common import unix_pid
+from typing import Optional, List
+
+import psutil
+
 from golem.docker.commands.docker import CommandDict, DockerCommandHandler
 from golem.docker.config import DOCKER_VM_STATUS_RUNNING
 
@@ -15,7 +17,7 @@ class DockerForMacCommandHandler(DockerCommandHandler):
 
     APP = '/Applications/Docker.app'
     PROCESSES = dict(
-        app=f'{APP}/Contents/MacOS/Docker',
+        app='Docker',
         driver='com.docker.driver',
         hyperkit='com.docker.hyperkit',
         vpnkit='com.docker.vpnkit',
@@ -24,7 +26,7 @@ class DockerForMacCommandHandler(DockerCommandHandler):
     @classmethod
     def start(cls, *_args, **_kwargs) -> None:
         try:
-            subprocess.check_call(['open', '-g', '-a', cls.PROCESSES['app']])
+            subprocess.check_call(['open', '-g', '-a', cls.APP])
             cls.wait_until_started()
         except (FileNotFoundError, subprocess.CalledProcessError):
             logger.error('Docker for Mac: unable to start the app')
@@ -45,18 +47,36 @@ class DockerForMacCommandHandler(DockerCommandHandler):
         cls.wait_until_stopped()
 
     @classmethod
-    def pid(cls) -> Optional[int]:
-        return unix_pid(cls.PROCESSES['app'])
+    def pid(cls, name: Optional[str] = None) -> Optional[int]:
+        name = name or cls.PROCESSES['app']
+
+        try:
+            process = next(p for p in psutil.process_iter() if p.name() == name)
+        except StopIteration:
+            return None
+        return process.pid
 
     @classmethod
     def status(cls) -> str:
         return DOCKER_VM_STATUS_RUNNING if cls.pid() else ''
 
     @classmethod
+    def process_cmd(cls) -> List[str]:
+        pid = cls.pid(cls.PROCESSES['hyperkit'])
+        if not pid:
+            return []
+
+        try:
+            process = psutil.Process(pid)
+            return process.cmdline()
+        except (TypeError, ValueError):
+            return []
+
+    @classmethod
     def wait_until_stopped(cls) -> None:
         started = time.time()
 
-        while any(map(unix_pid, cls.PROCESSES.values())):
+        while any(map(cls.pid, cls.PROCESSES.values())):
             if time.time() - started >= cls.TIMEOUT:
                 logger.error('Docker for Mac: VM start timeout')
                 return
