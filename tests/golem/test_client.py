@@ -97,19 +97,19 @@ def make_mock_ets(eth=100, gnt=100):
     return ets
 
 
+class TestClientBase(testwithreactor.TestDatabaseWithReactor):
+    def tearDown(self):
+        if hasattr(self, 'client'):
+            self.client.quit()  # pylint: disable=no-member
+        super().tearDown()
+
+
 @patch('golem.client.node_info_str')
 @patch(
     'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
 )
 @patch('signal.signal')
 @patch('golem.network.p2p.node.Node.collect_network_info')
-class TestClientBase(testwithreactor.TestDatabaseWithReactor):
-    def tearDown(self):
-        if hasattr(self, 'client'):
-            self.client.quit()
-        super().tearDown()
-
-
 class TestClient(TestClientBase):
     # FIXME: if we someday decide to run parallel tests,
     # this may completely break. Issue #2456
@@ -641,7 +641,13 @@ class TestClient(TestClientBase):
 
 
 class TestClientRestartSubtasks(TestClientBase):
-    def setUp(self):
+    @patch('golem.client.node_info_str')
+    @patch(
+        'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
+    )
+    @patch('signal.signal')
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    def setUp(self, *_):  # pylint: disable=arguments-differ
         super().setUp()
         self.ts = Mock()
         self.client = Client(
@@ -1625,8 +1631,14 @@ def test_task_computer_event_listener():
 @patch(
     'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
 )
-class TestDepositBalance(testutils.DatabaseFixture):
-    def setUp(self):
+class TestDepositBalance(TestClientBase):
+    @patch('golem.client.node_info_str')
+    @patch(
+        'golem.network.concent.handlers_library.HandlersLibrary.register_handler',
+    )
+    @patch('signal.signal')
+    @patch('golem.network.p2p.node.Node.collect_network_info')
+    def setUp(self, *_):  # pylint: disable=arguments-differ
         super().setUp()
         self.client = Client(
             datadir=self.path,

@@ -35,9 +35,9 @@ from golem.core.common import (
     deadline_to_timeout,
     datetime_to_timestamp_utc,
     get_timestamp_utc,
+    node_info_str,
     string_to_timeout,
     to_unicode,
-    node_info_str,
 )
 from golem.core.fileshelper import du
 from golem.core.hardware import HardwarePresets
