@@ -1,6 +1,6 @@
-import from apps.core.task.coretaskstate import (TaskDefinition, TaskDefaults, Options)
+from apps.core.task.coretaskstate import (TaskDefinition, TaskDefaults, Options)
 
-import from apps.houdini.houdinienvironment import HoudiniEnvironment
+from apps.houdini.houdinienvironment import HoudiniEnvironment
 from golem.resource.dirmanager import list_dir_recursive
 
 import os
