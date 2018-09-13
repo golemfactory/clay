@@ -134,7 +134,8 @@ class TaskSessionTaskToComputeTest(TestCase):
         self.conn.server.task_manager.tasks_states[self.task_id] = task_state
         return task_state
 
-    def test_want_to_compute_task(self):
+    @patch('golem.resource.resourcehandshake.short_node_id')
+    def test_want_to_compute_task(self, *_):
         ts = self._get_task_session()
         ts._get_handshake = Mock(return_value={})
         params = self._get_task_parameters()
