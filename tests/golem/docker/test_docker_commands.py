@@ -56,15 +56,21 @@ class TestDockerForMacCommandHandler(TestCase):
         with mock.patch(f'{self.PKG_PATH}.pid', return_value=None):
             assert DockerForMacCommandHandler.status() == ''
 
-    def test_pid(self, _, popen):
+    @mock.patch('psutil.process_iter')
+    def test_pid(self, process_iter, *_):
+        app = DockerForMacCommandHandler.PROCESSES['app']
+        pid = 1234
 
-        stdout, stderr = mock.Mock(), mock.Mock()
-        popen.return_value = mock.Mock(communicate=mock.Mock(
-            return_value=(stdout, stderr)
-        ))
+        def process(name: str) -> mock.Mock:
+            p = mock.Mock(pid=pid)
+            p.name.return_value = name
+            return p
 
-        stdout.strip.return_value = b'user 1234'
-        assert DockerForMacCommandHandler.pid() == 1234
+        process_iter.return_value = [process(name=app)]
+        assert DockerForMacCommandHandler.pid() == pid
 
-        stdout.strip.return_value = b''
+        process_iter.return_value = [process(name='-')]
+        assert DockerForMacCommandHandler.pid() is None
+
+        process_iter.return_value = []
         assert DockerForMacCommandHandler.pid() is None

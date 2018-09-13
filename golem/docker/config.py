@@ -74,7 +74,7 @@ class DockerConfigManager(object):
                 logger.warning('Cannot set the CPU set: %r', exc)
 
             try:
-                host_config['mem_limit'] = int(max_memory_size) * 1024
+                host_config['mem_limit'] = str(int(max_memory_size) * 1024)
             except (TypeError, ValueError) as exc:
                 logger.warning('Cannot set the memory limit: %r', exc)
 
