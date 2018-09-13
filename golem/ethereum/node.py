@@ -50,7 +50,7 @@ class NodeProcess(object):
     def is_connected(self):
         try:
             return self.web3.isConnected()
-        except AssertionError:  # thrown if not all required APIs are available
+        except Exception:  # pylint:disable=broad-except
             return False
 
     def _create_remote_rpc_provider(self):

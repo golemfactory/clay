@@ -1,7 +1,7 @@
 import logging
 import socket
 
-from types import Any, Callable
+from typing import Any, Callable
 
 from web3.exceptions import CannotHandleRequest
 
