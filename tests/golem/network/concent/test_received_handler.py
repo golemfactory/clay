@@ -55,7 +55,9 @@ class FrctResponseTestBase(unittest.TestCase):
         raise NotImplementedError()
 
     def setUp(self):
-        library._handlers = {}  # noqa Avoid warnings caused by previous tests leaving handlers pylint: disable=line-too-long
+        # Avoid warnings caused by previous tests leaving handlers
+        library._handlers = {}
+
         self.msg = self._get_frctr()
         self.reasons = message.concents.ForceReportComputedTaskResponse.REASON
         ttc = self.msg.task_to_compute
@@ -158,7 +160,9 @@ class TaskServerMessageHandlerTestBase(
         testutils.DatabaseFixture, testutils.TestWithClient):
 
     def setUp(self):
-        library._handlers = {}  # noqa Avoid warnings caused by previous tests leaving handlers pylint: disable=line-too-long
+        # Avoid warnings caused by previous tests leaving handlers
+        library._handlers = {}
+
         super().setUp()
         self.task_server = taskserver_factories.TaskServer(
             client=self.client,
@@ -828,7 +832,7 @@ class ForcePaymentTest(TaskServerMessageHandlerTestBase):
         )
 
     @mock.patch('golem.network.concent.received_handler.logger.debug')
-    def test_committed_unknown(self, log_mock):
+    def test_committed_unknown(self, _log_mock):
         fpc = msg_factories.concents.ForcePaymentCommittedFactory(
             amount_pending=31337,
             recipient_type=None,
