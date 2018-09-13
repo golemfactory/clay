@@ -68,7 +68,10 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
         self.assertFalse(mock_run_computing_node.called)
         self.assertTrue(mock_run_simulation.called)
 
-    @mock.patch("golem.network.concent.handlers_library.HandlersLibrary.register_handler")
+    @mock.patch(
+        "golem.network.concent.handlers_library"
+        ".HandlersLibrary.register_handler",
+    )
     @mock.patch("tests.golem.task.dummy.runner.atexit")
     @mock.patch("golem.core.common.config_logging")
     @mock.patch("golem.client.Client.enqueue_new_task")
