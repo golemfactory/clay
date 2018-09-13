@@ -479,8 +479,9 @@ class CoreTask(Task):
     @handle_key_error
     def _mark_subtask_failed(self, subtask_id):
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
-        self.counting_nodes[self.subtasks_given[
-            subtask_id]['node_id']].reject()
+        node_id = self.subtasks_given[subtask_id]['node_id']
+        if node_id in self.counting_nodes:
+            self.counting_nodes[node_id].reject()
         self.num_failed_subtasks += 1
 
     def _unpack_task_result(self, trp, output_dir):

@@ -338,8 +338,10 @@ class TaskManager(TaskEventListener):
                                      persist=False)
 
     def task_needs_computation(self, task_id: str) -> bool:
-        if self.tasks_states[task_id].status not in self.activeStatus:
-            logger.info(f'task is not active: {task_id}')
+        task_status = self.tasks_states[task_id].status
+        if task_status not in self.activeStatus:
+            logger.info(
+                f'task is not active: {task_id}, status: {task_status}')
             return False
         task = self.tasks[task_id]
         if not task.needs_computation():
@@ -507,15 +509,27 @@ class TaskManager(TaskEventListener):
         }
 
         # Generate all subtasks for the new task
+        new_subtasks_ids = []
         while new_task.needs_computation():
             extra_data = new_task.query_extra_data(0, node_id=str(uuid.uuid4()))
-            self.subtask2task_mapping[extra_data.ctd['subtask_id']] = \
+            new_subtask_id = extra_data.ctd['subtask_id']
+            self.subtask2task_mapping[new_subtask_id] = \
                 new_task_id
             self.__add_subtask_to_tasks_states(
                 node_name=None,
                 node_id=None,
                 address=None,
                 ctd=extra_data.ctd)
+            new_subtasks_ids.append(new_subtask_id)
+
+        # it's important to do this step separately, to not disturb
+        # 'needs_computation' condition above
+        for new_subtask_id in new_subtasks_ids:
+            self.tasks_states[new_task_id].subtask_states[new_subtask_id]\
+                .subtask_status = SubtaskStatus.failure
+            new_task.subtasks_given[new_subtask_id]['status'] \
+                = SubtaskStatus.failure
+            new_task.num_failed_subtasks += 1
 
         def handle_copy_error(subtask_id, error):
             logger.error(
@@ -880,7 +894,7 @@ class TaskManager(TaskEventListener):
                                      op=SubtaskOp.RESTARTED,
                                      persist=False)
 
-        task.status = TaskStatus.computing
+        task_state.status = TaskStatus.computing
         self.notice_task_updated(task_id, op=OtherOp.FRAME_RESTARTED)
 
     @handle_task_key_error
@@ -943,6 +957,15 @@ class TaskManager(TaskEventListener):
 
         subtask_states = list(task_state.subtask_states.values())
         return [subtask_state.subtask_id for subtask_state in subtask_states]
+
+    def get_frame_subtasks(self, task_id: str, frame) \
+            -> Optional[Dict[str, SubtaskState]]:
+        task: Optional[Task] = self.tasks.get(task_id)
+        if not task:
+            return None
+        if not isinstance(task, CoreTask):
+            return None
+        return task.get_subtasks(frame)
 
     def change_config(self, root_path, use_distributed_resource_management):
         self.dir_manager = DirManager(root_path)
