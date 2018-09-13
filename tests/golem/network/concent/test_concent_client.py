@@ -286,16 +286,10 @@ class TestConcentClientService(testutils.TempDirFixture):
         'golem.network.concent.client.ConcentClientService'
         '.react_to_concent_message'
     )
-    def test_receive(self, react_mock, _send_mock, receive_mock, roob_mock, *_):
+    def test_receive(self, react_mock, _send_mock, receive_mock, *_):
         receive_mock.return_value = content = 'rcv_content'
-        roob_mock.return_value = content_oob = 'oob_content'
         self.concent_service.receive()
         receive_mock.assert_called_once_with(
-            signing_key=self.concent_service.keys_auth._private_key,
-            public_key=self.concent_service.keys_auth.public_key,
-            concent_variant=self.concent_service.variant,
-        )
-        roob_mock.assert_called_once_with(
             signing_key=self.concent_service.keys_auth._private_key,
             public_key=self.concent_service.keys_auth.public_key,
             concent_variant=self.concent_service.variant,
@@ -303,7 +297,6 @@ class TestConcentClientService(testutils.TempDirFixture):
         react_mock.assert_has_calls(
             (
                 mock.call(content),
-                mock.call(content_oob),
             ),
         )
 
