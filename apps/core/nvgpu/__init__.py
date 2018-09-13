@@ -53,7 +53,7 @@ def _is_supported(*_) -> bool:
     # Unified Memory is not available on pre-Pascal architectures.
     if not _modprobe(unified_memory=get_unified_memory_enabled()):
         _modprobe(unified_memory=False)
-        logger.warning('Unified memory is not supported')
+        logger.debug('Unified memory is not supported')
 
     mod_nvidia_uvm = unix_pipe(['lsmod'], ['grep', '-i', 'nvidia_uvm'])
     if not mod_nvidia_uvm:
