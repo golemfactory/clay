@@ -46,7 +46,10 @@ def get_device_type():
 
 tile_size = 0
 
-use_gpu = get_device_type() == 'gpu'
+use_nvidia_gpu = get_device_type() == 'nvidia_gpu'
+use_amd_gpu = get_device_type() == 'amd_gpu'
+use_gpu = use_nvidia_gpu or use_amd_gpu
+
 if use_gpu:
     tile_size = 512
 
@@ -72,13 +75,20 @@ bpy.context.scene.render.border_max_y = %(border_max_y)r
 bpy.context.scene.render.use_compositing = bool(%(use_compositing)r)
 
 if engine == "CYCLES":
+    preferences = bpy.context.user_preferences.addons['cycles'].preferences
     samples = %(samples)d
+
     if samples != 0:
         bpy.context.scene.cycles.samples = samples
     if use_gpu:
-        preferences = bpy.context.user_preferences.addons['cycles'].preferences
-        preferences.compute_device_type = 'CUDA'
         bpy.context.scene.cycles.device = 'GPU'
+
+    if use_nvidia_gpu:
+        preferences.compute_device_type = 'CUDA'
+    elif use_amd_gpu:
+        preferences.compute_device_type = 'OPENCL'
+
+
 
 #and check if additional files aren't missing
 bpy.ops.file.report_missing_files()
