@@ -26,11 +26,11 @@ class TestDockerConfigManager(unittest.TestCase):
 
         cm.build_config(config)
 
-        self.assertGreater(len(cm.container_host_config), len(config.to_dict()))
-        self.assertEqual(cm.container_host_config, cm.container_host_config)
+        self.assertGreater(len(cm._container_host_config), len(config.to_dict()))
+        self.assertEqual(cm._container_host_config, cm._container_host_config)
 
-        assert cm.container_host_config['cpuset']
-        assert cm.container_host_config['mem_limit']
+        assert cm._container_host_config['cpuset']
+        assert cm._container_host_config['mem_limit']
 
     def test_failing_build_config(self):
 
@@ -38,5 +38,5 @@ class TestDockerConfigManager(unittest.TestCase):
         cm.cpu_cores = None
         cm.build_config(None)
 
-        self.assertFalse('cpuset' in cm.container_host_config)
-        self.assertFalse('mem_limit' in cm.container_host_config)
+        self.assertFalse('cpuset' in cm._container_host_config)
+        self.assertFalse('mem_limit' in cm._container_host_config)

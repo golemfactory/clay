@@ -147,8 +147,8 @@ class DockerTaskThread(TaskThread):
             resources_dir=str(self.dir_mapping.resources),
             work_dir=str(self.dir_mapping.work),
             output_dir=str(self.dir_mapping.output),
-            host_config=(self.docker_manager.container_host_config
-                         if self.docker_manager else None),
+            host_config=self.docker_manager.get_host_config_for_task(
+                self.dir_mapping)
         )
 
         with DockerJob(**params) as job, MemoryChecker(self.check_mem) as mc:

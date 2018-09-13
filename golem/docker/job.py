@@ -132,9 +132,6 @@ class DockerJob(object):
                 return nt_path_to_posix_path(path)
             return path
 
-        container_config = dict(self.host_config)
-        cpuset = container_config.pop('cpuset', None)
-
         if is_windows():
             environment = None
         elif is_osx():
@@ -142,24 +139,7 @@ class DockerJob(object):
         else:
             environment = dict(LOCAL_USER_ID=os.getuid())
 
-        host_cfg = client.create_host_config(
-            cpuset_cpus=cpuset,
-            binds={
-                posix_path(self.work_dir): {
-                    "bind": self.WORK_DIR,
-                    "mode": "rw"
-                },
-                posix_path(self.resources_dir): {
-                    "bind": self.RESOURCES_DIR,
-                    "mode": "ro"
-                },
-                posix_path(self.output_dir): {
-                    "bind": self.OUTPUT_DIR,
-                    "mode": "rw"
-                }
-            },
-            **container_config
-        )
+        host_cfg = client.create_host_config(**self.host_config)
 
         # The location of the task script when mounted in the container
         container_script_path = self._get_container_script_path()

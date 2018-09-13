@@ -14,6 +14,8 @@ from golem.docker.hypervisor.docker_for_mac import DockerForMac
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.docker.hypervisor.xhyve import XhyveHypervisor
+from golem.docker.job import DockerJob
+from golem.docker.task_thread import DockerDirMapping
 from golem.report import report_calls, Component
 
 logger = logging.getLogger(__name__)
@@ -106,7 +108,7 @@ class DockerManager(DockerConfigManager):
         self.check_environment()
 
         if self.hypervisor:
-            self.hypervisor.check_work_dir(work_dir)
+            self.hypervisor.update_work_dir(work_dir)
 
         if in_background:
             thread = Thread(target=self._wait_for_tasks,
@@ -136,6 +138,27 @@ class DockerManager(DockerConfigManager):
             memory_size=memory_size,
             cpu_count=cpu_count
         )
+
+    def get_host_config_for_task(self, dir_mapping: DockerDirMapping) -> dict:
+        host_confg = dict(self._container_host_config)
+        if self.hypervisor and self.hypervisor.uses_volumes():
+            host_confg['binds'] = self.hypervisor.create_volumes(dir_mapping)
+        else:
+            host_confg['binds'] = {
+                str(dir_mapping.work): {
+                    "bind": DockerJob.WORK_DIR,
+                    "mode": "rw"
+                },
+                str(dir_mapping.resources): {
+                    "bind": DockerJob.RESOURCES_DIR,
+                    "mode": "ro"
+                },
+                str(dir_mapping.output): {
+                    "bind": DockerJob.OUTPUT_DIR,
+                    "mode": "rw"
+                }
+            }
+        return host_confg
 
     def constrain(self, **params) -> bool:
         if not self.hypervisor:
