@@ -1,17 +1,19 @@
+import logging
 import subprocess
 from typing import List
 
-from golem.core.common import is_linux
+from golem.core.common import is_linux, unix_pipe
+
+
+logger = logging.getLogger(__name__)
 
 
 def is_supported(*_) -> bool:
     try:
         return _is_supported()
     except Exception as exc:  # pylint: disable=broad-except
-        import logging
-        logger = logging.getLogger(__name__)
         logger.warning("NVGPU Docker environment is not supported: %r", exc)
-        return False
+    return False
 
 
 def get_devices(*_) -> List[int]:
@@ -19,55 +21,61 @@ def get_devices(*_) -> List[int]:
     return [0]
 
 
+def get_unified_memory_enabled() -> bool:
+    # Fixme: add configuration
+    return True
+
+
 def _is_supported(*_) -> bool:
     # soft fail section
     if not is_linux():
         return False
 
-    dev_nvidia = _pipe(['lspci'], ['grep', '-i', 'nvidia'])
+    dev_nvidia = unix_pipe(['lspci'], ['grep', '-i', 'nvidia'])
     if not dev_nvidia:
         return False
 
     # hard fail section
-    mod_nouveau = _pipe(['lsmod'], ['grep', '-i', 'nouveau'])
+    mod_nouveau = unix_pipe(['lsmod'], ['grep', '-i', 'nouveau'])
     if mod_nouveau:
         raise RuntimeError('nouveau driver is not compatible with '
                            'nvidia-docker')
 
-    mod_nvidia = _pipe(['lsmod'], ['grep', '-i', 'nvidia'])
+    mod_nvidia = unix_pipe(['lsmod'], ['grep', '-i', 'nvidia'])
     if not mod_nvidia:
         raise RuntimeError('nvidia kernel module not loaded')
 
-    dev_nvidia_ctl = _pipe(['ls', '/dev'], ['grep', '-i', 'nvidiactl'])
+    dev_nvidia_ctl = unix_pipe(['ls', '/dev'], ['grep', '-i', 'nvidiactl'])
     if not dev_nvidia_ctl:
         raise RuntimeError('nvidiactl device not found')
 
-    devices = ['-c={}'.format(d) for d in get_devices()]
-    command = ['nvidia-modprobe', '-u'] + devices
+    # We will try to use the Unified Memory kernel module to create the devices.
+    # Unified Memory is not available on pre-Pascal architectures.
+    if not _modprobe(unified_memory=get_unified_memory_enabled()):
+        _modprobe(unified_memory=False)
+        logger.warning('Unified memory is not supported')
 
-    try:
-        subprocess.check_call(command)
-    except subprocess.CalledProcessError:
-        raise RuntimeError(f'{command} failed')
-
-    mod_nvidia_uvm = _pipe(['lsmod'], ['grep', '-i', 'nvidia_uvm'])
+    mod_nvidia_uvm = unix_pipe(['lsmod'], ['grep', '-i', 'nvidia_uvm'])
     if not mod_nvidia_uvm:
         raise RuntimeError('nvidia_uvm kernel module was not loaded')
 
-    dev_nvidia_uvm = _pipe(['ls', '/dev'], ['grep', '-i', 'nvidia-uvm'])
+    dev_nvidia_uvm = unix_pipe(['ls', '/dev'], ['grep', '-i', 'nvidia-uvm'])
     if not dev_nvidia_uvm:
         raise RuntimeError('nvidia-uvm device not found')
 
     return True
 
 
-def _pipe(cmd: List[str], pipe: List[str]):
-    proc_cmd = subprocess.Popen(cmd,
-                                stdout=subprocess.PIPE)
-    proc_pipe = subprocess.Popen(pipe,
-                                 stdout=subprocess.PIPE,
-                                 stderr=subprocess.PIPE,
-                                 stdin=proc_cmd.stdout)
-    proc_cmd.stdout.close()
-    stdout, _ = proc_pipe.communicate()
-    return stdout.strip()
+def _modprobe(unified_memory: bool) -> bool:
+
+    command = ['nvidia-modprobe'] + ['-c={}'.format(d) for d in get_devices()]
+    if unified_memory:
+        command.append('-u')
+
+    try:
+        subprocess.check_call(command)
+    except subprocess.CalledProcessError as exc:
+        if unified_memory and exc.returncode == 1:
+            return False
+        raise RuntimeError(f'{command} failed')
+    return True
