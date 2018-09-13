@@ -14,8 +14,8 @@ class TaskDefaults(object):
         self.output_format = ""
         self.main_program_file = ""
         self.min_subtasks = 1
-        self.max_subtasks = 50
-        self.default_subtasks = 20
+        self.max_subtasks = 1000
+        self.default_subtasks = 100
         self.task_name = ""
 
     @property

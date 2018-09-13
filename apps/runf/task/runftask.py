@@ -6,7 +6,7 @@ from uuid import uuid4
 import enforce
 from golem_messages.message import ComputeTaskDef
 from golem_remote import encode_obj_to_str
-from golem_remote.golem_client import get_result_key
+from golem_remote.queue_helpers import get_result_key
 
 from apps.blender.verification_queue import VerificationQueue
 from apps.core.task import coretask
@@ -42,6 +42,7 @@ class RunF(CoreTask):
     VERIFIER_CLASS = RunFVerifier
 
     RESULT_EXT = "result"
+    TIMEOUT = 10
 
     def __init__(self,
                  total_tasks: int,
@@ -99,7 +100,9 @@ class RunF(CoreTask):
         return "Runf extra_data: {}".format(extra_data)
 
     def _extra_data(self, perf_index=0.0) -> ComputeTaskDef:
-        queue_id, data = self.submitted_subtasks.pop_nowait()
+        queue_id, data = self.submitted_subtasks.pop(timeout=self.TIMEOUT)
+        if data is None:
+            return None  # what should I do?
 
         subtask_id = self.create_subtask_id()
 
@@ -177,7 +180,8 @@ class RunF(CoreTask):
         self.subtasks_being_processed = set()  # TODO I should send "abort" signal
 
     def _get_example_data(self):
-        f = lambda x: x + x
+        def f(x):
+            return x + x
         args = [2]
         kwargs = {}
         data = SubtaskData(

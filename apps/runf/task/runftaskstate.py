@@ -9,6 +9,9 @@ class RunFDefaults(TaskDefaults):
     def __init__(self):
         super().__init__()
         self.options = RunFOptions()
+        self.min_subtasks = 1
+        self.max_subtasks = 1000
+        self.default_subtasks = 10
 
 
 class RunFDefinition(TaskDefinition):

@@ -19,7 +19,7 @@ ENV PATH /opt/conda/bin:$PATH
 RUN pip install cloudpickle sklearn numpy hyperopt
 
 # this is a hack to get docker to build
-ENV VERSION=11111111111
+ENV VERSION=11111111111111111111111111111
 
 # This is needed to unpack the data and pack the result
 RUN pip install --upgrade git+https://github.com/inexxt/golem_remote.git
