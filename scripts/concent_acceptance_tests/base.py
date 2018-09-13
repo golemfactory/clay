@@ -139,10 +139,6 @@ class ConcentBaseTest:
         receive_and_load,
         receive_function=client.receive_from_concent,
     )
-    receive_out_of_band = functools.partialmethod(
-        receive_and_load,
-        receive_function=client.receive_out_of_band,
-    )
 
     def provider_receive(self):
         return self.receive_from_concent(
@@ -152,24 +148,8 @@ class ConcentBaseTest:
             public_key=self.provider_pub_key,
         )
 
-    def provider_receive_oob(self):
-        return self.receive_out_of_band(
-            actor='Provider',
-            signing_key=self.provider_priv_key,
-            private_key=self.provider_priv_key,
-            public_key=self.provider_pub_key,
-        )
-
     def requestor_receive(self):
         return self.receive_from_concent(
-            actor='Requestor',
-            signing_key=self.requestor_keys.raw_privkey,
-            private_key=self.requestor_keys.raw_privkey,
-            public_key=self.requestor_keys.raw_pubkey
-        )
-
-    def requestor_receive_oob(self):
-        return self.receive_out_of_band(
             actor='Requestor',
             signing_key=self.requestor_keys.raw_privkey,
             private_key=self.requestor_keys.raw_privkey,
