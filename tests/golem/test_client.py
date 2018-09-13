@@ -129,8 +129,8 @@ class TestClientBase(testwithreactor.TestDatabaseWithReactor):
         self.client = make_client(datadir=self.path)
 
     def tearDown(self):
-        super().tearDown()
         self.client.quit()
+        super().tearDown()
 
 
 @patch(
