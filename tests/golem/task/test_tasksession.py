@@ -941,6 +941,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         tm.check_next_subtask = Mock()
         tm.check_next_subtask.return_value = True
 
+
 class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
                                       testutils.TempDirFixture):
     def setUp(self):

@@ -317,7 +317,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
 
 
 @mock.patch('golem.task.tasksession.node_info_str')
-@mock.patch('golem.resource.resourcehandshake.short_node_id') 
+@mock.patch('golem.resource.resourcehandshake.short_node_id')
 @mock.patch('golem.task.tasksession.TaskSession.send')
 class ReactToWantToComputeTaskTestCase(unittest.TestCase):
     def setUp(self):
@@ -382,7 +382,6 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         task_manager.should_wait_for_node.return_value = False
         ctd = factories.tasks.ComputeTaskDefFactory()
         task_manager.get_next_subtask.return_value = ctd
-
 
         task = mock.MagicMock()
         task_state = mock.MagicMock(package_hash='123', package_size=42)
