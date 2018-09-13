@@ -3,7 +3,7 @@ import subprocess
 import sys
 import time
 
-from typing import Optional, List
+from typing import Optional
 
 import psutil
 
@@ -59,18 +59,6 @@ class DockerForMacCommandHandler(DockerCommandHandler):
     @classmethod
     def status(cls) -> str:
         return DOCKER_VM_STATUS_RUNNING if cls.pid() else ''
-
-    @classmethod
-    def process_cmd(cls) -> List[str]:
-        pid = cls.pid(cls.PROCESSES['hyperkit'])
-        if not pid:
-            return []
-
-        try:
-            process = psutil.Process(pid)
-            return process.cmdline()
-        except (TypeError, ValueError):
-            return []
 
     @classmethod
     def wait_until_stopped(cls) -> None:
