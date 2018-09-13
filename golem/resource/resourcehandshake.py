@@ -85,6 +85,7 @@ class ResourceHandshakeSessionMixin:
             concent_enabled = False
         elif not task_header.concent_enabled:
             self._handshake_error(key_id, 'Concent required')
+            return
         else:
             concent_enabled = True
         msg_d = dict(
