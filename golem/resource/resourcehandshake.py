@@ -176,7 +176,7 @@ class ResourceHandshakeSessionMixin:
         return handshake and not handshake.finished()
 
     def _start_handshake(self, key_id):
-        logger.info('Starting resource handshake with %r', 
+        logger.info('Starting resource handshake with %r',
                     short_node_id(key_id))
 
         handshake = ResourceHandshake(self._task_request_message)
@@ -213,7 +213,8 @@ class ResourceHandshakeSessionMixin:
             return
 
         if handshake.finished():
-            logger.info('Finished resource handshake with %r', short_node_id(key_id))
+            logger.info('Finished resource handshake with %r',
+                        short_node_id(key_id))
         if handshake.success() and handshake.message:
             self.send(message.tasks.WantToComputeTask(**handshake.message))
 
@@ -298,7 +299,7 @@ class ResourceHandshakeSessionMixin:
     # ########################
 
     def _handshake_error(self, key_id, error):
-        logger.info("Resource handshake error (%r): %r", 
+        logger.info("Resource handshake error (%r): %r",
                     short_node_id(key_id), error)
         self._block_peer(key_id)
         self._finalize_handshake(key_id)
