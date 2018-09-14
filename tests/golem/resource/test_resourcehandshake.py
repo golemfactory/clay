@@ -120,7 +120,6 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
     def test_request_task_failure(self, *_):
         self.session._handshake_required = Mock()
         self.session._handshake_error = Mock()
-        self.session.send = Mock()
 
         self.session._handshake_required.return_value = False
         self.session._block_peer(self.session.key_id)
@@ -128,6 +127,57 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
 
         assert not self.session._start_handshake.called
         assert self.session._handshake_error.called
+
+    @patch(
+        "golem.resource.resourcehandshake.ResourceHandshakeSessionMixin"
+        "._handshake_required",
+        return_value=False,
+    )
+    @patch(
+        "golem.resource.resourcehandshake.ResourceHandshakeSessionMixin"
+        "._handshake_error",
+    )
+    def test_request_task_concent_required(self, hs_error_mock, *_):
+        self.session.task_server.client.concent_service.enabled = True
+        self.session.task_server.task_keeper \
+            .task_headers[self.message['task_id']].concent_enabled = False
+
+        self.session.request_task(**self.message)
+        self.session.send.assert_not_called()
+        hs_error_mock.assert_called_once_with(
+            self.session.key_id,
+            "Concent required",
+        )
+
+    @patch(
+        "golem.resource.resourcehandshake.ResourceHandshakeSessionMixin"
+        "._handshake_required",
+        return_value=False,
+    )
+    def test_request_task_concent_enabled(self, *_):
+        self.session.task_server.client.concent_service.enabled = True
+        self.session.task_server.task_keeper \
+            .task_headers[self.message['task_id']].concent_enabled = True
+
+        self.session.request_task(**self.message)
+        self.session.send.assert_called_once()
+        msg: message.tasks.WantToComputeTask = self.session.send.call_args[0][0]
+        self.assertIsInstance(msg, message.tasks.WantToComputeTask)
+        self.assertTrue(msg.concent_enabled)
+
+    @patch(
+        "golem.resource.resourcehandshake.ResourceHandshakeSessionMixin"
+        "._handshake_required",
+        return_value=False,
+    )
+    def test_request_task_concent_disabled(self, *_):
+        self.session.task_server.client.concent_service.enabled = False
+
+        self.session.request_task(**self.message)
+        self.session.send.assert_called_once()
+        msg: message.tasks.WantToComputeTask = self.session.send.call_args[0][0]
+        self.assertIsInstance(msg, message.tasks.WantToComputeTask)
+        self.assertFalse(msg.concent_enabled)
 
     def test_react_to_resource_handshake_start(self, *_):
         self.session._download_handshake_nonce = Mock()
