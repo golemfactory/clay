@@ -1093,6 +1093,22 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         assert c.task_server.task_manager.delete_task.called
         c.remove_task.assert_called_with(task_id)
 
+    def test_purge_tasks(self, *_):
+        c = self.client
+        c.remove_task_header = Mock()
+        c.remove_task = Mock()
+        c.task_server = Mock()
+
+        task_id = str(uuid.uuid4())
+        c.get_tasks = Mock(return_value=[{'id': task_id}, ])
+
+        c.purge_tasks()
+        assert c.get_tasks.called
+        assert c.remove_task_header.called
+        assert c.remove_task.called
+        assert c.task_server.task_manager.delete_task.called
+        c.remove_task.assert_called_with(task_id)
+
     def test_get_unsupport_reasons(self, *_):
         c = self.client
         c.task_server.task_keeper.get_unsupport_reasons = Mock()
