@@ -597,8 +597,6 @@ class TransactionSystem(LoopingCallService):
 
         gas_price = self._sci.get_transaction_gas_price(receipt.tx_hash)
         dpayment.fee = receipt.gas_used * gas_price
-        dpayment.block_hash = receipt.block_hash
-        dpayment.block_number = receipt.block_number
         dpayment.status = model.PaymentStatus.confirmed
         dpayment.save()
         return dpayment.id

@@ -433,11 +433,6 @@ class TestTransactionSystem(TestWithDatabase):
                 ('id', dbid),
                 ('value', deposit_value),
                 ('fee', 42000),
-                (
-                    'block_hash',
-                    'cbca49fb2c75ba2fada56c6ea7df5979444127d29b6b4e93a7797dc22e97399c', # noqa pylint: disable=line-too-long
-                ),
-                ('block_number', 2940769),
                 ('tx', tx_hash),):
             self.assertEqual(getattr(dpayment, field), value)
 

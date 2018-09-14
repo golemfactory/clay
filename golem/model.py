@@ -277,8 +277,6 @@ class DepositPayment(BaseModel):
     value = HexIntegerField()
     status = PaymentStatusField(index=True, default=PaymentStatus.awaiting)
     fee = HexIntegerField(null=True)
-    block_hash = BlockchainHashField(null=True)
-    block_number = HexIntegerField(null=True)
     tx = BlockchainTransactionField(null=True)
 
     class Meta:  # pylint: disable=too-few-public-methods

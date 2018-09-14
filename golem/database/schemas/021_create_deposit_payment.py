@@ -14,8 +14,6 @@ def migrate(migrator, database, fake=False, **kwargs):
         value = pw.CharField()
         status = pw.IntegerField()
         fee = pw.CharField(null=True)
-        block_hash = pw.CharField(max_length=64, null=True)
-        block_number = pw.CharField(null=True)
         tx = pw.CharField(max_length=64, null=True)
         created_date = pw.DateTimeField(default=datetime.datetime.now)
         modified_date = pw.DateTimeField(default=datetime.datetime.now)
