@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import os
 import random
 import uuid
@@ -62,6 +63,7 @@ def get_example_task_header(key_id):
             "signature": None,
             "min_version": golem.__version__,
             "subtasks_count": 21,
+            "concent_enabled": False,
         },
         "mask": {
             "byte_repr": Mask().to_bytes()
@@ -90,6 +92,7 @@ class TaskServerTestBase(LogTestCase,
         super().setUp()
         random.seed()
         self.ccd = ClientConfigDescriptor()
+        self.client.concent_service.enabled = False
         with patch(
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):

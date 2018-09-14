@@ -1,4 +1,4 @@
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines, protected-access
 import calendar
 import datetime
 import os
@@ -33,8 +33,9 @@ from golem.task.taskbase import ResultType, TaskHeader
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.assertlogs import LogTestCase
+
 from tests import factories
-from tests.factories.taskserver import WaitingTaskResultFactory
+from tests.factories.task import taskbase as taskbase_factories
 
 
 def fill_slots(msg):
@@ -138,6 +139,9 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts = self._get_task_session()
         ts._get_handshake = Mock(return_value={})
         params = self._get_task_parameters()
+        ts.task_server.task_keeper.task_headers = task_headers = {}
+        task_headers[params['task_id']] = taskbase_factories.TaskHeader()
+        ts.concent_service.enabled = False
         ts.request_task(
             params['node_name'],
             params['task_id'],
@@ -147,6 +151,7 @@ class TaskSessionTaskToComputeTest(TestCase):
             params['max_memory_size'],
             params['num_cores']
         )
+        ts.conn.send_message.assert_called_once()
         mt = ts.conn.send_message.call_args[0][0]
         self.assertIsInstance(mt, message.tasks.WantToComputeTask)
         self.assertEqual(mt.node_name, params['node_name'])
@@ -295,7 +300,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts = self.task_session
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
-        wtr = WaitingTaskResultFactory()
+        wtr = factories.taskserver.WaitingTaskResultFactory()
 
         get_mock.return_value = msg_factories.tasks.TaskToComputeFactory(
             compute_task_def__subtask_id=wtr.subtask_id,
@@ -939,6 +944,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         tm.check_next_subtask = Mock()
         tm.check_next_subtask.return_value = True
+
 
 class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
                                       testutils.TempDirFixture):
