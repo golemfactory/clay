@@ -48,7 +48,9 @@ class HoudiniTask(CoreTask):
         )
 
         self.num_frames = task_definition.options.end_frame - task_definition.options.start_frame
-        self.requsted_frames = 0
+
+        self.first_frame = task_definition.options.start_frame
+        self.next_frame_to_compute = self.first_frame
 
 
 
@@ -64,17 +66,17 @@ class HoudiniTask(CoreTask):
 
         num_subtask_frames = math.ceil( self.num_frames / self.total_tasks )
 
-        start_frame = self.requsted_frames
+        start_frame = self.next_frame_to_compute
         end_frame = start_frame + num_subtask_frames
 
         # If number of frames wasn't divisible by number of tasks, last subtask will compute redundant frames
-        if end_frame > self.num_frames:
-            redundant_frames = self.num_frames - end_frame
+        if end_frame > ( self.first_frame + self.num_frames ):
+            redundant_frames = ( self.first_frame + self.num_frames ) - end_frame
 
             start_frame = start_frame - redundant_frames
             end_frame = end_frame - redundant_frames
 
-        self.requsted_frames += num_subtask_frames
+        self.next_frame_to_compute += num_subtask_frames
 
         # end_frame is last frame that will be rendered
         return start_frame, end_frame - 1

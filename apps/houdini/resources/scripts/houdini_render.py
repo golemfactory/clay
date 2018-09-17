@@ -15,8 +15,6 @@ def exec_cmd(cmd):
 
 
 
-print( "Imported hou" )
-
 
 # ================================
 #

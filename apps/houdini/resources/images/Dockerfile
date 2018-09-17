@@ -31,4 +31,13 @@ RUN apt-get install libfontconfig -y && \
 ADD ./scripts /golem/scripts
 WORKDIR /golem/scripts
 
+# Handle licenses
+ADD ./golem/work/licenses /usr/lib/sesi/licenses
+RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
+
+
 RUN pip uninstall beautifulsoup4 requests -y
+
+# Override entrypoint. This script will call base entrypoint internally, but first it must start houdini
+# license service as sudo user.
+ENTRYPOINT ["/golem/scripts/houdini_entrypoint.sh"]
