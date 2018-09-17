@@ -75,6 +75,7 @@ class TransactionSystem(LoopingCallService):
         self._last_gnt_update: Optional[float] = None
         self._payments_locked: int = 0
         self._gntb_locked: int = 0
+        self._gntb_withdrawn: int = 0
         # Amortized gas cost per payment used when dealing with locks
         self._eth_per_payment: int = 0
 
@@ -308,7 +309,8 @@ class TransactionSystem(LoopingCallService):
             raise Exception('Start was not called')
         if (account_address is None) \
                 or (account_address == self._sci.get_eth_address()):
-            return self._gntb_balance - self.get_locked_gnt()
+            return self._gntb_balance - self.get_locked_gnt() - \
+                self._gntb_withdrawn
         return self._sci.get_gntb_balance(address=account_address)
 
     def get_locked_gnt(self) -> int:
@@ -483,7 +485,15 @@ class TransactionSystem(LoopingCallService):
                 amount / denoms.ether,
                 destination,
             )
-            return self._sci.convert_gntb_to_gnt(destination, amount)
+            tx_hash = self._sci.convert_gntb_to_gnt(destination, amount)
+
+            def on_receipt(receipt) -> None:
+                self._gntb_withdrawn -= amount
+                if not receipt.status:
+                    log.error("Failed GNTB withdrawal: %r", receipt)
+            self._sci.on_transaction_confirmed(tx_hash, on_receipt)
+            self._gntb_withdrawn += amount
+            return tx_hash
 
         raise ValueError('Unknown currency {}'.format(currency))
 
