@@ -9,7 +9,6 @@ from unittest import TestCase
 
 from eth_utils import encode_hex
 from ethereum.utils import denoms
-from freezegun import freeze_time
 import golem_sci.structs
 import requests
 
@@ -509,21 +508,22 @@ class DepositPaymentsListTest(testutils.DatabaseFixture):
     def test_empty(self):
         self.assertEqual(TransactionSystem.get_deposit_payments_list(), [])
 
-    @freeze_time("2018-01-01 00:00:00")
     def test_one(self):
         tx_hash = \
             '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
         value = 31337
+        ts = 1514761200.0
+        dt = datetime.datetime.fromtimestamp(ts)
         model.DepositPayment.create(
             value=value,
             tx=tx_hash,
-            created_date=datetime.datetime.utcnow(),
-            modified_date=datetime.datetime.utcnow(),
+            created_date=dt,
+            modified_date=dt,
         )
         expected = [
             {
-                'created': 1514761200.0,
-                'modified': 1514761200.0,
+                'created': ts,
+                'modified': ts,
                 'fee': None,
                 'status': 'awaiting',
                 'transaction': tx_hash,
