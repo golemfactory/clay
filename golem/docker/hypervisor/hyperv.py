@@ -48,7 +48,6 @@ class HyperVHypervisor(DockerMachineHypervisor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._vm_utils = VMUtils()
-        self._client = local_client()
 
     def _parse_create_params(
             self,
@@ -98,11 +97,10 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
         logger.info(f'Hyper-V: reconfiguration of VM "{name}" finished')
 
-    @classmethod
-    def update_work_dir(cls, work_dir: Path) -> None:
+    def update_work_dir(self, work_dir: Path) -> None:
         super().update_work_dir(work_dir)
         # Ensure that working directory is shared via SMB
-        smbshare.create_share(cls.DOCKER_USER, work_dir)
+        smbshare.create_share(self.DOCKER_USER, work_dir)
 
     @classmethod
     def _get_ip_for_sharing(cls) -> str:
@@ -165,7 +163,10 @@ class HyperVHypervisor(DockerMachineHypervisor):
         share_name = smbshare.get_share_name(self._work_dir)
         volume_name = f'{my_ip}/{share_name}/{relpath.as_posix()}'
 
-        self._client.create_volume(
+        # Client must be created here, do it in __init__() will not work since
+        # environment variables are not set yet when __init__() is called
+        client = local_client()
+        client.create_volume(
             name=volume_name,
             driver=self.VOLUME_DRIVER,
             driver_opts={

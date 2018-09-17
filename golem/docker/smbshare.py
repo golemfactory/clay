@@ -1,6 +1,6 @@
 import binascii
 import hashlib
-from os import path
+from os import path, makedirs
 import subprocess
 from pathlib import Path
 from subprocess import CalledProcessError, TimeoutExpired
@@ -16,6 +16,8 @@ def create_share(user_name: str, shared_dir_path: Path) -> None:
     if not is_windows():
         raise OSError
 
+    if not shared_dir_path.is_dir():
+        makedirs(shared_dir_path, exist_ok=True)
     try:
         subprocess.run(
             [
@@ -34,13 +36,13 @@ def create_share(user_name: str, shared_dir_path: Path) -> None:
 
 
 def get_share_name(shared_dir_path: Path) -> str:
-    # normalize -> encode -> MD5 digest -> hexlify -> uppercase
+    # normalize -> encode -> MD5 digest -> hexlify -> decode -> uppercase
     norm_path = path.normcase(shared_dir_path.absolute())
     return binascii.hexlify(
         hashlib.md5(
             norm_path.encode()
         ).digest()
-    ).upper()
+    ).decode().upper()
 
 
 if __name__ == '__main__':

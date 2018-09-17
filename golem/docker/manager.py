@@ -130,6 +130,8 @@ class DockerManager(DockerConfigManager):
         try:
             memory_size = max(int(config_desc.max_memory_size) // 1024,
                               memory_size)
+            # Hyper-V expects a multiple of 2 MB
+            memory_size = memory_size // 2 * 2
         except (TypeError, ValueError) as exc:
             logger.warning('Cannot read the memory amount: %r', exc)
 
