@@ -305,16 +305,10 @@ class TransactionSystem(LoopingCallService):
             .offset(offset)
         for dpayment in query:
             entry = {}
-            entry["pk"] = common.to_unicode(dpayment.id)
             entry["value"] = common.to_unicode(dpayment.value)
             entry["status"] = common.to_unicode(dpayment.status.name)
             entry["fee"] = common.to_unicode(dpayment.fee)
-            entry["block_number"] = common.to_unicode(dpayment.block_number)
-            try:
-                tx_hash = "{:x}".format(dpayment.tx)
-            except (ValueError, TypeError):
-                tx_hash = dpayment.tx
-            entry["transaction"] = common.to_unicode(tx_hash)
+            entry["transaction"] = common.to_unicode(dpayment.tx)
             entry["created"] = common.datetime_to_timestamp_utc(
                 dpayment.created_date,
             )
@@ -556,7 +550,7 @@ class TransactionSystem(LoopingCallService):
 
     @defer.inlineCallbacks
     def concent_deposit(self, required: int, expected: int) \
-            -> Generator[defer.Deferred, TransactionReceipt, Optional[int]]:
+            -> Generator[defer.Deferred, TransactionReceipt, Optional[str]]:
         if not self._sci:
             raise Exception('Start was not called')
         current = self.concent_balance()
@@ -599,7 +593,7 @@ class TransactionSystem(LoopingCallService):
         dpayment.fee = receipt.gas_used * gas_price
         dpayment.status = model.PaymentStatus.confirmed
         dpayment.save()
-        return dpayment.id
+        return dpayment.tx
 
     def _get_funds_from_faucet(self) -> None:
         if not self._sci:

@@ -6,7 +6,7 @@ from golem.interface.command import command, Argument, CommandResult
 
 incomes_table_headers = ['payer', 'status', 'value']
 payments_table_headers = ['subtask', 'payee', 'status', 'value', 'fee']
-deposit_payments_table_headers = ['pk', 'status', 'value', 'fee']
+deposit_payments_table_headers = ['tx', 'status', 'value', 'fee']
 
 sort_incomes = Argument(
     '--sort',
@@ -107,7 +107,7 @@ def deposit_payments(sort):
                                            payment_value)
 
         entry = [
-            to_unicode(payment["pk"]),
+            to_unicode(payment["tx"]),
             to_unicode(payment["status"]),
             __value(payment_value),
             to_unicode(payment_fee)

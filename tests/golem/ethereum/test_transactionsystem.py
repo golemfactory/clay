@@ -1,4 +1,5 @@
 # pylint: disable=protected-access
+import datetime
 from os import urandom
 from pathlib import Path
 import sys
@@ -8,11 +9,12 @@ from unittest import TestCase
 
 from eth_utils import encode_hex
 from ethereum.utils import denoms
+from freezegun import freeze_time
 import golem_sci.structs
 import requests
 
 from golem import model
-from golem.tools.testwithdatabase import TestWithDatabase
+from golem import testutils
 from golem.ethereum import exceptions
 from golem.ethereum.transactionsystem import (
     TransactionSystem,
@@ -23,7 +25,7 @@ from golem.ethereum.exceptions import NotEnoughFunds
 PASSWORD = 'derp'
 
 
-class TestTransactionSystem(TestWithDatabase):
+class TestTransactionSystem(testutils.DatabaseFixture):
     def setUp(self):
         super().setUp()
         self.sci = Mock()
@@ -344,11 +346,11 @@ class TestTransactionSystem(TestWithDatabase):
 
     def test_concent_deposit_enough(self):
         self.sci.get_deposit_value.return_value = 10
-        dbid = self._call_concent_deposit(
+        tx_hash = self._call_concent_deposit(
             required=10,
             expected=40,
         )
-        self.assertIsNone(dbid)
+        self.assertIsNone(tx_hash)
         self.sci.deposit_payment.assert_not_called()
 
     def test_concent_deposit_not_enough(self):
@@ -366,13 +368,13 @@ class TestTransactionSystem(TestWithDatabase):
         self.ets._eth_balance = denoms.ether
         self.ets.lock_funds_for_payments(1, 1)
         tx_hash = \
-            '5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
+            '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
         self.sci.deposit_payment.return_value = tx_hash
 
         def fail_it(tx_hash, cb):
             receipt = golem_sci.structs.TransactionReceipt(
                 raw_receipt={
-                    'transactionHash': bytes.fromhex(tx_hash),
+                    'transactionHash': bytes.fromhex(tx_hash[2:]),
                     'status': 'not a status',
                     'blockHash': bytes.fromhex(
                         'cbca49fb2c75ba2fada56c6ea7df5979444127d29b6b4e93a77'
@@ -400,14 +402,14 @@ class TestTransactionSystem(TestWithDatabase):
         self.ets._eth_balance = denoms.ether
         self.ets.lock_funds_for_payments(1, 1)
         tx_hash = \
-            '5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
+            '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
         self.sci.deposit_payment.return_value = tx_hash
         self.sci.get_transaction_gas_price.return_value = 2
 
         def confirm_it(tx_hash, cb):
             receipt = golem_sci.structs.TransactionReceipt(
                 raw_receipt={
-                    'transactionHash': bytes.fromhex(tx_hash),
+                    'transactionHash': bytes.fromhex(tx_hash[2:]),
                     'status': 1,
                     'blockHash': bytes.fromhex(
                         'cbca49fb2c75ba2fada56c6ea7df5979444127d29b6b4e93a77'
@@ -420,17 +422,16 @@ class TestTransactionSystem(TestWithDatabase):
             cb(receipt)
 
         self.sci.on_transaction_confirmed.side_effect = confirm_it
-        dbid = self._call_concent_deposit(
+        db_tx_hash = self._call_concent_deposit(
             required=10,
             expected=40,
         )
+        self.assertEqual(tx_hash, db_tx_hash)
         deposit_value = 20 - 1
         self.sci.deposit_payment.assert_called_once_with(deposit_value)
-        self.assertIsInstance(dbid, int)
         dpayment = model.DepositPayment.get()
         for field, value in (
                 ('status', model.PaymentStatus.confirmed),
-                ('id', dbid),
                 ('value', deposit_value),
                 ('fee', 42000),
                 ('tx', tx_hash),):
@@ -502,3 +503,34 @@ class FaucetTest(TestCase):
         assert tETH_faucet_donate(addr) is True
         assert get.call_count == 1
         assert addr in get.call_args[0][0]
+
+
+class DepositPaymentsListTest(testutils.DatabaseFixture):
+    def test_empty(self):
+        self.assertEqual(TransactionSystem.get_deposit_payments_list(), [])
+
+    @freeze_time("2018-01-01 00:00:00")
+    def test_one(self):
+        tx_hash = \
+            '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
+        value = 31337
+        model.DepositPayment.create(
+            value=value,
+            tx=tx_hash,
+            created_date=datetime.datetime.now(),
+            modified_date=datetime.datetime.now(),
+        )
+        expected = [
+            {
+                'created': 1514761200.0,
+                'modified': 1514761200.0,
+                'fee': None,
+                'status': 'awaiting',
+                'transaction': tx_hash,
+                'value': str(value),
+            },
+        ]
+        self.assertEqual(
+            expected,
+            TransactionSystem.get_deposit_payments_list(),
+        )

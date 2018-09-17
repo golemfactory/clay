@@ -108,12 +108,8 @@ class FixedLengthHexField(CharField):
         return value
 
 
-class BlockchainHashField(FixedLengthHexField):
-    EXPECTED_LENGTH = 64
-
-
 class BlockchainTransactionField(FixedLengthHexField):
-    EXPECTED_LENGTH = 64
+    EXPECTED_LENGTH = 66
 
 
 class EnumFieldBase:
@@ -274,10 +270,10 @@ class Payment(BaseModel):
 
 
 class DepositPayment(BaseModel):
+    tx = BlockchainTransactionField(primary_key=True)
     value = HexIntegerField()
     status = PaymentStatusField(index=True, default=PaymentStatus.awaiting)
     fee = HexIntegerField(null=True)
-    tx = BlockchainTransactionField(null=True)
 
     class Meta:  # pylint: disable=too-few-public-methods
         database = db
