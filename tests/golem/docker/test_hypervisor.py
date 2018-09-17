@@ -275,7 +275,7 @@ class TestVirtualBoxHypervisor(LogTestCase):
         with mock.patch.object(self.hypervisor, 'command') as cmd:
             self.hypervisor.create('test')
             assert ('create', 'test') == cmd.call_args[0]
-            assert {'args': ('--driver', 'virtualbox')} == cmd.call_args[1]
+            assert {'args': ['--driver', 'virtualbox']} == cmd.call_args[1]
 
         # errors
         with mock.patch.object(self.hypervisor, 'command',

@@ -29,7 +29,7 @@ class TestDockerConfigManager(unittest.TestCase):
         self.assertGreater(len(cm._container_host_config), len(config.to_dict()))
         self.assertEqual(cm._container_host_config, cm._container_host_config)
 
-        assert cm._container_host_config['cpuset']
+        assert cm._container_host_config['cpuset_cpus']
         assert cm._container_host_config['mem_limit']
 
     def test_failing_build_config(self):

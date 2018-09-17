@@ -79,8 +79,10 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
             dmm.build_config(config)
             dmm.check_environment()
 
-        dmm.update_config(status_cb, done_cb, in_background=False)
-        dmm.update_config(status_cb, done_cb, in_background=True)
+        dmm.update_config(
+            status_cb, done_cb, in_background=False, work_dir=None)
+        dmm.update_config(
+            status_cb, done_cb, in_background=True, work_dir=None)
 
     def test_constrain_not_called(self):
         dmm = MockDockerManager()
@@ -139,13 +141,13 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
     @mock.patch('golem.docker.manager.DockerForMac.is_available',
                 return_value=False)
-    @mock.patch('golem.docker.manager.VirtualBoxHypervisor.instance')
+    @mock.patch('golem.docker.manager.HyperVHypervisor.instance')
     @mock.patch('golem.docker.manager.XhyveHypervisor.instance')
-    def test_get_hypervisor(self, xhyve_instance, virtualbox_instance, _):
+    def test_get_hypervisor(self, xhyve_instance, hyperv_instance, _):
 
         def reset():
             xhyve_instance.called = False
-            virtualbox_instance.called = False
+            hyperv_instance.called = False
 
         dmm = MockDockerManager()
 
@@ -153,7 +155,7 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
                         return_value=True):
 
             assert dmm._select_hypervisor()
-            assert virtualbox_instance.called
+            assert hyperv_instance.called
             assert not xhyve_instance.called
 
         reset()
@@ -164,7 +166,7 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
                             return_value=True):
 
                 assert dmm._select_hypervisor()
-                assert not virtualbox_instance.called
+                assert not hyperv_instance.called
                 assert xhyve_instance.called
 
         reset()
@@ -175,7 +177,7 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
                             return_value=False):
 
                 assert not dmm._select_hypervisor()
-                assert not virtualbox_instance.called
+                assert not hyperv_instance.called
                 assert not xhyve_instance.called
 
     @mock.patch('golem.docker.manager.is_windows', return_value=True)
@@ -186,7 +188,7 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
         dmm.pull_images = mock.Mock()
         dmm.build_images = mock.Mock()
 
-        with mock.patch('golem.docker.manager.VirtualBoxHypervisor.instance',
+        with mock.patch('golem.docker.manager.HyperVHypervisor.instance',
                         mock.Mock(vm_running=mock.Mock(return_value=False))):
             # pylint: disable=no-member
 

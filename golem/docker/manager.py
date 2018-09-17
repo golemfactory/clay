@@ -12,7 +12,6 @@ from golem.docker.config import DockerConfigManager, APPS_DIR, IMAGES_INI, \
     CONSTRAINT_KEYS, MIN_CONSTRAINTS, DEFAULTS
 from golem.docker.hypervisor.docker_for_mac import DockerForMac
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
-from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.docker.hypervisor.xhyve import XhyveHypervisor
 from golem.docker.job import DockerJob
 from golem.docker.task_thread import DockerDirMapping

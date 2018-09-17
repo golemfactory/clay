@@ -251,12 +251,17 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         assert not tc.docker_manager.update_config.called
 
         tc.use_docker_manager = True
-        tc.docker_manager.update_config = lambda x, y, z: x()
+
+        def _update_config(status_callback, *_, **__):
+            status_callback()
+        tc.docker_manager.update_config = _update_config
 
         tc.counting_task = True
         tc.change_config(mock.Mock(), in_background=False)
 
-        tc.docker_manager.update_config = lambda x, y, z: y(False)
+        def _update_config_2(status_callback, done_callback, *_, **__):
+            done_callback(False)
+        tc.docker_manager.update_config = _update_config_2
 
         tc.counting_task = None
         tc.change_config(mock.Mock(), in_background=False)
@@ -342,6 +347,7 @@ class TestTaskThread(DatabaseFixture):
         ts = mock.MagicMock()
         ts.config_desc = ClientConfigDescriptor()
         ts.benchmark_manager.benchmarks_needed.return_value = False
+        ts.get_task_computer_root.return_value = self.new_path
 
         tc = TaskComputer(ts, use_docker_manager=False)
         tc.counting_task = True
@@ -404,6 +410,7 @@ class TestTaskMonitor(DatabaseFixture):
         task_server = mock.MagicMock()
         task_server.config_desc = ClientConfigDescriptor()
         task_server.benchmark_manager.benchmarks_needed.return_value = False
+        task_server.get_task_computer_root.return_value = self.new_path
 
         task = TaskComputer(task_server, use_docker_manager=False)
 
