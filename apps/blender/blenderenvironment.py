@@ -1,7 +1,7 @@
 from os import path
 from typing import Dict
 
-from apps.core import nvgpu
+from apps.core import nvgpu, sgx
 from apps.core.nvgpu import get_devices
 from golem.core.common import get_golem_path
 from golem.docker.environment import DockerEnvironment
@@ -48,4 +48,29 @@ class BlenderNVGPUEnvironment(BlenderEnvironment):
             environment={
                 'NVIDIA_VISIBLE_DEVICES': ','.join(map(str, get_devices()))
             },
+        )
+
+
+class BlenderSGXEnvironment(BlenderEnvironment):
+
+    DOCKER_IMAGE = "golemfactory/blender_sgx"
+    DOCKER_TAG = "1.0"
+    ENV_ID = "BLENDER_SGX"
+    SHORT_DESCRIPTION = "Blender + Intel® SGX (www.blender.org)"
+
+    def check_support(self) -> SupportStatus:
+        if not sgx.is_supported():
+            return SupportStatus.err({
+                UnsupportReason.ENVIRONMENT_UNSUPPORTED: self.ENV_ID
+            })
+        return super().check_support()
+
+    def get_container_config(self) -> Dict:
+        # TODO
+        return dict(
+            runtime=None,
+            volumes=[],
+            binds={},
+            devices=[],
+            environment={},
         )

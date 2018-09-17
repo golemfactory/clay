@@ -141,8 +141,11 @@ class TaskManager(TaskEventListener):
         compute_on = dictionary['compute_on'].lower()
         is_requesting = purpose == TaskPurpose.REQUESTING
 
-        if type_name == "blender" and is_requesting and compute_on == "gpu":
-            type_name = type_name + "_nvgpu"
+        if type_name == "blender" and is_requesting:
+            if compute_on == 'gpu':
+                type_name += "_nvgpu"
+            elif compute_on == 'sgx':
+                type_name += "_sgx"
 
         task_type = self.task_types[type_name].for_purpose(purpose)
         builder_type = task_type.task_builder_type
