@@ -517,8 +517,8 @@ class DepositPaymentsListTest(testutils.DatabaseFixture):
         model.DepositPayment.create(
             value=value,
             tx=tx_hash,
-            created_date=datetime.datetime.now(),
-            modified_date=datetime.datetime.now(),
+            created_date=datetime.datetime.utcnow(),
+            modified_date=datetime.datetime.utcnow(),
         )
         expected = [
             {
