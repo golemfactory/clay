@@ -22,6 +22,7 @@ declare -r GOLEM_DIR=$HOME'/golem'
 # Questions
 declare -i INSTALL_DOCKER=0
 declare -i INSTALL_NVIDIA_DOCKER=0
+declare -i INSTALL_NVIDIA_MODPROBE=0
 declare -i reinstall=0
 
 # PACKAGE VERSION
@@ -88,7 +89,7 @@ function release_url()
               ][0])'
 }
 
-# @brief check if dependencies (Docker, nvidia-docker)
+# @brief check if dependencies (Docker, nvidia-docker + nvidia-modprobe)
 # are installed and set proper 'global' variables
 function check_dependencies()
 {
@@ -114,6 +115,15 @@ function check_dependencies()
         fi
     else
         info_msg "nvidia-docker is already installed"
+    fi
+
+    # Check for nvidia-modprobe
+    if [[ ${INSTALL_NVIDIA_DOCKER} -eq 1 ]]; then
+        if [[ -z "$(which nvidia-modprobe)" ]]; then
+            INSTALL_NVIDIA_MODPROBE=1
+        else
+            info_msg "nvidia-modprobe is already installed"
+        fi
     fi
 }
 
@@ -168,6 +178,11 @@ function install_dependencies()
             sudo tee /etc/apt/sources.list.d/nvidia-docker.list
 
         packages+=(nvidia-docker2)
+    fi
+
+    if [[ ${INSTALL_NVIDIA_MODPROBE} -eq 1 ]]; then
+        sudo apt-add-repository multiverse
+        packages+=(nvidia-modprobe)
     fi
 
     declare -r hyperg=$(release_url "https://api.github.com/repos/mfranciszkiewicz/golem-hyperdrive/releases")
