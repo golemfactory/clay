@@ -21,7 +21,6 @@ MAX_PROC_FILE_SIZE = 1024 * 1024
 #################
 # NETWORK CONST #
 #################
-BUFF_SIZE = 1024 * 1024
 MIN_PORT = 1
 MAX_PORT = 65535
 # CONNECT TO
