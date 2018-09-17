@@ -56,7 +56,6 @@ def setup_houdini_end_render( installation_info, task_definition_file ):
 
     houdini_dir = get_houdini_setup_dir( installation_info )
 
-    print( os.getcwd() )
     os.chdir( "/golem/scripts/" )
 
     command = [ "./houdini_invoker.sh", houdini_dir, task_definition_file ]

@@ -91,7 +91,7 @@ class HoudiniTask(CoreTask):
 
         start_frame, end_frame = self._next_frame_range()
 
-        render_params["scene_file"] = os.path.join( "/golem/resources/", os.path.basename( render_params[ "output_file" ] ) )
+        render_params["scene_file"] = os.path.join( "/golem/resources/", os.path.basename( render_params[ "scene_file" ] ) )
         render_params["start_frame"] = start_frame
         render_params["end_frame"] = end_frame
         render_params["output"] = os.path.join( "/golem/output/", render_params[ "output_file" ] )

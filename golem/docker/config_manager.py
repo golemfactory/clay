@@ -12,7 +12,7 @@ DEFAULT_HOST_CONFIG = dict(
     # mount the container's root filesystem as read only
     # read_only=True,
     # ['bridge', 'none', 'container:<name|id>', 'host']
-    network_mode='none',
+    network_mode='bridge',
     dns=[],
     dns_search=[],
     cap_drop=['setpcap', 'setfcap',

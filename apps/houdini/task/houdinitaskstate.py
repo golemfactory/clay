@@ -10,7 +10,10 @@ import os
 class HoudiniTaskDefaults(TaskDefaults):
 
     def __init__(self):
-        pass
+        self.main_program_file = HoudiniEnvironment().main_program_file
+        self.min_subtasks = 1
+        self.max_subtasks = 100
+        self.default_subtasks = 6
 
 
 
@@ -23,11 +26,7 @@ class HoudiniTaskDefinition(TaskDefinition):
 
 
     def is_valid(self):
-        is_valid, err = super(TaskDefinition, self).is_valid()
-        if is_valid and not os.path.exists(self.self.options.scene_file):
-            return False, "Main scene file {} is not properly set".format(
-                self.options.scene_file)
-        return is_valid, err
+        return super(TaskDefinition, self).is_valid()
 
 
     def add_to_resources(self):
@@ -57,12 +56,12 @@ class HoudiniTaskOptions(Options):
     def build_from_dictionary( self, task_definition_dict ):
 
         # dictionary comes from GUI
-        opts = task_definition_dict["options"]
+        render_params = task_definition_dict["options"][ "render_params" ]
 
-        self.scene_file = opts["scene_file"]
-        self.render_node = opts["render_node"]
-        self.start_frame = int(opts["start_frame"])
-        self.end_frame = int(opts["end_frame"])
+        self.scene_file = render_params["scene_file"]
+        self.render_node = render_params["render_node"]
+        self.start_frame = int(render_params["start_frame"])
+        self.end_frame = int(render_params["end_frame"])
 
     def build_dict( self ):
 

@@ -169,7 +169,8 @@ class DockerJob(object):
             command=[container_script_path],
             working_dir=self.WORK_DIR,
             cpuset=cpuset,
-            environment=environment
+            environment=environment,
+            hostname="golem-nieznanysprawiciel"
         )
         self.container_id = self.container["Id"]
         if self.container_id is None:
