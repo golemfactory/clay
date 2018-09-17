@@ -85,6 +85,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts._is_peer_blocked = Mock(return_value=False)
         ts.verified = True
         ts.concent_service.enabled = self.use_concent
+        ts.key_id = 'a'
         return ts
 
     def _get_requestor_tasksession(self, accept_provider=True):
@@ -134,10 +135,9 @@ class TaskSessionTaskToComputeTest(TestCase):
         self.conn.server.task_manager.tasks_states[self.task_id] = task_state
         return task_state
 
-    @patch('golem.resource.resourcehandshake.short_node_id')
-    def test_want_to_compute_task(self, *_):
+    def test_want_to_compute_task(self):
         ts = self._get_task_session()
-        ts._get_handshake = Mock(return_value={})
+        ts._handshake_required = Mock(return_value=False)
         params = self._get_task_parameters()
         ts.request_task(
             params['node_name'],
@@ -264,6 +264,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         super(TestTaskSession, self).setUp()
         random.seed()
         self.task_session = TaskSession(Mock())
+        self.task_session.key_id = 'a'
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_hello(self, send_mock):
@@ -885,8 +886,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.task_session._react_to_cannot_assign_task(msg_cat)
         assert task_keeper.active_tasks["abc"].requests == expected_requests
 
-    @patch('golem.task.tasksession.node_info_str')
-    def test_react_to_want_to_compute_no_handshake(self, _):
+    def test_react_to_want_to_compute_no_handshake(self):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
 
@@ -904,8 +904,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         ts._start_handshake.assert_called_with(ts.key_id)
 
-    @patch('golem.task.tasksession.node_info_str')
-    def test_react_to_want_to_compute_handshake_busy(self, _):
+    def test_react_to_want_to_compute_handshake_busy(self):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
 
