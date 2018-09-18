@@ -48,7 +48,7 @@ token_bucket==0.2.0
 py-cpuinfo==3.3.0
 humanize==0.5.1
 raven
--e git://github.com/golemfactory/golem-messages.git@736de27518d1df218266cef5eacb95d784713e81#egg=golem-messages
+Golem-Messages==2.13.1
 Golem-Verificator==1.4.0
 Golem-Smart-Contracts-Interface==1.5.1
 html2text==2018.1.9
