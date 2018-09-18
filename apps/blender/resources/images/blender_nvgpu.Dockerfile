@@ -2,7 +2,7 @@
 # Blender setup is based on
 # https://github.com/ikester/blender-docker/blob/master/Dockerfile
 
-FROM golemfactory/nvgpu:1.0
+FROM golemfactory/nvgpu:1.1
 
 MAINTAINER Marek Franciszkiewicz <marek@golem.network>
 

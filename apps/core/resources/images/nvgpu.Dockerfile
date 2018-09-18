@@ -1,7 +1,7 @@
 # Dockerfile for a base image for computing tasks in Golem.
 # Installs python and sets up directories for Golem tasks.
 
-FROM nvidia/cudagl:8.0-runtime
+FROM nvidia/cudagl:9.2-runtime
 
 MAINTAINER Marek Franciszkiewicz <marek@golem.network>
 
