@@ -37,7 +37,7 @@ def create_share(user_name: str, shared_dir_path: Path) -> None:
 
 def get_share_name(shared_dir_path: Path) -> str:
     # normalize -> encode -> MD5 digest -> hexlify -> decode -> uppercase
-    norm_path = path.normcase(shared_dir_path.absolute())
+    norm_path = path.normcase(path.normpath(shared_dir_path))
     return binascii.hexlify(
         hashlib.md5(
             norm_path.encode()
