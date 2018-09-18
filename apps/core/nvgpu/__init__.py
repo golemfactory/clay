@@ -1,6 +1,9 @@
+import functools
 import logging
 import subprocess
+
 from typing import List
+from xml.etree import ElementTree
 
 from golem.core.common import is_linux, unix_pipe
 
@@ -8,6 +11,10 @@ from golem.core.common import is_linux, unix_pipe
 logger = logging.getLogger(__name__)
 
 
+MIN_DRIVER_VERSION = 396.0
+
+
+@functools.lru_cache(5)
 def is_supported(*_) -> bool:
     try:
         return _is_supported()
@@ -55,6 +62,8 @@ def _is_supported(*_) -> bool:
         _modprobe(unified_memory=False)
         logger.debug('Unified memory is not supported')
 
+    _assert_driver_version()
+
     mod_nvidia_uvm = unix_pipe(['lsmod'], ['grep', '-i', 'nvidia_uvm'])
     if not mod_nvidia_uvm:
         raise RuntimeError('nvidia_uvm kernel module was not loaded')
@@ -79,3 +88,23 @@ def _modprobe(unified_memory: bool) -> bool:
             return False
         raise RuntimeError(f'{command} failed')
     return True
+
+
+def _assert_driver_version() -> None:
+
+    try:
+        xml_output = subprocess.check_output(['nvidia-smi', '-q', '-x'])
+    except subprocess.CalledProcessError as exc:
+        raise RuntimeError(f'Unable to read NVIDIA driver version: {str(exc)}')
+
+    try:
+        xml_tree = ElementTree.fromstring(xml_output)
+        version = float(xml_tree.find('driver_version').text)
+    except (KeyError, ValueError, TypeError, AttributeError) as exc:
+        raise RuntimeError(f'Unable to parse nvidia-smi output: {str(exc)}')
+
+    if version < MIN_DRIVER_VERSION:
+        raise RuntimeError(f'The installed NVIDIA driver is too old; '
+                           f'At least {MIN_DRIVER_VERSION} is required.')
+
+    logger.debug("NVIDIA driver version: %s", version)
