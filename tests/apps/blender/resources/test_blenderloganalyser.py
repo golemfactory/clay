@@ -2,11 +2,13 @@ import os
 from unittest import TestCase
 
 import apps.blender.resources.blenderloganalyser as bla
+from golem.docker.job import DockerJob
 
 LOG_FILE = "stdout.log_for_test"
 
 
 class TestBlenderLogAnalyser(TestCase):
+
     @classmethod
     def _get_log_file(cls):
         log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
@@ -17,9 +19,12 @@ class TestBlenderLogAnalyser(TestCase):
 
     def test_find_missing_files(self):
         missing_files = bla.find_missing_files(self._get_log_file())
-        assert "VSE_copy_proxy_path_to_all_strips.py" in missing_files
-        assert "subsurf_change_level.py" in missing_files
-        assert "set_ray_visibilities_for_selected_objects.py" in missing_files
+        assert [f for f in missing_files if f['baseName']
+                == "VSE_copy_proxy_path_to_all_strips.py"]
+        assert [f for f in missing_files if f[
+            'baseName'] == "subsurf_change_level.py"]
+        assert [f for f in missing_files if f['baseName'] ==
+                "set_ray_visibilities_for_selected_objects.py"]
 
     def test_find_rendering_time(self):
         time_rendering = bla.find_rendering_time(self._get_log_file())
@@ -30,7 +35,7 @@ class TestBlenderLogAnalyser(TestCase):
 
     def test_find_output_file(self):
         output_file = bla.find_output_file(self._get_log_file())
-        assert output_file == "/golem/output/kitty_10001.png"
+        assert output_file == f"{DockerJob.OUTPUT_DIR}/kitty_10001.png"
 
         output_file = bla.find_output_file("No time in this log")
         assert output_file is None

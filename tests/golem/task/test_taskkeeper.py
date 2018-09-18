@@ -115,31 +115,16 @@ class TestTaskHeaderKeeper(LogTestCase):
             min_price=10.0)
         tk.app_version = '0.4.5-dev+232.138018'
 
-        with self.assertRaises(ValueError):
-            tk.check_version_compatibility('')
-        with self.assertRaises(ValueError):
-            tk.check_version_compatibility('0')
-        with self.assertRaises(ValueError):
-            tk.check_version_compatibility('1.5')
-        with self.assertRaises(ValueError):
-            tk.check_version_compatibility('0.4-alpha+build.2004.01.01')
-        with self.assertRaises(ValueError):
-            tk.check_version_compatibility('0.4-alpha')
-        with self.assertRaises(ValueError):
-            tk.check_version_compatibility('0.4-alpha')
+        for v in ['', '0', '1.5', '0.4-alpha+build.2004.01.01', '0.4-alpha']:
+            with self.assertRaises(ValueError, msg=v):
+                tk.check_version_compatibility(v)
 
-        assert not tk.check_version_compatibility('1.5.0')
-        assert not tk.check_version_compatibility('1.4.0')
-        assert not tk.check_version_compatibility('0.5.0')
-        assert not tk.check_version_compatibility('0.4.6')
-        assert not tk.check_version_compatibility('0.3.0')
+        for v in ['1.5.0', '1.4.0', '0.5.0', '0.3.0']:
+            self.assertFalse(tk.check_version_compatibility(v), msg=v)
 
-        assert tk.check_version_compatibility('0.4.5')
-        assert tk.check_version_compatibility('0.4.1')
-        assert tk.check_version_compatibility('0.4.0')
-        assert tk.check_version_compatibility('0.4.0-alpha')
-        assert tk.check_version_compatibility('0.4.0-alpha+build')
-        assert tk.check_version_compatibility('0.4.0-alpha+build.2010')
+        for v in ['0.4.5', '0.4.1', '0.4.0', '0.4.0-alpha',
+                  '0.4.0-alpha+build', '0.4.0-alpha+build.2010', '0.4.6']:
+            self.assertTrue(tk.check_version_compatibility(v), msg=v)
 
     @mock.patch('golem.task.taskarchiver.TaskArchiver')
     def test_change_config(self, tar):

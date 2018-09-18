@@ -152,7 +152,7 @@ class TaskServerMessageHandler():
 
     @handler_for(message.concents.ServiceRefused)
     def on_service_refused(self, msg,
-                           response_to: message.Message = None):
+                           response_to: message.base.Message = None):
         logger.warning(
             "Concent service (%s) refused for subtask_id: %r %s",
             response_to.__class__.__name__ if response_to else '',

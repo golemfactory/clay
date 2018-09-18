@@ -69,44 +69,6 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
         luxtask = self.get_test_lux_task(haltspp=10, total_subtasks=10)
         assert luxtask.haltspp == 1
 
-    def test_query_extra_data(self):
-        luxtask = self.get_test_lux_task()
-        luxtask._get_scene_file_rel_path = Mock()
-        luxtask._get_scene_file_rel_path.return_value = os.path.join(
-            self.path, 'scene'
-        )
-        luxtask.main_program_file = os.path.join(self.path, 'program.py')
-
-        luxtask._accept_client = Mock()
-        luxtask._accept_client.return_value = AcceptClientVerdict.ACCEPTED
-
-        result = luxtask.query_extra_data(0)
-        assert result.ctd is not None
-        assert not result.should_wait
-
-        luxtask._accept_client.return_value = AcceptClientVerdict.SHOULD_WAIT
-
-        result = luxtask.query_extra_data(0)
-        assert result.ctd is None
-        assert result.should_wait
-
-        luxtask._accept_client.return_value = AcceptClientVerdict.REJECTED
-
-        result = luxtask.query_extra_data(0)
-        assert result.ctd is None
-        assert not result.should_wait
-
-        luxtask._accept_client.return_value = AcceptClientVerdict.ACCEPTED
-        result = luxtask.query_extra_data(0)
-        assert result.ctd is not None
-        assert not result.should_wait
-
-        luxtask.total_tasks = 10
-        luxtask.last_task = 10
-        result = luxtask.query_extra_data(0)
-        assert result.ctd is None
-        assert not result.should_wait
-
     def __after_test_errors(self, luxtask):
         with self.assertLogs(logger, level="WARNING"):
             luxtask.after_test({}, self.path)
@@ -185,7 +147,7 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
         log_file = self.temp_file_name("stdout.log")
 
-        luxtask._accept_client("NODE_1")
+        luxtask.accept_client("NODE_1")
         luxtask.accept_results("SUBTASK1", [img_file, flm_file, log_file])
 
         assert luxtask.subtasks_given["SUBTASK1"]['preview_file'] == img_file

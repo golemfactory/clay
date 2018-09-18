@@ -20,6 +20,7 @@ from apps.blender.task.blenderrendertask import (BlenderDefaults,
                                                  BlenderTaskTypeInfo,
                                                  PreviewUpdater,
                                                  logger)
+from apps.core.task.coretask import AcceptClientVerdict
 from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
@@ -30,7 +31,6 @@ from golem.task.taskbase import ResultType
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-from apps.core.task.coretask import logger as logger_core
 from golem_verificator.verifier import SubtaskVerificationState
 
 
@@ -42,6 +42,7 @@ class TestBlenderDefaults(unittest.TestCase):
 
 
 class BlenderTaskInitTest(TempDirFixture, LogTestCase):
+
     def test_compositing(self):
         task_definition = RenderingTaskDefinition()
         task_definition.options = BlenderRendererOptions()
@@ -86,6 +87,7 @@ class BlenderTaskInitTest(TempDirFixture, LogTestCase):
 
 
 class TestBlenderFrameTask(TempDirFixture):
+
     def setUp(self):
         super(TestBlenderFrameTask, self).setUp()
         task_definition = RenderingTaskDefinition()
@@ -115,7 +117,7 @@ class TestBlenderFrameTask(TempDirFixture):
         self.assertEqual(len(self.bt.preview_task_file_path),
                          len(self.bt.frames))
 
-    @mock.patch('apps.blender.verification_queue.deadline_to_timeout')
+    @mock.patch('apps.blender.verification_task.deadline_to_timeout')
     def test_computation_failed_or_finished(self, mock_dtt):
         mock_dtt.return_value = 1.0
         assert self.bt.total_tasks == 6
@@ -130,8 +132,8 @@ class TestBlenderFrameTask(TempDirFixture):
         self.bt.computation_finished(extra_data1.ctd['subtask_id'], [],
                                      ResultType.DATA)
         assert self.bt.subtasks_given[extra_data1.ctd['subtask_id']][
-                   'status'] == \
-               SubtaskStatus.failure
+            'status'] == \
+            SubtaskStatus.failure
 
         # Successful computation
         extra_data3 = self.bt.query_extra_data(1000, 2, "FGH", "fgh")
@@ -156,14 +158,16 @@ class TestBlenderFrameTask(TempDirFixture):
                 SubtaskVerificationState.VERIFIED,
                 result)
 
-        with mock.patch(
-            'golem_verificator.rendering_verifier.RenderingVerifier.'
-                'start_verification',
-                side_effect=verification_finished1):
-            self.bt.computation_finished(extra_data3.ctd['subtask_id'], [file1],
-                                         ResultType.FILES, lambda: None)
+        with mock.patch('golem_verificator.rendering_verifier.'
+                        'RenderingVerifier.start_verification',
+                        side_effect=verification_finished1):
+            self.bt.computation_finished(
+                extra_data3.ctd['subtask_id'],
+                [file1],
+                ResultType.FILES,
+                lambda: None)
             assert self.bt.subtasks_given[extra_data3.ctd['subtask_id']][
-                       'status'] == SubtaskStatus.finished
+                'status'] == SubtaskStatus.finished
 
         BlenderRenderTask.VERIFICATION_QUEUE._reset()
 
@@ -186,14 +190,16 @@ class TestBlenderFrameTask(TempDirFixture):
         img.save(file2, "PNG")
         img.close()
 
-        with mock.patch(
-            'golem_verificator.rendering_verifier.RenderingVerifier.'
-                'start_verification',
-                side_effect=verification_finished2):
-            self.bt.computation_finished(extra_data4.ctd['subtask_id'], [file2],
-                                         ResultType.FILES, lambda: None)
+        with mock.patch('golem_verificator.rendering_verifier.'
+                        'RenderingVerifier.start_verification',
+                        side_effect=verification_finished2):
+            self.bt.computation_finished(
+                extra_data4.ctd['subtask_id'],
+                [file2],
+                ResultType.FILES,
+                lambda: None)
             assert self.bt.subtasks_given[extra_data4.ctd['subtask_id']][
-                       'status'] == SubtaskStatus.finished
+                'status'] == SubtaskStatus.finished
 
         str_ = self.temp_file_name(self.bt.outfilebasename) + '0008.PNG'
         assert path.isfile(str_)
@@ -209,7 +215,6 @@ class TestBlenderFrameTask(TempDirFixture):
         extra_data = self.bt.query_extra_data(100, node_id="node1",
                                               node_name="node11",
                                               num_cores=0)
-        assert not extra_data.should_wait
         assert extra_data.ctd is not None
         assert "border_max_y = 1" in extra_data.ctd['extra_data']['script_src']
         assert "border_min_y = 0" in extra_data.ctd['extra_data']['script_src']
@@ -233,6 +238,7 @@ class TestBlenderFrameTask(TempDirFixture):
 
 
 class TestBlenderTask(TempDirFixture, LogTestCase):
+
     def build_bt(self, res_x, res_y, total_tasks, frames=None):
         output_file = self.temp_file_name('output')
         if frames is None:
@@ -250,11 +256,11 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         task_definition.resolution = [res_x, res_y]
         task_definition.main_scene_file = path.join(self.path, "example.blend")
         task_definition.task_id = str(uuid.uuid4())
-        bt = BlenderRenderTask(owner=Node(node_name="example-node-name"),
-                               task_definition=task_definition,
-                               total_tasks=total_tasks,
-                               root_path=self.tempdir,
-                               )
+        bt = BlenderRenderTask(
+            owner=Node(node_name="example-node-name"),
+            task_definition=task_definition,
+            total_tasks=total_tasks,
+            root_path=self.tempdir)
         bt.initialize(DirManager(self.tempdir))
         return bt
 
@@ -299,11 +305,18 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         after_test_data = self.bt.after_test(results, None)
         warnings = after_test_data["warnings"]
 
-        self.assertTrue("f1.png" in warnings)
-        self.assertTrue("file2.png" in warnings)
-        self.assertTrue("file3.png" in warnings)
-        self.assertEqual(warnings.count("file2.png"), 1)
-        self.assertFalse("file4.png" in warnings)
+        self.assertIn({'baseName': 'f1.png',
+                       'dirName': 'example/directory/to/file'},
+                      warnings['missing_files'])
+        self.assertIn({'baseName': 'file2.png',
+                       'dirName': 'example/directory/to'},
+                      warnings['missing_files'])
+        self.assertIn({'baseName': 'file3.png',
+                       'dirName': 'example/directory/to/another'},
+                      warnings['missing_files'])
+        self.assertNotIn({'baseName': 'file4.png',
+                          'dirName': 'not found\nexample/to'},
+                         warnings['missing_files'])
 
         with open(outlog, 'w') as fd_out:
             fd_out.write("Error: engine COMPLETELY UNKNOWN ENGINE not found")
@@ -313,7 +326,8 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
 
         after_test_data = self.bt.after_test(results, None)
         warnings = after_test_data["warnings"]
-        self.assertTrue("COMPLETELY UNKNOWN ENGINE" in warnings)
+        self.assertTrue(warnings['wrong_engine'] ==
+                        " COMPLETELY UNKNOWN ENGINE not found")
 
     def test_query_extra_data_for_test_task(self):
         self.bt.use_frames = True
@@ -339,12 +353,14 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.assertEqual(self.bt.main_scene_file,
                          path.join(self.path, "example.blend"))
         extra_data = self.bt.query_extra_data(1000, 2, "ABC", "abc")
+        self.bt.accept_client("ABC")
         ctd = extra_data.ctd
         assert ctd['extra_data']['start_task'] == 1
         assert ctd['extra_data']['end_task'] == 1
         self.bt.last_task = self.bt.total_tasks
         self.bt.subtasks_given[1] = {'status': SubtaskStatus.finished}
-        assert self.bt.query_extra_data(1000, 2, "ABC", "abc").ctd is None
+        assert self.bt.should_accept_client("ABC") != \
+            AcceptClientVerdict.ACCEPTED
 
     def test_get_min_max_y(self):
         self.assertEqual(self.bt.res_x, 2)
@@ -550,23 +566,6 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
                                               node_id='node',
                                               node_name='node')
         assert extra_data.ctd
-        subtask_id = extra_data.ctd['subtask_id']
-        assert not extra_data.should_wait
-
-        extra_data = self.bt.query_extra_data(100000, num_cores=0,
-                                              node_id='node',
-                                              node_name='node')
-        assert extra_data.should_wait
-
-        # Write log with warning and don't return data or should wait
-        # if client was banned
-        self.bt.computation_failed(subtask_id)
-        with self.assertLogs(logger_core, level="WARNING"):
-            extra_data = self.bt.query_extra_data(100000, num_cores=0,
-                                                  node_id='node',
-                                                  node_name='node')
-        assert extra_data.ctd is None
-        assert not extra_data.should_wait
 
     def test_update_preview(self):
         bt = self.build_bt(300, 200, 10)
@@ -592,6 +591,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
 
 
 class TestPreviewUpdater(TempDirFixture, LogTestCase):
+
     def test_update_preview(self):
         preview_file = self.temp_file_name('sample_img.png')
         res_x = 200
@@ -636,18 +636,22 @@ class TestPreviewUpdater(TempDirFixture, LogTestCase):
 
 
 class TestBlenderRenderTaskBuilder(TempDirFixture):
+
     def test_build(self):
         definition = RenderingTaskDefinition()
         definition.total_subtasks = 1
         definition.options = BlenderRendererOptions()
-        builder = BlenderRenderTaskBuilder(owner=Node(),
-                                           task_definition=definition,
-                                           dir_manager=DirManager(self.tempdir))
+        builder = BlenderRenderTaskBuilder(
+            owner=Node(),
+            task_definition=definition,
+            dir_manager=DirManager(
+                self.tempdir))
         blender_task = builder.build()
         self.assertIsInstance(blender_task, BlenderRenderTask)
 
 
 class TestHelpers(unittest.TestCase):
+
     @staticmethod
     def _get_task_border(as_path=False):
         offsets = generate_expected_offsets(30, 800, 600)
@@ -681,13 +685,12 @@ class TestHelpers(unittest.TestCase):
         definition.options.use_frames = True
         definition.options.frames = list(range(30))
         if as_path:
-            assert BlenderTaskTypeInfo.get_task_border(subtask, definition,
-                                                       30, as_path=as_path) == \
-                   [(0, 600), (800, 600), (800, 0), (0, 0)]
+            assert BlenderTaskTypeInfo.get_task_border(
+                subtask, definition, 30, as_path=as_path) == \
+                [(0, 600), (800, 600), (800, 0), (0, 0)]
         else:
-            assert BlenderTaskTypeInfo.get_task_border(subtask, definition,
-                                                       30, as_path=as_path) == \
-                   []
+            assert BlenderTaskTypeInfo.get_task_border(
+                subtask, definition, 30, as_path=as_path) == []
 
         definition.options.use_frames = False
         definition.resolution = (0, 0)
