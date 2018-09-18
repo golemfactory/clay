@@ -65,5 +65,6 @@
   "task_type":"Blender",
   "main_program_file":"$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py",
   "subtask_timeout":1200,
-  "total_subtasks":6
+  "total_subtasks":6,
+  "concent_enabled": false
 }

@@ -85,15 +85,16 @@ class AddGetResources(TempDirFixture, LogTestCase):
             models=DB_MODELS,
             db_dir=directory)
 
-        client = Client(datadir=dir_manager.root_path,
-                        app_config=mock.Mock(),
-                        config_desc=ClientConfigDescriptor(),
-                        keys_auth=mock.Mock(),
-                        database=database,
-                        transaction_system=mock.Mock(),
-                        connect_to_known_hosts=False,
-                        use_docker_manager=False,
-                        use_monitor=False)
+        with mock.patch('golem.client.node_info_str'):
+            client = Client(datadir=dir_manager.root_path,
+                            app_config=mock.Mock(),
+                            config_desc=ClientConfigDescriptor(),
+                            keys_auth=mock.Mock(),
+                            database=database,
+                            transaction_system=mock.Mock(),
+                            connect_to_known_hosts=False,
+                            use_docker_manager=False,
+                            use_monitor=False)
 
         client.resource_server = BaseResourceServer(resource_manager,
                                                     dir_manager,
@@ -131,7 +132,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
         self.task_session_1.send = lambda x: send_buf.append(x)
 
         # session_2 [GetResource] -> session_1
-        msg_get = message.GetResource(task_id=self.task_id)
+        msg_get = message.tasks.GetResource(task_id=self.task_id)
         self.task_session_1._react_to_get_resource(msg_get)
 
         # session_1 [ResourceList] -> session_2

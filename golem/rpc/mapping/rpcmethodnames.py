@@ -59,6 +59,7 @@ CORE_METHOD_MAP = dict(
     query_task_state=       'comp.task.state',
     create_task=            'comp.task.create',
     delete_task=            'comp.task.delete',
+    purge_tasks=            'comp.task.purge',
     abort_task=             'comp.task.abort',
     restart_task=           'comp.task.restart',
     get_subtasks_count = 'comp.task.subtasks_count',
@@ -76,7 +77,6 @@ CORE_METHOD_MAP = dict(
     get_res_dirs_sizes=     'res.dirs.size',
     clear_dir=              'res.dir.clear',
 
-    get_status=             'comp.status',
     get_environments=       'comp.environments',
     enable_environment=     'comp.environment.enable',
     disable_environment=    'comp.environment.disable',
@@ -87,6 +87,7 @@ CORE_METHOD_MAP = dict(
 
     get_payment_address=    'pay.ident',
     get_balance=            'pay.balance',
+    get_deposit_balance=    'pay.deposit_balance',
     get_payments_list=      'pay.payments',
     get_incomes_list=       'pay.incomes',
     withdraw=               'pay.withdraw',

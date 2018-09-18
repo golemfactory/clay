@@ -6,6 +6,7 @@ from typing import Optional
 from eth_utils import encode_hex
 from golem_messages.message import ComputeTaskDef
 
+from apps.core.task.coretask import AcceptClientVerdict
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.core.idgenerator import generate_id, generate_new_id_from_id
@@ -73,6 +74,7 @@ class DummyTask(Task):
             ),
             deadline=timeout_to_deadline(14400),
             subtask_timeout=1200,
+            subtasks_count=num_subtasks,
             resource_size=params.shared_data_size + params.subtask_data_size,
             estimated_memory=0,
             max_price=MIN_PRICE)
@@ -163,9 +165,6 @@ class DummyTask(Task):
         subtask_id = generate_new_id_from_id(self.header.task_id)
 
         with self._lock:
-            # check if a task has been assigned to this node
-            if node_id in self.assigned_nodes:
-                return self.ExtraData(should_wait=True)
             # assign a task
             self.assigned_nodes[node_id] = subtask_id
             self.assigned_subtasks[subtask_id] = node_id
@@ -265,3 +264,17 @@ class DummyTask(Task):
 
     def copy_subtask_results(self, subtask_id, old_subtask_info, results):
         print('DummyTask.copy_subtask_results called')
+
+    def query_extra_data_for_test_task(self):
+        pass
+
+    def should_accept_client(self, node_id):
+        if node_id in self.assigned_nodes:
+            return AcceptClientVerdict.SHOULD_WAIT
+        return AcceptClientVerdict.ACCEPTED
+
+    def accept_client(self, node_id):
+        print('DummyTask.accept_client called node_id=%r '
+              '- WIP: move more responsibilities from query_extra_data',
+              node_id)
+        return

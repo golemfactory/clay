@@ -116,7 +116,7 @@ class MessageHistoryService(IService):
         return list(result)
 
     @classmethod
-    def get_sync_as_message(cls, *args, **kwargs) -> message.Message:
+    def get_sync_as_message(cls, *args, **kwargs) -> message.base.Message:
         db_result = cls.get_sync(*args, **kwargs)
         if not db_result:
             raise MessageNotFound()
@@ -330,7 +330,7 @@ def get(
         subtask_id: str,
         node_id: Optional[str] = None,
         task_id: Optional[str] = None) \
-        -> Optional[message.Message]:
+        -> Optional[message.base.Message]:
     #  FIXME: Use node_id in queries
     #         https://github.com/golemfactory/golem/issues/2670
     if not (node_id or task_id):

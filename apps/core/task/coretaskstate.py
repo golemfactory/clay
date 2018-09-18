@@ -52,6 +52,8 @@ class TaskDefinition(object):
         self.docker_images = None
         self.compute_on = "cpu"
 
+        self.concent_enabled: bool = False
+
     def is_valid(self):
         if not path.exists(self.main_program_file):
             return False, "Main program file does not exist: {}".format(
@@ -119,6 +121,7 @@ class TaskDefinition(object):
             'options': {
                 'output_path': output_path
             },
+            'concent_enabled': self.concent_enabled
         }
 
     def build_output_path(self) -> str:

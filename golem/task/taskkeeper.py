@@ -105,7 +105,7 @@ class CompSubtaskInfo:
 
 
 def log_key_error(*args, **_):
-    if isinstance(args[1], message.ComputeTaskDef):
+    if isinstance(args[1], message.tasks.ComputeTaskDef):
         task_id = args[1]['task_id']
     else:
         task_id = args[1]
@@ -161,18 +161,19 @@ class CompTaskKeeper:
         if not self.dump_path.exists():
             logger.debug('No previous comptask dump found.')
             return
-        with self.dump_path.open('rb') as f:
-            try:
+        try:
+            with self.dump_path.open('rb') as f:
                 data = pickle.load(f)
                 active_tasks = data[0]
                 subtask_to_task = data[1]
                 task_package_paths = data[2] if len(data) > 2 else {}
-            except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
-                logger.exception(
-                    'Problem restoring dumpfile: %s',
-                    self.dump_path
-                )
-                return
+        except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
+            logger.exception(
+                'Problem restoring dumpfile: %s; deleting broken file',
+                self.dump_path
+            )
+            self.dump_path.unlink()
+            return
         self.active_tasks.update(active_tasks)
         self.subtask_to_task.update(subtask_to_task)
         self.task_package_paths.update(task_package_paths)
@@ -198,7 +199,7 @@ class CompTaskKeeper:
         return self.active_tasks[task_id].header
 
     @handle_key_error
-    def receive_subtask(self, task_to_compute: message.TaskToCompute):
+    def receive_subtask(self, task_to_compute: message.tasks.TaskToCompute):
         comp_task_def = task_to_compute.compute_task_def
         logger.debug('CT.receive_subtask()')
         if not self.check_comp_task_def(comp_task_def):
@@ -421,9 +422,7 @@ class TaskHeaderKeeper:
         """
         remote = Version(remote)
         local = Version(self.app_version, partial=True)
-        if local.major != remote.major or local.minor != remote.minor:
-            return False
-        return local.patch >= remote.patch
+        return local.major == remote.major and local.minor == remote.minor
 
     def get_support_status(self, task_id) -> typing.Optional[SupportStatus]:
         """Return SupportStatus stating if and why the task is supported or not.
@@ -587,8 +586,7 @@ class TaskHeaderKeeper:
 
     def get_task(self) -> typing.Optional[TaskHeader]:
         """ Returns random task from supported tasks that may be computed
-        :return TaskHeader|None: returns either None if there are no tasks
-                                 that this node may want to compute
+        :return: None if there are no tasks that this node may want to compute
         """
         if self.supported_tasks:
             tn = random.randrange(0, len(self.supported_tasks))
