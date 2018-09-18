@@ -323,7 +323,7 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         self.requestor_keys = cryptography.ECCx(None)
         self.msg = factories.tasks.WantToComputeTaskFactory()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
-        self.task_session.key_id = 'a'
+        self.task_session.key_id = 'unittest_key_id'
         self.task_session.task_server.keys_auth.ecc = self.requestor_keys
 
     def assert_blocked(self, send_mock):

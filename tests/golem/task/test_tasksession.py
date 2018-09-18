@@ -85,7 +85,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts._is_peer_blocked = Mock(return_value=False)
         ts.verified = True
         ts.concent_service.enabled = self.use_concent
-        ts.key_id = 'a'
+        ts.key_id = 'unittest_key_id'
         return ts
 
     def _get_requestor_tasksession(self, accept_provider=True):
@@ -264,7 +264,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         super(TestTaskSession, self).setUp()
         random.seed()
         self.task_session = TaskSession(Mock())
-        self.task_session.key_id = 'a'
+        self.task_session.key_id = 'unittest_key_id'
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_hello(self, send_mock):
