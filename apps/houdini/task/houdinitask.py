@@ -14,6 +14,7 @@ from apps.houdini.task.houdinitaskstate import HoudiniTaskDefaults, HoudiniTaskO
 from apps.houdini.task.houdinitaskstate import HoudiniTaskDefinition
 from apps.houdini.task.houdiniverifier import HoudiniTaskVerifier
 from golem.task.taskbase import Task
+from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("apps.houdini")
@@ -51,7 +52,6 @@ class HoudiniTask(CoreTask):
 
         self.first_frame = task_definition.options.start_frame
         self.next_frame_to_compute = self.first_frame
-
 
 
     def initialize(self, dir_manager):
@@ -121,6 +121,12 @@ class HoudiniTask(CoreTask):
         self.subtasks_given[sid]["subtask_id"] = sid
 
         return self.ExtraData(ctd=ctd)
+
+    def accept_results(self, subtask_id, result_files):
+        super().accept_results(subtask_id, result_files)
+        node_id = self.subtasks_given[subtask_id]['node_id']
+        TaskClient.assert_exists(node_id, self.counting_nodes).accept()
+        self.num_tasks_received += 1
 
 
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
