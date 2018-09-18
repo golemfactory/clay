@@ -22,7 +22,7 @@ class BlenderNVGPUEnvironment(BlenderEnvironment):
     # pylint: disable=too-few-public-methods
 
     DOCKER_IMAGE = "golemfactory/blender_nvgpu"
-    DOCKER_TAG = "1.0"
+    DOCKER_TAG = "1.1"
     ENV_ID = "BLENDER_NVGPU"
     SHORT_DESCRIPTION = "Blender + NVIDIA GPU (www.blender.org)"
 

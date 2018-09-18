@@ -27,5 +27,5 @@ ENV BLENDER_BZ2_URL http://download.blender.org/release/Blender$BLENDER_MAJOR/bl
 RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C /opt && \
     ln -s /opt/blender-${BLENDER_VERSION}-linux-glibc${GLIBC_VERSION}-x86_64 /opt/blender
 
-ENV BLENDER_DEVICE_TYPE GPU
+ENV BLENDER_DEVICE_TYPE NVIDIA_GPU
 ENV PATH=/opt/blender:$PATH
