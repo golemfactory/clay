@@ -96,8 +96,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.task_resource_failure(task_id, 'reason')
         assert task_server.send_task_failed.called
 
-        tc.resource_request_rejected(subtask_id, 'reason')
-
     def test_computation(self):
         p2p_node = P2PNode()
         ctd = ComputeTaskDef()

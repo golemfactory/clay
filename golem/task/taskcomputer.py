@@ -114,31 +114,6 @@ class TaskComputer(object):
         )
         return True
 
-    def resource_given(self, task_id):
-        if task_id in self.task_to_subtask_mapping:
-            subtask_id = self.task_to_subtask_mapping[task_id]
-            if subtask_id in self.assigned_subtasks:
-                subtask = self.assigned_subtasks[subtask_id]
-
-                with self.lock:
-                    if self.counting_thread is not None:
-                        logger.error(
-                            "Got resource for task: %r"
-                            "But I'm busy with another one. Ignoring.",
-                            task_id)
-                        return  # busy
-                    self.__compute_task(
-                        subtask_id,
-                        subtask['docker_images'],
-                        subtask['src_code'],
-                        subtask['extra_data'],
-                        subtask['short_description'],
-                        subtask['deadline'])
-                    self.waiting_for_task = None
-                return True
-            else:
-                return False
-
     def task_resource_collected(self, task_id, unpack_delta=True):
         if task_id in self.task_to_subtask_mapping:
             subtask_id = self.task_to_subtask_mapping[task_id]
@@ -180,12 +155,6 @@ class TaskComputer(object):
 
     def task_request_rejected(self, task_id, reason):
         logger.info("Task %r request rejected: %r", task_id, reason)
-
-    def resource_request_rejected(self, subtask_id, reason):
-        logger.info("Task %r resource request rejected: %r",
-                    subtask_id, reason)
-        self.assigned_subtasks.pop(subtask_id, None)
-        self.reset()
 
     def task_computed(self, task_thread: TaskThread) -> None:
         self.reset()
