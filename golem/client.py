@@ -778,7 +778,12 @@ class Client(HardwarePresetsMixin):
 
         self.task_test_result = json.dumps(
             {"status": TaskTestStatus.started, "error": True})
-        self.task_tester = TaskTester(task, self.datadir, on_success, on_error)
+        self.task_tester = TaskTester(
+            task=task,
+            root_path=self.task_server.get_task_computer_root(),
+            success_callback=on_success,
+            error_callback=on_error
+        )
         self.task_tester.run()
 
     def abort_test_task(self):
