@@ -1,9 +1,9 @@
 import unittest
 
 import requests
-from docker import Client
-from docker.utils import kwargs_from_env
+from docker import errors
 
+from golem.docker.client import local_client
 from golem.docker.image import DockerImage
 from golem.tools.ci import ci_skip
 
@@ -16,14 +16,10 @@ class DockerTestCase(unittest.TestCase):
     TEST_ENV_ID = None
 
     @classmethod
-    def test_client(cls):
-        return Client(**kwargs_from_env(assert_hostname=False))
-
-    @classmethod
     def setUpClass(cls):
         """Disable all tests if Docker or the test image is not available."""
         try:
-            client = cls.test_client()
+            client = local_client()
             images = client.images()
             repo_tags = sum([img["RepoTags"]
                              for img in images
@@ -33,7 +29,7 @@ class DockerTestCase(unittest.TestCase):
                     "Skipping tests: Image {} not available".format(
                         cls.TEST_IMAGE))
             cls.TEST_ENV_ID = client.inspect_image(cls.TEST_IMAGE)["Id"]
-        except requests.exceptions.ConnectionError:
+        except (requests.exceptions.ConnectionError, errors.DockerException):
             raise unittest.SkipTest(
                 "Skipping tests: Cannot connect with Docker daemon")
 
@@ -42,7 +38,7 @@ class DockerTestCase(unittest.TestCase):
 class TestDockerImage(DockerTestCase):
 
     def tearDown(self):
-        client = self.test_client()
+        client = local_client()
         for c in client.containers(all=True):
             if c["Image"] == self.TEST_IMAGE:
                 client.remove_container(c["Id"], force=True)

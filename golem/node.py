@@ -67,6 +67,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self._config_desc = config_desc
         self._datadir = datadir
         self._use_docker_manager = use_docker_manager
+        self._docker_manager: Optional[DockerManager] = None
 
         self._use_monitor = config_desc.enable_monitor \
             if use_monitor is None else use_monitor
@@ -134,6 +135,10 @@ class Node(object):  # pylint: disable=too-few-public-methods
     def quit(self) -> None:
 
         def _quit():
+            docker_manager = self._docker_manager
+            if docker_manager:
+                docker_manager.quit()
+
             reactor = self._reactor
             if reactor.running:
                 reactor.callFromThread(reactor.stop)
@@ -340,7 +345,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
             return None
 
         def start_docker():
-            DockerManager.install(self._config_desc).check_environment()  # noqa pylint: disable=no-member
+            self._docker_manager = DockerManager.install(self._config_desc)
+            self._docker_manager.check_environment()  # noqa pylint: disable=no-member
 
         return threads.deferToThread(start_docker)
 
