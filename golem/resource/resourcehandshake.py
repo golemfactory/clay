@@ -81,6 +81,14 @@ class ResourceHandshakeSessionMixin:
         """
 
         key_id = self.key_id
+        task_header = self.task_server.task_keeper.task_headers[task_id]
+        if not self.task_server.client.concent_service.enabled:
+            concent_enabled = False
+        elif not task_header.concent_enabled:
+            self._handshake_error(key_id, 'Concent required')
+            return
+        else:
+            concent_enabled = True
         msg_d = dict(
             node_name=node_name,
             task_id=task_id,
@@ -89,18 +97,19 @@ class ResourceHandshakeSessionMixin:
             max_resource_size=max_resource_size,
             max_memory_size=max_memory_size,
             num_cores=num_cores,
-            concent_enabled=self.task_server.client.concent_service.enabled,
+            concent_enabled=concent_enabled,
         )
 
         if self._is_peer_blocked(key_id):
             self._handshake_error(key_id, 'Peer blocked')
+            return
 
-        elif self._handshake_required(key_id):
+        if self._handshake_required(key_id):
             self._task_request_message = msg_d
             self._start_handshake(key_id)
+            return
 
-        else:
-            self.send(message.tasks.WantToComputeTask(**msg_d))
+        self.send(message.tasks.WantToComputeTask(**msg_d))
 
     # ########################
     #     MESSAGE HANDLERS
