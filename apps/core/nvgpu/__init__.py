@@ -99,7 +99,9 @@ def _assert_driver_version() -> None:
 
     try:
         xml_tree = ElementTree.fromstring(xml_output)
-        version = float(xml_tree.find('driver_version').text)
+        version_entry = xml_tree.find('driver_version')
+        version_text = getattr(version_entry, 'text', None)
+        version = float(version_text)
     except (KeyError, ValueError, TypeError, AttributeError) as exc:
         raise RuntimeError(f'Unable to parse nvidia-smi output: {str(exc)}')
 
