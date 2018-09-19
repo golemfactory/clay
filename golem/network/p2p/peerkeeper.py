@@ -223,6 +223,8 @@ class PeerKeeper(object):
             for depth, num_peers in logical_buckets.items()
             if num_peers < self.k
         ]
+        if not data:
+            return 0
         return median(filter_outliers(data, m=2))
 
     def __remove_old_expected_pongs(self):

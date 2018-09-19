@@ -1,4 +1,4 @@
-# pylint: disable=protected-access
+# pylint: disable=too-many-lines, protected-access
 import calendar
 import datetime
 import os
@@ -33,8 +33,9 @@ from golem.task.taskbase import ResultType, TaskHeader
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.assertlogs import LogTestCase
+
 from tests import factories
-from tests.factories.taskserver import WaitingTaskResultFactory
+from tests.factories.task import taskbase as taskbase_factories
 
 
 def fill_slots(msg):
@@ -85,6 +86,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts._is_peer_blocked = Mock(return_value=False)
         ts.verified = True
         ts.concent_service.enabled = self.use_concent
+        ts.key_id = 'unittest_key_id'
         return ts
 
     def _get_requestor_tasksession(self, accept_provider=True):
@@ -136,8 +138,11 @@ class TaskSessionTaskToComputeTest(TestCase):
 
     def test_want_to_compute_task(self):
         ts = self._get_task_session()
-        ts._get_handshake = Mock(return_value={})
+        ts._handshake_required = Mock(return_value=False)
         params = self._get_task_parameters()
+        ts.task_server.task_keeper.task_headers = task_headers = {}
+        task_headers[params['task_id']] = taskbase_factories.TaskHeader()
+        ts.concent_service.enabled = False
         ts.request_task(
             params['node_name'],
             params['task_id'],
@@ -147,6 +152,7 @@ class TaskSessionTaskToComputeTest(TestCase):
             params['max_memory_size'],
             params['num_cores']
         )
+        ts.conn.send_message.assert_called_once()
         mt = ts.conn.send_message.call_args[0][0]
         self.assertIsInstance(mt, message.tasks.WantToComputeTask)
         self.assertEqual(mt.node_name, params['node_name'])
@@ -166,7 +172,9 @@ class TaskSessionTaskToComputeTest(TestCase):
         ctd = message.tasks.ComputeTaskDef(task_id=mt.task_id)
         self._set_task_state()
 
-        ts2.task_manager.get_next_subtask.return_value = (ctd, False, False)
+        ts2.task_manager.get_next_subtask.return_value = ctd
+        ts2.task_manager.should_wait_for_node.return_value = False
+        ts2.task_server.should_accept_provider.return_value = False
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.tasks.CannotAssignTask)
@@ -178,10 +186,10 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts2 = self._get_requestor_tasksession()
         self._fake_add_task()
 
-        ctd = message.tasks.ComputeTaskDef(task_id=mt.task_id)
         self._set_task_state()
 
-        ts2.task_manager.get_next_subtask.return_value = (ctd, True, False)
+        ts2.task_manager.should_wait_for_node.return_value = False
+        ts2.task_manager.check_next_subtask.return_value = False
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.tasks.CannotAssignTask)
@@ -215,7 +223,8 @@ class TaskSessionTaskToComputeTest(TestCase):
         ctd = message.tasks.ComputeTaskDef(task_id=mt.task_id)
         task_state = self._set_task_state()
 
-        ts2.task_manager.get_next_subtask.return_value = (ctd, False, False)
+        ts2.task_manager.get_next_subtask.return_value = ctd
+        ts2.task_manager.should_wait_for_node.return_value = False
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.tasks.TaskToCompute)
@@ -242,7 +251,8 @@ class TaskSessionTaskToComputeTest(TestCase):
         ctd = message.tasks.ComputeTaskDef(task_id=wtct.task_id)
         self._set_task_state()
 
-        ts2.task_manager.get_next_subtask.return_value = (ctd, False, False)
+        ts2.task_manager.get_next_subtask.return_value = ctd
+        ts2.task_manager.should_wait_for_node.return_value = False
         ts2.interpret(wtct)
         ttc = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ttc, message.tasks.TaskToCompute)
@@ -259,6 +269,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         super(TestTaskSession, self).setUp()
         random.seed()
         self.task_session = TaskSession(Mock())
+        self.task_session.key_id = 'unittest_key_id'
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_hello(self, send_mock):
@@ -291,7 +302,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts = self.task_session
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
-        wtr = WaitingTaskResultFactory()
+        wtr = factories.taskserver.WaitingTaskResultFactory()
 
         get_mock.return_value = msg_factories.tasks.TaskToComputeFactory(
             compute_task_def__subtask_id=wtr.subtask_id,
@@ -879,6 +890,60 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.task_session.key_id = key_id
         self.task_session._react_to_cannot_assign_task(msg_cat)
         assert task_keeper.active_tasks["abc"].requests == expected_requests
+
+    def test_react_to_want_to_compute_no_handshake(self):
+        mock_msg = Mock()
+        mock_msg.concent_enabled = False
+
+        self._prepare_handshake_test()
+
+        ts = self.task_session
+
+        ts._handshake_required = Mock()
+        ts._handshake_required.return_value = True
+
+        ts._start_handshake = Mock()
+
+        with self.assertLogs(logger, level='WARNING'):
+            ts._react_to_want_to_compute_task(mock_msg)
+
+        ts._start_handshake.assert_called_with(ts.key_id)
+
+    def test_react_to_want_to_compute_handshake_busy(self):
+        mock_msg = Mock()
+        mock_msg.concent_enabled = False
+
+        self._prepare_handshake_test()
+
+        ts = self.task_session
+
+        ts._handshake_required = Mock()
+        ts._handshake_required.return_value = False
+
+        ts._handshake_in_progress = Mock()
+        ts._handshake_in_progress.return_value = True
+
+        with self.assertLogs(logger, level='WARNING'):
+            ts._react_to_want_to_compute_task(mock_msg)
+
+    def _prepare_handshake_test(self):
+        ts = self.task_session.task_server
+        tm = self.task_session.task_manager
+
+        tm.is_my_task = Mock()
+        tm.is_my_task.return_value = True
+
+        tm.is_my_task = Mock()
+        tm.is_my_task.return_value = True
+
+        tm.should_wait_for_node = Mock()
+        tm.should_wait_for_node.return_value = False
+
+        ts.should_accept_provider = Mock()
+        ts.should_accept_provider.return_value = True
+
+        tm.check_next_subtask = Mock()
+        tm.check_next_subtask.return_value = True
 
 
 class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,

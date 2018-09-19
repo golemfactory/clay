@@ -1,4 +1,4 @@
-from docker import Client
+from docker import DockerClient as Client
 from docker.utils import kwargs_from_env
 
 
@@ -9,5 +9,4 @@ def local_client():
     """
     kwargs = kwargs_from_env(assert_hostname=False)
     kwargs["timeout"] = 600
-    client = Client(**kwargs)
-    return client
+    return Client(**kwargs).api

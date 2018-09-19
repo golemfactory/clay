@@ -65,7 +65,7 @@ class SubtaskResultsVerifyFiletransferTest(SubtaskResultsVerifyBaseTest):
         verification_start = time.time()
 
         while time.time() < verification_start + self.TIMEOUT:
-            response = self.provider_receive_oob()
+            response = self.provider_receive()
             if response:
                 self.assertIsInstance(response,
                                       concent_msg.SubtaskResultsSettled)
@@ -92,7 +92,7 @@ class SubtaskResultsVerifyFiletransferTest(SubtaskResultsVerifyBaseTest):
         verification_start = time.time()
 
         while time.time() < verification_start + self.TIMEOUT:
-            response = self.provider_receive_oob()
+            response = self.provider_receive()
             if response:
                 self.assertIsInstance(response,
                                       tasks_msg.SubtaskResultsRejected)
