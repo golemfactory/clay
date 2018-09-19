@@ -113,6 +113,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 .run(
                     [
                         'powershell.exe',
+                        '-ExecutionPolicy', 'RemoteSigned',
                         '-File', cls.GET_IP_SCRIPT_PATH,
                         '-Interface', cls.VIRTUAL_SWITCH,
                     ],

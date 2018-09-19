@@ -22,6 +22,7 @@ def create_share(user_name: str, shared_dir_path: Path) -> None:
         subprocess.run(
             [
                 'powershell.exe',
+                '-ExecutionPolicy', 'RemoteSigned',
                 '-File', SCRIPT_PATH,
                 '-UserName', user_name,
                 '-SharedDirPath', str(shared_dir_path)
