@@ -700,9 +700,10 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
     # pylint: disable=too-many-public-methods
     def setUp(self):
         super().setUp()
-        self.client.apps_manager.load_all_apps()
         self.client.sync = Mock()
         self.client.p2pservice = Mock(peers={})
+        self.client.apps_manager._benchmark_enabled = Mock(return_value=True)
+        self.client.apps_manager.load_all_apps()
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler', ):
             self.client.task_server = TaskServer(
