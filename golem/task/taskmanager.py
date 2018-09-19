@@ -716,7 +716,7 @@ class TaskManager(TaskEventListener):
                                                  op=TaskOp.NOT_ACCEPTED)
             verification_finished()
 
-        self.tasks[task_id].computation_finished(
+        self.tasks[task_id].subtask_finished(
             subtask_id, result, result_type, verification_finished_
         )
 
