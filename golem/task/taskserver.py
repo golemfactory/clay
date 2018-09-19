@@ -196,6 +196,14 @@ class TaskServer(
                 supported = supported.join(SupportStatus.err({
                     UnsupportReason.MAX_PRICE: theader.max_price}))
 
+            if self.client.concent_service.enabled:
+                if not theader.fixed_header.concent_enabled:
+                    supported = supported.join(
+                        SupportStatus.err({
+                            UnsupportReason.CONCENT_REQUIRED: True,
+                        }),
+                    )
+
             if supported.is_ok():
                 price = int(theader.max_price)
                 self.task_manager.add_comp_task_request(

@@ -815,7 +815,7 @@ class Client(HardwarePresetsMixin):
                 lambda err: logger.error("Cannot create task: %r", err))
             return task_id, None
         except Exception as ex:  # pylint: disable=broad-except
-            logger.error("Cannot create task %r: %s", t_dict, str(ex))
+            logger.error("Cannot create task %r: %s", t_dict, ex)
             return None, str(ex)
 
     def abort_task(self, task_id):
@@ -919,6 +919,12 @@ class Client(HardwarePresetsMixin):
         self.remove_task(task_id)
         self.task_server.task_manager.delete_task(task_id)
         self.funds_locker.remove_task(task_id)
+
+    def purge_tasks(self):
+        tasks = self.get_tasks()
+        logger.debug('Deleting %d tasks ...', len(tasks))
+        for t in tasks:
+            self.delete_task(t['id'])
 
     def get_node(self):
         return self.node.to_dict()
