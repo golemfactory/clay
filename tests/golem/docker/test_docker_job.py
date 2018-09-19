@@ -161,19 +161,19 @@ class TestBaseDockerJob(TestDockerJob):
     def test_container_created(self):
         with self._create_test_job() as job:
             self.assertIsNotNone(job.container_id)
-            docker = local_client()
-            info = docker.inspect_container(job.container_id)
+            client = local_client()
+            info = client.inspect_container(job.container_id)
             self.assertEqual(info["Id"], job.container_id)
             self.assertEqual(info["State"]["Status"], "created")
             self.assertFalse(info["State"]["Running"])
 
-            image_id = docker.inspect_image(self.image.name)["Id"]
+            image_id = client.inspect_image(self.image.name)["Id"]
             self.assertEqual(info["Image"], image_id)
 
     def test_mounts(self):
         with self._create_test_job() as job:
-            docker = local_client()
-            info = docker.inspect_container(job.container_id)
+            client = local_client()
+            info = client.inspect_container(job.container_id)
 
             work_mount = None
             resources_mount = None

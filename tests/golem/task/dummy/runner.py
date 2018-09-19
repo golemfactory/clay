@@ -58,7 +58,7 @@ def report(msg):
 
 def override_ip_info(*_, **__):
     from golem.network.stun.pystun import OpenInternet
-    return OpenInternet, '1.2.3.4', 40102
+    return '1.2.3.4', 40102
 
 
 def create_client(datadir):
