@@ -1499,25 +1499,6 @@ class TestClientRPCMethods(TestWithDatabase, LogTestCase):
             self.client.receive_state_update_from_subtask(message)
             reactor_mock.callInThread.assert_called_once()
 
-        with patch("twisted.internet.reactor", reactor_mock):
-            self.client.receive_state_update_from_subtask(message)
-            reactor_mock.callInThread.assert_called_once()
-
-        # TODO
-        # def process_value(*_, **__):
-        #     ts: 'TaskSession' = self.task_server.task_sessions[update.info.subtask_id]  # pylint:disable=line-too-long
-        #     resp = ts.send_state_update(update)
-        #     resp.event.wait(timeout=STATE_UPDATE_TIMEOUT)
-        #     update.data = resp.data
-        #     return update.to_dict()
-        #
-        # d = Deferred()
-        # d.addCallback(process_value)
-        #
-        # from twisted.internet import reactor
-        # reactor.callInThread(d.callback, None)
-        # return d
-
     def test_run_test_task_success(self, *_):
         result = {'result': 'result'}
         estimated_memory = 1234
