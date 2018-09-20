@@ -33,11 +33,11 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
         config_item_list = list(dmm._config.items())
         assert all([val == DEFAULTS[key] for key, val in config_item_list])
 
-        config = MockConfig(0, 1024 * 1024, 512)
+        config = MockConfig(0, 0, 0)
 
         dmm.build_config(config)
         assert len(dmm._config) < len(config.to_dict())
-        assert dmm._config != DEFAULTS
+        assert dmm._config == MIN_CONSTRAINTS
 
         self.assertEqual(dmm._config.get('cpu_count'),
                          MIN_CONSTRAINTS.get('cpu_count'))
