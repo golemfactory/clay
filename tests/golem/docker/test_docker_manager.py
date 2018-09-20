@@ -149,12 +149,13 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         dmm = MockDockerManager()
 
-        with mock.patch('golem.docker.manager.is_windows',
-                        return_value=True):
+        with mock.patch('golem.docker.hypervisor.virtualbox.init_pythoncom'):
+            with mock.patch('golem.docker.manager.is_windows',
+                            return_value=True):
 
-            assert dmm._select_hypervisor()
-            assert virtualbox_instance.called
-            assert not xhyve_instance.called
+                assert dmm._select_hypervisor()
+                assert virtualbox_instance.called
+                assert not xhyve_instance.called
 
         reset()
 
@@ -188,15 +189,16 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         with mock.patch('golem.docker.manager.VirtualBoxHypervisor.instance',
                         mock.Mock(vm_running=mock.Mock(return_value=False))):
-            # pylint: disable=no-member
+            with mock.patch('golem.docker.hypervisor.virtualbox'
+                            '.init_pythoncom'):
+                with mock.patch.object(dmm, 'command'):
+                    # pylint: disable=no-member
 
-            with mock.patch.object(dmm, 'command'):
-                dmm.check_environment()
-
-                assert dmm.hypervisor
-                assert dmm.hypervisor.setup.called
-                assert dmm.pull_images.called
-                assert not dmm.build_images.called
+                    dmm.check_environment()
+                    assert dmm.hypervisor
+                    assert dmm.hypervisor.setup.called
+                    assert dmm.pull_images.called
+                    assert not dmm.build_images.called
 
     @mock.patch('golem.docker.manager.is_windows', return_value=False)
     @mock.patch('golem.docker.manager.is_linux', return_value=True)
