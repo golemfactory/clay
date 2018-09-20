@@ -1,4 +1,4 @@
-def docker_conflict(e: Exception):
+def _docker_conflict(e: Exception):
     # temporary work-around for an issue affecting anyone updating from
     # earlier golem versions
 
@@ -12,7 +12,7 @@ def docker_conflict(e: Exception):
 try:
     from docker import DockerClient as Client
 except ImportError as import_error:
-    docker_conflict(import_error)
+    _docker_conflict(import_error)
 from docker.utils import kwargs_from_env  # noqa pylint:disable=wrong-import-position
 
 
@@ -27,4 +27,4 @@ def local_client():
     try:
         return Client(**kwargs).api
     except TypeError as type_error:
-        docker_conflict(type_error)
+        _docker_conflict(type_error)
