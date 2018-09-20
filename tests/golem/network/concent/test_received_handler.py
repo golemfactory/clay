@@ -356,7 +356,7 @@ class ForceGetTaskResultTest(TaskServerMessageHandlerTestBase):
     def test_fgtr_service_refused(self, tcf):
         fgtr = msg_factories.concents.ForceGetTaskResultFactory()
         sr = msg_factories.concents.ServiceRefusedFactory(
-            task_to_compute__compute_task_def__subtask_id=fgtr.subtask_id)
+            task_to_compute__subtask_id=fgtr.subtask_id)
         library.interpret(sr, response_to=fgtr)
         tcf.assert_called_once_with(
             fgtr.subtask_id,
@@ -465,8 +465,8 @@ class FileTransferTokenTestsBase:  # noqa pylint:disable=too-few-public-methods
         self.wtr = taskserver_factories.WaitingTaskResultFactory(
             package_path=self.path)
         self.rct = msg_factories.tasks.ReportComputedTaskFactory(
-            task_to_compute__compute_task_def__subtask_id=self.wtr.subtask_id,
-            task_to_compute__compute_task_def__task_id=self.wtr.task_id,
+            task_to_compute__subtask_id=self.wtr.subtask_id,
+            task_to_compute__task_id=self.wtr.task_id,
         )
 
 
