@@ -2,6 +2,7 @@ import logging
 import os
 import time
 from pathlib import Path
+import psutil
 from threading import Thread
 from typing import Optional, Callable, Any, Iterable
 
@@ -128,8 +129,15 @@ class DockerManager(DockerConfigManager):
         try:
             memory_size = max(int(config_desc.max_memory_size) // 1024,
                               memory_size)
+            max_mem_in_mb = psutil.virtual_memory().free // 1024 // 1024
+            if self.hypervisor and self.hypervisor.vm_running():
+                max_mem_in_mb += self.hypervisor.constraints()['memory_size']
+            memory_size = min(memory_size, max_mem_in_mb - max_mem_in_mb // 10)
+            logger.debug('Memory size capped by "free - 10%%": %r', memory_size)
+
             # Hyper-V expects a multiple of 2 MB
             memory_size = memory_size // 2 * 2
+            logger.debug('Memory size in multiple of 2mb: %r', memory_size)
         except (TypeError, ValueError) as exc:
             logger.warning('Cannot read the memory amount: %r', exc)
 
@@ -310,6 +318,8 @@ class DockerManager(DockerConfigManager):
             old_value = old_values.get(key)
             new_value = new_values.get(key)
 
+            logger.debug('_diff_constraint. key=%r, old_value=%r, new_value=%r',
+                         key, old_value, new_value)
             if new_value != old_value and new_value is not None:
                 result[key] = new_value
 
