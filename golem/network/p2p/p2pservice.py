@@ -297,7 +297,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
                            'performance info is available')
             return 1.0
 
-        rank = len(list(filter(lambda x: x < perf))) / len(hosts_perf)
+        rank = sum(1 for x in hosts_perf if x < perf) / len(hosts_perf)
         logger.info(f'Performance for env `{env_id}`: rank({perf}) = {rank}')
         return rank
 
