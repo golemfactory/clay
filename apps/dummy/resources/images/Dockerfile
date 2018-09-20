@@ -30,7 +30,7 @@ RUN pip install incremental==17.5.0
 RUN pip install ipaddress==1.0.22
 RUN pip install pyasn1==0.4.4
 RUN pip install pyasn1-modules==0.2.2
-RUN pip install pycparser==2.18
+RUN pip install pycparser==2.10
 RUN pip install PyHamcrest==1.9.0
 RUN pip install service-identity==17.0.0
 RUN pip install six==1.11.0
@@ -38,4 +38,3 @@ RUN pip install Twisted==18.7.0
 RUN pip install txaio==18.7.1
 RUN pip install u-msgpack-python==2.5.0
 RUN pip install zope.interface==4.5.0
-
