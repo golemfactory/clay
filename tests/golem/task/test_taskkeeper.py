@@ -8,12 +8,12 @@ import unittest.mock as mock
 
 from eth_utils import encode_hex
 from freezegun import freeze_time
+from golem_messages import idgenerator
 from golem_messages import factories as msg_factories
 from golem_messages.message import ComputeTaskDef
 
 import golem
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
-from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.environments.environment import Environment, UnsupportReason,\
     SupportStatus
 from golem.environments.environmentsmanager import EnvironmentsManager
@@ -110,31 +110,16 @@ class TestTaskHeaderKeeper(LogTestCase):
             min_price=10.0)
         tk.app_version = '0.4.5-dev+232.138018'
 
-        with self.assertRaises(ValueError):
-            tk.check_version_compatibility('')
-        with self.assertRaises(ValueError):
-            tk.check_version_compatibility('0')
-        with self.assertRaises(ValueError):
-            tk.check_version_compatibility('1.5')
-        with self.assertRaises(ValueError):
-            tk.check_version_compatibility('0.4-alpha+build.2004.01.01')
-        with self.assertRaises(ValueError):
-            tk.check_version_compatibility('0.4-alpha')
-        with self.assertRaises(ValueError):
-            tk.check_version_compatibility('0.4-alpha')
+        for v in ['', '0', '1.5', '0.4-alpha+build.2004.01.01', '0.4-alpha']:
+            with self.assertRaises(ValueError, msg=v):
+                tk.check_version_compatibility(v)
 
-        assert not tk.check_version_compatibility('1.5.0')
-        assert not tk.check_version_compatibility('1.4.0')
-        assert not tk.check_version_compatibility('0.5.0')
-        assert not tk.check_version_compatibility('0.4.6')
-        assert not tk.check_version_compatibility('0.3.0')
+        for v in ['1.5.0', '1.4.0', '0.5.0', '0.3.0']:
+            self.assertFalse(tk.check_version_compatibility(v), msg=v)
 
-        assert tk.check_version_compatibility('0.4.5')
-        assert tk.check_version_compatibility('0.4.1')
-        assert tk.check_version_compatibility('0.4.0')
-        assert tk.check_version_compatibility('0.4.0-alpha')
-        assert tk.check_version_compatibility('0.4.0-alpha+build')
-        assert tk.check_version_compatibility('0.4.0-alpha+build.2010')
+        for v in ['0.4.5', '0.4.1', '0.4.0', '0.4.0-alpha',
+                  '0.4.0-alpha+build', '0.4.0-alpha+build.2010', '0.4.6']:
+            self.assertTrue(tk.check_version_compatibility(v), msg=v)
 
     @mock.patch('golem.task.taskarchiver.TaskArchiver')
     def test_change_config(self, tar):
@@ -481,7 +466,7 @@ def get_dict_task_header(key_id_seed="kkk"):
     key_id = str.encode(key_id_seed)
     return {
         'fixed_header': {
-            "task_id": generate_id(key_id),
+            "task_id": idgenerator.generate_id(key_id),
             "task_owner": {
                 "node_name": "Bob's node",
                 "key": encode_hex(key_id)[2:],
@@ -542,7 +527,9 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
 
             ctd = ComputeTaskDef()
             ctd['task_id'] = header.task_id
-            ctd['subtask_id'] = generate_new_id_from_id(header.task_id)
+            ctd['subtask_id'] = idgenerator.generate_new_id_from_id(
+                header.task_id,
+            )
             ctd['deadline'] = timeout_to_deadline(header.subtask_timeout - 0.5)
             price = taskkeeper.compute_subtask_value(
                 price_bid,
@@ -639,7 +626,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         task_id = th.task_id
         price_bid = 5
         ctk.add_request(th, price_bid)
-        subtask_id = generate_new_id_from_id(task_id)
+        subtask_id = idgenerator.generate_new_id_from_id(task_id)
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
         ctd['subtask_id'] = subtask_id
@@ -656,7 +643,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         assert ctk.check_task_owner_by_subtask(th.task_owner.key, subtask_id)
         assert not ctk.check_task_owner_by_subtask(th.task_owner.key, "!!!")
         assert not ctk.check_task_owner_by_subtask('???', subtask_id)
-        subtask_id2 = generate_new_id_from_id(task_id)
+        subtask_id2 = idgenerator.generate_new_id_from_id(task_id)
         ctd2 = ComputeTaskDef()
         ctd2['task_id'] = task_id
         ctd2['subtask_id'] = subtask_id2
@@ -694,7 +681,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         task_id = header.task_id
         ctk.add_request(header, 40003)
         ctk.active_tasks[task_id].requests = 0
-        subtask_id = generate_new_id_from_id(task_id)
+        subtask_id = idgenerator.generate_new_id_from_id(task_id)
         comp_task_def = {
             'task_id': task_id,
             'subtask_id': subtask_id,

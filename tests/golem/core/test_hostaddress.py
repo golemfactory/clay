@@ -126,20 +126,17 @@ class TestHostAddress(unittest.TestCase):
 
     def test_get_external_address_live(self):
         """ Test getting host public address with STUN protocol """
-        nats = ["Blocked", "Open Internet", "Full Cone", "Symmetric UDP Firewall",
-                "Restric NAT", "Restric Port NAT", "Symmetric NAT"]
-        address, port, nat = get_external_address()
+        address, port = get_external_address()
         self.assertTrue(is_ip_address(address), "Incorrect IP address: {}".format(address))
         self.assertIsInstance(port, int, "Incorrect port type")
         self.assertTrue(0 < port < 65535, "Incorrect port number")
-        self.assertIn(nat, nats, "Incorrect nat type")
 
     @patch('golem.network.stun.pystun.get_ip_info')
     def test_get_external_address_argument(self, stun):
-        stun.return_value = ('2607:f0d0:1002:51::4', 1234, "Open Internet")
-        address, port, nat = get_external_address(9876)
+        stun.return_value = ('2607:f0d0:1002:51::4', 1234)
+        address, port = get_external_address(9876)
         assert stun.called_once_with(9876)
-        address, port, nat = get_external_address()
+        address, port = get_external_address()
         assert stun.called_once_with(0)
 
     @patch('golem.core.hostaddress.socket.gethostname')

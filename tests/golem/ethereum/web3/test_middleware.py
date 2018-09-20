@@ -8,7 +8,7 @@ class TestMiddleware(unittest.TestCase):
 
     def test_successful_calls(self):
         listener = Mock()
-        builder = RemoteRPCErrorMiddlewareBuilder(listener, max_errors=2)
+        builder = RemoteRPCErrorMiddlewareBuilder(listener, retries=2)
         make_request = Mock()
         middleware = builder.build(make_request, _web3=None)
 
@@ -20,7 +20,7 @@ class TestMiddleware(unittest.TestCase):
 
     def test_recoverable_errors(self):
         listener = Mock()
-        builder = RemoteRPCErrorMiddlewareBuilder(listener, max_errors=2)
+        builder = RemoteRPCErrorMiddlewareBuilder(listener, retries=2)
         make_request = Mock(side_effect=Exception)
         middleware = builder.build(make_request, _web3=None)
 
@@ -36,17 +36,12 @@ class TestMiddleware(unittest.TestCase):
         listener = Mock()
         builder = RemoteRPCErrorMiddlewareBuilder(
             listener,
-            max_errors=5,
-            retries=2,
+            retries=3,
         )
         make_request = Mock(side_effect=ConnectionError)
         middleware = builder.build(make_request, _web3=None)
 
-        middleware(Mock(), None)
-        assert listener.call_count == 1
-
-        middleware(Mock(), None)
-        assert listener.call_count == 2
-
         with self.assertRaises(ConnectionError):
             middleware(Mock(), None)
+        assert make_request.call_count == 3
+        assert listener.call_count == 1

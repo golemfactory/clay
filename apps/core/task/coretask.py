@@ -4,6 +4,7 @@ import os
 from enum import Enum
 from typing import Type, Optional, Dict, Any
 
+from golem_messages import idgenerator
 import golem_messages.message
 from ethereum.utils import denoms
 from golem_verificator.core_verifier import CoreVerifier
@@ -15,7 +16,6 @@ from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
-from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.core.simpleserializer import CBORSerializer
 from golem.docker.environment import DockerEnvironment
 from golem.network.p2p.node import Node
@@ -183,10 +183,10 @@ class CoreTask(Task):
 
     @staticmethod
     def create_task_id(public_key: bytes) -> str:
-        return generate_id(public_key)
+        return idgenerator.generate_id(public_key)
 
     def create_subtask_id(self) -> str:
-        return generate_new_id_from_id(self.header.task_id)
+        return idgenerator.generate_new_id_from_id(self.header.task_id)
 
     def is_docker_task(self):
         return bool(self.docker_images)
@@ -479,8 +479,9 @@ class CoreTask(Task):
     @handle_key_error
     def _mark_subtask_failed(self, subtask_id):
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
-        self.counting_nodes[self.subtasks_given[
-            subtask_id]['node_id']].reject()
+        node_id = self.subtasks_given[subtask_id]['node_id']
+        if node_id in self.counting_nodes:
+            self.counting_nodes[node_id].reject()
         self.num_failed_subtasks += 1
 
     def _unpack_task_result(self, trp, output_dir):
@@ -497,7 +498,7 @@ class CoreTask(Task):
         prefix = os.path.commonprefix(task_resources)
         return os.path.dirname(prefix)
 
-    def _accept_client(self, node_id):
+    def should_accept_client(self, node_id):
         client = TaskClient.assert_exists(node_id, self.counting_nodes)
         finishing = client.finishing()
         max_finishing = self.max_pending_client_results
@@ -508,8 +509,16 @@ class CoreTask(Task):
                 client.started() - finishing >= max_finishing:
             return AcceptClientVerdict.SHOULD_WAIT
 
-        client.start()
         return AcceptClientVerdict.ACCEPTED
+
+    def accept_client(self, node_id):
+        verdict = self.should_accept_client(node_id)
+
+        if verdict == AcceptClientVerdict.ACCEPTED:
+            client = TaskClient.assert_exists(node_id, self.counting_nodes)
+            client.start()
+
+        return verdict
 
     def copy_subtask_results(self, subtask_id, old_subtask_info, results):
         new_subtask = self.subtasks_given[subtask_id]
@@ -519,7 +528,7 @@ class CoreTask(Task):
         new_subtask['ctd']['performance'] = \
             old_subtask_info['ctd']['performance']
 
-        self._accept_client(new_subtask['node_id'])
+        self.accept_client(new_subtask['node_id'])
         self.result_incoming(subtask_id)
         self.interpret_task_results(
             subtask_id=subtask_id,
@@ -528,44 +537,6 @@ class CoreTask(Task):
         self.accept_results(
             subtask_id=subtask_id,
             result_files=self.results[subtask_id])
-
-
-def accepting(query_extra_data_func):
-    """
-    A function decorator which wraps given function with verification code.
-
-    :param query_extra_data_func: query_extra_data function from Task
-    :return:
-    """
-
-    def accepting_qed(self,
-                      perf_index: float,
-                      num_cores=1,
-                      node_id: Optional[str] = None,
-                      node_name: Optional[str] = None) -> Task.ExtraData:
-        # pylint:disable=protected-access
-        verdict = self._accept_client(node_id)
-        if verdict != AcceptClientVerdict.ACCEPTED:
-
-            should_wait = verdict == AcceptClientVerdict.SHOULD_WAIT
-            if should_wait:
-                logger.warning("Waiting for results from %s on %s", node_name,
-                               self.task_definition.task_id)
-            else:
-                logger.warning("Client %s has failed on subtask within task %s"
-                               " and is banned from it", node_name,
-                               self.task_definition.task_id)
-
-            return self.ExtraData(should_wait=should_wait)
-
-        if self.get_progress == 1.0:
-            logger.error("Task already computed")
-            return self.ExtraData()
-
-        return query_extra_data_func(self, perf_index, num_cores,
-                                     node_id, node_name)
-
-    return accepting_qed
 
 
 class CoreTaskBuilder(TaskBuilder):

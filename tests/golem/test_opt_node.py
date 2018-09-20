@@ -524,6 +524,7 @@ class MockThread:
         return self._target
 
 
+@patch('golem.client.node_info_str')
 @patch('golem.node.Node._start_keys_auth', set_keys_auth)
 @patch('golem.node.Node._start_docker')
 @patch('golem.node.async_run', mock_async_run)
@@ -703,6 +704,7 @@ class TestOptNode(TempDirFixture):
         node = Node.__new__(Node)
 
         setattr(node, '_reactor', reactor)
+        setattr(node, '_docker_manager', Mock())
         setattr(node, 'client', None)
 
         node.quit()

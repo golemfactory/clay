@@ -323,6 +323,7 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         self.requestor_keys = cryptography.ECCx(None)
         self.msg = factories.tasks.WantToComputeTaskFactory()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
+        self.task_session.key_id = 'unittest_key_id'
         self.task_session.task_server.keys_auth.ecc = self.requestor_keys
 
     def assert_blocked(self, send_mock):
@@ -336,12 +337,14 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         self.task_session.task_manager.got_want_to_compute.assert_not_called()
 
     def assert_allowed(self, send_mock):
-        self.task_session.task_manager.get_next_subtask.return_value = (
-            None, True, True)
+        task_manager = self.task_session.task_manager
+        task_manager.is_my_task.return_value = True
+        task_manager.should_wait_for_node.return_value = False
+        task_manager.check_next_subtask.return_value = False
         self.task_session._react_to_want_to_compute_task(self.msg)
         send_mock.assert_called()
         # ctd, wrong_task, wait
-        self.task_session.task_manager.get_next_subtask.assert_called_once()
+        self.task_session.task_manager.check_next_subtask.assert_called_once()
 
     def test_provider_with_concent_requestor_without_concent(
             self, send_mock):
@@ -370,13 +373,14 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
     def test_concent_disabled_wtct_concent_flag_none(self, send_mock):
         task_manager = self.task_session.task_manager
         self.msg.concent_enabled = None
-        self.task_session.concent_service.enabled = False
+        task_session = self.task_session
+        task_session.concent_service.enabled = False
+        task_manager = task_session.task_manager
+        task_manager.check_next_subtask.return_value = True
+        task_manager.is_my_task.return_value = True
+        task_manager.should_wait_for_node.return_value = False
         ctd = factories.tasks.ComputeTaskDefFactory()
-        task_manager.get_next_subtask.return_value = (
-            ctd,
-            False,
-            True
-        )
+        task_manager.get_next_subtask.return_value = ctd
 
         task = mock.MagicMock()
         task_state = mock.MagicMock(package_hash='123', package_size=42)
@@ -388,9 +392,9 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
             'golem.task.tasksession.taskkeeper.compute_subtask_value',
             mock.Mock(return_value=667),
         ):
-            self.task_session._react_to_want_to_compute_task(self.msg)
+            task_session._react_to_want_to_compute_task(self.msg)
 
         send_mock.assert_called()
-        ttc = send_mock.call_args_list[2][0][0]
+        ttc = send_mock.call_args_list[0][0][0]
         self.assertIsInstance(ttc, message.tasks.TaskToCompute)
         self.assertFalse(ttc.concent_enabled)
