@@ -1,3 +1,4 @@
+# pylint: disable=protected-access, too-many-lines
 import os
 import random
 import uuid
@@ -62,6 +63,7 @@ def get_example_task_header(key_id):
             "signature": None,
             "min_version": golem.__version__,
             "subtasks_count": 21,
+            "concent_enabled": False,
         },
         "mask": {
             "byte_repr": Mask().to_bytes()
@@ -90,6 +92,7 @@ class TaskServerTestBase(LogTestCase,
         super().setUp()
         random.seed()
         self.ccd = ClientConfigDescriptor()
+        self.client.concent_service.enabled = False
         with patch(
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
@@ -197,6 +200,27 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 False,
                 {UnsupportReason.DENY_LIST: keys_auth.key_id}))
         assert ts.remove_task_header(task_id5)
+
+    @patch(
+        "golem.task.taskserver.TaskServer.should_accept_requestor",
+        return_value=SupportStatus(True),
+    )
+    def test_request_task_concent_required(self, *_):
+        self.ts.client.concent_service.enabled = True
+        self.ts.task_archiver = Mock()
+        keys_auth = KeysAuth(self.path, 'prv_key', '')
+        task_dict = get_example_task_header(keys_auth.public_key)
+        task_dict['fixed_header']['concent_enabled'] = False
+        self.ts.add_task_header(task_dict)
+
+        self.assertIsNone(self.ts.request_task())
+        self.ts.task_archiver.add_support_status.assert_called_once_with(
+            task_dict['fixed_header']['task_id'],
+            SupportStatus(
+                False,
+                {UnsupportReason.CONCENT_REQUIRED: True},
+            ),
+        )
 
     @patch("golem.task.taskserver.Trust")
     def test_send_results(self, trust, *_):

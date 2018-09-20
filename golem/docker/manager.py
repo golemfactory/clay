@@ -1,104 +1,62 @@
-import json
 import logging
 import os
-import subprocess
 import time
-from contextlib import contextmanager
 from threading import Thread
+from typing import Optional
 
-from golem.core.common import is_linux, is_windows, is_osx, get_golem_path, \
-    DEVNULL, to_unicode, SUBPROCESS_STARTUP_INFO
+from golem.core.common import is_linux, is_windows, is_osx
 from golem.core.threads import ThreadQueueExecutor
-from golem.docker.config_manager import DockerConfigManager
+from golem.docker.commands.docker import DockerCommandHandler
+from golem.docker.config import DockerConfigManager, APPS_DIR, IMAGES_INI, \
+    CONSTRAINT_KEYS, MIN_CONSTRAINTS, DEFAULTS
+from golem.docker.hypervisor.docker_for_mac import DockerForMac
+from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
+from golem.docker.hypervisor.xhyve import XhyveHypervisor
 from golem.report import report_calls, Component
 
 logger = logging.getLogger(__name__)
 
-ROOT_DIR = get_golem_path()
-APPS_DIR = os.path.join(ROOT_DIR, 'apps')
-IMAGES_INI = os.path.join(APPS_DIR, 'images.ini')
-
-FALLBACK_DOCKER_MACHINE_NAME = 'golem'
-CONSTRAINT_KEYS = dict(
-    mem='memory_size',
-    cpu='cpu_count',
-    cpu_cap='cpu_execution_cap'
-)
-
 
 class DockerManager(DockerConfigManager):
 
-    docker_machine_commands = dict(
-        create=['docker-machine', 'create'],
-        rm=['docker-machine', 'rm', '-y'],
-        start=['docker-machine', 'restart'],
-        stop=['docker-machine', 'stop'],
-        active=['docker-machine', 'active'],
-        list=['docker-machine', 'ls', '-q'],
-        env=['docker-machine', 'env'],
-        status=['docker-machine', 'status'],
-        inspect=['docker-machine', 'inspect'],
-        regenerate_certs=['docker-machine', 'regenerate-certs', '--force']
-    )
-
-    docker_commands = dict(
-        build=['docker', 'build'],
-        tag=['docker', 'tag'],
-        pull=['docker', 'pull'],
-        version=['docker', '-v'],
-        help=['docker', '--help'],
-        images=['docker', 'images', '-q']
-    )
-
     def __init__(self, config_desc=None):
+        super().__init__()
 
-        super(DockerManager, self).__init__()
-
-        self.hypervisor = None
-        self.docker_machine = FALLBACK_DOCKER_MACHINE_NAME
-
-        self.min_constraints = dict(
-            memory_size=1024,
-            cpu_execution_cap=1,
-            cpu_count=1
-        )
-
-        self.defaults = dict(
-            memory_size=1024,
-            cpu_execution_cap=100,
-            cpu_count=1
-        )
-
-        self._config = dict(self.defaults)
-        self._config_dir = None
+        self._config = dict(DEFAULTS)
         self._env_checked = False
         self._threads = ThreadQueueExecutor(queue_name='docker-machine')
 
         if config_desc:
             self.build_config(config_desc)
 
-    def _get_hypervisor(self):
-        if is_windows():
-            return VirtualBoxHypervisor.instance(self)
-        elif is_osx():
-            return XhyveHypervisor.instance(self)
-        return None
-
     @report_calls(Component.docker, 'instance.check')
     def check_environment(self):
         if self._env_checked:
-            return bool(self.docker_machine)
+            return bool(self.hypervisor)
 
-        if is_windows():
-            import pythoncom
-            pythoncom.CoInitialize()
+        self._env_checked = True
+
+        try:
+            if not is_linux():
+                self.hypervisor = self._select_hypervisor()
+                self.hypervisor.setup()
+        except Exception:  # pylint: disable=broad-except
+            logger.error(
+                """
+                ***************************************************************
+                No supported VM hypervisor was found.
+                Golem will not be able to compute anything.
+                ***************************************************************
+                """
+            )
+            raise EnvironmentError
 
         try:
             # We're checking the availability of "docker" command line utility
             # (other commands may result in an error if docker env variables
             # are set incorrectly)
             self.command('help')
-        except Exception as err:
+        except Exception as err:  # pylint: disable=broad-except
             logger.error(
                 """
                 ***************************************************************
@@ -111,45 +69,26 @@ class DockerManager(DockerConfigManager):
             raise EnvironmentError
 
         try:
-            if is_linux():
-                raise EnvironmentError("Linux")
-
-            # Check if a supported VM hypervisor is present
-            self.hypervisor = self._get_hypervisor()
-            if not self.hypervisor:
-                raise EnvironmentError("No supported hypervisor found")
-
-        except Exception as exc:
-
-            self.docker_machine = None
-
-            if not is_linux():
-                logger.warn("Docker machine is not available: {}"
-                            .format(exc))
-
-        else:
-
-            # Check if DockerMachine VM is present
-            if self.docker_machine not in self.docker_machine_images():
-                logger.info("Docker machine VM '{}' does not exist"
-                            .format(self.docker_machine))
-
-                self.hypervisor.create(self.docker_machine,
-                                       **(self._config or self.defaults))
-
-            if not self.docker_machine_running():
-                self.start_docker_machine()
-            self._set_docker_machine_env()
-
-        try:
             self.pull_images()
-        except Exception as exc:
-            logger.error("Docker: error pulling images: {}"
-                         .format(exc))
+        except Exception as err:  # pylint: disable=broad-except
+            logger.warning("Docker: error pulling images: %r", err)
             self.build_images()
 
-        self._env_checked = True
-        return bool(self.docker_machine)
+        return bool(self.hypervisor)
+
+    def _select_hypervisor(self):
+        if is_windows():
+            if VirtualBoxHypervisor.is_available():
+                return VirtualBoxHypervisor.instance(self.get_config)
+        elif is_osx():
+            if DockerForMac.is_available():
+                return DockerForMac.instance(self.get_config)
+            if XhyveHypervisor.is_available():
+                return XhyveHypervisor.instance(self.get_config)
+        return None
+
+    def get_config(self) -> dict:
+        return dict(self._config)
 
     def update_config(self, status_callback, done_callback, in_background=True):
         self.check_environment()
@@ -164,73 +103,73 @@ class DockerManager(DockerConfigManager):
     def build_config(self, config_desc):
         super(DockerManager, self).build_config(config_desc)
 
-        cpu_count = self.min_constraints['cpu_count']
-        memory_size = self.min_constraints['memory_size']
+        cpu_count = MIN_CONSTRAINTS['cpu_count']
+        memory_size = MIN_CONSTRAINTS['memory_size']
 
-        with self._try():
+        try:
             cpu_count = max(int(config_desc.num_cores), cpu_count)
+        except (TypeError, ValueError) as exc:
+            logger.warning('Cannot read the CPU count: %r', exc)
 
-        with self._try():
+        try:
             memory_size = max(int(config_desc.max_memory_size) // 1024,
                               memory_size)
-
-        with self._try():
-            if config_desc.docker_machine_name:
-                self.docker_machine = config_desc.docker_machine_name
-                self._env_checked = False
+        except (TypeError, ValueError) as exc:
+            logger.warning('Cannot read the memory amount: %r', exc)
 
         self._config = dict(
             memory_size=memory_size,
             cpu_count=cpu_count
         )
 
-    def constrain(self, name, **params) -> bool:
-        constraints = self.hypervisor.constraints(name)
+    def constrain(self, **params) -> bool:
+        if not self.hypervisor:
+            return False
+
+        constraints = self.hypervisor.constraints()
         diff = self._diff_constraints(constraints, params)
 
         if diff:
 
             for constraint, value in diff.items():
-                min_val = self.min_constraints.get(constraint)
+                min_val = MIN_CONSTRAINTS.get(constraint)
                 diff[constraint] = max(min_val, value)
 
             for constraint, value in constraints.items():
                 if constraint not in diff:
                     diff[constraint] = value
 
-            for constraint, value in self.min_constraints.items():
+            for constraint, value in MIN_CONSTRAINTS.items():
                 if constraint not in diff:
                     diff[constraint] = value
 
-            logger.info("DockerMachine: applying configuration for '{}': {}"
-                        .format(name, diff))
+            logger.info("Docker: applying configuration: %r", diff)
             try:
-                with self.hypervisor.restart_ctx(name) as vm:
+                with self.hypervisor.restart_ctx() as vm:
                     self.hypervisor.constrain(vm, **diff)
             except Exception as e:
-                logger.error("DockerMachine: error setting '{}' VM's constraints: {}"
-                             .format(name, e))
-            self._set_docker_machine_env()
+                logger.error("Docker: error updating configuration: %r", e)
 
         else:
 
-            logger.info("DockerMachine: '{}' configuration unchanged"
-                        .format(name))
+            logger.info("Docker: configuration unchanged")
 
         return bool(diff)
 
     def recover_vm_connectivity(self, done_callback, in_background=True):
         """
-        This method tries to resolve issues with VirtualBox network adapters (mainly on Windows)
-        by saving VM's state and resuming it afterwards with docker-machine. This reestablishes
-        SSH connectivity with docker machine VM.
-        :param done_callback: Function to run on completion. Takes vbox session as an argument.
+        This method tries to resolve issues with VirtualBox network adapters
+        (mainly on Windows) by saving VM's state and resuming it afterwards with
+        docker-machine. This reestablishes SSH connectivity with docker machine
+        VM.
+        :param done_callback: Function to run on completion. Takes vbox session
+        as an argument.
         :param in_background: Run the recovery process in a separate thread.
         :return:
         """
         self.check_environment()
 
-        if self.docker_machine:
+        if self.hypervisor:
             if in_background:
                 thread = Thread(target=self._save_and_resume,
                                 args=(done_callback,))
@@ -240,134 +179,61 @@ class DockerManager(DockerConfigManager):
         else:
             done_callback()
 
-    def docker_machine_images(self):
-        output = self.command('list')
-        if output:
-            return [i.strip() for i in output.split("\n") if i]
-        return []
+    @staticmethod
+    def command(*args, **kwargs) -> Optional[str]:
+        kwargs.pop('machine_name', None)
+        return DockerCommandHandler.run(*args, **kwargs)
 
-    @report_calls(Component.docker, 'instance.check')
-    def docker_machine_running(self, name=None):
-        if not self.docker_machine:
-            raise EnvironmentError("No Docker VM available")
-
-        try:
-            status = self.command('status', name or self.docker_machine)
-            status = status.strip().replace("\n", "")
-            return status == 'Running'
-        except subprocess.CalledProcessError as e:
-            logger.error("DockerMachine: failed to check status: %s", e)
-            logger.debug("DockerMachine_output: %s", e.output)
-        return False
-
-    @report_calls(Component.docker, 'instance.start')
-    def start_docker_machine(self, name=None):
-        name = name or self.docker_machine
-        logger.info("DockerMachine: starting {}".format(name))
-
-        try:
-            self.command('start', name)
-        except subprocess.CalledProcessError as e:
-            logger.error("DockerMachine: failed to start the VM: %s", e)
-            logger.debug("DockerMachine_output: %s", e.output)
-            raise
-
-    @report_calls(Component.docker, 'instance.stop')
-    def stop_docker_machine(self, name=None):
-        name = name or self.docker_machine
-        logger.info("DockerMachine: stopping '{}'".format(name))
-
-        try:
-            self.command('stop', name)
-            return True
-        except subprocess.CalledProcessError as e:
-            logger.warning("DockerMachine: failed to stop the VM: %s", e)
-            logger.debug("DockerMachine_output: %s", e.output)
-        return False
-
-    @classmethod
-    def command(cls, key, machine_name=None, args=None, shell=False):
-
-        command = cls.docker_machine_commands.get(key)
-        if not command:
-            command = cls.docker_commands.get(key)
-        if not command:
-            return ''
-
-        command = command[:]
-        if args:
-            command += args
-        if machine_name:
-            command += [machine_name]
-
-        logger.debug('docker_machine_command: %s', command)
-        params = dict(shell=shell, stdin=DEVNULL)
-
-        output = subprocess.check_output(command, stderr=subprocess.STDOUT,
-                                         startupinfo=SUBPROCESS_STARTUP_INFO,
-                                         **params)
-        logger.debug('docker_machine_command_output: %s', output)
-        return to_unicode(output)
-
-    @property
-    def config_dir(self):
-        return self._config_dir
-
-    @classmethod
-    def build_images(cls):
+    def build_images(self):
         entries = []
 
-        for entry in cls._collect_images():
-            version = cls._image_version(entry)
-            if not cls.command('images', args=[version]):
+        for entry in self._collect_images():
+            version = self._image_version(entry)
+            if not self.command('images', args=[version]):
                 entries.append(entry)
 
         if entries:
-            cls._build_images(entries)
+            self._build_images(entries)
 
-    @classmethod
     @report_calls(Component.docker, 'images.build')
-    def _build_images(cls, entries):
+    def _build_images(self, entries):
         cwd = os.getcwd()
 
         for entry in entries:
             image, docker_file, tag, build_dir = entry
-            version = cls._image_version(entry)
+            version = self._image_version(entry)
 
             try:
                 os.chdir(APPS_DIR)
-                logger.warn('Docker: building image {}'
-                            .format(version))
-                cls.command('build', args=['-t', image,
-                                           '-f', docker_file,
-                                           build_dir])
-                cls.command('tag', args=[image, version])
+                logger.warning('Docker: building image %s', version)
+
+                self.command('build', args=['-t', image,
+                                            '-f', docker_file,
+                                            build_dir])
+                self.command('tag', args=[image, version])
             finally:
                 os.chdir(cwd)
 
-    @classmethod
-    def pull_images(cls):
+    def pull_images(self):
         entries = []
 
-        for entry in cls._collect_images():
-            version = cls._image_version(entry)
-            if not cls.command('images', args=[version]):
+        for entry in self._collect_images():
+            version = self._image_version(entry)
+            if not self.command('images', args=[version]):
                 entries.append(entry)
 
         if entries:
-            cls._pull_images(entries)
+            self._pull_images(entries)
 
-    @classmethod
-    def _pull_images(cls, entries):
+    def _pull_images(self, entries):
         for entry in entries:
-            version = cls._image_version(entry)
-            cls._pull_image(version)
+            version = self._image_version(entry)
+            self._pull_image(version)
 
-    @classmethod
     @report_calls(Component.docker, 'images.pull')
-    def _pull_image(cls, version):
+    def _pull_image(self, version):
         logger.warning('Docker: pulling image %r', version)
-        cls.command('pull', args=[version])
+        self.command('pull', args=[version])
 
     @classmethod
     def _image_version(cls, entry):
@@ -376,13 +242,8 @@ class DockerManager(DockerConfigManager):
 
     @classmethod
     def _collect_images(cls):
-        images = []
         with open(IMAGES_INI) as f:
-            for line in f:
-                if line:
-                    images.append(line.split())
-
-        return images
+            return [line.split() for line in f if line]
 
     @staticmethod
     def _diff_constraints(old_values, new_values):
@@ -401,462 +262,11 @@ class DockerManager(DockerConfigManager):
         while sb():
             time.sleep(0.5)
 
-        config_differs = self.constrain(self.docker_machine, **self._config)
+        config_differs = self.constrain(**self._config)
         cb(config_differs)
 
     def _save_and_resume(self, cb):
-        with self.hypervisor.recover_ctx(self.docker_machine):
-            logger.info("DockerMachine: attempting VM recovery")
-        self._set_docker_machine_env()
+        if self.hypervisor:
+            with self.hypervisor.recover_ctx():
+                logger.info("DockerMachine: attempting VM recovery")
         cb()
-
-    @report_calls(Component.docker, 'instance.env')
-    def _set_docker_machine_env(self, retried=False):
-        try:
-            output = self.command('env', self.docker_machine,
-                                  args=('--shell', 'cmd'))
-        except subprocess.CalledProcessError as e:
-            logger.warning("DockerMachine: failed to env the VM: %s", e)
-            logger.debug("DockerMachine_output: %s", e.output)
-            if not retried:
-                return self._recover_docker_machine_env()
-            typical_solution_s = """It seems there is a  problem with your Docker installation.
-Ensure that you try the following before reporting an issue:
-
- 1. The virtualization of Intel VT-x/EPT or AMD-V/RVI is enabled in BIOS
-    or virtual machine settings.
- 2. The proper environment is set. On windows powershell please run:
-    & "C:\Program Files\Docker Toolbox\docker-machine.exe" env golem | Invoke-Expression
- 3. virtualbox driver is available:
-    docker-machine.exe create --driver virtualbox golem
- 4. Restart Windows machine"""
-            logger.error(typical_solution_s)
-            raise
-
-        if output:
-            self._set_env_from_output(output)
-            logger.info('DockerMachine: env updated')
-        else:
-            logger.warning('DockerMachine: env update failed')
-
-    def _recover_docker_machine_env(self):
-        try:
-            self.command('regenerate_certs', self.docker_machine)
-        except subprocess.CalledProcessError as e:
-            logger.warning("DockerMachine:"
-                           " failed to env the VM: %s -- %s",
-                           e, e.output)
-        else:
-            return self._set_docker_machine_env(retried=True)
-
-        try:
-            self.command('start', self.docker_machine)
-        except subprocess.CalledProcessError as e:
-            logger.warning("DockerMachine:"
-                           " failed to restart the VM: %s -- %s",
-                           e, e.output)
-        else:
-            return self._set_docker_machine_env(retried=True)
-
-        try:
-            if self.hypervisor:
-                if self.hypervisor.remove(self.docker_machine):
-                    self.hypervisor.create(self.docker_machine)
-        except subprocess.CalledProcessError as e:
-            logger.warning("DockerMachine:"
-                           " failed to re-create the VM: %s -- %s",
-                           e, e.output)
-
-        return self._set_docker_machine_env(retried=True)
-
-    def _set_env_from_output(self, output):
-        for line in output.split('\n'):
-            if not line:
-                continue
-
-            cmd, params = line.split(' ', 1)
-            if cmd.lower() != 'set':
-                continue
-
-            var, val = params.split('=', 1)
-            self._set_env_variable(var, val)
-
-            if var == 'DOCKER_CERT_PATH':
-                split = val.replace('"', '').split(os.path.sep)
-                self._config_dir = os.path.sep.join(split[:-1])
-
-    @staticmethod
-    def _set_env_variable(name, value):
-        os.environ[name] = value
-
-
-class Hypervisor(object):
-
-    POWER_UP_DOWN_TIMEOUT = 30 * 1000  # milliseconds
-    SAVE_STATE_TIMEOUT = 120 * 1000  # milliseconds
-
-    _instance = None
-
-    def __init__(self, docker_manager):
-        self._docker_manager = docker_manager
-
-    @classmethod
-    def instance(cls, docker_manager):
-        if not cls._instance:
-            cls._instance = cls._new_instance(docker_manager)
-        return cls._instance
-
-    def create(self, name, **params):
-        raise NotImplementedError
-
-    def remove(self, name):
-        logger.info("Hypervisor: removing VM '%s'", name)
-        try:
-            self._docker_manager.command('rm', name)
-            return True
-        except subprocess.CalledProcessError as e:
-            logger.warning("Hypervisor: error removing VM '%s': %s", name, e)
-            logger.debug("Hypervisor_output: %s", e.output)
-        return False
-
-    def constrain(self, name, **params):
-        raise NotImplementedError
-
-    def constraints(self, name):
-        raise NotImplementedError
-
-    @contextmanager
-    def restart_ctx(self, name):
-        raise NotImplementedError
-
-    @contextmanager
-    def recover_ctx(self, name):
-        raise NotImplementedError
-
-    @classmethod
-    def _new_instance(cls, docker_manager):
-        raise NotImplementedError
-
-
-class VirtualBoxHypervisor(Hypervisor):
-
-    power_down_states = [
-        'Saved', 'Aborted'
-    ]
-
-    running_states = [
-        'Running', 'FirstOnline', 'LastOnline'
-    ]
-
-    def __init__(self, docker_manager, virtualbox, ISession, LockType):
-        super(VirtualBoxHypervisor, self).__init__(None)
-
-        self._docker_manager = docker_manager
-        self.virtualbox = virtualbox
-        self.ISession = ISession
-        self.LockType = LockType
-
-    @contextmanager
-    @report_calls(Component.hypervisor, 'vm.restart')
-    def restart_ctx(self, name):
-        immutable_vm = self._machine_from_arg(name)
-        if not immutable_vm:
-            yield None
-            return
-
-        running = self._docker_manager.docker_machine_running()
-        if running:
-            self._docker_manager.stop_docker_machine()
-
-        session = immutable_vm.create_session(self.LockType.write)
-        vm = session.machine
-
-        if str(vm.state) in self.power_down_states:
-            self.power_down(session)
-
-        try:
-            yield vm
-        except Exception as e:
-            logger.error("VirtualBox: VM restart error: {}"
-                         .format(e))
-
-        vm.save_settings()
-
-        try:
-            session.unlock_machine()
-        except Exception as e:
-            logger.warn("VirtualBox: error unlocking VM '{}': {}"
-                        .format(name, e))
-
-        if running:
-            self._docker_manager.start_docker_machine()
-
-    @contextmanager
-    @report_calls(Component.hypervisor, 'vm.recover')
-    def recover_ctx(self, name):
-        immutable_vm = self._machine_from_arg(name)
-        if not immutable_vm:
-            yield None
-            return
-
-        session = immutable_vm.create_session(self.LockType.shared)
-        vm = session.machine
-
-        if str(vm.state) in self.running_states:
-            self._save_state(session)
-
-        try:
-            yield vm
-        except Exception as e:
-            logger.error("VirtualBox: recovery error: {}"
-                         .format(e))
-
-        try:
-            session.unlock_machine()
-        except Exception as e:
-            logger.warn("VirtualBox: error unlocking VM '{}': {}"
-                        .format(name, e))
-
-        self._docker_manager.start_docker_machine()
-
-    @report_calls(Component.hypervisor, 'vm.create')
-    def create(self, name, **params):
-        logger.info("VirtualBox: creating VM '{}'".format(name))
-
-        try:
-            self._docker_manager.command('create', name,
-                                         args=('--driver', 'virtualbox'))
-            return True
-        except subprocess.CalledProcessError as e:
-            logger.error("VirtualBox: error creating VM '%s': %s", name, e)
-            logger.debug("Hypervisor_output: %s", e.output)
-        return False
-
-    def constraints(self, name):
-        result = {}
-        try:
-            vm = self._machine_from_arg(name)
-            for constraint_key in CONSTRAINT_KEYS.values():
-                result[constraint_key] = getattr(vm, constraint_key)
-        except Exception as e:
-            logger.error("VirtualBox: error reading VM's constraints: {}"
-                         .format(e))
-        return result
-
-    def constrain(self, machine_obj, **params):
-        vm = self._machine_from_arg(machine_obj)
-        if not vm:
-            return
-
-        for name, value in params.items():
-            try:
-                setattr(vm, name, value)
-            except Exception as e:
-                logger.error('VirtualBox: error setting {} to {}: {}'
-                             .format(name, value, e))
-
-        logger.info("VirtualBox: VM '{}' reconfiguration finished"
-                    .format(vm.name))
-
-    def power_up(self, vm_or_session, lock_type=None):
-        """
-        Power up a machine identified by the mixed param
-        :param vm_or_session: Machine id, name, Machine object or Session object
-        :param lock_type: Session lock type
-        :return: Session object
-        """
-        try:
-            session = self._session_from_arg(vm_or_session,
-                                             lock_type=lock_type)
-            logger.debug("VirtualBox: starting VM '{}'"
-                         .format(session.machine.name))
-
-            progress = session.console.power_up()
-            progress.wait_for_completion(timeout=self.POWER_UP_DOWN_TIMEOUT)
-            return session
-
-        except Exception as e:
-            logger.error("VirtualBox: error starting a VM: '{}'"
-                         .format(e))
-        return None
-
-    def power_down(self, vm_or_session, lock_type=None):
-        """
-        Power down a machine identified by the mixed param
-        :param vm_or_session: Machine id, name, Machine object or Session object
-        :param lock_type: Session lock type
-        :return: Session object
-        """
-        try:
-            session = self._session_from_arg(vm_or_session,
-                                             lock_type=lock_type)
-            logger.debug("VirtualBox: stopping VM '{}'"
-                         .format(session.machine.name))
-
-            progress = session.console.power_down()
-            progress.wait_for_completion(timeout=self.POWER_UP_DOWN_TIMEOUT)
-            return session
-
-        except Exception as e:
-            logger.error("VirtualBox: error stopping a VM: '{}'"
-                         .format(e))
-        return None
-
-    def _save_state(self, vm_or_session, lock_type=None):
-        try:
-            session = self._session_from_arg(vm_or_session,
-                                             lock_type=lock_type)
-            logger.debug("VirtualBox: saving state of VM '{}'"
-                         .format(session.machine.name))
-
-            progress = session.machine.save_state()
-            progress.wait_for_completion(timeout=self.SAVE_STATE_TIMEOUT)
-            return session
-
-        except Exception as e:
-            logger.error("VirtualBox: error saving VM's state: '{}'"
-                         .format(e))
-        return None
-
-    def _session_from_arg(self, session_obj, lock_type=None):
-        if not isinstance(session_obj, self.ISession):
-            vm = self._machine_from_arg(session_obj)
-            lock_type = lock_type or self.LockType.null
-            if vm:
-                return vm.create_session(lock_type)
-            return None
-        return session_obj
-
-    def _machine_from_arg(self, machine_obj):
-        if isinstance(machine_obj, str):
-            try:
-                return self.virtualbox.find_machine(machine_obj)
-            except Exception as e:
-                logger.error('VirtualBox: machine {} not found: {}'
-                             .format(machine_obj, e))
-                return None
-        return machine_obj
-
-    @classmethod
-    def _new_instance(cls, docker_manager):
-        try:
-            from virtualbox import VirtualBox
-            from virtualbox.library import ISession, LockType
-        except ImportError:
-            return None
-        return VirtualBoxHypervisor(docker_manager, VirtualBox(), ISession, LockType)
-
-
-class XhyveHypervisor(Hypervisor):
-
-    options = dict(
-        mem='--xhyve-memory-size',
-        cpu='--xhyve-cpu-count',
-        disk='--xhyve-disk-size',
-        storage='--xhyve-virtio-9p'
-    )
-
-    def __init__(self, docker_manager):
-        super(XhyveHypervisor, self).__init__(docker_manager)
-
-    @report_calls(Component.hypervisor, 'vm.create')
-    def create(self, name, **params):
-        cpu = params.get(CONSTRAINT_KEYS['cpu'], None)
-        mem = params.get(CONSTRAINT_KEYS['mem'], None)
-
-        args = [
-            '--driver', 'xhyve',
-            self.options['storage']
-        ]
-
-        if cpu is not None:
-            args += [self.options['cpu'], str(cpu)]
-        if mem is not None:
-            args += [self.options['mem'], str(mem)]
-
-        logger.info("Xhyve: creating VM '{}'".format(name))
-
-        try:
-            self._docker_manager.command('create', name,
-                                         args=args)
-            return True
-        except Exception as e:
-            logger.error("Xhyve: error creating VM '{}': {}"
-                         .format(name, e))
-            return False
-
-    def constrain(self, name, **params):
-        cpu = params.get(CONSTRAINT_KEYS['cpu'])
-        mem = params.get(CONSTRAINT_KEYS['mem'])
-
-        config_path, config = self._config(name)
-        if not config:
-            return
-
-        try:
-            config['Driver'] = config.get('Driver', dict())
-            config['Driver']['CPU'] = cpu
-            config['Driver']['Memory'] = mem
-
-            with open(config_path, 'w') as config_file:
-                config_file.write(json.dumps(config))
-        except Exception as e:
-            logger.error("Xhyve: error updating '{}' configuration: {}"
-                         .format(name, e))
-
-    @contextmanager
-    @report_calls(Component.hypervisor, 'vm.recover')
-    def recover_ctx(self, name):
-        with self.restart_ctx(name) as _name:
-            yield _name
-
-    @contextmanager
-    @report_calls(Component.hypervisor, 'vm.restart')
-    def restart_ctx(self, name):
-        if self._docker_manager.docker_machine_running(name):
-            self._docker_manager.stop_docker_machine(name)
-        yield name
-        self._docker_manager.start_docker_machine(name)
-
-    def constraints(self, name):
-        config = dict()
-
-        try:
-            output = self._docker_manager.command('inspect', name)
-            driver = json.loads(output)['Driver']
-        except (TypeError, ValueError) as e:
-            logger.error("Xhyve: invalid driver configuration: {}"
-                         .format(e))
-        else:
-
-            try:
-                config[CONSTRAINT_KEYS['cpu']] = int(driver['CPU'])
-            except ValueError as e:
-                logger.error("Xhyve: error reading CPU count: {}"
-                             .format(e))
-
-            try:
-                config[CONSTRAINT_KEYS['mem']] = int(driver['Memory'])
-            except ValueError as e:
-                logger.error("Xhyve: error reading memory size: {}"
-                             .format(e))
-
-        return config
-
-    def _config(self, name):
-        config_path = os.path.join(self._docker_manager.config_dir, name,
-                                   'config.json')
-        config = None
-
-        try:
-            with open(config_path) as config_file:
-                config = json.loads(config_file.read())
-        except (IOError, TypeError, ValueError):
-            logger.error("Xhyve: error reading '{}' configuration"
-                         .format(name))
-
-        return config_path, config
-
-    @classmethod
-    def _new_instance(cls, docker_manager):
-        return XhyveHypervisor(docker_manager)

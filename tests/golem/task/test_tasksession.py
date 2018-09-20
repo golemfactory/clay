@@ -1,4 +1,4 @@
-# pylint: disable=too-many-lines
+# pylint: disable=too-many-lines, protected-access
 import calendar
 import datetime
 import os
@@ -33,8 +33,9 @@ from golem.task.taskbase import ResultType, TaskHeader
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.assertlogs import LogTestCase
+
 from tests import factories
-from tests.factories.taskserver import WaitingTaskResultFactory
+from tests.factories.task import taskbase as taskbase_factories
 
 
 def fill_slots(msg):
@@ -85,6 +86,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts._is_peer_blocked = Mock(return_value=False)
         ts.verified = True
         ts.concent_service.enabled = self.use_concent
+        ts.key_id = 'unittest_key_id'
         return ts
 
     def _get_requestor_tasksession(self, accept_provider=True):
@@ -136,8 +138,11 @@ class TaskSessionTaskToComputeTest(TestCase):
 
     def test_want_to_compute_task(self):
         ts = self._get_task_session()
-        ts._get_handshake = Mock(return_value={})
+        ts._handshake_required = Mock(return_value=False)
         params = self._get_task_parameters()
+        ts.task_server.task_keeper.task_headers = task_headers = {}
+        task_headers[params['task_id']] = taskbase_factories.TaskHeader()
+        ts.concent_service.enabled = False
         ts.request_task(
             params['node_name'],
             params['task_id'],
@@ -147,6 +152,7 @@ class TaskSessionTaskToComputeTest(TestCase):
             params['max_memory_size'],
             params['num_cores']
         )
+        ts.conn.send_message.assert_called_once()
         mt = ts.conn.send_message.call_args[0][0]
         self.assertIsInstance(mt, message.tasks.WantToComputeTask)
         self.assertEqual(mt.node_name, params['node_name'])
@@ -263,6 +269,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         super(TestTaskSession, self).setUp()
         random.seed()
         self.task_session = TaskSession(Mock())
+        self.task_session.key_id = 'unittest_key_id'
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_hello(self, send_mock):
@@ -295,7 +302,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts = self.task_session
         ts.verified = True
         ts.task_server.get_node_name.return_value = "ABC"
-        wtr = WaitingTaskResultFactory()
+        wtr = factories.taskserver.WaitingTaskResultFactory()
 
         get_mock.return_value = msg_factories.tasks.TaskToComputeFactory(
             compute_task_def__subtask_id=wtr.subtask_id,
@@ -884,8 +891,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.task_session._react_to_cannot_assign_task(msg_cat)
         assert task_keeper.active_tasks["abc"].requests == expected_requests
 
-    @patch('golem.task.tasksession.node_info_str')
-    def test_react_to_want_to_compute_no_handshake(self, _):
+    def test_react_to_want_to_compute_no_handshake(self):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
 
@@ -903,8 +909,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         ts._start_handshake.assert_called_with(ts.key_id)
 
-    @patch('golem.task.tasksession.node_info_str')
-    def test_react_to_want_to_compute_handshake_busy(self, _):
+    def test_react_to_want_to_compute_handshake_busy(self):
         mock_msg = Mock()
         mock_msg.concent_enabled = False
 
@@ -939,6 +944,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         tm.check_next_subtask = Mock()
         tm.check_next_subtask.return_value = True
+
 
 class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
                                       testutils.TempDirFixture):

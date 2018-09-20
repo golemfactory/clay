@@ -162,6 +162,7 @@ class TestTransactionSystem(testutils.DatabaseFixture):
             dest,
             gntb_balance - 1,
         )
+        self.sci.on_transaction_confirmed.call_args[0][1](Mock(status=True))
         self.sci.reset_mock()
 
         # Not enough GNTB
@@ -244,6 +245,24 @@ class TestTransactionSystem(testutils.DatabaseFixture):
 
         with self.assertRaisesRegex(Exception, "Can't unlock .* GNT"):
             self.ets.unlock_funds_for_payments(1, 1)
+
+    def test_withdraw_lock_gntb(self):
+        eth_balance = 10 * denoms.ether
+        gntb_balance = 1000 * denoms.ether
+        self.sci.get_eth_balance.return_value = eth_balance
+        self.sci.get_gntb_balance.return_value = gntb_balance
+        self.ets._refresh_balances()
+
+        assert self.ets.get_available_gnt() == gntb_balance
+
+        self.ets.withdraw(gntb_balance, '0x' + 40 * '0', 'GNT')
+        assert self.ets.get_available_gnt() == 0
+        self.sci.on_transaction_confirmed.assert_called_once()
+
+        self.sci.get_gntb_balance.return_value = 0
+        self.ets._refresh_balances()
+        self.sci.on_transaction_confirmed.call_args[0][1](Mock(status=True))
+        assert self.ets.get_available_gnt() == 0
 
     def test_locking_funds_changing_gas_price(self):
         eth_balance = 10 * denoms.ether
