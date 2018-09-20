@@ -42,6 +42,8 @@ class DockerCommandHandler:
         if not command:
             logger.error('Unknown command: %s', command_name)
         elif isinstance(command, list):
+            if logger.isEnabledFor(logging.DEBUG):
+                command.insert(1, '-D')
             return cls._command(command[:], vm_name, args, shell)
         elif callable(command):
             return command(vm_name, args, shell)
@@ -91,6 +93,9 @@ class DockerCommandHandler:
             )
         except FileNotFoundError as exc:
             raise subprocess.CalledProcessError(127, str(exc))
+        except subprocess.CalledProcessError as exc:
+            logger.debug('Docker command output: %s', exc.output)
+            raise exc
 
         logger.debug('Docker command output: %s', output)
         return to_unicode(output)
