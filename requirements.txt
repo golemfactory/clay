@@ -31,9 +31,7 @@ eth-tester==0.1.0-beta.24
 eth-utils==1.0.3
 ethereum==1.6.1
 Golem-Verificator==1.4.0
-#Golem-Messages==2.13.2
-# FIXME release GM before merge
-git+https://github.com/golemfactory/golem-messages.git@tune_ttc_factory
+Golem-Messages==2.13.3
 Golem-Smart-Contracts-Interface==1.5.1
 h2==3.0.1
 hpack==3.0.0
