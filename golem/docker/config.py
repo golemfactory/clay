@@ -1,11 +1,19 @@
 import logging
-from contextlib import contextmanager
+import os
+from typing import Callable, Dict, Any, Optional
 
+from golem.core.common import get_golem_path
 from golem.core.hardware import cpu_cores_available
 from golem.docker.task_thread import DockerTaskThread
 
-__all__ = ['DockerConfigManager']
 logger = logging.getLogger(__name__)
+
+ROOT_DIR = get_golem_path()
+APPS_DIR = os.path.join(ROOT_DIR, 'apps')
+IMAGES_INI = os.path.join(APPS_DIR, 'images.ini')
+
+DOCKER_VM_NAME = 'golem'
+DOCKER_VM_STATUS_RUNNING = 'Running'
 
 DEFAULT_HOST_CONFIG = dict(
     privileged=False,
@@ -24,27 +32,48 @@ DEFAULT_HOST_CONFIG = dict(
               'sys_resource', 'sys_time', 'sys_tty_config']
 )
 
+CONSTRAINT_KEYS = dict(
+    mem='memory_size',
+    cpu='cpu_count',
+)
+MIN_CONSTRAINTS = dict(
+    memory_size=1024,
+    cpu_count=1
+)
+DEFAULTS = dict(
+    memory_size=1024,
+    cpu_count=1
+)
+
+
+GetConfigFunction = Callable[[], Dict[str, Any]]
+
 
 class DockerConfigManager(object):
 
     def __init__(self):
         self.container_host_config = dict(DEFAULT_HOST_CONFIG)
+        self.hypervisor: Optional['Hypervisor'] = None
 
-    def build_config(self, config_desc):
+    def build_config(self, config_desc) -> None:
         host_config = dict()
 
         if config_desc:
             num_cores = config_desc.num_cores
             max_memory_size = config_desc.max_memory_size
 
-            with self._try():
+            try:
                 cpu_cores = cpu_cores_available()
                 max_cpus = min(len(cpu_cores), max(int(num_cores), 1))
                 cpu_set = [str(c) for c in cpu_cores[:max_cpus]]
                 host_config['cpuset'] = ','.join(cpu_set)
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.warning('Cannot set the CPU set: %r', exc)
 
-            with self._try():
-                host_config['mem_limit'] = int(max_memory_size) * 1024
+            try:
+                host_config['mem_limit'] = str(int(max_memory_size) * 1024)
+            except (TypeError, ValueError) as exc:
+                logger.warning('Cannot set the memory limit: %r', exc)
 
         self.container_host_config.update(host_config)
 
@@ -55,9 +84,6 @@ class DockerConfigManager(object):
             DockerTaskThread.docker_manager = docker_manager
         return DockerTaskThread.docker_manager
 
-    @contextmanager
-    def _try(self):
-        try:
-            yield
-        except Exception:
-            pass
+    def quit(self) -> None:
+        if self.hypervisor:
+            self.hypervisor.quit()

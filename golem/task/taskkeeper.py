@@ -8,14 +8,17 @@ import random
 from collections import Counter
 
 from eth_utils import decode_hex
-from golem_messages import message, helpers
+from golem_messages import (
+    idgenerator,
+    helpers,
+    message,
+)
 from golem_messages.constants import MTD
 from semantic_version import Version
 
 import golem
 from golem.core import common
 from golem.core.async import AsyncRequest, async_run
-from golem.core.idgenerator import check_id_seed
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.p2p.node import Node
@@ -161,18 +164,19 @@ class CompTaskKeeper:
         if not self.dump_path.exists():
             logger.debug('No previous comptask dump found.')
             return
-        with self.dump_path.open('rb') as f:
-            try:
+        try:
+            with self.dump_path.open('rb') as f:
                 data = pickle.load(f)
                 active_tasks = data[0]
                 subtask_to_task = data[1]
                 task_package_paths = data[2] if len(data) > 2 else {}
-            except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
-                logger.exception(
-                    'Problem restoring dumpfile: %s',
-                    self.dump_path
-                )
-                return
+        except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
+            logger.exception(
+                'Problem restoring dumpfile: %s; deleting broken file',
+                self.dump_path
+            )
+            self.dump_path.unlink()
+            return
         self.active_tasks.update(active_tasks)
         self.subtask_to_task.update(subtask_to_task)
         self.task_package_paths.update(task_package_paths)
@@ -225,12 +229,13 @@ class CompTaskKeeper:
 
     def check_comp_task_def(self, comp_task_def):
         task = self.active_tasks[comp_task_def['task_id']]
-        key_id = self.get_node_for_task_id(comp_task_def['task_id'])
+        key_id: str = self.get_node_for_task_id(comp_task_def['task_id'])
         not_accepted_message = "Cannot accept subtask %s for task %s. %s"
         log_args = [comp_task_def['subtask_id'], comp_task_def['task_id']]
 
-        if not check_id_seed(comp_task_def['subtask_id'],
-                             decode_hex(key_id)):
+        if not idgenerator.check_id_hex_seed(
+                comp_task_def['subtask_id'],
+                key_id,):
             logger.info(not_accepted_message, *log_args, "Subtask id was not "
                                                          "generated from "
                                                          "requestor's key.")
@@ -421,9 +426,7 @@ class TaskHeaderKeeper:
         """
         remote = Version(remote)
         local = Version(self.app_version, partial=True)
-        if local.major != remote.major or local.minor != remote.minor:
-            return False
-        return local.patch >= remote.patch
+        return local.major == remote.major and local.minor == remote.minor
 
     def get_support_status(self, task_id) -> typing.Optional[SupportStatus]:
         """Return SupportStatus stating if and why the task is supported or not.
@@ -527,8 +530,8 @@ class TaskHeaderKeeper:
             self.supported_tasks.append(task_id)
 
     @staticmethod
-    def check_owner(task_id, owner_id):
-        if not check_id_seed(task_id, decode_hex(owner_id)):
+    def check_owner(task_id: str, owner_id: str) -> None:
+        if not idgenerator.check_id_hex_seed(task_id, owner_id):
             raise WrongOwnerException(
                 "Task_id %s doesn't match task owner %s", task_id, owner_id)
 
