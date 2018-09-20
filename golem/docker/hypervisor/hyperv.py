@@ -31,8 +31,8 @@ class HyperVHypervisor(DockerMachineHypervisor):
         virtual_switch='--hyperv-virtual-switch'
     )
     SUMMARY_KEYS = dict(
-        mem='MemoryUsage',
-        cpu='NumberOfProcessors'
+        memory_size='MemoryUsage',
+        cpu_count='NumberOfProcessors'
     )
     BOOT2DOCKER_URL = "https://github.com/golemfactory/boot2docker/releases/" \
                       "download/v18.06.0-ce%2Bdvm-v0.35/boot2docker.iso"
