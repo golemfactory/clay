@@ -1,7 +1,7 @@
 import abc
 from typing import List
 
-import enforce
+# import enforce
 
 from golem.docker.image import DockerImage
 from golem.environments.environment import (Environment, SupportStatus,
@@ -9,7 +9,7 @@ from golem.environments.environment import (Environment, SupportStatus,
 from golem.resource.dirmanager import find_task_script
 
 
-@enforce.runtime_validation()
+# @enforce.runtime_validation()
 class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
     def __init__(self, tag=None, image_id=None, additional_images: List[DockerImage] = None):
 

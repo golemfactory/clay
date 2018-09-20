@@ -481,9 +481,8 @@ class CoreTask(Task):
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
 
         node_id = self.subtasks_given[subtask_id]['node_id']
-        # TODO debug
-        # if node_id in self.counting_nodes:
-        #     self.counting_nodes[node_id].reject()
+        if node_id in self.counting_nodes:
+            self.counting_nodes[node_id].reject()
 
         self.num_failed_subtasks += 1
 

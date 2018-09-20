@@ -119,6 +119,7 @@ def make_client(*_, **kwargs):
         'connect_to_known_hosts': False,
         'use_docker_manager': False,
         'use_monitor': False,
+        'crossbar_auth_manager': MagicMock()
     }
     default_kwargs.update(kwargs)
     client = Client(**default_kwargs)

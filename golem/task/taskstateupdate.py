@@ -1,11 +1,11 @@
 import threading
 from typing import Dict, Optional, Any
 
-import enforce
+# import enforce
 from golem_messages import message
 
 
-@enforce.runtime_validation(group="taskstateupdate")
+# @enforce.runtime_validation(group="taskstateupdate")
 class StateUpdateInfo:
     def __init__(self, task_id: str,
                  subtask_id: str,
@@ -37,7 +37,7 @@ class StateUpdateInfo:
         return hash(self) == hash(other)
 
 
-@enforce.runtime_validation(group="taskstateupdate")
+# @enforce.runtime_validation(group="taskstateupdate")
 class StateUpdateData():
     def __init__(self, info: StateUpdateInfo, data: Dict) -> None:
         self.info = info
@@ -60,7 +60,7 @@ class StateUpdateData():
 # but, in the future (after python 3.7), it probably should be changed
 # to dataclass
 # pylint: disable=too-few-public-methods
-@enforce.runtime_validation(group="taskstateupdate")
+# @enforce.runtime_validation(group="taskstateupdate")
 class StateUpdateResponse():
     def __init__(self, event: threading.Event, data: Optional[Dict]) -> None:
         if not isinstance(event, threading.Event):
@@ -70,7 +70,7 @@ class StateUpdateResponse():
         self.data = data
 
 
-@enforce.runtime_validation(group="taskstateupdate")
+# @enforce.runtime_validation(group="taskstateupdate")
 class StateUpdateProcessor():
     def __init__(self) -> None:
         self._msg_dict: Dict[StateUpdateInfo, StateUpdateResponse] = {}
@@ -85,4 +85,4 @@ class StateUpdateProcessor():
         return self._msg_dict[state_update_info]
 
 
-enforce.config({'groups': {'set': {'taskstateupdate': True}}})
+# enforce.config({'groups': {'set': {'taskstateupdate': False}}})

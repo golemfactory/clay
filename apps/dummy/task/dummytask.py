@@ -32,7 +32,7 @@ class DummyTaskTypeInfo(CoreTaskTypeInfo):
         )
 
 
-@enforce.runtime_validation(group="dummy")
+# @enforce.runtime_validation(group="dummy")
 class DummyTask(CoreTask):
     ENVIRONMENT_CLASS = DummyTaskEnvironment
     VERIFIER_CLASS = DummyTaskVerifier
@@ -180,4 +180,4 @@ class DummyTaskBuilderMod(DummyTaskBuilder):
 
 
 # comment that line to enable type checking
-enforce.config({'groups': {'set': {'dummy': False}}})
+# enforce.config({'groups': {'set': {'dummy': False}}})

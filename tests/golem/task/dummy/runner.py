@@ -27,6 +27,7 @@ from golem.environments.environment import Environment
 from golem.resource.dirmanager import DirManager
 from golem.model import db, DB_FIELDS, DB_MODELS
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.rpc.cert import CrossbarAuthManager
 from tests.golem.task.dummy.task import DummyTask, DummyTaskParameters
 
 REQUESTING_NODE_KIND = "requestor"
@@ -85,6 +86,10 @@ def create_client(datadir):
     database = Database(
         db, fields=DB_FIELDS, models=DB_MODELS, db_dir=datadir)
 
+    crossbar_auth_manager = CrossbarAuthManager(
+        datadir,
+        generate_secrets=True
+    )
     ets = _make_mock_ets()
     return Client(datadir=datadir,
                   app_config=app_config,
@@ -94,7 +99,9 @@ def create_client(datadir):
                   transaction_system=ets,
                   use_monitor=False,
                   connect_to_known_hosts=False,
-                  use_docker_manager=False)
+                  use_docker_manager=False,
+                  crossbar_auth_manager=crossbar_auth_manager
+    )
 
 
 def _make_mock_ets():
