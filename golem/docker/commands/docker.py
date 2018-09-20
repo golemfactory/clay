@@ -42,8 +42,6 @@ class DockerCommandHandler:
         if not command:
             logger.error('Unknown command: %s', command_name)
         elif isinstance(command, list):
-            if logger.isEnabledFor(logging.DEBUG):
-                command.insert(1, '-D')
             return cls._command(command[:], vm_name, args, shell)
         elif callable(command):
             return command(vm_name, args, shell)
@@ -80,6 +78,9 @@ class DockerCommandHandler:
             command += list(args)
         if vm_name:
             command += [vm_name]
+
+        if logger.isEnabledFor(logging.DEBUG):
+            command.insert(1, '-D')
 
         logger.debug('Docker command: %s', command)
 
