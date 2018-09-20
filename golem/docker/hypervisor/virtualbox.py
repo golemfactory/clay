@@ -111,6 +111,7 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
 
     @report_calls(Component.hypervisor, 'vm.create')
     def create(self, name: Optional[str] = None, **params) -> bool:
+        name = name or self._vm_name
         logger.info("VirtualBox: creating VM '{}'".format(name))
 
         try:
@@ -122,6 +123,7 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
         return False
 
     def constraints(self, name: Optional[str] = None) -> Dict:
+        name = name or self._vm_name
         result = {}
         try:
             vm = self._machine_from_arg(name)
@@ -133,6 +135,7 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
         return result
 
     def constrain(self, name: Optional[str] = None, **params) -> None:
+        name = name or self._vm_name
         vm = self._machine_from_arg(name)
         if not vm:
             return
