@@ -89,7 +89,6 @@ raven==6.6.0
 repoze.lru==0.7
 requests==2.18.4
 rlp==0.6.0
-scipy==0.19.1
 scrypt==0.8.6
 sdnotify==0.3.2
 secp256k1==0.13.2
