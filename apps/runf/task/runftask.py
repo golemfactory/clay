@@ -1,5 +1,6 @@
 import logging
 from copy import copy
+from pathlib import Path
 from typing import Optional, Dict, Set
 from uuid import uuid4
 
@@ -15,7 +16,7 @@ from apps.core.task.coretask import (CoreTask,
                                      CoreTaskTypeInfo)
 from apps.runf.runfenvironment import RunFEnvironment
 from golem_remote.queue_helpers import Queue
-from golem_remote.runf_helpers import SubtaskID, SubtaskDefinition, SubtaskData
+from golem_remote.runf_helpers import SubtaskID, SubtaskDefinition, SubtaskData, SubtaskParams
 from apps.runf.task.runftaskstate import RunFDefaults, RunFOptions
 from apps.runf.task.runftaskstate import RunFDefinition
 from apps.runf.task.verifier import RunFVerifier
@@ -115,7 +116,7 @@ class RunF(CoreTask):
 
         extra_data = {
             "data": data,
-            "RESULT_EXT": self.RESULT_EXT
+            "RESULT_EXT": self.RESULT_EXT,
         }
 
         return self._new_compute_task_def(
@@ -124,7 +125,7 @@ class RunF(CoreTask):
             perf_index=perf_index
         )
 
-    @coretask.accepting
+    # @coretask.accepting
     def query_extra_data(self,
                          perf_index: float,
                          num_cores: int = 1,
@@ -179,39 +180,41 @@ class RunF(CoreTask):
         del self.waiting_queue
         self.subtasks_being_processed = set()  # TODO I should send "abort" signal
 
-    def _get_example_data(self):
-        def f(x):
-            return x + x
-        args = [2]
-        kwargs = {}
-        data = SubtaskData(
-            function=f,
-            args=args,
-            kwargs=kwargs
-        )
-        return data
-
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
-        queue_id = str(uuid4())
-        data = self._get_example_data()
-        subtask_id = "subtask12345"
+        # At the moment, we don't run the benchmark at all
+        #
+        # def _get_example_data(self):
+        #     f = math.log
+        #     args = (2,)
+        #     kwargs = {}
+        #     data = SubtaskData(
+        #         function=f,
+        #         args=args,
+        #         kwargs=kwargs,
+        #         params=SubtaskParams(original_dir=Path("."))
+        #     )
+        #     return data
+        # queue_id = str(uuid4())
+        # data = self._get_example_data()
+        # subtask_id = "subtask12345"
+        #
+        # self.subtasks_definitions[subtask_id] = SubtaskDefinition(
+        #     subtask_id=subtask_id,
+        #     queue_id=queue_id,
+        #     data=data
+        # )
+        # self.subtasks_being_processed.add(subtask_id)
+        #
+        # extra_data = {
+        #     "data": encode_obj_to_str(data),
+        #     "RESULT_EXT": self.RESULT_EXT
+        # }
+        # return self._new_compute_task_def(
+        #     subtask_id,
+        #     extra_data,
+        # )
 
-        self.subtasks_definitions[subtask_id] = SubtaskDefinition(
-            subtask_id=subtask_id,
-            queue_id=queue_id,
-            data=data
-        )
-        self.subtasks_being_processed.add(subtask_id)
-
-        extra_data = {
-            "data": encode_obj_to_str(data),
-            "RESULT_EXT": self.RESULT_EXT
-        }
-
-        return self._new_compute_task_def(
-            subtask_id,
-            extra_data,
-        )
+        return self._new_compute_task_def("Benchmark", {"BENCHMARK": True})
 
     def react_to_state_update(self, subtask_id: SubtaskID, data: Dict):
         pass

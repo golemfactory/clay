@@ -1,8 +1,15 @@
 import os
+import sys
 
 # pylint: disable=import-error
 import params  # This module is generated before this script is run
+
+# slightly hackish way to not run a benchmark at all
+if hasattr(params, "BENCHMARK") and params.BENCHMARK:
+    sys.exit(0)
+
 import golem_remote as golem
+from golem_remote import open_file
 from golem_remote.runf_helpers import SubtaskData
 
 # sys.path.append(os.path.join(params.RESOURCES_DIR, "code"))
@@ -13,8 +20,8 @@ data: SubtaskData = golem.decode_str_to_obj(params.data)
 
 # black magic
 import builtins  # pylint: disable=wrong-import-position
-golem.open_file.orig_open = open
-builtins.open = golem.open_file.open_file(original_dir=data.original_dir)
+open_file.orig_open = open
+builtins.open = open_file.open_file(original_dir=data.params.original_dir)
 
 
 solution = data.function(*data.args, **data.kwargs)
