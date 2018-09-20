@@ -9,7 +9,6 @@ from threading import Lock
 from typing import Callable, Any, Dict
 
 from golem_messages import message
-from scipy.stats import stats
 
 from golem.config.active import P2P_SEEDS
 from golem.core import simplechallenge
@@ -298,7 +297,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
                            'performance info is available')
             return 1.0
 
-        rank = stats.percentileofscore(hosts_perf, perf, kind='strict') / 100
+        rank = len(list(filter(lambda x: x < perf))) / len(hosts_perf)
         logger.info(f'Performance for env `{env_id}`: rank({perf}) = {rank}')
         return rank
 
