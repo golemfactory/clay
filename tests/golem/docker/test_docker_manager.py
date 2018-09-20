@@ -289,7 +289,7 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
             dmm = MockDockerManager()
             dmm.pull_images()
 
-        assert pulls[0] == 4
+        assert pulls[0] == 5
 
     @mock.patch('os.chdir')
     def test_build_images(self, os_chdir):
@@ -312,9 +312,9 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
             dmm = MockDockerManager()
             dmm.build_images()
 
-        assert builds[0] == 4
-        assert tags[0] == 4
-        assert len(os_chdir.mock_calls) == 8
+        assert builds[0] == 5
+        assert tags[0] == 5
+        assert len(os_chdir.mock_calls) == 10
 
     def test_recover_vm_connectivity(self):
         callback = mock.Mock()

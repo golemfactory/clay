@@ -352,7 +352,7 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
         # total_subtasks min
         assert builder._calculate_total(defaults) == 1
 
-        definition.total_subtasks = 51
+        definition.total_subtasks = 1001
         # total_subtasks over max -> use default
         assert builder._calculate_total(defaults) == 20
 
