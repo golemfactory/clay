@@ -23,7 +23,7 @@ from golem.ethereum.exceptions import NotEnoughFunds
 PASSWORD = 'derp'
 
 
-class TestTransactionSystem(testutils.DatabaseFixture):
+class TransactionSystemBase(testutils.DatabaseFixture):
     def setUp(self):
         super().setUp()
         self.sci = Mock()
@@ -63,6 +63,8 @@ class TestTransactionSystem(testutils.DatabaseFixture):
                 ets._init()
             return ets
 
+
+class TestTransactionSystem(TransactionSystemBase):
     @patch('golem.core.service.LoopingCallService.running',
            new_callable=PropertyMock)
     def test_stop(self, mock_is_service_running):
@@ -346,6 +348,43 @@ class TestTransactionSystem(testutils.DatabaseFixture):
             ANY,
         )
 
+    def test_check_payments(self):
+        with patch.object(
+            self.ets._incomes_keeper, 'update_overdue_incomes'
+        ) as incomes:
+            self.ets._run()
+            incomes.assert_called_once()
+
+    def test_no_password(self):
+        ets = self._make_ets(just_create=True)
+        with self.assertRaisesRegex(Exception, 'Invalid private key'):
+            ets.start()
+
+    def test_invalid_password(self):
+        ets = self._make_ets(just_create=True)
+        with self.assertRaisesRegex(Exception, 'MAC mismatch'):
+            ets.set_password(PASSWORD + 'nope')
+
+    def test_backwards_compatibility_privkey(self):
+        ets = self._make_ets(datadir=self.new_path / 'other', just_create=True)
+        privkey = b'\x21' * 32
+        other_privkey = b'\x13' * 32
+        address = '0x2BD0C9FE079c8FcA0E3352eb3D02839c371E5c41'
+        password = 'Password1'
+        ets.backwards_compatibility_privkey(privkey, password)
+        with self.assertRaisesRegex(Exception, 'backward compatible'):
+            ets.backwards_compatibility_privkey(other_privkey, password)
+        ets.set_password(password)
+        with patch('golem.ethereum.transactionsystem.new_sci',
+                   return_value=self.sci) as new_sci:
+            ets._init()
+            new_sci.assert_called_once_with(ANY, address, ANY, ANY, ANY)
+
+        # Shouldn't throw
+        self._make_ets(datadir=self.new_path / 'other', password=password)
+
+
+class ConcentDepositTest(TransactionSystemBase):
     def _call_concent_deposit(self, *args, **kwargs):
         errback = Mock()
         callback = Mock()
@@ -476,44 +515,8 @@ class TestTransactionSystem(testutils.DatabaseFixture):
                 ('tx', tx_hash),):
             self.assertEqual(getattr(dpayment, field), value)
 
-    def test_check_payments(self):
-        with patch.object(
-            self.ets._incomes_keeper, 'update_overdue_incomes'
-        ) as incomes:
-            self.ets._run()
-            incomes.assert_called_once()
-
-    def test_no_password(self):
-        ets = self._make_ets(just_create=True)
-        with self.assertRaisesRegex(Exception, 'Invalid private key'):
-            ets.start()
-
-    def test_invalid_password(self):
-        ets = self._make_ets(just_create=True)
-        with self.assertRaisesRegex(Exception, 'MAC mismatch'):
-            ets.set_password(PASSWORD + 'nope')
-
-    def test_backwards_compatibility_privkey(self):
-        ets = self._make_ets(datadir=self.new_path / 'other', just_create=True)
-        privkey = b'\x21' * 32
-        other_privkey = b'\x13' * 32
-        address = '0x2BD0C9FE079c8FcA0E3352eb3D02839c371E5c41'
-        password = 'Password1'
-        ets.backwards_compatibility_privkey(privkey, password)
-        with self.assertRaisesRegex(Exception, 'backward compatible'):
-            ets.backwards_compatibility_privkey(other_privkey, password)
-        ets.set_password(password)
-        with patch('golem.ethereum.transactionsystem.new_sci',
-                   return_value=self.sci) as new_sci:
-            ets._init()
-            new_sci.assert_called_once_with(ANY, address, ANY, ANY, ANY)
-
-        # Shouldn't throw
-        self._make_ets(datadir=self.new_path / 'other', password=password)
-
 
 class FaucetTest(TestCase):
-
     @patch('requests.get')
     def test_error_code(self, get):
         addr = encode_hex(urandom(20))
