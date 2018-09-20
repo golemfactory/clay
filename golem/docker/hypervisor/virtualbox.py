@@ -22,9 +22,6 @@ def init_pythoncom() -> bool:
     return True
 
 
-init_pythoncom()
-
-
 class VirtualBoxHypervisor(DockerMachineHypervisor):
 
     power_down_states = [
@@ -46,11 +43,6 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
         self.virtualbox = virtualbox
         self.ISession = ISession
         self.LockType = LockType
-
-    @classmethod
-    def is_available(cls) -> bool:
-        # If called in a separate thread, we need to reinitialize pythoncom
-        return init_pythoncom() and super().is_available()
 
     @contextmanager
     @report_calls(Component.hypervisor, 'vm.restart')
@@ -238,6 +230,9 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
     def _new_instance(cls,
                       get_config_fn: GetConfigFunction,
                       docker_vm: str = DOCKER_VM_NAME) -> Hypervisor:
+
+        init_pythoncom()
+
         try:
             from virtualbox import VirtualBox
             from virtualbox.library import ISession, LockType
