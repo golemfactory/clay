@@ -13,6 +13,18 @@ from golem.report import Component, report_calls
 logger = logging.getLogger(__name__)
 
 
+def init_pythoncom() -> bool:
+    try:
+        import pythoncom
+        pythoncom.CoInitialize()
+    except ImportError:
+        return False
+    return True
+
+
+init_pythoncom()
+
+
 class VirtualBoxHypervisor(DockerMachineHypervisor):
 
     power_down_states = [
@@ -28,15 +40,17 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
                  get_config_fn: GetConfigFunction,
                  virtualbox, ISession, LockType,
                  vm_name: str = DOCKER_VM_NAME) -> None:
-        super(VirtualBoxHypervisor, self).__init__(get_config_fn, vm_name)
 
-        if is_windows():
-            import pythoncom  # noqa # pylint: disable=import-error
-            pythoncom.CoInitialize()
+        super(VirtualBoxHypervisor, self).__init__(get_config_fn, vm_name)
 
         self.virtualbox = virtualbox
         self.ISession = ISession
         self.LockType = LockType
+
+    @classmethod
+    def is_available(cls) -> bool:
+        # If called in a separate thread, we need to reinitialize pythoncom
+        return init_pythoncom() and super().is_available()
 
     @contextmanager
     @report_calls(Component.hypervisor, 'vm.restart')
@@ -231,5 +245,6 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
             logger.error('Error importing VirtualBox libraries: %r', err)
             raise
 
-        return VirtualBoxHypervisor(get_config_fn, docker_vm,
-                                    VirtualBox(), ISession, LockType)
+        return VirtualBoxHypervisor(get_config_fn,
+                                    VirtualBox(), ISession, LockType,
+                                    docker_vm)
