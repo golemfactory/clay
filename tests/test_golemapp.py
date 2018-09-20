@@ -78,7 +78,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         runner = CliRunner()
         runner.invoke(
             start,
-            ['--datadir', self.path],
+            ['--datadir', self.path, '--accept-terms'],
             catch_exceptions=False,
         )
         assert cert_manager.generate_if_needed.called

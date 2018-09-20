@@ -99,7 +99,8 @@ class TestNode(TestWithDatabase):
                                        concent_variant=concent_disabled,
                                        use_monitor=False,
                                        apps_manager=ANY,
-                                       task_finished_cb=node._try_shutdown)
+                                       task_finished_cb=node._try_shutdown,
+                                       crossbar_auth_manager=ANY)
         self.assertEqual(
             self.node_kwargs['config_desc'].node_address,
             mock_client.mock_calls[0][2]['config_desc'].node_address,
@@ -161,7 +162,8 @@ class TestNode(TestWithDatabase):
                                        concent_variant=concent_disabled,
                                        use_monitor=False,
                                        apps_manager=ANY,
-                                       task_finished_cb=node._try_shutdown)
+                                       task_finished_cb=node._try_shutdown,
+                                       crossbar_auth_manager=ANY)
 
     def test_geth_address_wo_http_should_fail(self, *_):
         runner = CliRunner()
@@ -242,7 +244,31 @@ class TestNode(TestWithDatabase):
                                        concent_variant=concent_disabled,
                                        use_monitor=False,
                                        apps_manager=ANY,
-                                       task_finished_cb=node._try_shutdown)
+                                       task_finished_cb=node._try_shutdown,
+                                       crossbar_auth_manager=ANY)
+
+    @patch('golem.node.Client')
+    def test_crossbar_auth_should_be_passed_to_client(self, mock_client, *_):
+        # when
+        with mock_config():
+            node = Node(**self.node_kwargs)
+            node._client_factory(None)
+
+        # then
+        mock_client.assert_called_with(datadir=self.path,
+                                       app_config=ANY,
+                                       config_desc=ANY,
+                                       keys_auth=None,
+                                       database=ANY,
+                                       transaction_system=ANY,
+                                       geth_address=None,
+                                       use_docker_manager=True,
+                                       concent_variant=concent_disabled,
+                                       use_monitor=False,
+                                       apps_manager=ANY,
+                                       task_finished_cb=node._try_shutdown,
+                                       crossbar_auth_manager=node.crossbar_auth_manager)
+
 
     @patch('golem.node.Node')
     def test_net_testnet_should_be_passed_to_node(self, mock_node, *_):
