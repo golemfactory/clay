@@ -125,7 +125,6 @@ class RunF(CoreTask):
             perf_index=perf_index
         )
 
-    # @coretask.accepting
     def query_extra_data(self,
                          perf_index: float,
                          num_cores: int = 1,
