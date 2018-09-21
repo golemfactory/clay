@@ -1,7 +1,5 @@
-# Dockerfile for tasks requiring LuxRender.
-#list=(180 60 180 300 60 -60); for ((i=0;i<${#list[@]};i++));do line=$(($i+1)); sed -i "${line}s/$/ ${list[$i]}/" cart.in; done
+# Dockerfile for tasks requiring upack.
 FROM debian:jessie
-MAINTAINER Artur Zawłocki <artur.zawlocki@imapp.pl>
 
 ENV PATH="/root/upack/progs:/root/upack/scripts:/home/task/upack/progs:/home/task/upack/scripts:${PATH}"
 
