@@ -2,6 +2,8 @@ import os
 import sys
 
 # pylint: disable=import-error
+from pathlib import Path
+
 import params  # This module is generated before this script is run
 
 # slightly hackish way to not run a benchmark at all
@@ -11,6 +13,8 @@ if hasattr(params, "BENCHMARK") and params.BENCHMARK:
 import golem_remote as golem
 from golem_remote import open_file
 from golem_remote.runf_helpers import SubtaskData
+
+# raise Exception(list(golem.open_file.list_dir_recursive(Path("/golem/resources"))))
 
 # sys.path.append(os.path.join(params.RESOURCES_DIR, "code"))
 # sys.path.append(os.path.join(params.WORK_DIR))  # for messages.py

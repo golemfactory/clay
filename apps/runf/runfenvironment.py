@@ -5,7 +5,7 @@ from golem.docker.environment import DockerEnvironment
 
 
 class RunFEnvironment(DockerEnvironment):
-    DOCKER_IMAGE = "jacekjacekjacekg/runf"
+    DOCKER_IMAGE = "golemfactory/runf"
     DOCKER_TAG = "latest"
     ENV_ID = "RUNF"
     APP_DIR = path.join(get_golem_path(), 'apps', 'runf')

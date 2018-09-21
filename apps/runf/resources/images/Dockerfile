@@ -19,7 +19,7 @@ ENV PATH /opt/conda/bin:$PATH
 RUN pip install cloudpickle sklearn numpy hyperopt
 
 # This is a hack to get docker to rebuild
-ENV VERSION=1
+ENV VERSION=111111111
 
 # This is needed to unpack the data and pack the result
 RUN pip install --upgrade git+https://github.com/golemfactory/golem-remote.git
