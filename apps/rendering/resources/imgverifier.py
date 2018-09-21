@@ -2,7 +2,7 @@ from __future__ import division
 import logging
 import math
 
-from apps.rendering.resources.imgrepr import (ImgRepr, PILImgRepr)
+from apps.rendering.resources.imgrepr import PILImgRepr
 
 
 logger = logging.getLogger("apps.rendering")
