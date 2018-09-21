@@ -576,7 +576,10 @@ class Client(HardwarePresetsMixin):
         task: TaskBase
         if isinstance(task_dict, TaskBase):
             warnings.warn(
-                "enqueue_new_task() called with {} instead of dict #2467",
+                "enqueue_new_task() called with {got_type}"
+                " instead of dict #2467".format(
+                    got_type=type(task_dict),
+                ),
                 DeprecationWarning,
                 stacklevel=2,
             )
