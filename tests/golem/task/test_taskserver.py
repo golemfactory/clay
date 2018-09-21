@@ -7,8 +7,9 @@ from math import ceil
 from unittest.mock import Mock, MagicMock, patch, ANY
 
 from eth_utils import encode_hex
-from golem_messages.message import ComputeTaskDef
+from golem_messages import idgenerator
 from golem_messages import factories as msg_factories
+from golem_messages.message import ComputeTaskDef
 from requests import HTTPError
 
 from apps.core.task.coretask import AcceptClientVerdict
@@ -17,7 +18,6 @@ from golem import model
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline, node_info_str
-from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.core.keysauth import KeysAuth
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
@@ -45,7 +45,7 @@ from tests.factories.resultpackage import ExtractedPackageFactory
 def get_example_task_header(key_id):
     return {
         "fixed_header": {
-            "task_id": generate_id(key_id),
+            "task_id": idgenerator.generate_id(key_id),
             "environment": "DEFAULT",
             "task_owner": dict(
                 key=encode_hex(key_id)[2:],
@@ -241,8 +241,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_id = task_header["fixed_header"]["task_id"]
         assert ts.add_task_header(task_header)
         assert ts.request_task()
-        subtask_id = generate_new_id_from_id(task_id)
-        subtask_id2 = generate_new_id_from_id(task_id)
+        subtask_id = idgenerator.generate_new_id_from_id(task_id)
+        subtask_id2 = idgenerator.generate_new_id_from_id(task_id)
         self.assertTrue(ts.send_results(subtask_id, task_id, results))
         ts.client.transaction_system.expect_income.reset_mock()
         self.assertTrue(ts.send_results(subtask_id2, task_id, results))
@@ -262,7 +262,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             value=1,
         )
 
-        subtask_id3 = generate_new_id_from_id(task_id)
+        subtask_id3 = idgenerator.generate_new_id_from_id(task_id)
         with self.assertLogs(logger, level='WARNING'):
             ts.subtask_rejected(keys_auth.key_id, subtask_id3)
         self.assertIsNotNone(ts.task_keeper.task_headers.get(task_id))

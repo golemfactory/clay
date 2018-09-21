@@ -4,9 +4,10 @@ from datetime import datetime
 from unittest import TestCase
 import unittest.mock as mock
 
+from golem_messages import idgenerator
+
 import golem
 from golem.core.common import timeout_to_deadline, get_timestamp_utc
-from golem.core.idgenerator import generate_id
 from golem.core.simpleserializer import CBORSerializer
 from golem.network.p2p.node import Node
 from golem.task import exceptions
@@ -57,7 +58,7 @@ class TestTaskHeader(TestCase):
         self.th_dict_repr = {
             'mask': None,
             'fixed_header': {
-                "task_id": generate_id(self.key_id),
+                "task_id": idgenerator.generate_id(self.key_id),
                 "task_owner": {
                     "node_name": "Bob's node",
                     "key": encode_hex(self.key_id),

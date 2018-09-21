@@ -8,12 +8,12 @@ import unittest.mock as mock
 
 from eth_utils import encode_hex
 from freezegun import freeze_time
+from golem_messages import idgenerator
 from golem_messages import factories as msg_factories
 from golem_messages.message import ComputeTaskDef
 
 import golem
 from golem.core.common import get_timestamp_utc, timeout_to_deadline
-from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.environments.environment import Environment, UnsupportReason,\
     SupportStatus
 from golem.environments.environmentsmanager import EnvironmentsManager
@@ -475,7 +475,7 @@ def get_dict_task_header(key_id_seed="kkk"):
     key_id = str.encode(key_id_seed)
     return {
         'fixed_header': {
-            "task_id": generate_id(key_id),
+            "task_id": idgenerator.generate_id(key_id),
             "task_owner": {
                 "node_name": "Bob's node",
                 "key": encode_hex(key_id)[2:],
@@ -536,7 +536,9 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
 
             ctd = ComputeTaskDef()
             ctd['task_id'] = header.task_id
-            ctd['subtask_id'] = generate_new_id_from_id(header.task_id)
+            ctd['subtask_id'] = idgenerator.generate_new_id_from_id(
+                header.task_id,
+            )
             ctd['deadline'] = timeout_to_deadline(header.subtask_timeout - 0.5)
             price = taskkeeper.compute_subtask_value(
                 price_bid,
@@ -633,7 +635,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         task_id = th.task_id
         price_bid = 5
         ctk.add_request(th, price_bid)
-        subtask_id = generate_new_id_from_id(task_id)
+        subtask_id = idgenerator.generate_new_id_from_id(task_id)
         ctd = ComputeTaskDef()
         ctd['task_id'] = task_id
         ctd['subtask_id'] = subtask_id
@@ -650,7 +652,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         assert ctk.check_task_owner_by_subtask(th.task_owner.key, subtask_id)
         assert not ctk.check_task_owner_by_subtask(th.task_owner.key, "!!!")
         assert not ctk.check_task_owner_by_subtask('???', subtask_id)
-        subtask_id2 = generate_new_id_from_id(task_id)
+        subtask_id2 = idgenerator.generate_new_id_from_id(task_id)
         ctd2 = ComputeTaskDef()
         ctd2['task_id'] = task_id
         ctd2['subtask_id'] = subtask_id2
@@ -688,7 +690,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         task_id = header.task_id
         ctk.add_request(header, 40003)
         ctk.active_tasks[task_id].requests = 0
-        subtask_id = generate_new_id_from_id(task_id)
+        subtask_id = idgenerator.generate_new_id_from_id(task_id)
         comp_task_def = {
             'task_id': task_id,
             'subtask_id': subtask_id,

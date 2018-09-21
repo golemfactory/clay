@@ -780,7 +780,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.task_server.client.transaction_system.concent_deposit(
                 required=amount,
                 expected=expected,
-            ).addCallback(ask_for_verification)
+            ).addCallback(ask_for_verification).addErrback(
+                lambda failure: logger.warning(
+                    "Additional verification deposit failed %s", failure.value,
+                ),
+            )
 
         else:
             self.task_server.subtask_rejected(

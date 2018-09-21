@@ -79,6 +79,9 @@ class DockerCommandHandler:
         if vm_name:
             command += [vm_name]
 
+        if logger.isEnabledFor(logging.DEBUG):
+            command.insert(1, '-D')
+
         logger.debug('Docker command: %s', command)
 
         try:
@@ -91,6 +94,9 @@ class DockerCommandHandler:
             )
         except FileNotFoundError as exc:
             raise subprocess.CalledProcessError(127, str(exc))
+        except subprocess.CalledProcessError as exc:
+            logger.debug('Docker command output: %s', exc.output)
+            raise exc
 
         logger.debug('Docker command output: %s', output)
         return to_unicode(output)
