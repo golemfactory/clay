@@ -143,6 +143,7 @@ class TaskManager(TaskEventListener):
         definition = builder_type.build_definition(task_type, dictionary,
                                                    minimal)
         definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
+        definition.concent_enabled = dictionary['concent_enabled']
         builder = builder_type(self.node, definition, self.dir_manager)
 
         return builder.build()
