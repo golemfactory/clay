@@ -7,6 +7,7 @@ import logging
 import sys
 import time
 import uuid
+import warnings
 from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
@@ -574,7 +575,11 @@ class Client(HardwarePresetsMixin):
         # FIXME: Statement only for old DummyTask compatibility #2467
         task: TaskBase
         if isinstance(task_dict, TaskBase):
-            logger.warning('enqueue_new_task called with deprecated dict type')
+            warnings.warn(
+                "enqueue_new_task() called with {} instead of dict #2467",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             task = task_dict
         else:
             # Set default value for concent_enabled
