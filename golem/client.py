@@ -583,7 +583,7 @@ class Client(HardwarePresetsMixin):
             task = task_dict
         else:
             # Set default value for concent_enabled
-            task_dict['concent_enabled'] = task_dict.get(
+            task_dict.setdefault(
                 'concent_enabled',
                 self.concent_service.enabled,
             )
