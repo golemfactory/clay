@@ -234,6 +234,11 @@ class TaskServer(
                     UnsupportReason.NODE_INFORMATION: node.__dict__
                 }))
 
+            logger.debug(
+                "Support status. task_id=%s supported=%s",
+                theader.task_id,
+                supported,
+            )
             if self.task_archiver:
                 self.task_archiver.add_support_status(theader.task_id,
                                                       supported)

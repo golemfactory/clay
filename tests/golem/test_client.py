@@ -806,6 +806,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             total_tasks=5,
             get_price=Mock(return_value=900),
             subtask_price=1000,
+            spec=Task,
         )
 
         c.concent_service.enabled = False

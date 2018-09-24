@@ -1,3 +1,4 @@
+import os
 from unittest.mock import patch
 
 from OpenSSL import crypto
@@ -39,7 +40,6 @@ class TestCertificateManager(TempDirFixture):
     @patch('golem.rpc.cert.CertificateManager._create_and_sign_certificate')
     def test_generate_if_needed(self, create_cert, gen_key_pair, gen_dh_params,
                                 *_):
-
         cert_manager = CertificateManager(self.tempdir,
                                           setup_forward_secrecy=True)
         with patch('builtins.open'):
@@ -56,7 +56,6 @@ class TestCertificateManager(TempDirFixture):
     @patch('golem.rpc.cert.CertificateManager._create_and_sign_certificate')
     def test_generate_if_needed_windows(self, create_cert, gen_key_pair,
                                         gen_dh_params, *_):
-
         cert_manager = CertificateManager(self.tempdir)
         with patch('builtins.open'):
             cert_manager.generate_if_needed()
@@ -72,7 +71,6 @@ class TestCertificateManager(TempDirFixture):
     @patch('golem.rpc.cert.CertificateManager._create_and_sign_certificate')
     def test_generate_if_needed_no_fw_secrecy(self, create_cert, gen_key_pair,
                                               gen_dh_params, *_):
-
         cert_manager = CertificateManager(self.tempdir,
                                           setup_forward_secrecy=False)
         with patch('builtins.open'):
@@ -101,3 +99,19 @@ class TestCertificateManager(TempDirFixture):
         key = cert_manager.read_key()
         cert_manager._create_and_sign_certificate(key, cert_manager.cert_path)
         assert cert_manager.read_certificate()
+
+    def test_generate_secrets(self):
+        cert_manager = CertificateManager(self.tempdir)
+        cert_manager.generate_secrets()
+
+        assert set(os.listdir(cert_manager.secrets_path)) == \
+               set(f"{x}.{cert_manager.SECRET_EXT}"  # noqa
+                   for x in cert_manager.CrossbarUsers.__members__.keys())
+
+    @patch("secrets.token_hex", return_value="secret")
+    def test_get_secret(self, *_):
+        cert_manager = CertificateManager(self.tempdir)
+        cert_manager.generate_secrets()
+
+        assert all(cert_manager.get_secret(x) == "secret"
+                   for x in cert_manager.CrossbarUsers.__members__.values())
