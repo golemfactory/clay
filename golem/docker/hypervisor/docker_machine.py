@@ -35,6 +35,7 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
             self.start_vm()
         self._set_env()
 
+    # pylint: disable=unused-argument
     def _parse_create_params(self, **params: Any) -> List[str]:
         return [self.DRIVER_PARAM_NAME, self.DRIVER_NAME]
 
@@ -47,7 +48,7 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
         }
         command_args = self._parse_create_params(**constraints, **params)
 
-        logger.info(f'{self.DRIVER_NAME}: creating VM "{vm_name}"')
+        logger.info('%s: creating VM "%s"', self.DRIVER_NAME, vm_name)
 
         try:
             self.command('create', vm_name, args=command_args)

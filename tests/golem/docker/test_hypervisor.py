@@ -66,8 +66,8 @@ class MockHypervisor(DockerMachineHypervisor):
     def constraints(self, name: Optional[str] = None) -> Dict:
         return dict()
 
-    def create(self, vm_name: Optional[str] = None, **params):
-        pass
+    def create(self, vm_name: Optional[str] = None, **params) -> bool:
+        return True
 
     def constrain(self, name: Optional[str] = None, **params) -> None:
         pass

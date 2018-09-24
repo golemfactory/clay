@@ -1,9 +1,9 @@
 import logging
-import subprocess
 from os import path
 from pathlib import Path
+import subprocess
 from subprocess import CalledProcessError, TimeoutExpired
-from typing import Optional, Union, Any, List, Dict
+from typing import Optional, Union, Any, List, Dict, ClassVar
 
 from os_win.exceptions import OSWinException
 from os_win.utils.compute.vmutils import VMUtils
@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 class HyperVHypervisor(DockerMachineHypervisor):
 
-    DRIVER_NAME = 'hyperv'
+    DRIVER_NAME: ClassVar[str] = 'hyperv'
     OPTIONS = dict(
         mem='--hyperv-memory',
         cpu='--hyperv-cpu-count',
@@ -49,6 +49,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         super().__init__(*args, **kwargs)
         self._vm_utils = VMUtils()
 
+    # pylint: disable=arguments-differ
     def _parse_create_params(
             self,
             cpu: Optional[Union[str, int]] = None,
@@ -71,7 +72,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         name = name or self._vm_name
         try:
             summary = self._vm_utils.get_vm_summary_info(name)
-            return {k: summary[v] for k,v in self.SUMMARY_KEYS.items()}
+            return {k: summary[v] for k, v in self.SUMMARY_KEYS.items()}
         except (OSWinException, KeyError):
             logger.exception(
                 f'Hyper-V: reading configuration of VM "{name}" failed')
@@ -95,7 +96,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         except OSWinException:
             logger.exception(f'Hyper-V: reconfiguration of VM "{name}" failed')
 
-        logger.info(f'Hyper-V: reconfiguration of VM "{name}" finished')
+        logger.info('Hyper-V: reconfiguration of VM "%s" finished', name)
 
     def update_work_dir(self, work_dir: Path) -> None:
         super().update_work_dir(work_dir)
@@ -153,13 +154,14 @@ class HyperVHypervisor(DockerMachineHypervisor):
             }
         }
 
-    def _create_volume(self, my_ip: str, dir: Path) -> str:
+    def _create_volume(self, my_ip: str, shared_dir: Path) -> str:
+        assert self._work_dir is not None
         try:
-            relpath = dir.relative_to(self._work_dir)
-        except ValueError as e:
+            relpath = shared_dir.relative_to(self._work_dir)
+        except ValueError:
             raise ValueError(
-                f'Cannot create docker volume: "{dir}" is not a subdirectory '
-                f'of docker work dir ("{self._work_dir}")')
+                f'Cannot create docker volume: "{shared_dir}" is not a '
+                f'subdirectory of docker work dir ("{self._work_dir}")')
 
         share_name = smbshare.get_share_name(self._work_dir)
         volume_name = f'{my_ip}/{share_name}/{relpath.as_posix()}'

@@ -125,13 +125,6 @@ class DockerJob(object):
         # Setup volumes for the container
         client = local_client()
 
-        # Docker config requires binds to be specified using posix paths,
-        # even on Windows. Hence this function:
-        def posix_path(path):
-            if is_windows():
-                return nt_path_to_posix_path(path)
-            return path
-
         if is_windows():
             environment = None
         elif is_osx():

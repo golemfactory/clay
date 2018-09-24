@@ -1,6 +1,6 @@
 import logging
 from contextlib import contextmanager
-from typing import Dict, Optional
+from typing import Dict, Optional, ClassVar
 
 from golem.core.common import is_windows
 from golem.docker.config import CONSTRAINT_KEYS, DOCKER_VM_NAME, \
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 class VirtualBoxHypervisor(DockerMachineHypervisor):
 
-    DRIVER_NAME = 'virtualbox'
+    DRIVER_NAME: ClassVar[str] = 'virtualbox'
 
     power_down_states = [
         'Saved', 'Aborted'

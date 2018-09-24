@@ -1,7 +1,7 @@
 import json
 import logging
 import os
-from typing import Dict, Optional, Any, List, Union
+from typing import Dict, Optional, Any, List, Union, ClassVar
 
 from golem.docker.config import CONSTRAINT_KEYS
 from golem.docker.hypervisor.docker_machine import DockerMachineHypervisor
@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 
 class XhyveHypervisor(DockerMachineHypervisor):
 
-    DRIVER_NAME = 'xhyve'
+    DRIVER_NAME: ClassVar[str] = 'xhyve'
     OPTIONS = dict(
         mem='--xhyve-memory-size',
         cpu='--xhyve-cpu-count',
@@ -19,6 +19,7 @@ class XhyveHypervisor(DockerMachineHypervisor):
         storage='--xhyve-virtio-9p'
     )
 
+    # pylint: disable=arguments-differ
     def _parse_create_params(
             self,
             cpu: Optional[Union[str, int]] = None,

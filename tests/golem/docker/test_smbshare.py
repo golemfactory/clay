@@ -1,9 +1,11 @@
 from pathlib import Path
-from unittest import TestCase
+from unittest import TestCase, skipUnless
 
+from golem.core.common import is_windows
 from golem.docker import smbshare
 
 
+@skipUnless(is_windows(), 'Windows only')
 class TestGetShareName(TestCase):
 
     DEFAULT_SHARE_NAME = "C37A161EDD52B4F2C7C59E6144A47595"

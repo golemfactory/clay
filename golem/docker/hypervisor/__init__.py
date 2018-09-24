@@ -107,7 +107,7 @@ class Hypervisor(metaclass=ABCMeta):
             logger.warning("Docker: failed to stop the VM: %r", e)
         return False
 
-    def create(self, name: Optional[str] = None, **params) -> bool:
+    def create(self, vm_name: Optional[str] = None, **params) -> bool:
         raise NotImplementedError
 
     def constrain(self, name: Optional[str] = None, **params) -> None:

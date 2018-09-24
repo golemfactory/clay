@@ -11,6 +11,7 @@ from golem.client import ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.deferred import sync_wait
+from golem.docker.manager import DockerManager
 from golem.network.p2p.node import Node as P2PNode
 from golem.task.taskbase import ResultType
 from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
@@ -244,7 +245,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_server = self.task_server
 
         tc = TaskComputer(task_server, use_docker_manager=False)
-        tc.docker_manager = mock.Mock()
+        tc.docker_manager = mock.Mock(spec=DockerManager, hypervisor=None)
 
         tc.use_docker_manager = False
         tc.change_config(mock.Mock(), in_background=False)
@@ -259,6 +260,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.counting_task = True
         tc.change_config(mock.Mock(), in_background=False)
 
+        # pylint: disable=unused-argument
         def _update_config_2(status_callback, done_callback, *_, **__):
             done_callback(False)
         tc.docker_manager.update_config = _update_config_2

@@ -100,7 +100,7 @@ setproctitle==1.1.10
 setuptools==38.7.0
 shellescape==3.4.1
 shutilwhich==1.1.0
-six==1.10.0
+six==1.11.0
 sortedcontainers==1.5.9
 tabulate==0.8.2
 token-bucket==0.2.0

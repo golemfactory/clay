@@ -26,7 +26,8 @@ class TestDockerConfigManager(unittest.TestCase):
 
         cm.build_config(config)
 
-        self.assertGreater(len(cm._container_host_config), len(config.to_dict()))
+        self.assertGreater(
+            len(cm._container_host_config), len(config.to_dict()))
         self.assertEqual(cm._container_host_config, cm._container_host_config)
 
         assert cm._container_host_config['cpuset_cpus']

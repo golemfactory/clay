@@ -316,8 +316,10 @@ class TaskComputer(object):
             run_benchmarks: bool,
             work_dir: Path,
             in_background: bool = True
-    ) -> Deferred:
+    ) -> Optional[Deferred]:
+
         dm = self.docker_manager
+        assert isinstance(dm, DockerManager)
         dm.build_config(config_desc)
 
         deferred = Deferred()
@@ -345,6 +347,8 @@ class TaskComputer(object):
                 self.runnable = True
 
             self.runnable = False
+            # PyLint thinks dm is of type DockerConfigManager not DockerManager
+            # pylint: disable=no-member
             dm.update_config(
                 status_callback=status_callback,
                 done_callback=done_callback,
@@ -352,6 +356,8 @@ class TaskComputer(object):
                 in_background=in_background)
 
             return deferred
+
+        return None
 
     def register_listener(self, listener):
         self.listeners.append(listener)
