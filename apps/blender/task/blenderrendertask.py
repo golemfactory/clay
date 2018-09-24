@@ -14,7 +14,7 @@ from PIL import Image, ImageChops, ImageFile
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 from apps.blender.blenderenvironment import BlenderEnvironment, \
-    BlenderNVGPUEnvironment
+    BlenderNVGPUEnvironment, BlenderSGXEnvironment
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_as_pil
@@ -56,6 +56,12 @@ class BlenderNVGPUDefaults(BlenderDefaults):
     def __init__(self):
         super().__init__()
         self.main_program_file = BlenderNVGPUEnvironment().main_program_file
+
+
+class BlenderSGXDefaults(BlenderDefaults):
+    def __init__(self):
+        super().__init__()
+        self.main_program_file = BlenderSGXEnvironment().main_program_file
 
 
 class PreviewUpdater(object):
@@ -349,6 +355,25 @@ class BlenderNVGPUTaskTypeInfo(RenderingTaskTypeInfo):
         return self
 
 
+class BlenderSGXTaskTypeInfo(RenderingTaskTypeInfo):
+
+    def __init__(self):
+        super().__init__("Blender_SGX",
+                         RenderingTaskDefinition,
+                         BlenderNVGPUDefaults(),
+                         BlenderNVGPURendererOptions,
+                         BlenderNVGPURenderTaskBuilder)
+
+        self.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
+        self.output_file_ext = ["blend"]
+
+    def for_purpose(self, purpose: TaskPurpose) -> TaskTypeInfo:
+        # Testing the task shouldn't require a compatible GPU + OS
+        if purpose == TaskPurpose.TESTING:
+            return BlenderTaskTypeInfo()
+        return self
+
+
 class BlenderRendererOptions(FrameRendererOptions):
     # pylint: disable=too-few-public-methods
     def __init__(self):
@@ -363,6 +388,13 @@ class BlenderNVGPURendererOptions(BlenderRendererOptions):
     def __init__(self):
         super().__init__()
         self.environment = BlenderNVGPUEnvironment()
+
+
+class BlenderSGXRendererOptions(BlenderRendererOptions):
+    # pylint: disable=too-few-public-methods
+    def __init__(self):
+        super().__init__()
+        self.environment = BlenderSGXEnvironment()
 
 
 class BlenderRenderTask(FrameRenderingTask):
@@ -690,6 +722,10 @@ class BlenderNVGPURenderTask(BlenderRenderTask):
     ENVIRONMENT_CLASS: Type[BlenderEnvironment] = BlenderNVGPUEnvironment
 
 
+class BlenderSGXRenderTask(BlenderRenderTask):
+    ENVIRONMENT_CLASS: Type[BlenderEnvironment] = BlenderSGXEnvironment
+
+
 class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     """ Build new Blender tasks using RenderingTaskDefintions and
      BlenderRendererOptions as taskdefinition renderer options """
@@ -715,6 +751,11 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
 class BlenderNVGPURenderTaskBuilder(BlenderRenderTaskBuilder):
     TASK_CLASS: Type[BlenderRenderTask] = BlenderNVGPURenderTask
     DEFAULTS: Type[BlenderDefaults] = BlenderNVGPUDefaults
+
+
+class BlenderSGXRenderTaskBuilder(BlenderRenderTaskBuilder):
+    TASK_CLASS: Type[BlenderRenderTask] = BlenderSGXRenderTask
+    DEFAULTS: Type[BlenderDefaults] = BlenderSGXDefaults
 
 
 class CustomCollector(RenderingTaskCollector):
