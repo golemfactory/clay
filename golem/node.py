@@ -55,7 +55,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  use_talkback: bool = None,
                  use_docker_manager: bool = True,
                  geth_address: Optional[str] = None,
-                 password: Optional[str] = None) -> None:
+                 password: Optional[str] = None
+                ) -> None:
 
         # DO NOT MAKE THIS IMPORT GLOBAL
         # otherwise, reactor will install global signal handlers on import
@@ -67,6 +68,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self._config_desc = config_desc
         self._datadir = datadir
         self._use_docker_manager = use_docker_manager
+        self._docker_manager: Optional[DockerManager] = None
 
         self._use_monitor = config_desc.enable_monitor \
             if use_monitor is None else use_monitor
@@ -123,6 +125,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
                 keys = self._start_keys_auth()
                 docker = self._start_docker()
                 return gatherResults([terms, keys, docker], consumeErrors=True)
+
             chain_function(rpc, on_rpc_ready).addCallbacks(
                 self._setup_client,
                 self._error('keys or docker'),
@@ -134,6 +137,10 @@ class Node(object):  # pylint: disable=too-few-public-methods
     def quit(self) -> None:
 
         def _quit():
+            docker_manager = self._docker_manager
+            if docker_manager:
+                docker_manager.quit()
+
             reactor = self._reactor
             if reactor.running:
                 reactor.callFromThread(reactor.stop)
@@ -190,9 +197,14 @@ class Node(object):  # pylint: disable=too-few-public-methods
             self._stop_on_error("rpc", "RPC router is not available")
             return None
 
-        self.rpc_session = Session(self.rpc_router.address,
-                                   cert_manager=self.rpc_router.cert_manager,
-                                   use_ipv6=self._config_desc.use_ipv6)
+        crsb_user = self.rpc_router.cert_manager.CrossbarUsers.golemapp
+        self.rpc_session = Session(
+            self.rpc_router.address,
+            cert_manager=self.rpc_router.cert_manager,
+            use_ipv6=self._config_desc.use_ipv6,
+            crsb_user=crsb_user,
+            crsb_user_secret=self.rpc_router.cert_manager.get_secret(crsb_user)
+        )
         deferred = self.rpc_session.connect()
 
         def on_connect(*_):
@@ -340,7 +352,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
             return None
 
         def start_docker():
-            DockerManager.install(self._config_desc).check_environment()  # noqa pylint: disable=no-member
+            self._docker_manager = DockerManager.install(self._config_desc)
+            self._docker_manager.check_environment()  # noqa pylint: disable=no-member
 
         return threads.deferToThread(start_docker)
 

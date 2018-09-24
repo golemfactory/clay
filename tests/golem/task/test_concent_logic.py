@@ -323,6 +323,7 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         self.requestor_keys = cryptography.ECCx(None)
         self.msg = factories.tasks.WantToComputeTaskFactory()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
+        self.task_session.key_id = 'unittest_key_id'
         self.task_session.task_server.keys_auth.ecc = self.requestor_keys
 
     def assert_blocked(self, send_mock):
@@ -381,7 +382,6 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         ctd = factories.tasks.ComputeTaskDefFactory()
         task_manager.get_next_subtask.return_value = ctd
 
-
         task = mock.MagicMock()
         task_state = mock.MagicMock(package_hash='123', package_size=42)
         task.header.task_owner.key = encode_hex(self.requestor_keys.raw_pubkey)
@@ -395,6 +395,6 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
             task_session._react_to_want_to_compute_task(self.msg)
 
         send_mock.assert_called()
-        ttc = send_mock.call_args_list[2][0][0]
+        ttc = send_mock.call_args_list[0][0][0]
         self.assertIsInstance(ttc, message.tasks.TaskToCompute)
         self.assertFalse(ttc.concent_enabled)

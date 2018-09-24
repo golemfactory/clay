@@ -4,6 +4,7 @@ import os
 from enum import Enum
 from typing import Type, Optional, Dict, Any
 
+from golem_messages import idgenerator
 import golem_messages.message
 from ethereum.utils import denoms
 from golem_verificator.core_verifier import CoreVerifier
@@ -15,7 +16,6 @@ from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
-from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.core.simpleserializer import CBORSerializer
 from golem.docker.environment import DockerEnvironment
 from golem.network.p2p.node import Node
@@ -183,10 +183,10 @@ class CoreTask(Task):
 
     @staticmethod
     def create_task_id(public_key: bytes) -> str:
-        return generate_id(public_key)
+        return idgenerator.generate_id(public_key)
 
     def create_subtask_id(self) -> str:
-        return generate_new_id_from_id(self.header.task_id)
+        return idgenerator.generate_new_id_from_id(self.header.task_id)
 
     def is_docker_task(self):
         return bool(self.docker_images)
@@ -479,8 +479,9 @@ class CoreTask(Task):
     @handle_key_error
     def _mark_subtask_failed(self, subtask_id):
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
-        self.counting_nodes[self.subtasks_given[
-            subtask_id]['node_id']].reject()
+        node_id = self.subtasks_given[subtask_id]['node_id']
+        if node_id in self.counting_nodes:
+            self.counting_nodes[node_id].reject()
         self.num_failed_subtasks += 1
 
     def _unpack_task_result(self, trp, output_dir):
@@ -572,6 +573,7 @@ class CoreTaskBuilder(TaskBuilder):
         definition = task_type.definition()
         definition.options = task_type.options()
         definition.task_type = task_type.name
+        definition.compute_on = dictionary.get('compute_on', 'cpu')
         definition.resources = set(dictionary['resources'])
         definition.total_subtasks = int(dictionary['subtasks'])
         definition.main_program_file = task_type.defaults.main_program_file
