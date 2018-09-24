@@ -138,7 +138,7 @@ class TaskManager(TaskEventListener):
     def create_task(self, dictionary, minimal=False):
         purpose = TaskPurpose.TESTING if minimal else TaskPurpose.REQUESTING
         type_name = dictionary['type'].lower()
-        compute_on = dictionary['compute_on'].lower()
+        compute_on = dictionary.get('compute_on', 'cpu').lower()
         is_requesting = purpose == TaskPurpose.REQUESTING
 
         if type_name == "blender" and is_requesting and compute_on == "gpu":
