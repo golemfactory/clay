@@ -25,7 +25,7 @@ from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener, Task, TaskHeader
+from golem.task.taskbase import TaskEventListener, Task, TaskHeader, TaskPurpose
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
@@ -136,8 +136,15 @@ class TaskManager(TaskEventListener):
         return self.root_path
 
     def create_task(self, dictionary, minimal=False):
+        purpose = TaskPurpose.TESTING if minimal else TaskPurpose.REQUESTING
         type_name = dictionary['type'].lower()
-        task_type = self.task_types[type_name]
+        compute_on = dictionary.get('compute_on', 'cpu').lower()
+        is_requesting = purpose == TaskPurpose.REQUESTING
+
+        if type_name == "blender" and is_requesting and compute_on == "gpu":
+            type_name = type_name + "_nvgpu"
+
+        task_type = self.task_types[type_name].for_purpose(purpose)
         builder_type = task_type.task_builder_type
 
         definition = builder_type.build_definition(task_type, dictionary,

@@ -32,6 +32,7 @@ class TestBenchmarkManager(DatabaseFixture, PEP8MixIn):
         super().setUp()
         am = AppsManager()
         am.load_all_apps()
+        am._benchmark_enabled = Mock(return_value=True)
         self.b = BenchmarkManager("NODE1", Mock(), self.path,
                                   am.get_benchmarks())
 

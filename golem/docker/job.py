@@ -6,8 +6,10 @@ from typing import Dict, Optional
 
 import docker.errors
 
-from golem.core.common import is_windows, nt_path_to_posix_path, is_osx
+from golem.core.common import is_windows, nt_path_to_posix_path, is_osx, \
+    posix_path
 from golem.docker.image import DockerImage
+from golem.environments.environmentsmanager import EnvironmentsManager
 from .client import local_client
 
 __all__ = ['DockerJob']
@@ -125,39 +127,54 @@ class DockerJob(object):
         # Setup volumes for the container
         client = local_client()
 
-        # Docker config requires binds to be specified using posix paths,
-        # even on Windows. Hence this function:
-        def posix_path(path):
-            if is_windows():
-                return nt_path_to_posix_path(path)
-            return path
-
         container_config = dict(self.host_config)
         cpuset = container_config.pop('cpuset', None)
+        container_config = {}
+
+        volumes = [self.WORK_DIR, self.RESOURCES_DIR, self.OUTPUT_DIR]
+        binds = {
+            posix_path(self.work_dir): {
+                "bind": self.WORK_DIR,
+                "mode": "rw"
+            },
+            posix_path(self.resources_dir): {
+                "bind": self.RESOURCES_DIR,
+                "mode": "ro"
+            },
+            posix_path(self.output_dir): {
+                "bind": self.OUTPUT_DIR,
+                "mode": "rw"
+            },
+        }
 
         if is_windows():
-            environment = None
+            environment = {}
         elif is_osx():
             environment = dict(OSX_USER=1)
         else:
             environment = dict(LOCAL_USER_ID=os.getuid())
 
+        docker_env = EnvironmentsManager().get_environment_by_image(self.image)
+
+        if docker_env:
+            env_config = docker_env.get_container_config()
+
+            environment.update(env_config['environment'])
+            binds.update(env_config['binds'])
+            volumes += env_config['volumes']
+            devices = env_config['devices']
+            runtime = env_config['runtime']
+        else:
+            logger.debug('No Docker environment found for image %r', self.image)
+
+            devices = None
+            runtime = None
+
         host_cfg = client.create_host_config(
             cpuset_cpus=cpuset,
-            binds={
-                posix_path(self.work_dir): {
-                    "bind": self.WORK_DIR,
-                    "mode": "rw"
-                },
-                posix_path(self.resources_dir): {
-                    "bind": self.RESOURCES_DIR,
-                    "mode": "ro"
-                },
-                posix_path(self.output_dir): {
-                    "bind": self.OUTPUT_DIR,
-                    "mode": "rw"
-                }
-            },
+            devices=devices,
+            binds=binds,
+            runtime=runtime,
             **container_config
         )
 
@@ -165,7 +182,7 @@ class DockerJob(object):
         container_script_path = self._get_container_script_path()
         self.container = client.create_container(
             image=self.image.name,
-            volumes=[self.WORK_DIR, self.RESOURCES_DIR, self.OUTPUT_DIR],
+            volumes=volumes,
             host_config=host_cfg,
             command=[container_script_path],
             working_dir=self.WORK_DIR,

@@ -84,7 +84,8 @@ class TestDockerJob(DockerTestCase):
         if self.test_job and self.test_job.container:
             client = local_client()
             try:
-                client.remove_container(self.test_job.container_id, force=True)
+                client.remove_container(self.test_job.container_id,
+                                        force=True)
             except docker.errors.APIError:
                 pass  # Already removed?
         self.test_job = None
