@@ -142,6 +142,12 @@ class DockerJob(object):
         else:
             environment = dict(LOCAL_USER_ID=os.getuid())
 
+        environment.update(
+            WORK_DIR=self.WORK_DIR,
+            RESOURCES_DIR=self.RESOURCES_DIR,
+            OUTPUT_DIR=self.OUTPUT_DIR
+        ) 
+
         host_cfg = client.create_host_config(
             cpuset_cpus=cpuset,
             binds={
@@ -151,7 +157,7 @@ class DockerJob(object):
                 },
                 posix_path(self.resources_dir): {
                     "bind": self.RESOURCES_DIR,
-                    "mode": "ro"
+                    "mode": "rw"
                 },
                 posix_path(self.output_dir): {
                     "bind": self.OUTPUT_DIR,

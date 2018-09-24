@@ -1,0 +1,11 @@
+{
+  "root_dir": "/home/mplebanski/Projects/shell",
+  "resources":[
+    "${ROOT_DIR}/start.sh"
+  ],
+  "name": "mytask",
+  "type":"Shell",
+  "timeout":"0:20:00",
+  "estimated_memory": 2147483648,
+  "bid": 1
+}
