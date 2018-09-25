@@ -3,6 +3,7 @@ import math
 import os
 from copy import copy
 from typing import Optional
+from shutil import copyfile
 
 from golem_messages.message import ComputeTaskDef
 
@@ -52,6 +53,8 @@ class HoudiniTask(CoreTask):
 
         self.first_frame = task_definition.options.start_frame
         self.next_frame_to_compute = self.first_frame
+
+        self.output_path = ""
 
 
     def initialize(self, dir_manager):
@@ -128,6 +131,15 @@ class HoudiniTask(CoreTask):
         TaskClient.assert_exists(node_id, self.counting_nodes).accept()
         self.num_tasks_received += 1
 
+        logger.info( "Houdini task finished. Results: " + str( result_files ) )
+
+        for file in result_files[ "results" ]:
+            file_name = os.path.basename( file )
+            output_file_path = os.path.join( self.task_definition.output_path, file_name )
+            copyfile( file, output_file_path )
+
+            logger.info( "Copy file: " + file + " to directory " + self.task_definition.output_path )
+
 
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
         # What performance index should be used ?
@@ -144,6 +156,7 @@ class HoudiniTaskBuilder(CoreTaskBuilder):
 
         opts = dictionary['options']
         opts.update( definition.options.build_dict() )
+        opts["output_path"] = definition.output_path
 
         return dictionary
 
@@ -153,5 +166,9 @@ class HoudiniTaskBuilder(CoreTaskBuilder):
         definition = super().build_full_definition(task_type, dictionary)
 
         definition.options.build_from_dictionary( dictionary )
+
+        # Override output_path computed by bas class
+        opts = dictionary['options']
+        definition.output_path = opts["output_path"]
 
         return definition

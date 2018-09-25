@@ -12,7 +12,7 @@ class HoudiniTaskDefaults(TaskDefaults):
     def __init__(self):
         self.main_program_file = HoudiniEnvironment().main_program_file
         self.min_subtasks = 1
-        self.max_subtasks = 100
+        self.max_subtasks = 10000
         self.default_subtasks = 6
 
 
@@ -23,6 +23,7 @@ class HoudiniTaskDefinition(TaskDefinition):
 
         self.options = HoudiniTaskOptions()
         self.task_type = 'HOUDINI'
+        self.output_path = ""
 
 
     def is_valid(self):
