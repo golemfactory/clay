@@ -109,7 +109,6 @@ class Packager(object):
     def write_cbor_file(self, obj, file_name, cbor_data):
         pass
 
-
 class ZipPackager(Packager):
 
     ZIP_MODE = zipfile.ZIP_STORED  # no compression
@@ -130,7 +129,7 @@ class ZipPackager(Packager):
         return zipfile.ZipFile(output_path, mode='w', compression=self.ZIP_MODE)
 
     def write_disk_file(self, obj, file_path, file_name):
-        obj.write(file_path, file_name)
+        ZipPackager.zip_append(obj, file_path)
 
     def write_cbor_file(self, obj, file_name, cbord_data):
         obj.writestr(file_name, cbord_data)
@@ -140,6 +139,25 @@ class ZipPackager(Packager):
         if file_path.lower().endswith('.zip'):
             return file_path
         return file_path + '.zip'
+
+    @staticmethod
+    def zip_append(ob, path, rel=""):
+        basename = os.path.basename(path)
+        if os.path.isdir(path):
+            if rel == "":
+                rel = basename
+            ob.write(path, os.path.join(rel))
+            for root, dirs, files in os.walk(path):
+                for d in dirs:
+                    ZipPackager.zip_append(ob, os.path.join(root, d),
+                                           os.path.join(rel, d))
+                for f in files:
+                    ob.write(os.path.join(root, f), os.path.join(rel, f))
+                break
+        elif os.path.isfile(path):
+            ob.write(path, os.path.join(rel, basename))
+        else:
+            pass
 
 
 class EncryptingPackager(Packager):
