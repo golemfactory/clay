@@ -7,9 +7,9 @@ from os.path import dirname, join
 from os import close
 
 from apps.blender.blenderenvironment import BlenderEnvironment, \
-    BlenderNVGPUEnvironment
+    BlenderNVGPUEnvironment, BlenderAMDGPUEnvironment
 from apps.blender.task.blenderrendertask import BlenderRendererOptions, \
-    BlenderNVGPURendererOptions
+    BlenderNVGPURendererOptions, BlenderAMDGPURendererOptions
 from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 
 
@@ -44,4 +44,10 @@ class BlenderBenchmark(RenderingBenchmark):
 class BlenderNVGPUBenchmark(BlenderBenchmark):
     RENDERER_OPTIONS_CLASS = BlenderNVGPURendererOptions
     ENVIRONMENT_CLASS: Type[BlenderEnvironment] = BlenderNVGPUEnvironment
+    SCENE_FILE_NAME: str = "bmw27_gpu.blend"
+
+
+class BlenderAMDGPUBenchmark(BlenderBenchmark):
+    RENDERER_OPTIONS_CLASS = BlenderAMDGPURendererOptions
+    ENVIRONMENT_CLASS: Type[BlenderEnvironment] = BlenderAMDGPUEnvironment
     SCENE_FILE_NAME: str = "bmw27_gpu.blend"

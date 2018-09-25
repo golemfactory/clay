@@ -1,7 +1,7 @@
 from os import path
 from typing import Dict
 
-from apps.core import nvgpu
+from apps.core import nvgpu, amdgpu
 from apps.core.nvgpu import get_devices
 from golem.core.common import get_golem_path
 from golem.docker.environment import DockerEnvironment
@@ -48,5 +48,38 @@ class BlenderNVGPUEnvironment(BlenderEnvironment):
             environment={
                 'NVIDIA_VISIBLE_DEVICES': ','.join(map(str, get_devices())),
                 'BLENDER_DEVICE_TYPE': 'nvidia_gpu',
+            },
+        )
+
+
+class BlenderAMDGPUEnvironment(BlenderEnvironment):
+    # pylint: disable=too-few-public-methods
+
+    DOCKER_IMAGE = "golemfactory/blender_amdgpu"
+    DOCKER_TAG = "1.0"
+    ENV_ID = "BLENDER_AMDGPU"
+    SHORT_DESCRIPTION = "Blender + AMD GPU (www.blender.org)"
+
+    def __init__(self) -> None:
+        super().__init__(additional_images=[DockerImage(
+            repository=BlenderEnvironment.DOCKER_IMAGE,
+            tag=BlenderEnvironment.DOCKER_TAG,
+        )])
+
+    def check_support(self) -> SupportStatus:
+        if not amdgpu.is_supported():
+            return SupportStatus.err({
+                UnsupportReason.ENVIRONMENT_UNSUPPORTED: self.ENV_ID
+            })
+        return super().check_support()
+
+    def get_container_config(self) -> Dict:
+        return dict(
+            runtime=None,
+            volumes=[],
+            binds={},
+            devices=['/dev/dri'],
+            environment={
+                'BLENDER_DEVICE_TYPE': 'amd_gpu',
             },
         )
