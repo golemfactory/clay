@@ -624,16 +624,16 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
         self.tm.notice_task_updated = Mock()
         self.tm.subtask2task_mapping[subtask_id] = task_id
-        
+
         task_obj = self.tm.tasks[task_id] = Mock()
-        task_obj.computation_finished = lambda a, b, c, cb: cb() 
-        task_obj.finished_computation = Mock(return_value=True) 
-        task_obj.verify_task = Mock(return_value=False) 
-        
+        task_obj.computation_finished = lambda a, b, c, cb: cb()
+        task_obj.finished_computation = Mock(return_value=True)
+        task_obj.verify_task = Mock(return_value=False)
+
         task_state = self.tm.tasks_states[task_id] = Mock()
-        task_state.status = TaskStatus.computing 
+        task_state.status = TaskStatus.computing
         task_state.subtask_states = dict()
-        
+
         subtask_state = task_state.subtask_states[subtask_id] = Mock()
         subtask_state.subtask_status = SubtaskStatus.downloading
 
@@ -643,11 +643,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                                            mock_finished)
 
         # THEN
-        expected_warn = f"Task finished but was not accepted. task_id='{task_id}'"
+        expected_warn = f"Task finished but was not accepted. " \
+                        f"task_id='{task_id}'"
         assert any(expected_warn in s for s in log.output)
         assert self.tm.notice_task_updated.call_count == 2
-        self.tm.notice_task_updated.assert_called_with(task_id, op=TaskOp.NOT_ACCEPTED)
-        mock_finished.assert_called_once
+        self.tm.notice_task_updated.assert_called_with(
+            task_id, op=TaskOp.NOT_ACCEPTED)
+        mock_finished.assert_called_once()
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')
     def test_task_result_incoming(self, dump_mock):
