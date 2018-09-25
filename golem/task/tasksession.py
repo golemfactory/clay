@@ -11,6 +11,7 @@ from golem_messages import message
 from golem.core.common import HandleAttributeError, node_info_str
 from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import CBORSerializer
+from golem.core.simpleenv import get_local_datadir
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -357,6 +358,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         :param str subtask_id:
         :param err_msg: error message that occurred during computation
         """
+        print("send_task_failure", err_msg)
 
         task_id = self._subtask_to_task(subtask_id, Actor.Provider)
 
@@ -504,6 +506,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 task.header.max_price,
                 task.header.subtask_timeout,
             )
+            from golem.sgx.agent import encrypt_wrap_key
+            sgx_eas_key = encrypt_wrap_key(
+                '/home/admin_imapp/.local/share/golem/default/rinkeby/ComputerRes/{}/resources/{}.wrapkey'.format(ctd['task_id'], ctd['task_id']),  # noqa
+                msg.sgx_key,
+            )
             ttc = message.tasks.TaskToCompute(
                 compute_task_def=ctd,
                 requestor_id=task.header.task_owner.key,
@@ -515,7 +522,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 package_hash='sha1:' + task_state.package_hash,
                 concent_enabled=msg.concent_enabled,
                 price=price,
-                size=task_state.package_size
+                size=task_state.package_size,
+                sgx_eas_key=sgx_eas_key,
             )
             ttc.generate_ethsig(self.my_private_key)
             self.task_manager.set_subtask_value(
@@ -620,6 +628,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.task_server.add_task_session(
                 ctd['subtask_id'], self
             )
+            print('extra_data', ctd['extra_data'])
+            ctd['extra_data']['sgx_wrapkey'] = msg.sgx_eas_key
             if self.task_computer.task_given(ctd):
                 return
         _cannot_compute(self.err_msg)
