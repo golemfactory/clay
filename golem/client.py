@@ -1205,6 +1205,26 @@ class Client(HardwarePresetsMixin):
 
         return [item(income) for income in incomes]
 
+    @classmethod
+    def get_deposit_payments_list(cls, limit=1000, offset=0):
+        deposit_payments = TransactionSystem.get_deposit_payments_list(
+            limit,
+            offset,
+        )
+        result = []
+        for dpayment in deposit_payments:
+            entry = {}
+            entry['value'] = to_unicode(dpayment.value)
+            entry['status'] = to_unicode(dpayment.status.name)
+            entry['fee'] = to_unicode(dpayment.fee)
+            entry['transaction'] = to_unicode(dpayment.tx)
+            entry['created'] = datetime_to_timestamp_utc(dpayment.created_date)
+            entry['modified'] = datetime_to_timestamp_utc(
+                dpayment.modified_date,
+            )
+            result.append(entry)
+        return result
+
     def get_withdraw_gas_cost(
             self,
             amount: Union[str, int],

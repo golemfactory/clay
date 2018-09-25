@@ -53,6 +53,13 @@ REM hyperg
 IF NOT EXIST "%resource_dir%\hyperg\" EXIT /B
 XCOPY %resource_dir%\hyperg\. . /s /e
 
+
+echo "copy docker"
+REM docker
+IF NOT EXIST "%resource_dir%\docker\" EXIT /B
+XCOPY %resource_dir%\docker\. . /s /e
+
+
 echo "Finished, back to original dir '%working_dir%'"
 
 cd %working_dir%

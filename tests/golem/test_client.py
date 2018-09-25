@@ -1,4 +1,5 @@
 # pylint: disable=protected-access,too-many-lines
+import datetime
 import json
 import os
 import time
@@ -21,6 +22,7 @@ from twisted.internet.defer import Deferred
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 import golem
+from golem import model
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
@@ -1463,6 +1465,38 @@ class TestDepositBalance(TestClientBase):
             .return_value = 0
         result = sync_wait(self.client.get_deposit_balance())
         self.assertEqual(result['status'], 'locked')
+
+
+class DepositPaymentsListTest(TestClientBase):
+    def test_empty(self):
+        self.assertEqual(self.client.get_deposit_payments_list(), [])
+
+    def test_one(self):
+        tx_hash = \
+            '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
+        value = 31337
+        ts = 1514761200.0
+        dt = datetime.datetime.fromtimestamp(ts)
+        model.DepositPayment.create(
+            value=value,
+            tx=tx_hash,
+            created_date=dt,
+            modified_date=dt,
+        )
+        expected = [
+            {
+                'created': ts,
+                'modified': ts,
+                'fee': None,
+                'status': 'awaiting',
+                'transaction': tx_hash,
+                'value': str(value),
+            },
+        ]
+        self.assertEqual(
+            expected,
+            self.client.get_deposit_payments_list(),
+        )
 
 
 class TestClientPEP8(TestCase, testutils.PEP8MixIn):

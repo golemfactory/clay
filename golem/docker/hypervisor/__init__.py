@@ -67,7 +67,6 @@ class Hypervisor(metaclass=ABCMeta):
             return True
         except subprocess.CalledProcessError as e:
             logger.warning("Hypervisor: error removing VM '%s': %s", name, e)
-            logger.debug("Hypervisor_output: %s", e.output)
         return False
 
     @report_calls(Component.docker, 'instance.check')
@@ -78,8 +77,11 @@ class Hypervisor(metaclass=ABCMeta):
 
         try:
             status = self.command('status', name) or ''
-            status = status.strip().replace("\n", "")
-            return status == DOCKER_VM_STATUS_RUNNING
+            status_lines = status.split("\n")
+            for line in status_lines:
+                if line == DOCKER_VM_STATUS_RUNNING:
+                    return True
+            return False
         except subprocess.CalledProcessError as e:
             logger.error("DockerMachine: failed to check status: %s", e)
         return False
