@@ -84,7 +84,7 @@ class VerificationQueue:
                 self._jobs.pop(subtask_id, None)
                 self._process_queue()
 
-        def errback(result):
+        def errback(_):
             if self.timed_out:
                 logger.debug("Timeout detected")
                 reactor.callLater(VerificationQueue.RESTART_DELAY,
@@ -110,7 +110,7 @@ class VerificationQueue:
             self._jobs[subtask_id] = result
             self.tasks[entry] = result
 
-    def stop_task(self, value, timeout, **kwargs):
+    def stop_task(self, *_, **kwargs):
         kwargs['task'].stop(kwargs['event'])
         self._queue.put((kwargs['task'], kwargs['verifier_cls']))
         self._jobs.pop(kwargs['subtask_id'], None)

@@ -1,6 +1,7 @@
-from typing import Optional
-from twisted.internet.defer import Deferred, inlineCallbacks
+from typing import Optional, Any
+from twisted.internet.defer import Deferred
 from golem.core.common import deadline_to_timeout
+
 
 
 class VerificationTask:
@@ -9,7 +10,7 @@ class VerificationTask:
         self.deadline = deadline
         self.kwargs = kwargs
         self.subtask_id = subtask_id
-        self.verifier = None
+        self.verifier: Any = None
 
     def start(self, verifier_class) -> Optional[Deferred]:
         self.verifier = verifier_class(self.kwargs)
