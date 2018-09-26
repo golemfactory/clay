@@ -260,6 +260,8 @@ class CoreTask(Task):
             raise Exception("Subtask {} has wrong type".format(subtask_id))
 
         subtask["status"] = SubtaskStatus.finished
+        node_id = self.subtasks_given[subtask_id]['node_id']
+        TaskClient.assert_exists(node_id, self.counting_nodes).accept()
 
     @handle_key_error
     def verify_subtask(self, subtask_id):

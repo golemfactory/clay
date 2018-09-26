@@ -187,8 +187,6 @@ class FrameRenderingTask(RenderingTask):
 
     def accept_results(self, subtask_id, result_files):
         super().accept_results(subtask_id, result_files)
-        node_id = self.subtasks_given[subtask_id]['node_id']
-        TaskClient.assert_exists(node_id, self.counting_nodes).accept()
         num_start = self.subtasks_given[subtask_id]['start_task']
         parts = self.subtasks_given[subtask_id]['parts']
         num_end = self.subtasks_given[subtask_id]['end_task']
