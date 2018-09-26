@@ -2,7 +2,7 @@ import os
 import sys
 
 from golem.core.simpleenv import get_local_datadir
-from golem.rpc.cert import CertificateManager, CertificateException
+from golem.rpc.cert import CertificateManager, CertificateError
 from golem.rpc.common import (
     CROSSBAR_REALM, CROSSBAR_PORT, CROSSBAR_HOST, CROSSBAR_DIR
 )
@@ -71,8 +71,7 @@ def _call(method, *args, port, datadir, on_success, on_error, **kwargs):
             port=port,
             datadir=datadir,
         )
-    except CertificateException as e:
-        print(e)
+    except CertificateError as e:
         on_error(e)
         return
 

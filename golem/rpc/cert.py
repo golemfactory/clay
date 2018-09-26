@@ -19,7 +19,7 @@ DH_PARAM_BITS_LOW = 1024
 KEY_BITS = 2048
 
 
-class CertificateException(Exception):
+class CertificateError(Exception):
     pass
 
 
@@ -92,7 +92,7 @@ class CertificateManager:
     def get_secret(self, p: 'CertificateManager.CrossbarUsers') -> str:
         path = os.path.join(self.secrets_path, f"{p.name}.{self.SECRET_EXT}")
         if not os.path.isfile(path):
-            raise CertificateException(
+            raise CertificateError(
                 f"No secret for `{p.name}` in `{path}`. "
                 f"Please ensure you're using the correct Golem data directory."
             )
