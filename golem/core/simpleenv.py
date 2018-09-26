@@ -2,7 +2,6 @@
 import os
 
 import appdirs
-from golem.config.active import DATA_DIR # type: ignore
 
 def get_local_datadir(name: str, root_dir=None, data_subdir=None) -> str:
     """ Helper function for datadir transition.
@@ -11,6 +10,8 @@ def get_local_datadir(name: str, root_dir=None, data_subdir=None) -> str:
         Usage should be avoid at all costs. It is always better to ask for
         a dir the upper layer (like Client instance).
     """
+    from golem.config.active import DATA_DIR # type: ignore
+
     if not data_subdir:
         data_subdir = DATA_DIR
 
