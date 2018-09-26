@@ -56,7 +56,6 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
         except subprocess.CalledProcessError as e:
             logger.exception(
                 f'{self.DRIVER_NAME}: error creating VM "{vm_name}"')
-            logger.debug(f'Hypervisor output: {e.output}')
             return False
 
     @contextmanager
