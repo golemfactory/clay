@@ -90,7 +90,6 @@ def start():
         cli = CLI(main_parser=parser, main_parser_options=flag_options)
 
     chaindir = mainnet_data_dir if parsed.mainnet else None
-    
     datadir = get_local_datadir('default', root_dir=parsed.datadir,
                                 data_subdir=chaindir)
     working_dir = os.path.join(datadir, CROSSBAR_DIR)
