@@ -1,9 +1,8 @@
-# type: ignore
 # pylint: skip-file
 import os
 
 import appdirs
-from golem.config.active import DATA_DIR
+from golem.config.active import DATA_DIR # type: ignore
 
 def get_local_datadir(name: str, root_dir=None, data_subdir=None) -> str:
     """ Helper function for datadir transition.
