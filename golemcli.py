@@ -36,6 +36,7 @@ def start():
 
     flags = dict(
         interactive=('-i', '--interactive'),
+        mainnet=('-m', '--mainnet'),
         address=('-a', '--address'),
         port=('-p', '--port'),
         trust=('-t', '--verify-trust'),
@@ -45,6 +46,8 @@ def start():
     flag_options = dict(
         interactive=dict(dest="interactive", action="store_true",
                          default=False, help="Enter interactive mode"),
+        mainnet=dict(dest="mainnet", action="store_true", default=False,
+                     help="Use mainnet chain"),
         address=dict(dest="address", type=str, default=CROSSBAR_HOST,
                      help="Golem node's RPC address"),
         port=dict(dest="port", type=int, default=CROSSBAR_PORT,
@@ -84,7 +87,9 @@ def start():
         logging.raiseExceptions = 0
         cli = CLI(main_parser=parser, main_parser_options=flag_options)
 
-    datadir = get_local_datadir('default', root_dir=parsed.datadir)
+    chaindir = 'mainnet' if parsed.mainnet else None
+    datadir = get_local_datadir('default', root_dir=parsed.datadir,
+                                data_subdir=chaindir)
     working_dir = os.path.join(datadir, CROSSBAR_DIR)
 
     # run the cli
