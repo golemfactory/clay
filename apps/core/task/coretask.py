@@ -116,7 +116,7 @@ class CoreTask(Task):
 
         # resources stuff
         self.task_resources = list(
-            set(filter(os.path.isfile, task_definition.resources)))
+            set(filter(os.path.exists, task_definition.resources)))
         if resource_size is None:
             self.resource_size = 0
             for resource in self.task_resources:
