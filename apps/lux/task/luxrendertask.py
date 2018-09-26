@@ -27,7 +27,6 @@ from golem.core.common import timeout_to_deadline, get_golem_path, to_unicode
 from golem.core.fileshelper import common_dir, find_file_with_ext, has_ext
 from golem.resource import dirmanager
 from golem.resource.dirmanager import DirManager
-from golem.task.taskclient import TaskClient
 from golem.task.localcomputer import LocalComputer, ComputerAdapter
 from golem.task.taskstate import SubtaskStatus
 
@@ -425,8 +424,6 @@ class LuxTask(renderingtask.RenderingTask):
         for tr_file in result_files:
             if has_ext(tr_file, ".flm"):
                 self.collected_file_names[num_start] = tr_file
-                node_id = self.subtasks_given[subtask_id]['node_id']
-                TaskClient.assert_exists(node_id, self.counting_nodes).accept()
                 self.num_tasks_received += 1
             elif not has_ext(tr_file, '.log'):
                 self.subtasks_given[subtask_id]['preview_file'] = tr_file
