@@ -1,10 +1,8 @@
+# type: ignore
+# pylint: skip-file
 import os
 
 import appdirs
-
-# FIXME
-# pylint: skip-file
-# type: ignore
 
 def get_local_datadir(name: str, root_dir=None, data_subdir=None) -> str:
     """ Helper function for datadir transition.
