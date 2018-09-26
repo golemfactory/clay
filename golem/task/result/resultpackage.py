@@ -109,6 +109,7 @@ class Packager(object):
     def write_cbor_file(self, obj, file_name, cbor_data):
         pass
 
+
 class ZipPackager(Packager):
 
     ZIP_MODE = zipfile.ZIP_STORED  # no compression
