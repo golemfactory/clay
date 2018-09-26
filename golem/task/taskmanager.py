@@ -713,13 +713,14 @@ class TaskManager(TaskEventListener):
                     self.tasks_states[task_id].status = TaskStatus.computing
                 else:
                     if self.tasks[task_id].verify_task():
-                        logger.debug("Task %r accepted", task_id)
+                        logger.info("Task finished! task_id=%r", task_id)
                         self.tasks_states[task_id].status =\
                             TaskStatus.finished
                         self.notice_task_updated(task_id,
                                                  op=TaskOp.FINISHED)
                     else:
-                        logger.debug("Task %r not accepted", task_id)
+                        logger.warning("Task finished but was not accepted. "
+                                       "task_id=%r", task_id)
                         self.notice_task_updated(task_id,
                                                  op=TaskOp.NOT_ACCEPTED)
             verification_finished()

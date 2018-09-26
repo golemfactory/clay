@@ -77,9 +77,8 @@ class DockerTaskTestCase(
         task_path = Path(__file__).parent / cls.TASK_FILE
         with open(task_path) as f:
             golem_path = get_golem_path()
-            if is_windows():
-                golem_path = golem_path.replace('\\', '\\\\')
-            json_str = f.read().replace('$GOLEM_DIR', golem_path)
+            json_str = f.read().replace('$GOLEM_DIR',
+                                        Path(get_golem_path()).as_posix())
             return DictSerializer.load(json.loads(json_str))
 
     def _get_test_task(self) -> Task:

@@ -19,6 +19,10 @@ DH_PARAM_BITS_LOW = 1024
 KEY_BITS = 2048
 
 
+class CertificateError(Exception):
+    pass
+
+
 class CertificateManager:
 
     DH_FILE_NAME = "rpc_dh_param.pem"
@@ -88,8 +92,10 @@ class CertificateManager:
     def get_secret(self, p: 'CertificateManager.CrossbarUsers') -> str:
         path = os.path.join(self.secrets_path, f"{p.name}.{self.SECRET_EXT}")
         if not os.path.isfile(path):
-            raise Exception(f"No secret for {p.name} in {path}. "
-                            f"Maybe you forgot to create secrets?")
+            raise CertificateError(
+                f"No secret for `{p.name}` in `{path}`. "
+                f"Please ensure you're using the correct Golem data directory."
+            )
         with open(path, "r") as f:
             return f.read()
 
