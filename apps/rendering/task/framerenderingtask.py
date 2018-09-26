@@ -20,7 +20,6 @@ from apps.rendering.task.renderingtaskstate import RendererDefaults
 from golem_verificator.rendering_verifier import FrameRenderingVerifier
 from golem.core.common import update_dict, to_unicode
 from golem.task.taskbase import ResultType
-from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus, TaskStatus, SubtaskState
 
 logger = logging.getLogger("apps.rendering")

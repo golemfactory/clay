@@ -15,7 +15,6 @@ from apps.dummy.task.dummytaskstate import DummyTaskDefaults, DummyTaskOptions
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from apps.dummy.task.verifier import DummyTaskVerifier
 from golem.task.taskbase import Task
-from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("apps.dummy")
