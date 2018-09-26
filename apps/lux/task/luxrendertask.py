@@ -220,7 +220,6 @@ class LuxTask(renderingtask.RenderingTask):
         subtask_id = self.create_subtask_id()
         self.subtasks_given[subtask_id] = copy(extra_data)
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.starting
-        self.subtasks_given[subtask_id]['perf'] = perf_index
         self.subtasks_given[subtask_id]['node_id'] = node_id
         self.subtasks_given[subtask_id]['res_x'] = self.res_x
         self.subtasks_given[subtask_id]['res_y'] = self.res_y

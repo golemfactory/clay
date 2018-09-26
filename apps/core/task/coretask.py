@@ -526,7 +526,6 @@ class CoreTask(Task):
         new_subtask = self.subtasks_given[subtask_id]
 
         new_subtask['node_id'] = old_subtask_info['node_id']
-        new_subtask['perf'] = old_subtask_info['perf']
         new_subtask['ctd']['performance'] = \
             old_subtask_info['ctd']['performance']
 

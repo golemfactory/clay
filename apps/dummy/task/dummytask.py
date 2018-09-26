@@ -89,7 +89,6 @@ class DummyTask(CoreTask):
 
         self.subtasks_given[sid] = copy(ctd['extra_data'])
         self.subtasks_given[sid]["status"] = SubtaskStatus.starting
-        self.subtasks_given[sid]["perf"] = perf_index
         self.subtasks_given[sid]["node_id"] = node_id
         self.subtasks_given[sid]["result_extension"] = self.RESULT_EXT
         self.subtasks_given[sid]["shared_data_files"] = \
