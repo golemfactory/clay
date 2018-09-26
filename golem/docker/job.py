@@ -139,7 +139,7 @@ class DockerJob(object):
             },
             posix_path(self.resources_dir): {
                 "bind": self.RESOURCES_DIR,
-                "mode": "ro"
+                "mode": "rw"
             },
             posix_path(self.output_dir): {
                 "bind": self.OUTPUT_DIR,
@@ -153,6 +153,12 @@ class DockerJob(object):
             environment = dict(OSX_USER=1)
         else:
             environment = dict(LOCAL_USER_ID=os.getuid())
+
+        environment.update(
+            WORK_DIR=self.WORK_DIR,
+            RESOURCES_DIR=self.RESOURCES_DIR,
+            OUTPUT_DIR=self.OUTPUT_DIR
+        )
 
         docker_env = EnvironmentsManager().get_environment_by_image(self.image)
 
