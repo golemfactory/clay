@@ -9,7 +9,7 @@ def get_datadir(role: str):
     if not datadir:
         datadir = tempfile.mkdtemp(prefix='golem-{}-'.format(role.lower()))
         os.environ[env_key] = datadir
-    print("{} data directory: {}".format(role.capitalize(), datadir))
+        print("{} data directory: {}".format(role.capitalize(), datadir))
     return datadir
 
 
@@ -19,7 +19,6 @@ def params_from_dict(d: dict) -> list:
             [(k, v) if v else (k, ) for k, v in d.items()]  # type: ignore
         )
     )
-
 
 PROVIDER_RPC_PORT = os.environ.get('GOLEM_PROVIDER_RPC_PORT', '61001')
 REQUESTOR_RPC_PORT = os.environ.get('GOLEM_REQUESTOR_RPC_PORT', '61000')
