@@ -18,7 +18,7 @@ from twisted.internet.threads import deferToThread
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask, AcceptClientVerdict
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
-    HandleKeyError, node_info_str, to_unicode, update_dict
+    HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
