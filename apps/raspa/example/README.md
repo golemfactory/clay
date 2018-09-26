@@ -1,5 +1,7 @@
 # How to run an example
 
+This assumes that there are other nodes in the network that are capable of computing `apps/raspa` task. If it's not the case you will have to set up a small network locally (see wiki).
+
 1. Set up a Golem node
 
 ```sh
