@@ -20,6 +20,4 @@ class HoudiniTaskVerifier(CoreVerifier):
         subtask_info = results["subtask_info"]
         results_files = results["results"]
 
-        logger.info( "Houdini verifier, results: %s", str( results_files ) )
-
         return True

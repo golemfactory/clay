@@ -49,10 +49,16 @@ class HoudiniTask(CoreTask):
             total_tasks=total_tasks
         )
 
-        self.num_frames = task_definition.options.end_frame - task_definition.options.start_frame
-
+        # Note that end_frame in json means last frame to render
+        self.num_frames = task_definition.options.end_frame - task_definition.options.start_frame + 1
         self.first_frame = task_definition.options.start_frame
-        self.next_frame_to_compute = self.first_frame
+
+        self.frames_ranges_list = []
+
+        next_frame_to_compute = self.first_frame
+        while next_frame_to_compute <= task_definition.options.end_frame:
+            new_range, next_frame_to_compute = self._compute_frame_range( next_frame_to_compute )
+            self.frames_ranges_list.append( new_range )
 
         self.output_path = ""
 
@@ -65,11 +71,11 @@ class HoudiniTask(CoreTask):
         return "Dummytask extra_data: {}".format(extra_data)
 
 
-    def _next_frame_range(self):
+    def _compute_frame_range( self, next_frame_to_compute ):
 
         num_subtask_frames = math.ceil( self.num_frames / self.total_tasks )
 
-        start_frame = self.next_frame_to_compute
+        start_frame = next_frame_to_compute
         end_frame = start_frame + num_subtask_frames
 
         # If number of frames wasn't divisible by number of tasks, last subtask will compute redundant frames
@@ -79,11 +85,17 @@ class HoudiniTask(CoreTask):
             start_frame = start_frame - redundant_frames
             end_frame = end_frame - redundant_frames
 
-        self.next_frame_to_compute += num_subtask_frames
+        next_frame_to_compute += num_subtask_frames
 
         # end_frame is last frame that will be rendered
-        return start_frame, end_frame - 1
+        return [ start_frame, end_frame - 1 ], next_frame_to_compute
 
+    def _next_frame_range(self):
+
+        range = self.frames_ranges_list[ 0 ]
+        self.frames_ranges_list = self.frames_ranges_list[ 1: ]
+
+        return range
 
     def _next_task_extra_data(self, perf_index=0.0) -> ComputeTaskDef:
 
@@ -131,14 +143,14 @@ class HoudiniTask(CoreTask):
         TaskClient.assert_exists(node_id, self.counting_nodes).accept()
         self.num_tasks_received += 1
 
-        logger.info( "Houdini task finished. Results: " + str( result_files ) )
+        logger.info( "Houdini subtask finished. Results: " + str( result_files ) )
 
         for file in result_files[ "results" ]:
             file_name = os.path.basename( file )
             output_file_path = os.path.join( self.task_definition.output_path, file_name )
             copyfile( file, output_file_path )
 
-            logger.info( "Copy file: " + file + " to directory " + self.task_definition.output_path )
+            logger.debug( "Copy file: " + file + " to directory " + self.task_definition.output_path )
 
 
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
