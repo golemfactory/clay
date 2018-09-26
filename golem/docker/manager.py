@@ -152,7 +152,7 @@ class DockerManager(DockerConfigManager):
                 },
                 str(dir_mapping.resources): {
                     "bind": DockerJob.RESOURCES_DIR,
-                    "mode": "ro"
+                    "mode": "rw"
                 },
                 str(dir_mapping.output): {
                     "bind": DockerJob.OUTPUT_DIR,

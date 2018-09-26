@@ -146,7 +146,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
             },
             res_share: {
                 "bind": DockerJob.RESOURCES_DIR,
-                "mode": "ro"
+                "mode": "rw"
             },
             out_share: {
                 "bind": DockerJob.OUTPUT_DIR,
