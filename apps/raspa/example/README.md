@@ -1,11 +1,17 @@
 # How to run an example
 
-This assumes that there are other nodes in the network that are capable of computing `apps/raspa` task. If it's not the case you will have to set up a small network locally (see wiki).
 
 1. Set up a Golem node
 
+
 ```sh
     python $GOLEM_DIR/golemapp.py --datadir=/home/user/.local/share/golem/default
+```
+
+This assumes that there are other nodes in the network that are capable of computing `apps/raspa` task. If it's not the case you will have to set up a small network locally (see wiki). To add second node locally run:
+
+```sh
+    python $GOLEM_DIR/golemapp.py --datadir=/home/$USER/datadir --peer=localhost:40102 --rpc-address=localhost:61001
 ```
 
 2. Adjust `root_dir` in `task.json` defined in this directory
@@ -22,7 +28,7 @@ This assumes that there are other nodes in the network that are capable of compu
     python $GOLEM_DIR/golemcli.py tasks create task.json
 ```
 
-4. When task is finished Golem will copy `/golem/output`, `stderr` and `stdout` streams to the directory specified as `root_dir` in `task.json`. Debug your program by reading `stderr.txt` and `stdout.txt`.
+4. When task is finished (10 to 15  minutes) Golem will copy `/golem/output`, `stderr` and `stdout` streams to the directory specified as `root_dir` in `task.json`. Debug your program by reading `stderr.txt` and `stdout.txt`.
 
 # How it works
 
