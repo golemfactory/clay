@@ -1,0 +1,13 @@
+{
+  "root_dir": "/home/mplebanski/Projects/golem/apps/raspa/example",
+  "resources":[
+    "${ROOT_DIR}/start.sh",
+    "${ROOT_DIR}/simulation.input",
+    "${ROOT_DIR}/data"
+  ],
+  "name": "raspatask",
+  "type":"Raspa",
+  "timeout":"0:20:00",
+  "estimated_memory": 2147483,
+  "bid": 1
+}

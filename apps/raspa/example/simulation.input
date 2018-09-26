@@ -1,0 +1,22 @@
+SimulationType                MonteCarlo
+NumberOfCycles                10000
+NumberOfInitializationCycles  1000
+PrintEvery                    100
+
+
+Forcefield                    Cage_test
+
+Framework 0
+FrameworkName ccxl
+UnitCells 2 2 2
+ExternalTemperature 300.0
+ExternalPressure 1e4
+
+
+Component 0 MoleculeName             methane
+            MoleculeDefinition       TraPPE
+            TranslationProbability   0.5
+            ReinsertionProbability   0.5
+            SwapProbability          1.0
+            CreateNumberOfMolecules  0
+
