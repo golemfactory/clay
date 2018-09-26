@@ -154,6 +154,12 @@ class DockerJob(object):
         else:
             environment = dict(LOCAL_USER_ID=os.getuid())
 
+        environment.update(
+            WORK_DIR=self.WORK_DIR,
+            RESOURCES_DIR=self.RESOURCES_DIR,
+            OUTPUT_DIR=self.OUTPUT_DIR
+        )
+
         docker_env = EnvironmentsManager().get_environment_by_image(self.image)
 
         if docker_env:
