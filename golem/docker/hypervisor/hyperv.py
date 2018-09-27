@@ -30,10 +30,6 @@ class HyperVHypervisor(DockerMachineHypervisor):
         boot2docker_url='--hyperv-boot2docker-url',
         virtual_switch='--hyperv-virtual-switch'
     )
-    SUMMARY_KEYS = dict(
-        memory_size='MemoryUsage',
-        cpu_count='NumberOfProcessors'
-    )
     BOOT2DOCKER_URL = "https://github.com/golemfactory/boot2docker/releases/" \
                       "download/v18.06.0-ce%2Bdvm-v0.35/boot2docker.iso"
     DOCKER_USER = "golem-docker"
@@ -71,10 +67,12 @@ class HyperVHypervisor(DockerMachineHypervisor):
         name = name or self._vm_name
         try:
             summary = self._vm_utils.get_vm_summary_info(name)
-            logger.debug('raw hyperv summary: %r', summary)
-            result = {k: summary[v] for k, v in self.SUMMARY_KEYS.items()}
-            limit = self._vm_utils.get_vm_memory_limit(name)
-            result['memory_size'] = limit
+            mem_settings = self._vm_utils.get_vm_memory(name)
+            logger.debug('raw hyperv info: summary=%r, memory=%r',
+                         summary, mem_settings)
+            result = dict()
+            result[CONSTRAINT_KEYS['mem']] = mem_settings.Limit
+            result[CONSTRAINT_KEYS['cpu']] = summary['NumberOfProcessors']
             return result
         except (OSWinException, KeyError):
             logger.exception(
@@ -188,11 +186,11 @@ class HyperVHypervisor(DockerMachineHypervisor):
         return volume_name
 
 class VMUtilsWithMem(VMUtils):
-    def get_vm_memory_limit(self, vm_name):
+    def get_vm_memory(self, vm_name):
         vmsetting = self._lookup_vm_check(vm_name)
         si = _wqlutils.get_element_associated_class(
             self._conn, self._MEMORY_SETTING_DATA_CLASS,
             element_instance_id=vmsetting.InstanceID)[0]
             
         logger.debug('VM MemorySettingsData: %r', si)
-        return int(si.Limit)
+        return si
