@@ -89,11 +89,7 @@ def start():
         cli = CLI(main_parser=parser, main_parser_options=flag_options)
 
     if parsed.mainnet:
-        from importlib import reload
-
         set_environment('mainnet', None)
-        if 'golem.config.active' in sys.modules:
-            reload(sys.modules['golem.config.active'])
 
     datadir = get_local_datadir('default', root_dir=parsed.datadir)
     working_dir = os.path.join(datadir, CROSSBAR_DIR)
