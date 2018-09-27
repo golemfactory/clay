@@ -6,12 +6,13 @@ from subprocess import CalledProcessError, TimeoutExpired
 from typing import Optional, Union, Any, List, Dict, ClassVar
 
 from os_win.exceptions import OSWinException
+from os_win.utils import _wqlutils
 from os_win.utils.compute.vmutils import VMUtils
 
 from golem.core.common import get_golem_path
 from golem.docker import smbshare
 from golem.docker.client import local_client
-from golem.docker.config import CONSTRAINT_KEYS
+from golem.docker.config import CONSTRAINT_KEYS, MIN_CONSTRAINTS
 from golem.docker.hypervisor.docker_machine import DockerMachineHypervisor
 from golem.docker.job import DockerJob
 from golem.docker.task_thread import DockerDirMapping
@@ -26,13 +27,8 @@ class HyperVHypervisor(DockerMachineHypervisor):
         mem='--hyperv-memory',
         cpu='--hyperv-cpu-count',
         disk='--hyperv-disk-size',
-        no_virt_mem='--hyperv-disable-dynamic-memory',
         boot2docker_url='--hyperv-boot2docker-url',
         virtual_switch='--hyperv-virtual-switch'
-    )
-    SUMMARY_KEYS = dict(
-        memory_size='MemoryUsage',
-        cpu_count='NumberOfProcessors'
     )
     BOOT2DOCKER_URL = "https://github.com/golemfactory/boot2docker/releases/" \
                       "download/v18.06.0-ce%2Bdvm-v0.35/boot2docker.iso"
@@ -47,7 +43,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._vm_utils = VMUtils()
+        self._vm_utils = VMUtilsWithMem()
 
     # pylint: disable=arguments-differ
     def _parse_create_params(
@@ -58,8 +54,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
         args = super()._parse_create_params(**params)
         args += [self.OPTIONS['boot2docker_url'], self.BOOT2DOCKER_URL,
-                 self.OPTIONS['virtual_switch'], self.VIRTUAL_SWITCH,
-                 self.OPTIONS['no_virt_mem']]
+                 self.OPTIONS['virtual_switch'], self.VIRTUAL_SWITCH]
 
         if cpu is not None:
             args += [self.OPTIONS['cpu'], str(cpu)]
@@ -72,7 +67,13 @@ class HyperVHypervisor(DockerMachineHypervisor):
         name = name or self._vm_name
         try:
             summary = self._vm_utils.get_vm_summary_info(name)
-            return {k: summary[v] for k, v in self.SUMMARY_KEYS.items()}
+            mem_settings = self._vm_utils.get_vm_memory(name)
+            logger.debug('raw hyperv info: summary=%r, memory=%r',
+                         summary, mem_settings)
+            result = dict()
+            result[CONSTRAINT_KEYS['mem']] = mem_settings.Limit
+            result[CONSTRAINT_KEYS['cpu']] = summary['NumberOfProcessors']
+            return result
         except (OSWinException, KeyError):
             logger.exception(
                 f'Hyper-V: reading configuration of VM "{name}" failed')
@@ -80,8 +81,13 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     def constrain(self, name: Optional[str] = None, **params) -> None:
         name = name or self._vm_name
-        mem = params.get(CONSTRAINT_KEYS['mem'])
+        mem_key = CONSTRAINT_KEYS['mem']
+        mem = params.get(mem_key)
+        assert isinstance(mem, int)
         cpu = params.get(CONSTRAINT_KEYS['cpu'])
+
+        min_mem = MIN_CONSTRAINTS[mem_key]
+        dyn_mem_ratio = mem / min_mem
 
         try:
             self._vm_utils.update_vm(
@@ -91,7 +97,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 vcpus_num=cpu,
                 vcpus_per_numa_node=0,
                 limit_cpu_features=False,
-                dynamic_mem_ratio=0
+                dynamic_mem_ratio=dyn_mem_ratio
             )
         except OSWinException:
             logger.exception(f'Hyper-V: reconfiguration of VM "{name}" failed')
@@ -179,3 +185,13 @@ class HyperVHypervisor(DockerMachineHypervisor):
         )
 
         return volume_name
+
+class VMUtilsWithMem(VMUtils):
+    def get_vm_memory(self, vm_name):
+        vmsetting = self._lookup_vm_check(vm_name)
+        si = _wqlutils.get_element_associated_class(
+            self._conn, self._MEMORY_SETTING_DATA_CLASS,
+            element_instance_id=vmsetting.InstanceID)[0]
+
+        logger.debug('VM MemorySettingsData: %r', si)
+        return si

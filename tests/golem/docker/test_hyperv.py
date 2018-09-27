@@ -30,7 +30,6 @@ class TestHyperVHypervisor(TestCase):
             args, '--hyperv-boot2docker-url', HyperVHypervisor.BOOT2DOCKER_URL)
         self._assert_param(
             args, '--hyperv-virtual-switch', HyperVHypervisor.VIRTUAL_SWITCH)
-        self.assertIn('--hyperv-disable-dynamic-memory', args)
 
     def test_parse_create_params_constraints(self):
         args = self.hyperv._parse_create_params(cpu=4, mem=4096)
@@ -67,20 +66,27 @@ class TestHyperVHypervisor(TestCase):
             self.assertEqual(constraints, {})
             logger.exception.assert_called_once()
 
-    def test_constraints_ok(self):
-        with patch.object(self.hyperv._vm_utils, 'get_vm_summary_info') \
-                as get_info:
-            get_info.return_value = {
-                'NumberOfProcessors': 1,
-                'MemoryUsage': 2048,
-            }
-            constraints = self.hyperv.constraints()
+    @patch('golem.docker.hypervisor.hyperv.VMUtilsWithMem.get_vm_memory')
+    @patch('golem.docker.hypervisor.hyperv.VMUtilsWithMem.get_vm_summary_info')
+    def test_constraints_ok(self, get_info, get_memory):
+        # GIVEN
+        get_info.return_value = {
+            'NumberOfProcessors': 1,
+        }
+        mem_settings = Mock()
+        mem_settings.Limit = 2048
+        get_memory.return_value = mem_settings
 
-            get_info.assert_called_once_with(DOCKER_VM_NAME)
-            self.assertDictEqual(constraints, {
-                'cpu_count': 1,
-                'memory_size': 2048
-            })
+        #  WHEN
+        constraints = self.hyperv.constraints()
+
+        #THEN
+        get_info.assert_called_once_with(DOCKER_VM_NAME)
+        get_memory.assert_called_once_with(DOCKER_VM_NAME)
+        self.assertDictEqual(constraints, {
+            'cpu_count': 1,
+            'memory_size': 2048
+        })
 
     @patch('golem.docker.hypervisor.hyperv.smbshare')
     def test_update_work_dir(self, smbshare):
