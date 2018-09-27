@@ -6,12 +6,13 @@ from subprocess import CalledProcessError, TimeoutExpired
 from typing import Optional, Union, Any, List, Dict, ClassVar
 
 from os_win.exceptions import OSWinException
+from os_win.utils import _wqlutils
 from os_win.utils.compute.vmutils import VMUtils
 
 from golem.core.common import get_golem_path
 from golem.docker import smbshare
 from golem.docker.client import local_client
-from golem.docker.config import CONSTRAINT_KEYS
+from golem.docker.config import CONSTRAINT_KEYS, MIN_CONSTRAINTS
 from golem.docker.hypervisor.docker_machine import DockerMachineHypervisor
 from golem.docker.job import DockerJob
 from golem.docker.task_thread import DockerDirMapping
@@ -47,7 +48,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._vm_utils = VMUtils()
+        self._vm_utils = VMUtilsWithMem()
 
     # pylint: disable=arguments-differ
     def _parse_create_params(
@@ -72,7 +73,11 @@ class HyperVHypervisor(DockerMachineHypervisor):
         name = name or self._vm_name
         try:
             summary = self._vm_utils.get_vm_summary_info(name)
-            return {k: summary[v] for k, v in self.SUMMARY_KEYS.items()}
+            logger.debug('raw hyperv summary: %r', summary)
+            result = {k: summary[v] for k, v in self.SUMMARY_KEYS.items()}
+            limit = self._vm_utils.get_vm_memory_limit(name)
+            result['memory_size'] = limit
+            return result
         except (OSWinException, KeyError):
             logger.exception(
                 f'Hyper-V: reading configuration of VM "{name}" failed')
@@ -80,8 +85,12 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     def constrain(self, name: Optional[str] = None, **params) -> None:
         name = name or self._vm_name
-        mem = params.get(CONSTRAINT_KEYS['mem'])
+        mem_key = CONSTRAINT_KEYS['mem']
+        mem = params.get(mem_key)
         cpu = params.get(CONSTRAINT_KEYS['cpu'])
+
+        min_mem = MIN_CONSTRAINTS[mem_key]
+        dyn_mem_ratio = mem / min_mem
 
         try:
             self._vm_utils.update_vm(
@@ -91,7 +100,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 vcpus_num=cpu,
                 vcpus_per_numa_node=0,
                 limit_cpu_features=False,
-                dynamic_mem_ratio=0
+                dynamic_mem_ratio=dyn_mem_ratio
             )
         except OSWinException:
             logger.exception(f'Hyper-V: reconfiguration of VM "{name}" failed')
@@ -179,3 +188,13 @@ class HyperVHypervisor(DockerMachineHypervisor):
         )
 
         return volume_name
+
+class VMUtilsWithMem(VMUtils):
+    def get_vm_memory_limit(self, vm_name):
+        vmsetting = self._lookup_vm_check(vm_name)
+        si = _wqlutils.get_element_associated_class(
+            self._conn, self._MEMORY_SETTING_DATA_CLASS,
+            element_instance_id=vmsetting.InstanceID)[0]
+            
+        logger.debug('VM MemorySettingsData: %r', si)
+        return int(si.Limit)
