@@ -31,7 +31,7 @@ eth-tester==0.1.0-beta.24
 eth-utils==1.0.3
 ethereum==1.6.1
 Golem-Verificator==1.4.0
--e git://github.com/golemfactory/golem-messages.git@8bd4a6d1072d1e41e2a4cc8740e3efb639670e58#egg=Golem_Messages
+Golem-Messages==2.15.0
 Golem-Smart-Contracts-Interface==1.6.0
 h2==3.0.1
 hpack==3.0.0
