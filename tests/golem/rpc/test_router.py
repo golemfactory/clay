@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import time
 from threading import Thread
 
@@ -5,14 +6,14 @@ from autobahn.twisted import util
 from autobahn.wamp import ApplicationError
 
 from golem.rpc.router import CrossbarRouter
-from golem.rpc.session import Session, object_method_map, Client, Publisher
+from golem.rpc.session import Session, object_method_map, ClientProxy, Publisher
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.defer import setDebugging
 setDebugging(True)
 
 
-class MockService(object):
+class MockService():
 
     methods = dict(
         multiply='mock.multiply',
@@ -28,16 +29,20 @@ class MockService(object):
     def __init__(self):
         self.n_hello_received = 0
 
-    def multiply(self, arg1, arg2):
+    @classmethod
+    def multiply(cls, arg1, arg2):
         return arg1 * arg2
 
-    def divide(self, number, divisor=2):
+    @classmethod
+    def divide(cls, number, divisor=2):
         return number / divisor
 
-    def ping(self):
+    @classmethod
+    def ping(cls):
         return 'pong'
 
-    def exception(self):
+    @classmethod
+    def exception(cls):
         n = 2
         if n % 2 == 0:
             raise AttributeError("Mock error raised")
@@ -47,6 +52,12 @@ class MockService(object):
         self.n_hello_received += 1
 
 
+class MockProxy(ClientProxy):  # pylint: disable=too-few-public-methods
+    PREFIXES = (
+        'tests.golem.rpc.test_router.MockService.',
+    )
+
+
 TIMEOUT = 40
 
 
@@ -54,19 +65,16 @@ class TestRouter(TestDirFixtureWithReactor):
 
     class State(object):
 
-        def __init__(self, reactor):
+        def __init__(self):
             self.done = False
             self.errors = []
 
-            self.reactor = reactor
             self.router = None
 
             self.backend = MockService()
             self.backend_session = None
-            self.backend_deferred = None
             self.frontend = MockService()
             self.frontend_session = None
-            self.frontend_deferred = None
 
         def add_errors(self, *errors):
             print('Errors: {}'.format(errors))
@@ -77,7 +85,7 @@ class TestRouter(TestDirFixtureWithReactor):
 
     def setUp(self):
         super(TestRouter, self).setUp()
-        self.state = TestRouter.State(self.reactor_thread.reactor)
+        self.state = TestRouter.State()
 
     def test_init(self):
         from os.path import join, exists
@@ -100,28 +108,42 @@ class TestRouter(TestDirFixtureWithReactor):
         with self.assertRaises(IOError):
             CrossbarRouter(crossbar_dir=tmp_file)
 
+    @inlineCallbacks
     def _start_router(self):
         # pylint: disable=no-member
         self.state.router = CrossbarRouter(datadir=self.path, ssl=False)
-        deferred = self.state.router.start(self.state.reactor)
-        deferred.addCallbacks(self._start_backend_session,
-                              self.state.add_errors)
+        tx_deferred = self.state.router.start(self.reactor_thread.reactor)
+        tx_deferred.addErrback(self.state.add_errors)
+        yield tx_deferred
+        try:
+            yield self._start_backend_session()
+        except Exception as e:  # pylint: disable=broad-except
+            self.state.add_errors(e)
 
+    @inlineCallbacks
     def _start_backend_session(self, *_):
+        methods = object_method_map(
+            self.state.backend,
+            MockService.methods,
+        )
         self.state.backend_session = Session(
             self.state.router.address,
-            methods=object_method_map(
-                self.state.backend,
-                MockService.methods
-            )
+            methods=methods,
         )
 
-        self.state.backend_deferred = self.state.backend_session.connect()
-        self.state.backend_deferred.addCallbacks(
-            self._backend_session_started, self.state.add_errors
-        )
+        txdefer = self.state.backend_session.connect()
+        txdefer.addErrback(self.state.add_errors)
+        yield txdefer
+        yield self._backend_session_started()
 
+    @inlineCallbacks
     def _backend_session_started(self, *_):
+        txdefer = self.state.backend_session.register(
+            self.state.backend_session.exposed_procedures,
+            'sys.exposed_procedures',
+        )
+        txdefer.addErrback(self.state.add_errors)
+        yield txdefer
         self.state.frontend_session = Session(
             self.state.router.address,
             events=object_method_map(
@@ -130,14 +152,15 @@ class TestRouter(TestDirFixtureWithReactor):
             )
         )
 
-        self.state.frontend_deferred = self.state.frontend_session.connect()
-        self.state.frontend_deferred.addCallbacks(
-            self._frontend_session_started, self.state.add_errors
-        )
+        txdefer = self.state.frontend_session.connect()
+        txdefer.addErrback(self.state.add_errors)
+        yield txdefer
+        yield self._frontend_session_started()
 
     @inlineCallbacks
     def _frontend_session_started(self, *_):
-        client = Client(self.state.frontend_session, MockService.methods)
+        client = MockProxy(self.state.frontend_session)
+        yield client._ready
         publisher = Publisher(self.state.backend_session)
 
         multiply_result = yield client.multiply(2, 3)

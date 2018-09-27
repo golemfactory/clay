@@ -1,4 +1,6 @@
+import functools
 import logging
+import typing
 
 from autobahn.twisted import ApplicationSession
 from autobahn.twisted.websocket import WampWebSocketClientFactory
@@ -172,21 +174,20 @@ class Session(ApplicationSession):
             deferred.addErrback(self._on_error)
             yield deferred
 
+    def exposed_procedures(self):
+        exposed: typing.Dict[str, str] = {}
+        for registration in self._registrations.values():
+            fn = registration.endpoint.fn
+            qname = '.'.join((fn.__module__, fn.__qualname__))
+            exposed[registration.procedure] = qname
+        return exposed
+
     @inlineCallbacks
     def register_events(self, events):
         for method, rpc_name in events:
             deferred = self.subscribe(method, str(rpc_name))
             deferred.addErrback(self._on_error)
             self.subs[rpc_name] = yield deferred
-
-    @inlineCallbacks
-    def unregister_events(self, event_names):
-        for event_name in event_names:
-            if event_name in self.subs:
-                yield self.subs[event_name].unsubscribe()
-                self.subs.pop(event_name, None)
-            else:
-                logger.error("RPC: Not subscribed to: {}".format(event_name))
 
     def is_open(self):
         return self.connected and self.is_attached() and not self.is_closing()
@@ -196,22 +197,48 @@ class Session(ApplicationSession):
 
     @staticmethod
     def _on_error(err):
-        logger.error("RPC: Session error: {}".format(err))
+        logger.error("RPC: Session error: %r", err)
         return err
 
 
-class Client(object):
+class ClientProxy():  # pylint: disable=too-few-public-methods
+    PREFIXES = (
+        'golem.client.Client.',
+        'golem.node.Node.',
+    )
 
-    def __init__(self, session, method_map, timeout=2):
+    def __init__(self, session, timeout=2):
 
         self._session = session
         self._timeout = timeout
+        self._mapping = {}
 
-        for method_name, method_alias in list(method_map.items()):
-            setattr(self, method_name, self._make_call(method_alias))
+        if session is None:
+            self._ready = Deferred()
+            return
+        txdeferred = self._call('sys.exposed_procedures')
+        txdeferred.addCallback(self._init_mapping)
+        txdeferred.addErrback(logger.error)
+        self._ready = txdeferred
 
-    def _make_call(self, method_alias):
-        return lambda *a, **kw: self._call(str(method_alias), *a, **kw)
+    def __getattr__(self, name):
+        if name.startswith('_'):
+            return super().__getattr__(name)  # pylint: disable=no-member
+        if not self._ready.called:
+            raise RuntimeError("Proxy not ready yet")
+        try:
+            wamp_uri = self._mapping[name]
+        except KeyError:
+            raise AttributeError("{name} not mapped".format(name=name))
+        return functools.partial(self._call, wamp_uri)
+
+    def _init_mapping(self, result):
+        for wamp_uri, full_name in result.items():
+            for prefix in self.PREFIXES:
+                if not full_name.startswith(prefix):
+                    continue
+                short_name = full_name[len(prefix):]
+                self._mapping[short_name] = wamp_uri
 
     def _call(self, method_alias, *args, **kwargs):
         if self._session.is_open():
@@ -227,7 +254,7 @@ class Client(object):
 
     def _on_error(self, err):
         if not self._session.is_closing():
-            logger.error("RPC: call error: {}".format(err))
+            logger.error("RPC: call error: %r", err)
             return err
 
 
@@ -240,9 +267,9 @@ class Publisher(object):
         if self.session.is_open():
             self.session.publish(str(event_alias), *args, **kwargs)
         elif not self.session.is_closing():
-            logger.warning("RPC: Cannot publish '{}', "
-                           "session is not yet established"
-                           .format(event_alias))
+            logger.warning("RPC: Cannot publish %r, "
+                           "session is not yet established",
+                           event_alias)
 
 
 def object_method_map(obj, method_map):

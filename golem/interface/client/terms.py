@@ -5,7 +5,7 @@ import html2text
 
 from golem.core.deferred import sync_wait
 from golem.interface.command import group, command
-from golem.rpc.session import Client
+from golem.rpc.session import ClientProxy
 
 
 def yes_no(prompt: str, default: str = 'y') -> bool:
@@ -36,7 +36,7 @@ def read_accept_options() -> Dict[str, bool]:
 @group(help="Show and accept terms of use")
 class Terms:
 
-    client: Client
+    client: ClientProxy
 
     @command(help="Show terms of use")
     def show(self):  # pylint: disable=no-self-use

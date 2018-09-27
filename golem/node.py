@@ -202,6 +202,9 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         def on_connect(*_):
             methods = object_method_map(self, NODE_METHOD_MAP)
+            methods.append(
+                (self.rpc_session.exposed_procedures, 'sys.exposed_procedures'),
+            )
             self.rpc_session.add_methods(methods)
 
             self._rpc_publisher = Publisher(self.rpc_session)

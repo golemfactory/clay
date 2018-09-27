@@ -15,7 +15,7 @@ CREATE_TASK_TIMEOUT = 300  # s
 @group(help="Manage tasks")
 class Tasks:
 
-    client = None  # type: 'golem.rpc.session.Client'
+    client = None  # type: 'golem.rpc.session.ClientProxy'
 
     task_table_headers = ['id', 'ETA',
                           'subtasks', 'status', 'completion']

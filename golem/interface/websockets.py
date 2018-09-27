@@ -3,8 +3,7 @@ import sys
 from twisted.internet.defer import Deferred
 
 from golem.rpc.common import CROSSBAR_REALM, CROSSBAR_PORT, CROSSBAR_HOST
-from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP, NODE_METHOD_MAP
-from golem.rpc.session import Session, Client, WebSocketAddress
+from golem.rpc.session import Session, ClientProxy, WebSocketAddress
 
 
 class WebSocketCLI(object):
@@ -15,7 +14,7 @@ class WebSocketCLI(object):
         def __getattribute__(self, item):
             raise Exception("Cannot connect to Golem instance")
 
-    class CLIClient(Client):
+    class CLIClient(ClientProxy):
         # pylint: disable=too-few-public-methods
 
         def _call(self, method_alias, *args, **kwargs):
@@ -50,8 +49,7 @@ class WebSocketCLI(object):
         from twisted.internet import reactor, threads
 
         def on_connected(_):
-            methods = {**CORE_METHOD_MAP, **NODE_METHOD_MAP}
-            core_client = WebSocketCLI.CLIClient(self.session, methods)
+            core_client = WebSocketCLI.CLIClient(self.session)
             self.cli.register_client(core_client)
             threads.deferToThread(self.cli.execute, *args, **kwargs) \
                 .addBoth(self.shutdown)
