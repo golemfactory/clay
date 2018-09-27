@@ -355,10 +355,11 @@ class _TestRPCAuth(_TestRouter):
 
     @inlineCallbacks
     def _frontend_session_started(self, *_):
-        client = ClientProxy(self.state.frontend_session, MockService.methods)
+        client = ClientProxy(self.state.frontend_session)
         yield client._ready
-        result = yield getattr(client, self.state.method)("something")
-        assert result == "something"
+        echo_str = "something"
+        result = yield getattr(client, self.state.method)(echo_str)
+        self.assertEqual(result, echo_str)
         yield self.state.router.stop()
         self.state.done = True
 
