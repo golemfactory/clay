@@ -27,7 +27,6 @@ class HyperVHypervisor(DockerMachineHypervisor):
         mem='--hyperv-memory',
         cpu='--hyperv-cpu-count',
         disk='--hyperv-disk-size',
-        no_virt_mem='--hyperv-disable-dynamic-memory',
         boot2docker_url='--hyperv-boot2docker-url',
         virtual_switch='--hyperv-virtual-switch'
     )
@@ -59,8 +58,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
         args = super()._parse_create_params(**params)
         args += [self.OPTIONS['boot2docker_url'], self.BOOT2DOCKER_URL,
-                 self.OPTIONS['virtual_switch'], self.VIRTUAL_SWITCH,
-                 self.OPTIONS['no_virt_mem']]
+                 self.OPTIONS['virtual_switch'], self.VIRTUAL_SWITCH]
 
         if cpu is not None:
             args += [self.OPTIONS['cpu'], str(cpu)]
