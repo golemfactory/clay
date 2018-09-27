@@ -224,7 +224,7 @@ class Session(ApplicationSession):
 
 
 class ClientProxy():  # pylint: disable=too-few-public-methods
-    PREFIXES = (
+    PREFIXES: typing.Tuple[str, ...] = (
         'golem.client.Client.',
         'golem.node.Node.',
     )

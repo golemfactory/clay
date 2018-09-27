@@ -20,7 +20,12 @@ from golem.rpc.cert import CertificateManager
 from golem.rpc.common import CROSSBAR_DIR, CROSSBAR_PORT
 from golem.rpc.mapping.rpcmethodnames import DOCKER_URI
 from golem.rpc.router import CrossbarRouter
-from golem.rpc.session import Session, object_method_map, ClientProxy, Publisher
+from golem.rpc.session import (
+    ClientProxy,
+    object_method_map,
+    Publisher,
+    Session,
+)
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 
 setDebugging(True)
@@ -126,7 +131,7 @@ class _TestRouter(TestDirFixtureWithReactor):
         user = self.state.crsb_backend
         secret = self.state.crsb_backend_secret
 
-        self.state.backend_session = Session(  # pylint: disable=no-member
+        self.state.backend_session = self.Session(  # pylint: disable=no-member
             self.state.router.address,
             methods=object_method_map(
                 self.state.backend,
@@ -156,7 +161,7 @@ class _TestRouter(TestDirFixtureWithReactor):
             MockService.events
         ) if self.state.subscribe else None
 
-        self.state.frontend_session = Session(  # pylint: disable=no-member
+        self.state.frontend_session = self.Session(  # pylint: disable=no-member
             self.state.router.address,
             events=events,
             crsb_user=user,
@@ -194,11 +199,16 @@ class _TestRouter(TestDirFixtureWithReactor):
         self.reactor_thread.reactor.stop()
 
     def _run_test(self, expect_error, *args, **kwargs):
-        thread = Thread(target=self._start_router, args=args, kwargs=kwargs)
+        thread = Thread(target=self.in_thread, args=args, kwargs=kwargs)
         thread.daemon = True
         thread.run()
 
         self._wait_for_thread(expect_error=expect_error)
+
+    def in_thread(self, *args, **kwargs):
+        deferred = self._start_router(*args, **kwargs)
+        deferred.addCallback(lambda *args: print('Router finished', args))
+        deferred.addErrback(self.state.add_errors)
 
     def _start_router(self, *args, **kwargs):
         raise NotImplementedError()
