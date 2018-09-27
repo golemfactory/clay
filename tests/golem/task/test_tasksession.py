@@ -73,27 +73,30 @@ class ConcentMessageMixin():
 # pylint:disable=no-member
 class TaskSessionTaskToComputeTest(TestCase):
     def setUp(self):
+        self.requestor_keys = cryptography.ECCx(None)
+        self.requestor_key = encode_hex(self.requestor_keys.raw_pubkey)
+        self.provider_keys = cryptography.ECCx(None)
+        self.provider_key = encode_hex(self.provider_keys.raw_pubkey)
+
         self.task_manager = Mock(tasks_states={}, tasks={})
-        self.conn = Mock(
-            server=Mock(task_manager=self.task_manager)
-        )
+        server = Mock(task_manager=self.task_manager)
+        server.get_key_id = lambda: self.provider_key
+        self.conn = Mock(server=server)
         self.use_concent = True
         self.task_id = uuid.uuid4().hex
         self.node_name = 'ABC'
-        self.requestor_keys = cryptography.ECCx(None)
-        self.requestor_key = encode_hex(self.requestor_keys.raw_pubkey)
 
     def _get_task_session(self):
         ts = TaskSession(self.conn)
         ts._is_peer_blocked = Mock(return_value=False)
         ts.verified = True
         ts.concent_service.enabled = self.use_concent
-        ts.key_id = 'unittest_key_id'
+        ts.key_id = 'requestor key id'
         return ts
 
     def _get_requestor_tasksession(self, accept_provider=True):
         ts = self._get_task_session()
-        ts.key_id = "DEF"
+        ts.key_id = "provider key id"
         ts.can_be_not_encrypted.append(message.tasks.WantToComputeTask)
         ts.task_server.should_accept_provider.return_value = accept_provider
         ts.task_server.config_desc.max_price = 100
@@ -164,6 +167,8 @@ class TaskSessionTaskToComputeTest(TestCase):
         self.assertEqual(mt.max_resource_size, params['max_resource_size'])
         self.assertEqual(mt.max_memory_size, params['max_memory_size'])
         self.assertEqual(mt.num_cores, params['num_cores'])
+        self.assertEqual(mt.provider_public_key, self.provider_key)
+        self.assertEqual(mt.provider_ethereum_public_key, self.provider_key)
 
     @patch('golem.network.history.MessageHistoryService.instance')
     def test_cannot_assign_task_provider_not_accepted(self, *_):
