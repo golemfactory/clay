@@ -50,7 +50,7 @@ humanize==0.5.1
 raven
 Golem-Messages==2.14.0
 Golem-Verificator==1.4.0
-Golem-Smart-Contracts-Interface==1.5.1
+Golem-Smart-Contracts-Interface==1.6.0
 html2text==2018.1.9
 zxcvbn-python
 os-win

@@ -1,5 +1,5 @@
 import abc
-from typing import List
+from typing import List, Dict
 
 import enforce
 
@@ -11,6 +11,8 @@ from golem.resource.dirmanager import find_task_script
 
 @enforce.runtime_validation()
 class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
+    # pylint: disable=no-self-use
+
     def __init__(self, tag=None, image_id=None, additional_images: List[DockerImage] = None):
 
         if tag is None:
@@ -43,6 +45,10 @@ class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
     def check_support(self) -> SupportStatus:
         return self.check_docker_images().join(Environment.check_support(self))
 
+    def supports_image(self, docker_image: DockerImage) -> bool:
+        return any(image.repository == docker_image.repository
+                   for image in self.docker_images)
+
     def description(self):
         descr = Environment.description(self)
 
@@ -52,6 +58,15 @@ class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
         descr += "\n"
 
         return descr
+
+    def get_container_config(self) -> Dict:
+        return dict(
+            runtime=None,
+            volumes=[],
+            binds={},
+            devices=[],
+            environment={},
+        )
 
     @property
     @abc.abstractmethod

@@ -1,9 +1,9 @@
 import logging
+import subprocess
 from os import path
 from pathlib import Path
-import subprocess
 from subprocess import CalledProcessError, TimeoutExpired
-from typing import Optional, Union, Any, List, Dict, ClassVar
+from typing import Optional, Union, Any, List, Dict, ClassVar, Iterable
 
 from os_win.exceptions import OSWinException
 from os_win.utils import _wqlutils
@@ -14,8 +14,7 @@ from golem.docker import smbshare
 from golem.docker.client import local_client
 from golem.docker.config import CONSTRAINT_KEYS, MIN_CONSTRAINTS
 from golem.docker.hypervisor.docker_machine import DockerMachineHypervisor
-from golem.docker.job import DockerJob
-from golem.docker.task_thread import DockerDirMapping
+from golem.docker.task_thread import DockerBind
 
 logger = logging.getLogger(__name__)
 
@@ -139,25 +138,14 @@ class HyperVHypervisor(DockerMachineHypervisor):
     def uses_volumes() -> bool:
         return True
 
-    def create_volumes(self, dir_mapping: DockerDirMapping) -> dict:
+    def create_volumes(self, binds: Iterable[DockerBind]) -> dict:
         my_ip = self._get_ip_for_sharing()
-        work_share = self._create_volume(my_ip, dir_mapping.work)
-        res_share = self._create_volume(my_ip, Path(dir_mapping.resources))
-        out_share = self._create_volume(my_ip, dir_mapping.output)
-
         return {
-            work_share: {
-                "bind": DockerJob.WORK_DIR,
-                "mode": "rw"
-            },
-            res_share: {
-                "bind": DockerJob.RESOURCES_DIR,
-                "mode": "rw"
-            },
-            out_share: {
-                "bind": DockerJob.OUTPUT_DIR,
-                "mode": "rw"
+            self._create_volume(my_ip, bind.source): {
+                'bind': bind.target,
+                'mode': bind.mode
             }
+            for bind in binds
         }
 
     def _create_volume(self, my_ip: str, shared_dir: Path) -> str:

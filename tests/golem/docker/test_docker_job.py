@@ -84,7 +84,8 @@ class TestDockerJob(DockerTestCase):
         if self.test_job and self.test_job.container:
             client = local_client()
             try:
-                client.remove_container(self.test_job.container_id, force=True)
+                client.remove_container(self.test_job.container_id,
+                                        force=True)
             except docker.errors.APIError:
                 pass  # Already removed?
         self.test_job = None
@@ -107,7 +108,7 @@ class TestDockerJob(DockerTestCase):
                     },
                     self.resources_dir: {
                         "bind": DockerJob.RESOURCES_DIR,
-                        "mode": "ro"
+                        "mode": "rw"
                     },
                     self.output_dir: {
                         "bind": DockerJob.OUTPUT_DIR,
@@ -217,7 +218,7 @@ class TestBaseDockerJob(TestDockerJob):
             self.assertTrue(work_mount["RW"])
             self.assertIsNotNone(resources_mount)
             self.assertEqual(resources_mount["Source"], resource_dir)
-            self.assertFalse(resources_mount["RW"])
+            self.assertTrue(resources_mount["RW"])
             self.assertIsNotNone(output_mount)
             self.assertEqual(output_mount["Source"], output_dir)
             self.assertTrue(output_mount["RW"])

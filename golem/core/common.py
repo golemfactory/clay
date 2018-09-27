@@ -6,6 +6,7 @@ import sys
 from calendar import timegm
 from datetime import datetime
 from multiprocessing import cpu_count
+from typing import List
 
 import pytz
 
@@ -95,6 +96,24 @@ def nt_path_to_posix_path(path):
     if len(parts) > 1:
         return "/" + parts[0].lower() + parts[1]
     return path
+
+
+def posix_path(path):
+    if is_windows():
+        return nt_path_to_posix_path(path)
+    return path
+
+
+def unix_pipe(source_cmd: List[str], sink_cmd: List[str]) -> str:
+    source = subprocess.Popen(source_cmd,
+                              stdout=subprocess.PIPE)
+    sink = subprocess.Popen(sink_cmd,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            stdin=source.stdout)
+    source.stdout.close()
+    stdout, _ = sink.communicate()
+    return stdout.strip()
 
 
 def get_timestamp_utc():

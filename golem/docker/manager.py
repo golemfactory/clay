@@ -3,7 +3,7 @@ import os
 import time
 from pathlib import Path
 from threading import Thread
-from typing import Optional, Callable, Any
+from typing import Optional, Callable, Any, Iterable
 
 from golem.core.common import is_linux, is_windows, is_osx
 from golem.core.threads import ThreadQueueExecutor
@@ -13,8 +13,7 @@ from golem.docker.config import DockerConfigManager, APPS_DIR, IMAGES_INI, \
 from golem.docker.hypervisor.docker_for_mac import DockerForMac
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.xhyve import XhyveHypervisor
-from golem.docker.job import DockerJob
-from golem.docker.task_thread import DockerDirMapping
+from golem.docker.task_thread import DockerBind
 from golem.report import report_calls, Component
 
 logger = logging.getLogger(__name__)
@@ -140,26 +139,19 @@ class DockerManager(DockerConfigManager):
             cpu_count=cpu_count
         )
 
-    def get_host_config_for_task(self, dir_mapping: DockerDirMapping) -> dict:
-        host_confg = dict(self._container_host_config)
+    def get_host_config_for_task(self, binds: Iterable[DockerBind]) -> dict:
+        host_config = dict(self._container_host_config)
         if self.hypervisor and self.hypervisor.uses_volumes():
-            host_confg['binds'] = self.hypervisor.create_volumes(dir_mapping)
+            host_config['binds'] = self.hypervisor.create_volumes(binds)
         else:
-            host_confg['binds'] = {
-                str(dir_mapping.work): {
-                    "bind": DockerJob.WORK_DIR,
-                    "mode": "rw"
-                },
-                str(dir_mapping.resources): {
-                    "bind": DockerJob.RESOURCES_DIR,
-                    "mode": "rw"
-                },
-                str(dir_mapping.output): {
-                    "bind": DockerJob.OUTPUT_DIR,
-                    "mode": "rw"
+            host_config['binds'] = {
+                str(bind.source): {
+                    'bind': bind.target,
+                    'mode': bind.mode
                 }
+                for bind in binds
             }
-        return host_confg
+        return host_config
 
     def constrain(self, **params) -> bool:
         if not self.hypervisor:
@@ -228,6 +220,11 @@ class DockerManager(DockerConfigManager):
 
         for entry in self._collect_images():
             version = self._image_version(entry)
+
+            if not self._image_supported(entry):
+                logger.warning('Image %s is not supported', version)
+                continue
+
             if not self.command('images', args=[version]):
                 entries.append(entry)
 
@@ -239,7 +236,7 @@ class DockerManager(DockerConfigManager):
         cwd = os.getcwd()
 
         for entry in entries:
-            image, docker_file, tag, build_dir = entry
+            image, docker_file, _, build_dir = entry[:4]
             version = self._image_version(entry)
 
             try:
@@ -258,6 +255,11 @@ class DockerManager(DockerConfigManager):
 
         for entry in self._collect_images():
             version = self._image_version(entry)
+
+            if not self._image_supported(entry):
+                logger.warning('Image %s is not supported', version)
+                continue
+
             if not self.command('images', args=[version]):
                 entries.append(entry)
 
@@ -276,8 +278,25 @@ class DockerManager(DockerConfigManager):
 
     @classmethod
     def _image_version(cls, entry):
-        image, _, tag, _ = entry
+        image, _, tag = entry[:3]
         return '{}:{}'.format(image, tag)
+
+    @classmethod
+    def _image_supported(cls, entry):
+        if len(entry) < 5:
+            return True
+
+        from importlib import import_module
+
+        try:
+            path = entry[4]
+            package, name = path.rsplit('.', 1)
+            module = import_module(package)
+            is_supported = getattr(module, name)
+        except (AttributeError, TypeError, ModuleNotFoundError, ImportError):
+            return False
+        else:
+            return is_supported(entry[0])
 
     @classmethod
     def _collect_images(cls):

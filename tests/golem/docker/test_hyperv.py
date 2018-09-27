@@ -7,7 +7,7 @@ from os_win.exceptions import OSWinException
 
 from golem.docker.config import DOCKER_VM_NAME
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
-from golem.docker.job import DockerJob
+from golem.docker.task_thread import DockerBind
 
 
 class TestHyperVHypervisor(TestCase):
@@ -97,10 +97,9 @@ class TestHyperVHypervisor(TestCase):
 
     def test_create_volumes(self):
         tmp_dir = Path(tempfile.gettempdir())
-        dir_mapping = Mock(
-            work=(tmp_dir / 'work'),
-            resources=(tmp_dir / 'res'),
-            output=(tmp_dir / 'out')
+        binds = (
+            DockerBind(tmp_dir / 'share1', '/test/work', 'rw'),
+            DockerBind(tmp_dir / 'share2', '/test/res', 'ro'),
         )
 
         def _create_volume(my_ip, shared_dir):
@@ -109,20 +108,16 @@ class TestHyperVHypervisor(TestCase):
         with patch.object(self.hyperv, '_get_ip_for_sharing') as get_ip, \
                 patch.object(self.hyperv, '_create_volume', _create_volume):
             get_ip.return_value = '127.0.0.1'
-            volumes = self.hyperv.create_volumes(dir_mapping)
+            volumes = self.hyperv.create_volumes(binds)
             self.assertDictEqual(volumes, {
-                '127.0.0.1/work': {
-                    'bind': DockerJob.WORK_DIR,
+                '127.0.0.1/share1': {
+                    'bind': '/test/work',
                     'mode': 'rw'
                 },
-                '127.0.0.1/res': {
-                    'bind': DockerJob.RESOURCES_DIR,
-                    'mode': 'rw'
+                '127.0.0.1/share2': {
+                    'bind': '/test/res',
+                    'mode': 'ro'
                 },
-                '127.0.0.1/out': {
-                    'bind': DockerJob.OUTPUT_DIR,
-                    'mode': 'rw'
-                }
             })
 
     def test_create_volume_wrong_dir(self):
