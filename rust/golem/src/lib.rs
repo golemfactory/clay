@@ -7,7 +7,7 @@ mod marketplace;
 
 #[allow(non_snake_case)]
 fn marketplace__pick_provider(py: Python, pyoffers: PyList) -> PyResult<u32> {
-    let mut offers = vec![];
+    let mut offers = Vec::with_capacity(pyoffers.len(py));
     for pyoffer in pyoffers.iter(py) {
         offers.push(pyoffer.extract::<f64>(py)?);
     }
