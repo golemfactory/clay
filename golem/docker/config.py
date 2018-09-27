@@ -35,16 +35,13 @@ DEFAULT_HOST_CONFIG = dict(
 CONSTRAINT_KEYS = dict(
     mem='memory_size',
     cpu='cpu_count',
-    cpu_cap='cpu_execution_cap'
 )
 MIN_CONSTRAINTS = dict(
     memory_size=1024,
-    cpu_execution_cap=10,
     cpu_count=1
 )
 DEFAULTS = dict(
     memory_size=1024,
-    cpu_execution_cap=100,
     cpu_count=1
 )
 

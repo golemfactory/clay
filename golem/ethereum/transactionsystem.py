@@ -22,6 +22,7 @@ from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
 from eth_utils import decode_hex, is_address
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import (
+    contracts,
     JsonTransactionsStorage,
     new_sci,
     SmartContractsInterface,
@@ -155,6 +156,7 @@ class TransactionSystem(LoopingCallService):
             eth_addr,
             self._config.CHAIN,
             JsonTransactionsStorage(self._datadir / self.TX_FILENAME),
+            self._config.CONTRACT_ADDRESSES,
             lambda tx: tx.sign(self._privkey),
         )
 

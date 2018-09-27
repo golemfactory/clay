@@ -1,4 +1,4 @@
-from unittest import TestCase
+from unittest import mock, TestCase
 
 from apps.appsmanager import AppsManager
 from apps.core.benchmark.benchmarkrunner import CoreBenchmark
@@ -13,6 +13,7 @@ class TestAppsManager(TestCase):
     def _get_loaded_app_manger():
         app_manager = AppsManager()
         app_manager.load_all_apps()
+        app_manager._benchmark_enabled = mock.Mock(return_value=True)
         return app_manager
 
     def test_get_env_list(self):
@@ -30,8 +31,9 @@ class TestAppsManager(TestCase):
     def test_get_benchmarks(self):
         app_manager = self._get_loaded_app_manger()
         benchmarks = app_manager.get_benchmarks()
-        # We have 2 compuational envs registered
-        assert len(benchmarks) == 3
+        # We have at least 2 computational environments registered.
+        # One of them is system and hardware dependent (BLENDER_NVGPU)
+        assert len(benchmarks) >= 3
         # Let's check that benchmarks values are defined properly
         for benchmark in benchmarks.values():
             benchmark, builder_class = benchmark

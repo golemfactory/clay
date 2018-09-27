@@ -33,11 +33,11 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
         config_item_list = list(dmm._config.items())
         assert all([val == DEFAULTS[key] for key, val in config_item_list])
 
-        config = MockConfig(0, 1024 * 1024, 512)
+        config = MockConfig(0, 0, 0)
 
         dmm.build_config(config)
         assert len(dmm._config) < len(config.to_dict())
-        assert dmm._config != DEFAULTS
+        assert dmm._config == MIN_CONSTRAINTS
 
         self.assertEqual(dmm._config.get('cpu_count'),
                          MIN_CONSTRAINTS.get('cpu_count'))
@@ -149,12 +149,13 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         dmm = MockDockerManager()
 
-        with mock.patch('golem.docker.manager.is_windows',
-                        return_value=True):
+        with mock.patch('golem.docker.hypervisor.virtualbox.init_pythoncom'):
+            with mock.patch('golem.docker.manager.is_windows',
+                            return_value=True):
 
-            assert dmm._select_hypervisor()
-            assert virtualbox_instance.called
-            assert not xhyve_instance.called
+                assert dmm._select_hypervisor()
+                assert virtualbox_instance.called
+                assert not xhyve_instance.called
 
         reset()
 
@@ -188,15 +189,16 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         with mock.patch('golem.docker.manager.VirtualBoxHypervisor.instance',
                         mock.Mock(vm_running=mock.Mock(return_value=False))):
-            # pylint: disable=no-member
+            with mock.patch('golem.docker.hypervisor.virtualbox'
+                            '.init_pythoncom'):
+                with mock.patch.object(dmm, 'command'):
+                    # pylint: disable=no-member
 
-            with mock.patch.object(dmm, 'command'):
-                dmm.check_environment()
-
-                assert dmm.hypervisor
-                assert dmm.hypervisor.setup.called
-                assert dmm.pull_images.called
-                assert not dmm.build_images.called
+                    dmm.check_environment()
+                    assert dmm.hypervisor
+                    assert dmm.hypervisor.setup.called
+                    assert dmm.pull_images.called
+                    assert not dmm.build_images.called
 
     @mock.patch('golem.docker.manager.is_windows', return_value=False)
     @mock.patch('golem.docker.manager.is_linux', return_value=True)
@@ -289,7 +291,13 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
             dmm = MockDockerManager()
             dmm.pull_images()
 
-        assert pulls[0] == 4
+        from apps.core import nvgpu
+        if nvgpu.is_supported():
+            expected = 6
+        else:
+            expected = 4
+
+        assert pulls[0] == expected
 
     @mock.patch('os.chdir')
     def test_build_images(self, os_chdir):
@@ -312,9 +320,15 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
             dmm = MockDockerManager()
             dmm.build_images()
 
-        assert builds[0] == 4
-        assert tags[0] == 4
-        assert len(os_chdir.mock_calls) == 8
+        from apps.core import nvgpu
+        if nvgpu.is_supported():
+            expected = 6
+        else:
+            expected = 4
+
+        assert builds[0] == expected
+        assert tags[0] == expected
+        assert len(os_chdir.mock_calls) == 2 * expected
 
     def test_recover_vm_connectivity(self):
         callback = mock.Mock()
