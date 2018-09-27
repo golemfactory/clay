@@ -11,6 +11,7 @@ from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem import testutils
+from golem.docker.manager import DockerManager
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
@@ -65,6 +66,7 @@ class TestBenchmarkRunner(testutils.TempDirFixture):
         success = mock.MagicMock()
         error = mock.MagicMock()
 
+        DockerManager.install()
         self.br = BenchmarkRunner(task, self.path, success, error, benchmark)
         self.br.run()
         if self.br.tt:

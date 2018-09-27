@@ -1,8 +1,9 @@
 import logging
 import os
 import time
+from pathlib import Path
 from threading import Thread
-from typing import Optional
+from typing import Optional, Callable, Any
 
 from golem.core.common import is_linux, is_windows, is_osx
 from golem.core.threads import ThreadQueueExecutor
@@ -10,8 +11,10 @@ from golem.docker.commands.docker import DockerCommandHandler
 from golem.docker.config import DockerConfigManager, APPS_DIR, IMAGES_INI, \
     CONSTRAINT_KEYS, MIN_CONSTRAINTS, DEFAULTS
 from golem.docker.hypervisor.docker_for_mac import DockerForMac
-from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
+from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.xhyve import XhyveHypervisor
+from golem.docker.job import DockerJob
+from golem.docker.task_thread import DockerDirMapping
 from golem.report import report_calls, Component
 
 logger = logging.getLogger(__name__)
@@ -78,8 +81,12 @@ class DockerManager(DockerConfigManager):
 
     def _select_hypervisor(self):
         if is_windows():
-            if VirtualBoxHypervisor.is_available():
-                return VirtualBoxHypervisor.instance(self.get_config)
+            if HyperVHypervisor.is_available():
+                return HyperVHypervisor.instance(self.get_config)
+            # TODO: Re-enable when the installer is updated
+            # to include Docker Toolbox as a fallback option
+            # if VirtualBoxHypervisor.is_available():
+            #     return VirtualBoxHypervisor.instance(self.get_config)
         elif is_osx():
             if DockerForMac.is_available():
                 return DockerForMac.instance(self.get_config)
@@ -90,8 +97,17 @@ class DockerManager(DockerConfigManager):
     def get_config(self) -> dict:
         return dict(self._config)
 
-    def update_config(self, status_callback, done_callback, in_background=True):
+    def update_config(
+            self,
+            status_callback: Callable[[], Any],
+            done_callback: Callable[[bool], Any],
+            work_dir: Path,
+            in_background: bool = True
+    ) -> None:
         self.check_environment()
+
+        if self.hypervisor:
+            self.hypervisor.update_work_dir(work_dir)
 
         if in_background:
             thread = Thread(target=self._wait_for_tasks,
@@ -114,6 +130,8 @@ class DockerManager(DockerConfigManager):
         try:
             memory_size = max(int(config_desc.max_memory_size) // 1024,
                               memory_size)
+            # Hyper-V expects a multiple of 2 MB
+            memory_size = memory_size // 2 * 2
         except (TypeError, ValueError) as exc:
             logger.warning('Cannot read the memory amount: %r', exc)
 
@@ -121,6 +139,27 @@ class DockerManager(DockerConfigManager):
             memory_size=memory_size,
             cpu_count=cpu_count
         )
+
+    def get_host_config_for_task(self, dir_mapping: DockerDirMapping) -> dict:
+        host_confg = dict(self._container_host_config)
+        if self.hypervisor and self.hypervisor.uses_volumes():
+            host_confg['binds'] = self.hypervisor.create_volumes(dir_mapping)
+        else:
+            host_confg['binds'] = {
+                str(dir_mapping.work): {
+                    "bind": DockerJob.WORK_DIR,
+                    "mode": "rw"
+                },
+                str(dir_mapping.resources): {
+                    "bind": DockerJob.RESOURCES_DIR,
+                    "mode": "rw"
+                },
+                str(dir_mapping.output): {
+                    "bind": DockerJob.OUTPUT_DIR,
+                    "mode": "rw"
+                }
+            }
+        return host_confg
 
     def constrain(self, **params) -> bool:
         if not self.hypervisor:

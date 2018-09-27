@@ -19,10 +19,10 @@ logger = logging.getLogger(__name__)
 
 class BenchmarkManager(object):
     def __init__(self, node_name, task_server, root_path, benchmarks=None):
-        self.benchmarks = benchmarks
         self.node_name = node_name
         self.task_server = task_server
         self.dir_manager = DirManager(root_path)
+        self.benchmarks = benchmarks
 
     @staticmethod
     def get_saved_benchmarks_ids():
@@ -63,10 +63,14 @@ class BenchmarkManager(object):
         builder = task_builder(Node(),
                                task_state.definition,
                                self.dir_manager)
-        t = builder.build()
-        br = BenchmarkRunner(t, self.task_server.client.datadir,
-                             success_callback, error_callback,
-                             benchmark)
+        task = builder.build()
+        br = BenchmarkRunner(
+            task=task,
+            root_path=self.dir_manager.root_path,
+            success_callback=success_callback,
+            error_callback=error_callback,
+            benchmark=benchmark
+        )
         br.run()
 
     def run_all_benchmarks(self, success=None, error=None):

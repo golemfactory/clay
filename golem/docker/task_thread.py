@@ -139,6 +139,11 @@ class DockerTaskThread(TaskThread):
 
     def _run_docker_job(self) -> Optional[int]:
         self.dir_mapping.mkdirs()
+        assert self.docker_manager is not None
+        # PyLint still thinks docker_manager is of type DockerConfigManager
+        # pylint: disable=no-member
+        host_config = self.docker_manager.get_host_config_for_task(
+            self.dir_mapping)
 
         params = dict(
             image=self.image,
@@ -147,8 +152,7 @@ class DockerTaskThread(TaskThread):
             resources_dir=str(self.dir_mapping.resources),
             work_dir=str(self.dir_mapping.work),
             output_dir=str(self.dir_mapping.output),
-            host_config=(self.docker_manager.container_host_config
-                         if self.docker_manager else None),
+            host_config=host_config
         )
 
         with DockerJob(**params) as job, MemoryChecker(self.check_mem) as mc:

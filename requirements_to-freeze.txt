@@ -13,7 +13,7 @@ asn1crypto==0.22.0
 pyasn1==0.4.1
 pysha3>=1.0.2
 pytz
-six==1.10.0
+six==1.11.0
 Twisted==17.9.0
 cffi==1.10.0
 ethereum==1.6.1
@@ -53,3 +53,4 @@ Golem-Verificator==1.4.0
 Golem-Smart-Contracts-Interface==1.5.1
 html2text==2018.1.9
 zxcvbn-python
+os-win

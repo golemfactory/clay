@@ -1,7 +1,6 @@
 import logging
-import subprocess
 from contextlib import contextmanager
-from typing import Dict, Optional
+from typing import Dict, Optional, ClassVar
 
 from golem.core.common import is_windows
 from golem.docker.config import CONSTRAINT_KEYS, DOCKER_VM_NAME, \
@@ -14,6 +13,8 @@ logger = logging.getLogger(__name__)
 
 
 class VirtualBoxHypervisor(DockerMachineHypervisor):
+
+    DRIVER_NAME: ClassVar[str] = 'virtualbox'
 
     power_down_states = [
         'Saved', 'Aborted'
@@ -102,18 +103,6 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
 
         self.start_vm()
         self._set_env()
-
-    @report_calls(Component.hypervisor, 'vm.create')
-    def create(self, name: Optional[str] = None, **params) -> bool:
-        logger.info("VirtualBox: creating VM '{}'".format(name))
-
-        try:
-            self.command('create', name, args=('--driver', 'virtualbox'))
-            return True
-        except subprocess.CalledProcessError as e:
-            logger.error("VirtualBox: error creating VM '%s': %s", name, e)
-            logger.debug("Hypervisor_output: %s", e.output)
-        return False
 
     def constraints(self, name: Optional[str] = None) -> Dict:
         result = {}

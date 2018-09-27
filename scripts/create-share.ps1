@@ -31,7 +31,7 @@ if (!(Test-Path -Path $SharedDirPath -PathType Container)) {
 }
 
 # Normalize path
-$SharedDirPath = Convert-Path -Path $SharedDirPath
+$SharedDirPath = (Convert-Path -Path $SharedDirPath).TrimEnd("\").ToLower()
 
 "Setting directory ACL..."
 

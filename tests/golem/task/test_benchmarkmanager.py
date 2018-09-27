@@ -59,9 +59,14 @@ class TestBenchmarkManager(DatabaseFixture, PEP8MixIn):
     def test_run_all_benchmarks(self, br_mock, mpt_mock, *_):
         # given
         mpt_mock.return_value = 314.15  # default performance
-        # call success callback with performance = call_count * 100
-        br_mock.return_value.run.side_effect = lambda: br_mock.call_args[0][2](
-            br_mock.call_count * 100)
+
+        def _run():
+            # call success callback with performance = call_count * 100
+            br_mock.assert_called()
+            success_callback = br_mock.call_args[1].get('success_callback')
+            assert callable(success_callback)
+            return success_callback(br_mock.call_count * 100)
+        br_mock.return_value.run.side_effect = _run
 
         # when
         self.b.run_all_benchmarks()
@@ -80,9 +85,14 @@ class TestBenchmarkManager(DatabaseFixture, PEP8MixIn):
     def test_run_non_default_benchmarks(self, br_mock, mpt_mock, *_):
         # given
         Performance.update_or_create(DefaultEnvironment.get_id(), -7)
-        # call success callback with performance = call_count * 100
-        br_mock.return_value.run.side_effect = lambda: br_mock.call_args[0][2](
-            br_mock.call_count * 100)
+
+        def _run():
+            # call success callback with performance = call_count * 100
+            br_mock.assert_called()
+            success_callback = br_mock.call_args[1].get('success_callback')
+            assert callable(success_callback)
+            return success_callback(br_mock.call_count * 100)
+        br_mock.return_value.run.side_effect = _run
 
         # when
         self.b.run_all_benchmarks()

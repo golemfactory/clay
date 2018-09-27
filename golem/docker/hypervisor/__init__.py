@@ -2,11 +2,13 @@ import logging
 import subprocess
 from abc import ABCMeta
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Dict, Optional
 
 from golem.docker.commands.docker import DockerCommandHandler
 from golem.docker.config import DOCKER_VM_NAME, GetConfigFunction, \
     DOCKER_VM_STATUS_RUNNING
+from golem.docker.task_thread import DockerDirMapping
 from golem.report import Component, report_calls
 
 logger = logging.getLogger(__name__)
@@ -26,6 +28,7 @@ class Hypervisor(metaclass=ABCMeta):
 
         self._get_config = get_config
         self._vm_name = vm_name
+        self._work_dir: Optional[Path] = None
 
     @classmethod
     def is_available(cls) -> bool:
@@ -106,7 +109,7 @@ class Hypervisor(metaclass=ABCMeta):
             logger.warning("Docker: failed to stop the VM: %r", e)
         return False
 
-    def create(self, name: Optional[str] = None, **params) -> bool:
+    def create(self, vm_name: Optional[str] = None, **params) -> bool:
         raise NotImplementedError
 
     def constrain(self, name: Optional[str] = None, **params) -> None:
@@ -121,4 +124,14 @@ class Hypervisor(metaclass=ABCMeta):
 
     @contextmanager
     def recover_ctx(self, name: Optional[str] = None):
+        raise NotImplementedError
+
+    def update_work_dir(self, work_dir: Path) -> None:
+        self._work_dir = work_dir
+
+    @staticmethod
+    def uses_volumes() -> bool:
+        return False
+
+    def create_volumes(self, dir_mapping: DockerDirMapping) -> dict:
         raise NotImplementedError
