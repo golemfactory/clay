@@ -3,12 +3,12 @@ import subprocess
 from abc import ABCMeta
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, Iterable
 
 from golem.docker.commands.docker import DockerCommandHandler
 from golem.docker.config import DOCKER_VM_NAME, GetConfigFunction, \
     DOCKER_VM_STATUS_RUNNING
-from golem.docker.task_thread import DockerDirMapping
+from golem.docker.task_thread import DockerBind
 from golem.report import Component, report_calls
 
 logger = logging.getLogger(__name__)
@@ -133,5 +133,5 @@ class Hypervisor(metaclass=ABCMeta):
     def uses_volumes() -> bool:
         return False
 
-    def create_volumes(self, dir_mapping: DockerDirMapping) -> dict:
+    def create_volumes(self, binds: Iterable[DockerBind]) -> dict:
         raise NotImplementedError

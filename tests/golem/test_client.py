@@ -339,6 +339,7 @@ class TestClient(TestClientBase):
 
         task_dict = {
             'bid': 5.0,
+            'compute_on': 'cpu',
             'name': 'test task',
             'options': {
                 'difficulty': 1337,
@@ -701,9 +702,10 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
     # pylint: disable=too-many-public-methods
     def setUp(self):
         super().setUp()
-        self.client.apps_manager.load_all_apps()
         self.client.sync = Mock()
         self.client.p2pservice = Mock(peers={})
+        self.client.apps_manager._benchmark_enabled = Mock(return_value=True)
+        self.client.apps_manager.load_all_apps()
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler', ):
             self.client.task_server = TaskServer(
@@ -804,6 +806,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             total_tasks=5,
             get_price=Mock(return_value=900),
             subtask_price=1000,
+            spec=Task,
         )
 
         c.concent_service.enabled = False
@@ -834,6 +837,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
     @patch('golem.client.async_run', side_effect=mock_async_run)
     def test_enqueue_new_task(self, *_):
         t_dict = {
+            'compute_on': 'cpu',
             'resources': [
                 '/Users/user/Desktop/folder/texture.tex',
                 '/Users/user/Desktop/folder/model.mesh',

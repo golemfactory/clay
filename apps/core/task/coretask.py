@@ -260,6 +260,8 @@ class CoreTask(Task):
             raise Exception("Subtask {} has wrong type".format(subtask_id))
 
         subtask["status"] = SubtaskStatus.finished
+        node_id = self.subtasks_given[subtask_id]['node_id']
+        TaskClient.assert_exists(node_id, self.counting_nodes).accept()
 
     @handle_key_error
     def verify_subtask(self, subtask_id):
@@ -524,7 +526,6 @@ class CoreTask(Task):
         new_subtask = self.subtasks_given[subtask_id]
 
         new_subtask['node_id'] = old_subtask_info['node_id']
-        new_subtask['perf'] = old_subtask_info['perf']
         new_subtask['ctd']['performance'] = \
             old_subtask_info['ctd']['performance']
 
@@ -573,6 +574,7 @@ class CoreTaskBuilder(TaskBuilder):
         definition = task_type.definition()
         definition.options = task_type.options()
         definition.task_type = task_type.name
+        definition.compute_on = dictionary.get('compute_on', 'cpu')
         definition.resources = set(dictionary['resources'])
         definition.total_subtasks = int(dictionary['subtasks'])
         definition.main_program_file = task_type.defaults.main_program_file

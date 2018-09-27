@@ -25,7 +25,7 @@ from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener, Task, TaskHeader
+from golem.task.taskbase import TaskEventListener, Task, TaskHeader, TaskPurpose
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
@@ -136,13 +136,21 @@ class TaskManager(TaskEventListener):
         return self.root_path
 
     def create_task(self, dictionary, minimal=False):
+        purpose = TaskPurpose.TESTING if minimal else TaskPurpose.REQUESTING
         type_name = dictionary['type'].lower()
-        task_type = self.task_types[type_name]
+        compute_on = dictionary.get('compute_on', 'cpu').lower()
+        is_requesting = purpose == TaskPurpose.REQUESTING
+
+        if type_name == "blender" and is_requesting and compute_on == "gpu":
+            type_name = type_name + "_nvgpu"
+
+        task_type = self.task_types[type_name].for_purpose(purpose)
         builder_type = task_type.task_builder_type
 
         definition = builder_type.build_definition(task_type, dictionary,
                                                    minimal)
         definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
+        definition.concent_enabled = dictionary['concent_enabled']
         builder = builder_type(self.node, definition, self.dir_manager)
 
         return builder.build()
@@ -705,13 +713,14 @@ class TaskManager(TaskEventListener):
                     self.tasks_states[task_id].status = TaskStatus.computing
                 else:
                     if self.tasks[task_id].verify_task():
-                        logger.debug("Task %r accepted", task_id)
+                        logger.info("Task finished! task_id=%r", task_id)
                         self.tasks_states[task_id].status =\
                             TaskStatus.finished
                         self.notice_task_updated(task_id,
                                                  op=TaskOp.FINISHED)
                     else:
-                        logger.debug("Task %r not accepted", task_id)
+                        logger.warning("Task finished but was not accepted. "
+                                       "task_id=%r", task_id)
                         self.notice_task_updated(task_id,
                                                  op=TaskOp.NOT_ACCEPTED)
             verification_finished()

@@ -2,11 +2,11 @@ import logging
 import os
 import posixpath
 import threading
-from typing import Dict, Optional
+from typing import Dict, Optional, Iterable
 
 import docker.errors
 
-from golem.core.common import is_windows, nt_path_to_posix_path, is_osx
+from golem.core.common import nt_path_to_posix_path
 from golem.docker.image import DockerImage
 from .client import local_client
 
@@ -65,6 +65,8 @@ class DockerJob(object):
                  resources_dir: str,
                  work_dir: str,
                  output_dir: str,
+                 volumes: Optional[Iterable[str]] = None,
+                 environment: Optional[dict] = None,
                  host_config: Optional[Dict] = None,
                  container_log_level: Optional[int] = None) -> None:
         """
@@ -84,6 +86,12 @@ class DockerJob(object):
 
         self.parameters.update(self.PATH_PARAMS)
 
+        self.volumes = list(volumes) if volumes else [
+            self.WORK_DIR,
+            self.RESOURCES_DIR,
+            self.OUTPUT_DIR
+        ]
+        self.environment = environment or {}
         self.host_config = host_config or {}
 
         self.resources_dir = resources_dir
@@ -125,24 +133,17 @@ class DockerJob(object):
         # Setup volumes for the container
         client = local_client()
 
-        if is_windows():
-            environment = None
-        elif is_osx():
-            environment = dict(OSX_USER=1)
-        else:
-            environment = dict(LOCAL_USER_ID=os.getuid())
-
         host_cfg = client.create_host_config(**self.host_config)
 
         # The location of the task script when mounted in the container
         container_script_path = self._get_container_script_path()
         self.container = client.create_container(
             image=self.image.name,
-            volumes=[self.WORK_DIR, self.RESOURCES_DIR, self.OUTPUT_DIR],
+            volumes=self.volumes,
             host_config=host_cfg,
             command=[container_script_path],
             working_dir=self.WORK_DIR,
-            environment=environment,
+            environment=self.environment,
         )
         self.container_id = self.container["Id"]
         if self.container_id is None:

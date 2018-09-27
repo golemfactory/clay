@@ -12,6 +12,15 @@ from golem.report import Component, report_calls
 logger = logging.getLogger(__name__)
 
 
+def init_pythoncom() -> bool:
+    try:
+        import pythoncom
+        pythoncom.CoInitialize()
+    except ImportError:
+        return False
+    return True
+
+
 class VirtualBoxHypervisor(DockerMachineHypervisor):
 
     DRIVER_NAME: ClassVar[str] = 'virtualbox'
@@ -29,11 +38,8 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
                  get_config_fn: GetConfigFunction,
                  virtualbox, ISession, LockType,
                  vm_name: str = DOCKER_VM_NAME) -> None:
-        super(VirtualBoxHypervisor, self).__init__(get_config_fn, vm_name)
 
-        if is_windows():
-            import pythoncom  # noqa # pylint: disable=import-error
-            pythoncom.CoInitialize()
+        super(VirtualBoxHypervisor, self).__init__(get_config_fn, vm_name)
 
         self.virtualbox = virtualbox
         self.ISession = ISession
@@ -105,6 +111,7 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
         self._set_env()
 
     def constraints(self, name: Optional[str] = None) -> Dict:
+        name = name or self._vm_name
         result = {}
         try:
             vm = self._machine_from_arg(name)
@@ -116,6 +123,7 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
         return result
 
     def constrain(self, name: Optional[str] = None, **params) -> None:
+        name = name or self._vm_name
         vm = self._machine_from_arg(name)
         if not vm:
             return
@@ -213,6 +221,9 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
     def _new_instance(cls,
                       get_config_fn: GetConfigFunction,
                       docker_vm: str = DOCKER_VM_NAME) -> Hypervisor:
+
+        init_pythoncom()
+
         try:
             from virtualbox import VirtualBox
             from virtualbox.library import ISession, LockType
@@ -220,5 +231,6 @@ class VirtualBoxHypervisor(DockerMachineHypervisor):
             logger.error('Error importing VirtualBox libraries: %r', err)
             raise
 
-        return VirtualBoxHypervisor(get_config_fn, docker_vm,
-                                    VirtualBox(), ISession, LockType)
+        return VirtualBoxHypervisor(get_config_fn,
+                                    VirtualBox(), ISession, LockType,
+                                    docker_vm)

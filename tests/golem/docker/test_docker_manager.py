@@ -5,7 +5,6 @@ from collections import namedtuple
 from subprocess import CalledProcessError
 from unittest import TestCase, mock
 
-
 from golem.docker.config import DEFAULTS, MIN_CONSTRAINTS
 from tests.golem.docker.test_hypervisor import command, MockHypervisor, \
     MockDockerManager, raise_exception, raise_process_exception
@@ -301,7 +300,13 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
             dmm = MockDockerManager()
             dmm.pull_images()
 
-        assert pulls[0] == 4
+        from apps.core import nvgpu
+        if nvgpu.is_supported():
+            expected = 6
+        else:
+            expected = 4
+
+        assert pulls[0] == expected
 
     @mock.patch('os.chdir')
     def test_build_images(self, os_chdir):
@@ -324,9 +329,15 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
             dmm = MockDockerManager()
             dmm.build_images()
 
-        assert builds[0] == 4
-        assert tags[0] == 4
-        assert len(os_chdir.mock_calls) == 8
+        from apps.core import nvgpu
+        if nvgpu.is_supported():
+            expected = 6
+        else:
+            expected = 4
+
+        assert builds[0] == expected
+        assert tags[0] == expected
+        assert len(os_chdir.mock_calls) == 2 * expected
 
     def test_recover_vm_connectivity(self):
         callback = mock.Mock()
