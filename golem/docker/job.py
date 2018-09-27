@@ -129,7 +129,6 @@ class DockerJob(object):
 
         container_config = dict(self.host_config)
         cpuset = container_config.pop('cpuset', None)
-        container_config = {}
 
         volumes = [self.WORK_DIR, self.RESOURCES_DIR, self.OUTPUT_DIR]
         binds = {
