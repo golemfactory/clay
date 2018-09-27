@@ -234,8 +234,8 @@ class DummyTask(Task):
         """
         self.resource_parts = resource_parts
 
-    def computation_failed(self, subtask_id):
-        print('DummyTask.computation_failed called')
+    def on_computation_failed(self, subtask_id):
+        print('DummyTask.on_computation_failed called')
         self.computation_finished(subtask_id, None)
 
     def restart(self):

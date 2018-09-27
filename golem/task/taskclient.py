@@ -38,6 +38,10 @@ class TaskClient(object):
             self._rejected += 1
             self._completed()
 
+    def cancel(self):
+        with self._lock:
+            self._started -= 1
+
     def start(self):
         with self._lock:
             self._started += 1

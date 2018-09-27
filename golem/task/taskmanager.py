@@ -742,7 +742,11 @@ class TaskManager(TaskEventListener):
         return ss
 
     @handle_subtask_key_error
-    def task_computation_failure(self, subtask_id, err):
+    def task_computation_failure(
+            self,
+            subtask_id,
+            err,
+            offer_cancelled: bool = False):
         task_id = self.subtask2task_mapping[subtask_id]
 
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
@@ -756,7 +760,7 @@ class TaskManager(TaskEventListener):
                                      op=OtherOp.UNEXPECTED)
             return False
 
-        self.tasks[task_id].computation_failed(subtask_id)
+        self.tasks[task_id].computation_failed(subtask_id, offer_cancelled)
         ss = self.tasks_states[task_id].subtask_states[subtask_id]
         ss.subtask_progress = 1.0
         ss.subtask_rem_time = 0.0
