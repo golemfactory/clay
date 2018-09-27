@@ -7,6 +7,7 @@ import sys
 from multiprocessing import freeze_support
 import click
 
+from golem.config.environments import set_environment  # noqa
 from golem.core.simpleenv import get_local_datadir
 from golem.rpc.cert import CertificateManager
 
@@ -87,8 +88,14 @@ def start():
         logging.raiseExceptions = 0
         cli = CLI(main_parser=parser, main_parser_options=flag_options)
 
-    datadir = get_local_datadir('default', root_dir=parsed.datadir,
-                                use_mainnet=parsed.mainnet)
+    if parsed.mainnet:
+        from importlib import reload
+
+        set_environment('mainnet', None)
+        if 'golem.config.active' in sys.modules:
+            reload(sys.modules['golem.config.active'])
+        
+    datadir = get_local_datadir('default', root_dir=parsed.datadir)
     working_dir = os.path.join(datadir, CROSSBAR_DIR)
 
     # run the cli
