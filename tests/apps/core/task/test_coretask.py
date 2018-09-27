@@ -486,7 +486,8 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
         # this one should be ok
         c.subtasks_given["SUBTASK1"] = {
-            "status": SubtaskStatus.downloading
+            "status": SubtaskStatus.downloading,
+            "node_id": "NODE_ID",
         }
         c.accept_results("SUBTASK1", None)
 
