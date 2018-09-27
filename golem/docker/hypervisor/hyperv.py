@@ -83,6 +83,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         name = name or self._vm_name
         mem_key = CONSTRAINT_KEYS['mem']
         mem = params.get(mem_key)
+        assert isinstance(mem, int)
         cpu = params.get(CONSTRAINT_KEYS['cpu'])
 
         min_mem = MIN_CONSTRAINTS[mem_key]
@@ -191,6 +192,6 @@ class VMUtilsWithMem(VMUtils):
         si = _wqlutils.get_element_associated_class(
             self._conn, self._MEMORY_SETTING_DATA_CLASS,
             element_instance_id=vmsetting.InstanceID)[0]
-            
+
         logger.debug('VM MemorySettingsData: %r', si)
         return si
