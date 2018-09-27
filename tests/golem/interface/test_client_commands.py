@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import partial
@@ -25,12 +26,24 @@ from golem.interface.client.terms import Terms
 from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
 from golem.resource.dirmanager import DirManager, DirectoryType
+from golem.rpc import session
 from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
-from golem.rpc.session import Client
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
 
-reference_client = Client(Mock(), CORE_METHOD_MAP)
+_session = Mock()
+with patch(
+    'golem.rpc.session.ClientProxy._call',
+    return_value=defer.Deferred(),
+):
+    reference_client = session.ClientProxy(Mock())
+reference_client._ready.callback({
+    (
+        (value, 'golem.client.Client.{}'.format(key))
+        for key, value
+        in CORE_METHOD_MAP.items()
+    )
+})
 
 
 def assert_client_method(instance, name):
