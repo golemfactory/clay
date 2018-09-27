@@ -488,7 +488,7 @@ class BlenderRenderTask(FrameRenderingTask):
             'task_id=%s, subtask_id=%s, node_id=%s',
             self.header.task_id,
             subtask_id,
-            short_node_id(node_id)
+            short_node_id(node_id or '')
         )
         self.subtasks_given[subtask_id] = copy(extra_data)
         self.subtasks_given[subtask_id]['subtask_id'] = subtask_id
