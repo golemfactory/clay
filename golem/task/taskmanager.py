@@ -17,8 +17,8 @@ from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask, AcceptClientVerdict
-from golem.core.common import HandleKeyError, get_timestamp_utc, \
-    to_unicode, update_dict, HandleForwardedError
+from golem.core.common import get_timestamp_utc, HandleForwardedError, \
+    HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
@@ -452,12 +452,13 @@ class TaskManager(TaskEventListener):
 
         verdict = task.should_accept_client(node_id)
         if verdict == AcceptClientVerdict.SHOULD_WAIT:
-            logger.warning("Waiting for results from %s on %s", node_id,
-                           task_id)
+            logger.warning("Waiting for results from %s on %s",
+                           short_node_id(node_id), task_id)
             return True
         elif verdict == AcceptClientVerdict.REJECTED:
-            logger.warning("Client %s has failed on subtask within task %s"
-                           " and is banned from it", node_id, task_id)
+            logger.warning("Client has failed on subtask within this task"
+                           " and is banned from it. node_id=%s, task_id=%s",
+                           short_node_id(node_id), task_id)
 
         return False
 
@@ -478,7 +479,8 @@ class TaskManager(TaskEventListener):
             node_id, node_name, task_id, price,
         )
         if not self.is_my_task(task_id):
-            logger.info("Cannot find task in my tasks. task_id=%r", task_id)
+            logger.info("Cannot find task in my tasks. task_id=%s, provider=%s",
+                        task_id, node_info_str(node_name, node_id))
             return False
 
         task = self.tasks[task_id]
@@ -487,8 +489,11 @@ class TaskManager(TaskEventListener):
             return False
 
         if not self.task_needs_computation(task_id):
-            logger.info('Task does not need computation. provider=%r - %r',
-                        node_name, node_id)
+            logger.info(
+                'Task does not need computation. task_id=%s, provider=%s',
+                task_id,
+                node_info_str(node_name, node_id)
+            )
             return False
 
         return True
