@@ -12,7 +12,6 @@ from pathlib import Path
 from PIL import Image, ImageChops, ImageOps
 
 import apps.lux.resources.scenefilereader as sfr
-from apps.core.task import coretask
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.core.task.coretaskstate import Options
 from apps.lux.luxenvironment import LuxRenderEnvironment
@@ -183,7 +182,6 @@ class LuxTask(renderingtask.RenderingTask):
 
         return write_interval
 
-    @coretask.accepting
     def query_extra_data(self,
                          perf_index,
                          num_cores=0,
@@ -222,7 +220,6 @@ class LuxTask(renderingtask.RenderingTask):
         subtask_id = self.create_subtask_id()
         self.subtasks_given[subtask_id] = copy(extra_data)
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.starting
-        self.subtasks_given[subtask_id]['perf'] = perf_index
         self.subtasks_given[subtask_id]['node_id'] = node_id
         self.subtasks_given[subtask_id]['res_x'] = self.res_x
         self.subtasks_given[subtask_id]['res_y'] = self.res_y
@@ -234,7 +231,7 @@ class LuxTask(renderingtask.RenderingTask):
         self.subtasks_given[subtask_id]['merge_ctd'] = self.__get_merge_ctd([])
 
         ctd = self._new_compute_task_def(
-            subtask_id, extra_data, None, perf_index)
+            subtask_id, extra_data, perf_index)
         return self.ExtraData(ctd=ctd)
 
     # GG propably same as query_extra_data_for_merge
@@ -265,7 +262,6 @@ class LuxTask(renderingtask.RenderingTask):
         ctd = self._new_compute_task_def(
             "ReferenceMergingTask",
             extra_data,
-            scene_dir,
             0)
         return ctd
 
@@ -299,7 +295,6 @@ class LuxTask(renderingtask.RenderingTask):
         ctd = self._new_compute_task_def(
             "".join(["ReferenceTask", str(counter)]),
             extra_data,
-            scene_dir,
             0)
 
         return ctd
@@ -338,9 +333,6 @@ class LuxTask(renderingtask.RenderingTask):
         test_flm = glob.glob(os.path.join(dir, '*.flm'))
         return test_flm.pop()
 
-    ###################
-    # CoreTask methods #
-    ###################
     def query_extra_data_for_test_task(self):
         self.test_task_res_path = \
             self.dirManager.get_task_test_dir(
@@ -374,8 +366,11 @@ class LuxTask(renderingtask.RenderingTask):
 
         hash = "{}".format(random.getrandbits(128))
 
-        return self._new_compute_task_def(hash, extra_data, None, 0)
+        return self._new_compute_task_def(hash, extra_data, 0)
 
+    ###################
+    # CoreTask methods #
+    ###################
     def after_test(self, results, tmp_dir):
         FLM_NOT_FOUND_MSG = "Flm file was not found, check scene."
         return_data = dict()
@@ -413,7 +408,6 @@ class LuxTask(renderingtask.RenderingTask):
         return self._new_compute_task_def(
             "FINALTASK",
             extra_data,
-            scene_dir,
             0
         )
 
@@ -429,9 +423,6 @@ class LuxTask(renderingtask.RenderingTask):
         for tr_file in result_files:
             if has_ext(tr_file, ".flm"):
                 self.collected_file_names[num_start] = tr_file
-                self.counting_nodes[
-                    self.subtasks_given[subtask_id]['node_id']
-                ].accept()
                 self.num_tasks_received += 1
             elif not has_ext(tr_file, '.log'):
                 self.subtasks_given[subtask_id]['preview_file'] = tr_file

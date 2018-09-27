@@ -2,7 +2,9 @@ import logging
 
 import os
 import random
+import secrets
 
+import enum
 from OpenSSL import crypto
 from OpenSSL._util import ffi, lib
 
@@ -17,11 +19,26 @@ DH_PARAM_BITS_LOW = 1024
 KEY_BITS = 2048
 
 
+class CertificateError(Exception):
+    pass
+
+
 class CertificateManager:
 
     DH_FILE_NAME = "rpc_dh_param.pem"
     PRIVATE_KEY_FILE_NAME = "rpc_key.pem"
     CERTIFICATE_FILE_NAME = "rpc_cert.pem"
+
+    @enum.unique
+    class CrossbarUsers(enum.Enum):
+        golemcli = enum.auto()
+        electron = enum.auto()
+        golemapp = enum.auto()
+        docker = enum.auto()
+
+    SECRET_EXT = "tck"
+    SECRETS_DIR = "secrets"
+    SECRET_LENGTH = 128
 
     def __init__(self, dest_dir, setup_forward_secrecy=False):
         self.forward_secrecy = setup_forward_secrecy
@@ -29,6 +46,7 @@ class CertificateManager:
 
         self.key_path = os.path.join(dest_dir, self.PRIVATE_KEY_FILE_NAME)
         self.cert_path = os.path.join(dest_dir, self.CERTIFICATE_FILE_NAME)
+        self.secrets_path = os.path.join(dest_dir, self.SECRETS_DIR)
 
         if self.use_dh_params:
             self.dh_path = os.path.join(dest_dir, self.DH_FILE_NAME)
@@ -52,9 +70,34 @@ class CertificateManager:
             key = self.read_key()
             self._create_and_sign_certificate(key, self.cert_path)
             del key
+            logger.info('RPC self-signed certificate has been created')
 
         import gc
         gc.collect()
+
+        self.generate_secrets()
+
+    def __secrets_paths(self):
+        return [os.path.join(self.secrets_path, f"{p}.{self.SECRET_EXT}")
+                for p in self.CrossbarUsers.__members__.keys()]
+
+    def generate_secrets(self):
+        os.makedirs(self.secrets_path, exist_ok=True)
+        for p in self.__secrets_paths():
+            if not os.path.exists(p):
+                secret = secrets.token_hex(self.SECRET_LENGTH)
+                with open(p, "w") as f:
+                    f.write(secret)
+
+    def get_secret(self, p: 'CertificateManager.CrossbarUsers') -> str:
+        path = os.path.join(self.secrets_path, f"{p.name}.{self.SECRET_EXT}")
+        if not os.path.isfile(path):
+            raise CertificateError(
+                f"No secret for `{p.name}` in `{path}`. "
+                f"Please ensure you're using the correct Golem data directory."
+            )
+        with open(path, "r") as f:
+            return f.read()
 
     def read_key(self) -> crypto.PKey:
         with open(self.key_path, 'r') as key_file:

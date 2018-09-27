@@ -65,7 +65,7 @@ def verify_response(response: requests.Response) -> None:
 
 
 def send_to_concent(
-        msg: message.Message,
+        msg: message.base.Message,
         signing_key,
         concent_variant: dict) -> typing.Optional[bytes]:
     """Sends a message to the concent server
@@ -155,12 +155,6 @@ def receive_from_concent(
     return response.content or None
 
 
-receive_out_of_band = functools.partial(
-    receive_from_concent,
-    path='/api/v1/receive-out-of-band/',
-)
-
-
 class ConcentRequest(msg_datastructures.FrozenDict):
     ITEMS = {
         'key': '',
@@ -223,7 +217,7 @@ class ConcentClientService(threading.Thread):
         logger.info('%s stopped', self)
 
     def submit_task_message(
-            self, subtask_id: str, msg: message.Message,
+            self, subtask_id: str, msg: message.base.Message,
             delay: typing.Optional[datetime.timedelta] = None
     ) -> None:
         """
@@ -257,12 +251,13 @@ class ConcentClientService(threading.Thread):
 
     def submit(self,
                key: typing.Hashable,
-               msg: message.Message,
+               msg: message.base.Message,
                delay: typing.Optional[datetime.timedelta] = None) -> None:
         """
         Submit a message to Concent.
 
         :param key: Request identifier
+        :param msg: the message to send
         :param delay: Time to wait before sending the message
         :return: None
         """
@@ -340,23 +335,21 @@ class ConcentClientService(threading.Thread):
         if not self.enabled:
             return
 
-        for receive_function in (receive_from_concent, receive_out_of_band):
-            try:
-                # mypy, why u so silly?
-                res = receive_function(  # type: ignore
-                    signing_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
-                    public_key=self.keys_auth.public_key,
-                    concent_variant=self.variant,
-                )
-            except exceptions.ConcentError as e:
-                logger.warning("Can't receive message from Concent: %s", e)
-                self._grace_sleep()
-                return
-            except Exception:  # pylint: disable=broad-except
-                logger.exception('receive_from_concent() failed')
-                self._grace_sleep()
-                return
-            self.react_to_concent_message(res)
+        try:
+            res = receive_from_concent(
+                signing_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
+                public_key=self.keys_auth.public_key,
+                concent_variant=self.variant,
+            )
+        except exceptions.ConcentError as e:
+            logger.warning("Can't receive message from Concent: %s", e)
+            self._grace_sleep()
+            return
+        except Exception:  # pylint: disable=broad-except
+            logger.exception('receive_from_concent() failed')
+            self._grace_sleep()
+            return
+        self.react_to_concent_message(res)
 
     @staticmethod
     def process_synchronous_response(

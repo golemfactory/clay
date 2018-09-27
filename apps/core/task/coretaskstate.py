@@ -50,6 +50,9 @@ class TaskDefinition(object):
         self.verification_options = None
         self.options = Options()
         self.docker_images = None
+        self.compute_on = "cpu"
+
+        self.concent_enabled: bool = False
 
     def is_valid(self):
         if not path.exists(self.main_program_file):
@@ -108,6 +111,7 @@ class TaskDefinition(object):
         return {
             'id': self.task_id,
             'type': self.task_type,
+            'compute_on': self.compute_on,
             'name': self.task_name,
             'timeout': task_timeout,
             'subtask_timeout': subtask_timeout,
@@ -117,6 +121,7 @@ class TaskDefinition(object):
             'options': {
                 'output_path': output_path
             },
+            'concent_enabled': self.concent_enabled
         }
 
     def build_output_path(self) -> str:

@@ -6,24 +6,39 @@ import time
 from enum import Enum
 from datetime import datetime
 from pathlib import Path
-from typing import Any, ClassVar, Dict, Iterable, List, Optional, Tuple
+from typing import (
+    Any,
+    ClassVar,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    Optional,
+)
 
 from ethereum.utils import denoms
 from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
 from eth_utils import decode_hex, is_address
 from golem_messages.utils import bytes32_to_uuid
-from golem_sci import new_sci, SmartContractsInterface, JsonTransactionsStorage
-from twisted.internet.defer import Deferred
+from golem_sci import (
+    contracts,
+    JsonTransactionsStorage,
+    new_sci,
+    SmartContractsInterface,
+    TransactionReceipt,
+)
+from twisted.internet import defer
 import requests
 
+from golem import model
 from golem.core.service import LoopingCallService
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
-from golem.ethereum.exceptions import NotEnoughFunds
 from golem.ethereum.incomeskeeper import IncomesKeeper
 from golem.ethereum.paymentskeeper import PaymentsKeeper
-from golem.model import GenericKeyValue, Payment, Income
 from golem.utils import privkeytoaddr
+
+from . import exceptions
 
 
 log = logging.getLogger(__name__)
@@ -75,6 +90,9 @@ class TransactionSystem(LoopingCallService):
         self._last_gnt_update: Optional[float] = None
         self._payments_locked: int = 0
         self._gntb_locked: int = 0
+        self._gntb_withdrawn: int = 0
+        # Amortized gas cost per payment used when dealing with locks
+        self._eth_per_payment: int = 0
 
     def backwards_compatibility_tx_storage(self, old_datadir: Path) -> None:
         if self.running:
@@ -137,6 +155,7 @@ class TransactionSystem(LoopingCallService):
             eth_addr,
             self._config.CHAIN,
             JsonTransactionsStorage(self._datadir / self.TX_FILENAME),
+            self._config.CONTRACT_ADDRESSES,
             lambda tx: tx.sign(self._privkey),
         )
 
@@ -146,6 +165,12 @@ class TransactionSystem(LoopingCallService):
                 self._gnt_conversion_status = ConversionStatus.UNFINISHED
 
         self._payment_processor = PaymentProcessor(self._sci)
+        self._eth_per_payment = self._current_eth_per_payment()
+        recipients_count = self._payment_processor.recipients_count
+        if recipients_count > 0:
+            required_eth = recipients_count * self._eth_per_payment
+            if required_eth > self._eth_balance:
+                self._eth_per_payment = self._eth_balance // recipients_count
 
         self._subscribe_to_events()
 
@@ -182,8 +207,8 @@ class TransactionSystem(LoopingCallService):
     def _subscribe_to_events(self) -> None:
         if not self._sci:
             raise Exception('Start was not called')
-        values = GenericKeyValue.select().where(
-            GenericKeyValue.key == self.BLOCK_NUMBER_DB_KEY)
+        values = model.GenericKeyValue.select().where(
+            model.GenericKeyValue.key == self.BLOCK_NUMBER_DB_KEY)
         from_block = int(values.get().value) if values.count() == 1 else 0
 
         ik = self._incomes_keeper
@@ -231,7 +256,9 @@ class TransactionSystem(LoopingCallService):
         if not self._sci:
             raise Exception('Start was not called')
         block_number = self._sci.get_block_number() - self._sci.REQUIRED_CONFS
-        kv, _ = GenericKeyValue.get_or_create(key=self.BLOCK_NUMBER_DB_KEY)
+        kv, _ = model.GenericKeyValue.get_or_create(
+            key=self.BLOCK_NUMBER_DB_KEY,
+        )
         kv.value = block_number - 1
         kv.save()
 
@@ -252,7 +279,7 @@ class TransactionSystem(LoopingCallService):
         if len(payee) != 20:
             raise ValueError(
                 "Incorrect 'payee' length: {}. Should be 20".format(len(payee)))
-        payment = Payment.create(
+        payment = model.Payment.create(
             subtask=subtask_id,
             payee=payee,
             value=value,
@@ -271,9 +298,18 @@ class TransactionSystem(LoopingCallService):
         """
         return self._payments_keeper.get_list_of_all_payments()
 
+    @classmethod
+    def get_deposit_payments_list(cls, limit: int = 1000, offset: int = 0) \
+            -> List[model.DepositPayment]:
+        query = model.DepositPayment.select() \
+            .order_by('id') \
+            .limit(limit) \
+            .offset(offset)
+        return list(query)
+
     def get_subtasks_payments(
             self,
-            subtask_ids: Iterable[str]) -> List[Payment]:
+            subtask_ids: Iterable[str]) -> List[model.Payment]:
         return self._payments_keeper.get_subtasks_payments(subtask_ids)
 
     def get_incomes_list(self):
@@ -288,15 +324,21 @@ class TransactionSystem(LoopingCallService):
     def get_locked_eth(self) -> int:
         if not self._payment_processor:
             raise Exception('Start was not called')
-        eth = self._payment_processor.reserved_eth + \
-            self.eth_for_batch_payment(self._payments_locked)
-        if self._payments_locked > 0 and \
-           self._payment_processor.reserved_eth == 0:
-            eth += self._eth_base_for_batch_payment()
-        return min(eth, self._eth_balance)
+        payments_num = self._payments_locked + \
+            self._payment_processor.recipients_count
+        if payments_num == 0:
+            return 0
+        return payments_num * self._eth_per_payment
 
-    def get_available_gnt(self) -> int:
-        return self._gntb_balance - self.get_locked_gnt()
+    def get_available_gnt(self, account_address: Optional[str] = None) -> int:
+        # FIXME Use decorator to DRY #3190
+        if not self._sci:
+            raise Exception('Start was not called')
+        if (account_address is None) \
+                or (account_address == self._sci.get_eth_address()):
+            return self._gntb_balance - self.get_locked_gnt() - \
+                self._gntb_withdrawn
+        return self._sci.get_gntb_balance(address=account_address)
 
     def get_locked_gnt(self) -> int:
         if not self._payment_processor:
@@ -322,23 +364,26 @@ class TransactionSystem(LoopingCallService):
             raise Exception('Start was not called')
         gnt = price * num
         if gnt > self.get_available_gnt():
-            raise NotEnoughFunds(gnt, self.get_available_gnt(), 'GNT')
+            raise exceptions.NotEnoughFunds(
+                gnt,
+                self.get_available_gnt(), 'GNT',
+            )
 
         eth = self.eth_for_batch_payment(num)
-        if self._payments_locked == 0 and \
-           self._payment_processor.reserved_eth == 0:
-            eth += self._eth_base_for_batch_payment()
         eth_available = self.get_available_eth()
         if eth > eth_available:
-            raise NotEnoughFunds(eth, eth_available, 'ETH')
+            raise exceptions.NotEnoughFunds(eth, eth_available, 'ETH')
 
         log.info(
             "Locking %f GNT and ETH for %d payments",
             gnt / denoms.ether,
             num,
         )
+        locked_eth = self.get_locked_eth()
         self._gntb_locked += gnt
         self._payments_locked += num
+        self._eth_per_payment = (eth + locked_eth) // \
+            (self._payments_locked + self._payment_processor.recipients_count)
 
     def unlock_funds_for_payments(self, price: int, num: int) -> None:
         gnt = price * num
@@ -366,7 +411,7 @@ class TransactionSystem(LoopingCallService):
             sender_node: str,
             subtask_id: str,
             payer_address: str,
-            value: int) -> Income:
+            value: int) -> model.Income:
         return self._incomes_keeper.expect(
             sender_node,
             subtask_id,
@@ -398,12 +443,23 @@ class TransactionSystem(LoopingCallService):
     def eth_for_batch_payment(self, num_payments: int) -> int:
         if not self._payment_processor:
             raise Exception('Start was not called')
-        return self._payment_processor.get_gas_cost_per_payment() * num_payments
+        num_payments += self._payments_locked + \
+            self._payment_processor.recipients_count
+        required = self._current_eth_per_payment() * num_payments + \
+            self._eth_base_for_batch_payment()
+        return required - self.get_locked_eth()
 
     def _eth_base_for_batch_payment(self) -> int:
-        if not self._payment_processor:
+        if not self._sci:
             raise Exception('Start was not called')
-        return self._payment_processor.ETH_BATCH_PAYMENT_BASE
+        return self._sci.GAS_BATCH_PAYMENT_BASE * self._sci.GAS_PRICE
+
+    def _current_eth_per_payment(self) -> int:
+        if not self._sci:
+            raise Exception('Start was not called')
+        gas_price = \
+            min(self._sci.GAS_PRICE, 2 * self._sci.get_current_gas_price())
+        return gas_price * self._sci.GAS_PER_PAYMENT
 
     def get_withdraw_gas_cost(
             self,
@@ -435,7 +491,7 @@ class TransactionSystem(LoopingCallService):
 
         if currency == 'ETH':
             if amount > self.get_available_eth():
-                raise NotEnoughFunds(
+                raise exceptions.NotEnoughFunds(
                     amount,
                     self.get_available_eth(),
                     currency,
@@ -449,7 +505,7 @@ class TransactionSystem(LoopingCallService):
 
         if currency == 'GNT':
             if amount > self.get_available_gnt():
-                raise NotEnoughFunds(
+                raise exceptions.NotEnoughFunds(
                     amount,
                     self.get_available_gnt(),
                     currency,
@@ -459,28 +515,50 @@ class TransactionSystem(LoopingCallService):
                 amount / denoms.ether,
                 destination,
             )
-            return self._sci.convert_gntb_to_gnt(destination, amount)
+            tx_hash = self._sci.convert_gntb_to_gnt(destination, amount)
+
+            def on_receipt(receipt) -> None:
+                self._gntb_withdrawn -= amount
+                if not receipt.status:
+                    log.error("Failed GNTB withdrawal: %r", receipt)
+            self._sci.on_transaction_confirmed(tx_hash, on_receipt)
+            self._gntb_withdrawn += amount
+            return tx_hash
 
         raise ValueError('Unknown currency {}'.format(currency))
 
-    def concent_balance(self) -> int:
+    def concent_balance(self, account_address: Optional[str] = None) -> int:
         if not self._sci:
             raise Exception('Start was not called')
-        return self._sci.get_deposit_value(self._sci.get_eth_address())
+        if account_address is None:
+            account_address = self._sci.get_eth_address()
+        return self._sci.get_deposit_value(
+            account_address=account_address,
+        )
 
-    def concent_deposit(self, required: int, expected: int) -> Deferred:
+    def concent_timelock(self, account_address: Optional[str] = None) -> int:
+        # FIXME Use decorator to DRY #3190
         if not self._sci:
             raise Exception('Start was not called')
-        result = Deferred()
+        if account_address is None:
+            account_address = self._sci.get_eth_address()
+        return self._sci.get_deposit_locked_until(
+            account_address=account_address,
+        )
+
+    @defer.inlineCallbacks
+    def concent_deposit(self, required: int, expected: int) \
+            -> Generator[defer.Deferred, TransactionReceipt, Optional[str]]:
+        if not self._sci:
+            raise Exception('Start was not called')
         current = self.concent_balance()
         if current >= required:
-            result.callback(None)
-            return result
+            return None
         required -= current
         expected -= current
         gntb_balance = self.get_available_gnt()
         if gntb_balance < required:
-            raise NotEnoughFunds(required, gntb_balance, 'GNTB')
+            raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
         max_possible_amount = min(expected, gntb_balance)
         tx_hash = self._sci.deposit_payment(max_possible_amount)
         log.info(
@@ -488,15 +566,32 @@ class TransactionSystem(LoopingCallService):
             max_possible_amount / denoms.ether,
             tx_hash,
         )
+        dpayment = model.DepositPayment.create(
+            status=model.PaymentStatus.sent,
+            value=max_possible_amount,
+            tx=tx_hash,
+        )
+        log.debug('DEPOSIT PAYMENT %s', dpayment)
 
-        def transaction_receipt(receipt):
-            if not receipt.status:
-                result.errback(Exception(f"Deposit failed. Receipt: {receipt}"))
-                return
-            result.callback(None)
+        transaction_receipt = defer.Deferred()
+        self._sci.on_transaction_confirmed(
+            tx_hash=tx_hash,
+            cb=transaction_receipt.callback,
+        )
 
-        self._sci.on_transaction_confirmed(tx_hash, transaction_receipt)
-        return result
+        receipt = yield transaction_receipt
+        if not receipt.status:
+            dpayment.delete_instance()
+            raise exceptions.DepositError(
+                "Deposit failed",
+                transaction_receipt=receipt,
+            )
+
+        gas_price = self._sci.get_transaction_gas_price(receipt.tx_hash)
+        dpayment.fee = receipt.gas_used * gas_price
+        dpayment.status = model.PaymentStatus.confirmed
+        dpayment.save()
+        return dpayment.tx
 
     def _get_funds_from_faucet(self) -> None:
         if not self._sci:

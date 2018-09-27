@@ -19,7 +19,6 @@ from golem.core import variables
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import received_handler
-from golem.network.concent.received_handler import TaskServerMessageHandler
 from golem.network.concent.handlers_library import library
 from golem.network.concent.filetransfers import ConcentFiletransferService
 
@@ -56,6 +55,9 @@ class FrctResponseTestBase(unittest.TestCase):
         raise NotImplementedError()
 
     def setUp(self):
+        # Avoid warnings caused by previous tests leaving handlers
+        library._handlers = {}
+
         self.msg = self._get_frctr()
         self.reasons = message.concents.ForceReportComputedTaskResponse.REASON
         ttc = self.msg.task_to_compute
@@ -158,7 +160,9 @@ class TaskServerMessageHandlerTestBase(
         testutils.DatabaseFixture, testutils.TestWithClient):
 
     def setUp(self):
-        gc.collect()
+        # Avoid warnings caused by previous tests leaving handlers
+        library._handlers = {}
+
         super().setUp()
         self.task_server = taskserver_factories.TaskServer(
             client=self.client,
@@ -189,7 +193,9 @@ class IsOursTest(TaskServerMessageHandlerTestBase):
             self.provider_keys.raw_pubkey
         with mock.patch('golem.network.concent.'
                         'received_handler.register_handlers'):
-            self.tsmh = TaskServerMessageHandler(task_server=self.task_server)
+            self.tsmh = received_handler.TaskServerMessageHandler(
+                task_server=self.task_server,
+            )
 
     def test_is_ours(self):
         provider_priv_key = self.provider_keys.raw_privkey
@@ -350,7 +356,7 @@ class ForceGetTaskResultTest(TaskServerMessageHandlerTestBase):
     def test_fgtr_service_refused(self, tcf):
         fgtr = msg_factories.concents.ForceGetTaskResultFactory()
         sr = msg_factories.concents.ServiceRefusedFactory(
-            task_to_compute__compute_task_def__subtask_id=fgtr.subtask_id)
+            task_to_compute__subtask_id=fgtr.subtask_id)
         library.interpret(sr, response_to=fgtr)
         tcf.assert_called_once_with(
             fgtr.subtask_id,
@@ -459,8 +465,8 @@ class FileTransferTokenTestsBase:  # noqa pylint:disable=too-few-public-methods
         self.wtr = taskserver_factories.WaitingTaskResultFactory(
             package_path=self.path)
         self.rct = msg_factories.tasks.ReportComputedTaskFactory(
-            task_to_compute__compute_task_def__subtask_id=self.wtr.subtask_id,
-            task_to_compute__compute_task_def__task_id=self.wtr.task_id,
+            task_to_compute__subtask_id=self.wtr.subtask_id,
+            task_to_compute__task_id=self.wtr.task_id,
         )
 
 
@@ -826,7 +832,7 @@ class ForcePaymentTest(TaskServerMessageHandlerTestBase):
         )
 
     @mock.patch('golem.network.concent.received_handler.logger.debug')
-    def test_committed_unknown(self, log_mock):
+    def test_committed_unknown(self, _log_mock):
         fpc = msg_factories.concents.ForcePaymentCommittedFactory(
             amount_pending=31337,
             recipient_type=None,

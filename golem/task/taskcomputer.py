@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
 
 import os
 import time
@@ -15,12 +15,15 @@ from golem.core.statskeeper import IntStatsKeeper
 from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
-from golem.manager.nodestatesnapshot import TaskChunkStateSnapshot
+from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
 from golem.vm.vm import PythonProcVM, PythonTestVM
 
 from .taskthread import TaskThread
+
+if TYPE_CHECKING:
+    from .taskserver import TaskServer  # noqa pylint:disable=unused-import
 
 
 logger = logging.getLogger(__name__)
@@ -45,17 +48,11 @@ class TaskComputer(object):
     lock = Lock()
     dir_lock = Lock()
 
-    def __init__(self, node_name, task_server, use_docker_manager=True,
+    def __init__(self, task_server: 'TaskServer', use_docker_manager=True,
                  finished_cb=None) -> None:
-        """ Create new task computer instance
-        :param node_name:
-        :param task_server:
-        :return:
-        """
-        self.node_name = node_name
         self.task_server = task_server
         # Id of the task that we're currently waiting for  for
-        self.waiting_for_task = None
+        self.waiting_for_task: Optional[str] = None
         # Id of the task that we're currently computing
         self.counting_task = None
         # TaskThread
@@ -77,7 +74,7 @@ class TaskComputer(object):
         self.use_waiting_deadline = False
         self.waiting_for_task_session_timeout = None
 
-        self.docker_manager = DockerManager.install()
+        self.docker_manager: DockerManager = DockerManager.install()
         if use_docker_manager:
             self.docker_manager.check_environment()
 
@@ -118,29 +115,28 @@ class TaskComputer(object):
         return True
 
     def resource_given(self, task_id):
-        if task_id in self.task_to_subtask_mapping:
-            subtask_id = self.task_to_subtask_mapping[task_id]
-            if subtask_id in self.assigned_subtasks:
-                subtask = self.assigned_subtasks[subtask_id]
+        subtask_id = self.task_to_subtask_mapping.get(task_id)
+        subtask = self.assigned_subtasks.get(subtask_id)
 
-                with self.lock:
-                    if self.counting_thread is not None:
-                        logger.error(
-                            "Got resource for task: %r"
-                            "But I'm busy with another one. Ignoring.",
-                            task_id)
-                        return  # busy
-                    self.__compute_task(
-                        subtask_id,
-                        subtask['docker_images'],
-                        subtask['src_code'],
-                        subtask['extra_data'],
-                        subtask['short_description'],
-                        subtask['deadline'])
-                    self.waiting_for_task = None
-                return True
-            else:
-                return False
+        if not subtask:
+            return False
+
+        with self.lock:
+            if self.counting_thread is not None:
+                logger.error("Got resource for task: %r, but I'm busy with "
+                             "another one. Ignoring.", task_id)
+                return  # busy
+
+        self.__compute_task(
+            subtask_id,
+            subtask['docker_images'],
+            subtask['src_code'],
+            subtask['extra_data'],
+            subtask['short_description'],
+            subtask['deadline'])
+
+        self.waiting_for_task = None
+        return True
 
     def task_resource_collected(self, task_id, unpack_delta=True):
         if task_id in self.task_to_subtask_mapping:
@@ -273,22 +269,19 @@ class TaskComputer(object):
                 if self.waiting_deadline < time.time():
                     self.reset()
 
-    def get_progresses(self):
-        ret = {}
+    def get_progress(self) -> Optional[ComputingSubtaskStateSnapshot]:
         if self.counting_thread is None:
-            return ret
+            return None
 
-        c = self.counting_thread
-        tcss = TaskChunkStateSnapshot(
-            c.get_subtask_id(),
-            0.0,
-            0.0,
-            c.get_progress(),
-            c.get_task_short_desc()
+        c: TaskThread = self.counting_thread
+        tcss = ComputingSubtaskStateSnapshot(
+            subtask_id=c.get_subtask_id(),
+            progress=c.get_progress(),
+            seconds_to_timeout=c.task_timeout,
+            running_time_seconds=(time.time() - c.start_time),
+            **c.extra_data,
         )
-        ret[c.subtask_id] = tcss
-
-        return ret
+        return tcss
 
     def get_host_state(self):
         if self.counting_task is not None:
@@ -317,13 +310,13 @@ class TaskComputer(object):
         dm.build_config(config_desc)
 
         deferred = Deferred()
-        if not dm.docker_machine and run_benchmarks:
+        if not dm.hypervisor and run_benchmarks:
             self.task_server.benchmark_manager.run_all_benchmarks(
                 deferred.callback, deferred.errback
             )
             return deferred
 
-        if dm.docker_machine and self.use_docker_manager:  # noqa pylint: disable=no-member
+        if dm.hypervisor and self.use_docker_manager:  # noqa pylint: disable=no-member
             self.lock_config(True)
 
             def status_callback():
@@ -409,7 +402,6 @@ class TaskComputer(object):
         deadline = min(task_header.deadline, subtask_deadline)
         task_timeout = deadline_to_timeout(deadline)
 
-        working_dir = self.assigned_subtasks[subtask_id]['working_directory']
         unique_str = str(uuid.uuid4())
 
         logger.info("Starting computation of subtask %r (task: %r, deadline: "
@@ -431,11 +423,11 @@ class TaskComputer(object):
             docker_images = [DockerImage(**did) for did in docker_images]
             dir_mapping = DockerTaskThread.generate_dir_mapping(resource_dir,
                                                                 temp_dir)
-            tt = DockerTaskThread(subtask_id, docker_images, working_dir,
+            tt = DockerTaskThread(subtask_id, docker_images,
                                   src_code, extra_data, short_desc,
                                   dir_mapping, task_timeout)
         elif self.support_direct_computation:
-            tt = PyTaskThread(subtask_id, working_dir, src_code,
+            tt = PyTaskThread(subtask_id, src_code,
                               extra_data, short_desc, resource_dir, temp_dir,
                               task_timeout)
         else:
@@ -452,7 +444,9 @@ class TaskComputer(object):
 
             return
 
-        self.counting_thread = tt
+        with self.lock:
+            self.counting_thread = tt
+
         tt.start().addBoth(lambda _: self.task_computed(tt))
 
     def quit(self):
@@ -472,19 +466,19 @@ class AssignedSubTask(object):
 
 class PyTaskThread(TaskThread):
     # pylint: disable=too-many-arguments
-    def __init__(self, subtask_id, working_directory, src_code,
+    def __init__(self, subtask_id, src_code,
                  extra_data, short_desc, res_path, tmp_path, timeout):
         super(PyTaskThread, self).__init__(
-            subtask_id, working_directory, src_code, extra_data,
+            subtask_id, src_code, extra_data,
             short_desc, res_path, tmp_path, timeout)
         self.vm = PythonProcVM()
 
 
 class PyTestTaskThread(PyTaskThread):
     # pylint: disable=too-many-arguments
-    def __init__(self, subtask_id, working_directory, src_code,
+    def __init__(self, subtask_id, src_code,
                  extra_data, short_desc, res_path, tmp_path, timeout):
         super(PyTestTaskThread, self).__init__(
-            subtask_id, working_directory, src_code, extra_data,
+            subtask_id, src_code, extra_data,
             short_desc, res_path, tmp_path, timeout)
         self.vm = PythonTestVM()

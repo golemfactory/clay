@@ -182,7 +182,6 @@ class TestReceiveFromConcent(TestCase):
 
 
 @mock.patch('twisted.internet.reactor', create=True)
-@mock.patch('golem.network.concent.client.receive_out_of_band')
 @mock.patch('golem.network.concent.client.receive_from_concent')
 @mock.patch('golem.network.concent.client.send_to_concent')
 class TestConcentClientService(testutils.TempDirFixture):
@@ -197,7 +196,7 @@ class TestConcentClientService(testutils.TempDirFixture):
             keys_auth=keys_auth,
             variant=variables.CONCENT_CHOICES['dev'],
         )
-        self.msg = message.ForceReportComputedTask()
+        self.msg = message.concents.ForceReportComputedTask()
 
     def tearDown(self):
         self.assertFalse(self.concent_service.isAlive())
@@ -287,16 +286,10 @@ class TestConcentClientService(testutils.TempDirFixture):
         'golem.network.concent.client.ConcentClientService'
         '.react_to_concent_message'
     )
-    def test_receive(self, react_mock, _send_mock, receive_mock, roob_mock, *_):
+    def test_receive(self, react_mock, _send_mock, receive_mock, *_):
         receive_mock.return_value = content = 'rcv_content'
-        roob_mock.return_value = content_oob = 'oob_content'
         self.concent_service.receive()
         receive_mock.assert_called_once_with(
-            signing_key=self.concent_service.keys_auth._private_key,
-            public_key=self.concent_service.keys_auth.public_key,
-            concent_variant=self.concent_service.variant,
-        )
-        roob_mock.assert_called_once_with(
             signing_key=self.concent_service.keys_auth._private_key,
             public_key=self.concent_service.keys_auth.public_key,
             concent_variant=self.concent_service.variant,
@@ -304,7 +297,6 @@ class TestConcentClientService(testutils.TempDirFixture):
         react_mock.assert_has_calls(
             (
                 mock.call(content),
-                mock.call(content_oob),
             ),
         )
 
@@ -405,7 +397,7 @@ class ConcentCallLaterTestCase(testutils.TempDirFixture):
             ),
             variant=variables.CONCENT_CHOICES['dev'],
         )
-        self.msg = message.ForceReportComputedTask()
+        self.msg = message.concents.ForceReportComputedTask()
 
     def tearDown(self):
         self.concent_service.stop()

@@ -19,6 +19,8 @@ from golem.resource.resourcehandshake import ResourceHandshake, \
 from golem.task.acl import get_acl
 from golem.testutils import TempDirFixture, DatabaseFixture
 
+from tests.factories.task import taskbase as taskbase_factory
+
 
 class TestResourceHandshake(TempDirFixture):
 
@@ -86,355 +88,392 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
             max_memory_size=10 * 10 ** 8,
             num_cores=10
         )
+        self.session = MockTaskSession(self.tempdir)
+        self.session._start_handshake = Mock()
+        self.session.task_server.task_keeper.task_headers = task_headers = {}
+        task_headers[self.message['task_id']] = taskbase_factory.TaskHeader()
+        self.session.task_server.client.concent_service.enabled = False
 
     def test_request_task_handshake(self, *_):
-        session = MockTaskSession(self.tempdir)
-        session._start_handshake = Mock()
-        session.send = Mock()
+        self.session.send = Mock()
 
-        session.request_task(**self.message)
-        assert session._start_handshake.called
+        self.session.request_task(**self.message)
+        self.session._start_handshake.assert_called_once()
 
     def test_request_task_success(self, *_):
-        session = MockTaskSession(self.tempdir)
-        session._handshake_required = Mock()
-        session._start_handshake = Mock()
-        session.send = Mock()
+        self.session._handshake_required = Mock()
+        self.session.send = Mock()
 
-        session._handshake_required.return_value = False
-        session.request_task(**self.message)
+        self.session._handshake_required.return_value = False
+        self.session.request_task(**self.message)
 
-        assert not session.disconnect.called
-        assert session.send.called
+        assert not self.session.disconnect.called
+        assert self.session.send.called
 
-        slots = session.send.call_args[0][0].__slots__
+        slots = self.session.send.call_args[0][0].__slots__
 
-        msg = message.WantToComputeTask(**self.message)
+        msg = message.tasks.WantToComputeTask(**self.message)
         msg_slots = msg.__slots__
 
         assert slots == msg_slots
 
     def test_request_task_failure(self, *_):
-        session = MockTaskSession(self.tempdir)
-        session._handshake_required = Mock()
-        session._start_handshake = Mock()
-        session._handshake_error = Mock()
-        session.send = Mock()
+        self.session._handshake_required = Mock()
+        self.session._handshake_error = Mock()
 
-        session._handshake_required.return_value = False
-        session._block_peer(session.key_id)
-        session.request_task(**self.message)
+        self.session._handshake_required.return_value = False
+        self.session._block_peer(self.session.key_id)
+        self.session.request_task(**self.message)
 
-        assert not session._start_handshake.called
-        assert session._handshake_error.called
+        assert not self.session._start_handshake.called
+        assert self.session._handshake_error.called
+
+    @patch(
+        "golem.resource.resourcehandshake.ResourceHandshakeSessionMixin"
+        "._handshake_required",
+        return_value=False,
+    )
+    @patch(
+        "golem.resource.resourcehandshake.ResourceHandshakeSessionMixin"
+        "._handshake_error",
+    )
+    def test_request_task_concent_required(self, hs_error_mock, *_):
+        self.session.task_server.client.concent_service.enabled = True
+        self.session.task_server.task_keeper \
+            .task_headers[self.message['task_id']].concent_enabled = False
+
+        self.session.request_task(**self.message)
+        self.session.send.assert_not_called()
+        hs_error_mock.assert_called_once_with(
+            self.session.key_id,
+            "Concent required",
+        )
+
+    @patch(
+        "golem.resource.resourcehandshake.ResourceHandshakeSessionMixin"
+        "._handshake_required",
+        return_value=False,
+    )
+    def test_request_task_concent_enabled(self, *_):
+        self.session.task_server.client.concent_service.enabled = True
+        self.session.task_server.task_keeper \
+            .task_headers[self.message['task_id']].concent_enabled = True
+
+        self.session.request_task(**self.message)
+        self.session.send.assert_called_once()
+        msg: message.tasks.WantToComputeTask = self.session.send.call_args[0][0]
+        self.assertIsInstance(msg, message.tasks.WantToComputeTask)
+        self.assertTrue(msg.concent_enabled)
+
+    @patch(
+        "golem.resource.resourcehandshake.ResourceHandshakeSessionMixin"
+        "._handshake_required",
+        return_value=False,
+    )
+    def test_request_task_concent_disabled(self, *_):
+        self.session.task_server.client.concent_service.enabled = False
+
+        self.session.request_task(**self.message)
+        self.session.send.assert_called_once()
+        msg: message.tasks.WantToComputeTask = self.session.send.call_args[0][0]
+        self.assertIsInstance(msg, message.tasks.WantToComputeTask)
+        self.assertFalse(msg.concent_enabled)
 
     def test_react_to_resource_handshake_start(self, *_):
-        session = MockTaskSession(self.tempdir)
-        session._start_handshake = Mock()
-        session._download_handshake_nonce = Mock()
-        session._handshake_error = Mock()
+        self.session._download_handshake_nonce = Mock()
+        self.session._handshake_error = Mock()
 
         resource = str(uuid.uuid4())
-        msg = message.ResourceHandshakeStart(resource=resource)
-        session._react_to_resource_handshake_start(msg)
+        msg = message.resources.ResourceHandshakeStart(resource=resource)
+        self.session._react_to_resource_handshake_start(msg)
 
-        assert session._start_handshake.called
-        assert not session._handshake_error.called
-        session._download_handshake_nonce.assert_called_with(ANY, resource, ANY)
+        assert self.session._start_handshake.called
+        assert not self.session._handshake_error.called
+        self.session._download_handshake_nonce.assert_called_with(
+            ANY,
+            resource,
+            ANY,
+        )
 
     def test_react_to_resource_handshake_start_blocked_peer(self, *_):
-        session = MockTaskSession(self.tempdir)
-        session._start_handshake = Mock()
-        session._download_handshake_nonce = Mock()
-        session._handshake_error = Mock()
+        self.session._download_handshake_nonce = Mock()
+        self.session._handshake_error = Mock()
 
-        msg = message.ResourceHandshakeStart(resource=str(uuid.uuid4()))
-        session._block_peer(session.key_id)
-        session._react_to_resource_handshake_start(msg)
+        msg = message.resources.ResourceHandshakeStart(
+            resource=str(uuid.uuid4()))
+        self.session._block_peer(self.session.key_id)
+        self.session._react_to_resource_handshake_start(msg)
 
-        assert not session._download_handshake_nonce.called
-        assert not session._start_handshake.called
-        assert session._handshake_error.called
+        assert not self.session._download_handshake_nonce.called
+        assert not self.session._start_handshake.called
+        assert self.session._handshake_error.called
 
     def test_react_to_resource_handshake_start_upload_failure(self, *_):
-        session = MockTaskSession(self.tempdir, successful_uploads=False)
-        session._download_handshake_nonce = Mock()
-        session._handshake_error = Mock()
+        self.session = MockTaskSession(self.tempdir, successful_uploads=False)
+        self.session._download_handshake_nonce = Mock()
+        self.session._handshake_error = Mock()
 
-        msg = message.ResourceHandshakeStart(resource=str(uuid.uuid4()))
+        msg = message.resources.ResourceHandshakeStart(
+            resource=str(uuid.uuid4()))
 
-        session._react_to_resource_handshake_start(msg)
+        self.session._react_to_resource_handshake_start(msg)
 
-        assert session._handshake_error.called
-        assert session._download_handshake_nonce.called
+        assert self.session._handshake_error.called
+        assert self.session._download_handshake_nonce.called
 
     def test_react_to_resource_handshake_start_download_failure(self, *_):
-        session = MockTaskSession(self.tempdir, successful_downloads=False)
-        session._start_handshake = Mock()
-        session._handshake_error = Mock()
+        self.session = MockTaskSession(self.tempdir, successful_downloads=False)
+        self.session._start_handshake = Mock()
+        self.session._handshake_error = Mock()
 
-        msg = message.ResourceHandshakeStart(resource=str(uuid.uuid4()))
+        msg = message.resources.ResourceHandshakeStart(
+            resource=str(uuid.uuid4()))
         handshake = ResourceHandshake(self.key_id)
 
-        session._set_handshake(session.key_id, handshake)
-        session._react_to_resource_handshake_start(msg)
+        self.session._set_handshake(self.session.key_id, handshake)
+        self.session._react_to_resource_handshake_start(msg)
 
-        assert session._handshake_error.called
+        assert self.session._handshake_error.called
 
     def test_react_to_resource_handshake_nonce(self, *_):
-        session = MockTaskSession(self.tempdir)
-        session._finalize_handshake = Mock()
-        session._handshake_error = Mock()
+        self.session._finalize_handshake = Mock()
+        self.session._handshake_error = Mock()
 
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
 
-        msg = message.ResourceHandshakeNonce(nonce=handshake.nonce)
+        msg = message.resources.ResourceHandshakeNonce(nonce=handshake.nonce)
 
-        session._set_handshake(session.key_id, handshake)
-        session._react_to_resource_handshake_nonce(msg)
+        self.session._set_handshake(self.session.key_id, handshake)
+        self.session._react_to_resource_handshake_nonce(msg)
 
-        assert session._finalize_handshake.called
-        assert not session._handshake_error.called
+        assert self.session._finalize_handshake.called
+        assert not self.session._handshake_error.called
 
     def test_react_to_resource_handshake_nonce_failure(self, *_):
-        session = MockTaskSession(self.tempdir)
-        session._finalize_handshake = Mock()
-        session._handshake_error = Mock()
+        self.session._finalize_handshake = Mock()
+        self.session._handshake_error = Mock()
 
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
 
-        msg = message.ResourceHandshakeNonce(nonce=handshake.nonce)
-        session._react_to_resource_handshake_nonce(msg)
+        msg = message.resources.ResourceHandshakeNonce(nonce=handshake.nonce)
+        self.session._react_to_resource_handshake_nonce(msg)
 
-        assert not session._finalize_handshake.called
-        assert session._handshake_error.called
+        assert not self.session._finalize_handshake.called
+        assert self.session._handshake_error.called
 
-        session._set_handshake(session.key_id, handshake)
-        msg = message.ResourceHandshakeNonce(nonce=str(uuid.uuid4()))
-        session._react_to_resource_handshake_nonce(msg)
+        self.session._set_handshake(self.session.key_id, handshake)
+        msg = message.resources.ResourceHandshakeNonce(nonce=str(uuid.uuid4()))
+        self.session._react_to_resource_handshake_nonce(msg)
 
-        assert not session._finalize_handshake.called
-        assert session._handshake_error.called
+        assert not self.session._finalize_handshake.called
+        assert self.session._handshake_error.called
 
     def test_react_to_resource_handshake_verdict(self, *_):
-        session = MockTaskSession(self.tempdir, successful_uploads=False)
-        session._finalize_handshake = Mock()
-        session._handshake_error = Mock()
+        self.session._finalize_handshake = Mock()
+        self.session._handshake_error = Mock()
 
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
 
-        msg = message.ResourceHandshakeVerdict(
+        msg = message.resources.ResourceHandshakeVerdict(
             nonce=handshake.nonce,
             accepted=True,
         )
-        session._react_to_resource_handshake_nonce(msg)
+        self.session._react_to_resource_handshake_nonce(msg)
 
-        assert not session._finalize_handshake.called
-        assert session._handshake_error.called
+        assert not self.session._finalize_handshake.called
+        assert self.session._handshake_error.called
 
-        session._set_handshake(session.key_id, handshake)
-        msg = message.ResourceHandshakeVerdict(
+        self.session._set_handshake(self.session.key_id, handshake)
+        msg = message.resources.ResourceHandshakeVerdict(
             nonce=str(uuid.uuid4()),
             accepted=False,
         )
-        session._react_to_resource_handshake_nonce(msg)
+        self.session._react_to_resource_handshake_nonce(msg)
 
-        assert not session._finalize_handshake.called
-        assert session._handshake_error.called
+        assert not self.session._finalize_handshake.called
+        assert self.session._handshake_error.called
 
     def test_react_to_resource_handshake_verdict_failure(self, *_):
-        session = MockTaskSession(self.tempdir, successful_uploads=False)
-        session._finalize_handshake = Mock()
-        session._handshake_error = Mock()
+        self.session = MockTaskSession(self.tempdir, successful_uploads=False)
+        self.session._finalize_handshake = Mock()
+        self.session._handshake_error = Mock()
 
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
 
-        msg = message.ResourceHandshakeVerdict(
+        msg = message.resources.ResourceHandshakeVerdict(
             nonce=handshake.nonce,
             accepted=False,
         )
-        session._react_to_resource_handshake_nonce(msg)
+        self.session._react_to_resource_handshake_nonce(msg)
 
-        assert not session._finalize_handshake.called
-        assert session._handshake_error.called
+        assert not self.session._finalize_handshake.called
+        assert self.session._handshake_error.called
 
-        session._set_handshake(session.key_id, handshake)
-        msg = message.ResourceHandshakeVerdict(
+        self.session._set_handshake(self.session.key_id, handshake)
+        msg = message.resources.ResourceHandshakeVerdict(
             nonce=str(uuid.uuid4()),
             accepted=False,
         )
-        session._react_to_resource_handshake_nonce(msg)
+        self.session._react_to_resource_handshake_nonce(msg)
 
-        assert not session._finalize_handshake.called
-        assert session._handshake_error.called
+        assert not self.session._finalize_handshake.called
+        assert self.session._handshake_error.called
 
     def test_handshake_required(self, *_):
-        session = MockTaskSession(self.tempdir)
-        session._handshake_error = Mock()
+        self.session._handshake_error = Mock()
 
-        assert not session._handshake_required(None)
-        assert session._handshake_error.called
+        assert not self.session._handshake_required(None)
+        assert self.session._handshake_error.called
 
-        session._handshake_error.reset_mock()
+        self.session._handshake_error.reset_mock()
 
-        assert session._handshake_required(session.key_id)
-        assert not session._handshake_in_progress(session.key_id)
-        assert not session._handshake_error.called
+        assert self.session._handshake_required(self.session.key_id)
+        assert not self.session._handshake_in_progress(self.session.key_id)
+        assert not self.session._handshake_error.called
 
         handshake = ResourceHandshake(self.key_id)
-        session._set_handshake(session.key_id, handshake)
+        self.session._set_handshake(self.session.key_id, handshake)
 
-        assert not session._handshake_required(session.key_id)
-        assert session._handshake_in_progress(session.key_id)
-        assert not session._handshake_error.called
+        assert not self.session._handshake_required(self.session.key_id)
+        assert self.session._handshake_in_progress(self.session.key_id)
+        assert not self.session._handshake_error.called
 
         handshake.local_result = True
         handshake.remote_result = True
 
-        assert not session._handshake_required(session.key_id)
-        assert not session._handshake_in_progress(session.key_id)
-        assert not session._handshake_error.called
+        assert not self.session._handshake_required(self.session.key_id)
+        assert not self.session._handshake_in_progress(self.session.key_id)
+        assert not self.session._handshake_error.called
 
-        session._remove_handshake(session.key_id)
-        session._block_peer(session.key_id)
+        self.session._remove_handshake(self.session.key_id)
+        self.session._block_peer(self.session.key_id)
 
-        assert not session._handshake_required(session.key_id)
-        assert not session._handshake_in_progress(session.key_id)
-        assert not session._handshake_error.called
+        assert not self.session._handshake_required(self.session.key_id)
+        assert not self.session._handshake_in_progress(self.session.key_id)
+        assert not self.session._handshake_error.called
 
     def test_handshake_in_progress(self, *_):
-        session = MockTaskSession(self.tempdir)
-        session._handshake_error = Mock()
+        self.session = MockTaskSession(self.tempdir)
+        self.session._handshake_error = Mock()
 
-        assert not session._handshake_in_progress(None)
-        assert session._handshake_error.called
+        assert not self.session._handshake_in_progress(None)
+        assert self.session._handshake_error.called
 
-        session._handshake_error.reset_mock()
+        self.session._handshake_error.reset_mock()
 
-        assert not session._handshake_in_progress(session.key_id)
-        assert not session._handshake_error.called
+        assert not self.session._handshake_in_progress(self.session.key_id)
+        assert not self.session._handshake_error.called
 
         handshake = ResourceHandshake(self.key_id)
         handshake.start(self.tempdir)
-        session._set_handshake(session.key_id, handshake)
+        self.session._set_handshake(self.session.key_id, handshake)
 
-        assert session._handshake_in_progress(session.key_id)
+        assert self.session._handshake_in_progress(self.session.key_id)
 
         handshake.local_result = True
         handshake.remote_result = False
 
-        assert not session._handshake_in_progress(session.key_id)
+        assert not self.session._handshake_in_progress(self.session.key_id)
 
     def test_start_handshake(self, *_):
-        session = MockTaskSession(self.tempdir)
-        session._set_handshake = Mock()
-        session._start_handshake_timer = Mock()
-        session._share_handshake_nonce = Mock()
-
-        def raise_exception(*_):
-            raise RuntimeError('Test exception')
+        self.session = MockTaskSession(self.tempdir)
+        self.session._set_handshake = Mock()
+        self.session._start_handshake_timer = Mock()
+        self.session._share_handshake_nonce = Mock()
 
         with patch('golem.resource.resourcehandshake.ResourceHandshake.start',
-                   side_effect=raise_exception):
+                   side_effect=RuntimeError('Test exception')):
 
-            session._start_handshake(session.key_id)
+            self.session._start_handshake(self.session.key_id)
 
-            assert not session._set_handshake.called
-            assert not session._start_handshake_timer.called
-            assert not session._share_handshake_nonce.called
+            assert not self.session._set_handshake.called
+            assert not self.session._start_handshake_timer.called
+            assert not self.session._share_handshake_nonce.called
 
-        session._start_handshake(session.key_id)
+        self.session._start_handshake(self.session.key_id)
 
-        assert session._set_handshake.called
-        assert session._start_handshake_timer.called
-        assert session._share_handshake_nonce.called
+        self.session._set_handshake.assert_called_once()
+        assert self.session._start_handshake_timer.called
+        assert self.session._share_handshake_nonce.called
 
     def test_handshake_timer(self, task, *_):
-        session = MockTaskSession(self.tempdir)
-
-        session._start_handshake_timer()
+        self.session._start_handshake_timer()
         assert task.deferLater.called
 
     def test_finalize_handshake(self, *_):
-        session = MockTaskSession(self.tempdir)
-
-        session._finalize_handshake(session.key_id)
-        assert not session.send.called
+        self.session._finalize_handshake(self.session.key_id)
+        assert not self.session.send.called
 
         handshake = ResourceHandshake(self.key_id)
         handshake.local_result = False
         handshake.remote_result = True
-        session._set_handshake(session.key_id, handshake)
+        self.session._set_handshake(self.session.key_id, handshake)
 
-        session._finalize_handshake(session.key_id)
-        assert not session.send.called
+        self.session._finalize_handshake(self.session.key_id)
+        assert not self.session.send.called
 
         handshake.message = self.message
 
-        session._finalize_handshake(session.key_id)
-        assert not session.send.called
+        self.session._finalize_handshake(self.session.key_id)
+        assert not self.session.send.called
 
         handshake.local_result = True
         handshake.remote_result = True
 
-        session._finalize_handshake(session.key_id)
-        assert session.send.called
+        self.session._finalize_handshake(self.session.key_id)
+        assert self.session.send.called
 
     def test_handshake_error(self, *_):
-        session = MockTaskSession(self.tempdir)
-        session._block_peer = Mock()
-        session._finalize_handshake = Mock()
+        self.session._block_peer = Mock()
+        self.session._finalize_handshake = Mock()
 
-        session._handshake_error(session.key_id, 'Test error')
-        assert session._block_peer.called
-        assert session._finalize_handshake.called
-        assert session.task_server.task_computer.session_closed.called
-        assert not session.disconnect.called
+        self.session._handshake_error(self.session.key_id, 'Test error')
+        assert self.session._block_peer.called
+        assert self.session._finalize_handshake.called
+        assert self.session.task_server.task_computer.session_closed.called
+        assert not self.session.disconnect.called
 
     def test_handshake_timeout(self, *_):
-        session = MockTaskSession(self.tempdir)
-        session._block_peer = Mock()
-        session._finalize_handshake = Mock()
+        self.session._block_peer = Mock()
+        self.session._finalize_handshake = Mock()
 
-        session._handshake_timeout(session.key_id)
-        assert not session._block_peer.called
-        assert not session._finalize_handshake.called
-        assert not session.task_server.task_computer.session_closed.called
-        assert not session.dropped.called
+        self.session._handshake_timeout(self.session.key_id)
+        assert not self.session._block_peer.called
+        assert not self.session._finalize_handshake.called
+        assert not self.session.task_server.task_computer.session_closed.called
+        assert not self.session.dropped.called
 
         handshake = ResourceHandshake(self.key_id)
         handshake.local_result = False
         handshake.remote_result = True
-        session._set_handshake(session.key_id, handshake)
+        self.session._set_handshake(self.session.key_id, handshake)
 
-        session._handshake_timeout(session.key_id)
-        assert session._block_peer.called
-        assert session._finalize_handshake.called
-        assert session.task_server.task_computer.session_closed.called
-        assert session.dropped.called
+        self.session._handshake_timeout(self.session.key_id)
+        assert self.session._block_peer.called
+        assert self.session._finalize_handshake.called
+        assert self.session.task_server.task_computer.session_closed.called
+        assert self.session.dropped.called
 
     def test_get_set_remove_handshake(self, *_):
-        session = MockTaskSession(self.tempdir)
         handshake = ResourceHandshake(self.key_id)
-        key_id = session.key_id
+        key_id = self.session.key_id
 
-        assert not session._get_handshake(key_id)
-        session._set_handshake(key_id, handshake)
-        assert session._get_handshake(key_id)
-        session._remove_handshake(key_id)
-        assert not session._get_handshake(key_id)
+        assert not self.session._get_handshake(key_id)
+        self.session._set_handshake(key_id, handshake)
+        assert self.session._get_handshake(key_id)
+        self.session._remove_handshake(key_id)
+        assert not self.session._get_handshake(key_id)
 
     def test_block_peer(self, *_):
-        session = MockTaskSession(self.tempdir)
-        key_id = session.key_id
+        key_id = self.session.key_id
 
-        assert not session._is_peer_blocked(key_id)
-        session._block_peer(key_id)
-        assert session._is_peer_blocked(key_id)
+        assert not self.session._is_peer_blocked(key_id)
+        self.session._block_peer(key_id)
+        assert self.session._is_peer_blocked(key_id)
 
 
 @patch('twisted.internet.reactor', create=True)
@@ -471,11 +510,11 @@ class TestResourceHandshakeShare(DatabaseFixture):
         # Start handshake
 
         local_session._start_handshake(local_session.key_id)
-        msg = local_session.send.call_args[0][0]
+        msg = local_session.send.call_args[0][0]  # noqa pylint: disable=unsubscriptable-object
         local_hash = msg.resource
 
         remote_session._start_handshake(remote_session.key_id)
-        msg = remote_session.send.call_args[0][0]
+        msg = remote_session.send.call_args[0][0]  # noqa pylint: disable=unsubscriptable-object
         remote_hash = msg.resource
         options = Mock()
 
@@ -496,8 +535,8 @@ class TestResourceHandshakeShare(DatabaseFixture):
         # Check self-issued nonce only. Asserts make sure that nonces
         # were verified successfully.
 
-        msg_from_local = local_session.send.call_args[0][0]
-        msg_from_remote = remote_session.send.call_args[0][0]
+        msg_from_local = local_session.send.call_args[0][0]  # noqa pylint: disable=unsubscriptable-object
+        msg_from_remote = remote_session.send.call_args[0][0]  # noqa pylint: disable=unsubscriptable-object
 
         local_nonce = msg_from_local.nonce
         remote_nonce = msg_from_remote.nonce
@@ -506,11 +545,13 @@ class TestResourceHandshakeShare(DatabaseFixture):
         remote_session._react_to_resource_handshake_nonce(msg_from_local)
 
         local_session._react_to_resource_handshake_verdict(
-            message.ResourceHandshakeVerdict(nonce=remote_nonce, accepted=True)
+            message.resources.ResourceHandshakeVerdict(
+                nonce=remote_nonce, accepted=True)
         )
 
         remote_session._react_to_resource_handshake_verdict(
-            message.ResourceHandshakeVerdict(nonce=local_nonce, accepted=True)
+            message.resources.ResourceHandshakeVerdict(
+                nonce=local_nonce, accepted=True)
         )
 
         assert local_session._finalize_handshake.called
@@ -533,8 +574,8 @@ class TestResourceHandshakeShare(DatabaseFixture):
         session._share_handshake_nonce(session.key_id)
 
         assert session.send.called
-        msg = session.send.call_args[0][0]
-        assert isinstance(msg, message.ResourceHandshakeStart)
+        msg = session.send.call_args[0][0]  # noqa pylint: disable=unsubscriptable-object
+        assert isinstance(msg, message.resources.ResourceHandshakeStart)
 
     def test_share_handshake_nonce_after_failure(self, *_):
         session = MockTaskSession(self.tempdir)
@@ -574,10 +615,9 @@ class TestResourceHandshakeShare(DatabaseFixture):
         resource_manager.pull_resource = types.MethodType(_pull_resource,
                                                           resource_manager)
 
-        with patch(
-                "golem.network.concent.handlers_library"
-                ".HandlersLibrary"
-                ".register_handler"):
+        with patch("golem.network.concent.handlers_library"
+                   ".HandlersLibrary"
+                   ".register_handler"):
             task_server = TaskServer(
                 node=Mock(client=client, key=str(uuid.uuid4())),
                 config_desc=ClientConfigDescriptor(),

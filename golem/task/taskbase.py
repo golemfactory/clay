@@ -2,10 +2,13 @@ import abc
 import hashlib
 import logging
 import time
+from enum import Enum
 from typing import List, Type, Optional, Tuple, Any
 
-from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
+import golem_messages
+
 import golem
+from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
 from golem.core import common
 from golem.core.common import get_timestamp_utc
 from golem.core.simpleserializer import CBORSerializer, DictSerializer
@@ -13,7 +16,14 @@ from golem.network.p2p.node import Node
 from golem.task.masking import Mask
 from golem.task.taskstate import TaskState
 
+from . import exceptions
+
 logger = logging.getLogger("golem.task")
+
+
+class TaskPurpose(Enum):
+    TESTING = "testing"
+    REQUESTING = "requesting"
 
 
 class TaskTypeInfo(object):
@@ -24,12 +34,15 @@ class TaskTypeInfo(object):
                  definition: Type[TaskDefinition],
                  defaults: TaskDefaults,
                  options: Type[Options],
-                 task_builder_type: 'Type[TaskBuilder]'):
+                 task_builder_type: 'Type[TaskBuilder]') -> None:
         self.name = name
         self.defaults = defaults
         self.options = options
         self.definition = definition
         self.task_builder_type = task_builder_type
+
+    def for_purpose(self, purpose: TaskPurpose) -> 'TaskTypeInfo':
+        return self
 
 
 # TODO change types to enums - for now it gets
@@ -55,7 +68,9 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
                  resource_size=0,
                  estimated_memory=0,
                  min_version=golem.__version__,
-                 max_price: int = 0) -> None:
+                 max_price: int = 0,
+                 subtasks_count: int = 0,
+                 concent_enabled: bool = False) -> None:
         """
         :param max_price: maximum price that this (requestor) node may
         pay for an hour of computation
@@ -68,11 +83,13 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
         self.last_checking = time.time()
         self.deadline = deadline
         self.subtask_timeout = subtask_timeout
+        self.subtasks_count = subtasks_count
         self.resource_size = resource_size
         self.environment = environment
         self.estimated_memory = estimated_memory
         self.min_version = min_version
         self.max_price = max_price
+        self.concent_enabled = concent_enabled
 
         self.update_checksum()
 
@@ -90,6 +107,12 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
 
     @staticmethod
     def from_dict(dictionary) -> 'TaskFixedHeader':
+        if 'subtasks_count' not in dictionary:
+            logger.debug(
+                "Subtasks count missing. Implicit 1. dictionary=%r",
+                dictionary,
+            )
+            dictionary['subtasks_count'] = 1
         th: TaskFixedHeader = \
             DictSerializer.load(dictionary, as_class=TaskFixedHeader)
         th.last_checking = time.time()
@@ -135,41 +158,81 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
            defined parameters
          :param dict th_dict_repr: task header dictionary representation
         """
-        if not isinstance(th_dict_repr.get('task_id'), str):
-            raise ValueError('Task ID missing')
+        task_id = th_dict_repr.get('task_id')
+        task_owner = th_dict_repr.get('task_owner')
 
-        if not isinstance(th_dict_repr.get('task_owner'), dict):
-            raise ValueError('Task owner missing')
+        try:
+            node_name = task_owner.get('node_name')  # type: ignore
+        except AttributeError:
+            raise exceptions.TaskHeaderError(
+                'Task owner missing',
+                task_id=task_id,
+                task_owner=task_owner,
+            )
 
-        if not isinstance(th_dict_repr['task_owner'].get('node_name'), str):
-            raise ValueError('Task owner node name missing')
+        if not isinstance(task_id, str):
+            raise exceptions.TaskHeaderError(
+                'Task ID missing',
+                task_id=task_id,
+                node_name=node_name,
+            )
+
+        if not isinstance(node_name, str):
+            raise exceptions.TaskHeaderError(
+                'Task owner node name missing',
+                task_id=task_id,
+                node_name=node_name,
+            )
 
         if not isinstance(th_dict_repr['deadline'], (int, float)):
-            raise ValueError("Deadline is not a timestamp")
+            raise exceptions.TaskHeaderError(
+                "Deadline is not a timestamp",
+                task_id=task_id,
+                node_name=node_name,
+                deadline=th_dict_repr['deadline'],
+            )
 
-        if th_dict_repr['deadline'] < common.get_timestamp_utc():
-            msg = "Deadline already passed \n " \
-                  "task_id = %s \n " \
-                  "node name = %s " % \
-                  (th_dict_repr['task_id'],
-                   th_dict_repr['task_owner']['node_name'])
-            raise ValueError(msg)
+        now = common.get_timestamp_utc()
+        if th_dict_repr['deadline'] < now:
+            raise exceptions.TaskHeaderError(
+                "Deadline already passed",
+                task_id=task_id,
+                node_name=node_name,
+                deadline=th_dict_repr['deadline'],
+                now=now,
+            )
 
         if not isinstance(th_dict_repr['subtask_timeout'], int):
-            msg = "Subtask timeout is not a number \n " \
-                  "task_id = %s \n " \
-                  "node name = %s " % \
-                  (th_dict_repr['task_id'],
-                   th_dict_repr['task_owner']['node_name'])
-            raise ValueError(msg)
+            raise exceptions.TaskHeaderError(
+                "Subtask timeout is not a number",
+                task_id=task_id,
+                node_name=node_name,
+                subtask_timeout=th_dict_repr['subtask_timeout'],
+            )
 
         if th_dict_repr['subtask_timeout'] < 0:
-            msg = "Subtask timeout is less than 0 \n " \
-                  "task_id = %s \n " \
-                  "node name = %s " % \
-                  (th_dict_repr['task_id'],
-                   th_dict_repr['task_owner']['node_name'])
-            raise ValueError(msg)
+            raise exceptions.TaskHeaderError(
+                "Subtask timeout is less than 0",
+                task_id=task_id,
+                node_name=node_name,
+                subtask_timeout=th_dict_repr['subtask_timeout'],
+            )
+
+        try:
+            if th_dict_repr['subtasks_count'] < 1:
+                raise exceptions.TaskHeaderError(
+                    "Subtasks count is less than 1",
+                    task_id=task_id,
+                    node_name=node_name,
+                    subtasks_count=th_dict_repr['subtasks_count'],
+                )
+        except (KeyError, TypeError):
+            raise exceptions.TaskHeaderError(
+                "Subtasks count is missing",
+                task_id=task_id,
+                node_name=node_name,
+                subtask_count=th_dict_repr.get('subtask_count'),
+            )
 
     @staticmethod
     def _ordered(dictionary: dict) -> List[tuple]:
@@ -233,7 +296,10 @@ class TaskHeader(object):
         fixed_header = th_dict_repr.get('fixed_header')
         if fixed_header:
             return TaskFixedHeader.validate(fixed_header)
-        raise ValueError('Fixed header is missing')
+        raise exceptions.TaskHeaderError(
+            'Fixed header is missing',
+            header=th_dict_repr,
+        )
 
     @staticmethod
     def _ordered(dictionary: dict) -> List[Tuple]:
@@ -272,19 +338,21 @@ class TaskEventListener(object):
 class Task(abc.ABC):
 
     class ExtraData(object):
-        def __init__(self, should_wait=False, ctd=None, **kwargs):
-            self.should_wait = should_wait
+        def __init__(self, ctd=None, **kwargs):
             self.ctd = ctd
 
             for key, value in kwargs.items():
                 setattr(self, key, value)
 
-    def __init__(self, header: TaskHeader, src_code: str, task_definition):
+    def __init__(self,
+                 header: TaskHeader,
+                 src_code: str,
+                 task_definition: TaskDefinition) -> None:
         self.src_code = src_code
         self.header = header
         self.task_definition = task_definition
 
-        self.listeners = []
+        self.listeners = []  # type: List[TaskEventListener]
 
     def __getstate__(self):
         state = self.__dict__.copy()
@@ -312,14 +380,17 @@ class Task(abc.ABC):
 
     def register_listener(self, listener):
         if not isinstance(listener, TaskEventListener):
-            raise TypeError("Incorrect 'listener' type: {}. Should be: TaskEventListener".format(type(listener)))
+            raise TypeError(
+                "Incorrect 'listener' type: {}. "
+                "Should be: TaskEventListener".format(type(listener)))
         self.listeners.append(listener)
 
     def unregister_listener(self, listener):
         if listener in self.listeners:
             self.listeners.remove(listener)
         else:
-            logger.warning("Trying to unregister listener that wasn't registered.")
+            logger.warning(
+                "Trying to unregister listener that wasn't registered.")
 
     @abc.abstractmethod
     def initialize(self, dir_manager):
@@ -341,6 +412,10 @@ class Task(abc.ABC):
         :param node_name: name of a node that wants to get a next subtask
         """
         pass  # Implement in derived class
+
+    @abc.abstractmethod
+    def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa pylint:disable=line-too-long
+        pass  # Implement in derived methods
 
     def create_reference_data_for_task_validation(self):
         """
@@ -526,3 +601,7 @@ class Task(abc.ABC):
         Copy results of a single subtask from another task
         """
         raise NotImplementedError()
+
+    @abc.abstractmethod
+    def should_accept_client(self, node_id):
+        pass
