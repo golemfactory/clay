@@ -53,7 +53,7 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
         try:
             self.command('create', vm_name, args=command_args)
             return True
-        except subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError:
             logger.exception(
                 f'{self.DRIVER_NAME}: error creating VM "{vm_name}"')
             return False

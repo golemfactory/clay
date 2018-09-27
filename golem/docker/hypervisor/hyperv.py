@@ -1,7 +1,7 @@
 import logging
-import subprocess
 from os import path
 from pathlib import Path
+import subprocess
 from subprocess import CalledProcessError, TimeoutExpired
 from typing import Optional, Union, Any, List, Dict, ClassVar, Iterable
 
@@ -174,7 +174,8 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
         return volume_name
 
-class VMUtilsWithMem(VMUtils):
+
+class VMUtilsWithMem(VMUtils): # pylint: disable=abstract-method
     def get_vm_memory(self, vm_name):
         vmsetting = self._lookup_vm_check(vm_name)
         si = _wqlutils.get_element_associated_class(

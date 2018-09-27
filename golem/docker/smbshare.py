@@ -1,8 +1,8 @@
 import binascii
 import hashlib
 from os import path, makedirs
-import subprocess
 from pathlib import Path
+import subprocess
 from subprocess import CalledProcessError, TimeoutExpired
 import sys
 
