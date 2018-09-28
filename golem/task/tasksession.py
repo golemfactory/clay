@@ -424,26 +424,24 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     #########################
 
     def _react_to_want_to_compute_task(self, msg):
+        def _cannot_assign(reason):
+            logger.debug("Cannot assign task: %r", reason)
+            self.send(
+                message.tasks.CannotAssignTask(
+                    task_id=msg.task_id,
+                    reason=reason,
+                ),
+            )
+            self.dropped()
+
         reasons = message.tasks.CannotAssignTask.REASON
 
         if msg.concent_enabled and not self.concent_service.enabled:
-            self.send(
-                message.tasks.CannotAssignTask(
-                    task_id=msg.task_id,
-                    reason=reasons.ConcentDisabled,
-                )
-            )
-            self.dropped()
+            _cannot_assign(reasons.ConcentDisabled)
             return
 
         if not self.task_manager.is_my_task(msg.task_id):
-            self.send(
-                message.tasks.CannotAssignTask(
-                    task_id=msg.task_id,
-                    reason=reasons.NotMyTask,
-                )
-            )
-            self.dropped()
+            _cannot_assign(reasons.NotMyTask)
             return
 
         node_name_id = common.node_info_str(msg.node_name, self.key_id)
@@ -471,7 +469,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             node_name_id,
         )
 
-        ctd = None
         task_server_ok = self.task_server.should_accept_provider(
             self.key_id, msg.node_name, msg.task_id, msg.perf_index,
             msg.max_resource_size, msg.max_memory_size, msg.num_cores)
@@ -483,7 +480,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             node_name_id,
         )
 
-        if task_server_ok and self.task_manager.check_next_subtask(
+        if not task_server_ok:
+            _cannot_assign(reasons.NoMoreSubtasks)
+            return
+
+        ctd = None
+        if self.task_manager.check_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.price):
 
             logger.debug(
@@ -520,60 +522,46 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             ctd,
         )
 
-        if ctd:
-            logger.info(
-                "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
-                msg.task_id,
-                node_name_id,
-                ctd["subtask_id"],
-            )
-            task = self.task_manager.tasks[ctd['task_id']]
-            task_state: TaskState = self.task_manager.tasks_states[
-                ctd['task_id']]
-            price = taskkeeper.compute_subtask_value(
-                task.header.max_price,
-                task.header.subtask_timeout,
-            )
-            ttc = message.tasks.TaskToCompute(
-                compute_task_def=ctd,
-                want_to_compute_task=msg,
-                requestor_id=task.header.task_owner.key,
-                requestor_public_key=task.header.task_owner.key,
-                requestor_ethereum_public_key=task.header.task_owner.key,
-                provider_id=self.key_id,
-                package_hash='sha1:' + task_state.package_hash,
-                concent_enabled=msg.concent_enabled,
-                price=price,
-                size=task_state.package_size
-            )
-            ttc.generate_ethsig(self.my_private_key)
-            self.task_manager.set_subtask_value(
-                subtask_id=ttc.subtask_id,
-                price=price,
-            )
-            history.add(
-                msg=ttc,
-                node_id=self.key_id,
-                local_role=Actor.Requestor,
-                remote_role=Actor.Provider,
-            )
-            self.send(ttc)
+        if ctd is None:
+            _cannot_assign(reasons.NoMoreSubtasks)
             return
-        elif not task_server_ok:
-            logger.warning("Can not accept offer: Taskserver rejected provider."
-                           "task_id=%r, node=%r", msg.task_id, node_name_id)
-        else:
-            logger.warning("Can not accept offer: Taskmanager rejected "
-                           "provider. task_id=%r, node=%r", msg.task_id,
-                           node_name_id)
 
-        self.send(
-            message.tasks.CannotAssignTask(
-                task_id=msg.task_id,
-                reason=reasons.NoMoreSubtasks,
-            )
+        logger.info(
+            "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
+            msg.task_id,
+            node_name_id,
+            ctd["subtask_id"],
         )
-        self.dropped()
+        task = self.task_manager.tasks[ctd['task_id']]
+        task_state: TaskState = self.task_manager.tasks_states[ctd['task_id']]
+        price = taskkeeper.compute_subtask_value(
+            task.header.max_price,
+            task.header.subtask_timeout,
+        )
+        ttc = message.tasks.TaskToCompute(
+            compute_task_def=ctd,
+            want_to_compute_task=msg,
+            requestor_id=task.header.task_owner.key,
+            requestor_public_key=task.header.task_owner.key,
+            requestor_ethereum_public_key=task.header.task_owner.key,
+            provider_id=self.key_id,
+            package_hash='sha1:' + task_state.package_hash,
+            concent_enabled=msg.concent_enabled,
+            price=price,
+            size=task_state.package_size
+        )
+        ttc.generate_ethsig(self.my_private_key)
+        self.task_manager.set_subtask_value(
+            subtask_id=ttc.subtask_id,
+            price=price,
+        )
+        history.add(
+            msg=ttc,
+            node_id=self.key_id,
+            local_role=Actor.Requestor,
+            remote_role=Actor.Provider,
+        )
+        self.send(ttc)
 
     @handle_attr_error_with_task_computer
     @history.provider_history
