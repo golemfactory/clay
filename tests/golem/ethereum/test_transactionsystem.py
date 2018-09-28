@@ -98,6 +98,7 @@ class TestTransactionSystem(TransactionSystemBase):
             'test_chain',
             ANY,
             ANY,
+            ANY,
         )
 
     def test_payment(self):
@@ -378,7 +379,7 @@ class TestTransactionSystem(TransactionSystemBase):
         with patch('golem.ethereum.transactionsystem.new_sci',
                    return_value=self.sci) as new_sci:
             ets._init()
-            new_sci.assert_called_once_with(ANY, address, ANY, ANY, ANY)
+            new_sci.assert_called_once_with(ANY, address, ANY, ANY, ANY, ANY)
 
         # Shouldn't throw
         self._make_ets(datadir=self.new_path / 'other', password=password)
