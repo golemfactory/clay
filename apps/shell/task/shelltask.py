@@ -88,8 +88,11 @@ class ShellTask(CoreTask):
 
     def _extra_data(self, perf_index=0.0) -> ComputeTaskDef:
         subtask_id = self.create_subtask_id()
-        extra_data = {
-        }
+
+        extra_data = dict()
+
+        if hasattr(self.task_definition, 'environment'):
+            extra_data['environment'] = self.task_definition.environment
 
         return self._new_compute_task_def(subtask_id,
                                           extra_data,
@@ -169,6 +172,9 @@ class ShellTaskBuilder(CoreTaskBuilder):
         definition.resources = set(dictionary['resources'])
         definition.resources = [r.replace("${ROOT_DIR}", definition.root_dir) \
                                 for r in definition.resources]
+
+        if 'environment' in dictionary:
+            definition.environment = dictionary['environment']
         for r in definition.resources:
             assert os.path.exists(r)
 

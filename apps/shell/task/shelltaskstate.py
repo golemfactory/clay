@@ -23,6 +23,7 @@ class ShellTaskDefinition(TaskDefinition):
 
         self.task_type = 'SHELL'
         self.shared_data_files = []
+        self.environment = {}
 
         if defaults:
             self.set_defaults(defaults)

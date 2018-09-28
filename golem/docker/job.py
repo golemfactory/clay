@@ -148,6 +148,9 @@ class DockerJob(object):
             OUTPUT_DIR=self.OUTPUT_DIR
         ) 
 
+        if 'environment' in self.parameters:
+            environment.update(self.parameters['environment'])
+
         host_cfg = client.create_host_config(
             cpuset_cpus=cpuset,
             binds={
