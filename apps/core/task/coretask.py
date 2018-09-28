@@ -203,8 +203,12 @@ class CoreTask(Task):
     def finished_computation(self):
         return self.num_tasks_received == self.total_tasks
 
-    def computation_failed(self, subtask_id):
-        self._mark_subtask_failed(subtask_id)
+    def computation_failed(
+            self,
+            subtask_id,
+            offer_cancelled: bool = False):
+        self._mark_subtask_failed(subtask_id, offer_cancelled)
+        self.on_computation_failed(subtask_id)
 
     def computation_finished(self, subtask_id, task_result,
                              result_type=ResultType.DATA,
@@ -479,12 +483,15 @@ class CoreTask(Task):
             return ""
 
     @handle_key_error
-    def _mark_subtask_failed(self, subtask_id):
+    def _mark_subtask_failed(self, subtask_id, offer_cancelled=False):
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
+        self.num_failed_subtasks += 1
         node_id = self.subtasks_given[subtask_id]['node_id']
         if node_id in self.counting_nodes:
-            self.counting_nodes[node_id].reject()
-        self.num_failed_subtasks += 1
+            if offer_cancelled:
+                self.counting_nodes[node_id].cancel()
+            else:
+                self.counting_nodes[node_id].reject()
 
     def _unpack_task_result(self, trp, output_dir):
         tr = CBORSerializer.loads(trp)

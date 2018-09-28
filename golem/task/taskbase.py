@@ -460,11 +460,14 @@ class Task(abc.ABC):
         return  # Implement in derived class
 
     @abc.abstractmethod
-    def computation_failed(self, subtask_id):
-        """ Inform that computation of a task with given id has failed
+    def computation_failed(self, subtask_id, offer_cancelled: bool):
+        """ Inform that computation of a task with given id has failed.
         :param subtask_id:
         """
-        return  # Implement in derived class
+        return
+
+    def on_computation_failed(self, subtask_id):
+        pass  # Implement in derived class
 
     @abc.abstractmethod
     def verify_subtask(self, subtask_id):

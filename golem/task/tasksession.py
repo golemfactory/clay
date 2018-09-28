@@ -641,9 +641,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.subtask_id,
                 msg.reason,
             )
+            offer_cancelled = msg.reason == \
+                message.tasks.CannotComputeTask.REASON.OfferCancelled
             self.task_manager.task_computation_failure(
                 msg.subtask_id,
-                'Task computation rejected: {}'.format(msg.reason)
+                'Task computation rejected: {}'.format(msg.reason),
+                offer_cancelled=offer_cancelled,
             )
         self.dropped()
 
