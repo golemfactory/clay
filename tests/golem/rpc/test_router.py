@@ -9,6 +9,7 @@
 import os
 import time
 from threading import Thread
+import typing
 from unittest import mock
 
 from autobahn.twisted import util
@@ -89,8 +90,8 @@ class MockProxy(ClientProxy):  # pylint: disable=too-few-public-methods
 
 class _TestRouter(TestDirFixtureWithReactor):
     TIMEOUT = 20
-    CSRB_FRONTEND = None
-    CSRB_BACKEND = None
+    CSRB_FRONTEND: typing.Optional[cert.CertificateManager.CrossbarUsers] = None
+    CSRB_BACKEND: typing.Optional[cert.CertificateManager.CrossbarUsers] = None
 
     # pylint: disable=too-many-instance-attributes
     class State(object):
