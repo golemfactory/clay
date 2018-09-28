@@ -24,6 +24,7 @@ from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
+from golem.rpc import utils as rpc_utils
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task, TaskHeader, TaskPurpose
 from golem.task.taskkeeper import CompTaskKeeper
@@ -921,6 +922,7 @@ class TaskManager(TaskEventListener):
 
         self.notice_task_updated(task_id, op=TaskOp.ABORTED)
 
+    @rpc_utils.expose('comp.task.subtasks.frames')
     @handle_task_key_error
     def get_output_states(self, task_id):
         return self.tasks[task_id].get_output_states()
@@ -1027,6 +1029,7 @@ class TaskManager(TaskEventListener):
         if subtasks:
             return [subtask.to_dictionary() for subtask in subtasks.values()]
 
+    @rpc_utils.expose('comp.task.subtasks.borders')
     def get_subtasks_borders(self, task_id, part=1):
         task = self.tasks[task_id]
         task_type_name = task.task_definition.task_type.lower()

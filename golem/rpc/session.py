@@ -55,11 +55,13 @@ class WebSocketAddress(RPCAddress):
 class Session(ApplicationSession):
 
     # pylint: disable=too-many-arguments
-    def __init__(self, address, methods=None, events=None,
+    def __init__(self, address, mapping=None, events=None,
                  cert_manager=None, use_ipv6=False,
                  crsb_user=None, crsb_user_secret=None) -> None:
         self.address = address
-        self.methods = methods or []
+        if mapping is None:
+            mapping = {}
+        self.mapping = mapping
         self.events = events or []
         self.subs = {}  # type: ignore
 
@@ -80,16 +82,12 @@ class Session(ApplicationSession):
         super(self.__class__, self).__init__(self.config)  # type: ignore
 
     def connect(self, auto_reconnect=True):
-        print(2001)
 
         def init(proto):
-            print('init', proto)
             reactor.addSystemEventTrigger('before', 'shutdown', cleanup, proto)
-            print('init eo')
             return proto
 
         def cleanup(proto):
-            print('cleanup')
             session = getattr(proto, '_session', None)
             if session is None:
                 return
@@ -137,7 +135,6 @@ class Session(ApplicationSession):
                                         self.address.host,
                                         self.address.port)
 
-        print(2002)
         if auto_reconnect:
             self._reconnect_service = ClientService(
                 endpoint=self._client,
@@ -174,11 +171,8 @@ class Session(ApplicationSession):
 
     @inlineCallbacks
     def onJoin(self, details):
-        print(1001)
-        yield self.register_methods(self.methods)
-        print(1002)
+        yield self.register_procedures(self.mapping)
         yield self.register_events(self.events)
-        print(1003)
         self.connected = True
         if not self.ready.called:
             self.ready.callback(details)
@@ -194,14 +188,14 @@ class Session(ApplicationSession):
         super(Session, self).onDisconnect()
 
     @inlineCallbacks
-    def add_methods(self, methods):
-        self.methods += methods
-        yield self.register_methods(methods)
+    def add_procedures(self, mapping):
+        self.mapping.update(mapping)
+        yield self.register_procedures(mapping)
 
     @inlineCallbacks
-    def register_methods(self, methods):
-        for method, rpc_name in methods:
-            deferred = self.register(method, str(rpc_name))
+    def register_procedures(self, mapping):
+        for uri, procedure in mapping.items():
+            deferred = self.register(procedure, uri)
             deferred.addErrback(self._on_error)
             yield deferred
 
@@ -239,7 +233,6 @@ class ClientProxy():  # pylint: disable=too-few-public-methods
     )
 
     def __init__(self, session, timeout=2):
-
         self._session = session
         self._timeout = timeout
         self._mapping = {}
@@ -290,7 +283,6 @@ class ClientProxy():  # pylint: disable=too-few-public-methods
 
 
 class Publisher(object):
-
     def __init__(self, session):
         self.session = session
 
@@ -301,10 +293,3 @@ class Publisher(object):
             logger.warning("RPC: Cannot publish %r, "
                            "session is not yet established",
                            event_alias)
-
-
-def object_method_map(obj, method_map):
-    return [
-        (getattr(obj, method_name), method_alias)
-        for method_name, method_alias in list(method_map.items())
-    ]
