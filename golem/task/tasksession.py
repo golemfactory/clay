@@ -456,16 +456,27 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.send(message.tasks.WaitingForResults())
             return
 
+        logger.debug(
+            "Calling `task_manager.got_wants_to_compute`,"
+            "task: %s, node: %s",
+            msg.task_id, self.key_id
+        )
         self.task_manager.got_wants_to_compute(msg.task_id, self.key_id,
                                                msg.node_name)
+
+        logger.debug("WTCT processing... %s", msg.task_id)
 
         ctd = None
         task_server_ok = self.task_server.should_accept_provider(
             self.key_id, msg.node_name, msg.task_id, msg.perf_index,
             msg.max_resource_size, msg.max_memory_size, msg.num_cores)
 
+        logger.debug("Task server ok? %s for %s", task_server_ok, msg.task_id)
+
         if task_server_ok and self.task_manager.check_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.price):
+
+            logger.debug("check_next_subtask ok for %s", msg.task_id)
 
             if self._handshake_required(self.key_id):
                 logger.warning('Can not accept offer: Resource handshake is'
@@ -488,8 +499,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.price, msg.max_resource_size, msg.max_memory_size,
                 msg.num_cores, self.address)
 
+        logger.debug("ctd? %s for %s", ctd, msg.task_id)
+
         if ctd:
-            logger.info("Subtask assigned. subtask_id=%r", ctd["subtask_id"])
+            logger.info("Subtask assigned. task_id=%r, subtask_id=%r",
+                        msg.task_id, ctd["subtask_id"])
             task = self.task_manager.tasks[ctd['task_id']]
             task_state: TaskState = self.task_manager.tasks_states[
                 ctd['task_id']]
