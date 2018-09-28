@@ -80,11 +80,16 @@ class Session(ApplicationSession):
         super(self.__class__, self).__init__(self.config)  # type: ignore
 
     def connect(self, auto_reconnect=True):
+        print(2001)
+
         def init(proto):
+            print('init', proto)
             reactor.addSystemEventTrigger('before', 'shutdown', cleanup, proto)
+            print('init eo')
             return proto
 
         def cleanup(proto):
+            print('cleanup')
             session = getattr(proto, '_session', None)
             if session is None:
                 return
@@ -132,6 +137,7 @@ class Session(ApplicationSession):
                                         self.address.host,
                                         self.address.port)
 
+        print(2002)
         if auto_reconnect:
             self._reconnect_service = ClientService(
                 endpoint=self._client,
@@ -168,8 +174,11 @@ class Session(ApplicationSession):
 
     @inlineCallbacks
     def onJoin(self, details):
+        print(1001)
         yield self.register_methods(self.methods)
+        print(1002)
         yield self.register_events(self.events)
+        print(1003)
         self.connected = True
         if not self.ready.called:
             self.ready.callback(details)

@@ -16,7 +16,7 @@ from autobahn.wamp import ApplicationError
 from twisted.internet.defer import inlineCallbacks
 from twisted.internet.defer import setDebugging
 
-from golem.rpc.cert import CertificateManager
+from golem.rpc import cert
 from golem.rpc.common import CROSSBAR_DIR, CROSSBAR_PORT
 from golem.rpc.mapping.rpcmethodnames import DOCKER_URI
 from golem.rpc.router import CrossbarRouter
@@ -29,6 +29,8 @@ from golem.rpc.session import (
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 
 setDebugging(True)
+
+xbar_users = cert.CertificateManager.CrossbarUsers
 
 
 class MockService():
@@ -85,11 +87,10 @@ class MockProxy(ClientProxy):  # pylint: disable=too-few-public-methods
     )
 
 
-TIMEOUT = 40
-
-
 class _TestRouter(TestDirFixtureWithReactor):
     TIMEOUT = 20
+    CSRB_FRONTEND = None
+    CSRB_BACKEND = None
 
     # pylint: disable=too-many-instance-attributes
     class State(object):
@@ -106,13 +107,10 @@ class _TestRouter(TestDirFixtureWithReactor):
             self.frontend_session = None
 
             self.generate_secrets = True
-            self.crsb_frontend = None
             self.crsb_frontend_secret = None
-            self.crsb_backend = None
             self.crsb_backend_secret = None
             self.subscribe = False
 
-            self.cmanager = None
             self.method = None
 
         def add_errors(self, *errors):
@@ -128,7 +126,7 @@ class _TestRouter(TestDirFixtureWithReactor):
 
     @inlineCallbacks
     def _start_backend_session(self, *_):
-        user = self.state.crsb_backend
+        user = self.CSRB_BACKEND
         secret = self.state.crsb_backend_secret
 
         self.state.backend_session = self.Session(  # pylint: disable=no-member
@@ -141,9 +139,7 @@ class _TestRouter(TestDirFixtureWithReactor):
             crsb_user_secret=secret
         )
 
-        txdefer = self.state.backend_session.connect()
-        txdefer.addErrback(self.state.add_errors)
-        yield txdefer
+        yield self.state.backend_session.connect()
         yield self._backend_session_started()
 
     @inlineCallbacks
@@ -154,7 +150,7 @@ class _TestRouter(TestDirFixtureWithReactor):
         )
         txdefer.addErrback(self.state.add_errors)
         yield txdefer
-        user = self.state.crsb_frontend
+        user = self.CSRB_FRONTEND
         secret = self.state.crsb_frontend_secret if user else None
         events = object_method_map(
             self.state.frontend,
@@ -323,23 +319,28 @@ class TestRPCNoAuth(_TestRouter):
 
 
 class _TestRPCAuth(_TestRouter):
-    DOCKER = CertificateManager.CrossbarUsers.docker
-    GOLEMAPP = CertificateManager.CrossbarUsers.golemapp
-    GOLEMCLI = CertificateManager.CrossbarUsers.golemcli
     DOCKER_METHOD = "docker_echo"
     NON_DOCKER_METHOD = "non_docker_echo"
     TIMEOUT = 10
 
     @inlineCallbacks
-    @mock.patch("golem.rpc.cert.CertificateManager.get_secret",
-                lambda *_: "secret")
-    def _start_router(self, *args, port=CROSSBAR_PORT, path=None, **kwargs):  # noqa pylint: disable=arguments-differ
+    def _start_router(
+            self,
+            *args,
+            port=CROSSBAR_PORT,
+            path=None,
+            **kwargs,
+    ):  # noqa pylint: disable=arguments-differ
         self.state.subscribe = False
         path = path if path else self.path
-        self.state.router = CrossbarRouter(datadir=path,
-                                           ssl=False,
-                                           generate_secrets=False,
-                                           port=port)
+        with mock.patch(
+            "golem.rpc.cert.CertificateManager.get_secret",
+            side_effect=lambda *_: "secret",
+        ):
+            self.state.router = CrossbarRouter(datadir=path,
+                                               ssl=False,
+                                               generate_secrets=False,
+                                               port=port)
         # pylint: disable=attribute-defined-outside-init
         self.Session = Session
 
@@ -355,7 +356,7 @@ class _TestRPCAuth(_TestRouter):
 
     @inlineCallbacks
     def _frontend_session_started(self, *_):
-        client = ClientProxy(self.state.frontend_session)
+        client = MockProxy(self.state.frontend_session)
         yield client._ready
         echo_str = "something"
         result = yield getattr(client, self.state.method)(echo_str)
@@ -363,10 +364,8 @@ class _TestRPCAuth(_TestRouter):
         yield self.state.router.stop()
         self.state.done = True
 
-    def _test_rpc_auth_method_access(self, frontend, backend, method, error):
+    def _test_rpc_auth_method_access(self, method, error):
         self.state = _TestRouter.State()
-        self.state.crsb_frontend = frontend
-        self.state.crsb_backend = backend
         self.state.crsb_frontend_secret = "secret"
         self.state.crsb_backend_secret = "secret"
         self.state.method = method
@@ -374,58 +373,77 @@ class _TestRPCAuth(_TestRouter):
 
 
 class TestRPCAuthDockerGolemappDockermethod(_TestRPCAuth):
+    CSRB_FRONTEND = xbar_users.docker
+    CSRB_BACKEND = xbar_users.golemapp
+
     def test_rpc_auth_method_access(self):
         self._test_rpc_auth_method_access(
-            self.DOCKER, self.GOLEMAPP, self.DOCKER_METHOD, False
+            self.DOCKER_METHOD, False
         )
 
 
 class TestRPCAuthCliGolemappNondockermethod(_TestRPCAuth):
+    CSRB_FRONTEND = xbar_users.golemcli
+    CSRB_BACKEND = xbar_users.golemapp
+
     def test_rpc_auth_method_access(self):
         self._test_rpc_auth_method_access(
-            self.GOLEMCLI, self.GOLEMAPP, self.NON_DOCKER_METHOD, False
+            self.NON_DOCKER_METHOD, False
         )
 
 
 class TestRPCAuthCliGolemappDockermethod(_TestRPCAuth):
+    CSRB_FRONTEND = xbar_users.golemcli
+    CSRB_BACKEND = xbar_users.golemapp
+
     def test_rpc_auth_method_access(self):
         self._test_rpc_auth_method_access(
-            self.GOLEMCLI, self.GOLEMAPP, self.DOCKER_METHOD, False
+            self.DOCKER_METHOD, False
         )
 
 
 class TestRPCAuthDockerGolemappNondockermethod(_TestRPCAuth):
+    CSRB_FRONTEND = xbar_users.docker
+    CSRB_BACKEND = xbar_users.golemapp
+
     def test_rpc_auth_method_access(self):
         self._test_rpc_auth_method_access(
-            self.DOCKER, self.GOLEMAPP, self.NON_DOCKER_METHOD, True
+            self.NON_DOCKER_METHOD, True
         )
 
 
 class TestRPCAuthCliDockerDockermethod(_TestRPCAuth):
+    CSRB_FRONTEND = xbar_users.golemcli
+    CSRB_BACKEND = xbar_users.docker
+
     def test_rpc_auth_method_access(self):
         self._test_rpc_auth_method_access(
-            self.GOLEMCLI, self.DOCKER, self.DOCKER_METHOD, True
+            self.DOCKER_METHOD, True
         )
 
 
 class _TestRPCAuthWrongSecret(_TestRPCAuth):
-    def _prepare_wrong_secret(self):
-        self.state.router = CrossbarRouter(datadir=self.path,
-                                           ssl=False,
-                                           generate_secrets=True)
-        self.state.cmanager = CertificateManager(
+    CSRB_FRONTEND = xbar_users.golemcli
+    CSRB_BACKEND = xbar_users.golemapp
+
+    def setUp(self):
+        super().setUp()
+        self.cmanager = cert.CertificateManager(
             os.path.join(self.path, CROSSBAR_DIR)
         )
-        self.state.crsb_frontend = self.GOLEMCLI
-        self.state.crsb_backend = self.GOLEMAPP
+
+        self.state.router = CrossbarRouter(
+            datadir=self.path,
+            ssl=False,
+            generate_secrets=True,
+        )
 
 
 # pylint: disable=too-many-ancestors
 class TestRPCAuthWrongBackendSecret(_TestRPCAuthWrongSecret):
     def test_rpc_auth_wrong_backend_secret(self):
-        self._prepare_wrong_secret()
-        self.state.crsb_frontend_secret = self.state.cmanager.get_secret(
-            self.state.crsb_frontend
+        self.state.crsb_frontend_secret = self.cmanager.get_secret(
+            self.CSRB_FRONTEND,
         )
         self.state.crsb_backend_secret = "wrong_secret"
         self._run_test(True, port=CROSSBAR_PORT, path=self.path)
@@ -434,9 +452,8 @@ class TestRPCAuthWrongBackendSecret(_TestRPCAuthWrongSecret):
 # pylint: disable=too-many-ancestors
 class TestRPCAuthWrongFrontendSecret(_TestRPCAuthWrongSecret):
     def test_rpc_auth_wrong_backend_secret(self):
-        self._prepare_wrong_secret()
-        self.state.crsb_frontend_secret = self.state.cmanager.get_secret(
-            self.state.crsb_frontend
+        self.state.crsb_frontend_secret = self.cmanager.get_secret(
+            self.CSRB_FRONTEND,
         )
         self.state.crsb_backend_secret = "wrong_secret"
         self._run_test(True, port=CROSSBAR_PORT, path=self.path)
