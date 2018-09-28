@@ -607,8 +607,6 @@ class TaskServer(
         super(TaskServer, self).final_conn_failure(conn_id)
 
     def add_forwarded_session_request(self, key_id, conn_id):
-        if self.task_computer.waiting_for_task:
-            self.task_computer.wait(ttl=self.forwarded_session_request_timeout)
         self.forwarded_session_requests[key_id] = dict(
             conn_id=conn_id, time=time.time())
 

@@ -1547,14 +1547,6 @@ class Client(HardwarePresetsMixin):
                 'subtask': subtask_progress.__dict__,
             }
 
-        # trying to get subtask from task
-        waiting_for_task: Optional[str] = task_computer.waiting_for_task
-        if waiting_for_task is not None:
-            return {
-                'status': 'waiting for task',
-                'task_id_waited_for': waiting_for_task,
-            }
-
         # not accepting tasks
         if not self.config_desc.accept_tasks:
             return {

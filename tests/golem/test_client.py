@@ -1280,23 +1280,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         }
         assert status == expected_status
 
-    def test_provider_status_waiting_for_task(self, *_):
-        # given
-        task_computer = Mock()
-        task_computer.get_progress.return_value = None
-        task_computer.waiting_for_task = str(uuid.uuid4())
-        self.client.task_server.task_computer = task_computer
-
-        # when
-        status = self.client.get_provider_status()
-
-        # then
-        expected_status = {
-            'status': 'waiting for task',
-            'task_id_waited_for': task_computer.waiting_for_task,
-        }
-        assert status == expected_status
-
     def test_provider_status_not_accepting_tasks(self, *_):
         # given
         self.client.config_desc.accept_tasks = False

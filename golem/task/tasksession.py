@@ -574,6 +574,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         reasons = message.tasks.CannotComputeTask.REASON
 
+        if self.task_computer.is_computing():
+            _cannot_compute(reasons.OfferCancelled)
+            return
+
         if self.concent_service.enabled and not msg.concent_enabled:
             # Provider requires concent if it's enabed locally
             _cannot_compute(reasons.ConcentRequired)
