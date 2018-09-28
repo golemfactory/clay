@@ -7,6 +7,7 @@ import time
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
 from golem_messages import message
+from golem_messages.exceptions import InvalidSignature
 
 from golem.core.common import HandleAttributeError, node_info_str
 from golem.core.keysauth import KeysAuth
@@ -205,15 +206,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task_to_compute = get_task_message(
                 'TaskToCompute', task_id, subtask_id)
 
-            eth_address = get_task_message(
-                'ReportComputedTask',
-                task_id,
-                subtask_id,
-            ).eth_account
             payment_processed_ts = self.task_server.accept_result(
                 subtask_id,
                 self.key_id,
-                eth_address,
+                task_to_compute.provider_ethereum_address,
             )
 
             response_msg = message.tasks.SubtaskResultsAccepted(
@@ -265,14 +261,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task_result,
             address,
             port,
-            eth_account,
             node_info):
         """ Send task results after finished computations
         :param WaitingTaskResult task_result: finished computations result
                                               with additional information
         :param str address: task result owner address
         :param int port: task result owner port
-        :param str eth_account: ethereum address (bytes20) of task result owner
         :param Node node_info: information about this node
         :return:
         """
@@ -308,7 +302,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             port=port,
             key_id=self.task_server.get_key_id(),
             node_info=node_info.to_dict(),
-            eth_account=eth_account,
             extra_data=extra_data,
             size=task_result.result_size,
             package_hash='sha1:' + task_result.package_sha1,
@@ -506,12 +499,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
             ttc = message.tasks.TaskToCompute(
                 compute_task_def=ctd,
+                want_to_compute_task=msg,
                 requestor_id=task.header.task_owner.key,
                 requestor_public_key=task.header.task_owner.key,
                 requestor_ethereum_public_key=task.header.task_owner.key,
                 provider_id=self.key_id,
-                provider_public_key=self.key_id,
-                provider_ethereum_public_key=self.key_id,
                 package_hash='sha1:' + task_state.package_hash,
                 concent_enabled=msg.concent_enabled,
                 price=price,
@@ -550,8 +542,21 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     @history.provider_history
     def _react_to_task_to_compute(self, msg):
         ctd = msg.compute_task_def
-        if ctd is None:
-            logger.debug('TaskToCompute without ctd: %r', msg)
+        want_to_compute_task = msg.want_to_compute_task
+        if ctd is None or want_to_compute_task is None:
+            logger.debug(
+                'TaskToCompute without ctd or want_to_compute_task: %r', msg)
+            self.task_computer.session_closed()
+            self.dropped()
+            return
+
+        try:
+            want_to_compute_task.verify_signature(
+                self.task_server.keys_auth.ecc.raw_pubkey)
+        except InvalidSignature:
+            logger.debug(
+                'WantToComputeTask attached to TaskToCompute is not signed '
+                'with key: %r.', want_to_compute_task.provider_public_key)
             self.task_computer.session_closed()
             self.dropped()
             return

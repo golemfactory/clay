@@ -770,10 +770,9 @@ class TaskServer(
         )
 
         session.send_hello()
-        payment_addr = self.client.transaction_system.get_payment_address()
         session.send_report_computed_task(waiting_task_result,
                                           self.node.prv_addr, self.cur_port,
-                                          payment_addr, self.node)
+                                          self.node)
 
     def __connection_for_task_result_failure(self, conn_id,
                                              waiting_task_result):

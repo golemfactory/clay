@@ -212,10 +212,11 @@ class NodeTestPlaybook:
             new_tasks = tasks - self.known_tasks
             if len(new_tasks) != 1:
                 print("Cannot find the new task ({})".format(new_tasks))
-
-            self.task_id = list(new_tasks)[0]
-            print("Task id: {}".format(self.task_id))
-            self.next()
+                time.sleep(30)
+            else:
+                self.task_id = list(new_tasks)[0]
+                print("Task id: {}".format(self.task_id))
+                self.next()
 
         call_requestor('comp.tasks',
                        on_success=on_success, on_error=self.print_error)
