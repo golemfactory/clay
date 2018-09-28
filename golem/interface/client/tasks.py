@@ -4,6 +4,7 @@ from datetime import timedelta
 import json
 import re
 from typing import Any, Optional, Tuple
+import time 
 
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.deferred import sync_wait
@@ -137,6 +138,18 @@ class Tasks:
     def purge(self):
         deferred = Tasks.client.purge_tasks()
         return sync_wait(deferred)
+
+    @command(argument=file_name)
+    def run(self, file_name: str) -> Any:
+        import pdb; pdb.set_trace()
+        task_id = self.create(file_name)
+        while True:
+            result = self.show(task_id, False)
+            if result and result['status'] not in  ['Waiting', 'Not started']:
+                return result['status']
+            time.sleep(0.1)
+
+        return result
 
     @command(argument=file_name, help="""
         Create a task from file.
