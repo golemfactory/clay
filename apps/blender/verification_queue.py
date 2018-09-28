@@ -21,10 +21,9 @@ class VerificationQueue:
         self._concurrency = concurrency
         self._queue: queue.Queue = queue.Queue()
         self._jobs: Dict[str, Deferred] = dict()
-        self.tasks: Dict[VerificationTask, Deferred] = dict()
         self.callbacks: Dict[VerificationTask, FunctionType] = dict()
         self._paused = False
-        self.timed_out = False
+        self._timed_out = False
 
     def submit(self,
                verifier_class: Type[Verifier],
@@ -85,13 +84,13 @@ class VerificationQueue:
                 self._process_queue()
 
         def errback(_):
-            if self.timed_out:
-                logger.debug("Timeout detected")
+            if self._timed_out:
+                logger.warning("Timeout detected for subtask %s", subtask_id)
+                self._timed_out = False
                 reactor.callLater(VerificationQueue.RESTART_DELAY,
                                   self._process_queue)
-                self.timed_out = False
             else:
-                logger.debug("Finishing verification with fail")
+                logger.warning("Finishing verification with fail")
                 callback(entry.get_results())
             return True
 
@@ -101,20 +100,20 @@ class VerificationQueue:
             result.addCallback(partial(reactor.callFromThread, callback))
             result.addErrback(partial(reactor.callFromThread, errback))
 
-            fn_timeout = partial(self.stop_task, task=entry, event=result,
-                                 subtask_id=subtask_id,
+            fn_timeout = partial(self._verification_timed_out, task=entry,
+                                 event=result, subtask_id=subtask_id,
                                  verifier_cls=verifier_cls)
 
             result.addTimeout(VerificationQueue.VERIFICATION_TIMEOUT, reactor,
                               onTimeoutCancel=fn_timeout)
             self._jobs[subtask_id] = result
-            self.tasks[entry] = result
 
-    def stop_task(self, *_, **kwargs):
-        kwargs['task'].stop(kwargs['event'])
-        self._queue.put((kwargs['task'], kwargs['verifier_cls']))
-        self._jobs.pop(kwargs['subtask_id'], None)
-        self.timed_out = True
+    def _verification_timed_out(self, _result, _timeout, task, event,
+                                subtask_id, verifier_cls):
+        task.stop(event)
+        self._queue.put((task, verifier_cls))
+        self._jobs.pop(subtask_id, None)
+        self._timed_out = True
 
     def _reset(self) -> None:
         self._queue = queue.Queue()
