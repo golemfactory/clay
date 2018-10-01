@@ -76,8 +76,8 @@ class TaskManager(TaskEventListener):
         pass
 
     def __init__(
-            self, node_name, node, keys_auth, listen_address="",
-            listen_port=0, root_path="res", use_distributed_resources=True,
+            self, node_name, node, keys_auth, listen_address="", listen_port=0,
+            root_path="ComputerRes", use_distributed_resources=True,
             tasks_dir="tasks", task_persistence=True,
             apps_manager=AppsManager(), finished_cb=None):
         super().__init__()

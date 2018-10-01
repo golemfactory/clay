@@ -1036,7 +1036,7 @@ class TaskServer(
     #############################
     @staticmethod
     def __get_task_manager_root(datadir):
-        return os.path.join(datadir, "res")
+        return os.path.join(datadir, "ComputerRes")
 
     def _set_conn_established(self):
         self.conn_established_for_type.update({
