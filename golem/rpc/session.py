@@ -272,7 +272,7 @@ class ClientProxy():  # pylint: disable=too-few-public-methods
             return err
 
 
-class Publisher(object):
+class Publisher():  # pylint: disable=too-few-public-methods
     def __init__(self, session):
         self.session = session
 
