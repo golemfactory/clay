@@ -21,7 +21,6 @@ from twisted.internet.defer import Deferred
 
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
-import golem
 from golem import model
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
@@ -897,7 +896,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         c.task_server.task_manager.tasks[task_id] = task
         c.task_server.task_manager.tasks_states[task_id] = TaskState()
-        frames = c.get_subtasks_frames(task_id)
+        frames = c.task_server.task_manager.get_output_states(task_id)
         assert frames is not None
 
     def test_enqueue_new_task_concent_service_disabled(self, *_):
@@ -1186,17 +1185,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         self.assertEqual(result, expected)
 
-    def test_subtasks_borders(self, *_):
-        task_id = str(uuid.uuid4())
-        c = self.client
-        c.task_server.task_manager.tasks[task_id] = Mock()
-        c.task_server.task_manager.get_subtasks_borders = Mock()
-
-        c.get_subtasks_borders(task_id)
-        c.task_server.task_manager.get_subtasks_borders.assert_called_with(
-            task_id, 1
-        )
-
     def test_connection_status(self, *_):
         c = self.client
 
@@ -1320,9 +1308,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         }
         assert status == expected_status
 
-    def test_golem_version(self, *_):
-        assert self.client.get_golem_version() == golem.__version__
-
     def test_golem_status(self, *_):
         status = 'component', 'method', 'stage', 'data'
 
@@ -1357,10 +1342,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             description="timeout"
         )
         self.assertEqual(self.client.node.port_statuses.get(port), "timeout")
-
-    def test_get_performance_values(self, *_):
-        expected_perf = {DefaultEnvironment.get_id(): 0.0}
-        assert self.client.get_performance_values() == expected_perf
 
     def test_block_node(self, *_):
         self.client.task_server.acl = Mock(spec=Acl)
