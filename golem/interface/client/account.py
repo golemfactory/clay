@@ -17,7 +17,7 @@ MIN_SCORE = 2
 
 @group(help="Manage account")
 class Account:
-    client = None  # type: 'golem.rpc.session.ClientProxy'
+    client = None
 
     amount_arg = Argument('amount', help='Amount to withdraw, eg 1.45')
     address_arg = Argument('destination', help='Address to send the funds to')
