@@ -56,7 +56,7 @@ class HoudiniTask(CoreTask):
         self.frames_ranges_list = []
 
         next_frame_to_compute = self.first_frame
-        while next_frame_to_compute <= task_definition.options.end_frame:
+        for _ in range( 0, total_tasks ):
             new_range, next_frame_to_compute = self._compute_frame_range( next_frame_to_compute )
             self.frames_ranges_list.append( new_range )
 
@@ -80,7 +80,7 @@ class HoudiniTask(CoreTask):
 
         # If number of frames wasn't divisible by number of tasks, last subtask will compute redundant frames
         if end_frame > ( self.first_frame + self.num_frames ):
-            redundant_frames = ( self.first_frame + self.num_frames ) - end_frame
+            redundant_frames = end_frame - ( self.first_frame + self.num_frames )
 
             start_frame = start_frame - redundant_frames
             end_frame = end_frame - redundant_frames
@@ -92,8 +92,14 @@ class HoudiniTask(CoreTask):
 
     def _next_frame_range(self):
 
+        #import pdb; pdb.set_trace()
+
         range = self.frames_ranges_list[ 0 ]
         self.frames_ranges_list = self.frames_ranges_list[ 1: ]
+
+        self.last_task += 1
+        if self.last_task > self.total_tasks:
+            self.num_failed_subtasks -= 1
 
         return range
 
@@ -103,6 +109,7 @@ class HoudiniTask(CoreTask):
 
         extra_data = dict()
         extra_data[ "render_params" ] = self.task_definition.options.build_dict()
+        extra_data[ "subtask_id" ] = subtask_id
 
         render_params = extra_data[ "render_params" ]
 
@@ -113,9 +120,7 @@ class HoudiniTask(CoreTask):
         render_params["end_frame"] = end_frame
         render_params["output"] = os.path.join( "/golem/output/", render_params[ "output_file" ] )
 
-        return self._new_compute_task_def(subtask_id,
-                                          extra_data,
-                                          perf_index=perf_index)
+        return extra_data
 
 
 
@@ -125,17 +130,16 @@ class HoudiniTask(CoreTask):
                          node_name: Optional[str] = None) \
             -> Task.ExtraData:
 
+        extra_data = self._next_task_extra_data(perf_index)
+        sid = extra_data['subtask_id']
 
-        ctd = self._next_task_extra_data(perf_index)
-        sid = ctd['subtask_id']
+        self.subtasks_given[sid] = copy(extra_data)
+        self.subtasks_given[sid]['status'] = SubtaskStatus.starting
+        self.subtasks_given[sid]['perf'] = perf_index
+        self.subtasks_given[sid]['node_id'] = node_id
+        self.subtasks_given[sid]['subtask_id'] = sid
 
-        self.subtasks_given[sid] = copy(ctd['extra_data'])
-        self.subtasks_given[sid]["status"] = SubtaskStatus.starting
-        self.subtasks_given[sid]["perf"] = perf_index
-        self.subtasks_given[sid]["node_id"] = node_id
-        self.subtasks_given[sid]["subtask_id"] = sid
-
-        return self.ExtraData(ctd=ctd)
+        return self.ExtraData(ctd=self._new_compute_task_def(sid, extra_data, perf_index=perf_index))
 
     def accept_results(self, subtask_id, result_files):
         super().accept_results(subtask_id, result_files)
@@ -152,6 +156,18 @@ class HoudiniTask(CoreTask):
 
             logger.debug( "Copy file: " + file + " to directory " + self.task_definition.output_path )
 
+    def computation_failed(self, subtask_id):
+
+        CoreTask.computation_failed(self, subtask_id)
+
+        # Add failed frame to awaiting list
+        subtask_info = self.subtasks_given[subtask_id]
+        extra_data = subtask_info["render_params"]
+
+        start_frame = extra_data[ "start_frame" ]
+        end_frame = extra_data["end_frame"]
+
+        self.frames_ranges_list.append( [ start_frame, end_frame ] )
 
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
         # What performance index should be used ?
