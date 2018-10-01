@@ -172,7 +172,7 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
             subtask_results_accepted_list=LOA,
         )
         response_provider = self.provider_load_response(self.provider_send(fp))
-        response_requestor = self.requestor_receive_oob()
+        response_requestor = self.requestor_receive()
         roles = message.concents.ForcePaymentCommitted.Actor
         for response in (response_provider, response_requestor):
             self.assertIsInstance(
