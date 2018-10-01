@@ -1,7 +1,11 @@
+import typing
+
 from golem.core.deferred import sync_wait
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.interface.command import group, Argument, command, CommandResult
-from golem.rpc.session import ClientProxy
+
+if typing.TYPE_CHECKING:
+    from golem.rpc.session import ClientProxy
 
 
 # pylint: disable=no-self-use

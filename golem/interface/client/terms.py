@@ -1,11 +1,13 @@
 import sys
-from typing import Dict
+import typing
 
 import html2text
 
 from golem.core.deferred import sync_wait
 from golem.interface.command import group, command
-from golem.rpc.session import ClientProxy
+
+if typing.TYPE_CHECKING:
+    from golem.rpc.session import ClientProxy
 
 
 def yes_no(prompt: str, default: str = 'y') -> bool:
@@ -21,7 +23,7 @@ def yes_no(prompt: str, default: str = 'y') -> bool:
     return value[0] == 'y'
 
 
-def read_accept_options() -> Dict[str, bool]:
+def read_accept_options() -> typing.Dict[str, bool]:
     values = {True: 'ENABLED', False: 'DISABLED'}
     options = dict()
 
