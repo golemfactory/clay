@@ -38,7 +38,7 @@ def read_accept_options() -> typing.Dict[str, bool]:
 @group(help="Show and accept terms of use")
 class Terms:
 
-    client: ClientProxy
+    client: 'ClientProxy'
 
     @command(help="Show terms of use")
     def show(self):  # pylint: disable=no-self-use

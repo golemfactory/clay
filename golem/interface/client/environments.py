@@ -11,7 +11,7 @@ if typing.TYPE_CHECKING:
 # pylint: disable=no-self-use
 @group(name="envs", help="Manage environments")
 class Environments(object):
-    client: ClientProxy
+    client: 'ClientProxy'
 
     name = Argument('name', help="Environment name")
     multiplier = Argument('multiplier',
