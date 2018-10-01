@@ -8,7 +8,7 @@ import enum
 from crossbar.common import checkconfig
 from twisted.internet.defer import inlineCallbacks
 
-from golem.rpc.cert import CertificateManager
+from golem.rpc import cert
 from golem.rpc.common import CROSSBAR_DIR, CROSSBAR_REALM, CROSSBAR_HOST, \
     CROSSBAR_PORT
 from golem.rpc.mapping.rpcmethodnames import DOCKER_URI
@@ -47,7 +47,7 @@ class CrossbarRouter(object):
         if not os.path.isdir(self.working_dir):
             raise IOError("'{}' is not a directory".format(self.working_dir))
 
-        self.cert_manager = CertificateManager(self.working_dir)
+        self.cert_manager = cert.CertificateManager(self.working_dir)
         if generate_secrets:
             self.cert_manager.generate_secrets()
 
@@ -95,29 +95,31 @@ class CrossbarRouter(object):
         )
 
     @staticmethod
-    def _users_config(cert_manager: CertificateManager):
+    def _users_config(cert_manager: cert.CertificateManager):
         # configuration for crsb_users with admin priviliges
-        crsb_users = {
-            p.name: {
-                "secret": cert_manager.get_secret(p),
-                "role": CrossbarRouter.CrossbarRoles.admin.name
-            } for p in [cert_manager.CrossbarUsers.golemapp,
-                        cert_manager.CrossbarUsers.golemcli,
-                        cert_manager.CrossbarUsers.electron]
+        admin_role: str = CrossbarRouter.CrossbarRoles.admin.name
+        docker_role: str = CrossbarRouter.CrossbarRoles.docker.name
+
+        user_roles = {
+            cert_manager.CrossbarUsers.golemapp: admin_role,
+            cert_manager.CrossbarUsers.golemcli: admin_role,
+            cert_manager.CrossbarUsers.electron: admin_role,
+            cert_manager.CrossbarUsers.docker: docker_role,
         }
 
-        # and for docker, without admin priviliges
-        docker = cert_manager.CrossbarUsers.docker
-        crsb_users[docker.name] = {
-            "secret": cert_manager.get_secret(docker),
-            "role": CrossbarRouter.CrossbarRoles.docker.name
-        }
+        crsb_users = {}
+        for user, role in user_roles.items():
+            entry = {}
+            entry['secret'] = cert_manager.get_secret(user)
+            entry['role'] = role
+            crsb_users[user.name] = entry
+
         return crsb_users
 
     @staticmethod
     def _build_config(address: WebSocketAddress,
                       serializers: Iterable[str],
-                      cert_manager: CertificateManager,
+                      cert_manager: cert.CertificateManager,
                       realm: str = CROSSBAR_REALM,
                       enable_webstatus: bool = False):
 
@@ -208,7 +210,16 @@ class CrossbarRouter(object):
                                         "publish": False,
                                         "subscribe": False
                                     }
-                                }
+                                },
+                                {
+                                    "uri": 'sys.exposed_procedures',
+                                    "allow": {
+                                        "call": True,
+                                        "register": False,
+                                        "publish": False,
+                                        "subscribe": False
+                                    },
+                                },
                             ]
                         }]
                 }],
