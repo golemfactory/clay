@@ -437,6 +437,13 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id,
                                  subtask_id=ctd['subtask_id'],
                                  op=SubtaskOp.ASSIGNED)
+        logger.debug(
+            "Subtask generated. task=%s, node=%s, ctd=%s",
+            task_id,
+            node_info_str(node_name, node_id),
+            ctd,
+        )
+
         return ctd
 
     def is_my_task(self, task_id) -> bool:
@@ -446,11 +453,22 @@ class TaskManager(TaskEventListener):
     def should_wait_for_node(self, task_id, node_id) -> bool:
         """ Check if the node has too many tasks assigned already """
         if not self.is_my_task(task_id):
+            logger.debug(
+                "Not my task. task_id=%s, node=%s",
+                task_id,
+                short_node_id(node_id),
+            )
             return False
 
         task = self.tasks[task_id]
 
         verdict = task.should_accept_client(node_id)
+        logger.debug(
+            "Should accept client verdict. verdict=%s, task=%s, node=%s",
+            verdict,
+            task_id,
+            short_node_id(node_id),
+        )
         if verdict == AcceptClientVerdict.SHOULD_WAIT:
             logger.warning("Waiting for results from %s on %s",
                            short_node_id(node_id), task_id)
@@ -1120,6 +1138,13 @@ class TaskManager(TaskEventListener):
         :param bool persist: should the task be persisted now
         """
         # self.save_state()
+
+        logger.debug(
+            "Notice task updated. task_id=%s, subtask_id=%s,"
+            "op=%s, persist=%s",
+            task_id, subtask_id, op, persist,
+        )
+
         if persist and self.task_persistence:
             self.dump_task(task_id)
 
