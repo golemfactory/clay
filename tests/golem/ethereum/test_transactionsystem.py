@@ -37,7 +37,7 @@ class TransactionSystemBase(testutils.DatabaseFixture):
         self.sci.get_gntb_balance.return_value = 0
         self.sci.GAS_PER_PAYMENT = 20000
         self.sci.REQUIRED_CONFS = 6
-        self.sci.concent_timelock.return_value = 0
+        self.sci.get_deposit_locked_until.return_value = 0
         self.ets = self._make_ets()
 
     def _make_ets(
@@ -350,10 +350,6 @@ class TestTransactionSystem(TransactionSystemBase):
             ANY,
         )
 
-    @patch(
-        'golem.ethereum.transactionsystem.TransactionSystem.concent_timelock',
-        return_value=0,
-    )
     def test_check_payments(self):
         with patch.object(
             self.ets._incomes_keeper, 'update_overdue_incomes'
