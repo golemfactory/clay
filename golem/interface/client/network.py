@@ -30,25 +30,7 @@ class Network(object):
     def status(self):
         deferred = Network.client.connection_status()
         status = sync_wait(deferred)
-
-        if not status['listening']:
-            return "Application not listening, check config file."
-
-        messages = []
-
-        if status['port_statuses']:
-            port_statuses = ", ".join(
-                "{}: {}".format(port, port_status)
-                for port, port_status in status['port_statuses'].items())
-            messages.append("Port(s) {}.".format(port_statuses))
-
-        if status['connected']:
-            messages.append("Connected")
-        else:
-            messages.append("Not connected to Golem Network, "
-                            "check seed parameters.")
-
-        return ' '.join(messages)
+        return status['msg']
 
     @command(arguments=(ip_arg, port_arg), help="Connect to a node")
     def connect(self, ip, port_):

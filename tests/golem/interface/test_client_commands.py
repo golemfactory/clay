@@ -270,11 +270,12 @@ class TestNetwork(unittest.TestCase):
     def tearDown(self):
         self.client.reset_mock()
 
-    def test_status_not_listening(self):
+    def test_status(self):
         with client_ctx(Network, self.client):
             # given
+            msg = "Some random message"
             self.client.connection_status.return_value = {
-                'listening': False
+                'msg': msg,
             }
 
             # when
@@ -283,72 +284,7 @@ class TestNetwork(unittest.TestCase):
             # then
             assert self.client.connection_status.called
             assert isinstance(result, str)
-            assert "not listening" in result
-            assert "Not connected" not in result
-            assert "Connected" not in result
-
-    def test_status_not_connected(self):
-        with client_ctx(Network, self.client):
-            # given
-            self.client.connection_status.return_value = {
-                'listening': True,
-                'connected': False,
-                'port_statuses': dict(),
-            }
-
-            # when
-            result = Network().status()
-
-            # then
-            assert self.client.connection_status.called
-            assert isinstance(result, str)
-            assert "not listening" not in result
-            assert "Not connected" in result
-            assert "Connected" not in result
-
-    def test_status_connected(self):
-        with client_ctx(Network, self.client):
-            # given
-            self.client.connection_status.return_value = {
-                'listening': True,
-                'connected': True,
-                'port_statuses': dict(),
-            }
-
-            # when
-            result = Network().status()
-
-            # then
-            assert self.client.connection_status.called
-            assert isinstance(result, str)
-            assert "not listening" not in result
-            assert "Not connected" not in result
-            assert "Connected" in result
-
-    def test_status_port_statuses(self):
-        with client_ctx(Network, self.client):
-            # given
-            self.client.connection_status.return_value = {
-                'listening': True,
-                'connected': True,
-                'port_statuses': {
-                    1234: "open",
-                    2345: "unreachable",
-                },
-            }
-
-            # when
-            result = Network().status()
-
-            # then
-            assert self.client.connection_status.called
-            assert isinstance(result, str)
-            assert "not listening" not in result
-            assert "Not connected" not in result
-            assert "Connected" in result
-            assert "Port(s)" in result
-            assert "1234: open" in result
-            assert "2345: unreachable" in result
+            assert result == msg
 
     def test_connect(self):
         with client_ctx(Network, self.client):

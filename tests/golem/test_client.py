@@ -1206,6 +1206,11 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         # then
         assert not status['listening']
 
+        msg = status['msg']
+        assert "not listening" in msg
+        assert "Not connected" not in msg
+        assert "Connected" not in msg
+
     def test_connection_status_without_peers(self, *_):
         c = self.client
 
@@ -1219,6 +1224,11 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         # then
         assert status['listening']
         assert not status['connected']
+
+        msg = status['msg']
+        assert "not listening" not in msg
+        assert "Not connected" in msg
+        assert "Connected" not in msg
 
     def test_connection_status_with_peers(self, *_):
         c = self.client
@@ -1235,12 +1245,18 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         assert status['listening']
         assert status['connected']
 
+        msg = status['msg']
+        assert "not listening" not in msg
+        assert "Not connected" not in msg
+        assert "Connected" in msg
+
     def test_connection_status_port_statuses(self, *_):
         c = self.client
 
         # given
         c.p2pservice.cur_port = 12345
         c.task_server.cur_port = 12346
+        c.p2pservice.peers = {str(i): self.__new_session() for i in range(4)}
 
         port_statuses = {
             1234: "open",
@@ -1253,6 +1269,14 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         # then
         assert status['port_statuses'] == port_statuses
+
+        msg = status['msg']
+        assert "not listening" not in msg
+        assert "Not connected" not in msg
+        assert "Connected" in msg
+        assert "Port(s)" in msg
+        assert "1234: open" in msg
+        assert "2345: unreachable" in msg
 
     def test_get_known_peers(self, *_):
         c = self.client
