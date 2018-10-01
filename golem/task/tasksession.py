@@ -484,36 +484,36 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             _cannot_assign(reasons.NoMoreSubtasks)
             return
 
-        ctd = None
-        if self.task_manager.check_next_subtask(
+        if not self.task_manager.check_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.price):
-
             logger.debug(
-                "check_next_subtask ok. task_id=%s, node=%s",
+                "check_next_subtask False. task_id=%s, node=%s",
                 msg.task_id,
                 node_name_id,
             )
+            _cannot_assign(reasons.NoMoreSubtasks)
+            return
 
-            if self._handshake_required(self.key_id):
-                logger.warning('Can not accept offer: Resource handshake is'
-                               ' required. task_id=%r, node=%r',
-                               msg.task_id, node_name_id)
-                self._start_handshake(self.key_id)
-                return
+        if self._handshake_required(self.key_id):
+            logger.warning('Can not accept offer: Resource handshake is'
+                           ' required. task_id=%r, node=%r',
+                           msg.task_id, node_name_id)
+            self._start_handshake(self.key_id)
+            return
 
-            elif self._handshake_in_progress(self.key_id):
-                logger.warning('Can not accept offer: Resource handshake is in'
-                               ' progress. task_id=%r, node=%r',
-                               msg.task_id, node_name_id)
-                return
+        elif self._handshake_in_progress(self.key_id):
+            logger.warning('Can not accept offer: Resource handshake is in'
+                           ' progress. task_id=%r, node=%r',
+                           msg.task_id, node_name_id)
+            return
 
-            # TODO: Queue requests here
+        # TODO: Queue requests here
 
-            logger.info("Offer confirmed, assigning subtask")
-            ctd = self.task_manager.get_next_subtask(
-                self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-                msg.price, msg.max_resource_size, msg.max_memory_size,
-                msg.num_cores, self.address)
+        logger.info("Offer confirmed, assigning subtask")
+        ctd = self.task_manager.get_next_subtask(
+            self.key_id, msg.node_name, msg.task_id, msg.perf_index,
+            msg.price, msg.max_resource_size, msg.max_memory_size,
+            msg.num_cores, self.address)
 
         logger.debug(
             "task_id=%s, node=%s ctd=%s",
