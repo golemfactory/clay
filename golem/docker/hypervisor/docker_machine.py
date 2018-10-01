@@ -133,7 +133,7 @@ Ensure that you try the following before reporting an issue:
             return self._set_env(retried=True)
 
         try:
-            self.command('start', self._vm_name)
+            self.command('restart', self._vm_name)
         except subprocess.CalledProcessError as e:
             logger.warning("DockerMachine:"
                            " failed to restart the VM: %s -- %s",
