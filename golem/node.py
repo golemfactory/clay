@@ -422,7 +422,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             return
 
         methods = self.client.get_wamp_rpc_mapping()
-        self.rpc_session.add_procedures(methods)
+        self.rpc_session.add_procedures(methods)  # type: ignore
 
     def _setup_apps(self) -> None:
         if not self.client:
