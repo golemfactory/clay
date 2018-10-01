@@ -80,7 +80,6 @@ class TaskComputer(object):
 
         self.assigned_subtasks = {}
         self.task_to_subtask_mapping = {}
-        self.max_assigned_tasks = 1
 
         self.delta = None
         self.last_task_timeout_checking = None
@@ -101,6 +100,9 @@ class TaskComputer(object):
         )
         return True
 
+    def has_assigned_task(self) -> bool:
+        return bool(self.assigned_subtasks)
+
     def resource_given(self, task_id):
         subtask_id = self.task_to_subtask_mapping.get(task_id)
         subtask = self.assigned_subtasks.get(subtask_id)
@@ -108,11 +110,10 @@ class TaskComputer(object):
         if not subtask:
             return False
 
-        with self.lock:
-            if self.is_computing():
-                logger.error("Got resource for task: %r, but I'm busy with "
-                             "another one. Ignoring.", task_id)
-                return  # busy
+        if self.is_computing():
+            logger.error("Got resource for task: %r, but I'm busy with "
+                         "another one. Ignoring.", task_id)
+            return  # busy
 
         self.__compute_task(
             subtask_id,
@@ -259,7 +260,8 @@ class TaskComputer(object):
         return tcss
 
     def is_computing(self) -> bool:
-        return self.counting_thread is not None
+        with self.lock:
+            return self.counting_thread is not None
 
     def get_host_state(self):
         if self.is_computing():
@@ -330,9 +332,8 @@ class TaskComputer(object):
         pass
 
     def __request_task(self):
-        with self.lock:
-            if self.is_computing():
-                return
+        if self.is_computing():
+            return
 
         self.last_task_request = time.time()
         requested_task = self.task_server.request_task()

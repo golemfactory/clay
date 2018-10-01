@@ -181,7 +181,7 @@ class TaskServer(
 
     # This method chooses random task from the network to compute on our machine
     def request_task(self) -> Optional[str]:
-        theader = self.task_keeper.get_task()
+        theader = self.task_keeper.get_random_task()
         if theader is None:
             return None
         try:
