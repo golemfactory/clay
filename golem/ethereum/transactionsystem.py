@@ -82,6 +82,7 @@ class TransactionSystem(LoopingCallService):
 
         self._gnt_faucet_requested = False
         self._gnt_conversion_status = ConversionStatus.NONE
+        self._deposit_withdrawal_requested = False
 
         self._eth_balance: int = 0
         self._gnt_balance: int = 0
@@ -608,6 +609,8 @@ class TransactionSystem(LoopingCallService):
         self._sci.unlock_deposit()
 
     def concent_withdraw(self):
+        if self._deposit_withdrawal_requested:
+            return
         timelock = self.concent_timelock()
         if timelock == 0:
             return
@@ -616,7 +619,16 @@ class TransactionSystem(LoopingCallService):
         now = calendar.timegm(time.gmtime())
         if timelock > now:
             return
-        self._sci.withdraw_deposit()
+        self._deposit_withdrawal_requested = True
+        tx_hash: str = self._sci.withdraw_deposit()
+
+        def _cbk(_transaction_receipt):
+            self._deposit_withdrawal_requested = False
+
+        self._sci.on_transaction_confirmed(
+            tx_hash=tx_hash,
+            cb=_cbk,
+        )
 
     def _get_funds_from_faucet(self) -> None:
         if not self._sci:

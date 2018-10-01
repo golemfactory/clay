@@ -2,12 +2,14 @@
 from os import urandom
 from pathlib import Path
 import sys
+import time
 from typing import Optional
 from unittest.mock import patch, Mock, ANY, PropertyMock
 from unittest import TestCase
 
 from eth_utils import encode_hex
 from ethereum.utils import denoms
+from freezegun import freeze_time
 import golem_sci.structs
 import requests
 
@@ -516,6 +518,44 @@ class ConcentDepositTest(TransactionSystemBase):
                 ('fee', 42000),
                 ('tx', tx_hash),):
             self.assertEqual(getattr(dpayment, field), value)
+
+
+@patch(
+    'golem.ethereum.transactionsystem.TransactionSystem.concent_timelock',
+)
+class ConcentWithdrawTest(TransactionSystemBase):
+    def test_withdrawal_requested(self, timelock_mock):
+        self.ets._deposit_withdrawal_requested = True
+        self.ets.concent_withdraw()
+        timelock_mock.assert_not_called()
+
+    @patch('calendar.timegm')
+    def test_timelocked(self, timegm_mock, timelock_mock):
+        timelock_mock.return_value = 0
+        self.ets.concent_withdraw()
+        timelock_mock.assert_called_once_with()
+        timegm_mock.assert_not_called()
+
+    @freeze_time('2018-10-01 14:00:00')
+    def test_not_yet_unlocked(self, timelock_mock):
+        now = time.time()
+        timelock_mock.return_value = int(now) + 1
+        self.ets.concent_withdraw()
+        timelock_mock.assert_called_once_with()
+        self.sci.withdraw_deposit.assert_not_called()
+        self.assertFalse(self.ets._deposit_withdrawal_requested)
+
+    @freeze_time('2018-10-01 14:00:00')
+    def test_unlocked(self, timelock_mock):
+        now = time.time()
+        timelock_mock.return_value = int(now)
+        self.ets.concent_withdraw()
+        self.sci.withdraw_deposit.assert_called_once_with()
+        self.assertTrue(self.ets._deposit_withdrawal_requested)
+        self.sci.on_transaction_confirmed.assert_called_once()
+        # Run callback
+        self.sci.on_transaction_confirmed.call_args[1]['cb'](Mock())
+        self.assertFalse(self.ets._deposit_withdrawal_requested)
 
 
 class FaucetTest(TestCase):
