@@ -31,7 +31,7 @@ class TempDirFixture(unittest.TestCase):
                 cls.root_dir = os.path.join(get_local_datadir('tests'))
                 os.makedirs(cls.root_dir, exist_ok=True)
             elif is_windows():
-                import win32api
+                import win32api  # noqa pylint: disable=import-error
                 base_dir = get_local_datadir('default')
                 cls.root_dir = os.path.join(base_dir, 'ComputerRes', 'tests')
                 os.makedirs(cls.root_dir, exist_ok=True)
