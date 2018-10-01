@@ -1,3 +1,4 @@
+import calendar
 import json
 import logging
 import os
@@ -538,6 +539,10 @@ class TransactionSystem(LoopingCallService):
 
     def concent_timelock(self, account_address: Optional[str] = None) -> int:
         # FIXME Use decorator to DRY #3190
+        # possible lock values:
+        # 0 - locked
+        # > now - unlocking
+        # < now - unlocked
         if not self._sci:
             raise Exception('Start was not called')
         if account_address is None:
@@ -592,6 +597,27 @@ class TransactionSystem(LoopingCallService):
         dpayment.status = model.PaymentStatus.confirmed
         dpayment.save()
         return dpayment.tx
+
+    def concent_relock(self):
+        if self.concent_balance() == 0:
+            return
+        raise RuntimeError("Not implemented in SCI")
+
+    def concent_unlock(self):
+        if self.concent_balance() == 0:
+            return
+        self._sci.unlock_deposit()
+
+    def concent_withdraw(self):
+        timelock = self.concent_timelock()
+        if timelock == 0:
+            return
+        # Using this tricky approach instead of time.time()
+        # because of AppVeyor issues.
+        now = calendar.timegm(time.gmtime())
+        if timelock > now:
+            return
+        self._sci.withdraw_deposit()
 
     def _get_funds_from_faucet(self) -> None:
         if not self._sci:
@@ -713,6 +739,7 @@ class TransactionSystem(LoopingCallService):
         self._try_convert_gnt()
         self._payment_processor.sendout()
         self._incomes_keeper.update_overdue_incomes()
+        self.concent_withdraw()
 
 
 def tETH_faucet_donate(addr: str):
