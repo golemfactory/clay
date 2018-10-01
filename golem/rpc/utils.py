@@ -6,10 +6,16 @@ def expose(uri=None):  # pylint: disable=unused-argument
     def wrapper(f):
         nonlocal uri
         if uri is None:
+            try:
+                module_name = f.__module__
+                qual_name = f.__qualname__
+            except AttributeError:
+                module_name = f.__func__.__module__
+                qual_name = f.__func__.__qualname__
             uri = '.'.join((
                 'backend',
-                f.__module__,
-                f.__qualname__,
+                module_name,
+                qual_name,
             ))
         if isinstance(f, (staticmethod, classmethod)):
             f.__func__.rpc_uri = uri
