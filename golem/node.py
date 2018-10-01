@@ -36,6 +36,17 @@ from golem.terms import TermsOfUse
 logger = logging.getLogger(__name__)
 
 
+def require_rpc_session():
+    def wrapped(f):
+        def curry(self, *args, **kwargs):
+            if self.rpc_session is None:
+                self._error("RPC session is not available")  # noqa pylint: disable=protected-access
+                return None
+            return f(self, *args, **kwargs)
+        return curry
+    return wrapped
+
+
 class ShutdownResponse(IntEnum):
     quit = 0
     off = 1
@@ -322,10 +333,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
                      task_provider_progress)
         return task_provider_progress != {}
 
+    @require_rpc_session()
     def _check_terms(self) -> Optional[Deferred]:
-        if not self.rpc_session:
-            self._error("RPC session is not available")
-            return None
 
         def wait_for_terms():
             while not self.are_terms_accepted() and self._reactor.running:
@@ -337,10 +346,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         return threads.deferToThread(wait_for_terms)
 
+    @require_rpc_session()
     def _start_keys_auth(self) -> Optional[Deferred]:
-        if not self.rpc_session:
-            self._error("RPC session is not available")
-            return None
 
         def create_keysauth():
             # If keys_auth already exists it means we used command line flag
@@ -378,10 +385,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
 
         return threads.deferToThread(start_docker)
 
+    @require_rpc_session()
     def _setup_client(self, *_) -> None:
-        if not self.rpc_session:
-            self._stop_on_error("rpc", "RPC session is not available")
-            return
 
         if not self._keys_auth:
             self._error("KeysAuth is not available")
@@ -399,6 +404,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
         async_run(AsyncRequest(self._run),
                   error=self._error('Cannot start the client'))
 
+    @require_rpc_session()
     def _run(self, *_) -> None:
         if not self.client:
             self._stop_on_error("client", "Client is not available")
@@ -416,7 +422,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             return
 
         methods = self.client.get_wamp_rpc_mapping()
-        self.rpc_session.add_procedures(methods)  # type: ignore
+        self.rpc_session.add_procedures(methods)
 
     def _setup_apps(self) -> None:
         if not self.client:
