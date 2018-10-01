@@ -25,6 +25,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
     def setUp(self):
         super(TestTaskComputer, self).setUp()
         task_server = mock.MagicMock()
+        task_server.benchmark_manager.benchmarks_needed.return_value = False
         task_server.get_task_computer_root.return_value = self.path
         task_server.config_desc = ClientConfigDescriptor()
 
@@ -340,6 +341,7 @@ class TestTaskThread(DatabaseFixture):
     def test_thread(self):
         ts = mock.MagicMock()
         ts.config_desc = ClientConfigDescriptor()
+        ts.benchmark_manager.benchmarks_needed.return_value = False
 
         tc = TaskComputer(ts, use_docker_manager=False)
         tc.counting_task = True
@@ -377,7 +379,6 @@ class TestTaskThread(DatabaseFixture):
                    """
 
         return PyTaskThread(subtask_id="xxyyzz",
-                            working_directory=self.path,
                             src_code=src_code,
                             extra_data={},
                             short_desc="hello thread",
@@ -402,6 +403,8 @@ class TestTaskMonitor(DatabaseFixture):
             MONITOR_CONFIG)
         task_server = mock.MagicMock()
         task_server.config_desc = ClientConfigDescriptor()
+        task_server.benchmark_manager.benchmarks_needed.return_value = False
+
         task = TaskComputer(task_server, use_docker_manager=False)
 
         task_thread = mock.MagicMock()

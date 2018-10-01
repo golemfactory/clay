@@ -135,16 +135,16 @@ class FrameRenderingTask(RenderingTask):
     @CoreTask.handle_key_error
     def computation_finished(self, subtask_id, task_result,
                              result_type=ResultType.DATA,
-                             verification_finished_=None):
+                             verification_finished=None):
         super(FrameRenderingTask, self).computation_finished(
             subtask_id,
             task_result,
             result_type,
-            verification_finished_)
+            verification_finished)
 
     def verification_finished(self, subtask_id, verdict, result):
-        super(FrameRenderingTask, self).verification_finished(subtask_id,
-                                                              verdict, result)
+        super().verification_finished(subtask_id,
+                                      verdict, result)
         if self.use_frames:
             self._update_subtask_frame_status(subtask_id)
 
@@ -186,7 +186,6 @@ class FrameRenderingTask(RenderingTask):
 
     def accept_results(self, subtask_id, result_files):
         super().accept_results(subtask_id, result_files)
-        self.counting_nodes[self.subtasks_given[subtask_id]['node_id']].accept()
         num_start = self.subtasks_given[subtask_id]['start_task']
         parts = self.subtasks_given[subtask_id]['parts']
         num_end = self.subtasks_given[subtask_id]['end_task']

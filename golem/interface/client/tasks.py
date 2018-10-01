@@ -133,6 +133,11 @@ class Tasks:
         deferred = Tasks.client.delete_task(id)
         return sync_wait(deferred)
 
+    @command(help="Deletes all tasks")
+    def purge(self):
+        deferred = Tasks.client.purge_tasks()
+        return sync_wait(deferred)
+
     @command(argument=file_name, help="""
         Create a task from file.
         Note: no client-side validation is performed yet.

@@ -5,6 +5,7 @@ from importlib import import_module
 
 from golem.config.active import APP_MANAGER_CONFIG_FILES
 from golem.core.common import get_golem_path
+from golem.environments.environment import SupportStatus
 
 
 class App(object):
@@ -54,5 +55,16 @@ class AppsManager(object):
         :return dict: dictionary, where environment ids are the keys and values
         are defined as pairs of instance of Benchmark and class of task builder
         """
-        return {app.env().get_id(): (app.benchmark(), app.benchmark_builder)
-                for app in self.apps.values()}
+        benchmarks = dict()
+
+        for app in self.apps.values():
+            env = app.env()
+            if not self._benchmark_enabled(env):
+                continue
+            benchmarks[env.get_id()] = app.benchmark(), app.benchmark_builder
+
+        return benchmarks
+
+    @staticmethod
+    def _benchmark_enabled(env):
+        return env.check_support() == SupportStatus.ok()

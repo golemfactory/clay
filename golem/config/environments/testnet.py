@@ -1,6 +1,7 @@
 import os
 from typing import List
 
+from golem_sci import contracts
 from golem_sci.chains import RINKEBY
 
 from golem.core.variables import PROTOCOL_CONST
@@ -36,6 +37,13 @@ class EthereumConfig:  # pylint:disable=too-few-public-methods
 
     CHAIN = RINKEBY
     FAUCET_ENABLED = True
+
+    CONTRACT_ADDRESSES = {
+        contracts.GNT: '0x924442A66cFd812308791872C4B242440c108E19',
+        contracts.GNTB: '0x123438d379BAbD07134d1d4d7dFa0BCbd56ca3F3',
+        contracts.GNTDeposit: '0x694667D7787CFca1892606E81734860a617537B2',
+        contracts.Faucet: '0x77b6145E853dfA80E8755a4e824c4F510ac6692e',
+    }
 
     WITHDRAWALS_ENABLED = False
 

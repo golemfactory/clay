@@ -62,6 +62,11 @@ class TestAccount(unittest.TestCase):
             'gnt_lock': 0.01 * denoms.ether,
             'eth_lock': 0.02 * denoms.ether
         }
+        client.get_deposit_balance.return_value = {
+            'value': str(1 * denoms.ether),
+            'status': 'locked',
+            'timelock': '0',
+        }
 
         with client_ctx(Account, client):
             result = Account().info()
@@ -77,6 +82,11 @@ class TestAccount(unittest.TestCase):
                     'gnt_available': '2 GNT',
                     'gnt_locked': '0.01 GNT',
                     'gnt_unadopted': '0 GNT',
+                    'deposit_balance': {
+                        'status': 'locked',
+                        'value': '1 GNT',
+                        'timelock': None,
+                    },
                 },
             }
 

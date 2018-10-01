@@ -65,7 +65,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         expected = [payment]
         self.assertEqual(expected, self.pp._awaiting)
         self.assertEqual(value, self.pp.reserved_gntb)
-        self.assertLess(0, self.pp.reserved_eth)
+        self.assertLess(0, self.pp.recipients_count)
 
     def test_load_from_db_sent(self):
         tx_hash1 = encode_hex(urandom(32))
@@ -95,7 +95,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         )
         self.pp.load_from_db()
         self.assertEqual(3 * value, self.pp.reserved_gntb)
-        self.assertEqual(0, self.pp.reserved_eth)
+        self.assertEqual(0, self.pp.recipients_count)
         assert self.sci.on_transaction_confirmed.call_count == 2
         assert self.sci.on_transaction_confirmed.call_args_list[0][0][0] == \
             tx_hash1
@@ -118,8 +118,8 @@ class PaymentProcessorInternalTest(DatabaseFixture):
                 mock.ANY,
             )
 
-    def test_reserved_eth(self):
-        assert self.pp.reserved_eth == 0
+    def test_recipients_count(self):
+        assert self.pp.recipients_count == 0
 
     def test_add_invalid_payment_status(self):
         a1 = urandom(20)
@@ -143,15 +143,13 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.pp.CLOSURE_TIME_DELAY = 0
 
         assert self.pp.reserved_gntb == 0
-        assert self.pp.reserved_eth == 0
+        assert self.pp.recipients_count == 0
 
         gnt_value = 10**17
         p = Payment.create(subtask="p1", payee=urandom(20), value=gnt_value)
         self.pp.add(p)
         assert self.pp.reserved_gntb == gnt_value
-        eth_reserved = \
-            self.pp.ETH_BATCH_PAYMENT_BASE + self.pp.get_gas_cost_per_payment()
-        assert self.pp.reserved_eth == eth_reserved
+        assert self.pp.recipients_count == 1
 
         tx_hash = '0xdead'
         self.sci.batch_transfer.return_value = tx_hash

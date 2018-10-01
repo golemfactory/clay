@@ -2,11 +2,14 @@ import logging
 import os
 import posixpath
 import threading
-from os import path
+from typing import Dict, Optional
 
 import docker.errors
 
-from golem.core.common import is_windows, nt_path_to_posix_path, is_osx
+from golem.core.common import is_windows, nt_path_to_posix_path, is_osx, \
+    posix_path
+from golem.docker.image import DockerImage
+from golem.environments.environmentsmanager import EnvironmentsManager
 from .client import local_client
 
 __all__ = ['DockerJob']
@@ -19,12 +22,12 @@ The logger used for logging std streams of the process running in container.
 container_logger = logging.getLogger(__name__ + ".container")
 
 
+# pylint:disable=too-many-instance-attributes
 class DockerJob(object):
-
     STATE_NEW = "new"
     STATE_CREATED = "created"  # container created by docker
     STATE_RUNNING = "running"  # docker container running
-    STATE_EXITED = "exited"    # docker container finished running
+    STATE_EXITED = "exited"  # docker container finished running
     STATE_STOPPED = "stopped"
     STATE_KILLED = "killed"
     STATE_REMOVED = "removed"
@@ -41,15 +44,31 @@ class DockerJob(object):
     # Mounted read-write in the container.
     OUTPUT_DIR = "/golem/output"
 
+    # these keys/values pairs will be saved in "params" module - it is
+    # dynamically created during docker setup and available for import
+    # inside docker
+    PATH_PARAMS = {
+        "RESOURCES_DIR": RESOURCES_DIR,
+        "WORK_DIR": WORK_DIR,
+        "OUTPUT_DIR": OUTPUT_DIR
+    }
+
     # Name of the script file, relative to WORK_DIR
     TASK_SCRIPT = "job.py"
 
     # Name of the parameters file, relative to WORK_DIR
     PARAMS_FILE = "params.py"
 
-    def __init__(self, image, script_src, parameters,
-                 resources_dir, work_dir, output_dir,
-                 host_config=None, container_log_level=None):
+    # pylint:disable=too-many-arguments
+    def __init__(self,
+                 image: DockerImage,
+                 script_src: str,
+                 parameters: Dict,
+                 resources_dir: str,
+                 work_dir: str,
+                 output_dir: str,
+                 host_config: Optional[Dict] = None,
+                 container_log_level: Optional[int] = None) -> None:
         """
         :param DockerImage image: Docker image to use
         :param str script_src: source of the task script file
@@ -58,12 +77,15 @@ class DockerJob(object):
         :param str work_dir: directory for temporary work files
         :param str output_dir: directory for output files
         """
-        from golem.docker.image import DockerImage
         if not isinstance(image, DockerImage):
-            raise TypeError('Incorrect image type: {}. Should be: DockerImage'.format(type(image)))
+            raise TypeError('Incorrect image type: {}. '
+                            'Should be: DockerImage'.format(type(image)))
         self.image = image
         self.script_src = script_src
         self.parameters = parameters if parameters else {}
+
+        self.parameters.update(self.PATH_PARAMS)
+
         self.host_config = host_config or {}
 
         self.resources_dir = resources_dir
@@ -105,38 +127,59 @@ class DockerJob(object):
         # Setup volumes for the container
         client = local_client()
 
-        # Docker config requires binds to be specified using posix paths,
-        # even on Windows. Hence this function:
-        def posix_path(path):
-            if is_windows():
-                return nt_path_to_posix_path(path)
-            return path
-
         container_config = dict(self.host_config)
         cpuset = container_config.pop('cpuset', None)
 
+        volumes = [self.WORK_DIR, self.RESOURCES_DIR, self.OUTPUT_DIR]
+        binds = {
+            posix_path(self.work_dir): {
+                "bind": self.WORK_DIR,
+                "mode": "rw"
+            },
+            posix_path(self.resources_dir): {
+                "bind": self.RESOURCES_DIR,
+                "mode": "rw"
+            },
+            posix_path(self.output_dir): {
+                "bind": self.OUTPUT_DIR,
+                "mode": "rw"
+            },
+        }
+
         if is_windows():
-            environment = None
+            environment = {}
         elif is_osx():
             environment = dict(OSX_USER=1)
         else:
             environment = dict(LOCAL_USER_ID=os.getuid())
 
+        environment.update(
+            WORK_DIR=self.WORK_DIR,
+            RESOURCES_DIR=self.RESOURCES_DIR,
+            OUTPUT_DIR=self.OUTPUT_DIR
+        )
+
+        docker_env = EnvironmentsManager().get_environment_by_image(self.image)
+
+        if docker_env:
+            env_config = docker_env.get_container_config()
+
+            environment.update(env_config['environment'])
+            binds.update(env_config['binds'])
+            volumes += env_config['volumes']
+            devices = env_config['devices']
+            runtime = env_config['runtime']
+        else:
+            logger.debug('No Docker environment found for image %r', self.image)
+
+            devices = None
+            runtime = None
+
         host_cfg = client.create_host_config(
-            binds={
-                posix_path(self.work_dir): {
-                    "bind": self.WORK_DIR,
-                    "mode": "rw"
-                },
-                posix_path(self.resources_dir): {
-                    "bind": self.RESOURCES_DIR,
-                    "mode": "ro"
-                },
-                posix_path(self.output_dir): {
-                    "bind": self.OUTPUT_DIR,
-                    "mode": "rw"
-                }
-            },
+            cpuset_cpus=cpuset,
+            devices=devices,
+            binds=binds,
+            runtime=runtime,
             **container_config
         )
 
@@ -144,21 +187,19 @@ class DockerJob(object):
         container_script_path = self._get_container_script_path()
         self.container = client.create_container(
             image=self.image.name,
-            volumes=[self.WORK_DIR, self.RESOURCES_DIR, self.OUTPUT_DIR],
+            volumes=volumes,
             host_config=host_cfg,
             command=[container_script_path],
             working_dir=self.WORK_DIR,
-            cpuset=cpuset,
-            environment=environment
+            environment=environment,
         )
         self.container_id = self.container["Id"]
         if self.container_id is None:
             raise KeyError("container does not have key: Id")
 
-        logger.debug("Container {} prepared, image: {}, dirs: {}; {}; {}"
-                     .format(self.container_id, self.image.name,
-                             self.work_dir, self.resources_dir, self.output_dir)
-                     )
+        logger.debug("Container %s prepared, image: %s, dirs: %s; %s; %s",
+                     self.container_id, self.image.name, self.work_dir,
+                     self.resources_dir, self.output_dir)
 
     def _cleanup(self):
         if self.container:
@@ -168,7 +209,7 @@ class DockerJob(object):
             self._host_dir_chmod(self.output_dir, self.output_dir_mod)
             try:
                 client.remove_container(self.container_id, force=True)
-                logger.debug("Container {} removed".format(self.container_id))
+                logger.debug("Container %s removed", self.container_id)
             except docker.errors.APIError:
                 pass  # Already removed? Sometimes happens in CircleCI.
             self.container = None
@@ -191,29 +232,30 @@ class DockerJob(object):
         self._cleanup()
 
     def _get_host_script_path(self):
-        return path.join(self.work_dir, self.TASK_SCRIPT)
+        return os.path.join(self.work_dir, self.TASK_SCRIPT)
 
     def _get_host_params_path(self):
-        return path.join(self.work_dir, self.PARAMS_FILE)
+        return os.path.join(self.work_dir, self.PARAMS_FILE)
 
     @staticmethod
     def _host_dir_chmod(dst_dir, mod):
         if isinstance(mod, str):
             mod = 0o770 if mod == 'rw' else \
-                  0o550 if mod == 'ro' else 0
+                0o550 if mod == 'ro' else 0
         prev_mod = None
 
         try:
             import stat
             prev_mod = stat.S_IMODE(os.stat(dst_dir).st_mode)
-        except Exception as e:
-            logger.debug("Cannot get mode for {}, reason: {}".format(dst_dir, e))
+        except Exception as e:  # pylint:disable=broad-except
+            logger.debug("Cannot get mode for %s, "
+                         "reason: %s", dst_dir, e)
 
         if mod is not None:
             try:
                 os.chmod(dst_dir, mod)
-            except Exception as e:
-                logger.debug("Cannot chmod {} ({}): {}".format(dst_dir, mod, e))
+            except Exception as e:  # pylint:disable=broad-except
+                logger.debug("Cannot chmod %s (%s): %s", dst_dir, mod, e)
 
         return prev_mod
 
@@ -246,12 +288,12 @@ class DockerJob(object):
             client.start(self.container_id)
             result = client.inspect_container(self.container_id)
             self.state = result["State"]["Status"]
-            logger.debug("Container {} started".format(self.container_id))
+            logger.debug("Container %s started", self.container_id)
             if self.log_std_streams:
                 self._start_logging_thread(client)
             return result
-        logger.debug("Container {} not started, status = {}"
-                     .format(self.container_id, self.get_status()))
+        logger.debug("Container %s not started, status = %s",
+                     self.container_id, self.get_status())
         return None
 
     def wait(self, timeout=None):
@@ -261,18 +303,18 @@ class DockerJob(object):
         """
         if self.get_status() in [self.STATE_RUNNING, self.STATE_EXITED]:
             client = local_client()
-            return client.wait(self.container_id, timeout)
-        logger.debug("Cannot wait for container {}, status = {}"
-                     .format(self.container_id, self.get_status()))
+            return client.wait(self.container_id, timeout).get('StatusCode')
+        logger.debug("Cannot wait for container %s, status = %s",
+                     self.container_id, self.get_status())
         return -1
 
     def kill(self):
         try:
             status = self.get_status()
-        except Exception as exc:
+        except Exception as exc:  # pylint:disable=broad-except
             status = None
-            logger.error("Error retrieving status for container {}: {}"
-                         .format(self.container_id, exc))
+            logger.error("Error retrieving status for container %s: %s",
+                         self.container_id, exc)
 
         if status != self.STATE_RUNNING:
             return
@@ -280,9 +322,9 @@ class DockerJob(object):
         try:
             client = local_client()
             client.kill(self.container_id)
-        except Exception as exc:
-            logger.error("Couldn't kill container {}: {}"
-                         .format(self.container_id, exc))
+        except docker.errors.APIError as exc:
+            logger.error("Couldn't kill container %s: %s",
+                         self.container_id, exc)
 
     def dump_logs(self, stdout_file=None, stderr_file=None):
         if not self.container:

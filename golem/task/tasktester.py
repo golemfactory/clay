@@ -33,7 +33,6 @@ class TaskTester(LocalComputer):
         else:
             return PyTestTaskThread(self,
                                     ctd['subtask_id'],
-                                    ctd['working_directory'],
                                     ctd['src_code'],
                                     ctd['extra_data'],
                                     ctd['short_description'],
