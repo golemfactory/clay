@@ -9,6 +9,7 @@ from unittest import TestCase
 
 from eth_utils import encode_hex
 from ethereum.utils import denoms
+import faker
 from freezegun import freeze_time
 import golem_sci.structs
 import requests
@@ -22,6 +23,7 @@ from golem.ethereum.transactionsystem import (
 )
 from golem.ethereum.exceptions import NotEnoughFunds
 
+fake = faker.Faker()
 PASSWORD = 'derp'
 
 
@@ -556,6 +558,21 @@ class ConcentWithdrawTest(TransactionSystemBase):
         # Run callback
         self.sci.on_transaction_confirmed.call_args[1]['cb'](Mock())
         self.assertFalse(self.ets._deposit_withdrawal_requested)
+
+
+@patch(
+    'golem.ethereum.transactionsystem.TransactionSystem.concent_balance',
+)
+class ConcentUnlockTest(TransactionSystemBase):
+    def test_empty(self, balance_mock):
+        balance_mock.return_value = 0
+        self.ets.concent_unlock()
+        self.sci.unlock_deposit.assert_not_called()
+
+    def test_full(self, balance_mock):
+        balance_mock.return_value = abs(fake.pyint()) + 1
+        self.ets.concent_unlock()
+        self.sci.unlock_deposit.assert_called_once_with()
 
 
 class FaucetTest(TestCase):
