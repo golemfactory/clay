@@ -6,9 +6,9 @@ import autobahn
 from twisted.internet.defer import Deferred
 
 from golem.rpc import session as rpc_session
+from golem.rpc import utils as rpc_utils
 from golem.rpc.session import (
     logger,
-    object_method_map,
     Publisher,
     RPCAddress,
     Session,
@@ -43,36 +43,25 @@ class TestObjectMethodMap(unittest.TestCase):
 
     class MockObject(object):
 
+        @rpc_utils.expose()
         def method_1(self):
             pass
 
+        @rpc_utils.expose('alias_2')
         def method_2(self):
             pass
 
     def test_valid_method_map(self):
 
         obj = self.MockObject()
-        valid_method_map = dict([
-            ('method_1', 'alias_1'),
-            ('method_2', 'alias_2')
-        ])
-        expected_output = [
-            (obj.method_1, 'alias_1'),
-            (obj.method_2, 'alias_2')
-        ]
+        expected = {
+            'backend.tests.golem.rpc.test_session'
+            '.TestObjectMethodMap.MockObject.method_1': obj.method_1,
+            'alias_2': obj.method_2,
+        }
+        result = rpc_utils.object_method_map(obj)
 
-        assert object_method_map(obj, valid_method_map) == expected_output
-
-    def test_invalid_method_map(self):
-
-        obj = self.MockObject()
-        invalid_method_map = dict([
-            ('method_1', 'alias_1'),
-            ('method_x', 'alias_x')
-        ])
-
-        with self.assertRaises(AttributeError):
-            object_method_map(obj, invalid_method_map)
+        self.assertEqual(expected, result)
 
 
 class TestPublisher(LogTestCase):
