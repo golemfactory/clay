@@ -34,17 +34,8 @@ class OfferPool:
         each(pool.append, items)
 
     @classmethod
-    def peek(cls, key: str, count: int = 0) -> PoolType:
-        if not cls.contains(key):
-            return []
-
-        pool = cls._pools[key]
-        idx = cls._rev_index(pool, count)
-        return pool[:idx]
-
-    @classmethod
     def drain(cls, key: str) -> PoolType:
-        elements = cls.peek(key)
+        elements = cls._peek(key)
         if cls.contains(key):
             del cls._pools[key]
         return elements
@@ -80,6 +71,15 @@ class OfferPool:
             from twisted.internet import reactor
             reactor.callLater(cls._TAKE_INTERVAL, cls._take,
                               result, key, count, deadline)
+
+    @classmethod
+    def _peek(cls, key: str, count: int = 0) -> PoolType:
+        if not cls.contains(key):
+            return []
+
+        pool = cls._pools[key]
+        idx = cls._rev_index(pool, count)
+        return pool[:idx]
 
     @classmethod
     def _pool(cls, key: str) -> PoolType:

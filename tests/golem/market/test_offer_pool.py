@@ -16,19 +16,19 @@ class TestOfferPool(TestCase):
 
         OfferPool.add(key, *data)
 
-        assert OfferPool.peek(key) == data
-        assert OfferPool.peek(key, 0) == data
-        assert OfferPool.peek(key, 1000) == data
-        assert OfferPool.peek(key, -1) == []
-        assert OfferPool.peek(key, 1) == data[:1]
-        assert OfferPool.peek(key, 5) == data[:5]
+        assert OfferPool._peek(key) == data
+        assert OfferPool._peek(key, 0) == data
+        assert OfferPool._peek(key, 1000) == data
+        assert OfferPool._peek(key, -1) == []
+        assert OfferPool._peek(key, 1) == data[:1]
+        assert OfferPool._peek(key, 5) == data[:5]
 
     def test_add_and_drain(self):
         key = str(uuid.uuid4())
         data = list(range(1, 11))
 
         OfferPool.add(key, *data)
-        assert OfferPool.peek(key) == data
+        assert OfferPool._peek(key) == data
         assert OfferPool.contains(key)
 
         assert OfferPool.drain(key) == data
