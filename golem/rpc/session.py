@@ -55,15 +55,13 @@ class WebSocketAddress(RPCAddress):
 class Session(ApplicationSession):
 
     # pylint: disable=too-many-arguments
-    def __init__(self, address, mapping=None, events=None,
+    def __init__(self, address, mapping=None,
                  cert_manager=None, use_ipv6=False,
                  crsb_user=None, crsb_user_secret=None) -> None:
         self.address = address
         if mapping is None:
             mapping = {}
         self.mapping = mapping
-        self.events = events or []
-        self.subs = {}  # type: ignore
 
         self.ready = Deferred()
         self.connected = False
@@ -172,7 +170,6 @@ class Session(ApplicationSession):
     @inlineCallbacks
     def onJoin(self, details):
         yield self.register_procedures(self.mapping)
-        yield self.register_events(self.events)
         self.connected = True
         if not self.ready.called:
             self.ready.callback(details)
@@ -206,13 +203,6 @@ class Session(ApplicationSession):
             qname = '.'.join((fn.__module__, fn.__qualname__))
             exposed[registration.procedure] = qname
         return exposed
-
-    @inlineCallbacks
-    def register_events(self, events):
-        for method, rpc_name in events:
-            deferred = self.subscribe(method, str(rpc_name))
-            deferred.addErrback(self._on_error)
-            self.subs[rpc_name] = yield deferred
 
     def is_open(self):
         return self.connected and self.is_attached() and not self.is_closing()
