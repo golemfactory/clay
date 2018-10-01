@@ -59,7 +59,7 @@ class TestOfferPool(TestCase):
         count = 3
         result = []
 
-        deferred = OfferPool.take_when(key, count, 60.0)
+        deferred = OfferPool.take_n(key, count, 60.0)
         deferred.addCallback(lambda r: each(result.append, r))
         deferred.addErrback(self.fail)
 
@@ -85,7 +85,7 @@ class TestOfferPool(TestCase):
         key = str(uuid.uuid4())
         result = []
 
-        deferred = OfferPool.take_when(key, 10, 5.0)
+        deferred = OfferPool.take_n(key, 10, 5.0)
         deferred.addCallback(self.fail)
         deferred.addErrback(lambda _: result.append(True))
 

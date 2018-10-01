@@ -46,10 +46,10 @@ class OfferPool:
         return task.deferLater(reactor, timeout, cls.drain, key)
 
     @classmethod
-    def take_when(cls,
-                  key: str,
-                  count: int,
-                  timeout: Union[int, float]) -> Deferred:
+    def take_n(cls,
+               key: str,
+               count: int,
+               timeout: Union[int, float]) -> Deferred:
 
         result = Deferred()
         cls._take(result, key, count, deadline=time.time() + timeout)
