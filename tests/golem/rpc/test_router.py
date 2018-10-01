@@ -7,6 +7,7 @@
 
 
 import os
+import pprint
 import time
 from threading import Thread
 import typing
@@ -18,12 +19,12 @@ from twisted.internet.defer import inlineCallbacks
 from twisted.internet.defer import setDebugging
 
 from golem.rpc import cert
+from golem.rpc import utils as rpc_utils
 from golem.rpc.common import CROSSBAR_DIR, CROSSBAR_PORT
 from golem.rpc.mapping.rpcmethodnames import DOCKER_URI
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import (
     ClientProxy,
-    object_method_map,
     Publisher,
     Session,
 )
@@ -35,42 +36,35 @@ xbar_users = cert.CertificateManager.CrossbarUsers
 
 
 class MockService():
-    methods = dict(
-        multiply='mock.multiply',
-        divide='mock.divide',
-        ping='mock.ping',
-        exception='mock.exception',
-        docker_echo=f'{DOCKER_URI}.echo',
-        non_docker_echo='mock.echo'
-    )
-
-    events = dict(
-        on_hello='mock.event.hello'
-    )
-
     def __init__(self):
         self.n_hello_received = 0
 
+    @rpc_utils.expose()
     @classmethod
     def multiply(cls, arg1, arg2):
         return arg1 * arg2
 
+    @rpc_utils.expose()
     @classmethod
     def divide(cls, number, divisor=2):
         return number / divisor
 
+    @rpc_utils.expose()
     @classmethod
     def ping(cls):
         return 'pong'
 
+    @rpc_utils.expose(DOCKER_URI+'.echo')
     @classmethod
     def docker_echo(cls, arg):
         return arg
 
+    @rpc_utils.expose()
     @classmethod
     def non_docker_echo(cls, arg):
         return arg
 
+    @rpc_utils.expose()
     @classmethod
     def exception(cls):
         n = 2
@@ -115,11 +109,16 @@ class _TestRouter(TestDirFixtureWithReactor):
             self.method = None
 
         def add_errors(self, *errors):
-            print('Errors: {}'.format(errors))
+            print('Errors: {}'.format(pprint.pformat(errors)))
             if errors:
                 self.errors += errors
             else:
                 self.errors += ['Unknown error']
+
+        def format_errors(self):
+            return "\n".join(
+                "%d: %s" % (cnt, e) for cnt, e in enumerate(self.errors)
+            )
 
     def setUp(self):
         super().setUp()
@@ -132,15 +131,16 @@ class _TestRouter(TestDirFixtureWithReactor):
 
         self.state.backend_session = self.Session(  # pylint: disable=no-member
             self.state.router.address,
-            methods=object_method_map(
-                self.state.backend,
-                MockService.methods
-            ),
             crsb_user=user,
             crsb_user_secret=secret
         )
 
         yield self.state.backend_session.connect()
+        yield self.state.backend_session.add_procedures(
+            rpc_utils.object_method_map(
+                self.state.backend,
+            ),
+        )
         yield self._backend_session_started()
 
     @inlineCallbacks
@@ -153,14 +153,8 @@ class _TestRouter(TestDirFixtureWithReactor):
         yield txdefer
         user = self.CSRB_FRONTEND
         secret = self.state.crsb_frontend_secret if user else None
-        events = object_method_map(
-            self.state.frontend,
-            MockService.events
-        ) if self.state.subscribe else None
-
         self.state.frontend_session = self.Session(  # pylint: disable=no-member
             self.state.router.address,
-            events=events,
             crsb_user=user,
             crsb_user_secret=secret
         )
@@ -189,7 +183,7 @@ class _TestRouter(TestDirFixtureWithReactor):
         time.sleep(0.5)
 
         if self.state.errors and not expect_error:
-            raise Exception(*self.state.errors)
+            raise Exception(self.state.format_errors())
 
         if expect_error and not self.state.errors:
             raise Exception("Expected error")
@@ -247,6 +241,12 @@ class TestRPCNoAuth(_TestRouter):
 
     @inlineCallbacks
     def _frontend_session_started(self, *_):
+        txdefer = self.state.frontend_session.subscribe(
+            self.state.frontend.on_hello,
+            'mock.event.hello',
+        )
+        txdefer.addErrback(self.state.add_errors)
+        yield txdefer
         client = MockProxy(self.state.frontend_session)
         yield client._ready
         publisher = Publisher(self.state.backend_session)
