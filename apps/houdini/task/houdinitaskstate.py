@@ -63,6 +63,7 @@ class HoudiniTaskOptions(Options):
         self.render_node = render_params["render_node"]
         self.start_frame = int(render_params["start_frame"])
         self.end_frame = int(render_params["end_frame"])
+        self.output_file = render_params["output"]
 
     def build_dict( self ):
 
@@ -72,7 +73,7 @@ class HoudiniTaskOptions(Options):
         opts["render_node"] = self.render_node
         opts["start_frame"] = self.start_frame
         opts["end_frame"] = self.end_frame
-        opts["output_file"] = self.output_file
+        opts["output"] = self.output_file
 
         return opts
 

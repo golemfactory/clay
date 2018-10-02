@@ -118,7 +118,7 @@ class HoudiniTask(CoreTask):
         render_params["scene_file"] = os.path.join( "/golem/resources/", os.path.basename( render_params[ "scene_file" ] ) )
         render_params["start_frame"] = start_frame
         render_params["end_frame"] = end_frame
-        render_params["output"] = os.path.join( "/golem/output/", render_params[ "output_file" ] )
+        render_params["output"] = os.path.join( "/golem/output/", render_params[ "output" ] )
 
         return extra_data
 
@@ -143,18 +143,30 @@ class HoudiniTask(CoreTask):
 
     def accept_results(self, subtask_id, result_files):
         super().accept_results(subtask_id, result_files)
+
         node_id = self.subtasks_given[subtask_id]['node_id']
         TaskClient.assert_exists(node_id, self.counting_nodes).accept()
         self.num_tasks_received += 1
 
-        logger.info( "Houdini subtask finished. Results: " + str( result_files ) )
+        logger.info( self.log_task_header() + "Subtask '%s' finished. Results: " + str( result_files[ "results" ] ), subtask_id )
 
+        # Create directory where output files will be copied.
+        if not os.path.exists( self.task_definition.output_path ):
+
+            if not os.path.isdir( self.task_definition.output_path ):
+                logger.info( self.log_task_header() + "Output path is not a directory. Using [%s] as output path.", self.task_definition.output_path )
+                self.task_definition.output_path = os.path.dirname( self.task_definition.output_path )
+
+            logger.info( self.log_task_header() + "Creating output directory [%s], which didn't exist.", self.task_definition.output_path )
+            os.makedirs( self.task_definition.output_path )
+
+        # Copy results from temp directory to output.
         for file in result_files[ "results" ]:
             file_name = os.path.basename( file )
             output_file_path = os.path.join( self.task_definition.output_path, file_name )
             copyfile( file, output_file_path )
 
-            logger.debug( "Copy file: " + file + " to directory " + self.task_definition.output_path )
+            logger.debug( self.log_task_header() + "Copy file: " + file + " to directory " + self.task_definition.output_path )
 
     def computation_failed(self, subtask_id):
 
@@ -168,6 +180,10 @@ class HoudiniTask(CoreTask):
         end_frame = extra_data["end_frame"]
 
         self.frames_ranges_list.append( [ start_frame, end_frame ] )
+
+    def log_task_header( self ):
+        return "Houdini task '" + str( self.task_definition.task_id ) + "' "
+
 
     def query_extra_data_for_test_task(self) -> ComputeTaskDef:
         # What performance index should be used ?
