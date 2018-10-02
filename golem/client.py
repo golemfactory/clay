@@ -795,7 +795,8 @@ class Client(HardwarePresetsMixin):
                 dictionary=dictionary, minimal=True
             )
         except Exception as e:
-            return on_error(to_unicode(e))
+            on_error(to_unicode(e))
+            return
 
         self.task_test_result = {
             "status": TaskTestStatus.started,
