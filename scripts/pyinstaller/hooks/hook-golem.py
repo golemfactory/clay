@@ -2,7 +2,7 @@ from PyInstaller.utils.hooks import collect_submodules
 
 hiddenimports = collect_submodules('golem') + \
                 collect_submodules('apps') + \
-                ['Cryptodome', 'xml', 'scrypt', 'mock']
+                ['Cryptodome', 'xml', 'scrypt', 'mock', 'dns']
 
 datas = [
     ('loggingconfig.py', '.'),
