@@ -39,7 +39,6 @@ class RPCAddress(object):
         self.address = '{}://{}:{}'.format(self.protocol,
                                            self.host, self.port)
 
-
     def __str__(self):
         return str(self.address)
 
