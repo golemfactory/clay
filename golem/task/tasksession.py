@@ -9,7 +9,7 @@ from golem_messages import helpers as msg_helpers
 from golem_messages import message
 from golem_messages.exceptions import InvalidSignature
 
-from golem.core.common import HandleAttributeError, node_info_str
+from golem.core import common
 from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import CBORSerializer
 from golem.core import variables
@@ -77,8 +77,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     """ Session for Golem task network """
 
     ConnectionStateType = tcpnetwork.SafeProtocol
-    handle_attr_error = HandleAttributeError(drop_after_attr_error)
-    handle_attr_error_with_task_computer = HandleAttributeError(
+    handle_attr_error = common.HandleAttributeError(drop_after_attr_error)
+    handle_attr_error_with_task_computer = common.HandleAttributeError(
         call_task_computer_and_drop_after_attr_error
     )
 
@@ -190,7 +190,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if result_type == ResultType.DATA:
             try:
                 result = CBORSerializer.loads(result)
-            except Exception as err:
+            except Exception:  # pylint: disable=broad-except
                 logger.exception("Can't load result data")
                 send_verification_failure()
                 return
@@ -424,29 +424,27 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     #########################
 
     def _react_to_want_to_compute_task(self, msg):
+        def _cannot_assign(reason):
+            logger.debug("Cannot assign task: %r", reason)
+            self.send(
+                message.tasks.CannotAssignTask(
+                    task_id=msg.task_id,
+                    reason=reason,
+                ),
+            )
+            self.dropped()
+
         reasons = message.tasks.CannotAssignTask.REASON
 
         if msg.concent_enabled and not self.concent_service.enabled:
-            self.send(
-                message.tasks.CannotAssignTask(
-                    task_id=msg.task_id,
-                    reason=reasons.ConcentDisabled,
-                )
-            )
-            self.dropped()
+            _cannot_assign(reasons.ConcentDisabled)
             return
 
         if not self.task_manager.is_my_task(msg.task_id):
-            self.send(
-                message.tasks.CannotAssignTask(
-                    task_id=msg.task_id,
-                    reason=reasons.NotMyTask,
-                )
-            )
-            self.dropped()
+            _cannot_assign(reasons.NotMyTask)
             return
 
-        node_name_id = node_info_str(msg.node_name, self.key_id)
+        node_name_id = common.node_info_str(msg.node_name, self.key_id)
         logger.info("Received offer to compute. task_id=%r, node=%r",
                     msg.task_id, node_name_id)
 
@@ -456,87 +454,114 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.send(message.tasks.WaitingForResults())
             return
 
+        logger.debug(
+            "Calling `task_manager.got_wants_to_compute`,"
+            "task_id=%s, node=%s",
+            msg.task_id,
+            node_name_id,
+        )
         self.task_manager.got_wants_to_compute(msg.task_id, self.key_id,
                                                msg.node_name)
 
-        ctd = None
+        logger.debug(
+            "WTCT processing... task_id=%s, node=%s",
+            msg.task_id,
+            node_name_id,
+        )
+
         task_server_ok = self.task_server.should_accept_provider(
             self.key_id, msg.node_name, msg.task_id, msg.perf_index,
             msg.max_resource_size, msg.max_memory_size, msg.num_cores)
 
-        if task_server_ok and self.task_manager.check_next_subtask(
-                self.key_id, msg.node_name, msg.task_id, msg.price):
-
-            if self._handshake_required(self.key_id):
-                logger.warning('Can not accept offer: Resource handshake is'
-                               ' required. task_id=%r, node=%r',
-                               msg.task_id, node_name_id)
-                self._start_handshake(self.key_id)
-                return
-
-            elif self._handshake_in_progress(self.key_id):
-                logger.warning('Can not accept offer: Resource handshake is in'
-                               ' progress. task_id=%r, node=%r',
-                               msg.task_id, node_name_id)
-                return
-
-            # TODO: Queue requests here
-
-            logger.info("Offer confirmed, assigning subtask")
-            ctd = self.task_manager.get_next_subtask(
-                self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-                msg.price, msg.max_resource_size, msg.max_memory_size,
-                msg.num_cores, self.address)
-
-        if ctd:
-            logger.info("Subtask assigned. subtask_id=%r", ctd["subtask_id"])
-            task = self.task_manager.tasks[ctd['task_id']]
-            task_state: TaskState = self.task_manager.tasks_states[
-                ctd['task_id']]
-            price = taskkeeper.compute_subtask_value(
-                task.header.max_price,
-                task.header.subtask_timeout,
-            )
-            ttc = message.tasks.TaskToCompute(
-                compute_task_def=ctd,
-                want_to_compute_task=msg,
-                requestor_id=task.header.task_owner.key,
-                requestor_public_key=task.header.task_owner.key,
-                requestor_ethereum_public_key=task.header.task_owner.key,
-                provider_id=self.key_id,
-                package_hash='sha1:' + task_state.package_hash,
-                concent_enabled=msg.concent_enabled,
-                price=price,
-                size=task_state.package_size
-            )
-            ttc.generate_ethsig(self.my_private_key)
-            self.task_manager.set_subtask_value(
-                subtask_id=ttc.subtask_id,
-                price=price,
-            )
-            history.add(
-                msg=ttc,
-                node_id=self.key_id,
-                local_role=Actor.Requestor,
-                remote_role=Actor.Provider,
-            )
-            self.send(ttc)
-            return
-        elif not task_server_ok:
-            logger.warning("Can not accept offer: Taskserver rejected provider."
-                           "task_id=%r, node=%r", msg.task_id, node_name_id)
-        else:
-            logger.warning("Can not accept offer: Taskmanager rejected "
-                           "provider. task_id=%r, node=%r", msg.task_id,
-                           node_name_id)
-
-        self.send(
-            message.tasks.CannotAssignTask(
-                task_id=msg.task_id,
-                reason=reasons.NoMoreSubtasks,
-            )
+        logger.debug(
+            "Task server ok? should_accept_provider=%s task_id=%s node=%s",
+            task_server_ok,
+            msg.task_id,
+            node_name_id,
         )
-        self.dropped()
+
+        if not task_server_ok:
+            _cannot_assign(reasons.NoMoreSubtasks)
+            return
+
+        if not self.task_manager.check_next_subtask(
+                self.key_id, msg.node_name, msg.task_id, msg.price):
+            logger.debug(
+                "check_next_subtask False. task_id=%s, node=%s",
+                msg.task_id,
+                node_name_id,
+            )
+            _cannot_assign(reasons.NoMoreSubtasks)
+            return
+
+        if self._handshake_required(self.key_id):
+            logger.warning('Can not accept offer: Resource handshake is'
+                           ' required. task_id=%r, node=%r',
+                           msg.task_id, node_name_id)
+            self._start_handshake(self.key_id)
+            return
+
+        elif self._handshake_in_progress(self.key_id):
+            logger.warning('Can not accept offer: Resource handshake is in'
+                           ' progress. task_id=%r, node=%r',
+                           msg.task_id, node_name_id)
+            return
+
+        # TODO: Queue requests here
+
+        logger.info("Offer confirmed, assigning subtask")
+        ctd = self.task_manager.get_next_subtask(
+            self.key_id, msg.node_name, msg.task_id, msg.perf_index,
+            msg.price, msg.max_resource_size, msg.max_memory_size,
+            msg.num_cores, self.address)
+
+        logger.debug(
+            "task_id=%s, node=%s ctd=%s",
+            msg.task_id,
+            node_name_id,
+            ctd,
+        )
+
+        if ctd is None:
+            _cannot_assign(reasons.NoMoreSubtasks)
+            return
+
+        logger.info(
+            "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
+            msg.task_id,
+            node_name_id,
+            ctd["subtask_id"],
+        )
+        task = self.task_manager.tasks[ctd['task_id']]
+        task_state: TaskState = self.task_manager.tasks_states[ctd['task_id']]
+        price = taskkeeper.compute_subtask_value(
+            task.header.max_price,
+            task.header.subtask_timeout,
+        )
+        ttc = message.tasks.TaskToCompute(
+            compute_task_def=ctd,
+            want_to_compute_task=msg,
+            requestor_id=task.header.task_owner.key,
+            requestor_public_key=task.header.task_owner.key,
+            requestor_ethereum_public_key=task.header.task_owner.key,
+            provider_id=self.key_id,
+            package_hash='sha1:' + task_state.package_hash,
+            concent_enabled=msg.concent_enabled,
+            price=price,
+            size=task_state.package_size
+        )
+        ttc.generate_ethsig(self.my_private_key)
+        self.task_manager.set_subtask_value(
+            subtask_id=ttc.subtask_id,
+            price=price,
+        )
+        history.add(
+            msg=ttc,
+            node_id=self.key_id,
+            local_role=Actor.Requestor,
+            remote_role=Actor.Provider,
+        )
+        self.send(ttc)
 
     @handle_attr_error_with_task_computer
     @history.provider_history

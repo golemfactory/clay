@@ -788,7 +788,7 @@ class Client(HardwarePresetsMixin):
                 dictionary=dictionary, minimal=True
             )
         except Exception as e:
-            return on_error(to_unicode(e))
+            return on_error("{}: {}".format(type(e), to_unicode(e)))
 
         self.task_test_result = json.dumps(
             {"status": TaskTestStatus.started, "error": True})
