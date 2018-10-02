@@ -2,11 +2,11 @@ from contextlib import contextmanager
 from functools import wraps
 from typing import Any, ClassVar, Dict, Optional, Tuple
 
+from twisted.internet.defer import Deferred, succeed
+
 from golem.core.common import to_unicode
 from golem.rpc.session import Publisher
 from golem.rpc.mapping.rpceventnames import Golem
-
-from twisted.internet.defer import Deferred, succeed
 
 
 class Stage(object):
