@@ -1422,18 +1422,18 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_run_test_task_params(self, *_):
         with mock.patch(
-                'apps.blender.task.blenderrendertask.'
-                'BlenderTaskTypeInfo.for_purpose',
-                mock.Mock(),
+            'apps.blender.task.blenderrendertask.'
+            'BlenderTaskTypeInfo.for_purpose',
+            mock.Mock(),
         ),\
-             mock.patch('golem.client.TaskTester.run', mock.Mock()),\
-             self.assertNoLogs():
-                self.client._run_test_task(
-                    {
-                        'type': 'blender',
-                        'resources': ['_.blend'],
-                        'subtasks': 1,
-                    })
+        mock.patch('golem.client.TaskTester.run', mock.Mock()),\
+        self.assertNoLogs():
+            self.client._run_test_task(
+                {
+                    'type': 'blender',
+                    'resources': ['_.blend'],
+                    'subtasks': 1,
+                })
 
     @classmethod
     def __new_incoming_peer(cls):
