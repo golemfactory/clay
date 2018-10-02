@@ -1,5 +1,6 @@
 import os
 
+from golem_sci import contracts
 from golem_sci.chains import MAINNET
 
 from golem.core.variables import PROTOCOL_CONST
@@ -40,6 +41,11 @@ class EthereumConfig:  # pylint:disable=too-few-public-methods
 
     CHAIN = MAINNET
     FAUCET_ENABLED = False
+
+    CONTRACT_ADDRESSES = {
+        contracts.GNT: '0xa74476443119A942dE498590Fe1f2454d7D4aC0d',
+        contracts.GNTB: '0xA7dfb33234098c66FdE44907e918DAD70a3f211c',
+    }
 
     WITHDRAWALS_ENABLED = True
 

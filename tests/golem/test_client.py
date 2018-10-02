@@ -1,4 +1,5 @@
 # pylint: disable=protected-access,too-many-lines
+import datetime
 import json
 import os
 import time
@@ -21,6 +22,7 @@ from twisted.internet.defer import Deferred
 from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 import golem
+from golem import model
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
@@ -337,6 +339,7 @@ class TestClient(TestClientBase):
 
         task_dict = {
             'bid': 5.0,
+            'compute_on': 'cpu',
             'name': 'test task',
             'options': {
                 'difficulty': 1337,
@@ -699,9 +702,10 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
     # pylint: disable=too-many-public-methods
     def setUp(self):
         super().setUp()
-        self.client.apps_manager.load_all_apps()
         self.client.sync = Mock()
         self.client.p2pservice = Mock(peers={})
+        self.client.apps_manager._benchmark_enabled = Mock(return_value=True)
+        self.client.apps_manager.load_all_apps()
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler', ):
             self.client.task_server = TaskServer(
@@ -802,6 +806,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             total_tasks=5,
             get_price=Mock(return_value=900),
             subtask_price=1000,
+            spec=Task,
         )
 
         c.concent_service.enabled = False
@@ -832,6 +837,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
     @patch('golem.client.async_run', side_effect=mock_async_run)
     def test_enqueue_new_task(self, *_):
         t_dict = {
+            'compute_on': 'cpu',
             'resources': [
                 '/Users/user/Desktop/folder/texture.tex',
                 '/Users/user/Desktop/folder/model.mesh',
@@ -1088,6 +1094,22 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         task_id = str(uuid.uuid4())
         c.delete_task(task_id)
+        assert c.remove_task_header.called
+        assert c.remove_task.called
+        assert c.task_server.task_manager.delete_task.called
+        c.remove_task.assert_called_with(task_id)
+
+    def test_purge_tasks(self, *_):
+        c = self.client
+        c.remove_task_header = Mock()
+        c.remove_task = Mock()
+        c.task_server = Mock()
+
+        task_id = str(uuid.uuid4())
+        c.get_tasks = Mock(return_value=[{'id': task_id}, ])
+
+        c.purge_tasks()
+        assert c.get_tasks.called
         assert c.remove_task_header.called
         assert c.remove_task.called
         assert c.task_server.task_manager.delete_task.called
@@ -1447,6 +1469,38 @@ class TestDepositBalance(TestClientBase):
             .return_value = 0
         result = sync_wait(self.client.get_deposit_balance())
         self.assertEqual(result['status'], 'locked')
+
+
+class DepositPaymentsListTest(TestClientBase):
+    def test_empty(self):
+        self.assertEqual(self.client.get_deposit_payments_list(), [])
+
+    def test_one(self):
+        tx_hash = \
+            '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
+        value = 31337
+        ts = 1514761200.0
+        dt = datetime.datetime.fromtimestamp(ts)
+        model.DepositPayment.create(
+            value=value,
+            tx=tx_hash,
+            created_date=dt,
+            modified_date=dt,
+        )
+        expected = [
+            {
+                'created': ts,
+                'modified': ts,
+                'fee': None,
+                'status': 'awaiting',
+                'transaction': tx_hash,
+                'value': str(value),
+            },
+        ]
+        self.assertEqual(
+            expected,
+            self.client.get_deposit_payments_list(),
+        )
 
 
 class TestClientPEP8(TestCase, testutils.PEP8MixIn):

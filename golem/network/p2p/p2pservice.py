@@ -372,11 +372,10 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             return
 
         logger.info(
-            "add peer to incoming %r %r %r (%r)",
-            peer_info["node_name"],
+            "add peer to incoming. address=%r:%r, node=%s",
             peer_info["address"],
             peer_info["port"],
-            key_id
+            node_info_str(peer_info["node_name"], key_id)
         )
 
         self.incoming_peers[key_id] = {

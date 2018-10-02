@@ -7,6 +7,7 @@ import logging
 import sys
 import time
 import uuid
+import warnings
 from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
@@ -573,11 +574,24 @@ class Client(HardwarePresetsMixin):
 
         # FIXME: Statement only for old DummyTask compatibility #2467
         task: TaskBase
-        if isinstance(task_dict, dict):
-            logger.warning('enqueue_new_task called with deprecated dict type')
-            task = task_manager.create_task(task_dict)
-        else:
+        if isinstance(task_dict, TaskBase):
+            warnings.warn(
+                "enqueue_new_task() called with {got_type}"
+                " instead of dict #2467".format(
+                    got_type=type(task_dict),
+                ),
+                DeprecationWarning,
+                stacklevel=2,
+            )
             task = task_dict
+        else:
+            # Set default value for concent_enabled
+            task_dict.setdefault(
+                'concent_enabled',
+                self.concent_service.enabled,
+            )
+
+            task = task_manager.create_task(task_dict)
 
         if task.header.fixed_header.concent_enabled and \
                 not self.concent_service.enabled:
@@ -920,6 +934,12 @@ class Client(HardwarePresetsMixin):
         self.task_server.task_manager.delete_task(task_id)
         self.funds_locker.remove_task(task_id)
 
+    def purge_tasks(self):
+        tasks = self.get_tasks()
+        logger.debug('Deleting %d tasks ...', len(tasks))
+        for t in tasks:
+            self.delete_task(t['id'])
+
     def get_node(self):
         return self.node.to_dict()
 
@@ -1193,6 +1213,26 @@ class Client(HardwarePresetsMixin):
             }
 
         return [item(income) for income in incomes]
+
+    @classmethod
+    def get_deposit_payments_list(cls, limit=1000, offset=0):
+        deposit_payments = TransactionSystem.get_deposit_payments_list(
+            limit,
+            offset,
+        )
+        result = []
+        for dpayment in deposit_payments:
+            entry = {}
+            entry['value'] = to_unicode(dpayment.value)
+            entry['status'] = to_unicode(dpayment.status.name)
+            entry['fee'] = to_unicode(dpayment.fee)
+            entry['transaction'] = to_unicode(dpayment.tx)
+            entry['created'] = datetime_to_timestamp_utc(dpayment.created_date)
+            entry['modified'] = datetime_to_timestamp_utc(
+                dpayment.modified_date,
+            )
+            result.append(entry)
+        return result
 
     def get_withdraw_gas_cost(
             self,

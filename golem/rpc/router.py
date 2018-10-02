@@ -1,14 +1,17 @@
+import json
 import logging
 import os
 from collections import namedtuple
-from typing import Iterable, Optional
+from typing import Iterable
 
+import enum
 from crossbar.common import checkconfig
 from twisted.internet.defer import inlineCallbacks
 
 from golem.rpc.cert import CertificateManager
 from golem.rpc.common import CROSSBAR_DIR, CROSSBAR_REALM, CROSSBAR_HOST, \
     CROSSBAR_PORT
+from golem.rpc.mapping.rpcmethodnames import DOCKER_URI
 from golem.rpc.session import WebSocketAddress
 
 logger = logging.getLogger('golem.rpc.crossbar')
@@ -19,29 +22,35 @@ CrossbarRouterOptions = namedtuple(
 )
 
 
+# pylint: disable=too-many-instance-attributes
 class CrossbarRouter(object):
-
     serializers = ['msgpack']
 
-    def __init__(self,  # pylint: disable=too-many-arguments
+    @enum.unique
+    class CrossbarRoles(enum.Enum):
+        admin = enum.auto()
+        docker = enum.auto()
+
+    # pylint: disable=too-many-arguments
+    def __init__(self,
+                 datadir: str,
                  host: str = CROSSBAR_HOST,
                  port: int = CROSSBAR_PORT,
                  realm: str = CROSSBAR_REALM,
-                 datadir: Optional[str] = None,
-                 crossbar_dir: str = CROSSBAR_DIR,
                  crossbar_log_level: str = 'info',
-                 ssl: bool = True) -> None:
+                 ssl: bool = True,
+                 generate_secrets: bool = False) -> None:
 
-        if datadir:
-            self.working_dir = os.path.join(datadir, crossbar_dir)
-        else:
-            self.working_dir = crossbar_dir
+        self.working_dir = os.path.join(datadir, CROSSBAR_DIR)
 
         os.makedirs(self.working_dir, exist_ok=True)
         if not os.path.isdir(self.working_dir):
             raise IOError("'{}' is not a directory".format(self.working_dir))
 
         self.cert_manager = CertificateManager(self.working_dir)
+        if generate_secrets:
+            self.cert_manager.generate_secrets()
+
         self.address = WebSocketAddress(host, port, realm, ssl)
 
         self.log_level = crossbar_log_level
@@ -53,7 +62,7 @@ class CrossbarRouter(object):
                                          self.serializers,
                                          self.cert_manager)
 
-        logger.debug('xbar init with cfg: %s', self.config)
+        logger.debug('xbar init with cfg: %s', json.dumps(self.config))
 
     def start(self, reactor, options=None):
         # imports reactor
@@ -84,6 +93,26 @@ class CrossbarRouter(object):
             argv=argv,
             config=config
         )
+
+    @staticmethod
+    def _users_config(cert_manager: CertificateManager):
+        # configuration for crsb_users with admin priviliges
+        crsb_users = {
+            p.name: {
+                "secret": cert_manager.get_secret(p),
+                "role": CrossbarRouter.CrossbarRoles.admin.name
+            } for p in [cert_manager.CrossbarUsers.golemapp,
+                        cert_manager.CrossbarUsers.golemcli,
+                        cert_manager.CrossbarUsers.electron]
+        }
+
+        # and for docker, without admin priviliges
+        docker = cert_manager.CrossbarUsers.docker
+        crsb_users[docker.name] = {
+            "secret": cert_manager.get_secret(docker),
+            "role": CrossbarRouter.CrossbarRoles.docker.name
+        }
+        return crsb_users
 
     @staticmethod
     def _build_config(address: WebSocketAddress,
@@ -132,23 +161,54 @@ class CrossbarRouter(object):
                     'options': {
                         'allowed_origins': allowed_origins,
                         'enable_webstatus': enable_webstatus,
+                    },
+                    "auth": {
+                        "wampcra": {
+                            "type": "static",
+                            "users": CrossbarRouter._users_config(cert_manager)
+                        }
                     }
                 }],
                 'components': [],
                 "realms": [{
                     "name": realm,
-                    "roles": [{
-                        "name": 'anonymous',
-                        "permissions": [{
-                            "uri": '*',
-                            "allow": {
-                                "call": True,
-                                "register": True,
-                                "publish": True,
-                                "subscribe": True
-                            }
+                    "roles": [
+                        {
+                            "name": CrossbarRouter.CrossbarRoles.admin.name,
+                            "permissions": [{
+                                "uri": '*',
+                                "allow": {
+                                    "call": True,
+                                    "register": True,
+                                    "publish": True,
+                                    "subscribe": True
+                                }
+                            }]
+                        },
+                        {
+                            "name": CrossbarRouter.CrossbarRoles.docker.name,
+                            "permissions": [
+                                {
+                                    "uri": '*',
+                                    "allow": {
+                                        "call": False,
+                                        "register": False,
+                                        "publish": False,
+                                        "subscribe": False
+                                    }
+                                },
+                                {
+                                    # more specific config takes precedence
+                                    "uri": f'{DOCKER_URI}.*',
+                                    "allow": {
+                                        "call": True,
+                                        "register": False,
+                                        "publish": False,
+                                        "subscribe": False
+                                    }
+                                }
+                            ]
                         }]
-                    }]
                 }],
             }]
         }

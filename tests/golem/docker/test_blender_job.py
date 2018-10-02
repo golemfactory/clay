@@ -52,7 +52,7 @@ class TestBlenderDockerJob(TestDockerJob):
 
         with self._create_test_job(script=task_script_src, params=params) as job:  # noqa
             job.start()
-            exit_code = job.wait()
+            exit_code = job.wait(timeout=300)
             self.assertEqual(exit_code, 0)
 
         out_files = os.listdir(self.output_dir)
