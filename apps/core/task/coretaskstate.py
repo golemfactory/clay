@@ -50,6 +50,7 @@ class TaskDefinition(object):
         self.verification_options = None
         self.options = Options()
         self.docker_images = None
+        self.compute_on = "cpu"
 
         self.concent_enabled: bool = False
 
@@ -110,6 +111,7 @@ class TaskDefinition(object):
         return {
             'id': self.task_id,
             'type': self.task_type,
+            'compute_on': self.compute_on,
             'name': self.task_name,
             'timeout': task_timeout,
             'subtask_timeout': subtask_timeout,

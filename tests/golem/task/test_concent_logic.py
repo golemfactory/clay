@@ -36,8 +36,13 @@ cannot_reasons = message.tasks.CannotComputeTask.REASON
 class TaskToComputeConcentTestCase(testutils.TempDirFixture):
     def setUp(self):
         super().setUp()
+        self.keys = cryptography.ECCx(None)
+        self.different_keys = cryptography.ECCx(None)
         self.msg = factories.tasks.TaskToComputeFactory()
+        self.msg.want_to_compute_task.sign_message(self.keys.raw_privkey)  # pylint: disable=no-member
         self.task_session = tasksession.TaskSession(mock.MagicMock())
+        self.task_session.task_server.keys_auth.ecc.raw_pubkey = \
+            self.keys.raw_pubkey
         self.task_session.task_server.task_keeper\
             .task_headers[self.msg.task_id]\
             .subtasks_count = 10
@@ -152,6 +157,20 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
             .concent_timelock.return_value = 1
         self.task_session._react_to_task_to_compute(self.msg)
         self.assert_accepted(send_mock)
+
+    def test_want_to_compute_task_signed_by_different_key_than_it_contains(
+            self,
+            send_mock,
+            *_):
+        self.msg = factories.tasks.TaskToComputeFactory()
+        self.msg.want_to_compute_task.sign_message(  # pylint: disable=no-member
+            self.different_keys.raw_privkey)
+        with mock.patch(
+            'golem.task.tasksession.TaskSession.dropped'
+        ) as task_session_dropped:
+            self.task_session._react_to_task_to_compute(self.msg)
+        send_mock.assert_not_called()
+        task_session_dropped.assert_called_once()
 
 
 class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
@@ -323,6 +342,7 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         self.requestor_keys = cryptography.ECCx(None)
         self.msg = factories.tasks.WantToComputeTaskFactory()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
+        self.task_session.key_id = 'unittest_key_id'
         self.task_session.task_server.keys_auth.ecc = self.requestor_keys
 
     def assert_blocked(self, send_mock):
@@ -381,7 +401,6 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         ctd = factories.tasks.ComputeTaskDefFactory()
         task_manager.get_next_subtask.return_value = ctd
 
-
         task = mock.MagicMock()
         task_state = mock.MagicMock(package_hash='123', package_size=42)
         task.header.task_owner.key = encode_hex(self.requestor_keys.raw_pubkey)
@@ -395,6 +414,6 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
             task_session._react_to_want_to_compute_task(self.msg)
 
         send_mock.assert_called()
-        ttc = send_mock.call_args_list[2][0][0]
+        ttc = send_mock.call_args_list[0][0][0]
         self.assertIsInstance(ttc, message.tasks.TaskToCompute)
         self.assertFalse(ttc.concent_enabled)

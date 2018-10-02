@@ -6,6 +6,7 @@ import sys
 from calendar import timegm
 from datetime import datetime
 from multiprocessing import cpu_count
+from typing import List
 
 import pytz
 
@@ -97,6 +98,24 @@ def nt_path_to_posix_path(path):
     return path
 
 
+def posix_path(path):
+    if is_windows():
+        return nt_path_to_posix_path(path)
+    return path
+
+
+def unix_pipe(source_cmd: List[str], sink_cmd: List[str]) -> str:
+    source = subprocess.Popen(source_cmd,
+                              stdout=subprocess.PIPE)
+    sink = subprocess.Popen(sink_cmd,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            stdin=source.stdout)
+    source.stdout.close()
+    stdout, _ = sink.communicate()
+    return stdout.strip()
+
+
 def get_timestamp_utc():
     now = datetime.now(pytz.utc)
     return datetime_to_timestamp(now)
@@ -134,6 +153,15 @@ def timeout_to_string(timeout):
 def string_to_timeout(string):
     values = string.split(':')
     return int(values[0]) * 3600 + int(values[1]) * 60 + int(values[2])
+
+
+def node_info_str(name, node_id):
+    short_id = short_node_id(node_id)
+    return f"'{name}'({short_id})"
+
+
+def short_node_id(node_id):
+    return f'{node_id[:8]}..{node_id[-8:]}'
 
 
 class HandleError(object):

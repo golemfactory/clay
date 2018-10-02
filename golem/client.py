@@ -1,17 +1,20 @@
 # pylint: disable=too-many-lines
 
 import collections
+import enum
 import logging
 import re
 import sys
 import time
 import uuid
+import warnings
 from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
 from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from ethereum.utils import denoms
+from golem_messages import datastructures as msg_datastructures
 from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
 from twisted.internet.defer import (
@@ -32,6 +35,7 @@ from golem.core.common import (
     deadline_to_timeout,
     datetime_to_timestamp_utc,
     get_timestamp_utc,
+    node_info_str,
     string_to_timeout,
     to_unicode,
 )
@@ -136,8 +140,9 @@ class Client(HardwarePresetsMixin):
             self.update_setting('in_shutdown', False)
 
         logger.info(
-            'Client "%s", datadir: %s',
-            self.config_desc.node_name,
+            'Client %s, datadir: %s',
+            node_info_str(self.config_desc.node_name,
+                          keys_auth.key_id),
             datadir
         )
         self.db = database
@@ -567,11 +572,24 @@ class Client(HardwarePresetsMixin):
 
         # FIXME: Statement only for old DummyTask compatibility #2467
         task: TaskBase
-        if isinstance(task_dict, dict):
-            logger.warning('enqueue_new_task called with deprecated dict type')
-            task = task_manager.create_task(task_dict)
-        else:
+        if isinstance(task_dict, TaskBase):
+            warnings.warn(
+                "enqueue_new_task() called with {got_type}"
+                " instead of dict #2467".format(
+                    got_type=type(task_dict),
+                ),
+                DeprecationWarning,
+                stacklevel=2,
+            )
             task = task_dict
+        else:
+            # Set default value for concent_enabled
+            task_dict.setdefault(
+                'concent_enabled',
+                self.concent_service.enabled,
+            )
+
+            task = task_manager.create_task(task_dict)
 
         if task.header.fixed_header.concent_enabled and \
                 not self.concent_service.enabled:
@@ -818,7 +836,7 @@ class Client(HardwarePresetsMixin):
                 lambda err: logger.error("Cannot create task: %r", err))
             return task_id, None
         except Exception as ex:  # pylint: disable=broad-except
-            logger.error("Cannot create task %r: %s", t_dict, str(ex))
+            logger.error("Cannot create task %r: %s", t_dict, ex)
             return None, str(ex)
 
     def _validate_task_dict(self, t_dict) -> None:
@@ -930,10 +948,27 @@ class Client(HardwarePresetsMixin):
             lambda err: logger.error('Task creation failed: %r', err))
 
     def restart_frame_subtasks(self, task_id, frame):
-        self.task_server.task_manager.restart_frame_subtasks(task_id, frame)
+        logger.debug("restarting frame subtasks: task_id = %s, frame = %r",
+                     task_id, frame)
+        task_manager = self.task_server.task_manager
+
+        subtasks: Dict = task_manager.get_frame_subtasks(task_id, frame)
+        if subtasks is None:
+            logger.error("frame has no subtasks (task_id = %s, frame = %r",
+                         task_id, frame)
+            return
+
+        self.funds_locker.add_subtask(task_id, len(subtasks))
+        task_manager.restart_frame_subtasks(task_id, frame)
 
     def restart_subtask(self, subtask_id):
-        self.task_server.task_manager.restart_subtask(subtask_id)
+        logger.debug("restarting subtask %s", subtask_id)
+        task_manager = self.task_server.task_manager
+
+        task_id = task_manager.get_task_id(subtask_id)
+        self.funds_locker.add_subtask(task_id)
+
+        task_manager.restart_subtask(subtask_id)
 
     def delete_task(self, task_id):
         logger.debug('Deleting task "%r" ...', task_id)
@@ -941,6 +976,12 @@ class Client(HardwarePresetsMixin):
         self.remove_task(task_id)
         self.task_server.task_manager.delete_task(task_id)
         self.funds_locker.remove_task(task_id)
+
+    def purge_tasks(self):
+        tasks = self.get_tasks()
+        logger.debug('Deleting %d tasks ...', len(tasks))
+        for t in tasks:
+            self.delete_task(t['id'])
 
     def get_node(self):
         return self.node.to_dict()
@@ -1173,6 +1214,28 @@ class Client(HardwarePresetsMixin):
             'last_eth_update': str(balances['eth_update_time']),
         }
 
+    def get_deposit_balance(self):
+        balance: int = self.transaction_system.concent_balance()
+        timelock: int = self.transaction_system.concent_timelock()
+
+        class DepositStatus(msg_datastructures.StringEnum):
+            locked = enum.auto()
+            unlocking = enum.auto()
+            unlocked = enum.auto()
+
+        now = time.time()
+        if timelock == 0:
+            status = DepositStatus.locked
+        elif timelock < now:
+            status = DepositStatus.unlocked
+        else:
+            status = DepositStatus.unlocking
+        return {
+            'value': str(balance),
+            'status': status.value,
+            'timelock': str(timelock),
+        }
+
     def get_payments_list(self):
         return self.transaction_system.get_payments_list()
 
@@ -1193,6 +1256,26 @@ class Client(HardwarePresetsMixin):
             }
 
         return [item(income) for income in incomes]
+
+    @classmethod
+    def get_deposit_payments_list(cls, limit=1000, offset=0):
+        deposit_payments = TransactionSystem.get_deposit_payments_list(
+            limit,
+            offset,
+        )
+        result = []
+        for dpayment in deposit_payments:
+            entry = {}
+            entry['value'] = to_unicode(dpayment.value)
+            entry['status'] = to_unicode(dpayment.status.name)
+            entry['fee'] = to_unicode(dpayment.fee)
+            entry['transaction'] = to_unicode(dpayment.tx)
+            entry['created'] = datetime_to_timestamp_utc(dpayment.created_date)
+            entry['modified'] = datetime_to_timestamp_utc(
+                dpayment.modified_date,
+            )
+            result.append(entry)
+        return result
 
     def get_withdraw_gas_cost(
             self,

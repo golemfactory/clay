@@ -74,7 +74,7 @@ class TaskComputer(object):
         self.use_waiting_deadline = False
         self.waiting_for_task_session_timeout = None
 
-        self.docker_manager = DockerManager.install()
+        self.docker_manager: DockerManager = DockerManager.install()
         if use_docker_manager:
             self.docker_manager.check_environment()
 
@@ -115,29 +115,28 @@ class TaskComputer(object):
         return True
 
     def resource_given(self, task_id):
-        if task_id in self.task_to_subtask_mapping:
-            subtask_id = self.task_to_subtask_mapping[task_id]
-            if subtask_id in self.assigned_subtasks:
-                subtask = self.assigned_subtasks[subtask_id]
+        subtask_id = self.task_to_subtask_mapping.get(task_id)
+        subtask = self.assigned_subtasks.get(subtask_id)
 
-                with self.lock:
-                    if self.counting_thread is not None:
-                        logger.error(
-                            "Got resource for task: %r"
-                            "But I'm busy with another one. Ignoring.",
-                            task_id)
-                        return  # busy
-                    self.__compute_task(
-                        subtask_id,
-                        subtask['docker_images'],
-                        subtask['src_code'],
-                        subtask['extra_data'],
-                        subtask['short_description'],
-                        subtask['deadline'])
-                    self.waiting_for_task = None
-                return True
-            else:
-                return False
+        if not subtask:
+            return False
+
+        with self.lock:
+            if self.counting_thread is not None:
+                logger.error("Got resource for task: %r, but I'm busy with "
+                             "another one. Ignoring.", task_id)
+                return  # busy
+
+        self.__compute_task(
+            subtask_id,
+            subtask['docker_images'],
+            subtask['src_code'],
+            subtask['extra_data'],
+            subtask['short_description'],
+            subtask['deadline'])
+
+        self.waiting_for_task = None
+        return True
 
     def task_resource_collected(self, task_id, unpack_delta=True):
         if task_id in self.task_to_subtask_mapping:
@@ -311,13 +310,13 @@ class TaskComputer(object):
         dm.build_config(config_desc)
 
         deferred = Deferred()
-        if not dm.docker_machine and run_benchmarks:
+        if not dm.hypervisor and run_benchmarks:
             self.task_server.benchmark_manager.run_all_benchmarks(
                 deferred.callback, deferred.errback
             )
             return deferred
 
-        if dm.docker_machine and self.use_docker_manager:  # noqa pylint: disable=no-member
+        if dm.hypervisor and self.use_docker_manager:  # noqa pylint: disable=no-member
             self.lock_config(True)
 
             def status_callback():
@@ -445,7 +444,9 @@ class TaskComputer(object):
 
             return
 
-        self.counting_thread = tt
+        with self.lock:
+            self.counting_thread = tt
+
         tt.start().addBoth(lambda _: self.task_computed(tt))
 
     def quit(self):

@@ -47,7 +47,7 @@ class Node(DictSerializable):
         self.prv_addresses = get_host_addresses(use_ipv6)
 
         if not self.pub_addr:
-            self.pub_addr, _, self.nat_type = get_external_address()
+            self.pub_addr, _ = get_external_address()
 
         if not self.prv_addr:
             if self.pub_addr in self.prv_addresses:

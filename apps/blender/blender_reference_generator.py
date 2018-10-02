@@ -46,6 +46,7 @@ class BlenderReferenceGenerator:
     MIN_CROP_SIZE = 8
     CROP_RELATIVE_SIZE = 0.1
     DEFAULT_CROPS_NUMBER = 3
+    PIXEL_OFFSET = numpy.float32(0.5)
 
     def __init__(self, computer: Optional[ComputerAdapter] = None) -> None:
         self.computer = computer or ComputerAdapter()
@@ -177,16 +178,20 @@ class BlenderReferenceGenerator:
         # Here numpy is used to emulate this loss of precision when assigning
         # double to float:
         left = math.floor(
-            numpy.float32(subtask_border[0]) * numpy.float32(resolution[0]))
+            numpy.float32(subtask_border[0]) * numpy.float32(resolution[0]) +
+            BlenderReferenceGenerator.PIXEL_OFFSET)
 
         right = math.floor(
-            numpy.float32(subtask_border[1]) * numpy.float32(resolution[0]))
+            numpy.float32(subtask_border[1]) * numpy.float32(resolution[0]) +
+            BlenderReferenceGenerator.PIXEL_OFFSET)
 
         bottom = math.floor(
-            numpy.float32(subtask_border[2]) * numpy.float32(resolution[1]))
+            numpy.float32(subtask_border[2]) * numpy.float32(resolution[1]) +
+            BlenderReferenceGenerator.PIXEL_OFFSET)
 
         top = math.floor(
-            numpy.float32(subtask_border[3]) * numpy.float32(resolution[1]))
+            numpy.float32(subtask_border[3]) * numpy.float32(resolution[1]) +
+            BlenderReferenceGenerator.PIXEL_OFFSET)
 
         logger.debug("Pixels left=%r, right=%r, top=%r, bottom=%r",
                      left,
@@ -202,20 +207,24 @@ class BlenderReferenceGenerator:
             resolution: Tuple[int, int]) -> Dict[str, float]:
 
         left = numpy.float32(
-            numpy.float32(horizontal_pixel_coordinates[0])
-            / numpy.float32(resolution[0]))
+            (numpy.float32(horizontal_pixel_coordinates[0]) +
+             BlenderReferenceGenerator.PIXEL_OFFSET) /
+            numpy.float32(resolution[0]))
 
         right = numpy.float32(
-            numpy.float32(horizontal_pixel_coordinates[1])
-            / numpy.float32(resolution[0]))
+            (numpy.float32(horizontal_pixel_coordinates[1]) +
+             BlenderReferenceGenerator.PIXEL_OFFSET) /
+            numpy.float32(resolution[0]))
 
         top = numpy.float32(
-            numpy.float32(vertical_pixel_coordinates[0])
-            / numpy.float32(resolution[1]))
+            (numpy.float32(vertical_pixel_coordinates[0]) +
+             BlenderReferenceGenerator.PIXEL_OFFSET) /
+            numpy.float32(resolution[1]))
 
         bottom = numpy.float32(
-            numpy.float32(vertical_pixel_coordinates[1])
-            / numpy.float32(resolution[1]))
+            (numpy.float32(vertical_pixel_coordinates[1]) +
+             BlenderReferenceGenerator.PIXEL_OFFSET) /
+            numpy.float32(resolution[1]))
 
         return {"left": left, "right": right, "bottom": bottom, "top": top}
 

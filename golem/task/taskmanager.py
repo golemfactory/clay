@@ -17,15 +17,15 @@ from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask, AcceptClientVerdict
-from golem.core.common import HandleKeyError, get_timestamp_utc, \
-    to_unicode, update_dict, HandleForwardedError
+from golem.core.common import get_timestamp_utc, HandleForwardedError, \
+    HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener, Task, TaskHeader
+from golem.task.taskbase import TaskEventListener, Task, TaskHeader, TaskPurpose
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
@@ -136,13 +136,21 @@ class TaskManager(TaskEventListener):
         return self.root_path
 
     def create_task(self, dictionary, minimal=False):
+        purpose = TaskPurpose.TESTING if minimal else TaskPurpose.REQUESTING
         type_name = dictionary['type'].lower()
-        task_type = self.task_types[type_name]
+        compute_on = dictionary.get('compute_on', 'cpu').lower()
+        is_requesting = purpose == TaskPurpose.REQUESTING
+
+        if type_name == "blender" and is_requesting and compute_on == "gpu":
+            type_name = type_name + "_nvgpu"
+
+        task_type = self.task_types[type_name].for_purpose(purpose)
         builder_type = task_type.task_builder_type
 
         definition = builder_type.build_definition(task_type, dictionary,
                                                    minimal)
         definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
+        definition.concent_enabled = dictionary['concent_enabled']
         builder = builder_type(self.node, definition, self.dir_manager)
 
         return builder.build()
@@ -338,8 +346,10 @@ class TaskManager(TaskEventListener):
                                      persist=False)
 
     def task_needs_computation(self, task_id: str) -> bool:
-        if self.tasks_states[task_id].status not in self.activeStatus:
-            logger.info(f'task is not active: {task_id}')
+        task_status = self.tasks_states[task_id].status
+        if task_status not in self.activeStatus:
+            logger.info(
+                f'task is not active: {task_id}, status: {task_status}')
             return False
         task = self.tasks[task_id]
         if not task.needs_computation():
@@ -427,6 +437,13 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id,
                                  subtask_id=ctd['subtask_id'],
                                  op=SubtaskOp.ASSIGNED)
+        logger.debug(
+            "Subtask generated. task=%s, node=%s, ctd=%s",
+            task_id,
+            node_info_str(node_name, node_id),
+            ctd,
+        )
+
         return ctd
 
     def is_my_task(self, task_id) -> bool:
@@ -436,18 +453,30 @@ class TaskManager(TaskEventListener):
     def should_wait_for_node(self, task_id, node_id) -> bool:
         """ Check if the node has too many tasks assigned already """
         if not self.is_my_task(task_id):
+            logger.debug(
+                "Not my task. task_id=%s, node=%s",
+                task_id,
+                short_node_id(node_id),
+            )
             return False
 
         task = self.tasks[task_id]
 
         verdict = task.should_accept_client(node_id)
+        logger.debug(
+            "Should accept client verdict. verdict=%s, task=%s, node=%s",
+            verdict,
+            task_id,
+            short_node_id(node_id),
+        )
         if verdict == AcceptClientVerdict.SHOULD_WAIT:
-            logger.warning("Waiting for results from %s on %s", node_id,
-                           task_id)
+            logger.warning("Waiting for results from %s on %s",
+                           short_node_id(node_id), task_id)
             return True
         elif verdict == AcceptClientVerdict.REJECTED:
-            logger.warning("Client %s has failed on subtask within task %s"
-                           " and is banned from it", node_id, task_id)
+            logger.warning("Client has failed on subtask within this task"
+                           " and is banned from it. node_id=%s, task_id=%s",
+                           short_node_id(node_id), task_id)
 
         return False
 
@@ -468,7 +497,8 @@ class TaskManager(TaskEventListener):
             node_id, node_name, task_id, price,
         )
         if not self.is_my_task(task_id):
-            logger.info("Cannot find task in my tasks. task_id=%r", task_id)
+            logger.info("Cannot find task in my tasks. task_id=%s, provider=%s",
+                        task_id, node_info_str(node_name, node_id))
             return False
 
         task = self.tasks[task_id]
@@ -477,8 +507,11 @@ class TaskManager(TaskEventListener):
             return False
 
         if not self.task_needs_computation(task_id):
-            logger.info('Task does not need computation. provider=%r - %r',
-                        node_name, node_id)
+            logger.info(
+                'Task does not need computation. task_id=%s, provider=%s',
+                task_id,
+                node_info_str(node_name, node_id)
+            )
             return False
 
         return True
@@ -507,15 +540,27 @@ class TaskManager(TaskEventListener):
         }
 
         # Generate all subtasks for the new task
+        new_subtasks_ids = []
         while new_task.needs_computation():
             extra_data = new_task.query_extra_data(0, node_id=str(uuid.uuid4()))
-            self.subtask2task_mapping[extra_data.ctd['subtask_id']] = \
+            new_subtask_id = extra_data.ctd['subtask_id']
+            self.subtask2task_mapping[new_subtask_id] = \
                 new_task_id
             self.__add_subtask_to_tasks_states(
                 node_name=None,
                 node_id=None,
                 address=None,
                 ctd=extra_data.ctd)
+            new_subtasks_ids.append(new_subtask_id)
+
+        # it's important to do this step separately, to not disturb
+        # 'needs_computation' condition above
+        for new_subtask_id in new_subtasks_ids:
+            self.tasks_states[new_task_id].subtask_states[new_subtask_id]\
+                .subtask_status = SubtaskStatus.failure
+            new_task.subtasks_given[new_subtask_id]['status'] \
+                = SubtaskStatus.failure
+            new_task.num_failed_subtasks += 1
 
         def handle_copy_error(subtask_id, error):
             logger.error(
@@ -691,13 +736,14 @@ class TaskManager(TaskEventListener):
                     self.tasks_states[task_id].status = TaskStatus.computing
                 else:
                     if self.tasks[task_id].verify_task():
-                        logger.debug("Task %r accepted", task_id)
+                        logger.info("Task finished! task_id=%r", task_id)
                         self.tasks_states[task_id].status =\
                             TaskStatus.finished
                         self.notice_task_updated(task_id,
                                                  op=TaskOp.FINISHED)
                     else:
-                        logger.debug("Task %r not accepted", task_id)
+                        logger.warning("Task finished but was not accepted. "
+                                       "task_id=%r", task_id)
                         self.notice_task_updated(task_id,
                                                  op=TaskOp.NOT_ACCEPTED)
             verification_finished()
@@ -880,7 +926,7 @@ class TaskManager(TaskEventListener):
                                      op=SubtaskOp.RESTARTED,
                                      persist=False)
 
-        task.status = TaskStatus.computing
+        task_state.status = TaskStatus.computing
         self.notice_task_updated(task_id, op=OtherOp.FRAME_RESTARTED)
 
     @handle_task_key_error
@@ -943,6 +989,15 @@ class TaskManager(TaskEventListener):
 
         subtask_states = list(task_state.subtask_states.values())
         return [subtask_state.subtask_id for subtask_state in subtask_states]
+
+    def get_frame_subtasks(self, task_id: str, frame) \
+            -> Optional[Dict[str, SubtaskState]]:
+        task: Optional[Task] = self.tasks.get(task_id)
+        if not task:
+            return None
+        if not isinstance(task, CoreTask):
+            return None
+        return task.get_subtasks(frame)
 
     def change_config(self, root_path, use_distributed_resource_management):
         self.dir_manager = DirManager(root_path)
@@ -1083,6 +1138,13 @@ class TaskManager(TaskEventListener):
         :param bool persist: should the task be persisted now
         """
         # self.save_state()
+
+        logger.debug(
+            "Notice task updated. task_id=%s, subtask_id=%s,"
+            "op=%s, persist=%s",
+            task_id, subtask_id, op, persist,
+        )
+
         if persist and self.task_persistence:
             self.dump_task(task_id)
 

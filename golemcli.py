@@ -5,8 +5,13 @@ import argparse
 import sys
 
 from multiprocessing import freeze_support
+import click
 
-from golem.rpc.common import CROSSBAR_HOST, CROSSBAR_PORT
+from golem.config.environments import set_environment  # noqa
+from golem.core.simpleenv import get_local_datadir
+from golem.rpc.cert import CertificateManager
+
+from golem.rpc.common import CROSSBAR_HOST, CROSSBAR_PORT, CROSSBAR_DIR
 
 # Export pbr version for peewee_migrate user
 os.environ["PBR_VERSION"] = '3.1.1'
@@ -33,18 +38,28 @@ def start():
 
     flags = dict(
         interactive=('-i', '--interactive'),
+        mainnet=('-m', '--mainnet'),
         address=('-a', '--address'),
         port=('-p', '--port'),
         trust=('-t', '--verify-trust'),
+        datadir=("-d", "--datadir")
     )
 
     flag_options = dict(
         interactive=dict(dest="interactive", action="store_true",
                          default=False, help="Enter interactive mode"),
+        mainnet=dict(dest="mainnet", action="store_true", default=False,
+                     help="Use mainnet chain"),
         address=dict(dest="address", type=str, default=CROSSBAR_HOST,
                      help="Golem node's RPC address"),
         port=dict(dest="port", type=int, default=CROSSBAR_PORT,
                   help="Golem node's RPC port"),
+        datadir=dict(dest="datadir", default=None,
+                     type=click.Path(
+                         file_okay=False,
+                         writable=True
+                     ),
+                     help="Golem node's data dir"),
         trust=dict(dest="verify_trust", action="store_true", default=False,
                    help="Verify Golem node's certificate"),
     )
@@ -74,8 +89,19 @@ def start():
         logging.raiseExceptions = 0
         cli = CLI(main_parser=parser, main_parser_options=flag_options)
 
+    if parsed.mainnet:
+        set_environment('mainnet', None)
+
+    datadir = get_local_datadir('default', root_dir=parsed.datadir)
+    working_dir = os.path.join(datadir, CROSSBAR_DIR)
+
     # run the cli
-    ws_cli = WebSocketCLI(cli, host=parsed.address, port=parsed.port)
+    ws_cli = WebSocketCLI(
+        cli,
+        CertificateManager(working_dir),
+        host=parsed.address,
+        port=parsed.port
+    )
     ws_cli.execute(forwarded, interactive=interactive)
 
 
