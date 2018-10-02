@@ -795,7 +795,7 @@ class Client(HardwarePresetsMixin):
                 dictionary=dictionary, minimal=True
             )
         except Exception as e:
-            on_error(to_unicode(e))
+            on_error("{}: {}".format(type(e), to_unicode(e)))
             return
 
         self.task_test_result = {
