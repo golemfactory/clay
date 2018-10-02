@@ -5,7 +5,8 @@ import re
 import subprocess
 import sys
 import threading
-import uuid
+
+from . import tasks
 
 
 def report_termination(exit_code, node_type):
@@ -79,24 +80,10 @@ def search_output(q: queue.Queue, pattern):
     return None
 
 
-def construct_test_task(task_package_name, output_path):
+def construct_test_task(task_package_name, output_path, task_settings):
+    settings = tasks.get_settings(task_settings)
     cwd = pathlib.Path(os.path.realpath(__file__)).parent
     tasks_path = (cwd / 'tasks' / task_package_name).glob('*')
-    return {
-        'id': str(uuid.uuid4()),
-        'type': "Blender",
-        'name': 'test task',
-        'timeout': "0:10:00",
-        "subtask_timeout": "0:09:50",
-        "subtasks": 1,
-        "bid": 1.0,
-        "resources": [str(f) for f in tasks_path],
-        "options": {
-            "output_path": output_path,
-            "format": "PNG",
-            "resolution": [
-                320,
-                240
-            ]
-        }
-    }
+    settings['resources'] = [str(f) for f in tasks_path]
+    settings['options']['output_path'] = output_path
+    return settings
