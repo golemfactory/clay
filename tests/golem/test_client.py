@@ -974,7 +974,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         benchmark_manager.run_benchmark.side_effect = lambda b, tb, e, c, ec: \
             c(True)
 
-        with self.assertRaisesRegex(Exception, "Unknown environment"):
+        with self.assertLogs(level="ERROR"):
             sync_wait(self.client.run_benchmark(str(uuid.uuid4())))
 
         sync_wait(self.client.run_benchmark(BlenderEnvironment.get_id()))
@@ -1004,7 +1004,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
                    return_value=True), \
                 patch("golem.docker.job.DockerJob.__init__",
                       side_effect=raise_exc), \
-                self.assertRaisesRegex(Exception, 'Test exception'):
+                self.assertLogs(level='ERROR'):
             sync_wait(self.client.run_benchmark(DummyTaskEnvironment.get_id()))
 
     def test_config_changed(self, *_):

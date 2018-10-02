@@ -1415,11 +1415,15 @@ class Client(HardwarePresetsMixin):
     @inlineCallbacks
     def run_benchmark(self, env_id):
         deferred = Deferred()
+        result = 0
 
-        self.task_server.benchmark_manager.run_benchmark_for_env_id(
-            env_id, deferred.callback, deferred.errback)
+        try:
+            self.task_server.benchmark_manager.run_benchmark_for_env_id(
+                env_id, deferred.callback, deferred.errback)
+            result = yield deferred
+        except BaseException as exc:  # pylint: disable=broad-except
+            logger.error("Cannot run benchmark for %s: %r", env_id, exc)
 
-        result = yield deferred
         return result
 
     def enable_environment(self, env_id):
