@@ -122,8 +122,6 @@ class CrossbarRouter(object):
                       enable_webstatus: bool = False):
 
         allowed_origins = [
-            "http://localhost:*",
-            "https://localhost:*",
             'http://' + address.host + ':*',
             'https://' + address.host + ':*'
         ]
