@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 import os
 import time
@@ -79,7 +79,7 @@ class TaskComputer(object):
         self.stats = IntStatsKeeper(CompStats)
 
         self.assigned_subtasks = {}
-        self.task_to_subtask_mapping = {}
+        self.task_to_subtask_mapping: Dict[str, Any] = {}
 
         self.delta = None
         self.last_task_timeout_checking = None
@@ -332,7 +332,7 @@ class TaskComputer(object):
         pass
 
     def __request_task(self):
-        if self.is_computing():
+        if self.has_assigned_task():
             return
 
         self.last_task_request = time.time()

@@ -581,7 +581,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.key_id = "KEY_ID"
         ts.task_manager = MagicMock()
         ts.task_computer = Mock()
-        ts.task_computer.is_computing.return_value = False
+        ts.task_computer.has_assigned_task.return_value = False
         ts.task_server = Mock()
         ts.concent_service.enabled = False
         ts.send = Mock()

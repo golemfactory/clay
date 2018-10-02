@@ -655,6 +655,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 ctd['subtask_id'], self
             )
             if self.task_computer.task_given(ctd):
+                self.task_server.requested_tasks.remove(ctd['task_id'])
                 return
         _cannot_compute(self.err_msg)
 
