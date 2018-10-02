@@ -76,8 +76,8 @@ class TaskManager(TaskEventListener):
         pass
 
     def __init__(
-            self, node_name, node, keys_auth, listen_address="",
-            listen_port=0, root_path="res", use_distributed_resources=True,
+            self, node_name, node, keys_auth, root_path,
+            use_distributed_resources=True,
             tasks_dir="tasks", task_persistence=True,
             apps_manager=AppsManager(), finished_cb=None):
         super().__init__()
@@ -96,8 +96,8 @@ class TaskManager(TaskEventListener):
         self.tasks_states: Dict[str, TaskState] = {}
         self.subtask2task_mapping: Dict[str, str] = {}
 
-        self.listen_address = listen_address
-        self.listen_port = listen_port
+        self.listen_address = ""
+        self.listen_port = 0
 
         self.task_persistence = task_persistence
 
