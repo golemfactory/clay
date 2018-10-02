@@ -1514,7 +1514,7 @@ class Client(HardwarePresetsMixin):
         listen_port = self.get_p2p_port()
         task_server_port = self.get_task_server_port()
 
-        status = dict()
+        status: Dict[str, Any] = dict()
 
         if listen_port == 0 or task_server_port == 0:
             status['listening'] = False
