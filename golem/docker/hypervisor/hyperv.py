@@ -38,6 +38,8 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     GET_IP_SCRIPT_PATH = \
         path.join(get_golem_path(), 'scripts', 'get-ip-address.ps1')
+    SETUP_SWITCH_PATH = \
+        path.join(get_golem_path(), 'scripts', 'create-vnet-switch.ps1')
     SCRIPT_TIMEOUT = 5  # seconds
 
     def __init__(self, *args, **kwargs):
@@ -50,6 +52,8 @@ class HyperVHypervisor(DockerMachineHypervisor):
             cpu: Optional[Union[str, int]] = None,
             mem: Optional[Union[str, int]] = None,
             **params: Any) -> List[str]:
+        
+        self._create_vnet_switch()
 
         args = super()._parse_create_params(**params)
         args += [self.OPTIONS['boot2docker_url'], self.BOOT2DOCKER_URL,
@@ -114,13 +118,24 @@ class HyperVHypervisor(DockerMachineHypervisor):
         Get IP address of the host machine which could be used for sharing
         directories with Hyper-V VMs connected to Golem's virtual switch.
         """
+        return cls._run_ps(cls.GET_IP_SCRIPT_PATH)            
+
+    @classmethod
+    def _create_vnet_switch(cls) -> str:
+        """
+        Create the virtual switch required to start a hyperv machine.
+        """
+        return cls._run_ps(cls.SETUP_SWITCH_PATH)
+
+    @classmethod
+    def _run_ps(cls, script):
         try:
             return subprocess\
                 .run(
                     [
                         'powershell.exe',
                         '-ExecutionPolicy', 'RemoteSigned',
-                        '-File', cls.GET_IP_SCRIPT_PATH,
+                        '-File', script,
                         '-Interface', cls.VIRTUAL_SWITCH,
                     ],
                     timeout=10,  # seconds
