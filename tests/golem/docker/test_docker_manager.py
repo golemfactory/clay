@@ -293,11 +293,11 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         from apps.core import nvgpu
         if nvgpu.is_supported():
-            expected = 6
+            expected = 5                #before removing lux 6
         else:
-            expected = 4
+            expected = 3
 
-        assert pulls[0] == expected
+        assert pulls[0] == expected     #before removing lux 4
 
     @mock.patch('os.chdir')
     def test_build_images(self, os_chdir):
@@ -322,9 +322,9 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         from apps.core import nvgpu
         if nvgpu.is_supported():
-            expected = 6
+            expected = 5    #before removing lux 6
         else:
-            expected = 4
+            expected = 3    #before removing lux 4
 
         assert builds[0] == expected
         assert tags[0] == expected

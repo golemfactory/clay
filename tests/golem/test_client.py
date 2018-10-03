@@ -966,8 +966,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
     def test_run_benchmark(self, *_):
         from apps.blender.blenderenvironment import BlenderEnvironment
         from apps.blender.benchmark.benchmark import BlenderBenchmark
-        from apps.lux.luxenvironment import LuxRenderEnvironment
-        from apps.lux.benchmark.benchmark import LuxBenchmark
 
         benchmark_manager = self.client.task_server.benchmark_manager
         benchmark_manager.run_benchmark = Mock()
@@ -983,16 +981,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
                           BlenderBenchmark)
 
-        sync_wait(self.client.run_benchmark(LuxRenderEnvironment.get_id()))
-
-        assert benchmark_manager.run_benchmark.call_count == 2
-        assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
-                          LuxBenchmark)
-
-        result = sync_wait(self.client.run_benchmark(
-            DefaultEnvironment.get_id()))
-        assert result > 100.0
-        assert benchmark_manager.run_benchmark.call_count == 2
+        assert benchmark_manager.run_benchmark.call_count == 1      #before removing lux 2
 
     def test_run_benchmark_fail(self, *_):
         from apps.dummy.dummyenvironment import DummyTaskEnvironment
