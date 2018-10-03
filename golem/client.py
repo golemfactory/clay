@@ -1418,8 +1418,8 @@ class Client(HardwarePresetsMixin):
 
         self.task_server.benchmark_manager.run_benchmark_for_env_id(
             env_id, deferred.callback, deferred.errback)
-        result = yield deferred
 
+        result = yield deferred
         return result
 
     def enable_environment(self, env_id):
