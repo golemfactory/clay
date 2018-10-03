@@ -594,9 +594,9 @@ class TaskHeaderKeeper:
         """ Returns random task from supported tasks that may be computed
         :return: None if there are no tasks that this node may want to compute
         """
-        if not self.supported_tasks:
-            return None
         tasks = [tid for tid in self.supported_tasks if tid not in except_for]
+        if not tasks:
+            return None
         tn = random.randrange(0, len(tasks))
         task_id = tasks[tn]
         return self.task_headers[task_id]
