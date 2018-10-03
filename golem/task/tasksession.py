@@ -25,7 +25,7 @@ from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import TaskState
-from golem.task.timer import ProviderComputeTimer
+from golem.task.timer import ProviderIdleTimer
 
 from .taskmanager import TaskManager
 
@@ -652,7 +652,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 ctd['subtask_id'], self
             )
             if self.task_computer.task_given(ctd):
-                ProviderComputeTimer.start()
+                ProviderIdleTimer.comp_finished()
                 return
         _cannot_compute(self.err_msg)
 

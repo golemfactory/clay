@@ -31,7 +31,7 @@ from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.taskbase import TaskHeader, Task
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
-from golem.task.timer import ProviderComputeTimer
+from golem.task.timer import ProviderIdleTimer
 from golem.utils import decode_hex, pubkeytoaddr
 
 from . import exceptions
@@ -282,7 +282,7 @@ class TaskServer(
                 self.results_to_send[subtask_id] = wtr
                 Trust.REQUESTED.increase(header.task_owner.key)
             finally:
-                ProviderComputeTimer.stop()
+                ProviderIdleTimer.comp_finished()
         else:
             raise RuntimeError("Incorrect subtask_id: {}".format(subtask_id))
 

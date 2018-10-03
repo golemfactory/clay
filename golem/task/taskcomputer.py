@@ -18,7 +18,7 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
-from golem.task.timer import ProviderComputeTimer
+from golem.task.timer import ProviderIdleTimer
 from golem.vm.vm import PythonProcVM, PythonTestVM
 
 from .taskthread import TaskThread
@@ -171,7 +171,7 @@ class TaskComputer(object):
                 'Error downloading resources: {}'.format(reason),
             )
 
-        ProviderComputeTimer.stop()
+        ProviderIdleTimer.comp_finished()
         self.session_closed()
 
     def wait_for_resources(self, task_id, delta):
@@ -184,7 +184,7 @@ class TaskComputer(object):
         logger.info("Task %r request rejected: %r", task_id, reason)
 
     def resource_request_rejected(self, subtask_id, reason):
-        ProviderComputeTimer.stop()
+        ProviderIdleTimer.comp_finished()
         logger.info("Task %r resource request rejected: %r",
                     subtask_id, reason)
         self.assigned_subtasks.pop(subtask_id, None)
@@ -446,7 +446,7 @@ class TaskComputer(object):
             if self.finished_cb:
                 self.finished_cb()
 
-            ProviderComputeTimer.stop()
+            ProviderIdleTimer.comp_finished()
             return
 
         with self.lock:
