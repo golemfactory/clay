@@ -7,17 +7,17 @@ from math import ceil
 from unittest.mock import Mock, MagicMock, patch, ANY
 
 from eth_utils import encode_hex
-from golem_messages.message import ComputeTaskDef
+from golem_messages import idgenerator
 from golem_messages import factories as msg_factories
+from golem_messages.message import ComputeTaskDef
 from requests import HTTPError
 
-import golem
 from apps.core.task.coretask import AcceptClientVerdict
+import golem
 from golem import model
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import timeout_to_deadline
-from golem.core.idgenerator import generate_id, generate_new_id_from_id
+from golem.core.common import timeout_to_deadline, node_info_str
 from golem.core.keysauth import KeysAuth
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
@@ -45,7 +45,7 @@ from tests.factories.resultpackage import ExtractedPackageFactory
 def get_example_task_header(key_id):
     return {
         "fixed_header": {
-            "task_id": generate_id(key_id),
+            "task_id": idgenerator.generate_id(key_id),
             "environment": "DEFAULT",
             "task_owner": dict(
                 key=encode_hex(key_id)[2:],
@@ -63,6 +63,7 @@ def get_example_task_header(key_id):
             "signature": None,
             "min_version": golem.__version__,
             "subtasks_count": 21,
+            "concent_enabled": False,
         },
         "mask": {
             "byte_repr": Mask().to_bytes()
@@ -91,6 +92,7 @@ class TaskServerTestBase(LogTestCase,
         super().setUp()
         random.seed()
         self.ccd = ClientConfigDescriptor()
+        self.client.concent_service.enabled = False
         with patch(
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
@@ -199,6 +201,27 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 {UnsupportReason.DENY_LIST: keys_auth.key_id}))
         assert ts.remove_task_header(task_id5)
 
+    @patch(
+        "golem.task.taskserver.TaskServer.should_accept_requestor",
+        return_value=SupportStatus(True),
+    )
+    def test_request_task_concent_required(self, *_):
+        self.ts.client.concent_service.enabled = True
+        self.ts.task_archiver = Mock()
+        keys_auth = KeysAuth(self.path, 'prv_key', '')
+        task_dict = get_example_task_header(keys_auth.public_key)
+        task_dict['fixed_header']['concent_enabled'] = False
+        self.ts.add_task_header(task_dict)
+
+        self.assertIsNone(self.ts.request_task())
+        self.ts.task_archiver.add_support_status.assert_called_once_with(
+            task_dict['fixed_header']['task_id'],
+            SupportStatus(
+                False,
+                {UnsupportReason.CONCENT_REQUIRED: True},
+            ),
+        )
+
     @patch("golem.task.taskserver.Trust")
     def test_send_results(self, trust, *_):
         ccd = ClientConfigDescriptor()
@@ -218,8 +241,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_id = task_header["fixed_header"]["task_id"]
         assert ts.add_task_header(task_header)
         assert ts.request_task()
-        subtask_id = generate_new_id_from_id(task_id)
-        subtask_id2 = generate_new_id_from_id(task_id)
+        subtask_id = idgenerator.generate_new_id_from_id(task_id)
+        subtask_id2 = idgenerator.generate_new_id_from_id(task_id)
         self.assertTrue(ts.send_results(subtask_id, task_id, results))
         ts.client.transaction_system.expect_income.reset_mock()
         self.assertTrue(ts.send_results(subtask_id2, task_id, results))
@@ -239,7 +262,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             value=1,
         )
 
-        subtask_id3 = generate_new_id_from_id(task_id)
+        subtask_id3 = idgenerator.generate_new_id_from_id(task_id)
         with self.assertLogs(logger, level='WARNING'):
             ts.subtask_rejected(keys_auth.key_id, subtask_id3)
         self.assertIsNotNone(ts.task_keeper.task_headers.get(task_id))
@@ -605,6 +628,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         task = get_mock_task()
         node_id = "0xdeadbeef"
+        node_name = "deadbeef"
         task_id = task.header.task_id
         ts.task_manager.tasks[task_id] = task
         task.should_accept_client.return_value = AcceptClientVerdict.ACCEPTED
@@ -613,7 +637,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         env = Mock()
         env.get_min_accepted_performance.return_value = min_accepted_perf
         ts.get_environment_by_id = Mock(return_value=env)
-        ids = f'provider_id: {node_id}, task_id: {task_id}'
+        node_name_id = node_info_str(node_name, node_id)
+        ids = 'provider={}, task_id={}'.format(node_name_id, task_id)
 
         def _assert_log_msg(logger_mock, msg):
             self.assertEqual(len(logger_mock.output), 1)
@@ -622,15 +647,15 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # then
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
-                node_id, 'tid', 27.18, 1, 1, 7)
+                node_id, node_name, 'tid', 27.18, 1, 1, 7)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:Cannot find task in my tasks: '
-                f'provider_id: {node_id}, task_id: tid')
+                f'provider={node_name_id}, task_id=tid')
 
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
-                node_id, task_id, 27.18, 1, 1, 7)
+                node_id, node_name, task_id, 27.18, 1, 1, 7)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:insufficient provider performance: '
@@ -638,7 +663,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
-                node_id, task_id, 99, 1.72, 1, 4)
+                node_id, node_name, task_id, 99, 1.72, 1, 4)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:insufficient provider disk size:'
@@ -646,7 +671,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
-                node_id, task_id, 999, 3, 2.7, 1)
+                node_id, node_name, task_id, 999, 3, 2.7, 1)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:insufficient provider memory size:'
@@ -656,18 +681,21 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.client.get_computing_trust = Mock(return_value=0.4)
         ts.config_desc.computing_trust = 0.2
         # then
-        assert ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
+        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4,
+                                         5)
 
         # given
         ts.config_desc.computing_trust = 0.4
         # then
-        assert ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
+        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4,
+                                         5)
 
         # given
         ts.config_desc.computing_trust = 0.5
         # then
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
+            assert not ts.should_accept_provider(node_id, node_name, task_id,
+                                                 99, 3, 4, 5)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:insufficient provider trust level:'
@@ -676,11 +704,13 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # given
         ts.config_desc.computing_trust = 0.2
         # then
-        assert ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
+        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4,
+                                         5)
 
         task.header.mask = Mask(b'\xff' * Mask.MASK_BYTES)
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
+            assert not ts.should_accept_provider(node_id, node_name, task_id,
+                                                 99, 3, 4, 5)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:network mask mismatch: {ids}')
@@ -690,7 +720,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task.should_accept_client.return_value = AcceptClientVerdict.REJECTED
         # then
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
+            assert not ts.should_accept_provider(node_id, node_name, task_id,
+                                                 99, 3, 4, 5)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:provider {node_id}'
@@ -703,11 +734,11 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.acl.disallow(node_id)
         # then
         with self.assertLogs(logger, level='INFO') as cm:
-            assert not ts.should_accept_provider(node_id, task_id, 99, 3, 4, 5)
+            assert not ts.should_accept_provider(node_id, node_name, task_id,
+                                                 99, 3, 4, 5)
             _assert_log_msg(
                 cm,
-                f'INFO:{logger.name}:provider node is blacklisted; '
-                f'provider_id: {node_id}, task_id: {task_id}')
+                f'INFO:{logger.name}:provider node is blacklisted; {ids}')
 
     def test_should_accept_requestor(self, *_):
         ts = self.ts
@@ -833,9 +864,8 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
             parent.setUp(self)
         random.seed()
         self.ccd = self._get_config_desc()
-        with patch(
-                'golem.network.concent.handlers_library.HandlersLibrary'
-                '.register_handler',):
+        with patch('golem.network.concent.handlers_library.HandlersLibrary'
+                   '.register_handler',):
             self.ts = TaskServer(
                 node=NodeFactory(),
                 config_desc=self.ccd,
@@ -869,7 +899,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
 
     @patch("golem.task.taskmanager.TaskManager.dump_task")
     @patch("golem.task.taskserver.Trust")
-    def test_results(self, trust, dump_mock, *_):
+    def test_results(self, trust, *_):
         ts = self.ts
         ts.task_manager.listen_port = 1111
         ts.task_manager.listen_address = "10.10.10.10"
@@ -965,9 +995,8 @@ class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
         self.resource_manager = Mock(
             add_task=Mock(side_effect=lambda *a, **b: ([], "a1b2c3"))
         )
-        with patch(
-                'golem.network.concent.handlers_library.HandlersLibrary'
-                '.register_handler',):
+        with patch('golem.network.concent.handlers_library.HandlersLibrary'
+                   '.register_handler',):
             self.ts = TaskServer(
                 node=self.node,
                 config_desc=ClientConfigDescriptor(),

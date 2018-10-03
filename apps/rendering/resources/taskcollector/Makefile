@@ -1,12 +1,7 @@
 UNAME := $(shell uname)
 
-ifeq ($(UNAME), Darwin)
-	CXX=g++
-	LDFLAGS=-lfreeimage
-else
-	CXX=g++-5
-	LDFLAGS=-lfreeimage
-endif
+CXX=g++
+LDFLAGS=-lfreeimage
 
 CXXFLAGS=-std=c++14 -Wall -Wextra -O2 -g
 

@@ -376,6 +376,7 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
         task_dict = {
                 'resources': {"file1.png", "file2.txt", 'file3.jpg',
                               'file4.txt'},
+                'compute_on': 'cpu',
                 'task_type': 'TESTTASK',
                 'subtasks': 1
         }

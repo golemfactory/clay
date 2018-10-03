@@ -155,12 +155,6 @@ def receive_from_concent(
     return response.content or None
 
 
-receive_out_of_band = functools.partial(
-    receive_from_concent,
-    path='/api/v1/receive-out-of-band/',
-)
-
-
 class ConcentRequest(msg_datastructures.FrozenDict):
     ITEMS = {
         'key': '',
@@ -341,23 +335,21 @@ class ConcentClientService(threading.Thread):
         if not self.enabled:
             return
 
-        for receive_function in (receive_from_concent, receive_out_of_band):
-            try:
-                # mypy, why u so silly?
-                res = receive_function(  # type: ignore
-                    signing_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
-                    public_key=self.keys_auth.public_key,
-                    concent_variant=self.variant,
-                )
-            except exceptions.ConcentError as e:
-                logger.warning("Can't receive message from Concent: %s", e)
-                self._grace_sleep()
-                return
-            except Exception:  # pylint: disable=broad-except
-                logger.exception('receive_from_concent() failed')
-                self._grace_sleep()
-                return
-            self.react_to_concent_message(res)
+        try:
+            res = receive_from_concent(
+                signing_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
+                public_key=self.keys_auth.public_key,
+                concent_variant=self.variant,
+            )
+        except exceptions.ConcentError as e:
+            logger.warning("Can't receive message from Concent: %s", e)
+            self._grace_sleep()
+            return
+        except Exception:  # pylint: disable=broad-except
+            logger.exception('receive_from_concent() failed')
+            self._grace_sleep()
+            return
+        self.react_to_concent_message(res)
 
     @staticmethod
     def process_synchronous_response(

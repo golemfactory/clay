@@ -1,7 +1,9 @@
 # This template is rendered by
 # apps.blender.resources.scenefileeditor.generate_blender_crop_file(),
 # written to tempfile and passed as arg to blender.
+import os
 import bpy
+
 
 class EngineWarning(bpy.types.Operator):
     bl_idname = "wm.engine_warning"
@@ -12,22 +14,22 @@ class EngineWarning(bpy.types.Operator):
                                " not supported by Golem")
         return {"FINISHED"}
 
+
 class ShowInformation(bpy.types.Operator):
     bl_idname = "wm.scene_information"
     bl_label = "Inform user about scene settings"
 
-
-    def execute(self, context):
+    def execute(self, _):
         self.report({"INFO"}, "Engine: " +
                               str(bpy.context.scene.render.engine))
         if bpy.context.scene.render.engine == "CYCLES":
             self.report({"INFO"}, "Samples: " + str(bpy.context.scene.cycles.samples))
         self.report({"INFO"}, "Resolution: " +
                               str(bpy.context.scene.render.resolution_x) +
-                               " x " +
-                               str(bpy.context.scene.render.resolution_y))
+                              " x " +
+                              str(bpy.context.scene.render.resolution_y))
         self.report({"INFO"}, "File format: " +
-                               str(bpy.context.scene.render.file_extension))
+                              str(bpy.context.scene.render.file_extension))
         self.report({"INFO"}, "Filepath: " +
                               str(bpy.context.scene.render.filepath))
         self.report({"INFO"}, "Frames: " +
@@ -38,6 +40,19 @@ class ShowInformation(bpy.types.Operator):
         return {"FINISHED"}
 
 
+def get_device_type():
+    return os.environ.get('BLENDER_DEVICE_TYPE', 'cpu').strip().lower()
+
+
+tile_size = 0
+
+use_nvidia_gpu = get_device_type() == 'nvidia_gpu'
+use_amd_gpu = get_device_type() == 'amd_gpu'
+use_gpu = use_nvidia_gpu or use_amd_gpu
+
+if use_gpu:
+    tile_size = 512
+
 bpy.utils.register_class(EngineWarning)
 engine = bpy.context.scene.render.engine
 if engine not in ("BLENDER_RENDER", "CYCLES"):
@@ -46,8 +61,8 @@ if engine not in ("BLENDER_RENDER", "CYCLES"):
 bpy.utils.register_class(ShowInformation)
 bpy.ops.wm.scene_information()
 
-bpy.context.scene.render.tile_x = 0
-bpy.context.scene.render.tile_y = 0
+bpy.context.scene.render.tile_x = tile_size
+bpy.context.scene.render.tile_y = tile_size
 bpy.context.scene.render.resolution_x = %(resolution_x)d
 bpy.context.scene.render.resolution_y = %(resolution_y)d
 bpy.context.scene.render.resolution_percentage = 100
@@ -58,10 +73,22 @@ bpy.context.scene.render.border_min_x = %(border_min_x)r
 bpy.context.scene.render.border_min_y = %(border_min_y)r
 bpy.context.scene.render.border_max_y = %(border_max_y)r
 bpy.context.scene.render.use_compositing = bool(%(use_compositing)r)
+
 if engine == "CYCLES":
+    preferences = bpy.context.user_preferences.addons['cycles'].preferences
     samples = %(samples)d
+
     if samples != 0:
         bpy.context.scene.cycles.samples = samples
+    if use_gpu:
+        bpy.context.scene.cycles.device = 'GPU'
+
+    if use_nvidia_gpu:
+        preferences.compute_device_type = 'CUDA'
+    elif use_amd_gpu:
+        preferences.compute_device_type = 'OPENCL'
+
+
 
 #and check if additional files aren't missing
 bpy.ops.file.report_missing_files()
