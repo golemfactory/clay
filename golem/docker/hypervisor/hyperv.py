@@ -30,7 +30,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         virtual_switch='--hyperv-virtual-switch'
     )
     BOOT2DOCKER_URL = "https://github.com/golemfactory/boot2docker/releases/" \
-                      "download/v18.06.0-ce%2Bdvm-v0.35/boot2docker.iso"
+                      "download/v18.06.1-ce%2Bdvn-v0.35/boot2docker.iso"
     DOCKER_USER = "golem-docker"
     DOCKER_PASSWORD = "golem-docker"
     VIRTUAL_SWITCH = "Golem Switch"
