@@ -25,7 +25,7 @@ from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import TaskState
-from golem.task.timer import ProviderIdleTimer
+from golem.task.timer import ProviderIdleTimer, ProviderComputeTimers
 
 from .taskmanager import TaskManager
 
@@ -563,6 +563,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             remote_role=Actor.Provider,
         )
 
+        ProviderComputeTimers.comp_started(ttc.subtask_id)
         self.send(ttc)
 
     @handle_attr_error_with_task_computer
