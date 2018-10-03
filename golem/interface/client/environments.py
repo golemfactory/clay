@@ -60,7 +60,12 @@ class Environments(object):
     @command(argument=name, help="Recount performance for an environment")
     def recount(self, name):
         deferred = Environments.client.run_benchmark(name)
-        return sync_wait(deferred, timeout=1800)
+
+        try:
+            return sync_wait(deferred, timeout=1800)
+        # twisted.python.Failure inherits from BaseException
+        except BaseException:  # pylint: disable=broad-except
+            return 0
 
     @command(argument=multiplier, help="Sets accepted performance multiplier")
     def perf_mult_set(self, multiplier):
