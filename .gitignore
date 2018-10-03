@@ -26,6 +26,7 @@ ui_*.py
 build/
 .cache/
 .coverage
+.vscode/
 develop-eggs/
 dist/
 downloads/
