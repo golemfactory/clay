@@ -18,7 +18,7 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
-from golem.task.timer import ProviderComputeTimer
+from golem.task.timer import ProviderIdleTimer
 from golem.vm.vm import PythonProcVM, PythonTestVM
 
 from .taskthread import TaskThread
@@ -171,7 +171,7 @@ class TaskComputer(object):
                 'Error downloading resources: {}'.format(reason),
             )
 
-        ProviderComputeTimer.stop()
+        self.__task_finished()
         self.session_closed()
 
     def wait_for_resources(self, task_id, delta):
@@ -184,9 +184,9 @@ class TaskComputer(object):
         logger.info("Task %r request rejected: %r", task_id, reason)
 
     def resource_request_rejected(self, subtask_id, reason):
-        ProviderComputeTimer.stop()
         logger.info("Task %r resource request rejected: %r",
                     subtask_id, reason)
+        self.__task_finished()
         self.assigned_subtasks.pop(subtask_id, None)
         self.reset()
 
@@ -253,10 +253,7 @@ class TaskComputer(object):
 
         dispatcher.send(signal='golem.monitor', event='computation_time_spent',
                         success=was_success, value=work_time_to_be_paid)
-
-        self.counting_task = None
-        if self.finished_cb:
-            self.finished_cb()
+        self.__task_finished()
 
     def run(self):
         """ Main loop of task computer """
@@ -442,17 +439,20 @@ class TaskComputer(object):
                 subtask['task_id'],
                 "Host direct task not supported",
             )
-            self.counting_task = None
-            if self.finished_cb:
-                self.finished_cb()
-
-            ProviderComputeTimer.stop()
+            self.__task_finished()
             return
 
         with self.lock:
             self.counting_thread = tt
 
         tt.start().addBoth(lambda _: self.task_computed(tt))
+
+    def __task_finished(self):
+        self.counting_task = None
+
+        ProviderIdleTimer.comp_finished()
+        if self.finished_cb:
+            self.finished_cb()
 
     def quit(self):
         if self.counting_thread is not None:
