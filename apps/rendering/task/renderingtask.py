@@ -1,7 +1,7 @@
 import logging
 import math
 import os
-from typing import Type
+from typing import Iterable, Type
 
 from PIL import Image, ImageChops
 from pathlib import Path
@@ -251,6 +251,10 @@ class RenderingTask(CoreTask):
         return path.replace("\\", "/")
 
 
+class RenderingTaskBuilderException(Exception):
+    pass
+
+
 class RenderingTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = RenderingTask
     DEFAULTS = RendererDefaults
@@ -274,10 +278,21 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         candidates = [res for res in resources if any(res.lower().endswith(ext.lower())
                                             for ext in extensions)]
         if not candidates:
-            raise Exception("Scene file was not found.")
+            raise RenderingTaskBuilderException("Scene file was not found.")
 
         candidates.sort(key=len)
         return candidates[0]
+
+    @staticmethod
+    def _scene_file_with_key(resources: Iterable[str], key: str) -> str:
+        main_scene_file_candidates = [res for res in resources
+                                      if res.endswith(key)]
+        if not main_scene_file_candidates:
+            raise RenderingTaskBuilderException(
+                "main_scene_file does not match any resource")
+        if len(main_scene_file_candidates) > 1:
+            raise RenderingTaskBuilderException("main_scene_file is ambiguous")
+        return main_scene_file_candidates[0]
 
     def get_task_kwargs(self, **kwargs):
         kwargs = super().get_task_kwargs(**kwargs)
@@ -303,7 +318,10 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         resources = dictionary['resources']
 
         definition = parent.build_minimal_definition(task_type, dictionary)
-        definition.main_scene_file = cls._scene_file(task_type, resources)
+        definition.main_scene_file = \
+            cls._scene_file_with_key(resources, dictionary['main_scene_file']) \
+            if 'main_scene_file' in dictionary \
+            else cls._scene_file(task_type, resources)
         return definition
 
     @classmethod
