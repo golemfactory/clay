@@ -1,6 +1,7 @@
 import logging
 from threading import Lock
 from typing import Optional, Any
+from twisted.python.failure import Failure
 from twisted.internet.defer import Deferred, gatherResults
 from golem.core.common import deadline_to_timeout
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
@@ -27,31 +28,39 @@ class VerificationTask:
     def start(self, verifier_class) -> Optional[Deferred]:
         self.verifier = verifier_class(self.kwargs)
         if deadline_to_timeout(self.deadline) > 0:
-            if self.verifier.simple_verification(self.kwargs):
-                self.__crop_jobs = self.reference_generator.render_crops(
-                    self.kwargs['resources'],
-                    self.kwargs["subtask_info"],
-                    self.default_crops_number)
-                for d in self.__crop_jobs:
-                    d.addCallback(self.__crop_rendered)
-                    d.addErrback(self.__crop_render_failure)
-                self.__all_crop_finished = gatherResults(self.__crop_jobs)
-                self.__all_crop_finished.addCallback(self.start_verification)
-                self.__all_crop_finished.addErrback(self.failure)
-                return self.finished
-            self.__call_if_not_called(False,
-                                      self.verifier.verification_completed())
-            return self.finished
+            try:
+                if self.verifier.simple_verification(self.kwargs):
+                    self.__crop_jobs = self.reference_generator.render_crops(
+                        self.kwargs['resources'],
+                        self.kwargs["subtask_info"],
+                        self.default_crops_number)
+                    for d in self.__crop_jobs:
+                        d.addCallback(self.__crop_rendered)
+                        d.addErrback(self.__crop_render_failure)
+                    self.__all_crop_finished = gatherResults(self.__crop_jobs)
+                    self.__all_crop_finished.addCallback(
+                        self.start_verification)
+                    self.__all_crop_finished.addErrback(self.failure)
+                else:
+                    self.__call_if_not_called(
+                        False,
+                        self.verifier.verification_completed())
+            except Exception as e:
+                logger.warning("Exception in verification %s", e)
+                self.__call_if_not_called(
+                    False,
+                    self.verifier.verification_completed())
+
         else:
             self.verifier.task_timeout(self.subtask_id)
-        return None
+        return self.finished
 
     def __crop_rendered(self, result):
         self.verifier.verify_with_crop(result)
 
     def __crop_render_failure(self, error):
         logger.warning("Error %s", error)
-        self.__call_if_not_called(False, error)
+        return Failure(error)
 
     def failure(self, error):
         logger.info("Verification Task failure %s", error)
@@ -81,3 +90,8 @@ class VerificationTask:
             d.cancel()
         self.__all_crop_finished.cancel()
         self.finished.cancel()
+        self.already_called = False
+        self.__all_crop_finished = Deferred()
+        self.__crop_jobs = [Deferred() for _ in
+                            range(self.default_crops_number)]
+        self.finished = Deferred()

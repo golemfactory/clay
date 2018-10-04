@@ -311,8 +311,11 @@ class BlenderReferenceGenerator:
 
         def failure(exc):
             self.stopped = True
-            logger.error(exc)
-            verification_context.finished[crop_number].errback(False)
+            logger.error("Error during rendering crop %s %s", crop_number, exc)
+            if not exc:
+                verification_context.finished[crop_number].errback(False)
+            else:
+                verification_context.finished[crop_number].errback(exc)
 
         verification_context.computer.start_computation(
             root_path=verification_context.get_crop_path(crop_number),

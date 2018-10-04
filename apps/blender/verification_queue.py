@@ -14,7 +14,7 @@ logger = logging.getLogger("apps.blender.verification")
 
 class VerificationQueue:
 
-    VERIFICATION_TIMEOUT = 90
+    VERIFICATION_TIMEOUT = 2
     RESTART_DELAY = 5
 
     def __init__(self, concurrency: int = 1) -> None:
@@ -104,6 +104,7 @@ class VerificationQueue:
                                  event=result, subtask_id=subtask_id,
                                  verifier_cls=verifier_cls)
 
+            VerificationQueue.VERIFICATION_TIMEOUT += 2
             result.addTimeout(VerificationQueue.VERIFICATION_TIMEOUT, reactor,
                               onTimeoutCancel=fn_timeout)
             self._jobs[subtask_id] = result
