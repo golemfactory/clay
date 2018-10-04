@@ -271,22 +271,20 @@ class TestNetwork(unittest.TestCase):
         self.client.reset_mock()
 
     def test_status(self):
-
         with client_ctx(Network, self.client):
+            # given
+            msg = "Some random message"
+            self.client.connection_status.return_value = {
+                'msg': msg,
+            }
 
-            self.client.connection_status.return_value = 'Status'
+            # when
             result = Network().status()
 
+            # then
             assert self.client.connection_status.called
             assert isinstance(result, str)
-            assert result
-            assert result != 'unknown'
-
-            self.client.connection_status.return_value = None
-            result = Network().status()
-
-            assert isinstance(result, str)
-            assert result == 'unknown'
+            assert result == msg
 
     def test_connect(self):
         with client_ctx(Network, self.client):

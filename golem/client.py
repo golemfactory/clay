@@ -1025,10 +1025,14 @@ class Client(HardwarePresetsMixin):
     def get_datadir(self):
         return str(self.datadir)
 
-    def get_p2p_port(self):
+    def get_p2p_port(self) -> int:
+        if not self.p2pservice:
+            return 0
         return self.p2pservice.cur_port
 
-    def get_task_server_port(self):
+    def get_task_server_port(self) -> int:
+        if not self.task_server:
+            return 0
         return self.task_server.cur_port
 
     def get_task_count(self):
@@ -1506,28 +1510,51 @@ class Client(HardwarePresetsMixin):
             ver=golem.__version__
         )
 
-    def connection_status(self):
+    def _make_connection_status_raw_data(self) -> Dict[str, Any]:
         listen_port = self.get_p2p_port()
         task_server_port = self.get_task_server_port()
 
+        status: Dict[str, Any] = dict()
+
         if listen_port == 0 or task_server_port == 0:
+            status['listening'] = False
+            return status
+        status['listening'] = True
+
+        status['port_statuses'] = deepcopy(self.node.port_statuses)
+        status['connected'] = bool(self.get_connected_peers())
+        return status
+
+    @staticmethod
+    def _make_connection_status_human_readable_message(status: Dict[str, Any]) \
+            -> str:
+        # To create the message use the data that is only in `status` dict.
+        # This is to make sure that message has no additional information.
+
+        if not status['listening']:
             return "Application not listening, check config file."
 
         messages = []
 
-        if self.node.port_statuses:
-            status = ", ".join(
-                "{}: {}".format(port, status)
-                for port, status in self.node.port_statuses.items())
-            messages.append("Port {}.".format(status))
+        if status['port_statuses']:
+            port_statuses = ", ".join(
+                "{}: {}".format(port, port_status)
+                for port, port_status in status['port_statuses'].items())
+            messages.append("Port(s) {}.".format(port_statuses))
 
-        if self.get_connected_peers():
+        if status['connected']:
             messages.append("Connected")
         else:
             messages.append("Not connected to Golem Network, "
                             "check seed parameters.")
 
         return ' '.join(messages)
+
+    def connection_status(self) -> Dict[str, Any]:
+        status = self._make_connection_status_raw_data()
+        status['msg'] \
+            = Client._make_connection_status_human_readable_message(status)
+        return status
 
     def get_provider_status(self) -> Dict[str, Any]:
         # golem is starting
