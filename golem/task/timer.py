@@ -67,6 +67,9 @@ class ComputeTimers:
         """ Initializes the start and finished (= None) computation points in
             time.
         """
+        logger.debug("ComputeTimers: started computation of %s at %r",
+                     identifier, time.time())
+
         self._comp_history[identifier] = (time.time(), None)
 
     def comp_finished(self, identifier: str) -> None:
@@ -76,6 +79,9 @@ class ComputeTimers:
 
         if identifier not in self._comp_history:
             return
+
+        logger.debug("ComputeTimers: finished computation of %s at %r",
+                     identifier, time.time())
 
         entry = self._comp_history[identifier]
         if entry[1] is not None:
