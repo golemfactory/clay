@@ -82,6 +82,84 @@ class TestZipPackager(PackageDirContentsFixture):
 
         self.assertTrue(len(files) == len(self.all_files))
 
+class TestZipDirectoryPackager(TempDirFixture):
+    def setUp(self):
+        super().setUp()
+
+        task_id = str(uuid.uuid4())
+        dir_manager = DirManager(self.path)
+
+        res_dir = dir_manager.get_task_temporary_dir(task_id)
+        out_dir = os.path.join(res_dir, 'out_dir')
+
+        os.makedirs(out_dir, exist_ok=True)
+
+        self.dir_manager = dir_manager
+        self.task_id = task_id
+        self.secret = FileEncryptor.gen_secret(10, 20)
+        
+        # Create directory structure:
+        '''
+            |-- directory
+            |-- directory2
+            |   |-- directory3
+            |   |   `-- file.txt
+            |   `-- file.txt
+            `-- file.txt
+        '''
+
+        file_path = os.path.join(res_dir, "file.txt")
+        directory_path = os.path.join(res_dir, "directory")
+        directory2_path = os.path.join(res_dir, "directory2/")
+        directory2_file_path = os.path.join(directory2_path, "file.txt")
+        directory3_path = os.path.join(directory2_path, "directory3/")
+        directory3_file_path = os.path.join(directory3_path, "file.txt")
+
+        os.makedirs(directory_path)
+        os.makedirs(directory2_path)
+        os.makedirs(directory3_path)
+        with open(file_path, 'w') as out:
+            out.write("content")
+        with open(directory2_file_path, 'w') as out:
+            out.write("content")
+        with open(directory3_file_path, 'w') as out:
+            out.write("content")
+
+        self.disk_files = [
+            file_path,
+            directory_path,
+            directory2_path,
+        ]
+
+        self.expected_results = [
+            os.path.basename(file_path),
+            os.path.basename(directory_path),
+            os.path.basename(directory2_path),
+            os.path.join(os.path.basename(directory2_path),
+                         os.path.basename(directory3_file_path)),
+            os.path.join(os.path.basename(directory2_path),
+                         os.path.basename(directory3_path)),
+            os.path.join(os.path.basename(directory2_path),
+                         os.path.basename(directory3_path),
+                         os.path.basename(directory3_file_path))
+        ]
+
+        self.res_dir = res_dir
+        self.out_dir = out_dir
+        self.out_path = os.path.join(self.out_dir, str(uuid.uuid4()))
+
+    def testCreate(self):
+        zp = ZipPackager()
+        path, _ = zp.create(self.out_path, self.disk_files, None)
+
+        self.assertTrue(os.path.exists(path))
+
+    def testExtract(self):
+        zp = ZipPackager()
+        zp.create(self.out_path, self.disk_files, None)
+        files, out_dir = zp.extract(self.out_path)
+
+        self.assertTrue(len(files) == len(self.expected_results))
 
 class TestEncryptingPackager(PackageDirContentsFixture):
 
