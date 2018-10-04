@@ -158,7 +158,8 @@ class ZipPackager(Packager):
         elif os.path.isfile(path):
             archive.write(path, os.path.join(subdirectory, basename))
         else:
-            pass
+            raise RuntimeError("Packaging supports only \
+                    directories and files, unsupported object: {}".format(path))
 
 
 class EncryptingPackager(Packager):
