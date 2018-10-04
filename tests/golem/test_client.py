@@ -1,6 +1,5 @@
 # pylint: disable=protected-access,too-many-lines
 import datetime
-import json
 import os
 import time
 import uuid
@@ -19,7 +18,6 @@ from freezegun import freeze_time
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 
-from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 import golem
 from golem import model
@@ -32,7 +30,6 @@ from golem.client import Client, ClientTaskComputerEventListener, \
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
-from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.node import Node
@@ -1068,23 +1065,47 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         result = c.check_test_status()
         self.assertFalse(result)
 
-        c.task_test_result = json.dumps({"status": TaskTestStatus.started})
+        c.task_test_result = {"status": TaskTestStatus.started}
         result = c.check_test_status()
-        print(result)
-        self.assertEqual(c.task_test_result, result)
-
-        c.task_test_result = json.dumps({"status": TaskTestStatus.success})
-        result = c.check_test_status()
-        self.assertEqual(c.task_test_result, None)
+        self.assertEqual({"status": TaskTestStatus.started.value}, result)
 
     def test_create_task(self, *_):
-        t = DummyTask(total_tasks=10, owner=Node(node_name="node_name"),
-                      task_definition=DummyTaskDefinition())
+        t = DummyTaskDefinition()
+        t.task_name = "test"
 
         c = self.client
-        c.enqueue_new_task = Mock()
-        c.create_task(DictSerializer.dump(t))
+        c.enqueue_new_task = Mock(return_value=(Mock(), 'task_id'))
+        result = c.create_task(t.to_dict())
         self.assertTrue(c.enqueue_new_task.called)
+        self.assertEqual(result, ('task_id', None))
+
+    def test_create_task_fail_on_empty_dict(self, *_):
+        c = self.client
+        c.enqueue_new_task = Mock(return_value=(Mock(), 'task_id'))
+        result = c.create_task({})
+        assert result == (None,
+                          "Length of task name cannot be less "
+                          "than 4 or more than 24 characters.")
+
+    def test_create_task_fail_on_too_long_name(self, *_):
+        c = self.client
+        c.enqueue_new_task = Mock(return_value=(Mock(), 'task_id'))
+        result = c.create_task({
+            "name": "This name has 27 characters"
+        })
+        assert result == (None,
+                          "Length of task name cannot be less "
+                          "than 4 or more than 24 characters.")
+
+    def test_create_task_fail_on_illegal_character_in_name(self, *_):
+        c = self.client
+        c.enqueue_new_task = Mock(return_value=(Mock(), 'task_id'))
+        result = c.create_task({
+            "name": "Golem task/"
+        })
+        assert result == (None,
+                          "Task name can only contain letters, numbers, "
+                          "spaces, underline, dash or dot.")
 
     def test_delete_task(self, *_):
         c = self.client
@@ -1440,11 +1461,10 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             'node_id', persist=True)
 
     def _check_task_tester_result(self):
-        self.assertIsInstance(self.client.task_test_result, str)
-        test_result = json.loads(self.client.task_test_result)
-        self.assertEqual(test_result, {
+        self.assertIsInstance(self.client.task_test_result, dict)
+        self.assertEqual(self.client.task_test_result, {
             "status": TaskTestStatus.started,
-            "error": True
+            "error": None
         })
 
     def test_run_test_task_success(self, *_):
@@ -1461,9 +1481,8 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
                 patch('golem.client.TaskTester.run', _run):
             self.client._run_test_task({})
 
-        self.assertIsInstance(self.client.task_test_result, str)
-        test_result = json.loads(self.client.task_test_result)
-        self.assertEqual(test_result, {
+        self.assertIsInstance(self.client.task_test_result, dict)
+        self.assertEqual(self.client.task_test_result, {
             "status": TaskTestStatus.success,
             "result": result,
             "estimated_memory": estimated_memory,
@@ -1472,7 +1491,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         })
 
     def test_run_test_task_error(self, *_):
-        error = ['error', 'error']
+        error = ('error', 'error')
         more = {'more': 'more'}
 
         def _run(_self: TaskTester):
@@ -1483,9 +1502,8 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
                 patch('golem.client.TaskTester.run', _run):
             self.client._run_test_task({})
 
-        self.assertIsInstance(self.client.task_test_result, str)
-        test_result = json.loads(self.client.task_test_result)
-        self.assertEqual(test_result, {
+        self.assertIsInstance(self.client.task_test_result, dict)
+        self.assertEqual(self.client.task_test_result, {
             "status": TaskTestStatus.error,
             "error": error,
             "more": more
