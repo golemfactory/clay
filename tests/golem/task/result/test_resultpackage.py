@@ -1,6 +1,7 @@
 import uuid
 import os
 
+from pathlib import Path
 from unittest.mock import Mock
 
 from golem.core.fileencrypt import FileEncryptor
@@ -130,19 +131,13 @@ class TestZipDirectoryPackager(TempDirFixture):
             directory2_path,
         ]
 
-        directory2_path = directory2_path.rstrip('/')
-        directory3_path = directory3_path.rstrip('/')
         self.expected_results = [
             os.path.basename(file_path),
-            os.path.basename(directory_path) + '/',
-            os.path.basename(directory2_path) + '/',
-            os.path.join(os.path.basename(directory2_path),
-                         os.path.basename(directory3_path)) + '/',
-            os.path.join(os.path.basename(directory2_path),
-                         os.path.basename(directory3_file_path)),
-            os.path.join(os.path.basename(directory2_path),
-                         os.path.basename(directory3_path),
-                         os.path.basename(directory3_file_path))
+            os.path.basename(directory_path),
+            os.path.relpath(directory2_path, res_dir),
+            os.path.relpath(directory3_path, res_dir),
+            os.path.relpath(directory2_file_path, res_dir),
+            os.path.relpath(directory3_file_path, res_dir)
         ]
 
         self.res_dir = res_dir
@@ -159,7 +154,7 @@ class TestZipDirectoryPackager(TempDirFixture):
         zp = ZipPackager()
         zp.create(self.out_path, self.disk_files, None)
         files, _ = zp.extract(self.out_path)
-
+        files = [str(Path(f)) for f in files]
         self.assertTrue(set(files) == set(self.expected_results))
 
 class TestEncryptingPackager(PackageDirContentsFixture):
