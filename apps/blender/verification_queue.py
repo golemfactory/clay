@@ -110,7 +110,7 @@ class VerificationQueue:
 
     def _verification_timed_out(self, _result, _timeout, task, event,
                                 subtask_id, verifier_cls):
-        task.stop(event)
+        task.stop()
         self._queue.put((task, verifier_cls))
         self._jobs.pop(subtask_id, None)
         self._timed_out = True
