@@ -234,6 +234,11 @@ class RenderingTask(CoreTask):
                 logger.debug('Saving new preview: %r', self.preview_file_path)
                 img.save(self.preview_file_path, ext)
 
+        logger.debug(
+            'Opening preview: %r, exists?: %s',
+            self.preview_file_path,
+            os.path.exists(self.preview_file_path)
+        )
         return Image.open(self.preview_file_path)
 
     def _use_outer_task_collector(self):

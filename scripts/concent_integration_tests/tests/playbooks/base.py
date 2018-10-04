@@ -264,6 +264,25 @@ class NodeTestPlaybook:
         step_wait_task_finished,
     )
 
+    def start_nodes(self):
+        self.provider_node = helpers.run_golem_node(
+            self.provider_node_script
+        )
+        self.requestor_node = helpers.run_golem_node(
+            self.requestor_node_script
+        )
+
+        self.provider_output_queue = helpers.get_output_queue(
+            self.provider_node)
+        self.requestor_output_queue = helpers.get_output_queue(
+            self.requestor_node)
+        self.started = True
+
+    def stop_nodes(self):
+        helpers.gracefully_shutdown(self.provider_node, 'Provider')
+        helpers.gracefully_shutdown(self.requestor_node, 'Requestor')
+        self.started = False
+
     def run(self):
         try:
             method = self.current_step_method
@@ -289,7 +308,7 @@ class NodeTestPlaybook:
             if provider_exit is not None and requestor_exit is not None:
                 self.fail()
 
-    def __init__(self, task_package: str='test_task_1'):
+    def __init__(self, task_package: str='test_task_1', **kwargs):
         if not self.provider_node_script or not self.requestor_node_script:
             raise NotImplementedError(
                 "Provider and Requestor scripts need to be set")
@@ -297,18 +316,10 @@ class NodeTestPlaybook:
         if task_package:
             self.task_package = task_package
 
-        self.provider_node = helpers.run_golem_node(
-            self.provider_node_script
-        )
-        self.requestor_node = helpers.run_golem_node(
-            self.requestor_node_script
-        )
+        for attr, val in kwargs.items():
+            setattr(self, attr, val)
 
-        self.provider_output_queue = helpers.get_output_queue(
-            self.provider_node)
-        self.requestor_output_queue = helpers.get_output_queue(
-            self.requestor_node)
-
+        self.start_nodes()
         self.started = True
 
     @classmethod
@@ -335,8 +346,6 @@ class NodeTestPlaybook:
         except ReactorNotRunning:
             pass
 
-        helpers.gracefully_shutdown(self.provider_node, 'Provider')
-        helpers.gracefully_shutdown(self.requestor_node, 'Requestor')
-
+        self.stop_nodes()
         self.exit_code = exit_code
 
