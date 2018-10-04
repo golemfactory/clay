@@ -9,7 +9,7 @@ from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import (MIN_TIMEOUT, PREVIEW_EXT,
                                                RenderingTask,
-                                               RenderingTaskBuilderException,
+                                               RenderingTaskBuilderError,
                                                RenderingTaskBuilder,
                                                SUBTASK_MIN_TIMEOUT)
 from apps.core.task.coretask import logger as logger_core
@@ -483,7 +483,7 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
         self.task_dict['main_scene_file'] = "file.txt"
 
         # when/then
-        with self.assertRaises(RenderingTaskBuilderException,
+        with self.assertRaises(RenderingTaskBuilderError,
                                msg="main_scene_file is ambiguous"):
             RenderingTaskBuilder.build_definition(
                 self.tti, self.task_dict)
@@ -500,7 +500,7 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
 
         # when/then
         with self.assertRaises(
-            RenderingTaskBuilderException,
+            RenderingTaskBuilderError,
             msg="main_scene_file does not match any resource"
         ):
             RenderingTaskBuilder.build_definition(

@@ -251,7 +251,7 @@ class RenderingTask(CoreTask):
         return path.replace("\\", "/")
 
 
-class RenderingTaskBuilderException(Exception):
+class RenderingTaskBuilderError(Exception):
     pass
 
 
@@ -278,7 +278,7 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         candidates = [res for res in resources if any(res.lower().endswith(ext.lower())
                                             for ext in extensions)]
         if not candidates:
-            raise RenderingTaskBuilderException("Scene file was not found.")
+            raise RenderingTaskBuilderError("Scene file was not found.")
 
         candidates.sort(key=len)
         return candidates[0]
@@ -288,10 +288,10 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         main_scene_file_candidates = [res for res in resources
                                       if res.endswith(key)]
         if not main_scene_file_candidates:
-            raise RenderingTaskBuilderException(
+            raise RenderingTaskBuilderError(
                 "main_scene_file does not match any resource")
         if len(main_scene_file_candidates) > 1:
-            raise RenderingTaskBuilderException("main_scene_file is ambiguous")
+            raise RenderingTaskBuilderError("main_scene_file is ambiguous")
         return main_scene_file_candidates[0]
 
     def get_task_kwargs(self, **kwargs):
