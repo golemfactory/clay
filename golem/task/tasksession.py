@@ -601,6 +601,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         reasons = message.tasks.CannotComputeTask.REASON
 
+        if self.task_computer.has_assigned_task():
+            _cannot_compute(reasons.OfferCancelled)
+            return
+
         if self.concent_service.enabled and not msg.concent_enabled:
             # Provider requires concent if it's enabed locally
             _cannot_compute(reasons.ConcentRequired)
@@ -654,10 +658,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
             if self.task_computer.task_given(ctd):
                 ProviderIdleTimer.comp_started()
+                self.task_server.requested_tasks.remove(ctd['task_id'])
                 return
         _cannot_compute(self.err_msg)
 
     def _react_to_waiting_for_results(self, _):
+        self.task_server.requested_tasks.remove(self.task_id)
         self.task_computer.session_closed()
         if not self.msgs_to_send:
             self.disconnect(message.base.Disconnect.REASON.NoMoreMessages)

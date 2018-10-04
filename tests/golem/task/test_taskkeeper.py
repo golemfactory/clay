@@ -175,7 +175,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         tar.add_support_status.assert_any_call(
             task_id2, SupportStatus(True, {}))
 
-    def test_get_task(self):
+    def test_get_random_task(self):
         em = EnvironmentsManager()
         em.environments = {}
         em.support_statuses = {}
@@ -185,16 +185,16 @@ class TestTaskHeaderKeeper(LogTestCase):
             node=p2p.Node(),
             min_price=10)
 
-        self.assertIsNone(tk.get_task())
+        self.assertIsNone(tk.get_random_task())
         task_header = get_task_header("uvw")
         self.assertTrue(tk.add_task_header(task_header))
-        self.assertIsNone(tk.get_task())
+        self.assertIsNone(tk.get_random_task())
         e = Environment()
         e.accept_tasks = True
         tk.environments_manager.add_environment(e)
         task_header2 = get_task_header("xyz")
         self.assertTrue(tk.add_task_header(task_header2))
-        th = tk.get_task()
+        th = tk.get_random_task()
         assert isinstance(th.task_owner, Node)
         self.assertEqual(task_header2.to_dict(), th.to_dict())
 

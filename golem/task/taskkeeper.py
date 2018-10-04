@@ -588,15 +588,18 @@ class TaskHeaderKeeper:
             return None
         return task.task_owner.key
 
-    def get_task(self) -> typing.Optional[TaskHeader]:
+    def get_random_task(
+            self,
+            except_for: typing.Set[str] = set()) -> typing.Optional[TaskHeader]:
         """ Returns random task from supported tasks that may be computed
         :return: None if there are no tasks that this node may want to compute
         """
-        if self.supported_tasks:
-            tn = random.randrange(0, len(self.supported_tasks))
-            task_id = self.supported_tasks[tn]
-            return self.task_headers[task_id]
-        return None
+        tasks = [tid for tid in self.supported_tasks if tid not in except_for]
+        if not tasks:
+            return None
+        tn = random.randrange(0, len(tasks))
+        task_id = tasks[tn]
+        return self.task_headers[task_id]
 
     def remove_old_tasks(self):
         for t in list(self.task_headers.values()):

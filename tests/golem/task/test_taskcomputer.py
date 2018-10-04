@@ -42,18 +42,14 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_server.config_desc.accept_tasks = True
         task_server.get_task_computer_root.return_value = self.path
         tc = TaskComputer(task_server, use_docker_manager=False)
-        self.assertIsNone(tc.counting_task)
         self.assertIsNone(tc.counting_thread)
-        self.assertIsNone(tc.waiting_for_task)
         tc.last_task_request = 0
         tc.run()
         task_server.request_task.assert_called_with()
         task_server.request_task = mock.MagicMock()
         task_server.config_desc.accept_tasks = False
         tc2 = TaskComputer(task_server, use_docker_manager=False)
-        tc2.counting_task = None
         tc2.counting_thread = None
-        tc2.waiting_for_task = None
         tc2.last_task_request = 0
 
         tc2.run()
@@ -61,8 +57,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
         tc2.runnable = True
         tc2.compute_tasks = True
-        tc2.waiting_for_task = False
-        tc2.counting_task = None
 
         tc2.last_task_request = 0
         tc2.counting_thread = None
@@ -73,8 +67,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
         task_server.request_task.called = False
 
-        tc2.waiting_for_task = 'xxyyzz'
-        tc2.use_waiting_ttl = True
         tc2.last_checking = 10 ** 10
 
         tc2.run()
@@ -149,7 +141,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.support_direct_computation = True
         tc.task_given(ctd)
         assert tc.task_resource_collected("xyz")
-        assert not tc.waiting_for_task
         assert tc.counting_thread is not None
         self.assertGreater(tc.counting_thread.time_to_compute, 9)
         self.assertLessEqual(tc.counting_thread.time_to_compute, 10)
@@ -158,7 +149,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.__wait_for_tasks(tc)
 
         prev_task_failed_count = task_server.send_task_failed.call_count
-        self.assertIsNone(tc.counting_task)
         self.assertIsNone(tc.counting_thread)
         self.assertIsNone(tc.assigned_subtasks.get("xxyyzz"))
         assert task_server.send_task_failed.call_count == prev_task_failed_count
@@ -183,7 +173,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertTrue(tc.task_resource_collected("xyz"))
         self.__wait_for_tasks(tc)
 
-        self.assertIsNone(tc.counting_task)
         self.assertIsNone(tc.counting_thread)
         self.assertIsNone(tc.assigned_subtasks.get("aabbcc"))
         task_server.send_task_failed.assert_called_with(
@@ -237,7 +226,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_server = self.task_server
         tc = TaskComputer(task_server, use_docker_manager=False)
         self.assertEqual(tc.get_host_state(), "Idle")
-        tc.reset(counting_task="SOME_TASK_ID")
+        tc.counting_thread = mock.Mock()
         self.assertEqual(tc.get_host_state(), "Computing")
 
     def test_change_config(self):
@@ -344,8 +333,6 @@ class TestTaskThread(DatabaseFixture):
         ts.benchmark_manager.benchmarks_needed.return_value = False
 
         tc = TaskComputer(ts, use_docker_manager=False)
-        tc.counting_task = True
-        tc.waiting_for_task = None
 
         tt = self._new_task_thread(tc)
         sync_wait(tt.start())
