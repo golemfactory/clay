@@ -16,11 +16,11 @@ from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 class BlenderBenchmark(RenderingBenchmark):
     RENDERER_OPTIONS_CLASS = BlenderRendererOptions
     ENVIRONMENT_CLASS: Type[BlenderEnvironment] = BlenderEnvironment
-    SCENE_FILE_NAME: str = "bmw27_cpu.blend"
+    SCENE_FILE_NAME: str = "classroom.blend"
 
     def __init__(self):
         super(BlenderBenchmark, self).__init__()
-        self._normalization_constant = 9360
+        self._normalization_constant = 3600
         if hasattr(sys, 'frozen') and sys.frozen:
             self.blender_task_path = join(dirname(sys.executable),
                                           'examples', 'blender')
@@ -30,6 +30,7 @@ class BlenderBenchmark(RenderingBenchmark):
         task_def = self.task_definition
         handle, task_def.output_file = tempfile.mkstemp("blender_benchmark.png")
         close(handle)
+
         task_def.task_type = "Blender"
         task_def.output_format = "png"
         task_def.options = self.RENDERER_OPTIONS_CLASS()
