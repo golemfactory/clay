@@ -251,6 +251,10 @@ class RenderingTask(CoreTask):
         return path.replace("\\", "/")
 
 
+class RenderingTaskBuilderError(Exception):
+    pass
+
+
 class RenderingTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = RenderingTask
     DEFAULTS = RendererDefaults
@@ -274,7 +278,7 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         candidates = [res for res in resources if any(res.lower().endswith(ext.lower())
                                             for ext in extensions)]
         if not candidates:
-            raise Exception("Scene file was not found.")
+            raise RenderingTaskBuilderError("Scene file was not found.")
 
         candidates.sort(key=len)
         return candidates[0]
@@ -303,7 +307,13 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         resources = dictionary['resources']
 
         definition = parent.build_minimal_definition(task_type, dictionary)
-        definition.main_scene_file = cls._scene_file(task_type, resources)
+
+        if 'main_scene_file' in dictionary:
+            main_scene_file = dictionary['main_scene_file']
+        else:
+            main_scene_file = cls._scene_file(task_type, resources)
+
+        definition.main_scene_file = main_scene_file
         return definition
 
     @classmethod
