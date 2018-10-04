@@ -310,7 +310,6 @@ class RenderingTaskBuilder(CoreTaskBuilder):
 
         if 'main_scene_file' in dictionary:
             main_scene_file = dictionary['main_scene_file']
-            resources.add(main_scene_file)
         else:
             main_scene_file = cls._scene_file(task_type, resources)
 

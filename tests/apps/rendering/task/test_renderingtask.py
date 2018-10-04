@@ -491,5 +491,7 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
             "/path/to/file2.txt",
             "/path/to/file3.jpg",
             "/path/to/file4.txt",
-            "/path/to/file5.txt",
+            # because it's added at RenderingTaskDefinition.add_to_resources
+            # and it modifies it on windows
+            path.normpath("/path/to/file5.txt"),
         }
