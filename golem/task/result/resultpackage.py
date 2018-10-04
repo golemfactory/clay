@@ -130,7 +130,7 @@ class ZipPackager(Packager):
         return zipfile.ZipFile(output_path, mode='w', compression=self.ZIP_MODE)
 
     def write_disk_file(self, obj, file_path, file_name):
-        ZipPackager.zip_append(obj, file_path)
+        ZipPackager.zip_append(obj, file_path.rstrip('/'))
 
     def write_cbor_file(self, obj, file_name, cbord_data):
         obj.writestr(file_name, cbord_data)
