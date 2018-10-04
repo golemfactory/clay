@@ -119,17 +119,20 @@ class HyperVHypervisor(DockerMachineHypervisor):
         Get IP address of the host machine which could be used for sharing
         directories with Hyper-V VMs connected to Golem's virtual switch.
         """
-        return cls._run_ps(cls.GET_IP_SCRIPT_PATH)            
+        return cls._run_ps(cls.GET_IP_SCRIPT_PATH)
 
     @classmethod
     def _create_vnet_switch(cls) -> str:
         """
         Create the virtual switch required to start a hyperv machine.
         """
-        return cls._run_ps(cls.SETUP_SWITCH_PATH)
+        return cls._run_ps(cls.SETUP_SWITCH_PATH, 20)
 
     @classmethod
-    def _run_ps(cls, script):
+    def _run_ps(cls, script, timeout=10):
+        """
+        Runs the script and returns its output in UTF8
+        """
         try:
             return subprocess\
                 .run(
@@ -139,7 +142,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
                         '-File', script,
                         '-Interface', cls.VIRTUAL_SWITCH,
                     ],
-                    timeout=20,  # seconds
+                    timeout=timeout,  # seconds
                     check=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
