@@ -82,6 +82,7 @@ class TestZipPackager(PackageDirContentsFixture):
 
         self.assertTrue(len(files) == len(self.all_files))
 
+# pylint: disable=too-many-instance-attributes
 class TestZipDirectoryPackager(TempDirFixture):
     def setUp(self):
         super().setUp()
@@ -97,16 +98,14 @@ class TestZipDirectoryPackager(TempDirFixture):
         self.dir_manager = dir_manager
         self.task_id = task_id
         self.secret = FileEncryptor.gen_secret(10, 20)
-        
+
         # Create directory structure:
-        '''
-            |-- directory
-            |-- directory2
-            |   |-- directory3
-            |   |   `-- file.txt
-            |   `-- file.txt
-            `-- file.txt
-        '''
+        #    |-- directory
+        #    |-- directory2
+        #    |   |-- directory3
+        #    |   |   `-- file.txt
+        #    |   `-- file.txt
+        #    `-- file.txt
 
         file_path = os.path.join(res_dir, "file.txt")
         directory_path = os.path.join(res_dir, "directory")
@@ -157,7 +156,7 @@ class TestZipDirectoryPackager(TempDirFixture):
     def testExtract(self):
         zp = ZipPackager()
         zp.create(self.out_path, self.disk_files, None)
-        files, out_dir = zp.extract(self.out_path)
+        files, _ = zp.extract(self.out_path)
 
         self.assertTrue(len(files) == len(self.expected_results))
 
