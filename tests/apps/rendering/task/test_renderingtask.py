@@ -462,7 +462,7 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
             "/path/to/file3.jpg",
             "/path/to/file4.txt",
         }
-        self.task_dict['main_scene_file'] = "file4.txt"
+        self.task_dict['main_scene_file'] = "/path/to/file4.txt"
 
         # when
         definition = RenderingTaskBuilder.build_definition(
@@ -470,23 +470,6 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
 
         # then
         assert definition.main_scene_file == "/path/to/file4.txt"
-
-    def test_main_scene_file_ambiguous(self):
-        # given
-        self.task_dict['resources'] = {
-            "/path/to/model1/file.png",
-            "/path/to/model1/file.txt",
-            "/path/to/model2/file.jpg",
-            "/path/to/model2/file.txt",
-            "/path/to/scene.txt",
-        }
-        self.task_dict['main_scene_file'] = "file.txt"
-
-        # when/then
-        with self.assertRaises(RenderingTaskBuilderError,
-                               msg="main_scene_file is ambiguous"):
-            RenderingTaskBuilder.build_definition(
-                self.tti, self.task_dict)
 
     def test_main_scene_no_match(self):
         # given
@@ -496,12 +479,17 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
             "/path/to/file3.jpg",
             "/path/to/file4.txt",
         }
-        self.task_dict['main_scene_file'] = "file5.txt"
+        self.task_dict['main_scene_file'] = "/path/to/file5.txt"
 
-        # when/then
-        with self.assertRaises(
-            RenderingTaskBuilderError,
-            msg="main_scene_file does not match any resource"
-        ):
-            RenderingTaskBuilder.build_definition(
-                self.tti, self.task_dict)
+        # when
+        definition = RenderingTaskBuilder.build_definition(
+            self.tti, self.task_dict)
+
+        # then
+        assert definition.resources == {
+            "/path/to/file1.png",
+            "/path/to/file2.txt",
+            "/path/to/file3.jpg",
+            "/path/to/file4.txt",
+            "/path/to/file5.txt",
+        }
