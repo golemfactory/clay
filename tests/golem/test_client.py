@@ -1351,6 +1351,14 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         self.client.task_server.acl.disallow.assert_called_once_with(
             'node_id', persist=True)
 
+    def _check_task_tester_result(self):
+        self.assertIsInstance(self.client.task_test_result, str)
+        test_result = json.loads(self.client.task_test_result)
+        self.assertEqual(test_result, {
+            "status": TaskTestStatus.started,
+            "error": True
+        })
+
     def test_run_test_task_success(self, *_):
         result = {'result': 'result'}
         estimated_memory = 1234
@@ -1358,13 +1366,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         more = {'more': 'more'}
 
         def _run(_self: TaskTester):
-            self.assertIsInstance(self.client.task_test_result, str)
-            test_result = json.loads(self.client.task_test_result)
-            self.assertEqual(test_result, {
-                "status": TaskTestStatus.started,
-                "error": True
-            })
-
+            self._check_task_tester_result()
             _self.success_callback(result, estimated_memory, time_spent, **more)
 
         with patch.object(self.client.task_server.task_manager, 'create_task'),\
@@ -1386,13 +1388,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         more = {'more': 'more'}
 
         def _run(_self: TaskTester):
-            self.assertIsInstance(self.client.task_test_result, str)
-            test_result = json.loads(self.client.task_test_result)
-            self.assertEqual(test_result, {
-                "status": TaskTestStatus.started,
-                "error": True
-            })
-
+            self._check_task_tester_result()
             _self.error_callback(*error, **more)
 
         with patch.object(self.client.task_server.task_manager, 'create_task'),\
@@ -1406,6 +1402,21 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             "error": error,
             "more": more
         })
+
+    def test_run_test_task_params(self, *_):
+        with mock.patch(
+            'apps.blender.task.blenderrendertask.'
+            'BlenderTaskTypeInfo.for_purpose',
+            mock.Mock(),
+        ),\
+        mock.patch('golem.client.TaskTester.run', mock.Mock()),\
+        self.assertNoLogs():
+            self.client._run_test_task(
+                {
+                    'type': 'blender',
+                    'resources': ['_.blend'],
+                    'subtasks': 1,
+                })
 
     @classmethod
     def __new_incoming_peer(cls):
