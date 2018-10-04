@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 import os
 import time
@@ -51,28 +51,16 @@ class TaskComputer(object):
     def __init__(self, task_server: 'TaskServer', use_docker_manager=True,
                  finished_cb=None) -> None:
         self.task_server = task_server
-        # Id of the task that we're currently waiting for  for
-        self.waiting_for_task: Optional[str] = None
-        # Id of the task that we're currently computing
-        self.counting_task = None
-        # TaskThread
+        # Currently computing TaskThread
         self.counting_thread = None
-        self.task_requested = False
         # Is task computer currently able to run computation?
         self.runnable = True
         self.listeners = []
         self.last_task_request = time.time()
 
-        # when we should stop waiting for the task
-        self.waiting_deadline = None
-
         self.dir_manager = None
         self.resource_manager: Optional[ResourcesManager] = None
         self.task_request_frequency = None
-        # Is there a time limit after which we don't wait for task timeout
-        # anymore
-        self.use_waiting_deadline = False
-        self.waiting_for_task_session_timeout = None
 
         self.docker_manager: DockerManager = DockerManager.install()
         if use_docker_manager:
@@ -91,8 +79,7 @@ class TaskComputer(object):
         self.stats = IntStatsKeeper(CompStats)
 
         self.assigned_subtasks = {}
-        self.task_to_subtask_mapping = {}
-        self.max_assigned_tasks = 1
+        self.task_to_subtask_mapping: Dict[str, Any] = {}
 
         self.delta = None
         self.last_task_timeout_checking = None
@@ -105,7 +92,6 @@ class TaskComputer(object):
     def task_given(self, ctd):
         if ctd['subtask_id'] in self.assigned_subtasks:
             return False
-        self.wait(ttl=deadline_to_timeout(ctd['deadline']))
         self.assigned_subtasks[ctd['subtask_id']] = ctd
         self.task_to_subtask_mapping[ctd['task_id']] = ctd['subtask_id']
         self.__request_resource(
@@ -114,6 +100,9 @@ class TaskComputer(object):
         )
         return True
 
+    def has_assigned_task(self) -> bool:
+        return bool(self.assigned_subtasks)
+
     def resource_given(self, task_id):
         subtask_id = self.task_to_subtask_mapping.get(task_id)
         subtask = self.assigned_subtasks.get(subtask_id)
@@ -121,11 +110,10 @@ class TaskComputer(object):
         if not subtask:
             return False
 
-        with self.lock:
-            if self.counting_thread is not None:
-                logger.error("Got resource for task: %r, but I'm busy with "
-                             "another one. Ignoring.", task_id)
-                return  # busy
+        if self.is_computing():
+            logger.error("Got resource for task: %r, but I'm busy with "
+                         "another one. Ignoring.", task_id)
+            return  # busy
 
         self.__compute_task(
             subtask_id,
@@ -135,7 +123,6 @@ class TaskComputer(object):
             subtask['short_description'],
             subtask['deadline'])
 
-        self.waiting_for_task = None
         return True
 
     def task_resource_collected(self, task_id, unpack_delta=True):
@@ -184,17 +171,13 @@ class TaskComputer(object):
         logger.info("Task %r resource request rejected: %r",
                     subtask_id, reason)
         self.assigned_subtasks.pop(subtask_id, None)
-        self.reset()
 
     def task_computed(self, task_thread: TaskThread) -> None:
-        self.reset()
-
         if task_thread.end_time is None:
             task_thread.end_time = time.time()
 
         with self.lock:
-            if self.counting_thread is task_thread:
-                self.counting_thread = None
+            self.counting_thread = None
 
         work_wall_clock_time = task_thread.end_time - task_thread.start_time
         subtask_id = task_thread.subtask_id
@@ -250,27 +233,20 @@ class TaskComputer(object):
         dispatcher.send(signal='golem.monitor', event='computation_time_spent',
                         success=was_success, value=work_time_to_be_paid)
 
-        self.counting_task = None
         if self.finished_cb:
             self.finished_cb()
 
     def run(self):
         """ Main loop of task computer """
-        if self.counting_task:
-            if self.counting_thread is not None:
-                self.counting_thread.check_timeout()
+        if self.counting_thread is not None:
+            self.counting_thread.check_timeout()
         elif self.compute_tasks and self.runnable:
-            if not self.waiting_for_task:
-                last_request = time.time() - self.last_task_request
-                if last_request > self.task_request_frequency \
-                        and self.counting_thread is None:
-                    self.__request_task()
-            elif self.use_waiting_deadline:
-                if self.waiting_deadline < time.time():
-                    self.reset()
+            last_request = time.time() - self.last_task_request
+            if last_request > self.task_request_frequency:
+                self.__request_task()
 
     def get_progress(self) -> Optional[ComputingSubtaskStateSnapshot]:
-        if self.counting_thread is None:
+        if not self.is_computing():
             return None
 
         c: TaskThread = self.counting_thread
@@ -283,8 +259,12 @@ class TaskComputer(object):
         )
         return tcss
 
+    def is_computing(self) -> bool:
+        with self.lock:
+            return self.counting_thread is not None
+
     def get_host_state(self):
-        if self.counting_task is not None:
+        if self.is_computing():
             return "Computing"
         return "Idle"
 
@@ -293,8 +273,6 @@ class TaskComputer(object):
         self.dir_manager = DirManager(self.task_server.get_task_computer_root())
         self.resource_manager = ResourcesManager(self.dir_manager, self)
         self.task_request_frequency = config_desc.task_request_interval
-        self.waiting_for_task_session_timeout = \
-            config_desc.waiting_for_task_session_timeout
         self.compute_tasks = config_desc.accept_tasks \
             and not config_desc.in_shutdown
         return self.change_docker_config(config_desc, run_benchmarks,
@@ -320,7 +298,7 @@ class TaskComputer(object):
             self.lock_config(True)
 
             def status_callback():
-                return self.counting_task
+                return self.is_computing()
 
             def done_callback(config_differs):
                 if run_benchmarks or config_differs:
@@ -351,42 +329,19 @@ class TaskComputer(object):
         self.session_closed()
 
     def session_closed(self):
-        if self.counting_task is None:
-            self.reset()
-
-    def wait(self, wait=True, ttl=None):
-        self.use_waiting_deadline = wait
-        if ttl is None:
-            ttl = self.waiting_for_task_session_timeout
-
-        self.waiting_deadline = time.time() + ttl
-
-    def reset(self, counting_task=None):
-        self.counting_task = counting_task
-        self.use_waiting_deadline = False
-        self.task_requested = False
-        self.waiting_for_task = None
-        self.waiting_deadline = None
+        pass
 
     def __request_task(self):
-        with self.lock:
-            perform_request = not self.waiting_for_task and \
-                              (self.counting_task is None)
-
-        if not perform_request:
+        if self.has_assigned_task():
             return
 
-        now = time.time()
-        self.wait()
-        self.last_task_request = now
-        self.waiting_for_task = self.task_server.request_task()
-        if self.waiting_for_task is not None:
+        self.last_task_request = time.time()
+        requested_task = self.task_server.request_task()
+        if requested_task is not None:
             self.stats.increase_stat('tasks_requested')
 
     def __request_resource(self, task_id, subtask_id):
-        self.wait(False)
-        if not self.task_server.request_resource(task_id, subtask_id):
-            self.reset()
+        self.task_server.request_resource(task_id, subtask_id)
 
     def __compute_task(self, subtask_id, docker_images,
                        src_code, extra_data, short_desc, subtask_deadline):
@@ -407,8 +362,6 @@ class TaskComputer(object):
         logger.info("Starting computation of subtask %r (task: %r, deadline: "
                     "%r, docker images: %r)", subtask_id, task_id, deadline,
                     docker_images)
-
-        self.reset(counting_task=task_id)
 
         with self.dir_lock:
             resource_dir = self.resource_manager.get_resource_dir(task_id)
@@ -438,7 +391,6 @@ class TaskComputer(object):
                 subtask['task_id'],
                 "Host direct task not supported",
             )
-            self.counting_task = None
             if self.finished_cb:
                 self.finished_cb()
 

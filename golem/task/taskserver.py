@@ -7,7 +7,7 @@ import time
 import weakref
 from collections import deque
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Set
 
 from golem_messages import message
 from pydispatch import dispatcher
@@ -111,6 +111,7 @@ class TaskServer(
         self.response_list = {}
         self.acl = get_acl(Path(client.datadir))
         self.resource_handshakes = {}
+        self.requested_tasks: Set[str] = set()
 
         network = TCPNetwork(
             ProtocolFactory(SafeProtocol, self, SessionFactory(TaskSession)),
@@ -181,7 +182,7 @@ class TaskServer(
 
     # This method chooses random task from the network to compute on our machine
     def request_task(self) -> Optional[str]:
-        theader = self.task_keeper.get_task()
+        theader = self.task_keeper.get_random_task(self.requested_tasks)
         if theader is None:
             return None
         try:
@@ -228,6 +229,7 @@ class TaskServer(
                     args=args
                 )
                 if added:
+                    self.requested_tasks.add(theader.task_id)
                     return theader.task_id
 
                 supported = supported.join(SupportStatus.err({
@@ -607,8 +609,6 @@ class TaskServer(
         super(TaskServer, self).final_conn_failure(conn_id)
 
     def add_forwarded_session_request(self, key_id, conn_id):
-        if self.task_computer.waiting_for_task:
-            self.task_computer.wait(ttl=self.forwarded_session_request_timeout)
         self.forwarded_session_requests[key_id] = dict(
             conn_id=conn_id, time=time.time())
 
