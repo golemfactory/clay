@@ -56,11 +56,9 @@ class ComputeTimers:
 
     def time_computing(self, identifier: str) -> Optional[float]:
         """ Returns computation time per subtask. Returns None if computation
-            hasn't finished yet.
+            hasn't finished yet. Throws a KeyError if identifier is not known.
         """
 
-        if identifier not in self._comp_history:
-            return None
         return self._comp_time(self._comp_history[identifier])
 
     def comp_started(self, identifier: str) -> None:
