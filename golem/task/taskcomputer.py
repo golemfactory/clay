@@ -417,7 +417,8 @@ class TaskComputer(object):
         tt.start().addBoth(lambda _: self.task_computed(tt))
 
     def __task_finished(self):
-        self.counting_task = None
+        with self.lock:
+            self.counting_thread = None
         if self.finished_cb:
             self.finished_cb()
 
