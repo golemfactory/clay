@@ -17,4 +17,5 @@ if( ! $vmSwitch )
 			"Installer failed to add hyperv switch:" + $vmSwitchName
 			exit 1
 	}
+    Start-Sleep 5
 }

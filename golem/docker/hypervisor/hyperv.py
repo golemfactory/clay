@@ -52,8 +52,9 @@ class HyperVHypervisor(DockerMachineHypervisor):
             cpu: Optional[Union[str, int]] = None,
             mem: Optional[Union[str, int]] = None,
             **params: Any) -> List[str]:
-        
-        self._create_vnet_switch()
+        logger.debug('Creating vnet switch')
+        vnet_result = self._create_vnet_switch()
+        logger.debug('Vnet created, result=%r', vnet_result)
 
         args = super()._parse_create_params(**params)
         args += [self.OPTIONS['boot2docker_url'], self.BOOT2DOCKER_URL,
@@ -138,7 +139,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
                         '-File', script,
                         '-Interface', cls.VIRTUAL_SWITCH,
                     ],
-                    timeout=10,  # seconds
+                    timeout=20,  # seconds
                     check=True,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
