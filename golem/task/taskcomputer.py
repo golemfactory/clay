@@ -161,7 +161,6 @@ class TaskComputer(object):
                 'Error downloading resources: {}'.format(reason),
             )
 
-        ProviderIdleTimer.comp_finished()
         self.__task_finished()
         self.session_closed()
 
@@ -178,7 +177,6 @@ class TaskComputer(object):
         logger.info("Task %r resource request rejected: %r",
                     subtask_id, reason)
 
-        ProviderIdleTimer.comp_finished()
         self.__task_finished()
         self.assigned_subtasks.pop(subtask_id, None)
 
@@ -236,8 +234,6 @@ class TaskComputer(object):
                 logger.error("Error sending the results: %r", exc)
             else:
                 was_success = True
-
-            ProviderIdleTimer.comp_finished()
 
         else:
             self.stats.increase_stat('tasks_with_errors')
@@ -407,7 +403,6 @@ class TaskComputer(object):
                 "Host direct task not supported",
             )
 
-            ProviderIdleTimer.comp_finished()
             self.__task_finished()
             return
 
@@ -417,6 +412,8 @@ class TaskComputer(object):
         tt.start().addBoth(lambda _: self.task_computed(tt))
 
     def __task_finished(self):
+        ProviderIdleTimer.comp_finished()
+
         with self.lock:
             self.counting_thread = None
         if self.finished_cb:
