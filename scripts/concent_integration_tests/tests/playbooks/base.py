@@ -308,7 +308,7 @@ class NodeTestPlaybook:
             if provider_exit is not None and requestor_exit is not None:
                 self.fail()
 
-    def __init__(self, task_package: str='test_task_1', **kwargs):
+    def __init__(self, task_package: str='test_task_1', **kwargs) -> None:
         if not self.provider_node_script or not self.requestor_node_script:
             raise NotImplementedError(
                 "Provider and Requestor scripts need to be set")

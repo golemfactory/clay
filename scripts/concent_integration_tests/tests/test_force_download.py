@@ -5,4 +5,4 @@ from scripts.concent_integration_tests.tests.playbooks import (
 )
 
 
-run.run_playbook(force_download.ForceDownload)
+run.run_playbook(force_download.ForceDownload)  # type: ignore
