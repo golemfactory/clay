@@ -153,7 +153,8 @@ class ZipPackager(Packager):
                     ZipPackager.zip_append(archive, os.path.join(root, d),
                                            os.path.join(subdirectory, d))
                 for f in files:
-                    archive.write(os.path.join(root, f), os.path.join(subdirectory, f))
+                    archive.write(os.path.join(root, f),
+                                  os.path.join(subdirectory, f))
                 break
         elif os.path.isfile(path):
             archive.write(path, os.path.join(subdirectory, basename))
