@@ -981,7 +981,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
                           BlenderBenchmark)
 
-        # before removing lux 2
         assert benchmark_manager.run_benchmark.call_count == 1
 
     def test_run_benchmark_fail(self, *_):
