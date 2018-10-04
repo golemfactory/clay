@@ -32,7 +32,7 @@ ADD ./scripts /golem/scripts
 WORKDIR /golem/scripts
 
 # Handle licenses
-ADD ./golem/work/licenses /usr/lib/sesi/licenses
+ADD ./license/licenses /usr/lib/sesi/licenses
 RUN useradd -m docker && echo "docker:docker" | chpasswd && adduser docker sudo
 
 
