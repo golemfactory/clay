@@ -142,21 +142,21 @@ class ZipPackager(Packager):
         return file_path + '.zip'
 
     @staticmethod
-    def zip_append(ob, path, rel=""):
+    def zip_append(archive, path, subdirectory=""):
         basename = os.path.basename(path)
         if os.path.isdir(path):
-            if rel == "":
-                rel = basename
-            ob.write(path, os.path.join(rel))
+            if subdirectory == "":
+                subdirectory = basename
+            archive.write(path, os.path.join(subdirectory))
             for root, dirs, files in os.walk(path):
                 for d in dirs:
-                    ZipPackager.zip_append(ob, os.path.join(root, d),
-                                           os.path.join(rel, d))
+                    ZipPackager.zip_append(archive, os.path.join(root, d),
+                                           os.path.join(subdirectory, d))
                 for f in files:
-                    ob.write(os.path.join(root, f), os.path.join(rel, f))
+                    archive.write(os.path.join(root, f), os.path.join(subdirectory, f))
                 break
         elif os.path.isfile(path):
-            ob.write(path, os.path.join(rel, basename))
+            archive.write(path, os.path.join(subdirectory, basename))
         else:
             pass
 
