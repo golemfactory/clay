@@ -25,7 +25,6 @@ from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import TaskState
-from golem.task.timer import ProviderIdleTimer, ProviderComputeTimers
 
 from .taskmanager import TaskManager
 
@@ -563,7 +562,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             remote_role=Actor.Provider,
         )
 
-        ProviderComputeTimers.comp_started(ttc.subtask_id)
         self.send(ttc)
 
     @handle_attr_error_with_task_computer
@@ -601,6 +599,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.dropped()
 
         reasons = message.tasks.CannotComputeTask.REASON
+
+        if self.task_computer.has_assigned_task():
+            _cannot_compute(reasons.OfferCancelled)
+            return
 
         if self.concent_service.enabled and not msg.concent_enabled:
             # Provider requires concent if it's enabed locally
@@ -654,11 +656,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 ctd['subtask_id'], self
             )
             if self.task_computer.task_given(ctd):
-                ProviderIdleTimer.comp_started()
+                self.task_server.requested_tasks.remove(ctd['task_id'])
                 return
         _cannot_compute(self.err_msg)
 
     def _react_to_waiting_for_results(self, _):
+        self.task_server.requested_tasks.remove(self.task_id)
         self.task_computer.session_closed()
         if not self.msgs_to_send:
             self.disconnect(message.base.Disconnect.REASON.NoMoreMessages)

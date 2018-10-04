@@ -26,6 +26,7 @@ class IdleTimer:
 
             This method forces the correct object state.
         """
+        logger.debug("IdleTimer.comp_started() at %r", time.time())
 
         if self._last_comp_finished is None:
             logger.error("Computation was not finished")
@@ -38,6 +39,7 @@ class IdleTimer:
         """ Updates the state to keep track of idle time and increases
             the accumulated computation time.
         """
+        logger.debug("IdleTimer.comp_finished() at %r", time.time())
 
         if self._last_comp_finished is None:
             self._last_comp_finished = time.time()
