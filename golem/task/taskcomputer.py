@@ -93,6 +93,9 @@ class TaskComputer(object):
     def task_given(self, ctd):
         if ctd['subtask_id'] in self.assigned_subtasks:
             return False
+
+        ProviderIdleTimer.comp_started()
+
         self.assigned_subtasks[ctd['subtask_id']] = ctd
         self.task_to_subtask_mapping[ctd['task_id']] = ctd['subtask_id']
         self.__request_resource(

@@ -25,7 +25,6 @@ from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import TaskState
-from golem.task.timer import ProviderIdleTimer
 
 from .taskmanager import TaskManager
 
@@ -657,7 +656,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 ctd['subtask_id'], self
             )
             if self.task_computer.task_given(ctd):
-                ProviderIdleTimer.comp_started()
                 self.task_server.requested_tasks.remove(ctd['task_id'])
                 return
         _cannot_compute(self.err_msg)
