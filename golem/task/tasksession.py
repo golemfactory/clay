@@ -660,6 +660,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         _cannot_compute(self.err_msg)
 
     def _react_to_waiting_for_results(self, _):
+        self.task_server.requested_tasks.remove(self.task_id)
         self.task_computer.session_closed()
         if not self.msgs_to_send:
             self.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
