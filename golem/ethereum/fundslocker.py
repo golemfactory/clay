@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class TaskFundsLock:  # pylint: disable=too-few-public-methods
     def __init__(self, task):
         self.price = task.subtask_price
-        self.num_tasks = task.total_tasks
+        self.num_tasks = task.get_total_tasks()
         self.task_deadline = task.header.deadline
 
     @property
