@@ -77,9 +77,8 @@ class DockerTaskTestCase(
         task_path = Path(__file__).parent / cls.TASK_FILE
         with open(task_path) as f:
             golem_path = get_golem_path()
-            if is_windows():
-                golem_path = golem_path.replace('\\', '\\\\')
-            json_str = f.read().replace('$GOLEM_DIR', golem_path)
+            json_str = f.read().replace('$GOLEM_DIR',
+                                        Path(get_golem_path()).as_posix())
             return DictSerializer.load(json.loads(json_str))
 
     def _get_test_task(self) -> Task:
@@ -108,7 +107,8 @@ class DockerTaskTestCase(
     def _run_task(self, task: Task, timeout: int = 60 * 5, *_) \
             -> Optional[DockerTaskThread]:
         task_id = task.header.task_id
-        extra_data = task.query_extra_data(1.0)
+        node_id = '0xdeadbeef'
+        extra_data = task.query_extra_data(1.0, 0, node_id)
         ctd = extra_data.ctd
         ctd['deadline'] = timeout_to_deadline(timeout)
 
@@ -121,8 +121,9 @@ class DockerTaskTestCase(
                 use_docker_manager=False,
                 concent_variant={'url': None, 'pubkey': None},
             )
-        with patch('golem.client.node_info_str'):
-            self.node.client = self.node._client_factory(Mock())
+        mock_keys_auth = Mock()
+        mock_keys_auth.key_id = node_id
+        self.node.client = self.node._client_factory(mock_keys_auth)
         self.node.client.start = Mock()
         self.node._run()
 

@@ -15,7 +15,6 @@ from apps.dummy.task.dummytaskstate import DummyTaskDefaults, DummyTaskOptions
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from apps.dummy.task.verifier import DummyTaskVerifier
 from golem.task.taskbase import Task
-from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
 logger = logging.getLogger("apps.dummy")
@@ -90,7 +89,6 @@ class DummyTask(CoreTask):
 
         self.subtasks_given[sid] = copy(ctd['extra_data'])
         self.subtasks_given[sid]["status"] = SubtaskStatus.starting
-        self.subtasks_given[sid]["perf"] = perf_index
         self.subtasks_given[sid]["node_id"] = node_id
         self.subtasks_given[sid]["result_extension"] = self.RESULT_EXT
         self.subtasks_given[sid]["shared_data_files"] = \
@@ -101,8 +99,6 @@ class DummyTask(CoreTask):
 
     def accept_results(self, subtask_id, result_files):
         super().accept_results(subtask_id, result_files)
-        node_id = self.subtasks_given[subtask_id]['node_id']
-        TaskClient.assert_exists(node_id, self.counting_nodes).accept()
         self.num_tasks_received += 1
 
     def __get_result_file_name(self, subtask_id: str) -> str:

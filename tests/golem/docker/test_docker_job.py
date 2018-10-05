@@ -198,7 +198,7 @@ class TestBaseDockerJob(TestDockerJob):
             self.assertTrue(work_mount["RW"])
             self.assertIsNotNone(resources_mount)
             self.assertEqual(resources_mount["Source"], resource_dir)
-            self.assertFalse(resources_mount["RW"])
+            self.assertTrue(resources_mount["RW"])
             self.assertIsNotNone(output_mount)
             self.assertEqual(output_mount["Source"], output_dir)
             self.assertTrue(output_mount["RW"])

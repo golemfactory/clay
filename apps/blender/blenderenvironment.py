@@ -46,7 +46,8 @@ class BlenderNVGPUEnvironment(BlenderEnvironment):
             binds={},
             devices=[],
             environment={
-                'NVIDIA_VISIBLE_DEVICES': ','.join(map(str, get_devices()))
+                'NVIDIA_VISIBLE_DEVICES': ','.join(map(str, get_devices())),
+                'BLENDER_DEVICE_TYPE': 'nvidia_gpu',
             },
         )
 
