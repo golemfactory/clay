@@ -19,7 +19,7 @@ class TaskDefaults(object):
         self.task_name = ""
 
     @property
-    def full_task_timeout(self):
+    def timeout(self):
         return 4 * 3600
 
     @property
@@ -32,7 +32,7 @@ class TaskDefinition(object):
 
     def __init__(self):
         self.task_id = ""
-        self.full_task_timeout = 0
+        self.timeout = 0
         self.subtask_timeout = 0
 
         self.resources = set()
@@ -104,7 +104,7 @@ class TaskDefinition(object):
         self.verification_options = preset["verification_options"]
 
     def to_dict(self) -> dict:
-        task_timeout = timeout_to_string(self.full_task_timeout)
+        task_timeout = timeout_to_string(self.timeout)
         subtask_timeout = timeout_to_string(self.subtask_timeout)
         output_path = self.build_output_path()
 

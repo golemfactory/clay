@@ -49,7 +49,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         rt.output_file = files_[2]
         rt.resources = []
         rt.resolution = [800, 600]
-        rt.full_task_timeout = 3600
+        rt.timeout = 3600
         rt.subtask_timeout = 600
         rt.estimated_memory = 1000
         rt.max_price = 15

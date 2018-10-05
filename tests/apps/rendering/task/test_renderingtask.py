@@ -75,7 +75,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task_definition.max_price = 1000
         task_definition.task_id = "xyz"
         task_definition.estimated_memory = 1024
-        task_definition.full_task_timeout = 3600
+        task_definition.timeout = 3600
         task_definition.subtask_timeout = 600
         task_definition.main_scene_file=files[1]
         task_definition.resolution = [800, 600]
@@ -430,7 +430,7 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
         # then
         assert definition.task_name == "NAME OF THE TASK"
         assert definition.max_price == 250000000000000000
-        assert definition.full_task_timeout == 3600
+        assert definition.timeout == 3600
         assert definition.subtask_timeout == 1500
         output_file = self.task_dict['name'] + "." + \
             self.task_dict['options']['format']
@@ -451,7 +451,7 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
                MIN_TIMEOUT in log_.output[0]
         assert "Subtask timeout 1 too short for this task. Changing to %d" % \
                SUBTASK_MIN_TIMEOUT in log_.output[1]
-        assert definition.full_task_timeout == MIN_TIMEOUT
+        assert definition.timeout == MIN_TIMEOUT
         assert definition.subtask_timeout == SUBTASK_MIN_TIMEOUT
 
     def test_main_scene_file(self):
