@@ -4,7 +4,6 @@ from golem_messages.factories.concents import FileTransferTokenFactory
 
 from golem.network.concent import filetransfers
 
-# pylint:disable=too-few-public-methods
 
 
 class ConcentFileRequestFactory(factory.Factory):

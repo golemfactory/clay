@@ -18,7 +18,7 @@ from .helpers import ssl_kwargs
 logger = logging.getLogger(__name__)
 
 
-class ConcentFileRequest():  # noqa pylint:disable=too-few-public-methods
+class ConcentFileRequest():  # noqa
     def __init__(self,  # noqa pylint:disable=too-many-arguments
                  file_path: str,
                  file_transfer_token: FileTransferToken,

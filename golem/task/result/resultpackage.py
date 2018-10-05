@@ -191,7 +191,7 @@ class EncryptingPackager(Packager):
         self._packager.write_cbor_file(obj, file_name, cbor_data)
 
 
-class TaskResultDescriptor(PrintableObject):  # noqa pylint:disable=too-few-public-methods
+class TaskResultDescriptor(PrintableObject):  # noqa
 
     def __init__(self, node, task_result):
         self.node_name = node.node_name
@@ -281,7 +281,7 @@ class ZipTaskResultPackager(TaskResultPackager, ZipPackager):
     pass
 
 
-class ExtractedPackage(PrintableObject):  # noqa pylint:disable=too-few-public-methods
+class ExtractedPackage(PrintableObject):  # noqa
 
     def __init__(self, files=None, files_dir="", descriptor=None, result=None):
         self.files = files or []
