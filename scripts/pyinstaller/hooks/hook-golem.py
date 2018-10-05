@@ -39,4 +39,5 @@ datas = [
      'golem/network/concent/resources/ssl/certs/'),
     ('scripts/create-share.ps1', 'scripts/'),
     ('scripts/get-ip-address.ps1', 'scripts/'),
+    ('scripts/create-vnet-switch.ps1', 'scripts/'),
 ]
