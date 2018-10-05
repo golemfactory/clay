@@ -158,7 +158,7 @@ class TestDockerLuxrenderTask(
 
         # assert good results - should pass
         self.assertEqual(task.num_tasks_received, 0)
-        task.computation_finished(subtask_id,
+        task.subtask_finished(subtask_id,
                                   [str(new_flm_file), str(new_preview_file)],
                                   result_type=ResultType.FILES,
                                   verification_finished=success)
@@ -184,7 +184,7 @@ class TestDockerLuxrenderTask(
         # assert bad results - should fail
         bad_flm_file = new_flm_file.parent / "badfile.flm"
         task.VERIFICATION_QUEUE._reset()
-        task.computation_finished(ctd['subtask_id'],
+        task.subtask_finished(ctd['subtask_id'],
                                   [str(bad_flm_file), str(new_preview_file)],
                                   result_type=ResultType.FILES,
                                   verification_finished=failure)

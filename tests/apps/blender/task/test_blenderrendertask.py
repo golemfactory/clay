@@ -129,7 +129,7 @@ class TestBlenderFrameTask(TempDirFixture):
         assert extra_data2.ctd is not None
 
         self.bt.computation_failed(extra_data1.ctd['subtask_id'])
-        self.bt.computation_finished(extra_data1.ctd['subtask_id'], [],
+        self.bt.subtask_finished(extra_data1.ctd['subtask_id'], [],
                                      ResultType.DATA)
         assert self.bt.subtasks_given[extra_data1.ctd['subtask_id']][
             'status'] == \
@@ -161,7 +161,7 @@ class TestBlenderFrameTask(TempDirFixture):
         with mock.patch('golem_verificator.rendering_verifier.'
                         'RenderingVerifier.start_verification',
                         side_effect=verification_finished1):
-            self.bt.computation_finished(
+            self.bt.subtask_finished(
                 extra_data3.ctd['subtask_id'],
                 [file1],
                 ResultType.FILES,
@@ -193,7 +193,7 @@ class TestBlenderFrameTask(TempDirFixture):
         with mock.patch('golem_verificator.rendering_verifier.'
                         'RenderingVerifier.start_verification',
                         side_effect=verification_finished2):
-            self.bt.computation_finished(
+            self.bt.subtask_finished(
                 extra_data4.ctd['subtask_id'],
                 [file2],
                 ResultType.FILES,

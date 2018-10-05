@@ -206,7 +206,7 @@ class CoreTask(Task):
     def computation_failed(self, subtask_id):
         self._mark_subtask_failed(subtask_id)
 
-    def computation_finished(self, subtask_id, task_result,
+    def subtask_finished(self, subtask_id, task_result,
                              result_type=ResultType.DATA,
                              verification_finished=None):
         if not self.should_accept(subtask_id):

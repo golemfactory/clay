@@ -213,7 +213,7 @@ class DummyTask(Task):
         return computation.check_pow(int(result, 16), input_data,
                                      self.task_params.difficulty)
 
-    def computation_finished(self, subtask_id, task_result,
+    def subtask_finished(self, subtask_id, task_result,
                              result_type=ResultType.DATA,
                              verification_finished=None):
         with self._lock:
@@ -236,7 +236,7 @@ class DummyTask(Task):
 
     def computation_failed(self, subtask_id):
         print('DummyTask.computation_failed called')
-        self.computation_finished(subtask_id, None)
+        self.subtask_finished(subtask_id, None)
 
     def restart(self):
         print('DummyTask.restart called')

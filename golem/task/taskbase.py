@@ -449,7 +449,7 @@ class Task(abc.ABC):
         return False
 
     @abc.abstractmethod
-    def computation_finished(self, subtask_id, task_result,
+    def subtask_finished(self, subtask_id, task_result,
                              result_type=ResultType.DATA,
                              verification_finished=None):
         """ Inform about finished subtask

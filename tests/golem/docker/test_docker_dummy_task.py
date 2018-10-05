@@ -119,7 +119,7 @@ class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
 
         # assert good results - should pass
         self.assertEqual(task.num_tasks_received, 0)
-        task.computation_finished(ctd['subtask_id'], [str(output)],
+        task.subtask_finished(ctd['subtask_id'], [str(output)],
                                   result_type=ResultType.FILES,
                                   verification_finished=success)
 
@@ -137,7 +137,7 @@ class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
         # assert bad results - should fail
         bad_output = output.parent / "badfile.result"
         ctd = task.query_extra_data(10000.).ctd
-        task.computation_finished(ctd['subtask_id'], [str(bad_output)],
+        task.subtask_finished(ctd['subtask_id'], [str(bad_output)],
                                   result_type=ResultType.FILES,
                                   verification_finished=failure)
         reactor.iterate()
