@@ -1,6 +1,5 @@
 # pylint: disable=protected-access,too-many-lines
 import datetime
-import json
 import os
 import time
 import uuid
@@ -19,7 +18,6 @@ from freezegun import freeze_time
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 
-from apps.dummy.task.dummytask import DummyTask
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 import golem
 from golem import model
@@ -32,7 +30,6 @@ from golem.client import Client, ClientTaskComputerEventListener, \
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
-from golem.core.simpleserializer import DictSerializer
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.node import Node
@@ -1068,23 +1065,47 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         result = c.check_test_status()
         self.assertFalse(result)
 
-        c.task_test_result = json.dumps({"status": TaskTestStatus.started})
+        c.task_test_result = {"status": TaskTestStatus.started}
         result = c.check_test_status()
-        print(result)
-        self.assertEqual(c.task_test_result, result)
-
-        c.task_test_result = json.dumps({"status": TaskTestStatus.success})
-        result = c.check_test_status()
-        self.assertEqual(c.task_test_result, None)
+        self.assertEqual({"status": TaskTestStatus.started.value}, result)
 
     def test_create_task(self, *_):
-        t = DummyTask(total_tasks=10, owner=Node(node_name="node_name"),
-                      task_definition=DummyTaskDefinition())
+        t = DummyTaskDefinition()
+        t.task_name = "test"
 
         c = self.client
-        c.enqueue_new_task = Mock()
-        c.create_task(DictSerializer.dump(t))
+        c.enqueue_new_task = Mock(return_value=(Mock(), 'task_id'))
+        result = c.create_task(t.to_dict())
         self.assertTrue(c.enqueue_new_task.called)
+        self.assertEqual(result, ('task_id', None))
+
+    def test_create_task_fail_on_empty_dict(self, *_):
+        c = self.client
+        c.enqueue_new_task = Mock(return_value=(Mock(), 'task_id'))
+        result = c.create_task({})
+        assert result == (None,
+                          "Length of task name cannot be less "
+                          "than 4 or more than 24 characters.")
+
+    def test_create_task_fail_on_too_long_name(self, *_):
+        c = self.client
+        c.enqueue_new_task = Mock(return_value=(Mock(), 'task_id'))
+        result = c.create_task({
+            "name": "This name has 27 characters"
+        })
+        assert result == (None,
+                          "Length of task name cannot be less "
+                          "than 4 or more than 24 characters.")
+
+    def test_create_task_fail_on_illegal_character_in_name(self, *_):
+        c = self.client
+        c.enqueue_new_task = Mock(return_value=(Mock(), 'task_id'))
+        result = c.create_task({
+            "name": "Golem task/"
+        })
+        assert result == (None,
+                          "Task name can only contain letters, numbers, "
+                          "spaces, underline, dash or dot.")
 
     def test_delete_task(self, *_):
         c = self.client
@@ -1197,44 +1218,115 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             task_id, 1
         )
 
-    def test_connection_status(self, *_):
+    def test_connection_status_not_listening(self, *_):
         c = self.client
 
-        # not connected
-        self.assertTrue(
-            c.connection_status().startswith("Application not listening")
-        )
+        # when
+        status = c.connection_status()
 
-        # status without peers
+        # then
+        assert not status['listening']
+
+        msg = status['msg']
+        assert "not listening" in msg
+        assert "Not connected" not in msg
+        assert "Connected" not in msg
+
+    def test_connection_status_without_peers(self, *_):
+        c = self.client
+
+        # given
         c.p2pservice.cur_port = 12345
         c.task_server.cur_port = 12346
 
-        # status without peers
-        self.assertTrue(c.connection_status().startswith("Not connected"))
+        # when
+        status = c.connection_status()
 
-        # peers
+        # then
+        assert status['listening']
+        assert not status['connected']
+
+        msg = status['msg']
+        assert "not listening" not in msg
+        assert "Not connected" in msg
+        assert "Connected" not in msg
+
+    def test_connection_status_with_peers(self, *_):
+        c = self.client
+
+        # given
+        c.p2pservice.cur_port = 12345
+        c.task_server.cur_port = 12346
+        c.p2pservice.peers = {str(i): self.__new_session() for i in range(4)}
+
+        # when
+        status = c.connection_status()
+
+        # then
+        assert status['listening']
+        assert status['connected']
+
+        msg = status['msg']
+        assert "not listening" not in msg
+        assert "Not connected" not in msg
+        assert "Connected" in msg
+
+    def test_connection_status_port_statuses(self, *_):
+        c = self.client
+
+        # given
+        c.p2pservice.cur_port = 12345
+        c.task_server.cur_port = 12346
+        c.p2pservice.peers = {str(i): self.__new_session() for i in range(4)}
+
+        port_statuses = {
+            1234: "open",
+            2345: "unreachable",
+        }
+        c.node.port_statuses = port_statuses
+
+        # when
+        status = c.connection_status()
+
+        # then
+        assert status['port_statuses'] == port_statuses
+
+        msg = status['msg']
+        assert "not listening" not in msg
+        assert "Not connected" not in msg
+        assert "Connected" in msg
+        assert "Port(s)" in msg
+        assert "1234: open" in msg
+        assert "2345: unreachable" in msg
+
+    def test_get_known_peers(self, *_):
+        c = self.client
+
+        # given
         c.p2pservice.incoming_peers = {
             str(i): self.__new_incoming_peer()
             for i in range(3)
         }
-        c.p2pservice.peers = {str(i): self.__new_session() for i in range(4)}
 
+        # when
         known_peers = c.get_known_peers()
+
+        # then
         self.assertEqual(len(known_peers), 3)
         self.assertTrue(all(peer for peer in known_peers))
 
+    def test_get_connected_peers(self, *_):
+        c = self.client
+
+        # given
+        c.p2pservice.peers = {str(i): self.__new_session() for i in range(4)}
+
+        # when
         connected_peers = c.get_connected_peers()
+
+        # then
         self.assertEqual(len(connected_peers), 4)
         self.assertTrue(all(peer for peer in connected_peers))
-
-        # status with peers
-        self.assertTrue(c.connection_status().startswith("Connected"))
-
-        # status without ports
-        c.p2pservice.cur_port = 0
-        self.assertTrue(
-            c.connection_status().startswith("Application not listening")
-        )
 
     def test_provider_status_starting(self, *_):
         # given
@@ -1369,11 +1461,10 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             'node_id', persist=True)
 
     def _check_task_tester_result(self):
-        self.assertIsInstance(self.client.task_test_result, str)
-        test_result = json.loads(self.client.task_test_result)
-        self.assertEqual(test_result, {
+        self.assertIsInstance(self.client.task_test_result, dict)
+        self.assertEqual(self.client.task_test_result, {
             "status": TaskTestStatus.started,
-            "error": True
+            "error": None
         })
 
     def test_run_test_task_success(self, *_):
@@ -1390,9 +1481,8 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
                 patch('golem.client.TaskTester.run', _run):
             self.client._run_test_task({})
 
-        self.assertIsInstance(self.client.task_test_result, str)
-        test_result = json.loads(self.client.task_test_result)
-        self.assertEqual(test_result, {
+        self.assertIsInstance(self.client.task_test_result, dict)
+        self.assertEqual(self.client.task_test_result, {
             "status": TaskTestStatus.success,
             "result": result,
             "estimated_memory": estimated_memory,
@@ -1401,7 +1491,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         })
 
     def test_run_test_task_error(self, *_):
-        error = ['error', 'error']
+        error = ('error', 'error')
         more = {'more': 'more'}
 
         def _run(_self: TaskTester):
@@ -1412,9 +1502,8 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
                 patch('golem.client.TaskTester.run', _run):
             self.client._run_test_task({})
 
-        self.assertIsInstance(self.client.task_test_result, str)
-        test_result = json.loads(self.client.task_test_result)
-        self.assertEqual(test_result, {
+        self.assertIsInstance(self.client.task_test_result, dict)
+        self.assertEqual(self.client.task_test_result, {
             "status": TaskTestStatus.error,
             "error": error,
             "more": more

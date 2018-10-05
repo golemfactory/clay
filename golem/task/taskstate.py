@@ -127,7 +127,7 @@ class SubtaskStatus(Enum):
         return self in [self.starting, self.downloading, self.verifying]
 
 
-class TaskTestStatus(object):
+class TaskTestStatus(Enum):
     started = 'Started'
     success = 'Success'
     error = 'Error'

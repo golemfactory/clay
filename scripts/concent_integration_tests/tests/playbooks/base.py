@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 import re
 import sys
 import tempfile
@@ -12,7 +11,9 @@ from twisted.internet import reactor, task
 from twisted.internet.error import ReactorNotRunning
 from twisted.internet import _sslverify  # pylint: disable=protected-access
 
-from scripts.concent_integration_tests.rpc.client import call_requestor, call_provider
+from scripts.concent_integration_tests.rpc.client import (
+    call_requestor, call_provider
+)
 from scripts.concent_integration_tests import helpers
 
 _sslverify.platformTrust = lambda: None
@@ -42,6 +43,9 @@ class NodeTestPlaybook:
     task_id = None
     started = False
     task_in_creation = False
+
+    task_package = None
+    task_settings = 'default'
 
     @property
     def current_step_method(self):
@@ -80,15 +84,16 @@ class NodeTestPlaybook:
 
     def _wait_gnt_eth(self, role, result):
         gnt_balance = int(result.get('gnt')) / denoms.ether
+        gntb_balance = int(result.get('av_gnt')) / denoms.ether
         eth_balance = int(result.get('eth')) / denoms.ether
-        if gnt_balance > 0 and eth_balance > 0:
-            print("{} has {} GNT and {} ETH.".format(
-                role.capitalize(), gnt_balance, eth_balance))
+        if gnt_balance > 0 and eth_balance > 0 and gntb_balance > 0:
+            print("{} has {} GNT ({} GNTB) and {} ETH.".format(
+                role.capitalize(), gnt_balance, gntb_balance, eth_balance))
             self.next()
 
         else:
-            print("Waiting for {} GNT/ETH ({}/{})".format(
-                role.capitalize(), gnt_balance, eth_balance))
+            print("Waiting for {} GNT/GNTB/ETH ({}/{}/{})".format(
+                role.capitalize(), gnt_balance, gntb_balance, eth_balance))
             time.sleep(15)
 
     def step_wait_provider_gnt(self):
@@ -183,7 +188,10 @@ class NodeTestPlaybook:
 
     def step_create_task(self):
         task_dict = helpers.construct_test_task(
-            'test_task_1', tempfile.mkdtemp())
+            task_package_name=self.task_package,
+            output_path=tempfile.mkdtemp(),
+            task_settings=self.task_settings,
+        )
 
         def on_success(result):
             if result[0]:
@@ -256,6 +264,25 @@ class NodeTestPlaybook:
         step_wait_task_finished,
     )
 
+    def start_nodes(self):
+        self.provider_node = helpers.run_golem_node(
+            self.provider_node_script
+        )
+        self.requestor_node = helpers.run_golem_node(
+            self.requestor_node_script
+        )
+
+        self.provider_output_queue = helpers.get_output_queue(
+            self.provider_node)
+        self.requestor_output_queue = helpers.get_output_queue(
+            self.requestor_node)
+        self.started = True
+
+    def stop_nodes(self):
+        helpers.gracefully_shutdown(self.provider_node, 'Provider')
+        helpers.gracefully_shutdown(self.requestor_node, 'Requestor')
+        self.started = False
+
     def run(self):
         try:
             method = self.current_step_method
@@ -281,28 +308,23 @@ class NodeTestPlaybook:
             if provider_exit is not None and requestor_exit is not None:
                 self.fail()
 
-    def __init__(self):
+    def __init__(self, task_package: str='test_task_1', **kwargs) -> None:
         if not self.provider_node_script or not self.requestor_node_script:
             raise NotImplementedError(
                 "Provider and Requestor scripts need to be set")
 
-        self.provider_node = helpers.run_golem_node(
-            self.provider_node_script
-        )
-        self.requestor_node = helpers.run_golem_node(
-            self.requestor_node_script
-        )
+        if task_package:
+            self.task_package = task_package
 
-        self.provider_output_queue = helpers.get_output_queue(
-            self.provider_node)
-        self.requestor_output_queue = helpers.get_output_queue(
-            self.requestor_node)
+        for attr, val in kwargs.items():
+            setattr(self, attr, val)
 
+        self.start_nodes()
         self.started = True
 
     @classmethod
-    def start(cls):
-        playbook = cls()
+    def start(cls, *args, **kwargs):
+        playbook = cls(*args, **kwargs)
         playbook.start_time = time.time()
         playbook._loop = task.LoopingCall(playbook.run)
         d = playbook._loop.start(cls.INTERVAL, False)
@@ -324,7 +346,6 @@ class NodeTestPlaybook:
         except ReactorNotRunning:
             pass
 
-        helpers.gracefully_shutdown(self.provider_node, 'Provider')
-        helpers.gracefully_shutdown(self.requestor_node, 'Requestor')
-
+        self.stop_nodes()
         self.exit_code = exit_code
+

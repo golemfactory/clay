@@ -234,6 +234,11 @@ class RenderingTask(CoreTask):
                 logger.debug('Saving new preview: %r', self.preview_file_path)
                 img.save(self.preview_file_path, ext)
 
+        logger.debug(
+            'Opening preview: %r, exists?: %s',
+            self.preview_file_path,
+            os.path.exists(self.preview_file_path)
+        )
         return Image.open(self.preview_file_path)
 
     def _use_outer_task_collector(self):
@@ -249,6 +254,10 @@ class RenderingTask(CoreTask):
 
     def __get_path_windows(self, path):
         return path.replace("\\", "/")
+
+
+class RenderingTaskBuilderError(Exception):
+    pass
 
 
 class RenderingTaskBuilder(CoreTaskBuilder):
@@ -274,7 +283,7 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         candidates = [res for res in resources if any(res.lower().endswith(ext.lower())
                                             for ext in extensions)]
         if not candidates:
-            raise Exception("Scene file was not found.")
+            raise RenderingTaskBuilderError("Scene file was not found.")
 
         candidates.sort(key=len)
         return candidates[0]
@@ -303,7 +312,13 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         resources = dictionary['resources']
 
         definition = parent.build_minimal_definition(task_type, dictionary)
-        definition.main_scene_file = cls._scene_file(task_type, resources)
+
+        if 'main_scene_file' in dictionary:
+            main_scene_file = dictionary['main_scene_file']
+        else:
+            main_scene_file = cls._scene_file(task_type, resources)
+
+        definition.main_scene_file = main_scene_file
         return definition
 
     @classmethod
