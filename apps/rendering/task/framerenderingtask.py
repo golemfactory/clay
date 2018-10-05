@@ -28,21 +28,21 @@ DEFAULT_PADDING = 4
 
 
 def calculate_subtasks_count_with_frames(
-        total_subtasks: int,
+        subtasks_count: int,
         frames: list) -> int:
     num_frames = len(frames)
     est_f: float
-    if total_subtasks > num_frames:
-        est_f = math.floor(total_subtasks / num_frames) * num_frames
+    if subtasks_count > num_frames:
+        est_f = math.floor(subtasks_count / num_frames) * num_frames
         est = int(est_f)
-        if est != total_subtasks:
+        if est != subtasks_count:
             logger.warning("Too many subtasks for this task. %s "
                            "subtasks will be used", est)
         return est
 
-    est_f = num_frames / math.ceil(num_frames / total_subtasks)
+    est_f = num_frames / math.ceil(num_frames / subtasks_count)
     est = int(math.ceil(est_f))
-    if est != total_subtasks:
+    if est != subtasks_count:
         logger.warning("Too many subtasks for this task. %s "
                        "subtasks will be used.", est)
 
@@ -50,23 +50,23 @@ def calculate_subtasks_count_with_frames(
 
 
 def calculate_subtasks_count(
-        total_subtasks: int,
+        subtasks_count: int,
         optimize_total: bool,
         use_frames: bool,
         frames: list) -> int:
     defaults = RendererDefaults()
-    if optimize_total or not total_subtasks:
+    if optimize_total or not subtasks_count:
         if use_frames:
             return len(frames)
         return defaults.default_subtasks
 
     if use_frames:
         return calculate_subtasks_count_with_frames(
-            total_subtasks=total_subtasks,
+            subtasks_count=subtasks_count,
             frames=frames,
         )
 
-    total = total_subtasks
+    total = subtasks_count
     if defaults.min_subtasks <= total <= defaults.max_subtasks:
         return total
     return defaults.default_subtasks
@@ -500,7 +500,7 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
 
     def _calculate_total(self, defaults):
         return calculate_subtasks_count(
-            total_subtasks=self.task_definition.total_subtasks,
+            subtasks_count=self.task_definition.subtasks_count,
             optimize_total=self.task_definition.optimize_total,
             use_frames=self.task_definition.options.use_frames,
             frames=self.task_definition.options.frames,

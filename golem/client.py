@@ -862,7 +862,7 @@ class Client(HardwarePresetsMixin):
         optimize_total = bool(options.get('optimize_total', False))
         if subtasks and not optimize_total:
             computed_subtasks = self.get_subtasks_count(
-                total_subtasks=subtasks,
+                subtasks_count=subtasks,
                 optimize_total=False,
                 use_frames=options.get('frame_count', 1) > 1,
                 frames=[None]*options.get('frame_count', 1),
@@ -1313,13 +1313,13 @@ class Client(HardwarePresetsMixin):
     # golem.rpc.mapping.rpcmethodnames
     def get_subtasks_count(  # pylint: disable=no-self-use
             self,
-            total_subtasks: int,
+            subtasks_count: int,
             optimize_total: bool,
             use_frames: bool,
             frames: list):
         """Returns computed number of subtasks, before task creation."""
         return framerenderingtask.calculate_subtasks_count(
-            total_subtasks=total_subtasks,
+            subtasks_count=subtasks_count,
             optimize_total=optimize_total,
             use_frames=use_frames,
             frames=frames,

@@ -60,13 +60,13 @@ class LuxRenderTaskTypeInfo(CoreTaskTypeInfo):
         self.output_file_ext = ["lxs"]
 
     @classmethod
-    def get_task_border(cls, subtask, definition, total_subtasks,
+    def get_task_border(cls, subtask, definition, subtasks_count,
                         output_num=1, as_path=False):
         """ Return list of pixels that should be marked as a border of
          a given subtask
         :param SubtaskState subtask: subtask state description
         :param RenderingTaskDefinition definition: task definition
-        :param int total_subtasks: total number of subtasks used in this task
+        :param int subtasks_count: total number of subtasks used in this task
         :param int output_num: number of final output files
         :param int as_path: return pixels that form a border path
         :return list: list of pixels that belong to a subtask border
@@ -97,14 +97,14 @@ class LuxRenderTaskTypeInfo(CoreTaskTypeInfo):
         return border
 
     @classmethod
-    def get_task_num_from_pixels(cls, x, y, definition, total_subtasks,
+    def get_task_num_from_pixels(cls, x, y, definition, subtasks_count,
                                  output_num=1):
         """
         Compute number of subtask that represents pixel (x, y) on preview
         :param int x: x coordinate
         :param int y: y coordiante
         :param TaskDefintion definition: task definition
-        :param int total_subtasks: total number of subtasks used in this task
+        :param int subtasks_count: total number of subtasks used in this task
         :param int output_num: number of final output files
         :return int: subtask's number
         """

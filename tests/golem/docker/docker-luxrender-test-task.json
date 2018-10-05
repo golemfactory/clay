@@ -94,7 +94,7 @@
   "main_program_file":"$GOLEM_DIR/apps/lux/resources/scripts/docker_luxtask.py",
   "max_price": 10.2,
   "subtask_timeout":1200,
-  "total_subtasks":3,
+  "subtasks_count":3,
   "docker_images":[
     {
       "py/object": "golem.docker.image.DockerImage",

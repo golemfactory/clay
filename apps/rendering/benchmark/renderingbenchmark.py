@@ -23,7 +23,7 @@ class RenderingBenchmark(CoreBenchmark):
         self._task_definition.optimize_total = False
         self._task_definition.resources = set()
         self._task_definition.total_tasks = 1
-        self._task_definition.total_subtasks = 1
+        self._task_definition.subtasks_count = 1
         self._task_definition.start_task = 1
         self._task_definition.end_task = 1
         self._task_definition.task_id = str(uuid.uuid4())

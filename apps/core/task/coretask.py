@@ -59,13 +59,13 @@ class CoreTaskTypeInfo(TaskTypeInfo):
 
     @classmethod
     # pylint:disable=unused-argument
-    def get_task_num_from_pixels(cls, x, y, definition, total_subtasks,
+    def get_task_num_from_pixels(cls, x, y, definition, subtasks_count,
                                  output_num=1):
         return 0
 
     @classmethod
     # pylint:disable=unused-argument
-    def get_task_border(cls, subtask, definition, total_subtasks,
+    def get_task_border(cls, subtask, definition, subtasks_count,
                         output_num=1, as_path=False):
         return []
 
@@ -566,7 +566,7 @@ class CoreTaskBuilder(TaskBuilder):
         return task
 
     def get_task_kwargs(self, **kwargs):
-        kwargs['total_tasks'] = int(self.task_definition.total_subtasks)
+        kwargs['total_tasks'] = int(self.task_definition.subtasks_count)
         kwargs["task_definition"] = self.task_definition
         kwargs["owner"] = self.owner
         kwargs["root_path"] = self.root_path
@@ -579,7 +579,7 @@ class CoreTaskBuilder(TaskBuilder):
         definition.task_type = task_type.name
         definition.compute_on = dictionary.get('compute_on', 'cpu')
         definition.resources = set(dictionary['resources'])
-        definition.total_subtasks = int(dictionary['subtasks'])
+        definition.subtasks_count = int(dictionary['subtasks'])
         definition.main_program_file = task_type.defaults.main_program_file
         return definition
 

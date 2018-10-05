@@ -39,13 +39,13 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
     @patch(
         "apps.lux.task.luxrendertask.LuxTask.create_reference_data_for_task_validation")  # since we dont need it, lets patch it to speed up the tests
-    def get_test_lux_task(self, create_reference_data_for_task_validation_mock, haltspp=20, total_subtasks=10):
+    def get_test_lux_task(self, create_reference_data_for_task_validation_mock, haltspp=20, subtasks_count=10):
         create_reference_data_for_task_validation_mock.return_value = None
 
         td = RenderingTaskDefinition()
         lro = LuxRenderOptions()
         lro.haltspp = haltspp
-        td.total_subtasks = total_subtasks
+        td.subtasks_count = subtasks_count
         td.options = lro
         td.task_id = str(uuid.uuid4())
 
@@ -62,11 +62,11 @@ class TestLuxRenderTask(TempDirFixture, LogTestCase, PEP8MixIn):
 
         self.__after_test_errors(luxtask)
         self.__queries(luxtask)
-        luxtask = self.get_test_lux_task(haltspp=19, total_subtasks=10)
+        luxtask = self.get_test_lux_task(haltspp=19, subtasks_count=10)
         assert luxtask.haltspp == 2
-        luxtask = self.get_test_lux_task(haltspp=11, total_subtasks=10)
+        luxtask = self.get_test_lux_task(haltspp=11, subtasks_count=10)
         assert luxtask.haltspp == 2
-        luxtask = self.get_test_lux_task(haltspp=10, total_subtasks=10)
+        luxtask = self.get_test_lux_task(haltspp=10, subtasks_count=10)
         assert luxtask.haltspp == 1
 
     def __after_test_errors(self, luxtask):
@@ -387,7 +387,7 @@ class TestLuxRenderTaskBuilder(TempDirFixture):
         td = RenderingTaskDefinition()
         td.task_type = 'LuxRender'
         td.max_price = 5.0
-        td.total_subtasks = 5
+        td.subtasks_count = 5
         td.main_scene_file = os.path.join(self.path, 'scene.lxs')
         td.options = LuxRenderOptions()
         td.add_to_resources()
@@ -417,5 +417,5 @@ class TestLuxRenderTaskBuilder(TempDirFixture):
         assert definition.task_id == dictionary['id']
         assert definition.task_type == 'LuxRender'
         assert definition.max_price == dictionary['bid'] * denoms.ether
-        assert definition.total_subtasks == dictionary['subtasks']
+        assert definition.subtasks_count == dictionary['subtasks']
         assert definition.options.haltspp == dictionary['options']['haltspp']

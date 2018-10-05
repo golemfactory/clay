@@ -38,7 +38,7 @@ class TaskDefinition(object):
         self.resources = set()
         self.estimated_memory = 0
 
-        self.total_subtasks = 0
+        self.subtasks_count = 0
         self.optimize_total = False
         self.main_program_file = ""
         self.output_file = ""
@@ -89,7 +89,7 @@ class TaskDefinition(object):
         """
         return {
             "options": self.options,
-            "total_subtasks": self.total_subtasks,
+            "subtasks_count": self.subtasks_count,
             "optimize_total": self.optimize_total,
             "verification_options": self.verification_options
         }
@@ -99,7 +99,7 @@ class TaskDefinition(object):
         :param dict preset: Dictionary with shared options
         """
         self.options = preset["options"]
-        self.total_subtasks = preset["total_subtasks"]
+        self.subtasks_count = preset["subtasks_count"]
         self.optimize_total = preset["optimize_total"]
         self.verification_options = preset["verification_options"]
 
@@ -115,7 +115,7 @@ class TaskDefinition(object):
             'name': self.task_name,
             'timeout': task_timeout,
             'subtask_timeout': subtask_timeout,
-            'subtasks': self.total_subtasks,
+            'subtasks': self.subtasks_count,
             'bid': float(self.max_price) / denoms.ether,
             'resources': list(self.resources),
             'options': {

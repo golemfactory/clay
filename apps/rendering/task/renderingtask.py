@@ -268,7 +268,7 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         if self.task_definition.optimize_total:
             return defaults.default_subtasks
 
-        total = self.task_definition.total_subtasks
+        total = self.task_definition.subtasks_count
 
         if defaults.min_subtasks <= total <= defaults.max_subtasks:
             return total
