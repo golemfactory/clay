@@ -12,7 +12,7 @@ from unittest.mock import Mock, patch
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import get_golem_path, timeout_to_deadline, is_windows
+from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.simpleserializer import DictSerializer
 from golem.docker.task_thread import DockerTaskThread
 from golem.network.p2p.node import Node as P2PNode
@@ -32,7 +32,7 @@ PathOrStr = Union[Path, AnyStr]
 class TaskComputerExt(TaskComputer):
 
     @property  # type: ignore
-    def counting_thread(self):  # noqa
+    def counting_thread(self):
         return getattr(self, '_counting_thread', None)
 
     @counting_thread.setter

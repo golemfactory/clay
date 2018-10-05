@@ -212,7 +212,7 @@ class EncryptingPackager(Packager):
         self._packager.write_cbor_file(obj, file_name, cbor_data)
 
 
-class TaskResultDescriptor(PrintableObject):  # noqa
+class TaskResultDescriptor(PrintableObject):
 
     def __init__(self, node, task_result):
         self.node_name = node.node_name
@@ -302,7 +302,7 @@ class ZipTaskResultPackager(TaskResultPackager, ZipPackager):
     pass
 
 
-class ExtractedPackage(PrintableObject):  # noqa
+class ExtractedPackage(PrintableObject):
 
     def __init__(self, files=None, files_dir="", descriptor=None, result=None):
         self.files = files or []
