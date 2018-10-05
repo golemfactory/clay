@@ -1,6 +1,5 @@
 # pylint: disable=no-member
 # pylint: disable=unused-argument
-# pylint: disable=too-few-public-methods
 from golem import model
 
 SCHEMA_VERSION = 20

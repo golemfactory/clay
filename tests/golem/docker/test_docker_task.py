@@ -1,4 +1,4 @@
-# pylint: disable=too-few-public-methods,too-many-locals
+# pylint: disable=too-many-locals
 
 import json
 import os

@@ -1,4 +1,4 @@
-# pylint: disable=too-few-public-methods
+
 import factory
 from golem_messages import idgenerator
 

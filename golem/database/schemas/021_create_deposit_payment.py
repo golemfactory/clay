@@ -1,6 +1,5 @@
 # pylint: disable=no-member
 # pylint: disable=unused-argument
-# pylint: disable=too-few-public-methods
 import datetime
 
 import peewee as pw

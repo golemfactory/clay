@@ -12,7 +12,7 @@ from .transactionsystem import TransactionSystem
 logger = logging.getLogger(__name__)
 
 
-class TaskFundsLock:  # pylint: disable=too-few-public-methods
+class TaskFundsLock:
     def __init__(self, task):
         self.price = task.subtask_price
         self.num_tasks = task.total_tasks
