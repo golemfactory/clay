@@ -23,9 +23,6 @@ cd ${PROJECT_DIR}/golem
 echo "Build taskcollector"
 make -C apps/rendering/resources/taskcollector
 
-docker-machine create golem --driver xhyve
-
 echo "Run update from previous directory"
 cd ${CUR_DIR}
 ./golem_source_update.sh
-
