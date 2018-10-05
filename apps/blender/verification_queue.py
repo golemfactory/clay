@@ -14,7 +14,7 @@ logger = logging.getLogger("apps.blender.verification")
 
 class VerificationQueue:
 
-    VERIFICATION_TIMEOUT = 2
+    VERIFICATION_TIMEOUT = 90
     RESTART_DELAY = 5
 
     def __init__(self, concurrency: int = 1) -> None:
@@ -83,16 +83,16 @@ class VerificationQueue:
                 self._jobs.pop(subtask_id, None)
                 self._process_queue()
 
-        def errback(_):
+        def errback(error):
             if self._timed_out:
                 logger.warning("Timeout detected for subtask %s", subtask_id)
                 self._timed_out = False
                 reactor.callLater(VerificationQueue.RESTART_DELAY,
                                   self._process_queue)
+
             else:
-                logger.warning("Finishing verification with fail")
+                logger.warning("Finishing verification with fail %s", error)
                 callback(entry.get_results())
-            return True
 
         from twisted.internet import reactor
         result = entry.start(verifier_cls)
@@ -104,7 +104,6 @@ class VerificationQueue:
                                  event=result, subtask_id=subtask_id,
                                  verifier_cls=verifier_cls)
 
-            VerificationQueue.VERIFICATION_TIMEOUT += 2
             result.addTimeout(VerificationQueue.VERIFICATION_TIMEOUT, reactor,
                               onTimeoutCancel=fn_timeout)
             self._jobs[subtask_id] = result

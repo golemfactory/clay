@@ -236,6 +236,7 @@ class BlenderReferenceGenerator:
                      num_crops: int = DEFAULT_CROPS_NUMBER,
                      crop_size: Optional[Tuple[int, int]] = None) \
             -> List[Deferred]:
+        self.stopped = False
         crops_path = os.path.join(subtask_info['tmp_dir'],
                                   subtask_info['subtask_id'])
         crops_info = self.generate_crops_data((subtask_info['res_x'],
