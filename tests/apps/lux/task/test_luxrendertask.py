@@ -400,7 +400,7 @@ class TestLuxRenderTaskBuilder(TempDirFixture):
         dictionary = LuxRenderTaskBuilder.build_dictionary(task.task_definition)
 
         assert dictionary['id'] is not None
-        assert dictionary['subtasks'] == 5
+        assert dictionary['subtasks_count'] == 5
         assert dictionary['bid'] == 5.0 / denoms.ether
         assert dictionary['type'] == 'LuxRender'
         assert dictionary['options']['haltspp'] is not None
@@ -417,5 +417,5 @@ class TestLuxRenderTaskBuilder(TempDirFixture):
         assert definition.task_id == dictionary['id']
         assert definition.task_type == 'LuxRender'
         assert definition.max_price == dictionary['bid'] * denoms.ether
-        assert definition.subtasks_count == dictionary['subtasks']
+        assert definition.subtasks_count == dictionary['subtasks_count']
         assert definition.options.haltspp == dictionary['options']['haltspp']

@@ -344,7 +344,7 @@ class TestClient(TestClientBase):
             },
             'resources': [str(some_file_path)],
             'subtask_timeout': timeout_to_string(3),
-            'subtasks': 1,
+            'subtasks_count': 1,
             'timeout': timeout_to_string(3),
             'type': 'Dummy',
         }
@@ -843,7 +843,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             'name': 'Golem Task 17:41:45 GMT+0200 (CEST)',
             'type': 'blender',
             'timeout': '09:25:00',
-            'subtasks': '6',
+            'subtasks_count': '6',
             'subtask_timeout': '4:10:00',
             'bid': '0.000032',
             'options': {
@@ -909,7 +909,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             'name': 'Golem Task 17:41:45 GMT+0200 (CEST)',
             'type': 'blender',
             'timeout': '09:25:00',
-            'subtasks': '6',
+            'subtasks_count': '6',
             'subtask_timeout': '4:10:00',
             'bid': '0.000032',
             'options': {
@@ -1521,7 +1521,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
                 {
                     'type': 'blender',
                     'resources': ['_.blend'],
-                    'subtasks': 1,
+                    'subtasks_count': 1,
                 })
 
     @classmethod

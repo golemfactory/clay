@@ -115,7 +115,7 @@ class TaskDefinition(object):
             'name': self.task_name,
             'timeout': task_timeout,
             'subtask_timeout': subtask_timeout,
-            'subtasks': self.subtasks_count,
+            'subtasks_count': self.subtasks_count,
             'bid': float(self.max_price) / denoms.ether,
             'resources': list(self.resources),
             'options': {

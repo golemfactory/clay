@@ -484,7 +484,7 @@ class TestTasks(TempDirFixture):
         cls.tasks = [{
             'id': '745c1d0{}'.format(i),
             'time_remaining': i,
-            'subtasks': i + 2,
+            'subtasks_count': i + 2,
             'status': 'waiting',
             'progress': i / 100.0
         } for i in range(1, 6)]
@@ -624,7 +624,7 @@ class TestTasks(TempDirFixture):
             assert one_task == {
                 'time_remaining': '0:00:01',
                 'status': 'waiting',
-                'subtasks': 3,
+                'subtasks_count': 3,
                 'id': '745c1d01',
                 'progress': '1.00 %'
             }

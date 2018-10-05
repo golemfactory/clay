@@ -341,7 +341,7 @@ class CoreTask(Task):
             'id': to_unicode(self.header.task_id),
             'name': to_unicode(self.task_definition.task_name),
             'type': to_unicode(self.task_definition.task_type),
-            'subtasks': self.get_total_tasks(),
+            'subtasks_count': self.get_total_tasks(),
             'progress': self.get_progress()
         }
 
@@ -579,7 +579,7 @@ class CoreTaskBuilder(TaskBuilder):
         definition.task_type = task_type.name
         definition.compute_on = dictionary.get('compute_on', 'cpu')
         definition.resources = set(dictionary['resources'])
-        definition.subtasks_count = int(dictionary['subtasks'])
+        definition.subtasks_count = int(dictionary['subtasks_count'])
         definition.main_program_file = task_type.defaults.main_program_file
         return definition
 

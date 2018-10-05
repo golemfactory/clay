@@ -385,7 +385,7 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
             'resources': {"file1.png", "file2.txt", 'file3.jpg', 'file4.txt'},
             'compute_on': 'cpu',
             'task_type': 'TESTTASK',
-            'subtasks': 1
+            'subtasks_count': 1
         }
 
         # when
@@ -412,7 +412,7 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
             'resources': {"file1.png", "file2.txt", 'file3.jpg', 'file4.txt'},
             'compute_on': 'cpu',
             'task_type': 'TESTTASK',
-            'subtasks': 1,
+            'subtasks_count': 1,
             'options': {'output_path': self.path,
                         'format': 'PNG',
                         'resolution': [800, 600]},

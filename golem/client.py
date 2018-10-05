@@ -857,7 +857,7 @@ class Client(HardwarePresetsMixin):
             logger.warning("discarding the UUID from the preset")
             del t_dict['id']
 
-        subtasks = t_dict.get('subtasks', 0)
+        subtasks = t_dict.get('subtasks_count', 0)
         options = t_dict.get('options', {})
         optimize_total = bool(options.get('optimize_total', False))
         if subtasks and not optimize_total:
