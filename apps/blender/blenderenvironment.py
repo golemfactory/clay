@@ -54,12 +54,13 @@ class BlenderNVGPUEnvironment(BlenderEnvironment):
 
 class BlenderSGXEnvironment(BlenderEnvironment):
 
-    DOCKER_IMAGE = "golemfactory/blender_sgx"
-    DOCKER_TAG = "1.0"
+    DOCKER_IMAGE = "golemfactory/blender"
+    DOCKER_TAG = "1.4"
     ENV_ID = "BLENDER_SGX"
     SHORT_DESCRIPTION = "Blender + Intel® SGX (www.blender.org)"
 
     def check_support(self) -> SupportStatus:
+        return SupportStatus.ok()
         if not sgx.is_supported():
             return SupportStatus.err({
                 UnsupportReason.ENVIRONMENT_UNSUPPORTED: self.ENV_ID

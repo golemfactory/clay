@@ -360,9 +360,9 @@ class BlenderSGXTaskTypeInfo(RenderingTaskTypeInfo):
     def __init__(self):
         super().__init__("Blender_SGX",
                          RenderingTaskDefinition,
-                         BlenderNVGPUDefaults(),
-                         BlenderNVGPURendererOptions,
-                         BlenderNVGPURenderTaskBuilder)
+                         BlenderSGXDefaults(),
+                         BlenderSGXRendererOptions,
+                         BlenderSGXRenderTaskBuilder)
 
         self.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
         self.output_file_ext = ["blend"]
