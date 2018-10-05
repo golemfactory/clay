@@ -457,7 +457,7 @@ class FiletransfersTestBase(TaskServerMessageHandlerTestBase):
         self.addCleanup(cft_patch.stop)
 
 
-class FileTransferTokenTestsBase:  # noqa
+class FileTransferTokenTestsBase:
 
     def setUp(self):
         super().setUp()  # noqa: pylint:disable=no-member
