@@ -1,3 +1,4 @@
+import errno
 import logging
 import os
 import shutil
@@ -12,6 +13,9 @@ logger = logging.getLogger(__name__)
 # the solution would be to replicate code_dir behaviour from dummytask
 # in lux task
 def symlink_or_copy(source, target):
+    if not os.path.exists(source):
+        raise FileNotFoundError(
+            errno.ENOENT, os.strerror(errno.ENOENT), source)
     try:
         os.symlink(source, target)
     except OSError:
