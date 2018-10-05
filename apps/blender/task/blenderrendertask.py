@@ -349,7 +349,8 @@ class BlenderNVGPUTaskTypeInfo(RenderingTaskTypeInfo):
         return self
 
 
-class BlenderRendererOptions(FrameRendererOptions):
+class BlenderRendererOptions(FrameRendererOptions):
+
     def __init__(self):
         super(BlenderRendererOptions, self).__init__()
         self.environment = BlenderEnvironment()
@@ -357,7 +358,8 @@ class BlenderRendererOptions(FrameRendererOptions):
         self.samples = 0
 
 
-class BlenderNVGPURendererOptions(BlenderRendererOptions):
+class BlenderNVGPURendererOptions(BlenderRendererOptions):
+
     def __init__(self):
         super().__init__()
         self.environment = BlenderNVGPUEnvironment()

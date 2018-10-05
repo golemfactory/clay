@@ -32,7 +32,7 @@ class MemoryCheckerThread(Thread):
                 self.min_mem = mem
             time.sleep(0.5)
 
-
+
 class MemoryChecker:
     _thread: Optional[MemoryCheckerThread]
 
