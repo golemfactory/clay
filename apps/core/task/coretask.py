@@ -339,7 +339,7 @@ class CoreTask(Task):
     def to_dictionary(self):
         return {
             'id': to_unicode(self.header.task_id),
-            'name': to_unicode(self.task_definition.task_name),
+            'name': to_unicode(self.task_definition.name),
             'type': to_unicode(self.task_definition.task_type),
             'subtasks_count': self.get_total_tasks(),
             'progress': self.get_progress()
@@ -602,7 +602,7 @@ class CoreTaskBuilder(TaskBuilder):
                               task_type: CoreTaskTypeInfo,
                               dictionary: Dict[str, Any]):
         definition = cls.build_minimal_definition(task_type, dictionary)
-        definition.task_name = dictionary['name']
+        definition.name = dictionary['name']
         definition.max_price = \
             int(decimal.Decimal(dictionary['bid']) * denoms.ether)
 
@@ -628,7 +628,7 @@ class CoreTaskBuilder(TaskBuilder):
 
         absolute_path = cls.get_nonexistent_path(
             options['output_path'],
-            definition.task_name,
+            definition.name,
             options.get('format', ''))
 
         return absolute_path

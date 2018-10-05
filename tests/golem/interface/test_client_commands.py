@@ -564,7 +564,7 @@ class TestTasks(TempDirFixture):
         client = self.client
 
         definition = TaskDefinition()
-        definition.task_name = "The greatest task ever"
+        definition.name = "The greatest task ever"
         def_str = json.dumps(definition.to_dict())
 
         with client_ctx(Tasks, client):

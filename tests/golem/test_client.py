@@ -1071,7 +1071,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_create_task(self, *_):
         t = DummyTaskDefinition()
-        t.task_name = "test"
+        t.name = "test"
 
         c = self.client
         c.enqueue_new_task = Mock(return_value=(Mock(), 'task_id'))

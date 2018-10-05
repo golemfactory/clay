@@ -841,15 +841,15 @@ class Client(HardwarePresetsMixin):
             return None, str(ex)
 
     def _validate_task_dict(self, t_dict) -> None:
-        task_name = ""
+        name = ""
         if 'name' in t_dict:
             t_dict['name'] = t_dict['name'].strip()
-            task_name = t_dict['name']
-        if len(task_name) < 4 or len(task_name) > 24:
+            name = t_dict['name']
+        if len(name) < 4 or len(name) > 24:
             raise ValueError(
                 "Length of task name cannot be less "
                 "than 4 or more than 24 characters.")
-        if not re.match(r"(\w|[\-\. ])+$", task_name):
+        if not re.match(r"(\w|[\-\. ])+$", name):
             raise ValueError(
                 "Task name can only contain letters, numbers, "
                 "spaces, underline, dash or dot.")

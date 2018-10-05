@@ -16,7 +16,7 @@ class TaskDefaults(object):
         self.min_subtasks = 1
         self.max_subtasks = 50
         self.default_subtasks = 20
-        self.task_name = ""
+        self.name = ""
 
     @property
     def timeout(self):
@@ -43,7 +43,7 @@ class TaskDefinition(object):
         self.main_program_file = ""
         self.output_file = ""
         self.task_type = None
-        self.task_name = ""
+        self.name = ""
 
         self.max_price = 0
 
@@ -112,7 +112,7 @@ class TaskDefinition(object):
             'id': self.task_id,
             'type': self.task_type,
             'compute_on': self.compute_on,
-            'name': self.task_name,
+            'name': self.name,
             'timeout': task_timeout,
             'subtask_timeout': subtask_timeout,
             'subtasks_count': self.subtasks_count,
