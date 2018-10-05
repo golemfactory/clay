@@ -109,9 +109,11 @@ class ResourceHandshakeSessionMixin:
             max_memory_size=max_memory_size,
             num_cores=num_cores,
             concent_enabled=concent_enabled,
-            sgx_key=sgx_key,
             provider_public_key=self.task_server.get_key_id(),
             provider_ethereum_public_key=self.task_server.get_key_id(),
+            extra_data={
+                'sgx_key': sgx_key,
+            },
         )
 
         if self._is_peer_blocked(key_id):

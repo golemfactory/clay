@@ -530,7 +530,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             node_name_id,
             ctd["subtask_id"],
         )
-        
+
         task = self.task_manager.tasks[ctd['task_id']]
         task_state: TaskState = self.task_manager.tasks_states[ctd['task_id']]
         price = taskkeeper.compute_subtask_value(
@@ -539,10 +539,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
         from golem.sgx.agent import encrypt_wrap_key
         sgx_eas_key = encrypt_wrap_key(
-            '/home/admin_imapp/.local/share/golem/default/rinkeby/ComputerRes/{}/resources/{}.wrapkey'.format(ctd['task_id'], ctd['task_id']),  # noqa
-            msg.sgx_key,
+            '{}/{}/resources/{}.wrapkey'.format(self.task_server.get_task_computer_root(), ctd['task_id'], ctd['task_id']),  # noqa
+            msg.extra_data['sgx_key'],
         )
-        
+        ctd['extra_data']['sgx_eas_key'] = sgx_eas_key
         ttc = message.tasks.TaskToCompute(
             compute_task_def=ctd,
             want_to_compute_task=msg,
@@ -554,7 +554,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             concent_enabled=msg.concent_enabled,
             price=price,
             size=task_state.package_size,
-            sgx_eas_key=sgx_eas_key,
         )
         ttc.generate_ethsig(self.my_private_key)
         self.task_manager.set_subtask_value(
@@ -657,7 +656,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 ctd['subtask_id'], self
             )
             print('extra_data', ctd['extra_data'])
-            ctd['extra_data']['sgx_wrapkey'] = msg.sgx_eas_key
             if self.task_computer.task_given(ctd):
                 return
         _cannot_compute(self.err_msg)

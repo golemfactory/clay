@@ -423,7 +423,7 @@ class TaskComputer(object):
             docker_images = [DockerImage(**did) for did in docker_images]
             dir_mapping = DockerTaskThread.generate_dir_mapping(resource_dir,
                                                                 temp_dir)
-            tt = SgxDockerTaskThread(subtask_id, docker_images, working_dir,
+            tt = SgxDockerTaskThread(subtask_id, docker_images,
                                      src_code, extra_data, short_desc,
                                      dir_mapping, task_timeout)
         elif docker_images:
@@ -454,7 +454,10 @@ class TaskComputer(object):
         with self.lock:
             self.counting_thread = tt
 
-        tt.start().addBoth(lambda _: self.task_computed(tt))
+        def asd(r):
+            print(r)
+            self.task_computed(tt)
+        tt.start().addBoth(asd)
 
     def quit(self):
         if self.counting_thread is not None:
