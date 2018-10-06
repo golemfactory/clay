@@ -6,39 +6,34 @@ logger = logging.getLogger(__name__)
 
 
 class IdleTimer:
-    """ Keeps track of idle time per Golem session """
+    """ Keeps track of computation timestamps per Golem session """
 
     def __init__(self):
-        self._time_idle: float = 0.
+        self._last_comp_started: Optional[float] = None
         self._last_comp_finished: Optional[float] = time.time()
 
-    def time_idle(self) -> float:
-        """ Returns the total idle time. If not computing, returns the
-            accumulated value enlarged by the time since last computation.
-        """
-        if self._last_comp_finished is None:
-            return self._time_idle
-        return self._time_idle + time.time() - self._last_comp_finished
+    @property
+    def last_comp_started(self) -> Optional[float]:
+        return self._last_comp_started
+
+    @property
+    def last_comp_finished(self) -> Optional[float]:
+        return self._last_comp_finished
 
     def comp_started(self) -> None:
-        """ Updates the state to keep track of computation time and increases
-            the accumulated idle time.
+        """ Updates the computation started and finished timestamps. """
 
-            This method forces the correct object state.
-        """
         logger.debug("IdleTimer.comp_started() at %r", time.time())
 
         if self._last_comp_finished is None:
             logger.error("Computation was not finished")
-        else:
-            self._time_idle += time.time() - self._last_comp_finished
 
+        self._last_comp_started = time.time()
         self._last_comp_finished = None
 
     def comp_finished(self) -> None:
-        """ Updates the state to keep track of idle time and increases
-            the accumulated computation time.
-        """
+        """ Updates the computation finished timestamp. """
+
         logger.debug("IdleTimer.comp_finished() at %r", time.time())
 
         if self._last_comp_finished is None:
