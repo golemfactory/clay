@@ -2,7 +2,14 @@ from enum import IntEnum
 import functools
 import logging
 import time
-from typing import List, Optional, Callable, Any
+from typing import (
+    Any,
+    Callable,
+    cast,
+    List,
+    Optional,
+    TypeVar,
+)
 
 from pathlib import Path
 from twisted.internet import threads
@@ -33,17 +40,19 @@ from golem.rpc.session import (
 )
 from golem.terms import TermsOfUse
 
+F = TypeVar('F', bound=Callable[..., Any])
 logger = logging.getLogger(__name__)
 
 
 def require_rpc_session():
-    def wrapped(f):
-        def curry(self, *args, **kwargs):
+    def wrapped(f: F) -> F:
+        @functools.wraps(f)
+        def curry(self: 'Node', *args, **kwargs):
             if self.rpc_session is None:
                 self._error("RPC session is not available")  # noqa pylint: disable=protected-access
                 return None
             return f(self, *args, **kwargs)
-        return curry
+        return cast(F, curry)
     return wrapped
 
 
@@ -422,7 +431,7 @@ class Node(object):
             return
 
         methods = self.client.get_wamp_rpc_mapping()
-        self.rpc_session.add_procedures(methods)  # type: ignore
+        self.rpc_session.add_procedures(methods)
 
     def _setup_apps(self) -> None:
         if not self.client:
