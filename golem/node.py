@@ -44,7 +44,7 @@ F = TypeVar('F', bound=Callable[..., Any])
 logger = logging.getLogger(__name__)
 
 
-def require_rpc_session():
+def require_rpc_session() -> F:
     def wrapped(f: F) -> F:
         @functools.wraps(f)
         def curry(self: 'Node', *args, **kwargs):
