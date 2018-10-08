@@ -33,7 +33,6 @@ class MemoryCheckerThread(Thread):
             time.sleep(0.5)
 
 
-# pylint: disable=too-few-public-methods
 class MemoryChecker:
     _thread: Optional[MemoryCheckerThread]
 

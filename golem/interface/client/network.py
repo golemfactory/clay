@@ -29,8 +29,8 @@ class Network(object):
     @doc("Show client status")
     def status(self):
         deferred = Network.client.connection_status()
-        status = sync_wait(deferred) or "unknown"
-        return status
+        status = sync_wait(deferred)
+        return status['msg']
 
     @command(arguments=(ip_arg, port_arg), help="Connect to a node")
     def connect(self, ip, port_):

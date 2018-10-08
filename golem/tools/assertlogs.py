@@ -81,8 +81,12 @@ class _AssertLogsContext(_BaseTestCaseContext):
                 .format(logging.getLevelName(self.level), self.logger.name))
         elif len(self.watcher.records) > 0 and not self.assert_logs:
             self._raiseFailure(
-                "logs of level {} or higher triggered on {}"
-                .format(logging.getLevelName(self.level), self.logger_name))
+                "logs of level {} or higher triggered on {}.\n{}"
+                .format(
+                    logging.getLevelName(self.level),
+                    self.logger_name,
+                    self.watcher.output)
+            )
 
 
 class LogTestCase(unittest.TestCase):
