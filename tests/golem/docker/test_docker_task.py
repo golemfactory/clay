@@ -167,7 +167,10 @@ class DockerTaskTestCase(
 
         # Start task computation
         task_computer.task_given(ctd)
-        result = task_computer.resource_given(ctd['task_id'])
+        result = task_computer.task_resource_collected(
+            ctd['task_id'],
+            unpack_delta=False,
+        )
         self.assertTrue(result)
 
         task_thread = None
