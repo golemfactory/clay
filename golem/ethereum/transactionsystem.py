@@ -1,3 +1,4 @@
+import calendar
 import json
 import logging
 import os
@@ -21,7 +22,6 @@ from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
 from eth_utils import decode_hex, is_address
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import (
-    contracts,
     JsonTransactionsStorage,
     new_sci,
     SmartContractsInterface,
@@ -82,6 +82,7 @@ class TransactionSystem(LoopingCallService):
 
         self._gnt_faucet_requested = False
         self._gnt_conversion_status = ConversionStatus.NONE
+        self._deposit_withdrawal_requested = False
 
         self._eth_balance: int = 0
         self._gnt_balance: int = 0
@@ -538,6 +539,10 @@ class TransactionSystem(LoopingCallService):
 
     def concent_timelock(self, account_address: Optional[str] = None) -> int:
         # FIXME Use decorator to DRY #3190
+        # possible lock values:
+        # 0 - locked
+        # > now - unlocking
+        # < now - unlocked
         if not self._sci:
             raise Exception('Start was not called')
         if account_address is None:
@@ -592,6 +597,38 @@ class TransactionSystem(LoopingCallService):
         dpayment.status = model.PaymentStatus.confirmed
         dpayment.save()
         return dpayment.tx
+
+    def concent_relock(self):
+        if self.concent_balance() == 0:
+            return
+        self._sci.lock_deposit()
+
+    def concent_unlock(self):
+        if self.concent_balance() == 0:
+            return
+        self._sci.unlock_deposit()
+
+    def concent_withdraw(self):
+        if self._deposit_withdrawal_requested:
+            return
+        timelock = self.concent_timelock()
+        if timelock == 0:
+            return
+        # Using this tricky approach instead of time.time()
+        # because of AppVeyor issues.
+        now = calendar.timegm(time.gmtime())
+        if timelock > now:
+            return
+        self._deposit_withdrawal_requested = True
+        tx_hash: str = self._sci.withdraw_deposit()
+
+        def _cbk(_transaction_receipt):
+            self._deposit_withdrawal_requested = False
+
+        self._sci.on_transaction_confirmed(
+            tx_hash=tx_hash,
+            cb=_cbk,
+        )
 
     def _get_funds_from_faucet(self) -> None:
         if not self._sci:
@@ -713,6 +750,7 @@ class TransactionSystem(LoopingCallService):
         self._try_convert_gnt()
         self._payment_processor.sendout()
         self._incomes_keeper.update_overdue_incomes()
+        self.concent_withdraw()
 
 
 def tETH_faucet_donate(addr: str):
