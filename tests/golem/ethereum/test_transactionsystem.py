@@ -522,35 +522,36 @@ class ConcentDepositTest(TransactionSystemBase):
             self.assertEqual(getattr(dpayment, field), value)
 
 
-@patch(
-    'golem.ethereum.transactionsystem.TransactionSystem.concent_timelock',
-)
 class ConcentWithdrawTest(TransactionSystemBase):
-    def test_withdrawal_requested(self, timelock_mock):
+    def test_withdrawal_requested(self):
         self.ets._deposit_withdrawal_requested = True
         self.ets.concent_withdraw()
-        timelock_mock.assert_not_called()
+        self.sci.get_deposit_locked_until.assert_not_called()
 
     @patch('calendar.timegm')
-    def test_timelocked(self, timegm_mock, timelock_mock):
-        timelock_mock.return_value = 0
+    def test_timelocked(self, timegm_mock):
+        self.sci.get_deposit_locked_until.return_value = 0
         self.ets.concent_withdraw()
-        timelock_mock.assert_called_once_with()
+        self.sci.get_deposit_locked_until.assert_called_once_with(
+            account_address=self.sci.get_eth_address(),
+        )
         timegm_mock.assert_not_called()
 
     @freeze_time('2018-10-01 14:00:00')
-    def test_not_yet_unlocked(self, timelock_mock):
+    def test_not_yet_unlocked(self):
         now = time.time()
-        timelock_mock.return_value = int(now) + 1
+        self.sci.get_deposit_locked_until.return_value = int(now) + 1
         self.ets.concent_withdraw()
-        timelock_mock.assert_called_once_with()
+        self.sci.get_deposit_locked_until.assert_called_once_with(
+            account_address=self.sci.get_eth_address(),
+        )
         self.sci.withdraw_deposit.assert_not_called()
         self.assertFalse(self.ets._deposit_withdrawal_requested)
 
     @freeze_time('2018-10-01 14:00:00')
-    def test_unlocked(self, timelock_mock):
+    def test_unlocked(self):
         now = time.time()
-        timelock_mock.return_value = int(now)
+        self.sci.get_deposit_locked_until.return_value = int(now)
         self.ets.concent_withdraw()
         self.sci.withdraw_deposit.assert_called_once_with()
         self.assertTrue(self.ets._deposit_withdrawal_requested)
@@ -560,17 +561,14 @@ class ConcentWithdrawTest(TransactionSystemBase):
         self.assertFalse(self.ets._deposit_withdrawal_requested)
 
 
-@patch(
-    'golem.ethereum.transactionsystem.TransactionSystem.concent_balance',
-)
 class ConcentUnlockTest(TransactionSystemBase):
-    def test_empty(self, balance_mock):
-        balance_mock.return_value = 0
+    def test_empty(self):
+        self.sci.get_deposit_value.return_value = 0
         self.ets.concent_unlock()
         self.sci.unlock_deposit.assert_not_called()
 
-    def test_full(self, balance_mock):
-        balance_mock.return_value = abs(fake.pyint()) + 1
+    def test_full(self):
+        self.sci.get_deposit_value.return_value = abs(fake.pyint()) + 1
         self.ets.concent_unlock()
         self.sci.unlock_deposit.assert_called_once_with()
 
