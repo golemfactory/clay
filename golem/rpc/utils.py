@@ -1,4 +1,5 @@
 import inspect
+import typing
 # SEE autobahn.twisted.wamp.Application.register
 
 
@@ -26,7 +27,7 @@ def expose(uri=None):  # pylint: disable=unused-argument
 
 
 def object_method_map(instance):
-    mapping = {}
+    mapping: typing.Dict[str, typing.Callable] = {}
 
     # bounds methods are methods, class/static methods are functions (not bound)
     def predicate(member):

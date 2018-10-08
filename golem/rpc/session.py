@@ -35,7 +35,7 @@ class RPCAddress(object):
         self.port = port
 
         if valid_ipv4(self.host) and IPAddress(self.host).is_loopback():
-            #IPv4 loopback address replaced with hostname
+            # IPv4 loopback address replaced with hostname
             self.host = "localhost"
 
         self.address = '{}://{}:{}'.format(self.protocol,
@@ -222,16 +222,15 @@ class Session(ApplicationSession):
         return err
 
 
-class ClientProxy():  # pylint: disable=too-few-public-methods
+class ClientProxy:  # pylint: disable=too-few-public-methods
     PREFIXES: typing.Tuple[str, ...] = (
         'golem.client.Client.',
         'golem.node.Node.',
     )
 
-    def __init__(self, session, timeout=2):
-        self._session = session
-        self._timeout = timeout
-        self._mapping = {}
+    def __init__(self, session: ApplicationSession):
+        self._session: ApplicationSession = session
+        self._mapping: typing.Dict[str, str] = {}  # attribute_name, wamp_uri
 
         if session is None:
             self._ready = Deferred()
@@ -278,7 +277,7 @@ class ClientProxy():  # pylint: disable=too-few-public-methods
             return err
 
 
-class Publisher():  # pylint: disable=too-few-public-methods
+class Publisher:  # pylint: disable=too-few-public-methods
     def __init__(self, session):
         self.session = session
 
