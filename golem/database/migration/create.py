@@ -11,7 +11,6 @@ from golem.database.migration.router import Router
 from golem.model import DB_FIELDS, DB_MODELS, db
 
 TEMPLATE = """# pylint: disable=no-member
-# pylint: disable=too-few-public-methods
 SCHEMA_VERSION = {schema_version}
 from {model_package} import *  # pylint: disable=unused-import
 

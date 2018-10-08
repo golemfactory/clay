@@ -1,6 +1,7 @@
-from typing import Optional
-from twisted.internet.defer import Deferred, inlineCallbacks
+from typing import Optional, Any
+from twisted.internet.defer import Deferred
 from golem.core.common import deadline_to_timeout
+
 
 
 class VerificationTask:
@@ -9,22 +10,25 @@ class VerificationTask:
         self.deadline = deadline
         self.kwargs = kwargs
         self.subtask_id = subtask_id
+        self.verifier: Any = None
 
     def start(self, verifier_class) -> Optional[Deferred]:
-        verifier = verifier_class(self.kwargs)
+        self.verifier = verifier_class(self.kwargs)
         if deadline_to_timeout(self.deadline) > 0:
-            if verifier.simple_verification(self.kwargs):
-                return verifier.start_verification(self.kwargs)
+            if self.verifier.simple_verification(self.kwargs):
+                return self.verifier.start_verification(self.kwargs)
             deferred = Deferred()
-            deferred.callback(verifier.verification_completed())
+            deferred.callback(self.verifier.verification_completed())
             return deferred
         else:
-            verifier.task_timeout(self.subtask_id)
+            self.verifier.task_timeout(self.subtask_id)
         return None
+
+    def get_results(self):
+        return self.verifier.verification_completed()
 
     # Currently golem protocol does not allow for partial verification,
     # therefore we have to wait for any ongoing verification.
-    @inlineCallbacks
-    @staticmethod
-    def stop(finished):
-        yield finished
+    def stop(self, finished):
+        self.verifier.stop()
+        finished.cancel()

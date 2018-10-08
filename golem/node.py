@@ -39,7 +39,7 @@ class ShutdownResponse(IntEnum):
 
 
 # pylint: disable=too-many-instance-attributes
-class Node(object):  # pylint: disable=too-few-public-methods
+class Node(object):
     """ Simple Golem Node connecting console user interface with Client
     :type client golem.client.Client:
     """

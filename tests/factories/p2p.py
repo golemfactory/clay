@@ -1,4 +1,4 @@
-# pylint: disable=too-few-public-methods
+
 import faker
 import factory
 
