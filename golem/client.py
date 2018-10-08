@@ -238,6 +238,7 @@ class Client(HardwarePresetsMixin):
             framerenderingtask,
             self.task_server.task_manager,
             self.environments_manager,
+            self.transaction_system,
         )
         mapping = {}
         for rpc_provider in providers:
