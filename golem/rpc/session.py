@@ -228,7 +228,7 @@ class ClientProxy:  # pylint: disable=too-few-public-methods
         'golem.node.Node.',
     )
 
-    def __init__(self, session: ApplicationSession):
+    def __init__(self, session: ApplicationSession) -> None:
         self._session: ApplicationSession = session
         self._mapping: typing.Dict[str, str] = {}  # attribute_name, wamp_uri
 
