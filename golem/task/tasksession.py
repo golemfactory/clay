@@ -15,6 +15,7 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
+from golem.marketplace.offerpool import OfferPool
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
@@ -513,6 +514,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 _cannot_assign(reasons.NoMoreSubtasks)
                 return
 
+            if not self.conn.opened:
+                logger.info("Provider disconnected")
+                return
+
             logger.info("Offer confirmed, assigning subtask")
             ctd = self.task_manager.get_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.perf_index,
@@ -567,7 +572,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
             self.send(ttc)
 
-        from golem.marketplace.offerpool import OfferPool
         OfferPool.add(msg.task_id, msg).addCallback(_offer_chosen)
 
     @handle_attr_error_with_task_computer
