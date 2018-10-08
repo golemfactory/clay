@@ -1,5 +1,6 @@
 import logging
 
+from netaddr import IPAddress, valid_ipv4
 from autobahn.twisted import ApplicationSession
 from autobahn.twisted.websocket import WampWebSocketClientFactory
 from autobahn.wamp import ProtocolError, auth
@@ -30,6 +31,11 @@ class RPCAddress(object):
         self.protocol = protocol
         self.host = host
         self.port = port
+
+        if valid_ipv4(self.host) and IPAddress(self.host).is_loopback():
+            #IPv4 loopback address replaced with hostname
+            self.host = "localhost"
+
         self.address = '{}://{}:{}'.format(self.protocol,
                                            self.host, self.port)
 

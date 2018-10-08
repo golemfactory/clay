@@ -44,7 +44,6 @@ class TestHandleImageError(unittest.TestCase):
 class TestHandleNone(unittest.TestCase):
 
     class ExampleContextManager:
-        # pylint: disable=too-few-public-methods
         def __enter__(self):
             return self
 

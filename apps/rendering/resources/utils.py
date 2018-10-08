@@ -30,7 +30,7 @@ def handle_image_error(logger: Optional[logging.Logger] = None):
     if logger is None:
         logger = logging.getLogger("apps.rendering")
 
-    class Result:  # pylint: disable=too-few-public-methods
+    class Result:
         def __init__(self):
             self.success = False
 
