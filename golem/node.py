@@ -44,7 +44,7 @@ F = TypeVar('F', bound=Callable[..., Any])
 logger = logging.getLogger(__name__)
 
 
-def require_rpc_session() -> F:
+def require_rpc_session() -> Callable:
     def wrapped(f: F) -> F:
         @functools.wraps(f)
         def curry(self: 'Node', *args, **kwargs):
@@ -431,7 +431,7 @@ class Node(object):
             return
 
         methods = self.client.get_wamp_rpc_mapping()
-        self.rpc_session.add_procedures(methods)
+        self.rpc_session.add_procedures(methods)  # type: ignore
 
     def _setup_apps(self) -> None:
         if not self.client:
