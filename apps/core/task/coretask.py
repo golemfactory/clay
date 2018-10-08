@@ -116,7 +116,7 @@ class CoreTask(Task):
 
         # resources stuff
         self.task_resources = list(
-            set(filter(os.path.isfile, task_definition.resources)))
+            set(filter(os.path.exists, task_definition.resources)))
         if resource_size is None:
             self.resource_size = 0
             for resource in self.task_resources:
@@ -237,11 +237,14 @@ class CoreTask(Task):
         return []
 
     def verification_finished(self, subtask_id, verdict, result):
-        if verdict == SubtaskVerificationState.VERIFIED:
-            self.accept_results(subtask_id, result['extra_data']['results'])
-        # TODO Add support for different verification states. issue #2422
-        else:
-            self.computation_failed(subtask_id)
+        try:
+            if verdict == SubtaskVerificationState.VERIFIED:
+                self.accept_results(subtask_id, result['extra_data']['results'])
+            # TODO Add support for different verification states. issue #2422
+            else:
+                self.computation_failed(subtask_id)
+        except Exception as exc:
+            logger.warning("Failed during accepting results %s", exc)
 
     # pylint:disable=unused-argument
     def accept_results(self, subtask_id, result_files):

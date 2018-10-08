@@ -263,22 +263,20 @@ class TestNetwork(unittest.TestCase):
         self.client.reset_mock()
 
     def test_status(self):
-
         with client_ctx(Network, self.client):
+            # given
+            msg = "Some random message"
+            self.client.connection_status.return_value = {
+                'msg': msg,
+            }
 
-            self.client.connection_status.return_value = 'Status'
+            # when
             result = Network().status()
 
+            # then
             assert self.client.connection_status.called
             assert isinstance(result, str)
-            assert result
-            assert result != 'unknown'
-
-            self.client.connection_status.return_value = None
-            result = Network().status()
-
-            assert isinstance(result, str)
-            assert result == 'unknown'
+            assert result == msg
 
     def test_connect(self):
         with client_ctx(Network, self.client):
@@ -561,23 +559,9 @@ class TestTasks(TempDirFixture):
         with client_ctx(Tasks, client):
             tasks = Tasks()
             tasks._Tasks__create_from_json(def_str)
-            task_def = json.loads(def_str)
-            client.create_task.assert_called_with(task_def)
+            client.create_task.assert_called_with(definition.to_dict())
 
             patched_open = "golem.interface.client.tasks.open"
-            with patch(patched_open, mock_open(read_data='{}')):
-                self.assertRaises(ValueError, partial(tasks.create, "foo"))
-
-            with patch(patched_open, mock_open(
-                read_data='{"name": "This name has 27 characters"}'
-            )):
-                self.assertRaises(ValueError, partial(tasks.create, "foo"))
-
-            with patch(patched_open, mock_open(
-                read_data='{"name": "Golem task/"}'
-            )):
-                self.assertRaises(ValueError, partial(tasks.create, "foo"))
-
             with patch(patched_open, mock_open(
                 read_data='{"name": "Golem task"}'
             )):

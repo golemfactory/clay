@@ -1,4 +1,4 @@
-# pylint: disable=too-few-public-methods,too-many-locals
+# pylint: disable=too-many-locals
 # pylint: disable=protected-access
 
 import json
@@ -33,7 +33,7 @@ PathOrStr = Union[Path, AnyStr]
 class TaskComputerExt(TaskComputer):
 
     @property  # type: ignore
-    def counting_thread(self):  # noqa
+    def counting_thread(self):
         return getattr(self, '_counting_thread', None)
 
     @counting_thread.setter

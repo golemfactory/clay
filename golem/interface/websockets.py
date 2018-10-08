@@ -9,13 +9,11 @@ from golem.rpc.session import Session, ClientProxy, WebSocketAddress
 
 class WebSocketCLI(object):
     class NoConnection(object):
-        # pylint: disable=too-few-public-methods
 
         def __getattribute__(self, item):
             raise Exception("Cannot connect to Golem instance")
 
     class CLIClient(ClientProxy):
-        # pylint: disable=too-few-public-methods
 
         def _call(self, method_alias, *args, **kwargs):
             from twisted.internet import reactor
