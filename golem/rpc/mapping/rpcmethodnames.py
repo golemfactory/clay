@@ -1,6 +1,8 @@
 # pylint: disable=bad-whitespace
 # flake8: noqa
 
+DOCKER_URI = "docker"
+
 CORE_METHOD_MAP = dict(
     get_golem_version=      'golem.version',
     get_golem_status=       'golem.status',
@@ -89,6 +91,7 @@ CORE_METHOD_MAP = dict(
     get_balance=            'pay.balance',
     get_deposit_balance=    'pay.deposit_balance',
     get_payments_list=      'pay.payments',
+    get_deposit_payments_list = 'pay.deposit_payments',
     get_incomes_list=       'pay.incomes',
     withdraw=               'pay.withdraw',
     get_withdraw_gas_cost=  'pay.withdraw.gas_cost',

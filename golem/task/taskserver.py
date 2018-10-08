@@ -196,6 +196,14 @@ class TaskServer(
                 supported = supported.join(SupportStatus.err({
                     UnsupportReason.MAX_PRICE: theader.max_price}))
 
+            if self.client.concent_service.enabled:
+                if not theader.fixed_header.concent_enabled:
+                    supported = supported.join(
+                        SupportStatus.err({
+                            UnsupportReason.CONCENT_REQUIRED: True,
+                        }),
+                    )
+
             if supported.is_ok():
                 price = int(theader.max_price)
                 self.task_manager.add_comp_task_request(
@@ -226,6 +234,11 @@ class TaskServer(
                     UnsupportReason.NODE_INFORMATION: node.__dict__
                 }))
 
+            logger.debug(
+                "Support status. task_id=%s supported=%s",
+                theader.task_id,
+                supported,
+            )
             if self.task_archiver:
                 self.task_archiver.add_support_status(theader.task_id,
                                                       supported)
@@ -753,10 +766,9 @@ class TaskServer(
         )
 
         session.send_hello()
-        payment_addr = self.client.transaction_system.get_payment_address()
         session.send_report_computed_task(waiting_task_result,
                                           self.node.prv_addr, self.cur_port,
-                                          payment_addr, self.node)
+                                          self.node)
 
     def __connection_for_task_result_failure(self, conn_id,
                                              waiting_task_result):

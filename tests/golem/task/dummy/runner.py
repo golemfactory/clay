@@ -16,6 +16,7 @@ import tempfile
 import time
 from unittest import mock
 from threading import Thread
+import faker
 
 from ethereum.utils import denoms
 from twisted.internet import reactor
@@ -58,7 +59,7 @@ def report(msg):
 
 def override_ip_info(*_, **__):
     from golem.network.stun.pystun import OpenInternet
-    return OpenInternet, '1.2.3.4', 40102
+    return '1.2.3.4', 40102
 
 
 def create_client(datadir):
@@ -77,7 +78,7 @@ def create_client(datadir):
     with mock.patch.dict('ethereum.keys.PBKDF2_CONSTANTS', {'c': 1}):
         keys_auth = KeysAuth(
             datadir=datadir,
-            private_key_name='priv_key',
+            private_key_name=faker.Faker().pystr(),
             password='password',
             difficulty=config_desc.key_difficulty,
         )

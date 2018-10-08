@@ -2,15 +2,15 @@
 
 import collections
 import enum
-import json
 import logging
+import re
 import sys
 import time
 import uuid
+import warnings
 from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
-from threading import Lock
 from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from ethereum.utils import denoms
@@ -127,8 +127,7 @@ class Client(HardwarePresetsMixin):
         self.apps_manager = apps_manager
         self.datadir = datadir
         self.__lock_datadir()
-        self.lock = Lock()
-        self.task_tester = None
+        self.task_tester: Optional[TaskTester] = None
 
         self.task_archiver = TaskArchiver(datadir)
 
@@ -210,7 +209,7 @@ class Client(HardwarePresetsMixin):
         self.daemon_manager = None
 
         self.rpc_publisher = None
-        self.task_test_result = None
+        self.task_test_result: Optional[Dict[str, Any]] = None
 
         self.resource_server = None
         self.resource_port = 0
@@ -573,11 +572,24 @@ class Client(HardwarePresetsMixin):
 
         # FIXME: Statement only for old DummyTask compatibility #2467
         task: TaskBase
-        if isinstance(task_dict, dict):
-            logger.warning('enqueue_new_task called with deprecated dict type')
-            task = task_manager.create_task(task_dict)
-        else:
+        if isinstance(task_dict, TaskBase):
+            warnings.warn(
+                "enqueue_new_task() called with {got_type}"
+                " instead of dict #2467".format(
+                    got_type=type(task_dict),
+                ),
+                DeprecationWarning,
+                stacklevel=2,
+            )
             task = task_dict
+        else:
+            # Set default value for concent_enabled
+            task_dict.setdefault(
+                'concent_enabled',
+                self.concent_service.enabled,
+            )
+
+            task = task_manager.create_task(task_dict)
 
         if task.header.fixed_header.concent_enabled and \
                 not self.concent_service.enabled:
@@ -733,40 +745,49 @@ class Client(HardwarePresetsMixin):
     def task_resource_failure(self, task_id, reason):
         self.task_server.task_computer.task_resource_failure(task_id, reason)
 
-    def run_test_task(self, t_dict):
+    def run_test_task(self, t_dict) -> bool:
         logger.info('Running test task "%r" ...', t_dict)
-        if self.task_tester is None:
-            request = AsyncRequest(self._run_test_task, t_dict)
-            async_run(request)
-            return True
+        if self.task_tester is not None:
+            self.task_test_result = {
+                "status": TaskTestStatus.error,
+                "error": "Another test is running",
+            }
+            return False
 
-        if not self.task_test_result:
-            self.task_test_result = json.dumps(
-                {
-                    "status": TaskTestStatus.error,
-                    "error": "Another test is running"
-                })
-        return False
+        self.task_test_result = None
+        try:
+            self._validate_task_dict(t_dict)
+        except Exception as e:  # pylint: disable=broad-except
+            self.task_test_result = {
+                "status": TaskTestStatus.error,
+                "error": str(e),
+            }
+            return False
+        request = AsyncRequest(self._run_test_task, t_dict)
+        async_run(request)
+        return True
 
-    def _run_test_task(self, t_dict):
+    def _run_test_task(self, t_dict) -> None:
 
         def on_success(result, estimated_memory, time_spent, **kwargs):
             logger.info('Test task succes "%r"', t_dict)
             self.task_tester = None
-            self.task_test_result = json.dumps(
-                {
-                    "status": TaskTestStatus.success,
-                    "result": result,
-                    "estimated_memory": estimated_memory,
-                    "time_spent": time_spent,
-                    "more": kwargs
-                })
+            self.task_test_result = {
+                "status": TaskTestStatus.success,
+                "result": result,
+                "estimated_memory": estimated_memory,
+                "time_spent": time_spent,
+                "more": kwargs,
+            }
 
         def on_error(*args, **kwargs):
             logger.warning('Test task error "%r": %r', t_dict, args)
             self.task_tester = None
-            self.task_test_result = json.dumps(
-                {"status": TaskTestStatus.error, "error": args, "more": kwargs})
+            self.task_test_result = {
+                "status": TaskTestStatus.error,
+                "error": args,
+                "more": kwargs,
+            }
 
         try:
             dictionary = DictSerializer.load(t_dict)
@@ -774,33 +795,33 @@ class Client(HardwarePresetsMixin):
                 dictionary=dictionary, minimal=True
             )
         except Exception as e:
-            return on_error(to_unicode(e))
+            on_error("{}: {}".format(type(e), to_unicode(e)))
+            return
 
-        self.task_test_result = json.dumps(
-            {"status": TaskTestStatus.started, "error": True})
+        self.task_test_result = {
+            "status": TaskTestStatus.started,
+            "error": None,
+        }
         self.task_tester = TaskTester(task, self.datadir, on_success, on_error)
         self.task_tester.run()
 
-    def abort_test_task(self):
+    def abort_test_task(self) -> bool:
         logger.debug('Aborting test task ...')
-        with self.lock:
-            if self.task_tester is not None:
-                self.task_tester.end_comp()
-                return True
-            return False
+        self.task_test_result = None
 
-    def check_test_status(self):
+        if self.task_tester is not None:
+            self.task_tester.end_comp()
+            return True
+        return False
+
+    def check_test_status(self) -> Optional[Dict[str, Any]]:
         logger.debug('Checking test task status ...')
-        if self.task_test_result is None:
-            return False
-        if not json.loads(
-                self.task_test_result)['status'] == TaskTestStatus.started:
-            result = copy(self.task_test_result)
-            # when client receive the eventual result we'll clean result for
-            # the next one.
-            self.task_test_result = None
-            return result
-        return self.task_test_result
+        result = self.task_test_result
+        if result is None:
+            return None
+        result = result.copy()
+        result['status'] = result['status'].value
+        return result
 
     def create_task(self, t_dict) -> Tuple[Optional[str], Optional[str]]:
         """
@@ -808,6 +829,7 @@ class Client(HardwarePresetsMixin):
                  on failure
         """
         try:
+            self._validate_task_dict(t_dict)
             deferred, task_id = self.enqueue_new_task(t_dict)
             # We want to return quickly from create_task without waiting for
             # deferred completion.
@@ -817,6 +839,42 @@ class Client(HardwarePresetsMixin):
         except Exception as ex:  # pylint: disable=broad-except
             logger.error("Cannot create task %r: %s", t_dict, ex)
             return None, str(ex)
+
+    def _validate_task_dict(self, t_dict) -> None:
+        task_name = ""
+        if 'name' in t_dict:
+            t_dict['name'] = t_dict['name'].strip()
+            task_name = t_dict['name']
+        if len(task_name) < 4 or len(task_name) > 24:
+            raise ValueError(
+                "Length of task name cannot be less "
+                "than 4 or more than 24 characters.")
+        if not re.match(r"(\w|[\-\. ])+$", task_name):
+            raise ValueError(
+                "Task name can only contain letters, numbers, "
+                "spaces, underline, dash or dot.")
+        if 'id' in t_dict:
+            logger.warning("discarding the UUID from the preset")
+            del t_dict['id']
+
+        subtasks = t_dict.get('subtasks', 0)
+        options = t_dict.get('options', {})
+        optimize_total = bool(options.get('optimize_total', False))
+        if subtasks and not optimize_total:
+            computed_subtasks = self.get_subtasks_count(
+                total_subtasks=subtasks,
+                optimize_total=False,
+                use_frames=options.get('frame_count', 1) > 1,
+                frames=[None]*options.get('frame_count', 1),
+            )
+            if computed_subtasks != subtasks:
+                raise ValueError(
+                    "Subtasks count {:d} is invalid."
+                    " Maybe use {:d} instead?".format(
+                        subtasks,
+                        computed_subtasks,
+                    )
+                )
 
     def abort_task(self, task_id):
         logger.debug('Aborting task "%r" ...', task_id)
@@ -1011,10 +1069,14 @@ class Client(HardwarePresetsMixin):
     def get_datadir(self):
         return str(self.datadir)
 
-    def get_p2p_port(self):
+    def get_p2p_port(self) -> int:
+        if not self.p2pservice:
+            return 0
         return self.p2pservice.cur_port
 
-    def get_task_server_port(self):
+    def get_task_server_port(self) -> int:
+        if not self.task_server:
+            return 0
         return self.task_server.cur_port
 
     def get_task_count(self):
@@ -1199,6 +1261,26 @@ class Client(HardwarePresetsMixin):
             }
 
         return [item(income) for income in incomes]
+
+    @classmethod
+    def get_deposit_payments_list(cls, limit=1000, offset=0):
+        deposit_payments = TransactionSystem.get_deposit_payments_list(
+            limit,
+            offset,
+        )
+        result = []
+        for dpayment in deposit_payments:
+            entry = {}
+            entry['value'] = to_unicode(dpayment.value)
+            entry['status'] = to_unicode(dpayment.status.name)
+            entry['fee'] = to_unicode(dpayment.fee)
+            entry['transaction'] = to_unicode(dpayment.tx)
+            entry['created'] = datetime_to_timestamp_utc(dpayment.created_date)
+            entry['modified'] = datetime_to_timestamp_utc(
+                dpayment.modified_date,
+            )
+            result.append(entry)
+        return result
 
     def get_withdraw_gas_cost(
             self,
@@ -1472,28 +1554,51 @@ class Client(HardwarePresetsMixin):
             ver=golem.__version__
         )
 
-    def connection_status(self):
+    def _make_connection_status_raw_data(self) -> Dict[str, Any]:
         listen_port = self.get_p2p_port()
         task_server_port = self.get_task_server_port()
 
+        status: Dict[str, Any] = dict()
+
         if listen_port == 0 or task_server_port == 0:
+            status['listening'] = False
+            return status
+        status['listening'] = True
+
+        status['port_statuses'] = deepcopy(self.node.port_statuses)
+        status['connected'] = bool(self.get_connected_peers())
+        return status
+
+    @staticmethod
+    def _make_connection_status_human_readable_message(status: Dict[str, Any]) \
+            -> str:
+        # To create the message use the data that is only in `status` dict.
+        # This is to make sure that message has no additional information.
+
+        if not status['listening']:
             return "Application not listening, check config file."
 
         messages = []
 
-        if self.node.port_statuses:
-            status = ", ".join(
-                "{}: {}".format(port, status)
-                for port, status in self.node.port_statuses.items())
-            messages.append("Port {}.".format(status))
+        if status['port_statuses']:
+            port_statuses = ", ".join(
+                "{}: {}".format(port, port_status)
+                for port, port_status in status['port_statuses'].items())
+            messages.append("Port(s) {}.".format(port_statuses))
 
-        if self.get_connected_peers():
+        if status['connected']:
             messages.append("Connected")
         else:
             messages.append("Not connected to Golem Network, "
                             "check seed parameters.")
 
         return ' '.join(messages)
+
+    def connection_status(self) -> Dict[str, Any]:
+        status = self._make_connection_status_raw_data()
+        status['msg'] \
+            = Client._make_connection_status_human_readable_message(status)
+        return status
 
     def get_provider_status(self) -> Dict[str, Any]:
         # golem is starting

@@ -52,6 +52,7 @@ class UnsupportReason(enum.Enum):
     REQUESTOR_TRUST = 'requesting_trust'
     NETWORK_REQUEST = 'cannot_perform_network_request'
     MASK_MISMATCH = 'mask_mismatch'
+    CONCENT_REQUIRED = 'concent_required'
 
 
 class Environment():

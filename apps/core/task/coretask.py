@@ -4,6 +4,7 @@ import os
 from enum import Enum
 from typing import Type, Optional, Dict, Any
 
+from golem_messages import idgenerator
 import golem_messages.message
 from ethereum.utils import denoms
 from golem_verificator.core_verifier import CoreVerifier
@@ -15,7 +16,6 @@ from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
-from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.core.simpleserializer import CBORSerializer
 from golem.docker.environment import DockerEnvironment
 from golem.network.p2p.node import Node
@@ -116,7 +116,7 @@ class CoreTask(Task):
 
         # resources stuff
         self.task_resources = list(
-            set(filter(os.path.isfile, task_definition.resources)))
+            set(filter(os.path.exists, task_definition.resources)))
         if resource_size is None:
             self.resource_size = 0
             for resource in self.task_resources:
@@ -183,10 +183,10 @@ class CoreTask(Task):
 
     @staticmethod
     def create_task_id(public_key: bytes) -> str:
-        return generate_id(public_key)
+        return idgenerator.generate_id(public_key)
 
     def create_subtask_id(self) -> str:
-        return generate_new_id_from_id(self.header.task_id)
+        return idgenerator.generate_new_id_from_id(self.header.task_id)
 
     def is_docker_task(self):
         return bool(self.docker_images)
@@ -237,11 +237,14 @@ class CoreTask(Task):
         return []
 
     def verification_finished(self, subtask_id, verdict, result):
-        if verdict == SubtaskVerificationState.VERIFIED:
-            self.accept_results(subtask_id, result['extra_data']['results'])
-        # TODO Add support for different verification states. issue #2422
-        else:
-            self.computation_failed(subtask_id)
+        try:
+            if verdict == SubtaskVerificationState.VERIFIED:
+                self.accept_results(subtask_id, result['extra_data']['results'])
+            # TODO Add support for different verification states. issue #2422
+            else:
+                self.computation_failed(subtask_id)
+        except Exception as exc:
+            logger.warning("Failed during accepting results %s", exc)
 
     # pylint:disable=unused-argument
     def accept_results(self, subtask_id, result_files):
@@ -260,6 +263,8 @@ class CoreTask(Task):
             raise Exception("Subtask {} has wrong type".format(subtask_id))
 
         subtask["status"] = SubtaskStatus.finished
+        node_id = self.subtasks_given[subtask_id]['node_id']
+        TaskClient.assert_exists(node_id, self.counting_nodes).accept()
 
     @handle_key_error
     def verify_subtask(self, subtask_id):
@@ -524,7 +529,6 @@ class CoreTask(Task):
         new_subtask = self.subtasks_given[subtask_id]
 
         new_subtask['node_id'] = old_subtask_info['node_id']
-        new_subtask['perf'] = old_subtask_info['perf']
         new_subtask['ctd']['performance'] = \
             old_subtask_info['ctd']['performance']
 
@@ -573,6 +577,7 @@ class CoreTaskBuilder(TaskBuilder):
         definition = task_type.definition()
         definition.options = task_type.options()
         definition.task_type = task_type.name
+        definition.compute_on = dictionary.get('compute_on', 'cpu')
         definition.resources = set(dictionary['resources'])
         definition.total_subtasks = int(dictionary['subtasks'])
         definition.main_program_file = task_type.defaults.main_program_file

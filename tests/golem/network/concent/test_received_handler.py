@@ -238,10 +238,10 @@ class VerdictReportComputedTaskFactory(TaskServerMessageHandlerTestBase):
             requestor_public_key=msg_utils.encode_hex(
                 self.requestor_keys.raw_pubkey,
             ),
-            provider_public_key=msg_utils.encode_hex(
-                self.provider_keys.raw_pubkey,
-            ),
             sign__privkey=self.requestor_keys.raw_privkey,
+            want_to_compute_task__provider_public_key=msg_utils.encode_hex(
+                self.provider_keys.raw_pubkey),
+            want_to_compute_task__sign__privkey=self.provider_keys.raw_privkey,
         )
         frct = msg_factories.concents.ForceReportComputedTaskFactory(
             report_computed_task__task_to_compute=ttc,
@@ -356,7 +356,7 @@ class ForceGetTaskResultTest(TaskServerMessageHandlerTestBase):
     def test_fgtr_service_refused(self, tcf):
         fgtr = msg_factories.concents.ForceGetTaskResultFactory()
         sr = msg_factories.concents.ServiceRefusedFactory(
-            task_to_compute__compute_task_def__subtask_id=fgtr.subtask_id)
+            task_to_compute__subtask_id=fgtr.subtask_id)
         library.interpret(sr, response_to=fgtr)
         tcf.assert_called_once_with(
             fgtr.subtask_id,
@@ -457,7 +457,7 @@ class FiletransfersTestBase(TaskServerMessageHandlerTestBase):
         self.addCleanup(cft_patch.stop)
 
 
-class FileTransferTokenTestsBase:  # noqa pylint:disable=too-few-public-methods
+class FileTransferTokenTestsBase:
 
     def setUp(self):
         super().setUp()  # noqa: pylint:disable=no-member
@@ -465,8 +465,8 @@ class FileTransferTokenTestsBase:  # noqa pylint:disable=too-few-public-methods
         self.wtr = taskserver_factories.WaitingTaskResultFactory(
             package_path=self.path)
         self.rct = msg_factories.tasks.ReportComputedTaskFactory(
-            task_to_compute__compute_task_def__subtask_id=self.wtr.subtask_id,
-            task_to_compute__compute_task_def__task_id=self.wtr.task_id,
+            task_to_compute__subtask_id=self.wtr.subtask_id,
+            task_to_compute__task_id=self.wtr.task_id,
         )
 
 

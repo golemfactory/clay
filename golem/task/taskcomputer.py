@@ -74,7 +74,7 @@ class TaskComputer(object):
         self.use_waiting_deadline = False
         self.waiting_for_task_session_timeout = None
 
-        self.docker_manager = DockerManager.install()
+        self.docker_manager: DockerManager = DockerManager.install()
         if use_docker_manager:
             self.docker_manager.check_environment()
 
@@ -280,13 +280,13 @@ class TaskComputer(object):
         dm.build_config(config_desc)
 
         deferred = Deferred()
-        if not dm.docker_machine and run_benchmarks:
+        if not dm.hypervisor and run_benchmarks:
             self.task_server.benchmark_manager.run_all_benchmarks(
                 deferred.callback, deferred.errback
             )
             return deferred
 
-        if dm.docker_machine and self.use_docker_manager:  # noqa pylint: disable=no-member
+        if dm.hypervisor and self.use_docker_manager:  # noqa pylint: disable=no-member
             self.lock_config(True)
 
             def status_callback():
@@ -414,7 +414,9 @@ class TaskComputer(object):
 
             return
 
-        self.counting_thread = tt
+        with self.lock:
+            self.counting_thread = tt
+
         tt.start().addBoth(lambda _: self.task_computed(tt))
 
     def quit(self):

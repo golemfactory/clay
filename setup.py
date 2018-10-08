@@ -75,10 +75,6 @@ setup(
             path.normpath('apps/blender/resources/scripts/blendercrop.py.template'),
             path.normpath('apps/blender/resources/scripts/docker_blendertask.py')
         ]),
-        (path.normpath('../../golem/apps/lux/resources/scripts'), [
-            path.normpath('apps/lux/resources/scripts/docker_luxtask.py'),
-            path.normpath('apps/lux/resources/scripts/docker_luxmerge.py')
-        ]),
         (path.normpath('../../golem/apps/dummy/resources/scripts'), [
             path.normpath('apps/dummy/resources/scripts/docker_dummytask.py')
         ]),
@@ -96,7 +92,7 @@ setup(
 
 if not (in_appveyor() or in_travis() or
         building_wheel or building_binary):
-    DockerManager.pull_images()
+    DockerManager().pull_images()
 
 if building_wheel:
     move_wheel()

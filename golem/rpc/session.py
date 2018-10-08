@@ -1,8 +1,9 @@
 import logging
 
+from netaddr import IPAddress, valid_ipv4
 from autobahn.twisted import ApplicationSession
 from autobahn.twisted.websocket import WampWebSocketClientFactory
-from autobahn.wamp import ProtocolError
+from autobahn.wamp import ProtocolError, auth
 from autobahn.wamp import types
 from twisted.application.internet import ClientService, backoffPolicy
 from twisted.internet import ssl as twisted_ssl
@@ -30,6 +31,11 @@ class RPCAddress(object):
         self.protocol = protocol
         self.host = host
         self.port = port
+
+        if valid_ipv4(self.host) and IPAddress(self.host).is_loopback():
+            #IPv4 loopback address replaced with hostname
+            self.host = "localhost"
+
         self.address = '{}://{}:{}'.format(self.protocol,
                                            self.host, self.port)
 
@@ -52,13 +58,14 @@ class WebSocketAddress(RPCAddress):
 
 class Session(ApplicationSession):
 
-    def __init__(self, address, methods=None, events=None,  # noqa # pylint: disable=too-many-arguments
-                 cert_manager=None, use_ipv6=False) -> None:
-
+    # pylint: disable=too-many-arguments
+    def __init__(self, address, methods=None, events=None,
+                 cert_manager=None, use_ipv6=False,
+                 crsb_user=None, crsb_user_secret=None) -> None:
         self.address = address
         self.methods = methods or []
         self.events = events or []
-        self.subs = {}
+        self.subs = {}  # type: ignore
 
         self.ready = Deferred()
         self.connected = False
@@ -70,10 +77,13 @@ class Session(ApplicationSession):
         self._use_ipv6 = use_ipv6
 
         self.config = types.ComponentConfig(realm=address.realm)
-        super(Session, self).__init__(self.config)
+        self.crsb_user = crsb_user
+        self.crsb_user_secret = crsb_user_secret
+
+        # pylint:disable=bad-super-call
+        super(self.__class__, self).__init__(self.config)  # type: ignore
 
     def connect(self, auto_reconnect=True):
-
         def init(proto):
             reactor.addSystemEventTrigger('before', 'shutdown', cleanup, proto)
             return proto
@@ -139,8 +149,26 @@ class Session(ApplicationSession):
 
         deferred.addCallback(init)
         deferred.addErrback(self.ready.errback)
-
         return self.ready
+
+    def onConnect(self):
+        if self.crsb_user and self.crsb_user_secret:
+            logger.info(f"Client connected. Starting WAMP-Ticket "
+                        f"authentication on realm {self.config.realm} "
+                        f"as crsb_user {self.crsb_user}")
+            self.join(self.config.realm, ["wampcra"], self.crsb_user.name)
+        else:
+            logger.info("Attempting to log in as anonymous")
+
+    def onChallenge(self, challenge):
+        if challenge.method == "wampcra":
+            logger.info(f"WAMP-Ticket challenge received: {challenge}")
+            signature = auth.compute_wcs(self.crsb_user_secret.encode('utf8'),
+                                         challenge.extra['challenge'].encode('utf8')) # noqa # pylint: disable=line-too-long
+            return signature.decode('ascii')
+
+        else:
+            raise Exception("Invalid authmethod {}".format(challenge.method))
 
     @inlineCallbacks
     def onJoin(self, details):

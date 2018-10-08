@@ -8,14 +8,17 @@ import random
 from collections import Counter
 
 from eth_utils import decode_hex
-from golem_messages import message, helpers
+from golem_messages import (
+    idgenerator,
+    helpers,
+    message,
+)
 from golem_messages.constants import MTD
 from semantic_version import Version
 
 import golem
 from golem.core import common
 from golem.core.async import AsyncRequest, async_run
-from golem.core.idgenerator import check_id_seed
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.p2p.node import Node
@@ -180,7 +183,7 @@ class CompTaskKeeper:
 
     def add_request(self, theader: TaskHeader, price: int):
         # price is task_header.max_price
-        logger.debug('CT.add_request()')
+        logger.debug('CT.add_request(%r, %d)', theader, price)
         if price < 0:
             raise ValueError("Price should be greater or equal zero")
         task_id = theader.task_id
@@ -226,12 +229,13 @@ class CompTaskKeeper:
 
     def check_comp_task_def(self, comp_task_def):
         task = self.active_tasks[comp_task_def['task_id']]
-        key_id = self.get_node_for_task_id(comp_task_def['task_id'])
+        key_id: str = self.get_node_for_task_id(comp_task_def['task_id'])
         not_accepted_message = "Cannot accept subtask %s for task %s. %s"
         log_args = [comp_task_def['subtask_id'], comp_task_def['task_id']]
 
-        if not check_id_seed(comp_task_def['subtask_id'],
-                             decode_hex(key_id)):
+        if not idgenerator.check_id_hex_seed(
+                comp_task_def['subtask_id'],
+                key_id,):
             logger.info(not_accepted_message, *log_args, "Subtask id was not "
                                                          "generated from "
                                                          "requestor's key.")
@@ -526,8 +530,8 @@ class TaskHeaderKeeper:
             self.supported_tasks.append(task_id)
 
     @staticmethod
-    def check_owner(task_id, owner_id):
-        if not check_id_seed(task_id, decode_hex(owner_id)):
+    def check_owner(task_id: str, owner_id: str) -> None:
+        if not idgenerator.check_id_hex_seed(task_id, owner_id):
             raise WrongOwnerException(
                 "Task_id %s doesn't match task owner %s", task_id, owner_id)
 

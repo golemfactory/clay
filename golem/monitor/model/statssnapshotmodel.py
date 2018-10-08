@@ -42,7 +42,7 @@ class ComputationTime(BasicModel):
 
 
 class RequestorStatsModel(BasicModel):
-    # pylint: disable=too-many-instance-attributes,too-few-public-methods
+    # pylint: disable=too-many-instance-attributes
     def __init__(self, meta_data: BasicModel, current_stats: CurrentStats,
                  finished_stats: FinishedTasksStats):
         super().__init__("RequestorStats", meta_data.cliid, meta_data.sessid)

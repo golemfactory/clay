@@ -1,3 +1,4 @@
+# pylint: disable=protected-access, too-many-lines
 import os
 import random
 import uuid
@@ -6,8 +7,9 @@ from math import ceil
 from unittest.mock import Mock, MagicMock, patch, ANY
 
 from eth_utils import encode_hex
-from golem_messages.message import ComputeTaskDef
+from golem_messages import idgenerator
 from golem_messages import factories as msg_factories
+from golem_messages.message import ComputeTaskDef
 from requests import HTTPError
 
 from apps.core.task.coretask import AcceptClientVerdict
@@ -16,7 +18,6 @@ from golem import model
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline, node_info_str
-from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.core.keysauth import KeysAuth
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
@@ -44,7 +45,7 @@ from tests.factories.resultpackage import ExtractedPackageFactory
 def get_example_task_header(key_id):
     return {
         "fixed_header": {
-            "task_id": generate_id(key_id),
+            "task_id": idgenerator.generate_id(key_id),
             "environment": "DEFAULT",
             "task_owner": dict(
                 key=encode_hex(key_id)[2:],
@@ -62,6 +63,7 @@ def get_example_task_header(key_id):
             "signature": None,
             "min_version": golem.__version__,
             "subtasks_count": 21,
+            "concent_enabled": False,
         },
         "mask": {
             "byte_repr": Mask().to_bytes()
@@ -90,6 +92,7 @@ class TaskServerTestBase(LogTestCase,
         super().setUp()
         random.seed()
         self.ccd = ClientConfigDescriptor()
+        self.client.concent_service.enabled = False
         with patch(
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
@@ -198,6 +201,27 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 {UnsupportReason.DENY_LIST: keys_auth.key_id}))
         assert ts.remove_task_header(task_id5)
 
+    @patch(
+        "golem.task.taskserver.TaskServer.should_accept_requestor",
+        return_value=SupportStatus(True),
+    )
+    def test_request_task_concent_required(self, *_):
+        self.ts.client.concent_service.enabled = True
+        self.ts.task_archiver = Mock()
+        keys_auth = KeysAuth(self.path, 'prv_key', '')
+        task_dict = get_example_task_header(keys_auth.public_key)
+        task_dict['fixed_header']['concent_enabled'] = False
+        self.ts.add_task_header(task_dict)
+
+        self.assertIsNone(self.ts.request_task())
+        self.ts.task_archiver.add_support_status.assert_called_once_with(
+            task_dict['fixed_header']['task_id'],
+            SupportStatus(
+                False,
+                {UnsupportReason.CONCENT_REQUIRED: True},
+            ),
+        )
+
     @patch("golem.task.taskserver.Trust")
     def test_send_results(self, trust, *_):
         ccd = ClientConfigDescriptor()
@@ -217,8 +241,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_id = task_header["fixed_header"]["task_id"]
         assert ts.add_task_header(task_header)
         assert ts.request_task()
-        subtask_id = generate_new_id_from_id(task_id)
-        subtask_id2 = generate_new_id_from_id(task_id)
+        subtask_id = idgenerator.generate_new_id_from_id(task_id)
+        subtask_id2 = idgenerator.generate_new_id_from_id(task_id)
         self.assertTrue(ts.send_results(subtask_id, task_id, results))
         ts.client.transaction_system.expect_income.reset_mock()
         self.assertTrue(ts.send_results(subtask_id2, task_id, results))
@@ -238,7 +262,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             value=1,
         )
 
-        subtask_id3 = generate_new_id_from_id(task_id)
+        subtask_id3 = idgenerator.generate_new_id_from_id(task_id)
         with self.assertLogs(logger, level='WARNING'):
             ts.subtask_rejected(keys_auth.key_id, subtask_id3)
         self.assertIsNotNone(ts.task_keeper.task_headers.get(task_id))
