@@ -1,4 +1,4 @@
-# pylint: disable=too-few-public-methods
+
 from unittest import TestCase
 
 from golem.core.printable_object import PrintableObject

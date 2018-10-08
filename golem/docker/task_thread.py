@@ -170,8 +170,7 @@ class DockerTaskThread(TaskThread):
 
     def _task_computed(self, estm_mem: Optional[int]) -> None:
         out_files = [
-            str(path) for path in self.dir_mapping.output.glob("**/*")
-            if path.is_file()
+            str(path) for path in self.dir_mapping.output.glob("*")
         ]
         self.result = {
             "data": out_files,
