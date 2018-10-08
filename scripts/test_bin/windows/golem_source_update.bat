@@ -1,7 +1,7 @@
 
 call ".\golem_source__prep.bat"
 
-echo "Intstall requirements"
+echo "Install requirements"
 pip install -r requirements.txt
 pip install -r requirements-win.txt
 
