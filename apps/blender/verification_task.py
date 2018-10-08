@@ -2,7 +2,7 @@ import logging
 from threading import Lock
 from typing import Optional, Any
 from twisted.python.failure import Failure
-from twisted.internet.defer import Deferred, DeferredList, gatherResults
+from twisted.internet.defer import Deferred, DeferredList
 from golem.core.common import deadline_to_timeout
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 
@@ -21,9 +21,10 @@ class VerificationTask:
         self.already_called = False
         self.lock = Lock()
         self.default_crops_number = 3
-        self.__crop_jobs = DeferredList([Deferred() for _ in
-                            range(self.default_crops_number)],
-                            fireOnOneErrback=True, consumeErrors=True)
+        self.__crop_jobs = DeferredList(
+            [Deferred() for _ in
+             range(self.default_crops_number)],
+            fireOnOneErrback=True, consumeErrors=True)
 
     def start(self, verifier_class) -> Optional[Deferred]:
         self.verifier = verifier_class(self.kwargs)
@@ -48,7 +49,7 @@ class VerificationTask:
                     self.__call_if_not_called(
                         False,
                         self.verifier.verification_completed())
-            except Exception as e:
+            except Exception as e: # pylint: disable=broad-except
                 logger.warning("Exception in verification %s", e)
                 self.__call_if_not_called(
                     False,
@@ -61,7 +62,8 @@ class VerificationTask:
     def __crop_rendered(self, result):
         try:
             self.verifier.verify_with_crop(result)
-        except Exception as e:
+            return True
+        except Exception as e: # pylint: disable=broad-except
             logger.warning("__crop_rendered %s", e)
             return Failure(e)
 

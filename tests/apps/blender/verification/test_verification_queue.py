@@ -20,7 +20,7 @@ class TestVerificationQueue(unittest.TestCase):
         "golem_verificator.blender_verifier.BlenderVerifier."
         "simple_verification", return_value=True)
     @mock.patch('apps.blender.verification_task.VerificationTask.start',
-        return_value=Deferred())
+                return_value=Deferred())
     def test_task_timeout(self, _start, _simple_verification,
                           _verification_timed_out, ):
 

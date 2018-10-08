@@ -21,8 +21,6 @@ from apps.blender.task.blenderrendertask import (BlenderDefaults,
                                                  PreviewUpdater,
                                                  logger)
 from apps.core.task.coretask import AcceptClientVerdict
-#from apps.core.task.coretask import CoreTask
-from apps.rendering.task.framerenderingtask import FrameRenderingTask
 from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
