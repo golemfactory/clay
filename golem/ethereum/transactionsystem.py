@@ -36,6 +36,7 @@ from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
 from golem.ethereum.incomeskeeper import IncomesKeeper
 from golem.ethereum.paymentskeeper import PaymentsKeeper
+from golem.rpc import utils as rpc_utils
 from golem.utils import privkeytoaddr
 
 from . import exceptions
@@ -598,11 +599,13 @@ class TransactionSystem(LoopingCallService):
         dpayment.save()
         return dpayment.tx
 
+    @rpc_utils.expose('pay.deposit.relock')
     def concent_relock(self):
         if self.concent_balance() == 0:
             return
         self._sci.lock_deposit()
 
+    @rpc_utils.expose('pay.deposit.unlock')
     def concent_unlock(self):
         if self.concent_balance() == 0:
             return
