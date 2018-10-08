@@ -1,5 +1,5 @@
 import logging
-from os import path
+import os
 from pathlib import Path
 import subprocess
 from subprocess import CalledProcessError, TimeoutExpired
@@ -33,13 +33,10 @@ class HyperVHypervisor(DockerMachineHypervisor):
                       "download/v18.06.1-ce%2Bdvn-v0.35/boot2docker.iso"
     DOCKER_USER = "golem-docker"
     DOCKER_PASSWORD = "golem-docker"
-    VIRTUAL_SWITCH = "Golem Switch"
     VOLUME_DRIVER = "cifs"
 
-    GET_IP_SCRIPT_PATH = \
-        path.join(get_golem_path(), 'scripts', 'get-ip-address.ps1')
-    SETUP_SWITCH_PATH = \
-        path.join(get_golem_path(), 'scripts', 'create-vnet-switch.ps1')
+    GET_VSWITCH_SCRIPT_PATH = \
+        os.path.join(get_golem_path(), 'scripts', 'get-default-vswitch.ps1')
     SCRIPT_TIMEOUT = 5  # seconds
 
     def __init__(self, *args, **kwargs):
@@ -52,13 +49,11 @@ class HyperVHypervisor(DockerMachineHypervisor):
             cpu: Optional[Union[str, int]] = None,
             mem: Optional[Union[str, int]] = None,
             **params: Any) -> List[str]:
-        logger.debug('Creating vnet switch')
-        vnet_result = self._create_vnet_switch()
-        logger.debug('Vnet created, result=%r', vnet_result)
 
         args = super()._parse_create_params(**params)
+        virtual_switch = self._get_vswitch_name()
         args += [self.OPTIONS['boot2docker_url'], self.BOOT2DOCKER_URL,
-                 self.OPTIONS['virtual_switch'], self.VIRTUAL_SWITCH]
+                 self.OPTIONS['virtual_switch'], virtual_switch]
 
         if cpu is not None:
             args += [self.OPTIONS['cpu'], str(cpu)]
@@ -114,22 +109,22 @@ class HyperVHypervisor(DockerMachineHypervisor):
         smbshare.create_share(self.DOCKER_USER, work_dir)
 
     @classmethod
-    def _get_ip_for_sharing(cls) -> str:
+    def _get_vswitch_name(cls) -> str:
+        return cls._run_ps(cls.GET_VSWITCH_SCRIPT_PATH)
+
+    @classmethod
+    def _get_hostname_for_sharing(cls) -> str:
         """
-        Get IP address of the host machine which could be used for sharing
+        Get name of the host machine which could be used for sharing
         directories with Hyper-V VMs connected to Golem's virtual switch.
         """
-        return cls._run_ps(cls.GET_IP_SCRIPT_PATH)
+        hostname = os.getenv('COMPUTERNAME')
+        if not hostname:
+            raise RuntimeError('COMPUTERNAME environment variable not set')
+        return hostname
 
     @classmethod
-    def _create_vnet_switch(cls) -> str:
-        """
-        Create the virtual switch required to start a hyperv machine.
-        """
-        return cls._run_ps(cls.SETUP_SWITCH_PATH, 20)
-
-    @classmethod
-    def _run_ps(cls, script, timeout=10):
+    def _run_ps(cls, script, timeout=SCRIPT_TIMEOUT):
         """
         Runs the script and returns its output in UTF8
         """
@@ -140,7 +135,6 @@ class HyperVHypervisor(DockerMachineHypervisor):
                         'powershell.exe',
                         '-ExecutionPolicy', 'RemoteSigned',
                         '-File', script,
-                        '-Interface', cls.VIRTUAL_SWITCH,
                     ],
                     timeout=timeout,  # seconds
                     check=True,
@@ -151,23 +145,23 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 .decode('utf8')\
                 .strip()
         except (CalledProcessError, TimeoutExpired) as exc:
-            raise RuntimeError(exc.stderr.decode('utf8'))
+            raise RuntimeError(exc.stderr.decode('utf8') if exc.stderr else '')
 
     @staticmethod
     def uses_volumes() -> bool:
         return True
 
     def create_volumes(self, binds: Iterable[DockerBind]) -> dict:
-        my_ip = self._get_ip_for_sharing()
+        hostname = self._get_hostname_for_sharing()
         return {
-            self._create_volume(my_ip, bind.source): {
+            self._create_volume(hostname, bind.source): {
                 'bind': bind.target,
                 'mode': bind.mode
             }
             for bind in binds
         }
 
-    def _create_volume(self, my_ip: str, shared_dir: Path) -> str:
+    def _create_volume(self, hostname: str, shared_dir: Path) -> str:
         assert self._work_dir is not None
         try:
             relpath = shared_dir.relative_to(self._work_dir)
@@ -177,7 +171,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 f'subdirectory of docker work dir ("{self._work_dir}")')
 
         share_name = smbshare.get_share_name(self._work_dir)
-        volume_name = f'{my_ip}/{share_name}/{relpath.as_posix()}'
+        volume_name = f'{hostname}/{share_name}/{relpath.as_posix()}'
 
         # Client must be created here, do it in __init__() will not work since
         # environment variables are not set yet when __init__() is called
