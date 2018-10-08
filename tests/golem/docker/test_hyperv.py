@@ -27,42 +27,27 @@ class TestHyperVHypervisor(TestCase):
                 return
         self.fail(f'Parameter {name} = {value} not found in {args}')
 
-    @patch(PATCH_BASE + '.HyperVHypervisor._create_vnet_switch')
+    @patch(PATCH_BASE + '.HyperVHypervisor._get_vswitch_name',
+           return_value='Default Switch')
     def test_parse_create_params_default(self, _):
         args = self.hyperv._parse_create_params()
         self._assert_param(args, '--driver', 'hyperv')
         self._assert_param(
             args, '--hyperv-boot2docker-url', HyperVHypervisor.BOOT2DOCKER_URL)
         self._assert_param(
-            args, '--hyperv-virtual-switch', HyperVHypervisor.VIRTUAL_SWITCH)
+            args, '--hyperv-virtual-switch', 'Default Switch')
 
-    @patch(PATCH_BASE + '.HyperVHypervisor._create_vnet_switch')
+    @patch(PATCH_BASE + '.HyperVHypervisor._get_vswitch_name')
     def test_parse_create_params_constraints(self, _):
         args = self.hyperv._parse_create_params(cpu=4, mem=4096)
         self._assert_param(args, '--hyperv-cpu-count', '4')
         self._assert_param(args, '--hyperv-memory', '4096')
 
-    @patch(PATCH_BASE + '.subprocess.run')
-    def test_parse_create_vnet_switch(self, mock_run):
-        self.hyperv._create_vnet_switch()
-        mock_run.assert_called_with(
-            [
-                'powershell.exe',
-                '-ExecutionPolicy', 'RemoteSigned',
-                '-File', self.hyperv.SETUP_SWITCH_PATH,
-                '-Interface', self.hyperv.VIRTUAL_SWITCH,
-            ],
-            timeout=20,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-        )
-
     @patch(PATCH_BASE + '.subprocess.run',
-           side_effect=subprocess.CalledProcessError(1, 'a', stderr=b''))
-    def test_parse_create_vnet_switch_fail(self, _):
+           side_effect=subprocess.CalledProcessError(1, 'foo'))
+    def test_parse_create_params_error(self, _):
         with self.assertRaises(RuntimeError):
-            self.hyperv._create_vnet_switch()
+            self.hyperv._parse_create_params()
 
     @patch(PATCH_BASE + '.logger')
     def test_constrain_error(self, logger):
@@ -133,7 +118,7 @@ class TestHyperVHypervisor(TestCase):
         def _create_volume(my_ip, shared_dir):
             return f'{my_ip}/{shared_dir.name}'
 
-        with patch.object(self.hyperv, '_get_ip_for_sharing') as get_ip, \
+        with patch.object(self.hyperv, '_get_hostname_for_sharing') as get_ip, \
                 patch.object(self.hyperv, '_create_volume', _create_volume):
             get_ip.return_value = '127.0.0.1'
             volumes = self.hyperv.create_volumes(binds)
@@ -174,3 +159,15 @@ class TestHyperVHypervisor(TestCase):
                 'password': HyperVHypervisor.DOCKER_PASSWORD
             }
         )
+
+    # Not using patch.dict() because mypy can't understand it
+    # See https://github.com/python/mypy/issues/5118 for reference
+    @patch(PATCH_BASE + '.os.environ', {'COMPUTERNAME': 'foo'})
+    def test_get_hostname_for_sharing_ok(self):
+        hostname = self.hyperv._get_hostname_for_sharing()
+        self.assertEqual(hostname, 'foo')
+
+    @patch(PATCH_BASE + '.os.environ', {})
+    def test_get_hostname_for_sharing_error(self):
+        with self.assertRaises(RuntimeError):
+            self.hyperv._get_hostname_for_sharing()
