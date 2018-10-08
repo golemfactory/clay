@@ -1,6 +1,7 @@
 import unittest
 from unittest import mock
 import functools
+from twisted.internet.defer import Deferred
 from golem_verificator.blender_verifier import BlenderVerifier
 from golem.core.common import timeout_to_deadline
 from golem.docker.task_thread import DockerTaskThread
@@ -18,9 +19,9 @@ class TestVerificationQueue(unittest.TestCase):
     @mock.patch(
         "golem_verificator.blender_verifier.BlenderVerifier."
         "simple_verification", return_value=True)
-    @mock.patch(
-        'golem_verificator.blender_verifier.BlenderVerifier.start_rendering')
-    def test_task_timeout(self, _start_rendering, _simple_verification,
+    @mock.patch('apps.blender.verification_task.VerificationTask.start',
+        return_value=Deferred())
+    def test_task_timeout(self, _start, _simple_verification,
                           _verification_timed_out, ):
 
         VerificationQueue.VERIFICATION_TIMEOUT = 2

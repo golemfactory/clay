@@ -21,6 +21,8 @@ from apps.blender.task.blenderrendertask import (BlenderDefaults,
                                                  PreviewUpdater,
                                                  logger)
 from apps.core.task.coretask import AcceptClientVerdict
+#from apps.core.task.coretask import CoreTask
+from apps.rendering.task.framerenderingtask import FrameRenderingTask
 from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
@@ -146,20 +148,17 @@ class TestBlenderFrameTask(TempDirFixture):
         img = Image.new("RGB", (self.bt.res_x, self.bt.res_y // 2))
         img.save(file1, "PNG")
 
-        def verification_finished1(verification_data):
-            result = {'reference_data': None,
-                      'message': "",
-                      'time_started': None,
-                      'time_ended': None,
-                      'extra_data': {}}
-            result['extra_data']['results'] = verification_data['results']
+        def verification_finished1(*args, **kwargs):
+            results = {}
+            results['extra_data'] = {}
+            results['extra_data']['results'] = kwargs['results']
             self.bt.verification_finished(
-                extra_data3.ctd['subtask_id'],
+                args[1],
                 SubtaskVerificationState.VERIFIED,
-                result)
+                results)
 
-        with mock.patch('golem_verificator.rendering_verifier.'
-                        'RenderingVerifier.start_verification',
+        with mock.patch('apps.blender.verification_queue.'
+                        'VerificationQueue.submit',
                         side_effect=verification_finished1):
             self.bt.computation_finished(
                 extra_data3.ctd['subtask_id'],
@@ -171,17 +170,14 @@ class TestBlenderFrameTask(TempDirFixture):
 
         BlenderRenderTask.VERIFICATION_QUEUE._reset()
 
-        def verification_finished2(verification_data):
-            result = {'reference_data': None,
-                      'message': "",
-                      'time_started': None,
-                      'time_ended': None,
-                      'extra_data': {}}
-            result['extra_data']['results'] = verification_data['results']
+        def verification_finished2(*args, **kwargs):
+            results = {}
+            results['extra_data'] = {}
+            results['extra_data']['results'] = kwargs['results']
             self.bt.verification_finished(
-                extra_data4.ctd['subtask_id'],
+                args[1],
                 SubtaskVerificationState.VERIFIED,
-                result)
+                results)
 
         extra_data4 = self.bt.query_extra_data(1000, 2, "FFF", "fff")
         assert extra_data4.ctd is not None
@@ -190,8 +186,8 @@ class TestBlenderFrameTask(TempDirFixture):
         img.save(file2, "PNG")
         img.close()
 
-        with mock.patch('golem_verificator.rendering_verifier.'
-                        'RenderingVerifier.start_verification',
+        with mock.patch('apps.blender.verification_queue.'
+                        'VerificationQueue.submit',
                         side_effect=verification_finished2):
             self.bt.computation_finished(
                 extra_data4.ctd['subtask_id'],
