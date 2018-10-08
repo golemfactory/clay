@@ -1,9 +1,25 @@
 #!/bin/sh
 
-PROJECT_DIR=~/projects
+_CONF_NAME=".bin_config.sh"
+_CUR_DIR=$( dirname "${BASH_SOURCE[0]}" )
+
+# Current dir => home dir => script dir
+_CONFIG_OPTIONS="./${_CONF_NAME}
+~/${_CONF_NAME}
+${_CUR_DIR}/${_CONF_NAME}"
+
+for CONFIG in ${_CONFIG_OPTIONS}; do
+	echo "Checking $CONFIG"
+	if [ -f $CONFIG ]; then
+		echo EXISTS
+		. $CONFIG
+		break
+	fi
+	echo "Not there"
+done
 
 echo "Activate golem-env"
-. ${PROJECT_DIR}/golem-env/bin/activate
+. ${VENV_DIR}/bin/activate
 
 echo "Change to source directory"
-cd ${PROJECT_DIR}/golem
+cd ${GOLEM_SRC_DIR}
