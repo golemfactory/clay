@@ -354,7 +354,11 @@ class TestTransactionSystem(TransactionSystemBase):
             ANY,
         )
 
-    def test_check_payments(self):
+    @patch(
+        'golem.ethereum.transactionsystem.TransactionSystem.concent_timelock',
+        return_value=0,
+    )
+    def test_check_payments(self, *_args):
         with patch.object(
             self.ets._incomes_keeper, 'update_overdue_incomes'
         ) as incomes:
