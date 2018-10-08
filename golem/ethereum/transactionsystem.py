@@ -601,7 +601,7 @@ class TransactionSystem(LoopingCallService):
     def concent_relock(self):
         if self.concent_balance() == 0:
             return
-        raise RuntimeError("Not implemented in SCI")
+        self._sci.lock_deposit()
 
     def concent_unlock(self):
         if self.concent_balance() == 0:
