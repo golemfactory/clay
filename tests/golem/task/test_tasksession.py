@@ -73,27 +73,30 @@ class ConcentMessageMixin():
 # pylint:disable=no-member
 class TaskSessionTaskToComputeTest(TestCase):
     def setUp(self):
+        self.requestor_keys = cryptography.ECCx(None)
+        self.requestor_key = encode_hex(self.requestor_keys.raw_pubkey)
+        self.provider_keys = cryptography.ECCx(None)
+        self.provider_key = encode_hex(self.provider_keys.raw_pubkey)
+
         self.task_manager = Mock(tasks_states={}, tasks={})
-        self.conn = Mock(
-            server=Mock(task_manager=self.task_manager)
-        )
+        server = Mock(task_manager=self.task_manager)
+        server.get_key_id = lambda: self.provider_key
+        self.conn = Mock(server=server)
         self.use_concent = True
         self.task_id = uuid.uuid4().hex
         self.node_name = 'ABC'
-        self.requestor_keys = cryptography.ECCx(None)
-        self.requestor_key = encode_hex(self.requestor_keys.raw_pubkey)
 
     def _get_task_session(self):
         ts = TaskSession(self.conn)
         ts._is_peer_blocked = Mock(return_value=False)
         ts.verified = True
         ts.concent_service.enabled = self.use_concent
-        ts.key_id = 'unittest_key_id'
+        ts.key_id = 'requestor key id'
         return ts
 
     def _get_requestor_tasksession(self, accept_provider=True):
         ts = self._get_task_session()
-        ts.key_id = "DEF"
+        ts.key_id = "provider key id"
         ts.can_be_not_encrypted.append(message.tasks.WantToComputeTask)
         ts.task_server.should_accept_provider.return_value = accept_provider
         ts.task_server.config_desc.max_price = 100
@@ -164,6 +167,8 @@ class TaskSessionTaskToComputeTest(TestCase):
         self.assertEqual(mt.max_resource_size, params['max_resource_size'])
         self.assertEqual(mt.max_memory_size, params['max_memory_size'])
         self.assertEqual(mt.num_cores, params['num_cores'])
+        self.assertEqual(mt.provider_public_key, self.provider_key)
+        self.assertEqual(mt.provider_ethereum_public_key, self.provider_key)
 
     @patch('golem.network.history.MessageHistoryService.instance')
     def test_cannot_assign_task_provider_not_accepted(self, *_):
@@ -235,9 +240,8 @@ class TaskSessionTaskToComputeTest(TestCase):
             ['provider_id', ts2.key_id],
             ['requestor_public_key', self.requestor_key],
             ['requestor_ethereum_public_key', self.requestor_key],
-            ['provider_public_key', ts2.key_id],
-            ['provider_ethereum_public_key', ts2.key_id],
             ['compute_task_def', ctd],
+            ['want_to_compute_task', mt],
             ['package_hash', 'sha1:' + task_state.package_hash],
             ['concent_enabled', self.use_concent],
             ['price', 0],
@@ -314,7 +318,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         get_mock.return_value = ttc
         ts.task_server.get_key_id.return_value = 'key id'
         ts.send_report_computed_task(
-            wtr, wtr.owner.pub_addr, wtr.owner.pub_port, "0x00", wtr.owner)
+            wtr, wtr.owner.pub_addr, wtr.owner.pub_port, wtr.owner)
 
         rct: message.tasks.ReportComputedTask = \
             ts.conn.send_message.call_args[0][0]
@@ -324,7 +328,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertEqual(rct.node_name, "ABC")
         self.assertEqual(rct.address, wtr.owner.pub_addr)
         self.assertEqual(rct.port, wtr.owner.pub_port)
-        self.assertEqual(rct.eth_account, "0x00")
         self.assertEqual(rct.extra_data, [])
         self.assertEqual(rct.node_info, wtr.owner.to_dict())
         self.assertEqual(rct.package_hash, 'sha1:' + wtr.package_sha1)
@@ -361,7 +364,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         wtr.result_type = "UNKNOWN"
         with self.assertLogs(logger, level="ERROR"):
             ts.send_report_computed_task(
-                wtr, wtr.owner.pub_addr, wtr.owner.pub_port, "0x00", wtr.owner)
+                wtr, wtr.owner.pub_addr, wtr.owner.pub_port, wtr.owner)
 
     def test_react_to_hello_protocol_version(self):
         # given
@@ -588,6 +591,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         env.get_source_code.return_value = None
         ts.task_server.get_environment_by_id.return_value = env
 
+        keys = cryptography.ECCx(None)
+        ts.task_server.keys_auth.ecc.raw_pubkey = keys.raw_pubkey
+
         reasons = message.tasks.CannotComputeTask.REASON
 
         def __reset_mocks():
@@ -597,6 +603,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # msg.ctd is None -> failure
         msg = msg_factories.tasks.TaskToComputeFactory(compute_task_def=None)
+        msg.want_to_compute_task.sign_message(keys.raw_privkey)  # pylint: disable=no-member
         ts._react_to_task_to_compute(msg)
         ts.task_server.add_task_session.assert_not_called()
         ts.task_computer.task_given.assert_not_called()
@@ -621,6 +628,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             msg = msg_factories.tasks.TaskToComputeFactory(
                 compute_task_def=compute_task_def,
             )
+            msg.want_to_compute_task.provider_public_key = encode_hex(
+                keys.raw_pubkey)
+            msg.want_to_compute_task.sign_message(keys.raw_privkey)  # pylint: disable=no-member
             ts.task_server.task_keeper.task_headers = {
                 msg.task_id: MagicMock(),
             }
@@ -988,7 +998,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
     def test_send_report_computed_task_concent_no_message(self):
         wtr = factories.taskserver.WaitingTaskResultFactory(owner=self.n)
         self.ts.send_report_computed_task(
-            wtr, wtr.owner.pub_addr, wtr.owner.pub_port, "0x00", self.n)
+            wtr, wtr.owner.pub_addr, wtr.owner.pub_port, self.n)
         self.ts.concent_service.submit.assert_not_called()
 
     def test_send_report_computed_task_concent_success(self):
@@ -997,7 +1007,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         self._mock_task_to_compute(self.task_id, self.subtask_id, self.node_id,
                                    concent_enabled=True)
         self.ts.send_report_computed_task(
-            wtr, wtr.owner.pub_addr, wtr.owner.pub_port, "0x00", self.n)
+            wtr, wtr.owner.pub_addr, wtr.owner.pub_port, self.n)
 
         self.assert_submit_task_message(self.subtask_id, wtr)
 
@@ -1017,7 +1027,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
                                    concent_enabled=True)
 
         self.ts.send_report_computed_task(
-            wtr, wtr.owner.pub_addr, wtr.owner.pub_port, "0x00", self.n)
+            wtr, wtr.owner.pub_addr, wtr.owner.pub_port, self.n)
 
         self.assert_submit_task_message(self.subtask_id, wtr)
 
@@ -1029,7 +1039,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
             self.task_id, self.subtask_id, self.node_id, concent_enabled=False)
 
         self.ts.send_report_computed_task(
-            wtr, wtr.owner.pub_addr, wtr.owner.pub_port, "0x00", self.n)
+            wtr, wtr.owner.pub_addr, wtr.owner.pub_port, self.n)
         self.ts.concent_service.submit.assert_not_called()
 
 

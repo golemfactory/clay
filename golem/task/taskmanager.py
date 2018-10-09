@@ -17,13 +17,14 @@ from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask, AcceptClientVerdict
-from golem.core.common import HandleKeyError, get_timestamp_utc, \
-    to_unicode, update_dict, HandleForwardedError
+from golem.core.common import get_timestamp_utc, HandleForwardedError, \
+    HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
+from golem.rpc import utils as rpc_utils
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task, TaskHeader, TaskPurpose
 from golem.task.taskkeeper import CompTaskKeeper
@@ -150,7 +151,7 @@ class TaskManager(TaskEventListener):
         definition = builder_type.build_definition(task_type, dictionary,
                                                    minimal)
         definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
-        definition.concent_enabled = dictionary['concent_enabled']
+        definition.concent_enabled = dictionary.get('concent_enabled', False)
         builder = builder_type(self.node, definition, self.dir_manager)
 
         return builder.build()
@@ -437,6 +438,13 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id,
                                  subtask_id=ctd['subtask_id'],
                                  op=SubtaskOp.ASSIGNED)
+        logger.debug(
+            "Subtask generated. task=%s, node=%s, ctd=%s",
+            task_id,
+            node_info_str(node_name, node_id),
+            ctd,
+        )
+
         return ctd
 
     def is_my_task(self, task_id) -> bool:
@@ -446,18 +454,30 @@ class TaskManager(TaskEventListener):
     def should_wait_for_node(self, task_id, node_id) -> bool:
         """ Check if the node has too many tasks assigned already """
         if not self.is_my_task(task_id):
+            logger.debug(
+                "Not my task. task_id=%s, node=%s",
+                task_id,
+                short_node_id(node_id),
+            )
             return False
 
         task = self.tasks[task_id]
 
         verdict = task.should_accept_client(node_id)
+        logger.debug(
+            "Should accept client verdict. verdict=%s, task=%s, node=%s",
+            verdict,
+            task_id,
+            short_node_id(node_id),
+        )
         if verdict == AcceptClientVerdict.SHOULD_WAIT:
-            logger.warning("Waiting for results from %s on %s", node_id,
-                           task_id)
+            logger.warning("Waiting for results from %s on %s",
+                           short_node_id(node_id), task_id)
             return True
         elif verdict == AcceptClientVerdict.REJECTED:
-            logger.warning("Client %s has failed on subtask within task %s"
-                           " and is banned from it", node_id, task_id)
+            logger.warning("Client has failed on subtask within this task"
+                           " and is banned from it. node_id=%s, task_id=%s",
+                           short_node_id(node_id), task_id)
 
         return False
 
@@ -478,7 +498,8 @@ class TaskManager(TaskEventListener):
             node_id, node_name, task_id, price,
         )
         if not self.is_my_task(task_id):
-            logger.info("Cannot find task in my tasks. task_id=%r", task_id)
+            logger.info("Cannot find task in my tasks. task_id=%s, provider=%s",
+                        task_id, node_info_str(node_name, node_id))
             return False
 
         task = self.tasks[task_id]
@@ -487,8 +508,11 @@ class TaskManager(TaskEventListener):
             return False
 
         if not self.task_needs_computation(task_id):
-            logger.info('Task does not need computation. provider=%r - %r',
-                        node_name, node_id)
+            logger.info(
+                'Task does not need computation. task_id=%s, provider=%s',
+                task_id,
+                node_info_str(node_name, node_id)
+            )
             return False
 
         return True
@@ -916,6 +940,7 @@ class TaskManager(TaskEventListener):
 
         self.notice_task_updated(task_id, op=TaskOp.ABORTED)
 
+    @rpc_utils.expose('comp.task.subtasks.frames')
     @handle_task_key_error
     def get_output_states(self, task_id):
         return self.tasks[task_id].get_output_states()
@@ -1022,6 +1047,7 @@ class TaskManager(TaskEventListener):
         if subtasks:
             return [subtask.to_dictionary() for subtask in subtasks.values()]
 
+    @rpc_utils.expose('comp.task.subtasks.borders')
     def get_subtasks_borders(self, task_id, part=1):
         task = self.tasks[task_id]
         task_type_name = task.task_definition.task_type.lower()
@@ -1115,6 +1141,13 @@ class TaskManager(TaskEventListener):
         :param bool persist: should the task be persisted now
         """
         # self.save_state()
+
+        logger.debug(
+            "Notice task updated. task_id=%s, subtask_id=%s,"
+            "op=%s, persist=%s",
+            task_id, subtask_id, op, persist,
+        )
+
         if persist and self.task_persistence:
             self.dump_task(task_id)
 

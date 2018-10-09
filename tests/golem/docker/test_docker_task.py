@@ -1,9 +1,10 @@
-# pylint: disable=too-few-public-methods,too-many-locals
+# pylint: disable=too-many-locals
+# pylint: disable=protected-access
 
 import json
 import os
-import time
 from os import path
+import time
 from pathlib import Path
 import shutil
 from typing import AnyStr, Generic, List, Optional, Type, TypeVar, Union
@@ -12,7 +13,7 @@ from unittest.mock import Mock, patch
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import get_golem_path, timeout_to_deadline, is_windows
+from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.simpleserializer import DictSerializer
 from golem.docker.task_thread import DockerTaskThread
 from golem.network.p2p.node import Node as P2PNode
@@ -32,7 +33,7 @@ PathOrStr = Union[Path, AnyStr]
 class TaskComputerExt(TaskComputer):
 
     @property  # type: ignore
-    def counting_thread(self):  # noqa
+    def counting_thread(self):
         return getattr(self, '_counting_thread', None)
 
     @counting_thread.setter
@@ -78,7 +79,7 @@ class DockerTaskTestCase(
         with open(task_path) as f:
             golem_path = get_golem_path()
             json_str = f.read().replace('$GOLEM_DIR',
-                                        Path(get_golem_path()).as_posix())
+                                        Path(golem_path).as_posix())
             return DictSerializer.load(json.loads(json_str))
 
     def _get_test_task(self) -> Task:
@@ -107,7 +108,8 @@ class DockerTaskTestCase(
     def _run_task(self, task: Task, timeout: int = 60 * 5, *_) \
             -> Optional[DockerTaskThread]:
         task_id = task.header.task_id
-        extra_data = task.query_extra_data(1.0)
+        node_id = '0xdeadbeef'
+        extra_data = task.query_extra_data(1.0, 0, node_id)
         ctd = extra_data.ctd
         ctd['deadline'] = timeout_to_deadline(timeout)
 
@@ -120,9 +122,12 @@ class DockerTaskTestCase(
                 use_docker_manager=False,
                 concent_variant={'url': None, 'pubkey': None},
             )
-        with patch('golem.client.node_info_str'):
-            self.node.client = self.node._client_factory(Mock())
+        mock_keys_auth = Mock()
+        mock_keys_auth.key_id = node_id
+        self.node.client = self.node._client_factory(mock_keys_auth)
         self.node.client.start = Mock()
+        self.node.client.task_server = Mock()
+        self.node.rpc_session = Mock()
         self.node._run()
 
         ccd = ClientConfigDescriptor()
@@ -162,7 +167,10 @@ class DockerTaskTestCase(
 
         # Start task computation
         task_computer.task_given(ctd)
-        result = task_computer.resource_given(ctd['task_id'])
+        result = task_computer.task_resource_collected(
+            ctd['task_id'],
+            unpack_delta=False,
+        )
         self.assertTrue(result)
 
         task_thread = None

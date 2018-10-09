@@ -83,10 +83,6 @@ setup(
             path.normpath('apps/blender/resources/scripts/blendercrop.py.template'),
             path.normpath('apps/blender/resources/scripts/docker_blendertask.py')
         ]),
-        (path.normpath('../../golem/apps/lux/resources/scripts'), [
-            path.normpath('apps/lux/resources/scripts/docker_luxtask.py'),
-            path.normpath('apps/lux/resources/scripts/docker_luxmerge.py')
-        ]),
         (path.normpath('../../golem/apps/dummy/resources/scripts'), [
             path.normpath('apps/dummy/resources/scripts/docker_dummytask.py')
         ]),

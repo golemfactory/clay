@@ -26,7 +26,7 @@ from apps.rendering.task.framerenderingtask import FrameRenderingTask, \
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, PREVIEW_Y
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, \
     RendererDefaults
-from golem.core.common import to_unicode
+from golem.core.common import short_node_id, to_unicode
 from golem.core.fileshelper import has_ext
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
@@ -38,7 +38,7 @@ from golem_verificator.blender_verifier import BlenderVerifier
 # https://github.com/golemfactory/golem/issues/2059
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-logger = logging.getLogger("apps.blender")
+logger = logging.getLogger(__name__)
 
 
 class BlenderDefaults(RendererDefaults):
@@ -350,7 +350,7 @@ class BlenderNVGPUTaskTypeInfo(RenderingTaskTypeInfo):
 
 
 class BlenderRendererOptions(FrameRendererOptions):
-    # pylint: disable=too-few-public-methods
+
     def __init__(self):
         super(BlenderRendererOptions, self).__init__()
         self.environment = BlenderEnvironment()
@@ -359,7 +359,7 @@ class BlenderRendererOptions(FrameRendererOptions):
 
 
 class BlenderNVGPURendererOptions(BlenderRendererOptions):
-    # pylint: disable=too-few-public-methods
+
     def __init__(self):
         super().__init__()
         self.environment = BlenderNVGPUEnvironment()
@@ -483,9 +483,13 @@ class BlenderRenderTask(FrameRenderingTask):
                       }
 
         subtask_id = self.create_subtask_id()
-        logger.debug('Created new subtask for task. task_id=%r, subtask_id=%r'
-                     ', node_id=%r',
-                     self.header.task_id, subtask_id, node_id)
+        logger.debug(
+            'Created new subtask for task. '
+            'task_id=%s, subtask_id=%s, node_id=%s',
+            self.header.task_id,
+            subtask_id,
+            short_node_id(node_id or '')
+        )
         self.subtasks_given[subtask_id] = copy(extra_data)
         self.subtasks_given[subtask_id]['subtask_id'] = subtask_id
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.starting
