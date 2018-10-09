@@ -1,7 +1,7 @@
 #[macro_use]
 extern crate cpython;
 
-use cpython::{Python, PyResult, PyList};
+use cpython::{PyList, PyResult, Python};
 
 mod marketplace;
 
@@ -16,6 +16,10 @@ fn marketplace__pick_provider(py: Python, pyoffers: PyList) -> PyResult<u32> {
 
 py_module_initializer!(libgolem, initlibgolem, PyInit_golem, |py, m| {
     try!(m.add(py, "__doc__", "Parts of Golem core implemented in Rust"));
-    try!(m.add(py, "marketplace__pick_provider", py_fn!(py, marketplace__pick_provider(offers: PyList))));
+    try!(m.add(
+        py,
+        "marketplace__pick_provider",
+        py_fn!(py, marketplace__pick_provider(offers: PyList))
+    ));
     Ok(())
 });
