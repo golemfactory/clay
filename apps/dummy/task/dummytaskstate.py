@@ -59,19 +59,14 @@ class DummyTaskDefinition(TaskDefinition):
         self.shared_data_files = list(self.resources)
         self.code_files = list(list_dir_recursive(self.code_dir))
 
-        symlink_or_copy(self.code_dir, os.path.join(self.tmp_dir, "code"))
+        symlink_or_copy(self.code_dir, os.path.join(self.tmp_dir))
 
         # makes sense when len(..) > 1
         # common_data_path = os.path.commonpath(self.shared_data_files)
         # but we only have 1 file here
-        data_path = os.path.join(self.tmp_dir, "data")
+        data_path = self.tmp_dir
         data_file = list(self.shared_data_files)[0]
-        if os.path.exists(data_path):
-            raise FileExistsError("Error adding to resources: "
-                                  "data path: {} exists."
-                                  .format(data_path))
 
-        os.mkdir(data_path)
         symlink_or_copy(data_file,
                         os.path.join(data_path, os.path.basename(data_file)))
 

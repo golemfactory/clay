@@ -7,10 +7,10 @@ import params  # This module is generated before this script is run
 
 
 def run(data_files, subtask_data, difficulty, result_size, result_file):
-    code_file = os.path.join(params.RESOURCES_DIR, "code", "computing.py")
+    code_file = os.path.join(params.RESOURCES_DIR, "computing.py")
     computing = imp.load_source("code", code_file)
 
-    data_file = os.path.join(params.RESOURCES_DIR, "data", data_files[0])
+    data_file = os.path.join(params.RESOURCES_DIR, data_files[0])
     result_path = os.path.join(params.OUTPUT_DIR, result_file)
 
     solution = computing.run_dummy_task(data_file,
