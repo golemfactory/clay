@@ -70,7 +70,14 @@ class ConcentMessageMixin():
         self.assertIsInstance(mock_call[1], message_class)
 
 
-# pylint:disable=no-member
+def _offerpool_add(*_):
+    res = Deferred()
+    res.callback(True)
+    return res
+
+
+# pylint:disable=no-member,too-many-instance-attributes
+@patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
 class TaskSessionTaskToComputeTest(TestCase):
     def setUp(self):
         self.requestor_keys = cryptography.ECCx(None)

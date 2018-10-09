@@ -15,7 +15,7 @@ class Offer:
 
 class OfferPool:
 
-    _INTERVAL: ClassVar[float] = 30.0  # s
+    _INTERVAL: ClassVar[float] = 15.0  # s
     _pools: ClassVar[Dict[str, List[Offer]]] = dict()
 
     @classmethod
