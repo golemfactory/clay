@@ -69,8 +69,7 @@ class TaskDefinition(object):
             if not file_exist:
                 remove(output_file)
                 return True, None
-            else:
-                return True, "File {} may be overwritten".format(output_file)
+            return True, "File {} may be overwritten".format(output_file)
         except IOError:
             return False, "Cannot open output file: {}".format(output_file)
         except TypeError as err:
@@ -108,10 +107,9 @@ class TaskDefinition(object):
         subtask_timeout = timeout_to_string(self.subtask_timeout)
         output_path = self.build_output_path()
 
-        return {
+        result = {
             'id': self.task_id,
             'type': self.task_type,
-            'compute_on': self.compute_on,
             'name': self.task_name,
             'timeout': task_timeout,
             'subtask_timeout': subtask_timeout,
@@ -121,8 +119,22 @@ class TaskDefinition(object):
             'options': {
                 'output_path': output_path
             },
-            'concent_enabled': self.concent_enabled
         }
+
+        # Safe getattrs for attributes that could be missing in pickles
+        # from 0.17.1
+        new_attributes = (
+            ('compute_on', 'compute_on', 'cpu'),
+            ('concent_enabled', 'concent_enabled', False),
+        )
+        for key, attribute, default in new_attributes:
+            try:
+                result[key] = getattr(self, attribute)
+            except AttributeError:
+                result[key] = default
+                setattr(self, attribute, default)
+
+        return result
 
     def build_output_path(self) -> str:
         return self.output_file.rsplit(path.sep, 1)[0]
