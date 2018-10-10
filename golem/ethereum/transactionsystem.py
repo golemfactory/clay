@@ -760,7 +760,7 @@ def tETH_faucet_donate(addr: str):
     request = "http://188.165.227.180:4000/donate/{}".format(addr)
     resp = requests.get(request)
     if resp.status_code != 200:
-        log.error("tETH Faucet error code %r", resp.status_code)
+        log.warning("tETH Faucet error code %r", resp.status_code)
         return False
     response = resp.json()
     if response['paydate'] == 0:
