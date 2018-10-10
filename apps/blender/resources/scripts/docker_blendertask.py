@@ -18,7 +18,7 @@ def exec_cmd(cmd):
 
 # pylint: disable=too-many-arguments
 def format_blender_render_cmd(outfilebasename, scene_file, script_file,
-                              start_task, frame, output_format):
+                              start_task, frames, output_format):
     cmd = [
         "{}".format(BLENDER_COMMAND),
         "-b", "{}".format(scene_file),
@@ -30,7 +30,7 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
         "-noaudio",
         "-F", "{}".format(output_format.upper()),
         "-t", "{}".format(cpu_count()),
-        "-f", "{}".format(frame)
+        "-f", "{}".format(",".join(map(str, frames)))
     ]
     return cmd
 
@@ -48,14 +48,13 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task,
     with open(blender_script_path, "w") as script_file:
         script_file.write(script_src)
 
-    for frame in frames:
-        cmd = format_blender_render_cmd(outfilebasename, scene_file,
-                                        script_file.name, start_task,
-                                        frame, output_format)
-        print(cmd, file=sys.stderr)
-        exit_code = exec_cmd(cmd)
-        if exit_code is not 0:
-            sys.exit(exit_code)
+    cmd = format_blender_render_cmd(outfilebasename, scene_file,
+                                    script_file.name, start_task,
+                                    frames, output_format)
+    print(cmd, file=sys.stderr)
+    exit_code = exec_cmd(cmd)
+    if exit_code is not 0:
+        sys.exit(exit_code)
 
 
 run_blender_task(params.outfilebasename, params.scene_file, params.script_src,
