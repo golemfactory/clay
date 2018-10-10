@@ -4,6 +4,8 @@ Param(
     $appDataDir = (AI_GetMsiProperty LocalAppDataFolder),
     $currentUserName = (AI_GetMsiProperty LogonUser)
 )
+
+$ErrorActionPreference = "Stop"
  
 # Your code goes here.
 $golemUserName = "golem-docker"
