@@ -82,6 +82,7 @@ from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus, SubtaskStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
+from golem.tools.os_info import OSInfo
 from golem.tools.talkback import enable_sentry_logger
 
 
@@ -1553,7 +1554,7 @@ class Client(HardwarePresetsMixin):
     def __get_nodemetadatamodel(self):
         return NodeMetadataModel(
             client=self,
-            os=sys.platform,
+            os_info=OSInfo.get_os_info(),
             ver=golem.__version__
         )
 
