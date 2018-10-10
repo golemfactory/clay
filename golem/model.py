@@ -30,6 +30,8 @@ from golem.ranking.helper.trust_const import NEUTRAL_TRUST
 
 
 # TODO: migrate to golem.database. issue #2415
+from golem.ranking import ProviderEfficacy
+
 db = GolemSqliteDatabase(None, threadlocals=True,
                          pragmas=(
                              ('foreign_keys', True),
@@ -130,6 +132,24 @@ class EnumFieldBase:
 
     def python_value(self, value):
         return self.enum_type(value)
+
+
+class ProviderEfficacyField(CharField):
+
+    def db_value(self, value):
+        if isinstance(value, (list, tuple)):
+            vector = value
+        elif not isinstance(value, ProviderEfficacy):
+            raise TypeError("Value {} is not an integer".format(value))
+        else:
+            vector = value.vector
+
+        return ','.join(map(str, vector))
+
+    def python_value(self, value):
+        if value is not None:
+            values = list(map(float, value.split(',')))
+            return ProviderEfficacy(*values)
 
 
 class EnumField(EnumFieldBase, IntegerField):
@@ -334,6 +354,11 @@ class LocalRank(BaseModel):
     negative_payment = FloatField(default=0.0)
     positive_resource = FloatField(default=0.0)
     negative_resource = FloatField(default=0.0)
+    requestor_efficiency = FloatField(default=None, null=True)
+    requestor_assigned_sum = FloatField(default=0.0)
+    requestor_paid_sum = FloatField(default=0.0)
+    provider_efficiency = FloatField(default=1.0)
+    provider_efficacy = ProviderEfficacyField(default=(0, 0, 0, 0))
 
 
 class GlobalRank(BaseModel):
