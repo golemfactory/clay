@@ -32,7 +32,7 @@ eth-tester==0.1.0-beta.24
 eth-utils==1.0.3
 ethereum==1.6.1
 Golem-Verificator==1.6.1
-Golem-Messages==2.15.0
+--editable git://github.com/golemfactory/golem-messages.git@fc15d1b2b28493694eb099ed0e374e53d2d724ac#egg=Golem_Messages
 Golem-Smart-Contracts-Interface==1.6.1
 h2==3.0.1
 hpack==3.0.0
