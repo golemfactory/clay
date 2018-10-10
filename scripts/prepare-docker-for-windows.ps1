@@ -11,11 +11,15 @@ $ErrorActionPreference = "Stop"
 $golemUserName = "golem-docker"
 "golemUserName: " + $golemUserName
  
-"Creating local user"
-$securePassword = ConvertTo-SecureString $golemUserName -AsPlainText -Force
-New-LocalUser -Name $golemUserName -Password $securePassword -Description "Account to use docker with golem."
-"Local user created"
- 
+$currentGolemUser = Get-LocalUser | ?{$_.Name -eq $golemUserName}
+"currentGolemUser: " + $currentGolemUser
+if( ! $currentGolemUser )
+{
+    "Creating local user"
+    $securePassword = ConvertTo-SecureString $golemUserName -AsPlainText -Force
+    New-LocalUser -Name $golemUserName -Password $securePassword -Description "Account to use docker with golem."
+    "Local user created"
+}
 # TODO: set execution policy here?
  
 "createShareFolder: " + $createShareFolder
@@ -33,7 +37,7 @@ $testnetDir = $golemDataDir + "\rinkeby\ComputerRes"
 function EnsureShare {
     Param([string]$folder)
     "Ensure Shared folder"
-    md $folder
+    md $folder -Force
     "Folder created, create share"
     &"$createShareScript" "$golemUserName" "$folder"
     "Share created"
