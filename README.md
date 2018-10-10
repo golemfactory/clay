@@ -51,6 +51,7 @@ Golem communicates with external technologies some of them may be downloaded and
 * [OpenExr](http://www.openexr.com/)
 * [OpenSSL](https://www.openssl.org/)
 * [Python3](https://www.python.org/)
+* [Rust](https://www.rust-lang.org/)
 * [SQLite3](https://sqlite.org/index.html)
 * [Pyvmmonitor](http://pyvmmonitor.com)
 
