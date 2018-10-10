@@ -95,6 +95,11 @@ class TaskComputer(object):
             return False
 
         ProviderIdleTimer.comp_started()
+        dispatcher.send(
+            signal='golem.taskcomputer',
+            event='subtask_started',
+            subtask_id=ctd['subtask_id']
+        )
 
         self.assigned_subtask = ctd
         self.__request_resource(
@@ -379,8 +384,16 @@ class TaskComputer(object):
 
         tt.start().addBoth(lambda _: self.task_computed(tt))
 
-    def __task_finished(self):
+    def __task_finished(self) -> None:
+        ctd = self.assigned_subtask
+
         ProviderIdleTimer.comp_finished()
+        dispatcher.send(
+            signal='golem.taskcomputer',
+            event='subtask_finished',
+            subtask_id=ctd['subtask_id'],
+            min_performance=ctd['performance'],
+        )
 
         with self.lock:
             self.counting_thread = None

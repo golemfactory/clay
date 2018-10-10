@@ -21,6 +21,8 @@ from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.ranking.manager.database_manager import update_provider_efficiency, \
+    update_provider_efficacy
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
@@ -1164,6 +1166,7 @@ class TaskManager(TaskEventListener):
         )
 
         self._stop_timers(task_id, subtask_id, op)
+        self._update_provider_reputation(task_id, subtask_id, op)
 
         if self.finished_cb and persist and op \
                 and op.task_related() and op.is_completed():
@@ -1173,11 +1176,7 @@ class TaskManager(TaskEventListener):
                      subtask_id: Optional[str] = None,
                      op: Optional[Operation] = None):
 
-        if subtask_id and isinstance(op, SubtaskOp) and op not in (
-                SubtaskOp.ASSIGNED,
-                SubtaskOp.RESULT_DOWNLOADING,
-                SubtaskOp.NOT_ACCEPTED
-        ):
+        if subtask_id and isinstance(op, SubtaskOp) and op.is_completed():
             ProviderComputeTimers.comp_finished(subtask_id)
 
         elif isinstance(op, TaskOp) and op in (
@@ -1187,3 +1186,27 @@ class TaskManager(TaskEventListener):
         ):
             for _subtask_id in self.tasks_states[task_id].subtask_states:
                 ProviderComputeTimers.comp_finished(_subtask_id)
+
+    @handle_task_key_error
+    def _update_provider_reputation(self, task_id: str,
+                                    subtask_id: Optional[str] = None,
+                                    op: Optional[Operation] = None) -> None:
+
+        # Return if subtask is not completed
+        if not (subtask_id and isinstance(op, SubtaskOp) and op.is_completed()):
+            return
+
+        timeout = self.tasks[task_id].header.fixed_header.subtask_timeout
+        subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
+
+        node_name = subtask_state.computer.node_name
+        node_id = subtask_state.computer.node_id
+
+        try:
+            update_provider_efficacy(node_id, op)
+            computation_time = ProviderComputeTimers.time_computing(subtask_id)
+            update_provider_efficiency(node_id, timeout, computation_time)
+        except (KeyError, ValueError) as e:
+            logger.error("Unable to update reputation for node %s, subtask %s: "
+                         "%r", subtask_id, node_info_str(node_name, node_id), e)
+

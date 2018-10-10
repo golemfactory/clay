@@ -26,11 +26,14 @@ from golem.network.transport.tcpnetwork import (
 from golem.network.transport.tcpserver import (
     PendingConnectionsServer, PenConnStatus)
 from golem.ranking.helper.trust import Trust
+from golem.ranking.manager.database_manager import update_requestor_paid_sum, \
+    update_requestor_assigned_sum, update_requestor_efficiency
 from golem.task.acl import get_acl
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.taskbase import TaskHeader, Task
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
+from golem.task.timer import ProviderIdleTimer
 from golem.utils import decode_hex, pubkeytoaddr
 
 from . import exceptions
@@ -128,7 +131,14 @@ class TaskServer(
             self.income_listener,
             signal='golem.income'
         )
-
+        dispatcher.connect(
+            self.started_subtask_listener,
+            signal='golem.taskcomputer'
+        )
+        dispatcher.connect(
+            self.finished_subtask_listener,
+            signal='golem.taskcomputer'
+        )
         dispatcher.connect(
             self.finished_task_listener,
             signal='golem.taskmanager'
@@ -506,6 +516,53 @@ class TaskServer(
         elif event == 'overdue_single':
             self.decrease_trust_payment(task_id)
 
+    def started_subtask_listener(self, event='default', subtask_id=None,
+                                 **_kwargs):
+        if event != 'subtask_started' or not subtask_id:
+            return
+
+        keeper = self.task_manager.comp_task_keeper
+
+        try:
+            task_id = keeper.get_task_id_for_subtask(subtask_id)
+            header = keeper.get_task_header(task_id).fixed_header
+        except KeyError:
+            logger.error("Unknown subtask: %s", subtask_id)
+            return
+
+        node_id = header.task_owner.key
+        amount = header.max_price * header.subtask_timeout
+        update_requestor_assigned_sum(node_id, amount)
+
+    def finished_subtask_listener(self,  # pylint: disable=too-many-arguments
+                                  event='default', subtask_id=None,
+                                  min_performance=None, **_kwargs):
+
+        if event != 'subtask_finished':
+            return
+
+        keeper = self.task_manager.comp_task_keeper
+
+        try:
+
+            task_id = keeper.get_task_id_for_subtask(subtask_id)
+            header = keeper.get_task_header(task_id).fixed_header
+            environment = self.get_environment_by_id(header.environment)
+            computation_time = ProviderIdleTimer.last_comp_finished - \
+                ProviderIdleTimer.last_comp_started
+
+            update_requestor_efficiency(
+                node_id=keeper.get_node_for_task_id(task_id),
+                timeout=header.subtask_timeout,
+                computation_time=computation_time,
+                performance=environment.get_performance(),
+                min_performance=min_performance,
+            )
+
+        except (KeyError, ValueError) as exc:
+            logger.error("Finished subtask listener: %r", exc)
+            return
+
     def finished_task_listener(self, event='default', task_id=None, op=None,
                                **_kwargs):
         if not (event == 'task_status_updated'
@@ -517,9 +574,20 @@ class TaskServer(
         self.client.funds_locker.remove_task(task_id)
 
     def increase_trust_payment(self, task_id):
-        node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
-            task_id)
+        keeper = self.task_manager.comp_task_keeper
+
+        node_id = keeper.get_node_for_task_id(task_id)
         Trust.PAYMENT.increase(node_id, self.max_trust)
+
+        try:
+            header = keeper.get_task_header(task_id).fixed_header
+        except AttributeError:
+            logger.error("Increase trust payment: unknown task header: %s",
+                         task_id)
+            return
+
+        amount = header.max_price * header.subtask_timeout
+        update_requestor_paid_sum(node_id, amount)
 
     def decrease_trust_payment(self, task_id):
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
