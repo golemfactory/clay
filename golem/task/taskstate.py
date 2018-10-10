@@ -192,6 +192,13 @@ class SubtaskOp(Operation):
     TIMEOUT = auto()
     RESTARTED = auto()
 
+    def is_completed(self) -> bool:
+        return self not in (
+            SubtaskOp.ASSIGNED,
+            SubtaskOp.RESULT_DOWNLOADING,
+            SubtaskOp.NOT_ACCEPTED
+        )
+
 
 class OtherOp(Operation):
     """Ops that are not really interesting; for statistics anyway"""
