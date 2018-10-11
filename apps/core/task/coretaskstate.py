@@ -133,9 +133,10 @@ class TaskDefinition(object):
         subtask_timeout = timeout_to_string(self.subtask_timeout)
         output_path = self.build_output_path()
 
-        result = {
+        return {
             'id': self.task_id,
             'type': self.task_type,
+            'compute_on': self.compute_on,
             'name': self.task_name,
             'timeout': task_timeout,
             'subtask_timeout': subtask_timeout,
@@ -145,10 +146,8 @@ class TaskDefinition(object):
             'options': {
                 'output_path': output_path
             },
-            'compute_on': self.compute_on,
             'concent_enabled': self.concent_enabled,
         }
-        return result
 
     def build_output_path(self) -> str:
         return self.output_file.rsplit(path.sep, 1)[0]
