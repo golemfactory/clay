@@ -1205,8 +1205,9 @@ class TaskManager(TaskEventListener):
         try:
             update_provider_efficacy(node_id, op)
             computation_time = ProviderComputeTimers.time_computing(subtask_id)
+            if not computation_time:
+                raise ValueError("computation_time cannot be equal to 0")
             update_provider_efficiency(node_id, timeout, computation_time)
         except (KeyError, ValueError) as e:
             logger.error("Unable to update reputation for node %s, subtask %s: "
                          "%r", subtask_id, node_info_str(node_name, node_id), e)
-

@@ -112,15 +112,14 @@ def _calculate_efficiency(efficiency: float,
     return psi * efficiency + (1 - psi) * v
 
 
-def update_requestor_efficiency(  # pylint: disable=too-many-arguments
-                                node_id: str,
+def update_requestor_efficiency(node_id: str,  # noqa # pylint: disable=too-many-arguments
                                 timeout: float,
                                 computation_time: float,
                                 performance: float,
                                 min_performance: float,
                                 psi: float = 0.9) -> None:
 
-    rank = LocalRank.get_or_create(node_id=node_id)
+    rank, _ = LocalRank.get_or_create(node_id=node_id)
     efficiency = rank.requestor_efficiency
 
     if efficiency is None:
@@ -136,14 +135,14 @@ def update_requestor_efficiency(  # pylint: disable=too-many-arguments
 
 def update_requestor_assigned_sum(node_id: str, amount: float) -> None:
 
-    rank = LocalRank.get_or_create(node_id=node_id)
+    rank, _ = LocalRank.get_or_create(node_id=node_id)
     rank.requestor_assigned_sum += amount
     rank.save()
 
 
 def update_requestor_paid_sum(node_id: str, amount: float) -> None:
 
-    rank = LocalRank.get_or_create(node_id=node_id)
+    rank, _ = LocalRank.get_or_create(node_id=node_id)
     rank.requestor_paid_sum += amount
     rank.save()
 
@@ -153,7 +152,7 @@ def update_provider_efficiency(node_id: str,
                                computation_time: float,
                                psi: float = 0.9) -> None:
 
-    rank = LocalRank.get_or_create(node_id=node_id)
+    rank, _ = LocalRank.get_or_create(node_id=node_id)
     efficiency = rank.provider_efficiency
 
     rank.provider_efficiency = _calculate_efficiency(efficiency, timeout,
@@ -163,7 +162,7 @@ def update_provider_efficiency(node_id: str,
 
 def update_provider_efficacy(node_id: str, op: SubtaskOp) -> None:
 
-    rank = LocalRank.get_or_create(node_id=node_id)
+    rank, _ = LocalRank.get_or_create(node_id=node_id)
     rank.provider_efficacy.update(op)
     rank.save()
 

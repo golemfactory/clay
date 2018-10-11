@@ -137,19 +137,15 @@ class EnumFieldBase:
 class ProviderEfficacyField(CharField):
 
     def db_value(self, value):
-        if isinstance(value, (list, tuple)):
-            vector = value
-        elif not isinstance(value, ProviderEfficacy):
-            raise TypeError("Value {} is not an integer".format(value))
-        else:
-            vector = value.vector
-
-        return ','.join(map(str, vector))
+        if not isinstance(value, ProviderEfficacy):
+            raise TypeError("Value {} is not an instance of ProviderEfficacy"
+                            .format(value))
+        return value.serialize()
 
     def python_value(self, value):
         if value is not None:
-            values = list(map(float, value.split(',')))
-            return ProviderEfficacy(*values)
+            return ProviderEfficacy.deserialize(value)
+        return None
 
 
 class EnumField(EnumFieldBase, IntegerField):
@@ -358,7 +354,8 @@ class LocalRank(BaseModel):
     requestor_assigned_sum = FloatField(default=0.0)
     requestor_paid_sum = FloatField(default=0.0)
     provider_efficiency = FloatField(default=1.0)
-    provider_efficacy = ProviderEfficacyField(default=(0, 0, 0, 0))
+    provider_efficacy = ProviderEfficacyField(
+        default=ProviderEfficacy(0, 0, 0, 0))
 
 
 class GlobalRank(BaseModel):

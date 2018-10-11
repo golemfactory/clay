@@ -526,7 +526,7 @@ class TaskServer(
         try:
             task_id = keeper.get_task_id_for_subtask(subtask_id)
             header = keeper.get_task_header(task_id).fixed_header
-        except KeyError:
+        except (AttributeError, KeyError):
             logger.error("Unknown subtask: %s", subtask_id)
             return
 

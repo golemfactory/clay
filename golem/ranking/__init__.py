@@ -13,7 +13,7 @@ class ProviderEfficacy:
     ]
 
     def __init__(self, *vec: float) -> None:
-        self._vec: List[float] = vec
+        self._vec: List[float] = list(vec)
 
     @property
     def vector(self) -> List[float]:
@@ -27,3 +27,14 @@ class ProviderEfficacy:
         it = map(lambda x, y: x * psi + y, self._vec, update_vec)
 
         self._vec = list(it)
+
+    def serialize(self) -> str:
+        return ', '.join(map(str, self._vec))
+
+    @classmethod
+    def deserialize(cls, value: str) -> 'ProviderEfficacy':
+        values = list(map(float, value.split(',')))
+        return ProviderEfficacy(*values)
+
+    def __repr__(self):
+        return f'{self.__class__.__name__}({self.serialize()})'

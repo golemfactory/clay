@@ -2,10 +2,8 @@
 # pylint: disable=too-few-public-methods
 import peewee as pw
 
-try:
-    import playhouse.postgres_ext as pw_pext
-except ImportError:
-    pass
+from golem.ranking import ProviderEfficacy
+
 
 SCHEMA_VERSION = 22
 
@@ -14,7 +12,8 @@ def migrate(migrator, *_args, **_kwargs):
     migrator.add_fields(
         'localrank',
         requestor_efficiency=pw.FloatField(null=True),
-        provider_efficacy=pw.ProviderEfficacyField(),
+        provider_efficacy=pw.ProviderEfficacyField(
+            default=ProviderEfficacy(0, 0, 0, 0)),
         provider_efficiency=pw.FloatField(default=1.0),
         requestor_paid_sum=pw.FloatField(default=0.0),
         requestor_assigned_sum=pw.FloatField(default=0.0)
