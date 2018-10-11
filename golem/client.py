@@ -768,6 +768,7 @@ class Client(HardwarePresetsMixin):
         return True
 
     def _run_test_task(self, t_dict) -> None:
+        assert isinstance(self.task_server, TaskServer)
 
         def on_success(result, estimated_memory, time_spent, **kwargs):
             logger.info('Test task succes "%r"', t_dict)
