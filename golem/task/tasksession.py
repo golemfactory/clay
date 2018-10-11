@@ -3,6 +3,7 @@ import functools
 import logging
 import os
 import time
+from typing import TYPE_CHECKING
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -26,7 +27,10 @@ from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import TaskState
 
-from .taskmanager import TaskManager
+if TYPE_CHECKING:
+    from .taskcomputer import TaskComputer  # noqa pylint:disable=unused-import
+    from .taskmanager import TaskManager  # noqa pylint:disable=unused-import
+    from .taskserver import TaskServer  # noqa pylint:disable=unused-import
 
 logger = logging.getLogger(__name__)
 
@@ -91,9 +95,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         """
         BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
-        self.task_server = self.conn.server
-        self.task_manager: TaskManager = self.task_server.task_manager
-        self.task_computer = self.task_server.task_computer
+        self.task_server: 'TaskServer' = self.conn.server
+        self.task_manager: 'TaskManager' = self.task_server.task_manager
+        self.task_computer: 'TaskComputer' = self.task_server.task_computer
         self.concent_service = self.task_server.client.concent_service
         self.task_id = None  # current task id
         self.subtask_id = None  # current subtask id
