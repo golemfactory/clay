@@ -27,11 +27,10 @@ from golem.core.simpleserializer import DictSerializable
 from golem.database import GolemSqliteDatabase
 from golem.network.p2p.node import Node
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
+from golem.ranking import ProviderEfficacy
 
 
 # TODO: migrate to golem.database. issue #2415
-from golem.ranking import ProviderEfficacy
-
 db = GolemSqliteDatabase(None, threadlocals=True,
                          pragmas=(
                              ('foreign_keys', True),
