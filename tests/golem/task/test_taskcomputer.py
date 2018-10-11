@@ -129,7 +129,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc = TaskComputer(task_server, use_docker_manager=False,
                           finished_cb=mock_finished)
 
-        self.assertEqual(tc.assigned_subtask, None)
+        self.assertEqual(tc.assigned_subtask, {})
         tc.task_given(ctd)
         self.assertEqual(tc.assigned_subtask, ctd)
         self.assertLessEqual(tc.assigned_subtask['deadline'],
@@ -141,7 +141,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.task_server.unpack_delta.assert_called_with(
             tc.dir_manager.get_task_resource_dir("xyz"), None, "xyz")
         assert tc.counting_thread is None
-        assert tc.assigned_subtask is None
+        assert not tc.assigned_subtask
         task_server.send_task_failed.assert_called_with(
             "xxyyzz", "xyz", "Host direct task not supported")
 
@@ -159,7 +159,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         prev_task_failed_count = task_server.send_task_failed.call_count
         self.assertIsNone(tc.counting_task)
         self.assertIsNone(tc.counting_thread)
-        self.assertIsNone(tc.assigned_subtask)
+        assert not tc.assigned_subtask
         assert task_server.send_task_failed.call_count == prev_task_failed_count
         self.assertTrue(task_server.send_results.called)
         args = task_server.send_results.call_args[0]
@@ -183,7 +183,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
         self.assertIsNone(tc.counting_task)
         self.assertIsNone(tc.counting_thread)
-        self.assertIsNone(tc.assigned_subtask)
+        assert not tc.assigned_subtask
         task_server.send_task_failed.assert_called_with(
             "aabbcc", "xyz", 'some exception')
         mock_finished.assert_called_once_with()

@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 import os
 import time
@@ -90,7 +90,7 @@ class TaskComputer(object):
 
         self.stats = IntStatsKeeper(CompStats)
 
-        self.assigned_subtask: Optional[Dict[str, Any]] = None
+        self.assigned_subtask: Dict[str, Any] = {}
         self.max_assigned_tasks = 1
 
         self.delta = None
@@ -102,7 +102,7 @@ class TaskComputer(object):
         self.finished_cb = finished_cb
 
     def task_given(self, ctd):
-        if self.assigned_subtask is not None:
+        if self.assigned_subtask:
             logger.error("Trying to assign a task, when it's already assigned")
             return False
         self.wait(ttl=deadline_to_timeout(ctd['deadline']))
@@ -115,7 +115,7 @@ class TaskComputer(object):
 
     def task_resource_collected(self, task_id, unpack_delta=True):
         subtask = self.assigned_subtask
-        if not subtask or subtask['task_id'] != task_id:
+        if subtask.get('task_id') != task_id:
             logger.error("Resource colledted for a wrong task, %s", task_id)
             return False
         if unpack_delta:
@@ -134,7 +134,7 @@ class TaskComputer(object):
 
     def task_resource_failure(self, task_id, reason):
         subtask = self.assigned_subtask
-        if not subtask or subtask['task_id'] != task_id:
+        if subtask.get('task_id') != task_id:
             logger.error("Resource failure for a wrong task, %s", task_id)
             return
         self.task_server.send_task_failed(
@@ -145,8 +145,7 @@ class TaskComputer(object):
         self.session_closed()
 
     def wait_for_resources(self, task_id, delta):
-        if self.assigned_subtask and \
-                self.assigned_subtask['task_id'] == task_id:
+        if self.assigned_subtask.get('task_id') == task_id:
             self.delta = delta
 
     def task_request_rejected(self, task_id, reason):
@@ -166,7 +165,7 @@ class TaskComputer(object):
         subtask_id = task_thread.subtask_id
         try:
             subtask = self.assigned_subtask
-            self.assigned_subtask = None
+            self.assigned_subtask = {}
             # get paid for max working time,
             # thus task withholding won't make profit
             task_header = \
@@ -400,7 +399,7 @@ class TaskComputer(object):
         else:
             logger.error("Cannot run PyTaskThread in this version")
             subtask = self.assigned_subtask
-            self.assigned_subtask = None
+            self.assigned_subtask = {}
             self.task_server.send_task_failed(
                 subtask_id,
                 subtask['task_id'],
