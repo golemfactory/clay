@@ -19,7 +19,6 @@ class BlenderEnvironment(DockerEnvironment):
 
 
 class BlenderNVGPUEnvironment(BlenderEnvironment):
-    # pylint: disable=too-few-public-methods
 
     DOCKER_IMAGE = "golemfactory/blender_nvgpu"
     DOCKER_TAG = "1.1"

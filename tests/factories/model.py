@@ -2,7 +2,6 @@ from factory import Factory, Faker, SubFactory
 
 from golem import model
 from . import p2p
-# pylint: disable=too-few-public-methods
 
 
 class Income(Factory):

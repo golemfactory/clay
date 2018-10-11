@@ -3,31 +3,37 @@ import logging
 from golem import appconfig
 from golem.core.hardware import HardwarePresets
 from golem.model import HardwarePreset
+from golem.rpc import utils as rpc_utils
 
 log = logging.getLogger("golem.config")
 
 
 class HardwarePresetsMixin(object):
 
+    @rpc_utils.expose('env.hw.caps')
     @staticmethod
     def get_hw_caps():
         return HardwarePresets.caps()
 
+    @rpc_utils.expose('env.hw.presets')
     @staticmethod
     def get_hw_presets():
         presets = HardwarePreset.select()
         return [p.to_dict() for p in presets]
 
+    @rpc_utils.expose('env.hw.preset')
     @staticmethod
     def get_hw_preset(name):
         return HardwarePreset.get(name=name).to_dict()
 
+    @rpc_utils.expose('env.hw.preset.create')
     @staticmethod
     def create_hw_preset(preset_dict):
         preset = HardwarePreset(**preset_dict)
         preset.save()
         return preset.to_dict()
 
+    @rpc_utils.expose('env.hw.preset.update')
     @classmethod
     def update_hw_preset(cls, preset):
         preset_dict = cls.__preset_to_dict(preset)
@@ -54,12 +60,13 @@ class HardwarePresetsMixin(object):
 
         return preset.to_dict()
 
+    @rpc_utils.expose('env.hw.preset.delete')
     @staticmethod
     def delete_hw_preset(name):
         if name in [
                 appconfig.CUSTOM_HARDWARE_PRESET_NAME,
                 appconfig.DEFAULT_HARDWARE_PRESET_NAME,
-                ]:
+        ]:
             raise ValueError('Cannot remove preset with name: ' + name)
 
         deleted = HardwarePreset \

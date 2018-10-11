@@ -40,8 +40,6 @@ incremental==17.5.0
 OpenEXR
 pycparser==2.17
 numpy==1.13.1
-scipy==0.19.1
-pyssim
 enforce==0.3.4
 miniupnpc<2.1,>=2.0
 token_bucket==0.2.0

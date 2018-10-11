@@ -1,5 +1,5 @@
 from golem.core.deferred import sync_wait
-from golem.interface.command import doc, group, command, CommandResult, Argument, CommandHelper
+from golem.interface.command import doc, group, command, CommandResult, Argument
 from golem.resource.dirmanager import DirectoryType
 
 

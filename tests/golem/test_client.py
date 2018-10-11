@@ -19,7 +19,6 @@ from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
-import golem
 from golem import model
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
@@ -30,7 +29,6 @@ from golem.client import Client, ClientTaskComputerEventListener, \
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
-from golem.environments.environment import Environment as DefaultEnvironment
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
@@ -894,7 +892,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         c.task_server.task_manager.tasks[task_id] = task
         c.task_server.task_manager.tasks_states[task_id] = TaskState()
-        frames = c.get_subtasks_frames(task_id)
+        frames = c.task_server.task_manager.get_output_states(task_id)
         assert frames is not None
 
     def test_enqueue_new_task_concent_service_disabled(self, *_):
@@ -963,8 +961,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
     def test_run_benchmark(self, *_):
         from apps.blender.blenderenvironment import BlenderEnvironment
         from apps.blender.benchmark.benchmark import BlenderBenchmark
-        from apps.lux.luxenvironment import LuxRenderEnvironment
-        from apps.lux.benchmark.benchmark import LuxBenchmark
 
         benchmark_manager = self.client.task_server.benchmark_manager
         benchmark_manager.run_benchmark = Mock()
@@ -980,16 +976,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
                           BlenderBenchmark)
 
-        sync_wait(self.client.run_benchmark(LuxRenderEnvironment.get_id()))
-
-        assert benchmark_manager.run_benchmark.call_count == 2
-        assert isinstance(benchmark_manager.run_benchmark.call_args[0][0],
-                          LuxBenchmark)
-
-        result = sync_wait(self.client.run_benchmark(
-            DefaultEnvironment.get_id()))
-        assert result > 100.0
-        assert benchmark_manager.run_benchmark.call_count == 2
+        assert benchmark_manager.run_benchmark.call_count == 1
 
     def test_run_benchmark_fail(self, *_):
         from apps.dummy.dummyenvironment import DummyTaskEnvironment
@@ -1207,17 +1194,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         self.assertEqual(result, expected)
 
-    def test_subtasks_borders(self, *_):
-        task_id = str(uuid.uuid4())
-        c = self.client
-        c.task_server.task_manager.tasks[task_id] = Mock()
-        c.task_server.task_manager.get_subtasks_borders = Mock()
-
-        c.get_subtasks_borders(task_id)
-        c.task_server.task_manager.get_subtasks_borders.assert_called_with(
-            task_id, 1
-        )
-
     def test_connection_status_not_listening(self, *_):
         c = self.client
 
@@ -1412,9 +1388,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         }
         assert status == expected_status
 
-    def test_golem_version(self, *_):
-        assert self.client.get_golem_version() == golem.__version__
-
     def test_golem_status(self, *_):
         status = 'component', 'method', 'stage', 'data'
 
@@ -1449,10 +1422,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             description="timeout"
         )
         self.assertEqual(self.client.node.port_statuses.get(port), "timeout")
-
-    def test_get_performance_values(self, *_):
-        expected_perf = {DefaultEnvironment.get_id(): 0.0}
-        assert self.client.get_performance_values() == expected_perf
 
     def test_block_node(self, *_):
         self.client.task_server.acl = Mock(spec=Acl)
@@ -1515,8 +1484,8 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             'BlenderTaskTypeInfo.for_purpose',
             mock.Mock(),
         ),\
-        mock.patch('golem.client.TaskTester.run', mock.Mock()),\
-        self.assertNoLogs():
+            mock.patch('golem.client.TaskTester.run', mock.Mock()),\
+                self.assertNoLogs():
             self.client._run_test_task(
                 {
                     'type': 'blender',
