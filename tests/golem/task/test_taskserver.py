@@ -244,7 +244,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         subtask_id = idgenerator.generate_new_id_from_id(task_id)
         subtask_id2 = idgenerator.generate_new_id_from_id(task_id)
         self.assertTrue(ts.send_results(subtask_id, task_id, results))
-        ts.client.transaction_system.expect_income.reset_mock()
         self.assertTrue(ts.send_results(subtask_id2, task_id, results))
         wtr = ts.results_to_send[subtask_id]
         self.assertIsInstance(wtr, WaitingTaskResult)
@@ -255,12 +254,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertEqual(wtr.delay_time, 0)
         self.assertEqual(wtr.owner, n)
         self.assertEqual(wtr.already_sending, False)
-        ts.client.transaction_system.expect_income.assert_called_once_with(
-            sender_node=keys_auth.key_id,
-            subtask_id=subtask_id2,
-            payer_address=pubkeytoaddr(keys_auth.key_id),
-            value=1,
-        )
 
         subtask_id3 = idgenerator.generate_new_id_from_id(task_id)
         with self.assertLogs(logger, level='WARNING'):
@@ -273,12 +266,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ttc = msg_factories.tasks.TaskToComputeFactory(price=1)
         ttc.compute_task_def = ctd
         ts.task_manager.comp_task_keeper.receive_subtask(ttc)
-        model.Income.create(
-            sender_node=keys_auth.public_key,
-            subtask=ctd['subtask_id'],
-            payer_address=pubkeytoaddr(keys_auth.key_id),
-            value=1
-        )
 
         prev_call_count = trust.PAYMENT.increase.call_count
         ts.increase_trust_payment("xyz")

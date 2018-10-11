@@ -1,7 +1,9 @@
 from os import path, remove
 
 from ethereum.utils import denoms
+import semantic_version
 
+import golem
 from golem.core.common import timeout_to_string
 from golem.environments.environment import Environment
 from golem.task.taskstate import TaskState
@@ -54,6 +56,30 @@ class TaskDefinition(object):
 
         self.concent_enabled: bool = False
 
+    def __getstate__(self):
+        return golem.__version__, self.__dict__
+
+    def __setstate__(self, state):
+        if not isinstance(state, tuple):
+            pickled_version, attributes = '0.17.1', state
+        else:
+            pickled_version, attributes = state
+
+        s_pickled_version = semantic_version.Version(pickled_version)
+        if s_pickled_version < semantic_version.Version('0.18.0'):
+            # Defaults for attributes that could be missing in pickles
+            # from 0.17.1  #3405
+            migration_defaults = (
+                ('compute_on', 'cpu'),
+                ('concent_enabled', False),
+            )
+            for key, default_value in migration_defaults:
+                if key not in attributes:
+                    attributes[key] = default_value
+
+        for key in attributes:
+            setattr(self, key, attributes[key])
+
     def is_valid(self):
         if not path.exists(self.main_program_file):
             return False, "Main program file does not exist: {}".format(
@@ -69,8 +95,7 @@ class TaskDefinition(object):
             if not file_exist:
                 remove(output_file)
                 return True, None
-            else:
-                return True, "File {} may be overwritten".format(output_file)
+            return True, "File {} may be overwritten".format(output_file)
         except IOError:
             return False, "Cannot open output file: {}".format(output_file)
         except TypeError as err:
@@ -121,7 +146,7 @@ class TaskDefinition(object):
             'options': {
                 'output_path': output_path
             },
-            'concent_enabled': self.concent_enabled
+            'concent_enabled': self.concent_enabled,
         }
 
     def build_output_path(self) -> str:

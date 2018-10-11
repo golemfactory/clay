@@ -771,6 +771,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.task_server.subtask_accepted(
             self.key_id,
             msg.subtask_id,
+            msg.task_to_compute.requestor_ethereum_address,
+            msg.task_to_compute.price,
             msg.payment_ts,
         )
         self.dropped()
