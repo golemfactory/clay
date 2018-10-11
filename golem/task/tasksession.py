@@ -758,7 +758,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self, msg: message.tasks.SubtaskResultsAccepted):
         if self.key_id is None:
             logger.error("received SubtaskResultsAccepted, but I don't know "
-                         "from who")
+                         "from whom")
             self.disconnect(message.base.Disconnect.REASON.BadProtocol)
             return
         if msg.task_to_compute is None:
