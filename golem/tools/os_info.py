@@ -1,4 +1,4 @@
-import platform
+import platform as platform_lib
 import sys
 from typing import Optional, Tuple
 
@@ -12,7 +12,7 @@ class OSInfo:
     WIN_VERSION_KEY = r'SOFTWARE\Microsoft\Windows NT\CurrentVersion'
     WIN_EDITION_ID = 'EditionID'
 
-    # pylint: disable=too-many-arguments,redefined-outer-name
+    # pylint: disable=too-many-arguments
     def __init__(
             self,
             platform: str,
@@ -35,9 +35,9 @@ class OSInfo:
     def get_os_info(cls) -> 'OSInfo':
         return cls(
             platform=sys.platform,
-            system=platform.system(),
-            release=platform.release(),
-            version=platform.version(),
+            system=platform_lib.system(),
+            release=platform_lib.release(),
+            version=platform_lib.version(),
             windows_edition=cls._get_windows_edition(),
             linux_distribution=cls._get_linux_distribution()
         )
