@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 import os
 import time
@@ -116,7 +116,7 @@ class TaskComputer(object):
     def task_resource_collected(self, task_id, unpack_delta=True):
         subtask = self.assigned_subtask
         if not subtask or subtask['task_id'] != task_id:
-            logger.error("Resource colledted for a wrong task, %s", task_id)
+            logger.error("Resource collected for a wrong task, %s", task_id)
             return False
         if unpack_delta:
             rs_dir = self.dir_manager.get_task_resource_dir(task_id)
@@ -166,6 +166,7 @@ class TaskComputer(object):
         subtask_id = task_thread.subtask_id
         try:
             subtask = self.assigned_subtask
+            assert subtask is not None
             self.assigned_subtask = None
             # get paid for max working time,
             # thus task withholding won't make profit
