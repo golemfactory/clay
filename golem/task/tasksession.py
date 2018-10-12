@@ -3,11 +3,13 @@ import functools
 import logging
 import os
 import time
+from typing import TYPE_CHECKING
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
 from golem_messages import message
-from golem_messages.exceptions import InvalidSignature
+from golem_messages import exceptions as msg_exceptions
+from golem_messages.utils import decode_hex
 
 from golem.core import common
 from golem.core.keysauth import KeysAuth
@@ -26,7 +28,10 @@ from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import TaskState
 
-from .taskmanager import TaskManager
+if TYPE_CHECKING:
+    from .taskcomputer import TaskComputer  # noqa pylint:disable=unused-import
+    from .taskmanager import TaskManager  # noqa pylint:disable=unused-import
+    from .taskserver import TaskServer  # noqa pylint:disable=unused-import
 
 logger = logging.getLogger(__name__)
 
@@ -91,9 +96,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         """
         BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
-        self.task_server = self.conn.server
-        self.task_manager: TaskManager = self.task_server.task_manager
-        self.task_computer = self.task_server.task_computer
+        self.task_server: 'TaskServer' = self.conn.server
+        self.task_manager: 'TaskManager' = self.task_server.task_manager
+        self.task_computer: 'TaskComputer' = self.task_server.task_computer
         self.concent_service = self.task_server.client.concent_service
         self.task_id = None  # current task id
         self.subtask_id = None  # current subtask id
@@ -128,30 +133,27 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def dropped(self):
         """ Close connection """
         BasicSafeSession.dropped(self)
-        if self.task_server:
-            self.task_server.remove_task_session(self)
-            if self.key_id:
-                self.task_server.remove_resource_peer(self.task_id, self.key_id)
+        self.task_server.remove_task_session(self)
+        if self.key_id:
+            self.task_server.remove_resource_peer(self.task_id, self.key_id)
 
     #######################
     # SafeSession methods #
     #######################
 
     @property
-    def my_private_key(self):
-        if self.task_server is None:
-            logger.error("Task Server is None, can't sign a message.")
-            return None
-        return self.task_server.keys_auth.ecc.raw_privkey
+    def my_private_key(self) -> bytes:
+        return self.task_server.keys_auth._private_key  # noqa pylint: disable=protected-access
+
+    @property
+    def my_public_key(self) -> bytes:
+        return self.task_server.keys_auth.public_key
 
     ###################################
     # IMessageHistoryProvider methods #
     ###################################
 
     def _subtask_to_task(self, sid, local_role):
-        if not self.task_manager:
-            return None
-
         if local_role == Actor.Provider:
             return self.task_manager.comp_task_keeper.subtask_to_task.get(sid)
         elif local_role == Actor.Requestor:
@@ -578,7 +580,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         try:
             want_to_compute_task.verify_signature(
                 self.task_server.keys_auth.ecc.raw_pubkey)
-        except InvalidSignature:
+        except msg_exceptions.InvalidSignature:
             logger.debug(
                 'WantToComputeTask attached to TaskToCompute is not signed '
                 'with key: %r.', want_to_compute_task.provider_public_key)
@@ -751,7 +753,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         ))
 
     @history.provider_history
-    def _react_to_subtask_result_accepted(self, msg):
+    def _react_to_subtask_result_accepted(
+            self, msg: message.tasks.SubtaskResultsAccepted):
+        # The message must be verified, and verification requires self.key_id.
+        # This assert is for mypy, which only knows that it's Optional[str].
+        assert self.key_id is not None
+
         if msg.task_to_compute is None:
             logger.info(
                 'Empty task_to_compute in %s. Disconnecting: %r',
@@ -761,9 +768,32 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.disconnect(message.base.Disconnect.REASON.BadProtocol)
             return
 
-        if not self.check_requestor_for_subtask(msg.subtask_id):
+        try:
+            msg.verify_owners(
+                provider_public_key=self.my_public_key,
+                requestor_public_key=decode_hex(self.key_id),
+            )
+        except (msg_exceptions.InvalidSignature,
+                msg_exceptions.OwnershipMismatch) as e:
+            logger.error("SubtaskResultAccepted has %s: %s",
+                         e.__class__.__name__, e)
             self.dropped()
             return
+
+        transaction_system = self.task_server.client.transaction_system
+
+        if (
+                not self.check_requestor_for_subtask(msg.subtask_id) and
+                not transaction_system.is_income_expected(
+                    subtask_id=msg.subtask_id,
+                    payer_address=msg.task_to_compute.requestor_ethereum_address
+                )
+        ):
+            logger.debug("Unexpected income from %r for subtask %r",
+                         self.key_id, msg.subtask_id)
+            self.dropped()
+            return
+
         self.concent_service.cancel_task_message(
             msg.subtask_id,
             'ForceSubtaskResults',
