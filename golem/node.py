@@ -155,8 +155,8 @@ class Node(object):
                 self._error('keys or docker'),
             ).addErrback(self._error('setup client'))
             self._reactor.run()
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.exception("Application error: %r", exc)
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Application error")
 
     @rpc_utils.expose('ui.quit')
     def quit(self) -> None:
@@ -242,7 +242,6 @@ class Node(object):
             methods['sys.exposed_procedures'] = \
                 self.rpc_session.exposed_procedures
             self.rpc_session.add_procedures(methods)
-
             self._rpc_publisher = Publisher(self.rpc_session)
             StatusPublisher.set_publisher(self._rpc_publisher)
 
@@ -431,7 +430,9 @@ class Node(object):
             return
 
         methods = self.client.get_wamp_rpc_mapping()
-        self.rpc_session.add_procedures(methods)  # type: ignore
+        self.rpc_session.add_procedures(methods).addCallback(
+            lambda _: logger.info('All procedures registered in router'),
+        )
 
     def _setup_apps(self) -> None:
         if not self.client:

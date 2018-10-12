@@ -110,7 +110,7 @@ class Tasks:
 
     @command(argument=id_req, help="Restart a task")
     def restart(self, id):
-        deferred = Tasks.client.restart_task(id)
+        deferred = Tasks.client._call('comp.task.restart', id)  # noqa pylint: disable=protected-access
         new_task_id, error = sync_wait(deferred)
         if error:
             return CommandResult(error=error)
@@ -119,7 +119,11 @@ class Tasks:
     @command(arguments=(id_req, subtask_ids),
              help="Restart given subtasks from a task")
     def restart_subtasks(self, id, subtask_ids):
-        deferred = Tasks.client.restart_subtasks_from_task(id, subtask_ids)
+        deferred = Tasks.client._call(  # pylint: disable=protected-access
+            'comp.task.restart_subtasks',
+            id,
+            subtask_ids,
+        )
         return sync_wait(deferred)
 
     @command(argument=id_req, help="Abort a task")
@@ -203,7 +207,8 @@ class Tasks:
     def __create_from_json(self, jsondata: str) \
             -> Tuple[Optional[str], Optional[str]]:
         dictionary = json.loads(jsondata)
-        deferred = Tasks.client.create_task(dictionary)
+        # pylint: disable=protected-access
+        deferred = Tasks.client._call('comp.task.create', dictionary)
         return sync_wait(deferred, CREATE_TASK_TIMEOUT)
 
 
