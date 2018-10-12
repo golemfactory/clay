@@ -189,7 +189,6 @@ class LocalComputer:
             ctd['docker_images'],
             ctd['src_code'],
             ctd['extra_data'],
-            ctd['short_description'],
             dir_mapping,
             0,
             check_mem=self.check_mem,
