@@ -196,7 +196,7 @@ class SubtaskOp(Operation):
         return self not in (
             SubtaskOp.ASSIGNED,
             SubtaskOp.RESULT_DOWNLOADING,
-            SubtaskOp.NOT_ACCEPTED
+            SubtaskOp.RESTARTED
         )
 
 

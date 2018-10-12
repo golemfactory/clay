@@ -559,7 +559,7 @@ class TaskServer(
                 min_performance=min_performance,
             )
 
-        except (KeyError, ValueError) as exc:
+        except (KeyError, ValueError, AttributeError) as exc:
             logger.error("Finished subtask listener: %r", exc)
             return
 
