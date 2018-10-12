@@ -1097,11 +1097,33 @@ class SubtaskResultsAcceptedTest(TestCase):
             'ForceSubtaskResults',
         )
 
-    def test_react_to_subtask_result_accepted_with_wrong_key(self):
+    def test_react_with_wrong_key(self):
         key_id = "CDEF"
         sra = msg_factories.tasks.SubtaskResultsAcceptedFactory()
         ctk = self.task_session.task_manager.comp_task_keeper
         ctk.get_node_for_task_id.return_value = "ABC"
+        self.task_session.key_id = key_id
+        self.task_session._react_to_subtask_result_accepted(sra)
+        self.task_server.subtask_accepted.assert_not_called()
+
+    def test_react_with_unknown_key_and_expected_income(self):
+        key_id = "CDEF"
+        sra = msg_factories.tasks.SubtaskResultsAcceptedFactory()
+        ctk = self.task_session.task_manager.comp_task_keeper
+        ctk.get_node_for_task_id.return_value = None
+        self.task_server.client.transaction_system.is_income_expected\
+                                                  .return_value = True
+        self.task_session.key_id = key_id
+        self.task_session._react_to_subtask_result_accepted(sra)
+        self.task_server.subtask_accepted.assert_called()
+
+    def test_react_with_unknown_key_and_unexpected_income(self):
+        key_id = "CDEF"
+        sra = msg_factories.tasks.SubtaskResultsAcceptedFactory()
+        ctk = self.task_session.task_manager.comp_task_keeper
+        ctk.get_node_for_task_id.return_value = None
+        self.task_server.client.transaction_system.is_income_expected\
+                                                  .return_value = False
         self.task_session.key_id = key_id
         self.task_session._react_to_subtask_result_accepted(sra)
         self.task_server.subtask_accepted.assert_not_called()

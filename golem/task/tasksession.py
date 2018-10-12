@@ -3,13 +3,12 @@ import functools
 import logging
 import os
 import time
-from typing import TYPE_CHECKING
+from typing import Optional, TYPE_CHECKING
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
 from golem_messages import message
 from golem_messages import exceptions as msg_exceptions
-from golem_messages.utils import decode_hex
 
 from golem.core import common
 from golem.core.keysauth import KeysAuth
@@ -768,22 +767,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.disconnect(message.base.Disconnect.REASON.BadProtocol)
             return
 
-        try:
-            msg.verify_owners(
-                provider_public_key=self.my_public_key,
-                requestor_public_key=decode_hex(self.key_id),
-            )
-        except (msg_exceptions.InvalidSignature,
-                msg_exceptions.OwnershipMismatch) as e:
-            logger.error("SubtaskResultAccepted has %s: %s",
-                         e.__class__.__name__, e)
-            self.dropped()
-            return
-
         transaction_system = self.task_server.client.transaction_system
 
+        requestor_check_result = \
+            self.check_requestor_for_subtask(msg.subtask_id)
         if (
-                not self.check_requestor_for_subtask(msg.subtask_id) and
+                requestor_check_result is False or
                 not transaction_system.is_income_expected(
                     subtask_id=msg.subtask_id,
                     payer_address=msg.task_to_compute.requestor_ethereum_address
@@ -996,9 +985,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
-    def check_requestor_for_task(self, task_id, additional_msg="") -> bool:
+    def check_requestor_for_task(self, task_id, additional_msg="") \
+            -> Optional[bool]:
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
             task_id)
+        if node_id is None:
+            return None
         if node_id != self.key_id:
             logger.warning('Received message about task %r from diferrent '
                            'node %r than expected %r. %s', task_id,
@@ -1006,9 +998,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
-    def check_requestor_for_subtask(self, subtask_id) -> bool:
+    def check_requestor_for_subtask(self, subtask_id) -> Optional[bool]:
         task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(
             subtask_id)
+        if task_id is None:
+            return None
         return self.check_requestor_for_task(task_id, "Subtask %r" % subtask_id)
 
     def _check_ctd_params(self, ctd: message.ComputeTaskDef):
