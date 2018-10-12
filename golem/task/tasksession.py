@@ -27,7 +27,6 @@ from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import TaskState
-from golem.utils import pubkeytoaddr
 
 if TYPE_CHECKING:
     from .taskcomputer import TaskComputer  # noqa pylint:disable=unused-import
@@ -756,11 +755,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     @history.provider_history
     def _react_to_subtask_result_accepted(
             self, msg: message.tasks.SubtaskResultsAccepted):
-        if self.key_id is None:
-            logger.error("received SubtaskResultsAccepted, but I don't know "
-                         "from whom")
-            self.disconnect(message.base.Disconnect.REASON.BadProtocol)
-            return
+        # The message must be verified, and verification requires self.key_id.
+        # This assert is for mypy, which only knows that it's Optional[str].
+        assert self.key_id is not None
+
         if msg.task_to_compute is None:
             logger.info(
                 'Empty task_to_compute in %s. Disconnecting: %r',
@@ -783,11 +781,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         transaction_system = self.task_server.client.transaction_system
-        if not transaction_system.is_income_expected(
-                subtask_id=msg.subtask_id,
-                payer_address=pubkeytoaddr(self.key_id)
+
+        if (
+                not self.check_requestor_for_subtask(msg.subtask_id) and
+                not transaction_system.is_income_expected(
+                    subtask_id=msg.subtask_id,
+                    payer_address=msg.task_to_compute.requestor_ethereum_address
+                )
         ):
-            logger.error("Unexpected income from %r for subtask %r",
+            logger.debug("Unexpected income from %r for subtask %r",
                          self.key_id, msg.subtask_id)
             self.dropped()
             return

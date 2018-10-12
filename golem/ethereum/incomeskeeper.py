@@ -102,8 +102,8 @@ class IncomesKeeper:
             payer_address: str,
     ) -> bool:
         return Income.select().where(
-            (Income.subtask == subtask_id) &
-            (Income.payer_address == payer_address) &
+            Income.subtask == subtask_id,
+            Income.payer_address == payer_address,
             Income.transaction.is_null()
         ).exists()
 
