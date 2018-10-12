@@ -1,4 +1,5 @@
 import collections
+import functools
 import logging.config
 import os
 import subprocess
@@ -170,6 +171,7 @@ class HandleError(object):
         self.error = error
 
     def __call__(self, func):
+        @functools.wraps(func)
         def func_wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
@@ -185,6 +187,7 @@ class HandleForwardedError:
         self.error = error
 
     def __call__(self, func):
+        @functools.wraps(func)
         def func_wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
