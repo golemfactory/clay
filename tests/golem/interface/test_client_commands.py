@@ -563,7 +563,9 @@ class TestTasks(TempDirFixture):
 
         with client_ctx(Tasks, client):
             tasks = Tasks()
-            tasks._Tasks__create_from_json(def_str)  # pylint: disable=no-member
+            # pylint: disable=no-member
+            tasks._Tasks__create_from_json(def_str)  # type: ignore
+            # pylint: enable=no-member
             client._call.assert_called_once_with(
                 'comp.task.create',
                 definition.to_dict(),
