@@ -46,7 +46,7 @@ class EthereumConfig:  # pylint:disable=too-few-public-methods
 
     deposit_contract_address = CONCENT_CHOICES[
         os.environ[CONCENT_ENVIRONMENT_VARIABLE]
-    ].get('deposit_contract_address')
+    ].get('deposit_contract_address')  # type: ignore  #wth mypy?
 
     if deposit_contract_address:
         CONTRACT_ADDRESSES[contracts.GNTDeposit] = deposit_contract_address
