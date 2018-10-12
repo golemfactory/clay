@@ -41,11 +41,15 @@ class EthereumConfig:  # pylint:disable=too-few-public-methods
     CONTRACT_ADDRESSES = {
         contracts.GNT: '0x924442A66cFd812308791872C4B242440c108E19',
         contracts.GNTB: '0x123438d379BAbD07134d1d4d7dFa0BCbd56ca3F3',
-        contracts.GNTDeposit: CONCENT_CHOICES[
-            os.environ[CONCENT_ENVIRONMENT_VARIABLE]
-        ].get('deposit_contract_address'),
         contracts.Faucet: '0x77b6145E853dfA80E8755a4e824c4F510ac6692e',
     }
+
+    deposit_contract_address = CONCENT_CHOICES[
+        os.environ[CONCENT_ENVIRONMENT_VARIABLE]
+    ].get('deposit_contract_address')
+
+    if deposit_contract_address:
+        CONTRACT_ADDRESSES[contracts.GNTDeposit] = deposit_contract_address
 
     WITHDRAWALS_ENABLED = False
 
