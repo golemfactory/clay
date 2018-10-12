@@ -1,7 +1,7 @@
 pub fn order_providers(offers: &[f64]) -> Vec<usize> {
     let mut perm: Vec<usize> = (0..offers.len()).collect();
     perm.sort_by(|lhs, rhs| offers[*lhs].partial_cmp(&offers[*rhs]).unwrap());
-    return perm
+    perm
 }
 
 #[cfg(test)]
