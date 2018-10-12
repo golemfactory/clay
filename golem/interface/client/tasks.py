@@ -2,11 +2,15 @@
 
 from datetime import timedelta
 import json
+import typing
 from typing import Any, Optional, Tuple
 
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.deferred import sync_wait
 from golem.interface.command import doc, group, command, Argument, CommandResult
+
+if typing.TYPE_CHECKING:
+    from golem.rpc.session import ClientProxy
 
 CREATE_TASK_TIMEOUT = 300  # s
 
@@ -14,7 +18,7 @@ CREATE_TASK_TIMEOUT = 300  # s
 @group(help="Manage tasks")
 class Tasks:
 
-    client = None
+    client: 'ClientProxy'
 
     task_table_headers = ['id', 'ETA',
                           'subtasks', 'status', 'completion']

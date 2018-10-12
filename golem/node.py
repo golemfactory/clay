@@ -430,9 +430,7 @@ class Node(object):
             return
 
         methods = self.client.get_wamp_rpc_mapping()
-        self.rpc_session.add_procedures(methods).addCallback(
-            lambda _: logger.info('All procedures registered in router'),
-        )
+        self.rpc_session.add_procedures(methods)  # type: ignore
 
     def _setup_apps(self) -> None:
         if not self.client:

@@ -84,8 +84,7 @@ def _validate_task_dict(t_dict) -> None:
 
 
 @golem_async.deferred_run()
-def _run_test_task(client, task_dict) \
-            -> typing.Generator[defer.Deferred, typing.Any, None]:
+def _run_test_task(client, task_dict):
 
     def on_success(result, estimated_memory, time_spent, **kwargs):
         logger.info('Test task succes "%r"', task_dict)
