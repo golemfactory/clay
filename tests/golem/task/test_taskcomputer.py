@@ -97,8 +97,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.task_resource_failure(task_id, 'reason')
         assert task_server.send_task_failed.called
 
-        tc.resource_request_rejected(subtask_id, 'reason')
-
     def test_computation(self):
         p2p_node = P2PNode()
         ctd = ComputeTaskDef()
@@ -306,7 +304,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             docker_images=[],
             src_code='print("test")',
             extra_data=mock.Mock(),
-            short_desc='test',
             subtask_deadline=time.time() + 3600
         )
 
@@ -381,7 +378,6 @@ class TestTaskThread(DatabaseFixture):
         return PyTaskThread(subtask_id="xxyyzz",
                             src_code=src_code,
                             extra_data={},
-                            short_desc="hello thread",
                             res_path=os.path.dirname(files[0]),
                             tmp_path=os.path.dirname(files[1]),
                             timeout=20)
