@@ -44,9 +44,9 @@ class EthereumConfig:  # pylint:disable=too-few-public-methods
         contracts.Faucet: '0x77b6145E853dfA80E8755a4e824c4F510ac6692e',
     }
 
-    deposit_contract_address = CONCENT_CHOICES[
+    deposit_contract_address = CONCENT_CHOICES[  # type: ignore  #wth mypy?
         os.environ[CONCENT_ENVIRONMENT_VARIABLE]
-    ].get('deposit_contract_address')  # type: ignore  #wth mypy?
+    ].get('deposit_contract_address')
 
     if deposit_contract_address:
         CONTRACT_ADDRESSES[contracts.GNTDeposit] = deposit_contract_address
