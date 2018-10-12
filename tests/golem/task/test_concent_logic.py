@@ -14,6 +14,7 @@ from golem_messages import cryptography
 from golem_messages import factories
 from golem_messages import message
 from golem_messages.utils import encode_hex
+from twisted.internet.defer import Deferred
 
 from golem import testutils
 from golem.core import keysauth
@@ -336,6 +337,13 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.assertEqual(ack_msg.report_computed_task, self.msg)
 
 
+def _offerpool_add(*_):
+    res = Deferred()
+    res.callback(True)
+    return res
+
+
+@mock.patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
 @mock.patch('golem.task.tasksession.TaskSession.send')
 class ReactToWantToComputeTaskTestCase(unittest.TestCase):
     def setUp(self):

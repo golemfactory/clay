@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import List
 
 
-# pylint: disable=too-few-public-methods
 # pylint: disable=too-many-instance-attributes
 class ComputingSubtaskStateSnapshot:
     def __init__(

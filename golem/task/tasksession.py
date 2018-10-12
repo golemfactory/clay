@@ -15,6 +15,7 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
+from golem.marketplace.offerpool import OfferPool
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
@@ -507,62 +508,79 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            msg.task_id, node_name_id)
             return
 
-        # TODO: Queue requests here
+        def _offer_chosen(is_chosen: bool) -> None:
+            if not is_chosen:
+                logger.info(
+                    "Provider not chosen by marketplace. task_id=%r, node=%r",
+                    msg.task_id,
+                    node_name_id,
+                )
+                _cannot_assign(reasons.NoMoreSubtasks)
+                return
 
-        logger.info("Offer confirmed, assigning subtask")
-        ctd = self.task_manager.get_next_subtask(
-            self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-            msg.price, msg.max_resource_size, msg.max_memory_size,
-            msg.num_cores, self.address)
+            if not self.conn.opened:
+                logger.info(
+                    "Provider disconnected. task_id=%r, node=%r",
+                    msg.task_id,
+                    node_name_id,
+                )
+                return
 
-        logger.debug(
-            "task_id=%s, node=%s ctd=%s",
-            msg.task_id,
-            node_name_id,
-            ctd,
-        )
+            logger.info("Offer confirmed, assigning subtask")
+            ctd = self.task_manager.get_next_subtask(
+                self.key_id, msg.node_name, msg.task_id, msg.perf_index,
+                msg.price, msg.max_resource_size, msg.max_memory_size,
+                msg.num_cores, self.address)
 
-        if ctd is None:
-            _cannot_assign(reasons.NoMoreSubtasks)
-            return
+            logger.debug(
+                "task_id=%s, node=%s ctd=%s",
+                msg.task_id,
+                node_name_id,
+                ctd,
+            )
 
-        logger.info(
-            "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
-            msg.task_id,
-            node_name_id,
-            ctd["subtask_id"],
-        )
-        task = self.task_manager.tasks[ctd['task_id']]
-        task_state: TaskState = self.task_manager.tasks_states[ctd['task_id']]
-        price = taskkeeper.compute_subtask_value(
-            task.header.max_price,
-            task.header.subtask_timeout,
-        )
-        ttc = message.tasks.TaskToCompute(
-            compute_task_def=ctd,
-            want_to_compute_task=msg,
-            requestor_id=task.header.task_owner.key,
-            requestor_public_key=task.header.task_owner.key,
-            requestor_ethereum_public_key=task.header.task_owner.key,
-            provider_id=self.key_id,
-            package_hash='sha1:' + task_state.package_hash,
-            concent_enabled=msg.concent_enabled,
-            price=price,
-            size=task_state.package_size
-        )
-        ttc.generate_ethsig(self.my_private_key)
-        self.task_manager.set_subtask_value(
-            subtask_id=ttc.subtask_id,
-            price=price,
-        )
-        history.add(
-            msg=ttc,
-            node_id=self.key_id,
-            local_role=Actor.Requestor,
-            remote_role=Actor.Provider,
-        )
+            if ctd is None:
+                _cannot_assign(reasons.NoMoreSubtasks)
+                return
 
-        self.send(ttc)
+            logger.info(
+                "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
+                msg.task_id,
+                node_name_id,
+                ctd["subtask_id"],
+            )
+            task = self.task_manager.tasks[ctd['task_id']]
+            task_state = self.task_manager.tasks_states[ctd['task_id']]
+            price = taskkeeper.compute_subtask_value(
+                task.header.max_price,
+                task.header.subtask_timeout,
+            )
+            ttc = message.tasks.TaskToCompute(
+                compute_task_def=ctd,
+                want_to_compute_task=msg,
+                requestor_id=task.header.task_owner.key,
+                requestor_public_key=task.header.task_owner.key,
+                requestor_ethereum_public_key=task.header.task_owner.key,
+                provider_id=self.key_id,
+                package_hash='sha1:' + task_state.package_hash,
+                concent_enabled=msg.concent_enabled,
+                price=price,
+                size=task_state.package_size
+            )
+            ttc.generate_ethsig(self.my_private_key)
+            self.task_manager.set_subtask_value(
+                subtask_id=ttc.subtask_id,
+                price=price,
+            )
+            history.add(
+                msg=ttc,
+                node_id=self.key_id,
+                local_role=Actor.Requestor,
+                remote_role=Actor.Provider,
+            )
+            self.send(ttc)
+
+        OfferPool.add(msg.task_id, msg).addCallback(_offer_chosen)
 
     @handle_attr_error_with_task_computer
     @history.provider_history
