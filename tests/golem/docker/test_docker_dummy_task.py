@@ -3,6 +3,7 @@ from pathlib import Path
 
 import os
 from os import path
+from shutil import rmtree
 from unittest import mock
 from unittest.mock import Mock
 from twisted.internet.defer import Deferred
@@ -49,17 +50,12 @@ class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
                                     "test_tmp")
         os.mkdir(cls.test_tmp)
 
-        cls.code_link = os.path.join(cls.test_tmp, "code")
-        cls.data_link = os.path.join(cls.test_tmp, "data")
-
-        symlink_or_copy(code_dir, cls.code_link)
-        symlink_or_copy(data_dir, cls.data_link)
+        symlink_or_copy(code_dir, cls.test_tmp)
+        symlink_or_copy(data_dir, cls.test_tmp)
 
     @classmethod
     def tearDownClass(cls):
-        rmlink_or_rmtree(cls.code_link)
-        rmlink_or_rmtree(cls.data_link)
-        os.rmdir(cls.test_tmp)
+        rmtree(cls.test_tmp)
 
     def _extract_results(self, computer: LocalComputer, subtask_id: str) \
             -> Path:

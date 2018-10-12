@@ -25,9 +25,6 @@ class TestDummyTaskDockerJob(TestDockerJob):
         with open(task_script) as f:
             task_script_src = f.read()
 
-        os.mkdir(os.path.join(self.resources_dir, "data"))
-        os.mkdir(os.path.join(self.resources_dir, "code"))
-
         # copy the resources to the resources dir
         data_dir = path.join(get_golem_path(),
                                    "apps", "dummy", "test_data")
@@ -35,7 +32,7 @@ class TestDummyTaskDockerJob(TestDockerJob):
         for f in os.listdir(data_dir):
             task_file = path.join(data_dir, f)
             if path.isfile(task_file) or path.isdir(task_file):
-                shutil.copy(task_file, path.join(self.resources_dir, "data", f))
+                shutil.copy(task_file, path.join(self.resources_dir, f))
 
         code_dir = path.join(get_golem_path(),
                                    "apps", "dummy", "resources", "code_dir")
@@ -44,7 +41,7 @@ class TestDummyTaskDockerJob(TestDockerJob):
             task_file = path.join(code_dir, f)
             if (path.isfile(task_file) or path.isdir(task_file)) \
                     and os.path.basename(task_file) != "__pycache__":
-                shutil.copy(task_file, path.join(self.resources_dir, "code", f))
+                shutil.copy(task_file, path.join(self.resources_dir, f))
 
         # this is the stuff that is available by "params" module
         # in the docker job script

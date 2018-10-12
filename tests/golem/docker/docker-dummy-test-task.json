@@ -28,15 +28,15 @@
   "result_size": 256,
   "task_id":"540d9636-1848-c85d-19d3-52465d1f23cf",
   "resources":[
-    "$GOLEM_DIR/apps/dummy/test_tmp/data/in.data",
-    "$GOLEM_DIR/apps/dummy/test_tmp/code/__init__.py",
-    "$GOLEM_DIR/apps/dummy/test_tmp/code/computing.py"
+    "$GOLEM_DIR/apps/dummy/test_tmp/in.data",
+    "$GOLEM_DIR/apps/dummy/test_tmp/__init__.py",
+    "$GOLEM_DIR/apps/dummy/test_tmp/computing.py"
   ],
   "code_files":[
     "__init__.py",
     "computing.py"
   ],
-  "code_dir": "$GOLEM_DIR/apps/dummy/resources/code_dir/",
+  "code_dir": "$GOLEM_DIR/apps/dummy/resources/",
   "shared_data_files":["$GOLEM_DIR/apps/dummy/test_data/in.data"],
   "out_file_basename": "out",
   "verification_options":null,
