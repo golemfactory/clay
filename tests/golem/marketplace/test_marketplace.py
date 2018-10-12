@@ -1,5 +1,5 @@
-from golem.marketplace import pick_provider
+from golem.marketplace import order_providers
 
 
-def test_pick_provider():
-    assert pick_provider([2.0, 1.8, 3.0, 4.4]) == 1
+def test_order_providers():
+    assert order_providers([2.0, 1.8, 3.0, 4.4]) == [0, 1, 2, 3]
