@@ -1,6 +1,13 @@
+import pickle
+from unittest import mock
 from unittest import TestCase
 
-from apps.core.task.coretaskstate import (TaskDefaults, TaskDefinition, TaskDesc, Options)
+from apps.core.task.coretaskstate import (
+    Options,
+    TaskDefaults,
+    TaskDefinition,
+    TaskDesc,
+)
 
 from golem.environments.environment import Environment
 from golem.testutils import PEP8MixIn
@@ -64,3 +71,33 @@ class TestTaskDefinition(TestCase):
         assert tdf2.verification_options == "Option"
         assert tdf2.total_subtasks == 12
         assert tdf2.optimize_total
+
+
+class TestPicklesFrom_0_17_1(TestCase):
+    def setUp(self):
+        self.task_definition = TaskDefinition()
+        self.assertTrue(hasattr(self.task_definition, 'compute_on'))
+        self.assertTrue(hasattr(self.task_definition, 'concent_enabled'))
+        super().setUp()
+
+    def ser_deser(self):
+        pickled = pickle.dumps(self.task_definition)
+        self.task_definition = pickle.loads(pickled)
+
+    def test_missing_compute_on(self, *_):
+        del self.task_definition.compute_on
+        with mock.patch(
+            'apps.core.task.coretaskstate.TaskDefinition.__getstate__',
+            side_effect=lambda: self.task_definition.__dict__,
+        ):
+            self.ser_deser()
+        self.assertEqual(self.task_definition.compute_on, 'cpu')
+
+    def test_missing_concent_enabled(self, *_):
+        del self.task_definition.concent_enabled
+        with mock.patch(
+            'apps.core.task.coretaskstate.TaskDefinition.__getstate__',
+            side_effect=lambda: self.task_definition.__dict__,
+        ):
+            self.ser_deser()
+        self.assertEqual(self.task_definition.concent_enabled, False)

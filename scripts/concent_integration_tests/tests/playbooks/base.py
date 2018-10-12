@@ -136,16 +136,16 @@ class NodeTestPlaybook:
 
     def step_get_provider_network_info(self):
         def on_success(result):
-            match = re.search(r'Port\s(\d+)', result)
-            if match:
-                self.provider_port = match.group(1)
+            if result.get('listening') and result.get('port_statuses'):
+                self.provider_port = list(result.get('port_statuses').keys())[0]
                 print("Provider's port: {}".format(self.provider_port))
                 self.next()
             else:
                 print("Waiting for Provider's network info...")
                 time.sleep(3)
+
         call_provider('net.status',
-                      on_success=on_success, on_error=lambda: None)
+                      on_success=on_success, on_error=self.print_error)
 
     def step_connect_nodes(self):
         def on_success(result):
