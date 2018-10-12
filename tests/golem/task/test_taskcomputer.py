@@ -305,7 +305,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             docker_images=[],
             src_code='print("test")',
             extra_data=mock.Mock(),
-            short_desc='test',
             subtask_deadline=time.time() + 3600
         )
 
@@ -380,7 +379,6 @@ class TestTaskThread(DatabaseFixture):
         return PyTaskThread(subtask_id="xxyyzz",
                             src_code=src_code,
                             extra_data={},
-                            short_desc="hello thread",
                             res_path=os.path.dirname(files[0]),
                             tmp_path=os.path.dirname(files[1]),
                             timeout=20)

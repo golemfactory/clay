@@ -413,25 +413,13 @@ class TransactionSystem(LoopingCallService):
             sender_node: str,
             subtask_id: str,
             payer_address: str,
-            value: int) -> model.Income:
-        return self._incomes_keeper.expect(
+            value: int,
+            accepted_ts: int) -> None:
+        self._incomes_keeper.expect(
             sender_node,
             subtask_id,
             payer_address,
             value,
-        )
-
-    def reject_income(self, sender_node: str, subtask_id: str) -> None:
-        self._incomes_keeper.reject(sender_node, subtask_id)
-
-    def accept_income(
-            self,
-            sender_node: str,
-            subtask_id: str,
-            accepted_ts: int) -> None:
-        self._incomes_keeper.update_awaiting(
-            sender_node,
-            subtask_id,
             accepted_ts,
         )
 
@@ -760,7 +748,7 @@ def tETH_faucet_donate(addr: str):
     request = "http://188.165.227.180:4000/donate/{}".format(addr)
     resp = requests.get(request)
     if resp.status_code != 200:
-        log.error("tETH Faucet error code %r", resp.status_code)
+        log.warning("tETH Faucet error code %r", resp.status_code)
         return False
     response = resp.json()
     if response['paydate'] == 0:
