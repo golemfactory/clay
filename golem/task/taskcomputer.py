@@ -93,6 +93,9 @@ class TaskComputer(object):
         if self.assigned_subtask is not None:
             logger.error("Trying to assign a task, when it's already assigned")
             return False
+
+        ProviderIdleTimer.comp_started()
+
         self.assigned_subtask = ctd
         self.__request_resource(
             ctd['task_id'],
