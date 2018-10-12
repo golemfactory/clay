@@ -290,11 +290,14 @@ class TaskServerMessageHandler():
         """Concent forwards verified Requestors response to ForceSubtaskResults
         """
         if msg.subtask_results_accepted:
-            node_id = msg.subtask_results_accepted.task_to_compute.requestor_id
+            ttc = msg.subtask_results_accepted.task_to_compute
+            node_id = ttc.requestor_id
             sub_msg = msg.subtask_results_accepted
             self.task_server.subtask_accepted(
                 sender_node_id=msg.requestor_id,
                 subtask_id=msg.subtask_id,
+                payer_address=ttc.requestor_ethereum_address,
+                value=ttc.price,
                 accepted_ts=msg.subtask_results_accepted.payment_ts,
             )
         elif msg.subtask_results_rejected:

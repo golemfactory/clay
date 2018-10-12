@@ -94,16 +94,21 @@ class BlenderReferenceGenerator:
             .convert_blender_crop_border_to_pixel_coordinates(subtask_border,
                                                               resolution)
 
+        subtask_resolution = (subtask_pixel_coordinates['right']-
+                              subtask_pixel_coordinates['left'],
+                              subtask_pixel_coordinates['top']-
+                              subtask_pixel_coordinates['bottom'])
+
         if crop_size_as_fraction is None:
             self.crop_size_in_pixels = BlenderReferenceGenerator\
-                ._get_default_crop_size(resolution)
+                ._get_default_crop_size(subtask_resolution)
             crop_size_as_fraction = (
-                self.crop_size_in_pixels[0] / resolution[0],
-                self.crop_size_in_pixels[1] / resolution[1])
+                self.crop_size_in_pixels[0] / subtask_resolution[0],
+                self.crop_size_in_pixels[1] / subtask_resolution[1])
         else:
             self.crop_size_in_pixels = (
-                int(crop_size_as_fraction[0] * resolution[0]),
-                int(crop_size_as_fraction[1] * resolution[1]))
+                int(crop_size_as_fraction[0] * subtask_resolution[0]),
+                int(crop_size_as_fraction[1] * subtask_resolution[1]))
 
         for _ in range(crops_number):
             self.generate_single_crop_data(subtask_pixel_coordinates,

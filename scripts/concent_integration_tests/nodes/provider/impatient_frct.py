@@ -15,9 +15,7 @@ import sys
 from golem_messages.message.concents import ForceReportComputedTask
 from scripts.concent_integration_tests import params
 
-sys.path.insert(0, 'golem')
-
-from golemapp import start  # noqa: E402 module level import not at top of file
+from golemapp import start
 
 sys.argv.extend(params.PROVIDER_ARGS_DEBUG)
 

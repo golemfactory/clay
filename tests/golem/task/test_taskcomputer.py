@@ -83,13 +83,13 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.task_resource_failure(task_id, 'reason')
         assert not task_server.send_task_failed.called
 
-        tc.task_to_subtask_mapping[task_id] = subtask_id
-        tc.assigned_subtasks[subtask_id] = ComputeTaskDef()
+        tc.assigned_subtask = ComputeTaskDef(
+            task_id=task_id,
+            subtask_id=subtask_id,
+        )
 
         tc.task_resource_failure(task_id, 'reason')
         assert task_server.send_task_failed.called
-
-        tc.resource_request_rejected(subtask_id, 'reason')
 
     def test_computation(self):
         p2p_node = P2PNode()
@@ -121,12 +121,11 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc = TaskComputer(task_server, use_docker_manager=False,
                           finished_cb=mock_finished)
 
-        self.assertEqual(len(tc.assigned_subtasks), 0)
+        self.assertEqual(tc.assigned_subtask, None)
         tc.task_given(ctd)
-        self.assertEqual(tc.assigned_subtasks["xxyyzz"], ctd)
-        self.assertLessEqual(tc.assigned_subtasks["xxyyzz"]['deadline'],
+        self.assertEqual(tc.assigned_subtask, ctd)
+        self.assertLessEqual(tc.assigned_subtask['deadline'],
                              timeout_to_deadline(10))
-        self.assertEqual(tc.task_to_subtask_mapping["xyz"], "xxyyzz")
         tc.task_server.request_resource.assert_called_with(
             "xyz", "xxyyzz")
 
@@ -134,7 +133,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.task_server.unpack_delta.assert_called_with(
             tc.dir_manager.get_task_resource_dir("xyz"), None, "xyz")
         assert tc.counting_thread is None
-        assert tc.assigned_subtasks.get("xxyyzz") is None
+        assert tc.assigned_subtask is None
         task_server.send_task_failed.assert_called_with(
             "xxyyzz", "xyz", "Host direct task not supported")
 
@@ -150,7 +149,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
         prev_task_failed_count = task_server.send_task_failed.call_count
         self.assertIsNone(tc.counting_thread)
-        self.assertIsNone(tc.assigned_subtasks.get("xxyyzz"))
+        self.assertIsNone(tc.assigned_subtask)
         assert task_server.send_task_failed.call_count == prev_task_failed_count
         self.assertTrue(task_server.send_results.called)
         args = task_server.send_results.call_args[0]
@@ -164,17 +163,16 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd['src_code'] = "raise Exception('some exception')"
         ctd['deadline'] = timeout_to_deadline(5)
         tc.task_given(ctd)
-        self.assertEqual(tc.assigned_subtasks["aabbcc"], ctd)
-        self.assertLessEqual(tc.assigned_subtasks["aabbcc"]['deadline'],
+        self.assertEqual(tc.assigned_subtask, ctd)
+        self.assertLessEqual(tc.assigned_subtask['deadline'],
                              timeout_to_deadline(5))
-        self.assertEqual(tc.task_to_subtask_mapping["xyz"], "aabbcc")
         tc.task_server.request_resource.assert_called_with(
             "xyz", "aabbcc")
         self.assertTrue(tc.task_resource_collected("xyz"))
         self.__wait_for_tasks(tc)
 
         self.assertIsNone(tc.counting_thread)
-        self.assertIsNone(tc.assigned_subtasks.get("aabbcc"))
+        self.assertIsNone(tc.assigned_subtask)
         task_server.send_task_failed.assert_called_with(
             "aabbcc", "xyz", 'some exception')
         mock_finished.assert_called_once_with()
@@ -283,9 +281,10 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_computer.lock = Lock()
         task_computer.dir_lock = Lock()
 
-        task_computer.assigned_subtasks = {
-            subtask_id: ComputeTaskDef(task_id=task_id)
-        }
+        task_computer.assigned_subtask = ComputeTaskDef(
+            task_id=task_id,
+            subtask_id=subtask_id,
+        )
         task_computer.task_server.task_keeper.task_headers = {
             task_id: None
         }
@@ -295,7 +294,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             docker_images=[],
             src_code='print("test")',
             extra_data=mock.Mock(),
-            short_desc='test',
             subtask_deadline=time.time() + 3600
         )
 
@@ -368,7 +366,6 @@ class TestTaskThread(DatabaseFixture):
         return PyTaskThread(subtask_id="xxyyzz",
                             src_code=src_code,
                             extra_data={},
-                            short_desc="hello thread",
                             res_path=os.path.dirname(files[0]),
                             tmp_path=os.path.dirname(files[1]),
                             timeout=20)
@@ -402,10 +399,11 @@ class TestTaskMonitor(DatabaseFixture):
         def prepare():
             subtask = mock.MagicMock()
             subtask_id = random.randint(3000, 4000)
+            subtask['subtask_id'] = subtask_id
             task_server\
                 .task_keeper.task_headers[subtask_id].subtask_timeout = duration
 
-            task.assigned_subtasks[subtask_id] = subtask
+            task.assigned_subtask = subtask
             task_thread.subtask_id = subtask_id
 
         def check(expected):
