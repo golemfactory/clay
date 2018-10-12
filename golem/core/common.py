@@ -50,6 +50,12 @@ def is_linux():
     return sys.platform.startswith('linux')
 
 
+def each(func, *iterables):
+    for iterable in iterables:
+        for item in iterable:
+            func(item)
+
+
 def to_unicode(value):
     if value is None:
         return None
