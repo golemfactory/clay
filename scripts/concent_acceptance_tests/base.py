@@ -94,7 +94,10 @@ class ConcentBaseTest:
             'requestor_public_key': msg_utils.encode_hex(
                 self.requestor_pub_key,
             ),
-            'provider_public_key': msg_utils.encode_hex(self.provider_pub_key),
+            'want_to_compute_task__provider_public_key':
+                msg_utils.encode_hex(self.provider_pub_key),
+            'want_to_compute_task__sign__privkey':
+                self.provider_keys.raw_privkey
         }
         return {prefix + k: v for k, v in kwargs.items()}
 
