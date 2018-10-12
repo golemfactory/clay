@@ -7,4 +7,6 @@ class TaskComputerSnapshotModel(BasicModel):
         super().__init__("TaskComputer", meta_data.cliid, meta_data.sessid)
 
         self.compute_task = task_computer.compute_tasks
-        self.assigned_subtasks = list(task_computer.assigned_subtasks.keys())
+        self.assigned_subtask = ''
+        if task_computer.assigned_subtask:
+            self.assigned_subtask = task_computer.assigned_subtask['subtask_id']

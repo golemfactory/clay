@@ -10,7 +10,7 @@ class TestTaskComputerSnapshotModel(MonitorTestBaseClass):
     def test_channel(self):
         computer_mock = mock.MagicMock()
         computer_mock.compute_tasks = compute_tasks = random.random() > 0.5
-        computer_mock.assigned_subtasks = assigned_subtasks = dict((x, None) for x in range(100))
+        computer_mock.assigned_subtask = {'subtask_id': 'test_subtask_id'}
 
         with mock.patch('golem.monitor.monitor.SenderThread.send') as mock_send:
             dispatcher.send(
@@ -26,6 +26,6 @@ class TestTaskComputerSnapshotModel(MonitorTestBaseClass):
             expected = {
                 'type': 'TaskComputer',
                 'compute_task': compute_tasks,
-                'assigned_subtasks': list(assigned_subtasks.keys()),
+                'assigned_subtask': 'test_subtask_id',
             }
             self.assertEqual(expected, result)
