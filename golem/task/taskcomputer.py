@@ -101,7 +101,7 @@ class TaskComputer(object):
         return True
 
     def has_assigned_task(self) -> bool:
-        return bool(self.assigned_subtasks)
+        return bool(self.assigned_subtask)
 
     def task_resource_collected(self, task_id, unpack_delta=True):
         subtask = self.assigned_subtask
