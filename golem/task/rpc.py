@@ -1,3 +1,5 @@
+"""Task related module with procedures exposed by RPC"""
+
 import copy
 import functools
 import logging
@@ -353,6 +355,9 @@ def _test_task_error(e, self, t_dict):
 
 
 class ClientProvider:
+    """Provides task related remote procedures that require Client"""
+
+    # Add only methods that are exposed via RPC
     def __init__(self, client):
         self.client = client
 
