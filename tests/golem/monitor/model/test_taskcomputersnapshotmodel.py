@@ -13,7 +13,7 @@ class TestTaskComputerSnapshotModel(MonitorTestBaseClass):
         computer_mock.counting_task = counting_task = random.random() > 0.5
         computer_mock.task_requested = task_requested = random.random() > 0.5
         computer_mock.compute_tasks = compute_tasks = random.random() > 0.5
-        computer_mock.assigned_subtask = assigned_subtask = 'test_subtask_id'
+        computer_mock.assigned_subtask = {'subtask_id': 'test_subtask_id'}
 
         with mock.patch('golem.monitor.monitor.SenderThread.send') as mock_send:
             dispatcher.send(
@@ -32,6 +32,6 @@ class TestTaskComputerSnapshotModel(MonitorTestBaseClass):
                 'task_requested': task_requested,
                 'counting_task': counting_task,
                 'compute_task': compute_tasks,
-                'assigned_subtask': assigned_subtask,
+                'assigned_subtask': 'test_subtask_id',
             }
             self.assertEqual(expected, result)
