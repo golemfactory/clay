@@ -768,18 +768,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.disconnect(message.base.Disconnect.REASON.BadProtocol)
             return
 
-        try:
-            msg.verify_owners(
-                provider_public_key=self.my_public_key,
-                requestor_public_key=decode_hex(self.key_id),
-            )
-        except (msg_exceptions.InvalidSignature,
-                msg_exceptions.OwnershipMismatch) as e:
-            logger.error("SubtaskResultAccepted has %s: %s",
-                         e.__class__.__name__, e)
-            self.dropped()
-            return
-
         transaction_system = self.task_server.client.transaction_system
 
         if (
