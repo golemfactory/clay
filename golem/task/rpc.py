@@ -35,6 +35,7 @@ def safe_run(errback):
             try:
                 result = f(*args, **kwargs)
             except Exception as e:  # pylint: disable=broad-except
+                logger.error('Full traceback', exc_info=e)
                 return errback(e, *args, **kwargs)
             return result
         return curry
@@ -189,7 +190,6 @@ def _create_task_package(client, task):
         files,
         task.header.task_id,
     )
-    print('_create_task_package() returning', packager_result)
     return packager_result
 
 
@@ -254,7 +254,6 @@ def _inform_subsystems(client, task, packager_result):
         task.header.resource_size,
         client_options=client_options,
     )
-    print('_inform_subsystems() returning', resource_server_result)
     return resource_server_result
 
 
@@ -276,7 +275,6 @@ def _start_task(client, task, resource_server_result):
     )
 
     client.task_manager.start_task(task.header.task_id)
-    print('_start_task() finished')
 
 
 @defer.inlineCallbacks
@@ -372,7 +370,6 @@ class ClientProvider:
                  on failure
         """
 
-        _validate_task_dict(task_dict)
         # FIXME: Statement only for old DummyTask compatibility #2467
         task: taskbase.Task
         if isinstance(task_dict, taskbase.Task):
@@ -386,6 +383,7 @@ class ClientProvider:
             )
             task = task_dict
         else:
+            _validate_task_dict(task_dict)
             # Set default value for concent_enabled
             task_dict.setdefault(
                 'concent_enabled',
