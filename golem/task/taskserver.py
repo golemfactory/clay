@@ -260,14 +260,6 @@ class TaskServer(
         header = self.task_keeper.task_headers[task_id]
 
         if subtask_id not in self.results_to_send:
-            value = self.task_manager.comp_task_keeper.get_value(task_id)
-            self.client.transaction_system.expect_income(
-                sender_node=header.task_owner.key,
-                subtask_id=subtask_id,
-                payer_address=pubkeytoaddr(header.task_owner.key),
-                value=value,
-            )
-
             delay_time = 0.0
             last_sending_trial = 0
 
@@ -445,22 +437,27 @@ class TaskServer(
             logger.warning("Not my subtask rejected %r", subtask_id)
             return
 
-        self.client.transaction_system.reject_income(
-            sender_node_id,
-            subtask_id,
-        )
         self.decrease_trust_payment(task_id)
         # self.remove_task_header(task_id)
         # TODO Inform transaction system and task manager about rejected
         # subtask. Issue #2405
 
-    def subtask_accepted(self, sender_node_id, subtask_id, accepted_ts):
+    # pylint:disable=too-many-arguments
+    def subtask_accepted(
+            self,
+            sender_node_id: str,
+            subtask_id: str,
+            payer_address: str,
+            value: int,
+            accepted_ts: int):
         """My (providers) results were accepted"""
         logger.debug("Subtask %r result accepted", subtask_id)
         self.task_result_sent(subtask_id)
-        self.client.transaction_system.accept_income(
+        self.client.transaction_system.expect_income(
             sender_node_id,
             subtask_id,
+            payer_address,
+            value,
             accepted_ts,
         )
 

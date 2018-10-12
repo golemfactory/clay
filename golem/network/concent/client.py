@@ -1,6 +1,5 @@
 import calendar
 import datetime
-import functools
 import logging
 import queue
 import threading

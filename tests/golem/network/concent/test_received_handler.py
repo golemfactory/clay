@@ -400,9 +400,11 @@ class ForceSubtaskResultsResponseTest(TaskServerMessageHandlerTestBase):
             ForceSubtaskResultsResponseFactory.with_accepted()
 
         library.interpret(msg)
-        self.client.transaction_system.accept_income.assert_called_once_with(
+        self.client.transaction_system.expect_income.assert_called_once_with(
             msg.task_to_compute.requestor_id,
             msg.subtask_id,
+            msg.task_to_compute.requestor_ethereum_address,
+            msg.task_to_compute.price,
             msg.subtask_results_accepted.payment_ts,
         )
 
@@ -457,7 +459,7 @@ class FiletransfersTestBase(TaskServerMessageHandlerTestBase):
         self.addCleanup(cft_patch.stop)
 
 
-class FileTransferTokenTestsBase:  # noqa pylint:disable=too-few-public-methods
+class FileTransferTokenTestsBase:
 
     def setUp(self):
         super().setUp()  # noqa: pylint:disable=no-member
