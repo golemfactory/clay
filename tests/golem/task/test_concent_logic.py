@@ -187,6 +187,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
             )
         self.task_session.key_id = "KEY_ID"
         self.msg = factories.tasks.ReportComputedTaskFactory()
+        self.msg._fake_sign()
         self.now = datetime.datetime.utcnow()
         now_ts = calendar.timegm(self.now.utctimetuple())
         self.msg.task_to_compute.compute_task_def['deadline'] = now_ts + 60
@@ -343,6 +344,7 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         super().setUp()
         self.requestor_keys = cryptography.ECCx(None)
         self.msg = factories.tasks.WantToComputeTaskFactory()
+        self.msg._fake_sign()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
         self.task_session.key_id = 'unittest_key_id'
         self.task_session.task_server.keys_auth._private_key = \
