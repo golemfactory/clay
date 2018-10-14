@@ -18,6 +18,7 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
+from golem.task.timer import ProviderIdleTimer
 from golem.vm.vm import PythonProcVM, PythonTestVM
 
 from .taskthread import TaskThread
@@ -92,6 +93,9 @@ class TaskComputer(object):
         if self.assigned_subtask is not None:
             logger.error("Trying to assign a task, when it's already assigned")
             return False
+
+        ProviderIdleTimer.comp_started()
+
         self.assigned_subtask = ctd
         self.__request_resource(
             ctd['task_id'],
@@ -130,6 +134,7 @@ class TaskComputer(object):
             subtask['task_id'],
             'Error downloading resources: {}'.format(reason),
         )
+        self.__task_finished()
         self.session_closed()
 
     def wait_for_resources(self, task_id, delta):
@@ -185,12 +190,17 @@ class TaskComputer(object):
                         subtask_id,
                         str(work_wall_clock_time))
             self.stats.increase_stat('computed_tasks')
-            self.task_server.send_results(
-                subtask_id,
-                subtask['task_id'],
-                task_thread.result,
-            )
-            was_success = True
+
+            try:
+                self.task_server.send_results(
+                    subtask_id,
+                    subtask['task_id'],
+                    task_thread.result,
+                )
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.error("Error sending the results: %r", exc)
+            else:
+                was_success = True
 
         else:
             self.stats.increase_stat('tasks_with_errors')
@@ -202,9 +212,7 @@ class TaskComputer(object):
 
         dispatcher.send(signal='golem.monitor', event='computation_time_spent',
                         success=was_success, value=work_time_to_be_paid)
-
-        if self.finished_cb:
-            self.finished_cb()
+        self.__task_finished()
 
     def run(self):
         """ Main loop of task computer """
@@ -362,15 +370,22 @@ class TaskComputer(object):
                 subtask['task_id'],
                 "Host direct task not supported",
             )
-            if self.finished_cb:
-                self.finished_cb()
 
+            self.__task_finished()
             return
 
         with self.lock:
             self.counting_thread = tt
 
         tt.start().addBoth(lambda _: self.task_computed(tt))
+
+    def __task_finished(self):
+        ProviderIdleTimer.comp_finished()
+
+        with self.lock:
+            self.counting_thread = None
+        if self.finished_cb:
+            self.finished_cb()
 
     def quit(self):
         if self.counting_thread is not None:
