@@ -10,6 +10,10 @@ from golem.task.taskstate import SubtaskOp
 logger = logging.getLogger(__name__)
 
 
+REQUESTOR_FORGETTING_FACTOR = 0.9
+PROVIDER_FORGETTING_FACTOR = 0.9
+
+
 def increase_positive_computed(node_id, trust_mod):
     try:
         with db.transaction():
@@ -112,12 +116,11 @@ def _calculate_efficiency(efficiency: float,
     return psi * efficiency + (1 - psi) * v
 
 
-def update_requestor_efficiency(node_id: str,  # noqa # pylint: disable=too-many-arguments
+def update_requestor_efficiency(node_id: str,
                                 timeout: float,
                                 computation_time: float,
                                 performance: float,
-                                min_performance: float,
-                                psi: float = 0.9) -> None:
+                                min_performance: float) -> None:
 
     rank, _ = LocalRank.get_or_create(node_id=node_id)
     efficiency = rank.requestor_efficiency
@@ -128,8 +131,8 @@ def update_requestor_efficiency(node_id: str,  # noqa # pylint: disable=too-many
             performance / min_performance
         )
 
-    rank.requestor_efficiency = _calculate_efficiency(efficiency, timeout,
-                                                      computation_time, psi)
+    rank.requestor_efficiency = _calculate_efficiency(
+        efficiency, timeout, computation_time, REQUESTOR_FORGETTING_FACTOR)
     rank.save()
 
 
@@ -149,14 +152,13 @@ def update_requestor_paid_sum(node_id: str, amount: float) -> None:
 
 def update_provider_efficiency(node_id: str,
                                timeout: float,
-                               computation_time: float,
-                               psi: float = 0.9) -> None:
+                               computation_time: float) -> None:
 
     rank, _ = LocalRank.get_or_create(node_id=node_id)
     efficiency = rank.provider_efficiency
 
-    rank.provider_efficiency = _calculate_efficiency(efficiency, timeout,
-                                                     computation_time, psi)
+    rank.provider_efficiency = _calculate_efficiency(
+        efficiency, timeout, computation_time, PROVIDER_FORGETTING_FACTOR)
     rank.save()
 
 
