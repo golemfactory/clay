@@ -34,7 +34,7 @@ from golem.task.taskbase import TaskHeader, Task
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
 from golem.task.timer import ProviderIdleTimer
-from golem.utils import decode_hex, pubkeytoaddr
+from golem.utils import decode_hex
 
 from . import exceptions
 from .result.resultmanager import ExtractedPackage

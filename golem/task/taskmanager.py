@@ -1176,10 +1176,10 @@ class TaskManager(TaskEventListener):
                      subtask_id: Optional[str] = None,
                      op: Optional[Operation] = None):
 
-        if subtask_id and isinstance(op, SubtaskOp) and op.is_completed():
+        if subtask_id and op.subtask_related() and op.is_completed():
             ProviderComputeTimers.comp_finished(subtask_id)
 
-        elif isinstance(op, TaskOp) and op in (
+        elif op.task_related() and op in (
                 TaskOp.ABORTED,
                 TaskOp.TIMEOUT,
                 TaskOp.RESTARTED
@@ -1193,7 +1193,7 @@ class TaskManager(TaskEventListener):
                                     op: Optional[Operation] = None) -> None:
 
         # Return if subtask is not completed
-        if not (subtask_id and isinstance(op, SubtaskOp) and op.is_completed()):
+        if not (subtask_id and op.subtask_related() and op.is_completed()):
             return
 
         timeout = self.tasks[task_id].header.fixed_header.subtask_timeout
