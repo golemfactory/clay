@@ -207,6 +207,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task_to_compute = get_task_message(
                 'TaskToCompute', task_id, subtask_id)
 
+            if not task_to_compute.sig:
+                task_to_compute.sign_message(self.my_private_key)
+
             payment_processed_ts = self.task_server.accept_result(
                 subtask_id,
                 self.key_id,
