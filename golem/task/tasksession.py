@@ -774,12 +774,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         requestor_check_result = \
             self.check_requestor_for_subtask(msg.subtask_id)
-        if (
-                requestor_check_result is False or
-                not transaction_system.is_income_expected(
-                    subtask_id=msg.subtask_id,
-                    payer_address=msg.task_to_compute.requestor_ethereum_address
-                )
+
+        is_expected = transaction_system.is_income_expected(
+            subtask_id=msg.subtask_id,
+            payer_address=msg.task_to_compute.requestor_ethereum_address
+        )
+
+        if requestor_check_result is False or (
+                requestor_check_result is None and not is_expected
         ):
             logger.debug("Unexpected income from %r for subtask %r",
                          self.key_id, msg.subtask_id)
