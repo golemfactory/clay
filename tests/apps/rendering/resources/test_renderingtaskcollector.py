@@ -1,14 +1,15 @@
 import os
-import numpy as np
-from PIL import Image
-import cv2
 import random
+import numpy as np
+import cv2
+from PIL import Image
+
 from golem.tools.testdirfixture import TestDirFixture
 
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
 from apps.rendering.resources.imgcompare import (advance_verify_img,
                                                  compare_pil_imgs)
-from apps.rendering.resources.imgrepr import load_img, OpenCVImgRepr
+from apps.rendering.resources.imgrepr import OpenCVImgRepr
 
 
 def make_test_img(img_path, size=(10, 10), color=(255, 0, 0)):
@@ -17,9 +18,9 @@ def make_test_img(img_path, size=(10, 10), color=(255, 0, 0)):
     img.close()
 
 
-def make_test_img_16bits(img_path, width, height, r_color, g_color, b_color):
+def make_test_img_16bits(img_path, width, height, color=(0, 0, 255)):
     img = np.zeros((height, width, 3), np.uint16)
-    img[0:height, 0:width] = (b_color, g_color, r_color)
+    img[0:height, 0:width] = color
     cv2.imwrite(img_path, img)
 
 
@@ -85,9 +86,9 @@ class TestRenderingTaskCollector(TestDirFixture):
         for color_scale, img_path in enumerate(images):
             make_test_img_16bits(img_path,
                                  width=w, height=h,
-                                 r_color=(color_scale + 1) * r,
-                                 g_color=(color_scale + 1) * g,
-                                 b_color=(color_scale + 1) * b)
+                                 color=((color_scale + 1) * b,
+                                        (color_scale + 1) * g,
+                                        (color_scale + 1) * r))
             collector.add_img_file(img_path)
 
         final_img = collector.finalize()
@@ -98,17 +99,17 @@ class TestRenderingTaskCollector(TestDirFixture):
 
         # verify each part of final img
         for i in range(0, len(images)):
-            x, y = random.randint(0, w - 1), random.randint(i * h, (i + 1) * h - 1)
+            x, y = random.randint(0, w - 1), \
+                   random.randint(i * h, (i + 1) * h - 1)
             assert final_img.img[y][x][0] == (i + 1) * b
             assert final_img.img[y][x][1] == (i + 1) * g
             assert final_img.img[y][x][2] == (i + 1) * r
 
-        final_path = "final_img.png"
-        images.append(final_path)
-        final_img.save_fullname(final_path)
-        assert os.path.isfile(final_path)
+        images.append("final_img.png")
+        final_img.save_fullname(images[-1])
+        assert os.path.isfile(images[-1])
 
-        f_img = cv2.imread(final_path, cv2.IMREAD_UNCHANGED)
+        f_img = cv2.imread(images[-1], cv2.IMREAD_UNCHANGED)
         assert f_img.dtype == np.uint16
         assert f_img.shape == ((len(images) - 1) * h, w, 3)
 

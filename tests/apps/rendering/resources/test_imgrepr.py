@@ -12,8 +12,11 @@ from apps.rendering.resources.imgrepr import (blend, EXRImgRepr, ImgRepr,
 from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.assertlogs import (LogTestCase)
 
-from tests.apps.rendering.resources.imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr, make_test_img)
-from tests.apps.rendering.resources.test_renderingtaskcollector import make_test_img_16bits
+from tests.apps.rendering.resources.imghelper import \
+    (get_exr_img_repr, get_pil_img_repr, get_test_exr, make_test_img)
+
+from tests.apps.rendering.resources.test_renderingtaskcollector import \
+    make_test_img_16bits
 
 
 class TImgRepr(ImgRepr):
@@ -317,14 +320,14 @@ class TestImgFunctions(TempDirFixture, LogTestCase):
         assert img1.shape == (10, 10, 3)
 
         make_test_img_16bits("path2.png", width=10, height=20,
-                             r_color=10, g_color=69, b_color=30)
+                             color=(10, 69, 30))
         img2 = cv2.imread("path2.png", cv2.IMREAD_UNCHANGED)
         assert img2 is not None
         assert img2.shape == (20, 10, 3)
         assert img2.dtype == np.uint16
-        assert img2[0][0][0] == 30
+        assert img2[0][0][0] == 10
         assert img2[0][0][1] == 69
-        assert img2[0][0][2] == 10
+        assert img2[0][0][2] == 30
         os.remove("path2.png")
         assert os.path.isfile("path2.png") is False
 

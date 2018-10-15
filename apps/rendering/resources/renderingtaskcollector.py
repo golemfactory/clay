@@ -4,10 +4,9 @@ import os
 from typing import Optional
 
 import cv2
-import numpy as np
 from PIL import Image, ImageChops
 
-from apps.rendering.resources.imgrepr import EXRImgRepr, load_img, OpenCVImgRepr
+from apps.rendering.resources.imgrepr import OpenCVImgRepr
 
 logger = logging.getLogger("apps.rendering")
 

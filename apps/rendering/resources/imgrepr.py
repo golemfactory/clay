@@ -4,10 +4,11 @@ import logging
 from copy import deepcopy
 from typing import Optional
 import numpy as np
+import cv2
 import OpenEXR
 import Imath
 from PIL import Image
-import cv2
+
 
 logger = logging.getLogger("apps.rendering")
 
