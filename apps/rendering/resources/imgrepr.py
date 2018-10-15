@@ -1,7 +1,7 @@
 import os
 import abc
-import sys
 import logging
+from datetime import datetime
 from copy import deepcopy
 from typing import Optional
 import numpy as np
@@ -69,10 +69,12 @@ class OpenCVImgRepr:
     def save(self, path, output_format):
         # image must be saved with extension,
         # then rename to path
-        file_path = '{}.{}'.format(path, output_format.lower())
+        file_path = '{}_{}.{}'.format(path,
+                                      str(datetime.now()),
+                                      output_format.lower())
+        file_path = file_path.replace(' ', '_')
         self.save_fullname(file_path)
-        if not sys.platform.startswith('win'):
-            os.rename(file_path, path)
+        os.rename(file_path, path)
 
     def save_fullname(self, path):
         cv2.imwrite(path, self.img)
