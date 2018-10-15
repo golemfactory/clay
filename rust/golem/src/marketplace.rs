@@ -18,7 +18,7 @@ pub fn order_providers(offers: &[Offer]) -> Vec<usize> {
 mod tests {
     use super::*;
     #[test]
-    fn pick_provider_sanity() {
+    fn order_providers_sanity() {
         let offer0 = Offer { price: 2.0 };
         let offer1 = Offer { price: 2.2 };
         let offer2 = Offer { price: 1.7 };

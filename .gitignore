@@ -22,7 +22,6 @@ ui_*.py
 *.so
 
 # Rust
-rust/golem/Cargo.lock
 rust/golem/target/*
 
 # Distribution / packaging
