@@ -127,7 +127,13 @@ def _run_test_task(client, task_dict):
 
 
 @golem_async.deferred_run()
-def _restart_subtasks(client, old_task_id, task_dict, subtask_ids_to_copy):
+def _restart_subtasks(
+        client,
+        old_task_id,
+        task_dict,
+        subtask_ids_to_copy,
+        force,
+):
     @defer.inlineCallbacks
     @safe_run(
         lambda e: logger.error(
@@ -140,6 +146,7 @@ def _restart_subtasks(client, old_task_id, task_dict, subtask_ids_to_copy):
         new_task = yield enqueue_new_task(
             client=client,
             task=client.task_manager.create_task(task_dict),
+            force=force,
         )
 
         client.task_manager.copy_results(
@@ -151,7 +158,7 @@ def _restart_subtasks(client, old_task_id, task_dict, subtask_ids_to_copy):
 
 
 @defer.inlineCallbacks
-def _ensure_task_deposit(client, task):
+def _ensure_task_deposit(client, task, force):
     if not client.concent_service.enabled:
         return
 
@@ -172,8 +179,9 @@ def _ensure_task_deposit(client, task):
         yield client.transaction_system.concent_deposit(
             required=min_amount,
             expected=opt_amount,
+            force=force,
         )
-    except eth_exceptions.NotEnoughFunds:
+    except eth_exceptions.EthereumError:
         client.funds_locker.remove_task(task_id)
         raise
 
@@ -279,7 +287,7 @@ def _start_task(client, task, resource_server_result):
 
 
 @defer.inlineCallbacks
-def enqueue_new_task(client, task) \
+def enqueue_new_task(client, task, force=False) \
             -> typing.Generator[defer.Deferred, typing.Any, taskbase.Task]:
     """
     :return: (deferred, task_id) - deferred returns Task object when it's
@@ -305,6 +313,7 @@ def enqueue_new_task(client, task) \
     yield _ensure_task_deposit(
         client=client,
         task=task,
+        force=force,
     )
 
     logger.info(
@@ -367,9 +376,10 @@ class ClientProvider:
 
     @rpc_utils.expose('comp.task.create')
     @safe_run(_create_task_error)
-    def create_task(self, task_dict) \
+    def create_task(self, task_dict, force=False) \
             -> typing.Tuple[typing.Optional[str], typing.Optional[str]]:
         """
+        - force: if True will ignore warnings
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
@@ -398,7 +408,7 @@ class ClientProvider:
 
         task_id = task.header.task_id
 
-        deferred = enqueue_new_task(self.client, task)
+        deferred = enqueue_new_task(self.client, task, force=force)
         # We want to return quickly from create_task without waiting for
         # deferred completion.
         deferred.addErrback(  # pylint: disable=no-member
@@ -411,7 +421,7 @@ class ClientProvider:
         return task_id, None
 
     @rpc_utils.expose('comp.task.restart')
-    def restart_task(self, task_id: str) \
+    def restart_task(self, task_id: str, force: bool = False) \
             -> typing.Tuple[typing.Optional[str], typing.Optional[str]]:
         """
         :return: (new_task_id, None) on success; (None, error_message)
@@ -438,7 +448,7 @@ class ClientProvider:
             return None, "Task not found: '{}'".format(task_id)
 
         task_dict.pop('id', None)
-        new_task_id, msg = self.create_task(task_dict)
+        new_task_id, msg = self.create_task(task_dict, force=force)
         if new_task_id:
             self.task_manager.put_task_in_restarted_state(task_id)
 
@@ -457,6 +467,7 @@ class ClientProvider:
             self,
             task_id: str,
             subtask_ids: typing.Iterable[str],
+            force: bool = False,
     ):
 
         try:
@@ -487,6 +498,7 @@ class ClientProvider:
             subtask_ids_to_copy=subtask_ids_to_copy,
             old_task_id=task_id,
             task_dict=task_dict,
+            force=force,
         )
         # Don't wait for deferred
 
