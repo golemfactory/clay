@@ -386,7 +386,7 @@ class FrameRenderingTask(RenderingTask):
         output_file_name = self.output_file
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
-            collector = RenderingTaskCollector(paste=True, width=self.res_x, height=self.res_y)
+            collector = RenderingTaskCollector(width=self.res_x, height=self.res_y)
             for file in self.collected_file_names.values():
                 collector.add_img_file(file)
             with handle_image_error(logger), \
@@ -403,7 +403,7 @@ class FrameRenderingTask(RenderingTask):
         collected = self.frames_given[frame_key]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
-            collector = RenderingTaskCollector(paste=True, width=self.res_x, height=self.res_y)
+            collector = RenderingTaskCollector(width=self.res_x, height=self.res_y)
             for file in collected.values():
                 collector.add_img_file(file)
             with handle_image_error(logger), \

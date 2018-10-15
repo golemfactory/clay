@@ -3,10 +3,11 @@ import abc
 import logging
 from copy import deepcopy
 from typing import Optional
-
+import numpy as np
 import OpenEXR
 import Imath
 from PIL import Image
+import cv2
 
 logger = logging.getLogger("apps.rendering")
 
@@ -39,6 +40,47 @@ class ImgRepr(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def close(self):
         return
+
+
+class OpenCVImgRepr:
+    def __init__(self):
+        self.img = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        pass
+
+    def empty(self, width, height, channels, dtype):
+        self.img = np.zeros((height, width, channels),
+                            dtype)
+
+    def get_shape(self):
+        return self.img.shape
+
+    def get_dtype(self):
+        return self.img.dtype
+
+    def paste_image(self, img, x, y):
+        self.img[y:y + img.shape[0], x:img.shape[1]] = img
+
+    def save(self, path, output_format):
+        # image must be saved with extension,
+        # then rename to path
+        file_path = '{}.{}'.format(path, output_format.lower())
+        self.save_fullname(file_path)
+        os.rename(file_path, path)
+
+    def save_fullname(self, path):
+        cv2.imwrite(path, self.img)
+
+    @property
+    def size(self):
+        return self.get_size()
+
+    def get_size(self):
+        return self.img.shape[1], self.img.shape[0]
 
 
 class PILImgRepr(ImgRepr):
