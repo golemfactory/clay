@@ -1,5 +1,6 @@
 import os
 import abc
+import sys
 import logging
 from copy import deepcopy
 from typing import Optional
@@ -8,7 +9,6 @@ import cv2
 import OpenEXR
 import Imath
 from PIL import Image
-
 
 logger = logging.getLogger("apps.rendering")
 
@@ -71,7 +71,8 @@ class OpenCVImgRepr:
         # then rename to path
         file_path = '{}.{}'.format(path, output_format.lower())
         self.save_fullname(file_path)
-        os.rename(file_path, path)
+        if not sys.platform.startswith('win'):
+            os.rename(file_path, path)
 
     def save_fullname(self, path):
         cv2.imwrite(path, self.img)
