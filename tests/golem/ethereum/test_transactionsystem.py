@@ -558,6 +558,19 @@ class ConcentUnlockTest(TransactionSystemBase):
         self.ets.concent_unlock()
         self.sci.unlock_deposit.assert_not_called()
 
+    def test_repeated_call(self):
+        self.sci.get_deposit_value.return_value = 1
+        self.sci.get_deposit_locked_until.return_value = \
+            int(time.time()) - 1
+        self.ets.concent_withdraw()
+        self.ets.concent_withdraw()
+        self.sci.withdraw_deposit.assert_called_once_with()
+        self.sci.on_transaction_confirmed.assert_called_once()
+
+        self.sci.on_transaction_confirmed.call_args[0][1](Mock())
+        self.ets.concent_withdraw()
+        assert self.sci.withdraw_deposit.call_count == 2
+
     @freeze_time('2018-10-01 14:00:00')
     @patch('golem.ethereum.transactionsystem.call_later')
     def test_full(self, call_later):

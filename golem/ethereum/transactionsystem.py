@@ -84,6 +84,7 @@ class TransactionSystem(LoopingCallService):
 
         self._gnt_faucet_requested = False
         self._gnt_conversion_status = ConversionStatus.NONE
+        self._concent_withdraw_requested = False
 
         self._eth_balance: int = 0
         self._gnt_balance: int = 0
@@ -629,10 +630,17 @@ class TransactionSystem(LoopingCallService):
         call_later(delay, self.concent_withdraw)
 
     def concent_withdraw(self):
+        if self._concent_withdraw_requested:
+            return
         timelock = self.concent_timelock()
         if timelock == 0 or timelock > time.time():
             return
         tx_hash = self._sci.withdraw_deposit()
+        self._concent_withdraw_requested = True
+
+        def on_confirmed(_receipt) -> None:
+            self._concent_withdraw_requested = False
+        self._sci.on_transaction_confirmed(tx_hash, on_confirmed)
         log.info("Withdrawing concent deposit, tx: %s", tx_hash)
 
     def _get_funds_from_faucet(self) -> None:
