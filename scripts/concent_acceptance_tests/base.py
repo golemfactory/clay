@@ -94,7 +94,10 @@ class ConcentBaseTest:
             'requestor_public_key': msg_utils.encode_hex(
                 self.requestor_pub_key,
             ),
-            'provider_public_key': msg_utils.encode_hex(self.provider_pub_key),
+            'want_to_compute_task__provider_public_key':
+                msg_utils.encode_hex(self.provider_pub_key),
+            'want_to_compute_task__sign__privkey':
+                self.provider_keys.raw_privkey
         }
         return {prefix + k: v for k, v in kwargs.items()}
 
@@ -233,6 +236,7 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
             rpc=EthereumConfig.NODE_LIST[0],
             address=self.requestor_eth_addr,
             tx_sign=lambda tx: tx.sign(self.requestor_keys.raw_privkey),
+            contract_addresses=EthereumConfig.CONTRACT_ADDRESSES,
             chain=EthereumConfig.CHAIN,
         )
         self.requestor_sci.REQUIRED_CONFS = 1
@@ -241,6 +245,7 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
             rpc=EthereumConfig.NODE_LIST[0],
             address=self.provider_eth_addr,
             tx_sign=lambda tx: tx.sign(self.provider_keys.raw_privkey),
+            contract_addresses=EthereumConfig.CONTRACT_ADDRESSES,
             chain=EthereumConfig.CHAIN,
         )
         self.provider_sci.REQUIRED_CONFS = 1
