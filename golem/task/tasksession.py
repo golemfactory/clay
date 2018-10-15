@@ -770,19 +770,30 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.disconnect(message.base.Disconnect.REASON.BadProtocol)
             return
 
-        transaction_system = self.task_server.client.transaction_system
+        def should_accept_sra(msg) -> bool:
+            # Possible values of requestor_check_result:
+            # True - everything ok
+            # False - Other side is not authorized to act in name of node_id
+            #         (message spoofing)
+            # None - subtask_id not found in CompTaskKeeper
+            #        or task_id not found in CompTaskKeeper
+            requestor_check_result = \
+                self.check_requestor_for_subtask(msg.subtask_id)
 
-        requestor_check_result = \
-            self.check_requestor_for_subtask(msg.subtask_id)
+            if requestor_check_result:
+                return True
 
-        is_expected = transaction_system.is_income_expected(
-            subtask_id=msg.subtask_id,
-            payer_address=msg.task_to_compute.requestor_ethereum_address
-        )
+            transaction_system = self.task_server.client.transaction_system
+            if requestor_check_result is None:
+                return transaction_system.is_income_expected(
+                    subtask_id=msg.subtask_id,
+                    payer_address=msg.task_to_compute.requestor_ethereum_address
+                )
 
-        if requestor_check_result is False or (
-                requestor_check_result is None and not is_expected
-        ):
+            # requestor_check_result = False
+            return False
+
+        if not should_accept_sra(msg):
             logger.debug("Unexpected income from %r for subtask %r",
                          self.key_id, msg.subtask_id)
             self.dropped()
