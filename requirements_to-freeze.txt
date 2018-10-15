@@ -51,3 +51,4 @@ Golem-Messages==2.15.0
 Golem-Smart-Contracts-Interface==1.6.1
 html2text==2018.1.9
 zxcvbn-python
+opencv-python==3.4.3.18
