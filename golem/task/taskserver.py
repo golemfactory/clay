@@ -41,7 +41,7 @@ from .result.resultmanager import ExtractedPackage
 from .server import resources
 from .server import concent
 from .taskcomputer import TaskComputer
-from .taskkeeper import TaskHeaderKeeper
+from .taskkeeper import TaskHeaderKeeper, compute_subtask_value
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
 
@@ -531,7 +531,7 @@ class TaskServer(
             return
 
         node_id = header.task_owner.key
-        amount = header.max_price * header.subtask_timeout
+        amount = compute_subtask_value(header.max_price, header.subtask_timeout)
         update_requestor_assigned_sum(node_id, amount)
 
     def finished_subtask_listener(self,  # pylint: disable=too-many-arguments
@@ -586,7 +586,7 @@ class TaskServer(
                          task_id)
             return
 
-        amount = header.max_price * header.subtask_timeout
+        amount = compute_subtask_value(header.max_price, header.subtask_timeout)
         update_requestor_paid_sum(node_id, amount)
 
     def decrease_trust_payment(self, task_id):
