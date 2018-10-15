@@ -784,16 +784,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             if requestor_check_result == RequestorCheckResult.OK:
                 return True
+            if requestor_check_result == RequestorCheckResult.MISMATCH:
+                return False
 
+            # requestor_check_result == RequestorCheckResult.NOT_FOUND:
             transaction_system = self.task_server.client.transaction_system
-            if requestor_check_result == RequestorCheckResult.NOT_FOUND:
-                return transaction_system.is_income_expected(
-                    subtask_id=msg.subtask_id,
-                    payer_address=msg.task_to_compute.requestor_ethereum_address
-                )
-
-            # requestor_check_result == RequestorCheckResult.MISMATCH
-            return False
+            return transaction_system.is_income_expected(
+                subtask_id=msg.subtask_id,
+                payer_address=msg.task_to_compute.requestor_ethereum_address
+            )
 
         if not should_accept_sra(msg):
             logger.debug("Unexpected income from %r for subtask %r",
