@@ -1165,6 +1165,11 @@ class SubtaskResultsAcceptedTest(TestCase):
         sra = self.task_session.send.call_args[0][0] # noqa pylint:disable=unsubscriptable-object
         self.assertIsInstance(sra.task_to_compute, message.tasks.TaskToCompute)
         self.assertTrue(sra.task_to_compute.sig)
+        self.assertTrue(
+            sra.task_to_compute.verify_signature(
+                self.requestor_keys.raw_pubkey
+            )
+        )
 
 
 class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
