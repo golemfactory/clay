@@ -145,25 +145,23 @@ class TestRestartTask(ProviderBase):
             'type': 'Dummy',
         }
 
-        task_id, error = self.provider.create_task(task_dict)
-
-        assert task_id
-        assert not error
-
-        new_task_id, error = self.provider.restart_task(task_id)
+        task = self.client.task_manager.create_task(task_dict)
+        golem_deferred.sync_wait(rpc.enqueue_new_task(self.client, task))
+        with mock.patch('golem.task.rpc.enqueue_new_task') as enq_mock:
+            new_task_id, error = self.provider.restart_task(task.header.task_id)
+            enq_mock.assert_called_once()
         assert new_task_id
         assert not error
-        assert len(task_manager.tasks_states) == 2
 
-        assert task_id != new_task_id
+        assert task.header.task_id != new_task_id
         assert task_manager.tasks_states[
-            task_id].status == taskstate.TaskStatus.restarted
+            task.header.task_id].status == taskstate.TaskStatus.restarted
+        old_subtask_states = task_manager.tasks_states[task.header.task_id] \
+            .subtask_states.values()
         assert all(
             ss.subtask_status == taskstate.SubtaskStatus.restarted
             for ss
-            in task_manager.tasks_states[task_id].subtask_states.values())
-        assert task_manager.tasks_states[new_task_id].status \
-            == taskstate.TaskStatus.waiting
+            in old_subtask_states)
 
 
 class TestGetMaskForTask(test_client.TestClientBase):
