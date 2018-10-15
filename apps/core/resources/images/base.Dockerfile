@@ -8,7 +8,7 @@ MAINTAINER Artur Zawłocki <artur.zawlocki@imapp.pl>
 RUN set -x \
     && apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates wget curl \
-    && apt-get install -y python
+    && apt-get install -y python3
 
 RUN wget -O /tmp/su-exec "https://github.com/golemfactory/golem/wiki/binaries/su-exec" \
     && test "60e8c3010aaa85f5d919448d082ecdf6e8b75a1c  /tmp/su-exec" = "$(sha1sum /tmp/su-exec)" \
