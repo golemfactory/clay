@@ -1613,9 +1613,12 @@ class Client(HardwarePresetsMixin):
         subtask_progress: Optional[ComputingSubtaskStateSnapshot] = \
             task_computer.get_progress()
         if subtask_progress is not None:
+            environment: Optional[str] = \
+                task_computer.get_environment()
             return {
                 'status': 'computing',
                 'subtask': subtask_progress.__dict__,
+                'environment': environment
             }
 
         # trying to get subtask from task
