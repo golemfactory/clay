@@ -7,6 +7,10 @@ mod marketplace;
 
 #[allow(non_snake_case)]
 fn marketplace__order_providers(_py: Python, offers: Vec<f64>) -> PyResult<Vec<usize>> {
+    let offers: Vec<marketplace::Offer> = offers
+        .iter()
+        .map(|price| marketplace::Offer::new(*price))
+        .collect();
     Ok(marketplace::order_providers(&offers))
 }
 
