@@ -1085,6 +1085,9 @@ class SubtaskResultsAcceptedTest(TestCase):
         ctk = self.task_session.task_manager.comp_task_keeper
         ctk.get_node_for_task_id.return_value = self.requestor_key_id
         self.task_session.key_id = self.requestor_key_id
+        self.task_server.client.transaction_system.is_income_expected\
+                                                  .return_value = False
+
         # when
         self.task_session._react_to_subtask_result_accepted(sra)
 
