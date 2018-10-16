@@ -795,7 +795,7 @@ class TestOptNode(TempDirFixture):
         self.node.client.task_server.task_computer = mock_tc
 
         mock_tm.get_progresses = Mock(return_value={})
-        mock_tc.assigned_subtasks = {}
+        mock_tc.assigned_subtask = None
 
         result = self.node._is_task_in_progress()
 
@@ -830,7 +830,7 @@ class TestOptNode(TempDirFixture):
         self.node.client.task_server.task_computer = mock_tc
 
         mock_tm.get_progresses = Mock(return_value={'a': 'a'})
-        mock_tc.assigned_subtasks = {'a': 'a'}
+        mock_tc.assigned_subtask = {'a': 'a'}
 
         result = self.node._is_task_in_progress()
 

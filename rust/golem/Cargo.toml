@@ -1,0 +1,12 @@
+[package]
+name = "pyext-golem"
+version = "0.1.0"
+authors = ["Golem <tech@golem.network>"]
+
+[lib]
+name = "golem"
+crate-type = ["dylib"]
+
+[dependencies.cpython]
+version = "0.2"
+features = ["extension-module"]

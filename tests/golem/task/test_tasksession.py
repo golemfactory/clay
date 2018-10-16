@@ -100,7 +100,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts.can_be_not_encrypted.append(message.tasks.WantToComputeTask)
         ts.task_server.should_accept_provider.return_value = accept_provider
         ts.task_server.config_desc.max_price = 100
-        ts.task_server.keys_auth.ecc.raw_privkey = \
+        ts.task_server.keys_auth._private_key = \
             self.requestor_keys.raw_privkey
         return ts
 
@@ -508,10 +508,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         )
         ts.result_received(extra_data)
 
-        assert ts.msgs_to_send
-        assert isinstance(ts.msgs_to_send[0],
-                          message.tasks.SubtaskResultsAccepted)
-        assert conn.close.called
+        self.assertTrue(ts.msgs_to_send)
+        sra = ts.msgs_to_send[0]
+        self.assertIsInstance(sra, message.tasks.SubtaskResultsAccepted)
+
+        conn.close.assert_called()
 
         extra_data.update(dict(
             subtask_id=None,
@@ -875,10 +876,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         assert not self.task_session._subtask_to_task('sid_2', Actor.Provider)
         assert not self.task_session._subtask_to_task('sid_1', Actor.Requestor)
 
-        self.task_session.task_manager = None
-        assert not self.task_session._subtask_to_task('sid_1', Actor.Provider)
-        assert not self.task_session._subtask_to_task('sid_2', Actor.Requestor)
-
     def test_react_to_cannot_assign_task(self):
         self._test_react_to_cannot_assign_task()
 
@@ -1065,37 +1062,80 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_session = TaskSession(Mock())
         self.task_server = Mock()
         self.task_session.task_server = self.task_server
+        self.requestor_keys = cryptography.ECCx(None)
+        self.requestor_key_id = encode_hex(self.requestor_keys.raw_pubkey)
+        self.provider_keys = cryptography.ECCx(None)
+        self.provider_key_id = encode_hex(self.provider_keys.raw_pubkey)
 
-    def test__react_to_subtask_result_accepted(self):
-        self._test__react_to_subtask_result_accepted()
+    def test_react_to_subtask_result_accepted(self):
+        sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
+            sign__privkey=self.requestor_keys.raw_privkey,
+            task_to_compute__sign__privkey=self.requestor_keys.raw_privkey,
+            task_to_compute__requestor_public_key=self.requestor_key_id,
+            task_to_compute__want_to_compute_task__sign__privkey=(
+                self.provider_keys.raw_privkey),
+            task_to_compute__want_to_compute_task__provider_public_key=(
+                self.provider_key_id),
+        )
+        self.task_server.keys_auth._private_key = \
+            self.provider_keys.raw_privkey
+        self.task_server.keys_auth.public_key = \
+            self.provider_keys.raw_pubkey
+        ctk = self.task_session.task_manager.comp_task_keeper
+        ctk.get_node_for_task_id.return_value = self.requestor_key_id
+        self.task_session.key_id = self.requestor_key_id
+        self.task_session._react_to_subtask_result_accepted(sra)
 
-    def test__react_to_subtask_result_accepted_with_wrong_key(self):
-        self._test__react_to_subtask_result_accepted("DEF", called=False)
+        self.task_server.subtask_accepted.assert_called_once_with(
+            self.requestor_key_id,
+            sra.subtask_id,
+            sra.task_to_compute.requestor_ethereum_address,  # noqa pylint:disable=no-member
+            sra.task_to_compute.price,  # noqa pylint:disable=no-member
+            sra.payment_ts,
+        )
+        cancel = self.task_session.concent_service.cancel_task_message
+        cancel.assert_called_once_with(
+            sra.subtask_id,
+            'ForceSubtaskResults',
+        )
 
-    def _test__react_to_subtask_result_accepted(self, key_id="ABC",
-                                                called=True):
+    def test_react_with_wrong_key(self):
+        key_id = "CDEF"
         sra = msg_factories.tasks.SubtaskResultsAcceptedFactory()
         ctk = self.task_session.task_manager.comp_task_keeper
         ctk.get_node_for_task_id.return_value = "ABC"
         self.task_session.key_id = key_id
         self.task_session._react_to_subtask_result_accepted(sra)
-        if called:
-            self.task_server.subtask_accepted.assert_called_once_with(
-                key_id,
-                sra.subtask_id,
-                sra.task_to_compute.requestor_ethereum_address,  # noqa pylint:disable=no-member
-                sra.task_to_compute.price,  # noqa pylint:disable=no-member
-                sra.payment_ts,
-            )
-            cancel = self.task_session.concent_service.cancel_task_message
-            cancel.assert_called_once_with(
-                sra.subtask_id,
-                'ForceSubtaskResults',
-            )
-        else:
-            self.task_server.subtask_accepted.assert_not_called()
+        self.task_server.subtask_accepted.assert_not_called()
+
+    def test_react_with_unknown_key_and_expected_income(self):
+        key_id = "CDEF"
+        sra = msg_factories.tasks.SubtaskResultsAcceptedFactory()
+        ctk = self.task_session.task_manager.comp_task_keeper
+        ctk.get_node_for_task_id.return_value = None
+        self.task_server.client.transaction_system.is_income_expected\
+                                                  .return_value = True
+        self.task_session.key_id = key_id
+        self.task_session._react_to_subtask_result_accepted(sra)
+        self.task_server.subtask_accepted.assert_called()
+
+    def test_react_with_unknown_key_and_unexpected_income(self):
+        key_id = "CDEF"
+        sra = msg_factories.tasks.SubtaskResultsAcceptedFactory()
+        ctk = self.task_session.task_manager.comp_task_keeper
+        ctk.get_node_for_task_id.return_value = None
+        self.task_server.client.transaction_system.is_income_expected\
+                                                  .return_value = False
+        self.task_session.key_id = key_id
+        self.task_session._react_to_subtask_result_accepted(sra)
+        self.task_server.subtask_accepted.assert_not_called()
 
     def test_result_received(self):
+        self.task_server.keys_auth._private_key = \
+            self.requestor_keys.raw_privkey
+        self.task_server.keys_auth.public_key = \
+            self.requestor_keys.raw_pubkey
+
         def computed_task_received(*args):
             args[3]()
 
@@ -1124,6 +1164,12 @@ class SubtaskResultsAcceptedTest(TestCase):
         assert self.task_session.send.called
         sra = self.task_session.send.call_args[0][0] # noqa pylint:disable=unsubscriptable-object
         self.assertIsInstance(sra.task_to_compute, message.tasks.TaskToCompute)
+        self.assertTrue(sra.task_to_compute.sig)
+        self.assertTrue(
+            sra.task_to_compute.verify_signature(
+                self.requestor_keys.raw_pubkey
+            )
+        )
 
 
 class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
