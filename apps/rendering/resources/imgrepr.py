@@ -70,9 +70,8 @@ class OpenCVImgRepr:
         # image must be saved with extension,
         # then rename to path
         file_path = '{}_{}.{}'.format(path,
-                                      str(datetime.now()),
+                                      "tmp",
                                       output_format.lower())
-        file_path = file_path.replace(' ', '_')
         self.save_fullname(file_path)
         os.rename(file_path, path)
 
