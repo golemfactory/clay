@@ -1,7 +1,6 @@
 import os
 import abc
 import logging
-from datetime import datetime
 from copy import deepcopy
 from typing import Optional
 import numpy as np
@@ -73,7 +72,7 @@ class OpenCVImgRepr:
                                       "tmp",
                                       output_format.lower())
         self.save_fullname(file_path)
-        os.rename(file_path, path)
+        os.replace(file_path, path)
 
     def save_fullname(self, path):
         cv2.imwrite(path, self.img)
