@@ -142,14 +142,14 @@ class ZipPackager(Packager):
             return
         import tempfile
         from golem.sgx.agent import encrypt_file
-        fd, outfile = tempfile.mkstemp()
-        os.close(fd)
+        tmpdir = Path(tempfile.mkdtemp())
+        outfile = tmpdir / file_name
         encrypt_file(
             self._wrap_key,
             Path(file_path),
             outfile,
         )
-        ZipPackager.zip_append(obj, outfile.rstrip('/'))
+        ZipPackager.zip_append(obj, str(outfile).rstrip('/'))
 
     def write_cbor_file(self, obj, file_name, cbord_data):
         obj.writestr(file_name, cbord_data)
