@@ -69,6 +69,28 @@ class ProviderBase(test_client.TestClientBase):
 
         self.provider = rpc.ClientProvider(self.client)
         self.t_dict = copy.deepcopy(self.T_DICT)
+        self.client.resource_server = mock.Mock()
+
+        def create_resource_package(*_args):
+            result = 'package_path', 'package_sha1'
+            return test_client.done_deferred(result)
+
+        def add_task(*_args, **_kwargs):
+            resource_manager_result = 'res_hash', ['res_file_1']
+            result = resource_manager_result, 'res_file_1', 'package_hash', 42
+            return test_client.done_deferred(result)
+
+        self.client.resource_server.create_resource_package = mock.Mock(
+            side_effect=create_resource_package)
+        self.client.resource_server.add_task = mock.Mock(
+            side_effect=add_task)
+
+        def add_new_task(task, *_args, **_kwargs):
+            instance = self.client.task_manager
+            instance.tasks_states[task.header.task_id] = taskstate.TaskState()
+            instance.tasks[task.header.task_id] = task
+        self.client.task_server.task_manager.start_task = lambda tid: tid
+        self.client.task_server.task_manager.add_new_task = add_new_task
 
 
 @mock.patch('signal.signal')
@@ -261,32 +283,8 @@ class TestGetMaskForTask(test_client.TestClientBase):
 
 @mock.patch('os.path.getsize')
 class TestEnqueueNewTask(ProviderBase):
-    def setUp(self):
-        super().setUp()
-        self.client.resource_server = mock.Mock()
-
-        def create_resource_package(*_args):
-            result = 'package_path', 'package_sha1'
-            return test_client.done_deferred(result)
-
-        def add_task(*_args, **_kwargs):
-            resource_manager_result = 'res_hash', ['res_file_1']
-            result = resource_manager_result, 'res_file_1', 'package_hash', 42
-            return test_client.done_deferred(result)
-
-        self.client.resource_server.create_resource_package = mock.Mock(
-            side_effect=create_resource_package)
-        self.client.resource_server.add_task = mock.Mock(
-            side_effect=add_task)
-
     def test_enqueue_new_task(self, *_):
-        def add_new_task(task, *_args, **_kwargs):
-            instance = self.client.task_manager
-            instance.tasks_states[task.header.task_id] = taskstate.TaskState()
         c = self.client
-
-        c.task_server.task_manager.start_task = lambda tid: tid
-        c.task_server.task_manager.add_new_task = add_new_task
         c.task_server.task_manager.key_id = 'deadbeef'
         c.p2pservice.get_estimated_network_size.return_value = 0
 
@@ -428,3 +426,28 @@ class TestValidateTaskDict(ProviderBase):
         )
         with self.assertRaises(ValueError, msg=msg):
             rpc._validate_task_dict(self.client, self.t_dict)
+
+
+@mock.patch('os.path.getsize')
+@mock.patch('golem.task.taskmanager.TaskManager.dump_task')
+@mock.patch("golem.task.rpc._restart_subtasks")
+class TestRestartSubtasks(ProviderBase):
+    def setUp(self):
+        super().setUp()
+        self.task = self.client.task_manager.create_task(self.t_dict)
+        with mock.patch('os.path.getsize'):
+            golem_deferred.sync_wait(
+                rpc.enqueue_new_task(self.client, self.task),
+            )
+
+    def test_empty(self, restart_mock, *_):
+        self.provider.restart_subtasks_from_task(
+            task_id=self.task.header.task_id,
+            subtask_ids=[]
+        )
+        restart_mock.assert_called_once_with(
+            client=self.client,
+            subtask_ids_to_copy=set(),
+            old_task_id=self.task.header.task_id,
+            task_dict=mock.ANY,
+        )
