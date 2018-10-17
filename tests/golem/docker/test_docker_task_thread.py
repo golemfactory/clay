@@ -39,7 +39,7 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
             dir_mapping = DockerTaskThread.generate_dir_mapping(
                 self.resources_dir, self.output_dir)
             DockerTaskThread("subtask_id", None,
-                             script, None, "test task thread",
+                             script, None,
                              dir_mapping, timeout=30)
 
         def test():

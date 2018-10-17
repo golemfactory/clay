@@ -1,5 +1,6 @@
 from golem import model
 from golem.model import GenericKeyValue
+from golem.rpc import utils as rpc_utils
 
 
 class MinPerformanceMultiplier:
@@ -8,6 +9,7 @@ class MinPerformanceMultiplier:
     MAX = 100
     DEFAULT = MIN
 
+    @rpc_utils.expose('performance.multiplier')
     @classmethod
     def get(cls) -> float:
         """ Returns performance multiplier. Default is 0.
@@ -17,6 +19,7 @@ class MinPerformanceMultiplier:
             GenericKeyValue.key == cls.DB_KEY)
         return float(rows.get().value) if rows.count() == 1 else cls.DEFAULT
 
+    @rpc_utils.expose('performance.multiplier.update')
     @classmethod
     def set(cls, value: float):
         """ Sets performance multiplier."""

@@ -138,18 +138,18 @@ class ZipPackager(Packager):
 
     def write_disk_file(self, obj, file_path, file_name):
         if self._wrap_key is None:
-            obj.write(file_path, file_name)
+            ZipPackager.zip_append(obj, file_path.rstrip('/'))
             return
         import tempfile
         from golem.sgx.agent import encrypt_file
-        fd, outfile = tempfile.mkstemp()
-        os.close(fd)
+        tmpdir = Path(tempfile.mkdtemp())
+        outfile = tmpdir / file_name
         encrypt_file(
             self._wrap_key,
             Path(file_path),
             outfile,
         )
-        obj.write(outfile, file_name)
+        ZipPackager.zip_append(obj, str(outfile).rstrip('/'))
 
     def write_cbor_file(self, obj, file_name, cbord_data):
         obj.writestr(file_name, cbord_data)
@@ -159,6 +159,27 @@ class ZipPackager(Packager):
         if file_path.lower().endswith('.zip'):
             return file_path
         return file_path + '.zip'
+
+    @staticmethod
+    def zip_append(archive, path, subdirectory=""):
+        basename = os.path.basename(path)
+        if os.path.isdir(path):
+            if subdirectory == "":
+                subdirectory = basename
+            archive.write(path, os.path.join(subdirectory))
+            for root, dirs, files in os.walk(path):
+                for d in dirs:
+                    ZipPackager.zip_append(archive, os.path.join(root, d),
+                                           os.path.join(subdirectory, d))
+                for f in files:
+                    archive.write(os.path.join(root, f),
+                                  os.path.join(subdirectory, f))
+                break
+        elif os.path.isfile(path):
+            archive.write(path, os.path.join(subdirectory, basename))
+        else:
+            raise RuntimeError("Packaging supports only \
+                    directories and files, unsupported object: {}".format(path))
 
 
 class EncryptingPackager(Packager):
@@ -211,7 +232,7 @@ class EncryptingPackager(Packager):
         self._packager.write_cbor_file(obj, file_name, cbor_data)
 
 
-class TaskResultDescriptor(PrintableObject):  # noqa pylint:disable=too-few-public-methods
+class TaskResultDescriptor(PrintableObject):
 
     def __init__(self, node, task_result):
         self.node_name = node.node_name
@@ -302,7 +323,7 @@ class ZipTaskResultPackager(TaskResultPackager, ZipPackager):
     pass
 
 
-class ExtractedPackage(PrintableObject):  # noqa pylint:disable=too-few-public-methods
+class ExtractedPackage(PrintableObject):
 
     def __init__(self, files=None, files_dir="", descriptor=None, result=None):
         self.files = files or []

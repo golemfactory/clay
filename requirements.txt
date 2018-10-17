@@ -81,7 +81,6 @@ pyOpenSSL==17.1.0
 pyparsing==2.2.0
 PyQRCode==1.2.1
 pysha3==1.0.2
-pyssim==0.4
 PyTrie==0.3
 pytz==2018.4
 PyYAML==3.12
@@ -89,7 +88,6 @@ raven==6.6.0
 repoze.lru==0.7
 requests==2.18.4
 rlp==0.6.0
-scipy==0.19.1
 scrypt==0.8.6
 sdnotify==0.3.2
 secp256k1==0.13.2
@@ -97,6 +95,7 @@ semantic-version==2.6.0
 service-identity==17.0.0
 setproctitle==1.1.10
 setuptools==38.7.0
+setuptools-rust==0.10.2
 shellescape==3.4.1
 shutilwhich==1.1.0
 six==1.10.0

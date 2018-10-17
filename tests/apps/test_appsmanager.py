@@ -4,7 +4,7 @@ from apps.appsmanager import AppsManager
 from apps.core.benchmark.benchmarkrunner import CoreBenchmark
 from apps.core.task.coretask import TaskBuilder
 from apps.blender.blenderenvironment import BlenderEnvironment
-from apps.lux.luxenvironment import LuxRenderEnvironment
+
 
 
 class TestAppsManager(TestCase):
@@ -20,7 +20,6 @@ class TestAppsManager(TestCase):
         app_manager = self._get_loaded_app_manger()
         apps = app_manager.get_env_list()
         assert any(isinstance(app, BlenderEnvironment) for app in apps)
-        assert any(isinstance(app, LuxRenderEnvironment) for app in apps)
 
     def test_benchmarks_in_apps(self):
         """ Are benchmarks added to apps on the list? """

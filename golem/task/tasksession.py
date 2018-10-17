@@ -3,11 +3,12 @@ import functools
 import logging
 import os
 import time
+from typing import Optional, TYPE_CHECKING
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
 from golem_messages import message
-from golem_messages.exceptions import InvalidSignature
+from golem_messages import exceptions as msg_exceptions
 
 from golem.core import common
 from golem.core.keysauth import KeysAuth
@@ -27,7 +28,10 @@ from golem.task.server import helpers as task_server_helpers
 from golem.task.taskbase import ResultType
 from golem.task.taskstate import TaskState
 
-from .taskmanager import TaskManager
+if TYPE_CHECKING:
+    from .taskcomputer import TaskComputer  # noqa pylint:disable=unused-import
+    from .taskmanager import TaskManager  # noqa pylint:disable=unused-import
+    from .taskserver import TaskServer  # noqa pylint:disable=unused-import
 
 logger = logging.getLogger(__name__)
 
@@ -92,9 +96,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         """
         BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
-        self.task_server = self.conn.server
-        self.task_manager: TaskManager = self.task_server.task_manager
-        self.task_computer = self.task_server.task_computer
+        self.task_server: 'TaskServer' = self.conn.server
+        self.task_manager: 'TaskManager' = self.task_server.task_manager
+        self.task_computer: 'TaskComputer' = self.task_server.task_computer
         self.concent_service = self.task_server.client.concent_service
         self.task_id = None  # current task id
         self.subtask_id = None  # current subtask id
@@ -129,30 +133,27 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def dropped(self):
         """ Close connection """
         BasicSafeSession.dropped(self)
-        if self.task_server:
-            self.task_server.remove_task_session(self)
-            if self.key_id:
-                self.task_server.remove_resource_peer(self.task_id, self.key_id)
+        self.task_server.remove_task_session(self)
+        if self.key_id:
+            self.task_server.remove_resource_peer(self.task_id, self.key_id)
 
     #######################
     # SafeSession methods #
     #######################
 
     @property
-    def my_private_key(self):
-        if self.task_server is None:
-            logger.error("Task Server is None, can't sign a message.")
-            return None
-        return self.task_server.keys_auth.ecc.raw_privkey
+    def my_private_key(self) -> bytes:
+        return self.task_server.keys_auth._private_key  # noqa pylint: disable=protected-access
+
+    @property
+    def my_public_key(self) -> bytes:
+        return self.task_server.keys_auth.public_key
 
     ###################################
     # IMessageHistoryProvider methods #
     ###################################
 
     def _subtask_to_task(self, sid, local_role):
-        if not self.task_manager:
-            return None
-
         if local_role == Actor.Provider:
             return self.task_manager.comp_task_keeper.subtask_to_task.get(sid)
         elif local_role == Actor.Requestor:
@@ -206,6 +207,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             task_to_compute = get_task_message(
                 'TaskToCompute', task_id, subtask_id)
+
+            if not task_to_compute.sig:
+                task_to_compute.sign_message(self.my_private_key)
 
             payment_processed_ts = self.task_server.accept_result(
                 subtask_id,
@@ -543,6 +547,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.extra_data['sgx_key'],
         )
         ctd['extra_data']['sgx_eas_key'] = sgx_eas_key
+        from eth_utils import decode_hex
+        with open('{}/{}/tmp/{}.agent.quote'.format(self.task_server.task_manager.get_task_manager_root(), ctd['task_id'], ctd['subtask_id']), 'wb') as f:  # noqa
+            f.write(decode_hex(msg.extra_data['agent_quote']))
         ttc = message.tasks.TaskToCompute(
             compute_task_def=ctd,
             want_to_compute_task=msg,
@@ -583,7 +590,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         try:
             want_to_compute_task.verify_signature(
                 self.task_server.keys_auth.ecc.raw_pubkey)
-        except InvalidSignature:
+        except msg_exceptions.InvalidSignature:
             logger.debug(
                 'WantToComputeTask attached to TaskToCompute is not signed '
                 'with key: %r.', want_to_compute_task.provider_public_key)
@@ -757,7 +764,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         ))
 
     @history.provider_history
-    def _react_to_subtask_result_accepted(self, msg):
+    def _react_to_subtask_result_accepted(
+            self, msg: message.tasks.SubtaskResultsAccepted):
+        # The message must be verified, and verification requires self.key_id.
+        # This assert is for mypy, which only knows that it's Optional[str].
+        assert self.key_id is not None
+
         if msg.task_to_compute is None:
             logger.info(
                 'Empty task_to_compute in %s. Disconnecting: %r',
@@ -767,9 +779,35 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.disconnect(message.base.Disconnect.REASON.BadProtocol)
             return
 
-        if not self.check_requestor_for_subtask(msg.subtask_id):
+        def should_accept_sra(msg) -> bool:
+            # Possible values of requestor_check_result:
+            # True - everything ok
+            # False - Other side is not authorized to act in name of node_id
+            #         (message spoofing)
+            # None - subtask_id not found in CompTaskKeeper
+            #        or task_id not found in CompTaskKeeper
+            requestor_check_result = \
+                self.check_requestor_for_subtask(msg.subtask_id)
+
+            if requestor_check_result:
+                return True
+
+            transaction_system = self.task_server.client.transaction_system
+            if requestor_check_result is None:
+                return transaction_system.is_income_expected(
+                    subtask_id=msg.subtask_id,
+                    payer_address=msg.task_to_compute.requestor_ethereum_address
+                )
+
+            # requestor_check_result = False
+            return False
+
+        if not should_accept_sra(msg):
+            logger.debug("Unexpected income from %r for subtask %r",
+                         self.key_id, msg.subtask_id)
             self.dropped()
             return
+
         self.concent_service.cancel_task_message(
             msg.subtask_id,
             'ForceSubtaskResults',
@@ -777,6 +815,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.task_server.subtask_accepted(
             self.key_id,
             msg.subtask_id,
+            msg.task_to_compute.requestor_ethereum_address,
+            msg.task_to_compute.price,
             msg.payment_ts,
         )
         self.dropped()
@@ -970,9 +1010,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
-    def check_requestor_for_task(self, task_id, additional_msg="") -> bool:
+    def check_requestor_for_task(self, task_id, additional_msg="") \
+            -> Optional[bool]:
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
             task_id)
+        if node_id is None:
+            return None
         if node_id != self.key_id:
             logger.warning('Received message about task %r from diferrent '
                            'node %r than expected %r. %s', task_id,
@@ -980,9 +1023,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
-    def check_requestor_for_subtask(self, subtask_id) -> bool:
+    def check_requestor_for_subtask(self, subtask_id) -> Optional[bool]:
         task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(
             subtask_id)
+        if task_id is None:
+            return None
         return self.check_requestor_for_task(task_id, "Subtask %r" % subtask_id)
 
     def _check_ctd_params(self, ctd: message.ComputeTaskDef):
