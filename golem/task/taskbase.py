@@ -615,5 +615,9 @@ class Task(abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
+    def to_dictionary(self):
+        pass
+
+    @abc.abstractmethod
     def should_accept_client(self, node_id):
         pass
