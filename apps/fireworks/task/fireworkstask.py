@@ -1,3 +1,5 @@
+import yaml
+from fireworks import LaunchPad, ScriptTask, Workflow
 from typing import List, Optional
 
 from golem.task.taskbase import Task, ResultType, TaskState, TaskBuilder, TaskTypeInfo, TaskDefaults, TaskHeader
@@ -47,6 +49,16 @@ def apply(obj, *initial_data, **kwargs):
 
 class FireworksTaskBuilder(BasicTaskBuilder):
 
+    DEFAULT_LAUNCHPAD = {
+        'host': 'localhost',
+        'port': 27017,
+        'name': 'fireworks',
+        'username': None,
+        'password': None,
+        'logdir': None,
+        'strm_lvl': 'INFO'
+    }
+
     def __init__(self,
                  owner: Node,
                  task_definition: TaskDefinition,
@@ -56,7 +68,17 @@ class FireworksTaskBuilder(BasicTaskBuilder):
         self.owner = owner
 
     def build(self) -> 'Task':
-        return FireworksTask(self.owner, self.task_definition, self.dir_manager)
+        if hasattr(self.task_definition, 'launchpad_path'):
+            with open(self.task_definition.launchpad_path) as lf:
+                launchpad_dict = yaml.load(lf)
+        else:
+            launchpad_dict = self.DEFAULT_LAUNCHPAD
+
+        return FireworksTask(self.owner,
+                             self.task_definition,
+                             self.dir_manager,
+                             LaunchPad.from_dict(launchpad_dict),
+                             Workflow.from_file(self.task_definition.firework_path))
 
     @classmethod
     def build_definition(cls, task_type: TaskTypeInfo, dictionary,
@@ -106,31 +128,34 @@ class DockerizedTask(Task):
 
 
 class FireworksTask(DockerizedTask):
-    ENVIRONMENT_CLASS=FireworksTaskEnvironment
+    ENVIRONMENT_CLASS = FireworksTaskEnvironment
+
     def __init__(self,
                  owner: Node,
                  task_definition: TaskDefinition,
-                 dir_manager: DirManager) -> None:
+                 dir_manager: DirManager,
+                 launchpad: LaunchPad,
+                 firework: Workflow) -> None:
         super().__init__(owner, task_definition, dir_manager)
-        self.tmp_dir = ''
-        self.tasks_completed = 0
-        self.task_dispatched_flag = 0
+        self.launchpad = launchpad
+        self.firework = firework
+        self.launchpad.add_wf(self.firework)
 
     def initialize(self, dir_manager):
         """Called after adding a new task, may initialize or create some resources
         or do other required operations.
         :param DirManager dir_manager: DirManager instance for accessing temp dir for this task
         """
-        dir_manager.clear_temporary(self.header.task_id)
-        self.tmp_dir = dir_manager.get_task_temporary_dir(self.header.task_id,
-                                                          create=True)
+        pass
 
     def _new_compute_task_def(self, subtask_id, extra_data,
                               perf_index=0):
+        # TODO remove as many fields as possible
         ctd = golem_messages.message.ComputeTaskDef()
         ctd['task_id'] = self.header.task_id
         ctd['subtask_id'] = subtask_id
         ctd['extra_data'] = extra_data
+        ctd['extra_data']['launchpad'] = self.launchpad.to_dict()
         ctd['short_description'] = self.short_extra_data_repr(extra_data)
         ctd['src_code'] = self.src_code
         ctd['performance'] = perf_index
@@ -154,9 +179,10 @@ class FireworksTask(DockerizedTask):
         :param node_id: id of a node that wants to get a next subtask
         :param node_name: name of a node that wants to get a next subtask
         """
+        # FIXME Make sure this is not called when all tasks are dispatched but none completed
+        # verify calling criteria in upper level
         subtask_id = self.create_subtask_id()
         ctd = self._new_compute_task_def(subtask_id, dict(), 0)
-        self.task_dispatched_flag = 1
         return Task.ExtraData(ctd=ctd)
 
     def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa pylint:disable=line-too-long
@@ -175,7 +201,7 @@ class FireworksTask(DockerizedTask):
         """ Return information if there are still some subtasks that may be dispended
         :return bool: True if there are still subtask that should be computed, False otherwise
         """
-        return self.task_dispatched_flag
+        return True
 
     def finished_computation(self) -> bool:
         """ Return information if tasks has been fully computed
@@ -221,42 +247,49 @@ class FireworksTask(DockerizedTask):
         """ Return total number of tasks that should be computed
         :return int: number should be greater than 0
         """
+        # TODO verify if fireworks gives a way to determine that in a dynamic workflow
         return self.task_definition.total_subtasks
 
     def get_active_tasks(self) -> int:
         """ Return number of tasks that are currently being computed
         :return int: number should be between 0 and a result of get_total_tasks
         """
+        # TODO return information on how many tasks were dispatched to the workers
         import pdb; pdb.set_trace()
-        return 1 if self.task_dispatched_flag else 0
+        return 1
 
     def get_tasks_left(self) -> int:
         """ Return number of tasks that still should be computed
         :return int: number should be between 0 and a result of get_total_tasks
         """
+        # TODO analogical to get_total_tasks
         import pdb; pdb.set_trace()
         return 1 - self.get_active_tasks()
 
     def restart(self):
         """ Restart all subtask computation for this task """
         import pdb; pdb.set_trace()
+        # TODO determine if needed and possible with fireworks
         return  # Implement in derived class
 
     def restart_subtask(self, subtask_id):
         """ Restart subtask with given id """
         import pdb; pdb.set_trace()
+        # TODO determine if needed and possible with fireworks
         return  # Implement in derived class
 
     def abort(self):
         """ Abort task and all computations """
         import pdb; pdb.set_trace()
+        # TODO determine how to do that 
         return  # Implement in derived class
 
     def get_progress(self) -> float:
         """ Return task computations progress
         :return float: Return number between 0.0 and 1.0.
         """
-        return self.tasks_completed / self.get_total_tasks()
+        # TODO analogical to get_total_tasks
+        return 0.5
 
     def get_resources(self) -> list:
         """ Return list of files that are need to compute this task."""
@@ -294,8 +327,7 @@ class FireworksTask(DockerizedTask):
         raise NotImplementedError()
 
     def should_accept_client(self, node_id):
-        import pdb; pdb.set_trace()
-        pass
+        return True
 
     def get_stdout(self, subtask_id) -> str:
         """ Return stdout received after computation of subtask_id, if there is no data available
