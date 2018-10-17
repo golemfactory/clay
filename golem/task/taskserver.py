@@ -48,7 +48,7 @@ from .result.resultmanager import ExtractedPackage
 from .server import resources
 from .server import concent
 from .taskcomputer import TaskComputer
-from .taskkeeper import TaskHeaderKeeper, compute_subtask_value
+from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
 

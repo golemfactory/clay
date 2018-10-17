@@ -4,6 +4,7 @@ import uuid
 
 from golem_messages import message
 from golem.core.common import short_node_id
+from golem.task.timer import ProviderTTCDelayTimers
 
 logger = logging.getLogger('golem.resources')
 
@@ -89,7 +90,8 @@ class ResourceHandshakeSessionMixin:
             return
         else:
             concent_enabled = True
-        msg_d = dict(
+
+        self._task_request_message = dict(
             node_name=node_name,
             task_id=task_id,
             perf_index=perf_index,
@@ -107,11 +109,14 @@ class ResourceHandshakeSessionMixin:
             return
 
         if self._handshake_required(key_id):
-            self._task_request_message = msg_d
             self._start_handshake(key_id)
             return
 
-        self.send(message.tasks.WantToComputeTask(**msg_d))
+        self._send_want_to_compute_task()
+
+    def _send_want_to_compute_task(self) -> None:
+        self.send(message.tasks.WantToComputeTask(**self._task_request_message))
+        ProviderTTCDelayTimers.start(self._task_request_message['task_id'])
 
     # ########################
     #     MESSAGE HANDLERS
@@ -227,7 +232,7 @@ class ResourceHandshakeSessionMixin:
             logger.info('Finished resource handshake with %r',
                         short_node_id(key_id))
         if handshake.success() and handshake.message:
-            self.send(message.tasks.WantToComputeTask(**handshake.message))
+            self._send_want_to_compute_task()
 
     def _stop_handshake_timer(self):
         if self._handshake_timer:
