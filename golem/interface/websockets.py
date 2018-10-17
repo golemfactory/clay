@@ -4,8 +4,7 @@ from twisted.internet.defer import Deferred
 
 from golem.rpc.cert import CertificateManager
 from golem.rpc.common import CROSSBAR_REALM, CROSSBAR_PORT, CROSSBAR_HOST
-from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP, NODE_METHOD_MAP
-from golem.rpc.session import Session, Client, WebSocketAddress
+from golem.rpc.session import Session, ClientProxy, WebSocketAddress
 
 
 class WebSocketCLI(object):
@@ -14,23 +13,27 @@ class WebSocketCLI(object):
         def __getattribute__(self, item):
             raise Exception("Cannot connect to Golem instance")
 
-    class CLIClient(Client):
+    class CLIClient(ClientProxy):
 
         def _call(self, method_alias, *args, **kwargs):
             from twisted.internet import reactor
-
-            method = super()._call
             deferred = Deferred()
 
-            def wrapper():
+            super_call = super()._call
+
+            def in_reactor():
                 try:
-                    parent_deferred = method(method_alias, *args, **kwargs)
+                    parent_deferred = super_call(
+                        method_alias,
+                        *args,
+                        **kwargs,
+                    )
                 except Exception as exc:  # pylint: disable=broad-except
                     deferred.errback(exc)
                 else:
                     parent_deferred.chainDeferred(deferred)
 
-            reactor.callFromThread(wrapper)
+            reactor.callFromThread(in_reactor)
             return deferred
 
     def __init__(self, cli,  # pylint: disable=too-many-arguments
@@ -54,12 +57,14 @@ class WebSocketCLI(object):
     def execute(self, *args, **kwargs):
         from twisted.internet import reactor, threads
 
-        def on_connected(_):
-            methods = {**CORE_METHOD_MAP, **NODE_METHOD_MAP}
-            core_client = WebSocketCLI.CLIClient(self.session, methods)
-            self.cli.register_client(core_client)
+        def on_ready(_):
             threads.deferToThread(self.cli.execute, *args, **kwargs) \
                 .addBoth(self.shutdown)
+
+        def on_connected(_):
+            core_client = WebSocketCLI.CLIClient(self.session)
+            self.cli.register_client(core_client)
+            core_client._ready.addCallback(on_ready)  # noqa pylint: disable=protected-access
 
         def on_error(error):
             sys.stderr.write("Error connecting to Golem instance ({}): {}\n"

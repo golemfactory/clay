@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 from collections import namedtuple
 from contextlib import contextmanager
 from functools import partial
@@ -5,9 +6,9 @@ import io
 import json
 import unittest
 from unittest.mock import MagicMock, Mock, mock_open, patch
-import uuid
 
 from ethereum.utils import denoms
+import faker
 from twisted.internet import defer
 
 from apps.core.task.coretaskstate import TaskDefinition
@@ -25,17 +26,11 @@ from golem.interface.client.terms import Terms
 from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
 from golem.resource.dirmanager import DirManager, DirectoryType
-from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
-from golem.rpc.session import Client
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
 
-reference_client = Client(Mock(), CORE_METHOD_MAP)
 
-
-def assert_client_method(instance, name):
-    assert hasattr(reference_client, name)
-    return super(Mock, instance).__getattribute__(name)
+fake = faker.Faker()
 
 
 def mock_defer(a, b):
@@ -49,7 +44,6 @@ class TestAccount(unittest.TestCase):
         node = dict(node_name='node1', key='deadbeef')
 
         client = Mock()
-        client.__getattribute__ = assert_client_method
         client.get_node.return_value = node
         client.get_computing_trust.return_value = .01
         client.get_requesting_trust.return_value = .02
@@ -200,7 +194,6 @@ class TestEnvironments(unittest.TestCase):
         ]
 
         client = Mock()
-        client.__getattribute__ = assert_client_method
         client.run_benchmark = lambda x: x
         client.get_environments.return_value = environments
 
@@ -260,7 +253,6 @@ class TestNetwork(unittest.TestCase):
         ]
 
         client = Mock()
-        client.__getattribute__ = assert_client_method
         client.get_connected_peers.return_value = peer_info
         client.get_known_peers.return_value = peer_info
 
@@ -378,7 +370,6 @@ class TestPayments(unittest.TestCase):
         } for i in range(1, 6)]
 
         client = Mock()
-        client.__getattribute__ = assert_client_method
         client.get_incomes_list.return_value = incomes_list
         client.get_payments_list.return_value = payments_list
 
@@ -419,7 +410,6 @@ class TestResources(unittest.TestCase):
     def setUp(self):
         super(TestResources, self).setUp()
         self.client = Mock()
-        self.client.__getattribute__ = assert_client_method
 
     def test_show(self):
         dirs = dict(
@@ -518,7 +508,6 @@ class TestTasks(TempDirFixture):
         super(TestTasks, self).setUp()
 
         client = Mock()
-        client.__getattribute__ = assert_client_method
 
         client.get_datadir.return_value = self.path
         client.get_dir_manager.return_value = DirManager(self.path)
@@ -695,7 +684,6 @@ class TestSubtasks(unittest.TestCase):
         super(TestSubtasks, self).setUp()
 
         self.client = Mock()
-        self.client.__getattribute__ = assert_client_method
 
     def test_show_ok(self):
         with client_ctx(Subtasks, self.client):
@@ -738,7 +726,6 @@ class TestSettings(TempDirFixture):
         config_desc.init_from_app_config(app_config)
 
         client = Mock()
-        client.__getattribute__ = assert_client_method
         client.get_settings.return_value = config_desc.__dict__
 
         self.client = client
@@ -838,32 +825,24 @@ class TestSettings(TempDirFixture):
                 settings.set('num_cores', _cpu_count + 1)
 
 
+@patch('golem.interface.client.debug.Debug.client')
 class TestDebug(unittest.TestCase):
-
     def setUp(self):
-        super(TestDebug, self).setUp()
+        self.uri = '.'.join(fake.words())
+        self.debug = Debug()
 
-        self.client = Mock()
-        self.client.__getattribute__ = assert_client_method
+    def _rpc(self, *args):
+        self.debug.rpc((self.uri,)+args)
+        self.debug.client._call.assert_called_once_with(self.uri, *args)
 
-    def test_show(self):
-        client = self.client
+    def test_no_args(self, *_):
+        self._rpc()
 
-        with client_ctx(Debug, client):
-            debug = Debug()
-            task_id = str(uuid.uuid4())
+    def test_one_arg(self, *_):
+        self._rpc(fake.uuid4())
 
-            debug.rpc(('net.ident',))
-            assert client.get_node.called
-
-            debug.rpc(('comp.task', task_id))
-            client.get_task.assert_called_with(task_id)
-
-            debug.rpc(('comp.task.subtasks.borders', task_id, 2))
-            client.get_subtasks_borders.assert_called_with(task_id, 2)
-
-            with self.assertRaises(CommandException):
-                debug.rpc((task_id, ))
+    def test_two_args(self, *_):
+        self._rpc(fake.uuid4(), fake.pyint())
 
 
 class TestTerms(unittest.TestCase):
@@ -872,7 +851,6 @@ class TestTerms(unittest.TestCase):
         super(TestTerms, self).setUp()
 
         self.client = Mock()
-        self.client.__getattribute__ = assert_client_method
 
     @patch('golem.interface.client.terms.html2text.html2text',
            return_value=object())

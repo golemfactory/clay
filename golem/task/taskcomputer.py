@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, TYPE_CHECKING
+from typing import Any, Dict, Optional, TYPE_CHECKING
 
 import os
 import time
@@ -90,8 +90,7 @@ class TaskComputer(object):
 
         self.stats = IntStatsKeeper(CompStats)
 
-        self.assigned_subtasks = {}
-        self.task_to_subtask_mapping = {}
+        self.assigned_subtask: Optional[Dict[str, Any]] = None
         self.max_assigned_tasks = 1
 
         self.delta = None
@@ -103,88 +102,54 @@ class TaskComputer(object):
         self.finished_cb = finished_cb
 
     def task_given(self, ctd):
-        if ctd['subtask_id'] in self.assigned_subtasks:
+        if self.assigned_subtask is not None:
+            logger.error("Trying to assign a task, when it's already assigned")
             return False
         self.wait(ttl=deadline_to_timeout(ctd['deadline']))
-        self.assigned_subtasks[ctd['subtask_id']] = ctd
-        self.task_to_subtask_mapping[ctd['task_id']] = ctd['subtask_id']
+        self.assigned_subtask = ctd
         self.__request_resource(
             ctd['task_id'],
             ctd['subtask_id']
         )
         return True
 
-    def resource_given(self, task_id):
-        subtask_id = self.task_to_subtask_mapping.get(task_id)
-        subtask = self.assigned_subtasks.get(subtask_id)
-
-        if not subtask:
+    def task_resource_collected(self, task_id, unpack_delta=True):
+        subtask = self.assigned_subtask
+        if not subtask or subtask['task_id'] != task_id:
+            logger.error("Resource collected for a wrong task, %s", task_id)
             return False
-
-        with self.lock:
-            if self.counting_thread is not None:
-                logger.error("Got resource for task: %r, but I'm busy with "
-                             "another one. Ignoring.", task_id)
-                return  # busy
-
+        if unpack_delta:
+            rs_dir = self.dir_manager.get_task_resource_dir(task_id)
+            self.task_server.unpack_delta(rs_dir, self.delta, task_id)
+        self.delta = None
+        self.last_task_timeout_checking = time.time()
         self.__compute_task(
-            subtask_id,
+            subtask['subtask_id'],
             subtask['docker_images'],
             subtask['src_code'],
             subtask['extra_data'],
-            subtask['short_description'],
             subtask['deadline'])
-
-        self.waiting_for_task = None
         return True
 
-    def task_resource_collected(self, task_id, unpack_delta=True):
-        if task_id in self.task_to_subtask_mapping:
-            subtask_id = self.task_to_subtask_mapping[task_id]
-            if subtask_id in self.assigned_subtasks:
-                subtask = self.assigned_subtasks[subtask_id]
-                if unpack_delta:
-                    rs_dir = self.dir_manager.get_task_resource_dir(task_id)
-                    self.task_server.unpack_delta(rs_dir, self.delta, task_id)
-                self.delta = None
-                self.last_task_timeout_checking = time.time()
-                self.__compute_task(
-                    subtask_id,
-                    subtask['docker_images'],
-                    subtask['src_code'],
-                    subtask['extra_data'],
-                    subtask['short_description'],
-                    subtask['deadline'])
-                return True
-            return False
-
     def task_resource_failure(self, task_id, reason):
-        if task_id not in self.task_to_subtask_mapping:
+        subtask = self.assigned_subtask
+        if not subtask or subtask['task_id'] != task_id:
+            logger.error("Resource failure for a wrong task, %s", task_id)
             return
-        subtask_id = self.task_to_subtask_mapping.pop(task_id)
-        if subtask_id in self.assigned_subtasks:
-            subtask = self.assigned_subtasks.pop(subtask_id)
-            self.task_server.send_task_failed(
-                subtask_id,
-                subtask['task_id'],
-                'Error downloading resources: {}'.format(reason),
-            )
+        self.task_server.send_task_failed(
+            subtask['subtask_id'],
+            subtask['task_id'],
+            'Error downloading resources: {}'.format(reason),
+        )
         self.session_closed()
 
     def wait_for_resources(self, task_id, delta):
-        if task_id in self.task_to_subtask_mapping:
-            subtask_id = self.task_to_subtask_mapping[task_id]
-            if subtask_id in self.assigned_subtasks:
-                self.delta = delta
+        if self.assigned_subtask and \
+                self.assigned_subtask['task_id'] == task_id:
+            self.delta = delta
 
     def task_request_rejected(self, task_id, reason):
         logger.info("Task %r request rejected: %r", task_id, reason)
-
-    def resource_request_rejected(self, subtask_id, reason):
-        logger.info("Task %r resource request rejected: %r",
-                    subtask_id, reason)
-        self.assigned_subtasks.pop(subtask_id, None)
-        self.reset()
 
     def task_computed(self, task_thread: TaskThread) -> None:
         self.reset()
@@ -199,7 +164,9 @@ class TaskComputer(object):
         work_wall_clock_time = task_thread.end_time - task_thread.start_time
         subtask_id = task_thread.subtask_id
         try:
-            subtask = self.assigned_subtasks.pop(subtask_id)  # ComputeTaskDef
+            subtask = self.assigned_subtask
+            assert subtask is not None
+            self.assigned_subtask = None
             # get paid for max working time,
             # thus task withholding won't make profit
             task_header = \
@@ -389,8 +356,8 @@ class TaskComputer(object):
             self.reset()
 
     def __compute_task(self, subtask_id, docker_images,
-                       src_code, extra_data, short_desc, subtask_deadline):
-        task_id = self.assigned_subtasks[subtask_id]['task_id']
+                       src_code, extra_data, subtask_deadline):
+        task_id = self.assigned_subtask['task_id']
         task_header = self.task_server.task_keeper.task_headers.get(task_id)
 
         if not task_header:
@@ -424,15 +391,16 @@ class TaskComputer(object):
             dir_mapping = DockerTaskThread.generate_dir_mapping(resource_dir,
                                                                 temp_dir)
             tt = DockerTaskThread(subtask_id, docker_images,
-                                  src_code, extra_data, short_desc,
+                                  src_code, extra_data,
                                   dir_mapping, task_timeout)
         elif self.support_direct_computation:
             tt = PyTaskThread(subtask_id, src_code,
-                              extra_data, short_desc, resource_dir, temp_dir,
+                              extra_data, resource_dir, temp_dir,
                               task_timeout)
         else:
             logger.error("Cannot run PyTaskThread in this version")
-            subtask = self.assigned_subtasks.pop(subtask_id)
+            subtask = self.assigned_subtask
+            self.assigned_subtask = None
             self.task_server.send_task_failed(
                 subtask_id,
                 subtask['task_id'],
@@ -455,11 +423,9 @@ class TaskComputer(object):
 
 
 class AssignedSubTask(object):
-    def __init__(self, src_code, extra_data, short_desc, owner_address,
-                 owner_port):
+    def __init__(self, src_code, extra_data, owner_address, owner_port):
         self.src_code = src_code
         self.extra_data = extra_data
-        self.short_desc = short_desc
         self.owner_address = owner_address
         self.owner_port = owner_port
 
@@ -467,18 +433,16 @@ class AssignedSubTask(object):
 class PyTaskThread(TaskThread):
     # pylint: disable=too-many-arguments
     def __init__(self, subtask_id, src_code,
-                 extra_data, short_desc, res_path, tmp_path, timeout):
+                 extra_data, res_path, tmp_path, timeout):
         super(PyTaskThread, self).__init__(
-            subtask_id, src_code, extra_data,
-            short_desc, res_path, tmp_path, timeout)
+            subtask_id, src_code, extra_data, res_path, tmp_path, timeout)
         self.vm = PythonProcVM()
 
 
 class PyTestTaskThread(PyTaskThread):
     # pylint: disable=too-many-arguments
     def __init__(self, subtask_id, src_code,
-                 extra_data, short_desc, res_path, tmp_path, timeout):
+                 extra_data, res_path, tmp_path, timeout):
         super(PyTestTaskThread, self).__init__(
-            subtask_id, src_code, extra_data,
-            short_desc, res_path, tmp_path, timeout)
+            subtask_id, src_code, extra_data, res_path, tmp_path, timeout)
         self.vm = PythonTestVM()

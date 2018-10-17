@@ -2,12 +2,15 @@
 from os import urandom
 from pathlib import Path
 import sys
+import time
 from typing import Optional
 from unittest.mock import patch, Mock, ANY, PropertyMock
 from unittest import TestCase
 
 from eth_utils import encode_hex
 from ethereum.utils import denoms
+import faker
+from freezegun import freeze_time
 import golem_sci.structs
 import requests
 
@@ -20,6 +23,7 @@ from golem.ethereum.transactionsystem import (
 )
 from golem.ethereum.exceptions import NotEnoughFunds
 
+fake = faker.Faker()
 PASSWORD = 'derp'
 
 
@@ -37,6 +41,7 @@ class TransactionSystemBase(testutils.DatabaseFixture):
         self.sci.get_gntb_balance.return_value = 0
         self.sci.GAS_PER_PAYMENT = 20000
         self.sci.REQUIRED_CONFS = 6
+        self.sci.get_deposit_locked_until.return_value = 0
         self.ets = self._make_ets()
 
     def _make_ets(
@@ -349,7 +354,7 @@ class TestTransactionSystem(TransactionSystemBase):
             ANY,
         )
 
-    def test_check_payments(self):
+    def test_check_payments(self, *_args):
         with patch.object(
             self.ets._incomes_keeper, 'update_overdue_incomes'
         ) as incomes:
@@ -515,6 +520,70 @@ class ConcentDepositTest(TransactionSystemBase):
                 ('fee', 42000),
                 ('tx', tx_hash),):
             self.assertEqual(getattr(dpayment, field), value)
+
+
+class ConcentWithdrawTest(TransactionSystemBase):
+    def test_timelocked(self):
+        self.sci.get_deposit_locked_until.reset_mock()
+        self.sci.get_deposit_locked_until.return_value = 0
+        self.ets.concent_withdraw()
+        self.sci.get_deposit_locked_until.assert_called_once_with(
+            account_address=self.sci.get_eth_address(),
+        )
+        self.sci.withdraw_deposit.assert_not_called()
+
+    @freeze_time('2018-10-01 14:00:00')
+    def test_not_yet_unlocked(self):
+        now = time.time()
+        self.sci.get_deposit_locked_until.return_value = int(now) + 1
+        self.sci.get_deposit_locked_until.reset_mock()
+        self.ets.concent_withdraw()
+        self.sci.get_deposit_locked_until.assert_called_once_with(
+            account_address=self.sci.get_eth_address(),
+        )
+        self.sci.withdraw_deposit.assert_not_called()
+
+    @freeze_time('2018-10-01 14:00:00')
+    def test_unlocked(self):
+        now = time.time()
+        self.sci.get_deposit_locked_until.reset_mock()
+        self.sci.get_deposit_locked_until.return_value = int(now)
+        self.ets.concent_withdraw()
+        self.sci.withdraw_deposit.assert_called_once_with()
+
+
+class ConcentUnlockTest(TransactionSystemBase):
+    def test_empty(self):
+        self.sci.get_deposit_value.return_value = 0
+        self.ets.concent_unlock()
+        self.sci.unlock_deposit.assert_not_called()
+
+    def test_repeated_call(self):
+        self.sci.get_deposit_value.return_value = 1
+        self.sci.get_deposit_locked_until.return_value = \
+            int(time.time()) - 1
+        self.ets.concent_withdraw()
+        self.ets.concent_withdraw()
+        self.sci.withdraw_deposit.assert_called_once_with()
+        self.sci.on_transaction_confirmed.assert_called_once()
+
+        self.sci.on_transaction_confirmed.call_args[0][1](Mock())
+        self.ets.concent_withdraw()
+        assert self.sci.withdraw_deposit.call_count == 2
+
+    @freeze_time('2018-10-01 14:00:00')
+    @patch('golem.ethereum.transactionsystem.call_later')
+    def test_full(self, call_later):
+        self.sci.get_deposit_value.return_value = abs(fake.pyint()) + 1
+        self.ets.concent_unlock()
+        self.sci.unlock_deposit.assert_called_once_with()
+        self.sci.on_transaction_confirmed.assert_called_once()
+
+        delay = 10
+        self.sci.get_deposit_locked_until.return_value = \
+            int(time.time()) + delay
+        self.sci.on_transaction_confirmed.call_args[0][1](Mock())
+        call_later.assert_called_once_with(delay, self.ets.concent_withdraw)
 
 
 class FaucetTest(TestCase):

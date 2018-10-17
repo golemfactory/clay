@@ -89,9 +89,9 @@ class TestBlenderReferenceGenerator(TempDirFixture):
                                     numpy.float32(0.4)), 3, (0.04, 0.1))
             with self.assertRaises(Exception):
                 _test_crop([800, 600], (numpy.float32(0.0),
-                                        numpy.float32(0.1),
+                                        numpy.float32(0.01),
                                         numpy.float32(0.0),
-                                        numpy.float32(0.1)), 3, (0.04, 0.1))
+                                        numpy.float32(0.01)), 3)
 
     def test_generate_crops_data_for_strange_resolutions(self):
         # pylint: disable=R0914

@@ -1,13 +1,17 @@
+import typing
+
 from golem.core.deferred import sync_wait
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.interface.command import group, Argument, command, CommandResult
-from golem.rpc.session import Client
+
+if typing.TYPE_CHECKING:
+    from golem.rpc.session import ClientProxy
 
 
 # pylint: disable=no-self-use
 @group(name="envs", help="Manage environments")
 class Environments(object):
-    client: Client
+    client: 'ClientProxy'
 
     name = Argument('name', help="Environment name")
     multiplier = Argument('multiplier',
