@@ -336,10 +336,10 @@ class Node(object):
             logger.debug('_is_task_in_progress? False: task_computer=None')
             return False
 
-        task_provider_progress = task_server.task_computer.assigned_subtasks
+        task_provider_progress = task_server.task_computer.assigned_subtask
         logger.debug('_is_task_in_progress? provider=%r, requestor=False',
                      task_provider_progress)
-        return task_provider_progress != {}
+        return bool(task_provider_progress)
 
     @require_rpc_session()
     def _check_terms(self) -> Optional[Deferred]:
@@ -430,7 +430,11 @@ class Node(object):
             return
 
         methods = self.client.get_wamp_rpc_mapping()
-        self.rpc_session.add_procedures(methods)  # type: ignore
+        # pylint: disable=no-member
+        self.rpc_session.add_procedures(methods).addCallback(  # type: ignore
+            lambda _: logger.info('All procedures registered in WAMP router'),
+        )
+        # pylint: enable=no-member
 
     def _setup_apps(self) -> None:
         if not self.client:
