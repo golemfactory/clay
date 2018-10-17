@@ -32,6 +32,7 @@ from twisted.internet import defer
 import requests
 
 from golem import model
+from golem.core.deferred import call_later
 from golem.core.service import LoopingCallService
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
@@ -95,7 +96,7 @@ class TransactionSystem(LoopingCallService):
 
         self._gnt_faucet_requested = False
         self._gnt_conversion_status = ConversionStatus.NONE
-        self._deposit_withdrawal_requested = False
+        self._concent_withdraw_requested = False
 
         self._eth_balance: int = 0
         self._gnt_balance: int = 0
@@ -262,6 +263,7 @@ class TransactionSystem(LoopingCallService):
                     closure_time=event.closure_time,
                 ),
             )
+            self._schedule_concent_withdraw()
         except AttributeError as e:
             log.info("Can't use GNTDeposit on mainnet yet: %r", e)
 
@@ -606,29 +608,37 @@ class TransactionSystem(LoopingCallService):
     def concent_unlock(self):
         if self.concent_balance() == 0:
             return
-        self._sci.unlock_deposit()
+        tx_hash = self._sci.unlock_deposit()
+        log.info("Unlocking concent deposit, tx: %s", tx_hash)
 
-    def concent_withdraw(self):
-        if self._deposit_withdrawal_requested:
-            return
+        def _on_receipt(receipt):
+            if not receipt.status:
+                log.error("Transaction failed, %r", receipt)
+                return
+            self._schedule_concent_withdraw()
+
+        self._sci.on_transaction_confirmed(tx_hash, _on_receipt)
+
+    def _schedule_concent_withdraw(self) -> None:
         timelock = self.concent_timelock()
         if timelock == 0:
             return
-        # Using this tricky approach instead of time.time()
-        # because of AppVeyor issues.
-        now = calendar.timegm(time.gmtime())
-        if timelock > now:
+        delay = max(0, timelock - int(time.time()))
+        call_later(delay, self.concent_withdraw)
+
+    def concent_withdraw(self):
+        if self._concent_withdraw_requested:
             return
-        self._deposit_withdrawal_requested = True
-        tx_hash: str = self._sci.withdraw_deposit()
+        timelock = self.concent_timelock()
+        if timelock == 0 or timelock > time.time():
+            return
+        tx_hash = self._sci.withdraw_deposit()
+        self._concent_withdraw_requested = True
 
-        def _cbk(_transaction_receipt):
-            self._deposit_withdrawal_requested = False
-
-        self._sci.on_transaction_confirmed(
-            tx_hash=tx_hash,
-            cb=_cbk,
-        )
+        def on_confirmed(_receipt) -> None:
+            self._concent_withdraw_requested = False
+        self._sci.on_transaction_confirmed(tx_hash, on_confirmed)
+        log.info("Withdrawing concent deposit, tx: %s", tx_hash)
 
     @sci_required()
     def _get_funds_from_faucet(self) -> None:
@@ -747,7 +757,6 @@ class TransactionSystem(LoopingCallService):
         self._try_convert_gnt()
         self._payment_processor.sendout()
         self._incomes_keeper.update_overdue_incomes()
-        self.concent_withdraw()
 
 
 def tETH_faucet_donate(addr: str):
