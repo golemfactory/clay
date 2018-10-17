@@ -10,7 +10,7 @@ from golem.core.deferred import sync_wait
 from golem.interface.command import doc, group, command, Argument, CommandResult
 
 if typing.TYPE_CHECKING:
-    from golem.rpc.session import ClientProxy
+    from golem.rpc.session import ClientProxy  # noqa pylint: disable=unused-import
 
 CREATE_TASK_TIMEOUT = 300  # s
 
