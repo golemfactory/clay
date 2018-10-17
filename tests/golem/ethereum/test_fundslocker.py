@@ -17,7 +17,7 @@ def make_mock_task(*_, task_id: str = 'tid', subtask_price: int = 100,
     task.header.deadline = timeout_to_deadline(timeout)
     task.header.task_id = task_id
     task.subtask_price = subtask_price
-    task.get_total_tasks = mock.Mock(return_value=total_tasks)
+    task.get_total_tasks.return_value = total_tasks
     return task
 
 

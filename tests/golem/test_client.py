@@ -810,7 +810,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         task_mock = MagicMock()
         task_mock.header.max_price = 1 * 10**18
         task_mock.header.subtask_timeout = 158
-        task_mock.get_total_tasks = mock.Mock(return_value=3)
+        task_mock.get_total_tasks.return_value = 3
         price = task_mock.header.max_price * task_mock.get_total_tasks()
         task_mock.get_price.return_value = price
         task_mock.subtask_price = 1000
