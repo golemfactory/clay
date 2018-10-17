@@ -500,13 +500,13 @@ class AggregateTaskStats:
         # Sum of batch payment delays
         self.requestor_payment_delay_sum: float = 0.0
         # Subtask timeout multiplied by count
-        self.requestor_subtask_timeout_mag: float = 0.0
+        self.requestor_subtask_timeout_mag: int = 0
         # Subtask price multiplied by count
         self.requestor_subtask_price_mag: int = 0
         # Sum of time spent on computations that timed out
-        self.requestor_velocity_timeout: float = 0.0
+        self.requestor_velocity_timeout: int = 0
         # Sum of total computation time, including failures and timeouts
-        self.requestor_velocity_comp_time: float = 0.0
+        self.requestor_velocity_comp_time: int = 0
 
         for key, value in kwargs.items():
             if hasattr(self, key):
@@ -529,10 +529,10 @@ class RequestorAggregateStatsManager:
         if event != 'finished':
             return
 
-        subtask_count = kwargs.get('subtask_count')
-        subtask_timeout = kwargs.get('subtask_timeout')
-        subtask_price = kwargs.get('subtask_price')
-        subtask_computation_time = kwargs.get('subtask_computation_time')
+        subtask_count = int(kwargs['subtask_count'])
+        subtask_timeout = int(kwargs['subtask_timeout'])
+        subtask_price = int(kwargs['subtask_price'])
+        subtask_computation_time = int(kwargs['subtask_computation_time'])
 
         with self._computed_lock:
             self.keeper.increase_stat('requestor_subtask_timeout_mag',

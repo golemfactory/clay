@@ -74,7 +74,9 @@ class RequestorStatsModel(BasicModel):
 
 class RequestorAggregateStatsModel(BasicModel):
 
-    def __init__(self, meta_data: BasicModel, stats: AggregateTaskStats):
+    def __init__(self, meta_data: BasicModel,
+                 stats: AggregateTaskStats) -> None:
+
         super().__init__(
             "RequestorAggregateStats",
             meta_data.cliid,

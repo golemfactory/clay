@@ -96,8 +96,8 @@ class StatsKeeper:
 
 class IntStatsKeeper(StatsKeeper):
 
-    def __init__(self, stat_class: Type):
+    def __init__(self, stat_class: Type) -> None:
         super(IntStatsKeeper, self).__init__(stat_class, '0')
 
-    def _cast_type(self, value, name: str):
+    def _cast_type(self, value: Any, name: str) -> Any:
         return int(value)

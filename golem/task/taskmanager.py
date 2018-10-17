@@ -1212,6 +1212,11 @@ class TaskManager(TaskEventListener):
 
         try:
             computation_time = ProviderComputeTimers.time_computing(subtask_id)
+            if not computation_time:
+                raise ValueError("Invalid value for computation_time: %r",
+                                 computation_time)
+
+            computation_time = int(round(computation_time))
             computation_price = compute_subtask_value(header.max_price,
                                                       computation_time)
 
