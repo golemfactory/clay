@@ -291,10 +291,7 @@ def _start_task(client, task, resource_server_result):
 @defer.inlineCallbacks
 def enqueue_new_task(client, task) \
             -> typing.Generator[defer.Deferred, typing.Any, taskbase.Task]:
-    """
-    :return: (deferred, task_id) - deferred returns Task object when it's
-    successfully created.
-    """
+    """Feed a fresh Task to all golem subsystems"""
     if client.config_desc.in_shutdown:
         raise CreateTaskError(
             'Can not enqueue task: shutdown is in progress, '
