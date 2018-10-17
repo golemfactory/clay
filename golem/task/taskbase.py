@@ -326,6 +326,13 @@ class TaskBuilder(abc.ABC):
         """
         pass
 
+    # TODO: Backward compatibility only. The rendering tasks should
+    # move to overriding their own TaskDefinitions instead of
+    # overriding `build_dictionary. Issue #2424`
+    @staticmethod
+    def build_dictionary(definition: TaskDefinition) -> dict:
+        return definition.to_dict()
+
 
 class TaskEventListener(object):
     def __init__(self):
