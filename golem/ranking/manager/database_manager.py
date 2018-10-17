@@ -121,52 +121,56 @@ def update_requestor_efficiency(node_id: str,
                                 computation_time: float,
                                 performance: float,
                                 min_performance: float) -> None:
+    with db.transaction():
+        rank, _ = LocalRank.get_or_create(node_id=node_id)
+        efficiency = rank.requestor_efficiency
 
-    rank, _ = LocalRank.get_or_create(node_id=node_id)
-    efficiency = rank.requestor_efficiency
+        if efficiency is None:
+            efficiency = (
+                1. if not min_performance else
+                performance / min_performance
+            )
 
-    if efficiency is None:
-        efficiency = (
-            1. if not min_performance else
-            performance / min_performance
-        )
-
-    rank.requestor_efficiency = _calculate_efficiency(
-        efficiency, timeout, computation_time, REQUESTOR_FORGETTING_FACTOR)
-    rank.save()
+        rank.requestor_efficiency = _calculate_efficiency(
+            efficiency, timeout, computation_time, REQUESTOR_FORGETTING_FACTOR)
+        rank.save()
 
 
 def update_requestor_assigned_sum(node_id: str, amount: float) -> None:
 
-    rank, _ = LocalRank.get_or_create(node_id=node_id)
-    rank.requestor_assigned_sum += amount
-    rank.save()
+    with db.transaction():
+        rank, _ = LocalRank.get_or_create(node_id=node_id)
+        rank.requestor_assigned_sum += amount
+        rank.save()
 
 
 def update_requestor_paid_sum(node_id: str, amount: float) -> None:
 
-    rank, _ = LocalRank.get_or_create(node_id=node_id)
-    rank.requestor_paid_sum += amount
-    rank.save()
+    with db.transaction():
+        rank, _ = LocalRank.get_or_create(node_id=node_id)
+        rank.requestor_paid_sum += amount
+        rank.save()
 
 
 def update_provider_efficiency(node_id: str,
                                timeout: float,
                                computation_time: float) -> None:
 
-    rank, _ = LocalRank.get_or_create(node_id=node_id)
-    efficiency = rank.provider_efficiency
+    with db.transaction():
+        rank, _ = LocalRank.get_or_create(node_id=node_id)
+        efficiency = rank.provider_efficiency
 
-    rank.provider_efficiency = _calculate_efficiency(
-        efficiency, timeout, computation_time, PROVIDER_FORGETTING_FACTOR)
-    rank.save()
+        rank.provider_efficiency = _calculate_efficiency(
+            efficiency, timeout, computation_time, PROVIDER_FORGETTING_FACTOR)
+        rank.save()
 
 
 def update_provider_efficacy(node_id: str, op: SubtaskOp) -> None:
 
-    rank, _ = LocalRank.get_or_create(node_id=node_id)
-    rank.provider_efficacy.update(op)
-    rank.save()
+    with db.transaction():
+        rank, _ = LocalRank.get_or_create(node_id=node_id)
+        rank.provider_efficacy.update(op)
+        rank.save()
 
 
 def get_global_rank(node_id):
