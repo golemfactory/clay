@@ -73,9 +73,8 @@ def command(name=None, root=False, **kwargs):
     """
 
     def wrapper(func):
-        parent = kwargs.get('parent', None)
+        parent_cmd = kwargs.get('parent', None)
 
-        nonlocal name
         if name is None:
             if hasattr(func, '__func__'):
                 given_name = func.__func__.__name__
@@ -87,8 +86,8 @@ def command(name=None, root=False, **kwargs):
         CommandHelper.init_interface(func,
                                      name=given_name,
                                      **kwargs)
-        if parent:
-            CommandHelper.add_child(func, parent)
+        if parent_cmd:
+            CommandHelper.add_child(func, parent_cmd)
         elif root:
             CommandHelper.add_root(func)
         return func
