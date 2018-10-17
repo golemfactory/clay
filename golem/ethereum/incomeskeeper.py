@@ -97,7 +97,7 @@ class IncomesKeeper:
                 'accepted_ts': accepted_ts,
             },
         )
-        if not inserted:
+        if not inserted and not income.accepted_ts:
             income.accepted_ts = accepted_ts
             income.save()
 
