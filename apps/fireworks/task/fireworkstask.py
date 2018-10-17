@@ -9,7 +9,7 @@ from golem.resource.dirmanager import DirManager
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.fireworks.fireworksenvironment import FireworksTaskEnvironment
 from golem.docker.environment import DockerEnvironment
-from golem.core.common import timeout_to_deadline, string_to_timeout
+from golem.core.common import timeout_to_deadline, string_to_timeout, to_unicode
 from golem_messages import idgenerator
 
 class FireWorksTaskDefinition(TaskDefinition):
@@ -375,3 +375,12 @@ class FireworksTask(DockerizedTask):
         """
         import pdb; pdb.set_trace()
         return []
+
+    def to_dictionary(self):
+        return {
+            'id': to_unicode(self.header.task_id),
+            'name': to_unicode(self.task_definition.task_name),
+            'type': to_unicode(self.task_definition.task_type),
+            'subtasks': self.get_total_tasks(),
+            'progress': self.get_progress()
+        }
