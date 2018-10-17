@@ -47,16 +47,14 @@ class ProviderBase(test_client.TestClientBase):
         self.provider = rpc.ClientProvider(self.client)
 
 
-mock_task = mock.MagicMock()
-mock_task.header.task_id = 'task_id'
-
-
 @mock.patch('signal.signal')
 @mock.patch('golem.network.p2p.node.Node.collect_network_info')
 @mock.patch('golem.task.rpc.enqueue_new_task')
 @mock.patch(
     'golem.task.taskmanager.TaskManager.create_task',
-    return_value=mock_task,
+    side_effect=lambda *_: mock.MagicMock(
+        header=mock.MagicMock(task_id='task_id'),
+    ),
 )
 class TestCreateTask(ProviderBase):
     def test_create_task(self, *_):
