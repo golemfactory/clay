@@ -549,6 +549,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.extra_data['sgx_key'],
         )
         ctd['extra_data']['sgx_eas_key'] = sgx_eas_key
+        from eth_utils import decode_hex
+        with open('{}/{}/tmp/{}.agent.quote'.format(self.task_server.task_manager.get_task_manager_root(), ctd['task_id'], ctd['subtask_id']), 'wb') as f:  # noqa
+            f.write(decode_hex(msg.extra_data['agent_quote']))
         ttc = message.tasks.TaskToCompute(
             compute_task_def=ctd,
             want_to_compute_task=msg,

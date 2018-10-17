@@ -42,7 +42,7 @@ def decrypt_file(wrap_key: Path, file: Path, out_file: Path):
     print(res)
 
 
-def init_agent(agent_pubkey: Path):
+def init_agent(agent_pubkey: Path, agent_quote: Path):
     print("init_agent")
     res = subprocess.run([
         str(AGENT_PATH / "agent"),
@@ -51,6 +51,7 @@ def init_agent(agent_pubkey: Path):
         "--pubkey-path", str(agent_pubkey),
         "--spid", "002C842565241853FC8690DF78C40834",
         "--quote-type", "u",
+        "--quote-path", str(agent_quote),
     ])
     print(res)
 

@@ -86,10 +86,15 @@ class ResourceHandshakeSessionMixin:
         import os
         fd, agent_pubkey_filename = tempfile.mkstemp(suffix=".pem")
         os.close(fd)
+        fd, agent_quote_filename = tempfile.mkstemp(suffix=".quote")
+        os.close(fd)
         from golem.sgx.agent import init_agent
-        init_agent(Path(agent_pubkey_filename))
+        init_agent(Path(agent_pubkey_filename), Path(agent_quote_filename))
         with open(agent_pubkey_filename) as f:
             sgx_key = f.read()
+        from eth_utils import encode_hex
+        with open(agent_quote_filename, 'rb') as f:
+            agent_quote = encode_hex(f.read())
 
         key_id = self.key_id
         task_header = self.task_server.task_keeper.task_headers[task_id]
@@ -113,6 +118,7 @@ class ResourceHandshakeSessionMixin:
             provider_ethereum_public_key=self.task_server.get_key_id(),
             extra_data={
                 'sgx_key': sgx_key,
+                'agent_quote': agent_quote,
             },
         )
 
