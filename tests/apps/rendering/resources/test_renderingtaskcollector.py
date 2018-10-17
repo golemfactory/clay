@@ -59,14 +59,14 @@ class TestRenderingTaskCollector(TestDirFixture):
         assert isinstance(final_img, OpenCVImgRepr)
         assert final_img.size == (10, 10)
         img2 = self.temp_file_name("img2.png")
-        final_img.save_fullname(img2)
+        final_img.save(img2)
 
         assert compare_pil_imgs(img1, img2)
         collector.add_img_file(img2)
         final_img = collector.finalize()
         assert isinstance(final_img, OpenCVImgRepr)
         img3 = self.temp_file_name("img3.png")
-        final_img.save_fullname(img3)
+        final_img.save(img3)
 
         assert final_img.size == (10, 20)
         assert advance_verify_img(img3, 10, 20, (0, 0), (10, 10), img1, (0, 0))
@@ -78,6 +78,20 @@ class TestRenderingTaskCollector(TestDirFixture):
         img = collector.finalize()
         assert isinstance(img, OpenCVImgRepr)
         assert img.size == (10, 20)
+
+    def test_opencv_nonexisting_img(self):
+        collector = RenderingTaskCollector()
+
+        collector.add_img_file("img.png")
+        assert collector.finalize() is None
+
+        make_test_img_16bits("img.png",
+                             width=10, height=10,
+                             color=(0, 0, 0))
+        collector.add_img_file("img1.png")
+        assert collector.finalize() is None
+        os.remove("img.png")
+        assert os.path.exists("img.png") is False
 
     def test_finalize_16bits(self):
         collector = RenderingTaskCollector()
@@ -94,8 +108,8 @@ class TestRenderingTaskCollector(TestDirFixture):
         final_img = collector.finalize()
         # check size and dtype
         assert final_img is not None
-        assert final_img.get_dtype() == np.uint16
-        assert final_img.get_shape() == (len(images) * h, w, 3)
+        assert final_img.img.dtype == np.uint16
+        assert final_img.img.shape == (len(images) * h, w, 3)
 
         # verify each part of final img
         for i in range(0, len(images)):
@@ -106,7 +120,7 @@ class TestRenderingTaskCollector(TestDirFixture):
             assert final_img.img[y][x][2] == (i + 1) * r
 
         images.append("final_img.png")
-        final_img.save_fullname(images[-1])
+        final_img.save(images[-1])
         assert os.path.isfile(images[-1])
 
         f_img = cv2.imread(images[-1], cv2.IMREAD_UNCHANGED)

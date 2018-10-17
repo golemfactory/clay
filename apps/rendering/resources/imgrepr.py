@@ -3,7 +3,7 @@ import abc
 import logging
 from copy import deepcopy
 from typing import Optional
-import numpy as np
+import numpy
 import cv2
 import OpenEXR
 import Imath
@@ -53,28 +53,25 @@ class OpenCVImgRepr:
         pass
 
     def empty(self, width, height, channels, dtype):
-        self.img = np.zeros((height, width, channels),
-                            dtype)
-
-    def get_shape(self):
-        return self.img.shape
-
-    def get_dtype(self):
-        return self.img.dtype
+        self.img = numpy.zeros((height, width, channels),
+                               dtype)
 
     def paste_image(self, img, x, y):
         self.img[y:y + img.shape[0], x:img.shape[1]] = img
 
-    def save(self, path, output_format):
-        # image must be saved with extension,
-        # then rename to path
+    def save_with_extension(self, path, extension):
+        # in PIL one can specify output name without extension
+        # format was given as a second argument
+        # in OpenCV extension must be given in a filename
+        # some paths are without extension, need to rename it then
+
         file_path = '{}_{}.{}'.format(path,
                                       "tmp",
-                                      output_format.lower())
-        self.save_fullname(file_path)
+                                      extension.lower())
+        self.save(file_path)
         os.replace(file_path, path)
 
-    def save_fullname(self, path):
+    def save(self, path):
         cv2.imwrite(path, self.img)
 
     @property

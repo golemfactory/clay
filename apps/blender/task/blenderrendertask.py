@@ -635,7 +635,7 @@ class BlenderRenderTask(FrameRenderingTask):
                 collector.add_img_file(file)
             with handle_image_error(logger), \
                     collector.finalize() as image:
-                image.save(output_file_name, self.output_format)
+                image.save_with_extension(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(
                 os.path.join(self.tmp_dir, output_file_name),
@@ -679,7 +679,7 @@ class BlenderRenderTask(FrameRenderingTask):
                 collector.add_img_file(file)
             with handle_image_error(logger), \
                     collector.finalize() as image:
-                image.save(output_file_name, self.output_format)
+                image.save_with_extension(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(output_file_name,
                                                list(collected.values()),

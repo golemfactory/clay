@@ -336,11 +336,11 @@ class TestImgFunctions(TempDirFixture, LogTestCase):
         img.empty(width=10, height=20,
                   channels=3, dtype=np.uint16)
         assert isinstance(img, OpenCVImgRepr)
-        assert img.get_shape() == (20, 10, 3)
-        assert img.get_dtype() == np.uint16
-        img.save_fullname("path1.png")
+        assert img.img.shape == (20, 10, 3)
+        assert img.img.dtype == np.uint16
+        img.save("path1.png")
         assert os.path.isfile("path1.png")
-        img.save("path2.png", "PNG")
+        img.save_with_extension("path2.png", "PNG")
         assert os.path.isfile("path2.png")
 
         img2 = cv2.imread("path1.png", cv2.IMREAD_UNCHANGED)
