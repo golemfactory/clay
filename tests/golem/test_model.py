@@ -93,7 +93,7 @@ class TestLocalRank(DatabaseFixture):
         self.assertEqual(0, r.negative_payment)
         self.assertEqual(0, r.positive_resource)
         self.assertEqual(0, r.negative_resource)
-        self.assertEqual([0, 0, 0, 0], r.provider_efficacy.vector)
+        self.assertEqual((0, 0, 0, 0), r.provider_efficacy.vector)
 
 
 class TestGlobalRank(DatabaseFixture):
