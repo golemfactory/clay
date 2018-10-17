@@ -44,6 +44,11 @@ class TaskTypeInfo(object):
     def for_purpose(self, purpose: TaskPurpose) -> 'TaskTypeInfo':
         return self
 
+    @classmethod
+    # pylint:disable=unused-argument
+    def get_preview(cls, task, single=False):
+        pass
+
 
 # TODO change types to enums - for now it gets
 # evt.comp.task.test.status Error WAMP message serialization
