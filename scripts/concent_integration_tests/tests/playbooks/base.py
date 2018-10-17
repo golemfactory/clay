@@ -154,6 +154,20 @@ class NodeTestPlaybook:
         call_provider('net.status',
                       on_success=on_success, on_error=self.print_error)
 
+    def step_ensure_requestor_network(self):
+        def on_success(result):
+            if result.get('listening') and result.get('port_statuses'):
+                requestor_port = list(result.get('port_statuses').keys())[0]
+                print("Requestor's port: {}".format(requestor_port))
+                self.next()
+            else:
+                print("Waiting for Requestor's network info...")
+                time.sleep(3)
+
+        call_requestor('net.status',
+                      on_success=on_success, on_error=self.print_error)
+
+
     def step_connect_nodes(self):
         def on_success(result):
             print("Peer connection initialized.")
@@ -274,6 +288,7 @@ class NodeTestPlaybook:
         step_get_provider_key,
         step_get_requestor_key,
         step_get_provider_network_info,
+        step_ensure_requestor_network,
         step_connect_nodes,
         step_verify_peer_connection,
         step_wait_provider_gnt,
