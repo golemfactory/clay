@@ -37,7 +37,7 @@ class RenderingTaskCollector(object):
         try:
             img = self.finalize_img()
         except Exception as ex:
-            logger.error(ex)
+            logger.error(str(ex))
             return None
 
         return img
