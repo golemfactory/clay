@@ -860,15 +860,15 @@ class Client(HardwarePresetsMixin):
             return None, str(ex)
 
     def _validate_task_dict(self, t_dict) -> None:
-        task_name = ""
+        name = ""
         if 'name' in t_dict:
             t_dict['name'] = t_dict['name'].strip()
-            task_name = t_dict['name']
-        if len(task_name) < 4 or len(task_name) > 24:
+            name = t_dict['name']
+        if len(name) < 4 or len(name) > 24:
             raise ValueError(
                 "Length of task name cannot be less "
                 "than 4 or more than 24 characters.")
-        if not re.match(r"(\w|[\-\. ])+$", task_name):
+        if not re.match(r"(\w|[\-\. ])+$", name):
             raise ValueError(
                 "Task name can only contain letters, numbers, "
                 "spaces, underline, dash or dot.")
@@ -876,12 +876,12 @@ class Client(HardwarePresetsMixin):
             logger.warning("discarding the UUID from the preset")
             del t_dict['id']
 
-        subtasks = t_dict.get('subtasks', 0)
+        subtasks = t_dict.get('subtasks_count', 0)
         options = t_dict.get('options', {})
         optimize_total = bool(options.get('optimize_total', False))
         if subtasks and not optimize_total:
             computed_subtasks = framerenderingtask.calculate_subtasks_count(
-                total_subtasks=subtasks,
+                subtasks_count=subtasks,
                 optimize_total=False,
                 use_frames=options.get('frame_count', 1) > 1,
                 frames=[None]*options.get('frame_count', 1),

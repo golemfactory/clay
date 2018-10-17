@@ -24,12 +24,12 @@ class TestCoreTaskDefautls(TestCase):
         defaults = TaskDefaults()
         assert defaults.output_format == ""
         assert defaults.main_program_file == ""
-        assert defaults.full_task_timeout == 4 * 3600
+        assert defaults.timeout == 4 * 3600
         assert defaults.subtask_timeout == 20 * 60
         assert defaults.min_subtasks == 1
         assert defaults.max_subtasks == 50
         assert defaults.default_subtasks == 20
-        assert defaults.task_name == ""
+        assert defaults.name == ""
 
 
 class TestOptions(TestCase):
@@ -49,7 +49,7 @@ class TestTaskDefinition(TestCase):
 
     def test_preset(self):
         tdf = TaskDefinition()
-        tdf.total_subtasks = 12
+        tdf.subtasks_count = 12
         tdf.options.name = "OptionsName"
         tdf.optimize_total = True
         tdf.verification_options = "Option"
@@ -57,19 +57,19 @@ class TestTaskDefinition(TestCase):
         assert len(preset) == 4
         assert preset["options"].name == "OptionsName"
         assert preset["verification_options"] == "Option"
-        assert preset["total_subtasks"] == 12
+        assert preset["subtasks_count"] == 12
         assert preset["optimize_total"]
 
         tdf2 = TaskDefinition()
         assert tdf2.options.name == ""
         assert tdf2.verification_options is None
-        assert tdf2.total_subtasks == 0
+        assert tdf2.subtasks_count == 0
         assert not tdf2.optimize_total
 
         tdf2.load_preset(preset)
         assert tdf2.options.name == "OptionsName"
         assert tdf2.verification_options == "Option"
-        assert tdf2.total_subtasks == 12
+        assert tdf2.subtasks_count == 12
         assert tdf2.optimize_total
 
 
