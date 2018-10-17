@@ -315,7 +315,7 @@ class SgxDockerTaskThread(TaskThread):
             "-o", "{}/{}_{}".format('/enc_output', self.extra_data['outfilebasename'], self.extra_data['start_task']),  # noqa
             "-noaudio",
             "-F", "{}".format(self.extra_data['output_format'].upper()),
-            "-t", "{}".format(cpu_count()),
+            "-t", "{}".format(min(4, cpu_count())),
             "-f", "{}".format(','.join(map(str, self.extra_data['frames']))),
         ]
 
