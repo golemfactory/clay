@@ -42,7 +42,8 @@ class ProviderBase(test_client.TestClientBase):
             'format': 'EXR',
             'output_path': '/Users/user/Desktop/',
             'compositing': True,
-        }
+        },
+        'concent_enabled': False,
     }
 
     def setUp(self):
@@ -311,6 +312,32 @@ class TestEnqueueNewTask(ProviderBase):
             r'instead of dict #2467',
         ):
             self.provider.create_task(task)
+
+
+@mock.patch('golem.task.rpc._run_test_task')
+class TestProviderRunTestTask(ProviderBase):
+    def test_another_is_running(self, run_mock, *_):
+        self.client.task_tester = object()
+        self.assertFalse(
+            self.provider.run_test_task(self.t_dict),
+        )
+        self.assertEqual(
+            self.client.task_test_result,
+            {
+                "status": taskstate.TaskTestStatus.error,
+                "error": "Another test is running",
+            },
+        )
+        run_mock.assert_not_called()
+
+    def test_positive(self, run_mock, *_):
+        self.assertTrue(
+            self.provider.run_test_task(self.t_dict),
+        )
+        run_mock.assert_called_once_with(
+            client=self.client,
+            task_dict=self.t_dict,
+        )
 
 
 class TestRuntTestTask(ProviderBase):
