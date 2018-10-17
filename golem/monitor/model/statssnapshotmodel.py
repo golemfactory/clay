@@ -1,4 +1,5 @@
-from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats
+from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats, \
+    AggregateTaskStats
 from .modelbase import BasicModel
 
 
@@ -69,3 +70,16 @@ class RequestorStatsModel(BasicModel):
 
         self.failed_cnt = finished_stats.failed.tasks_cnt
         self.failed_total_time = finished_stats.failed.total_time
+
+
+class RequestorAggregateStatsModel(BasicModel):
+
+    def __init__(self, meta_data: BasicModel, stats: AggregateTaskStats):
+        super().__init__(
+            "RequestorAggregateStats",
+            meta_data.cliid,
+            meta_data.sessid
+        )
+
+        for key, value in vars(stats).items():
+            setattr(self, key, value)

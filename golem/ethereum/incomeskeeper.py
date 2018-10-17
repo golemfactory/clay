@@ -6,6 +6,7 @@ import time
 from ethereum.utils import denoms
 from pydispatch import dispatcher
 
+from golem.core.common import datetime_to_timestamp
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import Income
 
@@ -43,6 +44,7 @@ class IncomesKeeper:
         amount_left = amount
 
         for e in expected:
+            delay = time.time() - datetime_to_timestamp(e.created_date)
             received = min(amount_left, e.value_expected)
             e.value_received += received
             amount_left -= received
@@ -54,6 +56,7 @@ class IncomesKeeper:
                     signal='golem.income',
                     event='confirmed',
                     subtask_id=e.subtask,
+                    delay=delay,
                 )
 
     def received_forced_payment(
@@ -100,6 +103,12 @@ class IncomesKeeper:
         if not inserted and not income.accepted_ts:
             income.accepted_ts = accepted_ts
             income.save()
+            dispatcher.send(
+                signal='golem.income',
+                event='created',
+                subtask_id=subtask_id
+            )
+        return income
 
     @staticmethod
     def is_expected(

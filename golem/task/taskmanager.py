@@ -29,7 +29,7 @@ from golem.resource.hyperdrive.resourcesmanager import \
 from golem.rpc import utils as rpc_utils
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task, TaskHeader, TaskPurpose
-from golem.task.taskkeeper import CompTaskKeeper
+from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     SubtaskState, Operation, TaskOp, SubtaskOp, OtherOp
@@ -1168,7 +1168,7 @@ class TaskManager(TaskEventListener):
         )
 
         self._stop_timers(task_id, subtask_id, op)
-        self._update_provider_reputation(task_id, subtask_id, op)
+        self._update_subtask_statistics(task_id, subtask_id, op)
 
         if self.finished_cb and persist and op \
                 and op.task_related() and op.is_completed():
@@ -1189,14 +1189,49 @@ class TaskManager(TaskEventListener):
             for _subtask_id in self.tasks_states[task_id].subtask_states:
                 ProviderComputeTimers.comp_finished(_subtask_id)
 
-    @handle_task_key_error
-    def _update_provider_reputation(self, task_id: str,
-                                    subtask_id: Optional[str] = None,
-                                    op: Optional[Operation] = None) -> None:
+    def _update_subtask_statistics(self, task_id: str,
+                                   subtask_id: Optional[str] = None,
+                                   op: Optional[Operation] = None) -> None:
 
-        # Return if subtask is not completed
+        # Skip if subtask is not completed
         if not (subtask_id and isinstance(op, SubtaskOp) and op.is_completed()):
             return
+
+        self._update_provider_statistics(task_id, subtask_id, op)
+        self._update_provider_reputation(task_id, subtask_id, op)
+
+        # We're done processing the subtask
+        ProviderComputeTimers.remove(subtask_id)
+
+    @handle_task_key_error
+    def _update_provider_statistics(self, task_id: str,
+                                    subtask_id: str,
+                                    op: SubtaskOp) -> None:
+
+        header = self.tasks[task_id].header.fixed_header
+
+        try:
+            computation_time = ProviderComputeTimers.time_computing(subtask_id)
+            computation_price = compute_subtask_value(header.max_price,
+                                                      computation_time)
+
+            dispatcher.send(
+                signal='golem.subtask',
+                event='finished',
+                timed_out=(op == SubtaskOp.TIMEOUT),
+                subtask_count=header.subtasks_count,
+                subtask_timeout=header.subtask_timeout,
+                subtask_price=computation_price,
+                subtask_computation_time=computation_time,
+            )
+        except (KeyError, ValueError) as e:
+            logger.error("Unable to update statistics for subtask %s: %r",
+                         subtask_id, e)
+
+    @handle_task_key_error
+    def _update_provider_reputation(self, task_id: str,
+                                    subtask_id: str,
+                                    op: SubtaskOp) -> None:
 
         timeout = self.tasks[task_id].header.fixed_header.subtask_timeout
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
@@ -1207,13 +1242,13 @@ class TaskManager(TaskEventListener):
         try:
             update_provider_efficacy(node_id, op)
             computation_time = ProviderComputeTimers.time_computing(subtask_id)
-            ProviderComputeTimers.remove(subtask_id)
 
             if not computation_time:
                 raise ValueError("computation_time cannot be equal to {}",
                                  computation_time)
 
             update_provider_efficiency(node_id, timeout, computation_time)
+
         except (KeyError, ValueError) as e:
             logger.error("Unable to update reputation for node %s, subtask %s: "
                          "%r", subtask_id, node_info_str(node_name, node_id), e)

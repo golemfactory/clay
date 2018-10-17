@@ -478,7 +478,7 @@ class TestMonitoringPublisherService(testwithreactor.TestWithReactor):
         self.service._run()
 
         logger.debug.assert_not_called()
-        assert send.call_count == 3
+        assert send.call_count == 4
 
 
 class TestNetworkConnectionPublisherService(testwithreactor.TestWithReactor):

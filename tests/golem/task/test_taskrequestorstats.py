@@ -9,6 +9,7 @@ from golem.task.taskrequestorstats import TaskInfo, TaskMsg, \
     EMPTY_CURRENT_STATS, EMPTY_FINISHED_STATS
 from golem.task.taskstate import TaskStatus, Operation, TaskOp, SubtaskOp, \
     OtherOp, SubtaskStatus, TaskState, SubtaskState
+from golem.testutils import DatabaseFixture
 from golem.tools.assertlogs import LogTestCase
 
 
@@ -633,7 +634,7 @@ class TestRequestorTaskStats(LogTestCase):
             assert any("Skipping completed task" in l for l in log.output)
 
 
-class TestRequestorTaskStatsManager(TestCase):
+class TestRequestorTaskStatsManager(DatabaseFixture):
     def test_empty_stats(self):
         rtsm = RequestorTaskStatsManager()
         self.assertEqual(rtsm.get_current_stats(), EMPTY_CURRENT_STATS)

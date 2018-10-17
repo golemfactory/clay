@@ -4,12 +4,15 @@ import time
 from collections import defaultdict
 from typing import List
 
+from pydispatch import dispatcher
 from sortedcontainers import SortedListWithKey
 from eth_utils import encode_hex
 from ethereum.utils import denoms
 from twisted.internet import threads
 
 import golem_sci
+
+from golem.core.common import datetime_to_timestamp
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import Payment, PaymentStatus
 
@@ -100,11 +103,24 @@ class PaymentProcessor:
             p.details.fee = fee
             p.save()
             self._gntb_reserved -= p.value
-            log.debug(
-                "- %s confirmed fee %.6f",
-                p.subtask,
-                fee / denoms.ether
-            )
+            self._payment_confirmed(p)
+
+    @staticmethod
+    def _payment_confirmed(payment: Payment) -> None:
+        log.debug(
+            "- %s confirmed fee %.6f",
+            payment.subtask,
+            payment.details.fee / denoms.ether
+        )
+
+        delay = time.time() - datetime_to_timestamp(payment.created_date)
+        dispatcher.send(
+            signal="golem.payment",
+            event="confirmed",
+            subtask_id=payment.subtask,
+            payee=payment.payee,
+            delay=delay,
+        )
 
     def add(self, payment: Payment) -> int:
         if payment.status is not PaymentStatus.awaiting:

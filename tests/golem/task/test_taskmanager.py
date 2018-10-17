@@ -11,7 +11,6 @@ from freezegun import freeze_time
 from golem_messages.message import ComputeTaskDef
 from pydispatch import dispatcher
 from twisted.internet.defer import fail
-from twisted.trial.unittest import TestCase as TwistedTestCase
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask, AcceptClientVerdict
@@ -28,6 +27,7 @@ from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, \
     TaskStatus, ComputerState, TaskOp, SubtaskOp, OtherOp
+from golem.testutils import DatabaseFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
@@ -1291,9 +1291,11 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             restart.assert_called_once_with('new_subtask_id')
 
 
-class TestCopySubtaskResults(TwistedTestCase):
+class TestCopySubtaskResults(DatabaseFixture):
 
     def setUp(self):
+        super().setUp()
+
         self.tm = TaskManager(
             node_name='node_name',
             node=Node(),
