@@ -707,11 +707,15 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
 
     @classmethod
     def build_full_definition(cls, task_type, dictionary):
+        if dictionary['options']['format'] not in task_type.output_formats:
+            dictionary['options']['format'] = task_type.output_formats[0]
+
         options = dictionary['options']
 
         definition = super().build_full_definition(task_type, dictionary)
         definition.options.compositing = options.get('compositing', False)
         definition.options.samples = options.get('samples', 0)
+
         return definition
 
 
