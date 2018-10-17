@@ -632,7 +632,7 @@ class Client(HardwarePresetsMixin):
                 task.header.mask = Mask()
 
             estimated_fee = self.transaction_system.eth_for_batch_payment(
-                task.total_tasks)
+                task.get_total_tasks())
             task_manager.add_new_task(task, estimated_fee=estimated_fee)
 
             client_options = self.task_server.get_share_options(task_id, None)
