@@ -23,6 +23,28 @@ fake = faker.Faker()
 
 
 class ProviderBase(test_client.TestClientBase):
+    T_DICT = {
+        'compute_on': 'cpu',
+        'resources': [
+            '/Users/user/Desktop/folder/texture.tex',
+            '/Users/user/Desktop/folder/model.mesh',
+            '/Users/user/Desktop/folder/stylized_levi.blend'
+        ],
+        'name': fake.pystr(min_chars=4, max_chars=24),
+        'type': 'blender',
+        'timeout': '09:25:00',
+        'subtasks': 6,
+        'subtask_timeout': '4:10:00',
+        'bid': '0.000032',
+        'options': {
+            'resolution': [1920, 1080],
+            'frames': '1-10',
+            'format': 'EXR',
+            'output_path': '/Users/user/Desktop/',
+            'compositing': True,
+        }
+    }
+
     def setUp(self):
         super().setUp()
         self.client.sync = mock.Mock()
@@ -45,6 +67,7 @@ class ProviderBase(test_client.TestClientBase):
         self.client.monitor = mock.Mock()
 
         self.provider = rpc.ClientProvider(self.client)
+        self.t_dict = copy.deepcopy(self.T_DICT)
 
 
 @mock.patch('signal.signal')
@@ -235,38 +258,11 @@ class TestGetMaskForTask(test_client.TestClientBase):
             exp_potential_workers=8)
 
 
+@mock.patch('os.path.getsize')
 class TestEnqueueNewTask(ProviderBase):
-    T_DICT = {
-        'compute_on': 'cpu',
-        'resources': [
-            '/Users/user/Desktop/folder/texture.tex',
-            '/Users/user/Desktop/folder/model.mesh',
-            '/Users/user/Desktop/folder/stylized_levi.blend'
-        ],
-        'name': 'Golem Task 17:41:45 GMT+0200 (CEST)',
-        'type': 'blender',
-        'timeout': '09:25:00',
-        'subtasks': '6',
-        'subtask_timeout': '4:10:00',
-        'bid': '0.000032',
-        'options': {
-            'resolution': [1920, 1080],
-            'frames': '1-10',
-            'format': 'EXR',
-            'output_path': '/Users/user/Desktop/',
-            'compositing': True,
-        }
-    }
-
     def setUp(self):
         super().setUp()
-        self.t_dict = copy.deepcopy(self.T_DICT)
-
-    @mock.patch('os.path.getsize')
-    def test_enqueue_new_task(self, *_):
-        def add_new_task(task, *_args, **_kwargs):
-            instance = self.client.task_manager
-            instance.tasks_states[task.header.task_id] = taskstate.TaskState()
+        self.client.resource_server = mock.Mock()
 
         def create_resource_package(*_args):
             result = 'package_path', 'package_sha1'
@@ -277,17 +273,20 @@ class TestEnqueueNewTask(ProviderBase):
             result = resource_manager_result, 'res_file_1', 'package_hash', 42
             return test_client.done_deferred(result)
 
+        self.client.resource_server.create_resource_package = mock.Mock(
+            side_effect=create_resource_package)
+        self.client.resource_server.add_task = mock.Mock(
+            side_effect=add_task)
+
+    def test_enqueue_new_task(self, *_):
+        def add_new_task(task, *_args, **_kwargs):
+            instance = self.client.task_manager
+            instance.tasks_states[task.header.task_id] = taskstate.TaskState()
         c = self.client
-        c.resource_server = mock.Mock()
 
         c.task_server.task_manager.start_task = lambda tid: tid
         c.task_server.task_manager.add_new_task = add_new_task
         c.task_server.task_manager.key_id = 'deadbeef'
-
-        c.resource_server.create_resource_package = mock.Mock(
-            side_effect=create_resource_package)
-        c.resource_server.add_task = mock.Mock(
-            side_effect=add_task)
         c.p2pservice.get_estimated_network_size.return_value = 0
 
         task = self.client.task_manager.create_task(self.t_dict)
@@ -302,19 +301,6 @@ class TestEnqueueNewTask(ProviderBase):
         c.task_server.task_manager.tasks_states[task_id] = taskstate.TaskState()
         frames = c.task_server.task_manager.get_output_states(task_id)
         assert frames is not None
-
-    def test_enqueue_new_task_concent_service_disabled(self, *_):
-        self.t_dict['concent_enabled'] = True
-        self.client.concent_service = mock.Mock()
-        self.client.concent_service.enabled = False
-        task = self.client.task_manager.create_task(self.t_dict)
-
-        msg = "Cannot create task with concent enabled when " \
-              "concent service is disabled"
-        with self.assertRaises(Exception, msg=msg):
-            golem_deferred.sync_wait(
-                rpc.enqueue_new_task(self.client, task)
-            )
 
     def test_create_from_task(self, *_):
         task = self.client.task_manager.create_task(
@@ -390,3 +376,28 @@ class TestRuntTestTask(ProviderBase):
                     'resources': ['_.blend'],
                     'subtasks': 1,
                 }))
+
+
+class TestValidateTaskDict(ProviderBase):
+    def test_concent_service_disabled(self, *_):
+        self.t_dict['concent_enabled'] = True
+        self.client.concent_service = mock.Mock()
+        self.client.concent_service.enabled = False
+
+        msg = "Cannot create task with concent enabled when " \
+              "concent service is disabled"
+        with self.assertRaises(rpc.CreateTaskError, msg=msg):
+            rpc._validate_task_dict(self.client, self.t_dict)
+
+    @mock.patch(
+        "apps.rendering.task.framerenderingtask.calculate_subtasks_count",
+    )
+    def test_computed_subtasks(self, calculate_mock, *_):
+        computed_subtasks = self.t_dict['subtasks'] - 1
+        calculate_mock.return_value = computed_subtasks
+        msg = "Subtasks count {:d} is invalid. Maybe use {:d} instead?".format(
+            self.t_dict['subtasks'],
+            computed_subtasks,
+        )
+        with self.assertRaises(ValueError, msg=msg):
+            rpc._validate_task_dict(self.client, self.t_dict)

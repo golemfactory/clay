@@ -38,7 +38,7 @@ def safe_run(errback):
             try:
                 result = f(*args, **kwargs)
             except Exception as e:  # pylint: disable=broad-except
-                logger.debug('Full traceback', exc_info=e)
+                logger.error('Full traceback', exc_info=e)
                 return errback(e, *args, **kwargs)
             return result
         return curry
