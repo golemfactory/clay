@@ -1,4 +1,5 @@
 import binascii
+import logging
 import uuid
 import zipfile
 from typing import Iterable, Tuple, Optional
@@ -13,6 +14,7 @@ from golem.core.simplehash import SimpleHash
 from golem.core.simpleserializer import CBORSerializer
 from golem.task.taskbase import ResultType
 
+logger = logging.getLogger(__name__)
 
 def backup_rename(file_path, max_iterations=100):
     if not os.path.exists(file_path):
@@ -42,9 +44,9 @@ class Packager(object):
                **_kwargs):
 
         if not disk_files and not cbor_files:
-            raise ValueError('No files to pack')
-
-        disk_files = self._prepare_file_dict(disk_files)
+            logger.warn('No files to pack')
+        else:
+            disk_files = self._prepare_file_dict(disk_files)
         with self.generator(output_path) as of:
 
             if disk_files:
