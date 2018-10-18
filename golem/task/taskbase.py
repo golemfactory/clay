@@ -44,6 +44,11 @@ class TaskTypeInfo(object):
     def for_purpose(self, purpose: TaskPurpose) -> 'TaskTypeInfo':
         return self
 
+    @classmethod
+    # pylint:disable=unused-argument
+    def get_preview(cls, task, single=False):
+        pass
+
 
 # TODO change types to enums - for now it gets
 # evt.comp.task.test.status Error WAMP message serialization
@@ -263,6 +268,9 @@ class TaskHeader(object):
     def to_dict(self) -> dict:
         return DictSerializer.dump(self, typed=False)
 
+    def __repr__(self):
+        return "TaskHeader.from_dict({!r})".format(self.to_dict())
+
     def __getattr__(self, item: str) -> Any:
         if 'fixed_header' in self.__dict__ and hasattr(self.fixed_header, item):
             return getattr(self.fixed_header, item)
@@ -325,6 +333,13 @@ class TaskBuilder(abc.ABC):
         all necessary options must be specified in dictionary
         """
         pass
+
+    # TODO: Backward compatibility only. The rendering tasks should
+    # move to overriding their own TaskDefinitions instead of
+    # overriding `build_dictionary. Issue #2424`
+    @staticmethod
+    def build_dictionary(definition: TaskDefinition) -> dict:
+        return definition.to_dict()
 
 
 class TaskEventListener(object):
@@ -601,6 +616,10 @@ class Task(abc.ABC):
         Copy results of a single subtask from another task
         """
         raise NotImplementedError()
+
+    @abc.abstractmethod
+    def to_dictionary(self):
+        pass
 
     @abc.abstractmethod
     def should_accept_client(self, node_id):

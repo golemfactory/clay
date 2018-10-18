@@ -17,7 +17,7 @@ from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask, AcceptClientVerdict
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
-from golem.core.common import node_info_str
+from golem.core.common import node_info_str, short_node_id
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.p2p import node as p2p_node
 from golem.network.transport.network import ProtocolFactory, SessionFactory
@@ -43,7 +43,7 @@ from .taskmanager import TaskManager
 from .tasksession import TaskSession
 
 
-logger = logging.getLogger('golem.task.taskserver')
+logger = logging.getLogger(__name__)
 
 tmp_cycler = itertools.cycle(list(range(550)))
 
@@ -256,14 +256,6 @@ class TaskServer(
         header = self.task_keeper.task_headers[task_id]
 
         if subtask_id not in self.results_to_send:
-            value = self.task_manager.comp_task_keeper.get_value(task_id)
-            self.client.transaction_system.expect_income(
-                sender_node=header.task_owner.key,
-                subtask_id=subtask_id,
-                payer_address=pubkeytoaddr(header.task_owner.key),
-                value=value,
-            )
-
             delay_time = 0.0
             last_sending_trial = 0
 
@@ -441,22 +433,27 @@ class TaskServer(
             logger.warning("Not my subtask rejected %r", subtask_id)
             return
 
-        self.client.transaction_system.reject_income(
-            sender_node_id,
-            subtask_id,
-        )
         self.decrease_trust_payment(task_id)
         # self.remove_task_header(task_id)
         # TODO Inform transaction system and task manager about rejected
         # subtask. Issue #2405
 
-    def subtask_accepted(self, sender_node_id, subtask_id, accepted_ts):
+    # pylint:disable=too-many-arguments
+    def subtask_accepted(
+            self,
+            sender_node_id: str,
+            subtask_id: str,
+            payer_address: str,
+            value: int,
+            accepted_ts: int):
         """My (providers) results were accepted"""
         logger.debug("Subtask %r result accepted", subtask_id)
         self.task_result_sent(subtask_id)
-        self.client.transaction_system.accept_income(
+        self.client.transaction_system.expect_income(
             sender_node_id,
             subtask_id,
+            payer_address,
+            value,
             accepted_ts,
         )
 
@@ -680,10 +677,11 @@ class TaskServer(
     def should_accept_requestor(self, node_id):
         allowed, reason = self.acl.is_allowed(node_id)
         if not allowed:
-            logger.info(f'requestor {reason}; {node_id}')
+            short_id = short_node_id(node_id)
+            logger.info('requestor %s. node=%s', reason, short_id)
             return SupportStatus.err({UnsupportReason.DENY_LIST: node_id})
         trust = self.client.get_requesting_trust(node_id)
-        logger.debug("Requesting trust level: {}".format(trust))
+        logger.debug("Requesting trust level: %r", trust)
         if trust >= self.config_desc.requesting_trust:
             return SupportStatus.ok()
         else:

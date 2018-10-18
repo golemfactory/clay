@@ -35,16 +35,22 @@ CONCENT_CHOICES = {
     'dev': {
         'url': 'http://devel.concent.golem.network',
         'pubkey': b'\xf3\x97\x19\xcdX\xda\x86tiP\x1c&\xd39M\x9e\xa4\xddb\x89\xb5,]O\xd5cR\x84\xb85\xed\xc9\xa17e,\xb2s\xeb\n1\xcaN.l\xba\xc3\xb7\xc2\xba\xff\xabN\xde\xb3\x0b\xa6l\xbf6o\x81\xe0;',  # noqa pylint: disable=line-too-long
+        'deposit_contract_address':
+            '0x694667D7787CFca1892606E81734860a617537B2',
     },
     'staging': {
         'url': 'https://staging.concent.golem.network',
         'pubkey': b'b\x9b>\xf3\xb3\xefW\x92\x93\xfeIW\xd1\n\xf0j\x91\t\xdf\x95\x84\x81b6C\xe8\xe0\xdb\\.P\x00;rZM\xafQI\xf7G\x95\xe3\xe3.h\x19\xf1\x0f\xfa\x8c\xed\x12:\x88\x8aK\x00C9 \xf0~P',  # noqa pylint: disable=line-too-long
         'certificate': str(CONCENT_CERTIFICATES_DIR / 'staging.crt'),
+        'deposit_contract_address':
+            '0x694667D7787CFca1892606E81734860a617537B2',
     },
     'test': {
         'url': 'https://test.concent.golem.network',
         'pubkey': b"\xf0\x08\xd9\x80V\t\xf3'B\x83\x8dT\xec\xa7s\x1d\xfdC\x92\xa8}GM\x94\x03F\xeaF\xd8\x05\xeaj\xd9p4|y\xef\x0b\xe0\x94\xb3@\xd2{\xf6\x90G \x7f4\x1d\x0f6\xcd\xba\xf8^\x02,;\x91\xdb\xcd",  # noqa pylint: disable=line-too-long
         'certificate': str(CONCENT_CERTIFICATES_DIR / 'test.crt'),
+        'deposit_contract_address':
+            '0x694667D7787CFca1892606E81734860a617537B2',
     },
     'main': {
         'url': 'http://main.concent.golem.network',

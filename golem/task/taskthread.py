@@ -27,7 +27,6 @@ class TaskThread(threading.Thread):
                  subtask_id: str,
                  src_code: str,
                  extra_data: Dict,
-                 short_desc: str,
                  res_path: str,
                  tmp_path: str,
                  timeout: float = 0) -> None:
@@ -37,7 +36,6 @@ class TaskThread(threading.Thread):
         self.subtask_id = subtask_id
         self.src_code = src_code
         self.extra_data = extra_data
-        self.short_desc = short_desc
         self.result = None
         self.done = False
         self.res_path = res_path
@@ -74,9 +72,6 @@ class TaskThread(threading.Thread):
 
     def get_subtask_id(self):
         return self.subtask_id
-
-    def get_task_short_desc(self):
-        return self.short_desc
 
     def get_progress(self):
         with self.lock:

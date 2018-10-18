@@ -17,7 +17,7 @@ def make_mock_task(*_, task_id: str = 'tid', subtask_price: int = 100,
     task.header.deadline = timeout_to_deadline(timeout)
     task.header.task_id = task_id
     task.subtask_price = subtask_price
-    task.total_tasks = total_tasks
+    task.get_total_tasks.return_value = total_tasks
     return task
 
 
@@ -36,13 +36,13 @@ class TestFundsLocker(TempDirFixture):
         task = make_mock_task(task_id="abc", subtask_price=320, total_tasks=10)
         fl.lock_funds(task)
         self.ts.lock_funds_for_payments.assert_called_once_with(
-            task.subtask_price, task.total_tasks)
+            task.subtask_price, task.get_total_tasks())
         tfl = fl.task_lock[task.header.task_id]
 
         def test_params(tfl):
             assert isinstance(tfl, TaskFundsLock)
-            assert tfl.gnt_lock == task.subtask_price * task.total_tasks
-            assert tfl.num_tasks == task.total_tasks
+            assert tfl.gnt_lock == task.subtask_price * task.get_total_tasks()
+            assert tfl.num_tasks == task.get_total_tasks()
             assert tfl.task_deadline == task.header.deadline
 
         test_params(tfl)
@@ -163,4 +163,4 @@ class TestFundsLocker(TempDirFixture):
         self.ts.lock_funds_for_payments.assert_called_with(task.subtask_price,
                                                            num)
         assert fl.task_lock[task.header.task_id].num_tasks == \
-            task.total_tasks + num
+            task.get_total_tasks() + num
