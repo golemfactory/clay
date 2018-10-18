@@ -66,21 +66,21 @@ def _validate_task_dict(client, task_dict) -> None:
         logger.warning("discarding the UUID from the preset")
         del task_dict['id']
 
-    subtasks = task_dict.get('subtasks_count', 0)
+    subtasks_count = task_dict.get('subtasks_count', 0)
     options = task_dict.get('options', {})
     optimize_total = bool(options.get('optimize_total', False))
-    if subtasks and not optimize_total:
+    if subtasks_count and not optimize_total:
         computed_subtasks = framerenderingtask.calculate_subtasks_count(
-            subtasks_count=subtasks,
+            subtasks_count=subtasks_count,
             optimize_total=False,
             use_frames=options.get('frame_count', 1) > 1,
             frames=[None]*options.get('frame_count', 1),
         )
-        if computed_subtasks != subtasks:
+        if computed_subtasks != subtasks_count:
             raise ValueError(
                 "Subtasks count {:d} is invalid."
                 " Maybe use {:d} instead?".format(
-                    subtasks,
+                    subtasks_count,
                     computed_subtasks,
                 )
             )
@@ -138,7 +138,7 @@ def _restart_subtasks(client, old_task_id, task_dict, subtask_ids_to_copy):
     @defer.inlineCallbacks
     @safe_run(
         lambda e: logger.error(
-            'Restarting subtasks failed. task_dict=%r, subtask_ids_to_copy=%r',
+            'Restarting subtasks_countfailed. task_dict=%r, subtask_ids_to_copy=%r',
             task_dict,
             subtask_ids_to_copy,
         ),
