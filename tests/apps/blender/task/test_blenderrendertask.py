@@ -1,4 +1,5 @@
 import uuid
+import tempfile
 
 from golem_messages.message import ComputeTaskDef
 import os
@@ -637,6 +638,26 @@ class TestPreviewUpdater(TempDirFixture, LogTestCase):
 
 class TestBlenderRenderTaskBuilder(TempDirFixture):
 
+    @property
+    def _task_dictionary(self):
+        return {
+            'type': "Blender",
+            'name': 'test task',
+            'timeout': "0:10:00",
+            "subtask_timeout": "0:09:50",
+            "subtasks": 1,
+            "bid": 1.0,
+            "resources": [tempfile.mkstemp('.blend')[1]],
+            "options": {
+                "output_path": '',
+                "format": "PNG",
+                "resolution": [
+                    320,
+                    240
+                ]
+            }
+        }
+
     def test_build(self):
         definition = RenderingTaskDefinition()
         definition.total_subtasks = 1
@@ -648,6 +669,23 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
                 self.tempdir))
         blender_task = builder.build()
         self.assertIsInstance(blender_task, BlenderRenderTask)
+
+    def test_build_correct_format(self):
+        task_type = BlenderTaskTypeInfo()
+        task_dict = self._task_dictionary
+        output_format = task_dict.get('options').get('format')
+        definition = BlenderRenderTaskBuilder.build_full_definition(
+            task_type, task_dict)
+        self.assertEqual(definition.output_format, output_format)
+
+    def test_build_unsupported_format(self):
+        task_type = BlenderTaskTypeInfo()
+        task_dict = self._task_dictionary
+        output_format = 'JPG'
+        task_dict['options']['format'] = output_format
+        definition = BlenderRenderTaskBuilder.build_full_definition(
+            task_type, task_dict)
+        self.assertEqual(definition.output_format, 'PNG')
 
 
 class TestHelpers(unittest.TestCase):
