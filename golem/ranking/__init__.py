@@ -13,10 +13,10 @@ class ProviderEfficacy:
     ]
 
     def __init__(self, s: float, t: float, f: float, r: float) -> None:
-        self._vec: Tuple[float] = (s, t, f, r)
+        self._vec = (s, t, f, r)
 
     @property
-    def vector(self) -> Tuple[float]:
+    def vector(self) -> Tuple[float, float, float, float]:
         return self._vec
 
     def update(self, op: SubtaskOp, psi: float = 0.9) -> None:

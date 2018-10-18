@@ -354,7 +354,7 @@ class LocalRank(BaseModel):
     requestor_paid_sum = FloatField(default=0.0)
     provider_efficiency = FloatField(default=1.0)
     provider_efficacy = ProviderEfficacyField(
-        default=ProviderEfficacy(0, 0, 0, 0))
+        default=ProviderEfficacy(0., 0., 0., 0.))
 
 
 class GlobalRank(BaseModel):
