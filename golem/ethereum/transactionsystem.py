@@ -571,8 +571,6 @@ class TransactionSystem(LoopingCallService):
         expected -= current
         gntb_balance = self.get_available_gnt()
         if gntb_balance < required:
-            print('*'*80)
-            print(required, gntb_balance)
             raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
         if self.gas_price >= self._sci.GAS_PRICE:  # type: ignore
             if not force:
