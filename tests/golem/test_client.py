@@ -1000,7 +1000,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             ComputingSubtaskStateSnapshot(**state_snapshot_dict)
         self.client.task_server.task_computer = task_computer
 
-        #environment
+        # environment
         environment = task_computer.get_environment()
 
         # when
