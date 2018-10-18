@@ -77,6 +77,10 @@ class TaskDefinition(object):
                 if key not in attributes:
                     attributes[key] = default_value
 
+        if s_pickled_version < semantic_version.Version('0.18.0'):
+            if 'name' not in attributes:
+                attributes['name'] = attributes.pop('task_name')
+
         for key in attributes:
             setattr(self, key, attributes[key])
 

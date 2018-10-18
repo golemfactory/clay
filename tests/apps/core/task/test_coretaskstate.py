@@ -101,3 +101,24 @@ class TestPicklesFrom_0_17_1(TestCase):
         ):
             self.ser_deser()
         self.assertEqual(self.task_definition.concent_enabled, False)
+
+
+class TestPicklesFrom_0_18_0(TestCase):
+    def setUp(self):
+        self.task_definition = TaskDefinition()
+        self.assertTrue(hasattr(self.task_definition, 'name'))
+        super().setUp()
+
+    def ser_deser(self):
+        pickled = pickle.dumps(self.task_definition)
+        self.task_definition = pickle.loads(pickled)
+
+    def test_missing_name(self, *_):
+        del self.task_definition.name
+        setattr(self.task_definition, 'task_name', 'some_name')
+        with mock.patch(
+            'apps.core.task.coretaskstate.TaskDefinition.__getstate__',
+            side_effect=lambda: self.task_definition.__dict__,
+        ):
+            self.ser_deser()
+        self.assertEqual(self.task_definition.name, 'some_name')
