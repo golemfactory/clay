@@ -108,3 +108,24 @@ if not building_migration:
                            "does not exist")
 
 print_errors(task_collector_err)
+
+
+# test docker config
+
+def _docker_conflict(e: Exception):
+    raise RuntimeError(
+        "Suspected conflict in python `docker` library.\n"
+        "Please run `pip uninstall -y docker docker-py` "
+        "and re-install golem's requirements. "
+    ) from e
+
+try:
+    from docker import DockerClient as Client
+except ImportError as import_error:
+    _docker_conflict(import_error)
+
+
+try:
+    Client().api
+except TypeError as type_error:
+    _docker_conflict(type_error)
