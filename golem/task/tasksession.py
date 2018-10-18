@@ -1,4 +1,5 @@
 import datetime
+import enum
 import functools
 import logging
 import os
@@ -76,6 +77,12 @@ def get_task_message(message_class_name, task_id, subtask_id, log_prefix=None):
             subtask_id,
         )
     return msg
+
+
+class RequestorCheckResult(enum.Enum):
+    OK = enum.auto()
+    MISMATCH = enum.auto()
+    NOT_FOUND = enum.auto()
 
 
 class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
@@ -454,12 +461,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         logger.info("Received offer to compute. task_id=%r, node=%r",
                     msg.task_id, node_name_id)
 
-        if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
-            logger.warning("Can not accept offer: Still waiting on results."
-                           "task_id=%r, node=%r", msg.task_id, node_name_id)
-            self.send(message.tasks.WaitingForResults())
-            return
-
         logger.debug(
             "Calling `task_manager.got_wants_to_compute`,"
             "task_id=%s, node=%s",
@@ -498,6 +499,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 node_name_id,
             )
             _cannot_assign(reasons.NoMoreSubtasks)
+            return
+
+        if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
+            logger.warning("Can not accept offer: Still waiting on results."
+                           "task_id=%r, node=%r", msg.task_id, node_name_id)
+            self.send(message.tasks.WaitingForResults())
             return
 
         if self._handshake_required(self.key_id):
@@ -541,15 +548,25 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task.header.max_price,
             task.header.subtask_timeout,
         )
+        agent_quote_base = '{}/{}/tmp/{}.agent.quote'.format(self.task_server.task_manager.get_task_manager_root(), ctd['task_id'], ctd['subtask_id'])  # noqa
+        with open(agent_quote_base + '', 'wb') as f:
+            f.write(msg.extra_data['agent_quote'])
+        with open(agent_quote_base + '.report', 'wb') as f:
+            f.write(msg.extra_data['ias_report'])
+        with open(agent_quote_base + '.report.sig', 'wb') as f:
+            f.write(msg.extra_data['ias_sig'])
+        with open(agent_quote_base + '.report.crt', 'wb') as f:
+            f.write(msg.extra_data['ias_crt'])
         from golem.sgx.agent import encrypt_wrap_key
+        from pathlib import Path
         sgx_eas_key = encrypt_wrap_key(
             '{}/{}/resources/{}.wrapkey'.format(self.task_server.get_task_computer_root(), ctd['task_id'], ctd['task_id']),  # noqa
             msg.extra_data['sgx_key'],
+            Path(agent_quote_base),
+            Path(agent_quote_base + '.report'),
+            Path(agent_quote_base + '.report.sig'),
         )
         ctd['extra_data']['sgx_eas_key'] = sgx_eas_key
-        from eth_utils import decode_hex
-        with open('{}/{}/tmp/{}.agent.quote'.format(self.task_server.task_manager.get_task_manager_root(), ctd['task_id'], ctd['subtask_id']), 'wb') as f:  # noqa
-            f.write(decode_hex(msg.extra_data['agent_quote']))
         ttc = message.tasks.TaskToCompute(
             compute_task_def=ctd,
             want_to_compute_task=msg,
@@ -687,7 +704,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     @history.provider_history
     def _react_to_cannot_assign_task(self, msg):
-        if not self.check_requestor_for_task(msg.task_id):
+        if self.check_requestor_for_task(msg.task_id) != \
+                RequestorCheckResult.OK:
             self.dropped()
             return
         self.task_computer.task_request_rejected(msg.task_id, msg.reason)
@@ -780,27 +798,20 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         def should_accept_sra(msg) -> bool:
-            # Possible values of requestor_check_result:
-            # True - everything ok
-            # False - Other side is not authorized to act in name of node_id
-            #         (message spoofing)
-            # None - subtask_id not found in CompTaskKeeper
-            #        or task_id not found in CompTaskKeeper
             requestor_check_result = \
                 self.check_requestor_for_subtask(msg.subtask_id)
 
-            if requestor_check_result:
+            if requestor_check_result == RequestorCheckResult.OK:
                 return True
+            if requestor_check_result == RequestorCheckResult.MISMATCH:
+                return False
 
+            # requestor_check_result == RequestorCheckResult.NOT_FOUND:
             transaction_system = self.task_server.client.transaction_system
-            if requestor_check_result is None:
-                return transaction_system.is_income_expected(
-                    subtask_id=msg.subtask_id,
-                    payer_address=msg.task_to_compute.requestor_ethereum_address
-                )
-
-            # requestor_check_result = False
-            return False
+            return transaction_system.is_income_expected(
+                subtask_id=msg.subtask_id,
+                payer_address=msg.task_to_compute.requestor_ethereum_address
+            )
 
         if not should_accept_sra(msg):
             logger.debug("Unexpected income from %r for subtask %r",
@@ -825,7 +836,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def _react_to_subtask_results_rejected(
             self, msg: message.tasks.SubtaskResultsRejected):
         subtask_id = msg.report_computed_task.subtask_id
-        if not self.check_requestor_for_subtask(subtask_id):
+        if self.check_requestor_for_subtask(subtask_id) != \
+                RequestorCheckResult.OK:
             self.dropped()
             return
         self.concent_service.cancel_task_message(
@@ -1010,24 +1022,25 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
-    def check_requestor_for_task(self, task_id, additional_msg="") \
-            -> Optional[bool]:
+    def check_requestor_for_task(self, task_id: str, additional_msg: str = "") \
+            -> RequestorCheckResult:
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
             task_id)
         if node_id is None:
-            return None
+            return RequestorCheckResult.NOT_FOUND
         if node_id != self.key_id:
             logger.warning('Received message about task %r from diferrent '
                            'node %r than expected %r. %s', task_id,
                            self.key_id, node_id, additional_msg)
-            return False
-        return True
+            return RequestorCheckResult.MISMATCH
+        return RequestorCheckResult.OK
 
-    def check_requestor_for_subtask(self, subtask_id) -> Optional[bool]:
+    def check_requestor_for_subtask(self, subtask_id: str) \
+            -> RequestorCheckResult:
         task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(
             subtask_id)
         if task_id is None:
-            return None
+            return RequestorCheckResult.NOT_FOUND
         return self.check_requestor_for_task(task_id, "Subtask %r" % subtask_id)
 
     def _check_ctd_params(self, ctd: message.ComputeTaskDef):

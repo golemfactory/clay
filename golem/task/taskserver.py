@@ -17,7 +17,7 @@ from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask, AcceptClientVerdict
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
-from golem.core.common import node_info_str
+from golem.core.common import node_info_str, short_node_id
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.p2p import node as p2p_node
 from golem.network.transport.network import ProtocolFactory, SessionFactory
@@ -43,7 +43,7 @@ from .taskmanager import TaskManager
 from .tasksession import TaskSession
 
 
-logger = logging.getLogger('golem.task.taskserver')
+logger = logging.getLogger(__name__)
 
 tmp_cycler = itertools.cycle(list(range(550)))
 
@@ -677,10 +677,11 @@ class TaskServer(
     def should_accept_requestor(self, node_id):
         allowed, reason = self.acl.is_allowed(node_id)
         if not allowed:
-            logger.info(f'requestor {reason}; {node_id}')
+            short_id = short_node_id(node_id)
+            logger.info('requestor %s. node=%s', reason, short_id)
             return SupportStatus.err({UnsupportReason.DENY_LIST: node_id})
         trust = self.client.get_requesting_trust(node_id)
-        logger.debug("Requesting trust level: {}".format(trust))
+        logger.debug("Requesting trust level: %r", trust)
         if trust >= self.config_desc.requesting_trust:
             return SupportStatus.ok()
         else:

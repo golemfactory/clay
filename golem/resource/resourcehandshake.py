@@ -88,13 +88,13 @@ class ResourceHandshakeSessionMixin:
         os.close(fd)
         fd, agent_quote_filename = tempfile.mkstemp(suffix=".quote")
         os.close(fd)
-        from golem.sgx.agent import init_agent
+        from golem.sgx.agent import init_agent, agent_attest
         init_agent(Path(agent_pubkey_filename), Path(agent_quote_filename))
         with open(agent_pubkey_filename) as f:
             sgx_key = f.read()
-        from eth_utils import encode_hex
+        ias_report, ias_sig, ias_crt = agent_attest(agent_quote_filename)
         with open(agent_quote_filename, 'rb') as f:
-            agent_quote = encode_hex(f.read())
+            agent_quote = f.read()
 
         key_id = self.key_id
         task_header = self.task_server.task_keeper.task_headers[task_id]
@@ -119,6 +119,9 @@ class ResourceHandshakeSessionMixin:
             extra_data={
                 'sgx_key': sgx_key,
                 'agent_quote': agent_quote,
+                'ias_report': ias_report,
+                'ias_sig': ias_sig,
+                'ias_crt': ias_crt,
             },
         )
 

@@ -2,11 +2,15 @@
 
 from datetime import timedelta
 import json
+import typing
 from typing import Any, Optional, Tuple
 
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.deferred import sync_wait
 from golem.interface.command import doc, group, command, Argument, CommandResult
+
+if typing.TYPE_CHECKING:
+    from golem.rpc.session import ClientProxy  # noqa pylint: disable=unused-import
 
 CREATE_TASK_TIMEOUT = 300  # s
 
@@ -14,7 +18,7 @@ CREATE_TASK_TIMEOUT = 300  # s
 @group(help="Manage tasks")
 class Tasks:
 
-    client = None
+    client: 'ClientProxy'
 
     task_table_headers = ['id', 'ETA',
                           'subtasks', 'status', 'completion']
@@ -42,15 +46,16 @@ class Tasks:
         'file_name',
         help="Task file"
     )
+    force_arg = Argument(
+        'force',
+        help="Ignore warnings",
+        default=False,
+        optional=True,
+    )
     outfile = Argument(
         'outfile',
         help="Output file",
         optional=True,
-    )
-    skip_test = Argument(
-        '--skip-test',
-        default=False,
-        help="Skip task testing phase"
     )
     last_days = Argument('last_days', optional=True, default="0",
                          help="Number of last days to compute statistics on")
@@ -108,18 +113,23 @@ class Tasks:
         return CommandResult.to_tabular(Tasks.subtask_table_headers, values,
                                         sort=sort)
 
-    @command(argument=id_req, help="Restart a task")
-    def restart(self, id):
-        deferred = Tasks.client.restart_task(id)
+    @command(arguments=(id_req, force_arg, ), help="Restart a task")
+    def restart(self, id, force: bool = False):
+        deferred = Tasks.client._call('comp.task.restart', id, force=force)  # noqa pylint: disable=protected-access
         new_task_id, error = sync_wait(deferred)
         if error:
             return CommandResult(error=error)
         return new_task_id
 
-    @command(arguments=(id_req, subtask_ids),
+    @command(arguments=(id_req, subtask_ids, force_arg, ),
              help="Restart given subtasks from a task")
-    def restart_subtasks(self, id, subtask_ids):
-        deferred = Tasks.client.restart_subtasks_from_task(id, subtask_ids)
+    def restart_subtasks(self, id, subtask_ids, force: bool):
+        deferred = Tasks.client._call(  # pylint: disable=protected-access
+            'comp.task.restart_subtasks',
+            id,
+            subtask_ids,
+            force=force,
+        )
         return sync_wait(deferred)
 
     @command(argument=id_req, help="Abort a task")
@@ -137,14 +147,14 @@ class Tasks:
         deferred = Tasks.client.purge_tasks()
         return sync_wait(deferred)
 
-    @command(argument=file_name, help="""
+    @command(arguments=(file_name, force_arg, ), help="""
         Create a task from file.
         Note: no client-side validation is performed yet.
         This will change in the future
     """)
-    def create(self, file_name: str) -> Any:
+    def create(self, file_name: str, force: bool = False) -> Any:
         with open(file_name) as f:
-            task_id, error = self.__create_from_json(f.read())
+            task_id, error = self.__create_from_json(f.read(), force=force)
         if error:
             if task_id:
                 return CommandResult(error="task {} failed: {}"
@@ -200,10 +210,11 @@ class Tasks:
             return progress
         return '{:.2f} %'.format(progress * 100.0)
 
-    def __create_from_json(self, jsondata: str) \
+    def __create_from_json(self, jsondata: str, **kwargs) \
             -> Tuple[Optional[str], Optional[str]]:
         dictionary = json.loads(jsondata)
-        deferred = Tasks.client.create_task(dictionary)
+        # pylint: disable=protected-access
+        deferred = Tasks.client._call('comp.task.create', dictionary, **kwargs)
         return sync_wait(deferred, CREATE_TASK_TIMEOUT)
 
 

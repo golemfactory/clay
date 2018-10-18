@@ -743,11 +743,22 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
 
     @classmethod
     def build_full_definition(cls, task_type, dictionary):
+        requested_format = dictionary['options']['format']
+        if requested_format not in task_type.output_formats:
+            default_format = task_type.output_formats[0]
+            logger.warning(
+                "Unsupported output format: `%s`, "
+                "replacing with default: `%s`",
+                requested_format, default_format
+            )
+            dictionary['options']['format'] = default_format
+
         options = dictionary['options']
 
         definition = super().build_full_definition(task_type, dictionary)
         definition.options.compositing = options.get('compositing', False)
         definition.options.samples = options.get('samples', 0)
+
         return definition
 
 

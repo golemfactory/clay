@@ -210,6 +210,38 @@ class TestIncomesKeeper(TestWithDatabase):
         income.save(force_insert=True)
         return income
 
+    def test_expect_income_accepted_ts(self):
+        sender_node = 64 * 'a'
+        payer_address = '0x' + 40 * '1'
+        subtask_id = 'sample_subtask_id1'
+        value = 123
+        accepted_ts = 1337
+        income = self._create_income(
+            sender_node=sender_node,
+            subtask=subtask_id,
+            payer_address=payer_address,
+            value=value,
+        )
+        assert income.accepted_ts is None
+        self.incomes_keeper.expect(
+            sender_node,
+            subtask_id,
+            payer_address,
+            value,
+            accepted_ts,
+        )
+        income = Income.get(sender_node=sender_node, subtask=subtask_id)
+        assert income.accepted_ts == accepted_ts
+        self.incomes_keeper.expect(
+            sender_node,
+            subtask_id,
+            payer_address,
+            value,
+            accepted_ts + 1,
+        )
+        income = Income.get(sender_node=sender_node, subtask=subtask_id)
+        assert income.accepted_ts == accepted_ts
+
     @freeze_time()
     def test_update_overdue_incomes_all_paid(self):
         income1 = self._create_income(
