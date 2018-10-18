@@ -108,7 +108,7 @@ class TransactionSystem(LoopingCallService):
         # Amortized gas cost per payment used when dealing with locks
         self._eth_per_payment: int = 0
 
-    @property
+    @property  # type: ignore
     @sci_required()
     def gas_price(self):
         return self._sci.get_current_gas_price()
@@ -468,7 +468,7 @@ class TransactionSystem(LoopingCallService):
     @sci_required()
     def _current_eth_per_payment(self) -> int:
         gas_price = \
-            min(self._sci.GAS_PRICE, 2 * self.gas_price)
+            min(self._sci.GAS_PRICE, 2 * self.gas_price)  # type: ignore
         return gas_price * self._sci.GAS_PER_PAYMENT
 
     @sci_required()
@@ -572,7 +572,7 @@ class TransactionSystem(LoopingCallService):
         gntb_balance = self.get_available_gnt()
         if gntb_balance < required:
             raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
-        if self.gas_price >= self._sci.GAS_PRICE:
+        if self.gas_price >= self._sci.GAS_PRICE:  # type: ignore
             if not force:
                 raise exceptions.LongTransactionTime("Gas price too high")
             log.warning(
