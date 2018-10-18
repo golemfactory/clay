@@ -33,7 +33,7 @@ class ProviderBase(test_client.TestClientBase):
         'name': fake.pystr(min_chars=4, max_chars=24),
         'type': 'blender',
         'timeout': '09:25:00',
-        'subtasks': 6,
+        'subtasks_count': 6,
         'subtask_timeout': '4:10:00',
         'bid': '0.000032',
         'options': {
@@ -184,7 +184,7 @@ class TestRestartTask(ProviderBase):
             },
             'resources': [str(some_file_path)],
             'subtask_timeout': common.timeout_to_string(3),
-            'subtasks': 1,
+            'subtasks_count': 1,
             'timeout': common.timeout_to_string(3),
             'type': 'Dummy',
         }
@@ -399,7 +399,7 @@ class TestRuntTestTask(ProviderBase):
                 {
                     'type': 'blender',
                     'resources': ['_.blend'],
-                    'subtasks': 1,
+                    'subtasks_count': 1,
                 }))
 
 
@@ -418,10 +418,10 @@ class TestValidateTaskDict(ProviderBase):
         "apps.rendering.task.framerenderingtask.calculate_subtasks_count",
     )
     def test_computed_subtasks(self, calculate_mock, *_):
-        computed_subtasks = self.t_dict['subtasks'] - 1
+        computed_subtasks = self.t_dict['subtasks_count'] - 1
         calculate_mock.return_value = computed_subtasks
         msg = "Subtasks count {:d} is invalid. Maybe use {:d} instead?".format(
-            self.t_dict['subtasks'],
+            self.t_dict['subtasks_count'],
             computed_subtasks,
         )
         with self.assertRaises(ValueError, msg=msg):

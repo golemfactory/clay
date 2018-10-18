@@ -66,7 +66,7 @@ def _validate_task_dict(client, task_dict) -> None:
         logger.warning("discarding the UUID from the preset")
         del task_dict['id']
 
-    subtasks = task_dict.get('subtasks', 0)
+    subtasks = task_dict.get('subtasks_count', 0)
     options = task_dict.get('options', {})
     optimize_total = bool(options.get('optimize_total', False))
     if subtasks and not optimize_total:
