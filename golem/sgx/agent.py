@@ -144,6 +144,9 @@ def docker_run(
     fd, wrap_key_file = tempfile.mkstemp()
     os.write(fd, wrap_key)
     os.close(fd)
+    fd, fifo = tempfile.mkstemp()
+    os.close(fd)
+    os.remove(fifo)
     res = subprocess.run([
         str(AGENT_PATH / "agent"),
         "docker_run",
@@ -155,5 +158,6 @@ def docker_run(
         "--output-path", str(output_path),
         "--wrap-key-path", str(wrap_key_file),
         "--wait", "1000000",
+        "--fifo-path", fifo,
     ])
     print(res)
