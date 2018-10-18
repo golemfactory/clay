@@ -285,8 +285,8 @@ class CLI(object):
     def rearrange_action_groups(self):
         for parser in self.subparsers.choices.values():
             action_groups = parser._action_groups  # pylint: disable=protected-access
-            # if there are more action groups than just
+            # If there are more action groups than just
             # 'positional arguments' and 'optional arguments'...
             if len(action_groups) > 2:
-                # ... then move them to the beginning
+                # ... then move them to the beginning.
                 parser._action_groups = action_groups[2:] + action_groups[:2]  # pylint: disable=protected-access
