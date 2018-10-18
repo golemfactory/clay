@@ -16,6 +16,7 @@ from apps.core.task import coretask
 from apps.rendering.task import framerenderingtask
 from golem.core import async as golem_async  # rename `golem.core.async` #3030
 from golem.core import common
+from golem.core import deferred as golem_deferred
 from golem.core import simpleserializer
 from golem.ethereum import exceptions as eth_exceptions
 from golem.resource import resource
@@ -48,11 +49,11 @@ class CreateTaskError(Exception):
     pass
 
 
-def _validate_task_dict(t_dict) -> None:
+def _validate_task_dict(client, task_dict) -> None:
     task_name = ""
-    if 'name' in t_dict:
-        t_dict['name'] = t_dict['name'].strip()
-        task_name = t_dict['name']
+    if 'name' in task_dict:
+        task_dict['name'] = task_dict['name'].strip()
+        task_name = task_dict['name']
     if len(task_name) < 4 or len(task_name) > 24:
         raise ValueError(
             "Length of task name cannot be less "
@@ -61,12 +62,12 @@ def _validate_task_dict(t_dict) -> None:
         raise ValueError(
             "Task name can only contain letters, numbers, "
             "spaces, underline, dash or dot.")
-    if 'id' in t_dict:
+    if 'id' in task_dict:
         logger.warning("discarding the UUID from the preset")
-        del t_dict['id']
+        del task_dict['id']
 
-    subtasks = t_dict.get('subtasks', 0)
-    options = t_dict.get('options', {})
+    subtasks = task_dict.get('subtasks', 0)
+    options = task_dict.get('options', {})
     optimize_total = bool(options.get('optimize_total', False))
     if subtasks and not optimize_total:
         computed_subtasks = framerenderingtask.calculate_subtasks_count(
@@ -83,6 +84,12 @@ def _validate_task_dict(t_dict) -> None:
                     computed_subtasks,
                 )
             )
+
+    if task_dict['concent_enabled'] and \
+            not client.concent_service.enabled:
+        raise CreateTaskError(
+            "Cannot create task with concent enabled when "
+            "concent service is disabled")
 
 
 @golem_async.deferred_run()
@@ -154,7 +161,10 @@ def _restart_subtasks(
             new_task_id=new_task.header.task_id,
             subtask_ids_to_copy=subtask_ids_to_copy
         )
-    deferred()
+    # Function passed to twisted.threads.deferToThread can't itself
+    # return a deferred, that's why I defined inner deferred function
+    # and use sync_wait below.
+    golem_deferred.sync_wait(deferred())
 
 
 @defer.inlineCallbacks
@@ -289,22 +299,13 @@ def _start_task(client, task, resource_server_result):
 @defer.inlineCallbacks
 def enqueue_new_task(client, task, force=False) \
             -> typing.Generator[defer.Deferred, typing.Any, taskbase.Task]:
-    """
-    :return: (deferred, task_id) - deferred returns Task object when it's
-    successfully created.
-    """
+    """Feed a fresh Task to all golem subsystems"""
     if client.config_desc.in_shutdown:
         raise CreateTaskError(
             'Can not enqueue task: shutdown is in progress, '
             'toggle shutdown mode off to create a new tasks.')
     if client.task_server is None:
         raise CreateTaskError("Golem is not ready")
-
-    if task.header.fixed_header.concent_enabled and \
-            not client.concent_service.enabled:
-        raise CreateTaskError(
-            "Cannot create task with concent enabled when "
-            "concent service is disabled")
 
     task_id = task.header.task_id
     client.funds_locker.lock_funds(task)
@@ -345,11 +346,17 @@ def enqueue_new_task(client, task, force=False) \
         resource_server_result=resource_server_result,
     )
 
+    logger.info("Task enqueued. task_id=%r", task_id)
     return task
 
 
 def _create_task_error(e, _self, task_dict):
     logger.error("Cannot create task %r: %s", task_dict, e)
+    return None, str(e)
+
+
+def _restart_task_error(e, _self, task_id):
+    logger.error("Cannot restart task %r: %s", task_id, e)
     return None, str(e)
 
 
@@ -397,12 +404,12 @@ class ClientProvider:
             )
             task = task_dict
         else:
-            _validate_task_dict(task_dict)
             # Set default value for concent_enabled
             task_dict.setdefault(
                 'concent_enabled',
                 self.client.concent_service.enabled,
             )
+            _validate_task_dict(self.client, task_dict)
 
             task = self.task_manager.create_task(task_dict)
 
@@ -421,13 +428,14 @@ class ClientProvider:
         return task_id, None
 
     @rpc_utils.expose('comp.task.restart')
+    @safe_run(_restart_task_error)
     def restart_task(self, task_id: str, force: bool = False) \
             -> typing.Tuple[typing.Optional[str], typing.Optional[str]]:
         """
         :return: (new_task_id, None) on success; (None, error_message)
                  on failure
         """
-        logger.debug('Restarting task. task_id=%r', task_id)
+        logger.info('Restarting task. task_id=%r', task_id)
 
         # Task state is changed to restarted and stays this way until it's
         # deleted from task manager.
@@ -448,11 +456,21 @@ class ClientProvider:
             return None, "Task not found: '{}'".format(task_id)
 
         task_dict.pop('id', None)
-        new_task_id, msg = self.create_task(task_dict, force=force)
-        if new_task_id:
-            self.task_manager.put_task_in_restarted_state(task_id)
-
-        return new_task_id, msg
+        _validate_task_dict(self.client, task_dict)
+        new_task = self.task_manager.create_task(task_dict)
+        enqueue_new_task(  # pylint: disable=no-member
+            client=self.client,
+            task=new_task,
+            force=force,
+        ).addErrback(
+            lambda failure: _restart_task_error(
+                e=failure.value,
+                _self=self,
+                task_id=task_id,
+            ),
+        )
+        self.task_manager.put_task_in_restarted_state(task_id)
+        return new_task.header.task_id, None
 
     @rpc_utils.expose('comp.task.restart_subtasks')
     @safe_run(
@@ -493,6 +511,7 @@ class ClientProvider:
         )
         del task_dict['id']
         logger.debug('Restarting task. task_dict=%s', task_dict)
+        _validate_task_dict(self.client, task_dict)
         _restart_subtasks(
             client=self.client,
             subtask_ids_to_copy=subtask_ids_to_copy,
@@ -514,7 +533,7 @@ class ClientProvider:
             return False
 
         self.client.task_test_result = None
-        _validate_task_dict(t_dict)
+        _validate_task_dict(self.client, t_dict)
         _run_test_task(
             client=self.client,
             task_dict=t_dict,

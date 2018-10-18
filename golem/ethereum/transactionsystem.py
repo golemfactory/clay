@@ -1,4 +1,4 @@
-import calendar
+import functools
 import json
 import logging
 import os
@@ -31,6 +31,7 @@ from twisted.internet import defer
 import requests
 
 from golem import model
+from golem.core.deferred import call_later
 from golem.core.service import LoopingCallService
 from golem.ethereum.node import NodeProcess
 from golem.ethereum.paymentprocessor import PaymentProcessor
@@ -43,6 +44,17 @@ from . import exceptions
 
 
 log = logging.getLogger(__name__)
+
+
+def sci_required():
+    def wrapper(f):
+        @functools.wraps(f)
+        def curry(self, *args, **kwargs):
+            if not self._sci:  # pylint: disable=protected-access
+                raise RuntimeError('Start was not called')
+            return f(self, *args, **kwargs)
+        return curry
+    return wrapper
 
 
 class ConversionStatus(Enum):
@@ -83,7 +95,7 @@ class TransactionSystem(LoopingCallService):
 
         self._gnt_faucet_requested = False
         self._gnt_conversion_status = ConversionStatus.NONE
-        self._deposit_withdrawal_requested = False
+        self._concent_withdraw_requested = False
 
         self._eth_balance: int = 0
         self._gnt_balance: int = 0
@@ -211,9 +223,8 @@ class TransactionSystem(LoopingCallService):
             with open(keystore_path, 'w') as f:
                 json.dump(keystore, f)
 
+    @sci_required()
     def _subscribe_to_events(self) -> None:
-        if not self._sci:
-            raise Exception('Start was not called')
         values = model.GenericKeyValue.select().where(
             model.GenericKeyValue.key == self.BLOCK_NUMBER_DB_KEY)
         from_block = int(values.get().value) if values.count() == 1 else 0
@@ -256,12 +267,12 @@ class TransactionSystem(LoopingCallService):
                     closure_time=event.closure_time,
                 ),
             )
+            self._schedule_concent_withdraw()
         except AttributeError as e:
             log.info("Can't use GNTDeposit on mainnet yet: %r", e)
 
+    @sci_required()
     def _save_subscription_block_number(self) -> None:
-        if not self._sci:
-            raise Exception('Start was not called')
         block_number = self._sci.get_block_number() - self._sci.REQUIRED_CONFS
         kv, _ = model.GenericKeyValue.get_or_create(
             key=self.BLOCK_NUMBER_DB_KEY,
@@ -293,10 +304,9 @@ class TransactionSystem(LoopingCallService):
         )
         return self._payment_processor.add(payment)
 
+    @sci_required()
     def get_payment_address(self):
         """ Human readable Ethereum address for incoming payments."""
-        if not self._sci:
-            raise Exception('Start was not called')
         return self._sci.get_eth_address()
 
     def get_payments_list(self):
@@ -337,10 +347,8 @@ class TransactionSystem(LoopingCallService):
             return 0
         return payments_num * self._eth_per_payment
 
+    @sci_required()
     def get_available_gnt(self, account_address: Optional[str] = None) -> int:
-        # FIXME Use decorator to DRY #3190
-        if not self._sci:
-            raise Exception('Start was not called')
         if (account_address is None) \
                 or (account_address == self._sci.get_eth_address()):
             return self._gntb_balance - self.get_locked_gnt() - \
@@ -352,9 +360,8 @@ class TransactionSystem(LoopingCallService):
             raise Exception('Start was not called')
         return self._gntb_locked + self._payment_processor.reserved_gntb
 
+    @sci_required()
     def get_balance(self) -> Dict[str, Any]:
-        if not self._sci:
-            raise Exception('Start was not called')
         return {
             'gnt_available': self.get_available_gnt(),
             'gnt_locked': self.get_locked_gnt(),
@@ -428,6 +435,16 @@ class TransactionSystem(LoopingCallService):
             accepted_ts,
         )
 
+    def is_income_expected(
+            self,
+            subtask_id: str,
+            payer_address: str,
+    ) -> bool:
+        return self._incomes_keeper.is_expected(
+            subtask_id,
+            payer_address,
+        )
+
     def settle_income(
             self,
             sender_node: str,
@@ -444,25 +461,22 @@ class TransactionSystem(LoopingCallService):
             self._eth_base_for_batch_payment()
         return required - self.get_locked_eth()
 
+    @sci_required()
     def _eth_base_for_batch_payment(self) -> int:
-        if not self._sci:
-            raise Exception('Start was not called')
         return self._sci.GAS_BATCH_PAYMENT_BASE * self._sci.GAS_PRICE
 
+    @sci_required()
     def _current_eth_per_payment(self) -> int:
-        if not self._sci:
-            raise Exception('Start was not called')
         gas_price = \
             min(self._sci.GAS_PRICE, 2 * self.gas_price)
         return gas_price * self._sci.GAS_PER_PAYMENT
 
+    @sci_required()
     def get_withdraw_gas_cost(
             self,
             amount: int,
             destination: str,
             currency: str) -> int:
-        if not self._sci:
-            raise Exception('Start was not called')
         gas_price = self.gas_price
         if currency == 'ETH':
             return self._sci.estimate_transfer_eth_gas(destination, amount) * \
@@ -471,13 +485,12 @@ class TransactionSystem(LoopingCallService):
             return self._sci.GAS_WITHDRAW * gas_price
         raise ValueError('Unknown currency {}'.format(currency))
 
+    @sci_required()
     def withdraw(
             self,
             amount: int,
             destination: str,
             currency: str) -> str:
-        if not self._sci:
-            raise Exception('Start was not called')
         if not self._config.WITHDRAWALS_ENABLED:
             raise Exception("Withdrawals are disabled")
 
@@ -522,23 +535,21 @@ class TransactionSystem(LoopingCallService):
 
         raise ValueError('Unknown currency {}'.format(currency))
 
+    @sci_required()
     def concent_balance(self, account_address: Optional[str] = None) -> int:
-        if not self._sci:
-            raise Exception('Start was not called')
         if account_address is None:
             account_address = self._sci.get_eth_address()
         return self._sci.get_deposit_value(
             account_address=account_address,
         )
 
+    @sci_required()
     def concent_timelock(self, account_address: Optional[str] = None) -> int:
         # FIXME Use decorator to DRY #3190
         # possible lock values:
         # 0 - locked
         # > now - unlocking
         # < now - unlocked
-        if not self._sci:
-            raise Exception('Start was not called')
         if account_address is None:
             account_address = self._sci.get_eth_address()
         return self._sci.get_deposit_locked_until(
@@ -546,15 +557,13 @@ class TransactionSystem(LoopingCallService):
         )
 
     @defer.inlineCallbacks
+    @sci_required()
     def concent_deposit(
             self,
             required: int,
             expected: int,
             force: bool = False) \
             -> Generator[defer.Deferred, TransactionReceipt, Optional[str]]:
-        if not self._sci:
-            raise Exception('Start was not called')
-
         current = self.concent_balance()
         if current >= required:
             return None
@@ -613,33 +622,40 @@ class TransactionSystem(LoopingCallService):
     def concent_unlock(self):
         if self.concent_balance() == 0:
             return
-        self._sci.unlock_deposit()
+        tx_hash = self._sci.unlock_deposit()
+        log.info("Unlocking concent deposit, tx: %s", tx_hash)
 
-    def concent_withdraw(self):
-        if self._deposit_withdrawal_requested:
-            return
+        def _on_receipt(receipt):
+            if not receipt.status:
+                log.error("Transaction failed, %r", receipt)
+                return
+            self._schedule_concent_withdraw()
+
+        self._sci.on_transaction_confirmed(tx_hash, _on_receipt)
+
+    def _schedule_concent_withdraw(self) -> None:
         timelock = self.concent_timelock()
         if timelock == 0:
             return
-        # Using this tricky approach instead of time.time()
-        # because of AppVeyor issues.
-        now = calendar.timegm(time.gmtime())
-        if timelock > now:
+        delay = max(0, timelock - int(time.time()))
+        call_later(delay, self.concent_withdraw)
+
+    def concent_withdraw(self):
+        if self._concent_withdraw_requested:
             return
-        self._deposit_withdrawal_requested = True
-        tx_hash: str = self._sci.withdraw_deposit()
+        timelock = self.concent_timelock()
+        if timelock == 0 or timelock > time.time():
+            return
+        tx_hash = self._sci.withdraw_deposit()
+        self._concent_withdraw_requested = True
 
-        def _cbk(_transaction_receipt):
-            self._deposit_withdrawal_requested = False
+        def on_confirmed(_receipt) -> None:
+            self._concent_withdraw_requested = False
+        self._sci.on_transaction_confirmed(tx_hash, on_confirmed)
+        log.info("Withdrawing concent deposit, tx: %s", tx_hash)
 
-        self._sci.on_transaction_confirmed(
-            tx_hash=tx_hash,
-            cb=_cbk,
-        )
-
+    @sci_required()
     def _get_funds_from_faucet(self) -> None:
-        if not self._sci:
-            raise Exception('Start was not called')
         if not self._config.FAUCET_ENABLED:
             return
         if self._eth_balance < 0.01 * denoms.ether:
@@ -655,9 +671,8 @@ class TransactionSystem(LoopingCallService):
         else:
             self._gnt_faucet_requested = False
 
+    @sci_required()
     def _refresh_balances(self) -> None:
-        if not self._sci:
-            raise Exception('Start was not called')
         now = time.mktime(datetime.today().timetuple())
         addr = self._sci.get_eth_address()
 
@@ -673,9 +688,8 @@ class TransactionSystem(LoopingCallService):
         except Exception as e:  # pylint: disable=broad-except
             log.warning('Failed to update balances: %r', e)
 
+    @sci_required()
     def _try_convert_gnt(self) -> None:  # pylint: disable=too-many-branches
-        if not self._sci:
-            raise Exception('Start was not called')
         if self._gnt_conversion_status == ConversionStatus.UNFINISHED:
             if self._gnt_balance > 0:
                 self._gnt_conversion_status = ConversionStatus.NONE
@@ -757,7 +771,6 @@ class TransactionSystem(LoopingCallService):
         self._try_convert_gnt()
         self._payment_processor.sendout()
         self._incomes_keeper.update_overdue_incomes()
-        self.concent_withdraw()
 
 
 def tETH_faucet_donate(addr: str):
