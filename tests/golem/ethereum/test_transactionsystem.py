@@ -526,7 +526,7 @@ class ConcentDepositTest(TransactionSystemBase):
     def test_gas_price_skyrocketing(self):
         self.sci.get_deposit_value.return_value = 0
         self.sci.get_gntb_balance.return_value = 20
-        self.sci._eth_balance = denoms.ether
+        self.sci.get_eth_balance.return_value = denoms.ether
         self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE
         self.ets._refresh_balances()
         with self.assertRaises(exceptions.LongTransactionTime):
