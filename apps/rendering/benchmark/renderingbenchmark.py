@@ -18,7 +18,7 @@ class RenderingBenchmark(CoreBenchmark):
         self._task_definition = RenderingTaskDefinition()
         self._task_definition.max_price = 100
         self._task_definition.resolution = [200, 100]
-        self._task_definition.full_task_timeout = 10000
+        self._task_definition.timeout = 10000
         self._task_definition.subtask_timeout = 10000
         self._task_definition.optimize_total = False
         self._task_definition.resources = set()

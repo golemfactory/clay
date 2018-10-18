@@ -111,7 +111,7 @@ class CoreTask(Task):
         """Create more specific task implementation
         """
 
-        task_timeout = task_definition.full_task_timeout
+        task_timeout = task_definition.timeout
         self._deadline = timeout_to_deadline(task_timeout)
 
         # resources stuff
@@ -166,7 +166,7 @@ class CoreTask(Task):
         self.subtasks_given = {}
         self.num_failed_subtasks = 0
 
-        self.full_task_timeout = task_timeout
+        self.timeout = task_timeout
         self.counting_nodes = {}
 
         self.root_path = root_path
@@ -606,7 +606,7 @@ class CoreTaskBuilder(TaskBuilder):
         definition.max_price = \
             int(decimal.Decimal(dictionary['bid']) * denoms.ether)
 
-        definition.full_task_timeout = string_to_timeout(
+        definition.timeout = string_to_timeout(
             dictionary['timeout'])
         definition.subtask_timeout = string_to_timeout(
             dictionary['subtask_timeout'])
