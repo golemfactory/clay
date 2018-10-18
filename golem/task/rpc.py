@@ -138,7 +138,7 @@ def _restart_subtasks(client, old_task_id, task_dict, subtask_ids_to_copy):
     @defer.inlineCallbacks
     @safe_run(
         lambda e: logger.error(
-            'Restarting subtasks_countfailed. task_dict=%r, subtask_ids_to_copy=%r',
+            'Restarting subtasks_failed. task_dict=%r, subtask_ids_to_copy=%r',
             task_dict,
             subtask_ids_to_copy,
         ),
