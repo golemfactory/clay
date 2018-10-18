@@ -29,7 +29,7 @@ from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, \
     TaskStatus, ComputerState, TaskOp, SubtaskOp, OtherOp
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.testwithreactor import TestDirFixtureWithReactor
+from golem.tools.testwithreactor import TestDatabaseWithReactor
 
 from apps.dummy.task.dummytask import (
     DummyTaskDefaults,
@@ -70,7 +70,7 @@ class TaskMock(Task):
 
 @patch.multiple(TaskMock, __abstractmethods__=frozenset())
 @patch.multiple(Task, __abstractmethods__=frozenset())
-class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
+class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: disable=too-many-ancestors
                       testutils.PEP8MixIn):
     PEP8_FILES = [
         'golem/task/taskmanager.py',

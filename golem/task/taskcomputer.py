@@ -95,6 +95,11 @@ class TaskComputer(object):
             return False
 
         ProviderIdleTimer.comp_started()
+        dispatcher.send(
+            signal='golem.taskcomputer',
+            event='subtask_started',
+            subtask_id=ctd['subtask_id']
+        )
 
         self.assigned_subtask = ctd
         self.__request_resource(
@@ -134,7 +139,7 @@ class TaskComputer(object):
             subtask['task_id'],
             'Error downloading resources: {}'.format(reason),
         )
-        self.__task_finished()
+        self.__task_finished(subtask)
         self.session_closed()
 
     def wait_for_resources(self, task_id, delta):
@@ -212,7 +217,7 @@ class TaskComputer(object):
 
         dispatcher.send(signal='golem.monitor', event='computation_time_spent',
                         success=was_success, value=work_time_to_be_paid)
-        self.__task_finished()
+        self.__task_finished(subtask)
 
     def run(self):
         """ Main loop of task computer """
@@ -371,7 +376,7 @@ class TaskComputer(object):
                 "Host direct task not supported",
             )
 
-            self.__task_finished()
+            self.__task_finished(subtask)
             return
 
         with self.lock:
@@ -379,8 +384,15 @@ class TaskComputer(object):
 
         tt.start().addBoth(lambda _: self.task_computed(tt))
 
-    def __task_finished(self):
+    def __task_finished(self, ctd: dict) -> None:
+
         ProviderIdleTimer.comp_finished()
+        dispatcher.send(
+            signal='golem.taskcomputer',
+            event='subtask_finished',
+            subtask_id=ctd['subtask_id'],
+            min_performance=ctd['performance'],
+        )
 
         with self.lock:
             self.counting_thread = None
