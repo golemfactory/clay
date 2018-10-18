@@ -49,7 +49,8 @@ class Tasks:
     force_arg = Argument(
         'force',
         help="Ignore warnings",
-        default=False
+        default=False,
+        optional=True,
     )
     outfile = Argument(
         'outfile',
@@ -112,8 +113,8 @@ class Tasks:
         return CommandResult.to_tabular(Tasks.subtask_table_headers, values,
                                         sort=sort)
 
-    @command(argument=(id_req, force_arg, ), help="Restart a task")
-    def restart(self, id, force: bool):
+    @command(arguments=(id_req, force_arg, ), help="Restart a task")
+    def restart(self, id, force: bool = False):
         deferred = Tasks.client._call('comp.task.restart', id, force=force)  # noqa pylint: disable=protected-access
         new_task_id, error = sync_wait(deferred)
         if error:
@@ -146,12 +147,12 @@ class Tasks:
         deferred = Tasks.client.purge_tasks()
         return sync_wait(deferred)
 
-    @command(argument=(file_name, force_arg, ), help="""
+    @command(arguments=(file_name, force_arg, ), help="""
         Create a task from file.
         Note: no client-side validation is performed yet.
         This will change in the future
     """)
-    def create(self, file_name: str, force: bool) -> Any:
+    def create(self, file_name: str, force: bool = False) -> Any:
         with open(file_name) as f:
             task_id, error = self.__create_from_json(f.read(), force=force)
         if error:

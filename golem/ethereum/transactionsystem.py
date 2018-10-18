@@ -571,6 +571,8 @@ class TransactionSystem(LoopingCallService):
         expected -= current
         gntb_balance = self.get_available_gnt()
         if gntb_balance < required:
+            print('*'*80)
+            print(required, gntb_balance)
             raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
         if self.gas_price >= self._sci.GAS_PRICE:  # type: ignore
             if not force:
@@ -606,8 +608,8 @@ class TransactionSystem(LoopingCallService):
                 transaction_receipt=receipt,
             )
 
-        gas_price = self._sci.get_transaction_gas_price(receipt.tx_hash)
-        dpayment.fee = receipt.gas_used * gas_price
+        tx_gas_price = self._sci.get_transaction_gas_price(receipt.tx_hash)
+        dpayment.fee = receipt.gas_used * tx_gas_price
         dpayment.status = model.PaymentStatus.confirmed
         dpayment.save()
         return dpayment.tx

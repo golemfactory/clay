@@ -311,6 +311,20 @@ class TestEnqueueNewTask(ProviderBase):
         ):
             self.provider.create_task(task)
 
+    def test_ensure_task_deposit(self, *_):
+        force = fake.pybool()
+        self.client.concent_service = mock.Mock()
+        self.client.concent_service.enabled = True
+        self.t_dict['concent_enabled'] = True
+        task = self.client.task_manager.create_task(self.t_dict)
+        deferred = rpc.enqueue_new_task(self.client, task, force=force)
+        golem_deferred.sync_wait(deferred)
+        self.client.transaction_system.concent_deposit.assert_called_once_with(
+            required=mock.ANY,
+            expected=mock.ANY,
+            force=force,
+        )
+
 
 @mock.patch('golem.task.rpc._run_test_task')
 class TestProviderRunTestTask(ProviderBase):
@@ -441,13 +455,16 @@ class TestRestartSubtasks(ProviderBase):
             )
 
     def test_empty(self, restart_mock, *_):
+        force = fake.pybool()
         self.provider.restart_subtasks_from_task(
             task_id=self.task.header.task_id,
-            subtask_ids=[]
+            subtask_ids=[],
+            force=force,
         )
         restart_mock.assert_called_once_with(
             client=self.client,
             subtask_ids_to_copy=set(),
             old_task_id=self.task.header.task_id,
             task_dict=mock.ANY,
+            force=force,
         )

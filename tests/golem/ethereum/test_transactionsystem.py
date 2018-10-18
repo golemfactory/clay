@@ -35,7 +35,7 @@ class TransactionSystemBase(testutils.DatabaseFixture):
         self.sci.GAS_BATCH_PAYMENT_BASE = 30000
         self.sci.get_gate_address.return_value = None
         self.sci.get_block_number.return_value = 1223
-        self.sci.get_current_gas_price.return_value = 10 ** 9
+        self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE - 1
         self.sci.get_eth_balance.return_value = 0
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 0
@@ -131,6 +131,11 @@ class TestTransactionSystem(TransactionSystemBase):
         cost = self.ets.get_withdraw_gas_cost(200, dest, 'GNT')
         assert cost == self.sci.GAS_WITHDRAW * gas_price
 
+    def test_withdraw_unknown_currency(self):
+        dest = '0x' + 40 * 'd'
+        with self.assertRaises(ValueError):
+            self.ets.withdraw(1, dest, 'asd')
+
     def test_withdraw(self):
         eth_balance = 40 * denoms.ether
         gnt_balance = 10 * denoms.ether
@@ -145,10 +150,6 @@ class TestTransactionSystem(TransactionSystemBase):
         dest = '0x' + 40 * 'd'
 
         self.ets._refresh_balances()
-
-        # Unknown currency
-        with self.assertRaises(ValueError):
-            self.ets.withdraw(1, dest, 'asd')
 
         # Invalid address
         with self.assertRaisesRegex(ValueError, 'is not valid ETH address'):
@@ -406,7 +407,7 @@ class ConcentDepositTest(TransactionSystemBase):
         callback.assert_called_once()
         return callback.call_args[0][0]  # noqa pylint: disable=unsubscriptable-object
 
-    def test_concent_deposit_enough(self):
+    def test_enough(self):
         self.sci.get_deposit_value.return_value = 10
         tx_hash = self._call_concent_deposit(
             required=10,
@@ -415,7 +416,7 @@ class ConcentDepositTest(TransactionSystemBase):
         self.assertIsNone(tx_hash)
         self.sci.deposit_payment.assert_not_called()
 
-    def test_concent_deposit_not_enough(self):
+    def test_not_enough(self):
         self.sci.get_deposit_value.return_value = 0
         self.ets._gntb_balance = 0
         with self.assertRaises(exceptions.NotEnoughFunds):
@@ -442,7 +443,23 @@ class ConcentDepositTest(TransactionSystemBase):
         self.sci.on_transaction_confirmed.side_effect = callback
         return tx_hash
 
-    def test_concent_deposit_transaction_failed(self):
+    @classmethod
+    def _confirm_it(cls, tx_hash, cb):
+        receipt = golem_sci.structs.TransactionReceipt(
+            raw_receipt={
+                'transactionHash': bytes.fromhex(tx_hash[2:]),
+                'status': 1,
+                'blockHash': bytes.fromhex(
+                    'cbca49fb2c75ba2fada56c6ea7df5979444127d29b6b4e93a77'
+                    '97dc22e97399c',
+                ),
+                'blockNumber': 2940769,
+                'gasUsed': 21000,
+            },
+        )
+        cb(receipt)
+
+    def test_transaction_failed(self):
         gntb_balance = 20
         subtask_price = 1
         subtask_count = 1
@@ -478,31 +495,16 @@ class ConcentDepositTest(TransactionSystemBase):
         self.sci.deposit_payment.assert_called_once_with(deposit_value)
         self.assertFalse(model.DepositPayment.select().exists())
 
-    def test_concent_deposit_done(self):
+    def test_done(self):
         gntb_balance = 20
         subtask_price = 1
         subtask_count = 1
-
-        def confirm_it(tx_hash, cb):
-            receipt = golem_sci.structs.TransactionReceipt(
-                raw_receipt={
-                    'transactionHash': bytes.fromhex(tx_hash[2:]),
-                    'status': 1,
-                    'blockHash': bytes.fromhex(
-                        'cbca49fb2c75ba2fada56c6ea7df5979444127d29b6b4e93a77'
-                        '97dc22e97399c',
-                    ),
-                    'blockNumber': 2940769,
-                    'gasUsed': 21000,
-                },
-            )
-            cb(receipt)
 
         tx_hash = self._prepare_concent_deposit(
             gntb_balance,
             subtask_price,
             subtask_count,
-            confirm_it,
+            self._confirm_it,
         )
 
         db_tx_hash = self._call_concent_deposit(
@@ -520,6 +522,32 @@ class ConcentDepositTest(TransactionSystemBase):
                 ('fee', 42000),
                 ('tx', tx_hash),):
             self.assertEqual(getattr(dpayment, field), value)
+
+    def test_gas_price_skyrocketing(self):
+        self.sci.get_deposit_value.return_value = 0
+        self.sci.get_gntb_balance.return_value = 20
+        self.sci._eth_balance = denoms.ether
+        self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE
+        self.ets._refresh_balances()
+        with self.assertRaises(exceptions.LongTransactionTime):
+            self._call_concent_deposit(
+                required=10,
+                expected=40,
+            )
+
+    def test_gas_price_skyrocketing_forced(self):
+        self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE
+        self._prepare_concent_deposit(
+            gntb_balance=20,
+            subtask_price=1,
+            subtask_count=1,
+            callback=self._confirm_it,
+        )
+        self._call_concent_deposit(
+            required=10,
+            expected=40,
+            force=True
+        )
 
 
 class ConcentWithdrawTest(TransactionSystemBase):
@@ -587,16 +615,18 @@ class ConcentUnlockTest(TransactionSystemBase):
 
 
 class FaucetTest(TestCase):
+    @classmethod
     @patch('requests.get')
-    def test_error_code(self, get):
+    def test_error_code(cls, get):
         addr = encode_hex(urandom(20))
         response = Mock(spec=requests.Response)
         response.status_code = 500
         get.return_value = response
         assert tETH_faucet_donate(addr) is False
 
+    @classmethod
     @patch('requests.get')
-    def test_error_msg(self, get):
+    def test_error_msg(cls, get):
         addr = encode_hex(urandom(20))
         response = Mock(spec=requests.Response)
         response.status_code = 200
@@ -604,8 +634,9 @@ class FaucetTest(TestCase):
         get.return_value = response
         assert tETH_faucet_donate(addr) is False
 
+    @classmethod
     @patch('requests.get')
-    def test_success(self, get):
+    def test_success(cls, get):
         addr = encode_hex(urandom(20))
         response = Mock(spec=requests.Response)
         response.status_code = 200
