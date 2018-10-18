@@ -256,11 +256,11 @@ class CompTaskKeeper:
             return False
         return True
 
-    def get_task_id_for_subtask(self, subtask_id):
+    def get_task_id_for_subtask(self, subtask_id: str) -> typing.Optional[str]:
         return self.subtask_to_task.get(subtask_id)
 
     @handle_key_error
-    def get_node_for_task_id(self, task_id):
+    def get_node_for_task_id(self, task_id) -> typing.Optional[str]:
         return self.active_tasks[task_id].header.task_owner.key
 
     @handle_key_error

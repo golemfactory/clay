@@ -37,3 +37,7 @@ class TransactionError(EthereumError):
 
 class DepositError(TransactionError):
     pass
+
+
+class LongTransactionTime(EthereumError):
+    pass
