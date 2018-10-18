@@ -1,15 +1,18 @@
+import os
 import yaml
 from fireworks import LaunchPad, ScriptTask, Workflow
 from typing import List, Optional
 
-from golem.task.taskbase import Task, ResultType, TaskState, TaskBuilder, TaskTypeInfo, TaskDefaults, TaskHeader
+from golem.task.taskbase import Task, ResultType, TaskState, TaskBuilder,\
+                                TaskTypeInfo, TaskDefaults, TaskHeader
 import golem_messages
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.fireworks.fireworksenvironment import FireworksTaskEnvironment
 from golem.docker.environment import DockerEnvironment
-from golem.core.common import timeout_to_deadline, string_to_timeout, to_unicode
+from golem.core.common import timeout_to_deadline, string_to_timeout,\
+                              to_unicode, get_golem_path
 from golem_messages import idgenerator
 
 class FireWorksTaskDefinition(TaskDefinition):
@@ -92,6 +95,25 @@ class FireworksTaskBuilder(BasicTaskBuilder):
         td = task_type.definition()
         apply(td, dictionary)
         return td
+
+class FireworksBenchmarkTaskBuilder(FireworksTaskBuilder):
+
+    BENCHMARK_FILE = 'fw_adder.yaml'
+
+    def build(self) -> 'Task':
+        launchpad_dict = self.DEFAULT_LAUNCHPAD
+        firework_bench_path = os.path.join(get_golem_path(),
+                                           'apps',
+                                           'fireworks',
+                                           'benchmark',
+                                           'data',
+                                           self.BENCHMARK_FILE)
+        return FireworksTask(self.owner,
+                             self.task_definition,
+                             self.dir_manager,
+                             LaunchPad.from_dict(launchpad_dict),
+                             Workflow.from_file(firework_bench_path))
+
 
 class DockerizedTask(Task):
     ENVIRONMENT_CLASS=DockerEnvironment
