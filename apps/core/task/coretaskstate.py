@@ -1,10 +1,10 @@
 from os import path, remove
 
-from golem.core.variables import PICKLED_VERSION_0, PICKLED_VERSION_1,\
-                                 PICKLED_VERSION_2
 from ethereum.utils import denoms
 
 from golem.core.common import timeout_to_string
+from golem.core.variables import PICKLED_VERSION_0, PICKLED_VERSION_1,\
+                                 PICKLED_VERSION_2
 from golem.environments.environment import Environment
 from golem.task.taskstate import TaskState
 
