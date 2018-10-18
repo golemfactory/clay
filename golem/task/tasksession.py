@@ -453,12 +453,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         logger.info("Received offer to compute. task_id=%r, node=%r",
                     msg.task_id, node_name_id)
 
-        if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
-            logger.warning("Can not accept offer: Still waiting on results."
-                           "task_id=%r, node=%r", msg.task_id, node_name_id)
-            self.send(message.tasks.WaitingForResults())
-            return
-
         logger.debug(
             "Calling `task_manager.got_wants_to_compute`,"
             "task_id=%s, node=%s",
@@ -497,6 +491,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 node_name_id,
             )
             _cannot_assign(reasons.NoMoreSubtasks)
+            return
+
+        if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
+            logger.warning("Can not accept offer: Still waiting on results."
+                           "task_id=%r, node=%r", msg.task_id, node_name_id)
+            self.send(message.tasks.WaitingForResults())
             return
 
         if self._handshake_required(self.key_id):
