@@ -3,8 +3,7 @@ from os import path, remove
 from ethereum.utils import denoms
 
 from golem.core.common import timeout_to_string
-from golem.core.variables import PICKLED_VERSION_0, PICKLED_VERSION_1,\
-                                 PICKLED_VERSION_2
+from golem.core.variables import PICKLED_VERSION
 from golem.environments.environment import Environment
 from golem.task.taskstate import TaskState
 
@@ -57,18 +56,18 @@ class TaskDefinition(object):
         self.concent_enabled: bool = False
 
     def __getstate__(self):
-        return PICKLED_VERSION_2, self.__dict__
+        return PICKLED_VERSION, self.__dict__
 
     def __setstate__(self, state):
         # FIXME Move to sqlite
         if not isinstance(state, tuple):
-            pickled_version, attributes = PICKLED_VERSION_0, state
+            pickled_version, attributes = 0, state
         else:
             pickled_version, attributes = state
             if not isinstance(pickled_version, int):
-                pickled_version = PICKLED_VERSION_1
+                pickled_version = 1
 
-        if pickled_version < PICKLED_VERSION_1:
+        if pickled_version < 1:
             # Defaults for attributes that could be missing in pickles
             # from 0.17.1  #3405
             migration_defaults = (
@@ -79,7 +78,7 @@ class TaskDefinition(object):
                 if key not in attributes:
                     attributes[key] = default_value
 
-        if pickled_version < PICKLED_VERSION_2:
+        if pickled_version < 2:
             if 'name' not in attributes:
                 attributes['name'] = attributes.pop('task_name')
             if 'subtasks_count' not in attributes:
