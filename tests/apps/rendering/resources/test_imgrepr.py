@@ -1,13 +1,15 @@
 import os
 import unittest
 
+import pytest
 from PIL import Image
 import cv2
 
 import numpy as np
 from apps.rendering.resources.imgrepr import (blend, EXRImgRepr, ImgRepr,
                                               load_as_pil, load_img, load_as_PILImgRepr,
-                                              logger, PILImgRepr, OpenCVImgRepr)
+                                              logger, PILImgRepr, OpenCVImgRepr,
+                                              OpenCVError)
 
 from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.assertlogs import (LogTestCase)
@@ -333,9 +335,14 @@ class TestImgFunctions(TempDirFixture, LogTestCase):
 
     def test_opencv_read_and_write(self):
         img = OpenCVImgRepr()
+        with pytest.raises(OpenCVError):
+            img.load_from_file("path1.png")
+        assert img.img is None
+
         img.empty(width=10, height=20,
                   channels=3, dtype=np.uint16)
         assert isinstance(img, OpenCVImgRepr)
+        assert img.img is not None
         assert img.img.shape == (20, 10, 3)
         assert img.img.dtype == np.uint16
         img.save("path1.png")

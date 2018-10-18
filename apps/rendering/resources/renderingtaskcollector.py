@@ -2,7 +2,6 @@ import logging
 import math
 from typing import Optional
 
-import cv2
 from PIL import Image, ImageChops
 
 from apps.rendering.resources.imgrepr import OpenCVImgRepr
@@ -34,26 +33,19 @@ class RenderingTaskCollector(object):
         if len(self.accepted_img_files) == 0:
             return None
 
-        try:
-            img = self.finalize_img()
-        except Exception as ex:
-            logger.error(str(ex))
-            return None
-
-        return img
+        return self.finalize_img()
 
     def finalize_img(self):
         res_x, res_y = 0, 0
 
         for name in self.accepted_img_files:
-            img = cv2.imread(name, cv2.IMREAD_UNCHANGED)
-            if img is None:
-                raise Exception("Can't read image: " + name)
-            img_y, res_x = img.shape[:2]
+            image = OpenCVImgRepr()
+            image.load_from_file(name)
+            img_y, res_x = image.img.shape[:2]
             res_y += img_y
-            self.dtype = img.dtype
-            if len(img.shape) == 3:
-                self.channels = img.shape[2]
+            self.dtype = image.img.dtype
+            if len(image.img.shape) == 3:
+                self.channels = image.img.shape[2]
 
         self.width = res_x
         self.height = res_y
@@ -64,11 +56,10 @@ class RenderingTaskCollector(object):
                         self.dtype)
         offset = 0
         for img_path in self.accepted_img_files:
-            img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
-            if img is None:
-                raise Exception("Can't read image: " + img_path)
-            final_img.paste_image(img, x=0, y=offset)
-            offset += img.shape[0]
+            image = OpenCVImgRepr()
+            image.load_from_file(img_path)
+            final_img.paste_image(image.img, x=0, y=offset)
+            offset += image.img.shape[0]
         return final_img
 
     def _paste_image(self, final_img, new_part, num):

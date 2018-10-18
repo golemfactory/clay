@@ -12,6 +12,10 @@ from PIL import Image
 logger = logging.getLogger("apps.rendering")
 
 
+class OpenCVError(OSError):
+    pass
+
+
 class ImgRepr(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def load_from_file(self, file_):
@@ -52,6 +56,17 @@ class OpenCVImgRepr:
     def __exit__(self, type, value, traceback):
         pass
 
+    def load_from_file(self, path):
+        try:
+            self.img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+            if self.img is None:
+                raise RuntimeError('cv2 read image \"{}\" as None'
+                                   .format(path))
+        except (cv2.error, RuntimeError) as e:
+            logger.error('Error reading image: {}'.format(str(e)))
+            raise OpenCVError('Cannot read image: {}'
+                              .format(str(e)))
+
     def empty(self, width, height, channels, dtype):
         self.img = numpy.zeros((height, width, channels),
                                dtype)
@@ -72,7 +87,12 @@ class OpenCVImgRepr:
         os.replace(file_path, path)
 
     def save(self, path):
-        cv2.imwrite(path, self.img)
+        try:
+            cv2.imwrite(path, self.img)
+        except cv2.error as e:
+            logger.error('Error saving image: {}'.format(str(e)))
+            raise OpenCVError('Cannot save image {}: {}'.format(path,
+                                                                str(e)))
 
 
 class PILImgRepr(ImgRepr):

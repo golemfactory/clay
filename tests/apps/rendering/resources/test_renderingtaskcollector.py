@@ -2,6 +2,7 @@ import os
 import random
 import numpy as np
 import cv2
+import pytest
 from PIL import Image
 
 from golem.tools.testdirfixture import TestDirFixture
@@ -9,7 +10,7 @@ from golem.tools.testdirfixture import TestDirFixture
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
 from apps.rendering.resources.imgcompare import (advance_verify_img,
                                                  compare_pil_imgs)
-from apps.rendering.resources.imgrepr import OpenCVImgRepr
+from apps.rendering.resources.imgrepr import OpenCVImgRepr, OpenCVError
 
 
 def make_test_img(img_path, size=(10, 10), color=(255, 0, 0)):
@@ -81,15 +82,16 @@ class TestRenderingTaskCollector(TestDirFixture):
 
     def test_opencv_nonexisting_img(self):
         collector = RenderingTaskCollector()
-
         collector.add_img_file("img.png")
-        assert collector.finalize() is None
+        with pytest.raises(OpenCVError):
+            collector.finalize()
 
         make_test_img_16bits("img.png",
                              width=10, height=10,
                              color=(0, 0, 0))
         collector.add_img_file("img1.png")
-        assert collector.finalize() is None
+        with pytest.raises(OpenCVError):
+            collector.finalize()
         os.remove("img.png")
         assert os.path.exists("img.png") is False
 
