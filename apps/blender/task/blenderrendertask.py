@@ -707,8 +707,15 @@ class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
 
     @classmethod
     def build_full_definition(cls, task_type, dictionary):
-        if dictionary['options']['format'] not in task_type.output_formats:
-            dictionary['options']['format'] = task_type.output_formats[0]
+        requested_format = dictionary['options']['format']
+        if requested_format not in task_type.output_formats:
+            default_format = task_type.output_formats[0]
+            logger.warning(
+                "Unsupported output format: `%s`, "
+                "replacing with default: `%s`",
+                requested_format, default_format
+            )
+            dictionary['options']['format'] = default_format
 
         options = dictionary['options']
 
