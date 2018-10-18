@@ -593,10 +593,10 @@ class TestCoreTaskBuilder(TestCase):
             [("output_path", os.getcwd()), ("format", "py")])
 
         class Definition:
-            task_name = "test_file"  # something doesn't exist
+            name = "test_file"  # something doesn't exist
 
         definition = Definition()
         absolute_path = builder.get_output_path(mockDict, definition)
-        assert absolute_path == os.path.join(os.getcwd(), definition.task_name)
-        definition.task_name = "test_coretask"  # something already exist
-        assert absolute_path != os.path.join(os.getcwd(), definition.task_name)
+        assert absolute_path == os.path.join(os.getcwd(), definition.name)
+        definition.name = "test_coretask"  # something already exist
+        assert absolute_path != os.path.join(os.getcwd(), definition.name)

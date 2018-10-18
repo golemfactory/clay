@@ -29,7 +29,7 @@ class TestCoreTaskDefautls(TestCase):
         assert defaults.min_subtasks == 1
         assert defaults.max_subtasks == 50
         assert defaults.default_subtasks == 20
-        assert defaults.task_name == ""
+        assert defaults.name == ""
 
 
 class TestOptions(TestCase):

@@ -50,15 +50,15 @@ class CreateTaskError(Exception):
 
 
 def _validate_task_dict(client, task_dict) -> None:
-    task_name = ""
+    name = ""
     if 'name' in task_dict:
         task_dict['name'] = task_dict['name'].strip()
-        task_name = task_dict['name']
-    if len(task_name) < 4 or len(task_name) > 24:
+        name = task_dict['name']
+    if len(name) < 4 or len(name) > 24:
         raise ValueError(
             "Length of task name cannot be less "
             "than 4 or more than 24 characters.")
-    if not TASK_NAME_RE.match(task_name):
+    if not TASK_NAME_RE.match(name):
         raise ValueError(
             "Task name can only contain letters, numbers, "
             "spaces, underline, dash or dot.")

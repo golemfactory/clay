@@ -369,7 +369,7 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
 
     def test_get_output_path(self):
         td = TaskDefinition()
-        td.task_name = "MY task"
+        td.name = "MY task"
         tdict = {'options': {'output_path': '/dir3/dir4', 'format': 'txt'}}
         assert RenderingTaskBuilder.get_output_path(tdict, td) == \
             path.join("/dir3/dir4", "MY task.txt")
@@ -428,7 +428,7 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
             self.tti, self.task_dict)
 
         # then
-        assert definition.task_name == "NAME OF THE TASK"
+        assert definition.name == "NAME OF THE TASK"
         assert definition.max_price == 250000000000000000
         assert definition.timeout == 3600
         assert definition.subtask_timeout == 1500

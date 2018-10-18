@@ -105,7 +105,7 @@ class ProviderBase(test_client.TestClientBase):
 class TestCreateTask(ProviderBase):
     def test_create_task(self, *_):
         t = dummytaskstate.DummyTaskDefinition()
-        t.task_name = "test"
+        t.name = "test"
 
         result = self.provider.create_task(t.to_dict())
         rpc.enqueue_new_task.assert_called()
