@@ -1,9 +1,7 @@
 from os import path, remove
 
 from ethereum.utils import denoms
-import semantic_version
 
-import golem
 from golem.core.common import timeout_to_string
 from golem.environments.environment import Environment
 from golem.task.taskstate import TaskState
@@ -32,6 +30,10 @@ class TaskDefaults(object):
 class TaskDefinition(object):
     """ Task description used in GUI and in save file format"""
 
+    PICKLED_VERSION_0 = 0
+    PICKLED_VERSION_1 = 1
+    PICKLED_VERSION_2 = 2
+
     def __init__(self):
         self.task_id = ""
         self.timeout = 0
@@ -57,16 +59,18 @@ class TaskDefinition(object):
         self.concent_enabled: bool = False
 
     def __getstate__(self):
-        return golem.__version__, self.__dict__
+        return self.PICKLED_VERSION_2, self.__dict__
 
     def __setstate__(self, state):
+        # FIXME Move to sqlite
         if not isinstance(state, tuple):
-            pickled_version, attributes = '0.17.1', state
+            pickled_version, attributes = self.PICKLED_VERSION_0, state
         else:
             pickled_version, attributes = state
+            if not isinstance(pickled_version, int):
+                pickled_version = self.PICKLED_VERSION_1
 
-        s_pickled_version = semantic_version.Version(pickled_version)
-        if s_pickled_version < semantic_version.Version('0.18.0'):
+        if pickled_version < self.PICKLED_VERSION_1:
             # Defaults for attributes that could be missing in pickles
             # from 0.17.1  #3405
             migration_defaults = (
@@ -77,9 +81,13 @@ class TaskDefinition(object):
                 if key not in attributes:
                     attributes[key] = default_value
 
-        if s_pickled_version < semantic_version.Version('0.18.0'):
+        if pickled_version < self.PICKLED_VERSION_2:
             if 'name' not in attributes:
                 attributes['name'] = attributes.pop('task_name')
+            if 'subtasks_count' not in attributes:
+                attributes['subtasks_count'] = attributes.pop('total_subtasks')
+            if 'timeout' not in attributes:
+                attributes['timeout'] = attributes.pop('full_task_timeout')
 
         for key in attributes:
             setattr(self, key, attributes[key])
