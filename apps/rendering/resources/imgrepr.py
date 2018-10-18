@@ -74,13 +74,6 @@ class OpenCVImgRepr:
     def save(self, path):
         cv2.imwrite(path, self.img)
 
-    @property
-    def size(self):
-        return self.get_size()
-
-    def get_size(self):
-        return self.img.shape[1], self.img.shape[0]
-
 
 class PILImgRepr(ImgRepr):
     def __init__(self):

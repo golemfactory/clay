@@ -57,7 +57,7 @@ class TestRenderingTaskCollector(TestDirFixture):
         collector.add_img_file(img1)
         final_img = collector.finalize()
         assert isinstance(final_img, OpenCVImgRepr)
-        assert final_img.size == (10, 10)
+        assert final_img.img.shape[:2] == (10, 10)
         img2 = self.temp_file_name("img2.png")
         final_img.save(img2)
 
@@ -68,7 +68,7 @@ class TestRenderingTaskCollector(TestDirFixture):
         img3 = self.temp_file_name("img3.png")
         final_img.save(img3)
 
-        assert final_img.size == (10, 20)
+        assert final_img.img.shape[:2] == (20, 10)
         assert advance_verify_img(img3, 10, 20, (0, 0), (10, 10), img1, (0, 0))
 
     def test_finalize_exr(self):
@@ -77,7 +77,7 @@ class TestRenderingTaskCollector(TestDirFixture):
         collector.add_img_file(_get_test_exr(alt=True))
         img = collector.finalize()
         assert isinstance(img, OpenCVImgRepr)
-        assert img.size == (10, 20)
+        assert img.img.shape[:2] == (20, 10)
 
     def test_opencv_nonexisting_img(self):
         collector = RenderingTaskCollector()
