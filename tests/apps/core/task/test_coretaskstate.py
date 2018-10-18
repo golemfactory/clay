@@ -119,9 +119,9 @@ class TestPicklesFrom_0_18_0(TestCase):
         del self.task_definition.name
         del self.task_definition.timeout
         del self.task_definition.subtasks_count
-        setattr(self.task_definition, 'task_name', 'some_name')
-        setattr(self.task_definition, 'full_task_timeout', '00:01:00')
-        setattr(self.task_definition, 'total_subtasks', 1)
+        self.task_definition.task_name = 'some_name'
+        self.task_definition.full_task_timeout = '00:01:00'
+        self.task_definition.total_subtasks = 1
         with mock.patch(
             'apps.core.task.coretaskstate.TaskDefinition.__getstate__',
             side_effect=lambda: self.task_definition.__dict__,
@@ -135,9 +135,9 @@ class TestPicklesFrom_0_18_0(TestCase):
         del self.task_definition.name
         del self.task_definition.timeout
         del self.task_definition.subtasks_count
-        setattr(self.task_definition, 'task_name', 'some_name')
-        setattr(self.task_definition, 'full_task_timeout', '00:01:00')
-        setattr(self.task_definition, 'total_subtasks', 1)
+        self.task_definition.task_name = 'some_name'
+        self.task_definition.full_task_timeout = '00:01:00'
+        self.task_definition.total_subtasks = 1
         with mock.patch(
             'apps.core.task.coretaskstate.TaskDefinition.__getstate__',
             side_effect=lambda: ("0.18.0", self.task_definition.__dict__),
