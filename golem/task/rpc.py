@@ -250,7 +250,7 @@ def _inform_subsystems(client, task, packager_result):
         task.header.mask = masking.Mask()
 
     estimated_fee = client.transaction_system.eth_for_batch_payment(
-        task.total_tasks)
+        task.get_total_tasks())
     client.task_manager.add_new_task(task, estimated_fee=estimated_fee)
 
     client_options = client.task_server.get_share_options(task_id, None)
