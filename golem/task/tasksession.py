@@ -543,15 +543,25 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task.header.max_price,
             task.header.subtask_timeout,
         )
+        agent_quote_base = '{}/{}/tmp/{}.agent.quote'.format(self.task_server.task_manager.get_task_manager_root(), ctd['task_id'], ctd['subtask_id'])  # noqa
+        with open(agent_quote_base + '', 'wb') as f:
+            f.write(msg.extra_data['agent_quote'])
+        with open(agent_quote_base + '.report', 'wb') as f:
+            f.write(msg.extra_data['ias_report'])
+        with open(agent_quote_base + '.report.sig', 'wb') as f:
+            f.write(msg.extra_data['ias_sig'])
+        with open(agent_quote_base + '.report.crt', 'wb') as f:
+            f.write(msg.extra_data['ias_crt'])
         from golem.sgx.agent import encrypt_wrap_key
+        from pathlib import Path
         sgx_eas_key = encrypt_wrap_key(
             '{}/{}/resources/{}.wrapkey'.format(self.task_server.get_task_computer_root(), ctd['task_id'], ctd['task_id']),  # noqa
             msg.extra_data['sgx_key'],
+            Path(agent_quote_base),
+            Path(agent_quote_base + '.report'),
+            Path(agent_quote_base + '.report.sig'),
         )
         ctd['extra_data']['sgx_eas_key'] = sgx_eas_key
-        from eth_utils import decode_hex
-        with open('{}/{}/tmp/{}.agent.quote'.format(self.task_server.task_manager.get_task_manager_root(), ctd['task_id'], ctd['subtask_id']), 'wb') as f:  # noqa
-            f.write(decode_hex(msg.extra_data['agent_quote']))
         ttc = message.tasks.TaskToCompute(
             compute_task_def=ctd,
             want_to_compute_task=msg,
