@@ -133,7 +133,7 @@ class TestTransactionSystem(TransactionSystemBase):
 
     def test_withdraw_unknown_currency(self):
         dest = '0x' + 40 * 'd'
-        with self.assertRaises(ValueError):
+        with self.assertRaises(ValueError, msg="Unknown currency asd"):
             self.ets.withdraw(1, dest, 'asd')
 
     def test_withdraw(self):
