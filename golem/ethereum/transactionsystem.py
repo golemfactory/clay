@@ -108,8 +108,8 @@ class TransactionSystem(LoopingCallService):
         # Amortized gas cost per payment used when dealing with locks
         self._eth_per_payment: int = 0
 
-    # FIXME @sci_required after #3443
     @property
+    @sci_required()
     def gas_price(self):
         return self._sci.get_current_gas_price()
 
