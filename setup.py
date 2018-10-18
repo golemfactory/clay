@@ -110,7 +110,7 @@ if not building_migration:
 print_errors(task_collector_err)
 
 
-# test docker config
+# test a potential docker package conflict
 
 def _docker_conflict(e: Exception):
     raise RuntimeError(
@@ -119,11 +119,11 @@ def _docker_conflict(e: Exception):
         "and re-install golem's requirements. "
     ) from e
 
+
 try:
     from docker import DockerClient as Client
 except ImportError as import_error:
     _docker_conflict(import_error)
-
 
 try:
     Client().api
