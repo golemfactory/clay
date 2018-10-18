@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 
 def log_subtask_key_error(*args, **kwargs):
     logger.warning("This is not my subtask %r", args[1])
+    logger.debug('Subtask not found', exc_info=True)
     return None
 
 
@@ -47,6 +48,7 @@ def log_generic_key_error(err):
 
 def log_task_key_error(*args, **kwargs):
     logger.warning("This is not my task %r", args[1])
+    logger.debug('Task not found', exc_info=True)
     return None
 
 

@@ -1,6 +1,7 @@
 from queue import Queue, Empty
 
 from twisted.internet.defer import DebugInfo, Deferred, TimeoutError
+from twisted.internet.task import deferLater
 from twisted.python.failure import Failure
 
 
@@ -43,3 +44,8 @@ def install_unhandled_error_logger():
                          .format(self.failResult))
 
     setattr(DebugInfo, '__del__', delete)
+
+
+def call_later(delay: int, callable, *args, **kwargs) -> None:
+    from twisted.internet import reactor
+    deferLater(reactor, delay, callable, *args, **kwargs)
