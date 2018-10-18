@@ -639,7 +639,7 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
 
     def test_build(self):
         definition = RenderingTaskDefinition()
-        definition.total_subtasks = 1
+        definition.subtasks_count = 1
         definition.options = BlenderRendererOptions()
         builder = BlenderRenderTaskBuilder(
             owner=Node(),

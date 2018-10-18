@@ -71,7 +71,7 @@ def _validate_task_dict(client, task_dict) -> None:
     optimize_total = bool(options.get('optimize_total', False))
     if subtasks and not optimize_total:
         computed_subtasks = framerenderingtask.calculate_subtasks_count(
-            total_subtasks=subtasks,
+            subtasks_count=subtasks,
             optimize_total=False,
             use_frames=options.get('frame_count', 1) > 1,
             frames=[None]*options.get('frame_count', 1),
