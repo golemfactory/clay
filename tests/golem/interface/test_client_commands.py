@@ -743,7 +743,8 @@ class TestSettings(TempDirFixture):
         config_desc.init_from_app_config(app_config)
 
         client = Mock()
-        client.get_settings.return_value = config_desc.__dict__
+        self.client_config_dict = config_desc.__dict__
+        client.get_settings.return_value = self.client_config_dict
 
         self.client = client
 
@@ -754,11 +755,11 @@ class TestSettings(TempDirFixture):
 
             result = settings.show(False, False, False)
             assert isinstance(result, dict)
-            assert len(result) >= len(Settings.settings)
+            assert len(result) == len(self.client_config_dict)
 
             result = settings.show(True, True, True)
             assert isinstance(result, dict)
-            assert len(result) >= len(Settings.settings)
+            assert len(result) == len(self.client_config_dict)
 
             result = settings.show(True, False, False)
             assert isinstance(result, dict)
@@ -773,6 +774,43 @@ class TestSettings(TempDirFixture):
             assert isinstance(result, dict)
             assert len(result) == len(Settings.basic_settings) + len(
                 Settings.requestor_settings)
+
+    def test_show_convertible_items(self):
+        convertible_items = {
+            'accept_me': 0,
+            'debug_sth': 1,
+            'use_your_brain': 1,
+            'enable_hyperspeed_boosters': 0,
+            'in_shutdown': 0,
+            'net_masking_enabled': 1,
+        }
+        self.client.get_settings.return_value = convertible_items
+        with client_ctx(Settings, self.client):
+            settings = Settings()
+
+            result = settings.show(False, False, False)
+            self.assertTrue(
+                all(
+                    (isinstance(v, bool) for _, v in result.items())
+                )
+            )
+
+    def test_show_mixed_items(self):
+        items = {
+            'enable_thinking': 1,
+            'this_is_not_converted': 1,
+        }
+        self. client.get_settings.return_value = items
+        with client_ctx(Settings, self.client):
+            settings = Settings()
+
+            result = settings.show(False, False, False)
+            self.assertTrue(
+                isinstance(result['enable_thinking'], bool)
+            )
+            self.assertFalse(
+                isinstance(result['this_is_not_converted'], bool)
+            )
 
     def test_set(self):
 
