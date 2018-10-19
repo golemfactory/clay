@@ -18,7 +18,7 @@ from semantic_version import Version
 
 import golem
 from golem.core import common
-from golem.core.async import AsyncRequest, async_run
+from golem.core import golem_async
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.p2p.node import Node
@@ -145,7 +145,7 @@ class CompTaskKeeper:
     def dump(self):
         if not self.persist:
             return
-        async_run(AsyncRequest(self._dump_tasks))
+        golem_async.async_run(golem_async.AsyncRequest(self._dump_tasks))
 
     def _dump_tasks(self):
         logger.debug('COMPTASK DUMP: %s', self.dump_path)
@@ -256,11 +256,11 @@ class CompTaskKeeper:
             return False
         return True
 
-    def get_task_id_for_subtask(self, subtask_id):
+    def get_task_id_for_subtask(self, subtask_id: str) -> typing.Optional[str]:
         return self.subtask_to_task.get(subtask_id)
 
     @handle_key_error
-    def get_node_for_task_id(self, task_id):
+    def get_node_for_task_id(self, task_id) -> typing.Optional[str]:
         return self.active_tasks[task_id].header.task_owner.key
 
     @handle_key_error

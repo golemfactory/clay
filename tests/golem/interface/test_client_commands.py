@@ -1,7 +1,6 @@
 # pylint: disable=protected-access
 from collections import namedtuple
 from contextlib import contextmanager
-from functools import partial
 import io
 import json
 import unittest
@@ -535,19 +534,27 @@ class TestTasks(TempDirFixture):
 
     def test_restart_success(self):
         with client_ctx(Tasks, self.client):
-            self.client.restart_task.return_value = 'new_task_id', None
+            self.client._call.return_value = 'new_task_id', None
             tasks = Tasks()
             result = tasks.restart('task_id')
             self.assertEqual(result, 'new_task_id')
-            self.client.restart_task.assert_called_once_with('task_id')
+            self.client._call.assert_called_once_with(
+                'comp.task.restart',
+                'task_id',
+                force=False,
+            )
 
     def test_restart_error(self):
         with client_ctx(Tasks, self.client):
-            self.client.restart_task.return_value = None, 'error'
+            self.client._call.return_value = None, 'error'
             tasks = Tasks()
             with self.assertRaises(CommandException):
                 tasks.restart('task_id')
-            self.client.restart_task.assert_called_once_with('task_id')
+            self.client._call.assert_called_once_with(
+                'comp.task.restart',
+                'task_id',
+                force=False,
+            )
 
     def test_create(self) -> None:
         client = self.client
@@ -558,17 +565,27 @@ class TestTasks(TempDirFixture):
 
         with client_ctx(Tasks, client):
             tasks = Tasks()
-            tasks._Tasks__create_from_json(def_str)
-            client.create_task.assert_called_with(definition.to_dict())
+            # pylint: disable=no-member
+            tasks._Tasks__create_from_json(def_str)  # type: ignore
+            # pylint: enable=no-member
+            client._call.assert_called_once_with(
+                'comp.task.create',
+                definition.to_dict(),
+            )
 
+            client._call.reset_mock()
             patched_open = "golem.interface.client.tasks.open"
             with patch(patched_open, mock_open(
                 read_data='{"name": "Golem task"}'
             )):
-                client.create_task.return_value = ('task_id', None)
+                client._call.return_value = ('task_id', None)
                 tasks.create("foo")
                 task_def = json.loads('{"name": "Golem task"}')
-                client.create_task.assert_called_with(task_def)
+                client._call.assert_called_once_with(
+                    'comp.task.create',
+                    task_def,
+                    force=False,
+                )
 
     def test_template(self) -> None:
         tasks = Tasks()

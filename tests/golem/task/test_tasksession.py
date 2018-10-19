@@ -1076,6 +1076,7 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.provider_key_id = encode_hex(self.provider_keys.raw_pubkey)
 
     def test_react_to_subtask_result_accepted(self):
+        # given
         sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             sign__privkey=self.requestor_keys.raw_privkey,
             task_to_compute__sign__privkey=self.requestor_keys.raw_privkey,
@@ -1092,8 +1093,13 @@ class SubtaskResultsAcceptedTest(TestCase):
         ctk = self.task_session.task_manager.comp_task_keeper
         ctk.get_node_for_task_id.return_value = self.requestor_key_id
         self.task_session.key_id = self.requestor_key_id
+        self.task_server.client.transaction_system.is_income_expected\
+                                                  .return_value = False
+
+        # when
         self.task_session._react_to_subtask_result_accepted(sra)
 
+        # then
         self.task_server.subtask_accepted.assert_called_once_with(
             self.requestor_key_id,
             sra.subtask_id,
@@ -1108,15 +1114,21 @@ class SubtaskResultsAcceptedTest(TestCase):
         )
 
     def test_react_with_wrong_key(self):
+        # given
         key_id = "CDEF"
         sra = msg_factories.tasks.SubtaskResultsAcceptedFactory()
         ctk = self.task_session.task_manager.comp_task_keeper
         ctk.get_node_for_task_id.return_value = "ABC"
         self.task_session.key_id = key_id
+
+        # when
         self.task_session._react_to_subtask_result_accepted(sra)
+
+        # then
         self.task_server.subtask_accepted.assert_not_called()
 
     def test_react_with_unknown_key_and_expected_income(self):
+        # given
         key_id = "CDEF"
         sra = msg_factories.tasks.SubtaskResultsAcceptedFactory()
         ctk = self.task_session.task_manager.comp_task_keeper
@@ -1124,10 +1136,15 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_server.client.transaction_system.is_income_expected\
                                                   .return_value = True
         self.task_session.key_id = key_id
+
+        # when
         self.task_session._react_to_subtask_result_accepted(sra)
+
+        # then
         self.task_server.subtask_accepted.assert_called()
 
     def test_react_with_unknown_key_and_unexpected_income(self):
+        # given
         key_id = "CDEF"
         sra = msg_factories.tasks.SubtaskResultsAcceptedFactory()
         ctk = self.task_session.task_manager.comp_task_keeper
@@ -1135,7 +1152,11 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_server.client.transaction_system.is_income_expected\
                                                   .return_value = False
         self.task_session.key_id = key_id
+
+        # when
         self.task_session._react_to_subtask_result_accepted(sra)
+
+        # then
         self.task_server.subtask_accepted.assert_not_called()
 
     def test_result_received(self):
