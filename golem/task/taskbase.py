@@ -268,6 +268,9 @@ class TaskHeader(object):
     def to_dict(self) -> dict:
         return DictSerializer.dump(self, typed=False)
 
+    def __repr__(self):
+        return "TaskHeader.from_dict({!r})".format(self.to_dict())
+
     def __getattr__(self, item: str) -> Any:
         if 'fixed_header' in self.__dict__ and hasattr(self.fixed_header, item):
             return getattr(self.fixed_header, item)

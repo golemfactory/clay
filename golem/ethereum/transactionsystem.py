@@ -1,4 +1,3 @@
-import calendar
 import functools
 import json
 import logging
@@ -108,6 +107,11 @@ class TransactionSystem(LoopingCallService):
         self._gntb_withdrawn: int = 0
         # Amortized gas cost per payment used when dealing with locks
         self._eth_per_payment: int = 0
+
+    @property  # type: ignore
+    @sci_required()
+    def gas_price(self):
+        return self._sci.get_current_gas_price()
 
     def backwards_compatibility_tx_storage(self, old_datadir: Path) -> None:
         if self.running:
@@ -464,7 +468,7 @@ class TransactionSystem(LoopingCallService):
     @sci_required()
     def _current_eth_per_payment(self) -> int:
         gas_price = \
-            min(self._sci.GAS_PRICE, 2 * self._sci.get_current_gas_price())
+            min(self._sci.GAS_PRICE, 2 * self.gas_price)  # type: ignore
         return gas_price * self._sci.GAS_PER_PAYMENT
 
     @sci_required()
@@ -473,7 +477,7 @@ class TransactionSystem(LoopingCallService):
             amount: int,
             destination: str,
             currency: str) -> int:
-        gas_price = self._sci.get_current_gas_price()
+        gas_price = self.gas_price
         if currency == 'ETH':
             return self._sci.estimate_transfer_eth_gas(destination, amount) * \
                 gas_price
@@ -554,7 +558,11 @@ class TransactionSystem(LoopingCallService):
 
     @defer.inlineCallbacks
     @sci_required()
-    def concent_deposit(self, required: int, expected: int) \
+    def concent_deposit(
+            self,
+            required: int,
+            expected: int,
+            force: bool = False) \
             -> Generator[defer.Deferred, TransactionReceipt, Optional[str]]:
         current = self.concent_balance()
         if current >= required:
@@ -564,6 +572,12 @@ class TransactionSystem(LoopingCallService):
         gntb_balance = self.get_available_gnt()
         if gntb_balance < required:
             raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
+        if self.gas_price >= self._sci.GAS_PRICE:  # type: ignore
+            if not force:
+                raise exceptions.LongTransactionTime("Gas price too high")
+            log.warning(
+                'Gas price is high. It can take some time to mine deposit.',
+            )
         max_possible_amount = min(expected, gntb_balance)
         tx_hash = self._sci.deposit_payment(max_possible_amount)
         log.info(
@@ -592,8 +606,10 @@ class TransactionSystem(LoopingCallService):
                 transaction_receipt=receipt,
             )
 
-        gas_price = self._sci.get_transaction_gas_price(receipt.tx_hash)
-        dpayment.fee = receipt.gas_used * gas_price
+        tx_gas_price = self._sci.get_transaction_gas_price(  # type: ignore
+            receipt.tx_hash,
+        )
+        dpayment.fee = receipt.gas_used * tx_gas_price
         dpayment.status = model.PaymentStatus.confirmed
         dpayment.save()
         return dpayment.tx
@@ -680,7 +696,7 @@ class TransactionSystem(LoopingCallService):
             if self._gnt_balance > 0:
                 self._gnt_conversion_status = ConversionStatus.NONE
             else:
-                gas_cost = self._sci.get_current_gas_price() * \
+                gas_cost = self.gas_price * \
                     self._sci.GAS_TRANSFER_FROM_GATE
                 if self._eth_balance >= gas_cost:
                     tx_hash = self._sci.transfer_from_gate()
@@ -701,7 +717,7 @@ class TransactionSystem(LoopingCallService):
             self._gnt_conversion_status = ConversionStatus.NONE
             return
 
-        gas_price = self._sci.get_current_gas_price()
+        gas_price = self.gas_price
         gate_address = self._sci.get_gate_address()
         if gate_address is None:
             gas_cost = gas_price * self._sci.GAS_OPEN_GATE

@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import time
 from unittest import TestCase
 from unittest.mock import Mock
@@ -6,7 +7,7 @@ import requests
 from twisted.internet.defer import Deferred
 from twisted.python.failure import Failure
 
-from golem.core.async import AsyncRequest, async_run
+from golem.core import golem_async
 from golem.resource.client import ClientHandler, ClientError, \
     ClientOptions, ClientConfig
 from golem.tools.testwithreactor import TestWithReactor
@@ -192,17 +193,17 @@ class TestAsyncRequest(TestWithReactor):
 
     @staticmethod
     def test_initialization():
-        request = AsyncRequest(lambda x: x)
+        request = golem_async.AsyncRequest(lambda x: x)
         assert request.args == []
         assert request.kwargs == {}
 
-        request = AsyncRequest(lambda x: x, "arg", kwarg="kwarg")
+        request = golem_async.AsyncRequest(lambda x: x, "arg", kwarg="kwarg")
         assert request.args == ("arg",)
         assert request.kwargs == {"kwarg": "kwarg"}
 
     def test_callbacks(self):
         method = Mock()
-        request = AsyncRequest(method)
+        request = golem_async.AsyncRequest(method)
         result = Mock(value=None)
 
         def success(*_):
@@ -211,20 +212,20 @@ class TestAsyncRequest(TestWithReactor):
         def error(*_):
             result.value = False
 
-        async_run(request)
+        golem_async.async_run(request)
         time.sleep(0.5)
 
         assert method.call_count == 1
         assert result.value is None
 
-        async_run(request, success)
+        golem_async.async_run(request, success)
         time.sleep(0.5)
 
         assert method.call_count == 2
         assert result.value is True
 
         method.side_effect = Exception
-        async_run(request, success, error)
+        golem_async.async_run(request, success, error)
         time.sleep(0.5)
 
         assert method.call_count == 3

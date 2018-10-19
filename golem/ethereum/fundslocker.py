@@ -3,6 +3,8 @@ import pickle
 import time
 from pathlib import Path
 
+from ethereum.utils import denoms
+
 from golem.core.service import LoopingCallService
 from golem.core.variables import PAYMENT_DEADLINE
 
@@ -44,7 +46,7 @@ class FundsLocker(LoopingCallService):
         logger.info(
             'Locking funds for task: %r price: %f num: %d',
             task_id,
-            tfl.price,
+            tfl.price / denoms.ether,
             tfl.num_tasks,
         )
         self.transaction_system.lock_funds_for_payments(

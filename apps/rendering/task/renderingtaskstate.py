@@ -17,7 +17,7 @@ class RendererDefaults(TaskDefaults):
         return self.resolution[0] * self.resolution[1] / self._pixel_to_seconds
 
     @property
-    def full_task_timeout(self):
+    def timeout(self):
         return self.subtask_timeout * self.default_subtasks
 
 
