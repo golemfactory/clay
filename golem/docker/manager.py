@@ -82,8 +82,8 @@ class DockerManager(DockerConfigManager):
         if is_windows():
             if HyperVHypervisor.is_available():
                 return HyperVHypervisor.instance(self.get_config)
-            # TODO: Re-enable when the installer is updated
-            # to include Docker Toolbox as a fallback option
+            # FIXME: Re-enable when the installer is updated
+            # to include Docker Toolbox as a fallback option #3476
             # if VirtualBoxHypervisor.is_available():
             #     return VirtualBoxHypervisor.instance(self.get_config)
         elif is_osx():
