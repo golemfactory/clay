@@ -4,7 +4,7 @@ import logging
 from peewee import IntegrityError
 
 from golem.model import LocalRank, GlobalRank, NeighbourLocRank, db
-
+from golem.ranking import ProviderEfficacy
 from golem.task.taskstate import SubtaskOp
 
 logger = logging.getLogger(__name__)
@@ -152,6 +152,12 @@ def update_requestor_paid_sum(node_id: str, amount: float) -> None:
         rank.save()
 
 
+def get_provider_efficiency(node_id: str) -> float:
+    with db.transaction():
+        rank, _ = LocalRank.get_or_create(node_id=node_id)
+        return rank.provider_efficiency
+
+
 def update_provider_efficiency(node_id: str,
                                timeout: float,
                                computation_time: float) -> None:
@@ -163,6 +169,12 @@ def update_provider_efficiency(node_id: str,
         rank.provider_efficiency = _calculate_efficiency(
             efficiency, timeout, computation_time, PROVIDER_FORGETTING_FACTOR)
         rank.save()
+
+
+def get_provider_efficacy(node_id: str) -> ProviderEfficacy:
+    with db.transaction():
+        rank, _ = LocalRank.get_or_create(node_id=node_id)
+        return rank.provider_efficacy
 
 
 def update_provider_efficacy(node_id: str, op: SubtaskOp) -> None:

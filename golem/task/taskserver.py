@@ -224,7 +224,7 @@ class TaskServer(
                     'key_id': theader.task_owner.key,
                     'task_id': theader.task_id,
                     'estimated_performance': performance,
-                    'price': self.config_desc.min_price,
+                    'price': theader.max_price,
                     'max_resource_size': self.config_desc.max_resource_size,
                     'max_memory_size': self.config_desc.max_memory_size,
                     'num_cores': self.config_desc.num_cores
