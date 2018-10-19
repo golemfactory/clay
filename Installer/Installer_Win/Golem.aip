@@ -449,6 +449,7 @@
     <ROW Name="aicustact.dll" SourcePath="&lt;AI_CUSTACTS&gt;aicustact.dll"/>
     <ROW Name="bannerfull01.jpg" SourcePath="Installer\Installer_Win\banner-full-01.jpg"/>
     <ROW Name="bannertop01.jpg" SourcePath="Installer\Installer_Win\banner-top-01.jpg"/>
+    <ROW Name="cleandockervm.ps1" SourcePath="scripts\clean-docker-vm.ps1"/>
     <ROW Name="lzmaextractor.dll" SourcePath="&lt;AI_CUSTACTS&gt;lzmaextractor.dll"/>
     <ROW Name="preparedockerforwindows.ps1" SourcePath="scripts\prepare-docker-for-windows.ps1"/>
     <ROW Name="tempFiles.dll" SourcePath="&lt;AI_CUSTACTS&gt;tempFiles.dll"/>
@@ -508,8 +509,7 @@
     <ROW Action="AI_BACKUP_AI_SETUPEXEPATH" Type="51" Source="AI_SETUPEXEPATH_ORIGINAL" Target="[AI_SETUPEXEPATH]"/>
     <ROW Action="AI_DATA_SETTER" Type="51" Source="AI_ExtractFiles" Target="[AI_SETUPEXEPATH]"/>
     <ROW Action="AI_DATA_SETTER_1" Type="51" Source="StopProcess_Golem" Target="Golem.exe"/>
-    <ROW Action="AI_DATA_SETTER_10" Type="51" Source="CustomActionData" Target="AEkAcwA2ADQAQgBpAHQAAgAxAAEAUABhAHIAYQBtAHMAAgABAFMAYwByAGkAcAB0AAIAIwAgAEIAbABvAGMAawAgAGYAbwByACAAZABlAGMAbABhAHIAaQBuAGcAIAB0AGgAZQAgAHMAYwByAGkAcAB0ACAAcABhAHIAYQBtAGUAdABlAHIAcwAuAA0ACgBQAGEAcgBhAG0AKAApAA0ACgANAAoAIwAgAFkAbwB1AHIAIABjAG8AZABlACAAZwBvAGUAcwAgAGgAZQByAGUALgANAAoAJABoAGEAcwBJAG4AcwB0AGEAbABsAGUAZAAgAD0AIABBAEkAXwBHAGUAdABNAHMAaQBQAHIAbwBwAGUAcgB0AHkAIABBAEkAXwBNAEkAUwBTAEkATgBHAF8AUABSAEUAUgBFAFEAUwANAAoAJABwAGYAUwBGAEYAbwBsAGQAZQByACAAPQAgAEEASQBfAEcAZQB0AE0AcwBpAFAAcgBvAHAAZQByAHQAeQAgAFAAcgBvAGcAcgBhAG0ARgBpAGwAZQBzADYANABGAG8AbABkAGUAcgANAAoADQAKACMAIABUAE8ARABPADoAIABDAGgAYQBuAGcAZQAgAHQAbwAgAGQAbwBjAGsAZQByACAAbwByACAAZABvAGMAawBlAHIALQBtAGEAYwBoAGkAbgBlACAAdQBwAGQAYQB0AGUAZAAsACAAYQBsAHcAYQB5AHMAIABlAHgAZQBjAHUAdABlACAAdABoAGkAcwAgAHQAaQBtAGUAIABmAHIAbwBtACAAVABCACAALQA+ACAAYgBpAG4AYQByAGkAZQBzAC4ADQAKACMAaQBmACAAKAAgAC0ATgBvAHQAIAAoACAAJABoAGEAcwBJAG4AcwB0AGEAbABsAGUAZAAuAGkAbgBkAGUAeABvAGYAKAAiAEQAbwBjAGsAZQByACIAKQAgAD0AIAAtADEAIAApACkADQAKACMAWwBcAHsAXQANAAoAJABkAG8AYwBrAGUAcgBSAG0AQwBtAGQAIAA9ACAAIgAiACIAIgAgACsAIAAkAHAAZgBTAEYARgBvAGwAZABlAHIAIAArACAAIgBEAG8AYwBrAGUAcgAgAFQAbwBvAGwAYgBvAHgAXABkAG8AYwBrAGUAcgAtAG0AYQBjAGgAaQBuAGUALgBlAHgAZQAiACIAIAByAG0AIAAtAGYAIABnAG8AbABlAG0AIgANAAoAYwBtAGQALgBlAHgAZQAgAC8AYwAgACQAZABvAGMAawBlAHIAUgBtAEMAbQBkAA0ACgAjAFsAXAB9AF0ADQAK"/>
-    <ROW Action="AI_DATA_SETTER_12" Type="51" Source="AI_RemoveAllTempFiles" Target="[AI_TEMP_FILE_ROLLBACK_INFO]"/>
+    <ROW Action="AI_DATA_SETTER_10" Type="51" Source="CustomActionData" Target="AEYAbABhAGcAcwACADMAAQBTAGMAcgBpAHAAdABTAHIAYwBCAGkAbgBhAHIAeQBSAG8AdwBJAGQAAgBjAGwAZQBhAG4AZABvAGMAawBlAHIAdgBtAC4AcABzADE="/>
     <ROW Action="AI_DATA_SETTER_13" Type="51" Source="CustomActionData" Target="AEYAbABhAGcAcwACADMAAQBTAGMAcgBpAHAAdABTAHIAYwBCAGkAbgBhAHIAeQBSAG8AdwBJAGQAAgBwAHIAZQBwAGEAcgBlAGQAbwBjAGsAZQByAGYAbwByAHcAaQBuAGQAbwB3AHMALgBwAHMAMQ=="/>
     <ROW Action="AI_DATA_SETTER_2" Type="51" Source="StopProcess_Golemapp" Target="Golemapp.exe"/>
     <ROW Action="AI_DATA_SETTER_3" Type="51" Source="StopProcess_hyperg" Target="hyperg.exe"/>
@@ -552,7 +552,7 @@
     <ROW Action="AI_WinOptFeaturesUninstall" Type="1" Source="WinOptionalFeatures.dll" Target="OnWinOptFeaturesUninstall"/>
     <ROW Action="ExecuteUninstallDockerTb" Type="3122" Source="DOCKER_UNINSTALL_CLEAN" Target="/SILENT"/>
     <ROW Action="ExecuteUninstallPre011" Type="3122" Source="GOLEM_UNINSTALL_CLEAN" Target="/SILENT"/>
-    <ROW Action="Execute_CleanDockerVM" Type="65" Source="PowerShellScriptLauncher.dll" Target="RunPowerShellScript" Options="1" AdditionalSeq="AI_DATA_SETTER_10"/>
+    <ROW Action="Execute_CleanDockerVM" Type="65" Source="PowerShellScriptLauncher.dll" Target="RunPowerShellFileScript" Options="134217729" AdditionalSeq="AI_DATA_SETTER_10"/>
     <ROW Action="Execute_PrepareDocker" Type="1" Source="PowerShellScriptLauncher.dll" Target="RunPowerShellFileScript" Options="134217729" AdditionalSeq="AI_DATA_SETTER_13"/>
     <ROW Action="ForceReboot" Type="51" Source="REBOOT" Target="Force"/>
     <ROW Action="MessageBox" Type="1" Source="aicustact.dll" Target="MsgBox" Options="1" AdditionalSeq="AI_DATA_SETTER_9"/>
@@ -601,12 +601,12 @@
     <ROW Action="AI_DATA_SETTER_4" Sequence="1611"/>
     <ROW Action="StopProcess_VBoxHeadless" Sequence="1614"/>
     <ROW Action="AI_DATA_SETTER_5" Sequence="1613"/>
-    <ROW Action="StopProcess_Golem" Sequence="1602"/>
-    <ROW Action="AI_DATA_SETTER_1" Sequence="1601"/>
-    <ROW Action="StopProcess_Golemapp" Sequence="1604"/>
-    <ROW Action="AI_DATA_SETTER_2" Sequence="1603"/>
-    <ROW Action="StopProcess_hyperg" Sequence="1606"/>
-    <ROW Action="AI_DATA_SETTER_3" Sequence="1605"/>
+    <ROW Action="StopProcess_Golem" Sequence="1604"/>
+    <ROW Action="AI_DATA_SETTER_1" Sequence="1603"/>
+    <ROW Action="StopProcess_Golemapp" Sequence="1606"/>
+    <ROW Action="AI_DATA_SETTER_2" Sequence="1605"/>
+    <ROW Action="StopProcess_hyperg" Sequence="1608"/>
+    <ROW Action="AI_DATA_SETTER_3" Sequence="1607"/>
     <ROW Action="StopProcess_VirtualBoxInterface" Sequence="1618"/>
     <ROW Action="AI_DATA_SETTER_6" Sequence="1617"/>
     <ROW Action="StopProcess_VBoxNetDHCP" Sequence="1616"/>
@@ -618,8 +618,8 @@
     <ROW Action="AI_GetArpIconPath" Sequence="1401"/>
     <ROW Action="ExecuteUninstallPre011" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL_CLEAN &lt;&gt; &quot;&quot; )" Sequence="1621"/>
     <ROW Action="StripQuotesFromUninstallPath" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="1619"/>
-    <ROW Action="Execute_CleanDockerVM" Condition="(VersionNT &gt; 501) OR (VersionNT = 501 AND ServicePackLevel &gt;= 2)" Sequence="1608"/>
-    <ROW Action="AI_DATA_SETTER_10" Condition="(VersionNT &gt; 501) OR (VersionNT = 501 AND ServicePackLevel &gt;= 2)" Sequence="1607"/>
+    <ROW Action="Execute_CleanDockerVM" Condition="( NOT Installed )" Sequence="1602"/>
+    <ROW Action="AI_DATA_SETTER_10" Condition="( NOT Installed )" Sequence="1601"/>
     <ROW Action="AI_WinOptFeaturesInstall" Condition="(VersionNT &gt;= 600) AND (REMOVE &lt;&gt; &quot;ALL&quot;)" Sequence="1503"/>
     <ROW Action="AI_WinOptFeaturesUninstall" Condition="(VersionNT &gt;= 600) AND (REMOVE=&quot;ALL&quot;)" Sequence="1699"/>
     <ROW Action="AI_WinOptFeaturesCheckReboot" Condition="(VersionNT &gt;= 600)" Sequence="6501"/>

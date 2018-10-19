@@ -473,7 +473,7 @@ class TestTasks(TempDirFixture):
         cls.tasks = [{
             'id': '745c1d0{}'.format(i),
             'time_remaining': i,
-            'subtasks': i + 2,
+            'subtasks_count': i + 2,
             'status': 'waiting',
             'progress': i / 100.0
         } for i in range(1, 6)]
@@ -541,6 +541,7 @@ class TestTasks(TempDirFixture):
             self.client._call.assert_called_once_with(
                 'comp.task.restart',
                 'task_id',
+                force=False,
             )
 
     def test_restart_error(self):
@@ -552,13 +553,14 @@ class TestTasks(TempDirFixture):
             self.client._call.assert_called_once_with(
                 'comp.task.restart',
                 'task_id',
+                force=False,
             )
 
     def test_create(self) -> None:
         client = self.client
 
         definition = TaskDefinition()
-        definition.task_name = "The greatest task ever"
+        definition.name = "The greatest task ever"
         def_str = json.dumps(definition.to_dict())
 
         with client_ctx(Tasks, client):
@@ -582,6 +584,7 @@ class TestTasks(TempDirFixture):
                 client._call.assert_called_once_with(
                     'comp.task.create',
                     task_def,
+                    force=False,
                 )
 
     def test_template(self) -> None:
@@ -627,7 +630,7 @@ class TestTasks(TempDirFixture):
             assert one_task == {
                 'time_remaining': '0:00:01',
                 'status': 'waiting',
-                'subtasks': 3,
+                'subtasks_count': 3,
                 'id': '745c1d01',
                 'progress': '1.00 %'
             }

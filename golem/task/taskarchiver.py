@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import threading
 import logging
 import pickle
@@ -5,10 +6,9 @@ import os
 from collections import Counter
 from golem.core.common import get_timestamp_utc, timestamp_to_datetime
 from golem.environments.environment import UnsupportReason
-from golem.core.async import AsyncRequest, async_run
+from golem.core import golem_async
 from golem.appconfig import TASKARCHIVE_FILENAME, TASKARCHIVE_NUM_INTERVALS, \
     TASKARCHIVE_MAX_TASKS
-from datetime import datetime, timedelta
 import pytz
 
 log = logging.getLogger('golem.task.taskarchiver')
@@ -87,9 +87,12 @@ class TaskArchiver(object):
                     del self._archive.tasks[tsk.uuid]
             self._purge_old_intervals()
             if self._dump_file:
-                request = AsyncRequest(self._dump_archive)
-                async_run(request, None,
-                          lambda e: log.info("Dumping archive failed: %s", e))
+                request = golem_async.AsyncRequest(self._dump_archive)
+                golem_async.async_run(
+                    request,
+                    None,
+                    lambda e: log.info("Dumping archive failed: %s", e),
+                )
 
     def _dump_archive(self):
         with self._archive_lock:

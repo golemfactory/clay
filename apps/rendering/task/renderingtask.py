@@ -268,7 +268,7 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         if self.task_definition.optimize_total:
             return defaults.default_subtasks
 
-        total = self.task_definition.total_subtasks
+        total = self.task_definition.subtasks_count
 
         if defaults.min_subtasks <= total <= defaults.max_subtasks:
             return total
@@ -329,11 +329,11 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         definition = parent.build_full_definition(task_type, dictionary)
         definition.output_format = options['format'].upper()
         definition.resolution = [int(val) for val in options['resolution']]
-        if definition.full_task_timeout < MIN_TIMEOUT:
+        if definition.timeout < MIN_TIMEOUT:
             logger.warning("Timeout %d too short for this task. "
-                           "Changing to %d" % (definition.full_task_timeout,
+                           "Changing to %d" % (definition.timeout,
                                                MIN_TIMEOUT))
-            definition.full_task_timeout = MIN_TIMEOUT
+            definition.timeout = MIN_TIMEOUT
         if definition.subtask_timeout < SUBTASK_MIN_TIMEOUT:
             logger.warning("Subtask timeout %d too short for this task. "
                            "Changing to %d" % (definition.subtask_timeout,

@@ -156,11 +156,8 @@ class PEP8MixIn(object):
 
     def test_conformance(self):
         """Test that we conform to PEP-8."""
-
-        # TODO: https://github.com/golemfactory/golem/issues/3030
-
         style = pycodestyle.StyleGuide(
-            ignore=pycodestyle.DEFAULT_IGNORE.split(',') + ['W606'],
+            ignore=pycodestyle.DEFAULT_IGNORE.split(','),
             max_line_length=80)
 
         # PyCharm needs absolute paths
