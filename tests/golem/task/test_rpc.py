@@ -328,6 +328,14 @@ class TestEnqueueNewTask(ProviderBase):
 
 @mock.patch('golem.task.rpc._run_test_task')
 class TestProviderRunTestTask(ProviderBase):
+    def test_no_concent_enabled_in_dict(self, run_mock, *_):
+        # This used to raise KeyError before run_test_task
+        del self.t_dict['concent_enabled']
+        self.assertTrue(
+            self.provider.run_test_task(self.t_dict),
+        )
+        run_mock.assert_called_once()
+
     def test_another_is_running(self, run_mock, *_):
         self.client.task_tester = object()
         self.assertFalse(
