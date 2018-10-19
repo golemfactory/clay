@@ -847,8 +847,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         result = c.get_task_stats()
         expected = {
-            'host_state': "Idle",
-            'provider_state': {'status': 'idle'},
+            'provider_state': {'status': 'Idle'},
             'in_network': 0,
             'supported': 0,
             'subtasks_computed': (0, 0),
@@ -977,7 +976,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         # then
         expected_status = {
-            'status': 'golem is starting',
+            'status': 'Golem is starting',
         }
         assert status == expected_status
 
@@ -1001,13 +1000,17 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             ComputingSubtaskStateSnapshot(**state_snapshot_dict)
         self.client.task_server.task_computer = task_computer
 
+        # environment
+        environment = task_computer.get_environment()
+
         # when
         status = self.client.get_provider_status()
 
         # then
         state_snapshot_dict['scene_file'] = "cube.blend"
         expected_status = {
-            'status': 'computing',
+            'environment': environment,
+            'status': 'Computing',
             'subtask': state_snapshot_dict,
         }
         assert status == expected_status
@@ -1024,7 +1027,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         # then
         expected_status = {
-            'status': 'waiting for task',
+            'status': 'Waiting for task',
             'task_id_waited_for': task_computer.waiting_for_task,
         }
         assert status == expected_status
@@ -1038,7 +1041,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         # then
         expected_status = {
-            'status': 'not accepting tasks',
+            'status': 'Not accepting tasks',
         }
         assert status == expected_status
 
@@ -1048,7 +1051,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         # then
         expected_status = {
-            'status': 'idle',
+            'status': 'Idle',
         }
         assert status == expected_status
 
