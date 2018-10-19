@@ -98,7 +98,10 @@ def prepare_and_validate_task_dict(client, task_dict):
         'concent_enabled',
         client.concent_service.enabled,
     )
+    # TODO #3474
     if 'subtasks' in task_dict:
+        logger.warning("Using soon to be deprecated data format for\
+                        input JSON change `subtasks` to `subtasks_count`")
         task_dict['subtasks_count'] = task_dict.pop('subtasks')
     _validate_task_dict(client, task_dict)
 
