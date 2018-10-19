@@ -92,6 +92,15 @@ def _validate_task_dict(client, task_dict) -> None:
             "concent service is disabled")
 
 
+def prepare_and_validate_task_dict(client, task_dict):
+    # Set default value for concent_enabled
+    task_dict.setdefault(
+        'concent_enabled',
+        client.concent_service.enabled,
+    )
+    _validate_task_dict(client, task_dict)
+
+
 @golem_async.deferred_run()
 def _run_test_task(client, task_dict):
 
@@ -404,12 +413,7 @@ class ClientProvider:
             )
             task = task_dict
         else:
-            # Set default value for concent_enabled
-            task_dict.setdefault(
-                'concent_enabled',
-                self.client.concent_service.enabled,
-            )
-            _validate_task_dict(self.client, task_dict)
+            prepare_and_validate_task_dict(self.client, task_dict)
 
             task = self.task_manager.create_task(task_dict)
 
@@ -456,11 +460,7 @@ class ClientProvider:
             return None, "Task not found: '{}'".format(task_id)
 
         task_dict.pop('id', None)
-        task_dict.setdefault(
-            'concent_enabled',
-            self.client.concent_service.enabled,
-        )
-        _validate_task_dict(self.client, task_dict)
+        prepare_and_validate_task_dict(self.client, task_dict)
         new_task = self.task_manager.create_task(task_dict)
         enqueue_new_task(  # pylint: disable=no-member
             client=self.client,
@@ -514,12 +514,8 @@ class ClientProvider:
             self.task_manager.get_task_definition_dict(old_task),
         )
         del task_dict['id']
-        task_dict.setdefault(
-            'concent_enabled',
-            self.client.concent_service.enabled,
-        )
         logger.debug('Restarting task. task_dict=%s', task_dict)
-        _validate_task_dict(self.client, task_dict)
+        prepare_and_validate_task_dict(self.client, task_dict)
         _restart_subtasks(
             client=self.client,
             subtask_ids_to_copy=subtask_ids_to_copy,
@@ -541,11 +537,7 @@ class ClientProvider:
             return False
 
         self.client.task_test_result = None
-        task_dict.setdefault(
-            'concent_enabled',
-            self.client.concent_service.enabled,
-        )
-        _validate_task_dict(self.client, task_dict)
+        prepare_and_validate_task_dict(self.client, task_dict)
         _run_test_task(
             client=self.client,
             task_dict=task_dict,
