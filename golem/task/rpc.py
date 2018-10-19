@@ -102,7 +102,7 @@ def prepare_and_validate_task_dict(client, task_dict):
     if 'subtasks' in task_dict:
         logger.warning(
             "Using soon to be deprecated data format for input JSON."
-            "Change `subtasks` to `subtasks_count`",
+            " Change `subtasks` to `subtasks_count`",
         )
         task_dict['subtasks_count'] = task_dict.pop('subtasks')
     _validate_task_dict(client, task_dict)
