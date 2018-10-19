@@ -360,9 +360,9 @@ def _restart_task_error(e, _self, task_id):
     return None, str(e)
 
 
-def _test_task_error(e, self, t_dict):
+def _test_task_error(e, self, task_dict):
     logger.error("Test task error: %s", e)
-    logger.debug("Test task details. t_dict=%s", t_dict)
+    logger.debug("Test task details. task_dict=%s", task_dict)
     self.client.task_test_result = {
         "status": taskstate.TaskTestStatus.error,
         "error": str(e),
@@ -456,6 +456,10 @@ class ClientProvider:
             return None, "Task not found: '{}'".format(task_id)
 
         task_dict.pop('id', None)
+        task_dict.setdefault(
+            'concent_enabled',
+            self.client.concent_service.enabled,
+        )
         _validate_task_dict(self.client, task_dict)
         new_task = self.task_manager.create_task(task_dict)
         enqueue_new_task(  # pylint: disable=no-member
@@ -510,6 +514,10 @@ class ClientProvider:
             self.task_manager.get_task_definition_dict(old_task),
         )
         del task_dict['id']
+        task_dict.setdefault(
+            'concent_enabled',
+            self.client.concent_service.enabled,
+        )
         logger.debug('Restarting task. task_dict=%s', task_dict)
         _validate_task_dict(self.client, task_dict)
         _restart_subtasks(
@@ -523,8 +531,8 @@ class ClientProvider:
 
     @rpc_utils.expose('comp.tasks.check')
     @safe_run(_test_task_error)
-    def run_test_task(self, t_dict) -> bool:
-        logger.info('Running test task "%r" ...', t_dict)
+    def run_test_task(self, task_dict) -> bool:
+        logger.info('Running test task "%r" ...', task_dict)
         if self.client.task_tester is not None:
             self.client.task_test_result = {
                 "status": taskstate.TaskTestStatus.error,
@@ -533,10 +541,14 @@ class ClientProvider:
             return False
 
         self.client.task_test_result = None
-        _validate_task_dict(self.client, t_dict)
+        task_dict.setdefault(
+            'concent_enabled',
+            self.client.concent_service.enabled,
+        )
+        _validate_task_dict(self.client, task_dict)
         _run_test_task(
             client=self.client,
-            task_dict=t_dict,
+            task_dict=task_dict,
         )
         # Don't wait for _deferred
         return True
