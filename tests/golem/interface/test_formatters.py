@@ -1,25 +1,51 @@
 import json
 import unittest
 
-from golem.core.simpleserializer import DictSerializer
 from golem.interface.command import CommandResult
 from golem.interface.formatters import CommandFormatter, CommandJSONFormatter
 
 
 class TestFormatters(unittest.TestCase):
+    def setUp(self):
+        self.text = 'Some text'
+        self.dictionary = {
+            'int': 5,
+            'float': 1.234,
+            'string': 'is coding worth it?',
+            'bool': True,
+            'None': None,
+        }
 
-    def test_command_formatter(self):
+    def test_command_formatter_no_pretify(self):
+        formatter = CommandFormatter(prettify=False)
+        not_pretty_dict_msg = \
+            'None: None\n' \
+            'bool: True\n' \
+            'float: 1.234\n' \
+            'int: 5\n' \
+            'string: is coding worth it?\n'
+
+        self.assertIsNone(formatter.format(None))
+        self.assertIsNone(formatter.format(''))
+        self.assertEqual(self.text, formatter.format(self.text))
+        self.assertEqual(not_pretty_dict_msg, formatter.format(self.dictionary))
+
+    def test_command_formatter_pretify(self):
+        formatter = CommandFormatter(prettify=True)
+        pretty_dict_msg = \
+            'None: null\n' \
+            'bool: true\n' \
+            'float: 1.234\n' \
+            'int: 5\n' \
+            'string: is coding worth it?\n'
+
+        self.assertIsNone(formatter.format(None))
+        self.assertIsNone(formatter.format(''))
+        self.assertEqual(self.text, formatter.format(self.text))
+        self.assertEqual(pretty_dict_msg, formatter.format(self.dictionary))
+
+    def test_command_formatter_table_format(self):
         formatter = CommandFormatter()
-
-        for prettify in [True, False]:
-            formatter.prettify = prettify
-
-            self.assertIsNone(formatter.format(None))
-            self.assertIsNone(formatter.format(''))
-            self.assertEqual(formatter.format('Some text'), 'Some text')
-
-            if not prettify:
-                self.assertEqual(formatter.format(formatter), DictSerializer.dump(formatter, typed=False))
 
         table_headers = ['First', 'Second', 'Third']
         table_values = [
