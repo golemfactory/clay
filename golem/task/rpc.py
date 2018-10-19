@@ -14,7 +14,7 @@ from twisted.internet import defer
 
 from apps.core.task import coretask
 from apps.rendering.task import framerenderingtask
-from golem.core import async as golem_async  # rename `golem.core.async` #3030
+from golem.core import golem_async
 from golem.core import common
 from golem.core import deferred as golem_deferred
 from golem.core import simpleserializer
@@ -50,15 +50,15 @@ class CreateTaskError(Exception):
 
 
 def _validate_task_dict(client, task_dict) -> None:
-    task_name = ""
+    name = ""
     if 'name' in task_dict:
         task_dict['name'] = task_dict['name'].strip()
-        task_name = task_dict['name']
-    if len(task_name) < 4 or len(task_name) > 24:
+        name = task_dict['name']
+    if len(name) < 4 or len(name) > 24:
         raise ValueError(
             "Length of task name cannot be less "
             "than 4 or more than 24 characters.")
-    if not TASK_NAME_RE.match(task_name):
+    if not TASK_NAME_RE.match(name):
         raise ValueError(
             "Task name can only contain letters, numbers, "
             "spaces, underline, dash or dot.")
@@ -66,21 +66,21 @@ def _validate_task_dict(client, task_dict) -> None:
         logger.warning("discarding the UUID from the preset")
         del task_dict['id']
 
-    subtasks = task_dict.get('subtasks', 0)
+    subtasks_count = task_dict.get('subtasks_count', 0)
     options = task_dict.get('options', {})
     optimize_total = bool(options.get('optimize_total', False))
-    if subtasks and not optimize_total:
+    if subtasks_count and not optimize_total:
         computed_subtasks = framerenderingtask.calculate_subtasks_count(
-            total_subtasks=subtasks,
+            subtasks_count=subtasks_count,
             optimize_total=False,
             use_frames=options.get('frame_count', 1) > 1,
             frames=[None]*options.get('frame_count', 1),
         )
-        if computed_subtasks != subtasks:
+        if computed_subtasks != subtasks_count:
             raise ValueError(
                 "Subtasks count {:d} is invalid."
                 " Maybe use {:d} instead?".format(
-                    subtasks,
+                    subtasks_count,
                     computed_subtasks,
                 )
             )
@@ -90,6 +90,22 @@ def _validate_task_dict(client, task_dict) -> None:
         raise CreateTaskError(
             "Cannot create task with concent enabled when "
             "concent service is disabled")
+
+
+def prepare_and_validate_task_dict(client, task_dict):
+    # Set default value for concent_enabled
+    task_dict.setdefault(
+        'concent_enabled',
+        client.concent_service.enabled,
+    )
+    # TODO #3474
+    if 'subtasks' in task_dict:
+        logger.warning(
+            "Using soon to be deprecated data format for input JSON."
+            " Change `subtasks` to `subtasks_count`",
+        )
+        task_dict['subtasks_count'] = task_dict.pop('subtasks')
+    _validate_task_dict(client, task_dict)
 
 
 @golem_async.deferred_run()
@@ -144,7 +160,7 @@ def _restart_subtasks(
     @defer.inlineCallbacks
     @safe_run(
         lambda e: logger.error(
-            'Restarting subtasks failed. task_dict=%r, subtask_ids_to_copy=%r',
+            'Restarting subtasks_failed. task_dict=%r, subtask_ids_to_copy=%r',
             task_dict,
             subtask_ids_to_copy,
         ),
@@ -360,9 +376,9 @@ def _restart_task_error(e, _self, task_id):
     return None, str(e)
 
 
-def _test_task_error(e, self, t_dict):
+def _test_task_error(e, self, task_dict):
     logger.error("Test task error: %s", e)
-    logger.debug("Test task details. t_dict=%s", t_dict)
+    logger.debug("Test task details. task_dict=%s", task_dict)
     self.client.task_test_result = {
         "status": taskstate.TaskTestStatus.error,
         "error": str(e),
@@ -404,12 +420,7 @@ class ClientProvider:
             )
             task = task_dict
         else:
-            # Set default value for concent_enabled
-            task_dict.setdefault(
-                'concent_enabled',
-                self.client.concent_service.enabled,
-            )
-            _validate_task_dict(self.client, task_dict)
+            prepare_and_validate_task_dict(self.client, task_dict)
 
             task = self.task_manager.create_task(task_dict)
 
@@ -456,7 +467,7 @@ class ClientProvider:
             return None, "Task not found: '{}'".format(task_id)
 
         task_dict.pop('id', None)
-        _validate_task_dict(self.client, task_dict)
+        prepare_and_validate_task_dict(self.client, task_dict)
         new_task = self.task_manager.create_task(task_dict)
         enqueue_new_task(  # pylint: disable=no-member
             client=self.client,
@@ -511,7 +522,7 @@ class ClientProvider:
         )
         del task_dict['id']
         logger.debug('Restarting task. task_dict=%s', task_dict)
-        _validate_task_dict(self.client, task_dict)
+        prepare_and_validate_task_dict(self.client, task_dict)
         _restart_subtasks(
             client=self.client,
             subtask_ids_to_copy=subtask_ids_to_copy,
@@ -523,8 +534,8 @@ class ClientProvider:
 
     @rpc_utils.expose('comp.tasks.check')
     @safe_run(_test_task_error)
-    def run_test_task(self, t_dict) -> bool:
-        logger.info('Running test task "%r" ...', t_dict)
+    def run_test_task(self, task_dict) -> bool:
+        logger.info('Running test task "%r" ...', task_dict)
         if self.client.task_tester is not None:
             self.client.task_test_result = {
                 "status": taskstate.TaskTestStatus.error,
@@ -533,10 +544,10 @@ class ClientProvider:
             return False
 
         self.client.task_test_result = None
-        _validate_task_dict(self.client, t_dict)
+        prepare_and_validate_task_dict(self.client, task_dict)
         _run_test_task(
             client=self.client,
-            task_dict=t_dict,
+            task_dict=task_dict,
         )
         # Don't wait for _deferred
         return True

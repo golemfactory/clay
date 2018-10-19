@@ -1,10 +1,9 @@
 from os import path, remove
 
 from ethereum.utils import denoms
-import semantic_version
 
-import golem
 from golem.core.common import timeout_to_string
+from golem.core.variables import PICKLED_VERSION
 from golem.environments.environment import Environment
 from golem.task.taskstate import TaskState
 
@@ -18,10 +17,10 @@ class TaskDefaults(object):
         self.min_subtasks = 1
         self.max_subtasks = 50
         self.default_subtasks = 20
-        self.task_name = ""
+        self.name = ""
 
     @property
-    def full_task_timeout(self):
+    def timeout(self):
         return 4 * 3600
 
     @property
@@ -34,18 +33,18 @@ class TaskDefinition(object):
 
     def __init__(self):
         self.task_id = ""
-        self.full_task_timeout = 0
+        self.timeout = 0
         self.subtask_timeout = 0
 
         self.resources = set()
         self.estimated_memory = 0
 
-        self.total_subtasks = 0
+        self.subtasks_count = 0
         self.optimize_total = False
         self.main_program_file = ""
         self.output_file = ""
         self.task_type = None
-        self.task_name = ""
+        self.name = ""
 
         self.max_price = 0
 
@@ -57,16 +56,18 @@ class TaskDefinition(object):
         self.concent_enabled: bool = False
 
     def __getstate__(self):
-        return golem.__version__, self.__dict__
+        return PICKLED_VERSION, self.__dict__
 
     def __setstate__(self, state):
+        # FIXME Move to sqlite
         if not isinstance(state, tuple):
-            pickled_version, attributes = '0.17.1', state
+            pickled_version, attributes = 0, state
         else:
             pickled_version, attributes = state
+            if not isinstance(pickled_version, int):
+                pickled_version = 1
 
-        s_pickled_version = semantic_version.Version(pickled_version)
-        if s_pickled_version < semantic_version.Version('0.18.0'):
+        if pickled_version < 1:
             # Defaults for attributes that could be missing in pickles
             # from 0.17.1  #3405
             migration_defaults = (
@@ -76,6 +77,14 @@ class TaskDefinition(object):
             for key, default_value in migration_defaults:
                 if key not in attributes:
                     attributes[key] = default_value
+
+        if pickled_version < 2:
+            if 'name' not in attributes:
+                attributes['name'] = attributes.pop('task_name')
+            if 'subtasks_count' not in attributes:
+                attributes['subtasks_count'] = attributes.pop('total_subtasks')
+            if 'timeout' not in attributes:
+                attributes['timeout'] = attributes.pop('full_task_timeout')
 
         for key in attributes:
             setattr(self, key, attributes[key])
@@ -114,7 +123,7 @@ class TaskDefinition(object):
         """
         return {
             "options": self.options,
-            "total_subtasks": self.total_subtasks,
+            "subtasks_count": self.subtasks_count,
             "optimize_total": self.optimize_total,
             "verification_options": self.verification_options
         }
@@ -124,12 +133,12 @@ class TaskDefinition(object):
         :param dict preset: Dictionary with shared options
         """
         self.options = preset["options"]
-        self.total_subtasks = preset["total_subtasks"]
+        self.subtasks_count = preset["subtasks_count"]
         self.optimize_total = preset["optimize_total"]
         self.verification_options = preset["verification_options"]
 
     def to_dict(self) -> dict:
-        task_timeout = timeout_to_string(self.full_task_timeout)
+        task_timeout = timeout_to_string(self.timeout)
         subtask_timeout = timeout_to_string(self.subtask_timeout)
         output_path = self.build_output_path()
 
@@ -137,10 +146,10 @@ class TaskDefinition(object):
             'id': self.task_id,
             'type': self.task_type,
             'compute_on': self.compute_on,
-            'name': self.task_name,
+            'name': self.name,
             'timeout': task_timeout,
             'subtask_timeout': subtask_timeout,
-            'subtasks': self.total_subtasks,
+            'subtasks_count': self.subtasks_count,
             'bid': float(self.max_price) / denoms.ether,
             'resources': list(self.resources),
             'options': {

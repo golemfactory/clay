@@ -645,7 +645,7 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
             'name': 'test task',
             'timeout': "0:10:00",
             "subtask_timeout": "0:09:50",
-            "subtasks": 1,
+            "subtasks_count": 1,
             "bid": 1.0,
             "resources": [tempfile.mkstemp('.blend')[1]],
             "options": {
@@ -660,7 +660,7 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
 
     def test_build(self):
         definition = RenderingTaskDefinition()
-        definition.total_subtasks = 1
+        definition.subtasks_count = 1
         definition.options = BlenderRendererOptions()
         builder = BlenderRenderTaskBuilder(
             owner=Node(),

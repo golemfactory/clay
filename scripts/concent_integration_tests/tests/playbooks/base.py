@@ -45,6 +45,7 @@ class NodeTestPlaybook:
     started = False
     task_in_creation = False
     output_path = None
+    subtasks = None
 
     task_package = None
     task_settings = 'default'
@@ -279,10 +280,42 @@ class NodeTestPlaybook:
         print("Verifying the output file: {}".format(output_file))
         if Path(output_file).is_file():
             print("Output present :)")
-            self.success()
+            self.next()
         else:
             print("Failed to find the output.")
             self.fail()
+
+    def step_get_subtasks(self):
+        def on_success(result):
+            self.subtasks = [
+                s.get('subtask_id')
+                for s in result
+                if s.get('status') == 'Finished'
+            ]
+            if not self.subtasks:
+                self.fail("No subtasks found???")
+            self.next()
+
+        call_requestor('comp.task.subtasks', self.task_id,
+                       on_success=on_success, on_error=self.print_error)
+
+    def step_verify_provider_income(self):
+        def on_success(result):
+            payments = [
+                p.get('subtask')
+                for p in result
+                if p.get('payer') == self.requestor_key
+            ]
+            unpaid = set(self.subtasks) - set(payments)
+            if unpaid:
+                print("Found subtasks with no matching payments: %s", unpaid)
+                self.fail()
+
+            print("All subtasks accounted for.")
+            self.success()
+
+        call_provider(
+            'pay.incomes', on_success=on_success, on_error=self.print_error)
 
     steps: typing.Tuple = (
         step_get_provider_key,
@@ -299,6 +332,8 @@ class NodeTestPlaybook:
         step_get_task_status,
         step_wait_task_finished,
         step_verify_output,
+        step_get_subtasks,
+        step_verify_provider_income,
     )
 
     def start_nodes(self):

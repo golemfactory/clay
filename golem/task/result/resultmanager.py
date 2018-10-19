@@ -3,7 +3,7 @@ import logging
 import abc
 import os
 
-from golem.core.async import AsyncRequest, async_run
+from golem.core import golem_async
 from golem.core.fileencrypt import FileEncryptor
 from .resultpackage import (
     EncryptingTaskResultPackager, ExtractedPackage, ZipTaskResultPackager)
@@ -36,7 +36,10 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
         super(EncryptedResultPackageManager, self).__init__(resource_manager)
 
     def gen_secret(self):
-        return FileEncryptor.gen_secret(self.min_secret_len, self.max_secret_len)
+        return FileEncryptor.gen_secret(
+            self.min_secret_len,
+            self.max_secret_len,
+        )
 
     def get_file_name_and_path(self, task_id, subtask_id):
         file_name = task_id + "." + subtask_id
@@ -56,11 +59,15 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
             os.remove(file_path)
 
         def package_downloaded(*args, **kwargs):
-            request = AsyncRequest(self.extract, file_path,
-                                   task_id=task_id, subtask_id=subtask_id,
-                                   output_dir=output_dir,
-                                   key_or_secret=key_or_secret)
-            async_run(request, package_extracted, error)
+            request = golem_async.AsyncRequest(
+                self.extract,
+                file_path,
+                task_id=task_id,
+                subtask_id=subtask_id,
+                output_dir=output_dir,
+                key_or_secret=key_or_secret,
+            )
+            golem_async.async_run(request, package_extracted, error)
 
         def package_extracted(extracted_pkg, *args, **kwargs):
             success(extracted_pkg, content_hash, task_id, subtask_id)

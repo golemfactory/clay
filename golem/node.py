@@ -24,7 +24,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.config.active import IS_MAINNET, EthereumConfig
 from golem.core.deferred import chain_function
 from golem.core.keysauth import KeysAuth, WrongPassword
-from golem.core.async import async_run, AsyncRequest
+from golem.core import golem_async
 from golem.core.variables import PRIVATE_KEY
 from golem.database import Database
 from golem.docker.manager import DockerManager
@@ -409,8 +409,10 @@ class Node(object):
 
         self.client.set_rpc_publisher(self._rpc_publisher)
 
-        async_run(AsyncRequest(self._run),
-                  error=self._error('Cannot start the client'))
+        golem_async.async_run(
+            golem_async.AsyncRequest(self._run),
+            error=self._error('Cannot start the client'),
+        )
 
     @require_rpc_session()
     def _run(self, *_) -> None:
