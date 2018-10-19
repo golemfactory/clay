@@ -136,9 +136,9 @@ class DockerizedTask(Task):
             task_id=task_definition.task_id,
             environment=self.environment.get_id(),
             task_owner=owner,
-            deadline=timeout_to_deadline(task_definition.full_task_timeout),
+            deadline=timeout_to_deadline(task_definition.timeout),
             subtask_timeout=task_definition.subtask_timeout,
-            subtasks_count=task_definition.total_subtasks,
+            subtasks_count=task_definition.subtasks_count,
             resource_size=1024,
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
@@ -270,7 +270,7 @@ class FireworksTask(DockerizedTask):
         :return int: number should be greater than 0
         """
         # TODO verify if fireworks gives a way to determine that in a dynamic workflow
-        return self.task_definition.total_subtasks
+        return self.task_definition.subtasks_count
 
     def get_active_tasks(self) -> int:
         """ Return number of tasks that are currently being computed
@@ -401,8 +401,8 @@ class FireworksTask(DockerizedTask):
     def to_dictionary(self):
         return {
             'id': to_unicode(self.header.task_id),
-            'name': to_unicode(self.task_definition.task_name),
+            'name': to_unicode(self.task_definition.name),
             'type': to_unicode(self.task_definition.task_type),
-            'subtasks': self.get_total_tasks(),
+            'subtasks_count': self.get_total_tasks(),
             'progress': self.get_progress()
         }
