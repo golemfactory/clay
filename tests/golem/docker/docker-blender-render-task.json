@@ -60,11 +60,11 @@
   "main_scene_file":"$GOLEM_DIR/apps/blender/benchmark/test_task/scene-Helicopter-27-internal.blend",
   "verification_options":null,
   "estimated_memory":0,
-  "full_task_timeout":14400,
+  "timeout":14400,
   "max_price": 10.23,
   "task_type":"Blender",
   "main_program_file":"$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py",
   "subtask_timeout":1200,
-  "total_subtasks":6,
+  "subtasks_count":6,
   "concent_enabled": false
 }

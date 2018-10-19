@@ -28,7 +28,7 @@ class MemTaskThread(TaskThread):
 class TestTaskTester(TestDirFixture, LogTestCase):
 
     node = 'node1'
-    task_name = 'task1'
+    name = 'task1'
 
     def test_init(self):
         task = Task(Mock(), Mock(), Mock())
@@ -41,7 +41,7 @@ class TestTaskTester(TestDirFixture, LogTestCase):
         result = [{"data": True}, 123]
 
         task.header.node_name = self.node
-        task.header.task_id = self.task_name
+        task.header.task_id = self.name
         task.root_path = self.path
         task.after_test = lambda res, tmp_dir: {}
         task.query_extra_data_for_test_task = Mock()
@@ -71,7 +71,7 @@ class TestTaskTester(TestDirFixture, LogTestCase):
             self.message = "Success " + after_test_data["warnings"]
 
         task.header.node_name = self.node
-        task.header.task_id = self.task_name
+        task.header.task_id = self.name
         task.root_path = self.path
         task.after_test = lambda res, tmp_dir: {"warnings": "bla ble"}
         task.query_extra_data_for_test_task = Mock()
