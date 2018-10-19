@@ -98,6 +98,8 @@ def prepare_and_validate_task_dict(client, task_dict):
         'concent_enabled',
         client.concent_service.enabled,
     )
+    if 'subtasks' in task_dict:
+        task_dict['subtasks_count'] = task_dict.pop('subtasks')
     _validate_task_dict(client, task_dict)
 
 
