@@ -35,13 +35,9 @@ try {
 	LogWrite ($Error[0].Exception)
 }
 
-if ( -Not ( $hasInstalled.indexof("Docker") = -1 ))
-{
-  try {
-		$dockerRmCmd = """" + $pfSFFolder + "Docker Toolbox\docker-machine.exe"" rm -f golem"
-		cmd.exe /c $dockerRmCmd
-	} catch {
-		LogWrite ("Caught the exception")
-		LogWrite ($Error[0].Exception)
-	}
-}
+# TODO: Change to docker or docker-machine updated, always execute this time from TB -> binaries.
+#if ( -Not ( $hasInstalled.indexof("Docker") = -1 ))
+#{
+$dockerRmCmd = """" + $pfSFFolder + "Docker Toolbox\docker-machine.exe"" rm -f golem"
+cmd.exe /c $dockerRmCmd
+#}
