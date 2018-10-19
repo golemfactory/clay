@@ -541,6 +541,7 @@ class TestTasks(TempDirFixture):
             self.client._call.assert_called_once_with(
                 'comp.task.restart',
                 'task_id',
+                force=False,
             )
 
     def test_restart_error(self):
@@ -552,6 +553,7 @@ class TestTasks(TempDirFixture):
             self.client._call.assert_called_once_with(
                 'comp.task.restart',
                 'task_id',
+                force=False,
             )
 
     def test_create(self) -> None:
@@ -582,6 +584,7 @@ class TestTasks(TempDirFixture):
                 client._call.assert_called_once_with(
                     'comp.task.create',
                     task_def,
+                    force=False,
                 )
 
     def test_template(self) -> None:

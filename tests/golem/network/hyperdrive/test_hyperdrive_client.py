@@ -123,7 +123,7 @@ class TestHyperdriveClientAsync(TestCase):
         return d
 
     @staticmethod
-    @mock.patch('golem.core.async.AsyncHTTPRequest.run')
+    @mock.patch('golem.core.golem_async.AsyncHTTPRequest.run')
     def test_get_async_run(request_run):
         client = HyperdriveAsyncClient()
         result = client.get_async('resource_hash',
@@ -145,7 +145,7 @@ class TestHyperdriveClientAsync(TestCase):
     def test_get_async_error(self):
         client = HyperdriveAsyncClient()
 
-        with mock.patch('golem.core.async.AsyncHTTPRequest.run',
+        with mock.patch('golem.core.golem_async.AsyncHTTPRequest.run',
                         side_effect=self.failure):
 
             wrapper = client.get_async('resource_hash',
@@ -159,7 +159,7 @@ class TestHyperdriveClientAsync(TestCase):
 
         with mock.patch('twisted.web.client.readBody',
                         side_effect=self.failure), \
-            mock.patch('golem.core.async.AsyncHTTPRequest.run',
+            mock.patch('golem.core.golem_async.AsyncHTTPRequest.run',
                        side_effect=self.success):
 
             wrapper = client.get_async('resource_hash',
@@ -177,7 +177,7 @@ class TestHyperdriveClientAsync(TestCase):
 
         with mock.patch('twisted.web.client.readBody',
                         side_effect=body), \
-            mock.patch('golem.core.async.AsyncHTTPRequest.run',
+            mock.patch('golem.core.golem_async.AsyncHTTPRequest.run',
                        side_effect=self.success):
 
             client = HyperdriveAsyncClient()
@@ -198,7 +198,7 @@ class TestHyperdriveClientAsync(TestCase):
 
         with mock.patch('twisted.web.client.readBody',
                         side_effect=body), \
-            mock.patch('golem.core.async.AsyncHTTPRequest.run',
+            mock.patch('golem.core.golem_async.AsyncHTTPRequest.run',
                        side_effect=self.success):
 
             client = HyperdriveAsyncClient()
