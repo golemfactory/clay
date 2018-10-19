@@ -47,11 +47,11 @@
   "optimize_total":false,
   "verification_options":null,
   "estimated_memory":0,
-  "full_task_timeout":14400,
+  "timeout":14400,
   "task_type":"Blender",
   "main_program_file":"$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py",
   "subtask_timeout":1200,
-  "total_subtasks":6,
+  "subtasks_count":6,
   "max_price": 10.2,
   "docker_images":[
     {

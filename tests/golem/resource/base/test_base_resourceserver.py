@@ -195,7 +195,7 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
             deferred.callback(True)
             return deferred
 
-        with mock.patch('golem.resource.base.resourceserver.async_run', run):
+        with mock.patch('golem.core.golem_async.async_run', run):
             new_server._download_resources(async_=False)
 
         for entry in relative:

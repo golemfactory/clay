@@ -58,7 +58,7 @@ class TestDummyTaskDefinition(TempDirFixture):
         for c in list_dir_recursive(tdd.code_dir):
             assert os.path.isfile(c)
         assert tdd.result_size == 256
-        assert tdd.total_subtasks == 5
+        assert tdd.subtasks_count == 5
         assert tdd.out_file_basename == "out"
         assert tdd.shared_data_files == ["in.data"]
 

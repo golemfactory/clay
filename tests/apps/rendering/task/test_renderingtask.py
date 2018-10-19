@@ -75,7 +75,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task_definition.max_price = 1000
         task_definition.task_id = "xyz"
         task_definition.estimated_memory = 1024
-        task_definition.full_task_timeout = 3600
+        task_definition.timeout = 3600
         task_definition.subtask_timeout = 600
         task_definition.main_scene_file=files[1]
         task_definition.resolution = [800, 600]
@@ -348,28 +348,28 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
         assert builder._calculate_total(defaults) == 17
 
         definition.optimize_total = False
-        definition.total_subtasks = 18
+        definition.subtasks_count = 18
         assert builder._calculate_total(defaults) == 18
 
-        definition.total_subtasks = 2
+        definition.subtasks_count = 2
         with self.assertLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 17
 
-        definition.total_subtasks = 3
+        definition.subtasks_count = 3
         with self.assertNoLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 3
 
-        definition.total_subtasks = 34
+        definition.subtasks_count = 34
         with self.assertLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 17
 
-        definition.total_subtasks = 33
+        definition.subtasks_count = 33
         with self.assertNoLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 33
 
     def test_get_output_path(self):
         td = TaskDefinition()
-        td.task_name = "MY task"
+        td.name = "MY task"
         tdict = {'options': {'output_path': '/dir3/dir4', 'format': 'txt'}}
         assert RenderingTaskBuilder.get_output_path(tdict, td) == \
             path.join("/dir3/dir4", "MY task.txt")
@@ -385,7 +385,7 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
             'resources': {"file1.png", "file2.txt", 'file3.jpg', 'file4.txt'},
             'compute_on': 'cpu',
             'task_type': 'TESTTASK',
-            'subtasks': 1
+            'subtasks_count': 1
         }
 
         # when
@@ -412,7 +412,7 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
             'resources': {"file1.png", "file2.txt", 'file3.jpg', 'file4.txt'},
             'compute_on': 'cpu',
             'task_type': 'TESTTASK',
-            'subtasks': 1,
+            'subtasks_count': 1,
             'options': {'output_path': self.path,
                         'format': 'PNG',
                         'resolution': [800, 600]},
@@ -428,9 +428,9 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
             self.tti, self.task_dict)
 
         # then
-        assert definition.task_name == "NAME OF THE TASK"
+        assert definition.name == "NAME OF THE TASK"
         assert definition.max_price == 250000000000000000
-        assert definition.full_task_timeout == 3600
+        assert definition.timeout == 3600
         assert definition.subtask_timeout == 1500
         output_file = self.task_dict['name'] + "." + \
             self.task_dict['options']['format']
@@ -451,7 +451,7 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
                MIN_TIMEOUT in log_.output[0]
         assert "Subtask timeout 1 too short for this task. Changing to %d" % \
                SUBTASK_MIN_TIMEOUT in log_.output[1]
-        assert definition.full_task_timeout == MIN_TIMEOUT
+        assert definition.timeout == MIN_TIMEOUT
         assert definition.subtask_timeout == SUBTASK_MIN_TIMEOUT
 
     def test_main_scene_file(self):

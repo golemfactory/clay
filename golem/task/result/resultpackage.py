@@ -122,7 +122,6 @@ class ZipPackager(Packager):
     ZIP_MODE = zipfile.ZIP_STORED  # no compression
 
     def extract(self, input_path, output_dir=None, **kwargs):
-        print('ZipPackager')
         if not output_dir:
             output_dir = os.path.dirname(input_path)
         os.makedirs(output_dir, exist_ok=True)
@@ -209,7 +208,6 @@ class EncryptingPackager(Packager):
         return output_path, pkg_sha1
 
     def extract(self, input_path, output_dir=None, **kwargs):
-        print('EncryptingPackager')
         tmp_file_path = self.package_name(input_path)
         backup_rename(tmp_file_path)
 
@@ -269,7 +267,6 @@ class TaskResultPackager:
                               cbor_files=cbor_files)
 
     def extract(self, input_path, output_dir=None, **kwargs):
-        print('TaskResultPackager')
 
         files, files_dir = super().extract(input_path, output_dir=output_dir)
         descriptor_path = os.path.join(files_dir, self.descriptor_file_name)

@@ -555,13 +555,13 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             self.assertIn(subtask_id, another_ctk.subtask_to_task)
             self.assertIn(header.task_id, another_ctk.active_tasks)
 
-    @mock.patch('golem.task.taskkeeper.async_run', async_run)
+    @mock.patch('golem.core.golem_async.async_run', async_run)
     def test_persistence(self):
         """Tests whether tasks are persistent between restarts."""
         tasks_dir = Path(self.path)
         self._dump_some_tasks(tasks_dir)
 
-    @mock.patch('golem.task.taskkeeper.async_run', async_run)
+    @mock.patch('golem.core.golem_async.async_run', async_run)
     @mock.patch('golem.task.taskkeeper.common.get_timestamp_utc')
     def test_remove_old_tasks(self, timestamp):
         timestamp.return_value = time.time()
