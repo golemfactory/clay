@@ -624,3 +624,7 @@ class Task(abc.ABC):
     @abc.abstractmethod
     def should_accept_client(self, node_id):
         pass
+
+    @abc.abstractmethod
+    def accept_client(self, node_id):
+        pass
