@@ -366,7 +366,7 @@ def enqueue_new_task(client, task, force=False) \
     return task
 
 
-def _create_task_error(e, _self, task_dict):
+def _create_task_error(e, _self, task_dict, force=False):
     logger.error("Cannot create task %r: %s", task_dict, e)
     return None, str(e)
 
@@ -434,6 +434,7 @@ class ClientProvider:
                 e=failure.value,
                 _self=self,
                 task_dict=task_dict,
+                force=force
             ),
         )
         return task_id, None
