@@ -255,15 +255,15 @@ class FireworksTask(DockerizedTask):
         :param task_result: task result, can be binary data or list of files
         :param result_type: ResultType representation
         """
-        import pdb; pdb.set_trace()
-        pass
+        for fw in self.workflow.fws:
+            self.workflow.refresh(fw.fw_id)
+        self.jobs_stacked -= 1
 
     def computation_failed(self, subtask_id):
         """ Inform that computation of a task with given id has failed
         :param subtask_id:
         """
-        import pdb; pdb.set_trace()
-        raise Exception("Computation failed")
+        pass
 
     def verify_subtask(self, subtask_id):
         """ Verify given subtask
@@ -285,7 +285,6 @@ class FireworksTask(DockerizedTask):
         :return int: number should be greater than 0
         """
         # TODO verify if fireworks gives a way to determine that in a dynamic workflow
-        import pdb; pdb.set_trace()
         return self.task_definition.subtasks_count
 
     def get_active_tasks(self) -> int:
