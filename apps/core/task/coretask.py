@@ -21,7 +21,7 @@ from golem.docker.environment import DockerEnvironment
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
-    TaskTypeInfo
+    TaskTypeInfo, AcceptClientVerdict
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
