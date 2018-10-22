@@ -125,8 +125,6 @@ def get_timestamp_utc():
 
 
 def timeout_to_deadline(timeout):
-    if isinstance(timeout, str):
-        timeout = string_to_timeout(timeout)
     return get_timestamp_utc() + timeout
 
 
@@ -148,8 +146,6 @@ def datetime_to_timestamp_utc(then):
 
 
 def timeout_to_string(timeout):
-    if isinstance(timeout, str):
-        return timeout
     hours = int(timeout / 3600)
     timeout -= hours * 3600
     minutes = int(timeout / 60)
