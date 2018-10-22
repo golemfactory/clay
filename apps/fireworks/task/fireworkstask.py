@@ -161,11 +161,12 @@ class FireworksTask(DockerizedTask):
                  task_definition: TaskDefinition,
                  dir_manager: DirManager,
                  launchpad: LaunchPad,
-                 firework: Workflow) -> None:
+                 workflow: Workflow) -> None:
         super().__init__(owner, task_definition, dir_manager)
         self.launchpad = launchpad
-        self.firework = firework
-        self.launchpad.add_wf(self.firework)
+        self.workflow = workflow
+        self.launchpad.add_wf(self.workflow)
+        self.jobs_stacked = 0
 
     def initialize(self, dir_manager):
         """Called after adding a new task, may initialize or create some resources
@@ -173,6 +174,13 @@ class FireworksTask(DockerizedTask):
         :param DirManager dir_manager: DirManager instance for accessing temp dir for this task
         """
         pass
+
+    @staticmethod
+    def get_next_ready_firework(workflow):
+        for fw in workflow.fws:
+            if fw.state == "READY":
+                return fw.fw_id
+        raise Exception("No more fireworks")
 
     def _new_compute_task_def(self, subtask_id, extra_data,
                               perf_index=0):
@@ -182,6 +190,7 @@ class FireworksTask(DockerizedTask):
         ctd['subtask_id'] = subtask_id
         ctd['extra_data'] = extra_data
         ctd['extra_data']['launchpad'] = self.launchpad.to_dict()
+        ctd['extra_data']['fw_id'] = self.get_next_ready_firework(self.workflow)
         ctd['short_description'] = self.short_extra_data_repr(extra_data)
         ctd['src_code'] = self.src_code
         ctd['performance'] = perf_index
@@ -209,6 +218,8 @@ class FireworksTask(DockerizedTask):
         # verify calling criteria in upper level
         subtask_id = self.create_subtask_id()
         ctd = self._new_compute_task_def(subtask_id, dict(), 0)
+        self.jobs_stacked += 1
+        import pdb; pdb.set_trace()
         return Task.ExtraData(ctd=ctd)
 
     def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa pylint:disable=line-too-long
@@ -226,7 +237,8 @@ class FireworksTask(DockerizedTask):
         """ Return information if there are still some subtasks that may be dispended
         :return bool: True if there are still subtask that should be computed, False otherwise
         """
-        return True
+        jobs_ready = sum([1 if firework.state == "READY" else 0 for firework in self.workflow.fws])
+        return jobs_ready - self.jobs_stacked > 0
 
     def finished_computation(self) -> bool:
         """ Return information if tasks has been fully computed
@@ -244,7 +256,7 @@ class FireworksTask(DockerizedTask):
         :param result_type: ResultType representation
         """
         import pdb; pdb.set_trace()
-        return  # Implement in derived class
+        pass
 
     def computation_failed(self, subtask_id):
         """ Inform that computation of a task with given id has failed
@@ -273,6 +285,7 @@ class FireworksTask(DockerizedTask):
         :return int: number should be greater than 0
         """
         # TODO verify if fireworks gives a way to determine that in a dynamic workflow
+        import pdb; pdb.set_trace()
         return self.task_definition.subtasks_count
 
     def get_active_tasks(self) -> int:
@@ -352,7 +365,10 @@ class FireworksTask(DockerizedTask):
         raise NotImplementedError()
 
     def should_accept_client(self, node_id):
-        return AcceptClientVerdict.ACCEPTED
+        if self.needs_computation():
+            return AcceptClientVerdict.ACCEPTED
+        else:
+            return AcceptClientVerdict.SHOULD_WAIT
 
     def get_stdout(self, subtask_id) -> str:
         """ Return stdout received after computation of subtask_id, if there is no data available

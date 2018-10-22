@@ -8,4 +8,4 @@ from fireworks.core.rocket_launcher import launch_rocket
 import params  # This module is generated before this script is run
 
 launchpad = LaunchPad.from_dict(params.launchpad)
-launch_rocket(launchpad, FWorker())
+launch_rocket(launchpad, FWorker(), fw_id=params.fw_id)
