@@ -14,6 +14,7 @@ from golem.docker.environment import DockerEnvironment
 from golem.task.taskbase import Task, ResultType, TaskState, TaskBuilder, \
                                 TaskTypeInfo, TaskDefaults, TaskHeader, \
                                 AcceptClientVerdict
+from golem.task.taskclient import TaskClient
 from golem_messages import idgenerator
 
 class FireWorksTaskDefinition(TaskDefinition):
@@ -95,6 +96,8 @@ class FireworksTaskBuilder(BasicTaskBuilder):
         """
         td = task_type.definition()
         apply(td, dictionary)
+        td.timeout = string_to_timeout(dictionary['timeout'])
+        td.subtask_timeout = string_to_timeout(dictionary['subtask_timeout'])
         return td
 
 class FireworksBenchmarkTaskBuilder(FireworksTaskBuilder):
@@ -406,3 +409,12 @@ class FireworksTask(DockerizedTask):
             'subtasks_count': self.get_total_tasks(),
             'progress': self.get_progress()
         }
+
+    def accept_client(self, node_id):
+        verdict = self.should_accept_client(node_id)
+
+        if verdict == AcceptClientVerdict.ACCEPTED:
+            client = TaskClient(node_id)
+            client.start()
+
+        return verdict
