@@ -33,12 +33,6 @@ def log_key_error(*args, **_):
     return False
 
 
-class AcceptClientVerdict(Enum):
-    ACCEPTED = 0
-    REJECTED = 1
-    SHOULD_WAIT = 2
-
-
 MAX_PENDING_CLIENT_RESULTS = 1
 
 

@@ -21,6 +21,12 @@ from . import exceptions
 logger = logging.getLogger("golem.task")
 
 
+class AcceptClientVerdict(Enum):
+    ACCEPTED = 0
+    REJECTED = 1
+    SHOULD_WAIT = 2
+
+
 class TaskPurpose(Enum):
     TESTING = "testing"
     REQUESTING = "requesting"

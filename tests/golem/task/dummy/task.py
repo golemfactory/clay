@@ -7,11 +7,10 @@ from eth_utils import encode_hex
 from golem_messages import idgenerator
 from golem_messages.message import ComputeTaskDef
 
-from apps.core.task.coretask import AcceptClientVerdict
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.network.p2p.node import Node
-from golem.task.taskbase import Task, TaskHeader, ResultType
+from golem.task.taskbase import Task, TaskHeader, ResultType, AcceptClientVerdict
 
 
 class DummyTaskParameters(object):

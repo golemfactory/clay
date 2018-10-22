@@ -12,7 +12,6 @@ from golem_messages import factories as msg_factories
 from golem_messages.message import ComputeTaskDef
 from requests import HTTPError
 
-from apps.core.task.coretask import AcceptClientVerdict
 import golem
 from golem import model
 from golem import testutils
@@ -29,7 +28,7 @@ from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import tasksession
 from golem.task.masking import Mask
 from golem.task.server import concent as server_concent
-from golem.task.taskbase import TaskHeader, ResultType
+from golem.task.taskbase import TaskHeader, ResultType, AcceptClientVerdict
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.task.tasksession import TaskSession
