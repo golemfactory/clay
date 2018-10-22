@@ -45,8 +45,7 @@ class OfferPool:
     @classmethod
     def _choose_offers(cls, task_id: str) -> None:
         logger.info("Ordering providers for task: %s", task_id)
-        offers = cls._pools[task_id]
-        del cls._pools[task_id]
+        offers = cls._pools.pop(task_id)
         order = order_providers(list(map(lambda x: x[0], offers)))
         for i in order:
             offers[i][1].callback(True)
