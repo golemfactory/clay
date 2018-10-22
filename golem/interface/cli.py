@@ -74,7 +74,7 @@ class CLI(object):
         else:
             self.add_formatter(CommandJSONFormatter())
 
-        self.add_formatter(CommandFormatter())  # default
+        self.add_formatter(CommandFormatter(prettify=False))  # default
 
     def register_client(self, client):
         for root in self.roots:
