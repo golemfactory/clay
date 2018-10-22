@@ -3,16 +3,17 @@ import yaml
 from fireworks import LaunchPad, ScriptTask, Workflow
 from typing import List, Optional
 
-from golem.task.taskbase import Task, ResultType, TaskState, TaskBuilder,\
-                                TaskTypeInfo, TaskDefaults, TaskHeader
 import golem_messages
-from golem.network.p2p.node import Node
-from golem.resource.dirmanager import DirManager
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.fireworks.fireworksenvironment import FireworksTaskEnvironment
-from golem.docker.environment import DockerEnvironment
+from golem.network.p2p.node import Node
+from golem.resource.dirmanager import DirManager
 from golem.core.common import timeout_to_deadline, string_to_timeout,\
                               to_unicode, get_golem_path
+from golem.docker.environment import DockerEnvironment
+from golem.task.taskbase import Task, ResultType, TaskState, TaskBuilder, \
+                                TaskTypeInfo, TaskDefaults, TaskHeader, \
+                                AcceptClientVerdict
 from golem_messages import idgenerator
 
 class FireWorksTaskDefinition(TaskDefinition):
@@ -208,7 +209,6 @@ class FireworksTask(DockerizedTask):
         return Task.ExtraData(ctd=ctd)
 
     def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa pylint:disable=line-too-long
-        import pdb; pdb.set_trace()
         pass
 
     def short_extra_data_repr(self, extra_data: Task.ExtraData) -> str:
@@ -349,7 +349,7 @@ class FireworksTask(DockerizedTask):
         raise NotImplementedError()
 
     def should_accept_client(self, node_id):
-        return True
+        return AcceptClientVerdict.ACCEPTED
 
     def get_stdout(self, subtask_id) -> str:
         """ Return stdout received after computation of subtask_id, if there is no data available
