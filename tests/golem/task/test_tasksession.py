@@ -78,6 +78,8 @@ def _offerpool_add(*_):
 
 # pylint:disable=no-member,too-many-instance-attributes
 @patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
+@patch('golem.task.tasksession.get_provider_efficiency', Mock())
+@patch('golem.task.tasksession.get_provider_efficacy', Mock())
 class TaskSessionTaskToComputeTest(TestCase):
     def setUp(self):
         self.requestor_keys = cryptography.ECCx(None)

@@ -17,12 +17,17 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
+from golem.marketplace import Offer
 from golem.marketplace.offerpool import OfferPool
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
+from golem.ranking.manager.database_manager import (
+    get_provider_efficacy,
+    get_provider_efficiency,
+)
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
@@ -563,7 +568,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task = self.task_manager.tasks[ctd['task_id']]
             task_state = self.task_manager.tasks_states[ctd['task_id']]
             price = taskkeeper.compute_subtask_value(
-                task.header.max_price,
+                msg.price,
                 task.header.subtask_timeout,
             )
             ttc = message.tasks.TaskToCompute(
@@ -591,7 +596,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
             self.send(ttc)
 
-        OfferPool.add(msg.task_id, msg).addCallback(_offer_chosen)
+        task = self.task_manager.tasks[msg.task_id]
+        offer = Offer(
+            scaled_price=task.header.max_price / msg.price,
+            reputation=get_provider_efficiency(self.key_id),
+            quality=get_provider_efficacy(self.key_id).vector,
+        )
+
+        OfferPool.add(msg.task_id, offer).addCallback(_offer_chosen)
 
     @handle_attr_error_with_task_computer
     @history.provider_history

@@ -344,12 +344,14 @@ def _offerpool_add(*_):
 
 
 @mock.patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
+@mock.patch('golem.task.tasksession.get_provider_efficiency', mock.Mock())
+@mock.patch('golem.task.tasksession.get_provider_efficacy', mock.Mock())
 @mock.patch('golem.task.tasksession.TaskSession.send')
 class ReactToWantToComputeTaskTestCase(unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.requestor_keys = cryptography.ECCx(None)
-        self.msg = factories.tasks.WantToComputeTaskFactory()
+        self.msg = factories.tasks.WantToComputeTaskFactory(price=10 ** 18)
         self.task_session = tasksession.TaskSession(mock.MagicMock())
         self.task_session.key_id = 'unittest_key_id'
         self.task_session.task_server.keys_auth._private_key = \
@@ -410,7 +412,7 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         task_manager.check_next_subtask.return_value = True
         task_manager.is_my_task.return_value = True
         task_manager.should_wait_for_node.return_value = False
-        ctd = factories.tasks.ComputeTaskDefFactory()
+        ctd = factories.tasks.ComputeTaskDefFactory(task_id=self.msg.task_id)
         task_manager.get_next_subtask.return_value = ctd
 
         task = mock.MagicMock()
