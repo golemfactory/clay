@@ -31,10 +31,11 @@ class TaskTester(LocalComputer):
         if ctd['docker_images']:
             return LocalComputer._get_task_thread(self, ctd)
         else:
+            extra_data = self._extract_extra_data_from_ctd(ctd)
             return PyTestTaskThread(self,
                                     ctd['subtask_id'],
                                     ctd['src_code'],
-                                    ctd['extra_data'],
+                                    extra_data,
                                     ctd['short_description'],
                                     self.test_task_res_path,
                                     self.tmp_dir,

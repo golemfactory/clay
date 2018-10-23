@@ -1,6 +1,8 @@
 import logging
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
+from copy import copy
+
 import os
 import time
 import uuid
@@ -8,6 +10,9 @@ from threading import Lock
 
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred, TimeoutError
+
+from golem_messages.message import ComputeTaskDef
+from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 
 from golem.core.common import deadline_to_timeout
 from golem.core.deferred import sync_wait
@@ -113,6 +118,23 @@ class TaskComputer(object):
         )
         return True
 
+    def _extract_extra_data_from_subtask(self, subtask: ComputeTaskDef) -> dict:  # noqa pylint:disable=no-self-use
+        if subtask['task_type'] == 'Blender':
+            extra_data = copy(subtask['extra_data'])
+            extra_data['frames'] = subtask['meta_parameters']['frames']
+            extra_data['output_format'] = \
+                subtask['meta_parameters']['output_format']
+            extra_data['script_src'] = generate_blender_crop_file(
+                resolution=subtask['meta_parameters']['resolution'],
+                borders_x=subtask['meta_parameters']['borders_x'],
+                borders_y=subtask['meta_parameters']['borders_y'],
+                use_compositing=subtask['meta_parameters']['use_compositing'],
+                samples=subtask['meta_parameters']['samples'],
+            )
+        else:
+            raise RuntimeError('Task Type is set to None')
+        return extra_data
+
     def task_resource_collected(self, task_id, unpack_delta=True):
         subtask = self.assigned_subtask
         if not subtask or subtask['task_id'] != task_id:
@@ -123,11 +145,14 @@ class TaskComputer(object):
             self.task_server.unpack_delta(rs_dir, self.delta, task_id)
         self.delta = None
         self.last_task_timeout_checking = time.time()
+
+        extra_data = self._extract_extra_data_from_subtask(subtask)
+
         self.__compute_task(
             subtask['subtask_id'],
             subtask['docker_images'],
             subtask['src_code'],
-            subtask['extra_data'],
+            extra_data,
             subtask['deadline'])
         return True
 

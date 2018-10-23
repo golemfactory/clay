@@ -2,12 +2,14 @@ import logging
 import os
 import shutil
 import stat
-from threading import Lock
 import time
+from copy import copy
 from typing import Callable, Optional
+from threading import Lock
 
 from golem_messages.message import ComputeTaskDef
 
+from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from golem.core.common import to_unicode
 from golem.core.fileshelper import common_dir
 from golem.docker.image import DockerImage
@@ -63,7 +65,6 @@ class LocalComputer:
             self.start_time = time.time()
             self._prepare_tmp_dir()
             self._prepare_resources(self.resources)  # makes a copy
-
             if not self.compute_task_def:
                 ctd = self.get_compute_task_def()
             else:
@@ -93,6 +94,7 @@ class LocalComputer:
 
     def task_computed(self, task_thread: TaskThread) -> None:
         self.end_time = time.time()
+
         if self.is_success(task_thread):
             self.computation_success(task_thread)
         else:
@@ -174,21 +176,39 @@ class LocalComputer:
             shutil.rmtree(self.tmp_dir, True)
         os.makedirs(self.tmp_dir)
 
+    def _extract_extra_data_from_ctd(self, ctd: ComputeTaskDef) -> dict:
+        if ctd['task_type'] == 'Blender':
+            extra_data = copy(ctd['extra_data'])
+            extra_data['frames'] = ctd['meta_parameters']['frames']
+            extra_data['output_format'] = \
+                ctd['meta_parameters']['output_format']
+            extra_data['script_src'] = generate_blender_crop_file(
+                resolution=ctd['meta_parameters']['resolution'],
+                borders_x=ctd['meta_parameters']['borders_x'],
+                borders_y=ctd['meta_parameters']['borders_y'],
+                use_compositing=ctd['meta_parameters']['use_compositing'],
+                samples=ctd['meta_parameters']['samples'],
+            )
+        else:
+            raise RuntimeError('Task Type is set to None')
+        return extra_data
+
     def _get_task_thread(self, ctd: ComputeTaskDef) -> DockerTaskThread:
         if self.test_task_res_path is None:
             raise RuntimeError('Resource path is set to None')
         if self.tmp_dir is None:
             raise RuntimeError('Temporary directory is set to None')
-
         dir_mapping = DockerTaskThread.generate_dir_mapping(
             resources=self.test_task_res_path,
             temporary=self.tmp_dir,
         )
+        extra_data = self._extract_extra_data_from_ctd(ctd)
+
         return DockerTaskThread(
             ctd['subtask_id'],
             ctd['docker_images'],
             ctd['src_code'],
-            ctd['extra_data'],
+            extra_data,
             dir_mapping,
             0,
             check_mem=self.check_mem,
