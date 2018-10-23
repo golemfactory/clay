@@ -463,12 +463,14 @@ class BlenderRenderTask(FrameRenderingTask):
         min_y = numpy.float32(min_y)
         max_y = numpy.float32(max_y)
 
-        script_src = generate_blender_crop_file(
-            resolution=(self.res_x, self.res_y),
-            borders_x=(0.0, 1.0),
-            borders_y=(min_y, max_y),
+        blender_script_package = self._new_blender_script_package(
+            resolution=[self.res_x, self.res_y],
+            borders_x=[0.0, 1.0],
+            borders_y=[float(min_y), float(max_y)],
             use_compositing=self.compositing,
-            samples=self.samples
+            samples=self.samples,
+            frames=frames,
+            output_format=self.output_format
         )
 
         extra_data = {"path_root": self.main_scene_dir,
@@ -523,8 +525,13 @@ class BlenderRenderTask(FrameRenderingTask):
         else:
             self._update_frame_task_preview()
 
-        ctd = self._new_compute_task_def(subtask_id, extra_data,
-                                         perf_index=perf_index)
+        ctd = self._new_compute_task_def(
+            subtask_id=subtask_id,
+            extra_data=extra_data,
+            task_type='Blender',
+            meta_parameters=blender_script_package,
+            perf_index=perf_index,
+        )
         self.subtasks_given[subtask_id]['ctd'] = ctd
         return self.ExtraData(ctd=ctd)
 
@@ -546,12 +553,14 @@ class BlenderRenderTask(FrameRenderingTask):
 
         scene_file = self._get_scene_file_rel_path()
 
-        script_src = generate_blender_crop_file(
+        blender_script_package = self._new_blender_script_package(
             resolution=BlenderRenderTask.BLENDER_MIN_BOX,
-            borders_x=(0.0, 1.0),
-            borders_y=(0.0, 1.0),
+            borders_x=[0.0, 1.0],
+            borders_y=[0.0, 1.0],
             use_compositing=False,
-            samples=BlenderRenderTask.BLENDER_MIN_SAMPLE
+            samples=BlenderRenderTask.BLENDER_MIN_SAMPLE,
+            frames=[1],
+            output_format="PNG",
         )
 
         extra_data = {"path_root": self.main_scene_dir,
@@ -574,7 +583,13 @@ class BlenderRenderTask(FrameRenderingTask):
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
 
-        return self._new_compute_task_def(hash, extra_data, 0)
+        return self._new_compute_task_def(
+            subtask_id=hash,
+            extra_data=extra_data,
+            task_type='Blender',
+            meta_parameters=blender_script_package,
+            perf_index=0,
+        )
 
     def _get_min_max_y(self, start_task):
         if self.use_frames:

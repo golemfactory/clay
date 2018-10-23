@@ -213,7 +213,6 @@ class CoreTask(Task):
         def verification_finished_(subtask_id, verdict, result):
             self.verification_finished(subtask_id, verdict, result)
             verification_finished()
-
         self.VERIFICATION_QUEUE.submit(
             self.VERIFIER_CLASS,
             subtask_id,
@@ -339,9 +338,40 @@ class CoreTask(Task):
             'progress': self.get_progress()
         }
 
-    def _new_compute_task_def(self, subtask_id, extra_data,
-                              perf_index=0):
-        ctd = golem_messages.message.ComputeTaskDef()
+    def _new_blender_script_package(
+            self,
+            resolution,
+            borders_x,
+            borders_y,
+            use_compositing,
+            samples,
+            frames,
+            output_format
+    ):
+
+        return golem_messages.message.tasks.BlenderScriptPackage(
+            resolution=resolution,
+            borders_x=borders_x,
+            borders_y=borders_y,
+            use_compositing=use_compositing,
+            samples=samples,
+            frames=frames,
+            output_format=golem_messages.message
+            .tasks.OUTPUT_FORMAT(output_format).name
+        )
+
+    def _new_compute_task_def(
+            self,
+            subtask_id,
+            extra_data,
+            task_type,
+            meta_parameters,
+            perf_index=0,
+    ):
+        ctd = golem_messages.message.ComputeTaskDef(
+            task_type=task_type,
+            meta_parameters=meta_parameters,
+        )
         ctd['task_id'] = self.header.task_id
         ctd['subtask_id'] = subtask_id
         ctd['extra_data'] = extra_data

@@ -64,6 +64,17 @@ class DummyTask(CoreTask):
         shared_data_files_base = [os.path.basename(x) for x in
                                   self.task_definition.shared_data_files]
 
+        meta_parameters = {
+            'resolution': [100, 100],
+            'borders_x': [0.3, 0.6],
+            'borders_y': [0.3, 0.6],
+            'use_compositing': False,
+            'samples': 2,
+            'frames': [1],
+            'output_format': 'PNG'
+        }
+        task_type = 'Blender'
+
         extra_data = {
             "data_files": shared_data_files_base,
             "subtask_data": data,
@@ -75,6 +86,8 @@ class DummyTask(CoreTask):
 
         return self._new_compute_task_def(subtask_id,
                                           extra_data,
+                                          task_type,
+                                          meta_parameters,
                                           perf_index=perf_index)
 
     def query_extra_data(self,
