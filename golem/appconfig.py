@@ -49,6 +49,7 @@ NODE_SNAPSHOT_INTERVAL = 10.0
 NETWORK_CHECK_INTERVAL = 10.0
 MASK_UPDATE_INTERVAL = 30.0
 MAX_SENDING_DELAY = 360
+OFFER_POOLING_INTERVAL = 15.0
 # How frequently task archive should be saved to disk (in seconds)
 TASKARCHIVE_MAINTENANCE_INTERVAL = 30
 # Filename for task archive disk file
@@ -153,6 +154,7 @@ class AppConfig:
             network_check_interval=NETWORK_CHECK_INTERVAL,
             mask_update_interval=MASK_UPDATE_INTERVAL,
             max_results_sending_delay=MAX_SENDING_DELAY,
+            offer_pooling_interval=OFFER_POOLING_INTERVAL,
             # timeouts
             p2p_session_timeout=P2P_SESSION_TIMEOUT,
             task_session_timeout=TASK_SESSION_TIMEOUT,

@@ -1,4 +1,5 @@
-from golem.marketplace import order_providers, Offer
+from golem.marketplace import Offer
+from golem.marketplace.rust import order_providers
 
 
 def test_order_providers():

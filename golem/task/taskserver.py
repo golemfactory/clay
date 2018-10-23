@@ -19,6 +19,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.core.common import node_info_str, short_node_id
 from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.marketplace import OfferPool
 from golem.network.p2p import node as p2p_node
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
@@ -96,6 +97,8 @@ class TaskServer(
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
         self.task_sessions_incoming = weakref.WeakSet()
+
+        OfferPool.change_interval(self.config_desc.offer_pooling_interval)
 
         self.max_trust = 1.0
         self.min_trust = 0.0

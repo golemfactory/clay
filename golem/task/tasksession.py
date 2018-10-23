@@ -17,8 +17,7 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.marketplace import Offer
-from golem.marketplace.offerpool import OfferPool
+from golem.marketplace import Offer, OfferPool
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers

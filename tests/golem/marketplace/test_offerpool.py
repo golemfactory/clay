@@ -1,8 +1,7 @@
 from unittest import TestCase
 from unittest.mock import Mock, patch, ANY
 
-from golem.marketplace import Offer
-from golem.marketplace.offerpool import OfferPool
+from golem.marketplace import Offer, OfferPool
 
 
 @patch('golem.marketplace.offerpool.task.deferLater')
