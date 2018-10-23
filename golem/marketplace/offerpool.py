@@ -4,15 +4,31 @@ from typing import List, Dict, ClassVar, Tuple
 from twisted.internet import task
 from twisted.internet.defer import Deferred
 
-from . import Offer, order_providers
+from .rust import order_providers
 
 logger = logging.getLogger(__name__)
+
+
+class Offer:
+    def __init__(
+            self,
+            scaled_price: float,
+            reputation: float,
+            quality: Tuple[float, float, float, float]) -> None:
+        self.scaled_price = scaled_price
+        self.reputation = reputation
+        self.quality = quality
 
 
 class OfferPool:
 
     _INTERVAL: ClassVar[float] = 15.0  # s
     _pools: ClassVar[Dict[str, List[Tuple[Offer, Deferred]]]] = dict()
+
+    @classmethod
+    def change_interval(cls, interval: float) -> None:
+        logger.info("Offer pooling interval set to %.1f", interval)
+        cls._INTERVAL = interval
 
     @classmethod
     def add(cls, task_id: str, offer: Offer) -> Deferred:
