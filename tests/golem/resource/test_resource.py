@@ -71,7 +71,7 @@ class TestGetTaskResources(TempDirFixture):
         task_definition.max_price = 100
         task_definition.task_id = "xyz"
         task_definition.estimated_memory = 1024
-        task_definition.full_task_timeout = 3000
+        task_definition.timeout = 3000
         task_definition.subtask_timeout = 30
         return task_definition
 

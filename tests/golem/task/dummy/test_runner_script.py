@@ -74,7 +74,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     )
     @mock.patch("tests.golem.task.dummy.runner.atexit")
     @mock.patch("golem.core.common.config_logging")
-    @mock.patch("golem.client.Client.enqueue_new_task")
+    @mock.patch("golem.task.rpc.enqueue_new_task")
     @mock.patch("tests.golem.task.dummy.runner.reactor")
     def test_run_requesting_node(self, mock_reactor,
                                  mock_enqueue_new_task,

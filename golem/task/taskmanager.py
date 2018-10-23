@@ -37,6 +37,7 @@ logger = logging.getLogger(__name__)
 
 def log_subtask_key_error(*args, **kwargs):
     logger.warning("This is not my subtask %r", args[1])
+    logger.debug('Subtask not found', exc_info=True)
     return None
 
 
@@ -47,6 +48,7 @@ def log_generic_key_error(err):
 
 def log_task_key_error(*args, **kwargs):
     logger.warning("This is not my task %r", args[1])
+    logger.debug('Task not found', exc_info=True)
     return None
 
 
@@ -184,7 +186,7 @@ class TaskManager(TaskEventListener):
         ts = TaskState()
         ts.status = TaskStatus.notStarted
         ts.outputs = task.get_output_names()
-        ts.total_subtasks = task.get_total_tasks()
+        ts.subtasks_count = task.get_total_tasks()
         ts.time_started = time.time()
         ts.estimated_cost = task.price
         ts.estimated_fee = estimated_fee
@@ -1052,11 +1054,11 @@ class TaskManager(TaskEventListener):
         task = self.tasks[task_id]
         task_type_name = task.task_definition.task_type.lower()
         task_type = self.task_types[task_type_name]
-        total_subtasks = task.get_total_tasks()
+        subtasks_count = task.get_total_tasks()
 
         return {
             to_unicode(subtask_id): task_type.get_task_border(
-                subtask, task.task_definition, total_subtasks, as_path=True
+                subtask, task.task_definition, subtasks_count, as_path=True
             ) for subtask_id, subtask in task.get_subtasks(part).items()
         }
 
