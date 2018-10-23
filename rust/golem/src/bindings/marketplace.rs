@@ -1,5 +1,3 @@
-extern crate cpython;
-
 use cpython::{FromPyObject, ObjectProtocol, PyObject, PyResult, Python};
 
 use marketplace;
