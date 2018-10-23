@@ -216,8 +216,7 @@ class TestBlenderFrameTask(TempDirFixture):
                                               node_name="node11",
                                               num_cores=0)
         assert extra_data.ctd is not None
-        assert "border_max_y = 1" in extra_data.ctd['extra_data']['script_src']
-        assert "border_min_y = 0" in extra_data.ctd['extra_data']['script_src']
+        assert extra_data.ctd['extra_data']['total_tasks'] == 3
 
     def test_put_frame_together(self):
         self.bt.output_format = "EXR"
@@ -335,18 +334,18 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.bt.frames = [1, 2, 3, 5, 7, 11, 13]
         ctd = self.bt.query_extra_data_for_test_task()
         self.assertIsInstance(ctd, ComputeTaskDef)
-        self.assertTrue(ctd['extra_data']['frames'] == [1])
+        self.assertTrue(ctd['meta_parameters']['frames'] == [1])
 
         self.bt.frames = [2]
         ctd = self.bt.query_extra_data_for_test_task()
         self.assertIsInstance(ctd, ComputeTaskDef)
-        self.assertTrue(ctd['extra_data']['frames'] == [1])
+        self.assertTrue(ctd['meta_parameters']['frames'] == [1])
 
         self.bt.use_frames = False
         self.bt.frames = [1]
         ctd = self.bt.query_extra_data_for_test_task()
         self.assertIsInstance(ctd, ComputeTaskDef)
-        self.assertTrue(ctd['extra_data']['frames'] == [1])
+        self.assertTrue(ctd['meta_parameters']['frames'] == [1])
 
     def test_blender_task(self):
         self.assertIsInstance(self.bt, BlenderRenderTask)

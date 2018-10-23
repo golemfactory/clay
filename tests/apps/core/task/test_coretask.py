@@ -504,9 +504,24 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         hash = "aaa"
         extra_data = Mock()
         perf_index = 0
+        meta_parameters = {
+            'resolution': [100, 100],
+            'borders_x': [0.3, 0.6],
+            'borders_y': [0.3, 0.6],
+            'use_compositing': False,
+            'samples': 2,
+            'frames': [1],
+            'output_format': 'PNG'
+        }
+        task_type = 'Blender'
 
         ctd = c._new_compute_task_def(
-            hash, extra_data, perf_index)
+            subtask_id=hash,
+            extra_data=extra_data,
+            task_type=task_type,
+            meta_parameters=meta_parameters,
+            perf_index=perf_index,
+        )
         assert ctd['task_id'] == c.header.task_id
         assert ctd['subtask_id'] == hash
         assert ctd['extra_data'] == extra_data
@@ -514,6 +529,8 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert ctd['src_code'] == c.src_code
         assert ctd['performance'] == perf_index
         assert ctd['docker_images'] == c.docker_images
+        assert ctd['meta_parameters'] == meta_parameters
+        assert ctd['task_type'] == task_type
 
 
 class TestLogKeyError(LogTestCase):

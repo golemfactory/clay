@@ -4,6 +4,7 @@ import unittest.mock as mock
 from pathlib import Path
 
 from golem_messages.message import ComputeTaskDef
+from golem_messages import factories as msg_factories
 
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import Task
@@ -119,11 +120,17 @@ class TestLocalComputer(TestDirFixture):
         reset_permissions(existing_file)
 
     def _get_bad_task_def(self):
-        ctd = ComputeTaskDef()
+        ctd = ComputeTaskDef(
+            task_type='Blender',
+            meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory(),
+        )
         return ctd
 
     def _get_better_task_def(self):
-        ctd = ComputeTaskDef()
+        ctd = ComputeTaskDef(
+            task_type='Blender',
+            meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory(),
+        )
         ctd['docker_images'] = [
             di.to_dict() for di in BlenderEnvironment().docker_images
         ]

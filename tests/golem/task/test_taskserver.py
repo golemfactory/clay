@@ -9,7 +9,7 @@ from unittest.mock import Mock, MagicMock, patch, ANY
 from eth_utils import encode_hex
 from golem_messages import idgenerator
 from golem_messages import factories as msg_factories
-from golem_messages.message import ComputeTaskDef
+from golem_messages import message
 from requests import HTTPError
 
 import golem
@@ -77,9 +77,11 @@ def get_mock_task(key_gen="whatsoever", subtask_id="whatever"):
     task_mock.header = TaskHeader.from_dict(get_example_task_header(key_id))
     task_id = task_mock.header.task_id
     task_mock.header.max_price = 1010
-    task_mock.query_extra_data.return_value.ctd = ComputeTaskDef(
+    task_mock.query_extra_data.return_value.ctd = message.tasks.ComputeTaskDef(
         task_id=task_id,
         subtask_id=subtask_id,
+        task_type=message.tasks.TaskType.Blender.name,  # noqa pylint:disable=no-member
+        meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory(),
     )
     return task_mock
 
@@ -256,7 +258,10 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         self.assertIsNotNone(ts.task_keeper.task_headers.get(task_id))
 
-        ctd = ComputeTaskDef()
+        ctd = message.tasks.ComputeTaskDef(
+            task_type=message.tasks.TaskType.Blender.name,  # noqa pylint:disable=no-member
+            meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory(),
+        )
         ctd['task_id'] = task_id
         ctd['subtask_id'] = subtask_id
         ttc = msg_factories.tasks.TaskToComputeFactory(price=1)
@@ -891,7 +896,10 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         task_mock.get_trust_mod.return_value = ts.max_trust
         task_id = task_mock.header.task_id
         extra_data = Mock()
-        extra_data.ctd = ComputeTaskDef()
+        extra_data.ctd = message.tasks.ComputeTaskDef(
+            task_type=message.tasks.TaskType.Blender.name,  # noqa pylint:disable=no-member
+            meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory(),
+        )
         extra_data.ctd['task_id'] = task_mock.header.task_id
         extra_data.ctd['subtask_id'] = "xxyyzz"
         task_mock.query_extra_data.return_value = extra_data
@@ -929,7 +937,10 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         ts.task_manager.listen_port = 1111
 
         extra_data = Mock()
-        extra_data.ctd = ComputeTaskDef()
+        extra_data.ctd = message.tasks.ComputeTaskDef(
+            task_type=message.tasks.TaskType.Blender.name,  # noqa pylint:disable=no-member
+            meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory()
+        )
         extra_data.ctd['subtask_id'] = "xxyyzz"
 
         task_mock = get_mock_task("xyz", "xxyyzz")

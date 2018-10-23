@@ -63,10 +63,6 @@ class SubtaskResultsVerifyBaseTest(SCIBaseTest):
             "total_tasks": 1,
             "outfilebasename": 'test task',
             "scene_file": '/golem/resources/wlochaty3.blend',
-            "script_src": generate_blender_crop_file(
-                (320, 240), (0.0, 1.0), (0.0, 1.0), False, 0),
-            "frames": [1],
-            "output_format": 'PNG',
         }
 
     def get_ctd(self, **kwargs):
@@ -75,6 +71,16 @@ class SubtaskResultsVerifyBaseTest(SCIBaseTest):
                 di.to_dict() for di in self.env.docker_images],
             src_code=self.src_code,
             extra_data=self.extra_data,
+            task_type=tasks_msg.TaskType.Blender.name,
+            meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory(
+                resoultion=[320, 240],
+                borders_x=[0.0, 1.0],
+                borders_y=[0.0, 1.0],
+                use_compositing=False,
+                samples=0,
+                frames=[1],
+                output_format=tasks_msg.OUTPUT_FORMAT.PNG.name
+            )
             **kwargs,
         )
         return ctd

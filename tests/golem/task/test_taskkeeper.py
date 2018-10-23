@@ -534,7 +534,11 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             price_bid = int(random.random() * 100)
             ctk.add_request(header, price_bid)
 
-            ctd = ComputeTaskDef()
+            ctd = ComputeTaskDef(
+                task_type='Blender',
+                meta_parameters=msg_factories.tasks. \
+                    BlenderScriptPackageFactory()
+            )
             ctd['task_id'] = header.task_id
             ctd['subtask_id'] = idgenerator.generate_new_id_from_id(
                 header.task_id,
@@ -614,7 +618,10 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk.add_request(thread, 12)
         self.assertEqual(ctk.get_value(thread.task_id), 1)
 
-        ctd = ComputeTaskDef()
+        ctd = ComputeTaskDef(
+            task_type='Blender',
+            meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory()
+        )
         ttc = msg_factories.tasks.TaskToComputeFactory(price=0)
         ttc.compute_task_def = ctd
         with self.assertLogs(logger, level="WARNING"):
@@ -636,7 +643,10 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         price_bid = 5
         ctk.add_request(th, price_bid)
         subtask_id = idgenerator.generate_new_id_from_id(task_id)
-        ctd = ComputeTaskDef()
+        ctd = ComputeTaskDef(
+            task_type='Blender',
+            meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory()
+        )
         ctd['task_id'] = task_id
         ctd['subtask_id'] = subtask_id
         ctd['deadline'] = timeout_to_deadline(th.subtask_timeout - 1)
@@ -653,7 +663,10 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         assert not ctk.check_task_owner_by_subtask(th.task_owner.key, "!!!")
         assert not ctk.check_task_owner_by_subtask('???', subtask_id)
         subtask_id2 = idgenerator.generate_new_id_from_id(task_id)
-        ctd2 = ComputeTaskDef()
+        ctd2 = ComputeTaskDef(
+            task_type='Blender',
+            meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory()
+        )
         ctd2['task_id'] = task_id
         ctd2['subtask_id'] = subtask_id2
         ttc.compute_task_def = ctd2

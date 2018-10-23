@@ -9,6 +9,7 @@ from unittest.mock import Mock, patch, MagicMock
 
 from freezegun import freeze_time
 from golem_messages.message import ComputeTaskDef
+from golem_messages import factories as msg_factories
 from pydispatch import dispatcher
 from twisted.internet.defer import fail
 from twisted.trial.unittest import TestCase as TwistedTestCase
@@ -121,7 +122,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         task_mock = TaskMock(header, src_code='', task_definition=Mock())
         task_mock.tmp_dir = self.path
 
-        ctd = ComputeTaskDef()
+        ctd = ComputeTaskDef(
+            task_type='Blender',
+            meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory()
+        )
         ctd['task_id'] = task_id
         ctd['subtask_id'] = subtask_id
         ctd['deadline'] = timeout_to_deadline(subtask_timeout)
@@ -454,7 +458,11 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
             def query_extra_data(self, perf_index, num_cores=1, node_id=None,
                                  node_name=None):
-                ctd = ComputeTaskDef()
+                ctd = ComputeTaskDef(
+                    task_type='Blender',
+                    meta_parameters=msg_factories.tasks. \
+                        BlenderScriptPackageFactory()
+                )
                 ctd['task_id'] = self.header.task_id
                 ctd['subtask_id'] = self.subtasks_id[0]
                 self.subtasks_id = self.subtasks_id[1:]

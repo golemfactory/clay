@@ -174,7 +174,18 @@ class DummyTask(Task):
         self.subtask_ids.append(subtask_id)
         self.subtask_data[subtask_id] = '%x' % data
 
-        subtask_def = ComputeTaskDef()
+        subtask_def = ComputeTaskDef(
+            task_type='Blender',
+            meta_parameters={
+                'resolution': [1, 1],
+                'borders_x': [0.0, 0.0],
+                'borders_y': [0.0, 0.0],
+                'use_compositing': False,
+                'samples': 1,
+                'frames': [1],
+                'output_format': 'PNG',
+            }
+        )
         subtask_def['task_id'] = self.task_id
         subtask_def['subtask_id'] = subtask_id
         subtask_def['src_code'] = self.src_code

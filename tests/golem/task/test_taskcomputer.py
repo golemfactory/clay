@@ -6,6 +6,7 @@ import unittest.mock as mock
 import uuid
 
 from golem_messages.message import ComputeTaskDef
+from golem_messages import factories as msg_factories
 
 from golem.client import ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
@@ -95,6 +96,9 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.assigned_subtask = ComputeTaskDef(
             task_id=task_id,
             subtask_id=subtask_id,
+            task_type='Blender',
+            meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory(),
+
         )
 
         tc.task_resource_failure(task_id, 'reason')
@@ -102,7 +106,10 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
     def test_computation(self):
         p2p_node = P2PNode()
-        ctd = ComputeTaskDef()
+        ctd = ComputeTaskDef(
+            task_type='Blender',
+            meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory()
+        )
         ctd['task_id'] = "xyz"
         ctd['subtask_id'] = "xxyyzz"
         ctd['src_code'] = \
@@ -296,7 +303,10 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_computer.assigned_subtask = ComputeTaskDef(
             task_id=task_id,
             subtask_id=subtask_id,
+            task_type='Blender',
+            meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory(),
         )
+
         task_computer.task_server.task_keeper.task_headers = {
             task_id: None
         }

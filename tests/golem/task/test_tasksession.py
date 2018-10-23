@@ -177,7 +177,11 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts2 = self._get_requestor_tasksession(accept_provider=False)
         self._fake_add_task()
 
-        ctd = message.tasks.ComputeTaskDef(task_id=mt.task_id)
+        ctd = message.tasks.ComputeTaskDef(
+            task_type=message.tasks.TaskType.Blender.name,
+            meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory(),
+            task_id=mt.task_id,
+        )
         self._set_task_state()
 
         ts2.task_manager.get_next_subtask.return_value = ctd
@@ -228,7 +232,11 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts2 = self._get_requestor_tasksession(accept_provider=True)
         self._fake_add_task()
 
-        ctd = message.tasks.ComputeTaskDef(task_id=mt.task_id)
+        ctd = message.tasks.ComputeTaskDef(
+            task_type=message.tasks.TaskType.Blender.name,
+            meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory(),
+            task_id=mt.task_id,
+        )
         task_state = self._set_task_state()
 
         ts2.task_manager.get_next_subtask.return_value = ctd
@@ -255,7 +263,11 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts2 = self._get_requestor_tasksession(accept_provider=True)
         self._fake_add_task()
 
-        ctd = message.tasks.ComputeTaskDef(task_id=wtct.task_id)
+        ctd = message.tasks.ComputeTaskDef(
+            meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory(),
+            task_type=message.tasks.TaskType.Blender.name,
+            task_id=wtct.task_id,
+        )
         self._set_task_state()
 
         ts2.task_manager.get_next_subtask.return_value = ctd
@@ -621,7 +633,10 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         header.task_owner.pub_addr = '10.10.10.10'
         header.task_owner.pub_port = 1112
 
-        ctd = message.tasks.ComputeTaskDef()
+        ctd = message.tasks.ComputeTaskDef(
+            task_type=message.tasks.TaskType.Blender.name,  # noqa pylint:disable=no-member
+            meta_parameters=msg_factories.tasks.BlenderScriptPackageFactory()
+        )
         ctd['docker_images'] = [
             DockerImage("dockerix/xiii", tag="323").to_dict(),
         ]
