@@ -40,7 +40,7 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         self.subtask_info['frames'] = [1]
         self.subtask_info['start_task'] = 1
         self.subtask_info['subtask_id'] = '250771152547690738285326338136457465'
-        self.subtask_info['crop_window'] = (0.0, 1.0, 0.0, 1.0)
+        self.subtask_info['crop_window'] = [0.0, 1.0, 0.0, 1.0]
         self.subtask_info['output_format'] = 'PNG'
         self.subtask_info['all_frames'] = [1]
         self.subtask_info['script_src'] = ''

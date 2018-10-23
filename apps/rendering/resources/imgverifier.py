@@ -54,5 +54,5 @@ class ImgVerifier(object):
         start = [uniform(window[0], window[1] - dx),
                  uniform(window[2], window[3] - dy)]
 
-        crop_window = (start[0], start[0] + dx, start[1], start[1] + dy)
+        crop_window = [start[0], start[0] + dx, start[1], start[1] + dy]
         return crop_window
