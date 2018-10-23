@@ -472,17 +472,13 @@ class BlenderRenderTask(FrameRenderingTask):
             frames=frames,
             output_format=self.output_format
         )
-
-        extra_data = {"path_root": self.main_scene_dir,
-                      "start_task": start_task,
-                      "end_task": end_task,
-                      "total_tasks": self.total_tasks,
-                      "outfilebasename": self.outfilebasename,
-                      "scene_file": scene_file,
-                      "script_src": script_src,
-                      "frames": frames,
-                      "output_format": self.output_format,
-                      }
+        extra_data = {
+            "path_root": self.main_scene_dir,
+            "start_task": start_task,
+            "end_task": end_task,
+            "total_tasks": self.total_tasks,
+            "outfilebasename": self.outfilebasename,
+            "scene_file": scene_file, }
 
         subtask_id = self.create_subtask_id()
         logger.debug(
@@ -494,6 +490,7 @@ class BlenderRenderTask(FrameRenderingTask):
         )
         self.subtasks_given[subtask_id] = copy(extra_data)
         self.subtasks_given[subtask_id]['subtask_id'] = subtask_id
+        self.subtasks_given[subtask_id]['frames'] = frames
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.starting
         self.subtasks_given[subtask_id]['node_id'] = node_id
         self.subtasks_given[subtask_id]['parts'] = parts
@@ -563,16 +560,13 @@ class BlenderRenderTask(FrameRenderingTask):
             output_format="PNG",
         )
 
-        extra_data = {"path_root": self.main_scene_dir,
-                      "start_task": 1,
-                      "end_task": 1,
-                      "total_tasks": 1,
-                      "outfilebasename": "testresult",
-                      "scene_file": scene_file,
-                      "script_src": script_src,
-                      "frames": [1],
-                      "output_format": "PNG"
-                      }
+        extra_data = {
+            "path_root": self.main_scene_dir,
+            "start_task": 1,
+            "end_task": 1,
+            "total_tasks": 1,
+            "outfilebasename": "testresult",
+            "scene_file": scene_file, }
 
         hash = "{}".format(random.getrandbits(128))
 
