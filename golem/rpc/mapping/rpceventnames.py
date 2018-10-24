@@ -1,5 +1,6 @@
 class Golem:
     evt_golem_status        = 'evt.golem.status'
+    procedures_registered = 'golem.rpc_ready'
 
 
 class Environment:
