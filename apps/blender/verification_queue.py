@@ -24,6 +24,7 @@ class VerificationQueue:
         self.callbacks: Dict[VerificationTask, FunctionType] = dict()
         self._paused = False
         self._timed_out = False
+        self.timeouts_count = 0
 
     def submit(self,
                verifier_class: Type[Verifier],
@@ -104,13 +105,16 @@ class VerificationQueue:
                                  event=result, subtask_id=subtask_id,
                                  verifier_cls=verifier_cls)
 
-            result.addTimeout(VerificationQueue.VERIFICATION_TIMEOUT, reactor,
+            result.addTimeout(VerificationQueue.VERIFICATION_TIMEOUT +
+                              VerificationQueue.VERIFICATION_TIMEOUT *
+                              self.timeouts_count, reactor,
                               onTimeoutCancel=fn_timeout)
             self._jobs[subtask_id] = result
 
     def _verification_timed_out(self, _result, _timeout, task, event,
                                 subtask_id, verifier_cls):
         self._timed_out = True
+        self.timeouts_count += 1
         self._queue.put((task, verifier_cls))
         self._jobs.pop(subtask_id, None)
         task.stop(event)
