@@ -1220,6 +1220,9 @@ class Client(HardwarePresetsMixin):
         }
 
     def get_deposit_balance(self):
+        if not self.concent_service.enabled:
+            return None
+
         balance: int = self.transaction_system.concent_balance()
         timelock: int = self.transaction_system.concent_timelock()
 
