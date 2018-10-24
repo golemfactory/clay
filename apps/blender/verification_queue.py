@@ -14,6 +14,11 @@ logger = logging.getLogger("apps.blender.verification")
 
 class VerificationQueue:
 
+    #  We assume that after 30 minutes verification tasks is stalled (possibly
+    #  to bugs in third party docker api). After this period we finish
+    #  verification tasks with fail. In future this constant will be
+    #  configurable from config, and will be relative to nodes benchmark
+    #  results.
     VERIFICATION_TIMEOUT = 1800
 
     def __init__(self, concurrency: int = 1) -> None:
