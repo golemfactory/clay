@@ -223,11 +223,14 @@ class Client(HardwarePresetsMixin):
 
     def get_wamp_rpc_mapping(self):
         from apps.rendering.task import framerenderingtask
+        from golem.environments.minperformancemultiplier import \
+            MinPerformanceMultiplier
         from golem.task import rpc as task_rpc
         task_rpc_provider = task_rpc.ClientProvider(self)
         providers = (
             self,
             framerenderingtask,
+            MinPerformanceMultiplier,
             self.task_server.task_manager,
             self.environments_manager,
             self.transaction_system,

@@ -68,11 +68,18 @@ class Environments(object):
 
     @command(argument=multiplier, help="Sets accepted performance multiplier")
     def perf_mult_set(self, multiplier):
-        deferred = Environments.client.set_performance_mult(float(multiplier))
-        return sync_wait(deferred, timeout=3)
+        return sync_wait(
+            Environments.client._call(
+                'performance.multiplier.update',
+                float(multiplier),
+            ),
+            timeout=3,
+        )
 
     @command(help="Gets accepted performance multiplier")
     def perf_mult(self):
-        deferred = Environments.client.get_performance_mult()
-        result = sync_wait(deferred, timeout=3)
+        result = sync_wait(
+            Environments.client._call('performance.multiplier'),
+            timeout=3,
+        )
         return f'minimal performance multiplier is: {result}'
