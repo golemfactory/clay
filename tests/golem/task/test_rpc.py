@@ -476,3 +476,23 @@ class TestRestartSubtasks(ProviderBase):
             task_dict=mock.ANY,
             force=force,
         )
+
+@mock.patch('os.path.getsize')
+@mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
+class TestExceptionPropagation(ProviderBase):
+    def setUp(self):
+        super().setUp()
+        self.task = self.client.task_manager.create_task(self.t_dict)
+        with mock.patch('os.path.getsize'):
+            golem_deferred.sync_wait(
+                rpc.enqueue_new_task(self.client, self.task),
+            )
+
+    def test_create_task(self, prepare_and_validate, *_):
+        t = dummytaskstate.DummyTaskDefinition()
+        t.name = "test"
+        prepare_and_validate.side_effect = RuntimeError("Test message")
+
+        result = self.provider.create_task(t.to_dict())
+        prepare_and_validate.assert_called()
+        self.assertEqual(result, (None, "Test message"))
