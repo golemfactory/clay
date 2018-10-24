@@ -143,6 +143,9 @@ def _fmt(value: int, unit: str = "GNT") -> str:
 
 
 def _fmt_deposit(deposit_balance):
+    if not deposit_balance:
+        return None
+
     deposit_balance['value'] = _fmt(int(deposit_balance['value']))
     if deposit_balance['status'] == 'unlocking':
         locked_until = datetime.datetime.utcfromtimestamp(
