@@ -30,6 +30,7 @@ from golem.client import Client, ClientTaskComputerEventListener, \
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
+from golem.core.variables import CONCENT_CHOICES
 from golem.environments.environment import Environment as DefaultEnvironment
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.node import Node
@@ -1548,8 +1549,17 @@ def test_task_computer_event_listener():
 
 
 class TestDepositBalance(TestClientBase):
+    def test_no_concent(self):
+        self.client.concent_service.variant = CONCENT_CHOICES['disabled']
+        self.assertFalse(self.client.concent_service.enabled)
+        self.client.transaction_system.concent_timelock.side_effect\
+            = Exception("Let's pretend there's no such contract")
+        self.assertIsNone(sync_wait(self.client.get_deposit_balance()))
+
     @freeze_time("2018-01-01 01:00:00")
     def test_unlocking(self, *_):
+        self.client.concent_service.variant = CONCENT_CHOICES['test']
+        self.assertTrue(self.client.concent_service.enabled)
         self.client.transaction_system.concent_timelock\
             .return_value = int(time.time())
         with freeze_time("2018-01-01 00:59:59"):
@@ -1558,6 +1568,8 @@ class TestDepositBalance(TestClientBase):
 
     @freeze_time("2018-01-01 01:00:00")
     def test_unlocked(self, *_):
+        self.client.concent_service.variant = CONCENT_CHOICES['test']
+        self.assertTrue(self.client.concent_service.enabled)
         self.client.transaction_system.concent_timelock\
             .return_value = int(time.time())
         with freeze_time("2018-01-01 01:00:01"):
@@ -1565,6 +1577,8 @@ class TestDepositBalance(TestClientBase):
         self.assertEqual(result['status'], 'unlocked')
 
     def test_locked(self, *_):
+        self.client.concent_service.variant = CONCENT_CHOICES['test']
+        self.assertTrue(self.client.concent_service.enabled)
         self.client.transaction_system.concent_timelock\
             .return_value = 0
         result = sync_wait(self.client.get_deposit_balance())
