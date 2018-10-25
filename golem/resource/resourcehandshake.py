@@ -125,13 +125,11 @@ class ResourceHandshakeSessionMixin:
             self._handshake_error(key_id, 'Peer blocked')
             return
 
+        if handshake and handshake.success():
+            self._remove_handshake(key_id)
+
         if not handshake:
             self._start_handshake(key_id)
-        elif handshake.success():  # handle inconsistent state between peers
-            options = self.task_server.get_share_options(handshake.nonce,
-                                                         self.address)
-            self.send(message.resources.ResourceHandshakeStart(
-                resource=handshake.hash, options=options.__dict__))
 
         self._download_handshake_nonce(key_id, msg.resource, msg.options)
 
