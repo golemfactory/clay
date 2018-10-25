@@ -17,7 +17,6 @@ from golem.task import taskserver
 from golem.task import taskstate
 from golem.task import tasktester
 from tests.golem import test_client
-from golem.task.taskmanager import TaskManager
 
 
 fake = faker.Faker()
