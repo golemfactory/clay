@@ -10,7 +10,8 @@ from golem_messages.message import ComputeTaskDef
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.network.p2p.node import Node
-from golem.task.taskbase import Task, TaskHeader, ResultType, AcceptClientVerdict
+from golem.task.taskbase import Task, TaskHeader, ResultType,\
+     AcceptClientVerdict
 
 
 class DummyTaskParameters(object):
