@@ -4,13 +4,14 @@ import functools
 import logging
 import os
 import time
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
 from golem_messages import message
 from golem_messages import exceptions as msg_exceptions
 
+import golem
 from golem.core import common
 from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import CBORSerializer
@@ -417,6 +418,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.send(
             message.base.Hello(
                 client_key_id=self.task_server.get_key_id(),
+                client_ver=golem.__version__,
                 rand_val=self.rand_val,
                 proto_id=variables.PROTOCOL_CONST.ID,
             ),
