@@ -201,7 +201,8 @@ class Settings(object):
         def convert(k, v):
             if k in self.settings:
                 return self.settings[k].converter(v)
-            elif any(k.startswith(prefix) for prefix in Settings.BOOL_CONVERTIBLE_KEY_PREFIXES):  # pylint: disable=line-too-long
+            elif any(k.startswith(prefix) for prefix
+                     in Settings.BOOL_CONVERTIBLE_KEY_PREFIXES):
                 return bool(v)
             return v
 
