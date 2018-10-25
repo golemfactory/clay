@@ -1,23 +1,12 @@
 import time
 from unittest import mock, TestCase
 
-from golem.core.common import timeout_to_deadline
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.ethereum.fundslocker import (
     logger,
     FundsLocker,
     TaskFundsLock,
 )
-
-
-def make_mock_task(*_, task_id: str = 'tid', subtask_price: int = 100,
-                   total_tasks: int = 10, timeout: float = 3600) -> mock.Mock:
-    task = mock.Mock()
-    task.header.deadline = timeout_to_deadline(timeout)
-    task.header.task_id = task_id
-    task.subtask_price = subtask_price
-    task.get_total_tasks.return_value = total_tasks
-    return task
 
 
 class TestFundsLocker(TestCase):
@@ -72,15 +61,12 @@ class TestFundsLocker(TestCase):
         fl.lock_funds("jkl", 13, 1, now + 3.5)
 
     def test_exception(self):
-        self.ts.lock_funds_for_payments.side_effect = Exception
+        def _throw(*_):
+            raise Exception("test exc")
+        self.ts.lock_funds_for_payments.side_effect = _throw
         fl = FundsLocker(self.ts)
-        task = make_mock_task()
-        with self.assertRaises(Exception):
-            fl.lock_funds(task)
-        self.ts.lock_funds_for_payments.reset_mock()
-        # that restores locks from the storage
-        fl = FundsLocker(self.ts)
-        self.ts.lock_funds_for_payments.assert_not_called()
+        with self.assertRaisesRegex(Exception, "test exc"):
+            fl.lock_funds("task_id", 10, 5, 1.0)
 
     def test_remove_task(self):
         fl = FundsLocker(self.ts)

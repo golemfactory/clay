@@ -12,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class TaskFundsLock:
-    def __init__(self, subtask_price: int, num_tasks: int, deadline):
+    def __init__(self, subtask_price: int, num_tasks: int, deadline) -> None:
         self.price = subtask_price
         self.num_tasks = num_tasks
         self.task_deadline = deadline

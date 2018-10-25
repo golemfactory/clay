@@ -38,9 +38,6 @@ from golem.task.taskstate import TaskTestStatus
 from golem.tools import testwithreactor
 from golem.tools.assertlogs import LogTestCase
 
-from .ethereum.test_fundslocker import make_mock_task as \
-    make_fundslocker_mock_task
-
 random = Random(__name__)
 
 
@@ -331,8 +328,15 @@ class TestClientRestartSubtasks(TestClientBase):
         self.ts = self.client.transaction_system
         self.client.funds_locker.persist = False
 
-        self.task = make_fundslocker_mock_task()
-        self.client.funds_locker.lock_funds(self.task)
+        self.task_id = "test_task_id"
+        self.subtask_price = 100
+
+        self.client.funds_locker.lock_funds(
+            self.task_id,
+            self.subtask_price,
+            10,
+            time.time(),
+        )
 
         self.client.task_server = Mock()
 
@@ -348,18 +352,18 @@ class TestClientRestartSubtasks(TestClientBase):
         frame = 10
 
         # when
-        self.client.restart_frame_subtasks(self.task.header.task_id, frame)
+        self.client.restart_frame_subtasks(self.task_id, frame)
 
         # then
         self.client.task_server.task_manager.restart_frame_subtasks.\
-            assert_called_with(self.task.header.task_id, frame)
+            assert_called_with(self.task_id, frame)
         self.ts.lock_funds_for_payments.assert_called_with(
-            self.task.subtask_price, len(frame_subtasks))
+            self.subtask_price, len(frame_subtasks))
 
     def test_restart_subtask(self):
         # given
         self.client.task_server.task_manager.get_task_id.return_value = \
-            self.task.header.task_id
+            self.task_id
 
         # when
         self.client.restart_subtask('subtask_id')
@@ -368,7 +372,7 @@ class TestClientRestartSubtasks(TestClientBase):
         self.client.task_server.task_manager.restart_subtask.\
             assert_called_with('subtask_id')
         self.ts.lock_funds_for_payments.assert_called_with(
-            self.task.subtask_price, 1)
+            self.subtask_price, 1)
 
 
 class TestDoWorkService(testwithreactor.TestWithReactor):
