@@ -17,6 +17,7 @@ from golem.task import taskserver
 from golem.task import taskstate
 from golem.task import tasktester
 from tests.golem import test_client
+from golem.task.taskmanager import TaskManager
 
 
 fake = faker.Faker()
@@ -478,7 +479,6 @@ class TestRestartSubtasks(ProviderBase):
         )
 
 @mock.patch('os.path.getsize')
-@mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
 class TestExceptionPropagation(ProviderBase):
     def setUp(self):
         super().setUp()
@@ -488,11 +488,35 @@ class TestExceptionPropagation(ProviderBase):
                 rpc.enqueue_new_task(self.client, self.task),
             )
 
-    def test_create_task(self, prepare_and_validate, *_):
+    @mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
+    def test_create_task(self, mock_method, *_):
         t = dummytaskstate.DummyTaskDefinition()
         t.name = "test"
-        prepare_and_validate.side_effect = RuntimeError("Test message")
+        mock_method.side_effect = Exception("Test")
 
         result = self.provider.create_task(t.to_dict())
-        prepare_and_validate.assert_called()
-        self.assertEqual(result, (None, "Test message"))
+        mock_method.assert_called()
+        self.assertEqual(result, (None, "Test"))
+
+    def test_restart_task(self, *_):
+        t = dummytaskstate.DummyTaskDefinition()
+        t.name = "test"
+
+        self.provider.task_manager.assert_task_can_be_restarted =\
+            mock.MagicMock()
+        self.provider.task_manager.assert_task_can_be_restarted\
+            .side_effect = Exception("Test")
+
+        result = self.provider.restart_task(0)
+
+        self.assertEqual(result, (None, "Test"))
+
+    @mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
+    def test_run_test_task_error(self, mock_method, *_):
+        t = dummytaskstate.DummyTaskDefinition()
+        t.name = "test"
+        mock_method.side_effect = Exception("Test")
+
+        result = self.provider.run_test_task(t.to_dict())
+        mock_method.assert_called()
+        self.assertEqual(result, False)
