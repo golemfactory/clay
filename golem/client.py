@@ -482,7 +482,7 @@ class Client(HardwarePresetsMixin):
                     self.funds_locker.lock_funds(
                         task_id,
                         task.subtask_price,
-                        task.get_total_tasks(),
+                        unfinished_subtasks,
                         task.header.deadline,
                     )
                 except NotEnoughFunds as e:

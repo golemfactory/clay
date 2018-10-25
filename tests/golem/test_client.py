@@ -321,12 +321,44 @@ class TestClient(TestClientBase):
         self.client.clean_old_tasks()
         self.client.delete_task.assert_called_once_with('old_task')
 
+    def test_restore_locks(self, *_):
+        tm = Mock()
+        self.client.task_server = Mock(task_manager=tm)
+        self.client.funds_locker = Mock()
+        tm.tasks_states = {
+            "t1": Mock(status=Mock(is_completed=Mock(return_value=True))),
+            "t2": Mock(
+                status=Mock(is_completed=Mock(return_value=False)),
+                subtask_states={
+                    "sub1": Mock(
+                        status=Mock(is_finished=Mock(return_value=True)),
+                    ),
+                    "sub2": Mock(
+                        status=Mock(is_finished=Mock(return_value=False)),
+                    ),
+                },
+            ),
+        }
+        subtask_price = 123
+        deadline = 23
+        tm.tasks = {
+            "t2": Mock(
+                subtask_price=subtask_price,
+                header=Mock(deadline=deadline),
+            ),
+        }
+        self.client._restore_locks()
+        self.client.funds_locker.lock_funds.assert_called_once_with(
+            "t2",
+            subtask_price,
+            1,
+            deadline,
+        )
 
 class TestClientRestartSubtasks(TestClientBase):
     def setUp(self):
         super().setUp()
         self.ts = self.client.transaction_system
-        self.client.funds_locker.persist = False
 
         self.task_id = "test_task_id"
         self.subtask_price = 100
