@@ -469,6 +469,7 @@ class Client(HardwarePresetsMixin):
                                          listening_failure=task.errback)
 
     def _restore_locks(self) -> None:
+        assert self.task_server is not None
         tm = self.task_server.task_manager
         for task_id, task_state in tm.tasks_states.items():
             if not task_state.status.is_completed():
