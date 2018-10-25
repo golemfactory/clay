@@ -107,7 +107,7 @@ class TestBaseDockerJob(TestDockerJob):
         return "golemfactory/base"
 
     def _get_test_tag(self):
-        return "1.2"
+        return "1.3"
 
     def test_create(self):
         job = self._create_test_job()
@@ -240,7 +240,7 @@ class TestBaseDockerJob(TestDockerJob):
 
     def test_logs_stdout(self):
         text = "Adventure Time!"
-        src = "print '{}'\n".format(text)
+        src = "print('{}')\n".format(text)
         with self._create_test_job(script=src) as job:
             job.start()
             out_file = path.join(self.output_dir, "stdout.log")
@@ -323,7 +323,7 @@ class TestBaseDockerJob(TestDockerJob):
         container_logger.setLevel(prev_level)
 
     def test_working_dir_set(self):
-        script = "import os\nprint os.getcwd()\n"
+        script = "import os\nprint(os.getcwd())\n"
         with self._create_test_job(script=script) as job:
             job.start()
             job.wait()

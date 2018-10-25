@@ -4,11 +4,10 @@ import os
 import random
 from copy import deepcopy
 from typing import Dict, Tuple, List, Callable, Optional, Any, Generator
-from twisted.internet.defer import Deferred, inlineCallbacks
 
 import numpy
+from twisted.internet.defer import Deferred, inlineCallbacks
 
-from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from golem.core.common import timeout_to_deadline
 from golem.task.localcomputer import ComputerAdapter
 
@@ -66,11 +65,11 @@ class BlenderReferenceGenerator:
 
     # pylint: disable=R0914
     def generate_crops_data(self,
-                            resolution: Tuple[int, int],
-                            subtask_border: List[float],
+                            resolution: [int, int],
+                            crops: List[Dict],
                             crops_number: int,
                             crop_size_as_fraction:
-                            Optional[Tuple[float, float]]=None):
+                            Optional[Tuple[float, float]] = None):
         """
         This function will generate split data for performing random crops.
         Crops will be rendered from blend files using calculated values
@@ -78,7 +77,7 @@ class BlenderReferenceGenerator:
 
         :param resolution: This is the x, y resolution of whole image from
         which split data should be generated
-        :param subtask_border: List of values. This is ROI from which split data
+        :param crops: Dictionary of crops params. This is ROI from which split data
         should be generated. This is in blender crop values format, which means
         floats, where left, right, top, bottom. Values from 0 to 1. Where 1
         means top or right and 0 bottom or left.
@@ -90,8 +89,9 @@ class BlenderReferenceGenerator:
         useful for cropping with blender, second one are corresponding
         pixels. Each list has splits_num elements, one for each split.
         """
-        subtask_pixel_coordinates = BlenderReferenceGenerator\
-            .convert_blender_crop_border_to_pixel_coordinates(subtask_border,
+        subtask_pixel_coordinates = BlenderReferenceGenerator \
+            .convert_blender_crop_border_to_pixel_coordinates(crops[0]['borders_x'],
+                                                              crops[0]['borders_y'],
                                                               resolution)
 
         subtask_resolution = (subtask_pixel_coordinates['right']-
@@ -165,14 +165,15 @@ class BlenderReferenceGenerator:
 
     @staticmethod
     def convert_blender_crop_border_to_pixel_coordinates(
-            subtask_border: List[float],
+            subtask_border_x: List[float],
+            subtask_border_y: List[float],
             resolution: Tuple[int, int]) -> Dict[str, int]:
 
         logger.debug("Values left=%r, right=%r, top=%r, bottom=%r",
-                     subtask_border[0],
-                     subtask_border[1],
-                     subtask_border[3],
-                     subtask_border[2])
+                     int(subtask_border_x[0]),
+                     int(subtask_border_x[1]),
+                     int(subtask_border_y[1]),
+                     int(subtask_border_y[0]))
         # This is how Blender is calculating pixel check
         # BlenderSync::get_buffer_params in blender_camers.cpp file
         # BoundBox2D border = cam->border.clamp();
@@ -183,19 +184,19 @@ class BlenderReferenceGenerator:
         # Here numpy is used to emulate this loss of precision when assigning
         # double to float:
         left = math.floor(
-            numpy.float32(subtask_border[0]) * numpy.float32(resolution[0]) +
+            numpy.float32(subtask_border_x[0]) * numpy.float32(resolution[0]) +
             BlenderReferenceGenerator.PIXEL_OFFSET)
 
         right = math.floor(
-            numpy.float32(subtask_border[1]) * numpy.float32(resolution[0]) +
+            numpy.float32(subtask_border_x[1]) * numpy.float32(resolution[0]) +
             BlenderReferenceGenerator.PIXEL_OFFSET)
 
         bottom = math.floor(
-            numpy.float32(subtask_border[2]) * numpy.float32(resolution[1]) +
+            numpy.float32(subtask_border_y[0]) * numpy.float32(resolution[1]) +
             BlenderReferenceGenerator.PIXEL_OFFSET)
 
         top = math.floor(
-            numpy.float32(subtask_border[3]) * numpy.float32(resolution[1]) +
+            numpy.float32(subtask_border_y[1]) * numpy.float32(resolution[1]) +
             BlenderReferenceGenerator.PIXEL_OFFSET)
 
         logger.debug("Pixels left=%r, right=%r, top=%r, bottom=%r",
@@ -243,9 +244,8 @@ class BlenderReferenceGenerator:
             -> List[Deferred]:
         crops_path = os.path.join(subtask_info['tmp_dir'],
                                   subtask_info['subtask_id'])
-        crops_info = self.generate_crops_data((subtask_info['res_x'],
-                                               subtask_info['res_y']),
-                                              subtask_info['crop_window'],
+        crops_info = self.generate_crops_data(subtask_info['resolution'],
+                                              subtask_info['crops'],
                                               num_crops,
                                               crop_size)
 
@@ -277,18 +277,15 @@ class BlenderReferenceGenerator:
             minx, maxx, miny, maxy = verification_context \
                 .crops_floating_point_coordinates[i]
 
-            script_src = generate_blender_crop_file(
-                resolution=(verification_context.subtask_info['res_x'],
-                            verification_context.subtask_info['res_y']),
-                borders_x=(minx, maxx),
-                borders_y=(miny, maxy),
-                use_compositing=False,
-                samples=verification_context.subtask_info['samples']
-            )
-            task_definition = BlenderReferenceGenerator\
+            verification_context.subtask_info['use_compositing'] = False
+            crops = verification_context.subtask_info['crops']
+            crops[0]['outfilebasename'] = "ref_" + crops[0]['outfilebasename']
+            crops[0]['borders_x'] = [minx, maxx]
+            crops[0]['borders_y'] = [miny, maxy]
+            verification_context.subtask_info['crops'] = crops
+            task_definition = BlenderReferenceGenerator \
                 .generate_computational_task_definition(
-                    verification_context.subtask_info,
-                    script_src)
+                verification_context.subtask_info)
 
             yield self.schedule_crop_job(verification_context, task_definition,
                                          i)
@@ -331,16 +328,10 @@ class BlenderReferenceGenerator:
         return defer
 
     @staticmethod
-    def generate_computational_task_definition(subtask_info: Dict[str, Any],
-                                               script_src: str) \
+    def generate_computational_task_definition(subtask_info: Dict[str, Any]) \
             -> Dict[str, Any]:
 
         task_definition = deepcopy(subtask_info['ctd'])
-
-        task_definition['extra_data']['outfilebasename'] = \
-            "ref_" + subtask_info['outfilebasename']
-
-        task_definition['extra_data']['script_src'] = script_src
 
         task_definition['deadline'] = timeout_to_deadline(
             subtask_info['subtask_timeout'])

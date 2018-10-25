@@ -23,12 +23,16 @@ PREVIEW_EXT = "PNG"
 PREVIEW_X = 1280
 PREVIEW_Y = 720
 
+RESOURCES_DIR_RT = '/golem/resources'
+WORK_DIR_RT = '/golem/work'
+OUTPUT_DIR_RT = '/golem/output'
+
 logger = logging.getLogger("apps.rendering")
 
-class RenderingTask(CoreTask):
 
+class RenderingTask(CoreTask):
     VERIFIER_CLASS = RenderingVerifier
-    ENVIRONMENT_CLASS = None # type: Type[DockerEnvironment]
+    ENVIRONMENT_CLASS = None  # type: Type[DockerEnvironment]
 
     @classmethod
     def _get_task_collector_path(cls):
@@ -214,8 +218,11 @@ class RenderingTask(CoreTask):
 
     def short_extra_data_repr(self, extra_data):
         l = extra_data
-        return "path_root: {path_root}, start_task: {start_task}, end_task: {end_task}, total_tasks: {total_tasks}, " \
-               "outfilebasename: {outfilebasename}, scene_file: {scene_file}".format(**l)
+        return "RESOURCES_DIR: {RESOURCES_DIR}, WORK_DIR: {WORK_DIR}, OUTPUT_DIR: {OUTPUT_DIR}," \
+               "scene_file: {scene_file}, resolution: {resolution}, use_compositing: {use_compositing}," \
+               "samples: {samples}, frames: {frames}, output_format: {output_format}," \
+               "start_task: {start_task}, end_task: {end_task}, total_tasks: {total_tasks}, crops: {crops}"\
+            .format(**l)
 
     def _open_preview(self, mode="RGB", ext=PREVIEW_EXT):
         """ If preview file doesn't exist create a new empty one with given mode and extension.

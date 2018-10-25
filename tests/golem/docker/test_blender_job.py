@@ -2,7 +2,6 @@ import os
 import pathlib
 import shutil
 
-from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from golem.core.common import get_golem_path
 from golem.docker.job import DockerJob
 from golem.resource.dirmanager import find_task_script
@@ -16,22 +15,13 @@ class TestBlenderDockerJob(TestDockerJob):
         return "golemfactory/blender"
 
     def _get_test_tag(self):
-        return "1.4"
+        return "1.5"
 
     def test_blender_job(self):
         app_dir = os.path.join(get_golem_path(), "apps", "blender")
         task_script = find_task_script(app_dir, "docker_blendertask.py")
         with open(task_script) as f:
             task_script_src = f.read()
-
-        # prepare dummy crop script
-        crop_script_contents = generate_blender_crop_file(
-            resolution=(800, 600),
-            borders_x=(0, 1),
-            borders_y=(0, 1),
-            use_compositing=True,
-            samples=5
-        )
 
         # copy the scene file to the resources dir
         scene_file = pathlib.Path(get_golem_path())
@@ -40,14 +30,26 @@ class TestBlenderDockerJob(TestDockerJob):
         dest_scene_file = pathlib.PurePosixPath(DockerJob.RESOURCES_DIR)
         dest_scene_file /= scene_file.name
 
+        crops = [
+            {
+                "outfilebasename": "out",
+                "borders_x": [0.0, 1.0],
+                "borders_y": [0.0, 1.0]
+            }
+        ]
         params = {
-            "outfilebasename": "out",
+            "RESOURCES_DIR": '/golem/resources',
+            "WORK_DIR": '/golem/work',
+            "OUTPUT_DIR": '/golem/output',
             "scene_file": str(dest_scene_file),
-            "script_src": crop_script_contents,
+            "resolution": [800, 600],
+            "use_compositing": True,
+            "samples": 5,
+            "frames": [1],
+            "output_format": "EXR",
             "start_task": 42,
             "end_task": 42,
-            "output_format": "EXR",
-            "frames": [1],
+            "crops": crops
         }
 
         with self._create_test_job(script=task_script_src, params=params) \

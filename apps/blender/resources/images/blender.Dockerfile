@@ -2,7 +2,7 @@
 # Blender setup is based on
 # https://github.com/ikester/blender-docker/blob/master/Dockerfile
 
-FROM golemfactory/base:1.2
+FROM golemfactory/base:1.3
 
 MAINTAINER Artur Zawłocki <artur.zawlocki@imapp.pl>
 
@@ -18,6 +18,7 @@ RUN apt-get update && \
 	apt-get -y autoremove && \
 	rm -rf /var/lib/apt/lists/*
 
+
 ENV BLENDER_MAJOR 2.79
 ENV BLENDER_VERSION 2.79
 ENV GLIBC_VERSION 219
@@ -27,4 +28,11 @@ ENV BLENDER_BZ2_URL http://download.blender.org/release/Blender$BLENDER_MAJOR/bl
 RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C /opt && \
     ln -s /opt/blender-${BLENDER_VERSION}-linux-glibc${GLIBC_VERSION}-x86_64 /opt/blender
 
-ENV PATH=/opt/blender:$PATH
+ENV PATH=/opt/blender:/usr/bin/:$PATH
+ENV PYTHONPATH=/golem:$PYTHONPATH
+
+COPY blender-scripts/ /golem/scripts/
+
+RUN pip install typing
+
+WORKDIR /golem/work/

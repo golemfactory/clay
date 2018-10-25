@@ -45,14 +45,19 @@ class TestBlenderReferenceGenerator(TempDirFixture):
 
     def test_generate_crops_data(self):
 
-        def _test_crop(resolution, crop, num, ncrop_size=None):
+        def _test_crop(resolution, crop_tuple, num, ncrop_size=None):
             blender_reference_generator = BlenderReferenceGenerator()
+            crop = {
+                "outbasefilename": 'outbasefilename',
+                "borders_x": [crop_tuple[0], crop_tuple[1]],
+                "borders_y": [crop_tuple[2], crop_tuple[3]]
+            }
             if ncrop_size is None:
                 crops_info = blender_reference_generator\
-                    .generate_crops_data(resolution, crop, num)
+                    .generate_crops_data(resolution, [crop], num)
             else:
                 crops_info = blender_reference_generator\
-                    .generate_crops_data(resolution, crop, num, ncrop_size)
+                    .generate_crops_data(resolution, [crop], num, ncrop_size)
 
             assert len(crops_info) == 3
             crops, pixels, _ = crops_info
@@ -62,12 +67,12 @@ class TestBlenderReferenceGenerator(TempDirFixture):
                 assert 0 <= pixel_[0] <= resolution[0]
                 assert 0 <= pixel_[1] <= resolution[1]
             for ncrop in crops:
-                assert crop[0] <= ncrop[0] <= crop[1]
-                assert crop[0] <= ncrop[1] <= crop[1]
+                assert crop_tuple[0] <= ncrop[0] <= crop_tuple[1]
+                assert crop_tuple[0] <= ncrop[1] <= crop_tuple[1]
                 assert ncrop[0] <= ncrop[1]
 
-                assert crop[2] <= ncrop[2] <= crop[3]
-                assert crop[2] <= ncrop[3] <= crop[3]
+                assert crop_tuple[2] <= ncrop[2] <= crop_tuple[3]
+                assert crop_tuple[2] <= ncrop[3] <= crop_tuple[3]
                 assert ncrop[2] <= ncrop[2]
 
         for _ in range(100):
@@ -102,18 +107,23 @@ class TestBlenderReferenceGenerator(TempDirFixture):
                 min_y, max_y = get_min_max_y(i, 9, res[1])
                 min_y = numpy.float32(min_y)
                 max_y = numpy.float32(max_y)
-                crop_window = (0.0, 1.0, min_y, max_y)
-                left_p = math.floor(numpy.float32(crop_window[0]) *
+                crop_window = {
+                    "outbasefilename": "outbasefilename",
+                    "borders_x": [0.0, 1.0],
+                    "borders_y": [min_y, max_y]
+                }
+
+                left_p = math.floor(numpy.float32(crop_window['borders_x'][0]) *
                                     numpy.float32(res[0]))
-                right_p = math.floor(numpy.float32(crop_window[1]) *
+                right_p = math.floor(numpy.float32(crop_window['borders_x'][1]) *
                                      numpy.float32(res[0]))
-                bottom_p = math.floor(numpy.float32(crop_window[2]) *
+                bottom_p = math.floor(numpy.float32(crop_window['borders_y'][0]) *
                                       numpy.float32(res[1]))
-                top_p = math.floor(numpy.float32(crop_window[3]) *
+                top_p = math.floor(numpy.float32(crop_window['borders_y'][1]) *
                                    numpy.float32(res[1]))
                 blender_reference_generator = BlenderReferenceGenerator()
                 values, pixels, _ = blender_reference_generator\
-                    .generate_crops_data((res[0], res[1]), crop_window, 3)
+                    .generate_crops_data((res[0], res[1]), [crop_window], 3)
                 for j in range(0, 3):
                     height_p = math.floor(numpy.float32(
                         values[j][3] - values[j][2]) *
