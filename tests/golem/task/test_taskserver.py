@@ -254,9 +254,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertEqual(wtr.owner, n)
         self.assertEqual(wtr.already_sending, False)
 
-        subtask_id3 = idgenerator.generate_new_id_from_id(task_id)
-        with self.assertLogs(logger, level='WARNING'):
-            ts.subtask_rejected(keys_auth.key_id, subtask_id3)
         self.assertIsNotNone(ts.task_keeper.task_headers.get(task_id))
 
         ctd = ComputeTaskDef()

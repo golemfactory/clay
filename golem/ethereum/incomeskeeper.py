@@ -53,7 +53,7 @@ class IncomesKeeper:
                 dispatcher.send(
                     signal='golem.income',
                     event='confirmed',
-                    subtask_id=e.subtask,
+                    node_id=e.sender_node,
                 )
 
     def received_forced_payment(
@@ -178,7 +178,7 @@ class IncomesKeeper:
             dispatcher.send(
                 signal='golem.income',
                 event='overdue_single',
-                subtask_id=income.subtask,
+                node_id=income.sender_node,
             )
 
         dispatcher.send(
