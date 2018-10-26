@@ -920,6 +920,9 @@ class Client(HardwarePresetsMixin):
 
     @rpc_utils.expose('pay.deposit_balance')
     def get_deposit_balance(self):
+        if not self.concent_service.enabled:
+            return None
+
         balance: int = self.transaction_system.concent_balance()
         timelock: int = self.transaction_system.concent_timelock()
 
