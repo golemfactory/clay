@@ -16,7 +16,7 @@ from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
-from apps.core.task.coretask import CoreTask, AcceptClientVerdict
+from apps.core.task.coretask import CoreTask
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
@@ -26,7 +26,8 @@ from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener, Task, TaskHeader, TaskPurpose
+from golem.task.taskbase import TaskEventListener, Task, TaskHeader,\
+    TaskPurpose, AcceptClientVerdict
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
