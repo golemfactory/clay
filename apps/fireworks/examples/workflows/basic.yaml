@@ -1,0 +1,35 @@
+fws:
+- fw_id: 1
+  spec:
+    _tasks:
+    - _fw_name: GetFilesTask
+      identifiers:
+          - 'input_label_1'
+      new_file_names:
+          - 'input.txt'
+    - _fw_name: ScriptTask
+      script: cat input.txt > output.txt
+    - _fw_name: AddFilesTask
+      paths:
+          - 'output.txt'
+      identifiers:
+          - 'label1'
+- fw_id: 2
+  spec:
+    _tasks:
+    - _fw_name: GetFilesTask
+      identifiers:
+          - 'label1'
+      new_file_names:
+          - 'input.txt'
+    - _fw_name: ScriptTask
+      script: wc -l input.txt > result.txt
+    - _fw_name: AddFilesTask
+      paths:
+          - 'result.txt'
+      identifiers:
+          - 'result'
+links:
+  1: 
+  - 2
+metadata: {}

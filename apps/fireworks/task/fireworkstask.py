@@ -7,6 +7,7 @@ import queue
 
 from ethereum.utils import denoms
 from fireworks import LaunchPad, ScriptTask, Workflow
+from fireworks.utilities.filepad import FilePad
 from typing import List, Optional
 
 import golem_messages
@@ -64,7 +65,7 @@ class BasicTaskBuilder(TaskBuilder):
         self.owner = owner
         self.src_code = ""
 
-    @classmethod 
+    @classmethod
     def build_definition(cls, task_type: TaskTypeInfo, dictionary,
                          minimal=False):
         """ Build task defintion from dictionary with described options.
@@ -100,12 +101,11 @@ class FireworksTaskBuilder(BasicTaskBuilder):
                 launchpad_dict = yaml.load(lf)
         else:
             launchpad_dict = self.DEFAULT_LAUNCHPAD
-
         return FireworksTask(self.owner,
                              self.task_definition,
                              self.dir_manager,
                              LaunchPad.from_dict(launchpad_dict),
-                             Workflow.from_file(self.task_definition.firework_path))
+                             Workflow.from_file(self.task_definition.workflow_path))
 
 
 class FireworksBenchmarkTaskBuilder(FireworksTaskBuilder):
@@ -127,7 +127,7 @@ class FireworksBenchmarkTaskBuilder(FireworksTaskBuilder):
                              Workflow.from_file(firework_bench_path))
 
 
-class DockerizedTask(Task):
+class DockerTask(Task):
     ENVIRONMENT_CLASS=DockerEnvironment
 
     def __init__(self,
@@ -160,7 +160,34 @@ class DockerizedTask(Task):
             src_code = script_file.read()
         super().__init__(th, src_code, task_definition)
 
-class FireworksTask(DockerizedTask):
+
+class ExtraDataBuilder(object):
+    def __init__(self, header, subtask_id, subtask_data,
+                    src_code, short_desc, performance, docker_images=None):
+        self.header = header
+        self.subtask_id = subtask_id
+        self.subtask_data = subtask_data
+        self.src_code = src_code
+        self.short_desc = short_desc
+        self.performance = performance
+        self.docker_images = docker_images
+
+    def get_result(self):
+        ctd = golem_messages.message.ComputeTaskDef()
+        ctd['task_id'] = self.header.task_id
+        ctd['subtask_id'] = self.subtask_id
+        ctd['extra_data'] = self.subtask_data
+        ctd['short_description'] = self.short_desc
+        ctd['src_code'] = self.src_code
+        ctd['performance'] = self.performance
+        if self.docker_images:
+            ctd['docker_images'] = [di.to_dict() for di in self.docker_images]
+        ctd['deadline'] = min(timeout_to_deadline(self.header.subtask_timeout),
+                            self.header.deadline)
+        return Task.ExtraData(ctd=ctd)
+
+
+class FireworksTask(DockerTask):
     ENVIRONMENT_CLASS = FireworksTaskEnvironment
 
     def __init__(self,
@@ -172,8 +199,17 @@ class FireworksTask(DockerizedTask):
         super().__init__(owner, task_definition, dir_manager)
         self.launchpad = launchpad
         self.workflow = workflow
+
+        # FIXME restart launchpad and filepad
+        # caused by filepad labels duplication
+        # this must be called after launchpad assignment
+        self.launchpad.reset('', require_password=False)
+        filepad = self._get_filepad()
+        filepad.reset()
+
         self.launchpad.add_wf(self.workflow)
 
+        self._put_resources_to_db(task_definition.resources)
         # links and parent_links are Firework specific structures
         # they are used here to efficiently walk through workflow
         # dependencies and allow submitting subtasks in correct order
@@ -181,7 +217,7 @@ class FireworksTask(DockerizedTask):
         self.parent_links = copy.deepcopy(workflow.links.parent_links)
 
         # work_queue is filled on initialization and on each computation_finished
-        # it allows query_extra_data to generate tasks according to 
+        # it allows query_extra_data to generate tasks according to
         # Fireworks workflow
         self.work_queue = list()
 
@@ -189,10 +225,10 @@ class FireworksTask(DockerizedTask):
         for firework in self.get_ready_fireworks():
             self.work_queue.append(firework.fw_id)
 
-        # mapping used by query_extra_data and finished_computation
+        # State tracking structure helps to determine when
+        # the task has been finished
         self.dispatched_subtasks = {}
         self.progress = 0.0
-        self.counting_nodes = set()
 
     def get_ready_fireworks(self):
         fws = []
@@ -201,34 +237,33 @@ class FireworksTask(DockerizedTask):
                 fws.append(fw)
         return fws
 
+    def _get_filepad(self):
+        filepad_dict = {
+            'host': self.launchpad.host,
+            'port': self.launchpad.port,
+            'database': self.launchpad.name,
+            'username': self.launchpad.username,
+            'password': self.launchpad.password,
+            'logdir': self.launchpad.logdir,
+            'strm_lvl': self.launchpad.strm_lvl
+        }
+        return FilePad(**filepad_dict)
+
+    def _put_resources_to_db(self, resources, overwrite=True):
+        filepad = self._get_filepad()
+        for label, path in resources.items():
+            if overwrite:
+                file, _ = filepad.get_file(label)
+                if file:
+                    filepad.delete_file(label)
+            filepad.add_file(path, label)
+
     def initialize(self, dir_manager):
         """Called after adding a new task, may initialize or create some resources
         or do other required operations.
         :param DirManager dir_manager: DirManager instance for accessing temp dir for this task
         """
         pass
-
-    def _new_compute_task_def(self, subtask_id, extra_data,
-                              perf_index=0):
-        # TODO remove as many fields as possible
-        ctd = golem_messages.message.ComputeTaskDef()
-        ctd['task_id'] = self.header.task_id
-        ctd['subtask_id'] = subtask_id
-        ctd['extra_data'] = extra_data
-        ctd['extra_data']['launchpad'] = self.launchpad.to_dict()
-        fw_id = self.work_queue.pop(0)
-        self.dispatched_subtasks[subtask_id] = {'fw_id': fw_id}
-        logger.warn("Putting {} to work".format(fw_id))
-        ctd['extra_data']['fw_id'] = fw_id
-        ctd['short_description'] = self.short_extra_data_repr(extra_data)
-        ctd['src_code'] = self.src_code
-        ctd['performance'] = perf_index
-        if self.docker_images:
-            ctd['docker_images'] = [di.to_dict() for di in self.docker_images]
-        ctd['deadline'] = min(timeout_to_deadline(self.header.subtask_timeout),
-                              self.header.deadline)
-
-        return ctd
 
     def create_subtask_id(self) -> str:
         return idgenerator.generate_new_id_from_id(self.header.task_id)
@@ -243,11 +278,20 @@ class FireworksTask(DockerizedTask):
         :param node_id: id of a node that wants to get a next subtask
         :param node_name: name of a node that wants to get a next subtask
         """
-        # FIXME Make sure this is not called when all tasks are dispatched but none completed
-        # verify calling criteria in upper level
+        fw_id = self.work_queue.pop(0)
         subtask_id = self.create_subtask_id()
-        ctd = self._new_compute_task_def(subtask_id, dict(), 0)
-        return Task.ExtraData(ctd=ctd)
+        subtask_data = {
+            'launchpad': self.launchpad.to_dict(),
+            'fw_id': fw_id
+        }
+
+        self.dispatched_subtasks[subtask_id] = {'fw_id': fw_id}
+
+        subtask_builder = ExtraDataBuilder(self.header, subtask_id, subtask_data,
+                                           self.src_code,
+                                           self.short_extra_data_repr(subtask_data),
+                                           perf_index, self.docker_images)
+        return subtask_builder.get_result()
 
     def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa pylint:disable=line-too-long
         pass
@@ -257,8 +301,7 @@ class FireworksTask(DockerizedTask):
         :param extra_data
         :return str:
         """
-        return 'short extra data repr for fireworks task'
-
+        return 'fireworks task'
 
     def needs_computation(self) -> bool:
         """ Return information if there are still some subtasks that may be dispended
@@ -270,7 +313,6 @@ class FireworksTask(DockerizedTask):
         """ Return information if tasks has been fully computed
         :return bool: True if there is all tasks has been computed and verified
         """
-        logger.warn("{}".format(not self.work_queue and not self.dispatched_subtasks))
         return not self.work_queue and not self.dispatched_subtasks
 
     def computation_finished(self, subtask_id, task_result,
@@ -287,7 +329,6 @@ class FireworksTask(DockerizedTask):
             self.parent_links[child_fw].remove(parent_fw)
             # If there are no parent links it means that the firework is ready
             if not self.parent_links[child_fw]:
-                logger.warn("Enqueued {}".format(child_fw))
                 self.work_queue.append(child_fw)
         del self.dispatched_subtasks[subtask_id]
 
@@ -323,7 +364,7 @@ class FireworksTask(DockerizedTask):
         """ Return total number of tasks that should be computed
         :return int: number should be greater than 0
         """
-        # It won't 
+        # It won't
         return len(self.workflow.links.nodes)
 
     def get_active_tasks(self) -> int:
@@ -341,14 +382,17 @@ class FireworksTask(DockerizedTask):
 
     def restart(self):
         """ Restart all subtask computation for this task """
+        # Restart workflow
         raise NotImplementedError()
 
     def restart_subtask(self, subtask_id):
         """ Restart subtask with given id """
+        # Restart specific fw_id
         raise NotImplementedError()
 
     def abort(self):
         """ Abort task and all computations """
+        # Possibly delete the workflow and see what happens on provider side
         raise NotImplementedError()
 
     def get_progress(self) -> float:
@@ -460,5 +504,4 @@ class FireworksTask(DockerizedTask):
         if verdict == AcceptClientVerdict.ACCEPTED:
             client = TaskClient(node_id)
             client.start()
-        self.counting_nodes.add(node_id)
         return verdict

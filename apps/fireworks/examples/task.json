@@ -1,0 +1,13 @@
+{
+  "name": "fireworkstask",
+  "workflow_path": "/home/mplebanski/Projects/golem/apps/fireworks/examples/workflows/basic.yaml",
+  "resources": {
+    "input_label_1": "/home/mplebanski/golem.log"
+  },
+  "type":"Fireworks",
+  "timeout":"00:10:00",
+  "subtask_timeout":"00:10:00",
+  "estimated_memory": 2147483,
+  "bid": 1,
+  "subtasks_count": 1
+}
