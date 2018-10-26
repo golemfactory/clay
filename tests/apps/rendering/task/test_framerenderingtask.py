@@ -49,7 +49,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         rt.output_file = files_[2]
         rt.resources = []
         rt.resolution = [800, 600]
-        rt.full_task_timeout = 3600
+        rt.timeout = 3600
         rt.subtask_timeout = 600
         rt.estimated_memory = 1000
         rt.max_price = 15
@@ -319,7 +319,7 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
     def test_calculate_total(self):
         definition = RenderingTaskDefinition()
         definition.optimize_total = True
-        definition.total_subtasks = 12
+        definition.subtasks_count = 12
         definition.options = FrameRendererOptions()
         definition.options.use_frames = True
         definition.options.frames = list(range(1, 7))
@@ -337,72 +337,72 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
         assert builder._calculate_total(defaults) == 20
 
         definition.optimize_total = False
-        # Don't optimize -> use total_subtasks
+        # Don't optimize -> use subtasks_count
         assert builder._calculate_total(defaults) == 12
 
-        definition.total_subtasks = None
-        # total_subtasks unknown -> use default
+        definition.subtasks_count = None
+        # subtasks_count unknown -> use default
         assert builder._calculate_total(defaults) == 20
 
-        definition.total_subtasks = 0
-        # total_subtasks invalid -> use default
+        definition.subtasks_count = 0
+        # subtasks_count invalid -> use default
         assert builder._calculate_total(defaults) == 20
 
-        definition.total_subtasks = 1
-        # total_subtasks min
+        definition.subtasks_count = 1
+        # subtasks_count min
         assert builder._calculate_total(defaults) == 1
 
-        definition.total_subtasks = 51
-        # total_subtasks over max -> use default
+        definition.subtasks_count = 51
+        # subtasks_count over max -> use default
         assert builder._calculate_total(defaults) == 20
 
-        definition.total_subtasks = 50
-        # total_subtasks max
+        definition.subtasks_count = 50
+        # subtasks_count max
         assert builder._calculate_total(defaults) == 50
 
         definition.options.use_frames = True
 
-        definition.total_subtasks = None
+        definition.subtasks_count = None
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 6
 
-        definition.total_subtasks = 0
+        definition.subtasks_count = 0
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 6
 
-        definition.total_subtasks = 1
+        definition.subtasks_count = 1
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 1
 
-        definition.total_subtasks = 2
+        definition.subtasks_count = 2
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 2
 
-        definition.total_subtasks = 3
+        definition.subtasks_count = 3
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 3
 
-        definition.total_subtasks = 6
+        definition.subtasks_count = 6
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 6
 
-        definition.total_subtasks = 12
+        definition.subtasks_count = 12
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 12
 
-        definition.total_subtasks = 4
+        definition.subtasks_count = 4
         with self.assertLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 3
 
-        definition.total_subtasks = 13
+        definition.subtasks_count = 13
         with self.assertLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 12
 
-        definition.total_subtasks = 17
+        definition.subtasks_count = 17
         with self.assertLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 12
 
-        definition.total_subtasks = 18
+        definition.subtasks_count = 18
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 18
 

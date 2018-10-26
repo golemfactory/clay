@@ -9,7 +9,7 @@ def get_datadir(role: str):
     if not datadir:
         datadir = tempfile.mkdtemp(prefix='golem-{}-'.format(role.lower()))
         os.environ[env_key] = datadir
-        print("{} data directory: {}".format(role.capitalize(), datadir))
+        print("{}={}".format(env_key, datadir))
     return datadir
 
 

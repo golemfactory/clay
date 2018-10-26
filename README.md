@@ -51,13 +51,14 @@ Golem communicates with external technologies some of them may be downloaded and
 * [OpenExr](http://www.openexr.com/)
 * [OpenSSL](https://www.openssl.org/)
 * [Python3](https://www.python.org/)
+* [Rust](https://www.rust-lang.org/)
 * [SQLite3](https://sqlite.org/index.html)
 * [Pyvmmonitor](http://pyvmmonitor.com)
 
 Benchmarks:
 * General: [Minilight](http://www.hxa.name/minilight) by Harrison Ainsworth / HXA7241 and Juraj Sukop.
 * Blender: [scene-BMW](https://www.blender.org/download/demo-files/).
-* LuxRender: [SchoolCorridor](http://www.luxrender.net/wiki/Show-off_pack) by Simon Wendsche.
+
 
 Icons:
 * [Freeline](https://www.iconfinder.com/iconsets/freeline) by Enes Dal.

@@ -72,7 +72,6 @@ class DockerTaskThread(TaskThread):
                  docker_images: List[Union[DockerImage, Dict, Tuple]],
                  src_code: str,
                  extra_data: Dict,
-                 short_desc: str,
                  dir_mapping: DockerDirMapping,
                  timeout: int,
                  check_mem: bool = False) -> None:
@@ -81,7 +80,7 @@ class DockerTaskThread(TaskThread):
             raise AttributeError("docker images is None")
         super(DockerTaskThread, self).__init__(
             subtask_id, src_code, extra_data,
-            short_desc, dir_mapping.resources, dir_mapping.temporary,
+            dir_mapping.resources, dir_mapping.temporary,
             timeout)
 
         # Find available image
@@ -170,8 +169,7 @@ class DockerTaskThread(TaskThread):
 
     def _task_computed(self, estm_mem: Optional[int]) -> None:
         out_files = [
-            str(path) for path in self.dir_mapping.output.glob("**/*")
-            if path.is_file()
+            str(path) for path in self.dir_mapping.output.glob("*")
         ]
         self.result = {
             "data": out_files,

@@ -275,7 +275,7 @@ class DepositPayment(BaseModel):
     status = PaymentStatusField(index=True, default=PaymentStatus.awaiting)
     fee = HexIntegerField(null=True)
 
-    class Meta:  # pylint: disable=too-few-public-methods
+    class Meta:
         database = db
 
     def __repr__(self):

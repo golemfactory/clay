@@ -527,7 +527,7 @@ class MockThread:
 @patch('golem.client.node_info_str')
 @patch('golem.node.Node._start_keys_auth', set_keys_auth)
 @patch('golem.node.Node._start_docker')
-@patch('golem.node.async_run', mock_async_run)
+@patch('golem.core.golem_async.async_run', mock_async_run)
 @patch('golem.node.chain_function', chain_function)
 @patch('golem.node.threads.deferToThread', done_deferred)
 @patch('golem.node.CrossbarRouter', Mock(_start_node=done_deferred))
@@ -795,7 +795,7 @@ class TestOptNode(TempDirFixture):
         self.node.client.task_server.task_computer = mock_tc
 
         mock_tm.get_progresses = Mock(return_value={})
-        mock_tc.assigned_subtasks = {}
+        mock_tc.assigned_subtask = None
 
         result = self.node._is_task_in_progress()
 
@@ -830,7 +830,7 @@ class TestOptNode(TempDirFixture):
         self.node.client.task_server.task_computer = mock_tc
 
         mock_tm.get_progresses = Mock(return_value={'a': 'a'})
-        mock_tc.assigned_subtasks = {'a': 'a'}
+        mock_tc.assigned_subtask = {'a': 'a'}
 
         result = self.node._is_task_in_progress()
 

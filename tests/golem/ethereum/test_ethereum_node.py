@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 from unittest.mock import patch, Mock
 from unittest import TestCase
 
@@ -17,9 +18,10 @@ class TestPublicNodeList(TestCase):
         assert node.addr_list
         assert node.is_connected.called
 
-    @patch('golem.core.async.async_run',
+    @classmethod
+    @patch('golem.core.golem_async.async_run',
            side_effect=lambda r, *_: r.method(*r.args, **r.kwargs))
-    def test_handle_remote_rpc_provider(self, _async_run):
+    def test_handle_remote_rpc_provider(cls, _async_run):
         node = NodeProcess(['addr'])
         node.start = Mock()
 

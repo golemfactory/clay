@@ -1,4 +1,4 @@
-# pylint: disable=too-few-public-methods
+
 
 from os import path
 from unittest.mock import Mock
@@ -118,7 +118,7 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
         assert task.num_tasks_received == 0
         assert task.subtasks_given == {}
         assert task.num_failed_subtasks == 0
-        assert task.full_task_timeout == 14400
+        assert task.timeout == 14400
         assert task.counting_nodes == {}
         assert task.stdout == {}
         assert task.stderr == {}

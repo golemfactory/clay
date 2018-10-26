@@ -121,3 +121,9 @@ PAYMENT_DEADLINE = 24 * 60 * 60
 # CONCENT CONST #
 #################
 NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER = 3
+
+#################
+# TASK DEFINITION PICKLED VERSION #
+#################
+
+PICKLED_VERSION = 2

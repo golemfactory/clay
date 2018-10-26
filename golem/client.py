@@ -3,11 +3,9 @@
 import collections
 import enum
 import logging
-import re
 import sys
 import time
 import uuid
-import warnings
 from copy import copy, deepcopy
 from os import path, makedirs
 from pathlib import Path
@@ -15,7 +13,6 @@ from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from ethereum.utils import denoms
 from golem_messages import datastructures as msg_datastructures
-from golem_messages import helpers as msg_helpers
 from pydispatch import dispatcher
 from twisted.internet.defer import (
     inlineCallbacks,
@@ -24,15 +21,11 @@ from twisted.internet.defer import (
 
 import golem
 from apps.appsmanager import AppsManager
-from apps.core.task.coretask import CoreTask
-from apps.rendering.task import framerenderingtask
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.config.presets import HardwarePresetsMixin
 from golem.core import variables
-from golem.core.async import AsyncRequest, async_run
 from golem.core.common import (
-    deadline_to_timeout,
     datetime_to_timestamp_utc,
     get_timestamp_utc,
     node_info_str,
@@ -48,9 +41,7 @@ from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
-from golem.ethereum.exceptions import NotEnoughFunds
 from golem.ethereum.fundslocker import FundsLocker
 from golem.ethereum.paymentskeeper import PaymentStatus
 from golem.ethereum.transactionsystem import TransactionSystem
@@ -71,15 +62,12 @@ from golem.report import Component, Stage, StatusPublisher, report_calls
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager, DirectoryType
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
-from golem.resource.resource import get_resources_for_task, ResourceType
+from golem.rpc import utils as rpc_utils
 from golem.rpc.mapping.rpceventnames import Task, Network, Environment, UI
 from golem.task import taskpreset
-from golem.task.masking import Mask
 from golem.task.taskarchiver import TaskArchiver
-from golem.task.taskbase import Task as TaskBase
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
-from golem.task.taskstate import TaskTestStatus, SubtaskStatus
 from golem.task.tasktester import TaskTester
 from golem.tools import filelock
 from golem.tools.os_info import OSInfo
@@ -87,10 +75,6 @@ from golem.tools.talkback import enable_sentry_logger
 
 
 logger = logging.getLogger(__name__)
-
-
-class CreateTaskError(Exception):
-    pass
 
 
 class ClientTaskComputerEventListener(object):
@@ -230,8 +214,32 @@ class Client(HardwarePresetsMixin):
 
         logger.debug('Client init completed')
 
+    @property
+    def task_manager(self):
+        return self.task_server.task_manager
+
     def set_rpc_publisher(self, rpc_publisher):
         self.rpc_publisher = rpc_publisher
+
+    def get_wamp_rpc_mapping(self):
+        from apps.rendering.task import framerenderingtask
+        from golem.environments.minperformancemultiplier import \
+            MinPerformanceMultiplier
+        from golem.task import rpc as task_rpc
+        task_rpc_provider = task_rpc.ClientProvider(self)
+        providers = (
+            self,
+            framerenderingtask,
+            MinPerformanceMultiplier,
+            self.task_server.task_manager,
+            self.environments_manager,
+            self.transaction_system,
+            task_rpc_provider,
+        )
+        mapping = {}
+        for rpc_provider in providers:
+            mapping.update(rpc_utils.object_method_map(rpc_provider))
+        return mapping
 
     def p2p_listener(self, event='default', **kwargs):
         if event == 'unreachable':
@@ -479,6 +487,7 @@ class Client(HardwarePresetsMixin):
         if self.port_mapper:
             self.port_mapper.quit()
 
+    @rpc_utils.expose('ui.stop')
     @inlineCallbacks
     def pause(self):
         logger.info("Pausing ...")
@@ -495,6 +504,7 @@ class Client(HardwarePresetsMixin):
             self.task_server.task_computer.quit()
         logger.info("Paused")
 
+    @rpc_utils.expose('ui.start')
     def resume(self):
         logger.info("Resuming ...")
         for service in self._services:
@@ -525,6 +535,7 @@ class Client(HardwarePresetsMixin):
         self.monitor.shut_down()
         self.diag_service.stop()
 
+    @rpc_utils.expose('net.peer.connect')
     def connect(self, socket_address):
         if isinstance(socket_address, collections.Iterable):
             socket_address = SocketAddress(
@@ -556,184 +567,6 @@ class Client(HardwarePresetsMixin):
             self.db.close()
         self._unlock_datadir()
 
-    def enqueue_new_task(self, task_dict) -> Tuple[Deferred, str]:
-        """
-        :return: (deferred, task_id) - deferred returns Task object when it's
-        successfully created.
-        """
-        if self.config_desc.in_shutdown:
-            raise CreateTaskError(
-                'Can not enqueue task: shutdown is in progress, '
-                'toggle shutdown mode off to create a new tasks.')
-        if self.task_server is None:
-            raise CreateTaskError("Golem is not ready")
-
-        task_manager = self.task_server.task_manager
-        _result = Deferred()
-
-        # FIXME: Statement only for old DummyTask compatibility #2467
-        task: TaskBase
-        if isinstance(task_dict, TaskBase):
-            warnings.warn(
-                "enqueue_new_task() called with {got_type}"
-                " instead of dict #2467".format(
-                    got_type=type(task_dict),
-                ),
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            task = task_dict
-        else:
-            # Set default value for concent_enabled
-            task_dict.setdefault(
-                'concent_enabled',
-                self.concent_service.enabled,
-            )
-
-            task = task_manager.create_task(task_dict)
-
-        if task.header.fixed_header.concent_enabled and \
-                not self.concent_service.enabled:
-            raise CreateTaskError(
-                "Cannot create task with concent enabled when "
-                "concent service is disabled")
-
-        task_id = task.header.task_id
-        self.funds_locker.lock_funds(task)
-
-        logger.info('Enqueue new task "%r"', task_id)
-
-        def package_created(packager_result):
-            logger.info(
-                "Resource package created. Creating task. task_id=%r",
-                task_id,
-            )
-            package_path, package_sha1 = packager_result
-            task.header.resource_size = path.getsize(package_path)
-
-            if self.config_desc.net_masking_enabled:
-                task.header.mask = self._get_mask_for_task(task)
-            else:
-                task.header.mask = Mask()
-
-            estimated_fee = self.transaction_system.eth_for_batch_payment(
-                task.total_tasks)
-            task_manager.add_new_task(task, estimated_fee=estimated_fee)
-
-            client_options = self.task_server.get_share_options(task_id, None)
-            client_options.timeout = deadline_to_timeout(task.header.deadline)
-
-            _resources = self.resource_server.add_task(
-                package_path, package_sha1, task_id, task.header.resource_size,
-                client_options=client_options)
-            _resources.addCallbacks(task_created, error)
-
-        def task_created(resource_server_result):
-            logger.info("Task created. Starting... task_id=%r", task_id)
-            resource_manager_result, package_path,\
-                package_hash, package_size = resource_server_result
-
-            try:
-                task_state = task_manager.tasks_states[task_id]
-                task_state.package_path = package_path
-                task_state.package_hash = package_hash
-                task_state.package_size = package_size
-                task_state.resource_hash = resource_manager_result[0]
-                logger.debug(
-                    "Setting task state - package_path: %s, package_hash: %s, "
-                    "package_size: %s, resource_hash: %s",
-                    task_state.package_path, task_state.package_hash,
-                    task_state.package_size, task_state.resource_hash
-                )
-            except Exception as exc:  # pylint: disable=broad-except
-                error(exc)
-                return
-
-            request = AsyncRequest(task_manager.start_task, task_id)
-            async_run(request, lambda _: _result.callback(task), error)
-
-        def error(exception):
-            logger.error("Task '%s' creation failed: %r", task_id, exception)
-            _result.errback(exception)
-
-        def deposit_created(_):
-            logger.info(
-                "Deposit confirmed. Creating resource package. task_id=%r",
-                task_id,
-            )
-            files = get_resources_for_task(
-                resource_header=None,
-                resource_type=ResourceType.HASHES,
-                tmp_dir=getattr(task, 'tmp_dir', None),
-                resources=task.get_resources(),
-            )
-
-            _package = self.resource_server.create_resource_package(
-                files,
-                task_id,
-            )
-            _package.addCallbacks(package_created, error)
-
-        if self.concent_service.enabled:
-            min_amount, opt_amount = msg_helpers.requestor_deposit_amount(
-                task.price,
-            )
-            logger.info(
-                "Ensuring deposit. min=%.8f optimal=%.8f task_id=%r",
-                min_amount / denoms.ether,
-                opt_amount / denoms.ether,
-                task_id,
-            )
-            # This is a bandaid solution for unlocking funds when task creation
-            # fails. This case is most common but, the better way it to always
-            # unlock them when the task fails regardless of the reason.
-            try:
-                self.transaction_system.concent_deposit(
-                    required=min_amount,
-                    expected=opt_amount,
-                ).addCallback(deposit_created).addErrback(
-                    lambda err: logger.error(
-                        "Deposit creation failed: %r, task_id=%r",
-                        err,
-                        task_id,
-                    ),
-                )
-            except NotEnoughFunds:
-                self.funds_locker.remove_task(task_id)
-                raise
-        else:
-            deposit_created(None)
-
-        return _result, task_id
-
-    def _get_mask_for_task(self, task: CoreTask) -> Mask:
-        desired_num_workers = max(
-            task.get_total_tasks() *
-            self.config_desc.initial_mask_size_factor,
-            self.config_desc.min_num_workers_for_mask)
-
-        assert isinstance(self.p2pservice, P2PService)
-        assert isinstance(self.task_server, TaskServer)
-
-        network_size = self.p2pservice.get_estimated_network_size()
-        min_perf = self.task_server.get_min_performance_for_task(task)
-        perf_rank = self.p2pservice.get_performance_percentile_rank(
-            min_perf, task.header.environment)
-        potential_num_workers = int(network_size * (1 - perf_rank))
-
-        mask = Mask.get_mask_for_task(
-            desired_num_workers=desired_num_workers,
-            potential_num_workers=potential_num_workers
-        )
-        logger.info(
-            f'Task {task.header.task_id} '
-            f'initial mask size: {mask.num_bits} '
-            f'expected number of providers: {desired_num_workers} '
-            f'potential number of providers: {potential_num_workers}'
-        )
-
-        return mask
-
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
 
@@ -746,75 +579,16 @@ class Client(HardwarePresetsMixin):
     def task_resource_failure(self, task_id, reason):
         self.task_server.task_computer.task_resource_failure(task_id, reason)
 
-    def run_test_task(self, t_dict) -> bool:
-        logger.info('Running test task "%r" ...', t_dict)
-        if self.task_tester is not None:
-            self.task_test_result = {
-                "status": TaskTestStatus.error,
-                "error": "Another test is running",
-            }
-            return False
-
-        self.task_test_result = None
-        try:
-            self._validate_task_dict(t_dict)
-        except Exception as e:  # pylint: disable=broad-except
-            self.task_test_result = {
-                "status": TaskTestStatus.error,
-                "error": str(e),
-            }
-            return False
-        request = AsyncRequest(self._run_test_task, t_dict)
-        async_run(request)
-        return True
-
-    def _run_test_task(self, t_dict) -> None:
-
-        def on_success(result, estimated_memory, time_spent, **kwargs):
-            logger.info('Test task succes "%r"', t_dict)
-            self.task_tester = None
-            self.task_test_result = {
-                "status": TaskTestStatus.success,
-                "result": result,
-                "estimated_memory": estimated_memory,
-                "time_spent": time_spent,
-                "more": kwargs,
-            }
-
-        def on_error(*args, **kwargs):
-            logger.warning('Test task error "%r": %r', t_dict, args)
-            self.task_tester = None
-            self.task_test_result = {
-                "status": TaskTestStatus.error,
-                "error": args,
-                "more": kwargs,
-            }
-
-        try:
-            dictionary = DictSerializer.load(t_dict)
-            task = self.task_server.task_manager.create_task(
-                dictionary=dictionary, minimal=True
-            )
-        except Exception as e:
-            on_error("{}: {}".format(type(e), to_unicode(e)))
-            return
-
-        self.task_test_result = {
-            "status": TaskTestStatus.started,
-            "error": None,
-        }
-        self.task_tester = TaskTester(task, self.datadir, on_success, on_error)
-        self.task_tester.run()
-
+    @rpc_utils.expose('comp.tasks.check.abort')
     def abort_test_task(self) -> bool:
         logger.debug('Aborting test task ...')
         self.task_test_result = None
-
         if self.task_tester is not None:
             self.task_tester.end_comp()
             return True
         return False
 
+    @rpc_utils.expose('comp.task.test.status')
     def check_test_status(self) -> Optional[Dict[str, Any]]:
         logger.debug('Checking test task status ...')
         result = self.task_test_result
@@ -824,131 +598,12 @@ class Client(HardwarePresetsMixin):
         result['status'] = result['status'].value
         return result
 
-    def create_task(self, t_dict) -> Tuple[Optional[str], Optional[str]]:
-        """
-        :return: (task_id, None) on success; (task_id or None, error_message)
-                 on failure
-        """
-        try:
-            self._validate_task_dict(t_dict)
-            deferred, task_id = self.enqueue_new_task(t_dict)
-            # We want to return quickly from create_task without waiting for
-            # deferred completion.
-            deferred.addErrback(
-                lambda err: logger.error("Cannot create task: %r", err))
-            return task_id, None
-        except Exception as ex:  # pylint: disable=broad-except
-            logger.error("Cannot create task %r: %s", t_dict, ex)
-            return None, str(ex)
-
-    def _validate_task_dict(self, t_dict) -> None:
-        task_name = ""
-        if 'name' in t_dict:
-            t_dict['name'] = t_dict['name'].strip()
-            task_name = t_dict['name']
-        if len(task_name) < 4 or len(task_name) > 24:
-            raise ValueError(
-                "Length of task name cannot be less "
-                "than 4 or more than 24 characters.")
-        if not re.match(r"(\w|[\-\. ])+$", task_name):
-            raise ValueError(
-                "Task name can only contain letters, numbers, "
-                "spaces, underline, dash or dot.")
-        if 'id' in t_dict:
-            logger.warning("discarding the UUID from the preset")
-            del t_dict['id']
-
-        subtasks = t_dict.get('subtasks', 0)
-        options = t_dict.get('options', {})
-        optimize_total = bool(options.get('optimize_total', False))
-        if subtasks and not optimize_total:
-            computed_subtasks = self.get_subtasks_count(
-                total_subtasks=subtasks,
-                optimize_total=False,
-                use_frames=options.get('frame_count', 1) > 1,
-                frames=[None]*options.get('frame_count', 1),
-            )
-            if computed_subtasks != subtasks:
-                raise ValueError(
-                    "Subtasks count {:d} is invalid."
-                    " Maybe use {:d} instead?".format(
-                        subtasks,
-                        computed_subtasks,
-                    )
-                )
-
+    @rpc_utils.expose('comp.task.abort')
     def abort_task(self, task_id):
         logger.debug('Aborting task "%r" ...', task_id)
         self.task_server.task_manager.abort_task(task_id)
 
-    def restart_task(self, task_id: str) -> Tuple[Optional[str], Optional[str]]:
-        """
-        :return: (new_task_id, None) on success; (None, error_message)
-                 on failure
-        """
-        logger.debug('Restarting task "%r" ...', task_id)
-        task_manager = self.task_server.task_manager
-
-        # Task state is changed to restarted and stays this way until it's
-        # deleted from task manager.
-        try:
-            task_manager.assert_task_can_be_restarted(task_id)
-        except task_manager.AlreadyRestartedError:
-            return None, "Task already restarted: '{}'".format(task_id)
-
-        # Create new task that is a copy of the definition of the old one.
-        # It has a new deadline and a new task id.
-        try:
-            task_dict = deepcopy(
-                task_manager.get_task_definition_dict(
-                    task_manager.tasks[task_id]))
-        except KeyError:
-            return None, "Task not found: '{}'".format(task_id)
-
-        task_dict.pop('id', None)
-        new_task_id, msg = self.create_task(task_dict)
-        if new_task_id:
-            task_manager.put_task_in_restarted_state(task_id)
-
-        return new_task_id, msg
-
-    def restart_subtasks_from_task(
-            self, task_id: str, subtask_ids: Iterable[str]):
-
-        assert isinstance(self.task_server, TaskServer)
-        task_manager = self.task_server.task_manager
-
-        try:
-            task_manager.put_task_in_restarted_state(task_id, clear_tmp=False)
-            old_task = task_manager.tasks[task_id]
-            finished_subtask_ids = set(
-                sub_id for sub_id, sub in old_task.subtasks_given.items()
-                if sub['status'] == SubtaskStatus.finished
-            )
-            subtask_ids_to_copy = finished_subtask_ids - set(subtask_ids)
-        except task_manager.AlreadyRestartedError:
-            logger.error('Task already restarted: %r', task_id)
-            return None
-        except KeyError:
-            logger.error('Task not found: %r', task_id)
-            return None
-
-        task_dict = deepcopy(task_manager.get_task_definition_dict(old_task))
-        del task_dict['id']
-
-        def copy_results(task: TaskBase):
-            task_manager.copy_results(
-                old_task_id=task_id,
-                new_task_id=task.header.task_id,
-                subtask_ids_to_copy=subtask_ids_to_copy
-            )
-
-        deferred, _ = self.enqueue_new_task(task_dict)
-
-        deferred.addCallbacks(
-            copy_results,
-            lambda err: logger.error('Task creation failed: %r', err))
-
+    @rpc_utils.expose('comp.task.subtasks.frame.restart')
     def restart_frame_subtasks(self, task_id, frame):
         logger.debug("restarting frame subtasks: task_id = %s, frame = %r",
                      task_id, frame)
@@ -963,6 +618,7 @@ class Client(HardwarePresetsMixin):
         self.funds_locker.add_subtask(task_id, len(subtasks))
         task_manager.restart_frame_subtasks(task_id, frame)
 
+    @rpc_utils.expose('comp.task.subtask.restart')
     def restart_subtask(self, subtask_id):
         logger.debug("restarting subtask %s", subtask_id)
         task_manager = self.task_server.task_manager
@@ -972,6 +628,7 @@ class Client(HardwarePresetsMixin):
 
         task_manager.restart_subtask(subtask_id)
 
+    @rpc_utils.expose('comp.task.delete')
     def delete_task(self, task_id):
         logger.debug('Deleting task "%r" ...', task_id)
         self.remove_task_header(task_id)
@@ -979,15 +636,18 @@ class Client(HardwarePresetsMixin):
         self.task_server.task_manager.delete_task(task_id)
         self.funds_locker.remove_task(task_id)
 
+    @rpc_utils.expose('comp.task.purge')
     def purge_tasks(self):
         tasks = self.get_tasks()
         logger.debug('Deleting %d tasks ...', len(tasks))
         for t in tasks:
             self.delete_task(t['id'])
 
+    @rpc_utils.expose('net.ident')
     def get_node(self):
         return self.node.to_dict()
 
+    @rpc_utils.expose('net.ident.name')
     def get_node_name(self):
         name = self.config_desc.node_name
         return str(name) if name else ''
@@ -1006,6 +666,7 @@ class Client(HardwarePresetsMixin):
             return list(self.p2pservice.peers.values())
         return list()
 
+    @rpc_utils.expose('net.peers.known')
     def get_known_peers(self):
         peers = self.p2pservice.incoming_peers or dict()
         return [
@@ -1013,12 +674,14 @@ class Client(HardwarePresetsMixin):
             for p in list(peers.values())
         ]
 
+    @rpc_utils.expose('net.peers.connected')
     def get_connected_peers(self):
         peers = self.get_peers() or []
         return [
             DictSerializer.dump(PeerSessionInfo(p), typed=False) for p in peers
         ]
 
+    @rpc_utils.expose('crypto.keys.pub')
     def get_public_key(self):
         return self.keys_auth.public_key
 
@@ -1026,16 +689,20 @@ class Client(HardwarePresetsMixin):
         if self.task_server:
             return self.task_server.task_computer.dir_manager
 
+    @rpc_utils.expose('crypto.keys.id')
     def get_key_id(self):
         return self.keys_auth.key_id
 
+    @rpc_utils.expose('crypto.difficulty')
     def get_difficulty(self):
         return self.keys_auth.get_difficulty()
 
+    @rpc_utils.expose('net.ident.key')
     def get_node_key(self):
         key = self.node.key
         return str(key) if key else None
 
+    @rpc_utils.expose('env.opts')
     def get_settings(self):
         settings = DictSerializer.dump(self.config_desc, typed=False)
 
@@ -1045,6 +712,7 @@ class Client(HardwarePresetsMixin):
 
         return settings
 
+    @rpc_utils.expose('env.opt')
     def get_setting(self, key):
         if not hasattr(self.config_desc, key):
             raise KeyError("Unknown setting: {}".format(key))
@@ -1054,12 +722,14 @@ class Client(HardwarePresetsMixin):
             return str(value)
         return value
 
+    @rpc_utils.expose('env.opt.update')
     def update_setting(self, key, value):
         if not hasattr(self.config_desc, key):
             raise KeyError("Unknown setting: {}".format(key))
         setattr(self.config_desc, key, value)
         self.change_config(self.config_desc)
 
+    @rpc_utils.expose('env.opts.update')
     def update_settings(self, settings_dict, run_benchmarks=False):
         for key, value in list(settings_dict.items()):
             if not hasattr(self.config_desc, key):
@@ -1067,14 +737,17 @@ class Client(HardwarePresetsMixin):
             setattr(self.config_desc, key, value)
         self.change_config(self.config_desc, run_benchmarks)
 
+    @rpc_utils.expose('env.datadir')
     def get_datadir(self):
         return str(self.datadir)
 
+    @rpc_utils.expose('net.p2p.port')
     def get_p2p_port(self) -> int:
         if not self.p2pservice:
             return 0
         return self.p2pservice.cur_port
 
+    @rpc_utils.expose('net.tasks.port')
     def get_task_server_port(self) -> int:
         if not self.task_server:
             return 0
@@ -1085,6 +758,7 @@ class Client(HardwarePresetsMixin):
             return len(self.task_server.task_keeper.get_all_tasks())
         return 0
 
+    @rpc_utils.expose('comp.task')
     def get_task(self, task_id: str) -> Optional[dict]:
         assert isinstance(self.task_server, TaskServer)
 
@@ -1117,6 +791,7 @@ class Client(HardwarePresetsMixin):
 
         return task_dict
 
+    @rpc_utils.expose('comp.tasks')
     def get_tasks(self, task_id: Optional[str] = None) \
             -> Union[Optional[dict], Iterable[dict]]:
         if not self.task_server:
@@ -1130,6 +805,7 @@ class Client(HardwarePresetsMixin):
         # Filter Nones because get_task returns Optional[dict]
         return list(filter(None, tasks))
 
+    @rpc_utils.expose('comp.task.subtasks')
     def get_subtasks(self, task_id: str) \
             -> Optional[List[Dict]]:
         try:
@@ -1139,13 +815,7 @@ class Client(HardwarePresetsMixin):
         except KeyError:
             logger.info("Task not found: '%s'", task_id)
 
-    def get_subtasks_borders(self, task_id, part=1):
-        return self.task_server.task_manager.get_subtasks_borders(task_id,
-                                                                  part)
-
-    def get_subtasks_frames(self, task_id):
-        return self.task_server.task_manager.get_output_states(task_id)
-
+    @rpc_utils.expose('comp.task.subtask')
     def get_subtask(self, subtask_id: str) \
             -> Tuple[Optional[Dict], Optional[str]]:
         try:
@@ -1155,10 +825,12 @@ class Client(HardwarePresetsMixin):
         except KeyError:
             return None, "Subtask not found: '{}'".format(subtask_id)
 
+    @rpc_utils.expose('comp.task.preview')
     def get_task_preview(self, task_id, single=False):
         return self.task_server.task_manager.get_task_preview(task_id,
                                                               single=single)
 
+    @rpc_utils.expose('comp.tasks.stats')
     def get_task_stats(self) -> Dict[str, int]:
         return {
             'host_state': self.get_task_state(),
@@ -1188,6 +860,7 @@ class Client(HardwarePresetsMixin):
     def get_error_task_count(self):
         return self.get_task_computer_stat('tasks_with_errors')
 
+    @rpc_utils.expose('comp.tasks.unsupport')
     def get_unsupport_reasons(self, last_days):
         if last_days < 0:
             raise ValueError("Incorrect number of days: {}".format(last_days))
@@ -1196,6 +869,7 @@ class Client(HardwarePresetsMixin):
         else:
             return self.task_server.task_keeper.get_unsupport_reasons()
 
+    @rpc_utils.expose('pay.ident')
     def get_payment_address(self):
         address = self.transaction_system.get_payment_address()
         return str(address) if address else None
@@ -1205,6 +879,7 @@ class Client(HardwarePresetsMixin):
             return self.task_server.task_computer.stats.get_stats(name)
         return None, None
 
+    @rpc_utils.expose('pay.balance')
     def get_balance(self):
         balances = self.transaction_system.get_balance()
         gnt_total = balances['gnt_available'] + balances['gnt_nonconverted']
@@ -1220,6 +895,7 @@ class Client(HardwarePresetsMixin):
             'last_eth_update': str(balances['eth_update_time']),
         }
 
+    @rpc_utils.expose('pay.deposit_balance')
     def get_deposit_balance(self):
         if not self.concent_service.enabled:
             return None
@@ -1245,9 +921,11 @@ class Client(HardwarePresetsMixin):
             'timelock': str(timelock),
         }
 
+    @rpc_utils.expose('pay.payments')
     def get_payments_list(self):
         return self.transaction_system.get_payments_list()
 
+    @rpc_utils.expose('pay.incomes')
     def get_incomes_list(self):
         incomes = self.transaction_system.get_incomes_list()
 
@@ -1266,6 +944,7 @@ class Client(HardwarePresetsMixin):
 
         return [item(income) for income in incomes]
 
+    @rpc_utils.expose('pay.deposit_payments')
     @classmethod
     def get_deposit_payments_list(cls, limit=1000, offset=0):
         deposit_payments = TransactionSystem.get_deposit_payments_list(
@@ -1286,6 +965,7 @@ class Client(HardwarePresetsMixin):
             result.append(entry)
         return result
 
+    @rpc_utils.expose('pay.withdraw.gas_cost')
     def get_withdraw_gas_cost(
             self,
             amount: Union[str, int],
@@ -1299,6 +979,7 @@ class Client(HardwarePresetsMixin):
             currency,
         )
 
+    @rpc_utils.expose('pay.withdraw')
     def withdraw(
             self,
             amount: Union[str, int],
@@ -1313,32 +994,19 @@ class Client(HardwarePresetsMixin):
             currency,
         )]
 
-    # It's defined here only for RPC exposure in
-    # golem.rpc.mapping.rpcmethodnames
-    def get_subtasks_count(  # pylint: disable=no-self-use
-            self,
-            total_subtasks: int,
-            optimize_total: bool,
-            use_frames: bool,
-            frames: list):
-        """Returns computed number of subtasks, before task creation."""
-        return framerenderingtask.calculate_subtasks_count(
-            total_subtasks=total_subtasks,
-            optimize_total=optimize_total,
-            use_frames=use_frames,
-            frames=frames,
-        )
-
+    @rpc_utils.expose('rep.comp')
     def get_computing_trust(self, node_id):
         if self.use_ranking():
             return self.ranking.get_computing_trust(node_id)
         return None
 
+    @rpc_utils.expose('rep.requesting')
     def get_requesting_trust(self, node_id):
         if self.use_ranking():
             return self.ranking.get_requesting_trust(node_id)
         return None
 
+    @rpc_utils.expose('env.use_ranking')
     def use_ranking(self):
         return bool(self.ranking)
 
@@ -1372,6 +1040,7 @@ class Client(HardwarePresetsMixin):
     def register_nodes_manager_client(self, nodes_manager_client):
         self.nodes_manager_client = nodes_manager_client
 
+    @rpc_utils.expose('comp.task.state')
     def query_task_state(self, task_id):
         state = self.task_server.task_manager.query_task_state(task_id)
         if state:
@@ -1393,14 +1062,17 @@ class Client(HardwarePresetsMixin):
             node_info
         )
 
+    @rpc_utils.expose('res.dirs')
     def get_res_dirs(self):
         return {"total received data": self.get_received_files_dir(),
                 "total distributed data": self.get_distributed_files_dir()}
 
+    @rpc_utils.expose('res.dirs.size')
     def get_res_dirs_sizes(self):
         return {str(name): str(du(d))
                 for name, d in list(self.get_res_dirs().items())}
 
+    @rpc_utils.expose('res.dir')
     def get_res_dir(self, dir_type):
         if dir_type == DirectoryType.DISTRIBUTED:
             return self.get_distributed_files_dir()
@@ -1414,6 +1086,7 @@ class Client(HardwarePresetsMixin):
     def get_distributed_files_dir(self):
         return str(self.resource_server.get_distributed_resource_root())
 
+    @rpc_utils.expose('res.dir.clear')
     def clear_dir(self, dir_type, older_than_seconds: int = 0):
         if dir_type == DirectoryType.DISTRIBUTED:
             return self.remove_distributed_files(older_than_seconds)
@@ -1434,6 +1107,7 @@ class Client(HardwarePresetsMixin):
     def remove_task(self, task_id):
         self.p2pservice.remove_task(task_id)
 
+    @rpc_utils.expose('comp.tasks.known.delete')
     def remove_task_header(self, task_id):
         self.task_server.remove_task_header(task_id)
 
@@ -1447,12 +1121,14 @@ class Client(HardwarePresetsMixin):
                 logger.info('Task %s got too old. Deleting.', task['id'])
                 self.delete_task(task['id'])
 
+    @rpc_utils.expose('comp.tasks.known')
     def get_known_tasks(self):
         headers = {}
         for key, header in list(self.task_server.task_keeper.task_headers.items()):  # noqa
             headers[str(key)] = DictSerializer.dump(header)
         return headers
 
+    @rpc_utils.expose('comp.environments')
     def get_environments(self):
         envs = copy(self.environments_manager.get_environments())
         return [{
@@ -1464,6 +1140,7 @@ class Client(HardwarePresetsMixin):
             'description': str(env.short_description)
         } for env_id, env in envs.items()]
 
+    @rpc_utils.expose('comp.environment.benchmark')
     @inlineCallbacks
     def run_benchmark(self, env_id):
         deferred = Deferred()
@@ -1474,12 +1151,14 @@ class Client(HardwarePresetsMixin):
         result = yield deferred
         return result
 
+    @rpc_utils.expose('comp.environment.enable')
     def enable_environment(self, env_id):
         try:
             self.environments_manager.change_accept_tasks(env_id, True)
         except KeyError:
             return "No such environment"
 
+    @rpc_utils.expose('comp.environment.disable')
     def disable_environment(self, env_id):
         try:
             self.environments_manager.change_accept_tasks(env_id, False)
@@ -1504,19 +1183,23 @@ class Client(HardwarePresetsMixin):
     def push_local_rank(self, node_id, loc_rank):
         self.p2pservice.push_local_rank(node_id, loc_rank)
 
+    @rpc_utils.expose('comp.tasks.preset.save')
     @staticmethod
     def save_task_preset(preset_name, task_type, data):
         taskpreset.save_task_preset(preset_name, task_type, data)
 
+    @rpc_utils.expose('comp.tasks.preset.get')
     @staticmethod
     def get_task_presets(task_type):
-        logger.info("Loading presets for {}".format(task_type))
+        logger.info("Loading presets for %s", task_type)
         return taskpreset.get_task_presets(task_type)
 
+    @rpc_utils.expose('comp.tasks.preset.delete')
     @staticmethod
     def delete_task_preset(task_type, preset_name):
         taskpreset.delete_task_preset(task_type, preset_name)
 
+    @rpc_utils.expose('comp.tasks.estimated.cost')
     def get_estimated_cost(self, task_type, options):
         if self.task_server is None:
             raise Exception('Cannot estimate costs')
@@ -1529,17 +1212,6 @@ class Client(HardwarePresetsMixin):
             'ETH': float(self.transaction_system.eth_for_batch_payment(
                 options['num_subtasks']) / denoms.ether),
         }
-
-    def get_performance_values(self):
-        return self.environments_manager.get_performance_values()
-
-    @staticmethod
-    def get_performance_mult() -> float:
-        return MinPerformanceMultiplier.get()
-
-    @staticmethod
-    def set_performance_mult(multiplier: float):
-        MinPerformanceMultiplier.set(multiplier)
 
     def _publish(self, event_name, *args, **kwargs):
         if self.rpc_publisher:
@@ -1598,6 +1270,7 @@ class Client(HardwarePresetsMixin):
 
         return ' '.join(messages)
 
+    @rpc_utils.expose('net.status')
     def connection_status(self) -> Dict[str, Any]:
         status = self._make_connection_status_raw_data()
         status['msg'] \
@@ -1640,14 +1313,12 @@ class Client(HardwarePresetsMixin):
             'status': 'idle',
         }
 
-    @staticmethod
-    def get_golem_version():
-        return golem.__version__
-
+    @rpc_utils.expose('golem.status')
     @staticmethod
     def get_golem_status():
         return StatusPublisher.last_status()
 
+    @rpc_utils.expose('env.hw.preset.activate')
     @inlineCallbacks
     def activate_hw_preset(self, name, run_benchmarks=False):
         config_changed = HardwarePresets.update_config(name, self.config_desc)
@@ -1659,7 +1330,7 @@ class Client(HardwarePresetsMixin):
 
             result = yield deferred
             logger.info('change hw config result: %r', result)
-            return self.get_performance_values()
+            return self.environments_manager.get_performance_values()
 
     def __lock_datadir(self):
         if not path.exists(self.datadir):
@@ -1685,6 +1356,7 @@ class Client(HardwarePresetsMixin):
     def enable_talkback(value):
         enable_sentry_logger(value)
 
+    @rpc_utils.expose('net.peer.block')
     def block_node(self, node_id: str) -> Tuple[bool, Optional[str]]:
         if self.task_server is not None:
             try:

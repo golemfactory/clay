@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 TaskMsg = NamedTuple("TaskMsg", [("ts", float), ("op", Operation)])
 
 
-class SubtaskInfo:  # pylint: disable=too-few-public-methods
+class SubtaskInfo:
     def __init__(self):
         self.latest_status = SubtaskStatus.starting
         self.messages = []
