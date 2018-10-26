@@ -33,6 +33,7 @@ from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher, Component, Stage
 from golem.rpc import utils as rpc_utils
+from golem.rpc.mapping import rpceventnames
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import (
     Publisher,
@@ -432,9 +433,15 @@ class Node(object):
             return
 
         methods = self.client.get_wamp_rpc_mapping()
+
+        def rpc_ready(_):
+            logger.info('All procedures registered in WAMP router')
+            self._rpc_publisher.publish(
+                rpceventnames.Golem.procedures_registered,
+            )
         # pylint: disable=no-member
         self.rpc_session.add_procedures(methods).addCallback(  # type: ignore
-            lambda _: logger.info('All procedures registered in WAMP router'),
+            rpc_ready,
         )
         # pylint: enable=no-member
 
