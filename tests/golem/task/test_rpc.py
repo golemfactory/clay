@@ -476,3 +476,46 @@ class TestRestartSubtasks(ProviderBase):
             task_dict=mock.ANY,
             force=force,
         )
+
+@mock.patch('os.path.getsize')
+class TestExceptionPropagation(ProviderBase):
+    def setUp(self):
+        super().setUp()
+        self.task = self.client.task_manager.create_task(self.t_dict)
+        with mock.patch('os.path.getsize'):
+            golem_deferred.sync_wait(
+                rpc.enqueue_new_task(self.client, self.task),
+            )
+
+    @mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
+    def test_create_task(self, mock_method, *_):
+        t = dummytaskstate.DummyTaskDefinition()
+        t.name = "test"
+        mock_method.side_effect = Exception("Test")
+
+        result = self.provider.create_task(t.to_dict())
+        mock_method.assert_called()
+        self.assertEqual(result, (None, "Test"))
+
+    def test_restart_task(self, *_):
+        t = dummytaskstate.DummyTaskDefinition()
+        t.name = "test"
+
+        self.provider.task_manager.assert_task_can_be_restarted =\
+            mock.MagicMock()
+        self.provider.task_manager.assert_task_can_be_restarted\
+            .side_effect = Exception("Test")
+
+        result = self.provider.restart_task(0)
+
+        self.assertEqual(result, (None, "Test"))
+
+    @mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
+    def test_run_test_task_error(self, mock_method, *_):
+        t = dummytaskstate.DummyTaskDefinition()
+        t.name = "test"
+        mock_method.side_effect = Exception("Test")
+
+        result = self.provider.run_test_task(t.to_dict())
+        mock_method.assert_called()
+        self.assertEqual(result, False)

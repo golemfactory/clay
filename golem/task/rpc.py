@@ -371,17 +371,17 @@ def enqueue_new_task(client, task, force=False) \
     return task
 
 
-def _create_task_error(e, _self, task_dict):
+def _create_task_error(e, _self, task_dict, **kwargs):
     logger.error("Cannot create task %r: %s", task_dict, e)
     return None, str(e)
 
 
-def _restart_task_error(e, _self, task_id):
+def _restart_task_error(e, _self, task_id, **kwargs):
     logger.error("Cannot restart task %r: %s", task_id, e)
     return None, str(e)
 
 
-def _test_task_error(e, self, task_dict):
+def _test_task_error(e, self, task_dict, **kwargs):
     logger.error("Test task error: %s", e)
     logger.debug("Test task details. task_dict=%s", task_dict)
     self.client.task_test_result = {
@@ -439,6 +439,7 @@ class ClientProvider:
                 e=failure.value,
                 _self=self,
                 task_dict=task_dict,
+                force=force
             ),
         )
         return task_id, None
