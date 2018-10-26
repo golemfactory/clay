@@ -42,6 +42,7 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
+from golem.ethereum.exceptions import NotEnoughFunds
 from golem.ethereum.fundslocker import FundsLocker
 from golem.ethereum.paymentskeeper import PaymentStatus
 from golem.ethereum.transactionsystem import TransactionSystem
@@ -184,8 +185,7 @@ class Client(HardwarePresetsMixin):
         self.transaction_system = transaction_system
         self.transaction_system.start()
 
-        self.funds_locker = FundsLocker(self.transaction_system,
-                                        Path(self.datadir))
+        self.funds_locker = FundsLocker(self.transaction_system)
         self._services.append(self.funds_locker)
 
         self.use_docker_manager = use_docker_manager
@@ -353,6 +353,8 @@ class Client(HardwarePresetsMixin):
             task_finished_cb=self._task_finished_cb,
         )
 
+        self._restore_locks()
+
         monitoring_publisher_service = MonitoringPublisherService(
             self.task_server,
             interval_seconds=max(
@@ -465,6 +467,27 @@ class Client(HardwarePresetsMixin):
         logger.info("Starting task server ...")
         self.task_server.start_accepting(listening_established=task.callback,
                                          listening_failure=task.errback)
+
+    def _restore_locks(self) -> None:
+        assert self.task_server is not None
+        tm = self.task_server.task_manager
+        for task_id, task_state in tm.tasks_states.items():
+            if not task_state.status.is_completed():
+                unfinished_subtasks = 0
+                for subtask_state in task_state.subtask_states.values():
+                    if not subtask_state.status.is_finished():
+                        unfinished_subtasks += 1
+                task = tm.tasks[task_id]
+                try:
+                    self.funds_locker.lock_funds(
+                        task_id,
+                        task.subtask_price,
+                        unfinished_subtasks,
+                        task.header.deadline,
+                    )
+                except NotEnoughFunds as e:
+                    # May happen when gas prices increase, not much we can do
+                    logger.info("Not enough funds to restore old locks: %r", e)
 
     def start_upnp(self, ports):
         logger.debug("Starting upnp ...")

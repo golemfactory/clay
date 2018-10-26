@@ -324,7 +324,12 @@ def enqueue_new_task(client, task, force=False) \
         raise CreateTaskError("Golem is not ready")
 
     task_id = task.header.task_id
-    client.funds_locker.lock_funds(task)
+    client.funds_locker.lock_funds(
+        task_id,
+        task.subtask_price,
+        task.get_total_tasks(),
+        task.header.deadline,
+    )
     logger.info('Enqueue new task %r', task)
 
     yield _ensure_task_deposit(
