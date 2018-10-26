@@ -126,6 +126,9 @@ class SubtaskStatus(Enum):
     def is_active(self) -> bool:
         return self in [self.starting, self.downloading, self.verifying]
 
+    def is_finished(self) -> bool:
+        return self == self.finished
+
 
 class TaskTestStatus(Enum):
     started = 'Started'

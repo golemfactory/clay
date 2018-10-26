@@ -18,6 +18,7 @@ from golem_messages.utils import encode_hex
 
 from twisted.internet.defer import Deferred
 
+import golem
 from golem import model, testutils
 from golem.core.databuffer import DataBuffer
 from golem.core.keysauth import KeysAuth
@@ -288,7 +289,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             ['node_name', None],
             ['node_info', None],
             ['port', None],
-            ['client_ver', None],
+            ['client_ver', golem.__version__],
             ['client_key_id', key_id],
             ['solve_challenge', None],
             ['challenge', None],

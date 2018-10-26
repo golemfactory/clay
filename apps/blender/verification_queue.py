@@ -14,8 +14,12 @@ logger = logging.getLogger("apps.blender.verification")
 
 class VerificationQueue:
 
-    VERIFICATION_TIMEOUT = 90
-    RESTART_DELAY = 5
+    #  We assume that after 30 minutes verification tasks is stalled (possibly
+    #  to bugs in third party docker api). After this period we finish
+    #  verification tasks with fail. In future this constant will be
+    #  configurable from config, and will be relative to nodes benchmark
+    #  results.
+    VERIFICATION_TIMEOUT = 1800
 
     def __init__(self, concurrency: int = 1) -> None:
         self._concurrency = concurrency
@@ -23,7 +27,6 @@ class VerificationQueue:
         self._jobs: Dict[str, Deferred] = dict()
         self.callbacks: Dict[VerificationTask, FunctionType] = dict()
         self._paused = False
-        self._timed_out = False
 
     def submit(self,
                verifier_class: Type[Verifier],
@@ -84,14 +87,8 @@ class VerificationQueue:
                 self._process_queue()
 
         def errback(_):
-            if self._timed_out:
-                logger.warning("Timeout detected for subtask %s", subtask_id)
-                self._timed_out = False
-                reactor.callLater(VerificationQueue.RESTART_DELAY,
-                                  self._process_queue)
-            else:
-                logger.warning("Finishing verification with fail")
-                callback(entry.get_results())
+            logger.warning("Finishing verification with fail")
+            callback(entry.get_results())
             return True
 
         from twisted.internet import reactor
@@ -101,19 +98,16 @@ class VerificationQueue:
             result.addErrback(partial(reactor.callFromThread, errback))
 
             fn_timeout = partial(self._verification_timed_out, task=entry,
-                                 event=result, subtask_id=subtask_id,
-                                 verifier_cls=verifier_cls)
+                                 event=result, subtask_id=subtask_id)
 
             result.addTimeout(VerificationQueue.VERIFICATION_TIMEOUT, reactor,
                               onTimeoutCancel=fn_timeout)
             self._jobs[subtask_id] = result
 
     def _verification_timed_out(self, _result, _timeout, task, event,
-                                subtask_id, verifier_cls):
+                                subtask_id):
+        logger.warning("Timeout detected for subtask %s", subtask_id)
         task.stop(event)
-        self._queue.put((task, verifier_cls))
-        self._jobs.pop(subtask_id, None)
-        self._timed_out = True
 
     def _reset(self) -> None:
         self._queue = queue.Queue()

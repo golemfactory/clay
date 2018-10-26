@@ -21,7 +21,7 @@ from golem.docker.environment import DockerEnvironment
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
-    TaskTypeInfo
+    TaskTypeInfo, AcceptClientVerdict
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
@@ -31,12 +31,6 @@ logger = logging.getLogger("apps.core")
 def log_key_error(*args, **_):
     logger.warning("This is not my subtask %s", args[1], exc_info=True)
     return False
-
-
-class AcceptClientVerdict(Enum):
-    ACCEPTED = 0
-    REJECTED = 1
-    SHOULD_WAIT = 2
 
 
 MAX_PENDING_CLIENT_RESULTS = 1
