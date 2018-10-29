@@ -48,7 +48,8 @@ token_bucket==0.2.0
 py-cpuinfo==3.3.0
 humanize==0.5.1
 raven
-Golem-Verificator==1.6.0
+-e git://github.com/golemfactory/golem-verificator.git@generator_refactor#egg=golem_verificator
+#Golem-Verificator==1.6.0
 Golem-Messages==2.15.0
 Golem-Smart-Contracts-Interface==1.6.1
 html2text==2018.1.9
