@@ -71,21 +71,14 @@ class SubImage:
             numpy.float32(region.right) * numpy.float32(width) +
             SubImage.PIXEL_OFFSET)
 
-        #  NOTE we are exchanging here top with bottom, because borders
-        #  in blender are in OpenGL UV coordinate system (left, bottom is 0,0)
-        #  where pixel values are for use in classic coordinate system (left,
-        #  top is 0,0)
-
-        top = math.floor(
+        bottom = math.floor(
             numpy.float32(region.bottom) * numpy.float32(height) +
             SubImage.PIXEL_OFFSET)
 
-        bottom = math.floor(
+        top = math.floor(
             numpy.float32(region.top) * numpy.float32(height) +
             SubImage.PIXEL_OFFSET)
 
-        logger.info("Pixels left=%r, top=%r, right=%r, bottom=%r" %
-                    (left, top, right, bottom))
         return PixelRegion(int(left), int(top), int(right), int(bottom))
 
     @staticmethod
@@ -104,7 +97,8 @@ class SubImage:
 class Crop:
 
     @staticmethod
-    def create_from_region(crop_id: str, crop_region: Region, subimage: SubImage,
+    def create_from_region(crop_id: str, crop_region: Region,
+                           subimage: SubImage,
                            crops_path: str):
         crop = Crop(crop_id, subimage, crops_path)
         crop.crop_region = crop_region
@@ -131,7 +125,7 @@ class Crop:
         -> Tuple[int, int]:
         # get top left corner of crop in relation to particular subimage
         y = self.subimage.pixel_region.top - self.pixel_region.top
-        logger.info("X=%r, Y=%r" % (self.pixel_region.left, y))
+        logger.debug("X=%r, Y=%r" % (self.pixel_region.left, y))
         return self.pixel_region.left, y
 
     def calculate_borders(self):
@@ -144,16 +138,14 @@ class Crop:
             (numpy.float32(self.pixel_region.right) + SubImage.PIXEL_OFFSET) /
             numpy.float32(self.subimage.image_width))
 
-        bottom = numpy.float32(
+        top = numpy.float32(
             (numpy.float32(self.pixel_region.top) + SubImage.PIXEL_OFFSET) /
             numpy.float32(self.subimage.image_height))
 
-        top = numpy.float32(
+        bottom = numpy.float32(
             (numpy.float32(self.pixel_region.bottom) + SubImage.PIXEL_OFFSET) /
             numpy.float32(self.subimage.image_height))
 
-        logger.info("Borders left=%r, top=%r, right=%r, bottom=%r" %
-                    (left, top, right, bottom))
         return Region(left, top, right, bottom)
 
     def get_path(self):
@@ -231,10 +223,15 @@ class BlenderReferenceGenerator:
         pixels. Each list has splits_num elements, one for each split.
         """
 
+        logger.debug("Subtasks forders left = %r,"
+                     " top = %r, right = %r, bottom=%r",
+                     subtask_border[0], subtask_border[3],
+                     subtask_border[1], subtask_border[2])
+
         subimage = SubImage(Region(subtask_border[0],
-                                   subtask_border[2],
+                                   subtask_border[3],
                                    subtask_border[1],
-                                   subtask_border[3]), resolution)
+                                   subtask_border[2]), resolution)
 
         for i in range(crops_number):
             self.crops_desc.append(
@@ -266,9 +263,9 @@ class BlenderReferenceGenerator:
 
         crop = Crop.create_from_pixel_region(crop_id, PixelRegion(
             crop_horizontal_pixel_coordinates[0],
-            crop_vertical_pixel_coordinates[0],
+            crop_vertical_pixel_coordinates[1],
             crop_horizontal_pixel_coordinates[1],
-            crop_vertical_pixel_coordinates[1]), subimage, crops_path)
+            crop_vertical_pixel_coordinates[0]), subimage, crops_path)
 
         return crop
 
@@ -282,7 +279,7 @@ class BlenderReferenceGenerator:
         end -= 1
         begin += 1
 
-        logger.info("begin %r, end %r" % (begin, end))
+        logger.debug("begin %r, end %r" % (begin, end))
 
         max_possible_interval_end = (end - interval_length)
         if max_possible_interval_end < 0:
@@ -299,10 +296,9 @@ class BlenderReferenceGenerator:
                      num_crops: int = DEFAULT_CROPS_NUMBER) -> List[Deferred]:
         crops_path = os.path.join(subtask_info['tmp_dir'],
                                   subtask_info['subtask_id'])
-        crops_descriptors = self.generate_crops_data((subtask_info['res_x'],
-                                               subtask_info['res_y']),
-                                              subtask_info['crop_window'],
-                                              num_crops, crops_path)
+        crops_descriptors = self.generate_crops_data(
+            (subtask_info['res_x'], subtask_info['res_y']),
+             subtask_info['crop_window'], num_crops, crops_path)
 
         verification_context = \
             VerificationContext(crops_descriptors,
@@ -333,8 +329,6 @@ class BlenderReferenceGenerator:
                 raise Exception("Crop %s not found " % i)
 
             left, top, right, bottom = crop.calculate_borders().to_tuple()
-            logger.info("left = %r, top = %r, right = %r, bottom=%r",
-                        left, top, right, bottom)
 
             script_src = generate_blender_crop_file(
                 resolution=(verification_context.subtask_info['res_x'],
