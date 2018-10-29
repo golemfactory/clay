@@ -19,16 +19,6 @@ os.environ["PBR_VERSION"] = '3.1.1'
 # pylint: disable=wrong-import-position, unused-import
 from golem.core.common import config_logging, install_reactor  # noqa
 from golem.interface.cli import CLI  # noqa
-from golem.interface.client import debug  # noqa
-from golem.interface.client.account import Account  # noqa
-from golem.interface.client.environments import Environments  # noqa
-from golem.interface.client.network import Network  # noqa
-from golem.interface.client.payments import payments, incomes  # noqa
-from golem.interface.client.resources import Resources  # noqa
-from golem.interface.client.settings import Settings  # noqa
-from golem.interface.client.tasks import Tasks, Subtasks  # noqa
-from golem.interface.client.terms import Terms  # noqa
-from golem.interface.client.test_task import TestTask  # noqa
 from golem.interface.websockets import WebSocketCLI  # noqa
 
 
