@@ -223,7 +223,7 @@ class BlenderReferenceGenerator:
         pixels. Each list has splits_num elements, one for each split.
         """
 
-        logger.debug("Subtasks forders left = %r,"
+        logger.debug("Subtasks borders left = %r,"
                      " top = %r, right = %r, bottom=%r",
                      subtask_border[0], subtask_border[3],
                      subtask_border[1], subtask_border[2])
