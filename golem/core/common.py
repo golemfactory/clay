@@ -226,15 +226,22 @@ def config_logging(suffix='', datadir=None, loglevel=None, config_desc=None):
         datadir = simpleenv.get_local_datadir("default")
     logdir_path = os.path.join(datadir, 'logs')
 
-    for handler in LOGGING.get('handlers', {}).values():
-        if loglevel:
-            if 'Sentry' not in handler['class']:
-                handler['level'] = loglevel
+    for handler_name, handler in LOGGING.get('handlers', {}).items():
         if 'filename' in handler:
             handler['filename'] %= {
                 'logdir': str(logdir_path),
                 'suffix': suffix,
             }
+        skip_handler_names = (
+            'error-file',
+            'sentry',
+            'sentry-metrics',
+        )
+        if handler_name in skip_handler_names:
+            # Don't modify loglevel in this handler
+            continue
+        if loglevel:
+            handler['level'] = loglevel
 
     if loglevel:
         for _logger in LOGGING.get('loggers', {}).values():
