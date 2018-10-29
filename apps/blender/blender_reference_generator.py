@@ -17,7 +17,8 @@ logger = logging.getLogger("apps.blender.blender_reference_generator")
 
 class Region:
 
-    def __init__(self, left: float, top: float, right: float, bottom: float):
+    def __init__(self, left: float = -1, top: float = -1, right: float = -1,
+                 bottom: float = -1) -> None:
         self.left = left
         self.right = right
         self.top = top
@@ -29,7 +30,8 @@ class Region:
 
 class PixelRegion:
 
-    def __init__(self, left: int, top: int, right: int, bottom: int):
+    def __init__(self, left: int = -1, top: int = -1, right: int = -1,
+                 bottom: int = -1) -> None:
         self.left = left
         self.right = right
         self.top = top
@@ -42,7 +44,7 @@ class SubImage:
     PIXEL_OFFSET = numpy.float32(0.5)
     MIN_CROP_SIZE = 8
 
-    def __init__(self, region: Region, resolution: Tuple[int, int]):
+    def __init__(self, region: Region, resolution: Tuple[int, int]) -> None:
         self.region = region
         self.pixel_region = self.calculate_pixels(region, resolution[0],
                                                   resolution[1])
@@ -114,18 +116,18 @@ class Crop:
         crop.crop_region = crop.calculate_borders()
         return crop
 
-    def __init__(self, crop_id: str, subimage: SubImage, crops_path: str):
+    def __init__(self, crop_id: str, subimage: SubImage, crops_path: str)\
+            -> None:
         self.crop_id = crop_id
         self.subimage = subimage
         self.crop_path = os.path.join(crops_path, crop_id)
-        self.pixel_region = None
-        self.crop_region = None
+        self.pixel_region = PixelRegion()
+        self.crop_region = Region()
 
-    def get_relative_top_left(self) \
-        -> Tuple[int, int]:
+    def get_relative_top_left(self) -> Tuple[int, int]:
         # get top left corner of crop in relation to particular subimage
         y = self.subimage.pixel_region.top - self.pixel_region.top
-        logger.debug("X=%r, Y=%r" % (self.pixel_region.left, y))
+        logger.debug("X=%r, Y=%r", self.pixel_region.left, y)
         return self.pixel_region.left, y
 
     def calculate_borders(self):
@@ -168,8 +170,7 @@ class VerificationContext:
         crop = self.get_crop_with_id(crop_id)
         if crop:
             return crop.get_path()
-        else:
-            return None
+        return None
 
     def get_crop_with_id(self, crop_id: str) -> Optional[Crop]:
         for crop in self.crops:
@@ -279,7 +280,7 @@ class BlenderReferenceGenerator:
         end -= 1
         begin += 1
 
-        logger.debug("begin %r, end %r" % (begin, end))
+        logger.debug("begin %r, end %r", begin, end)
 
         max_possible_interval_end = (end - interval_length)
         if max_possible_interval_end < 0:
@@ -298,7 +299,8 @@ class BlenderReferenceGenerator:
                                   subtask_info['subtask_id'])
         crops_descriptors = self.generate_crops_data(
             (subtask_info['res_x'], subtask_info['res_y']),
-             subtask_info['crop_window'], num_crops, crops_path)
+            subtask_info['crop_window'],
+            num_crops, crops_path)
 
         verification_context = \
             VerificationContext(crops_descriptors,
