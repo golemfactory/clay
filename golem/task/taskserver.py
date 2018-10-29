@@ -14,10 +14,10 @@ from pydispatch import dispatcher
 from twisted.internet.defer import inlineCallbacks
 
 from apps.appsmanager import AppsManager
-from apps.core.task.coretask import CoreTask, AcceptClientVerdict
+from apps.core.task.coretask import CoreTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
-from golem.core.common import node_info_str
+from golem.core.common import node_info_str, short_node_id
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.p2p import node as p2p_node
 from golem.network.transport.network import ProtocolFactory, SessionFactory
@@ -28,7 +28,7 @@ from golem.network.transport.tcpserver import (
 from golem.ranking.helper.trust import Trust
 from golem.task.acl import get_acl
 from golem.task.benchmarkmanager import BenchmarkManager
-from golem.task.taskbase import TaskHeader, Task
+from golem.task.taskbase import TaskHeader, Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
 from golem.utils import decode_hex, pubkeytoaddr
@@ -43,7 +43,7 @@ from .taskmanager import TaskManager
 from .tasksession import TaskSession
 
 
-logger = logging.getLogger('golem.task.taskserver')
+logger = logging.getLogger(__name__)
 
 tmp_cycler = itertools.cycle(list(range(550)))
 
@@ -427,13 +427,8 @@ class TaskServer(
         """My (providers) results were rejected"""
         logger.debug("Subtask %r result rejected", subtask_id)
         self.task_result_sent(subtask_id)
-        task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(
-            subtask_id)
-        if task_id is None:
-            logger.warning("Not my subtask rejected %r", subtask_id)
-            return
 
-        self.decrease_trust_payment(task_id)
+        self.decrease_trust_payment(sender_node_id)
         # self.remove_task_header(task_id)
         # TODO Inform transaction system and task manager about rejected
         # subtask. Issue #2405
@@ -493,16 +488,11 @@ class TaskServer(
                      subtask_id, payment_processed_ts)
         return payment_processed_ts
 
-    def income_listener(self, event='default', subtask_id=None, **_kwargs):
-        task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(
-            subtask_id)
-        if not task_id:
-            return
-
+    def income_listener(self, event='default', node_id=None, **_kwargs):
         if event == 'confirmed':
-            self.increase_trust_payment(task_id)
+            self.increase_trust_payment(node_id)
         elif event == 'overdue_single':
-            self.decrease_trust_payment(task_id)
+            self.decrease_trust_payment(node_id)
 
     def finished_task_listener(self, event='default', task_id=None, op=None,
                                **_kwargs):
@@ -514,14 +504,10 @@ class TaskServer(
         self.client.p2pservice.remove_task(task_id)
         self.client.funds_locker.remove_task(task_id)
 
-    def increase_trust_payment(self, task_id):
-        node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
-            task_id)
+    def increase_trust_payment(self, node_id: str):
         Trust.PAYMENT.increase(node_id, self.max_trust)
 
-    def decrease_trust_payment(self, task_id):
-        node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
-            task_id)
+    def decrease_trust_payment(self, node_id: str):
         Trust.PAYMENT.decrease(node_id, self.max_trust)
 
     def reject_result(self, subtask_id, key_id):
@@ -677,10 +663,11 @@ class TaskServer(
     def should_accept_requestor(self, node_id):
         allowed, reason = self.acl.is_allowed(node_id)
         if not allowed:
-            logger.info(f'requestor {reason}; {node_id}')
+            short_id = short_node_id(node_id)
+            logger.info('requestor %s. node=%s', reason, short_id)
             return SupportStatus.err({UnsupportReason.DENY_LIST: node_id})
         trust = self.client.get_requesting_trust(node_id)
-        logger.debug("Requesting trust level: {}".format(trust))
+        logger.debug("Requesting trust level: %r", trust)
         if trust >= self.config_desc.requesting_trust:
             return SupportStatus.ok()
         else:

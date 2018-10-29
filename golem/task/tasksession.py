@@ -1,4 +1,5 @@
 import datetime
+import enum
 import functools
 import logging
 import os
@@ -9,8 +10,8 @@ from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
 from golem_messages import message
 from golem_messages import exceptions as msg_exceptions
-from golem_messages.utils import decode_hex
 
+import golem
 from golem.core import common
 from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import CBORSerializer
@@ -76,6 +77,12 @@ def get_task_message(message_class_name, task_id, subtask_id, log_prefix=None):
             subtask_id,
         )
     return msg
+
+
+class RequestorCheckResult(enum.Enum):
+    OK = enum.auto()
+    MISMATCH = enum.auto()
+    NOT_FOUND = enum.auto()
 
 
 class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
@@ -207,6 +214,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             task_to_compute = get_task_message(
                 'TaskToCompute', task_id, subtask_id)
+
+            if not task_to_compute.sig:
+                task_to_compute.sign_message(self.my_private_key)
 
             payment_processed_ts = self.task_server.accept_result(
                 subtask_id,
@@ -408,6 +418,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.send(
             message.base.Hello(
                 client_key_id=self.task_server.get_key_id(),
+                client_ver=golem.__version__,
                 rand_val=self.rand_val,
                 proto_id=variables.PROTOCOL_CONST.ID,
             ),
@@ -676,7 +687,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     @history.provider_history
     def _react_to_cannot_assign_task(self, msg):
-        if not self.check_requestor_for_task(msg.task_id):
+        if self.check_requestor_for_task(msg.task_id) != \
+                RequestorCheckResult.OK:
             self.dropped()
             return
         self.task_computer.task_request_rejected(msg.task_id, msg.reason)
@@ -768,27 +780,23 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.disconnect(message.base.Disconnect.REASON.BadProtocol)
             return
 
-        try:
-            msg.verify_owners(
-                provider_public_key=self.my_public_key,
-                requestor_public_key=decode_hex(self.key_id),
+        def should_accept_sra(msg) -> bool:
+            requestor_check_result = \
+                self.check_requestor_for_subtask(msg.subtask_id)
+
+            if requestor_check_result == RequestorCheckResult.OK:
+                return True
+            if requestor_check_result == RequestorCheckResult.MISMATCH:
+                return False
+
+            # requestor_check_result == RequestorCheckResult.NOT_FOUND:
+            transaction_system = self.task_server.client.transaction_system
+            return transaction_system.is_income_expected(
+                subtask_id=msg.subtask_id,
+                payer_address=msg.task_to_compute.requestor_ethereum_address
             )
-        except (msg_exceptions.InvalidSignature,
-                msg_exceptions.OwnershipMismatch) as e:
-            logger.error("SubtaskResultAccepted has %s: %s",
-                         e.__class__.__name__, e)
-            self.dropped()
-            return
 
-        transaction_system = self.task_server.client.transaction_system
-
-        if (
-                not self.check_requestor_for_subtask(msg.subtask_id) and
-                not transaction_system.is_income_expected(
-                    subtask_id=msg.subtask_id,
-                    payer_address=msg.task_to_compute.requestor_ethereum_address
-                )
-        ):
+        if not should_accept_sra(msg):
             logger.debug("Unexpected income from %r for subtask %r",
                          self.key_id, msg.subtask_id)
             self.dropped()
@@ -811,7 +819,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     def _react_to_subtask_results_rejected(
             self, msg: message.tasks.SubtaskResultsRejected):
         subtask_id = msg.report_computed_task.subtask_id
-        if not self.check_requestor_for_subtask(subtask_id):
+        if self.check_requestor_for_subtask(subtask_id) != \
+                RequestorCheckResult.OK:
             self.dropped()
             return
         self.concent_service.cancel_task_message(
@@ -996,19 +1005,25 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
-    def check_requestor_for_task(self, task_id, additional_msg="") -> bool:
+    def check_requestor_for_task(self, task_id: str, additional_msg: str = "") \
+            -> RequestorCheckResult:
         node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
             task_id)
+        if node_id is None:
+            return RequestorCheckResult.NOT_FOUND
         if node_id != self.key_id:
             logger.warning('Received message about task %r from diferrent '
                            'node %r than expected %r. %s', task_id,
                            self.key_id, node_id, additional_msg)
-            return False
-        return True
+            return RequestorCheckResult.MISMATCH
+        return RequestorCheckResult.OK
 
-    def check_requestor_for_subtask(self, subtask_id) -> bool:
+    def check_requestor_for_subtask(self, subtask_id: str) \
+            -> RequestorCheckResult:
         task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(
             subtask_id)
+        if task_id is None:
+            return RequestorCheckResult.NOT_FOUND
         return self.check_requestor_for_task(task_id, "Subtask %r" % subtask_id)
 
     def _check_ctd_params(self, ctd: message.ComputeTaskDef):

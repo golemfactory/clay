@@ -16,7 +16,7 @@ from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
-from apps.core.task.coretask import CoreTask, AcceptClientVerdict
+from apps.core.task.coretask import CoreTask
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
@@ -24,8 +24,10 @@ from golem.network.transport.tcpnetwork import SocketAddress
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
+from golem.rpc import utils as rpc_utils
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener, Task, TaskHeader, TaskPurpose
+from golem.task.taskbase import TaskEventListener, Task, TaskHeader,\
+    TaskPurpose, AcceptClientVerdict
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
@@ -36,6 +38,7 @@ logger = logging.getLogger(__name__)
 
 def log_subtask_key_error(*args, **kwargs):
     logger.warning("This is not my subtask %r", args[1])
+    logger.debug('Subtask not found', exc_info=True)
     return None
 
 
@@ -46,6 +49,7 @@ def log_generic_key_error(err):
 
 def log_task_key_error(*args, **kwargs):
     logger.warning("This is not my task %r", args[1])
+    logger.debug('Task not found', exc_info=True)
     return None
 
 
@@ -183,7 +187,7 @@ class TaskManager(TaskEventListener):
         ts = TaskState()
         ts.status = TaskStatus.notStarted
         ts.outputs = task.get_output_names()
-        ts.total_subtasks = task.get_total_tasks()
+        ts.subtasks_count = task.get_total_tasks()
         ts.time_started = time.time()
         ts.estimated_cost = task.price
         ts.estimated_fee = estimated_fee
@@ -939,6 +943,7 @@ class TaskManager(TaskEventListener):
 
         self.notice_task_updated(task_id, op=TaskOp.ABORTED)
 
+    @rpc_utils.expose('comp.task.subtasks.frames')
     @handle_task_key_error
     def get_output_states(self, task_id):
         return self.tasks[task_id].get_output_states()
@@ -1045,15 +1050,16 @@ class TaskManager(TaskEventListener):
         if subtasks:
             return [subtask.to_dictionary() for subtask in subtasks.values()]
 
+    @rpc_utils.expose('comp.task.subtasks.borders')
     def get_subtasks_borders(self, task_id, part=1):
         task = self.tasks[task_id]
         task_type_name = task.task_definition.task_type.lower()
         task_type = self.task_types[task_type_name]
-        total_subtasks = task.get_total_tasks()
+        subtasks_count = task.get_total_tasks()
 
         return {
             to_unicode(subtask_id): task_type.get_task_border(
-                subtask, task.task_definition, total_subtasks, as_path=True
+                subtask, task.task_definition, subtasks_count, as_path=True
             ) for subtask_id, subtask in task.get_subtasks(part).items()
         }
 

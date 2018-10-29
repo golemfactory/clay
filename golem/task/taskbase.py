@@ -21,6 +21,12 @@ from . import exceptions
 logger = logging.getLogger("golem.task")
 
 
+class AcceptClientVerdict(Enum):
+    ACCEPTED = 0
+    REJECTED = 1
+    SHOULD_WAIT = 2
+
+
 class TaskPurpose(Enum):
     TESTING = "testing"
     REQUESTING = "requesting"
@@ -43,6 +49,11 @@ class TaskTypeInfo(object):
 
     def for_purpose(self, purpose: TaskPurpose) -> 'TaskTypeInfo':
         return self
+
+    @classmethod
+    # pylint:disable=unused-argument
+    def get_preview(cls, task, single=False):
+        pass
 
 
 # TODO change types to enums - for now it gets
@@ -263,6 +274,9 @@ class TaskHeader(object):
     def to_dict(self) -> dict:
         return DictSerializer.dump(self, typed=False)
 
+    def __repr__(self):
+        return "TaskHeader.from_dict({!r})".format(self.to_dict())
+
     def __getattr__(self, item: str) -> Any:
         if 'fixed_header' in self.__dict__ and hasattr(self.fixed_header, item):
             return getattr(self.fixed_header, item)
@@ -325,6 +339,13 @@ class TaskBuilder(abc.ABC):
         all necessary options must be specified in dictionary
         """
         pass
+
+    # TODO: Backward compatibility only. The rendering tasks should
+    # move to overriding their own TaskDefinitions instead of
+    # overriding `build_dictionary. Issue #2424`
+    @staticmethod
+    def build_dictionary(definition: TaskDefinition) -> dict:
+        return definition.to_dict()
 
 
 class TaskEventListener(object):
@@ -603,5 +624,13 @@ class Task(abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
+    def to_dictionary(self):
+        pass
+
+    @abc.abstractmethod
     def should_accept_client(self, node_id):
+        pass
+
+    @abc.abstractmethod
+    def accept_client(self, node_id):
         pass

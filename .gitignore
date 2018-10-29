@@ -21,6 +21,9 @@ ui_*.py
 # C extensions
 *.so
 
+# Rust
+rust/golem/target/*
+
 # Distribution / packaging
 .Python
 build/

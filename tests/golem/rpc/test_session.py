@@ -1,14 +1,18 @@
 # pylint: disable=protected-access,no-self-use
-import collections
 import unittest
 from unittest.mock import Mock, patch
 
 import autobahn
 from twisted.internet.defer import Deferred
 
+from golem.rpc import session as rpc_session
+from golem.rpc import utils as rpc_utils
 from golem.rpc.session import (
-    RPCAddress, WebSocketAddress, Publisher, Client, Session,
-    object_method_map, logger
+    logger,
+    Publisher,
+    RPCAddress,
+    Session,
+    WebSocketAddress,
 )
 from golem.tools.assertlogs import LogTestCase
 
@@ -39,36 +43,25 @@ class TestObjectMethodMap(unittest.TestCase):
 
     class MockObject(object):
 
+        @rpc_utils.expose()
         def method_1(self):
             pass
 
+        @rpc_utils.expose('alias_2')
         def method_2(self):
             pass
 
     def test_valid_method_map(self):
 
         obj = self.MockObject()
-        valid_method_map = collections.OrderedDict([
-            ('method_1', 'alias_1'),
-            ('method_2', 'alias_2')
-        ])
-        expected_output = [
-            (obj.method_1, 'alias_1'),
-            (obj.method_2, 'alias_2')
-        ]
+        expected = {
+            'backend.tests.golem.rpc.test_session'
+            '.TestObjectMethodMap.MockObject.method_1': obj.method_1,
+            'alias_2': obj.method_2,
+        }
+        result = rpc_utils.object_method_map(obj)
 
-        assert object_method_map(obj, valid_method_map) == expected_output
-
-    def test_invalid_method_map(self):
-
-        obj = self.MockObject()
-        invalid_method_map = collections.OrderedDict([
-            ('method_1', 'alias_1'),
-            ('method_x', 'alias_x')
-        ])
-
-        with self.assertRaises(AttributeError):
-            object_method_map(obj, invalid_method_map)
+        self.assertEqual(expected, result)
 
 
 class TestPublisher(LogTestCase):
@@ -113,84 +106,75 @@ def mock_report_calls(func):
 @patch('golem.client.report_calls', mock_report_calls)
 class TestClient(unittest.TestCase):
 
-    class Result(object):
-        def __init__(self):
-            self.value = None
-
-        def set(self, value):
-            self.value = value
-
     def setUp(self):
         self.session = Mock()
         self.session.is_attached.return_value = True
-        self.session.call.return_value = Deferred()
+        self.session.call.side_effect = lambda *_, **__: Deferred()
         self.session.is_closing = lambda *_: self.session._goodbye_sent or \
             self.session._transport_is_closing
-        self.method_map = dict(
-            method_1='alias_1',
-            method_2='alias_2'
-        )
 
-    def test_initialization(self, *_):
-        client = Client(self.session, self.method_map)
-        assert hasattr(client, 'method_1')
-        assert hasattr(client, 'method_2')
-        assert isinstance(getattr(client, 'method_1'), collections.Callable)
-        assert isinstance(getattr(client, 'method_2'), collections.Callable)
+    @patch('golem.rpc.session.ClientProxy._call')
+    def test_initialization(self, call_mock, *_):
+        rpc_session.ClientProxy(self.session)
+        call_mock.assert_called_once_with('sys.exposed_procedures')
 
     def test_call_no_session(self, *_):
-
-        client = Client(None, self.method_map)
-        with self.assertRaises(AttributeError):
+        client = rpc_session.ClientProxy(None)
+        with self.assertRaises(RuntimeError):
             client.method_1(arg1=1, arg2='2')
 
-    def test_call_not_connected(self, *_):
-
+    @patch('golem.rpc.session.ClientProxy._on_error')
+    def test_call_not_connected(self, error_mock, *_):
         self.session.connected = False
         self.session._transport_is_closing = False
         self.session._goodbye_sent = False
 
-        client = Client(self.session, self.method_map)
-        client._on_error = Mock()
+        client = rpc_session.ClientProxy(self.session)
+        client._ready.callback(
+            {
+                'uri.1': 'golem.client.Client.method_1',
+                'uri.2': 'golem.client.Client.method_2',
+            },
+        )
         deferred = client.method_1(arg1=1, arg2='2')
 
-        assert isinstance(deferred, Deferred)
-        assert not deferred.called
+        self.assertIsInstance(deferred, Deferred)
+        self.assertFalse(deferred.called)
 
         self.session.connected = True
 
-        result = self.Result()
+        cbk = Mock()
         client._session._transport_is_closing = True
 
         deferred = client.method_1(arg1=1, arg2='2')
-        deferred.addBoth(result.set)
+        deferred.addBoth(cbk)
 
-        assert result.value is None
-        assert not client._on_error.called
+        cbk.assert_not_called()
+        error_mock.assert_not_called()
 
+        cbk = Mock()
         deferred = client.method_1(arg1=1, arg2='2')
-        deferred.addBoth(result.set)
+        deferred.addBoth(cbk)
 
-        assert result.value is None
-        assert not client._on_error.called
+        cbk.assert_not_called()
+        error_mock.assert_not_called()
 
         client._session._transport_is_closing = True
         deferred = client.method_1(arg1=1, arg2='2')
 
-        assert isinstance(deferred, Deferred)
-        assert not deferred.called
+        self.assertIsInstance(deferred, Deferred)
+        self.assertFalse(deferred.called)
 
     def test_call_connected(self, *_):
-
         self.session.connected = True
 
-        client = Client(self.session, self.method_map)
+        client = rpc_session.ClientProxy(self.session)
         client._on_error = Mock()
-        deferred = client.method_1(arg1=1, arg2='2')
+        deferred = client._call('test', arg1=1, arg2='2')
 
-        assert isinstance(deferred, Deferred)
-        assert not deferred.called
-        assert not client._on_error.called
+        self.assertIsInstance(deferred, Deferred)
+        self.assertFalse(deferred.called)
+        client._on_error.assert_not_called()
 
 
 class TestSession(unittest.TestCase):
