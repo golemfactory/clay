@@ -5,6 +5,8 @@ import numpy
 from golem_verificator.common.rendering_task_utils import get_min_max_y
 
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
+from apps.blender.blender_reference_generator import SubImage, Region, Crop,\
+    PixelRegion
 from golem.testutils import TempDirFixture
 
 logger = logging.getLogger(__name__)
@@ -13,14 +15,14 @@ logger = logging.getLogger(__name__)
 class TestBlenderReferenceGenerator(TempDirFixture):
 
     def test_get_default_crop_size(self):
-        assert BlenderReferenceGenerator\
-                   ._get_default_crop_size((800, 8000)) == (80, 800)
+        sub_image = SubImage(Region(0, 1, 1, 0), (800, 8000))
+        assert sub_image.get_default_crop_size() == (80, 800)
 
-        assert BlenderReferenceGenerator.\
-            _get_default_crop_size((400, 799)) == (40, 79)
+        sub_image = SubImage(Region(0, 1, 1, 0), (400, 799))
+        assert sub_image.get_default_crop_size() == (40, 79)
 
-        assert BlenderReferenceGenerator\
-            ._get_default_crop_size((399, 9000)) == (39, 900)
+        sub_image = SubImage(Region(0, 1, 1, 0), (399, 9000))
+        assert sub_image.get_default_crop_size() == (39, 900)
 
     def test_get_random_interval_within_boundaries(self):
         def _test_crop(min_, max_, step):
@@ -34,41 +36,47 @@ class TestBlenderReferenceGenerator(TempDirFixture):
         _test_crop(40, 60, 8)
         _test_crop(550, 570, 10)
 
-    def test_convert_bitmap_coordinates_to_traditional_y_direction(self):
-        convert_to_traditional_y_direction = \
-            BlenderReferenceGenerator\
-            .convert_bitmap_coordinates_to_traditional_y_direction
+    def test_get_relative_top_left(self):
+        sub_image = SubImage(Region(0, 1, 1, 0), (400, 160))
+        crop = Crop.create_from_pixel_region(
+            "1",
+            PixelRegion(40, 100, 100, 20),
+            sub_image, "")
+        assert crop.get_relative_top_left() == (40, 60)
 
-        assert convert_to_traditional_y_direction(40, 20, 80) == (40, 60)
-        assert convert_to_traditional_y_direction(40, 30, 90) == (40, 60)
-        assert convert_to_traditional_y_direction(40, 10, 70) == (40, 60)
+        sub_image = SubImage(Region(0, 1, 1, 0), (400, 90))
+        crop = Crop.create_from_pixel_region(
+            "1",
+            PixelRegion(40, 30, 100, 20),
+            sub_image, "")
+        assert crop.get_relative_top_left() == (40, 60)
+
+        sub_image = SubImage(Region(0, 1, 1, 0), (400, 90))
+        crop = Crop.create_from_pixel_region(
+            "1",
+            PixelRegion(40, 30, 100, 20),
+            sub_image, "")
+        assert crop.get_relative_top_left() == (40, 60)
 
     def test_generate_crops_data(self):
 
-        def _test_crop(resolution, crop, num, ncrop_size=None):
+        def _test_crop(resolution, crop, num):
             blender_reference_generator = BlenderReferenceGenerator()
-            if ncrop_size is None:
-                crops_info = blender_reference_generator\
-                    .generate_crops_data(resolution, crop, num)
-            else:
-                crops_info = blender_reference_generator\
-                    .generate_crops_data(resolution, crop, num, ncrop_size)
+            crops_desc = blender_reference_generator\
+                .generate_crops_data(resolution, crop, num, "")
 
-            assert len(crops_info) == 3
-            crops, pixels, _ = crops_info
-            assert len(crops) == num
-            assert len(pixels) == num
-            for pixel_ in pixels:
-                assert 0 <= pixel_[0] <= resolution[0]
-                assert 0 <= pixel_[1] <= resolution[1]
-            for ncrop in crops:
-                assert crop[0] <= ncrop[0] <= crop[1]
-                assert crop[0] <= ncrop[1] <= crop[1]
-                assert ncrop[0] <= ncrop[1]
+            assert len(crops_desc) == 3
+            for desc in crops_desc:
+                assert 0 <= desc.pixel_region.left <= resolution[0]
+                assert 0 <= desc.pixel_region.top <= resolution[1]
+            for desc in crops_desc:
+                assert crop[0] <= desc.crop_region.left <= crop[1]
+                assert crop[0] <= desc.crop_region.right <= crop[1]
+                assert desc.crop_region.left <= desc.crop_region.right
 
-                assert crop[2] <= ncrop[2] <= crop[3]
-                assert crop[2] <= ncrop[3] <= crop[3]
-                assert ncrop[2] <= ncrop[2]
+                assert crop[2] <= desc.crop_region.top <= crop[3]
+                assert crop[2] <= desc.crop_region.bottom <= crop[3]
+                assert desc.crop_region.bottom <= desc.crop_region.top
 
         for _ in range(100):
             _test_crop([800, 600], (numpy.float32(0.0),
@@ -86,7 +94,7 @@ class TestBlenderReferenceGenerator(TempDirFixture):
             _test_crop([800, 600], (numpy.float32(0.0),
                                     numpy.float32(0.1),
                                     numpy.float32(0.0),
-                                    numpy.float32(0.4)), 3, (0.04, 0.1))
+                                    numpy.float32(0.4)), 3)
             with self.assertRaises(Exception):
                 _test_crop([800, 600], (numpy.float32(0.0),
                                         numpy.float32(0.01),
@@ -103,25 +111,11 @@ class TestBlenderReferenceGenerator(TempDirFixture):
                 min_y = numpy.float32(min_y)
                 max_y = numpy.float32(max_y)
                 crop_window = (0.0, 1.0, min_y, max_y)
-                left_p = math.floor(numpy.float32(crop_window[0]) *
-                                    numpy.float32(res[0]))
-                right_p = math.floor(numpy.float32(crop_window[1]) *
-                                     numpy.float32(res[0]))
-                bottom_p = math.floor(numpy.float32(crop_window[2]) *
-                                      numpy.float32(res[1]))
-                top_p = math.floor(numpy.float32(crop_window[3]) *
-                                   numpy.float32(res[1]))
                 blender_reference_generator = BlenderReferenceGenerator()
-                values, pixels, _ = blender_reference_generator\
-                    .generate_crops_data((res[0], res[1]), crop_window, 3)
+                crops_desc = blender_reference_generator\
+                    .generate_crops_data(res, crop_window, 3, "")
                 for j in range(0, 3):
-                    height_p = math.floor(numpy.float32(
-                        values[j][3] - values[j][2]) *
-                                          numpy.float32(res[1]))
-                    width_p = math.floor(numpy.float32(
-                        values[j][1] - values[j][0]) *
-                                         numpy.float32(res[0]))
-                    assert left_p <= pixels[j][0] <= right_p
-                    assert bottom_p <= top_p - pixels[j][1] <= top_p
-                    assert left_p <= pixels[j][0] + width_p <= right_p
-                    assert bottom_p <= top_p - pixels[j][1] - height_p <= top_p
+                    assert crops_desc[j].pixel_region.left < crops_desc[
+                        j].pixel_region.right
+                    assert crops_desc[j].pixel_region.top > crops_desc[
+                        j].pixel_region.bottom
