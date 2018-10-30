@@ -24,7 +24,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.config.active import IS_MAINNET, EthereumConfig
 from golem.core.deferred import chain_function
 from golem.core.keysauth import KeysAuth, WrongPassword
-from golem.core.async import async_run, AsyncRequest
+from golem.core import golem_async
 from golem.core.variables import PRIVATE_KEY
 from golem.database import Database
 from golem.docker.manager import DockerManager
@@ -33,6 +33,7 @@ from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher, Component, Stage
 from golem.rpc import utils as rpc_utils
+from golem.rpc.mapping import rpceventnames
 from golem.rpc.router import CrossbarRouter
 from golem.rpc.session import (
     Publisher,
@@ -155,8 +156,8 @@ class Node(object):
                 self._error('keys or docker'),
             ).addErrback(self._error('setup client'))
             self._reactor.run()
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.exception("Application error: %r", exc)
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Application error")
 
     @rpc_utils.expose('ui.quit')
     def quit(self) -> None:
@@ -242,7 +243,6 @@ class Node(object):
             methods['sys.exposed_procedures'] = \
                 self.rpc_session.exposed_procedures
             self.rpc_session.add_procedures(methods)
-
             self._rpc_publisher = Publisher(self.rpc_session)
             StatusPublisher.set_publisher(self._rpc_publisher)
 
@@ -410,8 +410,10 @@ class Node(object):
 
         self.client.set_rpc_publisher(self._rpc_publisher)
 
-        async_run(AsyncRequest(self._run),
-                  error=self._error('Cannot start the client'))
+        golem_async.async_run(
+            golem_async.AsyncRequest(self._run),
+            error=self._error('Cannot start the client'),
+        )
 
     @require_rpc_session()
     def _run(self, *_) -> None:
@@ -431,9 +433,15 @@ class Node(object):
             return
 
         methods = self.client.get_wamp_rpc_mapping()
+
+        def rpc_ready(_):
+            logger.info('All procedures registered in WAMP router')
+            self._rpc_publisher.publish(
+                rpceventnames.Golem.procedures_registered,
+            )
         # pylint: disable=no-member
         self.rpc_session.add_procedures(methods).addCallback(  # type: ignore
-            lambda _: logger.info('All procedures registered in WAMP router'),
+            rpc_ready,
         )
         # pylint: enable=no-member
 

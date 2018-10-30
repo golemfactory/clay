@@ -1,3 +1,4 @@
+from pathlib import Path
 import re
 import sys
 import tempfile
@@ -14,7 +15,7 @@ from twisted.internet import _sslverify  # pylint: disable=protected-access
 from scripts.concent_integration_tests.rpc.client import (
     call_requestor, call_provider
 )
-from scripts.concent_integration_tests import helpers
+from scripts.concent_integration_tests import helpers, tasks
 
 _sslverify.platformTrust = lambda: None
 
@@ -43,9 +44,16 @@ class NodeTestPlaybook:
     task_id = None
     started = False
     task_in_creation = False
+    output_path = None
+    subtasks = None
 
     task_package = None
     task_settings = 'default'
+
+    @property
+    def output_extension(self):
+        settings = tasks.get_settings(self.task_settings)
+        return settings.get('options').get('format')
 
     @property
     def current_step_method(self):
@@ -147,6 +155,20 @@ class NodeTestPlaybook:
         call_provider('net.status',
                       on_success=on_success, on_error=self.print_error)
 
+    def step_ensure_requestor_network(self):
+        def on_success(result):
+            if result.get('listening') and result.get('port_statuses'):
+                requestor_port = list(result.get('port_statuses').keys())[0]
+                print("Requestor's port: {}".format(requestor_port))
+                self.next()
+            else:
+                print("Waiting for Requestor's network info...")
+                time.sleep(3)
+
+        call_requestor('net.status',
+                      on_success=on_success, on_error=self.print_error)
+
+
     def step_connect_nodes(self):
         def on_success(result):
             print("Peer connection initialized.")
@@ -187,9 +209,11 @@ class NodeTestPlaybook:
                        on_success=on_success, on_error=self.print_error)
 
     def step_create_task(self):
+        self.output_path = tempfile.mkdtemp()
+        print("Output path: {}".format(self.output_path))
         task_dict = helpers.construct_test_task(
             task_package_name=self.task_package,
-            output_path=tempfile.mkdtemp(),
+            output_path=self.output_path,
             task_settings=self.task_settings,
         )
 
@@ -241,7 +265,7 @@ class NodeTestPlaybook:
         def on_success(result):
             if result['status'] == 'Finished':
                 print("Task finished.")
-                self.success()
+                self.next()
             else:
                 print("{} ... ".format(result['status']))
                 time.sleep(10)
@@ -249,10 +273,55 @@ class NodeTestPlaybook:
         call_requestor('comp.task', self.task_id,
                        on_success=on_success, on_error=self.print_error)
 
+    def step_verify_output(self):
+        settings = tasks.get_settings(self.task_settings)
+        output_file = self.output_path + '/' + \
+            settings.get('name') + '.' + self.output_extension
+        print("Verifying the output file: {}".format(output_file))
+        if Path(output_file).is_file():
+            print("Output present :)")
+            self.next()
+        else:
+            print("Failed to find the output.")
+            self.fail()
+
+    def step_get_subtasks(self):
+        def on_success(result):
+            self.subtasks = [
+                s.get('subtask_id')
+                for s in result
+                if s.get('status') == 'Finished'
+            ]
+            if not self.subtasks:
+                self.fail("No subtasks found???")
+            self.next()
+
+        call_requestor('comp.task.subtasks', self.task_id,
+                       on_success=on_success, on_error=self.print_error)
+
+    def step_verify_provider_income(self):
+        def on_success(result):
+            payments = [
+                p.get('subtask')
+                for p in result
+                if p.get('payer') == self.requestor_key
+            ]
+            unpaid = set(self.subtasks) - set(payments)
+            if unpaid:
+                print("Found subtasks with no matching payments: %s", unpaid)
+                self.fail()
+
+            print("All subtasks accounted for.")
+            self.success()
+
+        call_provider(
+            'pay.incomes', on_success=on_success, on_error=self.print_error)
+
     steps: typing.Tuple = (
         step_get_provider_key,
         step_get_requestor_key,
         step_get_provider_network_info,
+        step_ensure_requestor_network,
         step_connect_nodes,
         step_verify_peer_connection,
         step_wait_provider_gnt,
@@ -262,6 +331,9 @@ class NodeTestPlaybook:
         step_get_task_id,
         step_get_task_status,
         step_wait_task_finished,
+        step_verify_output,
+        step_get_subtasks,
+        step_verify_provider_income,
     )
 
     def start_nodes(self):

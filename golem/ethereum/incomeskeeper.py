@@ -53,7 +53,7 @@ class IncomesKeeper:
                 dispatcher.send(
                     signal='golem.income',
                     event='confirmed',
-                    subtask_id=e.subtask,
+                    node_id=e.sender_node,
                 )
 
     def received_forced_payment(
@@ -88,13 +88,18 @@ class IncomesKeeper:
             payer_address,
             value / denoms.ether,
         )
-        return Income.create(
+        income, inserted = Income.get_or_create(
             sender_node=sender_node,
             subtask=subtask_id,
-            payer_address=payer_address,
-            value=value,
-            accepted_ts=accepted_ts,
+            defaults={
+                'payer_address': payer_address,
+                'value': value,
+                'accepted_ts': accepted_ts,
+            },
         )
+        if not inserted and not income.accepted_ts:
+            income.accepted_ts = accepted_ts
+            income.save()
 
     @staticmethod
     def is_expected(
@@ -173,7 +178,7 @@ class IncomesKeeper:
             dispatcher.send(
                 signal='golem.income',
                 event='overdue_single',
-                subtask_id=income.subtask,
+                node_id=income.sender_node,
             )
 
         dispatcher.send(

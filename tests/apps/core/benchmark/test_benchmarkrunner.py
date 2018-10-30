@@ -74,6 +74,12 @@ class DummyTask(Task):
     def should_accept_client(self, node_id):
         pass
 
+    def to_dictionary(self):
+        pass
+
+    def accept_client(self):
+        pass
+
 
 class BenchmarkRunnerFixture(TempDirFixture):
     def _success(self):

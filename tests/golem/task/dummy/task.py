@@ -7,11 +7,11 @@ from eth_utils import encode_hex
 from golem_messages import idgenerator
 from golem_messages.message import ComputeTaskDef
 
-from apps.core.task.coretask import AcceptClientVerdict
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.network.p2p.node import Node
-from golem.task.taskbase import Task, TaskHeader, ResultType
+from golem.task.taskbase import Task, TaskHeader, ResultType,\
+     AcceptClientVerdict
 
 
 class DummyTaskParameters(object):
@@ -97,8 +97,8 @@ class DummyTask(Task):
         self.resource_parts = {}
 
         self.shared_data_file = None
-        self.total_subtasks = num_subtasks
-        self.total_tasks = self.total_subtasks
+        self.subtasks_count = num_subtasks
+        self.total_tasks = self.subtasks_count
         self.subtask_ids = []
         self.subtask_data = {}
         self.subtask_results = {}
@@ -141,17 +141,17 @@ class DummyTask(Task):
         return 0.
 
     def get_total_tasks(self):
-        return self.total_subtasks
+        return self.subtasks_count
 
     def get_tasks_left(self):
-        return self.total_subtasks - len(self.subtask_results)
+        return self.subtasks_count - len(self.subtask_results)
 
     @property
     def price(self) -> int:
         return self.subtask_price * self.total_tasks
 
     def needs_computation(self):
-        return len(self.subtask_data) < self.total_subtasks
+        return len(self.subtask_data) < self.subtasks_count
 
     def finished_computation(self):
         return self.get_tasks_left() == 0
@@ -192,7 +192,7 @@ class DummyTask(Task):
     def verify_task(self):
         # Check if self.subtask_results contains a non None result
         # for each subtack.
-        if not len(self.subtask_results) == self.total_subtasks:
+        if not len(self.subtask_results) == self.subtasks_count:
             return False
         return all(self.subtask_results.values())
 
