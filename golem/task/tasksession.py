@@ -216,7 +216,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 'TaskToCompute', task_id, subtask_id)
 
             if not task_to_compute.sig:
-                task_to_compute.sign_message(self.my_private_key)
+                task_to_compute.sign_message(self.my_private_key)  # FIXME
 
             payment_processed_ts = self.task_server.accept_result(
                 subtask_id,
@@ -321,6 +321,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             secret=task_result.result_secret,
             options=client_options.__dict__,
         )
+        report_computed_task.sign_message(self.my_private_key)  # FIXME
 
         history.add(
             msg=report_computed_task,
@@ -564,7 +565,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             size=task_state.package_size
         )
         ttc.generate_ethsig(self.my_private_key)
-        ttc.sign_message(self.my_private_key)
+        ttc.sign_message(self.my_private_key)  # FIXME
         self.task_manager.set_subtask_value(
             subtask_id=ttc.subtask_id,
             price=price,
