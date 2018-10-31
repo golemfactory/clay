@@ -564,6 +564,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             size=task_state.package_size
         )
         ttc.generate_ethsig(self.my_private_key)
+        ttc.sign_message(self.my_private_key)
         self.task_manager.set_subtask_value(
             subtask_id=ttc.subtask_id,
             price=price,

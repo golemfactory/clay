@@ -40,7 +40,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         self.different_keys = cryptography.ECCx(None)
         self.msg = factories.tasks.TaskToComputeFactory()
         self.msg._fake_sign()
-        self.msg.want_to_compute_task.sign_message(self.keys.raw_privkey)  # pylint: disable=no-member
+        self.msg.want_to_compute_task.sign_message(self.keys.raw_privkey)  # noqa pylint: disable=no-member
         self.task_session = tasksession.TaskSession(mock.MagicMock())
         self.task_session.task_server.keys_auth.ecc.raw_pubkey = \
             self.keys.raw_pubkey
