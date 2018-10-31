@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import random
 import uuid
 import unittest
@@ -21,10 +22,9 @@ from golem.testutils import DatabaseFixture
 
 
 class PaymentStatusTest(unittest.TestCase):
-
     def test_status(self):
         s = PaymentStatus(1)
-        assert s == PaymentStatus.awaiting
+        self.assertEqual(s, PaymentStatus.awaiting)
 
 
 class PaymentProcessorInternalTest(DatabaseFixture):
@@ -231,6 +231,18 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         with freeze_time(timestamp_to_datetime(new_ts)):
             self.pp.add(p)
         self.assertEqual(ts, p.processed_ts)
+
+    def test_funds_needed(self):
+        payee1 = urandom(20)
+        payee2 = urandom(20)
+        self.pp._awaiting = [
+            Payment.create(subtask=uuid.uuid4(), payee=payee1, value=1),
+            Payment.create(subtask=uuid.uuid4(), payee=payee1, value=1),
+            Payment.create(subtask=uuid.uuid4(), payee=payee2, value=2),
+        ]
+        result = self.pp.funds_needed
+        self.assertEqual(result.GNT, 4)
+        self.assertEqual(result.ETH, 12600)
 
 
 def make_awaiting_payment(value=None, ts=None):

@@ -21,7 +21,6 @@ from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
 from eth_utils import decode_hex, is_address
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import (
-    contracts,
     JsonTransactionsStorage,
     new_sci,
     SmartContractsInterface,
@@ -344,6 +343,11 @@ class TransactionSystem(LoopingCallService):
         if not self._payment_processor:
             raise Exception('Start was not called')
         return self._gntb_locked + self._payment_processor.reserved_gntb
+
+    def get_funds_needed(self) -> dict:
+        if not self._payment_processor:
+            raise Exception('Start was not called')
+        return self._payment_processor.funds_needed._asdict()
 
     def get_balance(self) -> Dict[str, Any]:
         if not self._sci:
