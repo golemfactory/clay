@@ -1,12 +1,12 @@
 import calendar
 import logging
 import time
+
+from collections import defaultdict
 from typing import (
     NamedTuple,
     List,
 )
-
-from collections import defaultdict
 from sortedcontainers import SortedListWithKey
 from eth_utils import encode_hex
 from ethereum.utils import denoms
