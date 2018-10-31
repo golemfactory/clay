@@ -525,7 +525,9 @@ class FundsNeededTest(TransactionSystemBase):
 
     def test_basic(self):
         return_value = object()
-        self.ets._payment_processor = Mock(funds_needed=Mock(_asdict=Mock(return_value=return_value)))
+        self.ets._payment_processor = Mock(
+            funds_needed=Mock(_asdict=Mock(return_value=return_value)),
+        )
         self.assertIs(self.ets.get_funds_needed(), return_value)
 
 
