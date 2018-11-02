@@ -338,7 +338,10 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.assertEqual(ack_msg.report_computed_task, self.msg)
 
 
-@mock.patch('golem.task.tasksession.TaskSession.send')
+@mock.patch(
+    'golem.task.tasksession.TaskSession.send',
+    side_effect= lambda msg: msg._fake_sign(),
+)
 class ReactToWantToComputeTaskTestCase(unittest.TestCase):
     def setUp(self):
         super().setUp()

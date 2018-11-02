@@ -1,3 +1,6 @@
+# pylint: disable=too-many-lines
+
+import copy
 import datetime
 import enum
 import functools
@@ -215,8 +218,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task_to_compute = get_task_message(
                 'TaskToCompute', task_id, subtask_id)
 
+            # FIXME Remove in 0.20
             if not task_to_compute.sig:
-                task_to_compute.sign_message(self.my_private_key)  # FIXME
+                task_to_compute.sign_message(self.my_private_key)
 
             payment_processed_ts = self.task_server.accept_result(
                 subtask_id,
@@ -321,15 +325,19 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             secret=task_result.result_secret,
             options=client_options.__dict__,
         )
-        report_computed_task.sign_message(self.my_private_key)  # FIXME
 
+        self.send(report_computed_task)
+        if report_computed_task.sig is None:
+            # If message is delayed in msgs_to_send then will
+            # overcome this by making a signed copy
+            report_computed_task = copy.copy(report_computed_task)
+            report_computed_task.sign_message(self.my_private_key)
         history.add(
             msg=report_computed_task,
             node_id=self.key_id,
             local_role=Actor.Provider,
             remote_role=Actor.Requestor,
         )
-        self.send(report_computed_task)
 
         # if the Concent is not available in the context of this subtask
         # we can only assume that `ReportComputedTask` above reaches
@@ -407,6 +415,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             reason=reason,
         )
         self.send(response_msg)
+        if response_msg.sig is None:
+            # If message is delayed in msgs_to_send then will
+            # overcome this by making a signed copy
+            response_msg = copy.copy(response_msg)
+            response_msg.sign_message(self.my_private_key)
         history.add(
             response_msg,
             node_id=report_computed_task.task_to_compute.provider_id,
@@ -565,18 +578,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             size=task_state.package_size
         )
         ttc.generate_ethsig(self.my_private_key)
-        ttc.sign_message(self.my_private_key)  # FIXME
         self.task_manager.set_subtask_value(
             subtask_id=ttc.subtask_id,
             price=price,
         )
+        self.send(ttc)
         history.add(
             msg=ttc,
             node_id=self.key_id,
             local_role=Actor.Requestor,
             remote_role=Actor.Provider,
         )
-        self.send(ttc)
 
     @handle_attr_error_with_task_computer
     @history.provider_history

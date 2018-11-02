@@ -31,7 +31,7 @@ from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.taskbase import TaskHeader, Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
-from golem.utils import decode_hex, pubkeytoaddr
+from golem.utils import decode_hex
 
 from . import exceptions
 from .result.resultmanager import ExtractedPackage
