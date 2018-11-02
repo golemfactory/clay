@@ -340,7 +340,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
 
 @mock.patch(
     'golem.task.tasksession.TaskSession.send',
-    side_effect= lambda msg: msg._fake_sign(),
+    side_effect=lambda msg: msg._fake_sign(),
 )
 class ReactToWantToComputeTaskTestCase(unittest.TestCase):
     def setUp(self):
