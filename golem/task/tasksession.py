@@ -1,3 +1,6 @@
+# pylint: disable=too-many-lines
+
+import copy
 import datetime
 import enum
 import functools
@@ -76,6 +79,20 @@ def get_task_message(message_class_name, task_id, subtask_id, log_prefix=None):
             task_id,
             subtask_id,
         )
+    return msg
+
+
+def copy_and_sign(msg: message.base.Message, private_key) \
+        -> message.base.Message:
+    """Returns signed shallow copy of message
+
+    Copy is made only if original is unsigned.
+    """
+    if msg.sig is None:
+        # If message is delayed in msgs_to_send then will
+        # overcome this by making a signed copy
+        msg = copy.copy(msg)
+        msg.sign_message(private_key)
     return msg
 
 
@@ -215,6 +232,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task_to_compute = get_task_message(
                 'TaskToCompute', task_id, subtask_id)
 
+            # FIXME Remove in 0.20
             if not task_to_compute.sig:
                 task_to_compute.sign_message(self.my_private_key)
 
@@ -322,13 +340,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             options=client_options.__dict__,
         )
 
+        self.send(report_computed_task)
+        report_computed_task = copy_and_sign(
+            msg=report_computed_task,
+            private_key=self.my_private_key,
+        )
         history.add(
             msg=report_computed_task,
             node_id=self.key_id,
             local_role=Actor.Provider,
             remote_role=Actor.Requestor,
         )
-        self.send(report_computed_task)
 
         # if the Concent is not available in the context of this subtask
         # we can only assume that `ReportComputedTask` above reaches
@@ -406,6 +428,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             reason=reason,
         )
         self.send(response_msg)
+        response_msg = copy_and_sign(
+            msg=response_msg,
+            private_key=self.my_private_key,
+        )
         history.add(
             response_msg,
             node_id=report_computed_task.task_to_compute.provider_id,
@@ -568,13 +594,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             subtask_id=ttc.subtask_id,
             price=price,
         )
+        self.send(ttc)
         history.add(
             msg=ttc,
             node_id=self.key_id,
             local_role=Actor.Requestor,
             remote_role=Actor.Provider,
         )
-        self.send(ttc)
 
     @handle_attr_error_with_task_computer
     @history.provider_history

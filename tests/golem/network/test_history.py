@@ -1,4 +1,4 @@
-# pylint: disable= no-self-use,protected-access
+# pylint: disable=protected-access
 import datetime
 import queue
 import uuid
@@ -162,12 +162,12 @@ class TestMessageHistoryService(DatabaseFixture):
     @mock.patch('threading.Thread')
     def test_multiple_starts(self, *_):
         self.service.start()
-        assert self.service._thread.start.called
+        self.service._thread.start.assert_called()  # pylint: disable=no-member
 
-        self.service._thread.reset_mock()
+        self.service._thread.reset_mock()  # pylint: disable=no-member
         self.service._thread.is_alive.return_value = True
         self.service.start()
-        assert not self.service._thread.start.called
+        self.service._thread.start.assert_not_called()  # noqa pylint: disable=no-member
 
     def test_sweep(self):
         msgs = [
@@ -260,6 +260,7 @@ class TestAdd(unittest.TestCase):
     def setUp(self):
         self.service = history.MessageHistoryService().instance
         self.msg = msg_factories.tasks.TaskToComputeFactory()
+        self.msg._fake_sign()
 
     def tearDown(self):
         super().tearDown()
@@ -315,6 +316,20 @@ class TestAdd(unittest.TestCase):
             remote_role=remote_role,
         )
         add_mock.assert_called_once_with(model)
+
+    def test_unsigned(self, add_mock):
+        self.msg.sig = None
+        node_id = fake.binary(length=64)
+        local_role = fake.random_element(Actor)
+        remote_role = fake.random_element(Actor)
+        with self.assertRaisesRegex(RuntimeError, r'^Message unsigned$'):
+            history.add(
+                msg=self.msg,
+                node_id=node_id,
+                local_role=local_role,
+                remote_role=remote_role,
+            )
+        add_mock.assert_not_called()
 
 
 class TestMessageToModel(unittest.TestCase):
