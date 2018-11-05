@@ -248,7 +248,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
             self.send(response_msg)
             history.add(
-                response_msg,
+                copy_and_sign(
+                    msg=response_msg,
+                    private_key=self.my_private_key,
+                ),
                 node_id=task_to_compute.provider_id,
                 local_role=Actor.Requestor,
                 remote_role=Actor.Provider,
@@ -596,7 +599,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
         self.send(ttc)
         history.add(
-            msg=ttc,
+            msg=copy_and_sign(
+                msg=ttc,
+                private_key=self.my_private_key,
+            ),
             node_id=self.key_id,
             local_role=Actor.Requestor,
             remote_role=Actor.Provider,
