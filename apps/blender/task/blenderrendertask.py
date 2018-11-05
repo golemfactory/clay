@@ -629,13 +629,13 @@ class BlenderRenderTask(FrameRenderingTask):
         self.collected_file_names = OrderedDict(
             sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
-            collector = CustomCollector(paste=True, width=self.res_x,
+            collector = CustomCollector(width=self.res_x,
                                         height=self.res_y)
             for file in self.collected_file_names.values():
                 collector.add_img_file(file)
             with handle_image_error(logger), \
                     collector.finalize() as image:
-                image.save(output_file_name, self.output_format)
+                image.save_with_extension(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(
                 os.path.join(self.tmp_dir, output_file_name),
@@ -673,13 +673,13 @@ class BlenderRenderTask(FrameRenderingTask):
         collected = self.frames_given[frame_key]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
-            collector = CustomCollector(paste=True, width=self.res_x,
+            collector = CustomCollector(width=self.res_x,
                                         height=self.res_y)
             for file in collected.values():
                 collector.add_img_file(file)
             with handle_image_error(logger), \
                     collector.finalize() as image:
-                image.save(output_file_name, self.output_format)
+                image.save_with_extension(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(output_file_name,
                                                list(collected.values()),
@@ -732,8 +732,8 @@ class BlenderNVGPURenderTaskBuilder(BlenderRenderTaskBuilder):
 
 
 class CustomCollector(RenderingTaskCollector):
-    def __init__(self, paste=False, width=1, height=1):
-        RenderingTaskCollector.__init__(self, paste, width, height)
+    def __init__(self, width=1, height=1):
+        RenderingTaskCollector.__init__(self, width, height)
         self.current_offset = 0
 
     def _paste_image(self, final_img, new_part, num):

@@ -35,7 +35,7 @@ eth-utils==1.0.3
 ethereum==1.6.1
 Golem-Messages==2.15.0
 Golem-Smart-Contracts-Interface==1.6.1
-Golem-Verificator==1.6.0
+Golem-Verificator==1.6.1
 greenlet==0.4.15
 h2==3.0.1
 hpack==3.0.0
@@ -128,3 +128,4 @@ websocket-client==0.47.0
 wrapt==1.10.11
 zope.interface==4.4.2
 zxcvbn-python==4.4.22
+opencv-contrib-python-headless==3.4.3.18

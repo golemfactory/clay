@@ -3,12 +3,17 @@ import abc
 import logging
 from copy import deepcopy
 from typing import Optional
-
+import numpy
+import cv2
 import OpenEXR
 import Imath
 from PIL import Image
 
 logger = logging.getLogger("apps.rendering")
+
+
+class OpenCVError(OSError):
+    pass
 
 
 class ImgRepr(object, metaclass=abc.ABCMeta):
@@ -39,6 +44,55 @@ class ImgRepr(object, metaclass=abc.ABCMeta):
     @abc.abstractmethod
     def close(self):
         return
+
+
+class OpenCVImgRepr:
+    def __init__(self):
+        self.img = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, value, traceback):
+        pass
+
+    def load_from_file(self, path):
+        try:
+            self.img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+            if self.img is None:
+                raise RuntimeError('cv2 read image \"{}\" as None'
+                                   .format(path))
+        except (cv2.error, RuntimeError) as e:
+            logger.error('Error reading image: {}'.format(str(e)))
+            raise OpenCVError('Cannot read image: {}'
+                              .format(str(e)))
+
+    def empty(self, width, height, channels, dtype):
+        self.img = numpy.zeros((height, width, channels),
+                               dtype)
+
+    def paste_image(self, img, x, y):
+        self.img[y:y + img.shape[0], x:img.shape[1]] = img
+
+    def save_with_extension(self, path, extension):
+        # in PIL one can specify output name without extension
+        # format was given as a second argument
+        # in OpenCV extension must be given in a filename
+        # some paths are without extension, need to rename it then
+
+        file_path = '{}_{}.{}'.format(path,
+                                      "tmp",
+                                      extension.lower())
+        self.save(file_path)
+        os.replace(file_path, path)
+
+    def save(self, path):
+        try:
+            cv2.imwrite(path, self.img)
+        except cv2.error as e:
+            logger.error('Error saving image: {}'.format(str(e)))
+            raise OpenCVError('Cannot save image {}: {}'.format(path,
+                                                                str(e)))
 
 
 class PILImgRepr(ImgRepr):
