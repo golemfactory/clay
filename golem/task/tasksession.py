@@ -82,6 +82,20 @@ def get_task_message(message_class_name, task_id, subtask_id, log_prefix=None):
     return msg
 
 
+def copy_and_sign(msg: message.base.Message, private_key) \
+        -> message.base.Message:
+    """Returns signed shallow copy of message
+
+    Copy is made only if original is unsigned.
+    """
+    if msg.sig is None:
+        # If message is delayed in msgs_to_send then will
+        # overcome this by making a signed copy
+        msg = copy.copy(msg)
+        msg.sign_message(private_key)
+    return msg
+
+
 class RequestorCheckResult(enum.Enum):
     OK = enum.auto()
     MISMATCH = enum.auto()
@@ -327,11 +341,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
         self.send(report_computed_task)
-        if report_computed_task.sig is None:
-            # If message is delayed in msgs_to_send then will
-            # overcome this by making a signed copy
-            report_computed_task = copy.copy(report_computed_task)
-            report_computed_task.sign_message(self.my_private_key)
+        report_computed_task = copy_and_sign(
+            msg=report_computed_task,
+            private_key=self.my_private_key,
+        )
         history.add(
             msg=report_computed_task,
             node_id=self.key_id,
@@ -415,11 +428,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             reason=reason,
         )
         self.send(response_msg)
-        if response_msg.sig is None:
-            # If message is delayed in msgs_to_send then will
-            # overcome this by making a signed copy
-            response_msg = copy.copy(response_msg)
-            response_msg.sign_message(self.my_private_key)
+        response_msg = copy_and_sign(
+            msg=response_msg,
+            private_key=self.my_private_key,
+        )
         history.add(
             response_msg,
             node_id=report_computed_task.task_to_compute.provider_id,
