@@ -12,7 +12,6 @@ from golem_messages import factories as msg_factories
 from golem_messages.message import ComputeTaskDef
 from requests import HTTPError
 
-from apps.core.task.coretask import AcceptClientVerdict
 import golem
 from golem import model
 from golem import testutils
@@ -29,7 +28,7 @@ from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import tasksession
 from golem.task.masking import Mask
 from golem.task.server import concent as server_concent
-from golem.task.taskbase import TaskHeader, ResultType
+from golem.task.taskbase import TaskHeader, ResultType, AcceptClientVerdict
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.task.tasksession import TaskSession
@@ -255,9 +254,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertEqual(wtr.owner, n)
         self.assertEqual(wtr.already_sending, False)
 
-        subtask_id3 = idgenerator.generate_new_id_from_id(task_id)
-        with self.assertLogs(logger, level='WARNING'):
-            ts.subtask_rejected(keys_auth.key_id, subtask_id3)
         self.assertIsNotNone(ts.task_keeper.task_headers.get(task_id))
 
         ctd = ComputeTaskDef()
@@ -268,7 +264,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.task_manager.comp_task_keeper.receive_subtask(ttc)
 
         prev_call_count = trust.PAYMENT.increase.call_count
-        ts.increase_trust_payment("xyz")
+        ts.increase_trust_payment("xyz", 1)
         self.assertGreater(trust.PAYMENT.increase.call_count, prev_call_count)
         prev_call_count = trust.PAYMENT.decrease.call_count
         ts.decrease_trust_payment("xyz")

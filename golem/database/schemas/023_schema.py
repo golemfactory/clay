@@ -5,7 +5,7 @@ import peewee as pw
 from golem.ranking import ProviderEfficacy
 
 
-SCHEMA_VERSION = 22
+SCHEMA_VERSION = 23
 
 
 def migrate(migrator, *_args, **_kwargs):

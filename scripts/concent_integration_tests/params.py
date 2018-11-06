@@ -20,6 +20,26 @@ def params_from_dict(d: dict) -> list:
         )
     )
 
+
+def _debug(args_dict):
+    return {
+        **args_dict,
+        **{'--log-level': 'DEBUG'}
+    }
+
+
+def _concent_disabled(args_dict):
+    args_dict = dict(args_dict)
+    args_dict['--concent'] = 'disabled'
+    return args_dict
+
+
+def _mainnet(args_dict):
+    args_dict = dict(args_dict)
+    args_dict['--net'] = 'mainnet'
+    return args_dict
+
+
 PROVIDER_RPC_PORT = os.environ.get('GOLEM_PROVIDER_RPC_PORT', '61001')
 REQUESTOR_RPC_PORT = os.environ.get('GOLEM_REQUESTOR_RPC_PORT', '61000')
 
@@ -46,22 +66,22 @@ _PROVIDER_ARGS = {
 }
 PROVIDER_ARGS = params_from_dict(_PROVIDER_ARGS)
 
-_PROVIDER_ARGS_DEBUG = {
-    **_PROVIDER_ARGS,
-    **{'--log-level': 'DEBUG'}
-}
+_PROVIDER_ARGS_DEBUG = _debug(_PROVIDER_ARGS)
 PROVIDER_ARGS_DEBUG = params_from_dict(_PROVIDER_ARGS_DEBUG)
-
-_REQUESTOR_ARGS_DEBUG = {
-    **_REQUESTOR_ARGS,
-    **{'--log-level': 'DEBUG'}
-}
+_REQUESTOR_ARGS_DEBUG = _debug(_REQUESTOR_ARGS)
 REQUESTOR_ARGS_DEBUG = params_from_dict(_REQUESTOR_ARGS_DEBUG)
 
-_REQUESTOR_ARGS_NO_CONCENT = dict(_REQUESTOR_ARGS_DEBUG)
-_REQUESTOR_ARGS_NO_CONCENT['--concent'] = 'disabled'
+_REQUESTOR_ARGS_NO_CONCENT = _concent_disabled(_REQUESTOR_ARGS_DEBUG)
 REQUESTOR_ARGS_NO_CONCENT = params_from_dict(_REQUESTOR_ARGS_NO_CONCENT)
-
-_PROVIDER_ARGS_NO_CONCENT = dict(_PROVIDER_ARGS_DEBUG)
-_PROVIDER_ARGS_NO_CONCENT['--concent'] = 'disabled'
+_PROVIDER_ARGS_NO_CONCENT = _concent_disabled(_PROVIDER_ARGS_DEBUG)
 PROVIDER_ARGS_NO_CONCENT = params_from_dict(_PROVIDER_ARGS_NO_CONCENT)
+
+_REQUESTOR_ARGS_MAINNET = _mainnet(_concent_disabled(_REQUESTOR_ARGS))
+REQUESTOR_ARGS_MAINNET = params_from_dict(_REQUESTOR_ARGS_MAINNET)
+_PROVIDER_ARGS_MAINNET = _mainnet(_concent_disabled(_PROVIDER_ARGS))
+PROVIDER_ARGS_MAINNET = params_from_dict(_PROVIDER_ARGS_MAINNET)
+
+_REQUESTOR_ARGS_MAINNET_DEBUG = _debug(_REQUESTOR_ARGS_MAINNET)
+REQUESTOR_ARGS_MAINNET_DEBUG = params_from_dict(_REQUESTOR_ARGS_MAINNET_DEBUG)
+_PROVIDER_ARGS_MAINNET_DEBUG = _debug(_PROVIDER_ARGS_MAINNET)
+PROVIDER_ARGS_MAINNET_DEBUG = params_from_dict(_PROVIDER_ARGS_MAINNET_DEBUG)

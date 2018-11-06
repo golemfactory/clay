@@ -174,13 +174,13 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         return scale_factor
 
     @classmethod
-    def get_task_border(cls, subtask, definition, total_subtasks,
+    def get_task_border(cls, subtask, definition, subtasks_count,
                         output_num=1, as_path=False):
         """ Return list of pixels that should be marked as a border of
          a given subtask
         :param SubtaskState subtask: subtask state description
         :param RenderingTaskDefinition definition: task definition
-        :param int total_subtasks: total number of subtasks used in this task
+        :param int subtasks_count: total number of subtasks used in this task
         :param int output_num: number of final output files
         :param int as_path: return pixels that form a border path
         :return list: list of pixels that belong to a subtask border
@@ -196,8 +196,8 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
             method = cls.__get_border
 
         if not definition.options.use_frames:
-            return method(start_task, end_task, total_subtasks, res_x, res_y)
-        elif total_subtasks <= frames:
+            return method(start_task, end_task, subtasks_count, res_x, res_y)
+        elif subtasks_count <= frames:
             if not as_path:
                 return []
             else:
@@ -207,7 +207,7 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
                 return [(0, y), (x, y),
                         (x, 0), (0, 0)]
 
-        parts = int(total_subtasks / frames)
+        parts = int(subtasks_count / frames)
         return method((start_task - 1) % parts + 1,
                       (end_task - 1) % parts + 1,
                       parts, res_x, res_y)
@@ -267,14 +267,14 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
                 (x, lower), (0, lower)]
 
     @classmethod
-    def get_task_num_from_pixels(cls, x, y, definition, total_subtasks,
+    def get_task_num_from_pixels(cls, x, y, definition, subtasks_count,
                                  output_num=1):
         """
         Compute number of subtask that represents pixel (x, y) on preview
         :param int x: x coordinate
         :param int y: y coordiante
         :param TaskDefintion definition: task definition
-        :param int total_subtasks: total number of subtasks used in this task
+        :param int subtasks_count: total number of subtasks used in this task
         :param int output_num: number of final output files
         :return int: subtask's number
         """
@@ -283,14 +283,14 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         res_y = definition.resolution[1]
 
         if not definition.options.use_frames:
-            return cls.__num_from_pixel(y, res_x, res_y, total_subtasks)
+            return cls.__num_from_pixel(y, res_x, res_y, subtasks_count)
 
         frames = len(definition.options.frames)
-        if total_subtasks <= frames:
-            subtask_frames = int(math.ceil(frames / total_subtasks))
+        if subtasks_count <= frames:
+            subtask_frames = int(math.ceil(frames / subtasks_count))
             return int(math.ceil(output_num / subtask_frames))
 
-        parts = int(total_subtasks / frames)
+        parts = int(subtasks_count / frames)
         return (output_num - 1) * parts + cls.__num_from_pixel(y, res_x,
                                                                res_y, parts)
 
@@ -629,13 +629,13 @@ class BlenderRenderTask(FrameRenderingTask):
         self.collected_file_names = OrderedDict(
             sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
-            collector = CustomCollector(paste=True, width=self.res_x,
+            collector = CustomCollector(width=self.res_x,
                                         height=self.res_y)
             for file in self.collected_file_names.values():
                 collector.add_img_file(file)
             with handle_image_error(logger), \
                     collector.finalize() as image:
-                image.save(output_file_name, self.output_format)
+                image.save_with_extension(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(
                 os.path.join(self.tmp_dir, output_file_name),
@@ -673,13 +673,13 @@ class BlenderRenderTask(FrameRenderingTask):
         collected = self.frames_given[frame_key]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
-            collector = CustomCollector(paste=True, width=self.res_x,
+            collector = CustomCollector(width=self.res_x,
                                         height=self.res_y)
             for file in collected.values():
                 collector.add_img_file(file)
             with handle_image_error(logger), \
                     collector.finalize() as image:
-                image.save(output_file_name, self.output_format)
+                image.save_with_extension(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(output_file_name,
                                                list(collected.values()),
@@ -732,8 +732,8 @@ class BlenderNVGPURenderTaskBuilder(BlenderRenderTaskBuilder):
 
 
 class CustomCollector(RenderingTaskCollector):
-    def __init__(self, paste=False, width=1, height=1):
-        RenderingTaskCollector.__init__(self, paste, width, height)
+    def __init__(self, width=1, height=1):
+        RenderingTaskCollector.__init__(self, width, height)
         self.current_offset = 0
 
     def _paste_image(self, final_img, new_part, num):

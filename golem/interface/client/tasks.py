@@ -21,7 +21,7 @@ class Tasks:
     client: 'ClientProxy'
 
     task_table_headers = ['id', 'ETA',
-                          'subtasks', 'status', 'completion']
+                          'subtasks_count', 'status', 'completion']
     subtask_table_headers = ['node', 'id', 'ETA', 'status', 'completion']
     unsupport_reasons_table_headers = ['reason', 'no of tasks',
                                        'avg for all tasks']
@@ -75,7 +75,7 @@ class Tasks:
                 values.append([
                     task['id'],
                     Tasks.__format_seconds(task['time_remaining']),
-                    str(task['subtasks']),
+                    str(task['subtasks_count']),
                     task['status'],
                     Tasks.__progress_str(task['progress'])
                 ])

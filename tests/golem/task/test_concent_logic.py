@@ -40,7 +40,8 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         self.keys = cryptography.ECCx(None)
         self.different_keys = cryptography.ECCx(None)
         self.msg = factories.tasks.TaskToComputeFactory()
-        self.msg.want_to_compute_task.sign_message(self.keys.raw_privkey)  # pylint: disable=no-member
+        self.msg._fake_sign()
+        self.msg.want_to_compute_task.sign_message(self.keys.raw_privkey)  # noqa pylint: disable=no-member
         self.task_session = tasksession.TaskSession(mock.MagicMock())
         self.task_session.task_computer.has_assigned_task.return_value = False
         self.task_session.task_server.keys_auth.ecc.raw_pubkey = \
@@ -165,6 +166,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
             send_mock,
             *_):
         self.msg = factories.tasks.TaskToComputeFactory()
+        self.msg._fake_sign()
         self.msg.want_to_compute_task.sign_message(  # pylint: disable=no-member
             self.different_keys.raw_privkey)
         with mock.patch(
@@ -187,6 +189,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
             )
         self.task_session.key_id = "KEY_ID"
         self.msg = factories.tasks.ReportComputedTaskFactory()
+        self.msg._fake_sign()
         self.now = datetime.datetime.utcnow()
         now_ts = calendar.timegm(self.now.utctimetuple())
         self.msg.task_to_compute.compute_task_def['deadline'] = now_ts + 60
@@ -346,12 +349,16 @@ def _offerpool_add(*_):
 @mock.patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
 @mock.patch('golem.task.tasksession.get_provider_efficiency', mock.Mock())
 @mock.patch('golem.task.tasksession.get_provider_efficacy', mock.Mock())
-@mock.patch('golem.task.tasksession.TaskSession.send')
+@mock.patch(
+    'golem.task.tasksession.TaskSession.send',
+    side_effect=lambda msg: msg._fake_sign(),
+)
 class ReactToWantToComputeTaskTestCase(unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.requestor_keys = cryptography.ECCx(None)
         self.msg = factories.tasks.WantToComputeTaskFactory(price=10 ** 18)
+        self.msg._fake_sign()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
         self.task_session.key_id = 'unittest_key_id'
         self.task_session.task_server.keys_auth._private_key = \
