@@ -85,6 +85,7 @@ class SystemMonitor(object):
 
         if not result['success']:
             for port_status in result['port_statuses']:
+                log.debug("Port status: %s", port_status)
                 if not port_status['is_open']:
                     dispatcher.send(
                         signal='golem.p2p',
