@@ -83,16 +83,13 @@ class SystemMonitor(object):
         if not result:
             return
 
-        if not result['success']:
-            for port_status in result['port_statuses']:
-                log.debug("Port status: %s", port_status)
-                if not port_status['is_open']:
-                    dispatcher.send(
-                        signal='golem.p2p',
-                        event='unreachable',
-                        port=port_status['port'],
-                        description=port_status['description']
-                    )
+        for port_status in result['port_statuses']:
+            dispatcher.send(
+                signal='golem.p2p',
+                event='open' if port_status['is_open'] else 'unreachable',
+                port=port_status['port'],
+                description=port_status['description']
+            )
 
         if result['time_diff'] > variables.MAX_TIME_DIFF:
             dispatcher.send(

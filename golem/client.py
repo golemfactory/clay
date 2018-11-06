@@ -236,10 +236,15 @@ class Client(HardwarePresetsMixin):
     def p2p_listener(self, event='default', **kwargs):
         if event == 'unreachable':
             self.on_unreachable(**kwargs)
+        elif event == 'open':
+            self.on_open(**kwargs)
         elif event == 'unsynchronized':
             self.on_unsynchronized(**kwargs)
         elif event == 'new_version':
             self.on_new_version(**kwargs)
+
+    def on_open(self, port, description, **_):
+        self.node.port_statuses[port] = description
 
     def on_unreachable(self, port, description, **_):
         logger.warning('Port %d unreachable: %s', port, description)
