@@ -43,7 +43,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         task_definition.max_price = 100
         task_definition.task_id = "deadbeef"
         task_definition.estimated_memory = 1024
-        task_definition.full_task_timeout = 3000
+        task_definition.timeout = 3000
         task_definition.subtask_timeout = 30
         return task_definition
 
@@ -593,10 +593,10 @@ class TestCoreTaskBuilder(TestCase):
             [("output_path", os.getcwd()), ("format", "py")])
 
         class Definition:
-            task_name = "test_file"  # something doesn't exist
+            name = "test_file"  # something doesn't exist
 
         definition = Definition()
         absolute_path = builder.get_output_path(mockDict, definition)
-        assert absolute_path == os.path.join(os.getcwd(), definition.task_name)
-        definition.task_name = "test_coretask"  # something already exist
-        assert absolute_path != os.path.join(os.getcwd(), definition.task_name)
+        assert absolute_path == os.path.join(os.getcwd(), definition.name)
+        definition.name = "test_coretask"  # something already exist
+        assert absolute_path != os.path.join(os.getcwd(), definition.name)

@@ -1,7 +1,7 @@
 import logging
 from abc import ABC, abstractmethod
 
-from golem.core.async import AsyncRequest, async_run
+from golem.core import golem_async
 from twisted.internet.task import LoopingCall
 
 log = logging.getLogger("golem")
@@ -62,13 +62,16 @@ class LoopingCallService(IService):
             raise RuntimeError("service not started")
         self._loopingCall.stop()
 
-    def _exceptionHandler(self, failure):
+    @classmethod
+    def _exceptionHandler(cls, failure):
         log.exception("Service Error: " + failure.getTraceback())
         return None  # Stop processing the failure.
 
     def _run_async(self):
-        return async_run(AsyncRequest(self._run),
-                         error=self._exceptionHandler)
+        return golem_async.async_run(
+            golem_async.AsyncRequest(self._run),
+            error=self._exceptionHandler,
+        )
 
     def _run(self):
         """ Implement this in the derived class."""

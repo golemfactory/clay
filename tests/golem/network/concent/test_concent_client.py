@@ -451,6 +451,7 @@ class OverdueIncomeTestCase(testutils.DatabaseFixture):
         local_role = history.Actor.Provider
         remote_role = history.Actor.Requestor
         for msg in (sra1, sra2):
+            msg._fake_sign()
             history.add(
                 msg=msg,
                 node_id='requestor_id',

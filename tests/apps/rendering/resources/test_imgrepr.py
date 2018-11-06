@@ -1,16 +1,25 @@
 import os
 import unittest
 
+import pytest
 from PIL import Image
+import cv2
 
+import numpy as np
 from apps.rendering.resources.imgrepr import (blend, EXRImgRepr, ImgRepr,
                                               load_as_pil, load_img, load_as_PILImgRepr,
-                                              logger, PILImgRepr)
+                                              logger, PILImgRepr, OpenCVImgRepr,
+                                              OpenCVError)
 
 from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.assertlogs import (LogTestCase)
 
-from tests.apps.rendering.resources.imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr, make_test_img)
+from tests.apps.rendering.resources.imghelper import \
+    (get_exr_img_repr, get_pil_img_repr, get_test_exr, make_test_img)
+
+from tests.apps.rendering.resources.test_renderingtaskcollector import \
+    make_test_img_16bits
+
 
 class TImgRepr(ImgRepr):
     def load_from_file(self, file_):
@@ -106,6 +115,7 @@ class TestExrImgRepr(TempDirFixture, PEP8MixIn):
     PEP8_FILES = [
         'apps/rendering/resources/imgrepr.py',
     ]
+
     def test_init(self):
         img = EXRImgRepr()
         assert isinstance(img, ImgRepr)
@@ -295,3 +305,57 @@ class TestImgFunctions(TempDirFixture, LogTestCase):
         exr_path = get_test_exr()
         img = load_as_PILImgRepr(exr_path)
         assert isinstance(img, PILImgRepr)
+
+    def test_opencv_load_from_file(self):
+        img_path = self.temp_file_name("path1.png")
+        make_test_img(img_path, (10, 20), (10, 20, 30))
+        img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED)
+        # OpenCV stores (height,width,channels)
+        assert img.shape == (20, 10, 3)
+        # OpenCV stores channels as BGR
+        assert img[0][0][0] == 30
+        assert img[0][0][1] == 20
+        assert img[0][0][2] == 10
+
+        img1 = cv2.imread(get_test_exr(), cv2.IMREAD_UNCHANGED)
+        assert img1 is not None
+        assert img1.shape == (10, 10, 3)
+
+        make_test_img_16bits("path2.png", width=10, height=20,
+                             color=(10, 69, 30))
+        img2 = cv2.imread("path2.png", cv2.IMREAD_UNCHANGED)
+        assert img2 is not None
+        assert img2.shape == (20, 10, 3)
+        assert img2.dtype == np.uint16
+        assert img2[0][0][0] == 10
+        assert img2[0][0][1] == 69
+        assert img2[0][0][2] == 30
+        os.remove("path2.png")
+        assert os.path.isfile("path2.png") is False
+
+    def test_opencv_read_and_write(self):
+        img = OpenCVImgRepr()
+        with pytest.raises(OpenCVError):
+            img.load_from_file("path1.png")
+        assert img.img is None
+
+        img.empty(width=10, height=20,
+                  channels=3, dtype=np.uint16)
+        assert isinstance(img, OpenCVImgRepr)
+        assert img.img is not None
+        assert img.img.shape == (20, 10, 3)
+        assert img.img.dtype == np.uint16
+        img.save("path1.png")
+        assert os.path.isfile("path1.png")
+        img.save_with_extension("path2.png", "PNG")
+        assert os.path.isfile("path2.png")
+
+        img2 = cv2.imread("path1.png", cv2.IMREAD_UNCHANGED)
+        assert img2.shape == (20, 10, 3)
+        assert img2.dtype == np.uint16
+        assert img2[0][0][0] == 0
+
+        os.remove("path1.png")
+        assert os.path.isfile("path1.png") is False
+        os.remove("path2.png")
+        assert os.path.isfile("path2.png") is False

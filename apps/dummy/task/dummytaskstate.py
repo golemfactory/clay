@@ -83,7 +83,7 @@ class DummyTaskDefinition(TaskDefinition):
         self.out_file_basename = defaults.out_file_basename
         self.code_dir = defaults.code_dir
         self.result_size = defaults.result_size
-        self.total_subtasks = defaults.default_subtasks
+        self.subtasks_count = defaults.default_subtasks
         self.options = deepcopy(defaults.options)
 
 

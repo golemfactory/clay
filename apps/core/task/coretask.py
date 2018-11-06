@@ -21,7 +21,7 @@ from golem.docker.environment import DockerEnvironment
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
-    TaskTypeInfo
+    TaskTypeInfo, AcceptClientVerdict
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
@@ -31,12 +31,6 @@ logger = logging.getLogger("apps.core")
 def log_key_error(*args, **_):
     logger.warning("This is not my subtask %s", args[1], exc_info=True)
     return False
-
-
-class AcceptClientVerdict(Enum):
-    ACCEPTED = 0
-    REJECTED = 1
-    SHOULD_WAIT = 2
 
 
 MAX_PENDING_CLIENT_RESULTS = 1
@@ -59,13 +53,13 @@ class CoreTaskTypeInfo(TaskTypeInfo):
 
     @classmethod
     # pylint:disable=unused-argument
-    def get_task_num_from_pixels(cls, x, y, definition, total_subtasks,
+    def get_task_num_from_pixels(cls, x, y, definition, subtasks_count,
                                  output_num=1):
         return 0
 
     @classmethod
     # pylint:disable=unused-argument
-    def get_task_border(cls, subtask, definition, total_subtasks,
+    def get_task_border(cls, subtask, definition, subtasks_count,
                         output_num=1, as_path=False):
         return []
 
@@ -111,7 +105,7 @@ class CoreTask(Task):
         """Create more specific task implementation
         """
 
-        task_timeout = task_definition.full_task_timeout
+        task_timeout = task_definition.timeout
         self._deadline = timeout_to_deadline(task_timeout)
 
         # resources stuff
@@ -166,7 +160,7 @@ class CoreTask(Task):
         self.subtasks_given = {}
         self.num_failed_subtasks = 0
 
-        self.full_task_timeout = task_timeout
+        self.timeout = task_timeout
         self.counting_nodes = {}
 
         self.root_path = root_path
@@ -339,9 +333,9 @@ class CoreTask(Task):
     def to_dictionary(self):
         return {
             'id': to_unicode(self.header.task_id),
-            'name': to_unicode(self.task_definition.task_name),
+            'name': to_unicode(self.task_definition.name),
             'type': to_unicode(self.task_definition.task_type),
-            'subtasks': self.get_total_tasks(),
+            'subtasks_count': self.get_total_tasks(),
             'progress': self.get_progress()
         }
 
@@ -566,7 +560,7 @@ class CoreTaskBuilder(TaskBuilder):
         return task
 
     def get_task_kwargs(self, **kwargs):
-        kwargs['total_tasks'] = int(self.task_definition.total_subtasks)
+        kwargs['total_tasks'] = int(self.task_definition.subtasks_count)
         kwargs["task_definition"] = self.task_definition
         kwargs["owner"] = self.owner
         kwargs["root_path"] = self.root_path
@@ -579,7 +573,7 @@ class CoreTaskBuilder(TaskBuilder):
         definition.task_type = task_type.name
         definition.compute_on = dictionary.get('compute_on', 'cpu')
         definition.resources = set(dictionary['resources'])
-        definition.total_subtasks = int(dictionary['subtasks'])
+        definition.subtasks_count = int(dictionary['subtasks_count'])
         definition.main_program_file = task_type.defaults.main_program_file
         return definition
 
@@ -602,11 +596,11 @@ class CoreTaskBuilder(TaskBuilder):
                               task_type: CoreTaskTypeInfo,
                               dictionary: Dict[str, Any]):
         definition = cls.build_minimal_definition(task_type, dictionary)
-        definition.task_name = dictionary['name']
+        definition.name = dictionary['name']
         definition.max_price = \
             int(decimal.Decimal(dictionary['bid']) * denoms.ether)
 
-        definition.full_task_timeout = string_to_timeout(
+        definition.timeout = string_to_timeout(
             dictionary['timeout'])
         definition.subtask_timeout = string_to_timeout(
             dictionary['subtask_timeout'])
@@ -628,7 +622,7 @@ class CoreTaskBuilder(TaskBuilder):
 
         absolute_path = cls.get_nonexistent_path(
             options['output_path'],
-            definition.task_name,
+            definition.name,
             options.get('format', ''))
 
         return absolute_path
