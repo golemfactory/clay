@@ -61,7 +61,7 @@ class StatsKeeper:
                     Stats.update(value=f"{global_val}") \
                         .where(Stats.name == name) \
                         .execute()
-                except Exception as err:
+                except DatabaseError as err:
                     logger.error("Exception occurred while updating stat %r: "
                                  "%r", name, err)
 

@@ -1197,63 +1197,59 @@ class TaskManager(TaskEventListener):
         if not (subtask_id and isinstance(op, SubtaskOp) and op.is_completed()):
             return
 
-        self._update_provider_statistics(task_id, subtask_id, op)
-        self._update_provider_reputation(task_id, subtask_id, op)
+        try:
+            self._update_provider_statistics(task_id, subtask_id, op)
+        except (KeyError, ValueError) as e:
+            logger.error("Unable to update statistics for subtask %s: %r",
+                         subtask_id, e)
+
+        try:
+            self._update_provider_reputation(task_id, subtask_id, op)
+        except (KeyError, ValueError) as e:
+            logger.error("Unable to update reputation for subtask %s: %r",
+                         subtask_id, e)
 
         # We're done processing the subtask
         ProviderComputeTimers.remove(subtask_id)
 
-    @handle_task_key_error
     def _update_provider_statistics(self, task_id: str,
                                     subtask_id: str,
                                     op: SubtaskOp) -> None:
 
         header = self.tasks[task_id].header.fixed_header
+        computation_time = ProviderComputeTimers.time_computing(subtask_id)
 
-        try:
-            computation_time = ProviderComputeTimers.time_computing(subtask_id)
-            if not computation_time:
-                raise ValueError("Invalid value for computation_time: %r",
-                                 computation_time)
+        if not computation_time:
+            raise ValueError("Invalid value for computation_time: "
+                             f"{computation_time}")
 
-            computation_time = int(round(computation_time))
-            computation_price = compute_subtask_value(header.max_price,
-                                                      header.subtask_timeout)
+        computation_time = int(round(computation_time))
+        computation_price = compute_subtask_value(header.max_price,
+                                                  header.subtask_timeout)
 
-            dispatcher.send(
-                signal='golem.subtask',
-                event='finished',
-                timed_out=(op == SubtaskOp.TIMEOUT),
-                subtask_count=header.subtasks_count,
-                subtask_timeout=header.subtask_timeout,
-                subtask_price=computation_price,
-                subtask_computation_time=computation_time,
-            )
-        except (KeyError, ValueError) as e:
-            logger.error("Unable to update statistics for subtask %s: %r",
-                         subtask_id, e)
+        dispatcher.send(
+            signal='golem.subtask',
+            event='finished',
+            timed_out=(op == SubtaskOp.TIMEOUT),
+            subtask_count=header.subtasks_count,
+            subtask_timeout=header.subtask_timeout,
+            subtask_price=computation_price,
+            subtask_computation_time=computation_time,
+        )
 
-    @handle_task_key_error
     def _update_provider_reputation(self, task_id: str,
                                     subtask_id: str,
                                     op: SubtaskOp) -> None:
 
         timeout = self.tasks[task_id].header.fixed_header.subtask_timeout
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
-
-        node_name = subtask_state.computer.node_name
         node_id = subtask_state.computer.node_id
 
-        try:
-            update_provider_efficacy(node_id, op)
-            computation_time = ProviderComputeTimers.time_computing(subtask_id)
+        update_provider_efficacy(node_id, op)
+        computation_time = ProviderComputeTimers.time_computing(subtask_id)
 
-            if not computation_time:
-                raise ValueError("computation_time cannot be equal to {}",
-                                 computation_time)
+        if not computation_time:
+            raise ValueError("computation_time cannot be equal to "
+                             f"{computation_time}")
 
-            update_provider_efficiency(node_id, timeout, computation_time)
-
-        except (KeyError, ValueError) as e:
-            logger.error("Unable to update reputation for node %s, subtask %s: "
-                         "%r", subtask_id, node_info_str(node_name, node_id), e)
+        update_provider_efficiency(node_id, timeout, computation_time)
