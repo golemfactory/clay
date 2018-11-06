@@ -20,6 +20,7 @@ constantly==15.1.0
 crossbar==17.12.1
 cryptography==2.2.2
 cytoolz==0.9.0.1
+distro==1.3.0
 docker==3.5.0
 enforce==0.3.4
 enum34==1.1.6
@@ -30,7 +31,7 @@ eth-keys==0.2.0b3
 eth-tester==0.1.0-beta.24
 eth-utils==1.0.3
 ethereum==1.6.1
-Golem-Verificator==1.5.3
+Golem-Verificator==1.6.1
 Golem-Messages==2.15.0
 Golem-Smart-Contracts-Interface==1.6.1
 h2==3.0.1
@@ -115,3 +116,4 @@ websocket-client==0.47.0
 wrapt==1.10.11
 zope.interface==4.4.2
 zxcvbn-python==4.4.22
+opencv-contrib-python-headless==3.4.3.18

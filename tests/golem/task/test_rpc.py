@@ -33,7 +33,7 @@ class ProviderBase(test_client.TestClientBase):
         'name': fake.pystr(min_chars=4, max_chars=24),
         'type': 'blender',
         'timeout': '09:25:00',
-        'subtasks': 6,
+        'subtasks_count': 6,
         'subtask_timeout': '4:10:00',
         'bid': '0.000032',
         'options': {
@@ -105,7 +105,7 @@ class ProviderBase(test_client.TestClientBase):
 class TestCreateTask(ProviderBase):
     def test_create_task(self, *_):
         t = dummytaskstate.DummyTaskDefinition()
-        t.task_name = "test"
+        t.name = "test"
 
         result = self.provider.create_task(t.to_dict())
         rpc.enqueue_new_task.assert_called()
@@ -184,7 +184,7 @@ class TestRestartTask(ProviderBase):
             },
             'resources': [str(some_file_path)],
             'subtask_timeout': common.timeout_to_string(3),
-            'subtasks': 1,
+            'subtasks_count': 1,
             'timeout': common.timeout_to_string(3),
             'type': 'Dummy',
         }
@@ -328,6 +328,14 @@ class TestEnqueueNewTask(ProviderBase):
 
 @mock.patch('golem.task.rpc._run_test_task')
 class TestProviderRunTestTask(ProviderBase):
+    def test_no_concent_enabled_in_dict(self, run_mock, *_):
+        # This used to raise KeyError before run_test_task
+        del self.t_dict['concent_enabled']
+        self.assertTrue(
+            self.provider.run_test_task(self.t_dict),
+        )
+        run_mock.assert_called_once()
+
     def test_another_is_running(self, run_mock, *_):
         self.client.task_tester = object()
         self.assertFalse(
@@ -413,7 +421,7 @@ class TestRuntTestTask(ProviderBase):
                 {
                     'type': 'blender',
                     'resources': ['_.blend'],
-                    'subtasks': 1,
+                    'subtasks_count': 1,
                 }))
 
 
@@ -432,10 +440,10 @@ class TestValidateTaskDict(ProviderBase):
         "apps.rendering.task.framerenderingtask.calculate_subtasks_count",
     )
     def test_computed_subtasks(self, calculate_mock, *_):
-        computed_subtasks = self.t_dict['subtasks'] - 1
+        computed_subtasks = self.t_dict['subtasks_count'] - 1
         calculate_mock.return_value = computed_subtasks
         msg = "Subtasks count {:d} is invalid. Maybe use {:d} instead?".format(
-            self.t_dict['subtasks'],
+            self.t_dict['subtasks_count'],
             computed_subtasks,
         )
         with self.assertRaises(ValueError, msg=msg):
@@ -468,3 +476,46 @@ class TestRestartSubtasks(ProviderBase):
             task_dict=mock.ANY,
             force=force,
         )
+
+@mock.patch('os.path.getsize')
+class TestExceptionPropagation(ProviderBase):
+    def setUp(self):
+        super().setUp()
+        self.task = self.client.task_manager.create_task(self.t_dict)
+        with mock.patch('os.path.getsize'):
+            golem_deferred.sync_wait(
+                rpc.enqueue_new_task(self.client, self.task),
+            )
+
+    @mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
+    def test_create_task(self, mock_method, *_):
+        t = dummytaskstate.DummyTaskDefinition()
+        t.name = "test"
+        mock_method.side_effect = Exception("Test")
+
+        result = self.provider.create_task(t.to_dict())
+        mock_method.assert_called()
+        self.assertEqual(result, (None, "Test"))
+
+    def test_restart_task(self, *_):
+        t = dummytaskstate.DummyTaskDefinition()
+        t.name = "test"
+
+        self.provider.task_manager.assert_task_can_be_restarted =\
+            mock.MagicMock()
+        self.provider.task_manager.assert_task_can_be_restarted\
+            .side_effect = Exception("Test")
+
+        result = self.provider.restart_task(0)
+
+        self.assertEqual(result, (None, "Test"))
+
+    @mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
+    def test_run_test_task_error(self, mock_method, *_):
+        t = dummytaskstate.DummyTaskDefinition()
+        t.name = "test"
+        mock_method.side_effect = Exception("Test")
+
+        result = self.provider.run_test_task(t.to_dict())
+        mock_method.assert_called()
+        self.assertEqual(result, False)

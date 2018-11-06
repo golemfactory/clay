@@ -56,7 +56,7 @@ class GolemSqliteDatabase(peewee.SqliteDatabase):
 
 class Database:
 
-    SCHEMA_VERSION = 22
+    SCHEMA_VERSION = 23
 
     def __init__(self,  # noqa pylint: disable=too-many-arguments
                  db: peewee.Database,

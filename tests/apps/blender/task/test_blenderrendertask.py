@@ -21,14 +21,13 @@ from apps.blender.task.blenderrendertask import (BlenderDefaults,
                                                  BlenderTaskTypeInfo,
                                                  PreviewUpdater,
                                                  logger)
-from apps.core.task.coretask import AcceptClientVerdict
 from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
     RenderingTaskDefinition)
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import ResultType
+from golem.task.taskbase import ResultType, AcceptClientVerdict
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -645,7 +644,7 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
             'name': 'test task',
             'timeout': "0:10:00",
             "subtask_timeout": "0:09:50",
-            "subtasks": 1,
+            "subtasks_count": 1,
             "bid": 1.0,
             "resources": [tempfile.mkstemp('.blend')[1]],
             "options": {
@@ -660,7 +659,7 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
 
     def test_build(self):
         definition = RenderingTaskDefinition()
-        definition.total_subtasks = 1
+        definition.subtasks_count = 1
         definition.options = BlenderRendererOptions()
         builder = BlenderRenderTaskBuilder(
             owner=Node(),

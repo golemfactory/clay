@@ -29,21 +29,21 @@ DEFAULT_PADDING = 4
 
 
 def calculate_subtasks_count_with_frames(
-        total_subtasks: int,
+        subtasks_count: int,
         frames: list) -> int:
     num_frames = len(frames)
     est_f: float
-    if total_subtasks > num_frames:
-        est_f = math.floor(total_subtasks / num_frames) * num_frames
+    if subtasks_count > num_frames:
+        est_f = math.floor(subtasks_count / num_frames) * num_frames
         est = int(est_f)
-        if est != total_subtasks:
+        if est != subtasks_count:
             logger.warning("Too many subtasks for this task. %s "
                            "subtasks will be used", est)
         return est
 
-    est_f = num_frames / math.ceil(num_frames / total_subtasks)
+    est_f = num_frames / math.ceil(num_frames / subtasks_count)
     est = int(math.ceil(est_f))
-    if est != total_subtasks:
+    if est != subtasks_count:
         logger.warning("Too many subtasks for this task. %s "
                        "subtasks will be used.", est)
 
@@ -52,23 +52,23 @@ def calculate_subtasks_count_with_frames(
 
 @rpc_utils.expose('comp.task.subtasks.count')
 def calculate_subtasks_count(
-        total_subtasks: int,
+        subtasks_count: int,
         optimize_total: bool,
         use_frames: bool,
         frames: list) -> int:
     defaults = RendererDefaults()
-    if optimize_total or not total_subtasks:
+    if optimize_total or not subtasks_count:
         if use_frames:
             return len(frames)
         return defaults.default_subtasks
 
     if use_frames:
         return calculate_subtasks_count_with_frames(
-            total_subtasks=total_subtasks,
+            subtasks_count=subtasks_count,
             frames=frames,
         )
 
-    total = total_subtasks
+    total = subtasks_count
     if defaults.min_subtasks <= total <= defaults.max_subtasks:
         return total
     return defaults.default_subtasks
@@ -386,12 +386,13 @@ class FrameRenderingTask(RenderingTask):
         output_file_name = self.output_file
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
-            collector = RenderingTaskCollector(paste=True, width=self.res_x, height=self.res_y)
+            collector = RenderingTaskCollector(width=self.res_x,
+                                               height=self.res_y)
             for file in self.collected_file_names.values():
                 collector.add_img_file(file)
             with handle_image_error(logger), \
                     collector.finalize() as image:
-                image.save(output_file_name, self.output_format)
+                image.save_with_extension(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(os.path.join(self.tmp_dir, output_file_name),
                                                list(self.collected_file_names.values()), "paste")
@@ -403,12 +404,13 @@ class FrameRenderingTask(RenderingTask):
         collected = self.frames_given[frame_key]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
-            collector = RenderingTaskCollector(paste=True, width=self.res_x, height=self.res_y)
+            collector = RenderingTaskCollector(width=self.res_x,
+                                               height=self.res_y)
             for file in collected.values():
                 collector.add_img_file(file)
             with handle_image_error(logger), \
                     collector.finalize() as image:
-                image.save(output_file_name, self.output_format)
+                image.save_with_extension(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(output_file_name, list(collected.values()), "paste")
 
@@ -502,7 +504,7 @@ class FrameRenderingTaskBuilder(RenderingTaskBuilder):
 
     def _calculate_total(self, defaults):
         return calculate_subtasks_count(
-            total_subtasks=self.task_definition.total_subtasks,
+            subtasks_count=self.task_definition.subtasks_count,
             optimize_total=self.task_definition.optimize_total,
             use_frames=self.task_definition.options.use_frames,
             frames=self.task_definition.options.frames,

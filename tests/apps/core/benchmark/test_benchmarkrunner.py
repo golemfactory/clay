@@ -77,6 +77,9 @@ class DummyTask(Task):
     def to_dictionary(self):
         pass
 
+    def accept_client(self):
+        pass
+
 
 class BenchmarkRunnerFixture(TempDirFixture):
     def _success(self):

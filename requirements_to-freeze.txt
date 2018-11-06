@@ -3,6 +3,7 @@ setuptools>=36.0.1,<39.0.0
 setuptools-rust==0.10.2
 appdirs>=1.4
 click>=4.0
+distro
 docker==3.5.0
 netifaces==0.10.4
 peewee<2.11,>=2.8
@@ -47,7 +48,7 @@ token_bucket==0.2.0
 py-cpuinfo==3.3.0
 humanize==0.5.1
 raven
-Golem-Verificator==1.5.3
+Golem-Verificator==1.6.1
 Golem-Messages==2.15.0
 Golem-Smart-Contracts-Interface==1.6.1
 html2text==2018.1.9

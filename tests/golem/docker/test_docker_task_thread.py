@@ -28,6 +28,8 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
         task_server = Mock()
         task_server.config_desc = ClientConfigDescriptor()
         task_server.client.datadir = self.test_dir
+        task_server.benchmark_manager = Mock()
+        task_server.benchmark_manager.benchmarks_needed.return_value = False
         task_server.client.get_node_name.return_value = "test_node"
         task_server.get_task_computer_root.return_value = \
             task_server.client.datadir

@@ -13,6 +13,7 @@ from twisted.internet import defer
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.interface.client.account import Account
 from golem.interface.client.debug import Debug
 from golem.interface.client.environments import Environments
@@ -170,8 +171,8 @@ class TestAccount(unittest.TestCase):
 
 class TestEnvironments(unittest.TestCase):
 
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
+        super().setUp()
 
         environments = [
             {
@@ -196,7 +197,7 @@ class TestEnvironments(unittest.TestCase):
         client.run_benchmark = lambda x: x
         client.get_environments.return_value = environments
 
-        cls.client = client
+        self.client = client
 
     def test_enable(self):
         with client_ctx(Environments, self.client):
@@ -235,6 +236,23 @@ class TestEnvironments(unittest.TestCase):
             assert result_4.data[0] == Environments.table_headers
             assert not result_3.data[1]
             assert not result_4.data[1]
+
+    def test_performance_multiplier(self):
+        with client_ctx(Environments, self.client):
+            Environments().perf_mult()
+        self.client._call.assert_called_once_with('performance.multiplier')
+
+    def test_performance_multiplier_set(self):
+        anInt = fake.random_int(
+            min=MinPerformanceMultiplier.MIN,
+            max=MinPerformanceMultiplier.MAX,
+        )
+        with client_ctx(Environments, self.client):
+            Environments().perf_mult_set(multiplier=anInt)
+        self.client._call.assert_called_once_with(
+            'performance.multiplier.update',
+            anInt,
+        )
 
 
 class TestNetwork(unittest.TestCase):
@@ -473,7 +491,7 @@ class TestTasks(TempDirFixture):
         cls.tasks = [{
             'id': '745c1d0{}'.format(i),
             'time_remaining': i,
-            'subtasks': i + 2,
+            'subtasks_count': i + 2,
             'status': 'waiting',
             'progress': i / 100.0
         } for i in range(1, 6)]
@@ -560,7 +578,7 @@ class TestTasks(TempDirFixture):
         client = self.client
 
         definition = TaskDefinition()
-        definition.task_name = "The greatest task ever"
+        definition.name = "The greatest task ever"
         def_str = json.dumps(definition.to_dict())
 
         with client_ctx(Tasks, client):
@@ -630,7 +648,7 @@ class TestTasks(TempDirFixture):
             assert one_task == {
                 'time_remaining': '0:00:01',
                 'status': 'waiting',
-                'subtasks': 3,
+                'subtasks_count': 3,
                 'id': '745c1d01',
                 'progress': '1.00 %'
             }

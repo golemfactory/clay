@@ -14,7 +14,7 @@ from pydispatch import dispatcher
 from twisted.internet.defer import inlineCallbacks
 
 from apps.appsmanager import AppsManager
-from apps.core.task.coretask import CoreTask, AcceptClientVerdict
+from apps.core.task.coretask import CoreTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.core.common import node_info_str, short_node_id
@@ -31,7 +31,7 @@ from golem.ranking.manager.database_manager import update_requestor_paid_sum, \
     update_requestor_assigned_sum, update_requestor_efficiency
 from golem.task.acl import get_acl
 from golem.task.benchmarkmanager import BenchmarkManager
-from golem.task.taskbase import TaskHeader, Task
+from golem.task.taskbase import TaskHeader, Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
 from golem.task.timer import ProviderIdleTimer
@@ -442,13 +442,8 @@ class TaskServer(
         """My (providers) results were rejected"""
         logger.debug("Subtask %r result rejected", subtask_id)
         self.task_result_sent(subtask_id)
-        task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(
-            subtask_id)
-        if task_id is None:
-            logger.warning("Not my subtask rejected %r", subtask_id)
-            return
 
-        self.decrease_trust_payment(task_id)
+        self.decrease_trust_payment(sender_node_id)
         # self.remove_task_header(task_id)
         # TODO Inform transaction system and task manager about rejected
         # subtask. Issue #2405
@@ -508,16 +503,11 @@ class TaskServer(
                      subtask_id, payment_processed_ts)
         return payment_processed_ts
 
-    def income_listener(self, event='default', subtask_id=None, **_kwargs):
-        task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(
-            subtask_id)
-        if not task_id:
-            return
-
+    def income_listener(self, event='default', node_id=None, **kwargs):
         if event == 'confirmed':
-            self.increase_trust_payment(task_id)
+            self.increase_trust_payment(node_id, kwargs['amount'])
         elif event == 'overdue_single':
-            self.decrease_trust_payment(task_id)
+            self.decrease_trust_payment(node_id)
 
     def started_subtask_listener(self, event='default', subtask_id=None,
                                  **_kwargs):
@@ -576,25 +566,11 @@ class TaskServer(
         self.client.p2pservice.remove_task(task_id)
         self.client.funds_locker.remove_task(task_id)
 
-    def increase_trust_payment(self, task_id):
-        keeper = self.task_manager.comp_task_keeper
-
-        node_id = keeper.get_node_for_task_id(task_id)
+    def increase_trust_payment(self, node_id: str, amount: int):
         Trust.PAYMENT.increase(node_id, self.max_trust)
-
-        try:
-            header = keeper.get_task_header(task_id).fixed_header
-        except AttributeError:
-            logger.error("Increase trust payment: unknown task header: %s",
-                         task_id)
-            return
-
-        amount = compute_subtask_value(header.max_price, header.subtask_timeout)
         update_requestor_paid_sum(node_id, amount)
 
-    def decrease_trust_payment(self, task_id):
-        node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
-            task_id)
+    def decrease_trust_payment(self, node_id: str):
         Trust.PAYMENT.decrease(node_id, self.max_trust)
 
     def reject_result(self, subtask_id, key_id):
