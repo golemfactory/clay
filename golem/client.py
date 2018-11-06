@@ -1159,7 +1159,7 @@ class Client(HardwarePresetsMixin):
         return self.task_server.task_manager.get_task_preview(task_id,
                                                               single=single)
 
-    def get_task_stats(self) -> Dict[str, int]:
+    def get_task_stats(self) -> Dict[str, Any]:
         return {
             'provider_state': self.get_provider_status(),
             'in_network': self.get_task_count(),
