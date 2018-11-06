@@ -26,6 +26,7 @@ from golem.client import Client, ClientTaskComputerEventListener, \
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
+from golem.core.variables import CONCENT_CHOICES
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -37,9 +38,6 @@ from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
 from golem.tools import testwithreactor
 from golem.tools.assertlogs import LogTestCase
-
-from .ethereum.test_fundslocker import make_mock_task as \
-    make_fundslocker_mock_task
 
 random = Random(__name__)
 
@@ -324,15 +322,54 @@ class TestClient(TestClientBase):
         self.client.clean_old_tasks()
         self.client.delete_task.assert_called_once_with('old_task')
 
+    def test_restore_locks(self, *_):
+        tm = Mock()
+        self.client.task_server = Mock(task_manager=tm)
+        self.client.funds_locker = Mock()
+        tm.tasks_states = {
+            "t1": Mock(status=Mock(is_completed=Mock(return_value=True))),
+            "t2": Mock(
+                status=Mock(is_completed=Mock(return_value=False)),
+                subtask_states={
+                    "sub1": Mock(
+                        status=Mock(is_finished=Mock(return_value=True)),
+                    ),
+                    "sub2": Mock(
+                        status=Mock(is_finished=Mock(return_value=False)),
+                    ),
+                },
+            ),
+        }
+        subtask_price = 123
+        deadline = 23
+        tm.tasks = {
+            "t2": Mock(
+                subtask_price=subtask_price,
+                header=Mock(deadline=deadline),
+            ),
+        }
+        self.client._restore_locks()
+        self.client.funds_locker.lock_funds.assert_called_once_with(
+            "t2",
+            subtask_price,
+            1,
+            deadline,
+        )
 
 class TestClientRestartSubtasks(TestClientBase):
     def setUp(self):
         super().setUp()
         self.ts = self.client.transaction_system
-        self.client.funds_locker.persist = False
 
-        self.task = make_fundslocker_mock_task()
-        self.client.funds_locker.lock_funds(self.task)
+        self.task_id = "test_task_id"
+        self.subtask_price = 100
+
+        self.client.funds_locker.lock_funds(
+            self.task_id,
+            self.subtask_price,
+            10,
+            time.time(),
+        )
 
         self.client.task_server = Mock()
 
@@ -348,18 +385,18 @@ class TestClientRestartSubtasks(TestClientBase):
         frame = 10
 
         # when
-        self.client.restart_frame_subtasks(self.task.header.task_id, frame)
+        self.client.restart_frame_subtasks(self.task_id, frame)
 
         # then
         self.client.task_server.task_manager.restart_frame_subtasks.\
-            assert_called_with(self.task.header.task_id, frame)
+            assert_called_with(self.task_id, frame)
         self.ts.lock_funds_for_payments.assert_called_with(
-            self.task.subtask_price, len(frame_subtasks))
+            self.subtask_price, len(frame_subtasks))
 
     def test_restart_subtask(self):
         # given
         self.client.task_server.task_manager.get_task_id.return_value = \
-            self.task.header.task_id
+            self.task_id
 
         # when
         self.client.restart_subtask('subtask_id')
@@ -368,7 +405,7 @@ class TestClientRestartSubtasks(TestClientBase):
         self.client.task_server.task_manager.restart_subtask.\
             assert_called_with('subtask_id')
         self.ts.lock_funds_for_payments.assert_called_with(
-            self.task.subtask_price, 1)
+            self.subtask_price, 1)
 
 
 class TestDoWorkService(testwithreactor.TestWithReactor):
@@ -1100,8 +1137,17 @@ def test_task_computer_event_listener():
 
 
 class TestDepositBalance(TestClientBase):
+    def test_no_concent(self):
+        self.client.concent_service.variant = CONCENT_CHOICES['disabled']
+        self.assertFalse(self.client.concent_service.enabled)
+        self.client.transaction_system.concent_timelock.side_effect\
+            = Exception("Let's pretend there's no such contract")
+        self.assertIsNone(sync_wait(self.client.get_deposit_balance()))
+
     @freeze_time("2018-01-01 01:00:00")
     def test_unlocking(self, *_):
+        self.client.concent_service.variant = CONCENT_CHOICES['test']
+        self.assertTrue(self.client.concent_service.enabled)
         self.client.transaction_system.concent_timelock\
             .return_value = int(time.time())
         with freeze_time("2018-01-01 00:59:59"):
@@ -1110,6 +1156,8 @@ class TestDepositBalance(TestClientBase):
 
     @freeze_time("2018-01-01 01:00:00")
     def test_unlocked(self, *_):
+        self.client.concent_service.variant = CONCENT_CHOICES['test']
+        self.assertTrue(self.client.concent_service.enabled)
         self.client.transaction_system.concent_timelock\
             .return_value = int(time.time())
         with freeze_time("2018-01-01 01:00:01"):
@@ -1117,6 +1165,8 @@ class TestDepositBalance(TestClientBase):
         self.assertEqual(result['status'], 'unlocked')
 
     def test_locked(self, *_):
+        self.client.concent_service.variant = CONCENT_CHOICES['test']
+        self.assertTrue(self.client.concent_service.enabled)
         self.client.transaction_system.concent_timelock\
             .return_value = 0
         result = sync_wait(self.client.get_deposit_balance())

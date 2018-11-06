@@ -15,7 +15,7 @@ class TaskState(object):
         self.payment_booked = False
         self.payment_settled = False
         self.outputs = []
-        self.total_subtasks = 0
+        self.subtasks_count = 0
         self.subtask_states = {}
         self.resource_hash = None
         self.package_hash = None
@@ -125,6 +125,9 @@ class SubtaskStatus(Enum):
 
     def is_active(self) -> bool:
         return self in [self.starting, self.downloading, self.verifying]
+
+    def is_finished(self) -> bool:
+        return self == self.finished
 
 
 class TaskTestStatus(Enum):

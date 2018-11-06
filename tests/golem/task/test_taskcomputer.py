@@ -17,6 +17,7 @@ from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
 from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
+from golem.tools.os_info import OSInfo
 
 
 @ci_skip
@@ -382,8 +383,14 @@ class TestTaskMonitor(DatabaseFixture):
         client_mock.cliid = 'CLIID'
         client_mock.sessid = 'SESSID'
         client_mock.config_desc = ClientConfigDescriptor()
+        os_info = OSInfo(
+            'linux',
+            'Linux',
+            '1',
+            '1.2.3'
+        )
         monitor = SystemMonitor(  # noqa pylint: disable=unused-variable
-            NodeMetadataModel(client_mock, "hackix", "3.1337"),
+            NodeMetadataModel(client_mock, os_info, "3.1337"),
             MONITOR_CONFIG)
         task_server = mock.MagicMock()
         task_server.config_desc = ClientConfigDescriptor()

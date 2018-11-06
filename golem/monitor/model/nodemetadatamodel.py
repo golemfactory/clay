@@ -5,16 +5,17 @@ from .modelbase import BasicModel
 
 class NodeMetadataModel(BasicModel):
 
-    def __init__(self, client, os, ver):
+    def __init__(self, client, os_info, ver):
         super(NodeMetadataModel, self).__init__(
             "NodeMetadata",
             client.get_key_id(),
             client.session_id)
 
-        self.os = os
+        self.os_info = defaultserializer.serialize("OSInfo", os_info)
+        self.settings = defaultserializer.serialize(
+            "ClientConfigDescriptor",
+            client.config_desc)
         self.version = ver
-        self.settings = defaultserializer.serialize("ClientConfigDescriptor",
-                                                    client.config_desc)
         self.net = ACTIVE_NET
 
 

@@ -16,7 +16,7 @@ from twisted.internet.defer import Deferred
 from twisted.internet.threads import deferToThread
 
 from apps.appsmanager import AppsManager
-from apps.core.task.coretask import CoreTask, AcceptClientVerdict
+from apps.core.task.coretask import CoreTask
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
@@ -28,7 +28,8 @@ from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener, Task, TaskHeader, TaskPurpose
+from golem.task.taskbase import TaskEventListener, Task, TaskHeader,\
+    TaskPurpose, AcceptClientVerdict
 from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
@@ -189,7 +190,7 @@ class TaskManager(TaskEventListener):
         ts = TaskState()
         ts.status = TaskStatus.notStarted
         ts.outputs = task.get_output_names()
-        ts.total_subtasks = task.get_total_tasks()
+        ts.subtasks_count = task.get_total_tasks()
         ts.time_started = time.time()
         ts.estimated_cost = task.price
         ts.estimated_fee = estimated_fee
@@ -1058,11 +1059,11 @@ class TaskManager(TaskEventListener):
         task = self.tasks[task_id]
         task_type_name = task.task_definition.task_type.lower()
         task_type = self.task_types[task_type_name]
-        total_subtasks = task.get_total_tasks()
+        subtasks_count = task.get_total_tasks()
 
         return {
             to_unicode(subtask_id): task_type.get_task_border(
-                subtask, task.task_definition, total_subtasks, as_path=True
+                subtask, task.task_definition, subtasks_count, as_path=True
             ) for subtask_id, subtask in task.get_subtasks(part).items()
         }
 

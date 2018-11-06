@@ -291,6 +291,8 @@ def add(msg: message.base.Message,
             msg,
         )
         return
+    if msg.sig is None:
+        raise RuntimeError("Message unsigned")
     try:
         model = message_to_model(
             msg=msg,

@@ -1,28 +1,36 @@
+# pylint: disable=too-many-lines
+
+import copy
 import datetime
 import enum
 import functools
 import logging
 import os
 import time
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
 from golem_messages import message
 from golem_messages import exceptions as msg_exceptions
 
+import golem
 from golem.core import common
 from golem.core.keysauth import KeysAuth
 from golem.core.simpleserializer import CBORSerializer
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
-from golem.marketplace.offerpool import OfferPool
+from golem.marketplace import Offer, OfferPool
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
+from golem.ranking.manager.database_manager import (
+    get_provider_efficacy,
+    get_provider_efficiency,
+)
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
@@ -76,6 +84,20 @@ def get_task_message(message_class_name, task_id, subtask_id, log_prefix=None):
             task_id,
             subtask_id,
         )
+    return msg
+
+
+def copy_and_sign(msg: message.base.Message, private_key) \
+        -> message.base.Message:
+    """Returns signed shallow copy of message
+
+    Copy is made only if original is unsigned.
+    """
+    if msg.sig is None:
+        # If message is delayed in msgs_to_send then will
+        # overcome this by making a signed copy
+        msg = copy.copy(msg)
+        msg.sign_message(private_key)
     return msg
 
 
@@ -215,6 +237,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task_to_compute = get_task_message(
                 'TaskToCompute', task_id, subtask_id)
 
+            # FIXME Remove in 0.20
             if not task_to_compute.sig:
                 task_to_compute.sign_message(self.my_private_key)
 
@@ -322,13 +345,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             options=client_options.__dict__,
         )
 
+        self.send(report_computed_task)
+        report_computed_task = copy_and_sign(
+            msg=report_computed_task,
+            private_key=self.my_private_key,
+        )
         history.add(
             msg=report_computed_task,
             node_id=self.key_id,
             local_role=Actor.Provider,
             remote_role=Actor.Requestor,
         )
-        self.send(report_computed_task)
 
         # if the Concent is not available in the context of this subtask
         # we can only assume that `ReportComputedTask` above reaches
@@ -406,6 +433,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             reason=reason,
         )
         self.send(response_msg)
+        response_msg = copy_and_sign(
+            msg=response_msg,
+            private_key=self.my_private_key,
+        )
         history.add(
             response_msg,
             node_id=report_computed_task.task_to_compute.provider_id,
@@ -418,6 +449,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.send(
             message.base.Hello(
                 client_key_id=self.task_server.get_key_id(),
+                client_ver=golem.__version__,
                 rand_val=self.rand_val,
                 proto_id=variables.PROTOCOL_CONST.ID,
             ),
@@ -563,7 +595,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task = self.task_manager.tasks[ctd['task_id']]
             task_state = self.task_manager.tasks_states[ctd['task_id']]
             price = taskkeeper.compute_subtask_value(
-                task.header.max_price,
+                msg.price,
                 task.header.subtask_timeout,
             )
             ttc = message.tasks.TaskToCompute(
@@ -583,15 +615,22 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 subtask_id=ttc.subtask_id,
                 price=price,
             )
+            self.send(ttc)
             history.add(
                 msg=ttc,
                 node_id=self.key_id,
                 local_role=Actor.Requestor,
                 remote_role=Actor.Provider,
             )
-            self.send(ttc)
 
-        OfferPool.add(msg.task_id, msg).addCallback(_offer_chosen)
+        task = self.task_manager.tasks[msg.task_id]
+        offer = Offer(
+            scaled_price=task.header.max_price / msg.price,
+            reputation=get_provider_efficiency(self.key_id),
+            quality=get_provider_efficacy(self.key_id).vector,
+        )
+
+        OfferPool.add(msg.task_id, offer).addCallback(_offer_chosen)
 
     @handle_attr_error_with_task_computer
     @history.provider_history

@@ -13,7 +13,7 @@ from pydispatch import dispatcher
 from twisted.internet.defer import fail
 
 from apps.appsmanager import AppsManager
-from apps.core.task.coretask import CoreTask, AcceptClientVerdict
+from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import TaskDefinition
 from apps.blender.task.blenderrendertask import BlenderRenderTask
 from golem import testutils
@@ -22,7 +22,7 @@ from golem.core.keysauth import KeysAuth
 from golem.network.p2p.node import Node
 from golem.resource import dirmanager
 from golem.task.taskbase import Task, TaskHeader, \
-    TaskEventListener, ResultType
+    TaskEventListener, ResultType, AcceptClientVerdict
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, \
@@ -49,7 +49,7 @@ class TaskMock(Task):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.task_definition = Mock()
-        self.task_definition.full_task_timeout = 10
+        self.task_definition.timeout = 10
         self.tmp_dir = None
 
     def query_extra_data(self, *args, **kwargs):
@@ -1037,7 +1037,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             definition.subtask_timeout = 3671
             definition.subtask_status = [SubtaskStatus.failure,
                                          SubtaskStatus.finished][i % 2]
-            definition.full_task_timeout = 3671 * 10
+            definition.timeout = 3671 * 10
             definition.max_price = 1 * 10 ** 18
             definition.resolution = [1920, 1080]
             definition.resources = [str(uuid.uuid4()) for _ in range(5)]

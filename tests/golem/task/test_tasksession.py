@@ -18,12 +18,14 @@ from golem_messages.utils import encode_hex
 
 from twisted.internet.defer import Deferred
 
+import golem
 from golem import model, testutils
 from golem.core.databuffer import DataBuffer
 from golem.core.keysauth import KeysAuth
 from golem.core.variables import PROTOCOL_CONST
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
+from golem.network.hyperdrive import client as hyperdrive_client
 from golem.model import Actor
 from golem.network import history
 from golem.network.p2p.node import Node
@@ -78,6 +80,8 @@ def _offerpool_add(*_):
 
 # pylint:disable=no-member,too-many-instance-attributes
 @patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
+@patch('golem.task.tasksession.get_provider_efficiency', Mock())
+@patch('golem.task.tasksession.get_provider_efficacy', Mock())
 class TaskSessionTaskToComputeTest(TestCase):
     def setUp(self):
         self.requestor_keys = cryptography.ECCx(None)
@@ -109,6 +113,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts.task_server.config_desc.max_price = 100
         ts.task_server.keys_auth._private_key = \
             self.requestor_keys.raw_privkey
+        ts.conn.send_message.side_effect = lambda msg: msg._fake_sign()
         return ts
 
     def _get_task_parameters(self):
@@ -123,10 +128,12 @@ class TaskSessionTaskToComputeTest(TestCase):
         }
 
     def _get_wtct(self):
-        return message.tasks.WantToComputeTask(
+        msg = message.tasks.WantToComputeTask(
             concent_enabled=self.use_concent,
             **self._get_task_parameters()
         )
+        msg.sign_message(self.provider_keys.raw_privkey)  # noqa pylint: disable=no-member
+        return msg
 
     def _fake_add_task(self):
         task_header = TaskHeader(
@@ -239,6 +246,8 @@ class TaskSessionTaskToComputeTest(TestCase):
 
         ts2.task_manager.get_next_subtask.return_value = ctd
         ts2.task_manager.should_wait_for_node.return_value = False
+        ts2.conn.send_message.side_effect = \
+            lambda msg: msg.sign_message(self.requestor_keys.raw_privkey)
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.tasks.TaskToCompute)
@@ -283,6 +292,15 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         random.seed()
         self.task_session = TaskSession(Mock())
         self.task_session.key_id = 'unittest_key_id'
+        self.task_session.task_server.get_share_options.return_value = \
+            hyperdrive_client.HyperdriveClientOptions('1', 1.0)
+        keys_auth = KeysAuth(
+            datadir=self.path,
+            difficulty=4,
+            private_key_name='prv',
+            password='',
+        )
+        self.task_session.task_server.keys_auth = keys_auth
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_hello(self, send_mock):
@@ -295,7 +313,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             ['node_name', None],
             ['node_info', None],
             ['port', None],
-            ['client_ver', None],
+            ['client_ver', golem.__version__],
             ['client_key_id', key_id],
             ['solve_challenge', None],
             ['challenge', None],
@@ -342,7 +360,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertEqual(rct.secret, wtr.result_secret)
 
         add_mock.assert_called_once_with(
-            msg=rct,
+            msg=ANY,
             node_id=ts.key_id,
             local_role=Actor.Provider,
             remote_role=Actor.Requestor,
@@ -464,10 +482,18 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
     @patch('golem.task.tasksession.get_task_message')
     def test_result_received(self, get_msg_mock):
         conn = Mock()
+        conn.send_message.side_effect = lambda msg: msg._fake_sign()
         ts = TaskSession(conn)
         ts.task_server = Mock()
         ts.task_manager = Mock()
         ts.task_manager.verify_subtask.return_value = True
+        keys_auth = KeysAuth(
+            datadir=self.path,
+            difficulty=4,
+            private_key_name='prv',
+            password='',
+        )
+        ts.task_server.keys_auth = keys_auth
         subtask_id = "xxyyzz"
         get_msg_mock.return_value = msg_factories \
             .tasks.ReportComputedTaskFactory(
@@ -538,6 +564,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         srr = msg_factories.tasks.SubtaskResultsRejectedFactory(
             report_computed_task__task_to_compute__concent_enabled=concent
         )
+        srr._fake_sign()
         ctk = self.task_session.task_manager.comp_task_keeper
         ctk.get_node_for_task_id.return_value = key1
         self.task_session.key_id = key2
@@ -612,7 +639,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         # msg.ctd is None -> failure
         msg = msg_factories.tasks.TaskToComputeFactory(compute_task_def=None)
-        msg.want_to_compute_task.sign_message(keys.raw_privkey)  # pylint: disable=no-member
+        msg.want_to_compute_task.sign_message(keys.raw_privkey)  # noqa pylint: disable=no-member
+        msg._fake_sign()
         ts._react_to_task_to_compute(msg)
         ts.task_server.add_task_session.assert_not_called()
         ts.task_computer.task_given.assert_not_called()
@@ -639,7 +667,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             )
             msg.want_to_compute_task.provider_public_key = encode_hex(
                 keys.raw_pubkey)
-            msg.want_to_compute_task.sign_message(keys.raw_privkey)  # pylint: disable=no-member
+            msg.want_to_compute_task.sign_message(keys.raw_privkey)  # noqa pylint: disable=no-member
+            msg._fake_sign()
             ts.task_server.task_keeper.task_headers = {
                 msg.task_id: MagicMock(),
             }
@@ -807,9 +836,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         msg_ack = message.tasks.AckReportComputedTask(
             report_computed_task=rct
         )
+        msg_ack._fake_sign()
         msg_rej = message.tasks.RejectReportComputedTask(
             attached_task_to_compute=ttc
         )
+        msg_rej._fake_sign()
 
         # Subtask is not known
         session._react_to_ack_report_computed_task(msg_ack)
@@ -901,6 +932,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         assert task_keeper.active_tasks["abc"].requests == 1
         self.task_session.task_manager.comp_task_keeper = task_keeper
         msg_cat = message.tasks.CannotAssignTask(task_id="abc")
+        msg_cat._fake_sign()
         self.task_session.key_id = key_id
         self.task_session._react_to_cannot_assign_task(msg_cat)
         assert task_keeper.active_tasks["abc"].requests == expected_requests
@@ -967,6 +999,20 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
         testutils.TempDirFixture.setUp(self)
         history.MessageHistoryService()
         self.ts = TaskSession(Mock())
+        self.ts.conn.send_message.side_effect = \
+            lambda msg: msg._fake_sign()
+        self.ts.task_server.get_node_name.return_value = "Zażółć gęślą jaźń"
+        self.ts.task_server.get_key_id.return_value = "key_id"
+        self.ts.task_server.get_share_options.return_value = \
+            hyperdrive_client.HyperdriveClientOptions('1', 1.0)
+
+        keys_auth = KeysAuth(
+            datadir=self.path,
+            difficulty=4,
+            private_key_name='prv',
+            password='',
+        )
+        self.ts.task_server.keys_auth = keys_auth
         self.n = p2p_factories.Node()
         self.task_id = str(uuid.uuid4())
         self.subtask_id = str(uuid.uuid4())
@@ -980,6 +1026,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
     @staticmethod
     def _mock_task_to_compute(task_id, subtask_id, node_id, **kwargs):
         task_to_compute = message.tasks.TaskToCompute(**kwargs)
+        task_to_compute._fake_sign()
         nmsg_dict = dict(
             task=task_id,
             subtask=subtask_id,
@@ -1201,7 +1248,11 @@ class SubtaskResultsAcceptedTest(TestCase):
         )
 
 
-class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
+class ReportComputedTaskTest(
+        ConcentMessageMixin,
+        LogTestCase,
+        testutils.TempDirFixture,
+):
 
     @staticmethod
     def _create_pull_package(result):
@@ -1216,7 +1267,14 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
         return pull_package
 
     def setUp(self):
-        self.ecc = cryptography.ECCx(None)
+        super().setUp()
+        keys_auth = KeysAuth(
+            datadir=self.path,
+            difficulty=4,
+            private_key_name='prv',
+            password='',
+        )
+        self.ecc = keys_auth.ecc
         self.node_id = encode_hex(self.ecc.raw_pubkey)
         self.task_id = idgenerator.generate_id_from_hex(self.node_id)
         self.subtask_id = idgenerator.generate_id_from_hex(self.node_id)
@@ -1239,7 +1297,7 @@ class ReportComputedTaskTest(ConcentMessageMixin, LogTestCase):
         ts.task_server.task_keeper.task_headers = {}
         ecc = Mock()
         ecc.get_privkey.return_value = os.urandom(32)
-        ts.task_server.keys_auth.ecc = ecc
+        ts.task_server.keys_auth = keys_auth
         self.ts = ts
 
         gsam = patch('golem.network.concent.helpers.history'
