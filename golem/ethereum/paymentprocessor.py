@@ -145,7 +145,7 @@ class PaymentProcessor:
                     'Insufficient GNTB balance.'
                     ' value=%(value).6f, subtask_id=%(subtask)s',
                     {
-                        'value': p.value,
+                        'value': p.value / denoms.ether,
                         'subtask': p.subtask,
                     },
                 )
