@@ -36,23 +36,6 @@ def apply(obj, *initial_data, **kwargs):
         setattr(obj, key, kwargs[key])
 
 
-class FireWorksTaskDefinition(TaskDefinition):
-    def __init__(self):
-        super().__init__()
-        self.task_type = 'Fireworks'
-
-
-class FireworksTaskTypeInfo(TaskTypeInfo):
-    def __init__(self):
-        super().__init__(
-            "Fireworks",
-            FireWorksTaskDefinition,
-            TaskDefaults(),
-            Options,
-            FireworksTaskBuilder
-        )
-
-
 class BasicTaskBuilder(TaskBuilder):
     def __init__(self,
                  owner: Node,
@@ -81,6 +64,77 @@ class BasicTaskBuilder(TaskBuilder):
         td.max_price = \
             int(decimal.Decimal(dictionary['bid']) * denoms.ether)
         return td
+
+
+class ExtraDataBuilder(object):
+    def __init__(self, header, subtask_id, subtask_data,
+                    src_code, short_desc, performance, docker_images=None):
+        self.header = header
+        self.subtask_id = subtask_id
+        self.subtask_data = subtask_data
+        self.src_code = src_code
+        self.short_desc = short_desc
+        self.performance = performance
+        self.docker_images = docker_images
+
+    def get_result(self):
+        ctd = golem_messages.message.ComputeTaskDef()
+        ctd['task_id'] = self.header.task_id
+        ctd['subtask_id'] = self.subtask_id
+        ctd['extra_data'] = self.subtask_data
+        ctd['short_description'] = self.short_desc
+        ctd['src_code'] = self.src_code
+        ctd['performance'] = self.performance
+        if self.docker_images:
+            ctd['docker_images'] = [di.to_dict() for di in self.docker_images]
+        ctd['deadline'] = min(timeout_to_deadline(self.header.subtask_timeout),
+                            self.header.deadline)
+        return Task.ExtraData(ctd=ctd)
+
+
+class DockerTask(Task):
+    ENVIRONMENT_CLASS=DockerEnvironment
+
+    def __init__(self,
+                 owner: Node,
+                 task_definition: TaskDefinition,
+                 dir_manager: DirManager) -> None:
+
+        self.environment = self.ENVIRONMENT_CLASS()
+
+        if task_definition.docker_images:
+            self.docker_images = task_definition.docker_images
+        elif isinstance(self.environment, DockerEnvironment):
+            self.docker_images = self.environment.docker_images
+        else:
+            self.docker_images = None
+
+        th = TaskHeader(
+            task_id=task_definition.task_id,
+            environment=self.environment.get_id(),
+            task_owner=owner,
+            deadline=timeout_to_deadline(task_definition.timeout),
+            subtask_timeout=task_definition.subtask_timeout,
+            subtasks_count=task_definition.subtasks_count,
+            resource_size=1024,
+            estimated_memory=task_definition.estimated_memory,
+            max_price=task_definition.max_price,
+            concent_enabled=task_definition.concent_enabled,
+        )
+        with open(self.environment.main_program_file, 'r') as script_file:
+            src_code = script_file.read()
+        super().__init__(th, src_code, task_definition)
+
+
+class FireworksTaskTypeInfo(TaskTypeInfo):
+    def __init__(self):
+        super().__init__(
+            "Fireworks",
+            TaskDefinition,
+            TaskDefaults(),
+            Options,
+            FireworksTaskBuilder
+        )
 
 
 class FireworksTaskBuilder(BasicTaskBuilder):
@@ -127,66 +181,6 @@ class FireworksBenchmarkTaskBuilder(FireworksTaskBuilder):
                              Workflow.from_file(firework_bench_path))
 
 
-class DockerTask(Task):
-    ENVIRONMENT_CLASS=DockerEnvironment
-
-    def __init__(self,
-                 owner: Node,
-                 task_definition: TaskDefinition,
-                 dir_manager: DirManager) -> None:
-
-        self.environment = self.ENVIRONMENT_CLASS()
-
-        if task_definition.docker_images:
-            self.docker_images = task_definition.docker_images
-        elif isinstance(self.environment, DockerEnvironment):
-            self.docker_images = self.environment.docker_images
-        else:
-            self.docker_images = None
-
-        th = TaskHeader(
-            task_id=task_definition.task_id,
-            environment=self.environment.get_id(),
-            task_owner=owner,
-            deadline=timeout_to_deadline(task_definition.timeout),
-            subtask_timeout=task_definition.subtask_timeout,
-            subtasks_count=task_definition.subtasks_count,
-            resource_size=1024,
-            estimated_memory=task_definition.estimated_memory,
-            max_price=task_definition.max_price,
-            concent_enabled=task_definition.concent_enabled,
-        )
-        with open(self.environment.main_program_file, 'r') as script_file:
-            src_code = script_file.read()
-        super().__init__(th, src_code, task_definition)
-
-
-class ExtraDataBuilder(object):
-    def __init__(self, header, subtask_id, subtask_data,
-                    src_code, short_desc, performance, docker_images=None):
-        self.header = header
-        self.subtask_id = subtask_id
-        self.subtask_data = subtask_data
-        self.src_code = src_code
-        self.short_desc = short_desc
-        self.performance = performance
-        self.docker_images = docker_images
-
-    def get_result(self):
-        ctd = golem_messages.message.ComputeTaskDef()
-        ctd['task_id'] = self.header.task_id
-        ctd['subtask_id'] = self.subtask_id
-        ctd['extra_data'] = self.subtask_data
-        ctd['short_description'] = self.short_desc
-        ctd['src_code'] = self.src_code
-        ctd['performance'] = self.performance
-        if self.docker_images:
-            ctd['docker_images'] = [di.to_dict() for di in self.docker_images]
-        ctd['deadline'] = min(timeout_to_deadline(self.header.subtask_timeout),
-                            self.header.deadline)
-        return Task.ExtraData(ctd=ctd)
-
-
 class FireworksTask(DockerTask):
     ENVIRONMENT_CLASS = FireworksTaskEnvironment
 
@@ -209,7 +203,8 @@ class FireworksTask(DockerTask):
 
         self.launchpad.add_wf(self.workflow)
 
-        self._put_resources_to_db(task_definition.resources)
+        if task_definition.resources:
+            self._put_resources_to_db(task_definition.resources)
         # links and parent_links are Firework specific structures
         # they are used here to efficiently walk through workflow
         # dependencies and allow submitting subtasks in correct order
