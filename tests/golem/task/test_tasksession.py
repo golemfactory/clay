@@ -1201,6 +1201,7 @@ class SubtaskResultsAcceptedTest(TestCase):
             self.requestor_keys.raw_privkey
         self.task_server.keys_auth.public_key = \
             self.requestor_keys.raw_pubkey
+        self.task_server.accept_result.return_value = 11111
 
         def computed_task_received(*args):
             args[3]()
