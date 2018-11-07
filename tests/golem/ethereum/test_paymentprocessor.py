@@ -232,18 +232,6 @@ class PaymentProcessorInternalTest(DatabaseFixture):
             self.pp.add(p)
         self.assertEqual(ts, p.processed_ts)
 
-    def test_funds_needed(self):
-        payee1 = urandom(20)
-        payee2 = urandom(20)
-        self.pp._awaiting = [
-            Payment.create(subtask=uuid.uuid4(), payee=payee1, value=1),
-            Payment.create(subtask=uuid.uuid4(), payee=payee1, value=1),
-            Payment.create(subtask=uuid.uuid4(), payee=payee2, value=2),
-        ]
-        result = self.pp.funds_needed
-        self.assertEqual(result.GNT, 4)
-        self.assertEqual(result.ETH, 12600)
-
 
 def make_awaiting_payment(value=None, ts=None):
     p = mock.Mock()

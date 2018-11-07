@@ -344,11 +344,6 @@ class TransactionSystem(LoopingCallService):
             raise Exception('Start was not called')
         return self._gntb_locked + self._payment_processor.reserved_gntb
 
-    def get_funds_needed(self) -> dict:
-        if not self._payment_processor:
-            raise Exception('Start was not called')
-        return self._payment_processor.funds_needed._asdict()
-
     def get_balance(self) -> Dict[str, Any]:
         if not self._sci:
             raise Exception('Start was not called')

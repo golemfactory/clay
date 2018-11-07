@@ -3,10 +3,7 @@ import logging
 import time
 
 from collections import defaultdict
-from typing import (
-    NamedTuple,
-    List,
-)
+from typing import List
 from sortedcontainers import SortedListWithKey
 from eth_utils import encode_hex
 from ethereum.utils import denoms
@@ -20,10 +17,6 @@ log = logging.getLogger(__name__)
 
 # We reserve 30 minutes for the payment to go through
 PAYMENT_MAX_DELAY = PAYMENT_DEADLINE - 30 * 60
-FundsNeeded = NamedTuple(
-    "FundsNeeded",
-    [("GNT", int), ("ETH", int), ],
-)
 
 
 def get_timestamp() -> int:
@@ -226,17 +219,3 @@ class PaymentProcessor:
         )
 
         return True
-
-    @property
-    def funds_needed(self) -> FundsNeeded:
-        """Returns total GNT and ETH needed to push out all awaiting payments"""
-        total_gnt = 0
-        payees = set()
-        for payment in self._awaiting:
-            payees.add(payment.payee)
-            total_gnt += payment.value
-        gas_price = self._sci.get_current_gas_price()
-        gas = len(payees) * self._sci.GAS_PER_PAYMENT + \
-            self._sci.GAS_BATCH_PAYMENT_BASE
-        gas_cost = gas * gas_price
-        return FundsNeeded(GNT=total_gnt, ETH=gas_cost)

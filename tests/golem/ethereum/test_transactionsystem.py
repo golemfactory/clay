@@ -517,20 +517,6 @@ class ConcentDepositTest(TransactionSystemBase):
             self.assertEqual(getattr(dpayment, field), value)
 
 
-class FundsNeededTest(TransactionSystemBase):
-    def test_no_payment_processor(self):
-        del self.ets._payment_processor
-        with self.assertRaises(Exception, msg='Start was not called'):
-            self.ets.get_funds_needed()
-
-    def test_basic(self):
-        return_value = object()
-        self.ets._payment_processor = Mock(
-            funds_needed=Mock(_asdict=Mock(return_value=return_value)),
-        )
-        self.assertIs(self.ets.get_funds_needed(), return_value)
-
-
 class FaucetTest(TestCase):
     @patch('requests.get')
     def test_error_code(self, get):
