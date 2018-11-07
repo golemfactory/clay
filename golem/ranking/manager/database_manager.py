@@ -136,7 +136,7 @@ def update_requestor_efficiency(node_id: str,
         rank.save()
 
 
-def update_requestor_assigned_sum(node_id: str, amount: float) -> None:
+def update_requestor_assigned_sum(node_id: str, amount: int) -> None:
 
     with db.transaction():
         rank, _ = LocalRank.get_or_create(node_id=node_id)
@@ -144,7 +144,7 @@ def update_requestor_assigned_sum(node_id: str, amount: float) -> None:
         rank.save()
 
 
-def update_requestor_paid_sum(node_id: str, amount: float) -> None:
+def update_requestor_paid_sum(node_id: str, amount: int) -> None:
 
     with db.transaction():
         rank, _ = LocalRank.get_or_create(node_id=node_id)
