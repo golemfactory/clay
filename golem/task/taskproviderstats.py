@@ -7,7 +7,7 @@ from golem.core.statskeeper import IntStatsKeeper
 from golem.task.timer import ProviderTTCDelayTimers
 
 
-class ProviderTaskStats:
+class ProviderStats:
 
     def __init__(self, **kwargs) -> None:
         # WantToComputeTask count
@@ -27,10 +27,10 @@ class ProviderTaskStats:
                 setattr(self, key, value)
 
 
-class ProviderTaskStatsManager:
+class ProviderStatsManager:
 
     def __init__(self) -> None:
-        self.keeper = IntStatsKeeper(ProviderTaskStats)
+        self.keeper = IntStatsKeeper(ProviderStats)
 
         dispatcher.connect(self._on_income,
                            signal="golem.income")
