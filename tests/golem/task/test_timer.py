@@ -42,6 +42,22 @@ class TestIdleTimer(unittest.TestCase):
 
         assert timer.last_comp_finished == finished + 5.
 
+    @freeze_time("2018-01-01 00:00:00", as_arg=True)
+    def test_thirst_decrease(frozen_time, _):
+        timer = IdleTimer()
+        thirst = timer.thirst
+        frozen_time.tick(timedelta(seconds=5))
+        assert thirst > timer.thirst
+
+    @freeze_time("2018-01-01 00:00:00", as_arg=True)
+    def test_thirst_increase(frozen_time, _):
+        timer = IdleTimer()
+        thirst = timer.thirst
+        timer.comp_started()
+        frozen_time.tick(timedelta(seconds=5))
+        timer.comp_finished()
+        assert thirst < timer.thirst
+
 
 class TestComputeTimers(unittest.TestCase):
 

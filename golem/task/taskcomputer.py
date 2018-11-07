@@ -154,9 +154,6 @@ class TaskComputer(object):
         if task_thread.end_time is None:
             task_thread.end_time = time.time()
 
-        with self.lock:
-            self.counting_thread = None
-
         work_wall_clock_time = task_thread.end_time - task_thread.start_time
         subtask_id = task_thread.subtask_id
         try:
