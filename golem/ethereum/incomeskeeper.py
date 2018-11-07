@@ -51,12 +51,14 @@ class IncomesKeeper:
             e.save()
 
             if e.value_expected == 0:
+                reference_ts = e.settled_ts or e.accepted_ts
+                delay = reference_ts - datetime_to_timestamp(e.created_date)
                 dispatcher.send(
                     signal='golem.income',
                     event='confirmed',
                     node_id=e.sender_node,
                     amount=e.value_received,
-                    delay=time.time() - datetime_to_timestamp(e.created_date),
+                    delay=delay,
                 )
 
     def received_forced_payment(
@@ -100,14 +102,15 @@ class IncomesKeeper:
                 'accepted_ts': accepted_ts,
             },
         )
-        if not inserted and not income.accepted_ts:
-            income.accepted_ts = accepted_ts
-            income.save()
+        if inserted:
             dispatcher.send(
                 signal='golem.income',
                 event='created',
                 subtask_id=subtask_id
             )
+        elif not income.accepted_ts:
+            income.accepted_ts = accepted_ts
+            income.save()
         return income
 
     @staticmethod

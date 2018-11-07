@@ -113,7 +113,8 @@ class PaymentProcessor:
             payment.details.fee / denoms.ether
         )
 
-        delay = time.time() - datetime_to_timestamp(payment.created_date)
+        delay = payment.processed_ts - \
+            datetime_to_timestamp(payment.created_date)
         dispatcher.send(
             signal="golem.payment",
             event="confirmed",
