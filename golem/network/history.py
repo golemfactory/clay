@@ -332,9 +332,6 @@ def get(
         node_id: str,
         task_id: Optional[str] = None) \
         -> Optional[message.base.Message]:
-    if not (node_id and subtask_id):
-        raise RuntimeError("Please use node_id, subtask_id pair")
-
     query = dict()
     query['msg_cls'] = message_class_name
     query['subtask'] = subtask_id
