@@ -231,8 +231,18 @@ class TaskServerMessageHandler():
         Concent sends his own ForceSubtaskResults with AckReportComputedTask
         provided by a provider.
         """
-        sra = history.get('SubtaskResultsAccepted', msg.task_id, msg.subtask_id)
-        srr = history.get('SubtaskResultsRejected', msg.task_id, msg.subtask_id)
+        sra = history.get(
+            message_class_name='SubtaskResultsAccepted',
+            node_id=msg.provider_id,
+            subtask_id=msg.subtask_id,
+            task_id=msg.task_id
+        )
+        srr = history.get(
+            message_class_name='SubtaskResultsRejected',
+            node_id=msg.provider_id,
+            subtask_id=msg.subtask_id,
+            task_id=msg.task_id
+        )
         if not (sra or srr):
             #  I can't remember verification results,
             #  so try again and hope for the best
