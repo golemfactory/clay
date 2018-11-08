@@ -62,14 +62,20 @@ def dropped_after():
     return inner
 
 
-def get_task_message(message_class_name, task_id, subtask_id, log_prefix=None):
+def get_task_message(
+        message_class_name,
+        node_id,
+        task_id,
+        subtask_id,
+        log_prefix=None):
     if log_prefix:
         log_prefix = '%s ' % log_prefix
 
     msg = history.get(
         message_class_name=message_class_name,
-        task_id=task_id,
+        node_id=node_id,
         subtask_id=subtask_id,
+        task_id=task_id
     )
     if msg is None:
         logger.debug(
@@ -230,7 +236,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task_id = self._subtask_to_task(subtask_id, Actor.Requestor)
 
             task_to_compute = get_task_message(
-                'TaskToCompute', task_id, subtask_id)
+                message_class_name='TaskToCompute',
+                node_id=self.key_id,
+                task_id=task_id,
+                subtask_id=subtask_id
+            )
 
             # FIXME Remove in 0.20
             if not task_to_compute.sig:
@@ -315,10 +325,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         node_name = self.task_server.get_node_name()
+
         task_to_compute = get_task_message(
-            'TaskToCompute',
-            task_result.task_id,
-            task_result.subtask_id,
+            message_class_name='TaskToCompute',
+            node_id=self.key_id,
+            task_id=task_result.task_id,
+            subtask_id=task_result.subtask_id
         )
 
         if not task_to_compute:
@@ -391,9 +403,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         task_id = self._subtask_to_task(subtask_id, Actor.Provider)
 
         task_to_compute = get_task_message(
-            'TaskToCompute',
-            task_id,
-            subtask_id,
+            message_class_name='TaskToCompute',
+            node_id=self.key_id,
+            task_id=task_id,
+            subtask_id=subtask_id
         )
 
         if not task_to_compute:
@@ -421,9 +434,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         task_id = self._subtask_to_task(subtask_id, Actor.Requestor)
 
         report_computed_task = get_task_message(
-            'ReportComputedTask',
-            task_id,
-            subtask_id,
+            message_class_name='ReportComputedTask',
+            node_id=self.key_id,
+            task_id=task_id,
+            subtask_id=subtask_id
         )
 
         response_msg = message.tasks.SubtaskResultsRejected(
