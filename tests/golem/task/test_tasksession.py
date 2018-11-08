@@ -1047,8 +1047,8 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
     def test_send_report_computed_task_concent_success(self):
         wtr = factories.taskserver.WaitingTaskResultFactory(
             xtask_id=self.task_id, xsubtask_id=self.subtask_id, owner=self.n)
-        self._mock_task_to_compute(self.task_id, self.subtask_id, self.ts.key_id,
-                                   concent_enabled=True)
+        self._mock_task_to_compute(self.task_id, self.subtask_id,
+                                   self.ts.key_id, concent_enabled=True)
         self.ts.send_report_computed_task(
             wtr, wtr.owner.pub_addr, wtr.owner.pub_port, self.n)
 
@@ -1066,8 +1066,8 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
             xtask_id=self.task_id, xsubtask_id=self.subtask_id, owner=self.n,
             result=result, result_type=ResultType.FILES
         )
-        self._mock_task_to_compute(self.task_id, self.subtask_id, self.ts.key_id,
-                                   concent_enabled=True)
+        self._mock_task_to_compute(self.task_id, self.subtask_id,
+                                   self.ts.key_id, concent_enabled=True)
 
         self.ts.send_report_computed_task(
             wtr, wtr.owner.pub_addr, wtr.owner.pub_port, self.n)
@@ -1092,7 +1092,8 @@ class GetTaskMessageTest(TestCase):
         with patch('golem.task.tasksession.history'
                    '.MessageHistoryService.get_sync_as_message',
                    Mock(return_value=msg)):
-            msg_historical = get_task_message('TaskToCompute', 'foo', 'bar', 'baz')
+            msg_historical = get_task_message('TaskToCompute', 'foo', 'bar',
+                                              'baz')
             self.assertEqual(msg, msg_historical)
 
     def test_get_task_message_fail(self):
@@ -1225,7 +1226,8 @@ class SubtaskResultsAcceptedTest(TestCase):
             'ReportComputedTask': rct,
         }
         with patch('golem.task.tasksession.get_task_message',
-                   side_effect=lambda **kwargs: history_dict[kwargs['message_class_name']]):
+                   side_effect=lambda **kwargs:
+                   history_dict[kwargs['message_class_name']]):
             self.task_session.result_received(extra_data)
 
         assert self.task_session.send.called
