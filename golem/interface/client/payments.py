@@ -33,8 +33,8 @@ sort_deposit_payments = Argument(
 )
 
 
-def __value(value):
-    return "{:.8f} GNT".format(float(value) / denoms.ether)
+def __value(value, currency):
+    return f"{float(value) / denoms.ether:.8f} {currency}"
 
 
 @command(argument=sort_incomes, help="Display incomes", root=True)
@@ -48,7 +48,7 @@ def incomes(sort):
         entry = [
             to_unicode(income["payer"]),
             to_unicode(income["status"]),
-            __value(float(income["value"])),
+            __value(float(income["value"]), "GNT"),
         ]
         values.append(entry)
 
@@ -69,13 +69,13 @@ def payments(sort):
         payment_fee = payment["fee"] or ""
 
         if payment_fee:
-            payment_fee = "{:.8f} ETH".format(float(payment_fee))
+            payment_fee = __value(payment_fee, "ETH")
 
         entry = [
             to_unicode(payment["subtask"]),
             to_unicode(payment["payee"]),
             to_unicode(payment["status"]),
-            __value(payment_value),
+            __value(payment_value, "GNT"),
             to_unicode(payment_fee)
         ]
 
@@ -102,12 +102,12 @@ def deposit_payments(sort):
         payment_fee = payment["fee"] or ""
 
         if payment_fee:
-            payment_fee = "{:.8f} ETH".format(float(payment_fee))
+            payment_fee = __value(payment_fee, "ETH")
 
         entry = [
             to_unicode(payment["tx"]),
             to_unicode(payment["status"]),
-            __value(payment_value),
+            __value(payment_value, "GNT"),
             to_unicode(payment_fee)
         ]
 

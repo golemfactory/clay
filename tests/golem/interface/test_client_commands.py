@@ -375,14 +375,14 @@ class TestPayments(unittest.TestCase):
         incomes_list = [{
             'payer': 'node_{}'.format(i),
             'status': 'waiting',
-            'value': '{}'.format(i),
+            'value': '{}'.format(i * 10**18),
         } for i in range(1, 6)]
 
         payments_list = [{
-            'fee': '{}'.format(i),
-            'value': '0.{}'.format(i),
-            'subtask': 'subtask_{}'.format(i),
-            'payee': 'node_{}'.format(i),
+            'fee': f'{i * 10**18}',
+            'value': f'{0.1 * i * 10**18}',
+            'subtask': f'subtask_{i}',
+            'payee': f'node_{i}',
             'status': 'waiting',
         } for i in range(1, 6)]
 
@@ -402,7 +402,7 @@ class TestPayments(unittest.TestCase):
             assert result.type == CommandResult.TABULAR
             assert len(result.data[1]) == self.n_incomes
             assert result.data[1][0] == [
-                'node_1', 'waiting', '0.00000000 GNT'
+                'node_1', 'waiting', '1.00000000 GNT'
             ]
 
     def test_payments(self):
@@ -417,7 +417,7 @@ class TestPayments(unittest.TestCase):
                 'subtask_1',
                 'node_1',
                 'waiting',
-                '0.00000000 GNT',
+                '0.10000000 GNT',
                 '1.00000000 ETH',
             ]
             assert result.data[1][0][4]
