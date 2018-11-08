@@ -19,7 +19,7 @@ class RPCTest(NodeTestPlaybook):
         def on_error(error):
             self.fail(error)
 
-        call_provider(
+        return call_provider(
             'pay.deposit_balance', on_success=on_success, on_error=on_error)
 
     steps = (
@@ -43,7 +43,7 @@ class NoConcentRPCTest(NodeTestPlaybook):
         def on_error(error):
             self.fail(error)
 
-        call_provider(
+        return call_provider(
             'pay.deposit_balance', on_success=on_success, on_error=on_error)
 
     steps = (

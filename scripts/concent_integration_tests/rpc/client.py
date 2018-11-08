@@ -55,7 +55,7 @@ class RPCClient:
 
             self.shutdown()
 
-        self.session.connect(
+        return self.session.connect(
             auto_reconnect=False
         ).addCallbacks(on_connected, on_error or connection_error)
 
@@ -75,7 +75,7 @@ def _call(method, *args, port, datadir, on_success, on_error, **kwargs):
         on_error(e)
         return
 
-    client.call(method, *args,
+    return client.call(method, *args,
                 on_success=on_success,
                 on_error=on_error,
                 **kwargs)
@@ -85,7 +85,7 @@ def call_requestor(method, *args,
                    on_success=lambda x: print(x),
                    on_error=lambda: None,
                    **kwargs):
-    _call(
+    return _call(
         method,
         port=int(REQUESTOR_RPC_PORT),
         datadir=get_datadir('requestor'),
@@ -100,7 +100,7 @@ def call_provider(method, *args,
                   on_success=lambda x: print(x),
                   on_error=None,
                   **kwargs):
-    _call(
+    return _call(
         method,
         port=int(PROVIDER_RPC_PORT),
         datadir=get_datadir('provider'),

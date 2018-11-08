@@ -26,8 +26,8 @@ class TaskTimeoutAndRestart(NodeTestPlaybook):
 
             time.sleep(10)
 
-        call_requestor('comp.task.subtasks', self.task_id,
-                       on_success=on_success, on_error=self.print_error)
+        return call_requestor('comp.task.subtasks', self.task_id,
+                              on_success=on_success, on_error=self.print_error)
 
     def step_wait_task_timeout(self):
         def on_success(result):
@@ -40,7 +40,7 @@ class TaskTimeoutAndRestart(NodeTestPlaybook):
                 print("Task status: {} ... ".format(result['status']))
                 time.sleep(10)
 
-        call_requestor('comp.task', self.task_id,
+        return call_requestor('comp.task', self.task_id,
                        on_success=on_success, on_error=self.print_error)
 
     def step_stop_nodes(self):
@@ -84,10 +84,10 @@ class TaskTimeoutAndRestart(NodeTestPlaybook):
         if not self.task_in_creation:
             print("Restarting subtasks for {}".format(self.previous_task_id))
             self.task_in_creation = True
-            call_requestor('comp.task.restart_subtasks',
-                           self.previous_task_id, [],
-                           on_success=on_success,
-                           on_error=self.print_error)
+            return call_requestor('comp.task.restart_subtasks',
+                                  self.previous_task_id, [],
+                                  on_success=on_success,
+                                  on_error=self.print_error)
 
     steps: typing.Tuple = (
         NodeTestPlaybook.step_get_provider_key,
