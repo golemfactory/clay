@@ -1164,9 +1164,8 @@ class Client(HardwarePresetsMixin):
         return self.task_server.task_manager.get_task_preview(task_id,
                                                               single=single)
 
-    def get_task_stats(self) -> Dict[str, int]:
+    def get_task_stats(self) -> Dict[str, Any]:
         return {
-            'host_state': self.get_task_state(),
             'provider_state': self.get_provider_status(),
             'in_network': self.get_task_count(),
             'supported': self.get_supported_task_count(),
@@ -1179,10 +1178,6 @@ class Client(HardwarePresetsMixin):
         if self.task_server:
             return len(self.task_server.task_keeper.supported_tasks)
         return 0
-
-    def get_task_state(self):
-        if self.task_server and self.task_server.task_computer:
-            return self.task_server.task_computer.get_host_state()
 
     def get_computed_task_count(self):
         return self.get_task_computer_stat('computed_tasks')
@@ -1613,7 +1608,7 @@ class Client(HardwarePresetsMixin):
         # golem is starting
         if self.task_server is None:
             return {
-                'status': 'golem is starting',
+                'status': 'Golem is starting',
             }
 
         task_computer = self.task_server.task_computer
@@ -1622,27 +1617,30 @@ class Client(HardwarePresetsMixin):
         subtask_progress: Optional[ComputingSubtaskStateSnapshot] = \
             task_computer.get_progress()
         if subtask_progress is not None:
+            environment: Optional[str] = \
+                task_computer.get_environment()
             return {
-                'status': 'computing',
+                'status': 'Computing',
                 'subtask': subtask_progress.__dict__,
+                'environment': environment
             }
 
         # trying to get subtask from task
         waiting_for_task: Optional[str] = task_computer.waiting_for_task
         if waiting_for_task is not None:
             return {
-                'status': 'waiting for task',
+                'status': 'Waiting for task',
                 'task_id_waited_for': waiting_for_task,
             }
 
         # not accepting tasks
         if not self.config_desc.accept_tasks:
             return {
-                'status': 'not accepting tasks',
+                'status': 'Not accepting tasks',
             }
 
         return {
-            'status': 'idle',
+            'status': 'Idle',
         }
 
     @staticmethod
