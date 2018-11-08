@@ -49,6 +49,9 @@ class NodeTestPlaybook:
 
     task_package = None
     task_settings = 'default'
+    task_dict = None
+
+    playbook_description = 'Runs a golem node integration test'
 
     @property
     def output_extension(self):
@@ -209,13 +212,8 @@ class NodeTestPlaybook:
                        on_success=on_success, on_error=self.print_error)
 
     def step_create_task(self):
-        self.output_path = tempfile.mkdtemp()
         print("Output path: {}".format(self.output_path))
-        task_dict = helpers.construct_test_task(
-            task_package_name=self.task_package,
-            output_path=self.output_path,
-            task_settings=self.task_settings,
-        )
+        print("Task dict: {}".format(self.task_dict))
 
         def on_success(result):
             if result[0]:
@@ -233,7 +231,7 @@ class NodeTestPlaybook:
 
         if not self.task_in_creation:
             self.task_in_creation = True
-            call_requestor('comp.task.create', task_dict,
+            call_requestor('comp.task.create', self.task_dict,
                            on_success=on_success,
                            on_error=self.print_error)
 
@@ -380,16 +378,20 @@ class NodeTestPlaybook:
             if provider_exit is not None and requestor_exit is not None:
                 self.fail()
 
-    def __init__(self, task_package: str='test_task_1', **kwargs) -> None:
+    def __init__(self, **kwargs) -> None:
         if not self.provider_node_script or not self.requestor_node_script:
             raise NotImplementedError(
                 "Provider and Requestor scripts need to be set")
 
-        if task_package:
-            self.task_package = task_package
-
         for attr, val in kwargs.items():
             setattr(self, attr, val)
+
+        self.output_path = tempfile.mkdtemp()
+        self.task_dict = helpers.construct_test_task(
+            task_package_name=self.task_package,
+            output_path=self.output_path,
+            task_settings=self.task_settings,
+        )
 
         self.start_nodes()
         self.started = True

@@ -1104,16 +1104,32 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         StatusPublisher.publish(*status)
         assert self.client.get_golem_status() == status
 
-    def test_port_status(self, *_):
+    def test_port_status_open(self, *_):
         port = random.randint(1, 65535)
         self.assertIsNone(self.client.node.port_statuses.get(port))
 
         dispatcher.send(
             signal="golem.p2p",
-            event="no event at all",
+            event="open",
+            port=port,
+            description="open"
+        )
+        self.assertEqual(self.client.node.port_statuses.get(port), "open")
+
+    def test_port_status_unreachable(self, *_):
+        port = random.randint(1, 65535)
+        self.assertIsNone(self.client.node.port_statuses.get(port))
+
+        dispatcher.send(
+            signal="golem.p2p",
+            event="unreachable",
             port=port,
             description="timeout"
         )
+        self.assertEqual(self.client.node.port_statuses.get(port), "timeout")
+
+    def test_port_status_other(self, *_):
+        port = random.randint(1, 65535)
         self.assertIsNone(self.client.node.port_statuses.get(port))
 
         dispatcher.send(
