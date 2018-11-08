@@ -402,7 +402,7 @@ class TestPayments(unittest.TestCase):
             assert result.type == CommandResult.TABULAR
             assert len(result.data[1]) == self.n_incomes
             assert result.data[1][0] == [
-                'node_1', 'waiting', '0.000000 GNT'
+                'node_1', 'waiting', '0.00000000 GNT'
             ]
 
     def test_payments(self):
@@ -413,11 +413,12 @@ class TestPayments(unittest.TestCase):
             assert result.type == CommandResult.TABULAR
             assert len(result.data[1]) == self.n_incomes
 
-            assert result.data[1][0][:-1] == [
+            assert result.data[1][0] == [
                 'subtask_1',
                 'node_1',
                 'waiting',
-                '0.000000 GNT',
+                '0.00000000 GNT',
+                '1.00000000 ETH',
             ]
             assert result.data[1][0][4]
 

@@ -69,8 +69,7 @@ def payments(sort):
         payment_fee = payment["fee"] or ""
 
         if payment_fee:
-            payment_fee = "{:.1f}%".format(float(payment_fee) * 100 /
-                                           payment_value)
+            payment_fee = "{:.8f} ETH".format(float(payment_fee))
 
         entry = [
             to_unicode(payment["subtask"]),
@@ -103,8 +102,7 @@ def deposit_payments(sort):
         payment_fee = payment["fee"] or ""
 
         if payment_fee:
-            payment_fee = "{:.1f}%".format(float(payment_fee) * 100 /
-                                           payment_value)
+            payment_fee = "{:.8f} ETH".format(float(payment_fee))
 
         entry = [
             to_unicode(payment["tx"]),
