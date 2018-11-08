@@ -1,7 +1,5 @@
-from scripts.concent_integration_tests.rpc.client import (
-    call_provider
-)
-from scripts.concent_integration_tests.tests.playbooks.base import NodeTestPlaybook
+from scripts.concent_integration_tests.rpc.client import call_provider
+from .base import NodeTestPlaybook
 
 
 class RPCTest(NodeTestPlaybook):

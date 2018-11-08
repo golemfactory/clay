@@ -1,9 +1,7 @@
 import sys
 from argparse import ArgumentParser
 
-from scripts.concent_integration_tests.tests.playbooks.base import (
-    NodeTestPlaybook
-)
+from .base import NodeTestPlaybook
 
 
 def run_playbook(playbook_cls: NodeTestPlaybook, **kwargs):

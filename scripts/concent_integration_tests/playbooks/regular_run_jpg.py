@@ -1,6 +1,4 @@
-from scripts.concent_integration_tests.tests.playbooks.base import (
-    NodeTestPlaybook
-)
+from .base import NodeTestPlaybook
 
 from apps.blender.task.blenderrendertask import BlenderTaskTypeInfo
 

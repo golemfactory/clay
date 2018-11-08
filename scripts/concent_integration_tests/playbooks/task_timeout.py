@@ -2,9 +2,7 @@ import time
 import typing
 
 from scripts.concent_integration_tests.rpc.client import call_requestor
-from scripts.concent_integration_tests.tests.playbooks.base import (
-    NodeTestPlaybook
-)
+from .base import NodeTestPlaybook
 
 
 class TaskTimeoutAndRestart(NodeTestPlaybook):

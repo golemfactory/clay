@@ -1,5 +1,5 @@
 from scripts.concent_integration_tests import helpers
-from scripts.concent_integration_tests.tests.playbooks.base import NodeTestPlaybook
+from .base import NodeTestPlaybook
 
 
 class ForceAccept(NodeTestPlaybook):
