@@ -1,9 +1,9 @@
 import calendar
 import logging
 import time
+
 from collections import defaultdict
 from typing import List
-
 from sortedcontainers import SortedListWithKey
 from eth_utils import encode_hex
 from ethereum.utils import denoms
@@ -141,6 +141,14 @@ class PaymentProcessor:
                 break
             gntb_balance -= p.value
             if gntb_balance < 0:
+                log.debug(
+                    'Insufficient GNTB balance.'
+                    ' value=%(value).6f, subtask_id=%(subtask)s',
+                    {
+                        'value': p.value / denoms.ether,
+                        'subtask': p.subtask,
+                    },
+                )
                 break
 
             payees.add(p.payee)
@@ -148,7 +156,16 @@ class PaymentProcessor:
                 self._sci.GAS_BATCH_PAYMENT_BASE
             if gas > gas_limit:
                 break
-            if gas * gas_price > eth_balance:
+            gas_cost = gas * gas_price
+            if gas_cost > eth_balance:
+                log.debug(
+                    'Not enough ETH to pay gas for transaction.'
+                    ' gas_cost=%(gas_cost).6f, subtask_id=%(subtask)s',
+                    {
+                        'gas_cost': gas_cost / denoms.ether,
+                        'subtask': p.subtask,
+                    },
+                )
                 break
 
             ind += 1
