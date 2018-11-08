@@ -34,7 +34,7 @@ sort_deposit_payments = Argument(
 
 
 def __value(value):
-    return "{:.6f} GNT".format(float(value) / denoms.ether)
+    return "{:.8f} GNT".format(float(value) / denoms.ether)
 
 
 @command(argument=sort_incomes, help="Display incomes", root=True)
