@@ -18,7 +18,7 @@ from golem.interface.client.account import Account
 from golem.interface.client.debug import Debug
 from golem.interface.client.environments import Environments
 from golem.interface.client.network import Network
-from golem.interface.client.payments import incomes, payments
+from golem.interface.client.payments import incomes, payments, deposit_payments
 from golem.interface.client.resources import Resources
 from golem.interface.client.settings import Settings, _virtual_mem, _cpu_count
 from golem.interface.client.tasks import Subtasks, Tasks
@@ -386,12 +386,22 @@ class TestPayments(unittest.TestCase):
             'status': 'waiting',
         } for i in range(1, 6)]
 
+        statuses = ['awaiting', 'sent', 'confirmed']
+        deposit_payments_list = [{
+            'tx': f'deadbeaf{i}',
+            'status': statuses[i % 3],
+            'value': f'{1.1 * i * 10**18}',
+            'fee': f'{i * 10**18}',
+        } for i in range(1, 6)]
+
         client = Mock()
         client.get_incomes_list.return_value = incomes_list
         client.get_payments_list.return_value = payments_list
+        client.get_deposit_payments_list.return_value = deposit_payments_list
 
         cls.n_incomes = len(incomes_list)
         cls.n_payments = len(payments_list)
+        cls.n_deposit_payments = len(deposit_payments_list)
         cls.client = client
 
     def test_incomes(self):
@@ -411,7 +421,7 @@ class TestPayments(unittest.TestCase):
 
             assert isinstance(result, CommandResult)
             assert result.type == CommandResult.TABULAR
-            assert len(result.data[1]) == self.n_incomes
+            assert len(result.data[1]) == self.n_payments
 
             assert result.data[1][0] == [
                 'subtask_1',
@@ -420,7 +430,21 @@ class TestPayments(unittest.TestCase):
                 '0.10000000 GNT',
                 '1.00000000 ETH',
             ]
-            assert result.data[1][0][4]
+
+    def test_deposit_payments(self):
+        with client_ctx(payments, self.client):
+            result = deposit_payments(None)
+
+            assert isinstance(result, CommandResult)
+            assert result.type == CommandResult.TABULAR
+            assert len(result.data[1]) == self.n_deposit_payments
+
+            assert result.data[1][1] == [
+                'deadbeaf2',
+                'confirmed',
+                '2.20000000 GNT',
+                '2.00000000 ETH',
+            ]
 
 
 class TestResources(unittest.TestCase):
