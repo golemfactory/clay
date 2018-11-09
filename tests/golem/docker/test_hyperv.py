@@ -79,15 +79,15 @@ class TestHyperVHypervisor(TestCase):
             self.assertEqual(constraints, {})
             logger.exception.assert_called_once()
 
-    @patch(PATCH_BASE + '.VMUtilsWithMem.get_vm_memory')
-    @patch(PATCH_BASE + '.VMUtilsWithMem.get_vm_summary_info')
+    @patch(PATCH_BASE + '.VMUtils.get_vm_memory_info')
+    @patch(PATCH_BASE + '.VMUtils.get_vm_summary_info')
     def test_constraints_ok(self, get_info, get_memory):
         # GIVEN
         get_info.return_value = {
             'NumberOfProcessors': 1,
         }
-        mem_settings = Mock()
-        mem_settings.Limit = 2048
+        mem_settings = dict()
+        mem_settings['Limit'] = 2048
         get_memory.return_value = mem_settings
 
         #  WHEN

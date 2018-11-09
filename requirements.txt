@@ -60,7 +60,7 @@ netifaces==0.10.4
 numpy==1.13.1
 olefile==0.45.1
 OpenEXR==1.3.0
-os-win==4.0.1
+os-win==4.1.1
 oslo.concurrency==3.28.1
 oslo.config==6.5.1
 oslo.context==2.21.0

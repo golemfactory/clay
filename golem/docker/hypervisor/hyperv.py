@@ -41,7 +41,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._vm_utils = VMUtilsWithMem()
+        self._vm_utils = VMUtils()
 
     # pylint: disable=arguments-differ
     def _parse_create_params(
@@ -66,11 +66,11 @@ class HyperVHypervisor(DockerMachineHypervisor):
         name = name or self._vm_name
         try:
             summary = self._vm_utils.get_vm_summary_info(name)
-            mem_settings = self._vm_utils.get_vm_memory(name)
+            mem_settings = self._vm_utils.get_vm_memory_info(name)
             logger.debug('raw hyperv info: summary=%r, memory=%r',
                          summary, mem_settings)
             result = dict()
-            result[CONSTRAINT_KEYS['mem']] = mem_settings.Limit
+            result[CONSTRAINT_KEYS['mem']] = mem_settings['Limit']
             result[CONSTRAINT_KEYS['cpu']] = summary['NumberOfProcessors']
             return result
         except (OSWinException, KeyError):
@@ -186,14 +186,3 @@ class HyperVHypervisor(DockerMachineHypervisor):
         )
 
         return volume_name
-
-
-class VMUtilsWithMem(VMUtils): # pylint: disable=abstract-method
-    def get_vm_memory(self, vm_name):
-        vmsetting = self._lookup_vm_check(vm_name)
-        si = _wqlutils.get_element_associated_class(
-            self._conn, self._MEMORY_SETTING_DATA_CLASS,
-            element_instance_id=vmsetting.InstanceID)[0]
-
-        logger.debug('VM MemorySettingsData: %r', si)
-        return si
