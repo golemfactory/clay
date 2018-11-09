@@ -189,6 +189,8 @@ def _ensure_task_deposit(client, task, force):
         return
 
     task_id = task.header.task_id
+    task_state = client.task_manager.tasks_states[task_id]
+    task_state.status = taskstate.TaskStatus.creatingDeposit
     min_amount, opt_amount = msg_helpers.requestor_deposit_amount(
         task.price,
     )
@@ -332,17 +334,6 @@ def enqueue_new_task(client, task, force=False) \
     )
     logger.info('Enqueue new task %r', task)
 
-    yield _ensure_task_deposit(
-        client=client,
-        task=task,
-        force=force,
-    )
-
-    logger.info(
-        "Deposit confirmed. Creating resource package. task_id=%r",
-        task_id,
-    )
-
     packager_result = yield _create_task_package(
         client=client,
         task=task,
@@ -359,29 +350,48 @@ def enqueue_new_task(client, task, force=False) \
         packager_result=packager_result,
     )
 
-    logger.info("Task created. Starting... task_id=%r", task_id)
+    logger.info("Task created. Ensuring deposit. task_id=%r", task_id)
 
-    yield _start_task(
-        client=client,
-        task=task,
-        resource_server_result=resource_server_result,
-    )
+    try:
+        yield _ensure_task_deposit(
+            client=client,
+            task=task,
+            force=force,
+        )
 
-    logger.info("Task enqueued. task_id=%r", task_id)
+        logger.info(
+            "Deposit confirmed. Starting... task_id=%r",
+            task_id,
+        )
+
+        yield _start_task(
+            client=client,
+            task=task,
+            resource_server_result=resource_server_result,
+        )
+
+        logger.info("Task enqueued. task_id=%r", task_id)
+    except eth_exceptions.EthereumError as e:
+        logger.exception("Can't enqueue_new_task. task_id=%r, e=%s", task_id, e)
+        raise
+    except Exception:  # pylint: disable=broad-except
+        logger.exception("Can't enqueue_new_task. task_id=%r", task_id)
+        client.task_manager.abort_task(task_id)
+        raise
     return task
 
 
-def _create_task_error(e, _self, task_dict, **kwargs):
+def _create_task_error(e, _self, task_dict, **_kwargs):
     logger.error("Cannot create task %r: %s", task_dict, e)
     return None, str(e)
 
 
-def _restart_task_error(e, _self, task_id, **kwargs):
+def _restart_task_error(e, _self, task_id, **_kwargs):
     logger.error("Cannot restart task %r: %s", task_id, e)
     return None, str(e)
 
 
-def _test_task_error(e, self, task_dict, **kwargs):
+def _test_task_error(e, self, task_dict, **_kwargs):
     logger.error("Test task error: %s", e)
     logger.debug("Test task details. task_dict=%s", task_dict)
     self.client.task_test_result = {

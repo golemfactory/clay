@@ -226,7 +226,7 @@ class TaskManager(TaskEventListener):
     def start_task(self, task_id):
         task_state = self.tasks_states[task_id]
 
-        if task_state.status != TaskStatus.notStarted:
+        if not task_state.status.is_preparing():
             raise RuntimeError("Task {} has already been started"
                                .format(task_id))
 
