@@ -15,8 +15,8 @@ def migrate(migrator, *_args, **_kwargs):
         provider_efficacy=pw.ProviderEfficacyField(
             default=ProviderEfficacy(0, 0, 0, 0)),
         provider_efficiency=pw.FloatField(default=1.0),
-        requestor_paid_sum=pw.IntegerField(default=0),
-        requestor_assigned_sum=pw.IntegerField(default=0)
+        requestor_paid_sum=pw.HexIntegerField(default=0),
+        requestor_assigned_sum=pw.HexIntegerField(default=0)
     )
 
 

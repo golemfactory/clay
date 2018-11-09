@@ -350,8 +350,8 @@ class LocalRank(BaseModel):
     positive_resource = FloatField(default=0.0)
     negative_resource = FloatField(default=0.0)
     requestor_efficiency = FloatField(default=None, null=True)
-    requestor_assigned_sum = IntegerField(default=0)
-    requestor_paid_sum = IntegerField(default=0)
+    requestor_assigned_sum = HexIntegerField(default=0)
+    requestor_paid_sum = HexIntegerField(default=0)
     provider_efficiency = FloatField(default=1.0)
     provider_efficacy = ProviderEfficacyField(
         default=ProviderEfficacy(0., 0., 0., 0.))

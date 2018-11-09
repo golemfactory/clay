@@ -88,6 +88,7 @@ class PaymentProcessor:
                 self.add(p)
             return
 
+        block = self._sci.get_block_by_number(receipt.block_number)
         gas_price = self._sci.get_transaction_gas_price(receipt.tx_hash)
         total_fee = receipt.gas_used * gas_price
         fee = total_fee // len(payments)
@@ -103,18 +104,17 @@ class PaymentProcessor:
             p.details.fee = fee
             p.save()
             self._gntb_reserved -= p.value
-            self._payment_confirmed(p)
+            self._payment_confirmed(p, block.timestamp)
 
     @staticmethod
-    def _payment_confirmed(payment: Payment) -> None:
+    def _payment_confirmed(payment: Payment, timestamp: int) -> None:
         log.debug(
             "- %s confirmed fee %.6f",
             payment.subtask,
             payment.details.fee / denoms.ether
         )
 
-        delay = payment.processed_ts - \
-            datetime_to_timestamp(payment.created_date)
+        delay = timestamp - datetime_to_timestamp(payment.created_date)
         dispatcher.send(
             signal="golem.payment",
             event="confirmed",
