@@ -343,7 +343,6 @@ class TestNetwork(unittest.TestCase):
             '25001',
             'deadbeef01deadbe...beef01deadbeef01',
             'node_1',
-            '0.0.0'
         ])
 
         self.assertEqual(result_2.data[1][0], [
@@ -351,7 +350,6 @@ class TestNetwork(unittest.TestCase):
             '25001',
             'deadbeef01' * 8,
             'node_1',
-            '0.0.0'
         ])
 
         assert isinstance(result_1, CommandResult)
