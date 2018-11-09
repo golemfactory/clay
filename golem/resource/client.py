@@ -146,8 +146,8 @@ class ClientHandler(metaclass=abc.ABCMeta):
         while not result:
             retries += 1
             logger.debug("Executing sync with retry. "
-                         "count=%r, method=%r, args=%r, kwargs=%r, exc=%r",
-                         retries, method, args, kwargs, exc)
+                         "count=%r, method=%r, args=%r, kwargs=%r",
+                         retries, method, args, kwargs)
 
             try:
                 result = method(*args, **kwargs)
@@ -161,9 +161,9 @@ class ClientHandler(metaclass=abc.ABCMeta):
                     raise exc
                 if retries < self.config.max_retries:
                     logger.warning('Error executing, will retry. '
-                                  'count=%r, method=%r, args=%r, '
-                                  'kwargs=%r, exc=%r',
-                                  retries, method, args, kwargs, exc)
+                                   'count=%r, method=%r, args=%r, '
+                                   'kwargs=%r, exc=%r',
+                                   retries, method, args, kwargs, exc)
                     continue
                 if raise_exc:
                     logger.error('Error executing, raising all. '
@@ -196,19 +196,19 @@ class ClientHandler(metaclass=abc.ABCMeta):
                 exc = exc.value
 
             if exc.__class__ not in self.retry_exceptions:
-                logger.error('Error executing, raising. '
+                logger.error('Error executing async, raising. '
                              'count=%r, method=%r, args=%r, '
                              'kwargs=%r, exc=%r',
                              retries, method, args, kwargs, exc)
                 result.errback(exc)
             elif retries < self.config.max_retries:
-                logger.warning('Error executing, will retry. '
-                              'count=%r, method=%r, args=%r, '
-                              'kwargs=%r, exc=%r',
-                              retries, method, args, kwargs, exc)
+                logger.warning('Error executing async, will retry. '
+                               'count=%r, method=%r, args=%r, '
+                               'kwargs=%r, exc=%r',
+                               retries, method, args, kwargs, exc)
                 _run()
             else:
-                logger.error('Error executing, raising all. '
+                logger.error('Error executing async, raising all. '
                              'count=%r, method=%r, args=%r, '
                              'kwargs=%r, exc=%r',
                              retries, method, args, kwargs, exc)
