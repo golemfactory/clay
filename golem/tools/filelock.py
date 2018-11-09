@@ -21,7 +21,7 @@ if os.name == 'nt':
     LOCK_NB = win32con.LOCKFILE_FAIL_IMMEDIATELY
     __overlapped = OVERLAPPED()
 
-    def lock(file, flags):
+    def lock(file, flags=LOCK_EX | LOCK_NB):
         hfile = win32file._get_osfhandle(file.fileno())
         try:
             win32file.LockFileEx(hfile, flags, 0, -0x10000, __overlapped)
@@ -36,8 +36,8 @@ elif os.name == 'posix':
     import fcntl
     from fcntl import LOCK_EX, LOCK_SH, LOCK_NB  # noqa
 
-    def lock(file, flags):
-        fcntl.flock(file.fileno(), flags)
+    def lock(file, flags=LOCK_EX | LOCK_NB):
+        fcntl.flock(file, flags)
 
     def unlock(file):
-        fcntl.flock(file.fileno(), fcntl.LOCK_UN)
+        fcntl.flock(file, fcntl.LOCK_UN)

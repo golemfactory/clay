@@ -1365,9 +1365,8 @@ class Client(HardwarePresetsMixin):
             # Create datadir if not exists yet.
             makedirs(self.datadir)
         self.__datadir_lock = open(path.join(self.datadir, "LOCK"), 'w')
-        flags = filelock.LOCK_EX | filelock.LOCK_NB
         try:
-            filelock.lock(self.__datadir_lock, flags)
+            filelock.lock(self.__datadir_lock)
         except IOError:
             raise IOError("Data dir {} used by other Golem instance"
                           .format(self.datadir))
