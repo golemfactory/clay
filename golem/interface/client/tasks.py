@@ -8,6 +8,7 @@ from typing import Any, Optional, Tuple
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.deferred import sync_wait
 from golem.interface.command import doc, group, command, Argument, CommandResult
+from golem.task.taskstate import TaskStatus
 
 if typing.TYPE_CHECKING:
     from golem.rpc.session import ClientProxy  # noqa pylint: disable=unused-import
@@ -25,6 +26,13 @@ class Tasks:
     subtask_table_headers = ['node', 'id', 'ETA', 'status', 'completion']
     unsupport_reasons_table_headers = ['reason', 'no of tasks',
                                        'avg for all tasks']
+
+    current_task_states = [
+        TaskStatus.sending.name,
+        TaskStatus.waiting.name,
+        TaskStatus.starting.name,
+        TaskStatus.computing.name,
+    ]
 
     id_req = Argument('id', help="Task identifier")
     id_opt = Argument.extend(id_req, optional=True)
@@ -57,19 +65,33 @@ class Tasks:
         help="Output file",
         optional=True,
     )
+
+    current_task = Argument(
+        'current',
+        help='Show only current tasks',
+        optional=True,
+        boolean=True,
+        default=False,
+    )
+
     last_days = Argument('last_days', optional=True, default="0",
                          help="Number of last days to compute statistics on")
 
     application_logic = None
 
-    @command(arguments=(id_opt, sort_task), help="Show task details")
-    def show(self, id, sort):
+    @command(arguments=(id_opt, sort_task, current_task),
+             help="Show task details")
+    def show(self, id, sort, current):
 
         deferred = Tasks.client.get_tasks(id)
         result = sync_wait(deferred)
 
         if not id:
             values = []
+
+            if current:
+                result = [t for t in result
+                          if t['status'] in self.current_task_states]
 
             for task in result or []:
                 values.append([

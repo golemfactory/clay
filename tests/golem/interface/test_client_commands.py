@@ -26,6 +26,7 @@ from golem.interface.client.terms import Terms
 from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
 from golem.resource.dirmanager import DirManager, DirectoryType
+from golem.task.taskstate import TaskStatus
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
 
@@ -488,13 +489,21 @@ class TestTasks(TempDirFixture):
     def setUpClass(cls):
         super(TestTasks, cls).setUpClass()
 
+        task_statuses = [
+            TaskStatus.notStarted,
+            TaskStatus.sending,
+            TaskStatus.waiting,
+            TaskStatus.starting,
+            TaskStatus.computing,
+            TaskStatus.finished,
+        ]
         cls.tasks = [{
             'id': '745c1d0{}'.format(i),
             'time_remaining': i,
             'subtasks_count': i + 2,
-            'status': 'waiting',
+            'status': task_statuses[(i-1) % len(task_statuses)].name,
             'progress': i / 100.0
-        } for i in range(1, 6)]
+        } for i in range(1, 7)]
 
         cls.subtasks = [{
             'node_name': 'node_{}'.format(i),
@@ -638,24 +647,27 @@ class TestTasks(TempDirFixture):
         with client_ctx(Tasks, client):
             tasks = Tasks()
 
-            one_task = tasks.show('745c1d01', None)
-            all_tasks = tasks.show(None, None)
+            one_task = tasks.show('745c1d01', None, False)
+            all_tasks = tasks.show(None, None, False)
 
-            assert one_task and all_tasks
-            assert isinstance(one_task, dict)
-            assert isinstance(all_tasks, CommandResult)
+            self.assertIsInstance(one_task, dict)
+            self.assertIsInstance(all_tasks, CommandResult)
 
-            assert one_task == {
-                'time_remaining': '0:00:01',
-                'status': 'waiting',
-                'subtasks_count': 3,
-                'id': '745c1d01',
-                'progress': '1.00 %'
-            }
+            self.assertEqual(
+                one_task,
+                {
+                    'time_remaining': '0:00:01',
+                    'status': 'notStarted',
+                    'subtasks_count': 3,
+                    'id': '745c1d01',
+                    'progress': '1.00 %'
+                }
+            )
 
-            assert all_tasks.data[1][0] == [
-                '745c1d01', '0:00:01', '3', 'waiting', '1.00 %'
-            ]
+            self.assertEqual(
+                all_tasks.data[1][0],
+                ['745c1d01', '0:00:01', '3', 'notStarted', '1.00 %']
+            )
 
             self.client.get_tasks = lambda _: {
                 'time_remaining': None,
@@ -664,7 +676,7 @@ class TestTasks(TempDirFixture):
                 'id': 'XXX',
                 'progress': 0
             }
-            task = tasks.show('XXX', None)
+            task = tasks.show('XXX', None, False)
             self.assertDictEqual(task, {
                 'time_remaining': '???',
                 'status': 'XXX',
@@ -672,6 +684,34 @@ class TestTasks(TempDirFixture):
                 'id': 'XXX',
                 'progress': '0.00 %'
             })
+
+    def test_show_current(self):
+        client = self.client
+
+        with client_ctx(Tasks, client):
+            tasks = Tasks()
+
+            current_tasks = tasks.show(None, None, True)
+
+            self.assertIsInstance(current_tasks, CommandResult)
+            self.assertEqual(len(current_tasks.data[1]),
+                             len(Tasks.current_task_states))
+            self.assertEqual(
+                current_tasks.data[1][0],
+                ['745c1d02', '0:00:02', '4', 'sending', '2.00 %']
+            )
+            self.assertEqual(
+                current_tasks.data[1][1],
+                ['745c1d03', '0:00:03', '5', 'waiting', '3.00 %']
+            )
+            self.assertEqual(
+                current_tasks.data[1][2],
+                ['745c1d04', '0:00:04', '6', 'starting', '4.00 %']
+            )
+            self.assertEqual(
+                current_tasks.data[1][3],
+                ['745c1d05', '0:00:05', '7', 'computing', '5.00 %']
+            )
 
     def test_subtasks_ok(self):
         client = self.client
