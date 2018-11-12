@@ -71,7 +71,7 @@ def incomes(sort, status):
     return CommandResult.to_tabular(incomes_table_headers, values, sort=sort)
 
 
-@command(arguments=(sort_payments, status_filter,),
+@command(arguments=(sort_payments, status_filter),
          help="Display payments", root=True)
 def payments(sort, status):
 
@@ -104,7 +104,7 @@ def payments(sort, status):
 
 
 @command(
-    arguments=(sort_deposit_payments, status_filter,),
+    arguments=(sort_deposit_payments, status_filter),
     help="Display deposit payments",
     root=True,
 )

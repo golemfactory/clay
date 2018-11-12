@@ -405,140 +405,152 @@ class TestPayments(unittest.TestCase):
         with client_ctx(incomes, self.client):
             result = incomes(None, None)
 
-            assert isinstance(result, CommandResult)
-            assert result.type == CommandResult.TABULAR
-            assert len(result.data[1]) == self.n_incomes
-            assert result.data[1][0] == [
-                'node_1', 'sent', '1.00000000 GNT'
-            ]
+            self._assert_type_and_length(result, self.n_incomes)
+            self.assertEqual(
+                result.data[1][0],
+                ['node_1', 'sent', '1.00000000 GNT']
+            )
 
     def test_incomes_awaiting(self):
         with client_ctx(incomes, self.client):
             result = incomes(None, "awaiting")
 
-            assert isinstance(result, CommandResult)
-            assert result.type == CommandResult.TABULAR
-            assert len(result.data[1]) == 1
-            assert result.data[1][0] == [
-                'node_3', 'awaiting', '3.00000000 GNT'
-            ]
+            self._assert_type_and_length(result, 1)
+            self.assertEqual(
+                result.data[1][0],
+                ['node_3', 'awaiting', '3.00000000 GNT']
+            )
 
     def test_incomes_confirmed(self):
         with client_ctx(incomes, self.client):
             result = incomes(None, "confirmed")
 
-            assert isinstance(result, CommandResult)
-            assert result.type == CommandResult.TABULAR
-            assert len(result.data[1]) == 2
-            assert result.data[1][0] == [
-                'node_2', 'confirmed', '2.00000000 GNT'
-            ]
-            assert result.data[1][1] == [
-                'node_5', 'confirmed', '5.00000000 GNT'
-            ]
+            self._assert_type_and_length(result, 2)
+            self.assertEqual(
+                result.data[1][0],
+                ['node_2', 'confirmed', '2.00000000 GNT']
+            )
+            self.assertEqual(
+                result.data[1][1],
+                ['node_5', 'confirmed', '5.00000000 GNT']
+            )
 
     def test_payments(self):
         with client_ctx(payments, self.client):
             result = payments(None, None)
 
-            assert isinstance(result, CommandResult)
-            assert result.type == CommandResult.TABULAR
-            assert len(result.data[1]) == self.n_payments
-
-            assert result.data[1][1] == [
-                'subtask_2',
-                'node_2',
-                'confirmed',
-                '0.20000000 GNT',
-                '2.00000000 ETH',
-            ]
+            self._assert_type_and_length(result, self.n_payments)
+            self.assertEqual(
+                result.data[1][1],
+                [
+                    'subtask_2',
+                    'node_2',
+                    'confirmed',
+                    '0.20000000 GNT',
+                    '2.00000000 ETH',
+                ]
+            )
 
     def test_payments_awaiting(self):
         with client_ctx(payments, self.client):
             result = payments(None, 'awaiting')
 
-            assert isinstance(result, CommandResult)
-            assert result.type == CommandResult.TABULAR
-            assert len(result.data[1]) == 1
-
-            assert result.data[1][0] == [
-                'subtask_3',
-                'node_3',
-                'awaiting',
-                '0.30000000 GNT',
-                '3.00000000 ETH',
-            ]
+            self._assert_type_and_length(result, 1)
+            self.assertEqual(
+                result.data[1][0],
+                [
+                    'subtask_3',
+                    'node_3',
+                    'awaiting',
+                    '0.30000000 GNT',
+                    '3.00000000 ETH',
+                ]
+            )
 
     def test_payments_confirmed(self):
         with client_ctx(payments, self.client):
             result = payments(None, 'confirmed')
 
-            assert isinstance(result, CommandResult)
-            assert result.type == CommandResult.TABULAR
-            assert len(result.data[1]) == 2
-
-            assert result.data[1][0] == [
-                'subtask_2',
-                'node_2',
-                'confirmed',
-                '0.20000000 GNT',
-                '2.00000000 ETH',
-            ]
-            assert result.data[1][1] == [
-                'subtask_5',
-                'node_5',
-                'confirmed',
-                '0.50000000 GNT',
-                '5.00000000 ETH',
-            ]
+            self._assert_type_and_length(result, 2)
+            self.assertEqual(
+                result.data[1][0],
+                [
+                    'subtask_2',
+                    'node_2',
+                    'confirmed',
+                    '0.20000000 GNT',
+                    '2.00000000 ETH',
+                ]
+            )
+            self.assertEqual(
+                result.data[1][1],
+                [
+                    'subtask_5',
+                    'node_5',
+                    'confirmed',
+                    '0.50000000 GNT',
+                    '5.00000000 ETH',
+                ]
+            )
 
     def test_deposit_payments(self):
         with client_ctx(payments, self.client):
             result = deposit_payments(None, None)
 
-            assert isinstance(result, CommandResult)
-            assert result.type == CommandResult.TABULAR
-            assert len(result.data[1]) == self.n_deposit_payments
-            assert result.data[1][3] == [
-                'deadbeaf4',
-                'sent',
-                '4.40000000 GNT',
-                '4.00000000 ETH',
-            ]
+            self._assert_type_and_length(result, self.n_deposit_payments)
+            self.assertEqual(
+                result.data[1][3],
+                [
+                    'deadbeaf4',
+                    'sent',
+                    '4.40000000 GNT',
+                    '4.00000000 ETH',
+                ]
+            )
 
     def test_deposit_payments_awaiting(self):
         with client_ctx(payments, self.client):
             result = deposit_payments(None, 'awaiting')
 
-            assert isinstance(result, CommandResult)
-            assert result.type == CommandResult.TABULAR
-            assert len(result.data[1]) == 1
-            assert result.data[1][0] == [
-                'deadbeaf3',
-                'awaiting',
-                '3.30000000 GNT',
-                '3.00000000 ETH',
-            ]
+            self._assert_type_and_length(result, 1)
+            self.assertEqual(
+                result.data[1][0],
+                [
+                    'deadbeaf3',
+                    'awaiting',
+                    '3.30000000 GNT',
+                    '3.00000000 ETH',
+                ]
+            )
 
     def test_deposit_payments_confirmed(self):
         with client_ctx(payments, self.client):
             result = deposit_payments(None, 'confirmed')
 
-            assert isinstance(result, CommandResult)
-            assert result.type == CommandResult.TABULAR
-            assert len(result.data[1]) == 2
-            assert result.data[1][0] == [
-                'deadbeaf2',
-                'confirmed',
-                '2.20000000 GNT',
-                '2.00000000 ETH',
-            ]
-            assert result.data[1][1] == [
-                'deadbeaf5',
-                'confirmed',
-                '5.50000000 GNT',
-                '5.00000000 ETH',
-            ]
+            self._assert_type_and_length(result, 2)
+            self.assertEqual(
+                result.data[1][0],
+                [
+                    'deadbeaf2',
+                    'confirmed',
+                    '2.20000000 GNT',
+                    '2.00000000 ETH',
+                ]
+            )
+            self.assertEqual(
+                result.data[1][1],
+                [
+                    'deadbeaf5',
+                    'confirmed',
+                    '5.50000000 GNT',
+                    '5.00000000 ETH',
+                ]
+            )
+
+    def _assert_type_and_length(self, result, length):
+        self.assertIsInstance(result, CommandResult)
+        self.assertEqual(result.type, CommandResult.TABULAR)
+        self.assertEqual(len(result.data[1]), length)
 
 
 class TestResources(unittest.TestCase):
