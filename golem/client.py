@@ -128,7 +128,8 @@ class Client(HardwarePresetsMixin):
         self.apps_manager = apps_manager
         self.datadir = datadir
         self.__lock_datadir()
-        self.task_tester: Optional[TaskTester] = None
+        self.task_tester:
+            Optional[TaskTester] = None
 
         self.task_archiver = TaskArchiver(datadir)
 
@@ -171,7 +172,8 @@ class Client(HardwarePresetsMixin):
             variant=concent_variant,
         )
 
-        self.task_server: Optional[TaskServer] = None
+        self.task_server:
+            Optional[TaskServer] = None
         self.port_mapper = None
 
         self.nodes_manager_client = None
@@ -210,7 +212,8 @@ class Client(HardwarePresetsMixin):
         self.daemon_manager = None
 
         self.rpc_publisher = None
-        self.task_test_result: Optional[Dict[str, Any]] = None
+        self.task_test_result:
+            Optional[Dict[str, Any]] = None
 
         self.resource_server = None
         self.resource_port = 0
@@ -274,9 +277,11 @@ class Client(HardwarePresetsMixin):
             self._publish(Task.evt_subtask_status, kwargs['task_id'],
                           kwargs['subtask_id'], op.value)
         else:
-            op_class_name: str = op.__class__.__name__ \
-                                 if op is not None else None
-            op_value: int = op.value if op is not None else None
+            op_class_name:
+                str = op.__class__.__name__ \
+                    if op is not None else None
+            op_value:
+                int = op.value if op is not None else None
             self._publish(Task.evt_task_status, kwargs['task_id'],
                           op_class_name, op_value)
 
@@ -577,7 +582,8 @@ class Client(HardwarePresetsMixin):
         _result = Deferred()
 
         # FIXME: Statement only for old DummyTask compatibility #2467
-        task: TaskBase
+        task:
+            TaskBase
         if isinstance(task_dict, TaskBase):
             warnings.warn(
                 "enqueue_new_task() called with {got_type}"
@@ -871,7 +877,7 @@ class Client(HardwarePresetsMixin):
                 total_subtasks=subtasks,
                 optimize_total=False,
                 use_frames=options.get('frame_count', 1) > 1,
-                frames=[None]*options.get('frame_count', 1),
+                frames=[None] * options.get('frame_count', 1),
             )
             if computed_subtasks != subtasks:
                 raise ValueError(
@@ -886,7 +892,8 @@ class Client(HardwarePresetsMixin):
         logger.debug('Aborting task "%r" ...', task_id)
         self.task_server.task_manager.abort_task(task_id)
 
-    def restart_task(self, task_id: str) -> Tuple[Optional[str], Optional[str]]:
+    def restart_task(
+            self, task_id: str) -> Tuple[Optional[str], Optional[str]]:
         """
         :return: (new_task_id, None) on success; (None, error_message)
                  on failure
@@ -959,7 +966,8 @@ class Client(HardwarePresetsMixin):
                      task_id, frame)
         task_manager = self.task_server.task_manager
 
-        subtasks: Dict = task_manager.get_frame_subtasks(task_id, frame)
+        subtasks:
+            Dict = task_manager.get_frame_subtasks(task_id, frame)
         if subtasks is None:
             logger.error("frame has no subtasks (task_id = %s, frame = %r",
                          task_id, frame)
@@ -1155,7 +1163,8 @@ class Client(HardwarePresetsMixin):
             -> Tuple[Optional[Dict], Optional[str]]:
         try:
             assert isinstance(self.task_server, TaskServer)
-            subtask = self.task_server.task_manager.get_subtask_dict(subtask_id)
+            subtask = self.task_server.task_manager.get_subtask_dict(
+                subtask_id)
             return subtask, None
         except KeyError:
             return None, "Subtask not found: '{}'".format(subtask_id)
@@ -1224,8 +1233,10 @@ class Client(HardwarePresetsMixin):
         if not self.concent_service.enabled:
             return None
 
-        balance: int = self.transaction_system.concent_balance()
-        timelock: int = self.transaction_system.concent_timelock()
+        balance:
+            int = self.transaction_system.concent_balance()
+        timelock:
+            int = self.transaction_system.concent_timelock()
 
         class DepositStatus(msg_datastructures.StringEnum):
             locked = enum.auto()
@@ -1562,7 +1573,8 @@ class Client(HardwarePresetsMixin):
         listen_port = self.get_p2p_port()
         task_server_port = self.get_task_server_port()
 
-        status: Dict[str, Any] = dict()
+        status:
+            Dict[str, Any] = dict()
 
         if listen_port == 0 or task_server_port == 0:
             status['listening'] = False
@@ -1574,8 +1586,8 @@ class Client(HardwarePresetsMixin):
         return status
 
     @staticmethod
-    def _make_connection_status_human_readable_message(status: Dict[str, Any]) \
-            -> str:
+    def _make_connection_status_human_readable_message(
+            status: Dict[str, Any]) -> str:
         # To create the message use the data that is only in `status` dict.
         # This is to make sure that message has no additional information.
 
@@ -1614,23 +1626,17 @@ class Client(HardwarePresetsMixin):
         task_computer = self.task_server.task_computer
 
         # computing
-        subtask_progress: Optional[ComputingSubtaskStateSnapshot] = \
-            task_computer.get_progress()
+        subtask_progress:
+            Optional[ComputingSubtaskStateSnapshot] = \
+                task_computer.get_progress()
         if subtask_progress is not None:
-            environment: Optional[str] = \
-                task_computer.get_environment()
+            environment:
+                Optional[str] = \
+                    task_computer.get_environment()
             return {
                 'status': 'Computing',
                 'subtask': subtask_progress.__dict__,
                 'environment': environment
-            }
-
-        # trying to get subtask from task
-        waiting_for_task: Optional[str] = task_computer.waiting_for_task
-        if waiting_for_task is not None:
-            return {
-                'status': 'Waiting for task',
-                'task_id_waited_for': waiting_for_task,
             }
 
         # not accepting tasks
@@ -1845,7 +1851,8 @@ class MaskUpdateService(LoopingCallService):
             interval_seconds: int,
             update_num_bits: int
     ) -> None:
-        self._task_manager: TaskManager = task_manager
+        self._task_manager:
+            TaskManager = task_manager
         self._update_num_bits = update_num_bits
         self._interval = interval_seconds
         super().__init__(interval_seconds)

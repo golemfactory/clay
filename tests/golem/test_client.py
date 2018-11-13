@@ -124,6 +124,7 @@ def make_client(*_, **kwargs):
 
 
 class TestClientBase(testwithreactor.TestDatabaseWithReactor):
+
     def setUp(self):
         super().setUp()
         self.client = make_client(datadir=self.path)
@@ -476,6 +477,7 @@ class TestClient(TestClientBase):
 
 
 class TestClientRestartSubtasks(TestClientBase):
+
     def setUp(self):
         super().setUp()
         self.ts = self.client.transaction_system
@@ -522,6 +524,7 @@ class TestClientRestartSubtasks(TestClientBase):
 
 
 class TestDoWorkService(testwithreactor.TestWithReactor):
+
     def setUp(self):
         super().setUp()
 
@@ -580,7 +583,8 @@ class TestDoWorkService(testwithreactor.TestWithReactor):
 
         with freeze_time("2018-01-01 00:01:00"):
             assert self.do_work_service._time_for(key, interval)
-            assert self.do_work_service._check_ts[key] == time.time() + interval
+            assert self.do_work_service._check_ts[
+                key] == time.time() + interval
 
     @freeze_time("2018-01-01 00:00:00")
     def test_intervals(self):
@@ -611,6 +615,7 @@ class TestDoWorkService(testwithreactor.TestWithReactor):
 
 
 class TestMonitoringPublisherService(testwithreactor.TestWithReactor):
+
     def setUp(self):
         task_server = Mock()
         task_server.task_keeper = Mock()
@@ -632,6 +637,7 @@ class TestMonitoringPublisherService(testwithreactor.TestWithReactor):
 
 
 class TestNetworkConnectionPublisherService(testwithreactor.TestWithReactor):
+
     def setUp(self):
         self.client = Mock()
         self.service = NetworkConnectionPublisherService(
@@ -648,6 +654,7 @@ class TestNetworkConnectionPublisherService(testwithreactor.TestWithReactor):
 
 
 class TestTaskArchiverService(testwithreactor.TestWithReactor):
+
     def setUp(self):
         self.task_archiver = Mock()
         self.service = TaskArchiverService(self.task_archiver)
@@ -661,6 +668,7 @@ class TestTaskArchiverService(testwithreactor.TestWithReactor):
 
 
 class TestResourceCleanerService(testwithreactor.TestWithReactor):
+
     def setUp(self):
         self.older_than_seconds = 5
         self.client = Mock()
@@ -682,6 +690,7 @@ class TestResourceCleanerService(testwithreactor.TestWithReactor):
 
 
 class TestTaskCleanerService(testwithreactor.TestWithReactor):
+
     def setUp(self):
         self.client = Mock(spec=Client)
         self.service = TaskCleanerService(
@@ -698,6 +707,7 @@ class TestTaskCleanerService(testwithreactor.TestWithReactor):
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestClientBase, LogTestCase):
     # pylint: disable=too-many-public-methods
+
     def setUp(self):
         super().setUp()
         self.client.sync = Mock()
@@ -1376,23 +1386,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         }
         assert status == expected_status
 
-    def test_provider_status_waiting_for_task(self, *_):
-        # given
-        task_computer = Mock()
-        task_computer.get_progress.return_value = None
-        task_computer.waiting_for_task = str(uuid.uuid4())
-        self.client.task_server.task_computer = task_computer
-
-        # when
-        status = self.client.get_provider_status()
-
-        # then
-        expected_status = {
-            'status': 'Waiting for task',
-            'task_id_waited_for': task_computer.waiting_for_task,
-        }
-        assert status == expected_status
-
     def test_provider_status_not_accepting_tasks(self, *_):
         # given
         self.client.config_desc.accept_tasks = False
@@ -1495,7 +1488,8 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         def _run(_self: TaskTester):
             self._check_task_tester_result()
-            _self.success_callback(result, estimated_memory, time_spent, **more)
+            _self.success_callback(
+                result, estimated_memory, time_spent, **more)
 
         with patch.object(self.client.task_server.task_manager, 'create_task'),\
                 patch('golem.client.TaskTester.run', _run):
@@ -1535,8 +1529,8 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             'BlenderTaskTypeInfo.for_purpose',
             mock.Mock(),
         ),\
-        mock.patch('golem.client.TaskTester.run', mock.Mock()),\
-        self.assertNoLogs():
+                mock.patch('golem.client.TaskTester.run', mock.Mock()),\
+                self.assertNoLogs():
             self.client._run_test_task(
                 {
                     'type': 'blender',
@@ -1568,6 +1562,7 @@ def test_task_computer_event_listener():
 
 
 class TestDepositBalance(TestClientBase):
+
     def test_no_concent(self):
         self.client.concent_service.variant = CONCENT_CHOICES['disabled']
         self.assertFalse(self.client.concent_service.enabled)
@@ -1605,6 +1600,7 @@ class TestDepositBalance(TestClientBase):
 
 
 class DepositPaymentsListTest(TestClientBase):
+
     def test_empty(self):
         self.assertEqual(self.client.get_deposit_payments_list(), [])
 
