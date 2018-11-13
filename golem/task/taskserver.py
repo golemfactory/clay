@@ -152,10 +152,6 @@ class TaskServer(
             signal='golem.income'
         )
         dispatcher.connect(
-            self.started_subtask_listener,
-            signal='golem.taskcomputer'
-        )
-        dispatcher.connect(
             self.finished_subtask_listener,
             signal='golem.taskcomputer'
         )
@@ -283,6 +279,13 @@ class TaskServer(
             self.task_keeper.remove_task_header(theader.task_id)
 
         return None
+
+    def task_given(self, node_id: str, ctd, price: int) -> bool:
+        if not self.task_computer.task_given(ctd):
+            return False
+        self.requested_tasks.remove(ctd['task_id'])
+        update_requestor_assigned_sum(node_id, price)
+        return True
 
     def send_results(self, subtask_id, task_id, result):
 
@@ -529,24 +532,6 @@ class TaskServer(
             self.increase_trust_payment(node_id, kwargs['amount'])
         elif event == 'overdue_single':
             self.decrease_trust_payment(node_id)
-
-    def started_subtask_listener(self, event='default', subtask_id=None,
-                                 **_kwargs):
-        if event != 'subtask_started' or not subtask_id:
-            return
-
-        keeper = self.task_manager.comp_task_keeper
-
-        try:
-            task_id = keeper.get_task_id_for_subtask(subtask_id)
-            header = keeper.get_task_header(task_id).fixed_header
-        except (AttributeError, KeyError):
-            logger.error("Unknown subtask: %s", subtask_id)
-            return
-
-        node_id = header.task_owner.key
-        amount = compute_subtask_value(header.max_price, header.subtask_timeout)
-        update_requestor_assigned_sum(node_id, amount)
 
     def finished_subtask_listener(self,  # pylint: disable=too-many-arguments
                                   event='default', subtask_id=None,
