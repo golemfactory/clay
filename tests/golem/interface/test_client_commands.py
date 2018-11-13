@@ -18,7 +18,7 @@ from golem.interface.client.account import Account
 from golem.interface.client.debug import Debug
 from golem.interface.client.environments import Environments
 from golem.interface.client.network import Network
-from golem.interface.client.payments import incomes, payments
+from golem.interface.client.payments import incomes, payments, deposit_payments
 from golem.interface.client.resources import Resources
 from golem.interface.client.settings import Settings, _virtual_mem, _cpu_count
 from golem.interface.client.tasks import Subtasks, Tasks
@@ -343,7 +343,6 @@ class TestNetwork(unittest.TestCase):
             '25001',
             'deadbeef01deadbe...beef01deadbeef01',
             'node_1',
-            '0.0.0'
         ])
 
         self.assertEqual(result_2.data[1][0], [
@@ -351,7 +350,6 @@ class TestNetwork(unittest.TestCase):
             '25001',
             'deadbeef01' * 8,
             'node_1',
-            '0.0.0'
         ])
 
         assert isinstance(result_1, CommandResult)
@@ -375,23 +373,33 @@ class TestPayments(unittest.TestCase):
         incomes_list = [{
             'payer': 'node_{}'.format(i),
             'status': 'waiting',
-            'value': '{}'.format(i),
+            'value': '{}'.format(i * 10**18),
         } for i in range(1, 6)]
 
         payments_list = [{
-            'fee': '{}'.format(i),
-            'value': '0.{}'.format(i),
-            'subtask': 'subtask_{}'.format(i),
-            'payee': 'node_{}'.format(i),
+            'fee': f'{i * 10**18}',
+            'value': f'{0.1 * i * 10**18}',
+            'subtask': f'subtask_{i}',
+            'payee': f'node_{i}',
             'status': 'waiting',
+        } for i in range(1, 6)]
+
+        statuses = ['awaiting', 'sent', 'confirmed']
+        deposit_payments_list = [{
+            'tx': f'deadbeaf{i}',
+            'status': statuses[i % 3],
+            'value': f'{1.1 * i * 10**18}',
+            'fee': f'{i * 10**18}',
         } for i in range(1, 6)]
 
         client = Mock()
         client.get_incomes_list.return_value = incomes_list
         client.get_payments_list.return_value = payments_list
+        client.get_deposit_payments_list.return_value = deposit_payments_list
 
         cls.n_incomes = len(incomes_list)
         cls.n_payments = len(payments_list)
+        cls.n_deposit_payments = len(deposit_payments_list)
         cls.client = client
 
     def test_incomes(self):
@@ -402,7 +410,7 @@ class TestPayments(unittest.TestCase):
             assert result.type == CommandResult.TABULAR
             assert len(result.data[1]) == self.n_incomes
             assert result.data[1][0] == [
-                'node_1', 'waiting', '0.000000 GNT'
+                'node_1', 'waiting', '1.00000000 GNT'
             ]
 
     def test_payments(self):
@@ -411,15 +419,30 @@ class TestPayments(unittest.TestCase):
 
             assert isinstance(result, CommandResult)
             assert result.type == CommandResult.TABULAR
-            assert len(result.data[1]) == self.n_incomes
+            assert len(result.data[1]) == self.n_payments
 
-            assert result.data[1][0][:-1] == [
+            assert result.data[1][0] == [
                 'subtask_1',
                 'node_1',
                 'waiting',
-                '0.000000 GNT',
+                '0.10000000 GNT',
+                '1.00000000 ETH',
             ]
-            assert result.data[1][0][4]
+
+    def test_deposit_payments(self):
+        with client_ctx(payments, self.client):
+            result = deposit_payments(None)
+
+            assert isinstance(result, CommandResult)
+            assert result.type == CommandResult.TABULAR
+            assert len(result.data[1]) == self.n_deposit_payments
+
+            assert result.data[1][1] == [
+                'deadbeaf2',
+                'confirmed',
+                '2.20000000 GNT',
+                '2.00000000 ETH',
+            ]
 
 
 class TestResources(unittest.TestCase):
@@ -761,7 +784,8 @@ class TestSettings(TempDirFixture):
         config_desc.init_from_app_config(app_config)
 
         client = Mock()
-        client.get_settings.return_value = config_desc.__dict__
+        self.client_config_dict = config_desc.__dict__
+        client.get_settings.return_value = self.client_config_dict
 
         self.client = client
 
@@ -772,11 +796,11 @@ class TestSettings(TempDirFixture):
 
             result = settings.show(False, False, False)
             assert isinstance(result, dict)
-            assert len(result) >= len(Settings.settings)
+            assert len(result) == len(self.client_config_dict)
 
             result = settings.show(True, True, True)
             assert isinstance(result, dict)
-            assert len(result) >= len(Settings.settings)
+            assert len(result) == len(self.client_config_dict)
 
             result = settings.show(True, False, False)
             assert isinstance(result, dict)
@@ -791,6 +815,43 @@ class TestSettings(TempDirFixture):
             assert isinstance(result, dict)
             assert len(result) == len(Settings.basic_settings) + len(
                 Settings.requestor_settings)
+
+    def test_show_convertible_items(self):
+        convertible_items = {
+            'accept_me': 0,
+            'debug_sth': 1,
+            'use_your_brain': 1,
+            'enable_hyperspeed_boosters': 0,
+            'in_shutdown': 0,
+            'net_masking_enabled': 1,
+        }
+        self.client.get_settings.return_value = convertible_items
+        with client_ctx(Settings, self.client):
+            settings = Settings()
+
+            result = settings.show(False, False, False)
+            self.assertTrue(
+                all(
+                    (isinstance(v, bool) for _, v in result.items())
+                )
+            )
+
+    def test_show_mixed_items(self):
+        items = {
+            'enable_thinking': 1,
+            'this_is_not_converted': 1,
+        }
+        self. client.get_settings.return_value = items
+        with client_ctx(Settings, self.client):
+            settings = Settings()
+
+            result = settings.show(False, False, False)
+            self.assertTrue(
+                isinstance(result['enable_thinking'], bool)
+            )
+            self.assertFalse(
+                isinstance(result['this_is_not_converted'], bool)
+            )
 
     def test_set(self):
 

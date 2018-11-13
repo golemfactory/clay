@@ -1335,7 +1335,6 @@ class TestCopySubtaskResults(TwistedTestCase):
 
         old_subtask_state.computer.node_id = 'node_id'
         old_subtask_state.computer.node_name = 'node_name'
-        old_subtask_state.computer.eth_account = 'eth_account'
         old_subtask_state.computer.port = 12345
         old_subtask_state.computer.performance = 1000
         old_subtask_state.computer.price = 2000
@@ -1390,8 +1389,6 @@ class TestCopySubtaskResults(TwistedTestCase):
 
             self.assertEqual(old_subtask_state.computer.node_id, 'node_id')
             self.assertEqual(old_subtask_state.computer.node_name, 'node_name')
-            self.assertEqual(
-                old_subtask_state.computer.eth_account, 'eth_account')
             self.assertEqual(old_subtask_state.computer.port, 12345)
             self.assertEqual(old_subtask_state.computer.performance, 1000)
             self.assertEqual(old_subtask_state.computer.price, 2000)
