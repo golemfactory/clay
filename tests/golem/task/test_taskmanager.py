@@ -1324,6 +1324,8 @@ class TestCopySubtaskResults(TwistedTestCase):
         old_subtask_state = SubtaskState()
         new_subtask_state = SubtaskState()
 
+        old_subtask_state.node_id = 'node_id'
+
         old_task_state.subtask_states['old_subtask_id'] = old_subtask_state
         new_task_state.subtask_states['new_subtask_id'] = new_subtask_state
 
@@ -1371,6 +1373,8 @@ class TestCopySubtaskResults(TwistedTestCase):
             self.assertEqual(new_subtask_state.stdout, 'stdout')
             self.assertEqual(new_subtask_state.stderr, 'stderr')
             self.assertEqual(new_subtask_state.results, ['result'])
+
+            self.assertEqual(old_subtask_state.node_id, 'node_id')
 
         patch.object(self.tm, 'notice_task_updated').start()
         deferred = self.tm._copy_subtask_results(
