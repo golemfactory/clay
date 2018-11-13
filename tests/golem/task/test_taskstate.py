@@ -37,11 +37,6 @@ class TestSubtaskState(unittest.TestCase):
         ss.stderr = "path/to/file2"
         ss.results = ["path/to/file3", "path/to/file4"]
         ss.computation_time = 130
-        ss.computer.node_name = "NODE1"
-        ss.computer.node_id = "abc131"
-        ss.computer.performance = 180
-        ss.computer.ip_address = "10.10.10.1"
-        ss.computer.port = 1311
 
         ss_dict = ss.to_dictionary()
         assert ss_dict['description'] == "My long task definition"
@@ -62,12 +57,6 @@ class TestSubtaskState(unittest.TestCase):
         assert ss_dict['results'] == ["path/to/file3", "path/to/file4"]
 
         assert ss_dict.get('computation_time') is None
-
-        assert ss_dict['node_name'] == "NODE1"
-        assert ss_dict['node_id'] == "abc131"
-        assert ss_dict['node_performance'] == "180"
-        assert ss_dict['node_ip_address'] == "10.10.10.1"
-        assert ss_dict['node_port'] == 1311
 
 
 class TestTaskState(unittest.TestCase):
