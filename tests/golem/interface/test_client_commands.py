@@ -501,7 +501,7 @@ class TestTasks(TempDirFixture):
             'id': '745c1d0{}'.format(i),
             'time_remaining': i,
             'subtasks_count': i + 2,
-            'status': task_statuses[(i-1) % len(task_statuses)].name,
+            'status': task_statuses[(i-1) % len(task_statuses)].value,
             'progress': i / 100.0
         } for i in range(1, 7)]
 
@@ -657,7 +657,7 @@ class TestTasks(TempDirFixture):
                 one_task,
                 {
                     'time_remaining': '0:00:01',
-                    'status': 'notStarted',
+                    'status': 'Not started',
                     'subtasks_count': 3,
                     'id': '745c1d01',
                     'progress': '1.00 %'
@@ -666,7 +666,7 @@ class TestTasks(TempDirFixture):
 
             self.assertEqual(
                 all_tasks.data[1][0],
-                ['745c1d01', '0:00:01', '3', 'notStarted', '1.00 %']
+                ['745c1d01', '0:00:01', '3', 'Not started', '1.00 %']
             )
 
             self.client.get_tasks = lambda _: {
@@ -698,19 +698,19 @@ class TestTasks(TempDirFixture):
                              len(Tasks.current_task_states))
             self.assertEqual(
                 current_tasks.data[1][0],
-                ['745c1d02', '0:00:02', '4', 'sending', '2.00 %']
+                ['745c1d02', '0:00:02', '4', 'Sending', '2.00 %']
             )
             self.assertEqual(
                 current_tasks.data[1][1],
-                ['745c1d03', '0:00:03', '5', 'waiting', '3.00 %']
+                ['745c1d03', '0:00:03', '5', 'Waiting', '3.00 %']
             )
             self.assertEqual(
                 current_tasks.data[1][2],
-                ['745c1d04', '0:00:04', '6', 'starting', '4.00 %']
+                ['745c1d04', '0:00:04', '6', 'Starting', '4.00 %']
             )
             self.assertEqual(
                 current_tasks.data[1][3],
-                ['745c1d05', '0:00:05', '7', 'computing', '5.00 %']
+                ['745c1d05', '0:00:05', '7', 'Computing', '5.00 %']
             )
 
     def test_subtasks_ok(self):

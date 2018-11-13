@@ -28,10 +28,10 @@ class Tasks:
                                        'avg for all tasks']
 
     current_task_states = [
-        TaskStatus.sending.name,
-        TaskStatus.waiting.name,
-        TaskStatus.starting.name,
-        TaskStatus.computing.name,
+        TaskStatus.sending.value,
+        TaskStatus.waiting.value,
+        TaskStatus.starting.value,
+        TaskStatus.computing.value,
     ]
 
     id_req = Argument('id', help="Task identifier")
