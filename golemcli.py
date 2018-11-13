@@ -18,8 +18,6 @@ from golem.tools import filelock
 os.environ["PBR_VERSION"] = '3.1.1'
 
 # pylint: disable=wrong-import-position, unused-import
-from golem.config.environments.testnet import DATA_DIR as TESTNET_DIR # noqa
-from golem.config.environments.mainnet import DATA_DIR as MAINNET_DIR # noqa
 from golem.core.common import config_logging, install_reactor  # noqa
 from golem.interface.cli import CLI  # noqa
 from golem.interface.client import debug  # noqa
@@ -111,11 +109,11 @@ def start():
 
 
 def check_golem_running(datadir: str, cli_in_mainnet: bool):
-    dir_to_check = TESTNET_DIR if cli_in_mainnet else MAINNET_DIR
+    net_to_check = 'rinkeby' if cli_in_mainnet else 'mainnet'
 
-    if is_app_running(datadir, dir_to_check):
+    if is_app_running(datadir, net_to_check):
         flag_action = 'removing' if cli_in_mainnet else 'adding'
-        msg = f'Detected golem core running on {dir_to_check} chain. ' \
+        msg = f'Detected golem core running on {net_to_check} chain. ' \
             f'In case of authorization failure, ' \
               f'try {flag_action} --mainnet (-m) flag.'
 
