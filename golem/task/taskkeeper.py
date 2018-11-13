@@ -182,7 +182,6 @@ class CompTaskKeeper:
         self.task_package_paths.update(task_package_paths)
 
     def add_request(self, theader: TaskHeader, price: int):
-        # price is task_header.max_price
         logger.debug('CT.add_request(%r, %d)', theader, price)
         if price < 0:
             raise ValueError("Price should be greater or equal zero")

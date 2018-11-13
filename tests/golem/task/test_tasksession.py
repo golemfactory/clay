@@ -643,7 +643,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         msg._fake_sign()
         ts._react_to_task_to_compute(msg)
         ts.task_server.add_task_session.assert_not_called()
-        ts.task_computer.task_given.assert_not_called()
+        ts.task_server.task_given.assert_not_called()
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.send.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -691,7 +691,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_manager.comp_task_keeper.receive_subtask.assert_called_with(msg)
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
-        ts.task_computer.task_given.assert_called_with(ctd)
+        ts.task_server.task_given.assert_called_with(
+            header.task_owner.key,
+            ctd,
+            msg.price,
+        )
         conn.close.assert_not_called()
 
         # Wrong key id -> failure
@@ -744,7 +748,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         msg = _prepare_and_react(ctd)
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
-        ts.task_computer.task_given.assert_called_with(ctd)
+        ts.task_server.task_given.assert_called_with(
+            header.task_owner.key,
+            ctd,
+            msg.price,
+        )
         conn.close.assert_not_called()
 
         # No environment available -> failure
@@ -793,7 +801,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         de.main_program_file = file_name
         msg = _prepare_and_react(ctd)
         ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
-        ts.task_computer.task_given.assert_called_with(ctd)
+        ts.task_server.task_given.assert_called_with(
+            header.task_owner.key,
+            ctd,
+            msg.price,
+        )
         conn.close.assert_not_called()
 
     # pylint: enable=too-many-statements

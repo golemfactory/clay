@@ -1,16 +1,20 @@
 import logging
+import math
 import time
-from typing import Optional, Dict, Tuple
+from typing import ClassVar, Optional, Dict, Tuple
 
 logger = logging.getLogger(__name__)
 
 
 class IdleTimer:
     """ Keeps track of computation timestamps per Golem session """
+    _ALPHA: ClassVar[float] = 0.00001
+    _BETA: ClassVar[float] = 4 * _ALPHA
 
     def __init__(self):
         self._last_comp_started: Optional[float] = None
         self._last_comp_finished: Optional[float] = time.time()
+        self._thirst = 0.2
 
     @property
     def last_comp_started(self) -> Optional[float]:
@@ -19,6 +23,11 @@ class IdleTimer:
     @property
     def last_comp_finished(self) -> Optional[float]:
         return self._last_comp_finished
+
+    @property
+    def thirst(self):
+        return self._thirst *\
+            math.exp(-self._ALPHA * (time.time() - self._last_comp_finished))
 
     def comp_started(self) -> None:
         """ Updates the computation started and finished timestamps. """
@@ -36,8 +45,10 @@ class IdleTimer:
 
         logger.debug("IdleTimer.comp_finished() at %r", time.time())
 
-        if self._last_comp_finished is None:
+        if self._last_comp_finished is None and self._last_comp_started:
             self._last_comp_finished = time.time()
+            comp_length = self._last_comp_finished - self._last_comp_started
+            self._thirst = math.exp(self._BETA * comp_length) * self._thirst
         else:
             logger.warning("Computation is not running")
 
