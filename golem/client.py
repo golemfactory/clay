@@ -275,7 +275,7 @@ class Client(HardwarePresetsMixin):
                           kwargs['subtask_id'], op.value)
         else:
             op_class_name: str = op.__class__.__name__ \
-                                 if op is not None else None
+                if op is not None else None
             op_value: int = op.value if op is not None else None
             self._publish(Task.evt_task_status, kwargs['task_id'],
                           op_class_name, op_value)
@@ -871,7 +871,7 @@ class Client(HardwarePresetsMixin):
                 total_subtasks=subtasks,
                 optimize_total=False,
                 use_frames=options.get('frame_count', 1) > 1,
-                frames=[None]*options.get('frame_count', 1),
+                frames=[None] * options.get('frame_count', 1),
             )
             if computed_subtasks != subtasks:
                 raise ValueError(
@@ -886,7 +886,8 @@ class Client(HardwarePresetsMixin):
         logger.debug('Aborting task "%r" ...', task_id)
         self.task_server.task_manager.abort_task(task_id)
 
-    def restart_task(self, task_id: str) -> Tuple[Optional[str], Optional[str]]:
+    def restart_task(
+            self, task_id: str) -> Tuple[Optional[str], Optional[str]]:
         """
         :return: (new_task_id, None) on success; (None, error_message)
                  on failure
@@ -1155,7 +1156,8 @@ class Client(HardwarePresetsMixin):
             -> Tuple[Optional[Dict], Optional[str]]:
         try:
             assert isinstance(self.task_server, TaskServer)
-            subtask = self.task_server.task_manager.get_subtask_dict(subtask_id)
+            subtask = self.task_server.task_manager.get_subtask_dict(
+                subtask_id)
             return subtask, None
         except KeyError:
             return None, "Subtask not found: '{}'".format(subtask_id)
@@ -1574,8 +1576,8 @@ class Client(HardwarePresetsMixin):
         return status
 
     @staticmethod
-    def _make_connection_status_human_readable_message(status: Dict[str, Any]) \
-            -> str:
+    def _make_connection_status_human_readable_message(
+            status: Dict[str, Any]) -> str:
         # To create the message use the data that is only in `status` dict.
         # This is to make sure that message has no additional information.
 
@@ -1623,14 +1625,6 @@ class Client(HardwarePresetsMixin):
                 'status': 'Computing',
                 'subtask': subtask_progress.__dict__,
                 'environment': environment
-            }
-
-        # trying to get subtask from task
-        waiting_for_task: Optional[str] = task_computer.waiting_for_task
-        if waiting_for_task is not None:
-            return {
-                'status': 'Waiting for task',
-                'task_id_waited_for': waiting_for_task,
             }
 
         # not accepting tasks
