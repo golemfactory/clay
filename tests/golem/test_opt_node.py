@@ -706,10 +706,12 @@ class TestOptNode(TempDirFixture):
         setattr(node, '_reactor', reactor)
         setattr(node, '_docker_manager', Mock())
         setattr(node, 'client', None)
+        setattr(node, '_datadir_lock', Mock())
 
         node.quit()
 
         assert not node._reactor.stop.called
+        assert node._datadir_lock.close.called
 
     @patch('golem.node.Database')
     @patch('threading.Thread', MockThread)
@@ -836,3 +838,9 @@ class TestOptNode(TempDirFixture):
 
         assert result is True
         assert mock_tm.get_progresses.called
+
+    def test_datadir_lock(self, *_):
+        Node(**self.node_kwargs)
+
+        with self.assertRaises(IOError):
+            Node(**self.node_kwargs)
