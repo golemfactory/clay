@@ -840,7 +840,9 @@ class TestOptNode(TempDirFixture):
         assert mock_tm.get_progresses.called
 
     def test_datadir_lock(self, *_):
-        Node(**self.node_kwargs)
+        node = Node(**self.node_kwargs)
 
         with self.assertRaises(IOError):
             Node(**self.node_kwargs)
+
+        node._unlock_datadir()
