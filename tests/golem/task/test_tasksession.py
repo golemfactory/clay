@@ -502,8 +502,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 'key_id',
                 'eth_address',
             )
-            ts.send(msg_factories.tasks.SubtaskResultsAcceptedFactory(
+            rct = msg_factories.tasks.ReportComputedTaskFactory(
                 task_to_compute__compute_task_def__subtask_id=subtask_id,
+            )
+            ts.send(msg_factories.tasks.SubtaskResultsAcceptedFactory(
+                report_computed_task=rct,
                 payment_ts=payment.processed_ts))
             ts.dropped()
 
@@ -1116,14 +1119,17 @@ class SubtaskResultsAcceptedTest(TestCase):
 
     def test_react_to_subtask_result_accepted(self):
         # given
-        sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
-            sign__privkey=self.requestor_keys.raw_privkey,
+        rct = msg_factories.tasks.ReportComputedTaskFactory(
             task_to_compute__sign__privkey=self.requestor_keys.raw_privkey,
             task_to_compute__requestor_public_key=self.requestor_key_id,
             task_to_compute__want_to_compute_task__sign__privkey=(
                 self.provider_keys.raw_privkey),
             task_to_compute__want_to_compute_task__provider_public_key=(
                 self.provider_key_id),
+        )
+        sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
+            sign__privkey=self.requestor_keys.raw_privkey,
+            report_computed_task=rct,
         )
         self.task_server.keys_auth._private_key = \
             self.provider_keys.raw_privkey
