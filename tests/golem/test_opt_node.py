@@ -558,7 +558,8 @@ class TestOptNode(TempDirFixture):
                 self.node.client.quit()
             if self.node._db:
                 self.node._db.close()
-            self.node.quit()
+
+            self.node._unlock_datadir()
         super().tearDown()
 
     def test_start_rpc_router(self, reactor, *_):
@@ -697,8 +698,9 @@ class TestOptNode(TempDirFixture):
 
     @patch('golem.node.Database')
     @patch('threading.Thread', MockThread)
+    @patch("golem.tools.filelock.unlock")
     @patch('twisted.internet.reactor', create=True)
-    def test_quit_mock(self, reactor, *_):
+    def test_quit_mock(self, reactor, unlock, *_):
         reactor.running = False
         reactor.callFromThread = call_now
 
@@ -712,6 +714,7 @@ class TestOptNode(TempDirFixture):
         node.quit()
 
         assert not node._reactor.stop.called
+        assert unlock.called
         assert node._datadir_lock.close.called
 
     @patch('golem.node.Database')
