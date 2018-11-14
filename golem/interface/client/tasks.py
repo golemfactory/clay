@@ -86,7 +86,7 @@ class Tasks:
                 result = [t for t in result
                           if TaskStatus(t['status']).is_active()]
 
-            for task in result or []:
+            for task in result:
                 values.append([
                     task['id'],
                     Tasks.__format_seconds(task['time_remaining']),

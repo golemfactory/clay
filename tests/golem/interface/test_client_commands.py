@@ -708,6 +708,17 @@ class TestTasks(TempDirFixture):
                 'progress': '0.00 %'
             })
 
+    def test_show_result_is_none(self):
+        client = Mock()
+        client.get_tasks.return_value = None
+
+        with client_ctx(Tasks, client):
+            tasks = Tasks()
+
+            one_task = tasks.show("non existing task_id", None, current=True)
+
+            self.assertIsNone(one_task)
+
     def test_show_current(self):
         client = self.client
 
