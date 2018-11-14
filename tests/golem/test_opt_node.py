@@ -558,8 +558,9 @@ class TestOptNode(TempDirFixture):
                 self.node.client.quit()
             if self.node._db:
                 self.node._db.close()
+            if self.node._datadir_lock and not self.node._datadir_lock.closed:
+                self.node._unlock_datadir()
 
-            self.node._unlock_datadir()
         super().tearDown()
 
     def test_start_rpc_router(self, reactor, *_):
