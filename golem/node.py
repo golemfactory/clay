@@ -482,13 +482,13 @@ class Node(object):
         try:
             filelock.lock(self._datadir_lock)
         except IOError:
-            raise IOError("datadir {} is locked, possibly used by"
-                          "another Golem instance".format(self._datadir))
+            raise IOError(f'datadir {self._datadir} is locked, possibly used by'
+                          'another Golem instance')
 
     def _unlock_datadir(self):
         try:
             filelock.unlock(self._datadir_lock)
         except Exception:
-            pass
+            raise IOError(f'failed to unlock {self._datadir}')
         finally:
             self._datadir_lock.close()
