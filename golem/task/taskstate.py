@@ -50,7 +50,6 @@ class TaskState(object):
 class ComputerState(object):
     def __init__(self):
         self.node_id = ""
-        self.eth_account = ""
         self.performance = 0
         self.ip_address = ""
         self.port = 0

@@ -94,6 +94,9 @@ class ConcentBaseTest:
             'requestor_public_key': msg_utils.encode_hex(
                 self.requestor_pub_key,
             ),
+            'requestor_ethereum_public_key': msg_utils.encode_hex(
+                self.requestor_pub_key,
+            ),
             'want_to_compute_task__provider_public_key':
                 msg_utils.encode_hex(self.provider_pub_key),
             'want_to_compute_task__sign__privkey':

@@ -63,7 +63,8 @@ class CommandFormatter(_CommandResultFormatter):
 
             if self.prettify:
                 return yaml.safe_dump(result, allow_unicode=True, default_flow_style=False)
-            return result
+            return "\n".join(f"{k}: {result[k]}" for k
+                             in sorted(result.keys())) + "\n"
 
 
 class CommandJSONFormatter(_CommandResultFormatter):
