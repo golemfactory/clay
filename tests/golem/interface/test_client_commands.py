@@ -18,7 +18,7 @@ from golem.interface.client.account import Account
 from golem.interface.client.debug import Debug
 from golem.interface.client.environments import Environments
 from golem.interface.client.network import Network
-from golem.interface.client.payments import incomes, payments
+from golem.interface.client.payments import incomes, payments, deposit_payments
 from golem.interface.client.resources import Resources
 from golem.interface.client.settings import Settings, _virtual_mem, _cpu_count
 from golem.interface.client.tasks import Subtasks, Tasks
@@ -344,7 +344,6 @@ class TestNetwork(unittest.TestCase):
             '25001',
             'deadbeef01deadbe...beef01deadbeef01',
             'node_1',
-            '0.0.0'
         ])
 
         self.assertEqual(result_2.data[1][0], [
@@ -352,7 +351,6 @@ class TestNetwork(unittest.TestCase):
             '25001',
             'deadbeef01' * 8,
             'node_1',
-            '0.0.0'
         ])
 
         assert isinstance(result_1, CommandResult)
@@ -376,23 +374,33 @@ class TestPayments(unittest.TestCase):
         incomes_list = [{
             'payer': 'node_{}'.format(i),
             'status': 'waiting',
-            'value': '{}'.format(i),
+            'value': '{}'.format(i * 10**18),
         } for i in range(1, 6)]
 
         payments_list = [{
-            'fee': '{}'.format(i),
-            'value': '0.{}'.format(i),
-            'subtask': 'subtask_{}'.format(i),
-            'payee': 'node_{}'.format(i),
+            'fee': f'{i * 10**18}',
+            'value': f'{0.1 * i * 10**18}',
+            'subtask': f'subtask_{i}',
+            'payee': f'node_{i}',
             'status': 'waiting',
+        } for i in range(1, 6)]
+
+        statuses = ['awaiting', 'sent', 'confirmed']
+        deposit_payments_list = [{
+            'tx': f'deadbeaf{i}',
+            'status': statuses[i % 3],
+            'value': f'{1.1 * i * 10**18}',
+            'fee': f'{i * 10**18}',
         } for i in range(1, 6)]
 
         client = Mock()
         client.get_incomes_list.return_value = incomes_list
         client.get_payments_list.return_value = payments_list
+        client.get_deposit_payments_list.return_value = deposit_payments_list
 
         cls.n_incomes = len(incomes_list)
         cls.n_payments = len(payments_list)
+        cls.n_deposit_payments = len(deposit_payments_list)
         cls.client = client
 
     def test_incomes(self):
@@ -403,7 +411,7 @@ class TestPayments(unittest.TestCase):
             assert result.type == CommandResult.TABULAR
             assert len(result.data[1]) == self.n_incomes
             assert result.data[1][0] == [
-                'node_1', 'waiting', '0.000000 GNT'
+                'node_1', 'waiting', '1.00000000 GNT'
             ]
 
     def test_payments(self):
@@ -412,15 +420,30 @@ class TestPayments(unittest.TestCase):
 
             assert isinstance(result, CommandResult)
             assert result.type == CommandResult.TABULAR
-            assert len(result.data[1]) == self.n_incomes
+            assert len(result.data[1]) == self.n_payments
 
-            assert result.data[1][0][:-1] == [
+            assert result.data[1][0] == [
                 'subtask_1',
                 'node_1',
                 'waiting',
-                '0.000000 GNT',
+                '0.10000000 GNT',
+                '1.00000000 ETH',
             ]
-            assert result.data[1][0][4]
+
+    def test_deposit_payments(self):
+        with client_ctx(payments, self.client):
+            result = deposit_payments(None)
+
+            assert isinstance(result, CommandResult)
+            assert result.type == CommandResult.TABULAR
+            assert len(result.data[1]) == self.n_deposit_payments
+
+            assert result.data[1][1] == [
+                'deadbeaf2',
+                'confirmed',
+                '2.20000000 GNT',
+                '2.00000000 ETH',
+            ]
 
 
 class TestResources(unittest.TestCase):
