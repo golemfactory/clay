@@ -27,13 +27,6 @@ class Tasks:
     unsupport_reasons_table_headers = ['reason', 'no of tasks',
                                        'avg for all tasks']
 
-    current_task_states = [
-        TaskStatus.sending.value,
-        TaskStatus.waiting.value,
-        TaskStatus.starting.value,
-        TaskStatus.computing.value,
-    ]
-
     id_req = Argument('id', help="Task identifier")
     id_opt = Argument.extend(id_req, optional=True)
     subtask_ids = Argument('subtask_ids', vargs=True, help="Subtask ids")
@@ -91,7 +84,7 @@ class Tasks:
 
             if current:
                 result = [t for t in result
-                          if t['status'] in self.current_task_states]
+                          if TaskStatus(t['status']).is_active()]
 
             for task in result or []:
                 values.append([

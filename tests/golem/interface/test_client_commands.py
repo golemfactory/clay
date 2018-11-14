@@ -694,8 +694,7 @@ class TestTasks(TempDirFixture):
             current_tasks = tasks.show(None, None, True)
 
             self.assertIsInstance(current_tasks, CommandResult)
-            self.assertEqual(len(current_tasks.data[1]),
-                             len(Tasks.current_task_states))
+            self.assertEqual(len(current_tasks.data[1]), 4)
             self.assertEqual(
                 current_tasks.data[1][0],
                 ['745c1d02', '0:00:02', '4', 'Sending', '2.00 %']
