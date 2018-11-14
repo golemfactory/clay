@@ -27,7 +27,7 @@ from golem.task.taskbase import Task, TaskHeader, \
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, \
-    TaskStatus, ComputerState, TaskOp, SubtaskOp, OtherOp
+    TaskStatus, TaskOp, SubtaskOp, OtherOp
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 
@@ -340,11 +340,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         wrong_task = not self.tm.is_my_task("xyz")
         subtask = self.tm.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
-        task_state = self.tm.tasks_states["xyz"]
         self.assertIsInstance(subtask, ComputeTaskDef)
         assert not wrong_task
-        subtask_state = task_state.subtask_states[subtask['subtask_id']]
-        assert subtask_state.computer.price == 1010
 
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "xyzxyz2"
         wrong_task = not self.tm.is_my_task("xyz")
@@ -668,13 +665,11 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         task_mock.subtasks_given[subtask_id] = TaskClient(node_id)
 
         subtask_state = SubtaskState()
+        subtask_state.node_id = node_id
         subtask_state.status = SubtaskStatus.downloading
         subtask_state.subtask_id = subtask_id
-        subtask_state.computer = Mock()
-        subtask_state.computer.node_id = node_id
 
         task_state = TaskState()
-        task_state.computer = Mock()
         task_state.subtask_states[subtask_id] = subtask_state
 
         self.tm.add_new_task(task_mock)
@@ -1100,9 +1095,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             subtask = SubtaskState()
             subtask.subtask_id = str(uuid.uuid4())
             subtask.subtask_status = SubtaskStatus.starting
-            subtask.computer = ComputerState()
-            subtask.computer.node_name = 'node_{}'.format(i)
-            subtask.computer.node_id = 'deadbeef0{}'.format(i)
             subtask.results = []
             subtask.stderr = 'error_{}'.format(i)
             subtask.stdout = 'output_{}'.format(i)
@@ -1198,7 +1190,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                 self.assertEqual(ss.subtask_status, SubtaskStatus.restarted)
                 self.assertEqual(
                     ss.subtask_definition, ctd['short_description'])
-                self.assertEqual(ss.computer.performance, ctd['performance'])
 
     def test_copy_results_subtasks_properly_matched(self):
         old_task = MagicMock(spec=CoreTask)
@@ -1333,11 +1324,7 @@ class TestCopySubtaskResults(TwistedTestCase):
         old_subtask_state = SubtaskState()
         new_subtask_state = SubtaskState()
 
-        old_subtask_state.computer.node_id = 'node_id'
-        old_subtask_state.computer.node_name = 'node_name'
-        old_subtask_state.computer.port = 12345
-        old_subtask_state.computer.performance = 1000
-        old_subtask_state.computer.price = 2000
+        old_subtask_state.node_id = 'node_id'
 
         old_task_state.subtask_states['old_subtask_id'] = old_subtask_state
         new_task_state.subtask_states['new_subtask_id'] = new_subtask_state
@@ -1387,11 +1374,7 @@ class TestCopySubtaskResults(TwistedTestCase):
             self.assertEqual(new_subtask_state.stderr, 'stderr')
             self.assertEqual(new_subtask_state.results, ['result'])
 
-            self.assertEqual(old_subtask_state.computer.node_id, 'node_id')
-            self.assertEqual(old_subtask_state.computer.node_name, 'node_name')
-            self.assertEqual(old_subtask_state.computer.port, 12345)
-            self.assertEqual(old_subtask_state.computer.performance, 1000)
-            self.assertEqual(old_subtask_state.computer.price, 2000)
+            self.assertEqual(old_subtask_state.node_id, 'node_id')
 
         patch.object(self.tm, 'notice_task_updated').start()
         deferred = self.tm._copy_subtask_results(

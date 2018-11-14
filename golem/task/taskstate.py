@@ -47,22 +47,13 @@ class TaskState(object):
         }
 
 
-class ComputerState(object):
-    def __init__(self):
-        self.node_id = ""
-        self.performance = 0
-        self.ip_address = ""
-        self.port = 0
-        self.node_name = ""
-        self.price = 0
-
-
 class SubtaskState(object):
     def __init__(self):
         self.subtask_definition = ""
         self.subtask_id = ""
         self.subtask_progress = 0.0
         self.time_started = 0
+        self.node_id = ""
         self.deadline = 0
         self.extra_data = {}
         # FIXME: subtask_rem_time is always equal 0 (#2562)
@@ -73,16 +64,10 @@ class SubtaskState(object):
         self.stderr = ""
         self.results = []
 
-        self.computer = ComputerState()
-
     def to_dictionary(self):
         return {
             'subtask_id': to_unicode(self.subtask_id),
-            'node_name': to_unicode(self.computer.node_name),
-            'node_id': to_unicode(self.computer.node_id),
-            'node_performance': to_unicode(self.computer.performance),
-            'node_ip_address': to_unicode(self.computer.ip_address),
-            'node_port': self.computer.port,
+            'node_id': to_unicode(self.node_id),
             'status': self.subtask_status.value,
             'progress': self.subtask_progress,
             'time_started': self.time_started,
