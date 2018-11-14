@@ -587,9 +587,9 @@
     <ROW Action="AI_GetArpIconPath" Sequence="1401"/>
     <ROW Action="ExecuteUninstallPre011" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL_CLEAN &lt;&gt; &quot;&quot; )" Sequence="1618"/>
     <ROW Action="StripQuotesFromUninstallPath" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="1617"/>
-    <ROW Action="AI_AiRemoveFilesImmediate" Sequence="3499"/>
     <ROW Action="Execute_CleanDockerVM" Condition="(VersionNT &gt; 501) OR (VersionNT = 501 AND ServicePackLevel &gt;= 2)" Sequence="1608"/>
     <ROW Action="AI_DATA_SETTER_10" Condition="(VersionNT &gt; 501) OR (VersionNT = 501 AND ServicePackLevel &gt;= 2)" Sequence="1607"/>
+    <ROW Action="AI_AiRemoveFilesImmediate" Sequence="3499"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiInstallUISequenceComponent">
     <ROW Action="AI_RESTORE_LOCATION" Condition="APPDIR=&quot;&quot;" Sequence="749"/>
@@ -666,7 +666,7 @@
     <ROW UpgradeCode="[|UpgradeCode]" VersionMin="[|ProductVersion]" Attributes="2" ActionProperty="AI_NEWERPRODUCTFOUND"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.PreReqComponent">
-    <ROW PrereqKey="DockerToolbox" DisplayName="Docker Toolbox" VersionMin="18.6.0" SetupFileUrl="C:\BuildResources\DockerToolbox-18.06.0-ce.exe" Location="0" ExactSize="0" WinNTVersions="Windows 9x/ME/NT/2000/XP/Vista/Windows 7/Windows 8 x86/Windows 8.1 x86/Windows 10 x86" Operator="1" ComLine="/VERYSILENT" Options="zym" TargetName="DockerToolbox-18.06.0-ce.exe"/>
+    <ROW PrereqKey="DockerToolbox" DisplayName="Docker Toolbox" VersionMin="18.9.0" SetupFileUrl="C:\BuildResources\DockerToolbox-18.09.0.exe" Location="0" ExactSize="0" WinNTVersions="Windows 9x/ME/NT/2000/XP/Vista/Windows 7/Windows 8 x86/Windows 8.1 x86/Windows 10 x86" Operator="1" ComLine="/VERYSILENT" Options="zym" TargetName="DockerToolbox-18.09.0.exe"/>
     <ROW PrereqKey="MicrosoftVisualC" DisplayName="Microsoft Visual C++ 2015 Redistributable (x64) - 14.0.23026" VersionMin="14.0.23026.0" SetupFileUrl="C:\BuildResources\vc_redist.x64.exe" Location="0" ExactSize="0" WinNTVersions="Windows 9x/ME/NT/2000/XP/Vista/Windows 7/Windows 8 x86/Windows 8.1 x86/Windows 10 x86" Operator="1" ComLine="/install /passive /norestart" BasicUiComLine="/install /passive /norestart" NoUiComLine="/install /passive /norestart" Options="zym" TargetName="vc_redist.x64.exe"/>
     <ATTRIBUTE name="PrereqsOrder" value="DockerToolbox MicrosoftVisualC"/>
   </COMPONENT>
