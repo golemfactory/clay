@@ -1,5 +1,5 @@
 from scripts.node_integration_tests import helpers
-from .base import NodeTestPlaybook
+from ..base import NodeTestPlaybook
 
 
 class ForceAccept(NodeTestPlaybook):

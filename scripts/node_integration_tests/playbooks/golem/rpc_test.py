@@ -1,4 +1,4 @@
-from .base import NodeTestPlaybook
+from ..base import NodeTestPlaybook
 
 
 class RPCTest(NodeTestPlaybook):

@@ -1,8 +1,7 @@
 import time
 import typing
 
-from scripts.node_integration_tests.rpc.client import call_requestor
-from .base import NodeTestPlaybook
+from ..base import NodeTestPlaybook
 
 
 class TaskTimeoutAndRestart(NodeTestPlaybook):
@@ -24,7 +23,7 @@ class TaskTimeoutAndRestart(NodeTestPlaybook):
 
             time.sleep(10)
 
-        return call_requestor('comp.task.subtasks', self.task_id,
+        return self.call_requestor('comp.task.subtasks', self.task_id,
                               on_success=on_success, on_error=self.print_error)
 
     def step_wait_task_timeout(self):
@@ -38,7 +37,7 @@ class TaskTimeoutAndRestart(NodeTestPlaybook):
                 print("Task status: {} ... ".format(result['status']))
                 time.sleep(10)
 
-        return call_requestor('comp.task', self.task_id,
+        return self.call_requestor('comp.task', self.task_id,
                        on_success=on_success, on_error=self.print_error)
 
     def step_stop_nodes(self):
@@ -82,7 +81,7 @@ class TaskTimeoutAndRestart(NodeTestPlaybook):
         if not self.task_in_creation:
             print("Restarting subtasks for {}".format(self.previous_task_id))
             self.task_in_creation = True
-            return call_requestor('comp.task.restart_subtasks',
+            return self.call_requestor('comp.task.restart_subtasks',
                                   self.previous_task_id, [],
                                   on_success=on_success,
                                   on_error=self.print_error)

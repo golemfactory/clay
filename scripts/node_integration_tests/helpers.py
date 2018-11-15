@@ -10,6 +10,15 @@ import tempfile
 from . import tasks
 
 
+def get_testdir():
+    env_key = 'GOLEM_INTEGRATION_TEST_DIR'
+    datadir = os.environ.get(env_key, None)
+    if not datadir:
+        datadir = tempfile.mkdtemp(prefix='golem-integration-test-')
+        os.environ[env_key] = datadir
+    return datadir
+
+
 def mkdatadir(role: str):
     return tempfile.mkdtemp(prefix='golem-{}-'.format(role.lower()))
 
