@@ -27,8 +27,14 @@ from golem.network.transport.tcpnetwork import (
 from golem.network.transport.tcpserver import (
     PendingConnectionsServer, PenConnStatus)
 from golem.ranking.helper.trust import Trust
-from golem.ranking.manager.database_manager import update_requestor_paid_sum, \
-    update_requestor_assigned_sum, update_requestor_efficiency
+from golem.ranking.manager.database_manager import (
+    get_requestor_efficiency,
+    get_requestor_assigned_sum,
+    get_requestor_paid_sum,
+    update_requestor_paid_sum,
+    update_requestor_assigned_sum,
+    update_requestor_efficiency,
+)
 from golem.task.acl import get_acl
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.taskbase import TaskHeader, Task, AcceptClientVerdict
@@ -50,6 +56,17 @@ from .tasksession import TaskSession
 logger = logging.getLogger(__name__)
 
 tmp_cycler = itertools.cycle(list(range(550)))
+
+
+def _calculate_price(min_price: int, requestor_id: str) -> int:
+    r = min_price * (1.0 + ProviderIdleTimer.thirst)
+    v_paid = get_requestor_paid_sum(requestor_id)
+    v_assigned = get_requestor_assigned_sum(requestor_id)
+    c = min_price
+    Q = min(1.0, (min_price + 1 + v_paid + c) / (min_price + 1 + v_assigned))
+    R = get_requestor_efficiency(requestor_id)
+    S = Q * R
+    return max(int(r / S), min_price)
 
 
 class TaskServer(
@@ -135,10 +152,6 @@ class TaskServer(
             signal='golem.income'
         )
         dispatcher.connect(
-            self.started_subtask_listener,
-            signal='golem.taskcomputer'
-        )
-        dispatcher.connect(
             self.finished_subtask_listener,
             signal='golem.taskcomputer'
         )
@@ -219,7 +232,11 @@ class TaskServer(
                     )
 
             if supported.is_ok():
-                price = int(theader.max_price)
+                price = _calculate_price(
+                    self.config_desc.min_price,
+                    theader.task_owner.key,
+                )
+                price = min(price, theader.max_price)
                 self.task_manager.add_comp_task_request(
                     theader=theader, price=price)
                 args = {
@@ -227,7 +244,7 @@ class TaskServer(
                     'key_id': theader.task_owner.key,
                     'task_id': theader.task_id,
                     'estimated_performance': performance,
-                    'price': theader.max_price,
+                    'price': price,
                     'max_resource_size': self.config_desc.max_resource_size,
                     'max_memory_size': self.config_desc.max_memory_size,
                     'num_cores': self.config_desc.num_cores
@@ -262,6 +279,13 @@ class TaskServer(
             self.task_keeper.remove_task_header(theader.task_id)
 
         return None
+
+    def task_given(self, node_id: str, ctd, price: int) -> bool:
+        if not self.task_computer.task_given(ctd):
+            return False
+        self.requested_tasks.remove(ctd['task_id'])
+        update_requestor_assigned_sum(node_id, price)
+        return True
 
     def send_results(self, subtask_id, task_id, result):
 
@@ -508,24 +532,6 @@ class TaskServer(
             self.increase_trust_payment(node_id, kwargs['amount'])
         elif event == 'overdue_single':
             self.decrease_trust_payment(node_id)
-
-    def started_subtask_listener(self, event='default', subtask_id=None,
-                                 **_kwargs):
-        if event != 'subtask_started' or not subtask_id:
-            return
-
-        keeper = self.task_manager.comp_task_keeper
-
-        try:
-            task_id = keeper.get_task_id_for_subtask(subtask_id)
-            header = keeper.get_task_header(task_id).fixed_header
-        except (AttributeError, KeyError):
-            logger.error("Unknown subtask: %s", subtask_id)
-            return
-
-        node_id = header.task_owner.key
-        amount = compute_subtask_value(header.max_price, header.subtask_timeout)
-        update_requestor_assigned_sum(node_id, amount)
 
     def finished_subtask_listener(self,  # pylint: disable=too-many-arguments
                                   event='default', subtask_id=None,

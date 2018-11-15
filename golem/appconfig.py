@@ -119,7 +119,6 @@ class AppConfig:
         node_config = NodeConfig(
             node_name="",
             node_address="",
-            eth_account="",
             use_ipv6=USE_IP6,
             use_upnp=USE_UPNP,
             start_port=START_PORT,

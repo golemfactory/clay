@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import random
 import uuid
 import unittest
@@ -21,10 +22,9 @@ from golem.testutils import DatabaseFixture
 
 
 class PaymentStatusTest(unittest.TestCase):
-
     def test_status(self):
         s = PaymentStatus(1)
-        assert s == PaymentStatus.awaiting
+        self.assertEqual(s, PaymentStatus.awaiting)
 
 
 class PaymentProcessorInternalTest(DatabaseFixture):

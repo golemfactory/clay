@@ -28,6 +28,10 @@ class Setting(namedtuple('Setting', ['help', 'type', 'converter', 'validator',
 
 @group(help="Manage settings")
 class Settings(object):
+    BOOL_CONVERTIBLE_KEY_PREFIXES = [
+        'accept_', 'debug_', 'use_', 'enable_',
+        'in_shutdown', 'net_masking_enabled'
+    ]
 
     client = None
 
@@ -59,9 +63,9 @@ class Settings(object):
         ),
         'accept_tasks': Setting(
             'Accept tasks',
-            'int {0, 1}',
-            int,
-            lambda x: x in [0, 1]
+            'flag {0, 1}',
+            lambda x: bool(int(x)),
+            lambda x: x in [True, False],
         ),
         'max_resource_size': Setting(
             'Maximal resource size',
@@ -121,9 +125,9 @@ class Settings(object):
         ),
         'use_ipv6': Setting(
             'Use IPv6',
-            'int {0, 1}',
-            int,
-            lambda x: x in [0, 1]
+            'flag {0, 1}',
+            lambda x: bool(int(x)),
+            lambda x: x in [True, False],
         ),
         'opt_peer_num': Setting(
             'Number of peers to keep',
@@ -133,9 +137,9 @@ class Settings(object):
         ),
         'send_pings': Setting(
             'Send ping messages to peers',
-            'int {0, 1}',
-            int,
-            lambda x: x in [0, 1]
+            'flag {0, 1}',
+            lambda x: bool(int(x)),
+            lambda x: x in [True, False],
         ),
         'pings_interval': Setting(
             'Interval between ping messages',
@@ -157,9 +161,9 @@ class Settings(object):
         ),
         'enable_talkback': Setting(
             'Enable error reporting with talkback service',
-            'int {0, 1}',
-            int,
-            lambda x: x in [0, 1]
+            'flag {0, 1}',
+            lambda x: bool(int(x)),
+            lambda x: x in [True, False],
         )
     }
 
@@ -194,7 +198,16 @@ class Settings(object):
                 return self.settings[k].format(v)
             return v
 
+        def convert(k, v):
+            if k in self.settings:
+                return self.settings[k].converter(v)
+            elif any(k.startswith(prefix) for prefix
+                     in Settings.BOOL_CONVERTIBLE_KEY_PREFIXES):
+                return bool(v)
+            return v
+
         config = sync_wait(Settings.client.get_settings())
+        config = {k: convert(k, v) for k, v in config.items()}
         config = {k: fmt(k, v) for k, v in config.items()}
 
         if not (basic ^ provider) and not (provider ^ requestor):

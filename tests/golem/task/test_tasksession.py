@@ -643,7 +643,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         msg._fake_sign()
         ts._react_to_task_to_compute(msg)
         ts.task_server.add_task_session.assert_not_called()
-        ts.task_computer.task_given.assert_not_called()
+        ts.task_server.task_given.assert_not_called()
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.send.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -691,7 +691,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_manager.comp_task_keeper.receive_subtask.assert_called_with(msg)
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
-        ts.task_computer.task_given.assert_called_with(ctd)
+        ts.task_server.task_given.assert_called_with(
+            header.task_owner.key,
+            ctd,
+            msg.price,
+        )
         conn.close.assert_not_called()
 
         # Wrong key id -> failure
@@ -744,7 +748,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         msg = _prepare_and_react(ctd)
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
-        ts.task_computer.task_given.assert_called_with(ctd)
+        ts.task_server.task_given.assert_called_with(
+            header.task_owner.key,
+            ctd,
+            msg.price,
+        )
         conn.close.assert_not_called()
 
         # No environment available -> failure
@@ -793,7 +801,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         de.main_program_file = file_name
         msg = _prepare_and_react(ctd)
         ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
-        ts.task_computer.task_given.assert_called_with(ctd)
+        ts.task_server.task_given.assert_called_with(
+            header.task_owner.key,
+            ctd,
+            msg.price,
+        )
         conn.close.assert_not_called()
 
     # pylint: enable=too-many-statements
@@ -1003,6 +1015,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
             lambda msg: msg._fake_sign()
         self.ts.task_server.get_node_name.return_value = "Zażółć gęślą jaźń"
         self.ts.task_server.get_key_id.return_value = "key_id"
+        self.ts.key_id = 'unittest_key_id'
         self.ts.task_server.get_share_options.return_value = \
             hyperdrive_client.HyperdriveClientOptions('1', 1.0)
 
@@ -1056,8 +1069,8 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
     def test_send_report_computed_task_concent_success(self):
         wtr = factories.taskserver.WaitingTaskResultFactory(
             xtask_id=self.task_id, xsubtask_id=self.subtask_id, owner=self.n)
-        self._mock_task_to_compute(self.task_id, self.subtask_id, self.node_id,
-                                   concent_enabled=True)
+        self._mock_task_to_compute(self.task_id, self.subtask_id,
+                                   self.ts.key_id, concent_enabled=True)
         self.ts.send_report_computed_task(
             wtr, wtr.owner.pub_addr, wtr.owner.pub_port, self.n)
 
@@ -1075,8 +1088,8 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
             xtask_id=self.task_id, xsubtask_id=self.subtask_id, owner=self.n,
             result=result, result_type=ResultType.FILES
         )
-        self._mock_task_to_compute(self.task_id, self.subtask_id, self.node_id,
-                                   concent_enabled=True)
+        self._mock_task_to_compute(self.task_id, self.subtask_id,
+                                   self.ts.key_id, concent_enabled=True)
 
         self.ts.send_report_computed_task(
             wtr, wtr.owner.pub_addr, wtr.owner.pub_port, self.n)
@@ -1101,14 +1114,15 @@ class GetTaskMessageTest(TestCase):
         with patch('golem.task.tasksession.history'
                    '.MessageHistoryService.get_sync_as_message',
                    Mock(return_value=msg)):
-            msg_historical = get_task_message('TaskToCompute', 'foo', 'bar')
+            msg_historical = get_task_message('TaskToCompute', 'foo', 'bar',
+                                              'baz')
             self.assertEqual(msg, msg_historical)
 
     def test_get_task_message_fail(self):
         with patch('golem.task.tasksession.history'
                    '.MessageHistoryService.get_sync_as_message',
                    Mock(side_effect=history.MessageNotFound())):
-            msg = get_task_message('TaskToCompute', 'foo', 'bar')
+            msg = get_task_message('TaskToCompute', 'foo', 'bar', 'baz')
             self.assertIsNone(msg)
 
 
@@ -1211,6 +1225,7 @@ class SubtaskResultsAcceptedTest(TestCase):
             self.requestor_keys.raw_privkey
         self.task_server.keys_auth.public_key = \
             self.requestor_keys.raw_pubkey
+        self.task_server.accept_result.return_value = 11111
 
         def computed_task_received(*args):
             args[3]()
@@ -1234,7 +1249,8 @@ class SubtaskResultsAcceptedTest(TestCase):
             'ReportComputedTask': rct,
         }
         with patch('golem.task.tasksession.get_task_message',
-                   side_effect=lambda mcn, *_: history_dict[mcn]):
+                   side_effect=lambda **kwargs:
+                   history_dict[kwargs['message_class_name']]):
             self.task_session.result_received(extra_data)
 
         assert self.task_session.send.called
