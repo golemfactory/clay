@@ -1,6 +1,6 @@
 import sys
 from argparse import ArgumentParser
-
+from ..helpers import mkdatadir
 from .base import NodeTestPlaybook
 
 
@@ -16,11 +16,21 @@ def run_playbook(playbook_cls: NodeTestPlaybook, **kwargs):
         default=None,
         help='the task settings set to use, see `tasks.__init__.py`'
     )
+    parser.add_argument(
+        '--provider-datadir',
+        default=mkdatadir('provider'),
+        help="the provider node's datadir",
+    )
+    parser.add_argument(
+        '--requestor-datadir',
+        default=mkdatadir('requestor'),
+        help="the requestor node's datadir",
+    )
     args = parser.parse_args()
 
-    kwargs.update({'task_package': args.task_package})
-    if args.task_settings:
-        kwargs.update({'task_settings': args.task_settings})
+    kwargs.update(vars(args))
+    if not kwargs.get('task_settings'):
+        del kwargs['task_settings']
 
     playbook = playbook_cls.start(**kwargs)
 

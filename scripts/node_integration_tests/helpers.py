@@ -5,8 +5,13 @@ import re
 import subprocess
 import sys
 import threading
+import tempfile
 
 from . import tasks
+
+
+def mkdatadir(role: str):
+    return tempfile.mkdtemp(prefix='golem-{}-'.format(role.lower()))
 
 
 def report_termination(exit_code, node_type):
@@ -26,11 +31,11 @@ def gracefully_shutdown(process: subprocess.Popen, node_type: str):
         process.kill()
 
 
-def run_golem_node(node_type: str):
+def run_golem_node(node_type: str, *args):
     node_file = node_type + '.py'
     cwd = pathlib.Path(os.path.realpath(__file__)).parent
     node_process = subprocess.Popen(
-        args=['python', str(cwd / 'nodes' / node_file)],
+        args=['python', str(cwd / 'nodes' / node_file), *args],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )

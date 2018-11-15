@@ -12,10 +12,15 @@ from twisted.internet import reactor, task
 from twisted.internet.error import ReactorNotRunning
 from twisted.internet import _sslverify  # pylint: disable=protected-access
 
-from scripts.node_integration_tests.rpc.client import (
-    call_requestor, call_provider
-)
+from scripts.node_integration_tests.rpc.client import RPCClient
 from scripts.node_integration_tests import helpers, tasks
+
+from scripts.node_integration_tests.params import (
+    REQUESTOR_RPC_PORT, PROVIDER_RPC_PORT
+)
+
+
+from golem.rpc.cert import CertificateError
 
 _sslverify.platformTrust = lambda: None
 
@@ -27,6 +32,8 @@ class NodeTestPlaybook:
 
     _loop = None
 
+    provider_datadir = None
+    requestor_datadir = None
     provider_node_script: typing.Optional[str] = None
     requestor_node_script: typing.Optional[str] = None
     provider_node = None
@@ -111,13 +118,13 @@ class NodeTestPlaybook:
         def on_success(result):
             return self._wait_gnt_eth('provider', result)
 
-        return call_provider('pay.balance', on_success=on_success)
+        return self.call_provider('pay.balance', on_success=on_success)
 
     def step_wait_requestor_gnt(self):
         def on_success(result):
             return self._wait_gnt_eth('requestor', result)
 
-        return call_requestor('pay.balance', on_success=on_success)
+        return self.call_requestor('pay.balance', on_success=on_success)
 
     def step_get_provider_key(self):
         def on_success(result):
@@ -129,7 +136,7 @@ class NodeTestPlaybook:
             print("Waiting for the Provider node...")
             time.sleep(3)
 
-        return call_provider('net.ident.key',
+        return self.call_provider('net.ident.key',
                              on_success=on_success, on_error=on_error)
 
     def step_get_requestor_key(self):
@@ -142,7 +149,7 @@ class NodeTestPlaybook:
             print("Waiting for the Requestor node...")
             time.sleep(3)
 
-        return call_requestor('net.ident.key',
+        return self.call_requestor('net.ident.key',
                               on_success=on_success, on_error=on_error)
 
     def step_get_provider_network_info(self):
@@ -155,7 +162,7 @@ class NodeTestPlaybook:
                 print("Waiting for Provider's network info...")
                 time.sleep(3)
 
-        return call_provider('net.status',
+        return self.call_provider('net.status',
                              on_success=on_success, on_error=self.print_error)
 
     def step_ensure_requestor_network(self):
@@ -168,7 +175,7 @@ class NodeTestPlaybook:
                 print("Waiting for Requestor's network info...")
                 time.sleep(3)
 
-        return call_requestor('net.status',
+        return self.call_requestor('net.status',
                               on_success=on_success, on_error=self.print_error)
 
 
@@ -176,7 +183,7 @@ class NodeTestPlaybook:
         def on_success(result):
             print("Peer connection initialized.")
             self.next()
-        return call_requestor('net.peer.connect',
+        return self.call_requestor('net.peer.connect',
                               ("localhost", self.provider_port, ),
                               on_success=on_success)
 
@@ -199,7 +206,7 @@ class NodeTestPlaybook:
             else:
                 print("Waiting for nodes to sync...")
 
-        return call_requestor('net.peers.connected',
+        return self.call_requestor('net.peers.connected',
                               on_success=on_success, on_error=self.print_error)
 
     def step_get_known_tasks(self):
@@ -208,7 +215,7 @@ class NodeTestPlaybook:
             print("Got current tasks list from the requestor.")
             self.next()
 
-        return call_requestor('comp.tasks',
+        return self.call_requestor('comp.tasks',
                               on_success=on_success, on_error=self.print_error)
 
     def step_create_task(self):
@@ -231,7 +238,7 @@ class NodeTestPlaybook:
 
         if not self.task_in_creation:
             self.task_in_creation = True
-            return call_requestor('comp.task.create', self.task_dict,
+            return self.call_requestor('comp.task.create', self.task_dict,
                                   on_success=on_success,
                                   on_error=self.print_error)
 
@@ -248,7 +255,7 @@ class NodeTestPlaybook:
                 print("Task id: {}".format(self.task_id))
                 self.next()
 
-        return call_requestor('comp.tasks',
+        return self.call_requestor('comp.tasks',
                               on_success=on_success, on_error=self.print_error)
 
     def step_get_task_status(self):
@@ -256,7 +263,7 @@ class NodeTestPlaybook:
             print("Task status: {}".format(result['status']))
             self.next()
 
-        return call_requestor('comp.task', self.task_id,
+        return self.call_requestor('comp.task', self.task_id,
                               on_success=on_success, on_error=self.print_error)
 
     def step_wait_task_finished(self):
@@ -268,7 +275,7 @@ class NodeTestPlaybook:
                 print("{} ... ".format(result['status']))
                 time.sleep(10)
 
-        return call_requestor('comp.task', self.task_id,
+        return self.call_requestor('comp.task', self.task_id,
                        on_success=on_success, on_error=self.print_error)
 
     def step_verify_output(self):
@@ -294,7 +301,7 @@ class NodeTestPlaybook:
                 self.fail("No subtasks found???")
             self.next()
 
-        return call_requestor('comp.task.subtasks', self.task_id,
+        return self.call_requestor('comp.task.subtasks', self.task_id,
                               on_success=on_success, on_error=self.print_error)
 
     def step_verify_provider_income(self):
@@ -312,7 +319,7 @@ class NodeTestPlaybook:
             print("All subtasks accounted for.")
             self.success()
 
-        return call_provider(
+        return self.call_provider(
             'pay.incomes', on_success=on_success, on_error=self.print_error)
 
     steps: typing.Tuple = (
@@ -334,12 +341,62 @@ class NodeTestPlaybook:
         step_verify_provider_income,
     )
 
+    @staticmethod
+    def _call_rpc(method, *args, port, datadir, on_success, on_error, **kwargs):
+        try:
+            client = RPCClient(
+                host='localhost',
+                port=port,
+                datadir=datadir,
+            )
+        except CertificateError as e:
+            on_error(e)
+            return
+
+        return client.call(method, *args,
+                           on_success=on_success,
+                           on_error=on_error,
+                           **kwargs)
+
+    def call_requestor(self, method, *args,
+                       on_success=lambda x: print(x),
+                       on_error=lambda: None,
+                       **kwargs):
+        return self._call_rpc(
+            method,
+            port=int(REQUESTOR_RPC_PORT),
+            datadir=self.requestor_datadir,
+            *args,
+            on_success=on_success,
+            on_error=on_error,
+            **kwargs,
+        )
+
+    def call_provider(self, method, *args,
+                      on_success=lambda x: print(x),
+                      on_error=None,
+                      **kwargs):
+        return self._call_rpc(
+            method,
+            port=int(PROVIDER_RPC_PORT),
+            datadir=self.provider_datadir,
+            *args,
+            on_success=on_success,
+            on_error=on_error,
+            **kwargs,
+        )
+
     def start_nodes(self):
+        print("Provider data directory: %s" % self.provider_datadir)
+        print("Requestor data directory: %s" % self.requestor_datadir)
+        
         self.provider_node = helpers.run_golem_node(
-            self.provider_node_script
+            self.provider_node_script,
+            '--datadir', self.provider_datadir
         )
         self.requestor_node = helpers.run_golem_node(
-            self.requestor_node_script
+            self.requestor_node_script,
+            '--datadir', self.requestor_datadir
         )
 
         self.provider_output_queue = helpers.get_output_queue(
@@ -354,6 +411,14 @@ class NodeTestPlaybook:
         self.started = False
 
     def run(self):
+        if self.started:
+            provider_exit = self.provider_node.poll()
+            requestor_exit = self.requestor_node.poll()
+            helpers.report_termination(provider_exit, "Provider")
+            helpers.report_termination(requestor_exit, "Requestor")
+            if provider_exit is not None and requestor_exit is not None:
+                self.fail()
+
         try:
             method = self.current_step_method
             if callable(method):
@@ -369,14 +434,6 @@ class NodeTestPlaybook:
             traceback.print_tb(tb)
             self.fail()
             return
-
-        if self.started:
-            provider_exit = self.provider_node.poll()
-            requestor_exit = self.requestor_node.poll()
-            helpers.report_termination(provider_exit, "Provider")
-            helpers.report_termination(requestor_exit, "Requestor")
-            if provider_exit is not None and requestor_exit is not None:
-                self.fail()
 
     def __init__(self, **kwargs) -> None:
         if not self.provider_node_script or not self.requestor_node_script:
