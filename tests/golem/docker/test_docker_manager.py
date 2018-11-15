@@ -150,9 +150,11 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
     @mock.patch('golem.docker.manager.DockerForMac.is_available',
                 return_value=False)
+    @mock.patch('golem.docker.manager.HyperVHypervisor.is_available',
+                return_value=True)
     @mock.patch('golem.docker.manager.HyperVHypervisor.instance')
     @mock.patch('golem.docker.manager.XhyveHypervisor.instance')
-    def test_get_hypervisor(self, xhyve_instance, hyperv_instance, _):
+    def test_get_hypervisor(self, xhyve_instance, hyperv_instance, *_):
 
         def reset():
             xhyve_instance.called = False
@@ -192,12 +194,36 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
     @mock.patch('golem.docker.manager.is_windows', return_value=True)
     @mock.patch('golem.docker.manager.is_linux', return_value=False)
     @mock.patch('golem.docker.manager.is_osx', return_value=False)
-    def test_check_environment_windows(self, *_):
+    @mock.patch('golem.docker.manager.HyperVHypervisor.is_available',
+                return_value=True)
+    def test_check_environment_windows_hyperv(self, *_):
         dmm = MockDockerManager()
         dmm.pull_images = mock.Mock()
         dmm.build_images = mock.Mock()
 
         with mock.patch('golem.docker.manager.HyperVHypervisor.instance',
+                        mock.Mock(vm_running=mock.Mock(return_value=False))):
+            # pylint: disable=no-member
+
+            with mock.patch.object(dmm, 'command'):
+                dmm.check_environment()
+
+                assert dmm.hypervisor
+                assert dmm.hypervisor.setup.called
+                assert dmm.pull_images.called
+                assert not dmm.build_images.called
+
+    @mock.patch('golem.docker.manager.is_windows', return_value=True)
+    @mock.patch('golem.docker.manager.is_linux', return_value=False)
+    @mock.patch('golem.docker.manager.is_osx', return_value=False)
+    @mock.patch('golem.docker.manager.HyperVHypervisor.is_available',
+                return_value=False)
+    def test_check_environment_windows_no_hyperv(self, *_):
+        dmm = MockDockerManager()
+        dmm.pull_images = mock.Mock()
+        dmm.build_images = mock.Mock()
+
+        with mock.patch('golem.docker.manager.VirtualBoxHypervisor.instance',
                         mock.Mock(vm_running=mock.Mock(return_value=False))):
             # pylint: disable=no-member
 

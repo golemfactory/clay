@@ -49,7 +49,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         try:
             output = cls._run_ps(command=command)
             return output == "Hyper-V"
-        except RuntimeError as e:
+        except (RuntimeError, OSError) as e:
             logger.warning(f"Error checking Hyper-V availability: {e}")
             return False
 
@@ -143,18 +143,19 @@ class HyperVHypervisor(DockerMachineHypervisor):
         """
         Run a powershell script or command and return its output in UTF8
         """
-        if bool(script) == bool(command):
+        if script and not command:
+            cmd = [
+                'powershell.exe',
+                '-ExecutionPolicy', 'RemoteSigned',
+                '-File', script
+            ]
+        elif command and not script:
+            cmd = [
+                'powershell.exe',
+                '-Command', command
+            ]
+        else:
             raise ValueError("Exactly one of (script, command) is required")
-        assert isinstance(command, str)  # That's for you, mypy
-
-        cmd = [
-            'powershell.exe',
-            '-ExecutionPolicy', 'RemoteSigned',
-            '-File', script
-        ] if script else [
-            'powershell.exe',
-            '-Command', command
-        ]
 
         try:
             return subprocess\
