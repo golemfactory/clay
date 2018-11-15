@@ -94,6 +94,10 @@ class TaskStatus(Enum):
         return self in [self.finished, self.aborted,
                         self.timeout, self.restarted]
 
+    def is_active(self) -> bool:
+        return self in [self.sending, self.waiting,
+                        self.starting, self.computing]
+
 
 class SubtaskStatus(Enum):
     starting = "Starting"
