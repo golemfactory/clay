@@ -43,6 +43,16 @@ class HyperVHypervisor(DockerMachineHypervisor):
         super().__init__(*args, **kwargs)
         self._vm_utils = VMUtils()
 
+    @classmethod
+    def is_available(cls) -> bool:
+        command = "@(Get-Module -ListAvailable hyper-v).Name | Get-Unique"
+        try:
+            output = cls._run_ps(command=command)
+            return output == "Hyper-V"
+        except RuntimeError as e:
+            logger.warning(f"Error checking Hyper-V availability: {e}")
+            return False
+
     # pylint: disable=arguments-differ
     def _parse_create_params(
             self,
@@ -110,7 +120,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     @classmethod
     def _get_vswitch_name(cls) -> str:
-        return cls._run_ps(cls.GET_VSWITCH_SCRIPT_PATH)
+        return cls._run_ps(script=cls.GET_VSWITCH_SCRIPT_PATH)
 
     @classmethod
     def _get_hostname_for_sharing(cls) -> str:
@@ -124,18 +134,32 @@ class HyperVHypervisor(DockerMachineHypervisor):
         return hostname
 
     @classmethod
-    def _run_ps(cls, script, timeout=SCRIPT_TIMEOUT):
+    def _run_ps(
+            cls,
+            script: Optional[str] = None,
+            command: Optional[str] = None,
+            timeout: int = SCRIPT_TIMEOUT
+    ) -> str:
         """
-        Runs the script and returns its output in UTF8
+        Run a powershell script or command and return its output in UTF8
         """
+        if bool(script) == bool(command):
+            raise ValueError("Exactly one of (script, command) is required")
+        assert isinstance(command, str)  # That's for you, mypy
+
+        cmd = [
+            'powershell.exe',
+            '-ExecutionPolicy', 'RemoteSigned',
+            '-File', script
+        ] if script else [
+            'powershell.exe',
+            '-Command', command
+        ]
+
         try:
             return subprocess\
                 .run(
-                    [
-                        'powershell.exe',
-                        '-ExecutionPolicy', 'RemoteSigned',
-                        '-File', script,
-                    ],
+                    cmd,
                     timeout=timeout,  # seconds
                     check=True,
                     stdout=subprocess.PIPE,
