@@ -39,7 +39,7 @@ from golem.rpc.session import (
     Publisher,
     Session,
 )
-from golem.terms import TermsOfUse
+from golem import terms
 
 F = TypeVar('F', bound=Callable[..., Any])
 logger = logging.getLogger(__name__)
@@ -106,6 +106,7 @@ class Node(object):
             EthereumConfig,
         )
         self._ets.backwards_compatibility_tx_storage(Path(datadir))
+        self.concent_variant = concent_variant
 
         self.rpc_router: Optional[CrossbarRouter] = None
         self.rpc_session: Optional[Session] = None
@@ -146,10 +147,10 @@ class Node(object):
             rpc = self._start_rpc()
 
             def on_rpc_ready() -> Deferred:
-                terms = self._check_terms()
+                terms_ = self._check_terms()
                 keys = self._start_keys_auth()
                 docker = self._start_docker()
-                return gatherResults([terms, keys, docker], consumeErrors=True)
+                return gatherResults([terms_, keys, docker], consumeErrors=True)
 
             chain_function(rpc, on_rpc_ready).addCallbacks(
                 self._setup_client,
@@ -251,7 +252,12 @@ class Node(object):
     @rpc_utils.expose('golem.terms')
     @staticmethod
     def are_terms_accepted():
-        return TermsOfUse.are_terms_accepted()
+        return terms.TermsOfUse.are_accepted()
+
+    @rpc_utils.expose('golem.concent.terms')
+    @classmethod
+    def are_concent_terms_accepted(cls):
+        return terms.ConcentTermsOfUse.are_accepted()
 
     @rpc_utils.expose('golem.terms.accept')
     def accept_terms(self,
@@ -267,12 +273,22 @@ class Node(object):
             self._use_monitor = enable_monitor
 
         self._app_config.change_config(self._config_desc)
-        return TermsOfUse.accept_terms()
+        return terms.TermsOfUse.accept()
+
+    @rpc_utils.expose('golem.concent.terms.accept')
+    @classmethod
+    def accept_concent_terms(cls):
+        return terms.ConcentTermsOfUse.accept()
 
     @rpc_utils.expose('golem.terms.show')
     @staticmethod
     def show_terms():
-        return TermsOfUse.show_terms()
+        return terms.TermsOfUse.show()
+
+    @rpc_utils.expose('golem.concent.terms.show')
+    @classmethod
+    def show_concent_terms(cls):
+        return terms.ConcentTermsOfUse.show()
 
     @rpc_utils.expose('golem.version')
     @staticmethod
@@ -346,12 +362,25 @@ class Node(object):
     def _check_terms(self) -> Optional[Deferred]:
 
         def wait_for_terms():
+            sleep_time = 5
             while not self.are_terms_accepted() and self._reactor.running:
                 logger.info(
                     'Terms of use must be accepted before using Golem. '
                     'Run `golemcli terms show` to display the terms '
                     'and `golemcli terms accept` to accept them.')
-                time.sleep(5)
+                time.sleep(sleep_time)
+            if None in self.concent_variant.values():
+                return  # Concent disabled
+            while not terms.ConcentTermsOfUse.are_accepted() \
+                    and self._reactor.running:
+                logger.info(
+                    'Concent terms of use must be accepted before using'
+                    ' Concent service.'
+                    ' Run `golemcli concent terms show`'
+                    ' to display the terms'
+                    ' and `golemcli concent terms accept` to accept them.',
+                )
+                time.sleep(sleep_time)
 
         return threads.deferToThread(wait_for_terms)
 

@@ -84,6 +84,9 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--accept-terms', is_flag=True, default=False,
               help="Accept Golem terms of use. This is equivalent to calling "
                    "`golemcli terms accept`")
+@click.option('--accept-concent-terms', is_flag=True, default=False,
+              help="Accept Concent terms of use. This is equivalent to calling "
+                   "`golemcli concent terms accept`")
 @click.option('--version', '-v', is_flag=True, default=False,
               help="Show Golem version information")
 @click.option('--log-level', default=None,
@@ -111,7 +114,9 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--loglevel', expose_value=False)  # Crossbar specific level
 @click.option('--title', expose_value=False)
 def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
-          net, geth_address, password, accept_terms, version, log_level,
+          net, geth_address, password, accept_terms,
+          accept_concent_terms,
+          version, log_level,
           enable_talkback, m):
 
     freeze_support()
@@ -180,6 +185,9 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
 
     if accept_terms:
         node.accept_terms()
+
+    if accept_concent_terms:
+        node.accept_concent_terms()
 
     node.start()
 
