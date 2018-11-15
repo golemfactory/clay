@@ -111,13 +111,13 @@ class NodeTestPlaybook:
         def on_success(result):
             return self._wait_gnt_eth('provider', result)
 
-        call_provider('pay.balance', on_success=on_success)
+        return call_provider('pay.balance', on_success=on_success)
 
     def step_wait_requestor_gnt(self):
         def on_success(result):
             return self._wait_gnt_eth('requestor', result)
 
-        call_requestor('pay.balance', on_success=on_success)
+        return call_requestor('pay.balance', on_success=on_success)
 
     def step_get_provider_key(self):
         def on_success(result):
@@ -129,8 +129,8 @@ class NodeTestPlaybook:
             print("Waiting for the Provider node...")
             time.sleep(3)
 
-        call_provider('net.ident.key',
-                      on_success=on_success, on_error=on_error)
+        return call_provider('net.ident.key',
+                             on_success=on_success, on_error=on_error)
 
     def step_get_requestor_key(self):
         def on_success(result):
@@ -142,8 +142,8 @@ class NodeTestPlaybook:
             print("Waiting for the Requestor node...")
             time.sleep(3)
 
-        call_requestor('net.ident.key',
-                       on_success=on_success, on_error=on_error)
+        return call_requestor('net.ident.key',
+                              on_success=on_success, on_error=on_error)
 
     def step_get_provider_network_info(self):
         def on_success(result):
@@ -155,8 +155,8 @@ class NodeTestPlaybook:
                 print("Waiting for Provider's network info...")
                 time.sleep(3)
 
-        call_provider('net.status',
-                      on_success=on_success, on_error=self.print_error)
+        return call_provider('net.status',
+                             on_success=on_success, on_error=self.print_error)
 
     def step_ensure_requestor_network(self):
         def on_success(result):
@@ -168,17 +168,17 @@ class NodeTestPlaybook:
                 print("Waiting for Requestor's network info...")
                 time.sleep(3)
 
-        call_requestor('net.status',
-                      on_success=on_success, on_error=self.print_error)
+        return call_requestor('net.status',
+                              on_success=on_success, on_error=self.print_error)
 
 
     def step_connect_nodes(self):
         def on_success(result):
             print("Peer connection initialized.")
             self.next()
-        call_requestor('net.peer.connect',
-                       ("localhost", self.provider_port, ),
-                       on_success=on_success)
+        return call_requestor('net.peer.connect',
+                              ("localhost", self.provider_port, ),
+                              on_success=on_success)
 
     def step_verify_peer_connection(self):
         def on_success(result):
@@ -199,8 +199,8 @@ class NodeTestPlaybook:
             else:
                 print("Waiting for nodes to sync...")
 
-        call_requestor('net.peers.connected',
-                       on_success=on_success, on_error=self.print_error)
+        return call_requestor('net.peers.connected',
+                              on_success=on_success, on_error=self.print_error)
 
     def step_get_known_tasks(self):
         def on_success(result):
@@ -208,8 +208,8 @@ class NodeTestPlaybook:
             print("Got current tasks list from the requestor.")
             self.next()
 
-        call_requestor('comp.tasks',
-                       on_success=on_success, on_error=self.print_error)
+        return call_requestor('comp.tasks',
+                              on_success=on_success, on_error=self.print_error)
 
     def step_create_task(self):
         print("Output path: {}".format(self.output_path))
@@ -231,9 +231,9 @@ class NodeTestPlaybook:
 
         if not self.task_in_creation:
             self.task_in_creation = True
-            call_requestor('comp.task.create', self.task_dict,
-                           on_success=on_success,
-                           on_error=self.print_error)
+            return call_requestor('comp.task.create', self.task_dict,
+                                  on_success=on_success,
+                                  on_error=self.print_error)
 
     def step_get_task_id(self):
 
@@ -248,16 +248,16 @@ class NodeTestPlaybook:
                 print("Task id: {}".format(self.task_id))
                 self.next()
 
-        call_requestor('comp.tasks',
-                       on_success=on_success, on_error=self.print_error)
+        return call_requestor('comp.tasks',
+                              on_success=on_success, on_error=self.print_error)
 
     def step_get_task_status(self):
         def on_success(result):
             print("Task status: {}".format(result['status']))
             self.next()
 
-        call_requestor('comp.task', self.task_id,
-                       on_success=on_success, on_error=self.print_error)
+        return call_requestor('comp.task', self.task_id,
+                              on_success=on_success, on_error=self.print_error)
 
     def step_wait_task_finished(self):
         def on_success(result):
@@ -268,7 +268,7 @@ class NodeTestPlaybook:
                 print("{} ... ".format(result['status']))
                 time.sleep(10)
 
-        call_requestor('comp.task', self.task_id,
+        return call_requestor('comp.task', self.task_id,
                        on_success=on_success, on_error=self.print_error)
 
     def step_verify_output(self):
@@ -294,8 +294,8 @@ class NodeTestPlaybook:
                 self.fail("No subtasks found???")
             self.next()
 
-        call_requestor('comp.task.subtasks', self.task_id,
-                       on_success=on_success, on_error=self.print_error)
+        return call_requestor('comp.task.subtasks', self.task_id,
+                              on_success=on_success, on_error=self.print_error)
 
     def step_verify_provider_income(self):
         def on_success(result):
@@ -312,7 +312,7 @@ class NodeTestPlaybook:
             print("All subtasks accounted for.")
             self.success()
 
-        call_provider(
+        return call_provider(
             'pay.incomes', on_success=on_success, on_error=self.print_error)
 
     steps: typing.Tuple = (
@@ -357,7 +357,7 @@ class NodeTestPlaybook:
         try:
             method = self.current_step_method
             if callable(method):
-                method(self)
+                return method(self)
             else:
                 self.fail("Ran out of steps after step {}".format(
                     self.current_step))
