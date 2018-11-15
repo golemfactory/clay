@@ -8,6 +8,7 @@ from typing import Any, Optional, Tuple
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.deferred import sync_wait
 from golem.interface.command import doc, group, command, Argument, CommandResult
+from golem.task.taskstate import TaskStatus
 
 if typing.TYPE_CHECKING:
     from golem.rpc.session import ClientProxy  # noqa pylint: disable=unused-import
@@ -57,13 +58,23 @@ class Tasks:
         help="Output file",
         optional=True,
     )
+
+    current_task = Argument(
+        'current',
+        help='Show only current tasks',
+        optional=True,
+        boolean=True,
+        default=False,
+    )
+
     last_days = Argument('last_days', optional=True, default="0",
                          help="Number of last days to compute statistics on")
 
     application_logic = None
 
-    @command(arguments=(id_opt, sort_task), help="Show task details")
-    def show(self, id, sort):
+    @command(arguments=(id_opt, sort_task, current_task),
+             help="Show task details")
+    def show(self, id, sort, current):
 
         deferred = Tasks.client.get_tasks(id)
         result = sync_wait(deferred)
@@ -71,7 +82,11 @@ class Tasks:
         if not id:
             values = []
 
-            for task in result or []:
+            if current:
+                result = [t for t in result
+                          if TaskStatus(t['status']).is_active()]
+
+            for task in result:
                 values.append([
                     task['id'],
                     Tasks.__format_seconds(task['time_remaining']),
