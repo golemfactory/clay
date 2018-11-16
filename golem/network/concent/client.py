@@ -51,10 +51,14 @@ def verify_response(response: requests.Response) -> None:
             )
         )
 
-    concent_version = response.headers.get(
-        'Concent-Golem-Messages-Version',
-        None,
-    )
+    try:
+        concent_version = response.headers['Concent-Golem-Messages-Version']
+    except KeyError:
+        raise exceptions.ConcentVersionMismatchError(
+            'Unknown version',
+            ours=gconst.GOLEM_MESSAGES_VERSION,
+            theirs=None,
+        )
     if not utils.is_version_compatible(
             theirs=concent_version,
             spec=gconst.GOLEM_MESSAGES_SPEC,):
