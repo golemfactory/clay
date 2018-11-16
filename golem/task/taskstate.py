@@ -81,6 +81,7 @@ class SubtaskState(object):
 
 class TaskStatus(Enum):
     notStarted = "Not started"
+    creatingDeposit = "Creating the deposit"
     sending = "Sending"
     waiting = "Waiting"
     starting = "Starting"
@@ -93,6 +94,12 @@ class TaskStatus(Enum):
     def is_completed(self) -> bool:
         return self in [self.finished, self.aborted,
                         self.timeout, self.restarted]
+
+    def is_preparing(self) -> bool:
+        return self in (
+            self.notStarted,
+            self.creatingDeposit,
+        )
 
     def is_active(self) -> bool:
         return self in [self.sending, self.waiting,
