@@ -372,11 +372,17 @@ def enqueue_new_task(client, task, force=False) \
 
         logger.info("Task enqueued. task_id=%r", task_id)
     except eth_exceptions.EthereumError as e:
-        logger.exception("Can't enqueue_new_task. task_id=%r, e=%s", task_id, e)
+        logger.error(
+            "Can't enqueue_new_task. task_id=%(task_id)r, e=%(e_name)s: %(e)s",
+            {
+                'task_id': task_id,
+                'e': e,
+                'e_name': e.__class__.__name__,
+            },
+        )
         raise
     except Exception:  # pylint: disable=broad-except
         logger.exception("Can't enqueue_new_task. task_id=%r", task_id)
-        client.task_manager.abort_task(task_id)
         raise
     return task
 
