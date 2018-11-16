@@ -83,7 +83,7 @@ class DummyTask(Task):
         with open(script_path, 'r') as f:
             src_code = f.read()
             src_code += '\noutput = run_dummy_task(' \
-                        'data_file, subtask_data, difficulty, result_size)'
+                'data_file, subtask_data, difficulty, result_size, tmp_path)'
 
         from apps.dummy.task.dummytaskstate import DummyTaskDefinition
         from apps.dummy.task.dummytaskstate import DummyTaskDefaults
@@ -219,7 +219,9 @@ class DummyTask(Task):
                 node_id = self.assigned_subtasks.pop(subtask_id, None)
                 self.assigned_nodes.pop(node_id, None)
 
-        self.subtask_results[subtask_id] = task_result
+        with open(task_result[0], 'r') as f:
+            self.subtask_results[subtask_id] = f.read()
+
         if not self.verify_subtask(subtask_id):
             self.subtask_results[subtask_id] = None
 
