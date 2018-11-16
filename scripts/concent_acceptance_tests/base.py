@@ -315,7 +315,7 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
         self.assertGreater(amount, 0)
 
         sys.stderr.write(
-            'Deposit contract %s\nRequired confirmations: %d' % (
+            'Deposit contract %s\nRequired confirmations: %d\n' % (
                 sci._gntdeposit.address,
                 sci.REQUIRED_CONFS,
             ),
