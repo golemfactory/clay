@@ -56,8 +56,9 @@ def start():
                   help="Golem node's RPC port"),
         datadir=dict(dest="datadir", default=None,
                      type=click.Path(
+                         exists=True,
                          file_okay=False,
-                         writable=True
+                         readable=True,
                      ),
                      help="Golem node's data dir"),
         trust=dict(dest="verify_trust", action="store_true", default=False,
