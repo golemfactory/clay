@@ -4,8 +4,9 @@ import os
 import argparse
 import sys
 
-from multiprocessing import freeze_support
 import click
+from multiprocessing import freeze_support
+from portalocker import lock, unlock, LOCK_EX, LOCK_NB
 
 from golem.config.environments import set_environment  # noqa
 from golem.core.simpleenv import get_local_datadir
@@ -13,7 +14,6 @@ from golem.rpc.cert import CertificateManager
 
 from golem.rpc.common import CROSSBAR_HOST, CROSSBAR_PORT, CROSSBAR_DIR
 from golem_sci.chains import MAINNET, RINKEBY
-from portalocker import lock, unlock, LOCK_EX, LOCK_NB
 
 # Export pbr version for peewee_migrate user
 os.environ["PBR_VERSION"] = '3.1.1'
