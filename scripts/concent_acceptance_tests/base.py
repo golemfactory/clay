@@ -236,14 +236,25 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
         self.requestor_eth_addr = privkeytoaddr(self.requestor_keys.raw_privkey)
         self.provider_eth_addr = privkeytoaddr(self.provider_keys.raw_privkey)
 
+        tx_sign = lambda tx: tx.sign(self.requestor_keys.raw_privkey)
         self.requestor_sci = new_sci_rpc(
             storage=requestor_storage,
             rpc=EthereumConfig.NODE_LIST[0],
             address=self.requestor_eth_addr,
-            tx_sign=lambda tx: tx.sign(self.requestor_keys.raw_privkey),
+            tx_sign=tx_sign,
             contract_addresses=EthereumConfig.CONTRACT_ADDRESSES,
             chain=EthereumConfig.CHAIN,
         )
+        print()
+        print()
+        print('****************------------*************')
+        print(f"rpc = {EthereumConfig.NODE_LIST[0]} ")
+        print(f"address = {self.requestor_eth_addr} ")
+        print(f"tx_sign = {tx_sign} ")
+        print(f"contract_addresses = {EthereumConfig.CONTRACT_ADDRESSES} ")
+        print()
+        print()
+        self.requestor_sci.REQUIRED_CONFS = 1
         self.provider_sci = new_sci_rpc(
             storage=provider_storage,
             rpc=EthereumConfig.NODE_LIST[0],
@@ -357,7 +368,7 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
         if sci.get_deposit_value(sci.get_eth_address()) < amount:
             raise RuntimeError("Deposit failed")
         # sys.stderr.write('Long sleep. hrrrr\n')
-        # time.sleep(120)
+        time.sleep(300)
         dump_balance(sci)
 
     def requestor_put_deposit(self, price: int):

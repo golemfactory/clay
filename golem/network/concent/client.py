@@ -104,6 +104,8 @@ def send_to_concent(
         'Content-Type': 'application/octet-stream',
         'X-Golem-Messages': golem_messages.__version__,
     }
+    print(f'>>>>********* concent_post_url = {concent_post_url}')
+    print(f'>>>>********* concent_variant = {concent_variant}')
     try:
         logger.debug(
             'send_to_concent(): POST %r hdr: %r',
