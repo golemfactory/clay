@@ -163,6 +163,7 @@ def update_requestor_paid_sum(node_id: str, amount: int) -> None:
         rank.requestor_paid_sum += amount
         rank.save()
 
+
 def get_requestor_paid_sum(node_id: str) -> int:
     with db.transaction():
         rank, _ = LocalRank.get_or_create(node_id=node_id)

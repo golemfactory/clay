@@ -6,7 +6,6 @@ import time
 from ethereum.utils import denoms
 from pydispatch import dispatcher
 
-from golem.core.common import datetime_to_timestamp
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import Income
 
