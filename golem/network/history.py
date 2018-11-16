@@ -8,7 +8,6 @@ import time
 from functools import reduce, wraps
 from typing import List
 from typing import Optional
-import warnings
 
 from golem_messages import message
 from peewee import (PeeweeException, DataError, ProgrammingError,
@@ -330,26 +329,17 @@ def add(msg: message.base.Message,
 def get(
         message_class_name: str,
         subtask_id: str,
-        node_id: Optional[str] = None,
+        node_id: str,
         task_id: Optional[str] = None) \
         -> Optional[message.base.Message]:
-    #  FIXME: Use node_id in queries
-    #         https://github.com/golemfactory/golem/issues/2670
-    if not (node_id or task_id):
-        raise RuntimeError("Please use node_id, subtask_id pair")
-
-    query = {}
-    query['subtask'] = subtask_id
+    query = dict()
     query['msg_cls'] = message_class_name
+    query['subtask'] = subtask_id
+    query['node'] = node_id
+
     if task_id:
         query['task'] = task_id
-        warnings.warn(
-            "Please use node_id, subtask_id pair",
-            DeprecationWarning,
-            stacklevel=2,
-        )
-    if node_id:
-        query['node'] = node_id
+
     try:
         return MessageHistoryService.get_sync_as_message(**query)
     except MessageNotFound:
