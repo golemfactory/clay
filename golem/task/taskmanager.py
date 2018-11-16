@@ -1096,6 +1096,7 @@ class TaskManager(TaskEventListener):
         ss = SubtaskState()
         ss.time_started = time.time()
         ss.node_id = node_id
+        ss.node_name = node_name
         ss.deadline = ctd['deadline']
         ss.subtask_definition = ctd['short_description']
         ss.subtask_id = ctd['subtask_id']
