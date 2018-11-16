@@ -7,16 +7,13 @@ from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import DummyResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.result.resultpackage import ExtractedPackage
-from golem.task.taskbase import ResultType
 from golem.tools.testdirfixture import TestDirFixture
 
 
 class MockTaskResult:
-    def __init__(self, task_id, result, result_type=None,
+    def __init__(self, task_id, result,
                  owner_key_id=None, owner=None):
 
-        if result_type is None:
-            result_type = ResultType.FILES
         if owner_key_id is None:
             owner_key_id = str(uuid.uuid4())
         if owner is None:
@@ -25,7 +22,6 @@ class MockTaskResult:
         self.task_id = task_id
         self.subtask_id = task_id
         self.result = result
-        self.result_type = result_type
         self.owner_key_id = owner_key_id
         self.owner = owner
 

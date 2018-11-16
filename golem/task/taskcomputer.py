@@ -191,9 +191,7 @@ class TaskComputer(object):
                     task_thread.error_msg,
                 )
 
-        elif task_thread.result \
-                and 'data' in task_thread.result \
-                and 'result_type' in task_thread.result:
+        elif task_thread.result and 'data' in task_thread.result:
 
             logger.info("Task %r computed, work_wall_clock_time %s",
                         subtask_id,

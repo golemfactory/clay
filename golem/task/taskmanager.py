@@ -699,7 +699,7 @@ class TaskManager(TaskEventListener):
         return value
 
     @handle_subtask_key_error
-    def computed_task_received(self, subtask_id, result, result_type,
+    def computed_task_received(self, subtask_id, result,
                                verification_finished):
         task_id = self.subtask2task_mapping[subtask_id]
 
@@ -751,7 +751,7 @@ class TaskManager(TaskEventListener):
             verification_finished()
 
         self.tasks[task_id].computation_finished(
-            subtask_id, result, result_type, verification_finished_
+            subtask_id, result, verification_finished_
         )
 
     @handle_subtask_key_error

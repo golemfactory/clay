@@ -10,8 +10,7 @@ from golem_messages.message import ComputeTaskDef
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.network.p2p.node import Node
-from golem.task.taskbase import Task, TaskHeader, ResultType,\
-     AcceptClientVerdict
+from golem.task.taskbase import Task, TaskHeader, AcceptClientVerdict
 
 
 class DummyTaskParameters(object):
@@ -214,7 +213,6 @@ class DummyTask(Task):
                                      self.task_params.difficulty)
 
     def computation_finished(self, subtask_id, task_result,
-                             result_type=ResultType.DATA,
                              verification_finished=None):
         with self._lock:
             if subtask_id in self.assigned_subtasks:
