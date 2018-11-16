@@ -271,6 +271,8 @@ class NodeTestPlaybook:
             if result['status'] == 'Finished':
                 print("Task finished.")
                 self.next()
+            elif result['status'] == 'Timeout':
+                self.fail("Task timed out :( ... ")
             else:
                 print("{} ... ".format(result['status']))
                 time.sleep(10)
