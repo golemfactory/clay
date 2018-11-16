@@ -27,7 +27,6 @@ from golem_messages.message import concents as concent_msg
 from golem_sci import (
     new_sci_rpc, SmartContractsInterface, JsonTransactionsStorage)
 
-from golem.config.environments.testnet import EthereumConfig
 
 from golem.core import variables
 from golem.network.concent import client
@@ -63,7 +62,9 @@ class ConcentBaseTest:
         return cryptography.ECCx(None)
 
     def setUp(self):
+        from golem.config.environments import set_environment
         concent_variant = os.environ.get('CONCENT_VARIANT', 'staging')
+        set_environment('testnet', concent_variant)
         self.variant = variables.CONCENT_CHOICES[concent_variant]
         self.provider_keys = self._fake_keys()
         self.requestor_keys = self._fake_keys()
@@ -221,6 +222,7 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
 
     def setUp(self):
         super(SCIBaseTest, self).setUp()
+        from golem.config.environments.testnet import EthereumConfig
         random.seed()
 
         self.transaction_timeout = datetime.timedelta(seconds=300)
@@ -242,7 +244,6 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
             contract_addresses=EthereumConfig.CONTRACT_ADDRESSES,
             chain=EthereumConfig.CHAIN,
         )
-        self.requestor_sci.REQUIRED_CONFS = 1
         self.provider_sci = new_sci_rpc(
             storage=provider_storage,
             rpc=EthereumConfig.NODE_LIST[0],
@@ -251,7 +252,6 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
             contract_addresses=EthereumConfig.CONTRACT_ADDRESSES,
             chain=EthereumConfig.CHAIN,
         )
-        self.provider_sci.REQUIRED_CONFS = 1
 
     # pylint: disable=too-many-arguments
     def retry_until_timeout(
@@ -314,6 +314,13 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
 
         self.assertGreater(amount, 0)
 
+        sys.stderr.write(
+            'Deposit contract %s\nRequired confirmations: %d' % (
+                sci._gntdeposit.address,
+                sci.REQUIRED_CONFS,
+            ),
+        )
+
         sys.stderr.write('Calling tETH faucet...\n')
         self.retry_until_timeout(
             lambda: not tETH_faucet_donate(sci.get_eth_address()),
@@ -333,7 +340,6 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
         def deposit_confirmed(_):
             nonlocal deposit
             deposit = True
-
         sys.stderr.write(
             'Depositing %.8f GNTB...\n' % (amount / denoms.ether, ),
         )
