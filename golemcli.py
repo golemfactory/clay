@@ -12,6 +12,7 @@ from golem.core.simpleenv import get_local_datadir
 from golem.rpc.cert import CertificateManager
 
 from golem.rpc.common import CROSSBAR_HOST, CROSSBAR_PORT, CROSSBAR_DIR
+from golem_sci.chains import MAINNET, RINKEBY
 from portalocker import lock, unlock, LOCK_EX, LOCK_NB
 
 # Export pbr version for peewee_migrate user
@@ -109,7 +110,7 @@ def start():
 
 
 def check_golem_running(datadir: str, cli_in_mainnet: bool):
-    net_to_check = 'rinkeby' if cli_in_mainnet else 'mainnet'
+    net_to_check = RINKEBY if cli_in_mainnet else MAINNET
 
     if is_app_running(datadir, net_to_check):
         flag_action = 'removing' if cli_in_mainnet else 'adding'
@@ -134,7 +135,7 @@ def delete_reactor():
 
 def is_app_running(root_dir: str, net_name: str) -> bool:
     """ Checks if a lock file exists in the given data dir and whether
-    that lock file is currently locked by another process.
+    that file is currently locked by another process.
     If both conditions are true we assume that an instance of Golem is running
     and using the specified data dir.
     """
