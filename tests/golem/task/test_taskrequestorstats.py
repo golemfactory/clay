@@ -1,4 +1,5 @@
 from unittest import TestCase
+from unittest.mock import Mock, patch
 
 from pydispatch import dispatcher
 
@@ -6,7 +7,8 @@ from golem import testutils
 from golem.task.taskrequestorstats import TaskInfo, TaskMsg, \
     RequestorTaskStats, logger, CurrentStats, TaskStats, EMPTY_TASK_STATS, \
     FinishedTasksStats, FinishedTasksSummary, RequestorTaskStatsManager, \
-    EMPTY_CURRENT_STATS, EMPTY_FINISHED_STATS
+    EMPTY_CURRENT_STATS, EMPTY_FINISHED_STATS, AggregateTaskStats, \
+    RequestorAggregateStatsManager
 from golem.task.taskstate import TaskStatus, Operation, TaskOp, SubtaskOp, \
     OtherOp, SubtaskStatus, TaskState, SubtaskState
 from golem.testutils import DatabaseFixture
@@ -752,3 +754,114 @@ class TestRequestorTaskStatsManager(DatabaseFixture):
             task_state=TaskState())
         self.assertEqual(rtsm.get_current_stats(), EMPTY_CURRENT_STATS)
         self.assertEqual(rtsm.get_finished_stats(), EMPTY_FINISHED_STATS)
+
+
+class TestAggregateTaskStats(TestCase):
+
+    def test_init(self):
+        stats_dict = dict(
+            requestor_payment_cnt=1,
+            requestor_payment_delay_avg=2.0,
+            requestor_payment_delay_sum=3.0,
+            requestor_subtask_timeout_mag=4,
+            requestor_subtask_price_mag=5,
+            requestor_velocity_timeout=6,
+            requestor_velocity_comp_time=7,
+        )
+
+        aggregate_stats = AggregateTaskStats(**stats_dict)
+
+        for key, value in stats_dict.items():
+            stats_value = getattr(aggregate_stats, key)
+            assert isinstance(stats_value, type(value))
+            assert stats_value == value
+
+
+class TestRequestorAggregateStatsManager(TestCase):
+    # pylint: disable=no-member
+
+    class MockKeeper:
+
+        def __init__(self, *_args, **_kwargs):
+            self.increased_stats = dict()
+            self.retrieved_stats = set()
+            self.replaced_stats = dict()
+
+            self.increase_stat = Mock(wraps=self._increase_stat)
+            self.get_stats = Mock(wraps=self._get_stats)
+            self.set_stat = Mock(wraps=self._set_stat)
+
+        def _increase_stat(self, key, value):
+            self.increased_stats[key] = value
+
+        def _get_stats(self, key):
+            self.retrieved_stats.add(key)
+            return 0, 0
+
+        def _set_stat(self, key, value):
+            self.replaced_stats[key] = value
+
+    def setUp(self):
+        super().setUp()
+
+        with patch('golem.task.taskrequestorstats.StatsKeeper',
+                   self.MockKeeper):
+            self.manager = RequestorAggregateStatsManager()
+
+    def test_on_computed_ignored_event(self):
+        self.manager._on_computed(event='ignored')
+        assert not self.manager.keeper.increase_stat.called
+
+    def test_on_computed_timeout(self):
+        event_args = dict(
+            subtask_count=10,
+            subtask_timeout=7,
+            subtask_price=10**18,
+            subtask_computation_time=3600.,
+            timed_out=True,
+        )
+
+        self.manager._on_computed(event='finished', **event_args)
+        stats = self.manager.keeper.increased_stats
+
+        assert stats['requestor_velocity_timeout'] == \
+            event_args['subtask_computation_time']
+
+    def test_on_computed(self):
+        event_args = dict(
+            subtask_count=10,
+            subtask_timeout=7,
+            subtask_price=10**18,
+            subtask_computation_time=3600.,
+        )
+
+        self.manager._on_computed(event='finished', **event_args)
+        stats = self.manager.keeper.increased_stats
+
+        assert 'requestor_velocity_timeout' not in stats
+        assert stats['requestor_subtask_timeout_mag'] != 0
+        assert stats['requestor_subtask_price_mag'] != 0
+        assert stats['requestor_velocity_comp_time'] != 0
+
+    def test_on_payment_ignored_event(self):
+        self.manager._on_payment(event='ignored')
+        assert not self.manager.keeper.get_stats.called
+        assert not self.manager.keeper.set_stat.called
+
+    def test_on_payment(self):
+        kwargs = dict(
+            delay=10,
+            requestor_payment_cnt=13,
+            requestor_payment_delay_sum=10**3,
+        )
+
+        self.manager._on_payment(event='confirmed', **kwargs)
+        retrieved = self.manager.keeper.retrieved_stats
+        replaced = self.manager.keeper.replaced_stats
+
+        assert 'requestor_payment_cnt' in retrieved
+        assert 'requestor_payment_delay_sum' in retrieved
+
+        assert replaced['requestor_payment_cnt'] != 0
+        assert replaced['requestor_payment_delay_sum'] != 0
+        assert replaced['requestor_payment_delay_avg'] != 0

@@ -8,8 +8,12 @@ from pydispatch import dispatcher
 
 from golem.diag.service import DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
-from golem.monitor.model.statssnapshotmodel import VMSnapshotModel, P2PSnapshotModel
+from golem.monitor.model.modelbase import BasicModel
+from golem.monitor.model.statssnapshotmodel import VMSnapshotModel, \
+    P2PSnapshotModel, RequestorAggregateStatsModel
 from golem.monitor.test_helper import MonitorTestBaseClass
+from golem.task.taskrequestorstats import AggregateTaskStats
+
 
 class TestStatsSnapshotModel(MonitorTestBaseClass):
     def test_channel(self):
@@ -76,3 +80,20 @@ class TestVMnapshotModel(TestCase):
         assert type(model.dict_repr()) is dict
         json.dumps(model.dict_repr())
 
+
+class TestRequestorAggregateStatsModel(TestCase):
+    def test_init(self):
+        cliid = str(uuid4())
+        sessid = str(uuid4())
+        stats = AggregateTaskStats()
+        meta_data = BasicModel("NotRequestorAggregateStats", cliid, sessid)
+        model = RequestorAggregateStatsModel(meta_data, stats)
+
+        assert model.cliid == cliid
+        assert model.sessid == sessid
+        assert model.type == "RequestorAggregateStats"
+        assert isinstance(model.dict_repr(), dict)
+
+        for key in vars(stats):
+            assert hasattr(model, key)
+        json.dumps(model.dict_repr())
