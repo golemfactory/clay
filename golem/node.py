@@ -2,7 +2,6 @@ from enum import IntEnum
 import functools
 import logging
 import time
-from os import path, makedirs
 from typing import (
     Any,
     Callable,
@@ -41,7 +40,6 @@ from golem.rpc.session import (
     Session,
 )
 from golem.terms import TermsOfUse
-from golem.tools import filelock
 
 F = TypeVar('F', bound=Callable[..., Any])
 logger = logging.getLogger(__name__)
@@ -115,8 +113,6 @@ class Node(object):
 
         self._peers: List[SocketAddress] = peers or []
 
-        self._lock_datadir()
-
         # Initialize database
         self._db = Database(
             db, fields=DB_FIELDS, models=DB_MODELS, db_dir=datadir)
@@ -174,8 +170,6 @@ class Node(object):
             reactor = self._reactor
             if reactor.running:
                 reactor.callFromThread(reactor.stop)
-
-            self._unlock_datadir()
 
         # Call in a separate thread and return early
         from threading import Thread
@@ -472,23 +466,3 @@ class Node(object):
             logger.error(
                 "Stopping because of %r error: %r", msg, err, exc_info=exc_info)
             self._reactor.callFromThread(self._reactor.stop)
-
-    def _lock_datadir(self):
-        if not path.exists(self._datadir):
-            makedirs(self._datadir)
-
-        self._datadir_lock = open(path.join(self._datadir, "LOCK"), 'w')
-
-        try:
-            filelock.lock(self._datadir_lock)
-        except IOError:
-            raise IOError(f'datadir {self._datadir} is locked, possibly used by'
-                          'another Golem instance')
-
-    def _unlock_datadir(self):
-        try:
-            filelock.unlock(self._datadir_lock)
-        except Exception:
-            raise IOError(f'failed to unlock {self._datadir}')
-        finally:
-            self._datadir_lock.close()

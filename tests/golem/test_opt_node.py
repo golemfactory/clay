@@ -558,8 +558,6 @@ class TestOptNode(TempDirFixture):
                 self.node.client.quit()
             if self.node._db:
                 self.node._db.close()
-            if self.node._datadir_lock and not self.node._datadir_lock.closed:
-                self.node._unlock_datadir()
 
         super().tearDown()
 
@@ -699,9 +697,8 @@ class TestOptNode(TempDirFixture):
 
     @patch('golem.node.Database')
     @patch('threading.Thread', MockThread)
-    @patch("golem.tools.filelock.unlock")
     @patch('twisted.internet.reactor', create=True)
-    def test_quit_mock(self, reactor, unlock, *_):
+    def test_quit_mock(self, reactor, *_):
         reactor.running = False
         reactor.callFromThread = call_now
 
@@ -710,13 +707,10 @@ class TestOptNode(TempDirFixture):
         setattr(node, '_reactor', reactor)
         setattr(node, '_docker_manager', Mock())
         setattr(node, 'client', None)
-        setattr(node, '_datadir_lock', Mock())
 
         node.quit()
 
         assert not node._reactor.stop.called
-        assert unlock.called
-        assert node._datadir_lock.close.called
 
     @patch('golem.node.Database')
     @patch('threading.Thread', MockThread)
@@ -843,9 +837,3 @@ class TestOptNode(TempDirFixture):
 
         assert result is True
         assert mock_tm.get_progresses.called
-
-    def test_datadir_lock(self, *_):
-        self.node = Node(**self.node_kwargs)
-
-        with self.assertRaises(IOError):
-            Node(**self.node_kwargs)
