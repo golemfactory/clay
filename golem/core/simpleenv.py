@@ -1,4 +1,5 @@
 import os
+from typing import Optional
 
 import appdirs
 
@@ -6,7 +7,11 @@ APP_NAME = 'golem'
 DEFAULT_DATA_DIR = 'default'
 
 
-def get_local_datadir(name=None, root_dir=None, env_suffix=None) -> str:
+def get_local_datadir(
+        name: Optional[str] = None,
+        root_dir: Optional[str] = None,
+        env_suffix: Optional[str] = None
+) -> str:
     """ Helper function for datadir transition.
 
         It returns path to a data directory of given name in 'data' dir.
