@@ -1,6 +1,5 @@
 --extra-index-url https://builds.golem.network
 pypiwin32==223
-#FIXME: VirtualBox is disabled, to be fixed in #3476
-#vboxapi
-#pyvbox
+vboxapi
+pyvbox
 pyreadline
