@@ -95,11 +95,6 @@ class TaskComputer(object):
             return False
 
         ProviderTimer.start()
-        dispatcher.send(
-            signal='golem.taskcomputer',
-            event='subtask_started',
-            subtask_id=ctd['subtask_id']
-        )
 
         self.assigned_subtask = ctd
         self.__request_resource(

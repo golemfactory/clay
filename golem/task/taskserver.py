@@ -285,6 +285,12 @@ class TaskServer(
             return False
         self.requested_tasks.remove(ctd['task_id'])
         update_requestor_assigned_sum(node_id, price)
+        dispatcher.send(
+            signal='golem.subtask',
+            event='started',
+            subtask_id=ctd['subtask_id'],
+            price=price,
+        )
         return True
 
     def send_results(self, subtask_id, task_id, result):

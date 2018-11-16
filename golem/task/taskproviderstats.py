@@ -36,8 +36,8 @@ class ProviderStatsManager:
                            signal="golem.income")
         dispatcher.connect(self._on_message,
                            signal="golem.message")
-        dispatcher.connect(self._on_subtask_event,
-                           signal="golem.taskcomputer")
+        dispatcher.connect(self._on_subtask_started,
+                           signal="golem.subtask")
 
     # --- Message ---
 
@@ -67,23 +67,17 @@ class ProviderStatsManager:
 
     # --- Subtask ---
 
-    def _on_subtask_event(self, event: str = 'default', **kwargs) -> None:
-        if event == 'subtask_started':
-            self._on_subtask_started(**kwargs)
-        elif event == 'subtask_finished':
-            self._on_subtask_finished(**kwargs)
-
-    def _on_subtask_started(self, subtask_id=None, **kwargs) -> None:
-        # TODO: increase provider_income_assigned_sum
-        pass
-
-    def _on_subtask_finished(self, subtask_id=None, **kwargs) -> None:
-        # TODO: increase provider_income_completed_sum
-        pass
+    def _on_subtask_started(self, event='default', **kwargs) -> None:
+        if event == 'started':
+            self.keeper.increase_stat('provider_income_assigned_sum',
+                                      int(kwargs['price']))
 
     # --- Income ---
 
     def _on_income(self, event='default', **kwargs) -> None:
-        if event == 'confirmed':
+        if event == 'created':
+            self.keeper.increase_stat('provider_income_completed_sum',
+                                      int(kwargs['amount']))
+        elif event == 'confirmed':
             self.keeper.increase_stat('provider_income_paid_sum',
-                                      int(kwargs['received']))
+                                      int(kwargs['amount']))
