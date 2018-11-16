@@ -261,7 +261,7 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
             timeout: typing.Optional[datetime.timedelta] = None,
             sleep_interval: typing.Optional[float] = None,
             sleep_action: typing.Optional[typing.Callable] =
-            lambda: sys.stderr.write('.\n'),
+            lambda: (sys.stderr.write('.'), sys.stderr.flush()),
     ):
         if sleep_interval is None:
             sleep_interval = self.sleep_interval
