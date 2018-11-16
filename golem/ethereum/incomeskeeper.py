@@ -98,9 +98,16 @@ class IncomesKeeper:
                 'accepted_ts': accepted_ts,
             },
         )
-        if not inserted and not income.accepted_ts:
+        if inserted:
+            dispatcher.send(
+                signal='golem.income',
+                event='created',
+                subtask_id=subtask_id
+            )
+        elif not income.accepted_ts:
             income.accepted_ts = accepted_ts
             income.save()
+        return income
 
     @staticmethod
     def is_expected(

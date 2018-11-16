@@ -161,7 +161,10 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         )
 
         tx_block_number = 1337
+        tx_timestamp = 1541766000.5
         self.sci.get_block_number.return_value = tx_block_number
+        self.sci.get_block_by_number.return_value = mock.Mock(
+            timestamp=tx_timestamp)
         receipt = TransactionReceipt({
             'transactionHash': HexBytes(tx_hash),
             'blockNumber': tx_block_number,

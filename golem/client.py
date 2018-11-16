@@ -1462,6 +1462,12 @@ class MonitoringPublisherService(LoopingCallService):
             finished_stats=(self._task_server.task_manager
                             .requestor_stats_manager.get_finished_stats())
         )
+        dispatcher.send(
+            signal='golem.monitor',
+            event='requestor_aggregate_stats_snapshot',
+            stats=(self._task_server.task_manager.requestor_stats_manager
+                   .get_aggregate_stats()),
+        )
 
 
 class NetworkConnectionPublisherService(LoopingCallService):
