@@ -30,7 +30,7 @@ from golem.rpc import utils as rpc_utils
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task, TaskHeader,\
     TaskPurpose, AcceptClientVerdict
-from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
+from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     SubtaskState, Operation, TaskOp, SubtaskOp, OtherOp
@@ -1218,6 +1218,9 @@ class TaskManager(TaskEventListener):
                                     op: SubtaskOp) -> None:
 
         header = self.tasks[task_id].header.fixed_header
+        comp_task_info = self.comp_task_keeper.active_tasks[task_id]
+
+        computation_price = comp_task_info.subtask_price
         computation_time = ProviderComputeTimers.time_computing(subtask_id)
 
         if not computation_time:
@@ -1225,8 +1228,6 @@ class TaskManager(TaskEventListener):
                              f"{computation_time}")
 
         computation_time = int(round(computation_time))
-        computation_price = compute_subtask_value(header.max_price,
-                                                  header.subtask_timeout)
 
         dispatcher.send(
             signal='golem.subtask',
