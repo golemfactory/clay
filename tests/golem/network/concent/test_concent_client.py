@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 class TestVerifyResponse(TestCase):
     def setUp(self):
         self.response = requests.Response()
+        self.response.status_code = 200
         self.response.headers['Concent-Golem-Messages-Version'] = \
             golem_messages.__version__
 
@@ -45,6 +46,11 @@ class TestVerifyResponse(TestCase):
 
     def test_version_mismatch(self):
         self.response.headers['Concent-Golem-Messages-Version'] = 'dummy'
+        with self.assertRaises(exceptions.ConcentVersionMismatchError):
+            client.verify_response(self.response)
+
+    def test_no_version(self):
+        del self.response.headers['Concent-Golem-Messages-Version']
         with self.assertRaises(exceptions.ConcentVersionMismatchError):
             client.verify_response(self.response)
 
