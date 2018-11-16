@@ -20,7 +20,7 @@ from golem.core.simpleserializer import CBORSerializer
 from golem.docker.environment import DockerEnvironment
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
+from golem.task.taskbase import Task, TaskHeader, TaskBuilder, \
     TaskTypeInfo, AcceptClientVerdict
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
@@ -201,13 +201,12 @@ class CoreTask(Task):
         self._mark_subtask_failed(subtask_id)
 
     def computation_finished(self, subtask_id, task_result,
-                             result_type=ResultType.DATA,
                              verification_finished=None):
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for %s", subtask_id)
             return
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.verifying
-        self.interpret_task_results(subtask_id, task_result, result_type)
+        self.interpret_task_results(subtask_id, task_result)
         result_files = self.results.get(subtask_id)
 
         def verification_finished_(subtask_id, verdict, result):
@@ -359,25 +358,18 @@ class CoreTask(Task):
     # Specific task methods #
     #########################
 
-    def interpret_task_results(self, subtask_id, task_results, result_type: int,
-                               sort=True):
+    def interpret_task_results(self, subtask_id, task_results, sort=True):
         """Filter out ".log" files from received results.
         Log files should represent stdout and stderr from computing machine.
         Other files should represent subtask results.
         :param subtask_id: id of a subtask for which results are received
-        :param task_results: it may be a list of files, if result_type is equal
-        to ResultType.files or it may be a cbor serialized zip file containing
-        all files, if result_type is equal to ResultType.data
-        :param result_type: a number from ResultType, it may represents data
-        format or files format
+        :param task_results: it may be a list of files
         :param bool sort: *default: True* Sort results, if set to True
         """
         self.stdout[subtask_id] = ""
         self.stderr[subtask_id] = ""
-        tr_files = self.load_task_results(
-            task_results, result_type, subtask_id)
         self.results[subtask_id] = self.filter_task_results(
-            tr_files, subtask_id)
+            task_results, subtask_id)
         if sort:
             self.results[subtask_id].sort()
 
@@ -386,34 +378,6 @@ class CoreTask(Task):
         self.counting_nodes[self.subtasks_given[
             subtask_id]['node_id']].finish()
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
-
-    def load_task_results(self, task_result, result_type, subtask_id):
-        """ Change results to a list of files. If result_type is equal to
-        ResultType.files this function only return task_results without making
-        any changes. If result_type is equal to ResultType.data tham task_result
-         is cbor and unzipped and files are saved in tmp_dir.
-        :param task_result: list of files of cbor serialized ziped file with
-        files
-        :param result_type: int, ResultType element
-        :param str subtask_id:
-        :return:
-        """
-        if result_type == ResultType.DATA:
-            output_dir = os.path.join(self.tmp_dir, subtask_id)
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
-            return [self._unpack_task_result(trp, output_dir)
-                    for trp in task_result]
-        elif result_type == ResultType.FILES:
-            return task_result
-        else:
-            logger.error(
-                "Task result type not supported %r",
-                result_type,
-            )
-            self.stderr[subtask_id] = "[GOLEM] Task result {} not supported" \
-                .format(result_type)
-            return []
 
     def filter_task_results(self, task_results, subtask_id, log_ext=".log",
                             err_log_ext="err.log"):
@@ -483,12 +447,6 @@ class CoreTask(Task):
             self.counting_nodes[node_id].reject()
         self.num_failed_subtasks += 1
 
-    def _unpack_task_result(self, trp, output_dir):
-        tr = CBORSerializer.loads(trp)
-        with open(os.path.join(output_dir, tr[0]), "wb") as fh:
-            fh.write(decompress(tr[1]))
-        return os.path.join(output_dir, tr[0])
-
     def get_resources(self):
         return self.task_resources
 
@@ -531,7 +489,7 @@ class CoreTask(Task):
         self.interpret_task_results(
             subtask_id=subtask_id,
             task_results=results,
-            result_type=ResultType.FILES)
+        )
         self.accept_results(
             subtask_id=subtask_id,
             result_files=self.results[subtask_id])

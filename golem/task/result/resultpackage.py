@@ -11,7 +11,6 @@ from golem.core.fileshelper import common_dir, relative_path
 from golem.core.printable_object import PrintableObject
 from golem.core.simplehash import SimpleHash
 from golem.core.simpleserializer import CBORSerializer
-from golem.task.taskbase import ResultType
 
 
 def backup_rename(file_path, max_iterations=100):
@@ -214,14 +213,9 @@ class EncryptingPackager(Packager):
 
 class TaskResultDescriptor(PrintableObject):
 
-    def __init__(self, node, task_result):
-        self.node_name = node.node_name
-        self.node_key_id = node.key
-
-        self.result_type = task_result.result_type
+    def __init__(self, task_result):
         self.task_id = task_result.task_id
         self.subtask_id = task_result.subtask_id
-        self.owner = task_result.owner
 
 
 class TaskResultPackager:
@@ -241,7 +235,7 @@ class TaskResultPackager:
                                                       disk_files=disk_files,
                                                       cbor_files=cbor_files)
 
-        descriptor = TaskResultDescriptor(node, task_result)
+        descriptor = TaskResultDescriptor(task_result)
         cbor_files.append((self.descriptor_file_name, descriptor))
 
         return super().create(output_path,
@@ -268,29 +262,13 @@ class TaskResultPackager:
 
         extracted = ExtractedPackage(files, files_dir, descriptor)
 
-        if descriptor.result_type == ResultType.DATA:
-
-            result_path = os.path.join(files_dir, self.result_file_name)
-
-            with open(result_path, 'rb') as src:
-                extracted.result = src.read()
-            os.remove(result_path)
-
         return extracted
 
-    def __collect_files(self, result, disk_files=None, cbor_files=None):
-
+    @staticmethod
+    def __collect_files(result, disk_files=None, cbor_files=None):
         disk_files = disk_files[:] if disk_files else []
         cbor_files = cbor_files[:] if cbor_files else []
-
-        if result.result_type == ResultType.DATA:
-            cbor_files.append((self.result_file_name, result.result))
-        elif result.result_type == ResultType.FILES:
-            disk_files.extend(result.result)
-        else:
-            raise ValueError("Invalid result type {}"
-                             .format(result.result_type))
-
+        disk_files.extend(result.result)
         return disk_files, cbor_files
 
 
@@ -311,25 +289,15 @@ class ExtractedPackage(PrintableObject):
         self.result = result
 
     def to_extra_data(self):
-
         full_path_files = []
 
         for filename in self.files:
             full_path = os.path.join(self.files_dir, filename)
             full_path_files.append(full_path)
 
-        result_type = self.descriptor.result_type
         extra_data = {
             "subtask_id": self.descriptor.subtask_id,
-            "result_type": self.descriptor.result_type
+            "result": full_path_files,
         }
-
-        if result_type == ResultType.FILES:
-            extra_data["result"] = full_path_files
-        elif result_type == ResultType.DATA:
-            extra_data["result"] = self.result
-
-        if self.result:
-            extra_data["data_type"] = "result"
 
         return extra_data
