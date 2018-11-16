@@ -13,7 +13,7 @@ from golem.rpc.cert import CertificateManager
 
 from golem.rpc.common import CROSSBAR_HOST, CROSSBAR_PORT, CROSSBAR_DIR
 from golem_sci.chains import MAINNET, RINKEBY
-from golem.tools import filelock
+from portalocker import lock, unlock, LOCK_EX, LOCK_NB
 
 # Export pbr version for peewee_migrate user
 os.environ["PBR_VERSION"] = '3.1.1'
@@ -145,11 +145,11 @@ def is_app_running(root_dir: str, net_name: str) -> bool:
     if os.path.isfile(lock_path):
         lock_file = open(lock_path, 'w')
         try:
-            filelock.lock(lock_file)
+            lock(lock_file, LOCK_EX | LOCK_NB)
         except IOError:
             return True
         finally:
-            filelock.unlock(lock_file)
+            unlock(lock_file)
             lock_file.close()
 
     return False
