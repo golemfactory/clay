@@ -236,7 +236,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             task_id = self._subtask_to_task(subtask_id, Actor.Requestor)
 
             report_computed_task = get_task_message(
-                message_class_name='TaskToCompute',
+                message_class_name='ReportComputedTask',
                 node_id=self.key_id,
                 task_id=task_id,
                 subtask_id=subtask_id

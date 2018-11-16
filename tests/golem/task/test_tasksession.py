@@ -1240,6 +1240,8 @@ class SubtaskResultsAcceptedTest(TestCase):
         assert self.task_session.send.called
         sra = self.task_session.send.call_args[0][0] # noqa pylint:disable=unsubscriptable-object
         self.assertIsInstance(sra.task_to_compute, message.tasks.TaskToCompute)
+        self.assertIsInstance(sra.report_computed_task,
+                              message.tasks.ReportComputedTask)
         self.assertTrue(sra.task_to_compute.sig)
         self.assertTrue(
             sra.task_to_compute.verify_signature(
