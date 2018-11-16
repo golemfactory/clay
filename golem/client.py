@@ -7,8 +7,6 @@ import sys
 import time
 import uuid
 from copy import copy, deepcopy
-from os import path, makedirs
-from pathlib import Path
 from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from ethereum.utils import denoms
@@ -70,7 +68,6 @@ from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
-from golem.tools import filelock
 from golem.tools.os_info import OSInfo
 from golem.tools.talkback import enable_sentry_logger
 
@@ -112,7 +109,6 @@ class Client(HardwarePresetsMixin):
 
         self.apps_manager = apps_manager
         self.datadir = datadir
-        self.__lock_datadir()
         self.task_tester: Optional[TaskTester] = None
 
         self.task_archiver = TaskArchiver(datadir)
@@ -593,7 +589,6 @@ class Client(HardwarePresetsMixin):
 
         if self.db:
             self.db.close()
-        self._unlock_datadir()
 
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
@@ -1359,25 +1354,6 @@ class Client(HardwarePresetsMixin):
             result = yield deferred
             logger.info('change hw config result: %r', result)
             return self.environments_manager.get_performance_values()
-
-    def __lock_datadir(self):
-        if not path.exists(self.datadir):
-            # Create datadir if not exists yet.
-            makedirs(self.datadir)
-        self.__datadir_lock = open(path.join(self.datadir, "LOCK"), 'w')
-        try:
-            filelock.lock(self.__datadir_lock)
-        except IOError:
-            raise IOError("Data dir {} used by other Golem instance"
-                          .format(self.datadir))
-
-    def _unlock_datadir(self):
-        # solves locking issues on OS X
-        try:
-            filelock.unlock(self.__datadir_lock)
-        except Exception:
-            pass
-        self.__datadir_lock.close()
 
     @staticmethod
     def enable_talkback(value):
