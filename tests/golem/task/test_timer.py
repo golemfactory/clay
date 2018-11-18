@@ -78,13 +78,15 @@ class TestActionTimers(unittest.TestCase):
         assert timer._started
         assert not timer.finished
 
+        started = timer._started
+
         frozen_time.tick(timedelta(seconds=5))
         timers.start(identifier)
 
         timer = timers._history[identifier]
         assert isinstance(timer, ActionTimer)
-        assert timer._started
         assert not timer.finished
+        assert timer._started == started + 5
 
     @freeze_time("2018-01-01 00:00:00", as_arg=True)
     def test_finished(frozen_time, self):
