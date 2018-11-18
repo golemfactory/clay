@@ -115,7 +115,8 @@ class ResourceHandshakeSessionMixin:
         self._send_want_to_compute_task()
 
     def _send_want_to_compute_task(self) -> None:
-        self.send(message.tasks.WantToComputeTask(**self._task_request_message))
+        wtct = message.tasks.WantToComputeTask(**self._task_request_message)
+        self.send(wtct)  # type: ignore
         ProviderTTCDelayTimers.start(self._task_request_message['task_id'])
 
     # ########################
