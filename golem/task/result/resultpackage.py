@@ -1,7 +1,7 @@
 import binascii
 import uuid
 import zipfile
-from typing import Iterable, Tuple, Optional
+from typing import Iterable, Optional
 
 import abc
 import os
@@ -10,7 +10,6 @@ from golem.core.fileencrypt import AESFileEncryptor
 from golem.core.fileshelper import common_dir, relative_path
 from golem.core.printable_object import PrintableObject
 from golem.core.simplehash import SimpleHash
-from golem.core.simpleserializer import CBORSerializer
 
 
 def backup_rename(file_path, max_iterations=100):
@@ -37,10 +36,9 @@ class Packager(object):
     def create(self,
                output_path: str,
                disk_files: Optional[Iterable[str]] = None,
-               cbor_files: Optional[Iterable[Tuple[str, str]]] = None,
                **_kwargs):
 
-        if not disk_files and not cbor_files:
+        if not disk_files:
             raise ValueError('No files to pack')
 
         disk_files = self._prepare_file_dict(disk_files)
@@ -49,11 +47,6 @@ class Packager(object):
             if disk_files:
                 for file_path, file_name in disk_files.items():
                     self.write_disk_file(of, file_path, file_name)
-
-            if cbor_files:
-                for file_name, file_data in cbor_files:
-                    cbor_data = CBORSerializer.dumps(file_data)
-                    self.write_cbor_file(of, file_name, cbor_data)
 
         pkg_sha1 = self.write_sha1(output_path, output_path)
         return output_path, pkg_sha1
@@ -104,10 +97,6 @@ class Packager(object):
     def write_disk_file(self, obj, file_path, file_name):
         pass
 
-    @abc.abstractmethod
-    def write_cbor_file(self, obj, file_name, cbor_data):
-        pass
-
 
 class ZipPackager(Packager):
 
@@ -130,9 +119,6 @@ class ZipPackager(Packager):
 
     def write_disk_file(self, obj, file_path, file_name):
         ZipPackager.zip_append(obj, file_path.rstrip('/'))
-
-    def write_cbor_file(self, obj, file_name, cbord_data):
-        obj.writestr(file_name, cbord_data)
 
     @classmethod
     def package_name(cls, file_path):
@@ -174,15 +160,13 @@ class EncryptingPackager(Packager):
     def create(self,
                output_path: str,
                disk_files: Optional[Iterable[str]] = None,
-               cbor_files: Optional[Iterable[Tuple[str, str]]] = None,
                **_kwargs):
 
         tmp_file_path = self.package_name(output_path)
         backup_rename(tmp_file_path)
 
         pkg_file_path, pkg_sha1 = super().create(tmp_file_path,
-                                                 disk_files=disk_files,
-                                                 cbor_files=cbor_files)
+                                                 disk_files=disk_files)
 
         self.encryptor_class.encrypt(pkg_file_path, output_path,
                                      secret=self._secret)
@@ -207,25 +191,21 @@ class EncryptingPackager(Packager):
     def write_disk_file(self, obj, file_path, file_name):
         self._packager.write_disk_file(obj, file_path, file_name)
 
-    def write_cbor_file(self, obj, file_name, cbor_data):
-        self._packager.write_cbor_file(obj, file_name, cbor_data)
-
 
 class TaskResultPackager:
 
     def create(self,
                output_path: str,
                disk_files: Optional[Iterable[str]] = None,
-               cbor_files: Optional[Iterable[Tuple[str, str]]] = None,
                **kwargs):
         task_result = kwargs.get('task_result')
-        disk_files, cbor_files = self.__collect_files(task_result,
-                                                      disk_files=disk_files,
-                                                      cbor_files=cbor_files)
+        disk_files = self.__collect_files(
+            task_result,
+            disk_files=disk_files,
+        )
 
         return super().create(output_path,
-                              disk_files=disk_files,
-                              cbor_files=cbor_files)
+                              disk_files=disk_files)
 
     def extract(self, input_path, output_dir=None, **kwargs):
         files, files_dir = super().extract(input_path, output_dir=output_dir)  # noqa pylint:disable=no-member
@@ -235,11 +215,10 @@ class TaskResultPackager:
         return extracted
 
     @staticmethod
-    def __collect_files(result, disk_files=None, cbor_files=None):
+    def __collect_files(result, disk_files=None):
         disk_files = disk_files[:] if disk_files else []
-        cbor_files = cbor_files[:] if cbor_files else []
         disk_files.extend(result.result)
-        return disk_files, cbor_files
+        return disk_files
 
 
 class EncryptingTaskResultPackager(TaskResultPackager, EncryptingPackager):

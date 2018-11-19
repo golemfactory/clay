@@ -17,7 +17,6 @@ from golem_messages import exceptions as msg_exceptions
 import golem
 from golem.core import common
 from golem.core.keysauth import KeysAuth
-from golem.core.simpleserializer import CBORSerializer
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
