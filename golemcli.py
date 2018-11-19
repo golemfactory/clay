@@ -5,8 +5,9 @@ import argparse
 import logging
 import sys
 
-from multiprocessing import freeze_support
 import click
+from multiprocessing import freeze_support
+from portalocker import lock, unlock, LOCK_EX, LOCK_NB
 
 from portalocker import lock, unlock, LOCK_EX, LOCK_NB, LockException
 from golem_sci.chains import MAINNET, RINKEBY

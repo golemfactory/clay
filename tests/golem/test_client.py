@@ -347,6 +347,7 @@ class TestClient(TestClientBase):
             deadline,
         )
 
+
 class TestClientRestartSubtasks(TestClientBase):
     def setUp(self):
         super().setUp()
