@@ -887,22 +887,22 @@ class TaskServer(
             session: TaskSession,
             conn_id,
             extracted_package: ExtractedPackage,
-            key_id):
+            key_id,
+            subtask_id: str):
 
         extra_data = extracted_package.to_extra_data()
         self.new_session_prepare(
             session=session,
-            subtask_id=extra_data.get('subtask_id'),
+            subtask_id=subtask_id,
             key_id=key_id,
             conn_id=conn_id,
         )
 
         session.send_hello()
-        session.result_received(extra_data)
+        session.result_received(subtask_id, extra_data['result'])
 
     def __connection_for_task_verification_result_failure(  # noqa pylint:disable=no-self-use
-            self, conn_id, extracted_package, key_id):
-        subtask_id = extracted_package.to_extra_data().get('subtask_id')
+            self, _conn_id, _extracted_package, key_id, subtask_id: str):
         logger.warning("Failed to establish a session to deliver "
                        "the verification result for %s to the provider %s",
                        subtask_id, key_id)
@@ -1003,6 +1003,7 @@ class TaskServer(
         kwargs = {
             'extracted_package': extracted_package,
             'key_id': report_computed_task.key_id,
+            'subtask_id': report_computed_task.subtask_id,
         }
 
         node = p2p_node.Node.from_dict(report_computed_task.node_info)
