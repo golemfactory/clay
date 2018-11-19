@@ -28,7 +28,7 @@ class ActionTimer:
     def start(self) -> None:
         """ Updates the started and finished (= None) timestamps.
         """
-        logger.debug("ActionTimer.comp_started() at %r", time.time())
+        logger.debug("ActionTimer.start() at %r", time.time())
 
         if self._finished is None:
             logger.error("action was not finished")
@@ -39,7 +39,7 @@ class ActionTimer:
     def finish(self) -> None:
         """ Updates the finished timestamp.
         """
-        logger.debug("ActionTimer.comp_finished() at %r", time.time())
+        logger.debug("ActionTimer.finish() at %r", time.time())
 
         if self._finished is None and self._started:
             self._finish()
