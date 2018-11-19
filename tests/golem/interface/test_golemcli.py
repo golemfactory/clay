@@ -19,6 +19,3 @@ class TestGolemCLI(unittest.TestCase):
             start()
         with patch.object(sys, 'argv', ["program", "--some_forwarded_flag"]):
             start()
-
-    def test_stuff(self):
-        pass

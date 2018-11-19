@@ -11,6 +11,7 @@ peewee_migrate==0.14.0
 Pillow==4.2.1
 psutil==5.2.2
 pluggy==0.6.0
+portalocker==1.2.1
 asn1crypto==0.22.0
 pyasn1==0.4.1
 pysha3>=1.0.2
