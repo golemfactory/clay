@@ -119,3 +119,13 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
 
         args, kwargs = logger.error.call_args
         assert self.path in args[0]
+
+    @mock.patch('golem.node.Node')
+    def test_node_start_called(self, node_cls):
+        runner = CliRunner()
+        runner.invoke(
+            start,
+            ['--datadir', self.path, '--accept-terms'],
+            catch_exceptions=False
+        )
+        node_cls().start.assert_called_once()
