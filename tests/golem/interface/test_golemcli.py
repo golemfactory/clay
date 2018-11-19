@@ -26,12 +26,12 @@ class TestGolemCLI(unittest.TestCase):
     def test_check_golem_running(self, logger, *_):
         with patch.object(sys, 'argv', ['program', '-d', 'datadir', '-m']):
             start()
-            args, kwargs = logger.warn.call_args
+            args, kwargs = logger.warning.call_args
             assert 'removing' in args[0]
 
         with patch.object(sys, 'argv', ['program', '-d', 'datadir']):
             start()
-            args, kwargs = logger.warn.call_args
+            args, kwargs = logger.warning.call_args
             assert 'adding' in args[0]
 
     @patch('builtins.open', mock_open())
@@ -52,4 +52,4 @@ class TestGolemCLI(unittest.TestCase):
     def test_is_app_running_positive(self, logger, *_):
         with patch.object(sys, 'argv', ['program', '-d', 'datadir']):
             start()
-            assert logger.warn.called
+            assert logger.warning.called
