@@ -1221,7 +1221,7 @@ class TaskManager(TaskEventListener):
         comp_task_info = self.comp_task_keeper.active_tasks[task_id]
 
         computation_price = comp_task_info.subtask_price
-        computation_time = ProviderComputeTimers.time_computing(subtask_id)
+        computation_time = ProviderComputeTimers.time(subtask_id)
 
         if not computation_time:
             raise ValueError("Invalid value for computation_time: "

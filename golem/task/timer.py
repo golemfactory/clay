@@ -23,7 +23,7 @@ class ActionTimer:
         """
         if None in (self._started, self._finished):
             return None
-        return self._finished - self._started
+        return self._finished - self._started  # type: ignore
 
     def start(self) -> None:
         """ Updates the started and finished (= None) timestamps.
@@ -67,7 +67,7 @@ class ThirstTimer(ActionTimer):
     def _finish(self) -> None:
         super()._finish()
 
-        comp_length = self._finished - self._started
+        comp_length = self._finished - self._started  # type: ignore
         self._thirst = math.exp(self._BETA * comp_length) * self._thirst
 
 
@@ -86,7 +86,7 @@ class ActionTimers:
     def start(self, identifier: str) -> None:
         """ Initializes the start and finished (= None) timestamps.
         """
-        logger.debug("ActionTimers: started action of %s at %r",
+        logger.debug("ActionTimers.start(%s) at %r",
                      identifier, time.time())
 
         timer = ActionTimer()
@@ -98,7 +98,7 @@ class ActionTimers:
         """
         timer = self._history.get(identifier)
         if timer and not timer.finished:
-            logger.debug("ActionTimers: finished action of %s at %r",
+            logger.debug("ActionTimers.finish(%s) at %r",
                          identifier, time.time())
             timer.finish()
 
@@ -111,4 +111,3 @@ class ActionTimers:
 
 ProviderTimer = ThirstTimer()  # noqa
 ProviderComputeTimers = ActionTimers()  # noqa
-
