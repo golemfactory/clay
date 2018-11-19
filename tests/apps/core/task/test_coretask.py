@@ -1,6 +1,5 @@
 import os
 import shutil
-import zlib
 from copy import copy
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
@@ -11,7 +10,6 @@ from apps.core.task.coretask import (
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.common import is_linux
 from golem.core.fileshelper import outer_dir_path
-from golem.core.simpleserializer import CBORSerializer
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import TaskEventListener
