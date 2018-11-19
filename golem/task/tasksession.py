@@ -193,18 +193,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     # FileSession methods #
     #######################
 
-    def result_received(self, extra_data):
+    def result_received(self, subtask_id: str, result):
         """ Inform server about received result
-        :param dict extra_data: dictionary with information about
-                                received result
         """
-        result = extra_data.get('result')
-        subtask_id = extra_data.get("subtask_id")
-
-        if not subtask_id:
-            logger.error("No subtask_id value in extra_data for received data ")
-            self.dropped()
-
         def send_verification_failure():
             self._reject_subtask_result(
                 subtask_id,

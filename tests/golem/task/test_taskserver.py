@@ -1,6 +1,7 @@
 # pylint: disable=protected-access, too-many-lines
 import os
 import random
+import tempfile
 import uuid
 from collections import deque
 from math import ceil
@@ -13,7 +14,6 @@ from golem_messages.message import ComputeTaskDef
 from requests import HTTPError
 
 import golem
-from golem import model
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline, node_info_str
@@ -35,7 +35,6 @@ from golem.task.tasksession import TaskSession
 from golem.task.taskstate import TaskState, TaskOp
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
-from golem.utils import pubkeytoaddr
 
 from tests.factories.p2p import Node as NodeFactory
 from tests.factories.resultpackage import ExtractedPackageFactory
@@ -235,7 +234,9 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         ts.client.get_requesting_trust.return_value = ts.max_trust
 
-        results = {"data": ""}
+        fd, result_file = tempfile.mkstemp()
+        os.close(fd)
+        results = {"data": [result_file]}
         task_header = get_example_task_header(keys_auth.public_key)
         task_id = task_header["fixed_header"]["task_id"]
         assert ts.add_task_header(task_header)
@@ -247,7 +248,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         wtr = ts.results_to_send[subtask_id]
         self.assertIsInstance(wtr, WaitingTaskResult)
         self.assertEqual(wtr.subtask_id, subtask_id)
-        self.assertEqual(wtr.result, "")
+        self.assertEqual(wtr.result, [result_file])
         self.assertEqual(wtr.last_sending_trial, 0)
         self.assertEqual(wtr.delay_time, 0)
         self.assertEqual(wtr.owner, n)
@@ -268,6 +269,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         prev_call_count = trust.PAYMENT.decrease.call_count
         ts.decrease_trust_payment("xyz")
         self.assertGreater(trust.PAYMENT.decrease.call_count, prev_call_count)
+
+        os.remove(result_file)
 
     def test_connection_for_task_request_established(self, *_):
         ccd = ClientConfigDescriptor()
@@ -1130,24 +1133,24 @@ class TaskVerificationResultTest(TaskServerTestBase):
     def test_connection_established(self):
         session = self._mock_session()
         extracted_package = ExtractedPackageFactory()
-        subtask_id = extracted_package.descriptor.subtask_id
+        subtask_id = 'test_subtask_id'
 
         self.ts.conn_established_for_type[self.conn_type](
-            session, self.conn_id, extracted_package, self.key_id
+            session, self.conn_id, extracted_package, self.key_id, subtask_id
         )
         self.assertEqual(session.task_id, subtask_id)
         self.assertEqual(session.key_id, self.key_id)
         self.assertEqual(session.conn_id, self.conn_id)
         self.assertEqual(self.ts.task_sessions[subtask_id], session)
         result_received_call = session.result_received.call_args[0]
-        self.assertEqual(result_received_call[0].get('subtask_id'), subtask_id)
+        self.assertEqual(result_received_call[0], subtask_id)
 
     @patch('golem.task.taskserver.logger.warning')
     def test_conection_failed(self, log_mock):
         extracted_package = ExtractedPackageFactory()
-        subtask_id = extracted_package.descriptor.subtask_id
+        subtask_id = 'test_subtask_id'
         self.ts.conn_failure_for_type[self.conn_type](
-            self.conn_id, extracted_package, self.key_id
+            self.conn_id, extracted_package, self.key_id, subtask_id
         )
         self.assertIn(
             "Failed to establish a session", log_mock.call_args[0][0])

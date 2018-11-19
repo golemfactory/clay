@@ -502,33 +502,16 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 payment_ts=payment.processed_ts))
             ts.dropped()
 
-        extra_data = dict(
-            # the result is explicitly serialized using cPickle
-            result=pickle.dumps({'stdout': 'xyz'}),
-            subtask_id=subtask_id,
-        )
-
         ts.task_manager.computed_task_received = Mock(
             side_effect=finished(),
         )
-        ts.result_received(extra_data)
+        ts.result_received(subtask_id, pickle.dumps({'stdout': 'xyz'}))
 
         self.assertTrue(ts.msgs_to_send)
         sra = ts.msgs_to_send[0]
         self.assertIsInstance(sra, message.tasks.SubtaskResultsAccepted)
 
         conn.close.assert_called()
-
-        extra_data.update(dict(
-            subtask_id=None,
-        ))
-        conn.close.called = False
-        ts.msgs_to_send = []
-
-        ts.result_received(extra_data)
-
-        assert not ts.msgs_to_send
-        assert conn.close.called
 
     def _get_srr(self, key2=None, concent=False):
         key1 = 'known'
@@ -1195,10 +1178,6 @@ class SubtaskResultsAcceptedTest(TestCase):
 
         rct = msg_factories.tasks.ReportComputedTaskFactory()
         ttc = rct.task_to_compute
-        extra_data = dict(
-            result=pickle.dumps({'stdout': 'xyz'}),
-            subtask_id=ttc.compute_task_def.get('subtask_id')  # noqa pylint:disable=no-member
-        )
 
         self.task_session.send = Mock()
 
@@ -1209,7 +1188,10 @@ class SubtaskResultsAcceptedTest(TestCase):
         with patch('golem.task.tasksession.get_task_message',
                    side_effect=lambda **kwargs:
                    history_dict[kwargs['message_class_name']]):
-            self.task_session.result_received(extra_data)
+            self.task_session.result_received(
+                ttc.compute_task_def.get('subtask_id'),  # noqa pylint:disable=no-member
+                pickle.dumps({'stdout': 'xyz'}),
+            )
 
         assert self.task_session.send.called
         sra = self.task_session.send.call_args[0][0] # noqa pylint:disable=unsubscriptable-object

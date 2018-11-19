@@ -211,56 +211,26 @@ class EncryptingPackager(Packager):
         self._packager.write_cbor_file(obj, file_name, cbor_data)
 
 
-class TaskResultDescriptor(PrintableObject):
-
-    def __init__(self, task_result):
-        self.task_id = task_result.task_id
-        self.subtask_id = task_result.subtask_id
-
-
 class TaskResultPackager:
-
-    descriptor_file_name = '.package_desc'
-    result_file_name = '.result_cbor'
 
     def create(self,
                output_path: str,
                disk_files: Optional[Iterable[str]] = None,
                cbor_files: Optional[Iterable[Tuple[str, str]]] = None,
                **kwargs):
-
-        node = kwargs.get('node')
         task_result = kwargs.get('task_result')
         disk_files, cbor_files = self.__collect_files(task_result,
                                                       disk_files=disk_files,
                                                       cbor_files=cbor_files)
-
-        descriptor = TaskResultDescriptor(task_result)
-        cbor_files.append((self.descriptor_file_name, descriptor))
 
         return super().create(output_path,
                               disk_files=disk_files,
                               cbor_files=cbor_files)
 
     def extract(self, input_path, output_dir=None, **kwargs):
+        files, files_dir = super().extract(input_path, output_dir=output_dir)  # noqa pylint:disable=no-member
 
-        files, files_dir = super().extract(input_path, output_dir=output_dir)
-        descriptor_path = os.path.join(files_dir, self.descriptor_file_name)
-
-        try:
-            with open(descriptor_path, 'rb') as src:
-                descriptor: TaskResultDescriptor = \
-                    CBORSerializer.loads(src.read())
-            os.remove(descriptor_path)
-        except Exception as e:
-            raise ValueError('Invalid package descriptor {}'.format(e))
-
-        if self.descriptor_file_name in files:
-            files.remove(self.descriptor_file_name)
-        if self.result_file_name in files:
-            files.remove(self.result_file_name)
-
-        extracted = ExtractedPackage(files, files_dir, descriptor)
+        extracted = ExtractedPackage(files, files_dir)
 
         return extracted
 
@@ -282,10 +252,9 @@ class ZipTaskResultPackager(TaskResultPackager, ZipPackager):
 
 class ExtractedPackage(PrintableObject):
 
-    def __init__(self, files=None, files_dir="", descriptor=None, result=None):
+    def __init__(self, files=None, files_dir="", result=None):
         self.files = files or []
         self.files_dir = files_dir
-        self.descriptor = descriptor
         self.result = result
 
     def to_extra_data(self):
@@ -296,7 +265,6 @@ class ExtractedPackage(PrintableObject):
             full_path_files.append(full_path)
 
         extra_data = {
-            "subtask_id": self.descriptor.subtask_id,
             "result": full_path_files,
         }
 
