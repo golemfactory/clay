@@ -1,0 +1,205 @@
+swagger: '2.0'
+info:
+  description: Golem Brass Gatewway API
+  version: 1.0.0
+  title: Golem Brass GW
+  contact:
+    email: contact@golem.network
+  license:
+    name: GPL 3.0
+    url: 'https://www.gnu.org/licenses/gpl-3.0.html'
+host: unlimited.golem.network
+basePath: /gw/v1
+schemes:
+  - https
+  - http
+paths:
+  '/subscriber/{nodeId}':
+    parameters:
+      - name: nodeId
+        in: path
+        required: true
+        #schema:
+        type: string
+        #  example: '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b'
+        #style: simple
+    post:
+      summary: Creates or amends new subscribtion to gloem network
+      description: ''
+      operationId: subscribe
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Subscription spec
+          required: true
+          schema:
+            $ref: '#/definitions/SubscribeRequest'
+      responses:
+        '405':
+          description: Invalid input
+    get:
+      summary: Gets subscriber status
+      produces:
+        - application/json
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/SubscriberStatus'
+    delete:
+      summary: Delets subscripiotn from Golem Network
+      description: ''
+      responses:
+        '200':
+          description: OK
+  '/subscriber/{nodeId}/task/{taskId}':
+    parameters:
+      - name: nodeId
+        in: path
+        required: true
+        type: string
+      - name: taskId
+        in: path
+        required: true
+        type: string
+    post:
+      summary: Sends want to compute task
+      responses:
+        '200':
+          description: successful operation
+    delete:
+      summary: Cancels task
+      responses:
+        '200':
+          description: OK
+    put:
+      summary: Updates task
+      responses:
+        '200':
+          description: OK
+  '/subscriber/{nodeId}/task/{taskId}/result':
+    parameters:
+      - name: nodeId
+        in: path
+        required: true
+        type: string
+      - name: taskId
+        in: path
+        required: true
+        type: string
+    post:
+      summary: Report task completed
+      responses:
+        200:
+          description: OK
+    
+  '/subscriber/{nodeId}/uploadBlob':
+    post:
+      summary: Uploads an file
+      description: ''
+      operationId: uploadFile
+      consumes:
+        - multipart/form-data
+      produces:
+        - application/json
+      parameters:
+        - name: nodeId
+          in: path
+          required: true
+          type: string
+        - name: additionalMetadata
+          in: formData
+          description: Additional data to pass to server
+          type: string
+        - name: file
+          in: formData
+          description: file to upload
+          type: file
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/ApiResponse'
+  '/events/{nodeId}':
+    parameters: 
+      - name: nodeId
+        in: path
+        type: string
+        required: true
+    post:
+      summary: gets current
+      consumes:
+        - application/json
+      produces:
+        - application/json
+      parameters:
+        - in: body
+          name: body
+          description: Subscription spec
+          required: true
+          schema:
+            $ref: '#/definitions/EventsRequest'        
+      responses:
+        '200':
+          description: successful operation
+          schema:
+            $ref: '#/definitions/Events'
+definitions:
+  SubscribeRequest:
+    type: object
+    required:
+      - taskType
+    properties:
+      taskType:
+        type: string
+        example: blender
+  SubscriberStatus:
+    type: object
+    properties:
+      taskType:
+        type: string
+  ApiResponse:
+    type: object
+    properties:
+      code:
+        type: integer
+        format: int32
+      type:
+        type: string
+      message:
+        type: string
+  EventsRequest:
+    type: object
+    required:
+      - timestamp
+    properties:
+      timestamp:
+        type: string
+        format: date-time
+  Events:
+    type: object
+    required: 
+      - type
+      - id
+      - value
+      - timestamp
+    properties:
+      type:
+        type: string
+        example: "Task"
+      id:
+        type: string
+        example: "2345db123ca1af234f123a190e08d"
+      value:
+        type: string
+        example: "TODO: this probably should be some nested object"
+      timestamp:
+        type: string
+        format: date-time
+externalDocs:
+  description: Find out more about Swagger
+  url: 'http://swagger.io'
