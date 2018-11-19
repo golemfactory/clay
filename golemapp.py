@@ -49,8 +49,7 @@ def monkey_patched_getLogger(*args, **kwargs):
 def set_active_environment(func: Callable) -> Callable:
     """
     Function decorator which sets Golem's active configuration before calling
-    the decorated function. The active configuration is picked based on keyword
-    arguments provided to the decorated function.
+    the decorated function.
 
     Note: this decorator overrides the ``datadir`` keyword argument to provide
     the full path to the app's data directory.
@@ -74,16 +73,13 @@ def set_active_environment(func: Callable) -> Callable:
 
 def lock_datadir(func: Callable) -> Callable:
     """
-    Function decorator which locks the application's data directory (datadir)
+    Function decorator which locks the application's data directory
     before calling the decorated function.
-    Since directory locking is handled by a context manager, datadir
-    gets unlocked once the decorated function exits.
-
-    The path to the directory which should be locked is taken from the keyword
-    argument ``datadir`` of the decorated function.
+    Since locking is handled by a context manager, datadir gets unlocked
+    once the wrapped function exits.
 
     Note: since this decorator requires the full path to the app's datadir
-    under a keyword argument, it should always be called after
+    under a keyword argument, it should be called after
     ``set_active_environment``.
     """
     @wraps(func)
