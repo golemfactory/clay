@@ -8,7 +8,6 @@ from golem.core.fileencrypt import FileEncryptor
 from golem.resource.dirmanager import DirManager
 from golem.task.result.resultpackage import EncryptingPackager, \
     EncryptingTaskResultPackager, ExtractedPackage, ZipPackager, backup_rename
-from golem.task.taskbase import ResultType
 from golem.testutils import TempDirFixture
 
 
@@ -16,15 +15,11 @@ def mock_node():
     return Mock(name='test_node', key=uuid.uuid4())
 
 
-def mock_task_result(task_id, result, result_type=None):
-    if result_type is None:
-        result_type = ResultType.FILES
-
+def mock_task_result(task_id, result):
     return Mock(
         task_id=task_id,
         subtask_id=task_id,
         result=result,
-        result_type=result_type,
         owner_key_id=str(uuid.uuid4()),
         owner=str(uuid.uuid4())
     )
@@ -187,19 +182,6 @@ class TestEncryptingTaskResultPackager(PackageDirContentsFixture):
 
         self.assertTrue(os.path.exists(path))
 
-    def testCreateData(self):
-        etp = EncryptingTaskResultPackager(self.secret)
-        node = mock_node()
-
-        tr = mock_task_result(self.task_id, "Result string data",
-                              result_type=ResultType.DATA)
-
-        path, _ = etp.create(self.out_path,
-                             node=node,
-                             task_result=tr)
-
-        self.assertTrue(os.path.exists(path))
-
     def testExtract(self):
         etp = EncryptingTaskResultPackager(self.secret)
         node = mock_node()
@@ -231,9 +213,7 @@ class TestExtractedPackage(PackageDirContentsFixture):
         extracted = etp.extract(path)
         extra_data = extracted.to_extra_data()
 
-        self.assertEqual(extra_data.get('result_type', None), ResultType.FILES)
         self.assertEqual(len(extra_data.get('result', [])), len(self.all_files))
-        self.assertIsNone(extra_data.get('data_type', None))
 
         for filename in extra_data.get('result', []):
             self.assertTrue(os.path.exists(filename))

@@ -29,7 +29,6 @@ from golem.network.transport.session import BasicSafeSession
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
-from golem.task.taskbase import ResultType
 from golem.task.taskstate import TaskState
 
 if TYPE_CHECKING:
@@ -200,7 +199,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                                 received result
         """
         result = extra_data.get('result')
-        result_type = extra_data.get("result_type")
         subtask_id = extra_data.get("subtask_id")
 
         if not subtask_id:
@@ -213,19 +211,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 reason=message.tasks.SubtaskResultsRejected.REASON
                 .VerificationNegative
             )
-
-        if result_type is None:
-            logger.error("No information about result_type for received data ")
-            send_verification_failure()
-            self.dropped()
-
-        if result_type == ResultType.DATA:
-            try:
-                result = CBORSerializer.loads(result)
-            except Exception:  # pylint: disable=broad-except
-                logger.exception("Can't load result data")
-                send_verification_failure()
-                return
 
         def verification_finished():
             if not self.task_manager.verify_subtask(subtask_id):
@@ -271,7 +256,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.task_manager.computed_task_received(
             subtask_id,
             result,
-            result_type,
             verification_finished
         )
 
@@ -313,16 +297,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         :param Node node_info: information about this node
         :return:
         """
-        if task_result.result_type == ResultType.DATA:
-            extra_data = []
-        elif task_result.result_type == ResultType.FILES:
-            extra_data = [os.path.basename(x) for x in task_result.result]
-        else:
-            logger.error(
-                "Unknown result type %r",
-                task_result.result_type
-            )
-            return
+        extra_data = []
 
         node_name = self.task_server.get_node_name()
 
@@ -341,7 +316,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         report_computed_task = message.tasks.ReportComputedTask(
             task_to_compute=task_to_compute,
-            result_type=task_result.result_type,
             node_name=node_name,
             address=address,
             port=port,

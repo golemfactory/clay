@@ -226,7 +226,7 @@ class TaskManager(TaskEventListener):
     def start_task(self, task_id):
         task_state = self.tasks_states[task_id]
 
-        if task_state.status != TaskStatus.notStarted:
+        if not task_state.status.is_preparing():
             raise RuntimeError("Task {} has already been started"
                                .format(task_id))
 
@@ -699,7 +699,7 @@ class TaskManager(TaskEventListener):
         return value
 
     @handle_subtask_key_error
-    def computed_task_received(self, subtask_id, result, result_type,
+    def computed_task_received(self, subtask_id, result,
                                verification_finished):
         task_id = self.subtask2task_mapping[subtask_id]
 
@@ -751,7 +751,7 @@ class TaskManager(TaskEventListener):
             verification_finished()
 
         self.tasks[task_id].computation_finished(
-            subtask_id, result, result_type, verification_finished_
+            subtask_id, result, verification_finished_
         )
 
     @handle_subtask_key_error
@@ -1096,6 +1096,7 @@ class TaskManager(TaskEventListener):
         ss = SubtaskState()
         ss.time_started = time.time()
         ss.node_id = node_id
+        ss.node_name = node_name
         ss.deadline = ctd['deadline']
         ss.subtask_definition = ctd['short_description']
         ss.subtask_id = ctd['subtask_id']

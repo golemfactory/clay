@@ -28,7 +28,7 @@ from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import tasksession
 from golem.task.masking import Mask
 from golem.task.server import concent as server_concent
-from golem.task.taskbase import TaskHeader, ResultType, AcceptClientVerdict
+from golem.task.taskbase import TaskHeader, AcceptClientVerdict
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.task.tasksession import TaskSession
@@ -235,7 +235,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.client.get_suggested_addr.return_value = "10.10.10.10"
         ts.client.get_requesting_trust.return_value = ts.max_trust
 
-        results = {"data": "", "result_type": ResultType.DATA}
+        results = {"data": ""}
         task_header = get_example_task_header(keys_auth.public_key)
         task_id = task_header["fixed_header"]["task_id"]
         assert ts.add_task_header(task_header)
@@ -248,7 +248,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertIsInstance(wtr, WaitingTaskResult)
         self.assertEqual(wtr.subtask_id, subtask_id)
         self.assertEqual(wtr.result, "")
-        self.assertEqual(wtr.result_type, ResultType.DATA)
         self.assertEqual(wtr.last_sending_trial, 0)
         self.assertEqual(wtr.delay_time, 0)
         self.assertEqual(wtr.owner, n)

@@ -254,7 +254,7 @@ class TaskServer(
 
     def send_results(self, subtask_id, task_id, result):
 
-        if 'data' not in result or 'result_type' not in result:
+        if 'data' not in result:
             raise AttributeError("Wrong result format")
 
         header = self.task_keeper.task_headers[task_id]
@@ -267,7 +267,6 @@ class TaskServer(
                 task_id=task_id,
                 subtask_id=subtask_id,
                 result=result['data'],
-                result_type=result['result_type'],
                 last_sending_trial=last_sending_trial,
                 delay_time=delay_time,
                 owner=header.task_owner)
@@ -1069,7 +1068,7 @@ class TaskServer(
 #       and remove linter switch offs
 # pylint: disable=too-many-arguments, too-many-locals
 class WaitingTaskResult(object):
-    def __init__(self, task_id, subtask_id, result, result_type,
+    def __init__(self, task_id, subtask_id, result,
                  last_sending_trial, delay_time, owner, result_path=None,
                  result_hash=None, result_secret=None, package_sha1=None,
                  result_size=None, package_path=None):
@@ -1081,7 +1080,6 @@ class WaitingTaskResult(object):
         self.owner = owner
 
         self.result = result
-        self.result_type = result_type
         self.result_path = result_path
         self.result_hash = result_hash
         self.result_secret = result_secret

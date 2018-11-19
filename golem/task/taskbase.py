@@ -56,16 +56,6 @@ class TaskTypeInfo(object):
         pass
 
 
-# TODO change types to enums - for now it gets
-# evt.comp.task.test.status Error WAMP message serialization
-# error: unsupported type: <enum 'ResultType'> undefined
-# Issue #2408
-
-class ResultType(object): # class ResultType(Enum):
-    DATA = 0
-    FILES = 1
-
-
 class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
     """
     TaskFixedHeader is the fixed (i.e. unchangeable) part of TaskHeader
@@ -471,12 +461,10 @@ class Task(abc.ABC):
 
     @abc.abstractmethod
     def computation_finished(self, subtask_id, task_result,
-                             result_type=ResultType.DATA,
                              verification_finished=None):
         """ Inform about finished subtask
         :param subtask_id: finished subtask id
         :param task_result: task result, can be binary data or list of files
-        :param result_type: ResultType representation
         """
         return  # Implement in derived class
 

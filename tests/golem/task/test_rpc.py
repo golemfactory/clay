@@ -325,6 +325,27 @@ class TestEnqueueNewTask(ProviderBase):
             force=force,
         )
 
+    @mock.patch('golem.task.rpc.logger.error')
+    @mock.patch('golem.task.rpc._ensure_task_deposit')
+    def test_ethereum_error(self, deposit_mock, log_mock, *_):
+        from golem.ethereum import exceptions as eth_exceptions
+        deposit_mock.side_effect = eth_exceptions.EthereumError('TEST ERROR')
+        task = self.client.task_manager.create_task(self.t_dict)
+        deferred = rpc.enqueue_new_task(self.client, task)
+        with self.assertRaises(eth_exceptions.EthereumError):
+            golem_deferred.sync_wait(deferred)
+        log_mock.assert_called_once()
+
+    @mock.patch('golem.task.rpc.logger.exception')
+    @mock.patch('golem.task.rpc._start_task')
+    def test_general_exception(self, start_mock, log_mock, *_):
+        start_mock.side_effect = RuntimeError("TEST ERROR")
+        task = self.client.task_manager.create_task(self.t_dict)
+        deferred = rpc.enqueue_new_task(self.client, task)
+        with self.assertRaises(RuntimeError):
+            golem_deferred.sync_wait(deferred)
+        log_mock.assert_called_once()
+
 
 @mock.patch('golem.task.rpc._run_test_task')
 class TestProviderRunTestTask(ProviderBase):
@@ -476,6 +497,7 @@ class TestRestartSubtasks(ProviderBase):
             task_dict=mock.ANY,
             force=force,
         )
+
 
 @mock.patch('os.path.getsize')
 class TestExceptionPropagation(ProviderBase):

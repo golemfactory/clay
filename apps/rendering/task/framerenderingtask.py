@@ -20,7 +20,6 @@ from apps.rendering.task.renderingtaskstate import RendererDefaults
 from golem_verificator.rendering_verifier import FrameRenderingVerifier
 from golem.core.common import update_dict, to_unicode
 from golem.rpc import utils as rpc_utils
-from golem.task.taskbase import ResultType
 from golem.task.taskstate import SubtaskStatus, TaskStatus, SubtaskState
 
 logger = logging.getLogger("apps.rendering")
@@ -136,12 +135,10 @@ class FrameRenderingTask(RenderingTask):
 
     @CoreTask.handle_key_error
     def computation_finished(self, subtask_id, task_result,
-                             result_type=ResultType.DATA,
                              verification_finished=None):
         super(FrameRenderingTask, self).computation_finished(
             subtask_id,
             task_result,
-            result_type,
             verification_finished)
 
     def verification_finished(self, subtask_id, verdict, result):

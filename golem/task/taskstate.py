@@ -54,6 +54,7 @@ class SubtaskState(object):
         self.subtask_progress = 0.0
         self.time_started = 0
         self.node_id = ""
+        self.node_name = ""
         self.deadline = 0
         self.extra_data = {}
         # FIXME: subtask_rem_time is always equal 0 (#2562)
@@ -68,6 +69,7 @@ class SubtaskState(object):
         return {
             'subtask_id': to_unicode(self.subtask_id),
             'node_id': to_unicode(self.node_id),
+            'node_name': to_unicode(self.node_name),
             'status': self.subtask_status.value,
             'progress': self.subtask_progress,
             'time_started': self.time_started,
@@ -81,6 +83,7 @@ class SubtaskState(object):
 
 class TaskStatus(Enum):
     notStarted = "Not started"
+    creatingDeposit = "Creating the deposit"
     sending = "Sending"
     waiting = "Waiting"
     starting = "Starting"
@@ -93,6 +96,12 @@ class TaskStatus(Enum):
     def is_completed(self) -> bool:
         return self in [self.finished, self.aborted,
                         self.timeout, self.restarted]
+
+    def is_preparing(self) -> bool:
+        return self in (
+            self.notStarted,
+            self.creatingDeposit,
+        )
 
     def is_active(self) -> bool:
         return self in [self.sending, self.waiting,

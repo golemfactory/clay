@@ -10,7 +10,6 @@ from golem.core.common import is_windows, is_osx
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.task.taskbase import ResultType
 from golem.task.taskthread import TaskThread, JobException, TimeoutException
 from golem.vm.memorychecker import MemoryChecker
 
@@ -234,7 +233,6 @@ class DockerTaskThread(TaskThread):
         ]
         self.result = {
             "data": out_files,
-            "result_type": ResultType.FILES,
         }
         if estm_mem is not None:
             self.result = (self.result, estm_mem)

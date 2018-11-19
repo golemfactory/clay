@@ -13,7 +13,6 @@ from golem.core.common import timeout_to_deadline
 from golem.core.deferred import sync_wait
 from golem.docker.manager import DockerManager
 from golem.network.p2p.node import Node as P2PNode
-from golem.task.taskbase import ResultType
 from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
 from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
@@ -452,8 +451,7 @@ class TestTaskMonitor(DatabaseFixture):
         prepare()
         task_thread.error = False
         task_thread.error_msg = None
-        task_thread.result = {'data': 'oh senora!!!',
-                              'result_type': ResultType.DATA}
+        task_thread.result = {'data': 'oh senora!!!'}
         check(True)
 
         # default case (error)
