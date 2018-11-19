@@ -2,18 +2,20 @@
 
 import os
 import argparse
+import logging
 import sys
 
 import click
 from multiprocessing import freeze_support
 from portalocker import lock, unlock, LOCK_EX, LOCK_NB
 
+from portalocker import lock, unlock, LOCK_EX, LOCK_NB, LockException
+from golem_sci.chains import MAINNET, RINKEBY
 from golem.config.environments import set_environment  # noqa
 from golem.core.simpleenv import get_local_datadir
 from golem.rpc.cert import CertificateManager
 
 from golem.rpc.common import CROSSBAR_HOST, CROSSBAR_PORT, CROSSBAR_DIR
-from golem_sci.chains import MAINNET, RINKEBY
 
 # Export pbr version for peewee_migrate user
 os.environ["PBR_VERSION"] = '3.1.1'
@@ -32,6 +34,8 @@ from golem.interface.client.tasks import Tasks, Subtasks  # noqa
 from golem.interface.client.terms import Terms  # noqa
 from golem.interface.client.test_task import TestTask  # noqa
 from golem.interface.websockets import WebSocketCLI  # noqa
+
+logger = logging.getLogger('golemcli')
 
 
 def start():
@@ -118,9 +122,7 @@ def check_golem_running(datadir: str, cli_in_mainnet: bool):
             f'In case of authorization failure, ' \
               f'try {flag_action} --mainnet (-m) flag.'
 
-        import logging
-        logger = logging.getLogger('golemcli')
-        logger.warn(msg)
+        logger.warning(msg)
 
 
 def disable_platform_trust():
@@ -146,7 +148,7 @@ def is_app_running(root_dir: str, net_name: str) -> bool:
         lock_file = open(lock_path, 'w')
         try:
             lock(lock_file, LOCK_EX | LOCK_NB)
-        except IOError:
+        except LockException:
             return True
         finally:
             unlock(lock_file)

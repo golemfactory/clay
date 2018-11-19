@@ -233,7 +233,12 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     if accept_terms:
         node.accept_terms()
 
-    node.start()
+    try:
+        with Lock(os.path.join(datadir, 'LOCK'), timeout=1):
+            node.start()
+    except LockException:
+        logger.error(f'directory {datadir} is locked, possibly used by '
+                     'another Golem instance')
 
 
 def delete_reactor():

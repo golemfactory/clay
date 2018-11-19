@@ -27,4 +27,4 @@ def get_local_datadir(
 
     if not root_dir:
         root_dir = os.path.join(appdirs.user_data_dir(APP_NAME), name)
-    return os.path.join(root_dir, env_suffix)
+    return os.path.join(root_dir, env_suffix)   # type: ignore # noqa
