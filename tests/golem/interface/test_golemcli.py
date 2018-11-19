@@ -6,6 +6,7 @@ from portalocker import LockException
 
 from golemcli import start
 
+
 @patch('golemcli.install_reactor')
 @patch('golem.interface.websockets.WebSocketCLI.execute')
 @patch('golem.core.common.config_logging')
