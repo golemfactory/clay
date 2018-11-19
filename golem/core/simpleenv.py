@@ -8,9 +8,9 @@ DEFAULT_DATA_DIR = 'default'
 
 
 def get_local_datadir(
-        name: Optional[str] = None,
-        root_dir: Optional[str] = None,
-        env_suffix: Optional[str] = None
+        name: Optional[str],
+        root_dir: Optional[str],
+        env_suffix: Optional[str]
 ) -> str:
     """ Helper function for datadir transition.
 
