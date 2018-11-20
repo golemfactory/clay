@@ -477,6 +477,7 @@ class TransactionSystem(LoopingCallService):
             amount: int,
             destination: str,
             currency: str) -> int:
+        assert self._sci is not None
         if currency == 'ETH':
             return self._sci.estimate_transfer_eth_gas(destination, amount)
         if currency == 'GNT':
@@ -490,6 +491,7 @@ class TransactionSystem(LoopingCallService):
             destination: str,
             currency: str,
             gas_price: Optional[int] = None) -> str:
+        assert self._sci is not None
         if not self._config.WITHDRAWALS_ENABLED:
             raise Exception("Withdrawals are disabled")
 

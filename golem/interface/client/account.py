@@ -128,6 +128,7 @@ class Account:
             amount,
             currency,
             gas_price) -> str:
+        assert Account.client is not None
         amount = str(int(Decimal(amount) * denoms.ether))
         return sync_wait(Account.client.withdraw(
             amount,
