@@ -56,6 +56,20 @@ class TestClientHandler(TestCase):
                 self.state.increment()
                 raise ArithmeticError()
 
+            self.handler._retry(func, raise_exc=False)
+
+        # Exception was raised on first retry
+        assert self.state.counter == 1
+
+
+    def test_retry_max_tries_exception(self):
+        self.handler.config.max_retries = 0
+        raised_exc = ClientHandler.retry_exceptions[0]
+        with self.assertRaises(raised_exc):
+            def func():
+                self.state.increment()
+                raise raised_exc()
+
             self.handler._retry(func, raise_exc=True)
 
         # Exception was raised on first retry
