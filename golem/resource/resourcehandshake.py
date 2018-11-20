@@ -11,14 +11,13 @@ logger = logging.getLogger('golem.resources')
 
 class ResourceHandshake:
 
-    __slots__ = ('nonce', 'file', 'hash', 'message',
-                 'started', 'local_result', 'remote_result')
+    __slots__ = ('nonce', 'file', 'hash', 'started',
+                 'local_result', 'remote_result')
 
-    def __init__(self, message_=None):
+    def __init__(self):
         self.nonce = str(uuid.uuid4())
         self.file = None
         self.hash = None
-        self.message = message_
 
         self.started = False
         self.local_result = None
@@ -196,7 +195,7 @@ class ResourceHandshakeSessionMixin:
         logger.info('Starting resource handshake with %r',
                     short_node_id(key_id))
 
-        handshake = ResourceHandshake(self._task_request_message)
+        handshake = ResourceHandshake()
         directory = self.resource_manager.storage.get_dir(self.NONCE_TASK)
 
         try:
@@ -232,7 +231,7 @@ class ResourceHandshakeSessionMixin:
         if handshake.finished():
             logger.info('Finished resource handshake with %r',
                         short_node_id(key_id))
-        if handshake.success() and handshake.message:
+        if handshake.success() and self._task_request_message:
             self._send_want_to_compute_task()
 
     def _stop_handshake_timer(self):

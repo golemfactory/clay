@@ -408,7 +408,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         self.session._task_request_message = self.message
         assert not self.session.send.called
 
-        handshake = ResourceHandshake(self.session._task_request_message)
+        handshake = ResourceHandshake()
         handshake.local_result = False
         handshake.remote_result = True
         self.session._set_handshake(self.session.key_id, handshake)
