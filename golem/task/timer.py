@@ -21,7 +21,7 @@ class ActionTimer:
     def time(self) -> Optional[float]:
         """ Returns the time spent on an action or None
         """
-        if not (self._started and self._finished):
+        if None in (self._started, self._finished):
             return None
         return self._finished - self._started  # type: ignore
 
