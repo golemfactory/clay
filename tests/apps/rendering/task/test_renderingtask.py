@@ -1,6 +1,5 @@
-import ntpath
 import os
-from os import makedirs, path, remove
+from os import path, remove
 
 from unittest.mock import Mock, patch, ANY
 
@@ -10,6 +9,7 @@ from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import (MIN_TIMEOUT, PREVIEW_EXT,
                                                RenderingTask,
+                                               RenderingTaskBuilderError,
                                                RenderingTaskBuilder,
                                                SUBTASK_MIN_TIMEOUT)
 from apps.core.task.coretask import logger as logger_core
@@ -75,7 +75,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task_definition.max_price = 1000
         task_definition.task_id = "xyz"
         task_definition.estimated_memory = 1024
-        task_definition.full_task_timeout = 3600
+        task_definition.timeout = 3600
         task_definition.subtask_timeout = 600
         task_definition.main_scene_file=files[1]
         task_definition.resolution = [800, 600]
@@ -98,24 +98,6 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         dm = DirManager(self.path)
         task.initialize(dm)
         self.task = task
-
-    def test_paths(self):
-        rt = self.task
-        res1 = path.join(self.path, "dir1", "dir2", "name1")
-        res2 = path.join(self.path, "dir1", "dir2", "name2")
-        rt.task_resources = [res1, res2]
-        assert rt._get_working_directory() == "../.."
-
-    @patch("apps.rendering.task.renderingtask.is_windows")
-    def test_paths2(self, mock_is_windows):
-        rt = self.task
-        npath = "\\".join(path.split(self.path))
-        res1 = "{}\\dir1\\dir2\\name1".format(npath)
-        res2 = "{}\\dir1\\dir2\\name2".format(npath)
-        rt.task_resources = [res1, res2]
-        mock_is_windows.return_value = True
-        with patch("apps.rendering.task.renderingtask.os.path", ntpath):
-            assert rt._get_working_directory() == "../.."
 
     def test_remove_from_preview(self):
         rt = self.task
@@ -189,13 +171,13 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         with self.assertLogs(core_logger, level="WARNING"):
             task.restart_subtask("Not existing")
 
-        task._accept_client("node_ABC")
+        task.accept_client("node_ABC")
         task.subtasks_given["ABC"] = {'status': SubtaskStatus.starting, 'end_task':3,
                                       'start_task': 3, "node_id": "node_ABC"}
         task.restart_subtask("ABC")
         assert task.subtasks_given["ABC"]["status"] == SubtaskStatus.restarted
 
-        task._accept_client("node_DEF")
+        task.accept_client("node_DEF")
         task.subtasks_given["DEF"] = {'status': SubtaskStatus.finished, 'end_task': 3,
                                       'start_task': 3, "node_id": "node_DEF"}
         task.restart_subtask("DEF")
@@ -204,19 +186,19 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         assert path.isfile(task.preview_file_path)
         assert task.num_tasks_received == -1
 
-        task._accept_client("node_GHI")
+        task.accept_client("node_GHI")
         task.subtasks_given["GHI"] = {'status': SubtaskStatus.failure, 'end_task': 3,
                                       'start_task': 3, "node_id": "node_GHI"}
         task.restart_subtask("GHI")
         assert task.subtasks_given["GHI"]["status"] == SubtaskStatus.failure
 
-        task._accept_client("node_JKL")
+        task.accept_client("node_JKL")
         task.subtasks_given["JKL"] = {'status': SubtaskStatus.resent, 'end_task': 3,
                                       'start_task': 3, "node_id": "node_JKL"}
         task.restart_subtask("JKL")
         assert task.subtasks_given["JKL"]["status"] == SubtaskStatus.resent
 
-        task._accept_client("node_MNO")
+        task.accept_client("node_MNO")
         task.subtasks_given["MNO"] = {'status': SubtaskStatus.restarted, 'end_task': 3,
                                       'start_task': 3, "node_id": "node_MNO"}
         task.restart_subtask("MNO")
@@ -366,90 +348,150 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
         assert builder._calculate_total(defaults) == 17
 
         definition.optimize_total = False
-        definition.total_subtasks = 18
+        definition.subtasks_count = 18
         assert builder._calculate_total(defaults) == 18
 
-        definition.total_subtasks = 2
+        definition.subtasks_count = 2
         with self.assertLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 17
 
-        definition.total_subtasks = 3
+        definition.subtasks_count = 3
         with self.assertNoLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 3
 
-        definition.total_subtasks = 34
+        definition.subtasks_count = 34
         with self.assertLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 17
 
-        definition.total_subtasks = 33
+        definition.subtasks_count = 33
         with self.assertNoLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 33
 
-    def test_build_definition(self):
+    def test_get_output_path(self):
+        td = TaskDefinition()
+        td.name = "MY task"
+        tdict = {'options': {'output_path': '/dir3/dir4', 'format': 'txt'}}
+        assert RenderingTaskBuilder.get_output_path(tdict, td) == \
+            path.join("/dir3/dir4", "MY task.txt")
+
+    def test_build_definition_minimal(self):
+        # given
         defaults_mock = Mock()
         defaults_mock.main_program_file = "src_code.py"
-        tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition, defaults_mock,
-                               Options, RenderingTaskBuilder)
+        tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition,
+                               defaults_mock, Options, RenderingTaskBuilder)
         tti.output_file_ext = 'txt'
         task_dict = {
-                'resources': {"file1.png", "file2.txt", 'file3.jpg',
-                              'file4.txt'},
-                'task_type': 'TESTTASK',
-                'subtasks': 1
+            'resources': {"file1.png", "file2.txt", 'file3.jpg', 'file4.txt'},
+            'compute_on': 'cpu',
+            'task_type': 'TESTTASK',
+            'subtasks_count': 1
         }
-        definition = RenderingTaskBuilder.build_definition(
-            tti,
-            task_dict,
-            minimal=True
-        )
 
+        # when
+        definition = RenderingTaskBuilder.build_definition(
+            tti, task_dict, minimal=True)
+
+        # then
         assert definition.main_scene_file in ['file2.txt', 'file4.txt']
         assert definition.task_type == "TESTTASK"
         assert definition.resources == {'file1.png', 'file2.txt',
                                         'file3.jpg', 'file4.txt'}
 
-        # Build full definition
-        task_dict['options'] = {'output_path': self.path,
-                                'format': 'PNG',
-                                'resolution': [800, 600]}
-        task_dict['name'] = "NAME OF THE TASK"
-        task_dict['bid'] = 0.25
-        task_dict['timeout'] = "01:00:00"
-        task_dict['subtask_timeout'] = "00:25:00"
 
+class TestBuildDefinition(TestDirFixture, LogTestCase):
+    def setUp(self):
+        super().setUp()
+        defaults_mock = Mock()
+        defaults_mock.main_program_file = "src_code.py"
+        self.tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition,
+                                    defaults_mock, Options,
+                                    RenderingTaskBuilder)
+        self.tti.output_file_ext = 'txt'
+        self.task_dict = {
+            'resources': {"file1.png", "file2.txt", 'file3.jpg', 'file4.txt'},
+            'compute_on': 'cpu',
+            'task_type': 'TESTTASK',
+            'subtasks_count': 1,
+            'options': {'output_path': self.path,
+                        'format': 'PNG',
+                        'resolution': [800, 600]},
+            'name': "NAME OF THE TASK",
+            'bid': 0.25,
+            'timeout': "01:00:00",
+            'subtask_timeout': "00:25:00",
+        }
+
+    def test_full(self):
+        # when
         definition = RenderingTaskBuilder.build_definition(
-            tti,
-            task_dict,
-            minimal=False
-        )
-        assert definition.task_name == "NAME OF THE TASK"
+            self.tti, self.task_dict)
+
+        # then
+        assert definition.name == "NAME OF THE TASK"
         assert definition.max_price == 250000000000000000
-        assert definition.full_task_timeout == 3600
+        assert definition.timeout == 3600
         assert definition.subtask_timeout == 1500
-        output_file = task_dict['name'] + "." + task_dict['options']['format']
+        output_file = self.task_dict['name'] + "." + \
+            self.task_dict['options']['format']
         assert definition.output_file == self.path + os.sep + output_file
 
-        # Timeout too short
-        task_dict['timeout'] = "00:00:02"
-        task_dict['subtask_timeout'] = "00:00:01"
+    def test_timeout_too_short(self):
+        # given
+        self.task_dict['timeout'] = "00:00:02"
+        self.task_dict['subtask_timeout'] = "00:00:01"
 
+        # when
         with self.assertLogs(logger_render, level="WARNING") as log_:
             definition = RenderingTaskBuilder.build_definition(
-                tti,
-                task_dict,
-                minimal=False
-            )
+                self.tti, self.task_dict)
 
+        # then
         assert "Timeout 2 too short for this task. Changing to %d" % \
                MIN_TIMEOUT in log_.output[0]
         assert "Subtask timeout 1 too short for this task. Changing to %d" % \
                SUBTASK_MIN_TIMEOUT in log_.output[1]
-        assert definition.full_task_timeout == MIN_TIMEOUT
+        assert definition.timeout == MIN_TIMEOUT
         assert definition.subtask_timeout == SUBTASK_MIN_TIMEOUT
 
-    def test_get_output_path(self):
-        td = TaskDefinition()
-        td.task_name = "MY task"
-        tdict = {'options': {'output_path': '/dir3/dir4', 'format': 'txt'}}
-        assert RenderingTaskBuilder.get_output_path(tdict, td) == \
-               path.join("/dir3/dir4", "MY task.txt")
+    def test_main_scene_file(self):
+        # given
+        self.task_dict['resources'] = {
+            "/path/to/file1.png",
+            "/path/to/file2_longer_name.txt",
+            "/path/to/file3.jpg",
+            "/path/to/file4.txt",
+        }
+        self.task_dict['main_scene_file'] = "/path/to/file4.txt"
+
+        # when
+        definition = RenderingTaskBuilder.build_definition(
+            self.tti, self.task_dict)
+
+        # then
+        assert definition.main_scene_file == "/path/to/file4.txt"
+
+    def test_main_scene_no_match(self):
+        # given
+        self.task_dict['resources'] = {
+            "/path/to/file1.png",
+            "/path/to/file2.txt",
+            "/path/to/file3.jpg",
+            "/path/to/file4.txt",
+        }
+        self.task_dict['main_scene_file'] = "/path/to/file5.txt"
+
+        # when
+        definition = RenderingTaskBuilder.build_definition(
+            self.tti, self.task_dict)
+
+        # then
+        assert definition.resources == {
+            "/path/to/file1.png",
+            "/path/to/file2.txt",
+            "/path/to/file3.jpg",
+            "/path/to/file4.txt",
+            # because it's added at RenderingTaskDefinition.add_to_resources
+            # and it modifies it on windows
+            path.normpath("/path/to/file5.txt"),
+        }

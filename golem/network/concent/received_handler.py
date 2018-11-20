@@ -152,7 +152,7 @@ class TaskServerMessageHandler():
 
     @handler_for(message.concents.ServiceRefused)
     def on_service_refused(self, msg,
-                           response_to: message.Message = None):
+                           response_to: message.base.Message = None):
         logger.warning(
             "Concent service (%s) refused for subtask_id: %r %s",
             response_to.__class__.__name__ if response_to else '',
@@ -231,8 +231,18 @@ class TaskServerMessageHandler():
         Concent sends his own ForceSubtaskResults with AckReportComputedTask
         provided by a provider.
         """
-        sra = history.get('SubtaskResultsAccepted', msg.task_id, msg.subtask_id)
-        srr = history.get('SubtaskResultsRejected', msg.task_id, msg.subtask_id)
+        sra = history.get(
+            message_class_name='SubtaskResultsAccepted',
+            node_id=msg.provider_id,
+            subtask_id=msg.subtask_id,
+            task_id=msg.task_id
+        )
+        srr = history.get(
+            message_class_name='SubtaskResultsRejected',
+            node_id=msg.provider_id,
+            subtask_id=msg.subtask_id,
+            task_id=msg.task_id
+        )
         if not (sra or srr):
             #  I can't remember verification results,
             #  so try again and hope for the best
@@ -290,11 +300,14 @@ class TaskServerMessageHandler():
         """Concent forwards verified Requestors response to ForceSubtaskResults
         """
         if msg.subtask_results_accepted:
-            node_id = msg.subtask_results_accepted.task_to_compute.requestor_id
+            ttc = msg.subtask_results_accepted.task_to_compute
+            node_id = ttc.requestor_id
             sub_msg = msg.subtask_results_accepted
             self.task_server.subtask_accepted(
                 sender_node_id=msg.requestor_id,
                 subtask_id=msg.subtask_id,
+                payer_address=ttc.requestor_ethereum_address,
+                value=ttc.price,
                 accepted_ts=msg.subtask_results_accepted.payment_ts,
             )
         elif msg.subtask_results_rejected:

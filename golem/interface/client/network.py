@@ -8,7 +8,7 @@ class Network(object):
 
     client = None
 
-    node_table_headers = ['ip', 'port', 'id', 'name', 'version']
+    node_table_headers = ['ip', 'port', 'id', 'name']
 
     ip_arg = Argument('ip', help='Remote IP address')
     port_arg = Argument('port_', help='Remote TCP port')
@@ -29,8 +29,8 @@ class Network(object):
     @doc("Show client status")
     def status(self):
         deferred = Network.client.connection_status()
-        status = sync_wait(deferred) or "unknown"
-        return status
+        status = sync_wait(deferred)
+        return status['msg']
 
     @command(arguments=(ip_arg, port_arg), help="Connect to a node")
     def connect(self, ip, port_):
@@ -67,13 +67,11 @@ class Network(object):
             addr = Network.__one_of(p, 'address', 'pub_addr')
             port = Network.__one_of(p, 'port', 'p2p_pub_port', 'p2p_prv_port')
             key = Network.__one_of(p, 'key_id', 'key')
-            version = Network.__one_of(p, 'client_ver')
 
             values.append([
                 str(addr), str(port),
                 Network.__key_id(key, full),
                 str(p['node_name']),
-                str(version)
             ])
 
         return CommandResult.to_tabular(Network.node_table_headers, values,

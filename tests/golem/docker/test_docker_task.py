@@ -1,8 +1,10 @@
-# pylint: disable=too-few-public-methods,too-many-locals
+# pylint: disable=too-many-locals
+# pylint: disable=protected-access
 
 import json
 import os
 from os import path
+import time
 from pathlib import Path
 import shutil
 from typing import AnyStr, Generic, List, Optional, Type, TypeVar, Union
@@ -18,6 +20,7 @@ from golem.network.p2p.node import Node as P2PNode
 from golem.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
+from golem.task.taskcomputer import TaskComputer
 from golem.task.taskserver import TaskServer
 from golem.testutils import TempDirFixture
 from .test_docker_image import DockerTestCase
@@ -25,6 +28,19 @@ from .test_docker_image import DockerTestCase
 Task = TypeVar('Task', bound=CoreTask)
 Builder = TypeVar('Builder', bound=CoreTaskBuilder, covariant=True)
 PathOrStr = Union[Path, AnyStr]
+
+
+class TaskComputerExt(TaskComputer):
+
+    @property  # type: ignore
+    def counting_thread(self):
+        return getattr(self, '_counting_thread', None)
+
+    @counting_thread.setter
+    def counting_thread(self, value):
+        setattr(self, '_counting_thread', value)
+        if value:
+            setattr(self, 'last_thread', value)
 
 
 class DockerTaskTestCase(
@@ -61,7 +77,9 @@ class DockerTaskTestCase(
     def _get_test_task_definition(cls) -> TaskDefinition:
         task_path = Path(__file__).parent / cls.TASK_FILE
         with open(task_path) as f:
-            json_str = f.read().replace('$GOLEM_DIR', get_golem_path())
+            golem_path = get_golem_path()
+            json_str = f.read().replace('$GOLEM_DIR',
+                                        Path(golem_path).as_posix())
             return DictSerializer.load(json.loads(json_str))
 
     def _get_test_task(self) -> Task:
@@ -90,7 +108,8 @@ class DockerTaskTestCase(
     def _run_task(self, task: Task, timeout: int = 60 * 5, *_) \
             -> Optional[DockerTaskThread]:
         task_id = task.header.task_id
-        extra_data = task.query_extra_data(1.0)
+        node_id = '0xdeadbeef'
+        extra_data = task.query_extra_data(1.0, 0, node_id)
         ctd = extra_data.ctd
         ctd['deadline'] = timeout_to_deadline(timeout)
 
@@ -103,22 +122,26 @@ class DockerTaskTestCase(
                 use_docker_manager=False,
                 concent_variant={'url': None, 'pubkey': None},
             )
-        self.node.client = self.node._client_factory(Mock())
+        mock_keys_auth = Mock()
+        mock_keys_auth.key_id = node_id
+        self.node.client = self.node._client_factory(mock_keys_auth)
         self.node.client.start = Mock()
+        self.node.client.task_server = Mock()
+        self.node.rpc_session = Mock()
         self.node._run()
 
         ccd = ClientConfigDescriptor()
 
-        with patch(
-            "golem.network.concent.handlers_library.HandlersLibrary"
-            ".register_handler"
-        ):
-            task_server = TaskServer(
-                node=Mock(),
-                config_desc=ccd,
-                client=self.node.client,
-                use_docker_manager=False
-            )
+        with patch("golem.network.concent.handlers_library.HandlersLibrary"
+                   ".register_handler"):
+            with patch('golem.task.taskserver.TaskComputer', TaskComputerExt):
+                task_server = TaskServer(
+                    node=Mock(),
+                    config_desc=ccd,
+                    client=self.node.client,
+                    use_docker_manager=False
+                )
+
         patch.object(task_server, 'create_and_set_result_package').start()
         task_server.task_keeper.task_headers[task_id] = task.header
         task_computer = task_server.task_computer
@@ -144,12 +167,19 @@ class DockerTaskTestCase(
 
         # Start task computation
         task_computer.task_given(ctd)
-        result = task_computer.resource_given(ctd['task_id'])
+        result = task_computer.task_resource_collected(
+            ctd['task_id'],
+            unpack_delta=False,
+        )
         self.assertTrue(result)
 
-        # Thread for task computation should be created by now
-        with task_computer.lock:
-            task_thread = task_computer.counting_thread
+        task_thread = None
+        started = time.time()
+
+        while not task_thread:
+            task_thread = getattr(task_computer, 'last_thread', None)
+            if time.time() - started > timeout:
+                break
 
         if task_thread:
             task_thread.join(timeout)

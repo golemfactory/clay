@@ -187,10 +187,8 @@ class LocalComputer:
         return DockerTaskThread(
             ctd['subtask_id'],
             ctd['docker_images'],
-            ctd['working_directory'],
             ctd['src_code'],
             ctd['extra_data'],
-            ctd['short_description'],
             dir_mapping,
             0,
             check_mem=self.check_mem,

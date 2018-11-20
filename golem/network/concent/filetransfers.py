@@ -13,10 +13,12 @@ from golem_messages.message.concents import (
 from golem.core import keysauth
 from golem.core.service import LoopingCallService
 
+from .helpers import ssl_kwargs
+
 logger = logging.getLogger(__name__)
 
 
-class ConcentFileRequest():  # noqa pylint:disable=too-few-public-methods
+class ConcentFileRequest:
     def __init__(self,  # noqa pylint:disable=too-many-arguments
                  file_path: str,
                  file_transfer_token: FileTransferToken,
@@ -161,14 +163,16 @@ class ConcentFiletransferService(LoopingCallService):
                      request.file_path, uri, headers)
 
         with open(request.file_path, mode='rb') as f:
-            response = requests.post(uri, data=f, headers=headers)
+            response = requests.post(
+                uri, data=f, headers=headers, **ssl_kwargs(self.variant))
         return response
 
     def download(self, request: ConcentFileRequest):
         uri = self._get_download_uri(request.file_transfer_token,
                                      request.file_category)
         headers = self._get_auth_headers(request.file_transfer_token)
-        response = requests.get(uri, stream=True, headers=headers)
+        response = requests.get(
+            uri, stream=True, headers=headers, **ssl_kwargs(self.variant))
         with open(request.file_path, mode='wb') as f:
             for chunk in response.iter_content(chunk_size=None):
                 f.write(chunk)

@@ -1,32 +1,32 @@
 import logging
-import threading
 import queue
+from functools import partial
 from types import FunctionType
-from typing import Optional, Type, Dict
-from collections import namedtuple
+from typing import Optional, Type, Dict, Tuple
 
 from twisted.internet.defer import Deferred, gatherResults
 
+from apps.blender.verification_task import VerificationTask
 from golem_verificator.verifier import Verifier
-from golem.core.common import deadline_to_timeout
 
 logger = logging.getLogger("apps.blender.verification")
 
 
 class VerificationQueue:
 
-    Entry = namedtuple('Entry', ['verifier_class', 'subtask_id',
-                                 'deadline', 'kwargs', 'cb'])
+    #  We assume that after 30 minutes verification tasks is stalled (possibly
+    #  to bugs in third party docker api). After this period we finish
+    #  verification tasks with fail. In future this constant will be
+    #  configurable from config, and will be relative to nodes benchmark
+    #  results.
+    VERIFICATION_TIMEOUT = 1800
 
     def __init__(self, concurrency: int = 1) -> None:
-
         self._concurrency = concurrency
         self._queue: queue.Queue = queue.Queue()
-
-        self._lock = threading.Lock()
         self._jobs: Dict[str, Deferred] = dict()
+        self.callbacks: Dict[VerificationTask, FunctionType] = dict()
         self._paused = False
-        self.already_handled = False
 
     def submit(self,
                verifier_class: Type[Verifier],
@@ -41,8 +41,9 @@ class VerificationQueue:
             verifier_class, subtask_id, deadline, kwargs
         )
 
-        entry = self.Entry(verifier_class, subtask_id, deadline, kwargs, cb)
-        self._queue.put(entry)
+        entry = VerificationTask(subtask_id, deadline, kwargs)
+        self.callbacks[entry] = cb
+        self._queue.put((entry, verifier_class))
         self._process_queue()
 
     def pause(self) -> Deferred:
@@ -56,66 +57,59 @@ class VerificationQueue:
 
     @property
     def can_run(self) -> bool:
-        with self._lock:
-            return not self._paused and len(self._jobs) < self._concurrency
+        return not self._paused and len(self._jobs) < self._concurrency
 
     def _process_queue(self) -> None:
         if self.can_run:
-            entry = self._next()
-            if entry:
-                self._run(entry)
+            entry, verifier_cls = self._next()
+            if entry and verifier_cls:
+                self._run(entry, verifier_cls)
 
-    def _next(self) -> Optional['Entry']:
+    def _next(self) -> Tuple[Optional[VerificationTask], Optional[Verifier]]:
         try:
             return self._queue.get(block=False)
         except queue.Empty:
-            return None
+            return None, None
 
-    def _run(self, entry: Entry) -> None:
-        self.already_handled = False
-        deferred_job = Deferred()
+    def _run(self, entry: VerificationTask,
+             verifier_cls: Type[Verifier]) -> None:
         subtask_id = entry.subtask_id
-
-        with self._lock:
-            self._jobs[subtask_id] = deferred_job
 
         logger.info("Running verification of subtask %r", subtask_id)
 
-        def callback(*args, **kwargs):
-            with self._lock:
-                if not self.already_handled:
-                    deferred_job.callback(True)
-                    self.already_handled = True
-                    self._jobs.pop(subtask_id, None)
-                else:
-                    deferred_job.cancel()
-
+        def callback(*args):
             logger.info("Finished verification of subtask %r", subtask_id)
             try:
-                entry.cb(*args, **kwargs)
+                self.callbacks[entry](subtask_id=args[0][0], verdict=args[0][1],
+                                      result=args[0][2])
             finally:
+                self._jobs.pop(subtask_id, None)
                 self._process_queue()
 
-        try:
-            verifier = entry.verifier_class(callback, entry.kwargs)
-            if deadline_to_timeout(entry.deadline) > 0:
-                if verifier.simple_verification(entry.kwargs):
-                    verifier.start_verification(entry.kwargs)
-                else:
-                    verifier.verification_completed()
-            else:
-                verifier.task_timeout(subtask_id)
-                raise Exception("Task deadline passed")
+        def errback(_):
+            logger.warning("Finishing verification with fail")
+            callback(entry.get_results())
+            return True
 
-        except Exception as exc:  # pylint: disable=broad-except
-            with self._lock:
-                deferred_job.errback(exc)
-                self._jobs.pop(subtask_id, None)
+        from twisted.internet import reactor
+        result = entry.start(verifier_cls)
+        if result:
+            result.addCallback(partial(reactor.callFromThread, callback))
+            result.addErrback(partial(reactor.callFromThread, errback))
 
-            logger.error("Failed to start verification of subtask %r: %r",
-                         subtask_id, exc)
-            self._process_queue()
+            fn_timeout = partial(self._verification_timed_out, task=entry,
+                                 event=result, subtask_id=subtask_id)
+
+            result.addTimeout(VerificationQueue.VERIFICATION_TIMEOUT, reactor,
+                              onTimeoutCancel=fn_timeout)
+            self._jobs[subtask_id] = result
+
+    def _verification_timed_out(self, _result, _timeout, task, event,
+                                subtask_id):
+        logger.warning("Timeout detected for subtask %s", subtask_id)
+        task.stop(event)
 
     def _reset(self) -> None:
         self._queue = queue.Queue()
         self._jobs = dict()
+        self.callbacks = dict()

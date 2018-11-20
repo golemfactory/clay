@@ -1,10 +1,12 @@
 from contextlib import contextmanager
 import unittest
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, MagicMock
 
 from golem.interface.websockets import WebSocketCLI
-from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
-from golem.rpc.session import Session, Client
+from golem.rpc.session import (
+    ClientProxy,
+    Session,
+)
 from twisted.internet.defer import Deferred
 from twisted.python.failure import Failure
 
@@ -31,20 +33,34 @@ class TestWebSocketCLI(unittest.TestCase):
 
         with rpc_context():
 
-            ws_cli = WebSocketCLI(Mock(), '127.0.0.1', '12345', realm='golem')
+            ws_cli = WebSocketCLI(Mock(),
+                                  MagicMock(),
+                                  '127.0.0.1',
+                                  12345,
+                                  realm='golem')
             ws_cli.execute()
 
-            assert isinstance(ws_cli.cli.register_client.call_args_list[0][0][0], Client)
+            self.assertIsInstance(
+                ws_cli.cli.register_client.call_args_list[0][0][0],
+                ClientProxy,
+            )
 
         with rpc_context():
 
             deferred.result = Failure(Exception("Failure"))
             deferred.called = True
 
-            ws_cli = WebSocketCLI(Mock(), '127.0.0.1', '12345', realm='golem')
+            ws_cli = WebSocketCLI(Mock(),
+                                  MagicMock(),
+                                  '127.0.0.1',
+                                  12345,
+                                  realm='golem')
             ws_cli.execute()
 
-            assert isinstance(ws_cli.cli.register_client.call_args_list[0][0][0], WebSocketCLI.NoConnection)
+            assert isinstance(
+                ws_cli.cli.register_client.call_args_list[0][0][0],
+                WebSocketCLI.NoConnection
+            )
 
     def test_no_connection(self):
 
@@ -57,7 +73,7 @@ class TestWebSocketCLI(unittest.TestCase):
             client.some_unknown_method()
 
     @patch('twisted.internet.reactor', create=True)
-    @patch('golem.interface.websockets.Client._call')
+    @patch('golem.interface.websockets.ClientProxy._call')
     def test_client(self, call, reactor):
 
         def success(*_a, **_kw):
@@ -66,8 +82,8 @@ class TestWebSocketCLI(unittest.TestCase):
             return _deferred
 
         reactor.callFromThread.side_effect = lambda x: x()
-        client = WebSocketCLI.CLIClient(session=Mock(),
-                                        method_map=CORE_METHOD_MAP)
+        session = Mock()
+        client = WebSocketCLI.CLIClient(session=session)
 
         call.side_effect = success
 

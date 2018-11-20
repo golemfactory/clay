@@ -3,6 +3,7 @@ import time
 from typing import Callable, Dict, List, Optional, Set
 
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.common import node_info_str
 from golem.core.types import Kwargs
 from golem.core.hostaddress import ip_address_private, ip_network_contains, \
     ipv4_networks
@@ -12,13 +13,7 @@ from .session import BasicSession
 from .tcpnetwork import TCPNetwork, TCPListeningInfo, TCPListenInfo, \
     SocketAddress, TCPConnectInfo
 
-logger = logging.getLogger('golem.network.transport.tcpserver')
-
-
-def shorten_key_id(key_id):
-    if not isinstance(key_id, str):
-        return key_id
-    return key_id[:16] + "..." + key_id[-16:]
+logger = logging.getLogger(__name__)
 
 
 class TCPServer:
@@ -164,8 +159,8 @@ class PendingConnectionsServer(TCPServer):
         if not sockets:
             return False
 
-        logger.info("Connecting to peer %r using addresses: %r",
-                    shorten_key_id(node.key),
+        logger.info("Connecting to peer. node=%s, adresses=%r",
+                    node_info_str(node.node_name, node.key),
                     [str(socket) for socket in sockets])
 
         pc = PendingConnection(request_type,

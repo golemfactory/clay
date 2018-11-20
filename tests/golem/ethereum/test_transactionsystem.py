@@ -1,24 +1,33 @@
+# pylint: disable=protected-access
 from os import urandom
 from pathlib import Path
+import sys
+import time
 from typing import Optional
 from unittest.mock import patch, Mock, ANY, PropertyMock
 from unittest import TestCase
 
 from eth_utils import encode_hex
 from ethereum.utils import denoms
+import faker
+from freezegun import freeze_time
+import golem_sci.structs
 import requests
 
-from golem.tools.testwithdatabase import TestWithDatabase
+from golem import model
+from golem import testutils
+from golem.ethereum import exceptions
 from golem.ethereum.transactionsystem import (
     TransactionSystem,
     tETH_faucet_donate,
 )
 from golem.ethereum.exceptions import NotEnoughFunds
 
+fake = faker.Faker()
 PASSWORD = 'derp'
 
 
-class TestTransactionSystem(TestWithDatabase):
+class TransactionSystemBase(testutils.DatabaseFixture):
     def setUp(self):
         super().setUp()
         self.sci = Mock()
@@ -26,12 +35,13 @@ class TestTransactionSystem(TestWithDatabase):
         self.sci.GAS_BATCH_PAYMENT_BASE = 30000
         self.sci.get_gate_address.return_value = None
         self.sci.get_block_number.return_value = 1223
-        self.sci.get_current_gas_price.return_value = 10 ** 9
+        self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE - 1
         self.sci.get_eth_balance.return_value = 0
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 0
         self.sci.GAS_PER_PAYMENT = 20000
         self.sci.REQUIRED_CONFS = 6
+        self.sci.get_deposit_locked_until.return_value = 0
         self.ets = self._make_ets()
 
     def _make_ets(
@@ -58,22 +68,25 @@ class TestTransactionSystem(TestWithDatabase):
                 ets._init()
             return ets
 
+
+class TestTransactionSystem(TransactionSystemBase):
     @patch('golem.core.service.LoopingCallService.running',
            new_callable=PropertyMock)
     def test_stop(self, mock_is_service_running):
         with patch('twisted.internet.task.LoopingCall.start'), \
-                patch('twisted.internet.task.LoopingCall.stop'), \
-                patch('golem.ethereum.transactionsystem.PaymentProcessor'):
+                patch('twisted.internet.task.LoopingCall.stop'):
             mock_is_service_running.return_value = False
             e = self._make_ets()
 
             mock_is_service_running.return_value = True
+            e._payment_processor = Mock()  # noqa pylint: disable=no-member
             e.stop()
-            e.payment_processor.sendout.assert_called_once_with(0)  # noqa pylint: disable=no-member
+            e._payment_processor.sendout.assert_called_once_with(0)  # noqa pylint: disable=no-member
 
     @patch('golem.ethereum.transactionsystem.NodeProcess', Mock())
     @patch('golem.ethereum.transactionsystem.new_sci')
     def test_chain_arg(self, new_sci):
+        new_sci.return_value = self.sci
         ets = TransactionSystem(
             self.new_path,
             Mock(
@@ -88,6 +101,7 @@ class TestTransactionSystem(TestWithDatabase):
             ANY,
             ANY,
             'test_chain',
+            ANY,
             ANY,
             ANY,
         )
@@ -115,6 +129,11 @@ class TestTransactionSystem(TestWithDatabase):
         cost = self.ets.get_withdraw_gas_cost(200, dest, 'GNT')
         assert cost == self.sci.GAS_WITHDRAW
 
+    def test_withdraw_unknown_currency(self):
+        dest = '0x' + 40 * 'd'
+        with self.assertRaises(ValueError, msg="Unknown currency asd"):
+            self.ets.withdraw(1, dest, 'asd')
+
     def test_withdraw(self):
         eth_balance = 40 * denoms.ether
         gnt_balance = 10 * denoms.ether
@@ -129,10 +148,6 @@ class TestTransactionSystem(TestWithDatabase):
         dest = '0x' + 40 * 'd'
 
         self.ets._refresh_balances()
-
-        # Unknown currency
-        with self.assertRaises(ValueError):
-            self.ets.withdraw(1, dest, 'asd')
 
         # Invalid address
         with self.assertRaisesRegex(ValueError, 'is not valid ETH address'):
@@ -165,6 +180,7 @@ class TestTransactionSystem(TestWithDatabase):
             gntb_balance - 1,
             gas_price,
         )
+        self.sci.on_transaction_confirmed.call_args[0][1](Mock(status=True))
         self.sci.reset_mock()
 
         # Not enough GNTB
@@ -245,16 +261,14 @@ class TestTransactionSystem(TestWithDatabase):
         price = 5 * denoms.ether
         num = 3
 
+        eth_estimation = self.ets.eth_for_batch_payment(num)
         self.ets.lock_funds_for_payments(price, num)
-        assert self.ets.get_locked_eth() == \
-            self.ets.eth_for_batch_payment(num) + \
-            self.ets._eth_base_for_batch_payment()
+        locked_eth = self.ets.get_locked_eth()
+        assert locked_eth == eth_estimation
         assert self.ets.get_locked_gnt() == price * num
 
         self.ets.unlock_funds_for_payments(price, num - 1)
-        assert self.ets.get_locked_eth() == \
-            self.ets.eth_for_batch_payment(1) + \
-            self.ets._eth_base_for_batch_payment()
+        assert self.ets.get_locked_eth() == locked_eth // num
         assert self.ets.get_locked_gnt() == price
 
         self.ets.unlock_funds_for_payments(price, 1)
@@ -266,6 +280,39 @@ class TestTransactionSystem(TestWithDatabase):
 
         with self.assertRaisesRegex(Exception, "Can't unlock .* GNT"):
             self.ets.unlock_funds_for_payments(1, 1)
+
+    def test_withdraw_lock_gntb(self):
+        eth_balance = 10 * denoms.ether
+        gntb_balance = 1000 * denoms.ether
+        self.sci.get_eth_balance.return_value = eth_balance
+        self.sci.get_gntb_balance.return_value = gntb_balance
+        self.ets._refresh_balances()
+
+        assert self.ets.get_available_gnt() == gntb_balance
+
+        self.ets.withdraw(gntb_balance, '0x' + 40 * '0', 'GNT')
+        assert self.ets.get_available_gnt() == 0
+        self.sci.on_transaction_confirmed.assert_called_once()
+
+        self.sci.get_gntb_balance.return_value = 0
+        self.ets._refresh_balances()
+        self.sci.on_transaction_confirmed.call_args[0][1](Mock(status=True))
+        assert self.ets.get_available_gnt() == 0
+
+    def test_locking_funds_changing_gas_price(self):
+        eth_balance = 10 * denoms.ether
+        gnt_balance = 1000 * denoms.ether
+        self.sci.get_eth_balance.return_value = eth_balance
+        self.sci.get_gntb_balance.return_value = gnt_balance
+        self.ets._refresh_balances()
+
+        assert self.ets.get_locked_eth() == 0
+        assert self.ets.get_locked_gnt() == 0
+
+        self.ets.lock_funds_for_payments(5, 3)
+        locked_eth = self.ets.get_locked_eth()
+        self.sci.get_current_gas_price.return_value = 111
+        assert self.ets.get_locked_eth() == locked_eth
 
     def test_convert_gnt(self):
         amount = 1000 * denoms.ether
@@ -335,39 +382,9 @@ class TestTransactionSystem(TestWithDatabase):
             ANY,
         )
 
-    def test_concent_deposit_enough(self):
-        self.sci.get_deposit_value.return_value = 10
-        deferred = self.ets.concent_deposit(
-            required=10,
-            expected=40,
-        )
-        deferred.addErrback(lambda _: self.fail('shoud not fail'))
-        assert deferred.called
-        self.sci.deposit_payment.assert_not_called()
-
-    def test_concent_deposit_not_enough(self):
-        self.sci.get_deposit_value.return_value = 0
-        self.ets._gntb_balance = 0
-        with self.assertRaises(NotEnoughFunds):
-            self.ets.concent_deposit(
-                required=10,
-                expected=40,
-            )
-
-    def test_concent_deposit_done(self):
-        self.sci.get_deposit_value.return_value = 0
-        self.ets._gntb_balance = 20
-        self.ets._eth_balance = denoms.ether
-        self.ets.lock_funds_for_payments(1, 1)
-        self.ets.concent_deposit(
-            required=10,
-            expected=40,
-        )
-        self.sci.deposit_payment.assert_called_once_with(20 - 1)
-
-    def test_check_payments(self):
+    def test_check_payments(self, *_args):
         with patch.object(
-            self.ets.incomes_keeper, 'update_overdue_incomes'
+            self.ets._incomes_keeper, 'update_overdue_incomes'
         ) as incomes:
             self.ets._run()
             incomes.assert_called_once()
@@ -395,24 +412,248 @@ class TestTransactionSystem(TestWithDatabase):
         with patch('golem.ethereum.transactionsystem.new_sci',
                    return_value=self.sci) as new_sci:
             ets._init()
-            new_sci.assert_called_once_with(ANY, address, ANY, ANY, ANY)
+            new_sci.assert_called_once_with(ANY, address, ANY, ANY, ANY, ANY)
 
         # Shouldn't throw
         self._make_ets(datadir=self.new_path / 'other', password=password)
 
 
-class FaucetTest(TestCase):
+class ConcentDepositTest(TransactionSystemBase):
+    def _call_concent_deposit(self, *args, **kwargs):
+        errback = Mock()
+        callback = Mock()
+        # pylint: disable=no-member
+        self.ets.concent_deposit(*args, **kwargs) \
+            .addCallback(callback).addErrback(errback)
+        # pylint: enable=no-member
+        if errback.called:
+            failure = errback.call_args[0][0]  # noqa pylint: disable=unsubscriptable-object
+            failure.printDetailedTraceback(sys.stderr)
+            failure.raiseException()
 
+        callback.assert_called_once()
+        return callback.call_args[0][0]  # noqa pylint: disable=unsubscriptable-object
+
+    def test_enough(self):
+        self.sci.get_deposit_value.return_value = 10
+        tx_hash = self._call_concent_deposit(
+            required=10,
+            expected=40,
+        )
+        self.assertIsNone(tx_hash)
+        self.sci.deposit_payment.assert_not_called()
+
+    def test_not_enough(self):
+        self.sci.get_deposit_value.return_value = 0
+        self.ets._gntb_balance = 0
+        with self.assertRaises(exceptions.NotEnoughFunds):
+            self._call_concent_deposit(
+                required=10,
+                expected=40,
+            )
+
+    def _prepare_concent_deposit(
+            self,
+            gntb_balance,
+            subtask_price,
+            subtask_count,
+            callback,
+    ):
+        self.sci.get_deposit_value.return_value = 0
+        self.sci.get_transaction_gas_price.return_value = 2
+        self.ets._gntb_balance = gntb_balance
+        self.ets._eth_balance = denoms.ether
+        self.ets.lock_funds_for_payments(subtask_price, subtask_count)
+        tx_hash = \
+            '0x5e9880b3e9349b609917014690c7a0afcdec6dbbfbef3812b27b60d246ca10ae'
+        self.sci.deposit_payment.return_value = tx_hash
+        self.sci.on_transaction_confirmed.side_effect = callback
+        return tx_hash
+
+    @classmethod
+    def _confirm_it(cls, tx_hash, cb):
+        receipt = golem_sci.structs.TransactionReceipt(
+            raw_receipt={
+                'transactionHash': bytes.fromhex(tx_hash[2:]),
+                'status': 1,
+                'blockHash': bytes.fromhex(
+                    'cbca49fb2c75ba2fada56c6ea7df5979444127d29b6b4e93a77'
+                    '97dc22e97399c',
+                ),
+                'blockNumber': 2940769,
+                'gasUsed': 21000,
+            },
+        )
+        cb(receipt)
+
+    def test_transaction_failed(self):
+        gntb_balance = 20
+        subtask_price = 1
+        subtask_count = 1
+
+        def fail_it(tx_hash, cb):
+            receipt = golem_sci.structs.TransactionReceipt(
+                raw_receipt={
+                    'transactionHash': bytes.fromhex(tx_hash[2:]),
+                    'status': 'not a status',
+                    'blockHash': bytes.fromhex(
+                        'cbca49fb2c75ba2fada56c6ea7df5979444127d29b6b4e93a77'
+                        '97dc22e97399c',
+                    ),
+                    'blockNumber': 2940769,
+                    'gasUsed': 21000,
+                },
+            )
+            cb(receipt)
+
+        self._prepare_concent_deposit(
+            gntb_balance,
+            subtask_price,
+            subtask_count,
+            fail_it,
+        )
+
+        with self.assertRaises(exceptions.DepositError):
+            self._call_concent_deposit(
+                required=10,
+                expected=40,
+            )
+        deposit_value = gntb_balance - (subtask_price * subtask_count)
+        self.sci.deposit_payment.assert_called_once_with(deposit_value)
+        self.assertFalse(model.DepositPayment.select().exists())
+
+    def test_done(self):
+        gntb_balance = 20
+        subtask_price = 1
+        subtask_count = 1
+
+        tx_hash = self._prepare_concent_deposit(
+            gntb_balance,
+            subtask_price,
+            subtask_count,
+            self._confirm_it,
+        )
+
+        db_tx_hash = self._call_concent_deposit(
+            required=10,
+            expected=40,
+        )
+
+        self.assertEqual(tx_hash, db_tx_hash)
+        deposit_value = gntb_balance - (subtask_price * subtask_count)
+        self.sci.deposit_payment.assert_called_once_with(deposit_value)
+        dpayment = model.DepositPayment.get()
+        for field, value in (
+                ('status', model.PaymentStatus.confirmed),
+                ('value', deposit_value),
+                ('fee', 42000),
+                ('tx', tx_hash),):
+            self.assertEqual(getattr(dpayment, field), value)
+
+    def test_gas_price_skyrocketing(self):
+        self.sci.get_deposit_value.return_value = 0
+        self.sci.get_gntb_balance.return_value = 20
+        self.sci.get_eth_balance.return_value = denoms.ether
+        self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE
+        self.ets._refresh_balances()
+        with self.assertRaises(exceptions.LongTransactionTime):
+            self._call_concent_deposit(
+                required=10,
+                expected=40,
+            )
+
+    def test_gas_price_skyrocketing_forced(self):
+        self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE
+        self._prepare_concent_deposit(
+            gntb_balance=20,
+            subtask_price=1,
+            subtask_count=1,
+            callback=self._confirm_it,
+        )
+        self._call_concent_deposit(
+            required=10,
+            expected=40,
+            force=True
+        )
+
+
+class ConcentWithdrawTest(TransactionSystemBase):
+    def test_timelocked(self):
+        self.sci.get_deposit_locked_until.reset_mock()
+        self.sci.get_deposit_locked_until.return_value = 0
+        self.ets.concent_withdraw()
+        self.sci.get_deposit_locked_until.assert_called_once_with(
+            account_address=self.sci.get_eth_address(),
+        )
+        self.sci.withdraw_deposit.assert_not_called()
+
+    @freeze_time('2018-10-01 14:00:00')
+    def test_not_yet_unlocked(self):
+        now = time.time()
+        self.sci.get_deposit_locked_until.return_value = int(now) + 1
+        self.sci.get_deposit_locked_until.reset_mock()
+        self.ets.concent_withdraw()
+        self.sci.get_deposit_locked_until.assert_called_once_with(
+            account_address=self.sci.get_eth_address(),
+        )
+        self.sci.withdraw_deposit.assert_not_called()
+
+    @freeze_time('2018-10-01 14:00:00')
+    def test_unlocked(self):
+        now = time.time()
+        self.sci.get_deposit_locked_until.reset_mock()
+        self.sci.get_deposit_locked_until.return_value = int(now)
+        self.ets.concent_withdraw()
+        self.sci.withdraw_deposit.assert_called_once_with()
+
+
+class ConcentUnlockTest(TransactionSystemBase):
+    def test_empty(self):
+        self.sci.get_deposit_value.return_value = 0
+        self.ets.concent_unlock()
+        self.sci.unlock_deposit.assert_not_called()
+
+    def test_repeated_call(self):
+        self.sci.get_deposit_value.return_value = 1
+        self.sci.get_deposit_locked_until.return_value = \
+            int(time.time()) - 1
+        self.ets.concent_withdraw()
+        self.ets.concent_withdraw()
+        self.sci.withdraw_deposit.assert_called_once_with()
+        self.sci.on_transaction_confirmed.assert_called_once()
+
+        self.sci.on_transaction_confirmed.call_args[0][1](Mock())
+        self.ets.concent_withdraw()
+        assert self.sci.withdraw_deposit.call_count == 2
+
+    @freeze_time('2018-10-01 14:00:00')
+    @patch('golem.ethereum.transactionsystem.call_later')
+    def test_full(self, call_later):
+        self.sci.get_deposit_value.return_value = abs(fake.pyint()) + 1
+        self.ets.concent_unlock()
+        self.sci.unlock_deposit.assert_called_once_with()
+        self.sci.on_transaction_confirmed.assert_called_once()
+
+        delay = 10
+        self.sci.get_deposit_locked_until.return_value = \
+            int(time.time()) + delay
+        self.sci.on_transaction_confirmed.call_args[0][1](Mock())
+        call_later.assert_called_once_with(delay, self.ets.concent_withdraw)
+
+
+class FaucetTest(TestCase):
+    @classmethod
     @patch('requests.get')
-    def test_error_code(self, get):
+    def test_error_code(cls, get):
         addr = encode_hex(urandom(20))
         response = Mock(spec=requests.Response)
         response.status_code = 500
         get.return_value = response
         assert tETH_faucet_donate(addr) is False
 
+    @classmethod
     @patch('requests.get')
-    def test_error_msg(self, get):
+    def test_error_msg(cls, get):
         addr = encode_hex(urandom(20))
         response = Mock(spec=requests.Response)
         response.status_code = 200
@@ -420,8 +661,9 @@ class FaucetTest(TestCase):
         get.return_value = response
         assert tETH_faucet_donate(addr) is False
 
+    @classmethod
     @patch('requests.get')
-    def test_success(self, get):
+    def test_success(cls, get):
         addr = encode_hex(urandom(20))
         response = Mock(spec=requests.Response)
         response.status_code = 200

@@ -1,6 +1,5 @@
 # pylint: disable=no-member
 # pylint: disable=unused-argument
-# pylint: disable=too-few-public-methods
 import peewee as pw
 from golem.utils import pubkeytoaddr
 

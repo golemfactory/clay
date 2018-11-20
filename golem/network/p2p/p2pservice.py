@@ -9,11 +9,11 @@ from threading import Lock
 from typing import Callable, Any, Dict
 
 from golem_messages import message
-from scipy.stats import stats
 
 from golem.config.active import P2P_SEEDS
 from golem.core import simplechallenge
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
+from golem.core.common import node_info_str
 from golem.diag.service import DiagnosticsProvider
 from golem.model import KnownHosts, db
 from golem.network.p2p.peersession import PeerSession, PeerSessionInfo
@@ -197,7 +197,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             session.start()
         else:
             session.disconnect(
-                message.Disconnect.REASON.NoMoreMessages
+                message.base.Disconnect.REASON.NoMoreMessages
             )
 
     def add_known_peer(self, node, ip_address, port, metadata=None):
@@ -297,7 +297,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
                            'performance info is available')
             return 1.0
 
-        rank = stats.percentileofscore(hosts_perf, perf, kind='strict') / 100
+        rank = sum(1 for x in hosts_perf if x < perf) / len(hosts_perf)
         logger.info(f'Performance for env `{env_id}`: rank({perf}) = {rank}')
         return rank
 
@@ -328,8 +328,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         """
         key_id = peer.key_id
         logger.info(
-            "Adding peer %r, key id difficulty: %r",
-            key_id,
+            "Adding peer %s, key id difficulty: %r",
+            node_info_str(peer.node_name, key_id),
             self.keys_auth.get_difficulty(key_id)
         )
         with self._peer_lock:
@@ -371,11 +371,10 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             return
 
         logger.info(
-            "add peer to incoming %r %r %r (%r)",
-            peer_info["node_name"],
+            "add peer to incoming. address=%r:%r, node=%s",
             peer_info["address"],
             peer_info["port"],
-            key_id
+            node_info_str(peer_info["node_name"], key_id)
         )
 
         self.incoming_peers[key_id] = {
@@ -710,7 +709,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
 
     def send_remove_task_container(self, msg_remove_task):
         for p in list(self.peers.values()):
-            p.send(message.RemoveTaskContainer(remove_tasks=[msg_remove_task]))
+            p.send(
+                message.p2p.RemoveTaskContainer(remove_tasks=[msg_remove_task])
+            )
 
     def want_to_start_task_session(
             self,
@@ -926,7 +927,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             if delta > self.last_message_time_threshold:
                 self.remove_peer(peer)
                 peer.disconnect(
-                    message.Disconnect.REASON.Timeout
+                    message.base.Disconnect.REASON.Timeout
                 )
 
     def _sync_forward_requests(self):
@@ -1039,7 +1040,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             logger.info('Disconnecting peer %r', peer.key_id)
             self.remove_peer(peer)
             peer.disconnect(
-                message.Disconnect.REASON.Refresh
+                message.base.Disconnect.REASON.Refresh
             )
 
     @staticmethod

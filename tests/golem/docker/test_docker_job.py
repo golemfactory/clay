@@ -14,6 +14,7 @@ import requests
 from golem.core.common import config_logging
 from golem.core.common import is_windows, nt_path_to_posix_path
 from golem.core.simpleenv import get_local_datadir
+from golem.docker.client import local_client
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob, container_logger
 from golem.tools.ci import ci_skip
@@ -29,6 +30,7 @@ class TestDockerJob(DockerTestCase):
         """Abstract method, should be overriden by subclasses"""
         pass
 
+    # pylint:disable=no-self-use
     def _get_test_tag(self):
         return "latest"
 
@@ -41,22 +43,30 @@ class TestDockerJob(DockerTestCase):
 
         self.test_dir = tempfile.mkdtemp(dir=main_dir)
         self.work_dir = tempfile.mkdtemp(prefix="golem-", dir=self.test_dir)
-        self.resources_dir = tempfile.mkdtemp(prefix="golem-", dir=self.test_dir)
+        self.resources_dir = tempfile.mkdtemp(
+            prefix="golem-", dir=self.test_dir)
         self.output_dir = tempfile.mkdtemp(prefix="golem-", dir=self.test_dir)
 
         if not is_windows():
             os.chmod(self.test_dir, 0o770)
 
-        self.image = DockerImage(self._get_test_repository(), tag=self._get_test_tag())
+        self.image = DockerImage(self._get_test_repository(),
+                                 tag=self._get_test_tag())
         self.test_job = None
 
     def testDockerJobInit(self):
         with self.assertRaises(TypeError):
-            DockerJob(None, "scr", [], '/var/lib/resources/', '/var/lib/work', '/var/lib/out')
-        job = DockerJob(self.image, self.TEST_SCRIPT, None, self.resources_dir, self.work_dir, self.output_dir)
+            DockerJob(None, "scr", [], '/var/lib/resources/',
+                      '/var/lib/work', '/var/lib/out')
+        job = DockerJob(self.image, self.TEST_SCRIPT, None, self.resources_dir,
+                        self.work_dir, self.output_dir)
         self.assertEqual(job.image, self.image)
         self.assertEqual(job.script_src, self.TEST_SCRIPT)
-        self.assertEqual(job.parameters, {})
+
+        parameters = {'OUTPUT_DIR': '/golem/output',
+                      'RESOURCES_DIR': '/golem/resources',
+                      'WORK_DIR': '/golem/work'}
+        self.assertEqual(job.parameters, parameters)
         self.assertEqual(job.host_config, {})
         self.assertEqual(job.resources_dir, self.resources_dir)
         self.assertEqual(job.work_dir, self.work_dir)
@@ -72,9 +82,10 @@ class TestDockerJob(DockerTestCase):
 
     def tearDown(self):
         if self.test_job and self.test_job.container:
-            client = self.test_client()
+            client = local_client()
             try:
-                client.remove_container(self.test_job.container_id, force=True)
+                client.remove_container(self.test_job.container_id,
+                                        force=True)
             except docker.errors.APIError:
                 pass  # Already removed?
         self.test_job = None
@@ -150,19 +161,19 @@ class TestBaseDockerJob(TestDockerJob):
     def test_container_created(self):
         with self._create_test_job() as job:
             self.assertIsNotNone(job.container_id)
-            docker = self.test_client()
-            info = docker.inspect_container(job.container_id)
+            client = local_client()
+            info = client.inspect_container(job.container_id)
             self.assertEqual(info["Id"], job.container_id)
             self.assertEqual(info["State"]["Status"], "created")
             self.assertFalse(info["State"]["Running"])
 
-            image_id = docker.inspect_image(self.image.name)["Id"]
+            image_id = client.inspect_image(self.image.name)["Id"]
             self.assertEqual(info["Image"], image_id)
 
     def test_mounts(self):
         with self._create_test_job() as job:
-            docker = self.test_client()
-            info = docker.inspect_container(job.container_id)
+            client = local_client()
+            info = client.inspect_container(job.container_id)
 
             work_mount = None
             resources_mount = None
@@ -187,7 +198,7 @@ class TestBaseDockerJob(TestDockerJob):
             self.assertTrue(work_mount["RW"])
             self.assertIsNotNone(resources_mount)
             self.assertEqual(resources_mount["Source"], resource_dir)
-            self.assertFalse(resources_mount["RW"])
+            self.assertTrue(resources_mount["RW"])
             self.assertIsNotNone(output_mount)
             self.assertEqual(output_mount["Source"], output_dir)
             self.assertTrue(output_mount["RW"])
@@ -199,7 +210,7 @@ class TestBaseDockerJob(TestDockerJob):
 
         self.assertIsNone(job.container_id)
         with self.assertRaises(docker.errors.NotFound):
-            client = self.test_client()
+            client = local_client()
             client.inspect_container(container_id)
 
     def test_status(self):
@@ -220,7 +231,7 @@ class TestBaseDockerJob(TestDockerJob):
     def test_start(self):
         with self._create_test_job() as job:
             job.start()
-            client = self.test_client()
+            client = local_client()
             info = client.inspect_container(job.container_id)
             self.assertIn("Path", info)
             self.assertEqual(info["Path"], "/usr/local/bin/entrypoint.sh")
@@ -264,7 +275,7 @@ class TestBaseDockerJob(TestDockerJob):
 
     def test_wait_timeout(self):
         src = "import time\ntime.sleep(10)\n"
-        with self.assertRaises(requests.exceptions.ReadTimeout):
+        with self.assertRaises(requests.exceptions.ConnectionError):
             with self._create_test_job(script=src) as job:
                 job.start()
                 self.assertEqual(job.get_status(), DockerJob.STATE_RUNNING)
@@ -359,21 +370,21 @@ with open("../output/out.txt", "w") as f:
             raise Exception("Test exception")
 
         with mock.patch('golem.docker.job.DockerJob.get_status',
-                   side_effect=raise_exception):
+                        side_effect=raise_exception):
             job = self._create_test_job("test_script")
             job.kill()
             assert not local_client.called
             assert not client.kill.called
 
         with mock.patch('golem.docker.job.DockerJob.get_status',
-                   return_value=DockerJob.STATE_KILLED):
+                        return_value=DockerJob.STATE_KILLED):
             job = self._create_test_job("test_script")
             job.kill()
             assert not local_client.called
             assert not client.kill.called
 
         with mock.patch('golem.docker.job.DockerJob.get_status',
-                   return_value=DockerJob.STATE_RUNNING):
+                        return_value=DockerJob.STATE_RUNNING):
             job = self._create_test_job("test_script")
             job.kill()
             assert local_client.called

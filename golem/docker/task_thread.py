@@ -3,11 +3,11 @@ import os
 from pathlib import Path
 from typing import ClassVar, Optional, TYPE_CHECKING, Tuple, Dict, Union, List
 
+
 import requests
 
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob
-from golem.task.taskbase import ResultType
 from golem.task.taskthread import TaskThread, JobException, TimeoutException
 from golem.vm.memorychecker import MemoryChecker
 
@@ -69,10 +69,8 @@ class DockerTaskThread(TaskThread):
 
     def __init__(self, subtask_id: str,  # pylint: disable=too-many-arguments
                  docker_images: List[Union[DockerImage, Dict, Tuple]],
-                 orig_script_dir: str,
                  src_code: str,
                  extra_data: Dict,
-                 short_desc: str,
                  dir_mapping: DockerDirMapping,
                  timeout: int,
                  check_mem: bool = False) -> None:
@@ -80,8 +78,8 @@ class DockerTaskThread(TaskThread):
         if not docker_images:
             raise AttributeError("docker images is None")
         super(DockerTaskThread, self).__init__(
-            subtask_id, orig_script_dir, src_code, extra_data,
-            short_desc, dir_mapping.resources, dir_mapping.temporary,
+            subtask_id, src_code, extra_data,
+            dir_mapping.resources, dir_mapping.temporary,
             timeout)
 
         # Find available image
@@ -170,12 +168,10 @@ class DockerTaskThread(TaskThread):
 
     def _task_computed(self, estm_mem: Optional[int]) -> None:
         out_files = [
-            str(path) for path in self.dir_mapping.output.glob("**/*")
-            if path.is_file()
+            str(path) for path in self.dir_mapping.output.glob("*")
         ]
         self.result = {
             "data": out_files,
-            "result_type": ResultType.FILES,
         }
         if estm_mem is not None:
             self.result = (self.result, estm_mem)

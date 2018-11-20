@@ -44,83 +44,34 @@ class TestPaymentsKeeper(TestWithDatabase):
         assert pk.get_payment("not existing") == 0
 
 
-class TestGetTotalPaymentForSubtasks(TestWithDatabase):
-
-    def setUp(self):
-        super().setUp()
-        self.pd = PaymentsDatabase()
-
+class TestPaymentsDatabase(TestWithDatabase):
     @staticmethod
     def _create_payment(**kwargs):
         payment = PaymentFactory(**kwargs)
         payment.save(force_insert=True)
         return payment
 
-    def test_no_payments(self):
-        result = self.pd.get_total_payment_for_subtasks(('id1',))
-        self.assertEqual(result, (None, None))
+    @staticmethod
+    def _get_ids(payments):
+        return [p.subtask for p in payments]
 
-    def test_wrong_id(self):
-        self._create_payment(subtask='id1', status=PaymentStatus.confirmed)
-        result = self.pd.get_total_payment_for_subtasks(('id2',))
-        self.assertEqual(result, (None, None))
+    def test_subtasks_payments(self):
+        pd = PaymentsDatabase()
+        self._create_payment(subtask='id1')
+        self._create_payment(subtask='id2')
+        self._create_payment(subtask='id3')
 
-    def test_awaiting_status(self):
-        self._create_payment(subtask='id1', status=PaymentStatus.awaiting)
-        result = self.pd.get_total_payment_for_subtasks(('id1',))
-        self.assertEqual(result, (None, None))
+        payments = pd.get_subtasks_payments(['id1'])
+        assert self._get_ids(payments) == ['id1']
 
-    def test_sent_status(self):
-        payment = self._create_payment(
-            subtask='id1',
-            status=PaymentStatus.sent)
-        result = self.pd.get_total_payment_for_subtasks(('id1',))
-        self.assertEqual(
-            result,
-            (payment.value, payment.details.fee))  # pylint: disable=no-member
+        payments = pd.get_subtasks_payments(['id4'])
+        assert self._get_ids(payments) == []
 
-    def test_confirmed_status(self):
-        payment = self._create_payment(
-            subtask='id1',
-            status=PaymentStatus.confirmed)
-        result = self.pd.get_total_payment_for_subtasks(('id1',))
-        self.assertEqual(
-            result,
-            (payment.value, payment.details.fee))  # pylint: disable=no-member
+        payments = pd.get_subtasks_payments(['id1', 'id3'])
+        assert self._get_ids(payments) == ['id1', 'id3']
 
-    def test_sent_and_confirmed_status(self):
-        p1 = self._create_payment(
-            subtask='id1',
-            status=PaymentStatus.sent)
-        p2 = self._create_payment(
-            subtask='id2',
-            status=PaymentStatus.confirmed)
-        result = self.pd.get_total_payment_for_subtasks(('id1', 'id2'))
-        exp_value = p1.value + p2.value
-        exp_fee = p1.details.fee + p2.details.fee  # pylint: disable=no-member
-        self.assertEqual(result, (exp_value, exp_fee))
+        payments = pd.get_subtasks_payments([])
+        assert self._get_ids(payments) == []
 
-    def test_awaiting_and_confirmed_status(self):
-        self._create_payment(
-            subtask='id1',
-            status=PaymentStatus.awaiting)
-        self._create_payment(
-            subtask='id2',
-            status=PaymentStatus.confirmed)
-        result = self.pd.get_total_payment_for_subtasks(('id1', 'id2'))
-        self.assertEqual(result, (None, None))
-
-    def test_ignored_subtasks(self):
-        p1 = self._create_payment(
-            subtask='id1',
-            status=PaymentStatus.confirmed)
-        p2 = self._create_payment(
-            subtask='id2',
-            status=PaymentStatus.confirmed)
-        self._create_payment(
-            subtask='id3',
-            status=PaymentStatus.confirmed)
-        result = self.pd.get_total_payment_for_subtasks(('id1', 'id2'))
-        exp_value = p1.value + p2.value
-        exp_fee = p1.details.fee + p2.details.fee  # pylint: disable=no-member
-        self.assertEqual(result, (exp_value, exp_fee))
+        payments = pd.get_subtasks_payments(['id1', 'id4', 'id2'])
+        assert self._get_ids(payments) == ['id1', 'id2']

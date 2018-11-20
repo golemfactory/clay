@@ -9,8 +9,6 @@ from multiprocessing import cpu_count
 import params  # This module is generated before this script is run
 
 BLENDER_COMMAND = "blender"
-WORK_DIR = "/golem/work"
-OUTPUT_DIR = "/golem/output"
 
 
 def exec_cmd(cmd):
@@ -20,17 +18,19 @@ def exec_cmd(cmd):
 
 # pylint: disable=too-many-arguments
 def format_blender_render_cmd(outfilebasename, scene_file, script_file,
-                              start_task, frame, output_format):
+                              start_task, frames, output_format):
     cmd = [
         "{}".format(BLENDER_COMMAND),
         "-b", "{}".format(scene_file),
         "-y",  # enable scripting by default
         "-P", "{}".format(script_file),
-        "-o", "{}/{}_{}".format(OUTPUT_DIR, outfilebasename, start_task),
+        "-o", "{}/{}_{}".format(params.OUTPUT_DIR,
+                                outfilebasename,
+                                start_task),
         "-noaudio",
         "-F", "{}".format(output_format.upper()),
         "-t", "{}".format(cpu_count()),
-        "-f", "{}".format(frame)
+        "-f", "{}".format(",".join(map(str, frames)))
     ]
     return cmd
 
@@ -44,20 +44,18 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task,
               file=sys.stderr)
         sys.exit(1)
 
-    blender_script_path = WORK_DIR + "/blenderscript.py"
+    blender_script_path = "{}/blenderscript.py".format(params.WORK_DIR)
     with open(blender_script_path, "w") as script_file:
         script_file.write(script_src)
 
-    for frame in frames:
-        cmd = format_blender_render_cmd(outfilebasename, scene_file,
-                                        script_file.name, start_task,
-                                        frame, output_format)
-        print(cmd, file=sys.stderr)
-        exit_code = exec_cmd(cmd)
-        if exit_code is not 0:
-            sys.exit(exit_code)
+    cmd = format_blender_render_cmd(outfilebasename, scene_file,
+                                    script_file.name, start_task,
+                                    frames, output_format)
+    print(cmd, file=sys.stderr)
+    exit_code = exec_cmd(cmd)
+    if exit_code is not 0:
+        sys.exit(exit_code)
 
 
 run_blender_task(params.outfilebasename, params.scene_file, params.script_src,
                  params.start_task, params.frames, params.output_format)
-

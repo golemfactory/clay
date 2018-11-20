@@ -16,16 +16,6 @@ class IncomesKeeper:
     """Keeps information about payments received from other nodes
     """
 
-    def start(self):
-        pass
-
-    def stop(self):
-        pass
-
-    def run_once(self):
-        # TODO Check for unpaid incomes and ask Concent for them. issue #2194
-        pass
-
     def received_batch_transfer(
             self,
             tx_hash: str,
@@ -63,7 +53,7 @@ class IncomesKeeper:
                 dispatcher.send(
                     signal='golem.income',
                     event='confirmed',
-                    subtask_id=e.subtask,
+                    node_id=e.sender_node,
                 )
 
     def received_forced_payment(
@@ -88,7 +78,8 @@ class IncomesKeeper:
             sender_node: str,
             subtask_id: str,
             payer_address: str,
-            value: int) -> Income:
+            value: int,
+            accepted_ts: int) -> Income:
         logger.info(
             "Expected income - sender_node: %s, subtask: %s, "
             "payer: %s, value: %f",
@@ -97,29 +88,29 @@ class IncomesKeeper:
             payer_address,
             value / denoms.ether,
         )
-        return Income.create(
+        income, inserted = Income.get_or_create(
             sender_node=sender_node,
             subtask=subtask_id,
-            payer_address=payer_address,
-            value=value,
+            defaults={
+                'payer_address': payer_address,
+                'value': value,
+                'accepted_ts': accepted_ts,
+            },
         )
+        if not inserted and not income.accepted_ts:
+            income.accepted_ts = accepted_ts
+            income.save()
 
     @staticmethod
-    def reject(sender_node: str, subtask_id: str) -> None:
-        try:
-            income = Income.get(
-                sender_node=sender_node,
-                subtask=subtask_id,
-                accepted_ts=None,
-                overdue=False,
-            )
-        except Income.DoesNotExist:
-            logger.error(
-                "Income.DoesNotExist subtask_id: %r",
-                subtask_id)
-            return
-
-        income.delete_instance()
+    def is_expected(
+            subtask_id: str,
+            payer_address: str,
+    ) -> bool:
+        return Income.select().where(
+            Income.subtask == subtask_id,
+            Income.payer_address == payer_address,
+            Income.transaction.is_null()
+        ).exists()
 
     @staticmethod
     def settled(
@@ -142,51 +133,13 @@ class IncomesKeeper:
             sender_addr: str,
             subtask_id: str,
             value: int) -> None:
-        expected = Income.select().where(
-            Income.payer_address == sender_addr,
-            Income.subtask_id == subtask_id,
+        Income.create(
+            sender_node="",
+            subtask=subtask_id,
+            payer_address=sender_addr,
+            value=value,
+            transaction=tx_hash[2:],
         )
-        if not expected:
-            logger.info(
-                "Received forced subtask payment but there's no entry for "
-                "subtask_id=%r",
-                subtask_id,
-            )
-            return
-
-        income = expected[0]
-        income.transaction = tx_hash[2:]
-        if income.value != value:
-            logger.warning(
-                "Received wrong amount for forced subtask payment. Expected "
-                "%.6f, got %.6f",
-                income.value / denoms.ether,
-                value / denoms.ether,
-            )
-            income.value = value
-        income.save()
-
-    @staticmethod
-    def update_awaiting(
-            sender_node: str,
-            subtask_id: str,
-            accepted_ts: int) -> None:
-        try:
-            income = Income.get(sender_node=sender_node, subtask=subtask_id)
-        except Income.DoesNotExist:
-            logger.error(
-                "Income.DoesNotExist subtask_id: %r",
-                subtask_id)
-            return
-        if income.accepted_ts is not None and income.accepted_ts != accepted_ts:
-            logger.error(
-                "Duplicated accepted_ts %r for %r",
-                accepted_ts,
-                income,
-            )
-            return
-        income.accepted_ts = accepted_ts
-        income.save()
 
     def get_list_of_all_incomes(self):
         # TODO: pagination. issue #2402
@@ -225,7 +178,7 @@ class IncomesKeeper:
             dispatcher.send(
                 signal='golem.income',
                 event='overdue_single',
-                subtask_id=income.subtask,
+                node_id=income.sender_node,
             )
 
         dispatcher.send(

@@ -98,7 +98,7 @@ class TestDummyTaskBuilder(TestCase):
         def get_dict():
             dictionary = {}
             dictionary['resources'] = {"aa"}
-            dictionary['subtasks'] = 5
+            dictionary['subtasks_count'] = 5
             dictionary['name'] = "name"
             dictionary['bid'] = 5
             dictionary['timeout'] = "5:11:11"

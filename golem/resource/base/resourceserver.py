@@ -5,7 +5,7 @@ from threading import Lock
 import os
 from twisted.internet.defer import Deferred
 
-from golem.core.async import AsyncRequest, async_run
+from golem.core import golem_async
 from golem.task.result.resultpackage import ZipPackager
 
 logger = logging.getLogger(__name__)
@@ -79,8 +79,11 @@ class BaseResourceServer(object):
     def create_resource_package(self, files, task_id) -> Deferred:
         resource_dir = self.resource_manager.storage.get_dir(task_id)
         package_path = os.path.join(resource_dir, task_id)
-        request = AsyncRequest(self.packager.create, package_path, files)
-        return async_run(request)
+        request = golem_async.AsyncRequest(
+            self.packager.create,
+            package_path, files,
+        )
+        return golem_async.async_run(request)
 
     @staticmethod
     def _add_task_error(error):
@@ -170,8 +173,8 @@ class BaseResourceServer(object):
 
             ctk.add_package_paths(task_id, package_paths)
 
-        async_req = AsyncRequest(extract_packages, resource[1])
-        async_run(async_req).addCallbacks(
+        async_req = golem_async.AsyncRequest(extract_packages, resource[1])
+        golem_async.async_run(async_req).addCallbacks(
             lambda _: self.client.task_resource_collected(task_id,
                                                           unpack_delta=False),
             lambda e: self._download_error(e, resource, task_id)

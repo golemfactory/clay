@@ -22,7 +22,7 @@ class DummyTask(Task):
     def finished_computation(self):
         pass
 
-    def computation_finished(self, subtask_id, task_result, result_type,
+    def computation_finished(self, subtask_id, task_result,
                              verification_finished):
         pass
 
@@ -66,6 +66,18 @@ class DummyTask(Task):
         pass
 
     def copy_subtask_results(self, subtask_id, old_subtask_info, results):
+        pass
+
+    def query_extra_data_for_test_task(self):
+        pass
+
+    def should_accept_client(self, node_id):
+        pass
+
+    def to_dictionary(self):
+        pass
+
+    def accept_client(self):
         pass
 
 

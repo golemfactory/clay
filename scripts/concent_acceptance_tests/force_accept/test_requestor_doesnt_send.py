@@ -104,10 +104,20 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
                 'ack_report_computed_task__'
                 'report_computed_task__'
                 'task_to_compute__'),
-            ack_report_computed_task__sign__privkey=self.requestor_priv_key,
             **kwargs,
-            sign__privkey=self.provider_priv_key,
         )
+        fsr.task_to_compute.generate_ethsig(private_key=self.requestor_priv_key)
+        fsr.task_to_compute.sign_message(
+            private_key=self.requestor_priv_key,
+        )
+        fsr.ack_report_computed_task.report_computed_task.sign_message(
+            private_key=self.provider_priv_key,
+        )
+        fsr.ack_report_computed_task.sign_message(
+            private_key=self.requestor_priv_key,
+        )
+        fsr.sign_message(private_key=self.provider_priv_key)
+        self.assertTrue(fsr.task_to_compute.verify_ethsig())
         self.assertEqual(fsr.task_to_compute.price, price)
         self.assertTrue(
             fsr.validate_ownership_chain(
@@ -121,7 +131,6 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
                 concent_public_key=self.variant['pubkey'],
             ),
         )
-        print(fsr)
         fsr.sig = None  # Will be signed in send_to_concent()
         response = self.provider_load_response(self.provider_send(fsr))
         self.assertIn(

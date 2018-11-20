@@ -4,13 +4,13 @@ from threading import Lock
 from typing import Optional
 
 from eth_utils import encode_hex
+from golem_messages import idgenerator
 from golem_messages.message import ComputeTaskDef
 
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
-from golem.core.idgenerator import generate_id, generate_new_id_from_id
 from golem.network.p2p.node import Node
-from golem.task.taskbase import Task, TaskHeader, ResultType
+from golem.task.taskbase import Task, TaskHeader, AcceptClientVerdict
 
 
 class DummyTaskParameters(object):
@@ -57,7 +57,7 @@ class DummyTask(Task):
         :param DummyTaskParameters params: task parameters
         1024 hashes on average
         """
-        task_id = generate_id(public_key)
+        task_id = idgenerator.generate_id(public_key)
         owner_address = ''
         owner_port = 0
         owner_key_id = encode_hex(public_key)[2:]
@@ -73,6 +73,7 @@ class DummyTask(Task):
             ),
             deadline=timeout_to_deadline(14400),
             subtask_timeout=1200,
+            subtasks_count=num_subtasks,
             resource_size=params.shared_data_size + params.subtask_data_size,
             estimated_memory=0,
             max_price=MIN_PRICE)
@@ -82,7 +83,7 @@ class DummyTask(Task):
         with open(script_path, 'r') as f:
             src_code = f.read()
             src_code += '\noutput = run_dummy_task(' \
-                        'data_file, subtask_data, difficulty, result_size)'
+                'data_file, subtask_data, difficulty, result_size, tmp_path)'
 
         from apps.dummy.task.dummytaskstate import DummyTaskDefinition
         from apps.dummy.task.dummytaskstate import DummyTaskDefaults
@@ -95,8 +96,8 @@ class DummyTask(Task):
         self.resource_parts = {}
 
         self.shared_data_file = None
-        self.total_subtasks = num_subtasks
-        self.total_tasks = self.total_subtasks
+        self.subtasks_count = num_subtasks
+        self.total_tasks = self.subtasks_count
         self.subtask_ids = []
         self.subtask_data = {}
         self.subtask_results = {}
@@ -139,17 +140,17 @@ class DummyTask(Task):
         return 0.
 
     def get_total_tasks(self):
-        return self.total_subtasks
+        return self.subtasks_count
 
     def get_tasks_left(self):
-        return self.total_subtasks - len(self.subtask_results)
+        return self.subtasks_count - len(self.subtask_results)
 
     @property
     def price(self) -> int:
         return self.subtask_price * self.total_tasks
 
     def needs_computation(self):
-        return len(self.subtask_data) < self.total_subtasks
+        return len(self.subtask_data) < self.subtasks_count
 
     def finished_computation(self):
         return self.get_tasks_left() == 0
@@ -160,12 +161,9 @@ class DummyTask(Task):
         """ Returns data for the next subtask. """
 
         # create new subtask_id
-        subtask_id = generate_new_id_from_id(self.header.task_id)
+        subtask_id = idgenerator.generate_new_id_from_id(self.header.task_id)
 
         with self._lock:
-            # check if a task has been assigned to this node
-            if node_id in self.assigned_nodes:
-                return self.ExtraData(should_wait=True)
             # assign a task
             self.assigned_nodes[node_id] = subtask_id
             self.assigned_subtasks[subtask_id] = node_id
@@ -193,7 +191,7 @@ class DummyTask(Task):
     def verify_task(self):
         # Check if self.subtask_results contains a non None result
         # for each subtack.
-        if not len(self.subtask_results) == self.total_subtasks:
+        if not len(self.subtask_results) == self.subtasks_count:
             return False
         return all(self.subtask_results.values())
 
@@ -215,14 +213,15 @@ class DummyTask(Task):
                                      self.task_params.difficulty)
 
     def computation_finished(self, subtask_id, task_result,
-                             result_type=ResultType.DATA,
                              verification_finished=None):
         with self._lock:
             if subtask_id in self.assigned_subtasks:
                 node_id = self.assigned_subtasks.pop(subtask_id, None)
                 self.assigned_nodes.pop(node_id, None)
 
-        self.subtask_results[subtask_id] = task_result
+        with open(task_result[0], 'r') as f:
+            self.subtask_results[subtask_id] = f.read()
+
         if not self.verify_subtask(subtask_id):
             self.subtask_results[subtask_id] = None
 
@@ -265,3 +264,17 @@ class DummyTask(Task):
 
     def copy_subtask_results(self, subtask_id, old_subtask_info, results):
         print('DummyTask.copy_subtask_results called')
+
+    def query_extra_data_for_test_task(self):
+        pass
+
+    def should_accept_client(self, node_id):
+        if node_id in self.assigned_nodes:
+            return AcceptClientVerdict.SHOULD_WAIT
+        return AcceptClientVerdict.ACCEPTED
+
+    def accept_client(self, node_id):
+        print('DummyTask.accept_client called node_id=%r '
+              '- WIP: move more responsibilities from query_extra_data',
+              node_id)
+        return

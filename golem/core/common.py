@@ -5,11 +5,15 @@ import subprocess
 import sys
 from calendar import timegm
 from datetime import datetime
+from functools import wraps
 from multiprocessing import cpu_count
+from typing import Any, Callable, cast, List, TypeVar
 
 import pytz
 
 from golem.core import simpleenv
+
+F = TypeVar('F', bound=Callable[..., Any])
 
 TIMEOUT_FORMAT = '{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
@@ -97,6 +101,24 @@ def nt_path_to_posix_path(path):
     return path
 
 
+def posix_path(path):
+    if is_windows():
+        return nt_path_to_posix_path(path)
+    return path
+
+
+def unix_pipe(source_cmd: List[str], sink_cmd: List[str]) -> str:
+    source = subprocess.Popen(source_cmd,
+                              stdout=subprocess.PIPE)
+    sink = subprocess.Popen(sink_cmd,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            stdin=source.stdout)
+    source.stdout.close()
+    stdout, _ = sink.communicate()
+    return stdout.strip()
+
+
 def get_timestamp_utc():
     now = datetime.now(pytz.utc)
     return datetime_to_timestamp(now)
@@ -136,19 +158,29 @@ def string_to_timeout(string):
     return int(values[0]) * 3600 + int(values[1]) * 60 + int(values[2])
 
 
+def node_info_str(name, node_id):
+    short_id = short_node_id(node_id)
+    return f"'{name}'({short_id})"
+
+
+def short_node_id(node_id):
+    return f'{node_id[:8]}..{node_id[-8:]}'
+
+
 class HandleError(object):
     def __init__(self, error, handle_error):
         self.handle_error = handle_error
         self.error = error
 
-    def __call__(self, func):
+    def __call__(self, func: F) -> F:
+        @wraps(func)
         def func_wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
             except self.error:
                 return self.handle_error(*args, **kwargs)
 
-        return func_wrapper
+        return cast(F, func_wrapper)
 
 
 class HandleForwardedError:
@@ -156,14 +188,15 @@ class HandleForwardedError:
         self.handle_error = handle_error
         self.error = error
 
-    def __call__(self, func):
+    def __call__(self, func: F) -> F:
+        @wraps(func)
         def func_wrapper(*args, **kwargs):
             try:
                 return func(*args, **kwargs)
             except self.error as err:
                 return self.handle_error(err)
 
-        return func_wrapper
+        return cast(F, func_wrapper)
 
 
 class HandleKeyError(HandleError):
@@ -193,15 +226,22 @@ def config_logging(suffix='', datadir=None, loglevel=None, config_desc=None):
         datadir = simpleenv.get_local_datadir("default")
     logdir_path = os.path.join(datadir, 'logs')
 
-    for handler in LOGGING.get('handlers', {}).values():
-        if loglevel:
-            if 'Sentry' not in handler['class']:
-                handler['level'] = loglevel
+    for handler_name, handler in LOGGING.get('handlers', {}).items():
         if 'filename' in handler:
             handler['filename'] %= {
                 'logdir': str(logdir_path),
                 'suffix': suffix,
             }
+        skip_handler_names = (
+            'error-file',
+            'sentry',
+            'sentry-metrics',
+        )
+        if handler_name in skip_handler_names:
+            # Don't modify loglevel in this handler
+            continue
+        if loglevel:
+            handler['level'] = loglevel
 
     if loglevel:
         for _logger in LOGGING.get('loggers', {}).values():

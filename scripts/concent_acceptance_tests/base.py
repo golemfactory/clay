@@ -14,6 +14,7 @@ import unittest
 
 from pathlib import Path
 
+from ethereum.utils import denoms
 import golem_messages
 
 from golem_messages import cryptography
@@ -35,6 +36,25 @@ from golem.utils import privkeytoaddr
 from golem.ethereum.transactionsystem import tETH_faucet_donate
 
 logger = logging.getLogger(__name__)
+
+
+def dump_balance(sci: SmartContractsInterface):
+    gnt = sci.get_gnt_balance(sci.get_eth_address())
+    gntb = sci.get_gntb_balance(sci.get_eth_address())
+    eth = sci.get_eth_balance(sci.get_eth_address())
+    deposit = sci.get_deposit_value(sci.get_eth_address())
+    balance_str = (
+        "[Balance] ETH=%.18f GNT=%.18f"
+        " GNTB=%.18f DEPOSIT=%.18f ADDR:%s\n"
+    )
+    balance_str %= (
+        eth / denoms.ether,
+        gnt / denoms.ether,
+        gntb / denoms.ether,
+        deposit / denoms.ether,
+        sci.get_eth_address(),
+    )
+    sys.stderr.write(balance_str)
 
 
 class ConcentBaseTest:
@@ -74,7 +94,13 @@ class ConcentBaseTest:
             'requestor_public_key': msg_utils.encode_hex(
                 self.requestor_pub_key,
             ),
-            'provider_public_key': msg_utils.encode_hex(self.provider_pub_key),
+            'requestor_ethereum_public_key': msg_utils.encode_hex(
+                self.requestor_pub_key,
+            ),
+            'want_to_compute_task__provider_public_key':
+                msg_utils.encode_hex(self.provider_pub_key),
+            'want_to_compute_task__sign__privkey':
+                self.provider_keys.raw_privkey
         }
         return {prefix + k: v for k, v in kwargs.items()}
 
@@ -119,10 +145,6 @@ class ConcentBaseTest:
         receive_and_load,
         receive_function=client.receive_from_concent,
     )
-    receive_out_of_band = functools.partialmethod(
-        receive_and_load,
-        receive_function=client.receive_out_of_band,
-    )
 
     def provider_receive(self):
         return self.receive_from_concent(
@@ -132,24 +154,8 @@ class ConcentBaseTest:
             public_key=self.provider_pub_key,
         )
 
-    def provider_receive_oob(self):
-        return self.receive_out_of_band(
-            actor='Provider',
-            signing_key=self.provider_priv_key,
-            private_key=self.provider_priv_key,
-            public_key=self.provider_pub_key,
-        )
-
     def requestor_receive(self):
         return self.receive_from_concent(
-            actor='Requestor',
-            signing_key=self.requestor_keys.raw_privkey,
-            private_key=self.requestor_keys.raw_privkey,
-            public_key=self.requestor_keys.raw_pubkey
-        )
-
-    def requestor_receive_oob(self):
-        return self.receive_out_of_band(
             actor='Requestor',
             signing_key=self.requestor_keys.raw_privkey,
             private_key=self.requestor_keys.raw_privkey,
@@ -233,6 +239,7 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
             rpc=EthereumConfig.NODE_LIST[0],
             address=self.requestor_eth_addr,
             tx_sign=lambda tx: tx.sign(self.requestor_keys.raw_privkey),
+            contract_addresses=EthereumConfig.CONTRACT_ADDRESSES,
             chain=EthereumConfig.CHAIN,
         )
         self.requestor_sci.REQUIRED_CONFS = 1
@@ -241,17 +248,19 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
             rpc=EthereumConfig.NODE_LIST[0],
             address=self.provider_eth_addr,
             tx_sign=lambda tx: tx.sign(self.provider_keys.raw_privkey),
+            contract_addresses=EthereumConfig.CONTRACT_ADDRESSES,
             chain=EthereumConfig.CHAIN,
         )
         self.provider_sci.REQUIRED_CONFS = 1
 
+    # pylint: disable=too-many-arguments
     def retry_until_timeout(
             self,
             condition: typing.Callable,
             timeout_message: str = '',
-            timeout: typing.Optional[datetime.timedelta]=None,
-            sleep_interval: typing.Optional[float]=None,
-            sleep_action: typing.Optional[typing.Callable]=
+            timeout: typing.Optional[datetime.timedelta] = None,
+            sleep_interval: typing.Optional[float] = None,
+            sleep_action: typing.Optional[typing.Callable] =
             lambda: sys.stderr.write('.\n'),
     ):
         if sleep_interval is None:
@@ -293,6 +302,7 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
         )
 
         sys.stderr.write('Got GNTB...\n')
+        dump_balance(sci)
 
     def put_deposit(self, sci: SmartContractsInterface, amount: int):
         # 0) get tETH from faucet
@@ -301,6 +311,8 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
         # 3) GNTConverter -> convert + is_converting
         # 4) sci.get_gntb_balance
         # 5) sci.concent_deposit + `on_transaction_confirmed`
+
+        self.assertGreater(amount, 0)
 
         sys.stderr.write('Calling tETH faucet...\n')
         self.retry_until_timeout(
@@ -322,6 +334,9 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
             nonlocal deposit
             deposit = True
 
+        sys.stderr.write(
+            'Depositing %.8f GNTB...\n' % (amount / denoms.ether, ),
+        )
         tx_hash = sci.deposit_payment(amount)
         sci.on_transaction_confirmed(tx_hash, deposit_confirmed)
 
@@ -335,6 +350,9 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
 
         if sci.get_deposit_value(sci.get_eth_address()) < amount:
             raise RuntimeError("Deposit failed")
+        # sys.stderr.write('Long sleep. hrrrr\n')
+        # time.sleep(120)
+        dump_balance(sci)
 
     def requestor_put_deposit(self, price: int):
         amount, _ = helpers.requestor_deposit_amount(

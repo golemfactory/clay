@@ -6,16 +6,16 @@ import random
 import time
 from collections import OrderedDict
 from copy import copy
-from typing import Optional
+from typing import Optional, Type
 
 import numpy
 from PIL import Image, ImageChops, ImageFile
 
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
-from apps.blender.blenderenvironment import BlenderEnvironment
+from apps.blender.blenderenvironment import BlenderEnvironment, \
+    BlenderNVGPUEnvironment
 from apps.blender.resources.scenefileeditor import generate_blender_crop_file
-from apps.core.task import coretask
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import \
@@ -26,10 +26,11 @@ from apps.rendering.task.framerenderingtask import FrameRenderingTask, \
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, PREVIEW_Y
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, \
     RendererDefaults
-from golem.core.common import to_unicode
+from golem.core.common import short_node_id, to_unicode
 from golem.core.fileshelper import has_ext
 from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
+from golem.task.taskbase import TaskPurpose, TaskTypeInfo
 from golem.task.taskstate import SubtaskStatus, TaskStatus
 from golem_verificator.blender_verifier import BlenderVerifier
 
@@ -37,7 +38,7 @@ from golem_verificator.blender_verifier import BlenderVerifier
 # https://github.com/golemfactory/golem/issues/2059
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
-logger = logging.getLogger("apps.blender")
+logger = logging.getLogger(__name__)
 
 
 class BlenderDefaults(RendererDefaults):
@@ -51,6 +52,12 @@ class BlenderDefaults(RendererDefaults):
         self.default_subtasks = 6
 
 
+class BlenderNVGPUDefaults(BlenderDefaults):
+    def __init__(self):
+        super().__init__()
+        self.main_program_file = BlenderNVGPUEnvironment().main_program_file
+
+
 class PreviewUpdater(object):
     def __init__(self, preview_file_path, preview_res_x, preview_res_y,
                  expected_offsets):
@@ -62,8 +69,8 @@ class PreviewUpdater(object):
         self.preview_file_path = preview_file_path
         self.expected_offsets = expected_offsets
 
-        # where the match ends - since the chunks have unexpectable sizes, we 
-        # don't know where to paste new chunk unless all of the above are in 
+        # where the match ends - since the chunks have unexpectable sizes, we
+        # don't know where to paste new chunk unless all of the above are in
         # their correct places
         self.perfect_match_area_y = 0
         self.perfectly_placed_subtasks = 0
@@ -129,20 +136,7 @@ class PreviewUpdater(object):
                 img.save(self.preview_file_path, PREVIEW_EXT)
 
 
-class BlenderTaskTypeInfo(CoreTaskTypeInfo):
-    """ Blender App description that can be used by interface to define
-    parameters and task build
-    """
-
-    def __init__(self):
-        super(BlenderTaskTypeInfo, self).__init__("Blender",
-                                                  RenderingTaskDefinition,
-                                                  BlenderDefaults(),
-                                                  BlenderRendererOptions,
-                                                  BlenderRenderTaskBuilder)
-
-        self.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
-        self.output_file_ext = ["blend"]
+class RenderingTaskTypeInfo(CoreTaskTypeInfo):
 
     @classmethod
     def get_preview(cls, task, single=False):
@@ -180,13 +174,13 @@ class BlenderTaskTypeInfo(CoreTaskTypeInfo):
         return scale_factor
 
     @classmethod
-    def get_task_border(cls, subtask, definition, total_subtasks,
+    def get_task_border(cls, subtask, definition, subtasks_count,
                         output_num=1, as_path=False):
         """ Return list of pixels that should be marked as a border of
          a given subtask
         :param SubtaskState subtask: subtask state description
         :param RenderingTaskDefinition definition: task definition
-        :param int total_subtasks: total number of subtasks used in this task
+        :param int subtasks_count: total number of subtasks used in this task
         :param int output_num: number of final output files
         :param int as_path: return pixels that form a border path
         :return list: list of pixels that belong to a subtask border
@@ -202,8 +196,8 @@ class BlenderTaskTypeInfo(CoreTaskTypeInfo):
             method = cls.__get_border
 
         if not definition.options.use_frames:
-            return method(start_task, end_task, total_subtasks, res_x, res_y)
-        elif total_subtasks <= frames:
+            return method(start_task, end_task, subtasks_count, res_x, res_y)
+        elif subtasks_count <= frames:
             if not as_path:
                 return []
             else:
@@ -213,7 +207,7 @@ class BlenderTaskTypeInfo(CoreTaskTypeInfo):
                 return [(0, y), (x, y),
                         (x, 0), (0, 0)]
 
-        parts = int(total_subtasks / frames)
+        parts = int(subtasks_count / frames)
         return method((start_task - 1) % parts + 1,
                       (end_task - 1) % parts + 1,
                       parts, res_x, res_y)
@@ -273,14 +267,14 @@ class BlenderTaskTypeInfo(CoreTaskTypeInfo):
                 (x, lower), (0, lower)]
 
     @classmethod
-    def get_task_num_from_pixels(cls, x, y, definition, total_subtasks,
+    def get_task_num_from_pixels(cls, x, y, definition, subtasks_count,
                                  output_num=1):
         """
         Compute number of subtask that represents pixel (x, y) on preview
         :param int x: x coordinate
         :param int y: y coordiante
         :param TaskDefintion definition: task definition
-        :param int total_subtasks: total number of subtasks used in this task
+        :param int subtasks_count: total number of subtasks used in this task
         :param int output_num: number of final output files
         :return int: subtask's number
         """
@@ -289,14 +283,14 @@ class BlenderTaskTypeInfo(CoreTaskTypeInfo):
         res_y = definition.resolution[1]
 
         if not definition.options.use_frames:
-            return cls.__num_from_pixel(y, res_x, res_y, total_subtasks)
+            return cls.__num_from_pixel(y, res_x, res_y, subtasks_count)
 
         frames = len(definition.options.frames)
-        if total_subtasks <= frames:
-            subtask_frames = int(math.ceil(frames / total_subtasks))
+        if subtasks_count <= frames:
+            subtask_frames = int(math.ceil(frames / subtasks_count))
             return int(math.ceil(output_num / subtask_frames))
 
-        parts = int(total_subtasks / frames)
+        parts = int(subtasks_count / frames)
         return (output_num - 1) * parts + cls.__num_from_pixel(y, res_x,
                                                                res_y, parts)
 
@@ -320,7 +314,43 @@ class BlenderTaskTypeInfo(CoreTaskTypeInfo):
         return parts
 
 
+class BlenderTaskTypeInfo(RenderingTaskTypeInfo):
+    """ Blender App description that can be used by interface to define
+    parameters and task build
+    """
+
+    def __init__(self):
+        super(BlenderTaskTypeInfo, self).__init__("Blender",
+                                                  RenderingTaskDefinition,
+                                                  BlenderDefaults(),
+                                                  BlenderRendererOptions,
+                                                  BlenderRenderTaskBuilder)
+
+        self.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
+        self.output_file_ext = ["blend"]
+
+
+class BlenderNVGPUTaskTypeInfo(RenderingTaskTypeInfo):
+
+    def __init__(self):
+        super().__init__("Blender_NVGPU",
+                         RenderingTaskDefinition,
+                         BlenderNVGPUDefaults(),
+                         BlenderNVGPURendererOptions,
+                         BlenderNVGPURenderTaskBuilder)
+
+        self.output_formats = ["PNG", "TGA", "EXR", "JPEG", "BMP"]
+        self.output_file_ext = ["blend"]
+
+    def for_purpose(self, purpose: TaskPurpose) -> TaskTypeInfo:
+        # Testing the task shouldn't require a compatible GPU + OS
+        if purpose == TaskPurpose.TESTING:
+            return BlenderTaskTypeInfo()
+        return self
+
+
 class BlenderRendererOptions(FrameRendererOptions):
+
     def __init__(self):
         super(BlenderRendererOptions, self).__init__()
         self.environment = BlenderEnvironment()
@@ -328,8 +358,15 @@ class BlenderRendererOptions(FrameRendererOptions):
         self.samples = 0
 
 
+class BlenderNVGPURendererOptions(BlenderRendererOptions):
+
+    def __init__(self):
+        super().__init__()
+        self.environment = BlenderNVGPUEnvironment()
+
+
 class BlenderRenderTask(FrameRenderingTask):
-    ENVIRONMENT_CLASS = BlenderEnvironment
+    ENVIRONMENT_CLASS: Type[BlenderEnvironment] = BlenderEnvironment
     VERIFIER_CLASS = functools.partial(BlenderVerifier,
                                        cropper_cls=BlenderReferenceGenerator,
                                        docker_task_cls=DockerTaskThread)
@@ -344,8 +381,7 @@ class BlenderRenderTask(FrameRenderingTask):
         self.preview_updater = None
         self.preview_updaters = None
 
-        FrameRenderingTask.__init__(self, task_definition=task_definition,
-                                    **kwargs)
+        super().__init__(task_definition=task_definition, **kwargs)
 
         # https://github.com/golemfactory/golem/issues/2388
         self.compositing = False
@@ -395,7 +431,6 @@ class BlenderRenderTask(FrameRenderingTask):
                                                   preview_y,
                                                   expected_offsets)
 
-    @coretask.accepting
     # pylint: disable-msg=too-many-locals
     def query_extra_data(self, perf_index: float, num_cores: int = 0,
                          node_id: Optional[str] = None,
@@ -448,10 +483,16 @@ class BlenderRenderTask(FrameRenderingTask):
                       }
 
         subtask_id = self.create_subtask_id()
+        logger.debug(
+            'Created new subtask for task. '
+            'task_id=%s, subtask_id=%s, node_id=%s',
+            self.header.task_id,
+            subtask_id,
+            short_node_id(node_id or '')
+        )
         self.subtasks_given[subtask_id] = copy(extra_data)
         self.subtasks_given[subtask_id]['subtask_id'] = subtask_id
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.starting
-        self.subtasks_given[subtask_id]['perf'] = perf_index
         self.subtasks_given[subtask_id]['node_id'] = node_id
         self.subtasks_given[subtask_id]['parts'] = parts
         self.subtasks_given[subtask_id]['res_x'] = self.res_x
@@ -533,7 +574,7 @@ class BlenderRenderTask(FrameRenderingTask):
         if not os.path.exists(self.test_task_res_path):
             os.makedirs(self.test_task_res_path)
 
-        return self._new_compute_task_def(hash, extra_data, None, 0)
+        return self._new_compute_task_def(hash, extra_data, 0)
 
     def _get_min_max_y(self, start_task):
         if self.use_frames:
@@ -588,13 +629,13 @@ class BlenderRenderTask(FrameRenderingTask):
         self.collected_file_names = OrderedDict(
             sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
-            collector = CustomCollector(paste=True, width=self.res_x,
+            collector = CustomCollector(width=self.res_x,
                                         height=self.res_y)
             for file in self.collected_file_names.values():
                 collector.add_img_file(file)
             with handle_image_error(logger), \
                     collector.finalize() as image:
-                image.save(output_file_name, self.output_format)
+                image.save_with_extension(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(
                 os.path.join(self.tmp_dir, output_file_name),
@@ -632,13 +673,13 @@ class BlenderRenderTask(FrameRenderingTask):
         collected = self.frames_given[frame_key]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
-            collector = CustomCollector(paste=True, width=self.res_x,
+            collector = CustomCollector(width=self.res_x,
                                         height=self.res_y)
             for file in collected.values():
                 collector.add_img_file(file)
             with handle_image_error(logger), \
                     collector.finalize() as image:
-                image.save(output_file_name, self.output_format)
+                image.save_with_extension(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(output_file_name,
                                                list(collected.values()),
@@ -648,34 +689,51 @@ class BlenderRenderTask(FrameRenderingTask):
         self._update_frame_task_preview()
 
 
+class BlenderNVGPURenderTask(BlenderRenderTask):
+    ENVIRONMENT_CLASS: Type[BlenderEnvironment] = BlenderNVGPUEnvironment
+
+
 class BlenderRenderTaskBuilder(FrameRenderingTaskBuilder):
     """ Build new Blender tasks using RenderingTaskDefintions and
      BlenderRendererOptions as taskdefinition renderer options """
-    TASK_CLASS = BlenderRenderTask
-    DEFAULTS = BlenderDefaults
+    TASK_CLASS: Type[BlenderRenderTask] = BlenderRenderTask
+    DEFAULTS: Type[BlenderDefaults] = BlenderDefaults
 
     @classmethod
     def build_dictionary(cls, definition):
-        parent = super(BlenderRenderTaskBuilder, cls)
-
-        dictionary = parent.build_dictionary(definition)
+        dictionary = super().build_dictionary(definition)
         dictionary['options']['compositing'] = definition.options.compositing
         return dictionary
 
     @classmethod
     def build_full_definition(cls, task_type, dictionary):
-        parent = super(BlenderRenderTaskBuilder, cls)
+        requested_format = dictionary['options']['format']
+        if requested_format not in task_type.output_formats:
+            default_format = task_type.output_formats[0]
+            logger.warning(
+                "Unsupported output format: `%s`, "
+                "replacing with default: `%s`",
+                requested_format, default_format
+            )
+            dictionary['options']['format'] = default_format
+
         options = dictionary['options']
 
-        definition = parent.build_full_definition(task_type, dictionary)
+        definition = super().build_full_definition(task_type, dictionary)
         definition.options.compositing = options.get('compositing', False)
         definition.options.samples = options.get('samples', 0)
+
         return definition
 
 
+class BlenderNVGPURenderTaskBuilder(BlenderRenderTaskBuilder):
+    TASK_CLASS: Type[BlenderRenderTask] = BlenderNVGPURenderTask
+    DEFAULTS: Type[BlenderDefaults] = BlenderNVGPUDefaults
+
+
 class CustomCollector(RenderingTaskCollector):
-    def __init__(self, paste=False, width=1, height=1):
-        RenderingTaskCollector.__init__(self, paste, width, height)
+    def __init__(self, width=1, height=1):
+        RenderingTaskCollector.__init__(self, width, height)
         self.current_offset = 0
 
     def _paste_image(self, final_img, new_part, num):

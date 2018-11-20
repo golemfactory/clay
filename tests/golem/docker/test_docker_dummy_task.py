@@ -5,14 +5,15 @@ import os
 from os import path
 from unittest import mock
 from unittest.mock import Mock
+from twisted.internet.defer import Deferred
 
 from apps.dummy.task.dummytask import DummyTaskBuilder, DummyTask
 from golem.core.common import get_golem_path
+from golem.core.deferred import sync_wait
 from golem.core.fileshelper import find_file_with_ext
 from golem.resource.dirmanager import symlink_or_copy, \
     rmlink_or_rmtree
 from golem.task.localcomputer import LocalComputer
-from golem.task.taskbase import ResultType
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.tasktester import TaskTester
 from golem.tools.ci import ci_skip
@@ -89,6 +90,10 @@ class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
         print(ctd)
         print(type(ctd))
 
+        from twisted.internet import reactor
+
+        d = Deferred()
+
         computer = LocalComputer(
             root_path=self.tempdir,
             success_callback=Mock(),
@@ -104,25 +109,36 @@ class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
 
         task.create_reference_data_for_task_validation()
 
+        def success(*args, **kwargs):
+            # pylint: disable=unused-argument
+            is_subtask_verified = task.verify_subtask(ctd['subtask_id'])
+            self.assertTrue(is_subtask_verified)
+            self.assertEqual(task.num_tasks_received, 1)
+            d.callback(True)
+
         # assert good results - should pass
         self.assertEqual(task.num_tasks_received, 0)
         task.computation_finished(ctd['subtask_id'], [str(output)],
-                                  result_type=ResultType.FILES,
-                                  verification_finished_=lambda: None)
+                                  verification_finished=success)
 
-        is_subtask_verified = task.verify_subtask(ctd['subtask_id'])
-        self.assertTrue(is_subtask_verified)
-        self.assertEqual(task.num_tasks_received, 1)
+        reactor.iterate()
+        sync_wait(d, 40)
+
+        b = Deferred()
+
+        def failure(*args, **kwargs):
+            # pylint: disable=unused-argument
+            self.assertFalse(task.verify_subtask(ctd['subtask_id']))
+            self.assertEqual(task.num_tasks_received, 1)
+            b.callback(True)
 
         # assert bad results - should fail
         bad_output = output.parent / "badfile.result"
         ctd = task.query_extra_data(10000.).ctd
         task.computation_finished(ctd['subtask_id'], [str(bad_output)],
-                                  result_type=ResultType.FILES,
-                                  verification_finished_=lambda: None)
-
-        self.assertFalse(task.verify_subtask(ctd['subtask_id']))
-        self.assertEqual(task.num_tasks_received, 1)
+                                  verification_finished=failure)
+        reactor.iterate()
+        sync_wait(b, 40)
 
     def test_dummytask_TaskTester_should_pass(self):
         task = self._get_test_task()
@@ -144,7 +160,6 @@ class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
 
         # Check the number and type of result files:
         result = task_thread.result
-        self.assertEqual(result["result_type"], ResultType.FILES)
         self.assertGreaterEqual(len(result["data"]), 3)
         self.assertTrue(any(path.basename(f) == DockerTaskThread.STDOUT_FILE
                             for f in result["data"]))

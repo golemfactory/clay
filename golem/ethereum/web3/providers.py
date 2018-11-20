@@ -11,7 +11,10 @@ class ProviderProxy(BaseProvider):
 
     def make_request(self, method, params):
         if self.provider:
-            return self.provider.make_request(method, params)
+            response = self.provider.make_request(method, params)
+            if response is None:
+                return {'error': 'Empty response received'}
+            return response
         raise CannotHandleRequest('No underlying provider is available')
 
     def isConnected(self):

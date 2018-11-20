@@ -196,14 +196,6 @@ class RenderingTask(CoreTask):
                     return start_task, end_task
         return None, None
 
-    def _get_working_directory(self):
-        common_path_prefix = os.path.commonprefix(self.task_resources)
-        common_path_prefix = os.path.dirname(common_path_prefix)
-        working_directory = os.path.relpath(self.main_scene_file, common_path_prefix)
-        working_directory = os.path.dirname(working_directory)
-        logger.debug("Working directory {}".format(working_directory))
-        return self.__get_path(working_directory)
-
     def _get_scene_file_rel_path(self):
         """Returns the path to the scene file relative to the directory where
         the task script is run.
@@ -242,6 +234,11 @@ class RenderingTask(CoreTask):
                 logger.debug('Saving new preview: %r', self.preview_file_path)
                 img.save(self.preview_file_path, ext)
 
+        logger.debug(
+            'Opening preview: %r, exists?: %s',
+            self.preview_file_path,
+            os.path.exists(self.preview_file_path)
+        )
         return Image.open(self.preview_file_path)
 
     def _use_outer_task_collector(self):
@@ -259,6 +256,10 @@ class RenderingTask(CoreTask):
         return path.replace("\\", "/")
 
 
+class RenderingTaskBuilderError(Exception):
+    pass
+
+
 class RenderingTaskBuilder(CoreTaskBuilder):
     TASK_CLASS = RenderingTask
     DEFAULTS = RendererDefaults
@@ -267,7 +268,7 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         if self.task_definition.optimize_total:
             return defaults.default_subtasks
 
-        total = self.task_definition.total_subtasks
+        total = self.task_definition.subtasks_count
 
         if defaults.min_subtasks <= total <= defaults.max_subtasks:
             return total
@@ -282,7 +283,7 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         candidates = [res for res in resources if any(res.lower().endswith(ext.lower())
                                             for ext in extensions)]
         if not candidates:
-            raise Exception("Scene file was not found.")
+            raise RenderingTaskBuilderError("Scene file was not found.")
 
         candidates.sort(key=len)
         return candidates[0]
@@ -311,7 +312,13 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         resources = dictionary['resources']
 
         definition = parent.build_minimal_definition(task_type, dictionary)
-        definition.main_scene_file = cls._scene_file(task_type, resources)
+
+        if 'main_scene_file' in dictionary:
+            main_scene_file = dictionary['main_scene_file']
+        else:
+            main_scene_file = cls._scene_file(task_type, resources)
+
+        definition.main_scene_file = main_scene_file
         return definition
 
     @classmethod
@@ -322,11 +329,11 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         definition = parent.build_full_definition(task_type, dictionary)
         definition.output_format = options['format'].upper()
         definition.resolution = [int(val) for val in options['resolution']]
-        if definition.full_task_timeout < MIN_TIMEOUT:
+        if definition.timeout < MIN_TIMEOUT:
             logger.warning("Timeout %d too short for this task. "
-                           "Changing to %d" % (definition.full_task_timeout,
+                           "Changing to %d" % (definition.timeout,
                                                MIN_TIMEOUT))
-            definition.full_task_timeout = MIN_TIMEOUT
+            definition.timeout = MIN_TIMEOUT
         if definition.subtask_timeout < SUBTASK_MIN_TIMEOUT:
             logger.warning("Subtask timeout %d too short for this task. "
                            "Changing to %d" % (definition.subtask_timeout,
