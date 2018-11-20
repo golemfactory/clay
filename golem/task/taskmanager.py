@@ -451,7 +451,7 @@ class TaskManager(TaskEventListener):
             ctd,
         )
 
-        ProviderComputeTimers.comp_started(ctd['subtask_id'])
+        ProviderComputeTimers.start(ctd['subtask_id'])
         return ctd
 
     def is_my_task(self, task_id) -> bool:
@@ -1180,7 +1180,7 @@ class TaskManager(TaskEventListener):
                      op: Optional[Operation] = None):
 
         if subtask_id and isinstance(op, SubtaskOp) and op.is_completed():
-            ProviderComputeTimers.comp_finished(subtask_id)
+            ProviderComputeTimers.finish(subtask_id)
 
         elif isinstance(op, TaskOp) and op in (
                 TaskOp.ABORTED,
@@ -1188,7 +1188,7 @@ class TaskManager(TaskEventListener):
                 TaskOp.RESTARTED
         ):
             for _subtask_id in self.tasks_states[task_id].subtask_states:
-                ProviderComputeTimers.comp_finished(_subtask_id)
+                ProviderComputeTimers.finish(_subtask_id)
 
     def _update_subtask_statistics(self, task_id: str,
                                    subtask_id: Optional[str] = None,
@@ -1221,7 +1221,7 @@ class TaskManager(TaskEventListener):
         comp_task_info = self.comp_task_keeper.active_tasks[task_id]
 
         computation_price = comp_task_info.subtask_price
-        computation_time = ProviderComputeTimers.time_computing(subtask_id)
+        computation_time = ProviderComputeTimers.time(subtask_id)
 
         if not computation_time:
             raise ValueError("Invalid value for computation_time: "
@@ -1248,7 +1248,7 @@ class TaskManager(TaskEventListener):
         node_id = subtask_state.computer.node_id
 
         update_provider_efficacy(node_id, op)
-        computation_time = ProviderComputeTimers.time_computing(subtask_id)
+        computation_time = ProviderComputeTimers.time(subtask_id)
 
         if not computation_time:
             raise ValueError("computation_time cannot be equal to "

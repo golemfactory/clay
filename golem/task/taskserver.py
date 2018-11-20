@@ -40,7 +40,7 @@ from golem.task.benchmarkmanager import BenchmarkManager
 from golem.task.taskbase import TaskHeader, Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
-from golem.task.timer import ProviderIdleTimer
+from golem.task.timer import ProviderTimer
 from golem.utils import decode_hex
 
 from . import exceptions
@@ -59,7 +59,7 @@ tmp_cycler = itertools.cycle(list(range(550)))
 
 
 def _calculate_price(min_price: int, requestor_id: str) -> int:
-    r = min_price * (1.0 + ProviderIdleTimer.thirst)
+    r = min_price * (1.0 + ProviderTimer.thirst)
     v_paid = get_requestor_paid_sum(requestor_id)
     v_assigned = get_requestor_assigned_sum(requestor_id)
     c = min_price
@@ -547,8 +547,7 @@ class TaskServer(
             task_id = keeper.get_task_id_for_subtask(subtask_id)
             header = keeper.get_task_header(task_id).fixed_header
             environment = self.get_environment_by_id(header.environment)
-            computation_time = ProviderIdleTimer.last_comp_finished - \
-                ProviderIdleTimer.last_comp_started
+            computation_time = ProviderTimer.time
 
             update_requestor_efficiency(
                 node_id=keeper.get_node_for_task_id(task_id),

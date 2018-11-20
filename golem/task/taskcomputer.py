@@ -18,7 +18,7 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
-from golem.task.timer import ProviderIdleTimer
+from golem.task.timer import ProviderTimer
 from golem.vm.vm import PythonProcVM, PythonTestVM
 
 from .taskthread import TaskThread
@@ -94,7 +94,7 @@ class TaskComputer(object):
             logger.error("Trying to assign a task, when it's already assigned")
             return False
 
-        ProviderIdleTimer.comp_started()
+        ProviderTimer.start()
         dispatcher.send(
             signal='golem.taskcomputer',
             event='subtask_started',
@@ -383,7 +383,7 @@ class TaskComputer(object):
 
     def __task_finished(self, ctd: dict) -> None:
 
-        ProviderIdleTimer.comp_finished()
+        ProviderTimer.finish()
         dispatcher.send(
             signal='golem.taskcomputer',
             event='subtask_finished',
