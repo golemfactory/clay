@@ -35,7 +35,8 @@ class TestClientHandler(TestCase):
     def test_retry(self):
         valid_exceptions = filter(lambda t: t is not Failure,
                                   ClientHandler.retry_exceptions)
-        value_exc = list(valid_exceptions)[0]()
+        valid_exceptions = list(valid_exceptions)
+        value_exc = valid_exceptions[0]()
 
         def func(e):
             self.state.increment()
@@ -55,7 +56,7 @@ class TestClientHandler(TestCase):
                 self.state.increment()
                 raise ArithmeticError()
 
-            self.handler._retry(func, raise_exc=False)
+            self.handler._retry(func, raise_exc=True)
 
         # Exception was raised on first retry
         assert self.state.counter == 1
