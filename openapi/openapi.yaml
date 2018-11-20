@@ -1,0 +1,195 @@
+openapi: '3.0.0'
+info:
+  description: Golem Brass Gatewway API
+  version: 0.0.2
+  title: Golem Brass GW
+  contact:
+    email: contact@golem.network
+  license:
+    name: GPL 3.0
+    url: 'https://www.gnu.org/licenses/gpl-3.0.html'
+#host: unlimited.golem.network
+#basePath: /gw/v1
+# schemes:
+#   - https
+#   - http
+paths:
+  '/subscriber/{nodeId}':
+    parameters:
+      - $ref: '#/components/parameters/nodeId'
+    post:
+      summary: Creates or amends new subscribtion to gloem network
+      operationId: subscribe
+      requestBody:
+        description: Subscription spec
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubscribeRequest'
+      responses:
+        '201':
+          description: subscribtion created
+        '200':
+          description: subscribtion amended (task_type array changed)
+        '405':
+          description: invalid input
+    get:
+      summary: Gets subscribtion status
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubscriberStatus'
+        '405':
+          description: invalid input
+    delete:
+      summary: Deletes subscription
+      description: ''
+      responses:
+        '200':
+          description: subscription deleted
+        '405':
+          description: invalid input
+  '/subscriber/{nodeId}/task/{taskId}':
+    parameters:
+      - $ref: '#/components/parameters/nodeId'
+      - $ref: '#/components/parameters/taskId'
+    post:
+      summary: Sends want to compute task
+      responses:
+        '200':
+          description: successful operation
+    delete:
+      summary: Cancels task
+      responses:
+        '200':
+          description: task deleted
+    put:
+      summary: Updates task
+      responses:
+        '200':
+          description: OK
+  '/subscriber/{nodeId}/task/{taskId}/result':
+    parameters:
+      - $ref: '#/components/parameters/nodeId'
+      - $ref: '#/components/parameters/taskId'
+    post:
+      summary: Report task completed
+      responses:
+        200:
+          description: OK
+    
+  '/subscriber/{nodeId}/uploadBlob':
+    parameters:
+      - $ref: '#/components/parameters/nodeId'
+    post:
+      summary: Uploads an file
+      description: ''
+      operationId: uploadFile
+#      parameters:
+        # - name: additionalMetadata
+        #   in: formData
+        #   description: Additional data to pass to server
+        #   schema:
+        #     type: string
+        # - name: file
+        #   in: formData
+        #   description: file to upload
+        #   schema:
+        #     type: file
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UploadResponse'
+  '/events/{nodeId}/{timestamp}':
+    parameters: 
+      - $ref: '#/components/parameters/nodeId'
+      - name: timestamp
+        in: path
+        required: true
+        schema:
+          type: integer
+          format: int64
+    get:
+      summary: List events for given node id from given timestamp
+      responses:
+        '200':
+          description: successful operation
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Events'
+components:
+  parameters:
+    nodeId:
+      name: nodeId
+      in: path
+      required: true
+      schema:
+        type: string
+        example: '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b'
+      style: simple
+    taskId:
+      name: taskId
+      in: path
+      required: true
+      schema:
+        type: string        
+  schemas:
+    SubscribeRequest:
+      type: object
+      required:
+        - taskType
+      properties:
+        taskType:
+          type: string
+          example: blender
+    SubscriberStatus:
+      type: object
+      properties:
+        active:
+          type: boolean
+        tasks_stats:
+          type: object
+          properties:
+            requested:
+              type: integer
+            succeded:
+              type: integer
+            failed:
+              type: integer
+            timedout:
+              type: integer
+    UploadResponse:
+      type: object
+      properties:
+        code:
+          type: integer
+          format: int32
+        type:
+          type: string
+        message:
+          type: string
+    Events:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        events:
+          type: array
+          items:
+            type: integer
+            # oneOf:
+            #   - type: integer
+            #   - type: string
+      # items:
+      #   oneOf:
+      #     - type: string
+      #     - type: integer
