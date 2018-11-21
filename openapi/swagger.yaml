@@ -17,95 +17,177 @@ paths:
   '/subscriber/{nodeId}':
     parameters:
       - $ref: '#/parameters/nodeId'
-    post:
-      summary: Creates or amends new subscribtion to gloem network
+    put:
+      summary: Creates or amends subscribtion to gloem network
       operationId: subscribe
       parameters:
-        - in: body
-          name: body
+        - name: body
+          in: body
           description: Subscription spec
           required: true
           schema:
             $ref: '#/definitions/SubscribeRequest'
       responses:
         '200':
-          description: subscribtion amended (task_type array changed)
+          description: subscribtion amended (supported taskTypes changed)
         '201':
           description: subscribtion created
         '405':
           description: invalid input
     get:
       summary: Gets subscribtion status
+      operationId: subscription
       responses:
         '200':
           description: successful operation
           schema:
             $ref: '#/definitions/SubscriberStatus'
+        '404':
+          description: subscription not found
         '405':
           description: invalid input
     delete:
       summary: Deletes subscription
-      description: ''
+      operationId: unsubscribe
       responses:
         '200':
           description: subscription deleted
+        '404':
+          description: subscription not found
         '405':
           description: invalid input
-  '/subscriber/{nodeId}/task/{taskId}':
+  '/{nodeId}/task/{taskId}':
     parameters:
       - $ref: '#/parameters/nodeId'
       - $ref: '#/parameters/taskId'
     post:
-      summary: Sends want to compute task
+      summary: Sends task computation willingness
+      operationId: wantToComputeTask
       responses:
         '200':
-          description: successful operation
+          description: subtask to compute
+          schema:
+            $ref: '#/definitions/Subtask'
+    get:
+      summary: Gets task information
+      operationId: taskInfo
+      responses:
+        '200':
+          description: ok
+          schema:
+            $ref: '#/definitions/Task'
+        '404':
+          description: not found
     delete:
-      summary: Cancels task
+      summary: Revokes task computation willingnes
+      operationId: cancelTask
       responses:
         '200':
           description: task deleted
+        '404':
+          description: not found
+  '/{nodeId}/subtask/{subtaskId}':
+    parameters:
+      - $ref: '#/parameters/nodeId'
+      - $ref: '#/parameters/subtaskId'
     put:
-      summary: Updates task
+      summary: Confirms subtask computation
+      operationId: startResourcesPull
       responses:
         '200':
           description: OK
-  '/subscriber/{nodeId}/task/{taskId}/result':
-    parameters:
-      - $ref: '#/parameters/nodeId'
-      - $ref: '#/parameters/taskId'
+        '404':
+          description: not found
+    get:
+      summary: Gets subtask information
+      operationId: subtaskInfo
+      responses:
+        '200':
+          description: ok
+          schema:
+            $ref: '#/definitions/Subtask'
+        '404':
+          description: not found
     post:
-      summary: Report task completed
+      summary: Report subtask completed
+      operationId: subtaskResult
+      parameters:
+      - name: body
+        in: body
+        required: true
+        schema:
+          $ref: '#/definitions/Resource'
       responses:
         '200':
           description: OK
-  '/subscriber/{nodeId}/uploadBlob':
+        '404':
+          description: not found
+    delete:
+      summary: Revokes subtask computation
+      operationId: cancelSubtask
+      responses:
+        '200':
+          description: OK
+        '404':
+          description: not found
+
+  '/{nodeId}/resource/{resourceId}':
+    parameters:
+      - $ref: '#/parameters/nodeId'
+      - $ref: '#/parameters/resourceId'
+    get:
+      summary: Downloads binary resource
+      operationId: downloadResource
+      produces:
+        - application/zip
+      responses:
+        '200':
+          description: A zipped resource file
+          schema:
+            type: file
+  '/{nodeId}/uploadResource':
     parameters:
       - $ref: '#/parameters/nodeId'
     post:
-      summary: Uploads an file
-      description: ''
-      operationId: uploadFile
+      summary: Uploads an resource
+      operationId: uploadResource
+      consumes:
+        - "multipart/form-data"
+      parameters:
+      - name: "additionalMetadata"
+        in: "formData"
+        description: "Additional data to pass to server"
+        required: false
+        type: "string"
+      - name: "file"
+        in: "formData"
+        description: "file to upload"
+        required: true
+        type: "file"
       responses:
         '200':
           description: successful operation
           schema:
-            $ref: '#/definitions/UploadResponse'
-  '/events/{nodeId}/{timestamp}':
+            $ref: '#/definitions/Resource'
+        '405':
+          description: invalid request
+  '/events/{nodeId}':
     parameters:
       - $ref: '#/parameters/nodeId'
-      - name: timestamp
-        in: path
-        required: true
+      - name: lastEventId
+        in: query
+        description: 'provide event id from previous call'
         type: integer
         format: int64
     get:
-      summary: List events for given node id from given timestamp
+      summary: List events for given node id; starting after last event id
+      operationId: fetchEvents
       responses:
         '200':
           description: successful operation
           schema:
             $ref: '#/definitions/Events'
+
 parameters:
   nodeId:
     name: nodeId
@@ -123,6 +205,16 @@ parameters:
     required: true
     type: string
     # example: "682e9b26-ed89-11e8-a9e0-6e845eabffe0"
+  subtaskId:
+    name: subtaskId
+    in: path
+    required: true
+    type: string
+  resourceId:
+    name: resourceId
+    in: path
+    required: true
+    type: string
 definitions:
   SubscribeRequest:
     type: object
@@ -137,7 +229,11 @@ definitions:
     properties:
       active:
         type: boolean
-      tasks_stats:
+      tasksTypes:
+        type: array
+        items:
+          type: string
+      tasksStats:
         type: object
         properties:
           requested:
@@ -148,23 +244,77 @@ definitions:
             type: integer
           timedout:
             type: integer
-  UploadResponse:
+  Price:
+    type: integer
+    format: int64
+  ExtraData:
+    type: string
+  Subtask:
     type: object
     properties:
-      code:
+      subtaskId:
+        $ref: '#/parameters/subtaskId'
+      description:
+        type: string
+      resource:
+        $ref: '#/definitions/Resource'
+      deadline:
+        type: integer
+      price:
+        $ref: '#/definitions/Price'
+      extraData:
+        $ref: '#/definitions/ExtraData'
+  Task:
+    type: object
+    properties:
+      taskId:
+        $ref: '#/parameters/taskId'
+      perfIndex:
+        type: number
+        format: float
+        example: 314
+      maxResourceSize:
+        type: integer
+        format: int64
+      maxMemorySize:
+        type: integer
+        format: int64
+      numCores:
         type: integer
         format: int32
-      type:
+      price:
+        $ref: '#/definitions/Price'
+      extraData:
+        $ref: '#/definitions/ExtraData'
+  Resource:
+    type: object
+    properties:
+      resourceId:
+        $ref: '#/parameters/resourceId'
+      metadata:
         type: string
-      message:
+  TaskVerification:
+    type: object
+    properties:
+      taskId:
+        $ref: '#/parameters/taskId'
+      verificationResult:
         type: string
+        enum: ['OK', 'failed', 'timedout']
   Events:
     type: object
     properties:
-      timestamp:
-        type: string
-        format: date-time
+      eventId:
+        type: integer
+        format: int64
       events:
         type: array
         items:
-          type: integer #todo: Task, Resource, VerificationResult
+          type: object #every item has exactly one field filled
+          properties:
+            taskId:
+              $ref: '#/definitions/Task'
+            resourceId:
+              $ref: '#/definitions/Resource'
+            teskVerification:
+              $ref: '#/definitions/TaskVerification'
