@@ -1238,7 +1238,7 @@ class TaskManager(TaskEventListener):
 
         timeout = self.tasks[task_id].header.fixed_header.subtask_timeout
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
-        node_id = subtask_state.computer.node_id
+        node_id = subtask_state.node_id
 
         update_provider_efficacy(node_id, op)
         computation_time = ProviderComputeTimers.time(subtask_id)
