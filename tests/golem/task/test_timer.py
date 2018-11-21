@@ -44,6 +44,8 @@ class TestActionTimer(unittest.TestCase):
 
 class TestThirstTimer(unittest.TestCase):
 
+    # pylint: disable=no-member,no-self-argument
+
     @freeze_time("2018-01-01 00:00:00", as_arg=True)
     def test_thirst_decrease(frozen_time, _):
         timer = ThirstTimer()
