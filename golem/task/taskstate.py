@@ -1,6 +1,6 @@
 from enum import Enum, auto
 import time
-from typing import Optional
+from typing import Dict, Optional
 
 from golem.core.common import to_unicode
 
@@ -16,7 +16,7 @@ class TaskState(object):
         self.payment_settled = False
         self.outputs = []
         self.subtasks_count = 0
-        self.subtask_states = {}
+        self.subtask_states: Dict[str, SubtaskState] = {}
         self.resource_hash = None
         self.package_hash = None
         self.package_path = None
