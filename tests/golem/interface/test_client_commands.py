@@ -26,6 +26,7 @@ from golem.interface.client.terms import Terms
 from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
 from golem.resource.dirmanager import DirManager, DirectoryType
+from golem.task.taskstate import TaskStatus
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
 
@@ -369,10 +370,10 @@ class TestPayments(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-
+        statuses = ['awaiting', 'sent', 'confirmed']
         incomes_list = [{
             'payer': 'node_{}'.format(i),
-            'status': 'waiting',
+            'status': statuses[i % 3],
             'value': '{}'.format(i * 10**18),
         } for i in range(1, 6)]
 
@@ -381,10 +382,9 @@ class TestPayments(unittest.TestCase):
             'value': f'{0.1 * i * 10**18}',
             'subtask': f'subtask_{i}',
             'payee': f'node_{i}',
-            'status': 'waiting',
+            'status': statuses[i % 3],
         } for i in range(1, 6)]
 
-        statuses = ['awaiting', 'sent', 'confirmed']
         deposit_payments_list = [{
             'tx': f'deadbeaf{i}',
             'status': statuses[i % 3],
@@ -404,45 +404,154 @@ class TestPayments(unittest.TestCase):
 
     def test_incomes(self):
         with client_ctx(incomes, self.client):
-            result = incomes(None)
+            result = incomes(None, None)
 
-            assert isinstance(result, CommandResult)
-            assert result.type == CommandResult.TABULAR
-            assert len(result.data[1]) == self.n_incomes
-            assert result.data[1][0] == [
-                'node_1', 'waiting', '1.00000000 GNT'
-            ]
+            self._assert_type_and_length(result, self.n_incomes)
+            self.assertEqual(
+                result.data[1][0],
+                ['node_1', 'sent', '1.00000000 GNT']
+            )
+
+    def test_incomes_awaiting(self):
+        with client_ctx(incomes, self.client):
+            result = incomes(None, "awaiting")
+
+            self._assert_type_and_length(result, 1)
+            self.assertEqual(
+                result.data[1][0],
+                ['node_3', 'awaiting', '3.00000000 GNT']
+            )
+
+    def test_incomes_confirmed(self):
+        with client_ctx(incomes, self.client):
+            result = incomes(None, "confirmed")
+
+            self._assert_type_and_length(result, 2)
+            self.assertEqual(
+                result.data[1][0],
+                ['node_2', 'confirmed', '2.00000000 GNT']
+            )
+            self.assertEqual(
+                result.data[1][1],
+                ['node_5', 'confirmed', '5.00000000 GNT']
+            )
 
     def test_payments(self):
         with client_ctx(payments, self.client):
-            result = payments(None)
+            result = payments(None, None)
 
-            assert isinstance(result, CommandResult)
-            assert result.type == CommandResult.TABULAR
-            assert len(result.data[1]) == self.n_payments
+            self._assert_type_and_length(result, self.n_payments)
+            self.assertEqual(
+                result.data[1][1],
+                [
+                    'subtask_2',
+                    'node_2',
+                    'confirmed',
+                    '0.20000000 GNT',
+                    '2.00000000 ETH',
+                ]
+            )
 
-            assert result.data[1][0] == [
-                'subtask_1',
-                'node_1',
-                'waiting',
-                '0.10000000 GNT',
-                '1.00000000 ETH',
-            ]
+    def test_payments_awaiting(self):
+        with client_ctx(payments, self.client):
+            result = payments(None, 'awaiting')
+
+            self._assert_type_and_length(result, 1)
+            self.assertEqual(
+                result.data[1][0],
+                [
+                    'subtask_3',
+                    'node_3',
+                    'awaiting',
+                    '0.30000000 GNT',
+                    '3.00000000 ETH',
+                ]
+            )
+
+    def test_payments_confirmed(self):
+        with client_ctx(payments, self.client):
+            result = payments(None, 'confirmed')
+
+            self._assert_type_and_length(result, 2)
+            self.assertEqual(
+                result.data[1][0],
+                [
+                    'subtask_2',
+                    'node_2',
+                    'confirmed',
+                    '0.20000000 GNT',
+                    '2.00000000 ETH',
+                ]
+            )
+            self.assertEqual(
+                result.data[1][1],
+                [
+                    'subtask_5',
+                    'node_5',
+                    'confirmed',
+                    '0.50000000 GNT',
+                    '5.00000000 ETH',
+                ]
+            )
 
     def test_deposit_payments(self):
         with client_ctx(payments, self.client):
-            result = deposit_payments(None)
+            result = deposit_payments(None, None)
 
-            assert isinstance(result, CommandResult)
-            assert result.type == CommandResult.TABULAR
-            assert len(result.data[1]) == self.n_deposit_payments
+            self._assert_type_and_length(result, self.n_deposit_payments)
+            self.assertEqual(
+                result.data[1][3],
+                [
+                    'deadbeaf4',
+                    'sent',
+                    '4.40000000 GNT',
+                    '4.00000000 ETH',
+                ]
+            )
 
-            assert result.data[1][1] == [
-                'deadbeaf2',
-                'confirmed',
-                '2.20000000 GNT',
-                '2.00000000 ETH',
-            ]
+    def test_deposit_payments_awaiting(self):
+        with client_ctx(payments, self.client):
+            result = deposit_payments(None, 'awaiting')
+
+            self._assert_type_and_length(result, 1)
+            self.assertEqual(
+                result.data[1][0],
+                [
+                    'deadbeaf3',
+                    'awaiting',
+                    '3.30000000 GNT',
+                    '3.00000000 ETH',
+                ]
+            )
+
+    def test_deposit_payments_confirmed(self):
+        with client_ctx(payments, self.client):
+            result = deposit_payments(None, 'confirmed')
+
+            self._assert_type_and_length(result, 2)
+            self.assertEqual(
+                result.data[1][0],
+                [
+                    'deadbeaf2',
+                    'confirmed',
+                    '2.20000000 GNT',
+                    '2.00000000 ETH',
+                ]
+            )
+            self.assertEqual(
+                result.data[1][1],
+                [
+                    'deadbeaf5',
+                    'confirmed',
+                    '5.50000000 GNT',
+                    '5.00000000 ETH',
+                ]
+            )
+
+    def _assert_type_and_length(self, result, length):
+        self.assertIsInstance(result, CommandResult)
+        self.assertEqual(result.type, CommandResult.TABULAR)
+        self.assertEqual(len(result.data[1]), length)
 
 
 class TestResources(unittest.TestCase):
@@ -511,13 +620,21 @@ class TestTasks(TempDirFixture):
     def setUpClass(cls):
         super(TestTasks, cls).setUpClass()
 
+        task_statuses = [
+            TaskStatus.notStarted,
+            TaskStatus.sending,
+            TaskStatus.waiting,
+            TaskStatus.starting,
+            TaskStatus.computing,
+            TaskStatus.finished,
+        ]
         cls.tasks = [{
             'id': '745c1d0{}'.format(i),
             'time_remaining': i,
             'subtasks_count': i + 2,
-            'status': 'waiting',
+            'status': task_statuses[(i-1) % len(task_statuses)].value,
             'progress': i / 100.0
-        } for i in range(1, 6)]
+        } for i in range(1, 7)]
 
         cls.subtasks = [{
             'node_name': 'node_{}'.format(i),
@@ -661,24 +778,27 @@ class TestTasks(TempDirFixture):
         with client_ctx(Tasks, client):
             tasks = Tasks()
 
-            one_task = tasks.show('745c1d01', None)
-            all_tasks = tasks.show(None, None)
+            one_task = tasks.show('745c1d01', None, False)
+            all_tasks = tasks.show(None, None, False)
 
-            assert one_task and all_tasks
-            assert isinstance(one_task, dict)
-            assert isinstance(all_tasks, CommandResult)
+            self.assertIsInstance(one_task, dict)
+            self.assertIsInstance(all_tasks, CommandResult)
 
-            assert one_task == {
-                'time_remaining': '0:00:01',
-                'status': 'waiting',
-                'subtasks_count': 3,
-                'id': '745c1d01',
-                'progress': '1.00 %'
-            }
+            self.assertEqual(
+                one_task,
+                {
+                    'time_remaining': '0:00:01',
+                    'status': 'Not started',
+                    'subtasks_count': 3,
+                    'id': '745c1d01',
+                    'progress': '1.00 %'
+                }
+            )
 
-            assert all_tasks.data[1][0] == [
-                '745c1d01', '0:00:01', '3', 'waiting', '1.00 %'
-            ]
+            self.assertEqual(
+                all_tasks.data[1][0],
+                ['745c1d01', '0:00:01', '3', 'Not started', '1.00 %']
+            )
 
             self.client.get_tasks = lambda _: {
                 'time_remaining': None,
@@ -687,7 +807,7 @@ class TestTasks(TempDirFixture):
                 'id': 'XXX',
                 'progress': 0
             }
-            task = tasks.show('XXX', None)
+            task = tasks.show('XXX', None, False)
             self.assertDictEqual(task, {
                 'time_remaining': '???',
                 'status': 'XXX',
@@ -695,6 +815,44 @@ class TestTasks(TempDirFixture):
                 'id': 'XXX',
                 'progress': '0.00 %'
             })
+
+    def test_show_result_is_none(self):
+        client = Mock()
+        client.get_tasks.return_value = None
+
+        with client_ctx(Tasks, client):
+            tasks = Tasks()
+
+            one_task = tasks.show("non existing task_id", None, current=True)
+
+            self.assertIsNone(one_task)
+
+    def test_show_current(self):
+        client = self.client
+
+        with client_ctx(Tasks, client):
+            tasks = Tasks()
+
+            current_tasks = tasks.show(None, None, True)
+
+            self.assertIsInstance(current_tasks, CommandResult)
+            self.assertEqual(len(current_tasks.data[1]), 4)
+            self.assertEqual(
+                current_tasks.data[1][0],
+                ['745c1d02', '0:00:02', '4', 'Sending', '2.00 %']
+            )
+            self.assertEqual(
+                current_tasks.data[1][1],
+                ['745c1d03', '0:00:03', '5', 'Waiting', '3.00 %']
+            )
+            self.assertEqual(
+                current_tasks.data[1][2],
+                ['745c1d04', '0:00:04', '6', 'Starting', '4.00 %']
+            )
+            self.assertEqual(
+                current_tasks.data[1][3],
+                ['745c1d05', '0:00:05', '7', 'Computing', '5.00 %']
+            )
 
     def test_subtasks_ok(self):
         client = self.client

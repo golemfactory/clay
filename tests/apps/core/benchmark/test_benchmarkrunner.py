@@ -22,7 +22,7 @@ class DummyTask(Task):
     def finished_computation(self):
         pass
 
-    def computation_finished(self, subtask_id, task_result, result_type,
+    def computation_finished(self, subtask_id, task_result,
                              verification_finished):
         pass
 

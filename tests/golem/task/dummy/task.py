@@ -10,8 +10,7 @@ from golem_messages.message import ComputeTaskDef
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.network.p2p.node import Node
-from golem.task.taskbase import Task, TaskHeader, ResultType,\
-     AcceptClientVerdict
+from golem.task.taskbase import Task, TaskHeader, AcceptClientVerdict
 
 
 class DummyTaskParameters(object):
@@ -84,7 +83,7 @@ class DummyTask(Task):
         with open(script_path, 'r') as f:
             src_code = f.read()
             src_code += '\noutput = run_dummy_task(' \
-                        'data_file, subtask_data, difficulty, result_size)'
+                'data_file, subtask_data, difficulty, result_size, tmp_path)'
 
         from apps.dummy.task.dummytaskstate import DummyTaskDefinition
         from apps.dummy.task.dummytaskstate import DummyTaskDefaults
@@ -214,14 +213,15 @@ class DummyTask(Task):
                                      self.task_params.difficulty)
 
     def computation_finished(self, subtask_id, task_result,
-                             result_type=ResultType.DATA,
                              verification_finished=None):
         with self._lock:
             if subtask_id in self.assigned_subtasks:
                 node_id = self.assigned_subtasks.pop(subtask_id, None)
                 self.assigned_nodes.pop(node_id, None)
 
-        self.subtask_results[subtask_id] = task_result
+        with open(task_result[0], 'r') as f:
+            self.subtask_results[subtask_id] = f.read()
+
         if not self.verify_subtask(subtask_id):
             self.subtask_results[subtask_id] = None
 

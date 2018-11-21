@@ -55,32 +55,21 @@ class WrongOwnerException(Exception):
 class CompTaskInfo:
     def __init__(self, header: TaskHeader, price: int):
         self.header = header
-        self._price, self.subtask_price = 0, 0  # lints and typing
-        self.price = price
+        # subtask_price is total amount that will be payed
+        # for subtask of this task
+        self.subtask_price = compute_subtask_value(
+            price,
+            self.header.subtask_timeout,
+        )
         self.requests = 1
-        self.subtasks = {}
+        self.subtasks: dict = {}
         # TODO Add concent communication timeout. Issue #2406
         self.keeping_deadline = comp_task_info_keeping_timeout(
             self.header.subtask_timeout, self.header.resource_size)
 
-    @property
-    def price(self) -> int:
-        return self._price
-
-    @price.setter
-    def price(self, value: int):
-        self._price = value
-        # subtask_price is total amount that will be payed
-        # for subtask of this task
-        self.subtask_price = compute_subtask_value(
-            value,
-            self.header.subtask_timeout,
-        )
-
     def __repr__(self):
-        return "<CompTaskInfo(%r, %r) reqs: %r>" % (
+        return "<CompTaskInfo(%r) reqs: %r>" % (
             self.header,
-            self.price,
             self.requests
         )
 

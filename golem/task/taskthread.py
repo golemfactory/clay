@@ -116,7 +116,6 @@ class TaskThread(threading.Thread):
 
     def __do_work(self):
         extra_data = copy.copy(self.extra_data)
-
         abs_res_path = os.path.abspath(os.path.normpath(self.res_path))
         abs_tmp_path = os.path.abspath(os.path.normpath(self.tmp_path))
 
