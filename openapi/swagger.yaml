@@ -16,21 +16,10 @@ schemes:
 paths:
   '/subscriber/{nodeId}':
     parameters:
-      - name: nodeId
-        in: path
-        required: true
-        #schema:
-        type: string
-        #  example: '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b'
-        #style: simple
+      - $ref: '#/parameters/nodeId'
     post:
       summary: Creates or amends new subscribtion to gloem network
-      description: ''
       operationId: subscribe
-      consumes:
-        - application/json
-      produces:
-        - application/json
       parameters:
         - in: body
           name: body
@@ -39,33 +28,33 @@ paths:
           schema:
             $ref: '#/definitions/SubscribeRequest'
       responses:
+        '200':
+          description: subscribtion amended (task_type array changed)
+        '201':
+          description: subscribtion created
         '405':
-          description: Invalid input
+          description: invalid input
     get:
-      summary: Gets subscriber status
-      produces:
-        - application/json
+      summary: Gets subscribtion status
       responses:
         '200':
           description: successful operation
           schema:
             $ref: '#/definitions/SubscriberStatus'
+        '405':
+          description: invalid input
     delete:
-      summary: Delets subscripiotn from Golem Network
+      summary: Deletes subscription
       description: ''
       responses:
         '200':
-          description: OK
+          description: subscription deleted
+        '405':
+          description: invalid input
   '/subscriber/{nodeId}/task/{taskId}':
     parameters:
-      - name: nodeId
-        in: path
-        required: true
-        type: string
-      - name: taskId
-        in: path
-        required: true
-        type: string
+      - $ref: '#/parameters/nodeId'
+      - $ref: '#/parameters/taskId'
     post:
       summary: Sends want to compute task
       responses:
@@ -75,7 +64,7 @@ paths:
       summary: Cancels task
       responses:
         '200':
-          description: OK
+          description: task deleted
     put:
       summary: Updates task
       responses:
@@ -83,71 +72,57 @@ paths:
           description: OK
   '/subscriber/{nodeId}/task/{taskId}/result':
     parameters:
-      - name: nodeId
-        in: path
-        required: true
-        type: string
-      - name: taskId
-        in: path
-        required: true
-        type: string
+      - $ref: '#/parameters/nodeId'
+      - $ref: '#/parameters/taskId'
     post:
       summary: Report task completed
       responses:
-        200:
+        '200':
           description: OK
-    
   '/subscriber/{nodeId}/uploadBlob':
+    parameters:
+      - $ref: '#/parameters/nodeId'
     post:
       summary: Uploads an file
       description: ''
       operationId: uploadFile
-      consumes:
-        - multipart/form-data
-      produces:
-        - application/json
-      parameters:
-        - name: nodeId
-          in: path
-          required: true
-          type: string
-        - name: additionalMetadata
-          in: formData
-          description: Additional data to pass to server
-          type: string
-        - name: file
-          in: formData
-          description: file to upload
-          type: file
       responses:
         '200':
           description: successful operation
           schema:
-            $ref: '#/definitions/ApiResponse'
-  '/events/{nodeId}':
-    parameters: 
-      - name: nodeId
+            $ref: '#/definitions/UploadResponse'
+  '/events/{nodeId}/{timestamp}':
+    parameters:
+      - $ref: '#/parameters/nodeId'
+      - name: timestamp
         in: path
-        type: string
         required: true
-    post:
-      summary: gets current
-      consumes:
-        - application/json
-      produces:
-        - application/json
-      parameters:
-        - in: body
-          name: body
-          description: Subscription spec
-          required: true
-          schema:
-            $ref: '#/definitions/EventsRequest'        
+        type: integer
+        format: int64
+    get:
+      summary: List events for given node id from given timestamp
       responses:
         '200':
           description: successful operation
           schema:
             $ref: '#/definitions/Events'
+parameters:
+  nodeId:
+    name: nodeId
+    in: path
+    required: true
+    description: ethereum address identifying node
+    type: string
+    minLength: 42
+    maxLength: 42
+    pattern: '0x[0-9a-f]{40}'
+    # example: '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b'
+  taskId:
+    name: taskId
+    in: path
+    required: true
+    type: string
+    # example: "682e9b26-ed89-11e8-a9e0-6e845eabffe0"
 definitions:
   SubscribeRequest:
     type: object
@@ -160,9 +135,20 @@ definitions:
   SubscriberStatus:
     type: object
     properties:
-      taskType:
-        type: string
-  ApiResponse:
+      active:
+        type: boolean
+      tasks_stats:
+        type: object
+        properties:
+          requested:
+            type: integer
+          succeded:
+            type: integer
+          failed:
+            type: integer
+          timedout:
+            type: integer
+  UploadResponse:
     type: object
     properties:
       code:
@@ -172,34 +158,13 @@ definitions:
         type: string
       message:
         type: string
-  EventsRequest:
-    type: object
-    required:
-      - timestamp
-    properties:
-      timestamp:
-        type: string
-        format: date-time
   Events:
     type: object
-    required: 
-      - type
-      - id
-      - value
-      - timestamp
     properties:
-      type:
-        type: string
-        example: "Task"
-      id:
-        type: string
-        example: "2345db123ca1af234f123a190e08d"
-      value:
-        type: string
-        example: "TODO: this probably should be some nested object"
       timestamp:
         type: string
         format: date-time
-externalDocs:
-  description: Find out more about Swagger
-  url: 'http://swagger.io'
+      events:
+        type: array
+        items:
+          type: integer #todo: Task, Resource, VerificationResult
