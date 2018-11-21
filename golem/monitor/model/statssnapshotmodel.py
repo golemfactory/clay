@@ -1,3 +1,4 @@
+from golem.task.taskproviderstats import ProviderStats
 from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats, \
     AggregateTaskStats
 from .modelbase import BasicModel
@@ -79,6 +80,21 @@ class RequestorAggregateStatsModel(BasicModel):
 
         super().__init__(
             "RequestorAggregateStats",
+            meta_data.cliid,
+            meta_data.sessid
+        )
+
+        for key, value in vars(stats).items():
+            setattr(self, key, value)
+
+
+class ProviderStatsModel(BasicModel):
+
+    def __init__(self, meta_data: BasicModel,
+                 stats: ProviderStats) -> None:
+
+        super().__init__(
+            "ProviderStats",
             meta_data.cliid,
             meta_data.sessid
         )

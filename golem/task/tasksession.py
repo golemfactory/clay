@@ -13,6 +13,7 @@ from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
 from golem_messages import message
 from golem_messages import exceptions as msg_exceptions
+from pydispatch import dispatcher
 
 import golem
 from golem.core import common
@@ -674,6 +675,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.task_computer.session_closed()
             self.dropped()
             return
+
+        dispatcher.send(
+            signal='golem.message',
+            event='received',
+            message=msg
+        )
 
         def _cannot_compute(reason):
             logger.debug("Cannot %r", reason)

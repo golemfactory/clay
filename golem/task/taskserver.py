@@ -48,7 +48,7 @@ from .result.resultmanager import ExtractedPackage
 from .server import resources
 from .server import concent
 from .taskcomputer import TaskComputer
-from .taskkeeper import TaskHeaderKeeper, compute_subtask_value
+from .taskkeeper import TaskHeaderKeeper
 from .taskmanager import TaskManager
 from .tasksession import TaskSession
 
@@ -285,6 +285,12 @@ class TaskServer(
             return False
         self.requested_tasks.remove(ctd['task_id'])
         update_requestor_assigned_sum(node_id, price)
+        dispatcher.send(
+            signal='golem.subtask',
+            event='started',
+            subtask_id=ctd['subtask_id'],
+            price=price,
+        )
         return True
 
     def send_results(self, subtask_id, task_id, result):

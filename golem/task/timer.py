@@ -111,3 +111,4 @@ class ActionTimers:
 
 ProviderTimer = ThirstTimer()  # noqa
 ProviderComputeTimers = ActionTimers()  # noqa
+ProviderTTCDelayTimers = ActionTimers()  # noqa

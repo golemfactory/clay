@@ -102,7 +102,8 @@ class IncomesKeeper:
             dispatcher.send(
                 signal='golem.income',
                 event='created',
-                subtask_id=subtask_id
+                subtask_id=subtask_id,
+                amount=value
             )
         elif not income.accepted_ts:
             income.accepted_ts = accepted_ts
