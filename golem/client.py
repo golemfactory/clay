@@ -478,11 +478,11 @@ class Client(HardwarePresetsMixin):
         tm = self.task_server.task_manager
         for task_id, task_state in tm.tasks_states.items():
             if not task_state.status.is_completed():
-                unfinished_subtasks = 0
-                for subtask_state in task_state.subtask_states.values():
-                    if not subtask_state.status.is_finished():
-                        unfinished_subtasks += 1
                 task = tm.tasks[task_id]
+                unfinished_subtasks = task.get_total_tasks()
+                for subtask_state in task_state.subtask_states.values():
+                    if subtask_state.subtask_status.is_finished():
+                        unfinished_subtasks -= 1
                 try:
                     self.funds_locker.lock_funds(
                         task_id,

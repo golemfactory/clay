@@ -333,10 +333,14 @@ class TestClient(TestClientBase):
                 status=Mock(is_completed=Mock(return_value=False)),
                 subtask_states={
                     "sub1": Mock(
-                        status=Mock(is_finished=Mock(return_value=True)),
+                        subtask_status=Mock(
+                            is_finished=Mock(return_value=True),
+                        ),
                     ),
                     "sub2": Mock(
-                        status=Mock(is_finished=Mock(return_value=False)),
+                        subtask_status=Mock(
+                            is_finished=Mock(return_value=False),
+                        ),
                     ),
                 },
             ),
@@ -347,15 +351,17 @@ class TestClient(TestClientBase):
             "t2": Mock(
                 subtask_price=subtask_price,
                 header=Mock(deadline=deadline),
+                get_total_tasks=Mock(return_value=3)
             ),
         }
         self.client._restore_locks()
         self.client.funds_locker.lock_funds.assert_called_once_with(
             "t2",
             subtask_price,
-            1,
+            2,
             deadline,
         )
+
 
 class TestClientRestartSubtasks(TestClientBase):
 
