@@ -10,8 +10,9 @@ from golem.diag.service import DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.monitor.model.modelbase import BasicModel
 from golem.monitor.model.statssnapshotmodel import VMSnapshotModel, \
-    P2PSnapshotModel, RequestorAggregateStatsModel
+    P2PSnapshotModel, RequestorAggregateStatsModel, ProviderStatsModel
 from golem.monitor.test_helper import MonitorTestBaseClass
+from golem.task.taskproviderstats import ProviderStats
 from golem.task.taskrequestorstats import AggregateTaskStats
 
 
@@ -92,6 +93,24 @@ class TestRequestorAggregateStatsModel(TestCase):
         assert model.cliid == cliid
         assert model.sessid == sessid
         assert model.type == "RequestorAggregateStats"
+        assert isinstance(model.dict_repr(), dict)
+
+        for key in vars(stats):
+            assert hasattr(model, key)
+        json.dumps(model.dict_repr())
+
+
+class TestProviderStatsModel(TestCase):
+    def test_init(self):
+        cliid = str(uuid4())
+        sessid = str(uuid4())
+        stats = ProviderStats()
+        meta_data = BasicModel("NotProviderStats", cliid, sessid)
+        model = ProviderStatsModel(meta_data, stats)
+
+        assert model.cliid == cliid
+        assert model.sessid == sessid
+        assert model.type == "ProviderStats"
         assert isinstance(model.dict_repr(), dict)
 
         for key in vars(stats):

@@ -55,10 +55,12 @@ class ProviderStatsManager:
         self.keeper.increase_stat('provider_wtct_cnt')
 
     def _on_ttc_message(self, message: TaskToCompute) -> None:
-        ProviderTTCDelayTimers.finish(message.task_id)
+        task_id = message.compute_task_def['task_id']
+
+        ProviderTTCDelayTimers.finish(task_id)
         self.keeper.increase_stat('provider_ttc_cnt')
 
-        dt = ProviderTTCDelayTimers.time(message.task_id)
+        dt = ProviderTTCDelayTimers.time(task_id)
         if dt is None:
             return
 
