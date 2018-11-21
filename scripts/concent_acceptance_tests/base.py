@@ -63,7 +63,7 @@ class ConcentBaseTest:
 
     def setUp(self):
         from golem.config.environments import set_environment
-        concent_variant = os.environ.get('CONCENT_VARIANT', 'staging')
+        concent_variant = os.environ.get('CONCENT_VARIANT', 'dev')
         set_environment('testnet', concent_variant)
         self.variant = variables.CONCENT_CHOICES[concent_variant]
         self.provider_keys = self._fake_keys()
