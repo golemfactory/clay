@@ -1,8 +1,8 @@
 swagger: '2.0'
 info:
-  description: Golem Brass Gatewway API
+  description: Golem Brass Gateway API for Golem Unlimited
   version: 1.0.0
-  title: Golem Brass GW
+  title: Golem Gateway API
   contact:
     email: contact@golem.network
   license:
@@ -18,7 +18,7 @@ paths:
     parameters:
       - $ref: '#/parameters/nodeId'
     put:
-      summary: Creates or amends subscribtion to gloem network
+      summary: Creates or amends subscription to Golem network
       operationId: subscribe
       parameters:
         - name: body
@@ -29,13 +29,13 @@ paths:
             $ref: '#/definitions/SubscribeRequest'
       responses:
         '200':
-          description: subscribtion amended (supported taskTypes changed)
+          description: subscription amended (supported taskTypes changed)
         '201':
-          description: subscribtion created
+          description: subscription created
         '405':
           description: invalid input
     get:
-      summary: Gets subscribtion status
+      summary: Gets subscription status
       operationId: subscription
       responses:
         '200':
@@ -170,7 +170,7 @@ paths:
             $ref: '#/definitions/Resource'
         '405':
           description: invalid request
-  '/{nodeId}/events/':
+  '/{nodeId}/events':
     parameters:
       - $ref: '#/parameters/nodeId'
       - name: lastEventId
@@ -303,19 +303,16 @@ definitions:
           - failed
           - timedout
   Events:
-    type: object
-    properties:
-      eventId:
-        type: integer
-        format: int64
-      events:
-        type: array
-        items:
-          type: object #every item has exactly one field filled
-          properties:
-            taskId:
-              $ref: '#/definitions/Task'
-            resourceId:
-              $ref: '#/definitions/Resource'
-            teskVerification:
-              $ref: '#/definitions/TaskVerification'
+    type: array
+    items:
+      type: object #every item has exactly one field filled
+      properties:
+        eventId:
+          type: integer
+          format: int64
+        task:
+          $ref: '#/definitions/Task'
+        resource:
+          $ref: '#/definitions/Resource'
+        taskVerification:
+          $ref: '#/definitions/TaskVerification'
