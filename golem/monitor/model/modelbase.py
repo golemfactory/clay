@@ -1,3 +1,4 @@
+# pylint: disable=too-few-public-methods
 import abc
 import time
 
@@ -10,6 +11,7 @@ class ModelBase(object, metaclass=abc.ABCMeta):
 
 
 class BasicModel(ModelBase):
+    TYPE: str
 
     def __init__(self, type_str_repr, cliid, sessid):
         # TODO: use class.TYPE. issue #2413
