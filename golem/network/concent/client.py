@@ -31,17 +31,6 @@ def verify_response(response: requests.Response) -> None:
         raise exceptions.ConcentUnavailableError('response is None')
 
     logger.debug('Headers received from Concent: %s', response.headers)
-    concent_version = response.headers['Concent-Golem-Messages-Version']
-    if not utils.is_version_compatible(
-            theirs=concent_version,
-            spec=gconst.GOLEM_MESSAGES_SPEC,):
-        raise exceptions.ConcentVersionMismatchError(
-            'Incompatible version',
-            ours=gconst.GOLEM_MESSAGES_VERSION,
-            theirs=concent_version,
-        )
-    if response.status_code == 200:
-        return
 
     if response.status_code % 500 < 100:
         raise exceptions.ConcentServiceError(
@@ -51,7 +40,7 @@ def verify_response(response: requests.Response) -> None:
             )
         )
 
-    if response.status_code % 400 < 100:
+    if not 200 <= response.status_code <= 299:
         logger.warning('Concent request failed with status %d and '
                        'response: %r', response.status_code, response.text)
 
@@ -60,6 +49,23 @@ def verify_response(response: requests.Response) -> None:
                 response.status_code,
                 response.text
             )
+        )
+
+    try:
+        concent_version = response.headers['Concent-Golem-Messages-Version']
+    except KeyError:
+        raise exceptions.ConcentVersionMismatchError(
+            'Unknown version',
+            ours=gconst.GOLEM_MESSAGES_VERSION,
+            theirs=None,
+        )
+    if not utils.is_version_compatible(
+            theirs=concent_version,
+            spec=gconst.GOLEM_MESSAGES_SPEC,):
+        raise exceptions.ConcentVersionMismatchError(
+            'Incompatible version',
+            ours=gconst.GOLEM_MESSAGES_VERSION,
+            theirs=concent_version,
         )
 
 
