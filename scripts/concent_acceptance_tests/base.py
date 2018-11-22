@@ -356,8 +356,8 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
 
         if sci.get_deposit_value(sci.get_eth_address()) < amount:
             raise RuntimeError("Deposit failed")
-        # sys.stderr.write('Long sleep. hrrrr\n')
-        # time.sleep(120)
+        sys.stderr.write('Long sleep. hrrrr\n')
+        time.sleep(120)
         dump_balance(sci)
 
     def requestor_put_deposit(self, price: int):

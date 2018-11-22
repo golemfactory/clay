@@ -90,10 +90,6 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
             rct_kwargs = {}
         price = random.randint(1 << 20, 10 << 20)
         self.requestor_put_deposit(price)
-        import time
-        print('sleep 120')
-        time.sleep(120)
-        print('woken')
         rct_kwargs['task_to_compute__price'] = price
         report_computed_task = self.prepare_report_computed_task(
             mode=mode,
