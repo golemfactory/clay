@@ -40,7 +40,7 @@ def verify_response(response: requests.Response) -> None:
             )
         )
 
-    if response.status_code != 200:
+    if not (200 <= response.status_code <= 299):
         logger.warning('Concent request failed with status %d and '
                        'response: %r', response.status_code, response.text)
 
