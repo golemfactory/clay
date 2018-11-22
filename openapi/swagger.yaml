@@ -14,7 +14,7 @@ schemes:
   - https
   - http
 paths:
-  '/subscriber/{nodeId}':
+  '/subscribe/{nodeId}':
     parameters:
       - $ref: '#/parameters/nodeId'
     put:
@@ -112,11 +112,11 @@ paths:
       summary: Report subtask completed
       operationId: subtaskResult
       parameters:
-      - name: body
-        in: body
-        required: true
-        schema:
-          $ref: '#/definitions/Resource'
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/Resource'
       responses:
         '200':
           description: OK
@@ -130,7 +130,6 @@ paths:
           description: OK
         '404':
           description: not found
-
   '/{nodeId}/resource/{resourceId}':
     parameters:
       - $ref: '#/parameters/nodeId'
@@ -152,18 +151,18 @@ paths:
       summary: Uploads an resource
       operationId: uploadResource
       consumes:
-        - "multipart/form-data"
+        - multipart/form-data
       parameters:
-      - name: "additionalMetadata"
-        in: "formData"
-        description: "Additional data to pass to server"
-        required: false
-        type: "string"
-      - name: "file"
-        in: "formData"
-        description: "file to upload"
-        required: true
-        type: "file"
+        - name: additionalMetadata
+          in: formData
+          description: Additional data to pass to server
+          required: false
+          type: string
+        - name: file
+          in: formData
+          description: file to upload
+          required: true
+          type: file
       responses:
         '200':
           description: successful operation
@@ -171,12 +170,12 @@ paths:
             $ref: '#/definitions/Resource'
         '405':
           description: invalid request
-  '/events/{nodeId}':
+  '/{nodeId}/events/':
     parameters:
       - $ref: '#/parameters/nodeId'
       - name: lastEventId
         in: query
-        description: 'provide event id from previous call'
+        description: provide event id from previous call
         type: integer
         format: int64
     get:
@@ -187,7 +186,6 @@ paths:
           description: successful operation
           schema:
             $ref: '#/definitions/Events'
-
 parameters:
   nodeId:
     name: nodeId
@@ -300,7 +298,10 @@ definitions:
         $ref: '#/parameters/taskId'
       verificationResult:
         type: string
-        enum: ['OK', 'failed', 'timedout']
+        enum:
+          - OK
+          - failed
+          - timedout
   Events:
     type: object
     properties:
