@@ -9,7 +9,7 @@ from .modelbase import BasicModel
 
 class LoginLogoutBaseModel(BasicModel):
     def __init__(self, metadata):
-        super(LoginLogoutBaseModel, self).__init__(
+        super().__init__(
             self.TYPE,
             metadata.cliid,
             metadata.sessid,
