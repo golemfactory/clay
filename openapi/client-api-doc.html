@@ -181,7 +181,7 @@ font-style: italic;
   <body>
   <h1>Golem Gateway API</h1>
     <div class="app-desc">Golem Brass Gateway API for Golem Unlimited</div>
-    <div class="app-desc">More information: <a href="http://golem.network">http://golem.network</a></div>
+    <div class="app-desc">More information: <a href="https://golem.network">https://golem.network</a></div>
     <div class="app-desc">Contact Info: <a href="contact@golem.network">contact@golem.network</a></div>
     <div class="app-desc">Version: 1.0.0</div>
     <div class="app-desc">BasePath:/gw/v1</div>
@@ -199,7 +199,7 @@ font-style: italic;
   <li><a href="#cancelSubtask"><code><span class="http-method">delete</span> /{nodeId}/subtask/{subtaskId}</code></a></li>
   <li><a href="#cancelTask"><code><span class="http-method">delete</span> /{nodeId}/task/{taskId}</code></a></li>
   <li><a href="#downloadResource"><code><span class="http-method">get</span> /{nodeId}/resource/{resourceId}</code></a></li>
-  <li><a href="#fetchEvents"><code><span class="http-method">get</span> /{nodeId}/events/</code></a></li>
+  <li><a href="#fetchEvents"><code><span class="http-method">get</span> /{nodeId}/events</code></a></li>
   <li><a href="#startResourcesPull"><code><span class="http-method">put</span> /{nodeId}/subtask/{subtaskId}</code></a></li>
   <li><a href="#subscribe"><code><span class="http-method">put</span> /subscribe/{nodeId}</code></a></li>
   <li><a href="#subscription"><code><span class="http-method">get</span> /subscribe/{nodeId}</code></a></li>
@@ -223,9 +223,9 @@ font-style: italic;
     <div class="field-items">
       <div class="param">nodeId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node </div><div class="param">subtaskId (required)</div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node e.g.,  '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b' </div><div class="param">subtaskId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash;  </div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; uuid e.g., '682e9b26-ed89-11e8-a9e0-6e845eabffe0' </div>
     </div>  <!-- field-items -->
 
 
@@ -258,9 +258,9 @@ font-style: italic;
     <div class="field-items">
       <div class="param">nodeId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node </div><div class="param">taskId (required)</div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node e.g.,  '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b' </div><div class="param">taskId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash;  </div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; uuid e.g., '682e9b26-ed89-11e8-a9e0-6e845eabffe0' </div>
     </div>  <!-- field-items -->
 
 
@@ -293,9 +293,9 @@ font-style: italic;
     <div class="field-items">
       <div class="param">nodeId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node </div><div class="param">resourceId (required)</div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node e.g.,  '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b' </div><div class="param">resourceId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash;  </div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; uuid e.g., '682e9b26-ed89-11e8-a9e0-6e845eabffe0' </div>
     </div>  <!-- field-items -->
 
 
@@ -331,7 +331,7 @@ font-style: italic;
   <div class="method"><a name="fetchEvents"/>
     <div class="method-path">
     <a class="up" href="#__Methods">Up</a>
-    <pre class="get"><code class="huge"><span class="http-method">get</span> /{nodeId}/events/</code></pre></div>
+    <pre class="get"><code class="huge"><span class="http-method">get</span> /{nodeId}/events</code></pre></div>
     <div class="method-summary">List events for given node id; starting after last event id (<span class="nickname">fetchEvents</span>)</div>
     <div class="method-notes"></div>
 
@@ -339,7 +339,7 @@ font-style: italic;
     <div class="field-items">
       <div class="param">nodeId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node </div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node e.g.,  '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b' </div>
     </div>  <!-- field-items -->
 
 
@@ -363,46 +363,7 @@ font-style: italic;
 
     <h3 class="field-label">Example data</h3>
     <div class="example-data-content-type">Content-Type: application/json</div>
-    <pre class="example"><code>{
-  "eventId" : 0,
-  "events" : [ {
-    "resourceId" : {
-      "resourceId" : "",
-      "metadata" : "metadata"
-    },
-    "teskVerification" : {
-      "verificationResult" : "OK",
-      "taskId" : ""
-    },
-    "taskId" : {
-      "numCores" : 1,
-      "maxResourceSize" : 0,
-      "extraData" : { },
-      "maxMemorySize" : 6,
-      "price" : { },
-      "perfIndex" : 314.0,
-      "taskId" : ""
-    }
-  }, {
-    "resourceId" : {
-      "resourceId" : "",
-      "metadata" : "metadata"
-    },
-    "teskVerification" : {
-      "verificationResult" : "OK",
-      "taskId" : ""
-    },
-    "taskId" : {
-      "numCores" : 1,
-      "maxResourceSize" : 0,
-      "extraData" : { },
-      "maxMemorySize" : 6,
-      "price" : { },
-      "perfIndex" : 314.0,
-      "taskId" : ""
-    }
-  } ]
-}</code></pre>
+    <pre class="example"><code>""</code></pre>
 
 
     <h3 class="field-label">Responses</h3>
@@ -422,9 +383,9 @@ font-style: italic;
     <div class="field-items">
       <div class="param">nodeId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node </div><div class="param">subtaskId (required)</div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node e.g.,  '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b' </div><div class="param">subtaskId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash;  </div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; uuid e.g., '682e9b26-ed89-11e8-a9e0-6e845eabffe0' </div>
     </div>  <!-- field-items -->
 
 
@@ -450,14 +411,14 @@ font-style: italic;
     <div class="method-path">
     <a class="up" href="#__Methods">Up</a>
     <pre class="put"><code class="huge"><span class="http-method">put</span> /subscribe/{nodeId}</code></pre></div>
-    <div class="method-summary">Creates or amends subscribtion to gloem network (<span class="nickname">subscribe</span>)</div>
+    <div class="method-summary">Creates or amends subscription to Golem network (<span class="nickname">subscribe</span>)</div>
     <div class="method-notes"></div>
 
     <h3 class="field-label">Path parameters</h3>
     <div class="field-items">
       <div class="param">nodeId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node </div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node e.g.,  '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b' </div>
     </div>  <!-- field-items -->
 
 
@@ -479,10 +440,10 @@ font-style: italic;
 
     <h3 class="field-label">Responses</h3>
     <h4 class="field-label">200</h4>
-    subscribtion amended (supported taskTypes changed)
+    subscription amended (supported taskTypes changed)
         <a href="#"></a>
     <h4 class="field-label">201</h4>
-    subscribtion created
+    subscription created
         <a href="#"></a>
     <h4 class="field-label">405</h4>
     invalid input
@@ -493,14 +454,14 @@ font-style: italic;
     <div class="method-path">
     <a class="up" href="#__Methods">Up</a>
     <pre class="get"><code class="huge"><span class="http-method">get</span> /subscribe/{nodeId}</code></pre></div>
-    <div class="method-summary">Gets subscribtion status (<span class="nickname">subscription</span>)</div>
+    <div class="method-summary">Gets subscription status (<span class="nickname">subscription</span>)</div>
     <div class="method-notes"></div>
 
     <h3 class="field-label">Path parameters</h3>
     <div class="field-items">
       <div class="param">nodeId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node </div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node e.g.,  '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b' </div>
     </div>  <!-- field-items -->
 
 
@@ -553,9 +514,9 @@ font-style: italic;
     <div class="field-items">
       <div class="param">nodeId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node </div><div class="param">subtaskId (required)</div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node e.g.,  '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b' </div><div class="param">subtaskId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash;  </div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; uuid e.g., '682e9b26-ed89-11e8-a9e0-6e845eabffe0' </div>
     </div>  <!-- field-items -->
 
 
@@ -606,9 +567,9 @@ font-style: italic;
     <div class="field-items">
       <div class="param">nodeId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node </div><div class="param">subtaskId (required)</div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node e.g.,  '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b' </div><div class="param">subtaskId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash;  </div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; uuid e.g., '682e9b26-ed89-11e8-a9e0-6e845eabffe0' </div>
     </div>  <!-- field-items -->
 
 
@@ -648,9 +609,9 @@ font-style: italic;
     <div class="field-items">
       <div class="param">nodeId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node </div><div class="param">taskId (required)</div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node e.g.,  '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b' </div><div class="param">taskId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash;  </div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; uuid e.g., '682e9b26-ed89-11e8-a9e0-6e845eabffe0' </div>
     </div>  <!-- field-items -->
 
 
@@ -681,7 +642,7 @@ font-style: italic;
 
     <h3 class="field-label">Responses</h3>
     <h4 class="field-label">200</h4>
-    ok
+    task definition
         <a href="#Task">Task</a>
     <h4 class="field-label">404</h4>
     not found
@@ -699,7 +660,7 @@ font-style: italic;
     <div class="field-items">
       <div class="param">nodeId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node </div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node e.g.,  '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b' </div>
     </div>  <!-- field-items -->
 
 
@@ -735,7 +696,7 @@ font-style: italic;
     <div class="field-items">
       <div class="param">nodeId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node </div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node e.g.,  '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b' </div>
     </div>  <!-- field-items -->
 
     <h3 class="field-label">Consumes</h3>
@@ -792,9 +753,9 @@ font-style: italic;
     <div class="field-items">
       <div class="param">nodeId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node </div><div class="param">taskId (required)</div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; ethereum address identifying node e.g.,  '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b' </div><div class="param">taskId (required)</div>
 
-      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash;  </div>
+      <div class="param-desc"><span class="param-type">Path Parameter</span> &mdash; uuid e.g., '682e9b26-ed89-11e8-a9e0-6e845eabffe0' </div>
     </div>  <!-- field-items -->
 
 
@@ -827,7 +788,7 @@ font-style: italic;
 
     <h3 class="field-label">Responses</h3>
     <h4 class="field-label">200</h4>
-    subtask to compute
+    subtask definition
         <a href="#Subtask">Subtask</a>
   </div> <!-- method -->
   <hr/>
@@ -838,7 +799,7 @@ font-style: italic;
   <h3>Table of Contents</h3>
   <ol>
     <li><a href="#Events"><code>Events</code> - </a></li>
-    <li><a href="#Events_events"><code>Events_events</code> - </a></li>
+    <li><a href="#Events_inner"><code>Events_inner</code> - </a></li>
     <li><a href="#ExtraData"><code>ExtraData</code> - </a></li>
     <li><a href="#Price"><code>Price</code> - </a></li>
     <li><a href="#Resource"><code>Resource</code> - </a></li>
@@ -846,25 +807,24 @@ font-style: italic;
     <li><a href="#SubscriberStatus"><code>SubscriberStatus</code> - </a></li>
     <li><a href="#SubscriberStatus_tasksStats"><code>SubscriberStatus_tasksStats</code> - </a></li>
     <li><a href="#Subtask"><code>Subtask</code> - </a></li>
+    <li><a href="#SubtaskVerification"><code>SubtaskVerification</code> - </a></li>
     <li><a href="#Task"><code>Task</code> - </a></li>
-    <li><a href="#TaskVerification"><code>TaskVerification</code> - </a></li>
   </ol>
 
   <div class="model">
     <h3><a name="Events"><code>Events</code> - </a> <a class="up" href="#__Models">Up</a></h3>
-    <div class='model-description'></div>
+    <div class='model-description'>Table with trhee types of events. Every item has id and exactly one of remaining fields filled.</div>
     <div class="field-items">
-      <div class="param">eventId (optional)</div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span>  format: int64</div>
-<div class="param">events (optional)</div><div class="param-desc"><span class="param-type"><a href="#Events_events">array[Events_events]</a></span>  </div>
-    </div>  <!-- field-items -->
+          </div>  <!-- field-items -->
   </div>
   <div class="model">
-    <h3><a name="Events_events"><code>Events_events</code> - </a> <a class="up" href="#__Models">Up</a></h3>
+    <h3><a name="Events_inner"><code>Events_inner</code> - </a> <a class="up" href="#__Models">Up</a></h3>
     
     <div class="field-items">
-      <div class="param">taskId (optional)</div><div class="param-desc"><span class="param-type"><a href="#Task">Task</a></span>  </div>
-<div class="param">resourceId (optional)</div><div class="param-desc"><span class="param-type"><a href="#Resource">Resource</a></span>  </div>
-<div class="param">teskVerification (optional)</div><div class="param-desc"><span class="param-type"><a href="#TaskVerification">TaskVerification</a></span>  </div>
+      <div class="param">eventId (optional)</div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span>  format: int64</div>
+<div class="param">task (optional)</div><div class="param-desc"><span class="param-type"><a href="#Task">Task</a></span>  </div>
+<div class="param">resource (optional)</div><div class="param-desc"><span class="param-type"><a href="#Resource">Resource</a></span>  </div>
+<div class="param">subtaskVerification (optional)</div><div class="param-desc"><span class="param-type"><a href="#SubtaskVerification">SubtaskVerification</a></span>  </div>
     </div>  <!-- field-items -->
   </div>
   <div class="model">
@@ -881,7 +841,7 @@ font-style: italic;
   </div>
   <div class="model">
     <h3><a name="Resource"><code>Resource</code> - </a> <a class="up" href="#__Models">Up</a></h3>
-    <div class='model-description'></div>
+    <div class='model-description'>Binary content (files) required to execute subtask</div>
     <div class="field-items">
       <div class="param">resourceId (optional)</div><div class="param-desc"><span class="param-type"><a href="##/parameters/resourceId">#/parameters/resourceId</a></span>  </div>
 <div class="param">metadata (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
@@ -915,7 +875,7 @@ font-style: italic;
   </div>
   <div class="model">
     <h3><a name="Subtask"><code>Subtask</code> - </a> <a class="up" href="#__Models">Up</a></h3>
-    <div class='model-description'></div>
+    <div class='model-description'>Subtask is a part of task supossed to be executed by provider which submited task computation willingness.</div>
     <div class="field-items">
       <div class="param">subtaskId (optional)</div><div class="param-desc"><span class="param-type"><a href="##/parameters/subtaskId">#/parameters/subtaskId</a></span>  </div>
 <div class="param">description (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
@@ -926,8 +886,18 @@ font-style: italic;
     </div>  <!-- field-items -->
   </div>
   <div class="model">
+    <h3><a name="SubtaskVerification"><code>SubtaskVerification</code> - </a> <a class="up" href="#__Models">Up</a></h3>
+    <div class='model-description'>Subtask verification result</div>
+    <div class="field-items">
+      <div class="param">taskId (optional)</div><div class="param-desc"><span class="param-type"><a href="##/parameters/taskId">#/parameters/taskId</a></span>  </div>
+<div class="param">verificationResult (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+        <div class="param-enum-header">Enum:</div>
+        <div class="param-enum">OK</div><div class="param-enum">failed</div><div class="param-enum">timedout</div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
     <h3><a name="Task"><code>Task</code> - </a> <a class="up" href="#__Models">Up</a></h3>
-    <div class='model-description'></div>
+    <div class='model-description'>task is a basic unit of work requested in Golem Network. It is divided into smaller chunks - subtasks. Number of subtaks is defined by requestor.</div>
     <div class="field-items">
       <div class="param">taskId (optional)</div><div class="param-desc"><span class="param-type"><a href="##/parameters/taskId">#/parameters/taskId</a></span>  </div>
 <div class="param">perfIndex (optional)</div><div class="param-desc"><span class="param-type"><a href="#float">Float</a></span>  format: float</div>
@@ -936,16 +906,6 @@ font-style: italic;
 <div class="param">numCores (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  format: int32</div>
 <div class="param">price (optional)</div><div class="param-desc"><span class="param-type"><a href="#Price">Price</a></span>  </div>
 <div class="param">extraData (optional)</div><div class="param-desc"><span class="param-type"><a href="#ExtraData">ExtraData</a></span>  </div>
-    </div>  <!-- field-items -->
-  </div>
-  <div class="model">
-    <h3><a name="TaskVerification"><code>TaskVerification</code> - </a> <a class="up" href="#__Models">Up</a></h3>
-    <div class='model-description'></div>
-    <div class="field-items">
-      <div class="param">taskId (optional)</div><div class="param-desc"><span class="param-type"><a href="##/parameters/taskId">#/parameters/taskId</a></span>  </div>
-<div class="param">verificationResult (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
-        <div class="param-enum-header">Enum:</div>
-        <div class="param-enum">OK</div><div class="param-enum">failed</div><div class="param-enum">timedout</div>
     </div>  <!-- field-items -->
   </div>
   </body>

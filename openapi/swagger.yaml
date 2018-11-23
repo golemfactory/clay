@@ -5,6 +5,7 @@ info:
   title: Golem Gateway API
   contact:
     email: contact@golem.network
+    url: https://golem.network
   license:
     name: GPL 3.0
     url: 'https://www.gnu.org/licenses/gpl-3.0.html'
@@ -65,7 +66,7 @@ paths:
       operationId: wantToComputeTask
       responses:
         '200':
-          description: subtask to compute
+          description: subtask definition
           schema:
             $ref: '#/definitions/Subtask'
     get:
@@ -73,7 +74,7 @@ paths:
       operationId: taskInfo
       responses:
         '200':
-          description: ok
+          description: task definition
           schema:
             $ref: '#/definitions/Task'
         '404':
@@ -188,27 +189,28 @@ paths:
             $ref: '#/definitions/Events'
 parameters:
   nodeId:
+    description: ethereum address identifying node e.g.,  '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b'
     name: nodeId
     in: path
     required: true
-    description: ethereum address identifying node
     type: string
     minLength: 42
     maxLength: 42
     pattern: '0x[0-9a-f]{40}'
-    # example: '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b'
   taskId:
+    description: uuid e.g., '682e9b26-ed89-11e8-a9e0-6e845eabffe0'
     name: taskId
     in: path
     required: true
     type: string
-    # example: "682e9b26-ed89-11e8-a9e0-6e845eabffe0"
   subtaskId:
+    description: uuid e.g., '682e9b26-ed89-11e8-a9e0-6e845eabffe0'
     name: subtaskId
     in: path
     required: true
     type: string
   resourceId:
+    description: uuid e.g., '682e9b26-ed89-11e8-a9e0-6e845eabffe0'
     name: resourceId
     in: path
     required: true
@@ -242,27 +244,8 @@ definitions:
             type: integer
           timedout:
             type: integer
-  Price:
-    type: integer
-    format: int64
-  ExtraData:
-    type: string
-  Subtask:
-    type: object
-    properties:
-      subtaskId:
-        $ref: '#/parameters/subtaskId'
-      description:
-        type: string
-      resource:
-        $ref: '#/definitions/Resource'
-      deadline:
-        type: integer
-      price:
-        $ref: '#/definitions/Price'
-      extraData:
-        $ref: '#/definitions/ExtraData'
   Task:
+    description: task is a basic unit of work requested in Golem Network. It is divided into smaller chunks - subtasks. Number of subtaks is defined by requestor.
     type: object
     properties:
       taskId:
@@ -284,14 +267,37 @@ definitions:
         $ref: '#/definitions/Price'
       extraData:
         $ref: '#/definitions/ExtraData'
+  Subtask:
+    description: Subtask is a part of task supossed to be executed by provider which submited task computation willingness.
+    type: object
+    properties:
+      subtaskId:
+        $ref: '#/parameters/subtaskId'
+      description:
+        type: string
+      resource:
+        $ref: '#/definitions/Resource'
+      deadline:
+        type: integer
+      price:
+        $ref: '#/definitions/Price'
+      extraData:
+        $ref: '#/definitions/ExtraData'
+  Price:
+    type: integer
+    format: int64
+  ExtraData:
+    type: string
   Resource:
+    description: Binary content (files) required to execute subtask
     type: object
     properties:
       resourceId:
         $ref: '#/parameters/resourceId'
       metadata:
         type: string
-  TaskVerification:
+  SubtaskVerification:
+    description: Subtask verification result
     type: object
     properties:
       taskId:
@@ -303,9 +309,10 @@ definitions:
           - failed
           - timedout
   Events:
+    description: Table with trhee types of events. Every item has id and exactly one of remaining fields filled.
     type: array
     items:
-      type: object #every item has exactly one field filled
+      type: object
       properties:
         eventId:
           type: integer
@@ -314,5 +321,5 @@ definitions:
           $ref: '#/definitions/Task'
         resource:
           $ref: '#/definitions/Resource'
-        taskVerification:
-          $ref: '#/definitions/TaskVerification'
+        subtaskVerification:
+          $ref: '#/definitions/SubtaskVerification'
