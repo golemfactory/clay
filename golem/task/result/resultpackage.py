@@ -178,13 +178,12 @@ class TaskResultPackager:
 
     def create(self,
                output_path: str,
-               task_result: Iterable[str],
-               disk_files: Optional[Iterable[str]] = None):
-        disk_files: List[str] = disk_files[:] if disk_files else []
-        disk_files.extend(task_result.result)
+               task_result,
+               disk_files: Optional[List[str]] = None):
+        df = disk_files[:] if disk_files else []
+        df.extend(task_result.result)
 
-        return super().create(output_path,
-                              disk_files=disk_files)
+        return super().create(output_path, disk_files=df)
 
     def extract(self, input_path, output_dir=None, **kwargs):
         files, files_dir = super().extract(input_path, output_dir=output_dir)  # noqa pylint:disable=no-member
