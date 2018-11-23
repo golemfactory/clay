@@ -23,12 +23,12 @@ os.environ["PBR_VERSION"] = '3.1.1'
 
 import golem  # noqa
 import golem.argsparser as argsparser  # noqa
-from golem.core.simpleenv import get_local_datadir
 from golem.clientconfigdescriptor import ClientConfigDescriptor, \
     ConfigApprover  # noqa
 from golem.config.environments import set_environment  # noqa
 from golem.core import variables  # noqa
 from golem.core.common import install_reactor  # noqa
+from golem.core.simpleenv import get_local_datadir  # noqa
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
 
