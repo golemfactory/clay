@@ -23,7 +23,7 @@ os.environ["PBR_VERSION"] = '3.1.1'
 
 import golem  # noqa
 import golem.argsparser as argsparser  # noqa
-
+from golem.core.simpleenv import get_local_datadir
 from golem.clientconfigdescriptor import ClientConfigDescriptor, \
     ConfigApprover  # noqa
 from golem.config.environments import set_environment  # noqa
@@ -46,45 +46,35 @@ def monkey_patched_getLogger(*args, **kwargs):
     return result
 
 
-def set_active_environment(func: Callable) -> Callable:
-    """
-    Function decorator which sets Golem's active configuration before calling
-    the decorated function.
+def set_active_environment(
+        mainnet: bool,
+        net: str,
+        concent: str,
+        datadir: str,
+        **kwargs
+) -> str:
+    set_environment('mainnet' if mainnet else net, concent)
+    datadir = get_local_datadir('default', root_dir=datadir)
+    os.makedirs(datadir, exist_ok=True)
 
-    Note: this decorator overrides the ``datadir`` keyword argument to provide
-    the full path to the app's data directory.
-    """
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        mainnet = kwargs['mainnet']
-        net = kwargs['net']
-        concent = kwargs['concent']
-
-        set_environment('mainnet' if mainnet else net, concent)
-        from golem.core.simpleenv import get_local_datadir
-        datadir = get_local_datadir('default', root_dir=kwargs['datadir'])
-        os.makedirs(datadir, exist_ok=True)
-        kwargs['datadir'] = datadir
-
-        func(*args, **kwargs)
-
-    return wrapper
+    return datadir
 
 
 def lock_datadir(func: Callable) -> Callable:
     """
-    Function decorator which locks the application's data directory
-    before calling the decorated function.
-    Since locking is handled by a context manager, datadir gets unlocked
+    Decorator which locks the application's data directory before calling
+    the decorated function.
+    Locking is handled by a context manager, datadir gets unlocked
     once the wrapped function exits.
 
-    Note: since this decorator requires the full path to the app's datadir
-    under a keyword argument, it should be called after
-    ``set_active_environment``.
+    Note: since this function requires the full path to app's datadir,
+    it calls ``set_active_environment``. Also, datadir keyword argument is
+    substituted with the full path to be used in ``start``.
     """
     @wraps(func)
     def wrapper(*args, **kwargs):
-        datadir = kwargs['datadir']
+        datadir = set_active_environment(**kwargs)
+        kwargs['datadir'] = datadir
 
         try:
             with Lock(os.path.join(datadir, 'LOCK'), timeout=1):
@@ -163,12 +153,13 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)  # Crossbar specific level
 @click.option('--title', expose_value=False)
-@set_active_environment
+# Setting active environment, locking datadir
 @lock_datadir
 def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
           net, geth_address, password, accept_terms, version, log_level,
           enable_talkback, m):
 
+    # These are done locally since they rely on golem.config.active to be set
     from golem.config.active import CONCENT_VARIANT
     from golem.appconfig import AppConfig
     from golem.node import Node
