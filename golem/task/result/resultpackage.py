@@ -1,7 +1,7 @@
 import binascii
 import uuid
 import zipfile
-from typing import Iterable, Optional
+from typing import Iterable, Optional, List, Dict
 
 import abc
 import os
@@ -55,7 +55,7 @@ class Packager(object):
         return binascii.hexlify(pkg_sha1).decode('utf8')
 
     @classmethod
-    def _prepare_file_dict(cls, disk_files):
+    def _prepare_file_dict(cls, disk_files) -> Dict[str, str]:
         prefix = common_dir(disk_files)
 
         return {
@@ -180,7 +180,7 @@ class TaskResultPackager:
                output_path: str,
                task_result: Iterable[str],
                disk_files: Optional[Iterable[str]] = None):
-        disk_files = disk_files[:] if disk_files else []
+        disk_files: List[str] = disk_files[:] if disk_files else []
         disk_files.extend(task_result.result)
 
         return super().create(output_path,
