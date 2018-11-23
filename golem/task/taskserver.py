@@ -280,7 +280,7 @@ class TaskServer(
         task_result_manager = self.task_manager.task_result_manager
 
         wtr.result_secret = task_result_manager.gen_secret()
-        result = task_result_manager.create(self.node, wtr, wtr.result_secret)
+        result = task_result_manager.create(wtr, wtr.result_secret)
         (
             wtr.result_hash,
             wtr.result_path,
@@ -886,7 +886,7 @@ class TaskServer(
             key_id,
             subtask_id: str):
 
-        extra_data = extracted_package.to_extra_data()
+        full_path_files = extracted_package.get_full_path_files()
         self.new_session_prepare(
             session=session,
             subtask_id=subtask_id,
@@ -895,7 +895,7 @@ class TaskServer(
         )
 
         session.send_hello()
-        session.result_received(subtask_id, extra_data['result'])
+        session.result_received(subtask_id, full_path_files)
 
     def __connection_for_task_verification_result_failure(  # noqa pylint:disable=no-self-use
             self, _conn_id, _extracted_package, key_id, subtask_id: str):

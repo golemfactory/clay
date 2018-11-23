@@ -11,10 +11,6 @@ from golem.task.result.resultpackage import EncryptingPackager, \
 from golem.testutils import TempDirFixture
 
 
-def mock_node():
-    return Mock(name='test_node', key=uuid.uuid4())
-
-
 def mock_task_result(task_id, result):
     return Mock(
         task_id=task_id,
@@ -170,11 +166,9 @@ class TestEncryptingTaskResultPackager(PackageDirContentsFixture):
 
     def testCreate(self):
         etp = EncryptingTaskResultPackager(self.secret)
-        node = mock_node()
 
         tr = mock_task_result(self.task_id, self.disk_files)
         path, _ = etp.create(self.out_path,
-                             node=node,
                              task_result=tr,
                              disk_files=self.disk_files)
 
@@ -182,11 +176,9 @@ class TestEncryptingTaskResultPackager(PackageDirContentsFixture):
 
     def testExtract(self):
         etp = EncryptingTaskResultPackager(self.secret)
-        node = mock_node()
         tr = mock_task_result(self.task_id, self.disk_files)
 
         path, _ = etp.create(self.out_path,
-                             node=node,
                              task_result=tr,
                              disk_files=self.disk_files)
 
@@ -200,20 +192,18 @@ class TestExtractedPackage(PackageDirContentsFixture):
 
     def testToExtraData(self):
         etp = EncryptingTaskResultPackager(self.secret)
-        node = mock_node()
         tr = mock_task_result(self.task_id, self.disk_files)
 
         path, _ = etp.create(self.out_path,
-                             node=node,
                              task_result=tr,
                              disk_files=self.disk_files)
 
         extracted = etp.extract(path)
-        extra_data = extracted.to_extra_data()
+        full_path_files = extracted.get_full_path_files()
 
-        self.assertEqual(len(extra_data.get('result', [])), len(self.all_files))
+        self.assertEqual(len(full_path_files), len(self.all_files))
 
-        for filename in extra_data.get('result', []):
+        for filename in full_path_files:
             self.assertTrue(os.path.exists(filename))
 
 

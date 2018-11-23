@@ -77,7 +77,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
                                             error=error,
                                             async_=async_)
 
-    def create(self, node, task_result, key_or_secret=None):
+    def create(self, task_result, key_or_secret=None):
         if not key_or_secret:
             raise ValueError("Empty key / secret")
 
@@ -89,7 +89,6 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
 
         packager = self.package_class(key_or_secret)
         path, sha1 = packager.create(encrypted_package_path,
-                                     node=node,
                                      task_result=task_result)
 
         package_path = packager.package_name(encrypted_package_path)
