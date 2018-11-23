@@ -22,6 +22,7 @@ from golem.core import golem_async
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.p2p.node import Node
+from golem.task.taskproviderstats import ProviderStatsManager
 from .taskbase import TaskHeader
 
 logger = logging.getLogger('golem.task.taskkeeper')
@@ -124,6 +125,9 @@ class CompTaskKeeper:
 
         # task_id to package paths mapping
         self.task_package_paths: typing.Dict[str, list] = {}
+
+        # stats
+        self.provider_stats_manager = ProviderStatsManager()
 
         if not tasks_path.is_dir():
             tasks_path.mkdir()
