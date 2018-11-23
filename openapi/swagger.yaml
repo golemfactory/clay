@@ -218,22 +218,22 @@ parameters:
 definitions:
   SubscribeRequest:
     type: object
-    required:
-      - taskType
     properties:
       taskType:
         type: string
         example: blender
+    required:
+      - taskType
   SubscriberStatus:
     type: object
     properties:
       active:
         type: boolean
-      tasksTypes:
+      taskTypes:
         type: array
         items:
           type: string
-      tasksStats:
+      taskStats:
         type: object
         properties:
           requested:
@@ -244,6 +244,9 @@ definitions:
             type: integer
           timedout:
             type: integer
+    required:
+      - active
+      - taskTypes
   Task:
     description: task is a basic unit of work requested in Golem Network. It is divided into smaller chunks - subtasks. Number of subtaks is defined by requestor.
     type: object
@@ -267,6 +270,13 @@ definitions:
         $ref: '#/definitions/Price'
       extraData:
         $ref: '#/definitions/ExtraData'
+    required:
+      - taskId
+      - perfIndex
+      - maxResourceSize
+      - maxMemorySize
+      - numCores
+      - price
   Subtask:
     description: Subtask is a part of task supossed to be executed by provider which submited task computation willingness.
     type: object
@@ -283,6 +293,9 @@ definitions:
         $ref: '#/definitions/Price'
       extraData:
         $ref: '#/definitions/ExtraData'
+    required:
+      - subtaskId
+      - price
   Price:
     type: integer
     format: int64
@@ -296,6 +309,8 @@ definitions:
         $ref: '#/parameters/resourceId'
       metadata:
         type: string
+    required:
+      - resourceId
   SubtaskVerification:
     description: Subtask verification result
     type: object
@@ -308,6 +323,9 @@ definitions:
           - OK
           - failed
           - timedout
+    required:
+      - taskId
+      - verificationResult
   Events:
     description: Table with trhee types of events. Every item has id and exactly one of remaining fields filled.
     type: array
@@ -323,3 +341,5 @@ definitions:
           $ref: '#/definitions/Resource'
         subtaskVerification:
           $ref: '#/definitions/SubtaskVerification'
+      required:
+        - eventId

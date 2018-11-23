@@ -480,14 +480,14 @@ font-style: italic;
     <h3 class="field-label">Example data</h3>
     <div class="example-data-content-type">Content-Type: application/json</div>
     <pre class="example"><code>{
-  "tasksTypes" : [ "tasksTypes", "tasksTypes" ],
-  "active" : true,
-  "tasksStats" : {
+  "taskStats" : {
     "requested" : 0,
     "succeded" : 6,
     "timedout" : 5,
     "failed" : 1
-  }
+  },
+  "active" : true,
+  "taskTypes" : [ "taskTypes", "taskTypes" ]
 }</code></pre>
 
 
@@ -805,7 +805,7 @@ font-style: italic;
     <li><a href="#Resource"><code>Resource</code> - </a></li>
     <li><a href="#SubscribeRequest"><code>SubscribeRequest</code> - </a></li>
     <li><a href="#SubscriberStatus"><code>SubscriberStatus</code> - </a></li>
-    <li><a href="#SubscriberStatus_tasksStats"><code>SubscriberStatus_tasksStats</code> - </a></li>
+    <li><a href="#SubscriberStatus_taskStats"><code>SubscriberStatus_taskStats</code> - </a></li>
     <li><a href="#Subtask"><code>Subtask</code> - </a></li>
     <li><a href="#SubtaskVerification"><code>SubtaskVerification</code> - </a></li>
     <li><a href="#Task"><code>Task</code> - </a></li>
@@ -821,7 +821,7 @@ font-style: italic;
     <h3><a name="Events_inner"><code>Events_inner</code> - </a> <a class="up" href="#__Models">Up</a></h3>
     
     <div class="field-items">
-      <div class="param">eventId (optional)</div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span>  format: int64</div>
+      <div class="param">eventId </div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span>  format: int64</div>
 <div class="param">task (optional)</div><div class="param-desc"><span class="param-type"><a href="#Task">Task</a></span>  </div>
 <div class="param">resource (optional)</div><div class="param-desc"><span class="param-type"><a href="#Resource">Resource</a></span>  </div>
 <div class="param">subtaskVerification (optional)</div><div class="param-desc"><span class="param-type"><a href="#SubtaskVerification">SubtaskVerification</a></span>  </div>
@@ -843,7 +843,7 @@ font-style: italic;
     <h3><a name="Resource"><code>Resource</code> - </a> <a class="up" href="#__Models">Up</a></h3>
     <div class='model-description'>Binary content (files) required to execute subtask</div>
     <div class="field-items">
-      <div class="param">resourceId (optional)</div><div class="param-desc"><span class="param-type"><a href="##/parameters/resourceId">#/parameters/resourceId</a></span>  </div>
+      <div class="param">resourceId </div><div class="param-desc"><span class="param-type"><a href="##/parameters/resourceId">#/parameters/resourceId</a></span>  </div>
 <div class="param">metadata (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
     </div>  <!-- field-items -->
   </div>
@@ -858,13 +858,13 @@ font-style: italic;
     <h3><a name="SubscriberStatus"><code>SubscriberStatus</code> - </a> <a class="up" href="#__Models">Up</a></h3>
     <div class='model-description'></div>
     <div class="field-items">
-      <div class="param">active (optional)</div><div class="param-desc"><span class="param-type"><a href="#boolean">Boolean</a></span>  </div>
-<div class="param">tasksTypes (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
-<div class="param">tasksStats (optional)</div><div class="param-desc"><span class="param-type"><a href="#SubscriberStatus_tasksStats">SubscriberStatus_tasksStats</a></span>  </div>
+      <div class="param">active </div><div class="param-desc"><span class="param-type"><a href="#boolean">Boolean</a></span>  </div>
+<div class="param">taskTypes </div><div class="param-desc"><span class="param-type"><a href="#string">array[String]</a></span>  </div>
+<div class="param">taskStats (optional)</div><div class="param-desc"><span class="param-type"><a href="#SubscriberStatus_taskStats">SubscriberStatus_taskStats</a></span>  </div>
     </div>  <!-- field-items -->
   </div>
   <div class="model">
-    <h3><a name="SubscriberStatus_tasksStats"><code>SubscriberStatus_tasksStats</code> - </a> <a class="up" href="#__Models">Up</a></h3>
+    <h3><a name="SubscriberStatus_taskStats"><code>SubscriberStatus_taskStats</code> - </a> <a class="up" href="#__Models">Up</a></h3>
     
     <div class="field-items">
       <div class="param">requested (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  </div>
@@ -877,11 +877,11 @@ font-style: italic;
     <h3><a name="Subtask"><code>Subtask</code> - </a> <a class="up" href="#__Models">Up</a></h3>
     <div class='model-description'>Subtask is a part of task supossed to be executed by provider which submited task computation willingness.</div>
     <div class="field-items">
-      <div class="param">subtaskId (optional)</div><div class="param-desc"><span class="param-type"><a href="##/parameters/subtaskId">#/parameters/subtaskId</a></span>  </div>
+      <div class="param">subtaskId </div><div class="param-desc"><span class="param-type"><a href="##/parameters/subtaskId">#/parameters/subtaskId</a></span>  </div>
 <div class="param">description (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
 <div class="param">resource (optional)</div><div class="param-desc"><span class="param-type"><a href="#Resource">Resource</a></span>  </div>
 <div class="param">deadline (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  </div>
-<div class="param">price (optional)</div><div class="param-desc"><span class="param-type"><a href="#Price">Price</a></span>  </div>
+<div class="param">price </div><div class="param-desc"><span class="param-type"><a href="#Price">Price</a></span>  </div>
 <div class="param">extraData (optional)</div><div class="param-desc"><span class="param-type"><a href="#ExtraData">ExtraData</a></span>  </div>
     </div>  <!-- field-items -->
   </div>
@@ -889,8 +889,8 @@ font-style: italic;
     <h3><a name="SubtaskVerification"><code>SubtaskVerification</code> - </a> <a class="up" href="#__Models">Up</a></h3>
     <div class='model-description'>Subtask verification result</div>
     <div class="field-items">
-      <div class="param">taskId (optional)</div><div class="param-desc"><span class="param-type"><a href="##/parameters/taskId">#/parameters/taskId</a></span>  </div>
-<div class="param">verificationResult (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
+      <div class="param">taskId </div><div class="param-desc"><span class="param-type"><a href="##/parameters/taskId">#/parameters/taskId</a></span>  </div>
+<div class="param">verificationResult </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
         <div class="param-enum-header">Enum:</div>
         <div class="param-enum">OK</div><div class="param-enum">failed</div><div class="param-enum">timedout</div>
     </div>  <!-- field-items -->
@@ -899,12 +899,12 @@ font-style: italic;
     <h3><a name="Task"><code>Task</code> - </a> <a class="up" href="#__Models">Up</a></h3>
     <div class='model-description'>task is a basic unit of work requested in Golem Network. It is divided into smaller chunks - subtasks. Number of subtaks is defined by requestor.</div>
     <div class="field-items">
-      <div class="param">taskId (optional)</div><div class="param-desc"><span class="param-type"><a href="##/parameters/taskId">#/parameters/taskId</a></span>  </div>
-<div class="param">perfIndex (optional)</div><div class="param-desc"><span class="param-type"><a href="#float">Float</a></span>  format: float</div>
-<div class="param">maxResourceSize (optional)</div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span>  format: int64</div>
-<div class="param">maxMemorySize (optional)</div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span>  format: int64</div>
-<div class="param">numCores (optional)</div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  format: int32</div>
-<div class="param">price (optional)</div><div class="param-desc"><span class="param-type"><a href="#Price">Price</a></span>  </div>
+      <div class="param">taskId </div><div class="param-desc"><span class="param-type"><a href="##/parameters/taskId">#/parameters/taskId</a></span>  </div>
+<div class="param">perfIndex </div><div class="param-desc"><span class="param-type"><a href="#float">Float</a></span>  format: float</div>
+<div class="param">maxResourceSize </div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span>  format: int64</div>
+<div class="param">maxMemorySize </div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span>  format: int64</div>
+<div class="param">numCores </div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  format: int32</div>
+<div class="param">price </div><div class="param-desc"><span class="param-type"><a href="#Price">Price</a></span>  </div>
 <div class="param">extraData (optional)</div><div class="param-desc"><span class="param-type"><a href="#ExtraData">ExtraData</a></span>  </div>
     </div>  <!-- field-items -->
   </div>
