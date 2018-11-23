@@ -4,13 +4,16 @@ import os
 import platform
 import sys
 import logging
+from functools import wraps
 from multiprocessing import freeze_support
+from typing import Callable
 
 import click
 import humanize
 import psutil
 from cpuinfo import get_cpu_info
 from ethereum import slogging
+from portalocker import Lock, LockException
 
 # Export pbr version for peewee_migrate user
 
@@ -20,12 +23,12 @@ os.environ["PBR_VERSION"] = '3.1.1'
 
 import golem  # noqa
 import golem.argsparser as argsparser  # noqa
-
 from golem.clientconfigdescriptor import ClientConfigDescriptor, \
     ConfigApprover  # noqa
 from golem.config.environments import set_environment  # noqa
 from golem.core import variables  # noqa
 from golem.core.common import install_reactor  # noqa
+from golem.core.simpleenv import get_local_datadir  # noqa
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
 
@@ -41,6 +44,46 @@ def monkey_patched_getLogger(*args, **kwargs):
     result = orig_getLogger(*args, **kwargs)
     logging.setLoggerClass(orig_class)
     return result
+
+
+def set_active_environment(
+        mainnet: bool,
+        net: str,
+        concent: str,
+        datadir: str,
+        **kwargs
+) -> str:
+    set_environment('mainnet' if mainnet else net, concent)
+    datadir = get_local_datadir('default', root_dir=datadir)
+    os.makedirs(datadir, exist_ok=True)
+
+    return datadir
+
+
+def lock_datadir(func: Callable) -> Callable:
+    """
+    Decorator which locks the application's data directory before calling
+    the decorated function.
+    Locking is handled by a context manager, datadir gets unlocked
+    once the wrapped function exits.
+
+    Note: since this function requires the full path to app's datadir,
+    it calls ``set_active_environment``. Also, datadir keyword argument is
+    substituted with the full path to be used in ``start``.
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        datadir = set_active_environment(**kwargs)
+        kwargs['datadir'] = datadir
+
+        try:
+            with Lock(os.path.join(datadir, 'LOCK'), timeout=1):
+                func(*args, **kwargs)
+        except LockException:
+            logger.error(f'directory {datadir} is locked, possibly used by '
+                         'another Golem instance')
+
+    return wrapper
 
 
 slogging.SManager.getLogger = monkey_patched_getLogger
@@ -110,9 +153,16 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)  # Crossbar specific level
 @click.option('--title', expose_value=False)
+# Setting active environment, locking datadir
+@lock_datadir
 def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
           net, geth_address, password, accept_terms, version, log_level,
           enable_talkback, m):
+
+    # These are done locally since they rely on golem.config.active to be set
+    from golem.config.active import CONCENT_VARIANT
+    from golem.appconfig import AppConfig
+    from golem.node import Node
 
     freeze_support()
     delete_reactor()
@@ -122,20 +172,9 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         start_crossbar_worker(m)
         return
 
-    set_environment('mainnet' if mainnet else net, concent)
-
-    # Import AFTER the active configuration has been set
-    from golem.config.active import CONCENT_VARIANT
-    from golem.appconfig import AppConfig
-    from golem.node import Node
-    from golem.core.simpleenv import get_local_datadir
-
     if version:
         print("GOLEM version: {}".format(golem.__version__))
         return 0
-
-    # We should use different directories for different chains
-    datadir = get_local_datadir('default', root_dir=datadir)
 
     generate_rpc_certificate(datadir)
 
