@@ -7,8 +7,8 @@ import sys
 
 from multiprocessing import freeze_support
 import click
+import portalocker
 
-from portalocker import lock, unlock, LOCK_EX, LOCK_NB, LockException
 from golem_sci.chains import MAINNET, RINKEBY
 from golem.config.environments import set_environment  # noqa
 from golem.core.simpleenv import get_local_datadir
@@ -144,14 +144,11 @@ def is_app_running(root_dir: str, net_name: str) -> bool:
     lock_path = os.path.join(datadir, 'LOCK')
 
     if os.path.isfile(lock_path):
-        lock_file = open(lock_path, 'w')
         try:
-            lock(lock_file, LOCK_EX | LOCK_NB)
-        except LockException:
+            with portalocker.Lock(lock_path, timeout=1):
+                return False
+        except portalocker.LockException:
             return True
-        finally:
-            unlock(lock_file)
-            lock_file.close()
 
     return False
 
