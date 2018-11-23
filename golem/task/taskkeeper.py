@@ -198,10 +198,10 @@ class CompTaskKeeper:
         comp_task_info: CompTaskInfo = self.active_tasks[
             task_to_compute.task_id
         ]
-        if task_to_compute.price != comp_task_info.subtask_price:
+        if task_to_compute.price > comp_task_info.subtask_price:
             logger.info(
                 "Can't accept subtask %r for %r."
-                " %r<TTC.price> != %r<CTI.subtask_price>",
+                " %r<TTC.price> > %r<CTI.subtask_price>",
                 task_to_compute.subtask_id,
                 task_to_compute.task_id,
                 task_to_compute.price,
