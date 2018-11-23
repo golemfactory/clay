@@ -23,16 +23,35 @@ moment = datetime.timedelta(seconds=2)
 class RequestorDoesntSendTestCase(SCIBaseTest):
     """Requestor doesn't send Ack/Reject of SubtaskResults"""
 
+    def setUp(self):
+        super().setUp()
+        self.use_same_ids_for_consecutive_messages = False
+        self.task_id = None
+        self.subtask_id = None
+
     def prepare_report_computed_task(self, mode, **kwargs):
         """Returns ReportComputedTask with open force acceptance window
 
         Can be modified by delta
         """
 
+        task_dict = self.gen_ttc_kwargs()
+        task_dict.update({
+                'price': kwargs['task_to_compute__price'],
+        })
+        task_to_compute = msg_factories.tasks.TaskToComputeFactory(**task_dict)
+
+        if self.use_same_ids_for_consecutive_messages:
+            if not (self.task_id and self.subtask_id):
+                self.task_id = task_to_compute.task_id
+                self.subtask_id = task_to_compute.subtask_id
+            else:
+                task_to_compute.compute_task_def['task_id'] = self.task_id
+                task_to_compute.compute_task_def['subtask_id'] = self.subtask_id
+
         report_computed_task = msg_factories.tasks.ReportComputedTaskFactory(
+            task_to_compute=task_to_compute,
             **self.gen_rtc_kwargs(),
-            **self.gen_ttc_kwargs(
-                'task_to_compute__'),
             **kwargs,
         )
         # Difference between timestamp and deadline has to be constant
@@ -172,16 +191,9 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
         )
 
     def test_already_processed(self):
-        task_id = str(uuid.uuid1())
-        subtask_id = str(uuid.uuid1())
-        ctd_prefix = 'task_to_compute__' \
-            'compute_task_def__'
-        kwargs = {
-            ctd_prefix+'task_id': task_id,
-            ctd_prefix+'subtask_id': subtask_id,
-        }
-        self.assertIsNone(self.provider_send_force(rct_kwargs=kwargs))
-        second_response = self.provider_send_force(rct_kwargs=kwargs)
+        self.use_same_ids_for_consecutive_messages = True
+        self.assertIsNone(self.provider_send_force())
+        second_response = self.provider_send_force()
         self.assertIsInstance(second_response, message.concents.ServiceRefused)
 
     def test_no_response_from_requestor(self):
