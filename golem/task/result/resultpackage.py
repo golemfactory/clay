@@ -183,7 +183,7 @@ class TaskResultPackager:
         df = disk_files[:] if disk_files else []
         df.extend(task_result.result)
 
-        return super().create(output_path, disk_files=df)
+        return super().create(output_path, disk_files=df)  # type: ignore
 
     def extract(self, input_path, output_dir=None, **kwargs):
         files, files_dir = super().extract(input_path, output_dir=output_dir)  # noqa pylint:disable=no-member
