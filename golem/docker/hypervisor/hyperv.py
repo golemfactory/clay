@@ -33,6 +33,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
                       "download/v18.06.1-ce%2Bdvn-v0.35/boot2docker.iso"
     DOCKER_USER = "golem-docker"
     DOCKER_PASSWORD = "golem-docker"
+    VOLUME_SIZE = "5000"  # = 5GB; default was 20GB
     VOLUME_DRIVER = "cifs"
 
     GET_VSWITCH_SCRIPT_PATH = \
@@ -41,7 +42,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._vm_utils = VMUtils()
+        self._vm_utils = VMUtilsWithMemFix()
 
     @classmethod
     def is_available(cls) -> bool:
@@ -70,6 +71,9 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if mem is not None:
             args += [self.OPTIONS['mem'], str(mem)]
 
+        args += [self.OPTIONS['disk'], self.VOLUME_SIZE]
+
+        logger.debug('raw hyperv create args: args=%r', args)
         return args
 
     def constraints(self, name: Optional[str] = None) -> Dict:
@@ -93,6 +97,8 @@ class HyperVHypervisor(DockerMachineHypervisor):
         mem_key = CONSTRAINT_KEYS['mem']
         mem = params.get(mem_key)
         assert isinstance(mem, int)
+        # Dynamic memory works best in blocks of 128
+        mem = (mem // 128) * 128
         cpu = params.get(CONSTRAINT_KEYS['cpu'])
 
         min_mem = MIN_CONSTRAINTS[mem_key]
@@ -211,3 +217,35 @@ class HyperVHypervisor(DockerMachineHypervisor):
         )
 
         return volume_name
+
+class VMUtilsWithMemFix(VMUtils):
+
+    # TODO: Fix override!
+    # This function is exactly the same except:
+    # - mem_settings.VirtualQuantity = reserved_mem
+    # + mem_settings.VirtualQuantity = max_mem
+    def _set_vm_memory(self, vmsetting, memory_mb, memory_per_numa_node,
+                       dynamic_memory_ratio):
+        mem_settings = self._get_vm_memory(vmsetting)
+        max_mem = int(memory_mb)
+        mem_settings.Limit = max_mem
+
+        if dynamic_memory_ratio > 1:
+            mem_settings.DynamicMemoryEnabled = True
+            # Must be a multiple of 2
+            reserved_mem = min(
+                int(max_mem / dynamic_memory_ratio) >> 1 << 1,
+                max_mem)
+        else:
+            mem_settings.DynamicMemoryEnabled = False
+            reserved_mem = max_mem
+
+        mem_settings.Reservation = reserved_mem
+        # Start with the minimum memory
+        mem_settings.VirtualQuantity = max_mem
+
+        if memory_per_numa_node:
+            # One memory block is 1 MB.
+            mem_settings.MaxMemoryBlocksPerNumaNode = memory_per_numa_node
+
+        self._jobutils.modify_virt_resource(mem_settings)

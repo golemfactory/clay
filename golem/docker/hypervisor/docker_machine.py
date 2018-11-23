@@ -110,8 +110,8 @@ Ensure that you try the following before reporting an issue:
  2. The proper environment is set. On windows powershell please run:
     & "C:\Program Files\Docker Toolbox\docker-machine.exe" ^
     env golem | Invoke-Expression
- 3. virtualbox driver is available:
-    docker-machine.exe create --driver virtualbox golem
+ 3. hyperv driver is available:
+    docker-machine.exe create --driver hyperv golem
  4. Restart Windows machine"""
             logger.error(typical_solution_s)
             raise
