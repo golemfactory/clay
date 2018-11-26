@@ -1,4 +1,5 @@
 import calendar
+import datetime
 import logging
 import time
 
@@ -115,7 +116,9 @@ class PaymentProcessor:
             payment.details.fee / denoms.ether
         )
 
-        delay = timestamp - datetime_to_timestamp(payment.created_date)
+        reference_date = datetime.datetime.fromtimestamp(timestamp)
+        delay = (reference_date - payment.created_date).seconds
+
         dispatcher.send(
             signal="golem.payment",
             event="confirmed",

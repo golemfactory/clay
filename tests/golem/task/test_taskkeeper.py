@@ -510,6 +510,7 @@ class TestCompSubtaskInfo(TestCase):
         self.assertIsInstance(csi, CompSubtaskInfo)
 
 
+@mock.patch('golem.task.taskkeeper.ProviderStatsManager', mock.Mock())
 class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
     PEP8_FILES = [
         "golem/task/taskkeeper.py",
