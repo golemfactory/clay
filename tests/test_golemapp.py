@@ -2,6 +2,7 @@ import sys
 import unittest.mock as mock
 
 from click.testing import CliRunner
+from portalocker import LockException
 
 from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.ci import ci_skip
@@ -92,3 +93,39 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
             catch_exceptions=False
         )
         node_cls().accept_terms.assert_called_once()
+
+    @mock.patch('golem.node.Node')
+    @mock.patch('portalocker.Lock.acquire')
+    def test_datadir_lock_success(self, lock, *_):
+        runner = CliRunner()
+        runner.invoke(
+            start,
+            ['--datadir', self.path],
+            catch_exceptions=False,
+        )
+
+        assert lock.called
+
+    @mock.patch('golem.node.Node')
+    @mock.patch('portalocker.Lock.acquire', side_effect=LockException)
+    @mock.patch('golemapp.logger')
+    def test_datadir_lock_failure(self, logger, *_):
+        runner = CliRunner()
+        runner.invoke(
+            start,
+            ['--datadir', self.path],
+            catch_exceptions=False,
+        )
+
+        args, kwargs = logger.error.call_args
+        assert self.path in args[0]
+
+    @mock.patch('golem.node.Node')
+    def test_node_start_called(self, node_cls):
+        runner = CliRunner()
+        runner.invoke(
+            start,
+            ['--datadir', self.path, '--accept-terms'],
+            catch_exceptions=False
+        )
+        node_cls().start.assert_called_once()

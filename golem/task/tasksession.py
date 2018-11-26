@@ -210,12 +210,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             task_id = self._subtask_to_task(subtask_id, Actor.Requestor)
 
-            task_to_compute = get_task_message(
-                message_class_name='TaskToCompute',
+            report_computed_task = get_task_message(
+                message_class_name='ReportComputedTask',
                 node_id=self.key_id,
                 task_id=task_id,
                 subtask_id=subtask_id
             )
+            task_to_compute = report_computed_task.task_to_compute
 
             # FIXME Remove in 0.20
             if not task_to_compute.sig:
@@ -228,7 +229,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
 
             response_msg = message.tasks.SubtaskResultsAccepted(
-                task_to_compute=task_to_compute,
+                report_computed_task=report_computed_task,
                 payment_ts=payment_processed_ts,
             )
             self.send(response_msg)
