@@ -792,8 +792,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             message.base.Message.deserialize(db.buffered_data, lambda x: x)
         )
 
-    @patch('golem.task.taskkeeper.ProviderStatsManager')
-    def test_react_to_ack_reject_report_computed_task(self, _):
+    @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
+    def test_react_to_ack_reject_report_computed_task(self):
         task_keeper = CompTaskKeeper(pathlib.Path(self.path))
 
         session = self.task_session
@@ -849,8 +849,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assert_concent_cancel(
             cancel.call_args[0], subtask_id, 'ForceReportComputedTask')
 
-    @patch('golem.task.taskkeeper.ProviderStatsManager')
-    def test_react_to_resource_list(self, _):
+    @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
+    def test_react_to_resource_list(self):
         task_server = self.task_session.task_server
 
         client = 'test_client'
@@ -893,12 +893,12 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         assert not self.task_session._subtask_to_task('sid_2', Actor.Provider)
         assert not self.task_session._subtask_to_task('sid_1', Actor.Requestor)
 
-    @patch('golem.task.taskkeeper.ProviderStatsManager')
-    def test_react_to_cannot_assign_task(self, _):
+    @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
+    def test_react_to_cannot_assign_task(self):
         self._test_react_to_cannot_assign_task()
 
-    @patch('golem.task.taskkeeper.ProviderStatsManager')
-    def test_react_to_cannot_assign_task_with_wrong_sender(self, _):
+    @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
+    def test_react_to_cannot_assign_task_with_wrong_sender(self):
         self._test_react_to_cannot_assign_task("KEY_ID2", expected_requests=1)
 
     def _test_react_to_cannot_assign_task(self, key_id="KEY_ID",

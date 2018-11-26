@@ -510,7 +510,7 @@ class TestCompSubtaskInfo(TestCase):
         self.assertIsInstance(csi, CompSubtaskInfo)
 
 
-@mock.patch('golem.task.taskkeeper.ProviderStatsManager')
+@mock.patch('golem.task.taskkeeper.ProviderStatsManager', mock.Mock())
 class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
     PEP8_FILES = [
         "golem/task/taskkeeper.py",
@@ -557,14 +557,14 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             self.assertIn(header.task_id, another_ctk.active_tasks)
 
     @mock.patch('golem.core.golem_async.async_run', async_run)
-    def test_persistence(self, _):
+    def test_persistence(self):
         """Tests whether tasks are persistent between restarts."""
         tasks_dir = Path(self.path)
         self._dump_some_tasks(tasks_dir)
 
     @mock.patch('golem.core.golem_async.async_run', async_run)
     @mock.patch('golem.task.taskkeeper.common.get_timestamp_utc')
-    def test_remove_old_tasks(self, timestamp, _):
+    def test_remove_old_tasks(self, timestamp):
         timestamp.return_value = time.time()
         tasks_dir = Path(self.path)
         self._dump_some_tasks(tasks_dir)
@@ -584,7 +584,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         self.assertTrue(not any(ctk.subtask_to_task))
 
     @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump')
-    def test_comp_keeper(self, *_):
+    def test_comp_keeper(self, dump_mock):
         ctk = CompTaskKeeper(Path('ignored'))
         header = get_task_header()
         header.task_id = "xyz"
@@ -631,7 +631,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk.request_failure("xyz")
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
 
-    def test_receive_subtask_problems(self, _):
+    def test_receive_subtask_problems(self):
         ctk = CompTaskKeeper(Path(self.path), False)
         th = get_task_header()
         task_id = th.task_id
@@ -669,7 +669,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         assert ctk.active_tasks[task_id].requests == 1
 
     @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump')
-    def test_get_task_env(self, *_):
+    def test_get_task_env(self, dump_mock):
         ctk = CompTaskKeeper(Path('ignored'))
         with self.assertLogs(logger, level="WARNING"):
             assert ctk.get_task_env("task1") is None
@@ -686,7 +686,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         assert ctk.get_task_env(task_id2) == "NOTDEFAULT"
         assert ctk.get_task_env(task_id1) == "DEFAULT"
 
-    def test_check_comp_task_def(self, _):
+    def test_check_comp_task_def(self):
         ctk = CompTaskKeeper(self.new_path)
         header = get_task_header()
         task_id = header.task_id
@@ -739,21 +739,21 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
                "Subtask id was not generated from requestor's " \
                "key." % (task_id) in log_.output[0]
 
-    def test_add_package_paths(self, _):
+    def test_add_package_paths(self):
         ctk = CompTaskKeeper(self.new_path)
         task_id = 'veryimportanttask'
         package_paths = ['path/to/file']
         ctk.add_package_paths(task_id, package_paths)
         self.assertEqual(ctk.task_package_paths[task_id], package_paths)
 
-    def test_get_package_paths(self, _):
+    def test_get_package_paths(self):
         ctk = CompTaskKeeper(self.new_path)
         task_id = 'veryimportanttask'
         package_paths = ['path/to/file']
         ctk.task_package_paths[task_id] = package_paths
         self.assertEqual(ctk.get_package_paths(task_id), package_paths)
 
-    def test_package_paths_restore(self, _):
+    def test_package_paths_restore(self):
         ctk = CompTaskKeeper(self.new_path)
         task_id = 'veryimportanttask'
         package_paths = ['path/to/file']
