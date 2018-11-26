@@ -97,8 +97,6 @@ class HyperVHypervisor(DockerMachineHypervisor):
         mem_key = CONSTRAINT_KEYS['mem']
         mem = params.get(mem_key)
         assert isinstance(mem, int)
-        # Dynamic memory works best in blocks of 128
-        mem = (mem // 128) * 128
         cpu = params.get(CONSTRAINT_KEYS['cpu'])
 
         min_mem = MIN_CONSTRAINTS[mem_key]
