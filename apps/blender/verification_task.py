@@ -21,8 +21,9 @@ class VerificationTask:
             deferred.callback(self.verifier.verification_completed())
             return deferred
         else:
-            self.verifier.task_timeout(self.subtask_id)
-        return None
+            deferred = Deferred()
+            deferred.callback(self.verifier.task_timeout(self.subtask_id))
+            return deferred
 
     def get_results(self):
         return self.verifier.verification_completed()
