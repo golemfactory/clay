@@ -44,6 +44,17 @@ class HyperVHypervisor(DockerMachineHypervisor):
         super().__init__(*args, **kwargs)
         self._vm_utils = VMUtilsWithMemFix()
 
+
+    def setup(self) -> None:
+        try:
+            # The windows VM fails to start when too much memory is assigned
+            super().setup(self)
+        except Exception:
+            logger.warning("Failed to setup VM, retry with minimum values")
+            self.constrain(self.vm_name, MIN_CONSTRAINTS)
+            super().setup(self)
+
+
     @classmethod
     def is_available(cls) -> bool:
         command = "@(Get-Module -ListAvailable hyper-v).Name | Get-Unique"
