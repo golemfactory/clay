@@ -135,10 +135,9 @@ class DockerManager(DockerConfigManager):
             memory_size = min(memory_size, max_mem_in_mb - max_mem_in_mb // 10)
             logger.debug('Memory size capped by "free - 10%%": %r', memory_size)
 
-            # Hyper-V expects a multiple of 2 MB
-            # Hyper-V dynamic memory expects a multiple of 128MB
-            memory_size = memory_size // 128 * 128
-            logger.debug('Memory size in multiple of 2mb: %r', memory_size)
+            if self.hypervisor:
+                memory_size = self.hypervisor.pad_memory(memory_size)
+            logger.debug('Memory size after padding: %r', memory_size)
         except (TypeError, ValueError) as exc:
             logger.warning('Cannot read the memory amount: %r', exc)
 

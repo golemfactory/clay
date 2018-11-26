@@ -190,6 +190,11 @@ class HyperVHypervisor(DockerMachineHypervisor):
             for bind in binds
         }
 
+    @staticmethod
+    def pad_memory(memory:int) -> int:
+        # Hyper-V dynamic memory expects a multiple of 128MB
+        return memory // 128 * 128
+
     def _create_volume(self, hostname: str, shared_dir: Path) -> str:
         assert self._work_dir is not None
         try:
