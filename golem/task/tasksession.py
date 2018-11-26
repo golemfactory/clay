@@ -7,7 +7,7 @@ import functools
 import logging
 import os
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -192,7 +192,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     # FileSession methods #
     #######################
 
-    def result_received(self, subtask_id: str, result):
+    def result_received(self, subtask_id: str, result_files: List[str]):
         """ Inform server about received result
         """
         def send_verification_failure():
@@ -246,7 +246,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         self.task_manager.computed_task_received(
             subtask_id,
-            result,
+            result_files,
             verification_finished
         )
 

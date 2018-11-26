@@ -45,10 +45,6 @@ def create_package(result_manager, node_name, task_id):
 
     secret = result_manager.gen_secret()
     result = result_manager.create(
-        node=Mock(
-            node_name=node_name,
-            key=str(uuid.uuid4())
-        ),
         task_result=MockTaskResult(
             task_id,
             [rm.storage.relative_path(f, task_id) for f in files]
