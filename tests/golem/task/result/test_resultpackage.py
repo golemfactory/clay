@@ -2,23 +2,12 @@ import uuid
 import os
 
 from pathlib import Path
-from unittest.mock import Mock
 
 from golem.core.fileencrypt import FileEncryptor
 from golem.resource.dirmanager import DirManager
 from golem.task.result.resultpackage import EncryptingPackager, \
     EncryptingTaskResultPackager, ExtractedPackage, ZipPackager, backup_rename
 from golem.testutils import TempDirFixture
-
-
-def mock_task_result(task_id, result):
-    return Mock(
-        task_id=task_id,
-        subtask_id=task_id,
-        result=result,
-        owner_key_id=str(uuid.uuid4()),
-        owner=str(uuid.uuid4())
-    )
 
 
 class PackageDirContentsFixture(TempDirFixture):
@@ -167,19 +156,15 @@ class TestEncryptingTaskResultPackager(PackageDirContentsFixture):
     def testCreate(self):
         etp = EncryptingTaskResultPackager(self.secret)
 
-        tr = mock_task_result(self.task_id, self.disk_files)
         path, _ = etp.create(self.out_path,
-                             task_result=tr,
                              disk_files=self.disk_files)
 
         self.assertTrue(os.path.exists(path))
 
     def testExtract(self):
         etp = EncryptingTaskResultPackager(self.secret)
-        tr = mock_task_result(self.task_id, self.disk_files)
 
         path, _ = etp.create(self.out_path,
-                             task_result=tr,
                              disk_files=self.disk_files)
 
         extracted = etp.extract(path)
@@ -192,10 +177,8 @@ class TestExtractedPackage(PackageDirContentsFixture):
 
     def testToExtraData(self):
         etp = EncryptingTaskResultPackager(self.secret)
-        tr = mock_task_result(self.task_id, self.disk_files)
 
         path, _ = etp.create(self.out_path,
-                             task_result=tr,
                              disk_files=self.disk_files)
 
         extracted = etp.extract(path)

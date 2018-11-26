@@ -35,8 +35,7 @@ class Packager(object):
 
     def create(self,
                output_path: str,
-               disk_files: Optional[Iterable[str]] = None,
-               **_kwargs):
+               disk_files: Iterable[str]):
 
         if not disk_files:
             raise ValueError('No files to pack')
@@ -64,7 +63,7 @@ class Packager(object):
         }
 
     @abc.abstractmethod
-    def extract(self, input_path, output_dir=None, **kwargs):
+    def extract(self, input_path, output_dir=None):
         pass
 
     @abc.abstractmethod
@@ -84,7 +83,7 @@ class ZipPackager(Packager):
 
     ZIP_MODE = zipfile.ZIP_STORED  # no compression
 
-    def extract(self, input_path, output_dir=None, **kwargs):
+    def extract(self, input_path, output_dir=None):
 
         if not output_dir:
             output_dir = os.path.dirname(input_path)
@@ -141,20 +140,18 @@ class EncryptingPackager(Packager):
 
     def create(self,
                output_path: str,
-               disk_files: Optional[Iterable[str]] = None,
-               **_kwargs):
+               disk_files: Iterable[str]):
 
         tmp_file_path = self.package_name(output_path)
         backup_rename(tmp_file_path)
 
-        pkg_file_path, pkg_sha1 = super().create(tmp_file_path,
-                                                 disk_files=disk_files)
+        pkg_file_path, pkg_sha1 = super().create(tmp_file_path, disk_files)
 
         self.encryptor_class.encrypt(pkg_file_path, output_path,
                                      secret=self._secret)
         return output_path, pkg_sha1
 
-    def extract(self, input_path, output_dir=None, **kwargs):
+    def extract(self, input_path, output_dir=None):
         tmp_file_path = self.package_name(input_path)
         backup_rename(tmp_file_path)
 
@@ -178,17 +175,13 @@ class TaskResultPackager:
 
     def create(self,
                output_path: str,
-               task_result,
-               disk_files: Optional[List[str]] = None):
-        df = disk_files[:] if disk_files else []
-        df.extend(task_result.result)
-
+               disk_files: List[str]):
         return super().create(  # type: ignore # pylint:disable=no-member
             output_path,
-            disk_files=df,
+            disk_files,
         )
 
-    def extract(self, input_path, output_dir=None, **kwargs):
+    def extract(self, input_path, output_dir=None):
         files, files_dir = super().extract(input_path, output_dir=output_dir)  # noqa pylint:disable=no-member
 
         extracted = ExtractedPackage(files, files_dir)

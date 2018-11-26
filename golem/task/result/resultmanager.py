@@ -88,8 +88,10 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
             os.remove(encrypted_package_path)
 
         packager = self.package_class(key_or_secret)
-        path, sha1 = packager.create(encrypted_package_path,
-                                     task_result=task_result)
+        path, sha1 = packager.create(
+            encrypted_package_path,
+            task_result.result,
+        )
 
         package_path = packager.package_name(encrypted_package_path)
         package_size = os.path.getsize(package_path)
