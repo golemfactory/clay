@@ -281,8 +281,9 @@ class HyperdriveResourceManager(ClientHandler):
             success(entry, resource.files, task_id)
             return
 
+
         def success_wrapper(response, **_):
-            logger.debug("Resource manager: %s (%s) downloaded",
+            logger.debug("Downloaded resource. path=%s, hash=%s",
                          resource.path, resource.hash)
 
             self._cache_resource(resource)
@@ -290,13 +291,19 @@ class HyperdriveResourceManager(ClientHandler):
             success(entry, files, task_id)
 
         def error_wrapper(exception, **_):
-            logger.warning("Resource manager: error downloading %s (%s): %s",
+            logger.warning("Error downloading resource."
+                           "path=%s, hash=%s, error=%s",
                            resource.path, resource.hash, exception)
             error(exception, entry, task_id)
 
+        logger.debug("Preparing to download resource. path=%s, hash=%s",
+                     resource.path, resource.hash)
         path = self.storage.get_path(resource.path, task_id)
         local = self.storage.cache.get_by_hash(resource.hash)
         os.makedirs(path, exist_ok=True)
+
+        logger.debug("Pulling resource. local=%r, hash=%s",
+                     local, resource.hash)
 
         if local:
             try:
@@ -323,6 +330,9 @@ class HyperdriveResourceManager(ClientHandler):
             filepath=self.storage.get_dir(task_id),
             client_options=client_options
         )
+
+        logger.debug("Pull config. async=%r, kwargs=%r",
+                     async_, kwargs)
 
         if async_:
             deferred = self._retry_async(client.get_async, **kwargs)

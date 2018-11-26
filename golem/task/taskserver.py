@@ -250,7 +250,7 @@ class TaskServer(
 
     def send_results(self, subtask_id, task_id, result):
 
-        if 'data' not in result or 'result_type' not in result:
+        if 'data' not in result:
             raise AttributeError("Wrong result format")
 
         header = self.task_keeper.task_headers[task_id]
@@ -263,7 +263,6 @@ class TaskServer(
                 task_id=task_id,
                 subtask_id=subtask_id,
                 result=result['data'],
-                result_type=result['result_type'],
                 last_sending_trial=last_sending_trial,
                 delay_time=delay_time,
                 owner=header.task_owner)
@@ -281,7 +280,7 @@ class TaskServer(
         task_result_manager = self.task_manager.task_result_manager
 
         wtr.result_secret = task_result_manager.gen_secret()
-        result = task_result_manager.create(self.node, wtr, wtr.result_secret)
+        result = task_result_manager.create(wtr, wtr.result_secret)
         (
             wtr.result_hash,
             wtr.result_path,
@@ -884,22 +883,22 @@ class TaskServer(
             session: TaskSession,
             conn_id,
             extracted_package: ExtractedPackage,
-            key_id):
+            key_id,
+            subtask_id: str):
 
-        extra_data = extracted_package.to_extra_data()
+        full_path_files = extracted_package.get_full_path_files()
         self.new_session_prepare(
             session=session,
-            subtask_id=extra_data.get('subtask_id'),
+            subtask_id=subtask_id,
             key_id=key_id,
             conn_id=conn_id,
         )
 
         session.send_hello()
-        session.result_received(extra_data)
+        session.result_received(subtask_id, full_path_files)
 
     def __connection_for_task_verification_result_failure(  # noqa pylint:disable=no-self-use
-            self, conn_id, extracted_package, key_id):
-        subtask_id = extracted_package.to_extra_data().get('subtask_id')
+            self, _conn_id, _extracted_package, key_id, subtask_id: str):
         logger.warning("Failed to establish a session to deliver "
                        "the verification result for %s to the provider %s",
                        subtask_id, key_id)
@@ -1000,6 +999,7 @@ class TaskServer(
         kwargs = {
             'extracted_package': extracted_package,
             'key_id': report_computed_task.key_id,
+            'subtask_id': report_computed_task.subtask_id,
         }
 
         node = p2p_node.Node.from_dict(report_computed_task.node_info)
@@ -1065,7 +1065,7 @@ class TaskServer(
 #       and remove linter switch offs
 # pylint: disable=too-many-arguments, too-many-locals
 class WaitingTaskResult(object):
-    def __init__(self, task_id, subtask_id, result, result_type,
+    def __init__(self, task_id, subtask_id, result,
                  last_sending_trial, delay_time, owner, result_path=None,
                  result_hash=None, result_secret=None, package_sha1=None,
                  result_size=None, package_path=None):
@@ -1077,7 +1077,6 @@ class WaitingTaskResult(object):
         self.owner = owner
 
         self.result = result
-        self.result_type = result_type
         self.result_path = result_path
         self.result_hash = result_hash
         self.result_secret = result_secret

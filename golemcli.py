@@ -2,11 +2,14 @@
 
 import os
 import argparse
+import logging
 import sys
 
 from multiprocessing import freeze_support
 import click
+import portalocker
 
+from golem_sci.chains import MAINNET, RINKEBY
 from golem.config.environments import set_environment  # noqa
 from golem.core.simpleenv import get_local_datadir
 from golem.rpc.cert import CertificateManager
@@ -24,6 +27,8 @@ import golem.interface.client  # noqa
 
 from golem.interface.cli import CLI  # noqa
 from golem.interface.websockets import WebSocketCLI  # noqa
+
+logger = logging.getLogger('golemcli')
 
 
 def start():
@@ -50,8 +55,9 @@ def start():
                   help="Golem node's RPC port"),
         datadir=dict(dest="datadir", default=None,
                      type=click.Path(
+                         exists=True,
                          file_okay=False,
-                         writable=True
+                         readable=True,
                      ),
                      help="Golem node's data dir"),
         trust=dict(dest="verify_trust", action="store_true", default=False,
@@ -83,6 +89,8 @@ def start():
         logging.raiseExceptions = 0
         cli = CLI(main_parser=parser, main_parser_options=flag_options)
 
+    check_golem_running(parsed.datadir, parsed.mainnet)
+
     if parsed.mainnet:
         set_environment('mainnet', None)
 
@@ -99,6 +107,18 @@ def start():
     ws_cli.execute(forwarded, interactive=interactive)
 
 
+def check_golem_running(datadir: str, cli_in_mainnet: bool):
+    net_to_check = RINKEBY if cli_in_mainnet else MAINNET
+
+    if is_app_running(datadir, net_to_check):
+        flag_action = 'removing' if cli_in_mainnet else 'adding'
+        msg = f'Detected golem core running on {net_to_check} chain. ' \
+            f'In case of authorization failure, ' \
+              f'try {flag_action} --mainnet (-m) flag.'
+
+        logger.warning(msg)
+
+
 def disable_platform_trust():
     from twisted.internet import _sslverify  # pylint: disable=protected-access
     _sslverify.platformTrust = lambda: None
@@ -107,6 +127,25 @@ def disable_platform_trust():
 def delete_reactor():
     if 'twisted.internet.reactor' in sys.modules:
         del sys.modules['twisted.internet.reactor']
+
+
+def is_app_running(root_dir: str, net_name: str) -> bool:
+    """ Checks if a lock file exists in the given data dir and whether
+    that file is currently locked by another process.
+    If both conditions are true we assume that an instance of Golem is running
+    and using the specified data dir.
+    """
+    datadir = get_local_datadir(root_dir=root_dir, env_suffix=net_name)
+    lock_path = os.path.join(datadir, 'LOCK')
+
+    if os.path.isfile(lock_path):
+        try:
+            with portalocker.Lock(lock_path, timeout=1):
+                return False
+        except portalocker.LockException:
+            return True
+
+    return False
 
 
 if __name__ == '__main__':

@@ -191,9 +191,7 @@ class TaskComputer(object):
                     task_thread.error_msg,
                 )
 
-        elif task_thread.result \
-                and 'data' in task_thread.result \
-                and 'result_type' in task_thread.result:
+        elif task_thread.result and 'data' in task_thread.result:
 
             logger.info("Task %r computed, work_wall_clock_time %s",
                         subtask_id,
@@ -248,16 +246,18 @@ class TaskComputer(object):
             running_time_seconds=(time.time() - c.start_time),
             **c.extra_data,
         )
+
         return tcss
 
-    def get_host_state(self):
-        if self.counting_task is not None:
-            return "Computing"
-        return "Idle"
+    def get_environment(self):
+        task_header = self.task_server.task_keeper.task_headers.get(
+            self.counting_task)
+        return task_header.fixed_header.environment,
 
     def change_config(self, config_desc, in_background=True,
                       run_benchmarks=False):
-        self.dir_manager = DirManager(self.task_server.get_task_computer_root())
+        self.dir_manager = DirManager(
+            self.task_server.get_task_computer_root())
         self.resource_manager = ResourcesManager(self.dir_manager, self)
         self.task_request_frequency = config_desc.task_request_interval
         self.waiting_for_task_session_timeout = \
@@ -291,9 +291,9 @@ class TaskComputer(object):
 
             def done_callback(config_differs):
                 if run_benchmarks or config_differs:
-                        self.task_server.benchmark_manager.run_all_benchmarks(
-                            deferred.callback, deferred.errback
-                        )
+                    self.task_server.benchmark_manager.run_all_benchmarks(
+                        deferred.callback, deferred.errback
+                    )
                 else:
                     deferred.callback('Benchmarks not executed')
                 logger.debug("Resuming new task computation")
@@ -338,7 +338,7 @@ class TaskComputer(object):
     def __request_task(self):
         with self.lock:
             perform_request = not self.waiting_for_task and \
-                              (self.counting_task is None)
+                (self.counting_task is None)
 
         if not perform_request:
             return

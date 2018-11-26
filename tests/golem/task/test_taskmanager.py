@@ -23,11 +23,11 @@ from golem.core.keysauth import KeysAuth
 from golem.network.p2p.node import Node
 from golem.resource import dirmanager
 from golem.task.taskbase import Task, TaskHeader, \
-    TaskEventListener, ResultType, AcceptClientVerdict
+    TaskEventListener, AcceptClientVerdict
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, \
-    TaskStatus, ComputerState, TaskOp, SubtaskOp, OtherOp
+    TaskStatus, TaskOp, SubtaskOp, OtherOp
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDirFixtureWithReactor
 
@@ -340,11 +340,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         wrong_task = not self.tm.is_my_task("xyz")
         subtask = self.tm.get_next_subtask(
             "DEF", "DEF", "xyz", 1000, 10, 5, 10, 2, "10.10.10.10")
-        task_state = self.tm.tasks_states["xyz"]
         self.assertIsInstance(subtask, ComputeTaskDef)
         assert not wrong_task
-        subtask_state = task_state.subtask_states[subtask['subtask_id']]
-        assert subtask_state.computer.price == 1010
 
         task_mock.query_extra_data_return_value.ctd['subtask_id'] = "xyzxyz2"
         wrong_task = not self.tm.is_my_task("xyz")
@@ -468,7 +465,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                 return sum(self.finished.values()) != len(self.finished)
 
             def computation_finished(self, subtask_id, task_result,
-                                     result_type=ResultType.DATA,
                                      verification_finished=None):
                 if not self.restarted[subtask_id]:
                     self.finished[subtask_id] = True
@@ -509,7 +505,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert ss.subtask_status == SubtaskStatus.starting
         self.tm.verification_finished = Mock()
         (handler, checker) = self._connect_signal_handler()
-        self.tm.computed_task_received("xxyyzz", [], 0,
+        self.tm.computed_task_received("xxyyzz", [],
                                        self.tm.verification_finished)
         assert self.tm.verification_finished.call_count == 1
         assert t.finished["xxyyzz"]
@@ -539,7 +535,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.tm.restart_subtask("aabbcc")
         ss = self.tm.tasks_states["abc"].subtask_states["aabbcc"]
         assert ss.subtask_status == SubtaskStatus.restarted
-        self.tm.computed_task_received("aabbcc", [], 0,
+        self.tm.computed_task_received("aabbcc", [],
                                        self.tm.verification_finished)
         assert self.tm.verification_finished.call_count == 2
         assert ss.subtask_progress == 0.0
@@ -573,7 +569,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             (handler, checker) = self._connect_signal_handler()
             self.tm.computed_task_received(
                 "qqwwee", [],
-                0,
                 self.tm.verification_finished)
             checker([("qwe", "qqwwee", OtherOp.UNEXPECTED)])
             del handler
@@ -590,12 +585,12 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert not wrong_task
         assert ctd['subtask_id'] == "ttt4"
         (handler, checker) = self._connect_signal_handler()
-        self.tm.computed_task_received("ttt4", [], 0,
+        self.tm.computed_task_received("ttt4", [],
                                        self.tm.verification_finished)
         assert self.tm.verification_finished.call_count == 4
         assert self.tm.tasks_states["task4"].subtask_states[
                    "ttt4"].subtask_status == SubtaskStatus.failure
-        self.tm.computed_task_received("ttt4", [], 0,
+        self.tm.computed_task_received("ttt4", [],
                                        self.tm.verification_finished)
         assert self.tm.verification_finished.call_count == 5
         wrong_task = not self.tm.is_my_task("task4")
@@ -604,7 +599,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                                        2, "10.10.10.10")
         assert not wrong_task
         assert ctd['subtask_id'] == "sss4"
-        self.tm.computed_task_received("sss4", [], 0,
+        self.tm.computed_task_received("sss4", [],
                                        self.tm.verification_finished)
         assert self.tm.verification_finished.call_count == 6
         checker([("task4", "ttt4", SubtaskOp.NOT_ACCEPTED),
@@ -619,14 +614,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         task_id = "unittest_task_id"
         subtask_id = "unittest_subtask_id"
         result = Mock()
-        result_type = Mock()
         mock_finished = Mock()
 
         self.tm.notice_task_updated = Mock()
         self.tm.subtask2task_mapping[subtask_id] = task_id
 
         task_obj = self.tm.tasks[task_id] = Mock()
-        task_obj.computation_finished = lambda a, b, c, cb: cb()
+        task_obj.computation_finished = lambda a, b, cb: cb()
         task_obj.finished_computation = Mock(return_value=True)
         task_obj.verify_task = Mock(return_value=False)
 
@@ -639,8 +633,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
         # WHEN
         with self.assertLogs(logger, level="DEBUG") as log:
-            self.tm.computed_task_received(subtask_id, result, result_type,
-                                           mock_finished)
+            self.tm.computed_task_received(subtask_id, result, mock_finished)
 
         # THEN
         expected_warn = f"Task finished but was not accepted. " \
@@ -668,13 +661,11 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         task_mock.subtasks_given[subtask_id] = TaskClient(node_id)
 
         subtask_state = SubtaskState()
+        subtask_state.node_id = node_id
         subtask_state.status = SubtaskStatus.downloading
         subtask_state.subtask_id = subtask_id
-        subtask_state.computer = Mock()
-        subtask_state.computer.node_id = node_id
 
         task_state = TaskState()
-        task_state.computer = Mock()
         task_state.subtask_states[subtask_id] = subtask_state
 
         self.tm.add_new_task(task_mock)
@@ -1100,9 +1091,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             subtask = SubtaskState()
             subtask.subtask_id = str(uuid.uuid4())
             subtask.subtask_status = SubtaskStatus.starting
-            subtask.computer = ComputerState()
-            subtask.computer.node_name = 'node_{}'.format(i)
-            subtask.computer.node_id = 'deadbeef0{}'.format(i)
             subtask.results = []
             subtask.stderr = 'error_{}'.format(i)
             subtask.stdout = 'output_{}'.format(i)
@@ -1198,7 +1186,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                 self.assertEqual(ss.subtask_status, SubtaskStatus.restarted)
                 self.assertEqual(
                     ss.subtask_definition, ctd['short_description'])
-                self.assertEqual(ss.computer.performance, ctd['performance'])
 
     def test_copy_results_subtasks_properly_matched(self):
         old_task = MagicMock(spec=CoreTask)
@@ -1333,11 +1320,7 @@ class TestCopySubtaskResults(TwistedTestCase):
         old_subtask_state = SubtaskState()
         new_subtask_state = SubtaskState()
 
-        old_subtask_state.computer.node_id = 'node_id'
-        old_subtask_state.computer.node_name = 'node_name'
-        old_subtask_state.computer.port = 12345
-        old_subtask_state.computer.performance = 1000
-        old_subtask_state.computer.price = 2000
+        old_subtask_state.node_id = 'node_id'
 
         old_task_state.subtask_states['old_subtask_id'] = old_subtask_state
         new_task_state.subtask_states['new_subtask_id'] = new_subtask_state
@@ -1387,11 +1370,7 @@ class TestCopySubtaskResults(TwistedTestCase):
             self.assertEqual(new_subtask_state.stderr, 'stderr')
             self.assertEqual(new_subtask_state.results, ['result'])
 
-            self.assertEqual(old_subtask_state.computer.node_id, 'node_id')
-            self.assertEqual(old_subtask_state.computer.node_name, 'node_name')
-            self.assertEqual(old_subtask_state.computer.port, 12345)
-            self.assertEqual(old_subtask_state.computer.performance, 1000)
-            self.assertEqual(old_subtask_state.computer.price, 2000)
+            self.assertEqual(old_subtask_state.node_id, 'node_id')
 
         patch.object(self.tm, 'notice_task_updated').start()
         deferred = self.tm._copy_subtask_results(

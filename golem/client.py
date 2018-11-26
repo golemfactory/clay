@@ -7,8 +7,6 @@ import sys
 import time
 import uuid
 from copy import copy, deepcopy
-from os import path, makedirs
-from pathlib import Path
 from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from ethereum.utils import denoms
@@ -70,7 +68,6 @@ from golem.task.taskarchiver import TaskArchiver
 from golem.task.taskmanager import TaskManager
 from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
-from golem.tools import filelock
 from golem.tools.os_info import OSInfo
 from golem.tools.talkback import enable_sentry_logger
 
@@ -112,7 +109,6 @@ class Client(HardwarePresetsMixin):
 
         self.apps_manager = apps_manager
         self.datadir = datadir
-        self.__lock_datadir()
         self.task_tester: Optional[TaskTester] = None
 
         self.task_archiver = TaskArchiver(datadir)
@@ -283,7 +279,7 @@ class Client(HardwarePresetsMixin):
                           kwargs['subtask_id'], op.value)
         else:
             op_class_name: str = op.__class__.__name__ \
-                                 if op is not None else None
+                if op is not None else None
             op_value: int = op.value if op is not None else None
             self._publish(Task.evt_task_status, kwargs['task_id'],
                           op_class_name, op_value)
@@ -478,11 +474,12 @@ class Client(HardwarePresetsMixin):
         tm = self.task_server.task_manager
         for task_id, task_state in tm.tasks_states.items():
             if not task_state.status.is_completed():
-                unfinished_subtasks = 0
-                for subtask_state in task_state.subtask_states.values():
-                    if not subtask_state.status.is_finished():
-                        unfinished_subtasks += 1
                 task = tm.tasks[task_id]
+                unfinished_subtasks = task.get_total_tasks()
+                for subtask_state in task_state.subtask_states.values():
+                    if subtask_state.subtask_status is not None and\
+                            subtask_state.subtask_status.is_finished():
+                        unfinished_subtasks -= 1
                 try:
                     self.funds_locker.lock_funds(
                         task_id,
@@ -593,7 +590,6 @@ class Client(HardwarePresetsMixin):
 
         if self.db:
             self.db.close()
-        self._unlock_datadir()
 
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
@@ -848,7 +844,8 @@ class Client(HardwarePresetsMixin):
             -> Tuple[Optional[Dict], Optional[str]]:
         try:
             assert isinstance(self.task_server, TaskServer)
-            subtask = self.task_server.task_manager.get_subtask_dict(subtask_id)
+            subtask = self.task_server.task_manager.get_subtask_dict(
+                subtask_id)
             return subtask, None
         except KeyError:
             return None, "Subtask not found: '{}'".format(subtask_id)
@@ -859,9 +856,8 @@ class Client(HardwarePresetsMixin):
                                                               single=single)
 
     @rpc_utils.expose('comp.tasks.stats')
-    def get_task_stats(self) -> Dict[str, int]:
+    def get_task_stats(self) -> Dict[str, Any]:
         return {
-            'host_state': self.get_task_state(),
             'provider_state': self.get_provider_status(),
             'in_network': self.get_task_count(),
             'supported': self.get_supported_task_count(),
@@ -874,10 +870,6 @@ class Client(HardwarePresetsMixin):
         if self.task_server:
             return len(self.task_server.task_keeper.supported_tasks)
         return 0
-
-    def get_task_state(self):
-        if self.task_server and self.task_server.task_computer:
-            return self.task_server.task_computer.get_host_state()
 
     def get_computed_task_count(self):
         return self.get_task_computer_stat('computed_tasks')
@@ -1274,8 +1266,8 @@ class Client(HardwarePresetsMixin):
         return status
 
     @staticmethod
-    def _make_connection_status_human_readable_message(status: Dict[str, Any]) \
-            -> str:
+    def _make_connection_status_human_readable_message(
+            status: Dict[str, Any]) -> str:
         # To create the message use the data that is only in `status` dict.
         # This is to make sure that message has no additional information.
 
@@ -1309,7 +1301,7 @@ class Client(HardwarePresetsMixin):
         # golem is starting
         if self.task_server is None:
             return {
-                'status': 'golem is starting',
+                'status': 'Golem is starting',
             }
 
         task_computer = self.task_server.task_computer
@@ -1318,27 +1310,22 @@ class Client(HardwarePresetsMixin):
         subtask_progress: Optional[ComputingSubtaskStateSnapshot] = \
             task_computer.get_progress()
         if subtask_progress is not None:
+            environment: Optional[str] = \
+                task_computer.get_environment()
             return {
-                'status': 'computing',
+                'status': 'Computing',
                 'subtask': subtask_progress.__dict__,
-            }
-
-        # trying to get subtask from task
-        waiting_for_task: Optional[str] = task_computer.waiting_for_task
-        if waiting_for_task is not None:
-            return {
-                'status': 'waiting for task',
-                'task_id_waited_for': waiting_for_task,
+                'environment': environment
             }
 
         # not accepting tasks
         if not self.config_desc.accept_tasks:
             return {
-                'status': 'not accepting tasks',
+                'status': 'Not accepting tasks',
             }
 
         return {
-            'status': 'idle',
+            'status': 'Idle',
         }
 
     @rpc_utils.expose('golem.status')
@@ -1359,26 +1346,6 @@ class Client(HardwarePresetsMixin):
             result = yield deferred
             logger.info('change hw config result: %r', result)
             return self.environments_manager.get_performance_values()
-
-    def __lock_datadir(self):
-        if not path.exists(self.datadir):
-            # Create datadir if not exists yet.
-            makedirs(self.datadir)
-        self.__datadir_lock = open(path.join(self.datadir, "LOCK"), 'w')
-        flags = filelock.LOCK_EX | filelock.LOCK_NB
-        try:
-            filelock.lock(self.__datadir_lock, flags)
-        except IOError:
-            raise IOError("Data dir {} used by other Golem instance"
-                          .format(self.datadir))
-
-    def _unlock_datadir(self):
-        # solves locking issues on OS X
-        try:
-            filelock.unlock(self.__datadir_lock)
-        except Exception:
-            pass
-        self.__datadir_lock.close()
 
     @staticmethod
     def enable_talkback(value):

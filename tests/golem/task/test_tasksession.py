@@ -32,7 +32,7 @@ from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
 from golem.task import taskstate
-from golem.task.taskbase import ResultType, TaskHeader
+from golem.task.taskbase import TaskHeader
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.assertlogs import LogTestCase
@@ -340,7 +340,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             ts.conn.send_message.call_args[0][0]
         self.assertIsInstance(rct, message.tasks.ReportComputedTask)
         self.assertEqual(rct.subtask_id, wtr.subtask_id)
-        self.assertEqual(rct.result_type, ResultType.DATA)
         self.assertEqual(rct.node_name, "ABC")
         self.assertEqual(rct.address, wtr.owner.pub_addr)
         self.assertEqual(rct.port, wtr.owner.pub_port)
@@ -377,10 +376,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             return_value=msg_factories.tasks.AckReportComputedTaskFactory()
         ):
             ts2.interpret(rct)
-        wtr.result_type = "UNKNOWN"
-        with self.assertLogs(logger, level="ERROR"):
-            ts.send_report_computed_task(
-                wtr, wtr.owner.pub_addr, wtr.owner.pub_port, wtr.owner)
 
     def test_react_to_hello_protocol_version(self):
         # given
@@ -502,52 +497,24 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 'key_id',
                 'eth_address',
             )
-            ts.send(msg_factories.tasks.SubtaskResultsAcceptedFactory(
+            rct = msg_factories.tasks.ReportComputedTaskFactory(
                 task_to_compute__compute_task_def__subtask_id=subtask_id,
+            )
+            ts.send(msg_factories.tasks.SubtaskResultsAcceptedFactory(
+                report_computed_task=rct,
                 payment_ts=payment.processed_ts))
             ts.dropped()
-
-        extra_data = dict(
-            # the result is explicitly serialized using cPickle
-            result=pickle.dumps({'stdout': 'xyz'}),
-            result_type=None,
-            subtask_id=subtask_id,
-        )
-
-        ts.result_received(extra_data)
-
-        self.assertTrue(ts.msgs_to_send)
-        self.assertIsInstance(ts.msgs_to_send[0],
-                              message.tasks.SubtaskResultsRejected)
-        self.assertTrue(conn.close.called)
-
-        extra_data.update(dict(
-            result_type=ResultType.DATA,
-        ))
-        conn.close.called = False
-        ts.msgs_to_send = []
 
         ts.task_manager.computed_task_received = Mock(
             side_effect=finished(),
         )
-        ts.result_received(extra_data)
+        ts.result_received(subtask_id, pickle.dumps({'stdout': 'xyz'}))
 
         self.assertTrue(ts.msgs_to_send)
         sra = ts.msgs_to_send[0]
         self.assertIsInstance(sra, message.tasks.SubtaskResultsAccepted)
 
         conn.close.assert_called()
-
-        extra_data.update(dict(
-            subtask_id=None,
-        ))
-        conn.close.called = False
-        ts.msgs_to_send = []
-
-        ts.result_received(extra_data)
-
-        assert not ts.msgs_to_send
-        assert conn.close.called
 
     def _get_srr(self, key2=None, concent=False):
         key1 = 'known'
@@ -1064,7 +1031,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
 
         wtr = factories.taskserver.WaitingTaskResultFactory(
             xtask_id=self.task_id, xsubtask_id=self.subtask_id, owner=self.n,
-            result=result, result_type=ResultType.FILES
+            result=result
         )
         self._mock_task_to_compute(self.task_id, self.subtask_id,
                                    self.ts.key_id, concent_enabled=True)
@@ -1116,14 +1083,17 @@ class SubtaskResultsAcceptedTest(TestCase):
 
     def test_react_to_subtask_result_accepted(self):
         # given
-        sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
-            sign__privkey=self.requestor_keys.raw_privkey,
+        rct = msg_factories.tasks.ReportComputedTaskFactory(
             task_to_compute__sign__privkey=self.requestor_keys.raw_privkey,
             task_to_compute__requestor_public_key=self.requestor_key_id,
             task_to_compute__want_to_compute_task__sign__privkey=(
                 self.provider_keys.raw_privkey),
             task_to_compute__want_to_compute_task__provider_public_key=(
                 self.provider_key_id),
+        )
+        sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
+            sign__privkey=self.requestor_keys.raw_privkey,
+            report_computed_task=rct,
         )
         self.task_server.keys_auth._private_key = \
             self.provider_keys.raw_privkey
@@ -1206,7 +1176,7 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_server.accept_result.return_value = 11111
 
         def computed_task_received(*args):
-            args[3]()
+            args[2]()
 
         self.task_session.task_manager = Mock()
         self.task_session.task_manager.computed_task_received = \
@@ -1214,11 +1184,6 @@ class SubtaskResultsAcceptedTest(TestCase):
 
         rct = msg_factories.tasks.ReportComputedTaskFactory()
         ttc = rct.task_to_compute
-        extra_data = dict(
-            result=pickle.dumps({'stdout': 'xyz'}),
-            result_type=ResultType.DATA,
-            subtask_id=ttc.compute_task_def.get('subtask_id')  # noqa pylint:disable=no-member
-        )
 
         self.task_session.send = Mock()
 
@@ -1229,11 +1194,16 @@ class SubtaskResultsAcceptedTest(TestCase):
         with patch('golem.task.tasksession.get_task_message',
                    side_effect=lambda **kwargs:
                    history_dict[kwargs['message_class_name']]):
-            self.task_session.result_received(extra_data)
+            self.task_session.result_received(
+                ttc.compute_task_def.get('subtask_id'),  # noqa pylint:disable=no-member
+                pickle.dumps({'stdout': 'xyz'}),
+            )
 
         assert self.task_session.send.called
         sra = self.task_session.send.call_args[0][0] # noqa pylint:disable=unsubscriptable-object
         self.assertIsInstance(sra.task_to_compute, message.tasks.TaskToCompute)
+        self.assertIsInstance(sra.report_computed_task,
+                              message.tasks.ReportComputedTask)
         self.assertTrue(sra.task_to_compute.sig)
         self.assertTrue(
             sra.task_to_compute.verify_signature(

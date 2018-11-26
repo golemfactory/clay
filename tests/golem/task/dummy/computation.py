@@ -1,6 +1,7 @@
 """Functions used in the computation of subtasks of the dummy task"""
 
 import hashlib
+import os.path
 import random
 import time
 
@@ -35,7 +36,7 @@ def find_pow(input_data, difficulty, result_size):
         solution += 1
 
 
-def run_dummy_task(data_file, subtask_data, difficulty, result_size):
+def run_dummy_task(data_file, subtask_data, difficulty, result_size, out_dir):
     """Find a string S of result_size bytes such that the hash of the contents
     of the data_file, subtask_data and S produce sha256 hash H such that
     4 leftmost bytes of H is less or equal difficulty.
@@ -56,4 +57,6 @@ def run_dummy_task(data_file, subtask_data, difficulty, result_size):
     assert len(result) == result_size
 
     print('[DUMMY TASK] computation finished, time =', time.clock() - t0, 'sec')
-    return {'data': result, 'result_type': 0}
+    with open(os.path.join(out_dir, 'result'), 'w') as f:
+        f.write(result)
+        return {'data': [f.name]}

@@ -226,7 +226,7 @@ class TaskManager(TaskEventListener):
     def start_task(self, task_id):
         task_state = self.tasks_states[task_id]
 
-        if task_state.status != TaskStatus.notStarted:
+        if not task_state.status.is_preparing():
             raise RuntimeError("Task {} has already been started"
                                .format(task_id))
 
@@ -308,7 +308,7 @@ class TaskManager(TaskEventListener):
 
                     logger.debug('TASK %s RESTORED from %r', task_id, path)
                 except (pickle.UnpicklingError, EOFError, ImportError,
-                        KeyError):
+                        KeyError, AttributeError):
                     logger.exception('Problem restoring task from: %s', path)
                     # On Windows, attempting to remove a file that is in use
                     # causes an exception to be raised, therefore
@@ -628,8 +628,6 @@ class TaskManager(TaskEventListener):
                 self.__set_subtask_state_finished(new_subtask_id)
             old_subtask_state = self.tasks_states[old_task_id] \
                 .subtask_states[old_subtask_id]
-            new_subtask_state.computer = \
-                copy.deepcopy(old_subtask_state.computer)
 
             self.notice_task_updated(
                 task_id=new_task_id,
@@ -680,7 +678,7 @@ class TaskManager(TaskEventListener):
             return None
         task = self.subtask2task_mapping[subtask_id]
         subtask_state = self.tasks_states[task].subtask_states[subtask_id]
-        return subtask_state.computer.node_id
+        return subtask_state.node_id
 
     @handle_subtask_key_error
     def set_subtask_value(self, subtask_id: str, price: int) -> None:
@@ -701,7 +699,7 @@ class TaskManager(TaskEventListener):
         return value
 
     @handle_subtask_key_error
-    def computed_task_received(self, subtask_id, result, result_type,
+    def computed_task_received(self, subtask_id, result,
                                verification_finished):
         task_id = self.subtask2task_mapping[subtask_id]
 
@@ -753,7 +751,7 @@ class TaskManager(TaskEventListener):
             verification_finished()
 
         self.tasks[task_id].computation_finished(
-            subtask_id, result, result_type, verification_finished_
+            subtask_id, result, verification_finished_
         )
 
     @handle_subtask_key_error
@@ -834,7 +832,7 @@ class TaskManager(TaskEventListener):
                                     s.subtask_id,
                                     s.subtask_status.value)
                         s.subtask_status = SubtaskStatus.failure
-                        nodes_with_timeouts.append(s.computer.node_id)
+                        nodes_with_timeouts.append(s.node_id)
                         t.computation_failed(s.subtask_id)
                         s.stderr = "[GOLEM] Timeout"
                         self.notice_task_updated(th.task_id,
@@ -1095,15 +1093,10 @@ class TaskManager(TaskEventListener):
         logger.debug('add_subtask_to_tasks_states(%r, %r, %r, %r)',
                      node_name, node_id, ctd, address)
 
-        price = self.tasks[ctd['task_id']].header.max_price
-
         ss = SubtaskState()
-        ss.computer.node_id = node_id
-        ss.computer.node_name = node_name
-        ss.computer.performance = ctd['performance']
-        ss.computer.ip_address = address
-        ss.computer.price = price
         ss.time_started = time.time()
+        ss.node_id = node_id
+        ss.node_name = node_name
         ss.deadline = ctd['deadline']
         ss.subtask_definition = ctd['short_description']
         ss.subtask_id = ctd['subtask_id']

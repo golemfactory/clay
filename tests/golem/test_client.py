@@ -112,6 +112,7 @@ def make_client(*_, **kwargs):
 
 
 class TestClientBase(testwithreactor.TestDatabaseWithReactor):
+
     def setUp(self):
         super().setUp()
         self.client = make_client(datadir=self.path)
@@ -188,15 +189,6 @@ class TestClient(TestClientBase):
         self.additional_dir_content([3], d)
         c.remove_received_files()
         self.assertEqual(os.listdir(d), [])
-
-    def test_datadir_lock(self, *_):
-        # Let's use non existing dir as datadir here to check how the Client
-        # is able to cope with that.
-        datadir = os.path.join(self.path, "non-existing-dir")
-        self.client = make_client(datadir=datadir)
-        self.assertEqual(self.client.config_desc.node_address, '')
-        with self.assertRaises(IOError):
-            make_client(datadir=datadir)
 
     def test_quit(self, *_):
         self.client.db = None
@@ -332,10 +324,14 @@ class TestClient(TestClientBase):
                 status=Mock(is_completed=Mock(return_value=False)),
                 subtask_states={
                     "sub1": Mock(
-                        status=Mock(is_finished=Mock(return_value=True)),
+                        subtask_status=Mock(
+                            is_finished=Mock(return_value=True),
+                        ),
                     ),
                     "sub2": Mock(
-                        status=Mock(is_finished=Mock(return_value=False)),
+                        subtask_status=Mock(
+                            is_finished=Mock(return_value=False),
+                        ),
                     ),
                 },
             ),
@@ -346,17 +342,20 @@ class TestClient(TestClientBase):
             "t2": Mock(
                 subtask_price=subtask_price,
                 header=Mock(deadline=deadline),
+                get_total_tasks=Mock(return_value=3)
             ),
         }
         self.client._restore_locks()
         self.client.funds_locker.lock_funds.assert_called_once_with(
             "t2",
             subtask_price,
-            1,
+            2,
             deadline,
         )
 
+
 class TestClientRestartSubtasks(TestClientBase):
+
     def setUp(self):
         super().setUp()
         self.ts = self.client.transaction_system
@@ -409,6 +408,7 @@ class TestClientRestartSubtasks(TestClientBase):
 
 
 class TestDoWorkService(testwithreactor.TestWithReactor):
+
     def setUp(self):
         super().setUp()
 
@@ -467,7 +467,8 @@ class TestDoWorkService(testwithreactor.TestWithReactor):
 
         with freeze_time("2018-01-01 00:01:00"):
             assert self.do_work_service._time_for(key, interval)
-            assert self.do_work_service._check_ts[key] == time.time() + interval
+            assert self.do_work_service._check_ts[
+                key] == time.time() + interval
 
     @freeze_time("2018-01-01 00:00:00")
     def test_intervals(self):
@@ -498,6 +499,7 @@ class TestDoWorkService(testwithreactor.TestWithReactor):
 
 
 class TestMonitoringPublisherService(testwithreactor.TestWithReactor):
+
     def setUp(self):
         task_server = Mock()
         task_server.task_keeper = Mock()
@@ -519,6 +521,7 @@ class TestMonitoringPublisherService(testwithreactor.TestWithReactor):
 
 
 class TestNetworkConnectionPublisherService(testwithreactor.TestWithReactor):
+
     def setUp(self):
         self.client = Mock()
         self.service = NetworkConnectionPublisherService(
@@ -535,6 +538,7 @@ class TestNetworkConnectionPublisherService(testwithreactor.TestWithReactor):
 
 
 class TestTaskArchiverService(testwithreactor.TestWithReactor):
+
     def setUp(self):
         self.task_archiver = Mock()
         self.service = TaskArchiverService(self.task_archiver)
@@ -548,6 +552,7 @@ class TestTaskArchiverService(testwithreactor.TestWithReactor):
 
 
 class TestResourceCleanerService(testwithreactor.TestWithReactor):
+
     def setUp(self):
         self.older_than_seconds = 5
         self.client = Mock()
@@ -569,6 +574,7 @@ class TestResourceCleanerService(testwithreactor.TestWithReactor):
 
 
 class TestTaskCleanerService(testwithreactor.TestWithReactor):
+
     def setUp(self):
         self.client = Mock(spec=Client)
         self.service = TaskCleanerService(
@@ -585,6 +591,7 @@ class TestTaskCleanerService(testwithreactor.TestWithReactor):
 @patch('golem.network.p2p.node.Node.collect_network_info')
 class TestClientRPCMethods(TestClientBase, LogTestCase):
     # pylint: disable=too-many-public-methods
+
     def setUp(self):
         super().setUp()
         self.client.sync = Mock()
@@ -884,8 +891,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         result = c.get_task_stats()
         expected = {
-            'host_state': "Idle",
-            'provider_state': {'status': 'idle'},
+            'provider_state': {'status': 'Idle'},
             'in_network': 0,
             'supported': 0,
             'subtasks_computed': (0, 0),
@@ -1014,7 +1020,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         # then
         expected_status = {
-            'status': 'golem is starting',
+            'status': 'Golem is starting',
         }
         assert status == expected_status
 
@@ -1038,31 +1044,18 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             ComputingSubtaskStateSnapshot(**state_snapshot_dict)
         self.client.task_server.task_computer = task_computer
 
+        # environment
+        environment = task_computer.get_environment()
+
         # when
         status = self.client.get_provider_status()
 
         # then
         state_snapshot_dict['scene_file'] = "cube.blend"
         expected_status = {
-            'status': 'computing',
+            'environment': environment,
+            'status': 'Computing',
             'subtask': state_snapshot_dict,
-        }
-        assert status == expected_status
-
-    def test_provider_status_waiting_for_task(self, *_):
-        # given
-        task_computer = Mock()
-        task_computer.get_progress.return_value = None
-        task_computer.waiting_for_task = str(uuid.uuid4())
-        self.client.task_server.task_computer = task_computer
-
-        # when
-        status = self.client.get_provider_status()
-
-        # then
-        expected_status = {
-            'status': 'waiting for task',
-            'task_id_waited_for': task_computer.waiting_for_task,
         }
         assert status == expected_status
 
@@ -1075,7 +1068,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         # then
         expected_status = {
-            'status': 'not accepting tasks',
+            'status': 'Not accepting tasks',
         }
         assert status == expected_status
 
@@ -1085,7 +1078,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
         # then
         expected_status = {
-            'status': 'idle',
+            'status': 'Idle',
         }
         assert status == expected_status
 
@@ -1170,6 +1163,7 @@ def test_task_computer_event_listener():
 
 
 class TestDepositBalance(TestClientBase):
+
     def test_no_concent(self):
         self.client.concent_service.variant = CONCENT_CHOICES['disabled']
         self.assertFalse(self.client.concent_service.enabled)
@@ -1207,6 +1201,7 @@ class TestDepositBalance(TestClientBase):
 
 
 class DepositPaymentsListTest(TestClientBase):
+
     def test_empty(self):
         self.assertEqual(self.client.get_deposit_payments_list(), [])
 
