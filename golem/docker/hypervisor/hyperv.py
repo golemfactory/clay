@@ -48,11 +48,19 @@ class HyperVHypervisor(DockerMachineHypervisor):
     def setup(self) -> None:
         try:
             # The windows VM fails to start when too much memory is assigned
-            super().setup(self)
-        except Exception:
+            super().setup()
+            return
+        except Exception as e:
+            logger.debug("setup error: %r", e)
             logger.warning("Failed to setup VM, retry with minimum values")
-            self.constrain(self.vm_name, MIN_CONSTRAINTS)
-            super().setup(self)
+
+        try:
+            self.constrain(self._vm_name, **MIN_CONSTRAINTS)
+            super().setup()
+        except Exception as e:
+            logger.debug("re-setup error: %r", e)
+            logger.error("Failed to setup VM, no more retry")
+            raise
 
 
     @classmethod
