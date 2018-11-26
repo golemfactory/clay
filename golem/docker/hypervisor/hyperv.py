@@ -240,6 +240,19 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
         return volume_name
 
+
+    def vm_running(self, name: Optional[str] = None) -> bool:
+        result = super().vm_running(name)
+        if not result:
+            name  = name or self._vm_name
+            try:
+                vm_info = self._vm_utils.get_vm_summary_info(name)
+                logger.debug('vm_info: %r', vm_info)
+            except Exception as e:
+                logger.debug('exc: %r', e)
+
+        return result
+
 class VMUtilsWithMemFix(VMUtils):
 
     # TODO: Fix override!
