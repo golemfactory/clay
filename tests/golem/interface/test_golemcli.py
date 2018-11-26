@@ -24,12 +24,12 @@ class TestGolemCLI(unittest.TestCase):
     @patch('golemcli.is_app_running', side_effect=[True, True])
     @patch('golemcli.logger')
     def test_check_golem_running(self, logger, *_):
-        with patch.object(sys, 'argv', ['program', '-d', 'datadir', '-m']):
+        with patch.object(sys, 'argv', ['program', '-m']):
             start()
             args, kwargs = logger.warning.call_args
             self.assertIn('removing', args[0])
 
-        with patch.object(sys, 'argv', ['program', '-d', 'datadir']):
+        with patch.object(sys, 'argv', ['program']):
             start()
             args, kwargs = logger.warning.call_args
             self.assertIn('adding', args[0])
@@ -39,7 +39,7 @@ class TestGolemCLI(unittest.TestCase):
     @patch('portalocker.Lock.acquire')
     @patch('golemcli.logger')
     def test_is_app_running_negative(self, logger, *_):
-        with patch.object(sys, 'argv', ['program', '-d', 'datadir']):
+        with patch.object(sys, 'argv', ['program']):
             start()
             logger.warning.assert_not_called()
 
@@ -48,6 +48,6 @@ class TestGolemCLI(unittest.TestCase):
     @patch('portalocker.Lock.acquire', side_effect=LockException)
     @patch('golemcli.logger')
     def test_is_app_running_positive(self, logger, *_):
-        with patch.object(sys, 'argv', ['program', '-d', 'datadir']):
+        with patch.object(sys, 'argv', ['program']):
             start()
             logger.warning.assert_called()
