@@ -246,10 +246,16 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if not result:
             name  = name or self._vm_name
             try:
-                vm_info = self._vm_utils.get_vm_summary_info(name)
-                logger.debug('vm_info: %r', vm_info)
+                vm_cmd = f'(Get-VM {name}).state'
+                vm_state = self._run_ps(command=vm_cmd)
             except Exception as e:
                 logger.debug('exc: %r', e)
+            else:
+                logger.debug('vm_state: %r', vm_state)
+                if vm_state == 'PausedCritical':
+                    logger.warning('VM is PausedCritical, stopping..')
+                    self.stop_vm()
+                    raise Exception("Docker VM stopped due to low disk space.")
 
         return result
 
