@@ -61,7 +61,7 @@ class SubtaskResultsVerifyBaseTest(SCIBaseTest):
             "start_task": 1,
             "end_task": 1,
             "total_tasks": 1,
-            "outfilebasename": 'test task',
+            "outfilebasename": 'test task_1',
             "scene_file": '/golem/resources/wlochaty3.blend',
             "script_src": generate_blender_crop_file(
                 (320, 240), (0.0, 1.0), (0.0, 1.0), False, 0),

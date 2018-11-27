@@ -459,7 +459,7 @@ class BlenderRenderTask(FrameRenderingTask):
             max_y = 1.0
 
         crops = [
-            {"outfilebasename": self.outfilebasename,
+            {"outfilebasename": "{}_{}".format(self.outfilebasename, start_task),
              "borders_x": [0.0, 1.0],
              "borders_y": [min_y, max_y],
              }
@@ -546,7 +546,7 @@ class BlenderRenderTask(FrameRenderingTask):
         scene_file = self._get_scene_file_rel_path()
 
         crops = [
-            {"outfilebasename": "testresult",
+            {"outfilebasename": "testresult_1",
              "borders_x": [0.0, 1.0],
              "borders_y": [0.0, 1.0],
              }

@@ -16,7 +16,7 @@ class TestDummyTaskDockerJob(TestDockerJob):
         return "golemfactory/base"
 
     def _get_test_tag(self):
-        return "1.3"
+        return "1.4"
 
     def test_dummytask_job(self):
         app_dir = path.join(get_golem_path(), "apps", "dummy")

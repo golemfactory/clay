@@ -11,10 +11,10 @@
       "docker_images":[
         {
           "py/object":"golem.docker.image.DockerImage",
-          "tag":"1.5",
+          "tag":"1.6",
           "id":null,
           "repository":"golemfactory/blender",
-          "name":"golemfactory/blender:1.5"
+          "name":"golemfactory/blender:1.6"
         }
       ],
       "caps":[],
@@ -44,10 +44,10 @@
   "docker_images":[
     {
       "py/object":"golem.docker.image.DockerImage",
-      "tag":"1.5",
+      "tag":"1.6",
       "id":null,
       "repository":"golemfactory/blender",
-      "name":"golemfactory/blender:1.5"
+      "name":"golemfactory/blender:1.6"
     }
   ],
   "resolution":[

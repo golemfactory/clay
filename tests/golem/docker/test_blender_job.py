@@ -15,7 +15,7 @@ class TestBlenderDockerJob(TestDockerJob):
         return "golemfactory/blender"
 
     def _get_test_tag(self):
-        return "1.5"
+        return "1.6"
 
     def test_blender_job(self):
         app_dir = os.path.join(get_golem_path(), "apps", "blender")
@@ -29,10 +29,11 @@ class TestBlenderDockerJob(TestDockerJob):
         shutil.copy(str(scene_file), self.resources_dir)
         dest_scene_file = pathlib.PurePosixPath(DockerJob.RESOURCES_DIR)
         dest_scene_file /= scene_file.name
+        start_task = 42
 
         crops = [
             {
-                "outfilebasename": "out",
+                "outfilebasename": "out_{}".format(start_task),
                 "borders_x": [0.0, 1.0],
                 "borders_y": [0.0, 1.0]
             }
@@ -47,7 +48,7 @@ class TestBlenderDockerJob(TestDockerJob):
             "samples": 5,
             "frames": [1],
             "output_format": "EXR",
-            "start_task": 42,
+            "start_task": start_task,
             "end_task": 42,
             "crops": crops
         }

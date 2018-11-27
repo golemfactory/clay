@@ -35,7 +35,7 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
             task_server.client.datadir
         task_computer = TaskComputer(task_server,
                                      use_docker_manager=False)
-        image = DockerImage("golemfactory/base", tag="1.3")
+        image = DockerImage("golemfactory/base", tag="1.4")
 
         with self.assertRaises(AttributeError):
             dir_mapping = DockerTaskThread.generate_dir_mapping(
