@@ -42,7 +42,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._vm_utils = VMUtilsWithMemFix()
+        self._vm_utils = VMUtils()
 
 
     def start_vm(self, name: Optional[str] = None) -> None:
@@ -55,7 +55,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
             logger.warning("Failed to setup VM, retry with minimum values")
 
         try:
-            self.constrain(self._vm_name, **MIN_CONSTRAINTS)
+            self.constrain(name, **MIN_CONSTRAINTS)
             super().start_vm(name)
         except Exception as e:
             logger.debug("re-setup error: %r", e)
@@ -118,9 +118,6 @@ class HyperVHypervisor(DockerMachineHypervisor):
         assert isinstance(mem, int)
         cpu = params.get(CONSTRAINT_KEYS['cpu'])
 
-        min_mem = MIN_CONSTRAINTS[mem_key]
-        dyn_mem_ratio = mem / min_mem
-
         try:
             self._vm_utils.update_vm(
                 vm_name=name,
@@ -129,7 +126,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 vcpus_num=cpu,
                 vcpus_per_numa_node=0,
                 limit_cpu_features=False,
-                dynamic_mem_ratio=dyn_mem_ratio
+                dynamic_mem_ratio=1
             )
         except OSWinException:
             logger.exception(f'Hyper-V: reconfiguration of VM "{name}" failed')
@@ -239,54 +236,3 @@ class HyperVHypervisor(DockerMachineHypervisor):
         )
 
         return volume_name
-
-
-    def vm_running(self, name: Optional[str] = None) -> bool:
-        result = super().vm_running(name)
-        if not result:
-            name  = name or self._vm_name
-            try:
-                vm_cmd = f'(Get-VM {name}).state'
-                vm_state = self._run_ps(command=vm_cmd)
-            except Exception as e:
-                logger.debug('exc: %r', e)
-            else:
-                logger.debug('vm_state: %r', vm_state)
-                if vm_state == 'PausedCritical':
-                    logger.warning('VM is PausedCritical, stopping..')
-                    self.stop_vm()
-                    raise Exception("Docker VM stopped due to low disk space.")
-
-        return result
-
-class VMUtilsWithMemFix(VMUtils):
-
-    # TODO: Fix override!
-    # This function is exactly the same except:
-    # - mem_settings.VirtualQuantity = reserved_mem
-    # + mem_settings.VirtualQuantity = max_mem
-    def _set_vm_memory(self, vmsetting, memory_mb, memory_per_numa_node,
-                       dynamic_memory_ratio):
-        mem_settings = self._get_vm_memory(vmsetting)
-        max_mem = int(memory_mb)
-        mem_settings.Limit = max_mem
-
-        if dynamic_memory_ratio > 1:
-            mem_settings.DynamicMemoryEnabled = True
-            # Must be a multiple of 2
-            reserved_mem = min(
-                int(max_mem / dynamic_memory_ratio) >> 1 << 1,
-                max_mem)
-        else:
-            mem_settings.DynamicMemoryEnabled = False
-            reserved_mem = max_mem
-
-        mem_settings.Reservation = reserved_mem
-        # Start with the minimum memory
-        mem_settings.VirtualQuantity = max_mem
-
-        if memory_per_numa_node:
-            # One memory block is 1 MB.
-            mem_settings.MaxMemoryBlocksPerNumaNode = memory_per_numa_node
-
-        self._jobutils.modify_virt_resource(mem_settings)
