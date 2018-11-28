@@ -134,12 +134,15 @@ class TestSendToConcent(TestCase):
         post_mock.return_value = response
 
         self.msg.sign_message(self.private_key)
-
-        client.send_to_concent(
-            msg=self.msg,
-            signing_key=self.private_key,
-            concent_variant=self.variant,
-        )
+        try:
+            client.send_to_concent(
+                msg=self.msg,
+                signing_key=self.private_key,
+                concent_variant=self.variant,
+            )
+        except golem_messages.exceptions.SignatureAlreadyExists:
+            self.fail("Already existing signature should be cleared"
+                      " in `send_to_concent` function!")
 
     @mock.patch('golem.network.concent.client.verify_response')
     def test_delayed_timestamp(self, *_):
