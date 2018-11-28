@@ -170,3 +170,14 @@ environment variable, e.g.:
 ```
 GOLEM_INTEGRATION_TEST_DIR=/some/location pytest scripts/node_integration_tests
 ```
+
+And finally, to run a single test using `pytest`, just use standard `pytest`
+syntax, e.g.:
+
+```
+pytest scripts/node_integration_tests/tests/test_golem.py::GolemNodeTest::test_regular_task_run
+```
+
+Suggestion: when you _don't_ provide the `GOLEM_INTEGRATION_TEST_DIR` variable
+to pytest, run `pytest -s -v [...]` so that you can see the paths generated
+automatically during the test run.
