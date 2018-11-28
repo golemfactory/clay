@@ -6,7 +6,6 @@ import sys
 from calendar import timegm
 from datetime import datetime
 from functools import wraps
-from multiprocessing import cpu_count
 from typing import Any, Callable, cast, List, TypeVar
 
 import pytz
@@ -17,8 +16,6 @@ F = TypeVar('F', bound=Callable[..., Any])
 
 TIMEOUT_FORMAT = '{}:{:0=2d}:{:0=2d}'
 DEVNULL = open(os.devnull, 'wb')
-MAX_CPU_WINDOWS = 32
-MAX_CPU_MACOS = 16
 
 
 def is_frozen():
@@ -284,20 +281,6 @@ def config_logging(suffix='', datadir=None, loglevel=None, config_desc=None):
         crossbar_log_lvl = 'warn'
 
     txaio.set_global_log_level(crossbar_log_lvl)  # pylint: disable=no-member
-
-
-def get_cpu_count():
-    """
-    Get number of cores with system limitations:
-    - max 32 on Windows due to VBox limitation
-    - max 16 on MacOS dut to xhyve limitation
-    :return: number of cores
-    """
-    if is_windows():
-        return min(cpu_count(), MAX_CPU_WINDOWS)  # VBox limitation
-    if is_osx():
-        return min(cpu_count(), MAX_CPU_MACOS)    # xhyve limitation
-    return cpu_count()  # No limitatons on Linux
 
 
 def install_reactor():
