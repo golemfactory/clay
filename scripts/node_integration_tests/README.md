@@ -30,7 +30,7 @@ but we don't do that yet and it's not yet supported by the test suite.
 
 ### Components
 
-The suite is comprised of:
+Here's the list of components that make up the test suite.
 
 #### nodes
 
