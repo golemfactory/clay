@@ -4,6 +4,7 @@ from golem.core.variables import PROTOCOL_CONST
 
 from .base import NodeTestBase
 
+
 class GolemNodeTest(NodeTestBase, unittest.TestCase):
 
     def test_regular_task_run(self):
