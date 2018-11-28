@@ -97,7 +97,7 @@ def send_to_concent(
     msg.header = header
 
     logger.debug('send_to_concent(): Encrypting msg %r', msg)
-    # if signature already exists, it must be set to None explicitlyq
+    # if signature already exists, it must be set to None explicitly
     if msg.sig is not None:
         msg.sig = None
     data = golem_messages.dump(msg, signing_key, concent_variant['pubkey'])
