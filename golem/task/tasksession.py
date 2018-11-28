@@ -226,6 +226,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 subtask_id,
                 self.key_id,
                 task_to_compute.provider_ethereum_address,
+                task_to_compute.price,
             )
 
             response_msg = message.tasks.SubtaskResultsAccepted(
@@ -572,10 +573,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             size=task_state.package_size
         )
         ttc.generate_ethsig(self.my_private_key)
-        self.task_manager.set_subtask_value(
-            subtask_id=ttc.subtask_id,
-            price=price,
-        )
         self.send(ttc)
         history.add(
             msg=copy_and_sign(

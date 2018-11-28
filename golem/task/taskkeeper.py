@@ -252,11 +252,6 @@ class CompTaskKeeper:
     def get_node_for_task_id(self, task_id) -> typing.Optional[str]:
         return self.active_tasks[task_id].header.task_owner.key
 
-    @handle_key_error
-    def get_value(self, task_id: str) -> int:
-        comp_task_info: CompTaskInfo = self.active_tasks[task_id]
-        return comp_task_info.subtask_price
-
     def check_task_owner_by_subtask(self, task_owner_key_id, subtask_id):
         task_id = self.subtask_to_task.get(subtask_id)
         task = self.active_tasks.get(task_id)

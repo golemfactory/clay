@@ -681,24 +681,6 @@ class TaskManager(TaskEventListener):
         return subtask_state.node_id
 
     @handle_subtask_key_error
-    def set_subtask_value(self, subtask_id: str, price: int) -> None:
-        """Set price for a subtask"""
-        task_id = self.subtask2task_mapping[subtask_id]
-
-        ss = self.tasks_states[task_id].subtask_states[subtask_id]
-        ss.value = price
-
-    @handle_subtask_key_error
-    def get_value(self, subtask_id):
-        """ Return value of a given subtask
-        :param subtask_id:  id of a computed subtask
-        :return long: price that should be paid for given subtask
-        """
-        task_id = self.subtask2task_mapping[subtask_id]
-        value = self.tasks_states[task_id].subtask_states[subtask_id].value
-        return value
-
-    @handle_subtask_key_error
     def computed_task_received(self, subtask_id, result,
                                verification_finished):
         task_id = self.subtask2task_mapping[subtask_id]

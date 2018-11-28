@@ -913,46 +913,13 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
             "10.10.10.10")
         assert subtask is not None
         expected_value = ceil(1031 * 1010 / 3600)
-        ts.task_manager.set_subtask_value("xxyyzz", expected_value)
         prev_calls = trust.COMPUTED.increase.call_count
-        ts.accept_result("xxyyzz", "key", "eth_address")
+        ts.accept_result("xxyyzz", "key", "eth_address", expected_value)
         ts.client.transaction_system.add_payment_info.assert_called_with(
             "xxyyzz",
             expected_value,
             "eth_address")
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
-
-    @patch("golem.task.taskmanager.TaskManager.dump_task")
-    @patch("golem.task.taskserver.Trust")
-    def test_results_no_payment_addr(self, *_):
-        # FIXME: This test is too heavy, it starts up whole Golem Client.
-        ts = self.ts
-        ts.task_manager.listen_address = "10.10.10.10"
-        ts.task_manager.listen_port = 1111
-
-        extra_data = Mock()
-        extra_data.ctd = ComputeTaskDef()
-        extra_data.ctd['subtask_id'] = "xxyyzz"
-
-        task_mock = get_mock_task("xyz", "xxyyzz")
-        task_id = task_mock.header.task_id
-        task_mock.get_trust_mod.return_value = ts.max_trust
-        extra_data.ctd['task_id'] = task_id
-        task_mock.query_extra_data.return_value = extra_data
-        task_mock.task_definition.subtask_timeout = 3600
-        task_mock.should_accept_client.return_value = \
-            AcceptClientVerdict.ACCEPTED
-
-        ts.task_manager.add_new_task(task_mock)
-        ts.task_manager.tasks_states[task_id].status = \
-            ts.task_manager.activeStatus[0]
-        subtask = ts.task_manager.get_next_subtask(
-            "DEF", "DEF", task_id, 1000, 10, 5, 10, 2, "10.10.10.10")
-
-        assert subtask is not None
-        ts.accept_result("xxyyzz", "key", "eth_address")
-        self.assertEqual(
-            ts.client.transaction_system.add_payment_info.call_count, 0)
 
     def test_disconnect(self, *_):
         self.ts.task_sessions = {'task_id': Mock()}
