@@ -1,10 +1,29 @@
 #!/usr/bin/env python
+from argparse import ArgumentParser
 import time
 
 from scripts.node_integration_tests import helpers
 
-provider_node = helpers.run_golem_node('provider/debug')
-requestor_node = helpers.run_golem_node('requestor/debug')
+parser = ArgumentParser(
+    description="Run a pair of golem nodes with default test parameters"
+)
+parser.add_argument(
+    '--provider-datadir',
+    default=helpers.mkdatadir('provider'),
+    help="the provider node's datadir",
+)
+parser.add_argument(
+    '--requestor-datadir',
+    default=helpers.mkdatadir('requestor'),
+    help="the requestor node's datadir",
+)
+args = parser.parse_args()
+
+provider_node = helpers.run_golem_node(
+    'provider/debug', '--datadir', args.provider_datadir)
+requestor_node = helpers.run_golem_node(
+    'requestor/debug', '--datadir', args.requestor_datadir
+)
 
 provider_queue = helpers.get_output_queue(provider_node)
 requestor_queue = helpers.get_output_queue(requestor_node)
