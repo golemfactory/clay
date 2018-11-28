@@ -1,7 +1,8 @@
 import unittest
 
-from .base import NodeTestBase
+from golem.core.variables import PROTOCOL_CONST
 
+from .base import NodeTestBase
 
 class GolemNodeTest(NodeTestBase, unittest.TestCase):
 
@@ -26,6 +27,7 @@ class GolemNodeTest(NodeTestBase, unittest.TestCase):
         exit_code = self._run_test('golem.task_timeout.TaskTimeoutAndRestart')
         self.assertEqual(exit_code, 0)
 
+    @unittest.skipIf(PROTOCOL_CONST.ID <= '29', "Known issue in 0.18.x")
     def test_exr(self):
         exit_code = self._run_test('golem.exr.RegularRun')
         self.assertEqual(exit_code, 0)
