@@ -392,37 +392,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             assert self.tm.tasks_states.get(task_id) is None
             assert not paf.is_file()
 
-    def test_get_and_set_value(self):
-        with self.assertLogs(logger, level="WARNING"):
-            self.tm.get_value("xxyyzz")
-
-        task_mock = self._get_task_mock()
-
-        self.tm.add_new_task(task_mock)
-
-        self.tm.tasks_states["xyz"].status = self.tm.activeStatus[0]
-        with patch('golem.task.taskbase.Task.needs_computation',
-                   return_value=True):
-            wrong_task = not self.tm.is_my_task("xyz")
-            subtask = self.tm.get_next_subtask(
-                node_id="DEF",
-                node_name="DEF",
-                task_id="xyz",
-                estimated_performance=1000,
-                price=10,
-                max_resource_size=5,
-                max_memory_size=10,
-                num_cores=2,
-                address="10.10.10.10",
-            )
-            self.assertIsInstance(subtask, ComputeTaskDef)
-            self.assertFalse(wrong_task)
-
-        self.tm.set_subtask_value("xxyyzz", 13)
-        self.assertEqual(
-            self.tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 13)
-        self.assertEqual(self.tm.get_value("xxyyzz"), 13)
-
     def test_change_config(self):
         self.assertTrue(self.tm.use_distributed_resources)
         self.tm.change_config(self.path, False)

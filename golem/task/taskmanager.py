@@ -674,24 +674,6 @@ class TaskManager(TaskEventListener):
         return subtask_state.node_id
 
     @handle_subtask_key_error
-    def set_subtask_value(self, subtask_id: str, price: int) -> None:
-        """Set price for a subtask"""
-        task_id = self.subtask2task_mapping[subtask_id]
-
-        ss = self.tasks_states[task_id].subtask_states[subtask_id]
-        ss.value = price
-
-    @handle_subtask_key_error
-    def get_value(self, subtask_id):
-        """ Return value of a given subtask
-        :param subtask_id:  id of a computed subtask
-        :return long: price that should be paid for given subtask
-        """
-        task_id = self.subtask2task_mapping[subtask_id]
-        value = self.tasks_states[task_id].subtask_states[subtask_id].value
-        return value
-
-    @handle_subtask_key_error
     def computed_task_received(self, subtask_id, result,
                                verification_finished):
         task_id = self.subtask2task_mapping[subtask_id]
@@ -1064,14 +1046,6 @@ class TaskManager(TaskEventListener):
         """ Add a header of a task which this node may try to compute """
         self.comp_task_keeper.add_request(theader, price)
 
-    @handle_task_key_error
-    def get_payment_for_task_id(self, task_id):
-        val = 0.0
-        t = self.tasks_states[task_id]
-        for ss in list(t.subtask_states.values()):
-            val += ss.value
-        return val
-
     def get_estimated_cost(self, task_type, options):
         try:
             subtask_value = options['price'] * options['subtask_time']
@@ -1095,7 +1069,6 @@ class TaskManager(TaskEventListener):
         ss.subtask_id = ctd['subtask_id']
         ss.extra_data = ctd['extra_data']
         ss.subtask_status = SubtaskStatus.starting
-        ss.value = 0
 
         (self.tasks_states[ctd['task_id']].
             subtask_states[ctd['subtask_id']]) = ss

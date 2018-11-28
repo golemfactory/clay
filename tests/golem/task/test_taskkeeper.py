@@ -595,16 +595,13 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
         self.assertEqual(ctk.active_tasks["xyz"].subtask_price, 240)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
-        self.assertEqual(ctk.get_value("xyz"), 240)
         ctk.add_request(header, 23)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 2)
         self.assertEqual(ctk.active_tasks["xyz"].subtask_price, 240)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
-        self.assertEqual(ctk.get_value("xyz"), 240)
         header.task_id = "xyz2"
         ctk.add_request(header, 25000)
         self.assertEqual(ctk.active_tasks["xyz2"].subtask_price, 834)
-        self.assertEqual(ctk.get_value("xyz2"), 834)
         header.task_id = "xyz"
         thread = get_task_header()
         thread.task_id = "qaz123WSX"
@@ -613,7 +610,6 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         with self.assertRaises(TypeError):
             ctk.add_request(thread, '1')
         ctk.add_request(thread, 12)
-        self.assertEqual(ctk.get_value(thread.task_id), 1)
 
         ctd = ComputeTaskDef()
         ttc = msg_factories.tasks.TaskToComputeFactory(price=0)
@@ -622,8 +618,6 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             self.assertFalse(ctk.receive_subtask(ttc))
         with self.assertLogs(logger, level="WARNING"):
             self.assertIsNone(ctk.get_node_for_task_id("abc"))
-        with self.assertLogs(logger, level="WARNING"):
-            self.assertIsNone(ctk.get_value("abc"))
 
         with self.assertLogs(logger, level="WARNING"):
             ctk.request_failure("abc")
