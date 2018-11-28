@@ -126,6 +126,21 @@ class TestSendToConcent(TestCase):
         )
         verify_mock.assert_called_once_with(response)
 
+    def test_sending_same_message_twice_does_not_raise(self, post_mock):
+        response = requests.Response()
+        response.headers['Concent-Golem-Messages-Version'] = \
+            golem_messages.__version__
+        response.status_code = 200
+        post_mock.return_value = response
+
+        self.msg.sign_message(self.private_key)
+
+        client.send_to_concent(
+            msg=self.msg,
+            signing_key=self.private_key,
+            concent_variant=self.variant,
+        )
+
     @mock.patch('golem.network.concent.client.verify_response')
     def test_delayed_timestamp(self, *_):
         future = datetime.datetime.utcnow() + datetime.timedelta(days=5)

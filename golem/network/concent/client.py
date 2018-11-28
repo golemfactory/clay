@@ -71,7 +71,7 @@ def verify_response(response: requests.Response) -> None:
 
 def send_to_concent(
         msg: message.base.Message,
-        signing_key,
+        signing_key: bytes,
         concent_variant: dict) -> typing.Optional[bytes]:
     """Sends a message to the concent server
 
