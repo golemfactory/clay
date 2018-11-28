@@ -167,8 +167,6 @@ class TestRestartTask(ProviderBase):
         task_manager = self.client.task_server.task_manager
 
         task_manager.dump_task = mock.Mock()
-        task_manager.listen_address = '127.0.0.1'
-        task_manager.listen_port = 40103
 
         some_file_path = self.new_path / "foo"
         # pylint thinks it's PurePath, but it's a concrete path

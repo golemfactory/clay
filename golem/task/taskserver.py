@@ -691,8 +691,6 @@ class TaskServer(
         self.cur_port = port
         logger.info(" Port {} opened - listening".format(self.cur_port))
         self.node.prv_port = self.cur_port
-        self.task_manager.listen_address = self.node.prv_addr
-        self.task_manager.listen_port = self.cur_port
         self.task_manager.node = self.node
 
     def _listening_failure(self, **kwargs):

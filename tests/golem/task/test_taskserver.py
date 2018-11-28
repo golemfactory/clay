@@ -886,8 +886,6 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
     @patch("golem.task.taskserver.Trust")
     def test_results(self, trust, *_):
         ts = self.ts
-        ts.task_manager.listen_port = 1111
-        ts.task_manager.listen_address = "10.10.10.10"
 
         task_mock = get_mock_task("xyz", "xxyyzz")
         task_mock.get_trust_mod.return_value = ts.max_trust
