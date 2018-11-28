@@ -91,8 +91,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             finished_cb=Mock()
         )
         self.tm.key_id = "KEYID"
-        self.tm.listen_address = "10.10.10.10"
-        self.tm.listen_port = 2222
 
     def tearDown(self):
         super(TestTaskManager, self).tearDown()
@@ -214,8 +212,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                                   task_persistence=True)
 
             temp_tm.key_id = "KEYID"
-            temp_tm.listen_address = "10.10.10.10"
-            temp_tm.listen_port = 2222
 
             for task, task_id in zip(tasks, task_ids):
                 temp_tm.add_new_task(task)
@@ -395,37 +391,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             assert self.tm.tasks.get(task_id) is None
             assert self.tm.tasks_states.get(task_id) is None
             assert not paf.is_file()
-
-    def test_get_and_set_value(self):
-        with self.assertLogs(logger, level="WARNING"):
-            self.tm.get_value("xxyyzz")
-
-        task_mock = self._get_task_mock()
-
-        self.tm.add_new_task(task_mock)
-
-        self.tm.tasks_states["xyz"].status = self.tm.activeStatus[0]
-        with patch('golem.task.taskbase.Task.needs_computation',
-                   return_value=True):
-            wrong_task = not self.tm.is_my_task("xyz")
-            subtask = self.tm.get_next_subtask(
-                node_id="DEF",
-                node_name="DEF",
-                task_id="xyz",
-                estimated_performance=1000,
-                price=10,
-                max_resource_size=5,
-                max_memory_size=10,
-                num_cores=2,
-                address="10.10.10.10",
-            )
-            self.assertIsInstance(subtask, ComputeTaskDef)
-            self.assertFalse(wrong_task)
-
-        self.tm.set_subtask_value("xxyyzz", 13)
-        self.assertEqual(
-            self.tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 13)
-        self.assertEqual(self.tm.get_value("xxyyzz"), 13)
 
     def test_change_config(self):
         self.assertTrue(self.tm.use_distributed_resources)
@@ -943,14 +908,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         with self.assertRaises(RuntimeError):
             self.tm.add_new_task(t)
         self.tm.key_id = None
-        self.tm.listen_address = "not address"
-        self.tm.listen_port = "not a port"
         t = self._get_task_mock(task_id="qaz123WSX2", subtask_id="qweasdzxc")
         with self.assertRaises(ValueError):
             self.tm.add_new_task(t)
         self.tm.key_id = "1"
-        with self.assertRaises(IOError):
-            self.tm.add_new_task(t)
 
     def test_put_task_in_restarted_state_two_times(self):
         task_id = 'qaz123WSX'

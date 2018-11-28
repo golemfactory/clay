@@ -464,18 +464,13 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def accept_result(self, subtask_id, key_id, eth_address: str):
+    def accept_result(self, subtask_id, key_id, eth_address: str, value: int):
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
             self.max_trust)
         Trust.COMPUTED.increase(key_id, mod)
 
         task_id = self.task_manager.get_task_id(subtask_id)
-        value = self.task_manager.get_value(subtask_id)
-
-        if not value:
-            logger.info("Invaluable subtask: %r value: %r", subtask_id, value)
-            return
 
         payment_processed_ts = self.client.transaction_system.add_payment_info(
             subtask_id,
@@ -691,8 +686,6 @@ class TaskServer(
         self.cur_port = port
         logger.info(" Port {} opened - listening".format(self.cur_port))
         self.node.prv_port = self.cur_port
-        self.task_manager.listen_address = self.node.prv_addr
-        self.task_manager.listen_port = self.cur_port
         self.task_manager.node = self.node
 
     def _listening_failure(self, **kwargs):

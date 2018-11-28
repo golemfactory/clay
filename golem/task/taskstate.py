@@ -60,7 +60,6 @@ class SubtaskState(object):
         # FIXME: subtask_rem_time is always equal 0 (#2562)
         self.subtask_rem_time = 0
         self.subtask_status: Optional[SubtaskStatus] = None
-        self.value = 0
         self.stdout = ""
         self.stderr = ""
         self.results = []
