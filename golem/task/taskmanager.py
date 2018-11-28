@@ -1053,14 +1053,6 @@ class TaskManager(TaskEventListener):
         """ Add a header of a task which this node may try to compute """
         self.comp_task_keeper.add_request(theader, price)
 
-    @handle_task_key_error
-    def get_payment_for_task_id(self, task_id):
-        val = 0.0
-        t = self.tasks_states[task_id]
-        for ss in list(t.subtask_states.values()):
-            val += ss.value
-        return val
-
     def get_estimated_cost(self, task_type, options):
         try:
             subtask_value = options['price'] * options['subtask_time']
@@ -1084,7 +1076,6 @@ class TaskManager(TaskEventListener):
         ss.subtask_id = ctd['subtask_id']
         ss.extra_data = ctd['extra_data']
         ss.subtask_status = SubtaskStatus.starting
-        ss.value = 0
 
         (self.tasks_states[ctd['task_id']].
             subtask_states[ctd['subtask_id']]) = ss
