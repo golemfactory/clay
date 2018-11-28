@@ -1,8 +1,9 @@
 import sys
+
 from .base import NodeTestPlaybook
 
 
-def run_playbook(playbook_cls: NodeTestPlaybook=None, **kwargs):
+def run_playbook(playbook_cls: NodeTestPlaybook, **kwargs):
     playbook = playbook_cls.start(**kwargs)
 
     if playbook.exit_code:
