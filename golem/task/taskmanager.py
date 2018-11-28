@@ -80,8 +80,8 @@ class TaskManager(TaskEventListener):
         pass
 
     def __init__(
-            self, node_name, node, keys_auth, listen_address="",
-            listen_port=0, root_path="res", use_distributed_resources=True,
+            self, node_name, node, keys_auth,
+            root_path="res", use_distributed_resources=True,
             tasks_dir="tasks", task_persistence=True,
             apps_manager=AppsManager(), finished_cb=None):
         super().__init__()
@@ -99,9 +99,6 @@ class TaskManager(TaskEventListener):
         self.tasks: Dict[str, Task] = {}
         self.tasks_states: Dict[str, TaskState] = {}
         self.subtask2task_mapping: Dict[str, str] = {}
-
-        self.listen_address = listen_address
-        self.listen_port = listen_port
 
         self.task_persistence = task_persistence
 
@@ -173,10 +170,6 @@ class TaskManager(TaskEventListener):
                                .format(task.header.task_id))
         if not self.key_id:
             raise ValueError("'key_id' is not set")
-        if not SocketAddress.is_proper_address(self.listen_address,
-                                               self.listen_port):
-            raise IOError("Incorrect socket address: %s:%s" % (
-                self.listen_address, self.listen_port))
 
         task.header.fixed_header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)
