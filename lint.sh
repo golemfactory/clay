@@ -79,6 +79,9 @@ main() {
         exit -1
     fi
 
+    message "Checking if the requirements are sorted properly"
+    ls | grep '^requirements.*txt$' | xargs -I@ sort --ignore-case -c @
+
     files2chk=$(files_to_check)
 
     if [[ -z "${files2chk}" ]]; then
@@ -99,7 +102,6 @@ main() {
         "$lintdiff_cmd pylint --disable=protected-access,no-self-use ${test_files2chk}"
         "$lintdiff_cmd flake8 ${files2chk}"
         "$lintdiff_cmd mypy ${files2chk}"
-        "ls | grep '^req' | xargs -I@ sort --ignore-case -t= @ -o @ && git diff --exit-code"
     )
 
     local names=(
@@ -107,7 +109,6 @@ main() {
         "pylint tests"
         "pycodestyle"
         "mypy"
-        "requirement order"
     )
 
     for i in "${!names[@]}"; do
