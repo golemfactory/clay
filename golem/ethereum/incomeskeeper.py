@@ -102,17 +102,6 @@ class IncomesKeeper:
             income.save()
 
     @staticmethod
-    def is_expected(
-            subtask_id: str,
-            payer_address: str,
-    ) -> bool:
-        return Income.select().where(
-            Income.subtask == subtask_id,
-            Income.payer_address == payer_address,
-            Income.transaction.is_null()
-        ).exists()
-
-    @staticmethod
     def settled(
             sender_node: str,
             subtask_id: str,
