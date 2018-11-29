@@ -48,17 +48,20 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
     def test_build_config_odd_memory_size(self):
         manager = MockDockerManager()
-        config = ConfigMock(None, 1113 * 1024)
+        manager.hypervisor = MockHypervisor(manager)
+        config = ConfigMock(None, 1025 * 1024)
         manager.build_config(config)
-        self.assertEqual(manager.get_config()['memory_size'], 1112)
+        self.assertEqual(manager.get_config()['memory_size'], 1024)
 
     def test_build_config_ok(self):
         manager = MockDockerManager()
-        config = ConfigMock(4, 4096 * 1024)
+        cpu_to_check = 4
+        mem_to_check = 4096
+        config = ConfigMock(cpu_to_check, mem_to_check * 1024)
         manager.build_config(config)
         self.assertEqual(
             manager.get_config(),
-            {'cpu_count': 4, 'memory_size': 4096})
+            {'cpu_count': cpu_to_check, 'memory_size': mem_to_check})
 
     def test_update_config(self):
         status_switch = [True]

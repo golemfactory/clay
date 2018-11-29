@@ -135,3 +135,6 @@ class Hypervisor(metaclass=ABCMeta):
 
     def create_volumes(self, binds: Iterable[DockerBind]) -> dict:
         raise NotImplementedError
+
+    def pad_memory(self, memory: int) -> int:  # noqa pylint: disable=no-self-use
+        return memory // 2 * 2

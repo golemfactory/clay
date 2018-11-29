@@ -128,8 +128,10 @@ class DockerManager(DockerConfigManager):
         try:
             memory_size = max(int(config_desc.max_memory_size) // 1024,
                               memory_size)
-            # Hyper-V expects a multiple of 2 MB
-            memory_size = memory_size // 2 * 2
+
+            if self.hypervisor:
+                memory_size = self.hypervisor.pad_memory(memory_size)
+            logger.debug('Memory size after padding: %r', memory_size)
         except (TypeError, ValueError) as exc:
             logger.warning('Cannot read the memory amount: %r', exc)
 
@@ -310,6 +312,8 @@ class DockerManager(DockerConfigManager):
             old_value = old_values.get(key)
             new_value = new_values.get(key)
 
+            logger.debug('_diff_constraint. key=%r, old_value=%r, new_value=%r',
+                         key, old_value, new_value)
             if new_value != old_value and new_value is not None:
                 result[key] = new_value
 

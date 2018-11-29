@@ -107,12 +107,9 @@ Ensure that you try the following before reporting an issue:
 
  1. The virtualization of Intel VT-x/EPT or AMD-V/RVI is enabled in BIOS
     or virtual machine settings.
- 2. The proper environment is set. On windows powershell please run:
-    & "C:\Program Files\Docker Toolbox\docker-machine.exe" ^
-    env golem | Invoke-Expression
- 3. virtualbox driver is available:
-    docker-machine.exe create --driver virtualbox golem
- 4. Restart Windows machine"""
+ 2. The windows feature 'Hyper-V' is enabled
+ 3. docker-machine is in your path `docker-machine --version` in ps or cmd
+ 4. docker-machine ls has no errors `docker-machine  ls` in ps or cmd"""
             logger.error(typical_solution_s)
             raise
 

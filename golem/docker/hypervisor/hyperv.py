@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 from subprocess import CalledProcessError, TimeoutExpired
 from typing import Optional, Union, Any, List, Dict, ClassVar, Iterable
+import psutil
 
 from os_win.exceptions import OSWinException
 from os_win.utils import _wqlutils
@@ -33,6 +34,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
                       "download/v18.06.1-ce%2Bdvn-v0.35/boot2docker.iso"
     DOCKER_USER = "golem-docker"
     DOCKER_PASSWORD = "golem-docker"
+    VOLUME_SIZE = "5000"  # = 5GB; default was 20GB
     VOLUME_DRIVER = "cifs"
 
     GET_VSWITCH_SCRIPT_PATH = \
@@ -42,6 +44,25 @@ class HyperVHypervisor(DockerMachineHypervisor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._vm_utils = VMUtils()
+
+
+    def start_vm(self, name: Optional[str] = None) -> None:
+        try:
+            # The windows VM fails to start when too much memory is assigned
+            super().start_vm(name)
+            return
+        except Exception as e:
+            logger.debug("setup error: %r", e)
+            logger.warning("Failed to setup VM, retry with minimum values")
+
+        try:
+            self.constrain(name, **MIN_CONSTRAINTS)
+            super().start_vm(name)
+        except Exception as e:
+            logger.debug("re-setup error: %r", e)
+            logger.error("Failed to setup VM, no more retry")
+            raise
+
 
     @classmethod
     def is_available(cls) -> bool:
@@ -70,6 +91,9 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if mem is not None:
             args += [self.OPTIONS['mem'], str(mem)]
 
+        args += [self.OPTIONS['disk'], self.VOLUME_SIZE]
+
+        logger.debug('raw hyperv create args: args=%r', args)
         return args
 
     def constraints(self, name: Optional[str] = None) -> Dict:
@@ -95,9 +119,6 @@ class HyperVHypervisor(DockerMachineHypervisor):
         assert isinstance(mem, int)
         cpu = params.get(CONSTRAINT_KEYS['cpu'])
 
-        min_mem = MIN_CONSTRAINTS[mem_key]
-        dyn_mem_ratio = mem / min_mem
-
         try:
             self._vm_utils.update_vm(
                 vm_name=name,
@@ -106,7 +127,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 vcpus_num=cpu,
                 vcpus_per_numa_node=0,
                 limit_cpu_features=False,
-                dynamic_mem_ratio=dyn_mem_ratio
+                dynamic_mem_ratio=1
             )
         except OSWinException:
             logger.exception(f'Hyper-V: reconfiguration of VM "{name}" failed')
@@ -185,6 +206,17 @@ class HyperVHypervisor(DockerMachineHypervisor):
             }
             for bind in binds
         }
+
+    def pad_memory(self, memory: int) -> int:
+        vmem = psutil.virtual_memory()
+        logger.debug("System memory: %r", vmem)
+        max_mem_in_mb = vmem.available // 1024 // 1024
+        if self.vm_running():
+            max_mem_in_mb += self.constraints()['memory_size']
+
+        memory_size = min(memory, max_mem_in_mb - max_mem_in_mb // 10)
+        logger.debug('Memory size capped by "free - 10%%": %r', memory_size)
+        return super().pad_memory(memory_size)
 
     def _create_volume(self, hostname: str, shared_dir: Path) -> str:
         assert self._work_dir is not None
