@@ -432,7 +432,7 @@ class TaskManager(TaskEventListener):
 
         self.subtask2task_mapping[ctd['subtask_id']] = task_id
         self.__add_subtask_to_tasks_states(
-            node_name, node_id, ctd, address,
+            node_name, node_id, ctd, address, price,
         )
         self.notice_task_updated(task_id,
                                  subtask_id=ctd['subtask_id'],
@@ -551,6 +551,7 @@ class TaskManager(TaskEventListener):
                 node_name=None,
                 node_id=None,
                 address=None,
+                price=0,
                 ctd=extra_data.ctd)
             new_subtasks_ids.append(new_subtask_id)
 
@@ -1059,7 +1060,7 @@ class TaskManager(TaskEventListener):
             return None
 
     def __add_subtask_to_tasks_states(self, node_name, node_id,
-                                      ctd, address):
+                                      ctd, address, price: int):
 
         logger.debug('add_subtask_to_tasks_states(%r, %r, %r, %r)',
                      node_name, node_id, ctd, address)
@@ -1073,6 +1074,7 @@ class TaskManager(TaskEventListener):
         ss.subtask_id = ctd['subtask_id']
         ss.extra_data = ctd['extra_data']
         ss.subtask_status = SubtaskStatus.starting
+        ss.price = price
 
         (self.tasks_states[ctd['task_id']].
             subtask_states[ctd['subtask_id']]) = ss
@@ -1179,7 +1181,7 @@ class TaskManager(TaskEventListener):
         header = self.tasks[task_id].header.fixed_header
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
 
-        computation_price = compute_subtask_value(subtask_state.value,
+        computation_price = compute_subtask_value(subtask_state.price,
                                                   header.subtask_timeout)
         computation_time = ProviderComputeTimers.time(subtask_id)
 

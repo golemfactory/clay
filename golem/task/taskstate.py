@@ -56,6 +56,7 @@ class SubtaskState(object):
         self.node_id = ""
         self.node_name = ""
         self.deadline = 0
+        self.price = 0
         self.extra_data = {}
         # FIXME: subtask_rem_time is always equal 0 (#2562)
         self.subtask_rem_time = 0
