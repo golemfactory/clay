@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import copy
 from datetime import timedelta
 from pathlib import Path
@@ -358,7 +359,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         new_limit = 3
 
         ids = []
-        for i in range(new_limit):
+        for _ in range(new_limit):
             thd = get_task_header("ta")
             ids.append(thd.task_id)
             tk.add_task_header(thd)
@@ -376,7 +377,7 @@ class TestTaskHeaderKeeper(LogTestCase):
             time.sleep(0.1)
 
         new_ids = []
-        for i in range(new_limit, limit):
+        for _ in range(new_limit, limit):
             thd = get_task_header("ta")
             new_ids.append(thd.task_id)
             tk.add_task_header(thd)
@@ -483,7 +484,6 @@ def get_dict_task_header(key_id_seed="kkk"):
                 "pub_port": 10101
             },
             "environment": "DEFAULT",
-            "last_checking": time.time(),
             "deadline": timeout_to_deadline(1201),
             "subtask_timeout": 120,
             "max_price": 10,

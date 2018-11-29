@@ -1,3 +1,4 @@
+import datetime
 import logging
 import pathlib
 import pickle
@@ -323,7 +324,9 @@ class TaskHeaderKeeper:
         # be added again to task_headers
         self.removed_tasks = {}
         # task ids by owner
-        self.tasks_by_owner = {}
+        self.tasks_by_owner: typing.Dict[str, set] = {}
+        # Keep track which tasks were checked when
+        self.last_checking: typing.Dict[str, datetime.datetime] = {}
 
         self.min_price = min_price
         self.app_version = app_version
@@ -485,6 +488,7 @@ class TaskHeaderKeeper:
                 return True
 
             self.task_headers[task_id] = header
+            self.last_checking[task_id] = datetime.datetime.now()
 
             self._get_tasks_by_owner_set(header.task_owner.key).add(task_id)
 
@@ -537,7 +541,7 @@ class TaskHeaderKeeper:
             return
 
         by_age = sorted(owner_task_set,
-                        key=lambda tid: self.task_headers[tid].last_checking)
+                        key=lambda tid: self.last_checking[tid])
 
         # leave alone the first (oldest) max_tasks_per_requestor
         # headers, remove the rest
@@ -556,15 +560,34 @@ class TaskHeaderKeeper:
         if task_id in self.removed_tasks:
             return False
 
-        if task_id in self.task_headers:
+        try:
             owner_key_id = self.task_headers[task_id].task_owner.key
-            del self.task_headers[task_id]
-            if owner_key_id in self.tasks_by_owner:
-                self.tasks_by_owner[owner_key_id].discard(task_id)
-        if task_id in self.supported_tasks:
-            self.supported_tasks.remove(task_id)
-        if task_id in self.support_status:
-            del self.support_status[task_id]
+            self.tasks_by_owner[owner_key_id].discard(task_id)
+        except KeyError:
+            pass
+
+        for container in (
+                self.task_headers,
+                self.supported_tasks,
+                self.support_status,
+                self.last_checking
+        ):
+            if isinstance(container, list):
+                try:
+                    container.remove(task_id)
+                except ValueError:
+                    pass
+                continue
+            if isinstance(container, dict):
+                try:
+                    del container[task_id]
+                except KeyError:
+                    pass
+                continue
+            raise RuntimeError(
+                "Unknown container type {}".format(type(container)),
+            )
+
         self.removed_tasks[task_id] = time.time()
         return True
 
