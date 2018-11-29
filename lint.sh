@@ -99,6 +99,7 @@ main() {
         "$lintdiff_cmd pylint --disable=protected-access,no-self-use ${test_files2chk}"
         "$lintdiff_cmd flake8 ${files2chk}"
         "$lintdiff_cmd mypy ${files2chk}"
+        "ls | grep '^req' | xargs -I@ sort --ignore-case -t= @ -o @ && git diff --exit-code"
     )
 
     local names=(
@@ -106,6 +107,7 @@ main() {
         "pylint tests"
         "pycodestyle"
         "mypy"
+        "requirement order"
     )
 
     for i in "${!names[@]}"; do
