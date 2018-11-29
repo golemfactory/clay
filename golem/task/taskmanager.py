@@ -446,8 +446,8 @@ class TaskManager(TaskEventListener):
 
         return ctd
 
-    def is_my_task(self, task_id) -> bool:
-        """ Check if the task_id is known by this node """
+    def is_my_task(self, task_id: str) -> bool:
+        """ Check if the task ID is known by this node. """
         return task_id in self.tasks
 
     def should_wait_for_node(self, task_id, node_id) -> bool:
@@ -666,10 +666,6 @@ class TaskManager(TaskEventListener):
             return self.tasks[task_id].verify_subtask(subtask_id)
         else:
             return False
-
-    def is_this_my_task(self, header: TaskHeader) -> bool:
-        return header.task_id in self.tasks or \
-               header.task_owner.key == self.node.key
 
     def get_node_id_for_subtask(self, subtask_id):
         if subtask_id not in self.subtask2task_mapping:
