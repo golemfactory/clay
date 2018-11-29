@@ -3,7 +3,6 @@ from twisted.internet.defer import Deferred, succeed
 from golem.core.common import deadline_to_timeout
 
 
-
 class VerificationTask:
 
     def __init__(self, subtask_id, deadline, kwargs) -> None:

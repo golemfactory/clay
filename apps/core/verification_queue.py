@@ -6,10 +6,10 @@ from typing import Optional, Type, Dict, Tuple
 
 from twisted.internet.defer import Deferred, gatherResults
 
-from apps.blender.verification_task import VerificationTask
+from apps.core.verification_task import VerificationTask
 from golem_verificator.verifier import Verifier
 
-logger = logging.getLogger("apps.blender.verification")
+logger = logging.getLogger(__name__)
 
 
 class VerificationQueue:
