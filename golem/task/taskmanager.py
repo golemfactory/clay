@@ -80,8 +80,8 @@ class TaskManager(TaskEventListener):
         pass
 
     def __init__(
-            self, node_name, node, keys_auth,
-            root_path="res", use_distributed_resources=True,
+            self, node, keys_auth,
+            root_path="res",
             tasks_dir="tasks", task_persistence=True,
             apps_manager=AppsManager(), finished_cb=None):
         super().__init__()
@@ -91,7 +91,6 @@ class TaskManager(TaskEventListener):
         task_types = [app.task_type_info() for app in apps]
         self.task_types = {t.name.lower(): t for t in task_types}
 
-        self.node_name = node_name
         self.node = node
         self.keys_auth = keys_auth
         self.key_id = keys_auth.key_id
@@ -119,7 +118,6 @@ class TaskManager(TaskEventListener):
 
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
                              TaskStatus.waiting]
-        self.use_distributed_resources = use_distributed_resources
 
         self.comp_task_keeper = CompTaskKeeper(
             tasks_dir,
@@ -976,10 +974,6 @@ class TaskManager(TaskEventListener):
         if not isinstance(task, CoreTask):
             return None
         return task.get_subtasks(frame)
-
-    def change_config(self, root_path, use_distributed_resource_management):
-        self.dir_manager = DirManager(root_path)
-        self.use_distributed_resources = use_distributed_resource_management
 
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]

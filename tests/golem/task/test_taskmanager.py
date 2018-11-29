@@ -392,11 +392,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             assert self.tm.tasks_states.get(task_id) is None
             assert not paf.is_file()
 
-    def test_change_config(self):
-        self.assertTrue(self.tm.use_distributed_resources)
-        self.tm.change_config(self.path, False)
-        self.assertFalse(self.tm.use_distributed_resources)
-
     @patch('golem.task.taskmanager.TaskManager.dump_task')
     def test_computed_task_received(self, _):
         owner = Node(node_name="ABC",
