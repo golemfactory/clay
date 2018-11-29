@@ -93,7 +93,6 @@ class TaskManager(TaskEventListener):
 
         self.node = node
         self.keys_auth = keys_auth
-        self.key_id = keys_auth.key_id
 
         self.tasks: Dict[str, Task] = {}
         self.tasks_states: Dict[str, TaskState] = {}
@@ -105,8 +104,7 @@ class TaskManager(TaskEventListener):
         self.tasks_dir = tasks_dir / "tmanager"
         if not self.tasks_dir.is_dir():
             self.tasks_dir.mkdir(parents=True)
-        self.root_path = root_path
-        self.dir_manager = DirManager(self.get_task_manager_root())
+        self.dir_manager = DirManager(root_path)
 
         resource_manager = HyperdriveResourceManager(
             self.dir_manager,
@@ -130,9 +128,6 @@ class TaskManager(TaskEventListener):
 
         if self.task_persistence:
             self.restore_tasks()
-
-    def get_task_manager_root(self):
-        return self.root_path
 
     def create_task(self, dictionary, minimal=False):
         purpose = TaskPurpose.TESTING if minimal else TaskPurpose.REQUESTING
@@ -166,8 +161,6 @@ class TaskManager(TaskEventListener):
         if task_id in self.tasks:
             raise RuntimeError("Task {} has been already added"
                                .format(task.header.task_id))
-        if not self.key_id:
-            raise ValueError("'key_id' is not set")
 
         task.header.fixed_header.task_owner = self.node
         task.header.signature = self.sign_task_header(task.header)

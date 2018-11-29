@@ -901,11 +901,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.tm.add_new_task(t)
         with self.assertRaises(RuntimeError):
             self.tm.add_new_task(t)
-        self.tm.key_id = None
-        t = self._get_task_mock(task_id="qaz123WSX2", subtask_id="qweasdzxc")
-        with self.assertRaises(ValueError):
-            self.tm.add_new_task(t)
-        self.tm.key_id = "1"
 
     def test_put_task_in_restarted_state_two_times(self):
         task_id = 'qaz123WSX'
