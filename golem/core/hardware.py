@@ -43,13 +43,12 @@ def cpu_cores_available() -> List[int]:
     if is_linux():
         if len(affinity) == core_count and 0 in affinity:
             affinity.remove(0)
-    elif is_osx():
-        if len(affinity) > MAX_CPU_MACOS:
+    else:
+        if is_osx() and len(affinity) > MAX_CPU_MACOS:
             affinity = affinity[:MAX_CPU_MACOS]
-    elif is_windows():
-        if len(affinity) > MAX_CPU_WINDOWS:
+        elif is_windows() and len(affinity) > MAX_CPU_WINDOWS:
             affinity = affinity[:MAX_CPU_WINDOWS]
-
+        affinity = list(range(0, len(affinity)))
     return affinity or [0]
 
 
