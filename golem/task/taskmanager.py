@@ -104,7 +104,8 @@ class TaskManager(TaskEventListener):
         self.tasks_dir = tasks_dir / "tmanager"
         if not self.tasks_dir.is_dir():
             self.tasks_dir.mkdir(parents=True)
-        self.dir_manager = DirManager(root_path)
+        self.root_path = root_path
+        self.dir_manager = DirManager(self.get_task_manager_root())
 
         resource_manager = HyperdriveResourceManager(
             self.dir_manager,
@@ -128,6 +129,9 @@ class TaskManager(TaskEventListener):
 
         if self.task_persistence:
             self.restore_tasks()
+
+    def get_task_manager_root(self):
+        return self.root_path
 
     def create_task(self, dictionary, minimal=False):
         purpose = TaskPurpose.TESTING if minimal else TaskPurpose.REQUESTING
