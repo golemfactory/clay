@@ -49,8 +49,6 @@ class ClientConfigDescriptor(object):
         self.max_memory_size = 0  # KiB
         self.hardware_preset_name = ""
 
-        self.use_distributed_resource_management = 1
-
         self.requesting_trust = 0.0
         self.computing_trust = 0.0
 
