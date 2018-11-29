@@ -4,6 +4,7 @@ from pathlib import Path
 import subprocess
 from subprocess import CalledProcessError, TimeoutExpired
 from typing import Optional, Union, Any, List, Dict, ClassVar, Iterable
+import psutil
 
 from os_win.exceptions import OSWinException
 from os_win.utils import _wqlutils
@@ -205,6 +206,17 @@ class HyperVHypervisor(DockerMachineHypervisor):
             }
             for bind in binds
         }
+
+    def pad_memory(self, memory: int) -> int:
+        vmem = psutil.virtual_memory()
+        logger.debug("System memory: %r", vmem)
+        max_mem_in_mb = vmem.available // 1024 // 1024
+        if self.vm_running():
+            max_mem_in_mb += self.constraints()['memory_size']
+
+        memory_size = min(memory, max_mem_in_mb - max_mem_in_mb // 10)
+        logger.debug('Memory size capped by "free - 10%%": %r', memory_size)
+        return super().pad_memory(memory_size)
 
     def _create_volume(self, hostname: str, shared_dir: Path) -> str:
         assert self._work_dir is not None

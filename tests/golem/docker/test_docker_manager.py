@@ -53,13 +53,11 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
         manager.build_config(config)
         self.assertEqual(manager.get_config()['memory_size'], 1024)
 
-    @mock.patch('golem.docker.manager.psutil.virtual_memory')
-    def test_build_config_ok(self, mock_vmem):
+    def test_build_config_ok(self):
         manager = MockDockerManager()
         cpu_to_check = 4
         mem_to_check = 4096
         config = ConfigMock(cpu_to_check, mem_to_check * 1024)
-        mock_vmem.available = mem_to_check * 1024 * 1024
         manager.build_config(config)
         self.assertEqual(
             manager.get_config(),

@@ -2,7 +2,6 @@ import logging
 import os
 import time
 from pathlib import Path
-import psutil
 from threading import Thread
 from typing import Optional, Callable, Any, Iterable
 
@@ -129,14 +128,6 @@ class DockerManager(DockerConfigManager):
         try:
             memory_size = max(int(config_desc.max_memory_size) // 1024,
                               memory_size)
-            vmem = psutil.virtual_memory()
-            logger.debug("System memory: %r", vmem)
-            max_mem_in_mb = vmem.available // 1024 // 1024
-            if self.hypervisor and self.hypervisor.vm_running():
-                max_mem_in_mb += self.hypervisor.constraints()['memory_size']
-
-            memory_size = min(memory_size, max_mem_in_mb - max_mem_in_mb // 10)
-            logger.debug('Memory size capped by "free - 10%%": %r', memory_size)
 
             if self.hypervisor:
                 memory_size = self.hypervisor.pad_memory(memory_size)
