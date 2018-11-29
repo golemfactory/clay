@@ -39,6 +39,7 @@ _REQUESTOR_ARGS = {
     '--concent': os.environ.get('GOLEM_CONCENT_VARIANT', 'staging'),
     '--password': REQUESTOR_PASSWORD,
     '--accept-terms': None,
+    '--accept-concent-terms': None,
     '--rpc-address': 'localhost:%s' % REQUESTOR_RPC_PORT,
     '--protocol_id': '1337',
 }
@@ -48,6 +49,7 @@ _PROVIDER_ARGS = {
     '--concent': os.environ.get('GOLEM_CONCENT_VARIANT', 'staging'),
     '--password': PROVIDER_PASSWORD,
     '--accept-terms': None,
+    '--accept-concent-terms': None,
     '--rpc-address': 'localhost:%s' % PROVIDER_RPC_PORT,
     '--protocol_id': '1337',
 }

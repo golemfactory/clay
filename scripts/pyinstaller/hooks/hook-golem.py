@@ -28,6 +28,7 @@ datas = [
      'apps/dummy/resources/code_dir/'),
     ('apps/dummy/test_data/in.data',
      'apps/dummy/test_data/'),
+    ('golem/CONCENT_TERMS.html', 'golem/'),
     ('golem/RELEASE-VERSION', 'golem/'),
     ('golem/TERMS.html', 'golem/'),
     ('golem/database/schemas/*.py', 'golem/database/schemas/'),

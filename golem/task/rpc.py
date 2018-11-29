@@ -428,22 +428,9 @@ class ClientProvider:
                  on failure
         """
 
-        # FIXME: Statement only for old DummyTask compatibility #2467
-        task: taskbase.Task
-        if isinstance(task_dict, taskbase.Task):
-            warnings.warn(
-                "create_task() called with {got_type}"
-                " instead of dict #2467".format(
-                    got_type=type(task_dict),
-                ),
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            task = task_dict
-        else:
-            prepare_and_validate_task_dict(self.client, task_dict)
+        prepare_and_validate_task_dict(self.client, task_dict)
 
-            task = self.task_manager.create_task(task_dict)
+        task: taskbase.Task = self.task_manager.create_task(task_dict)
 
         task_id = task.header.task_id
 

@@ -92,7 +92,28 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
             ['--datadir', self.path, '--accept-terms'],
             catch_exceptions=False
         )
-        node_cls().accept_terms.assert_called_once()
+        node_cls().accept_terms.assert_called_once_with()
+
+    @mock.patch('golem.node.Node')
+    def test_accept_concent_terms(self, node_cls):
+        runner = CliRunner()
+        runner.invoke(
+            start,
+            ['--datadir', self.path, '--accept-concent-terms'],
+            catch_exceptions=False
+        )
+        node_cls().accept_concent_terms.assert_called_once_with()
+
+    @mock.patch('golem.node.Node')
+    def test_accept_all_terms(self, node_cls):
+        runner = CliRunner()
+        runner.invoke(
+            start,
+            ['--datadir', self.path, '--accept-all-terms'],
+            catch_exceptions=False
+        )
+        node_cls().accept_terms.assert_called_once_with()
+        node_cls().accept_concent_terms.assert_called_once_with()
 
     @mock.patch('golem.node.Node')
     @mock.patch('portalocker.Lock.acquire')
