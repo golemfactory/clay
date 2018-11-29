@@ -7,7 +7,7 @@ import functools
 import logging
 import os
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -198,7 +198,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     # FileSession methods #
     #######################
 
-    def result_received(self, subtask_id: str, result):
+    def result_received(self, subtask_id: str, result_files: List[str]):
         """ Inform server about received result
         """
         def send_verification_failure():
@@ -216,12 +216,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             task_id = self._subtask_to_task(subtask_id, Actor.Requestor)
 
-            task_to_compute = get_task_message(
-                message_class_name='TaskToCompute',
+            report_computed_task = get_task_message(
+                message_class_name='ReportComputedTask',
                 node_id=self.key_id,
                 task_id=task_id,
                 subtask_id=subtask_id
             )
+            task_to_compute = report_computed_task.task_to_compute
 
             # FIXME Remove in 0.20
             if not task_to_compute.sig:
@@ -231,10 +232,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 subtask_id,
                 self.key_id,
                 task_to_compute.provider_ethereum_address,
+                task_to_compute.price,
             )
 
             response_msg = message.tasks.SubtaskResultsAccepted(
-                task_to_compute=task_to_compute,
+                report_computed_task=report_computed_task,
                 payment_ts=payment_processed_ts,
             )
             self.send(response_msg)
@@ -251,7 +253,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         self.task_manager.computed_task_received(
             subtask_id,
-            result,
+            result_files,
             verification_finished
         )
 
@@ -593,10 +595,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 size=task_state.package_size
             )
             ttc.generate_ethsig(self.my_private_key)
-            self.task_manager.set_subtask_value(
-                subtask_id=ttc.subtask_id,
-                price=price,
-            )
             self.send(ttc)
             history.add(
                 msg=copy_and_sign(
@@ -823,35 +821,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # This assert is for mypy, which only knows that it's Optional[str].
         assert self.key_id is not None
 
-        if msg.task_to_compute is None:
+        if msg.task_to_compute is None or \
+                msg.task_to_compute.requestor_public_key != self.key_id:
             logger.info(
                 'Empty task_to_compute in %s. Disconnecting: %r',
                 msg,
                 self.key_id,
             )
             self.disconnect(message.base.Disconnect.REASON.BadProtocol)
-            return
-
-        def should_accept_sra(msg) -> bool:
-            requestor_check_result = \
-                self.check_requestor_for_subtask(msg.subtask_id)
-
-            if requestor_check_result == RequestorCheckResult.OK:
-                return True
-            if requestor_check_result == RequestorCheckResult.MISMATCH:
-                return False
-
-            # requestor_check_result == RequestorCheckResult.NOT_FOUND:
-            transaction_system = self.task_server.client.transaction_system
-            return transaction_system.is_income_expected(
-                subtask_id=msg.subtask_id,
-                payer_address=msg.task_to_compute.requestor_ethereum_address
-            )
-
-        if not should_accept_sra(msg):
-            logger.debug("Unexpected income from %r for subtask %r",
-                         self.key_id, msg.subtask_id)
-            self.dropped()
             return
 
         self.concent_service.cancel_task_message(

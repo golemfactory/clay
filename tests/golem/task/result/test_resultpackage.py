@@ -2,27 +2,12 @@ import uuid
 import os
 
 from pathlib import Path
-from unittest.mock import Mock
 
 from golem.core.fileencrypt import FileEncryptor
 from golem.resource.dirmanager import DirManager
 from golem.task.result.resultpackage import EncryptingPackager, \
     EncryptingTaskResultPackager, ExtractedPackage, ZipPackager, backup_rename
 from golem.testutils import TempDirFixture
-
-
-def mock_node():
-    return Mock(name='test_node', key=uuid.uuid4())
-
-
-def mock_task_result(task_id, result):
-    return Mock(
-        task_id=task_id,
-        subtask_id=task_id,
-        result=result,
-        owner_key_id=str(uuid.uuid4()),
-        owner=str(uuid.uuid4())
-    )
 
 
 class PackageDirContentsFixture(TempDirFixture):
@@ -170,24 +155,16 @@ class TestEncryptingTaskResultPackager(PackageDirContentsFixture):
 
     def testCreate(self):
         etp = EncryptingTaskResultPackager(self.secret)
-        node = mock_node()
 
-        tr = mock_task_result(self.task_id, self.disk_files)
         path, _ = etp.create(self.out_path,
-                             node=node,
-                             task_result=tr,
                              disk_files=self.disk_files)
 
         self.assertTrue(os.path.exists(path))
 
     def testExtract(self):
         etp = EncryptingTaskResultPackager(self.secret)
-        node = mock_node()
-        tr = mock_task_result(self.task_id, self.disk_files)
 
         path, _ = etp.create(self.out_path,
-                             node=node,
-                             task_result=tr,
                              disk_files=self.disk_files)
 
         extracted = etp.extract(path)
@@ -200,20 +177,16 @@ class TestExtractedPackage(PackageDirContentsFixture):
 
     def testToExtraData(self):
         etp = EncryptingTaskResultPackager(self.secret)
-        node = mock_node()
-        tr = mock_task_result(self.task_id, self.disk_files)
 
         path, _ = etp.create(self.out_path,
-                             node=node,
-                             task_result=tr,
                              disk_files=self.disk_files)
 
         extracted = etp.extract(path)
-        extra_data = extracted.to_extra_data()
+        full_path_files = extracted.get_full_path_files()
 
-        self.assertEqual(len(extra_data.get('result', [])), len(self.all_files))
+        self.assertEqual(len(full_path_files), len(self.all_files))
 
-        for filename in extra_data.get('result', []):
+        for filename in full_path_files:
             self.assertTrue(os.path.exists(filename))
 
 

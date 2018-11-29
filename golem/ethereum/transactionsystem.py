@@ -435,16 +435,6 @@ class TransactionSystem(LoopingCallService):
             accepted_ts,
         )
 
-    def is_income_expected(
-            self,
-            subtask_id: str,
-            payer_address: str,
-    ) -> bool:
-        return self._incomes_keeper.is_expected(
-            subtask_id,
-            payer_address,
-        )
-
     def settle_income(
             self,
             sender_node: str,

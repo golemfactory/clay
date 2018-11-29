@@ -325,7 +325,7 @@ class TaskServer(
         task_result_manager = self.task_manager.task_result_manager
 
         wtr.result_secret = task_result_manager.gen_secret()
-        result = task_result_manager.create(self.node, wtr, wtr.result_secret)
+        result = task_result_manager.create(wtr, wtr.result_secret)
         (
             wtr.result_hash,
             wtr.result_path,
@@ -509,18 +509,13 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def accept_result(self, subtask_id, key_id, eth_address: str):
+    def accept_result(self, subtask_id, key_id, eth_address: str, value: int):
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
             self.max_trust)
         Trust.COMPUTED.increase(key_id, mod)
 
         task_id = self.task_manager.get_task_id(subtask_id)
-        value = self.task_manager.get_value(subtask_id)
-
-        if not value:
-            logger.info("Invaluable subtask: %r value: %r", subtask_id, value)
-            return
 
         payment_processed_ts = self.client.transaction_system.add_payment_info(
             subtask_id,
@@ -763,8 +758,6 @@ class TaskServer(
         self.cur_port = port
         logger.info(" Port {} opened - listening".format(self.cur_port))
         self.node.prv_port = self.cur_port
-        self.task_manager.listen_address = self.node.prv_addr
-        self.task_manager.listen_port = self.cur_port
         self.task_manager.node = self.node
 
     def _listening_failure(self, **kwargs):
@@ -958,7 +951,7 @@ class TaskServer(
             key_id,
             subtask_id: str):
 
-        extra_data = extracted_package.to_extra_data()
+        full_path_files = extracted_package.get_full_path_files()
         self.new_session_prepare(
             session=session,
             subtask_id=subtask_id,
@@ -967,7 +960,7 @@ class TaskServer(
         )
 
         session.send_hello()
-        session.result_received(subtask_id, extra_data['result'])
+        session.result_received(subtask_id, full_path_files)
 
     def __connection_for_task_verification_result_failure(  # noqa pylint:disable=no-self-use
             self, _conn_id, _extracted_package, key_id, subtask_id: str):

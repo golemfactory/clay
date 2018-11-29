@@ -506,8 +506,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 'key_id',
                 'eth_address',
             )
-            ts.send(msg_factories.tasks.SubtaskResultsAcceptedFactory(
+            rct = msg_factories.tasks.ReportComputedTaskFactory(
                 task_to_compute__compute_task_def__subtask_id=subtask_id,
+            )
+            ts.send(msg_factories.tasks.SubtaskResultsAcceptedFactory(
+                report_computed_task=rct,
                 payment_ts=payment.processed_ts))
             ts.dropped()
 
@@ -1106,14 +1109,17 @@ class SubtaskResultsAcceptedTest(TestCase):
 
     def test_react_to_subtask_result_accepted(self):
         # given
-        sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
-            sign__privkey=self.requestor_keys.raw_privkey,
+        rct = msg_factories.tasks.ReportComputedTaskFactory(
             task_to_compute__sign__privkey=self.requestor_keys.raw_privkey,
             task_to_compute__requestor_public_key=self.requestor_key_id,
             task_to_compute__want_to_compute_task__sign__privkey=(
                 self.provider_keys.raw_privkey),
             task_to_compute__want_to_compute_task__provider_public_key=(
                 self.provider_key_id),
+        )
+        sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
+            sign__privkey=self.requestor_keys.raw_privkey,
+            report_computed_task=rct,
         )
         self.task_server.keys_auth._private_key = \
             self.provider_keys.raw_privkey
@@ -1156,38 +1162,6 @@ class SubtaskResultsAcceptedTest(TestCase):
         # then
         self.task_server.subtask_accepted.assert_not_called()
 
-    def test_react_with_unknown_key_and_expected_income(self):
-        # given
-        key_id = "CDEF"
-        sra = msg_factories.tasks.SubtaskResultsAcceptedFactory()
-        ctk = self.task_session.task_manager.comp_task_keeper
-        ctk.get_node_for_task_id.return_value = None
-        self.task_server.client.transaction_system.is_income_expected\
-                                                  .return_value = True
-        self.task_session.key_id = key_id
-
-        # when
-        self.task_session._react_to_subtask_result_accepted(sra)
-
-        # then
-        self.task_server.subtask_accepted.assert_called()
-
-    def test_react_with_unknown_key_and_unexpected_income(self):
-        # given
-        key_id = "CDEF"
-        sra = msg_factories.tasks.SubtaskResultsAcceptedFactory()
-        ctk = self.task_session.task_manager.comp_task_keeper
-        ctk.get_node_for_task_id.return_value = None
-        self.task_server.client.transaction_system.is_income_expected\
-                                                  .return_value = False
-        self.task_session.key_id = key_id
-
-        # when
-        self.task_session._react_to_subtask_result_accepted(sra)
-
-        # then
-        self.task_server.subtask_accepted.assert_not_called()
-
     def test_result_received(self):
         self.task_server.keys_auth._private_key = \
             self.requestor_keys.raw_privkey
@@ -1222,6 +1196,8 @@ class SubtaskResultsAcceptedTest(TestCase):
         assert self.task_session.send.called
         sra = self.task_session.send.call_args[0][0] # noqa pylint:disable=unsubscriptable-object
         self.assertIsInstance(sra.task_to_compute, message.tasks.TaskToCompute)
+        self.assertIsInstance(sra.report_computed_task,
+                              message.tasks.ReportComputedTask)
         self.assertTrue(sra.task_to_compute.sig)
         self.assertTrue(
             sra.task_to_compute.verify_signature(

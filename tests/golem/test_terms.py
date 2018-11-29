@@ -1,57 +1,66 @@
-import os
+import pathlib
 from unittest.mock import patch
 
+from faker import Faker
+
 from golem.model import GenericKeyValue
-from golem.terms import TermsOfUse
+from golem import terms
 from golem.tools.testwithdatabase import TestWithDatabase
 
 
-class TestTermsOfUse(TestWithDatabase):
+fake = Faker()
 
-    def test_are_terms_accepted_no_entry(self):
-        self.assertFalse(TermsOfUse.are_terms_accepted())
 
-    def test_are_terms_accepted_old_version(self):
+class TestTermsOfUseBase(TestWithDatabase):
+    def setUp(self):
+        super().setUp()
+
+        class TestTermsOfUse(terms.TermsOfUseBase):
+            ACCEPTED_KEY = fake.sentence()
+            VERSION = fake.pyint()
+            PATH = pathlib.Path("NOT_USED")
+
+        self.terms = TestTermsOfUse
+
+    def test_are_accepted_no_entry(self):
+        self.assertFalse(self.terms.are_accepted())
+
+    def test_are_accepted_old_version(self):
         GenericKeyValue.create(
-            key=TermsOfUse.TERMS_ACCEPTED_KEY,
-            value=TermsOfUse.TERMS_VERSION - 1)
-        self.assertFalse(TermsOfUse.are_terms_accepted())
+            key=self.terms.ACCEPTED_KEY,
+            value=self.terms.VERSION - 1)
+        self.assertFalse(self.terms.are_accepted())
 
-    def test_are_terms_accepted_right_version(self):
+    def test_are_accepted_right_version(self):
         GenericKeyValue.create(
-            key=TermsOfUse.TERMS_ACCEPTED_KEY,
-            value=TermsOfUse.TERMS_VERSION)
-        self.assertTrue(TermsOfUse.are_terms_accepted())
+            key=self.terms.ACCEPTED_KEY,
+            value=self.terms.VERSION)
+        self.assertTrue(self.terms.are_accepted())
 
-    def test_accept_terms_of_use_no_entry(self):
-        TermsOfUse.accept_terms()
-        self.assertTrue(TermsOfUse.are_terms_accepted())
+    def test_accept_of_use_no_entry(self):
+        self.terms.accept()
+        self.assertTrue(self.terms.are_accepted())
 
-    def test_accept_terms_of_use_old_version(self):
+    def test_accept_of_use_old_version(self):
         GenericKeyValue.create(
-            key=TermsOfUse.TERMS_ACCEPTED_KEY,
-            value=TermsOfUse.TERMS_VERSION - 1)
-        TermsOfUse.accept_terms()
-        self.assertTrue(TermsOfUse.are_terms_accepted())
+            key=self.terms.ACCEPTED_KEY,
+            value=self.terms.VERSION - 1)
+        self.terms.accept()
+        self.assertTrue(self.terms.are_accepted())
 
-    def test_accept_terms_right_version(self):
+    def test_accept_right_version(self):
         GenericKeyValue.create(
-            key=TermsOfUse.TERMS_ACCEPTED_KEY,
-            value=TermsOfUse.TERMS_VERSION)
-        TermsOfUse.accept_terms()
-        self.assertTrue(TermsOfUse.are_terms_accepted())
+            key=self.terms.ACCEPTED_KEY,
+            value=self.terms.VERSION)
+        self.terms.accept()
+        self.assertTrue(self.terms.are_accepted())
 
-    @patch('golem.terms.get_golem_path')
-    def test_show_terms(self, get_golem_path):
-        get_golem_path.return_value = self.tempdir
+    @patch("pathlib.Path.read_text")
+    def test_show(self, read_mock):
         content = """
         GOLEM TERMS OF USE
         ==================
         Bla bla bla bla
         """
-        terms_path = self.new_path / TermsOfUse.TERMS_PATH
-        os.makedirs(terms_path.parent, exist_ok=True)
-        with open(terms_path, mode='w') as terms:
-            terms.write(content)
-
-        self.assertEqual(TermsOfUse.show_terms(), content)
+        read_mock.return_value = content
+        self.assertEqual(self.terms.show(), content)

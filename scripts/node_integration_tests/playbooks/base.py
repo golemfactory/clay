@@ -271,6 +271,8 @@ class NodeTestPlaybook:
             if result['status'] == 'Finished':
                 print("Task finished.")
                 self.next()
+            elif result['status'] == 'Timeout':
+                self.fail("Task timed out :( ... ")
             else:
                 print("{} ... ".format(result['status']))
                 time.sleep(10)
@@ -313,8 +315,9 @@ class NodeTestPlaybook:
             ]
             unpaid = set(self.subtasks) - set(payments)
             if unpaid:
-                print("Found subtasks with no matching payments: %s", unpaid)
+                print("Found subtasks with no matching payments: %s" % unpaid)
                 self.fail()
+                return
 
             print("All subtasks accounted for.")
             self.success()

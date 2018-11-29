@@ -203,6 +203,7 @@ function install_dependencies()
         tar -xvf ${hyperg_pack} >/dev/null
         [[ "$PWD" != "$HOME" ]] && mv hyperg $HOME/
         [[ ! -f /usr/local/bin/hyperg ]] && sudo ln -s $HOME/hyperg/hyperg /usr/local/bin/hyperg
+        [[ ! -f /usr/local/bin/hyperg-worker ]] && sudo ln -s $HOME/hyperg/hyperg-worker /usr/local/bin/hyperg-worker
         rm -f ${hyperg_pack} &>/dev/null
     fi
     sudo apt-get update >/dev/null

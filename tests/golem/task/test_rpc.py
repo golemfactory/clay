@@ -167,8 +167,6 @@ class TestRestartTask(ProviderBase):
         task_manager = self.client.task_server.task_manager
 
         task_manager.dump_task = mock.Mock()
-        task_manager.listen_address = '127.0.0.1'
-        task_manager.listen_port = 40103
 
         some_file_path = self.new_path / "foo"
         # pylint thinks it's PurePath, but it's a concrete path
@@ -300,16 +298,6 @@ class TestEnqueueNewTask(ProviderBase):
         c.task_server.task_manager.tasks_states[task_id] = taskstate.TaskState()
         frames = c.task_server.task_manager.get_output_states(task_id)
         assert frames is not None
-
-    def test_create_from_task(self, *_):
-        task = self.client.task_manager.create_task(
-            copy.deepcopy(TestEnqueueNewTask.T_DICT),
-        )
-        with self.assertWarnsRegex(
-            DeprecationWarning,
-            r'instead of dict #2467',
-        ):
-            self.provider.create_task(task)
 
     def test_ensure_task_deposit(self, *_):
         force = fake.pybool()

@@ -1,5 +1,5 @@
 from typing import Optional, Any
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, succeed
 from golem.core.common import deadline_to_timeout
 
 
@@ -12,17 +12,14 @@ class VerificationTask:
         self.subtask_id = subtask_id
         self.verifier: Any = None
 
-    def start(self, verifier_class) -> Optional[Deferred]:
+    def start(self, verifier_class) -> Deferred:
         self.verifier = verifier_class(self.kwargs)
         if deadline_to_timeout(self.deadline) > 0:
             if self.verifier.simple_verification(self.kwargs):
                 return self.verifier.start_verification(self.kwargs)
-            deferred = Deferred()
-            deferred.callback(self.verifier.verification_completed())
-            return deferred
+            return succeed(self.verifier.verification_completed())
         else:
-            self.verifier.task_timeout(self.subtask_id)
-        return None
+            return succeed(self.verifier.task_timeout(self.subtask_id))
 
     def get_results(self):
         return self.verifier.verification_completed()

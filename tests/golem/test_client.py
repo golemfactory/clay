@@ -190,15 +190,6 @@ class TestClient(TestClientBase):
         c.remove_received_files()
         self.assertEqual(os.listdir(d), [])
 
-    def test_datadir_lock(self, *_):
-        # Let's use non existing dir as datadir here to check how the Client
-        # is able to cope with that.
-        datadir = os.path.join(self.path, "non-existing-dir")
-        self.client = make_client(datadir=datadir)
-        self.assertEqual(self.client.config_desc.node_address, '')
-        with self.assertRaises(IOError):
-            make_client(datadir=datadir)
-
     def test_quit(self, *_):
         self.client.db = None
         self.client.quit()
