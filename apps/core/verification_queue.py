@@ -4,10 +4,10 @@ from functools import partial
 from types import FunctionType
 from typing import Optional, Type, Dict, Tuple
 
+from golem_verificator.verifier import Verifier
 from twisted.internet.defer import Deferred, gatherResults
 
 from apps.core.verification_task import VerificationTask
-from golem_verificator.verifier import Verifier
 
 logger = logging.getLogger(__name__)
 
@@ -104,7 +104,8 @@ class VerificationQueue:
                               onTimeoutCancel=fn_timeout)
             self._jobs[subtask_id] = result
 
-    def _verification_timed_out(self, _result, _timeout, task, event,
+    @staticmethod
+    def _verification_timed_out(_result, _timeout, task, event,
                                 subtask_id):
         logger.warning("Timeout detected for subtask %s", subtask_id)
         task.stop(event)

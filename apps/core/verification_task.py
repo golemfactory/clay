@@ -1,4 +1,4 @@
-from typing import Optional, Any
+from typing import Any
 from twisted.internet.defer import Deferred, succeed
 from golem.core.common import deadline_to_timeout
 
