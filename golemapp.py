@@ -46,46 +46,6 @@ def monkey_patched_getLogger(*args, **kwargs):
     return result
 
 
-def set_active_environment(
-        mainnet: bool,
-        net: str,
-        concent: str,
-        datadir: str,
-        **kwargs
-) -> str:
-    set_environment('mainnet' if mainnet else net, concent)
-    datadir = get_local_datadir('default', root_dir=datadir)
-    os.makedirs(datadir, exist_ok=True)
-
-    return datadir
-
-
-def lock_datadir(func: Callable) -> Callable:
-    """
-    Decorator which locks the application's data directory before calling
-    the decorated function.
-    Locking is handled by a context manager, datadir gets unlocked
-    once the wrapped function exits.
-
-    Note: since this function requires the full path to app's datadir,
-    it calls ``set_active_environment``. Also, datadir keyword argument is
-    substituted with the full path to be used in ``start``.
-    """
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        datadir = set_active_environment(**kwargs)
-        kwargs['datadir'] = datadir
-
-        try:
-            with Lock(os.path.join(datadir, 'LOCK'), timeout=1):
-                func(*args, **kwargs)
-        except LockException:
-            logger.error(f'directory {datadir} is locked, possibly used by '
-                         'another Golem instance')
-
-    return wrapper
-
-
 slogging.SManager.getLogger = monkey_patched_getLogger
 
 
@@ -158,8 +118,6 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)  # Crossbar specific level
 @click.option('--title', expose_value=False)
-# Setting active environment, locking datadir
-@lock_datadir
 def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
           net, geth_address, password, accept_terms,
           accept_concent_terms,
@@ -184,59 +142,72 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         print("GOLEM version: {}".format(golem.__version__))
         return 0
 
-    generate_rpc_certificate(datadir)
+    from golem.core.simpleenv import get_local_datadir
+    # We should use different directories for different chains
+    datadir = get_local_datadir('default', root_dir=datadir)
 
-    # Workarounds for pyinstaller executable
-    sys.modules['win32com.gen_py.os'] = None
-    sys.modules['win32com.gen_py.pywintypes'] = None
-    sys.modules['win32com.gen_py.pythoncom'] = None
+    def _start():
+        generate_rpc_certificate(datadir)
 
-    app_config = AppConfig.load_config(datadir)
-    config_desc = ClientConfigDescriptor()
-    config_desc.init_from_app_config(app_config)
-    config_desc = ConfigApprover(config_desc).approve()
+        # Workarounds for pyinstaller executable
+        sys.modules['win32com.gen_py.os'] = None
+        sys.modules['win32com.gen_py.pywintypes'] = None
+        sys.modules['win32com.gen_py.pythoncom'] = None
 
-    if rpc_address:
-        config_desc.rpc_address = rpc_address.address
-        config_desc.rpc_port = rpc_address.port
-    if node_address:
-        config_desc.node_address = node_address
+        app_config = AppConfig.load_config(datadir)
+        config_desc = ClientConfigDescriptor()
+        config_desc.init_from_app_config(app_config)
+        config_desc = ConfigApprover(config_desc).approve()
 
-    # Golem headless
-    install_reactor()
+        if rpc_address:
+            config_desc.rpc_address = rpc_address.address
+            config_desc.rpc_port = rpc_address.port
+        if node_address:
+            config_desc.node_address = node_address
 
-    from golem.core.common import config_logging
-    config_logging(datadir=datadir, loglevel=log_level, config_desc=config_desc)
+        # Golem headless
+        install_reactor()
 
-    log_golem_version()
-    log_platform_info()
-    log_ethereum_chain()
-    log_concent_choice(CONCENT_VARIANT)
+        from golem.core.common import config_logging
+        config_logging(datadir=datadir, loglevel=log_level, config_desc=config_desc)
 
-    node = Node(
-        datadir=datadir,
-        app_config=app_config,
-        config_desc=config_desc,
-        peers=peer,
-        use_monitor=monitor,
-        use_talkback=enable_talkback,
-        concent_variant=CONCENT_VARIANT,
-        geth_address=geth_address,
-        password=password,
-    )
+        log_golem_version()
+        log_platform_info()
+        log_ethereum_chain()
+        log_concent_choice(CONCENT_VARIANT)
+        
+        node = Node(
+            datadir=datadir,
+            app_config=app_config,
+            config_desc=config_desc,
+            peers=peer,
+            use_monitor=monitor,
+            use_talkback=enable_talkback,
+            concent_variant=CONCENT_VARIANT,
+            geth_address=geth_address,
+            password=password,
+        )
 
-    if accept_terms:
-        node.accept_terms()
+        if accept_terms:
+            node.accept_terms()
 
-    if accept_concent_terms:
-        node.accept_concent_terms()
+        if accept_concent_terms:
+            node.accept_concent_terms()
 
-    if accept_all_terms:
-        node.accept_terms()
-        node.accept_concent_terms()
+        if accept_all_terms:
+            node.accept_terms()
+            node.accept_concent_terms()
 
-    node.start()
+        node.start()
 
+    try:
+        with Lock(os.path.join(datadir, 'LOCK'), timeout=1):
+            _start(datadir)
+
+    except LockException:
+        logger.error(f'directory {datadir} is locked, possibly used by '
+                     'another Golem instance')
+        return 1
 
 def delete_reactor():
     if 'twisted.internet.reactor' in sys.modules:
