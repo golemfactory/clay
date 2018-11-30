@@ -50,17 +50,10 @@ class HyperVHypervisor(DockerMachineHypervisor):
         try:
             # The windows VM fails to start when too much memory is assigned
             super().start_vm(name)
-            return
-        except Exception as e:
-            logger.debug("setup error: %r", e)
-            logger.warning("Failed to setup VM, retry with minimum values")
-
-        try:
-            self.constrain(name, **MIN_CONSTRAINTS)
-            super().start_vm(name)
-        except Exception as e:
-            logger.debug("re-setup error: %r", e)
-            logger.error("Failed to setup VM, no more retry")
+        except subprocess.CalledProcessError as e:
+            logger.exception(
+                "HyperV: VM failed to start, this can be caused "
+                "by insufficient RAM or HD free on the host machine")
             raise
 
 
