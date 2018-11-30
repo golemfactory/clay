@@ -510,8 +510,10 @@
     <ROW Action="AI_DATA_SETTER" Type="51" Source="AI_ExtractFiles" Target="[AI_SETUPEXEPATH]"/>
     <ROW Action="AI_DATA_SETTER_1" Type="51" Source="StopProcess_Golem" Target="Golem.exe"/>
     <ROW Action="AI_DATA_SETTER_10" Type="51" Source="CustomActionData" Target="AEYAbABhAGcAcwACADMAAQBTAGMAcgBpAHAAdABTAHIAYwBCAGkAbgBhAHIAeQBSAG8AdwBJAGQAAgBjAGwAZQBhAG4AZABvAGMAawBlAHIAdgBtAC4AcABzADE="/>
+    <ROW Action="AI_DATA_SETTER_11" Type="51" Source="CustomActionData" Target="AEkAcwA2ADQAQgBpAHQAAgAxAAEAUABhAHIAYQBtAHMAAgABAFMAYwByAGkAcAB0AAIAQQBJAF8AUwBlAHQATQBzAGkAUAByAG8AcABlAHIAdAB5ACAASABZAFAARQBSAF8AVgBfAEEAVgBBAEkATABBAEIATABFACAAKABHAGUAdAAtAFcAbQBpAE8AYgBqAGUAYwB0ACAALQBxAHUAZQByAHkAIAAiAHMAZQBsAGUAYwB0ACAAKgAgAGYAcgBvAG0AIABXAGkAbgAzADIAXwBPAHAAdABpAG8AbgBhAGwARgBlAGEAdAB1AHIAZQAgAHcAaABlAHIAZQAgAG4AYQBtAGUAIAA9ACAAJwBNAGkAYwByAG8AcwBvAGYAdAAtAEgAeQBwAGUAcgAtAFYAJwAiACk="/>
     <ROW Action="AI_DATA_SETTER_12" Type="51" Source="AI_RemoveAllTempFiles" Target="[AI_TEMP_FILE_ROLLBACK_INFO]"/>
     <ROW Action="AI_DATA_SETTER_13" Type="51" Source="CustomActionData" Target="AEYAbABhAGcAcwACADMAAQBTAGMAcgBpAHAAdABTAHIAYwBCAGkAbgBhAHIAeQBSAG8AdwBJAGQAAgBwAHIAZQBwAGEAcgBlAGQAbwBjAGsAZQByAGYAbwByAHcAaQBuAGQAbwB3AHMALgBwAHMAMQ=="/>
+    <ROW Action="AI_DATA_SETTER_14" Type="51" Source="CustomActionData" Target="Your operating system doesn&apos;t support Hyper-V. You can still use Golem with Docker Toolbox but this solution is deprecated. Also if you don&apos;t have Docker Toolbox installed you will have to do this manually before running Golem for the first time. |Hyper-V unavailable |MB_OK,MB_ICONWARNING,MB_DEFBUTTON1|BTN_PRESSED|[CLIENTPROCESSID]"/>
     <ROW Action="AI_DATA_SETTER_2" Type="51" Source="StopProcess_Golemapp" Target="Golemapp.exe"/>
     <ROW Action="AI_DATA_SETTER_3" Type="51" Source="StopProcess_hyperg" Target="hyperg.exe"/>
     <ROW Action="AI_DATA_SETTER_4" Type="51" Source="StopProcess_DockerToolbox" Target="DockerToolbox.exe"/>
@@ -551,12 +553,14 @@
     <ROW Action="AI_WinOptFeaturesRemove" Type="11265" Source="WinOptionalFeatures.dll" Target="OnWinOptFeaturesRemove" WithoutSeq="true"/>
     <ROW Action="AI_WinOptFeaturesRollback" Type="11521" Source="WinOptionalFeatures.dll" Target="OnWinOptFeaturesRollback" WithoutSeq="true"/>
     <ROW Action="AI_WinOptFeaturesUninstall" Type="1" Source="WinOptionalFeatures.dll" Target="OnWinOptFeaturesUninstall"/>
+    <ROW Action="CheckHyperVAvailability" Type="1" Source="PowerShellScriptLauncher.dll" Target="RunPowerShellScript" Options="1" AdditionalSeq="AI_DATA_SETTER_11"/>
     <ROW Action="ExecuteUninstallDockerTb" Type="3122" Source="DOCKER_UNINSTALL_CLEAN" Target="/SILENT"/>
     <ROW Action="ExecuteUninstallPre011" Type="3122" Source="GOLEM_UNINSTALL_CLEAN" Target="/SILENT"/>
     <ROW Action="Execute_CleanDockerVM" Type="65" Source="PowerShellScriptLauncher.dll" Target="RunPowerShellFileScript" Options="134217729" AdditionalSeq="AI_DATA_SETTER_10"/>
     <ROW Action="Execute_PrepareDocker" Type="1" Source="PowerShellScriptLauncher.dll" Target="RunPowerShellFileScript" Options="134217729" AdditionalSeq="AI_DATA_SETTER_13"/>
     <ROW Action="ForceReboot" Type="51" Source="REBOOT" Target="Force"/>
-    <ROW Action="MessageBox" Type="1" Source="aicustact.dll" Target="MsgBox" Options="1" AdditionalSeq="AI_DATA_SETTER_9"/>
+    <ROW Action="MessageBox_HyperVUnavailable" Type="1" Source="aicustact.dll" Target="MsgBox" Options="1" AdditionalSeq="AI_DATA_SETTER_14"/>
+    <ROW Action="MessageBox_OldVersionDetected" Type="1" Source="aicustact.dll" Target="MsgBox" Options="1" AdditionalSeq="AI_DATA_SETTER_9"/>
     <ROW Action="SET_APPDIR" Type="307" Source="APPDIR" Target="[ProgramFilesFolder][Manufacturer]\[ProductName]" MultiBuildTarget="DefaultBuild:[ProgramFiles64Folder][ProductName]"/>
     <ROW Action="SET_SHORTCUTDIR" Type="307" Source="SHORTCUTDIR" Target="[ProgramMenuFolder][ProductName]"/>
     <ROW Action="SET_TARGETDIR_TO_APPDIR" Type="51" Source="TARGETDIR" Target="[APPDIR]"/>
@@ -624,14 +628,14 @@
     <ROW Action="AI_WinOptFeaturesInstall" Condition="(VersionNT &gt;= 600) AND (REMOVE &lt;&gt; &quot;ALL&quot;)" Sequence="1503"/>
     <ROW Action="AI_WinOptFeaturesUninstall" Condition="(VersionNT &gt;= 600) AND (REMOVE=&quot;ALL&quot;)" Sequence="1699"/>
     <ROW Action="AI_WinOptFeaturesCheckReboot" Condition="(VersionNT &gt;= 600)" Sequence="6501"/>
-    <ROW Action="ExecuteUninstallDockerTb" Condition="( NOT Installed ) AND ( DOCKER_UNINSTALL_CLEAN &lt;&gt; &quot;&quot; )" Sequence="1622"/>
+    <ROW Action="ExecuteUninstallDockerTb" Condition="( NOT Installed ) AND ( (DOCKER_UNINSTALL_CLEAN &lt;&gt; &quot;&quot;) AND (HYPER_V_AVAILABLE &lt;&gt; &quot;&quot;) )" Sequence="1622"/>
     <ROW Action="StripQuotesFromUninstallPath_1" Condition="( NOT Installed ) AND ( DOCKER_TB_UNINSTALL  &lt;&gt; &quot;&quot; )" Sequence="1620"/>
     <ROW Action="AI_ExtractTempFiles" Sequence="1001"/>
     <ROW Action="AI_RemoveTempFiles" Sequence="6601"/>
     <ROW Action="AI_RemoveAllTempFiles" Sequence="1502"/>
     <ROW Action="AI_DATA_SETTER_12" Sequence="1501"/>
-    <ROW Action="Execute_PrepareDocker" Condition="( NOT Installed ) AND ( (Not Installed) )" Sequence="1610"/>
-    <ROW Action="AI_DATA_SETTER_13" Condition="( NOT Installed ) AND ( (Not Installed) )" Sequence="1609"/>
+    <ROW Action="Execute_PrepareDocker" Condition="( NOT Installed ) AND ( (Not Installed) AND (HYPER_V_AVAILABLE &lt;&gt; &quot;&quot;) )" Sequence="1610"/>
+    <ROW Action="AI_DATA_SETTER_13" Condition="( NOT Installed ) AND ( (Not Installed) AND (HYPER_V_AVAILABLE &lt;&gt; &quot;&quot;) )" Sequence="1609"/>
     <ROW Action="AI_AiRemoveFilesImmediate" Sequence="3499"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiInstallUISequenceComponent">
@@ -642,10 +646,14 @@
     <ROW Action="AI_BACKUP_AI_SETUPEXEPATH" Sequence="99"/>
     <ROW Action="AI_RESTORE_AI_SETUPEXEPATH" Condition="AI_SETUPEXEPATH_ORIGINAL" Sequence="102"/>
     <ROW Action="AI_AppSearchEx" Sequence="101"/>
-    <ROW Action="MessageBox" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="202"/>
-    <ROW Action="AI_DATA_SETTER_9" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="201"/>
+    <ROW Action="MessageBox_OldVersionDetected" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="206"/>
+    <ROW Action="AI_DATA_SETTER_9" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="205"/>
     <ROW Action="ForceReboot" Condition="( Installed AND ( REMOVE = &quot;ALL&quot; OR AI_INSTALL_MODE = &quot;Remove&quot; ) )" Sequence="1301"/>
     <ROW Action="AI_ExtractTempFiles" Sequence="1001"/>
+    <ROW Action="CheckHyperVAvailability" Condition="( NOT Installed )" Sequence="202"/>
+    <ROW Action="AI_DATA_SETTER_11" Condition="( NOT Installed )" Sequence="201"/>
+    <ROW Action="MessageBox_HyperVUnavailable" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE = &quot;&quot; )" Sequence="204"/>
+    <ROW Action="AI_DATA_SETTER_14" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE = &quot;&quot; )" Sequence="203"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiLaunchConditionsComponent">
     <ROW Condition="( Version9X OR ( NOT VersionNT64 ) OR ( VersionNT64 AND ((VersionNT64 &lt;&gt; 502) OR (ServicePackLevel &lt;&gt; 2) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 502) OR (ServicePackLevel &lt;&gt; 2) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 600) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 600) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 601) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 601) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 602) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 602) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 603) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 603) OR (MsiNTProductType = 1)) ) )" Description="[ProductName] can not be installed on the following Windows versions: [WindowsTypeNT64Display]." DescriptionLocId="AI.LaunchCondition.NoSpecificNT64" IsPredefined="true" Builds="DefaultBuild"/>
@@ -724,6 +732,6 @@
     <ROW FileId="createshare.ps1" Name="CREATE~1.PS1|create-share.ps1" Directory_="TempFolder" Property="AI_CREATESHARE_FILE" Options="0" Data="scripts\create-share.ps1"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.WinOptionalFeatureBundleComponent">
-    <ROW Name="HyperV" FeatureList="Microsoft-Hyper-V-Management-PowerShell,Microsoft-Hyper-V-Hypervisor,Microsoft-Hyper-V-Services,Microsoft-Hyper-V-Management-Clients" OSTargets="256" Condition="1" Flags="1"/>
+    <ROW Name="HyperV" FeatureList="Microsoft-Hyper-V-Management-PowerShell,Microsoft-Hyper-V-Hypervisor,Microsoft-Hyper-V-Services,Microsoft-Hyper-V-Management-Clients" OSTargets="256" Condition="1" Flags="3"/>
   </COMPONENT>
 </DOCUMENT>
