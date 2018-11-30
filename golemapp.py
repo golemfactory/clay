@@ -145,6 +145,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     from golem.core.simpleenv import get_local_datadir
     # We should use different directories for different chains
     datadir = get_local_datadir('default', root_dir=datadir)
+    os.makedirs(datadir, exist_ok=True)
 
     def _start():
         generate_rpc_certificate(datadir)
@@ -175,7 +176,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         log_platform_info()
         log_ethereum_chain()
         log_concent_choice(CONCENT_VARIANT)
-        
+
         node = Node(
             datadir=datadir,
             app_config=app_config,
