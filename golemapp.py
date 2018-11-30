@@ -125,11 +125,6 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
           version, log_level,
           enable_talkback, m):
 
-    # These are done locally since they rely on golem.config.active to be set
-    from golem.config.active import CONCENT_VARIANT
-    from golem.appconfig import AppConfig
-    from golem.node import Node
-
     freeze_support()
     delete_reactor()
 
@@ -142,7 +137,12 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         print("GOLEM version: {}".format(golem.__version__))
         return 0
 
-    from golem.core.simpleenv import get_local_datadir
+    set_environment('mainnet' if mainnet else net, concent)
+    # These are done locally since they rely on golem.config.active to be set
+    from golem.config.active import CONCENT_VARIANT
+    from golem.appconfig import AppConfig
+    from golem.node import Node
+
     # We should use different directories for different chains
     datadir = get_local_datadir('default', root_dir=datadir)
     os.makedirs(datadir, exist_ok=True)
@@ -170,7 +170,10 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
         install_reactor()
 
         from golem.core.common import config_logging
-        config_logging(datadir=datadir, loglevel=log_level, config_desc=config_desc)
+        config_logging(
+            datadir=datadir,
+            loglevel=log_level,
+            config_desc=config_desc)
 
         log_golem_version()
         log_platform_info()
