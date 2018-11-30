@@ -54,10 +54,12 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
             self.command('create', vm_name, args=command_args)
             return
         except subprocess.CalledProcessError as exc:
+            out = exc.stdout.decode('utf8')
+            err = exc.stderr.decode('utf8')
             logger.exception(
                 f'{self.DRIVER_NAME}: error creating VM "{vm_name}"" '
-                f'stdout={exc.stdout.decode('utf8')}, '
-                f'stderr={exc.stderr.decode('utf8')}')
+                f'stdout={err}, '
+                f'stderr={out}')
 
         # Only runs when create fails. Removes a possibly corrupt machine
         try:
