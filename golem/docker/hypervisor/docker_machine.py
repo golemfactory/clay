@@ -40,7 +40,7 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
         return [self.DRIVER_PARAM_NAME, self.DRIVER_NAME]
 
     @report_calls(Component.hypervisor, 'vm.create')
-    def create(self, vm_name: Optional[str] = None, **params) -> bool:
+    def create(self, vm_name: Optional[str] = None, **params):
         vm_name = vm_name or self._vm_name
         constraints = {
             k: params.pop(v, None)
@@ -52,11 +52,22 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
 
         try:
             self.command('create', vm_name, args=command_args)
-            return True
+            return
+        except subprocess.CalledProcessError as exc:
+            logger.exception(
+                f'{self.DRIVER_NAME}: error creating VM "{vm_name}"" '
+                f'stdout={exc.stdout.decode('utf8')}, '
+                f'stderr={exc.stderr.decode('utf8')}')
+
+        # Only runs when create fails. Removes a possibly corrupt machine
+        try:
+            self.command('rm', vm_name, args='-f')
         except subprocess.CalledProcessError:
             logger.exception(
-                f'{self.DRIVER_NAME}: error creating VM "{vm_name}"')
-            return False
+                'Failed to clean up a (possible) corrupt machine, '
+                f'please run `docker-machine rm -y -f {vm_name}`')
+
+        raise exc
 
     @contextmanager
     @report_calls(Component.hypervisor, 'vm.recover')

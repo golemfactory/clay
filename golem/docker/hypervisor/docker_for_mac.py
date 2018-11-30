@@ -36,9 +36,9 @@ class DockerForMac(Hypervisor):
     def is_available(cls) -> bool:
         return os.path.exists(cls.COMMAND_HANDLER.APP)
 
-    def create(self, name: Optional[str] = None, **params) -> bool:
+    def create(self, name: Optional[str] = None, **params):
         # We do not control VM creation
-        return False
+        pass
 
     def remove(self, name: Optional[str] = None) -> bool:
         # We do not control VM removal
