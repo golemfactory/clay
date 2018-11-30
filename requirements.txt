@@ -52,9 +52,9 @@ MarkupSafe==1.0
 miniupnpc==2.0.2
 mistune==0.8.3
 mock==2.0.0
+monotonic==1.5
 Naked==0.1.31
 ndg-httpsclient==0.4.4
-monotonic==1.5
 netaddr==0.7.19
 netifaces==0.10.4
 numpy==1.13.1
