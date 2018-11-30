@@ -4,9 +4,7 @@ import os
 import platform
 import sys
 import logging
-from functools import wraps
 from multiprocessing import freeze_support
-from typing import Callable
 
 import click
 import humanize
@@ -118,12 +116,10 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)  # Crossbar specific level
 @click.option('--title', expose_value=False)
-def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
-          net, geth_address, password, accept_terms,
-          accept_concent_terms,
-          accept_all_terms,
-          version, log_level,
-          enable_talkback, m):
+def start(  # pylint: disable=too-many-arguments, too-many-locals
+        monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
+        net, geth_address, password, accept_terms, accept_concent_terms,
+        accept_all_terms, version, log_level, enable_talkback, m):
 
     freeze_support()
     delete_reactor()
@@ -131,7 +127,7 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     # Crossbar
     if m == 'crossbar.worker.process':
         start_crossbar_worker(m)
-        return
+        return 0
 
     if version:
         print("GOLEM version: {}".format(golem.__version__))
@@ -206,12 +202,14 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
 
     try:
         with Lock(os.path.join(datadir, 'LOCK'), timeout=1):
-            _start(datadir)
+            _start()
 
     except LockException:
         logger.error(f'directory {datadir} is locked, possibly used by '
                      'another Golem instance')
         return 1
+    return 0
+
 
 def delete_reactor():
     if 'twisted.internet.reactor' in sys.modules:
