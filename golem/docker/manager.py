@@ -181,6 +181,7 @@ class DockerManager(DockerConfigManager):
                     self.hypervisor.constrain(vm, **diff)
             except Exception as e:
                 logger.error("Docker: error updating configuration: %r", e)
+                raise
 
         else:
 
