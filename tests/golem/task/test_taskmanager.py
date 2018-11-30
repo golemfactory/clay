@@ -83,7 +83,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         keys_auth = Mock()
         keys_auth.sign.return_value = 'sig_%s' % (self.test_nonce,)
         self.tm = TaskManager(
-            "ABC",
             Node(),
             keys_auth,
             root_path=self.path,
@@ -206,7 +205,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         with self.assertLogs(logger, level="DEBUG") as log:
             keys_auth = Mock()
             keys_auth.sign.return_value = 'sig_%s' % (self.test_nonce,)
-            temp_tm = TaskManager("ABC", Node(),
+            temp_tm = TaskManager(Node(),
                                   keys_auth=keys_auth,
                                   root_path=self.path,
                                   task_persistence=True)
@@ -220,7 +219,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                     "TASK %s DUMPED" % task_id in log for log in log.output)
 
         with self.assertLogs(logger, level="DEBUG") as log:
-            fresh_tm = TaskManager("ABC", Node(), keys_auth=Mock(),
+            fresh_tm = TaskManager(Node(), keys_auth=Mock(),
                                    root_path=self.path, task_persistence=True)
 
             assert any(
@@ -391,11 +390,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             assert self.tm.tasks.get(task_id) is None
             assert self.tm.tasks_states.get(task_id) is None
             assert not paf.is_file()
-
-    def test_change_config(self):
-        self.assertTrue(self.tm.use_distributed_resources)
-        self.tm.change_config(self.path, False)
-        self.assertFalse(self.tm.use_distributed_resources)
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')
     def test_computed_task_received(self, _):
@@ -807,7 +801,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         count = 3
         apps_manager = AppsManager()
         apps_manager.load_all_apps()
-        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path,
+        tm = TaskManager(Node(), Mock(), root_path=self.path,
                          apps_manager=apps_manager)
         task_id, subtask_id = self.__build_tasks(tm, count)
 
@@ -837,7 +831,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     def test_get_task_preview(self, get_preview, _):
         apps_manager = AppsManager()
         apps_manager.load_all_apps()
-        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path,
+        tm = TaskManager(Node(), Mock(), root_path=self.path,
                          apps_manager=apps_manager)
         task_id, _ = self.__build_tasks(tm, 1)
 
@@ -849,7 +843,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         count = 3
         apps_manager = AppsManager()
         apps_manager.load_all_apps()
-        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path,
+        tm = TaskManager(Node(), Mock(), root_path=self.path,
                          apps_manager=apps_manager)
         task_id, _ = self.__build_tasks(tm, count)
 
@@ -891,7 +885,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert task.header.signature != sig
 
     def test_get_estimated_cost(self):
-        tm = TaskManager("ABC", Node(), Mock(), root_path=self.path)
+        tm = TaskManager(Node(), Mock(), root_path=self.path)
         options = {'price': 100,
                    'subtask_time': 1.5,
                    'num_subtasks': 7
@@ -907,11 +901,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         self.tm.add_new_task(t)
         with self.assertRaises(RuntimeError):
             self.tm.add_new_task(t)
-        self.tm.key_id = None
-        t = self._get_task_mock(task_id="qaz123WSX2", subtask_id="qweasdzxc")
-        with self.assertRaises(ValueError):
-            self.tm.add_new_task(t)
-        self.tm.key_id = "1"
 
     def test_put_task_in_restarted_state_two_times(self):
         task_id = 'qaz123WSX'
@@ -1243,7 +1232,6 @@ class TestCopySubtaskResults(TwistedTestCase):
 
     def setUp(self):
         self.tm = TaskManager(
-            node_name='node_name',
             node=Node(),
             keys_auth=MagicMock(spec=KeysAuth),
             root_path='/tmp',

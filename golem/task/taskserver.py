@@ -72,12 +72,9 @@ class TaskServer(
             min_price=config_desc.min_price,
             task_archiver=task_archiver)
         self.task_manager = TaskManager(
-            config_desc.node_name,
             self.node,
             self.keys_auth,
             root_path=TaskServer.__get_task_manager_root(client.datadir),
-            use_distributed_resources=config_desc.
-            use_distributed_resource_management,
             tasks_dir=os.path.join(client.datadir, 'tasks'),
             apps_manager=apps_manager,
             finished_cb=task_finished_cb,
@@ -416,9 +413,6 @@ class TaskServer(
         PendingConnectionsServer.change_config(self, config_desc)
         self.config_desc = config_desc
         self.last_message_time_threshold = config_desc.task_session_timeout
-        self.task_manager.change_config(
-            self.__get_task_manager_root(self.client.datadir),
-            config_desc.use_distributed_resource_management)
         self.task_keeper.change_config(config_desc)
         return self.task_computer.change_config(
             config_desc, run_benchmarks=run_benchmarks)
