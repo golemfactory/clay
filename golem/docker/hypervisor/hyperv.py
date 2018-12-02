@@ -51,7 +51,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
             # The windows VM fails to start when too much memory is assigned
             super().start_vm(name)
         except subprocess.CalledProcessError as e:
-            logger.exception(
+            logger.error(
                 "HyperV: VM failed to start, this can be caused "
                 "by insufficient RAM or HD free on the host machine")
             raise
@@ -86,8 +86,23 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
         args += [self.OPTIONS['disk'], self.VOLUME_SIZE]
 
-        logger.debug('raw hyperv create args: args=%r', args)
         return args
+
+    def create(self, name: Optional[str] = None, **params) -> bool:
+        if not super().create(name, **params):
+            name = name or self._vm_name
+            logger.error(
+                f'{ self.DRIVER_NAME}: VM failed to create, this can be '
+                'caused by insufficient RAM or HD free on the host machine')
+            try:
+                self.command('rm', name, args=['-f'])
+            except subprocess.CalledProcessError:
+                logger.error(
+                    f'{ self.DRIVER_NAME}: Failed to clean up a (possible) '
+                    'corrupt machine, please run: '
+                    f'`docker-machine rm -y -f {name}`')
+            raise Exception('Failed to create vm')
+        return True
 
     def constraints(self, name: Optional[str] = None) -> Dict:
         name = name or self._vm_name

@@ -28,8 +28,8 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
 
     def setup(self) -> None:
         if self._vm_name not in self.vms:
-            logger.info("Creating Docker VM '%r'", self._vm_name)
-            self.create(self._vm_name, **self._get_config())
+            if not self.create(self._vm_name, **self._get_config()):
+                logger.warn('%s: Vm not found and create failed')
 
         if not self.vm_running():
             self.start_vm()
@@ -40,7 +40,7 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
         return [self.DRIVER_PARAM_NAME, self.DRIVER_NAME]
 
     @report_calls(Component.hypervisor, 'vm.create')
-    def create(self, vm_name: Optional[str] = None, **params):
+    def create(self, vm_name: Optional[str] = None, **params) -> bool:
         vm_name = vm_name or self._vm_name
         constraints = {
             k: params.pop(v, None)
@@ -52,24 +52,13 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
 
         try:
             self.command('create', vm_name, args=command_args)
-            return
+            return True
         except subprocess.CalledProcessError as exc:
-            out = exc.stdout.decode('utf8')
-            err = exc.stderr.decode('utf8')
-            logger.exception(
+            out = exc.stdout.decode('utf8') if exc.stdout is not None else ''
+            logger.error(
                 f'{self.DRIVER_NAME}: error creating VM "{vm_name}"" '
-                f'stdout={err}, '
-                f'stderr={out}')
-
-        # Only runs when create fails. Removes a possibly corrupt machine
-        try:
-            self.command('rm', vm_name, args='-f')
-        except subprocess.CalledProcessError:
-            logger.exception(
-                'Failed to clean up a (possible) corrupt machine, '
-                f'please run `docker-machine rm -y -f {vm_name}`')
-
-        raise exc
+                f'stdout="{out}"')
+            return False
 
     @contextmanager
     @report_calls(Component.hypervisor, 'vm.recover')
