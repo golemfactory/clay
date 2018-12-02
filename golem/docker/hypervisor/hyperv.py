@@ -6,6 +6,8 @@ from subprocess import CalledProcessError, TimeoutExpired
 from typing import Optional, Union, Any, List, Dict, ClassVar, Iterable
 import psutil
 
+from os_win.constants import HOST_SHUTDOWN_ACTION_SHUTDOWN, \
+    VM_SNAPSHOT_TYPE_DISABLED
 from os_win.exceptions import OSWinException
 from os_win.utils import _wqlutils
 from os_win.utils.compute.vmutils import VMUtils
@@ -28,6 +30,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         cpu='--hyperv-cpu-count',
         disk='--hyperv-disk-size',
         boot2docker_url='--hyperv-boot2docker-url',
+        no_virt_mem='--hyperv-disable-dynamic-memory',
         virtual_switch='--hyperv-virtual-switch'
     )
     BOOT2DOCKER_URL = "https://github.com/golemfactory/boot2docker/releases/" \
@@ -76,15 +79,17 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
         args = super()._parse_create_params(**params)
         virtual_switch = self._get_vswitch_name()
-        args += [self.OPTIONS['boot2docker_url'], self.BOOT2DOCKER_URL,
-                 self.OPTIONS['virtual_switch'], virtual_switch]
+        args += [
+            self.OPTIONS['boot2docker_url'], self.BOOT2DOCKER_URL,
+            self.OPTIONS['virtual_switch'], virtual_switch,
+            self.OPTIONS['disk'], self.VOLUME_SIZE,
+            self.OPTIONS['no_virt_mem'],
+        ]
 
         if cpu is not None:
             args += [self.OPTIONS['cpu'], str(cpu)]
         if mem is not None:
             args += [self.OPTIONS['mem'], str(mem)]
-
-        args += [self.OPTIONS['disk'], self.VOLUME_SIZE]
 
         return args
 
@@ -135,7 +140,9 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 vcpus_num=cpu,
                 vcpus_per_numa_node=0,
                 limit_cpu_features=False,
-                dynamic_mem_ratio=1
+                dynamic_mem_ratio=1,
+                host_shutdown_action=HOST_SHUTDOWN_ACTION_SHUTDOWN,
+                snapshot_type=VM_SNAPSHOT_TYPE_DISABLED,
             )
         except OSWinException:
             logger.exception(f'Hyper-V: reconfiguration of VM "{name}" failed')
