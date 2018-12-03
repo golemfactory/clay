@@ -164,18 +164,8 @@ def task_info(node_id, task_id):
     })
 
 
-@app.route('/<node_id>/task/<task_id>', methods=['DELETE'])
-def cancel_task(node_id, task_id):
-    """Revokes task computation willingnes"""
-
-    if node_id not in subscriptions:
-        return 'Subscription not found', 404
-
-    return 'task deleted'
-
-
 @app.route('/<node_id>/subtask/<subtask_id>', methods=['PUT'])
-def start_resources_pull(node_id, subtask_id):
+def confirm_subtask(node_id, subtask_id):
     """Confirms subtask computation start"""
 
     if node_id not in subscriptions:

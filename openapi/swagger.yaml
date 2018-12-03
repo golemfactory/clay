@@ -76,21 +76,13 @@ paths:
             $ref: '#/definitions/Task'
         '404':
           description: not found
-    delete:
-      summary: Revokes task computation willingnes
-      operationId: cancelTask
-      responses:
-        '200':
-          description: task deleted
-        '404':
-          description: not found
   '/{nodeId}/subtask/{subtaskId}':
     parameters:
       - $ref: '#/parameters/nodeId'
       - $ref: '#/parameters/subtaskId'
     put:
       summary: Confirms subtask computation start
-      operationId: startResourcesPull
+      operationId: confirmSubtask
       responses:
         '200':
           description: OK
@@ -107,25 +99,32 @@ paths:
         '404':
           description: not found
     post:
-      summary: Reports subtask completed
+      summary: Reports subtask computation result
+      description: >
+        In case of successful computation caller need upload resource
+        with subtask outputs first, and supply obtained resourceId here.
+
+        Reason is supplied only in case of failure.
       operationId: subtaskResult
       parameters:
         - name: body
           in: body
           required: true
           schema:
-            $ref: '#/definitions/Resource'
+            $ref: '#/definitions/SubtaskResult'
       responses:
         '200':
           description: OK
         '404':
           description: not found
+        '410':
+          description: subtask timed out
   '/{nodeId}/subtask/{subtaskId}/cancel':
     parameters:
       - $ref: '#/parameters/nodeId'
       - $ref: '#/parameters/subtaskId'
     post:
-      summary: Cancels subtask computation (upon failure or user interaction)
+      summary: Cancels subtask computation (upon failure or resignation)
       operationId: cancelSubtask
       responses:
         '200':
@@ -190,52 +189,54 @@ paths:
             $ref: '#/definitions/Events'
 parameters:
   nodeId:
-    description: 'ethereum address identifying node e.g.,  ''0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b'''
     name: nodeId
+    type: string
     in: path
     required: true
-    type: string
     minLength: 42
     maxLength: 42
     pattern: '0x[0-9a-f]{40}'
+    description: >
+      ethereum address identifying node e.g.,
+      `0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b`
   taskId:
-    description: 'uuid e.g., ''682e9b26-ed89-11e8-a9e0-6e845eabffe0'''
     name: taskId
+    type: string
+    format: uuid
     in: path
     required: true
-    type: string
+    pattern: '[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}'
   subtaskId:
-    description: 'uuid e.g., ''682e9b26-ed89-11e8-a9e0-6e845eabffe0'''
     name: subtaskId
+    type: string
+    format: uuid
     in: path
     required: true
-    type: string
+    pattern: '[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}'
   resourceId:
-    description: 'uuid e.g., ''682e9b26-ed89-11e8-a9e0-6e845eabffe0'''
     name: resourceId
+    type: string
+    format: uuid
     in: path
     required: true
-    type: string
+    pattern: '[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}'
 definitions:
   SubscribeRequest:
-    type: object
+    required:
+      - taskType
     properties:
       taskType:
         type: string
         example: blender
-    required:
-      - taskType
   SubscriberStatus:
-    type: object
+    required:
+      - taskTypes
     properties:
-      active:
-        type: boolean
       taskTypes:
         type: array
         items:
           type: string
       taskStats:
-        type: object
         properties:
           requested:
             type: integer
@@ -245,12 +246,18 @@ definitions:
             type: integer
           timedout:
             type: integer
-    required:
-      - active
-      - taskTypes
   Task:
-    description: task is a basic unit of work requested in Golem Network. It is divided into smaller chunks - subtasks. Number of subtaks is defined by requestor.
-    type: object
+    description: >
+      A basic unit of work requested in Golem Network.
+      Upon computation it is divided into a smaller chunks - subtasks.
+      Number of subtasks is defined by the requestor.
+    required:
+      - taskId
+      - perfIndex
+      - maxResourceSize
+      - maxMemorySize
+      - numCores
+      - price
     properties:
       taskId:
         $ref: '#/parameters/taskId'
@@ -268,19 +275,17 @@ definitions:
         type: integer
         format: int32
       price:
-        $ref: '#/definitions/Price'
-      extraData:
-        $ref: '#/definitions/ExtraData'
-    required:
-      - taskId
-      - perfIndex
-      - maxResourceSize
-      - maxMemorySize
-      - numCores
-      - price
+        type: integer
+        format: int64
+        description: per second of computation
+    additionalProperties: true
   Subtask:
-    description: Subtask is a part of task supossed to be executed by provider which submited task computation willingness.
-    type: object
+    description: >
+      Subtask is a part of task supossed to be executed by a provider,
+      which submited task computation willingness.
+    required:
+      - subtaskId
+      - price
     properties:
       subtaskId:
         $ref: '#/parameters/subtaskId'
@@ -290,48 +295,61 @@ definitions:
         $ref: '#/definitions/Resource'
       deadline:
         type: integer
+        description: >
+          timestamp when computation must be finished
+          to be accepted by a requestor
       price:
-        $ref: '#/definitions/Price'
-      extraData:
-        $ref: '#/definitions/ExtraData'
-    required:
-      - subtaskId
-      - price
-  Price:
-    type: integer
-    format: int64
-  ExtraData:
-    type: string
+        type: integer
+        format: int64
+        description: >
+          total subtask price computed as `task_price * subtask_timeout`
+    additionalProperties: true
   Resource:
     description: Binary content (files) required to execute subtask
-    type: object
+    required:
+      - resourceId
     properties:
       resourceId:
         $ref: '#/parameters/resourceId'
       metadata:
         type: string
+  SubtaskResult:
+    description: Subtask computation result
     required:
-      - resourceId
+      - status
+    properties:
+      status:
+        type: string
+        enum:
+          - success
+          - failure
+      reason:
+        type: string
+        description: failure reason
+      resourceId:
+        $ref: '#/parameters/resourceId'
   SubtaskVerification:
     description: Subtask verification result
-    type: object
+    required:
+      - subtaskId
+      - verificationResult
     properties:
-      taskId:
-        $ref: '#/parameters/taskId'
+      subtaskId:
+        $ref: '#/parameters/subtaskId'
       verificationResult:
         type: string
         enum:
           - OK
           - failed
           - timedout
-    required:
-      - taskId
-      - verificationResult
   Events:
-    description: Table with trhee types of events. Every item has id and exactly one of remaining fields filled.
+    description: >
+      Table with trhee types of events.
+      Every item has id and exactly one of remaining fields filled.
     type: array
     items:
-      type: object
+      required:
+        - eventId
       properties:
         eventId:
           type: integer
@@ -342,5 +360,3 @@ definitions:
           $ref: '#/definitions/Resource'
         subtaskVerification:
           $ref: '#/definitions/SubtaskVerification'
-      required:
-        - eventId
