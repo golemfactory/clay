@@ -107,7 +107,7 @@ class TestBaseDockerJob(TestDockerJob):
         return "golemfactory/base"
 
     def _get_test_tag(self):
-        return "1.4"
+        return "1.3"
 
     def test_create(self):
         job = self._create_test_job()

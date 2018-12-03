@@ -1,9 +1,13 @@
 # pylint: disable=import-error
 import params  # This module is generated before this script is run
-import scripts.blender_render as blender
+
+import blender_render as blender
+
+
 
 
 def run_blender_task():
+
     # Creates dictionary with paths to RESOURCES_DIR, WORK_DIR and OUTPUT_DIR.
     paths = blender.params_to_paths(params)
 

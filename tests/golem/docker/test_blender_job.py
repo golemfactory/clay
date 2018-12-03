@@ -15,7 +15,7 @@ class TestBlenderDockerJob(TestDockerJob):
         return "golemfactory/blender"
 
     def _get_test_tag(self):
-        return "1.6"
+        return "1.5"
 
     def test_blender_job(self):
         app_dir = os.path.join(get_golem_path(), "apps", "blender")

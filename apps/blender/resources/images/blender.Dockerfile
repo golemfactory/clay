@@ -25,14 +25,17 @@ ENV GLIBC_VERSION 219
 ENV BLENDER_BZ2_URL http://download.blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc$GLIBC_VERSION-x86_64.tar.bz2
 # ENV BLENDER_BZ2_URL http://mirror.cs.umn.edu/blender.org/release/Blender$BLENDER_MAJOR/blender-$BLENDER_VERSION-linux-glibc211-x86_64.tar.bz2
 
-RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C /opt && \
-    ln -s /opt/blender-${BLENDER_VERSION}-linux-glibc${GLIBC_VERSION}-x86_64 /opt/blender
+RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C / && \
+    mv /blender-${BLENDER_VERSION}-linux-glibc${GLIBC_VERSION}-x86_64 /blender
 
-ENV PATH=/opt/blender:/usr/bin/:$PATH
-ENV PYTHONPATH=/golem:$PYTHONPATH
+RUN /golem/install_py_libs.sh typing
 
-COPY blender-scripts/ /golem/scripts/
+ENV PATH=/blender:/usr/bin/:$PATH
+ENV PYTHONPATH=/golem/scripts:/golem:$PYTHONPATH
 
-RUN pip install typing
+# Create symbolic link to python. I don't know where, something removes it.
+RUN ln -s /usr/bin/python3.6 /usr/bin/python3
+
+COPY scripts/ /golem/scripts/
 
 WORKDIR /golem/work/

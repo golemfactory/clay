@@ -129,6 +129,7 @@ class CoreTask(Task):
 
         # src_code stuff
         self.main_program_file = self.environment.main_program_file
+        print(self.main_program_file)
         try:
             with open(self.main_program_file, "r") as src_file:
                 src_code = src_file.read()
