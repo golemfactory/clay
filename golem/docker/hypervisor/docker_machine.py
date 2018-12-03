@@ -29,11 +29,17 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
     def setup(self) -> None:
         if self._vm_name not in self.vms:
             if not self.create(self._vm_name, **self._get_config()):
-                logger.warn('%s: Vm not found and create failed')
+                self._failed_to_create()
+                raise Exception('Docker: No vm available and failed to create')
 
         if not self.vm_running():
             self.start_vm()
         self._set_env()
+
+    def _failed_to_create(self, vm_name: Optional[str] = None):
+        name = vm_name or self._vm_name
+        logger.warning('%s: Vm (%s) not found and create failed',
+                       self.DRIVER_NAME, name)
 
     # pylint: disable=unused-argument
     def _parse_create_params(self, **params: Any) -> List[str]:

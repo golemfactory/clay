@@ -15,7 +15,7 @@ from os_win.utils.compute.vmutils import VMUtils
 from golem.core.common import get_golem_path
 from golem.docker import smbshare
 from golem.docker.client import local_client
-from golem.docker.config import CONSTRAINT_KEYS, MIN_CONSTRAINTS
+from golem.docker.config import CONSTRAINT_KEYS
 from golem.docker.hypervisor.docker_machine import DockerMachineHypervisor
 from golem.docker.task_thread import DockerBind
 
@@ -93,21 +93,18 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
         return args
 
-    def create(self, vm_name: Optional[str] = None, **params) -> bool:
-        if not super().create(vm_name, **params):
-            name = vm_name or self._vm_name
+    def _failed_to_create(self, vm_name: Optional[str] = None):
+        name = vm_name or self._vm_name
+        logger.error(
+            f'{ self.DRIVER_NAME}: VM failed to create, this can be '
+            'caused by insufficient RAM or HD free on the host machine')
+        try:
+            self.command('rm', name, args=['-f'])
+        except subprocess.CalledProcessError:
             logger.error(
-                f'{ self.DRIVER_NAME}: VM failed to create, this can be '
-                'caused by insufficient RAM or HD free on the host machine')
-            try:
-                self.command('rm', name, args=['-f'])
-            except subprocess.CalledProcessError:
-                logger.error(
-                    f'{ self.DRIVER_NAME}: Failed to clean up a (possible) '
-                    'corrupt machine, please run: '
-                    f'`docker-machine rm -y -f {name}`')
-            raise Exception('Failed to create vm')
-        return True
+                f'{ self.DRIVER_NAME}: Failed to clean up a (possible) '
+                'corrupt machine, please run: '
+                f'`docker-machine rm -y -f {name}`')
 
     def constraints(self, name: Optional[str] = None) -> Dict:
         name = name or self._vm_name
