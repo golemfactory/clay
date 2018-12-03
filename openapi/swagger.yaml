@@ -3,9 +3,6 @@ info:
   description: Golem Brass Gateway API for Golem Unlimited
   version: 1.0.0
   title: Golem Gateway API
-  contact:
-    email: contact@golem.network
-    url: https://golem.network
   license:
     name: GPL 3.0
     url: 'https://www.gnu.org/licenses/gpl-3.0.html'
@@ -48,7 +45,7 @@ paths:
         '405':
           description: invalid input
     delete:
-      summary: Deletes subscription
+      summary: Removes subscription
       operationId: unsubscribe
       responses:
         '200':
@@ -92,7 +89,7 @@ paths:
       - $ref: '#/parameters/nodeId'
       - $ref: '#/parameters/subtaskId'
     put:
-      summary: Confirms subtask computation
+      summary: Confirms subtask computation start
       operationId: startResourcesPull
       responses:
         '200':
@@ -110,7 +107,7 @@ paths:
         '404':
           description: not found
     post:
-      summary: Report subtask completed
+      summary: Reports subtask completed
       operationId: subtaskResult
       parameters:
         - name: body
@@ -123,8 +120,12 @@ paths:
           description: OK
         '404':
           description: not found
-    delete:
-      summary: Revokes subtask computation
+  '/{nodeId}/subtask/{subtaskId}/cancel':
+    parameters:
+      - $ref: '#/parameters/nodeId'
+      - $ref: '#/parameters/subtaskId'
+    post:
+      summary: Cancels subtask computation (upon failure or user interaction)
       operationId: cancelSubtask
       responses:
         '200':
@@ -136,7 +137,7 @@ paths:
       - $ref: '#/parameters/nodeId'
       - $ref: '#/parameters/resourceId'
     get:
-      summary: Downloads binary resource
+      summary: Sends a binary resource to a caller
       operationId: downloadResource
       produces:
         - application/zip
@@ -149,7 +150,7 @@ paths:
     parameters:
       - $ref: '#/parameters/nodeId'
     post:
-      summary: Uploads an resource
+      summary: Receives a resource file from a caller
       operationId: uploadResource
       consumes:
         - multipart/form-data
@@ -189,7 +190,7 @@ paths:
             $ref: '#/definitions/Events'
 parameters:
   nodeId:
-    description: ethereum address identifying node e.g.,  '0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b'
+    description: 'ethereum address identifying node e.g.,  ''0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b'''
     name: nodeId
     in: path
     required: true
@@ -198,19 +199,19 @@ parameters:
     maxLength: 42
     pattern: '0x[0-9a-f]{40}'
   taskId:
-    description: uuid e.g., '682e9b26-ed89-11e8-a9e0-6e845eabffe0'
+    description: 'uuid e.g., ''682e9b26-ed89-11e8-a9e0-6e845eabffe0'''
     name: taskId
     in: path
     required: true
     type: string
   subtaskId:
-    description: uuid e.g., '682e9b26-ed89-11e8-a9e0-6e845eabffe0'
+    description: 'uuid e.g., ''682e9b26-ed89-11e8-a9e0-6e845eabffe0'''
     name: subtaskId
     in: path
     required: true
     type: string
   resourceId:
-    description: uuid e.g., '682e9b26-ed89-11e8-a9e0-6e845eabffe0'
+    description: 'uuid e.g., ''682e9b26-ed89-11e8-a9e0-6e845eabffe0'''
     name: resourceId
     in: path
     required: true

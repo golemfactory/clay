@@ -196,7 +196,7 @@ font-style: italic;
   <div class="method-summary"></div>
   <h4><a href="#Default">Default</a></h4>
   <ul>
-  <li><a href="#cancelSubtask"><code><span class="http-method">delete</span> /{nodeId}/subtask/{subtaskId}</code></a></li>
+  <li><a href="#cancelSubtask"><code><span class="http-method">post</span> /{nodeId}/subtask/{subtaskId}/cancel</code></a></li>
   <li><a href="#cancelTask"><code><span class="http-method">delete</span> /{nodeId}/task/{taskId}</code></a></li>
   <li><a href="#downloadResource"><code><span class="http-method">get</span> /{nodeId}/resource/{resourceId}</code></a></li>
   <li><a href="#fetchEvents"><code><span class="http-method">get</span> /{nodeId}/events</code></a></li>
@@ -215,8 +215,8 @@ font-style: italic;
   <div class="method"><a name="cancelSubtask"/>
     <div class="method-path">
     <a class="up" href="#__Methods">Up</a>
-    <pre class="delete"><code class="huge"><span class="http-method">delete</span> /{nodeId}/subtask/{subtaskId}</code></pre></div>
-    <div class="method-summary">Revokes subtask computation (<span class="nickname">cancelSubtask</span>)</div>
+    <pre class="post"><code class="huge"><span class="http-method">post</span> /{nodeId}/subtask/{subtaskId}/cancel</code></pre></div>
+    <div class="method-summary">Cancels subtask computation (upon failure or user interaction) (<span class="nickname">cancelSubtask</span>)</div>
     <div class="method-notes"></div>
 
     <h3 class="field-label">Path parameters</h3>
@@ -286,7 +286,7 @@ font-style: italic;
     <div class="method-path">
     <a class="up" href="#__Methods">Up</a>
     <pre class="get"><code class="huge"><span class="http-method">get</span> /{nodeId}/resource/{resourceId}</code></pre></div>
-    <div class="method-summary">Downloads binary resource (<span class="nickname">downloadResource</span>)</div>
+    <div class="method-summary">Sends a binary resource to a caller (<span class="nickname">downloadResource</span>)</div>
     <div class="method-notes"></div>
 
     <h3 class="field-label">Path parameters</h3>
@@ -305,7 +305,7 @@ font-style: italic;
 
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
-      
+
       File
     </div>
 
@@ -356,7 +356,7 @@ font-style: italic;
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#Events">Events</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -376,7 +376,7 @@ font-style: italic;
     <div class="method-path">
     <a class="up" href="#__Methods">Up</a>
     <pre class="put"><code class="huge"><span class="http-method">put</span> /{nodeId}/subtask/{subtaskId}</code></pre></div>
-    <div class="method-summary">Confirms subtask computation (<span class="nickname">startResourcesPull</span>)</div>
+    <div class="method-summary">Confirms subtask computation start (<span class="nickname">startResourcesPull</span>)</div>
     <div class="method-notes"></div>
 
     <h3 class="field-label">Path parameters</h3>
@@ -472,7 +472,7 @@ font-style: italic;
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#SubscriberStatus">SubscriberStatus</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -527,7 +527,7 @@ font-style: italic;
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#Subtask">Subtask</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -560,7 +560,7 @@ font-style: italic;
     <div class="method-path">
     <a class="up" href="#__Methods">Up</a>
     <pre class="post"><code class="huge"><span class="http-method">post</span> /{nodeId}/subtask/{subtaskId}</code></pre></div>
-    <div class="method-summary">Report subtask completed (<span class="nickname">subtaskResult</span>)</div>
+    <div class="method-summary">Reports subtask completed (<span class="nickname">subtaskResult</span>)</div>
     <div class="method-notes"></div>
 
     <h3 class="field-label">Path parameters</h3>
@@ -622,7 +622,7 @@ font-style: italic;
     <h3 class="field-label">Return type</h3>
     <div class="return-type">
       <a href="#Task">Task</a>
-      
+
     </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
@@ -653,7 +653,7 @@ font-style: italic;
     <div class="method-path">
     <a class="up" href="#__Methods">Up</a>
     <pre class="delete"><code class="huge"><span class="http-method">delete</span> /subscribe/{nodeId}</code></pre></div>
-    <div class="method-summary">Deletes subscription (<span class="nickname">unsubscribe</span>)</div>
+    <div class="method-summary">Removes subscription (<span class="nickname">unsubscribe</span>)</div>
     <div class="method-notes"></div>
 
     <h3 class="field-label">Path parameters</h3>
@@ -689,7 +689,7 @@ font-style: italic;
     <div class="method-path">
     <a class="up" href="#__Methods">Up</a>
     <pre class="post"><code class="huge"><span class="http-method">post</span> /{nodeId}/uploadResource</code></pre></div>
-    <div class="method-summary">Uploads an resource (<span class="nickname">uploadResource</span>)</div>
+    <div class="method-summary">Receives a resource file from a caller (<span class="nickname">uploadResource</span>)</div>
     <div class="method-notes"></div>
 
     <h3 class="field-label">Path parameters</h3>

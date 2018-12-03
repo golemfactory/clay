@@ -60,7 +60,7 @@ def subscriber(node_id):
 
 @app.route('/subscribe/<node_id>', methods=['DELETE'])
 def usubscribe(node_id):
-    """Deletes subscription"""
+    """Removes subscription"""
 
     if node_id not in subscriptions:
         return 'Subscription not found', 404
@@ -72,7 +72,7 @@ def usubscribe(node_id):
 
 @app.route('/<node_id>/resource/<resource_id>', methods=['GET'])
 def download_resource(node_id, resource_id):
-    """Downloads binary resource"""
+    """Sends a binary resource to a caller"""
     if node_id not in subscriptions:
         return 'Subscription not found', 404
 
@@ -81,7 +81,7 @@ def download_resource(node_id, resource_id):
 
 @app.route('/<node_id>/uploadResource', methods=['POST'])
 def upload_resource(node_id):
-    """Uploads an resource file"""
+    """Receives a resource file from a caller"""
     if node_id not in subscriptions:
         return 'Subscription not found', 404
 
@@ -176,7 +176,7 @@ def cancel_task(node_id, task_id):
 
 @app.route('/<node_id>/subtask/<subtask_id>', methods=['PUT'])
 def start_resources_pull(node_id, subtask_id):
-    """Confirms subtask computation"""
+    """Confirms subtask computation start"""
 
     if node_id not in subscriptions:
         return 'Subscription not found', 404
@@ -205,7 +205,7 @@ def subtask_info(node_id, subtask_id):
 
 @app.route('/<node_id>/subtask/<subtask_id>', methods=['POST'])
 def subtask_result(node_id, subtask_id):
-    """Report subtask completed"""
+    """Reports subtask completed"""
 
     if node_id not in subscriptions:
         return 'Subscription not found', 404
@@ -215,9 +215,9 @@ def subtask_result(node_id, subtask_id):
 
     return 'OK'
 
-@app.route('/<node_id>/subtask/<subtask_id>', methods=['DELETE'])
+@app.route('/<node_id>/subtask/<subtask_id>/cancel', methods=['POST'])
 def cancel_subtask(node_id, subtask_id):
-    """Report subtask completed"""
+    """Cancels subtask computation (upon failure or user interaction)"""
 
     if node_id not in subscriptions:
         return 'Subscription not found', 404
