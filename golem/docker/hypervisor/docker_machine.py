@@ -28,12 +28,18 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
 
     def setup(self) -> None:
         if self._vm_name not in self.vms:
-            logger.info("Creating Docker VM '%r'", self._vm_name)
-            self.create(self._vm_name, **self._get_config())
+            if not self.create(self._vm_name, **self._get_config()):
+                self._failed_to_create()
+                raise Exception('Docker: No vm available and failed to create')
 
         if not self.vm_running():
             self.start_vm()
         self._set_env()
+
+    def _failed_to_create(self, vm_name: Optional[str] = None):
+        name = vm_name or self._vm_name
+        logger.warning('%s: Vm (%s) not found and create failed',
+                       self.DRIVER_NAME, name)
 
     # pylint: disable=unused-argument
     def _parse_create_params(self, **params: Any) -> List[str]:
@@ -53,9 +59,11 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
         try:
             self.command('create', vm_name, args=command_args)
             return True
-        except subprocess.CalledProcessError:
-            logger.exception(
-                f'{self.DRIVER_NAME}: error creating VM "{vm_name}"')
+        except subprocess.CalledProcessError as exc:
+            out = exc.stdout.decode('utf8') if exc.stdout is not None else ''
+            logger.error(
+                f'{self.DRIVER_NAME}: error creating VM "{vm_name}"" '
+                f'stdout="{out}"')
             return False
 
     @contextmanager

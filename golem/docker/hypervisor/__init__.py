@@ -112,6 +112,9 @@ class Hypervisor(metaclass=ABCMeta):
     def create(self, vm_name: Optional[str] = None, **params) -> bool:
         raise NotImplementedError
 
+    def _failed_to_create(self, vm_name: Optional[str] = None):
+        raise NotImplementedError
+
     def constrain(self, name: Optional[str] = None, **params) -> None:
         raise NotImplementedError
 

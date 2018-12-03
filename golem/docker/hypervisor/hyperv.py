@@ -6,6 +6,8 @@ from subprocess import CalledProcessError, TimeoutExpired
 from typing import Optional, Union, Any, List, Dict, ClassVar, Iterable
 import psutil
 
+from os_win.constants import HOST_SHUTDOWN_ACTION_SHUTDOWN, \
+    VM_SNAPSHOT_TYPE_DISABLED
 from os_win.exceptions import OSWinException
 from os_win.utils import _wqlutils
 from os_win.utils.compute.vmutils import VMUtils
@@ -13,7 +15,7 @@ from os_win.utils.compute.vmutils import VMUtils
 from golem.core.common import get_golem_path
 from golem.docker import smbshare
 from golem.docker.client import local_client
-from golem.docker.config import CONSTRAINT_KEYS, MIN_CONSTRAINTS
+from golem.docker.config import CONSTRAINT_KEYS
 from golem.docker.hypervisor.docker_machine import DockerMachineHypervisor
 from golem.docker.task_thread import DockerBind
 
@@ -28,6 +30,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         cpu='--hyperv-cpu-count',
         disk='--hyperv-disk-size',
         boot2docker_url='--hyperv-boot2docker-url',
+        no_virt_mem='--hyperv-disable-dynamic-memory',
         virtual_switch='--hyperv-virtual-switch'
     )
     BOOT2DOCKER_URL = "https://github.com/golemfactory/boot2docker/releases/" \
@@ -50,17 +53,10 @@ class HyperVHypervisor(DockerMachineHypervisor):
         try:
             # The windows VM fails to start when too much memory is assigned
             super().start_vm(name)
-            return
-        except Exception as e:
-            logger.debug("setup error: %r", e)
-            logger.warning("Failed to setup VM, retry with minimum values")
-
-        try:
-            self.constrain(name, **MIN_CONSTRAINTS)
-            super().start_vm(name)
-        except Exception as e:
-            logger.debug("re-setup error: %r", e)
-            logger.error("Failed to setup VM, no more retry")
+        except subprocess.CalledProcessError as e:
+            logger.error(
+                "HyperV: VM failed to start, this can be caused "
+                "by insufficient RAM or HD free on the host machine")
             raise
 
 
@@ -83,18 +79,32 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
         args = super()._parse_create_params(**params)
         virtual_switch = self._get_vswitch_name()
-        args += [self.OPTIONS['boot2docker_url'], self.BOOT2DOCKER_URL,
-                 self.OPTIONS['virtual_switch'], virtual_switch]
+        args += [
+            self.OPTIONS['boot2docker_url'], self.BOOT2DOCKER_URL,
+            self.OPTIONS['virtual_switch'], virtual_switch,
+            self.OPTIONS['disk'], self.VOLUME_SIZE,
+            self.OPTIONS['no_virt_mem'],
+        ]
 
         if cpu is not None:
             args += [self.OPTIONS['cpu'], str(cpu)]
         if mem is not None:
             args += [self.OPTIONS['mem'], str(mem)]
 
-        args += [self.OPTIONS['disk'], self.VOLUME_SIZE]
-
-        logger.debug('raw hyperv create args: args=%r', args)
         return args
+
+    def _failed_to_create(self, vm_name: Optional[str] = None):
+        name = vm_name or self._vm_name
+        logger.error(
+            f'{ self.DRIVER_NAME}: VM failed to create, this can be '
+            'caused by insufficient RAM or HD free on the host machine')
+        try:
+            self.command('rm', name, args=['-f'])
+        except subprocess.CalledProcessError:
+            logger.error(
+                f'{ self.DRIVER_NAME}: Failed to clean up a (possible) '
+                'corrupt machine, please run: '
+                f'`docker-machine rm -y -f {name}`')
 
     def constraints(self, name: Optional[str] = None) -> Dict:
         name = name or self._vm_name
@@ -127,7 +137,9 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 vcpus_num=cpu,
                 vcpus_per_numa_node=0,
                 limit_cpu_features=False,
-                dynamic_mem_ratio=1
+                dynamic_mem_ratio=1,
+                host_shutdown_action=HOST_SHUTDOWN_ACTION_SHUTDOWN,
+                snapshot_type=VM_SNAPSHOT_TYPE_DISABLED,
             )
         except OSWinException:
             logger.exception(f'Hyper-V: reconfiguration of VM "{name}" failed')

@@ -43,14 +43,15 @@ class DockerManager(DockerConfigManager):
             if not is_linux():
                 self.hypervisor = self._select_hypervisor()
                 self.hypervisor.setup()
-        except Exception:  # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
             logger.error(
                 """
                 ***************************************************************
                 No supported VM hypervisor was found.
                 Golem will not be able to compute anything.
+                hypervisor.setup() returned {}
                 ***************************************************************
-                """
+                """.format(e)
             )
             raise EnvironmentError
 
@@ -181,6 +182,7 @@ class DockerManager(DockerConfigManager):
                     self.hypervisor.constrain(vm, **diff)
             except Exception as e:
                 logger.error("Docker: error updating configuration: %r", e)
+                raise
 
         else:
 

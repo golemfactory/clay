@@ -493,5 +493,6 @@ class Node(object):
             exc_info = (err.type, err.value, err.getTracebackObject()) \
                 if isinstance(err, Failure) else None
             logger.error(
-                "Stopping because of %r error: %r", msg, err, exc_info=exc_info)
+                "Stopping because of %r error, run debug for more info", msg)
+            logger.debug("%r", err, exc_info=exc_info)
             self._reactor.callFromThread(self._reactor.stop)
