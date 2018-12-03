@@ -93,9 +93,9 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
         return args
 
-    def create(self, name: Optional[str] = None, **params) -> bool:
-        if not super().create(name, **params):
-            name = name or self._vm_name
+    def create(self, vm_name: Optional[str] = None, **params) -> bool:
+        if not super().create(vm_name, **params):
+            name = vm_name or self._vm_name
             logger.error(
                 f'{ self.DRIVER_NAME}: VM failed to create, this can be '
                 'caused by insufficient RAM or HD free on the host machine')
