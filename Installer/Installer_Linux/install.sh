@@ -198,7 +198,7 @@ function install_dependencies()
     fi
     if [[ ! -f $HOME/hyperg/hyperg ]] || [[ "$hyperg_release" > "$hyperg_version" ]]; then
         info_msg "Installing HyperG"
-        wget -qO- ${hyperg} > ${hyperg_pack}
+        wget --show-progress -qO- ${hyperg} > ${hyperg_pack}
         [[ -d $HOME/hyperg ]] && rm -rf $HOME/hyperg
         tar -xvf ${hyperg_pack} >/dev/null
         [[ "$PWD" != "$HOME" ]] && mv hyperg $HOME/
@@ -246,7 +246,7 @@ function download_package() {
         else
             golem_url=$(release_url "https://api.github.com/repos/golemfactory/golem-dev/releases")
         fi
-        wget -qO- ${golem_url} > /tmp/${PACKAGE}
+        wget --show-progress -qO- ${golem_url} > /tmp/${PACKAGE}
     fi
     if [[ ! -f /tmp/${PACKAGE} ]]; then
         error_msg "Cannot find Golem package"
@@ -264,7 +264,7 @@ function download_package() {
         else
             electron_url=$(release_url "https://api.github.com/repos/golemfactory/golem-electron-dev/releases")
         fi
-        wget -qO- ${electron_url} > /tmp/${ELECTRON_PACKAGE}
+        wget --show-progress -qO- ${electron_url} > /tmp/${ELECTRON_PACKAGE}
     fi
     if [[ ! -f /tmp/${ELECTRON_PACKAGE} ]]; then
         error_msg "Cannot find Electron package"
