@@ -17,7 +17,7 @@ def page_not_found(error):
     return f'Not found. See <a href="/">API doc</a>', 404
 
 
-@app.route('/subscribe/<node_id>', methods=['PUT'])
+@app.route('/subscriptions/<node_id>', methods=['PUT'])
 def subscribe(node_id):
     """Creates or amends subscription to Golem Network"""
     if 'taskType' not in request.json:
@@ -39,7 +39,7 @@ def subscribe(node_id):
            f'Current subscription is {subscriptions[node_id]}'
 
 
-@app.route('/subscribe/<node_id>', methods=['GET'])
+@app.route('/subscriptions/<node_id>', methods=['GET'])
 def subscriber(node_id):
     """Gets subscription status"""
 
@@ -58,7 +58,7 @@ def subscriber(node_id):
     })
 
 
-@app.route('/subscribe/<node_id>', methods=['DELETE'])
+@app.route('/subscriptions/<node_id>', methods=['DELETE'])
 def usubscribe(node_id):
     """Removes subscription"""
 
@@ -70,16 +70,98 @@ def usubscribe(node_id):
     return 'subscription deleted'
 
 
-@app.route('/<node_id>/resource/<resource_id>', methods=['GET'])
-def download_resource(node_id, resource_id):
-    """Sends a binary resource to a caller"""
+@app.route('/<node_id>/tasks/<task_id>', methods=['POST'])
+def want_to_compute_task(node_id, task_id):
+    """Sends task computation willingness"""
+
     if node_id not in subscriptions:
         return 'Subscription not found', 404
 
-    return send_file('foo')
+    return json.dumps({
+        'subtaskId': '435bd45a-12d4-144f-233c-6e845eabffe0',
+        'description': 'some desc',
+        'resource': {
+            'resourceId': '87da97cd-234s-bc32-3d42-6e845eabffe0',
+            'metadata': '{"size": 123}'
+        },
+        'deadline': 1542903681123,
+        'price': 3,
+        'extraData': '{"foo": "bar"}'
+    })
 
 
-@app.route('/<node_id>/uploadResource', methods=['POST'])
+@app.route('/<node_id>/tasks/<task_id>', methods=['GET'])
+def task_info(node_id, task_id):
+    """Gets task information"""
+
+    if node_id not in subscriptions:
+        return 'Subscription not found', 404
+
+    return json.dumps({
+        'taskId': '682e9b26-ed89-11e8-a9e0-6e845eabffe0',
+        'perfIndex': 314,
+        'maxResourceSize': 110,
+        'maxMemorySize': 10,
+        'numCores': 2,
+        'price': 12,
+        'extraData': '{"foo": "bar"}'
+    })
+
+
+@app.route('/<node_id>/subtasks/<subtask_id>', methods=['PUT'])
+def confirm_subtask(node_id, subtask_id):
+    """Confirms subtask computation start"""
+
+    if node_id not in subscriptions:
+        return 'Subscription not found', 404
+
+    return 'OK'
+
+
+@app.route('/<node_id>/subtasks/<subtask_id>', methods=['GET'])
+def subtask_info(node_id, subtask_id):
+    """Gets subtask information"""
+
+    if node_id not in subscriptions:
+        return 'Subscription not found', 404
+
+    return json.dumps({
+        'subtaskId': '435bd45a-12d4-144f-233c-6e845eabffe0',
+        'description': 'some desc',
+        'resource': {
+            'resourceId': '87da97cd-234s-bc32-3d42-6e845eabffe0',
+            'metadata': '{"size": 123}'
+        },
+        'deadline': 1542903681123,
+        'price': 3,
+        'extraData': '{"foo": "bar"}'
+    })
+
+
+@app.route('/<node_id>/subtasks/<subtask_id>', methods=['POST'])
+def subtask_result(node_id, subtask_id):
+    """Reports subtask computation result"""
+
+    if node_id not in subscriptions:
+        return 'Subscription not found', 404
+
+    if 'status' not in request.json:
+        return 'status required', 405
+
+    return 'OK'
+
+
+@app.route('/<node_id>/subtask/<subtask_id>/cancel', methods=['POST'])
+def cancel_subtask(node_id, subtask_id):
+    """Cancels subtask computation (upon failure or resignation)"""
+
+    if node_id not in subscriptions:
+        return 'Subscription not found', 404
+
+    return 'OK'
+
+
+@app.route('/<node_id>/resources', methods=['POST'])
 def upload_resource(node_id):
     """Receives a resource file from a caller"""
     if node_id not in subscriptions:
@@ -90,6 +172,15 @@ def upload_resource(node_id):
         print(f'file {file.filename} saved as {filename}')
 
     return f'upload successful {request.form}, {request.files}'
+
+
+@app.route('/<node_id>/resources/<resource_id>', methods=['GET'])
+def download_resource(node_id, resource_id):
+    """Sends a binary resource to a caller"""
+    if node_id not in subscriptions:
+        return 'Subscription not found', 404
+
+    return send_file('foo')
 
 
 @app.route('/<node_id>/events', methods=['GET'])
@@ -124,92 +215,3 @@ def fetch_events(node_id):
         'resource': None,
         'verificationResult': None
     }])
-
-
-@app.route('/<node_id>/task/<task_id>', methods=['POST'])
-def want_to_compute_task(node_id, task_id):
-    """Sends task computation willingness"""
-
-    if node_id not in subscriptions:
-        return 'Subscription not found', 404
-
-    return json.dumps({
-        'subtaskId': '435bd45a-12d4-144f-233c-6e845eabffe0',
-        'description': 'some desc',
-        'resource': {
-            'resourceId': '87da97cd-234s-bc32-3d42-6e845eabffe0',
-            'metadata': '{"size": 123}'
-        },
-        'deadline': 1542903681123,
-        'price': 3,
-        'extraData': '{"foo": "bar"}'
-    })
-
-
-@app.route('/<node_id>/task/<task_id>', methods=['GET'])
-def task_info(node_id, task_id):
-    """Gets task information"""
-
-    if node_id not in subscriptions:
-        return 'Subscription not found', 404
-
-    return json.dumps({
-        'taskId': '682e9b26-ed89-11e8-a9e0-6e845eabffe0',
-        'perfIndex': 314,
-        'maxResourceSize': 110,
-        'maxMemorySize': 10,
-        'numCores': 2,
-        'price': 12,
-        'extraData': '{"foo": "bar"}'
-    })
-
-
-@app.route('/<node_id>/subtask/<subtask_id>', methods=['PUT'])
-def confirm_subtask(node_id, subtask_id):
-    """Confirms subtask computation start"""
-
-    if node_id not in subscriptions:
-        return 'Subscription not found', 404
-
-    return 'OK'
-
-
-@app.route('/<node_id>/subtask/<subtask_id>', methods=['GET'])
-def subtask_info(node_id, subtask_id):
-    """Gets subtask information"""
-
-    if node_id not in subscriptions:
-        return 'Subscription not found', 404
-
-    return json.dumps({
-        'subtaskId': '435bd45a-12d4-144f-233c-6e845eabffe0',
-        'description': 'some desc',
-        'resource': {
-            'resourceId': '87da97cd-234s-bc32-3d42-6e845eabffe0',
-            'metadata': '{"size": 123}'
-        },
-        'deadline': 1542903681123,
-        'price': 3,
-        'extraData': '{"foo": "bar"}'
-    })
-
-@app.route('/<node_id>/subtask/<subtask_id>', methods=['POST'])
-def subtask_result(node_id, subtask_id):
-    """Reports subtask completed"""
-
-    if node_id not in subscriptions:
-        return 'Subscription not found', 404
-
-    if 'resourceId' not in request.json:
-        return 'resourceId required', 405
-
-    return 'OK'
-
-@app.route('/<node_id>/subtask/<subtask_id>/cancel', methods=['POST'])
-def cancel_subtask(node_id, subtask_id):
-    """Cancels subtask computation (upon failure or user interaction)"""
-
-    if node_id not in subscriptions:
-        return 'Subscription not found', 404
-
-    return 'OK'

@@ -12,7 +12,7 @@ schemes:
   - https
   - http
 paths:
-  '/subscribe/{nodeId}':
+  '/subscriptions/{nodeId}':
     parameters:
       - $ref: '#/parameters/nodeId'
     put:
@@ -37,7 +37,7 @@ paths:
       operationId: subscription
       responses:
         '200':
-          description: successful operation
+          description: OK
           schema:
             $ref: '#/definitions/SubscriberStatus'
         '404':
@@ -54,7 +54,7 @@ paths:
           description: subscription not found
         '405':
           description: invalid input
-  '/{nodeId}/task/{taskId}':
+  '/{nodeId}/tasks/{taskId}':
     parameters:
       - $ref: '#/parameters/nodeId'
       - $ref: '#/parameters/taskId'
@@ -63,7 +63,7 @@ paths:
       operationId: wantToComputeTask
       responses:
         '200':
-          description: subtask definition
+          description: subtask to compute
           schema:
             $ref: '#/definitions/Subtask'
     get:
@@ -76,7 +76,7 @@ paths:
             $ref: '#/definitions/Task'
         '404':
           description: not found
-  '/{nodeId}/subtask/{subtaskId}':
+  '/{nodeId}/subtasks/{subtaskId}':
     parameters:
       - $ref: '#/parameters/nodeId'
       - $ref: '#/parameters/subtaskId'
@@ -93,7 +93,7 @@ paths:
       operationId: subtaskInfo
       responses:
         '200':
-          description: ok
+          description: OK
           schema:
             $ref: '#/definitions/Subtask'
         '404':
@@ -119,7 +119,7 @@ paths:
           description: not found
         '410':
           description: subtask timed out
-  '/{nodeId}/subtask/{subtaskId}/cancel':
+  '/{nodeId}/subtasks/{subtaskId}/cancel':
     parameters:
       - $ref: '#/parameters/nodeId'
       - $ref: '#/parameters/subtaskId'
@@ -131,7 +131,35 @@ paths:
           description: OK
         '404':
           description: not found
-  '/{nodeId}/resource/{resourceId}':
+  '/{nodeId}/resources':
+    parameters:
+      - $ref: '#/parameters/nodeId'
+    post:
+      summary: Receives a resource file from a caller
+      operationId: uploadResource
+      consumes:
+        - multipart/form-data
+      parameters:
+        - name: metadata
+          type: string
+          in: formData
+          required: false
+          description: file metadata
+        - name: file
+          type: file
+          in: formData
+          required: true
+          description: file to upload
+      responses:
+        '201':
+          description: resource created
+          schema:
+            $ref: '#/definitions/Resource'
+        '404':
+          description: subscription not found
+        '405':
+          description: invalid request
+  '/{nodeId}/resources/{resourceId}':
     parameters:
       - $ref: '#/parameters/nodeId'
       - $ref: '#/parameters/resourceId'
@@ -145,32 +173,8 @@ paths:
           description: A zipped resource file
           schema:
             type: file
-  '/{nodeId}/uploadResource':
-    parameters:
-      - $ref: '#/parameters/nodeId'
-    post:
-      summary: Receives a resource file from a caller
-      operationId: uploadResource
-      consumes:
-        - multipart/form-data
-      parameters:
-        - name: additionalMetadata
-          in: formData
-          description: Additional data to pass to server
-          required: false
-          type: string
-        - name: file
-          in: formData
-          description: file to upload
-          required: true
-          type: file
-      responses:
-        '200':
-          description: successful operation
-          schema:
-            $ref: '#/definitions/Resource'
-        '405':
-          description: invalid request
+        '404':
+          description: not found
   '/{nodeId}/events':
     parameters:
       - $ref: '#/parameters/nodeId'
@@ -184,7 +188,7 @@ paths:
       operationId: fetchEvents
       responses:
         '200':
-          description: successful operation
+          description: list of events from `lastEventId`
           schema:
             $ref: '#/definitions/Events'
 parameters:
