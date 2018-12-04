@@ -1,14 +1,19 @@
 from __future__ import print_function
 
+import json
 import os
 import subprocess
 import sys
 from multiprocessing import cpu_count
 
-# pylint: disable=import-error
-import params  # This module is generated before this script is run
 
 BLENDER_COMMAND = "blender"
+# FIXME WORK_DIR shoudn't be hardcoded here if it's set in Dockerfile
+WORK_DIR = '/golem/work'
+
+
+with open('{}/params.json'.format(WORK_DIR), 'r') as params_file:
+    params = json.load(params_file)
 
 
 def exec_cmd(cmd):
@@ -24,7 +29,7 @@ def format_blender_render_cmd(outfilebasename, scene_file, script_file,
         "-b", "{}".format(scene_file),
         "-y",  # enable scripting by default
         "-P", "{}".format(script_file),
-        "-o", "{}/{}_{}".format(params.OUTPUT_DIR,
+        "-o", "{}/{}_{}".format(params['OUTPUT_DIR'],
                                 outfilebasename,
                                 start_task),
         "-noaudio",
@@ -44,7 +49,7 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task,
               file=sys.stderr)
         sys.exit(1)
 
-    blender_script_path = "{}/blenderscript.py".format(params.WORK_DIR)
+    blender_script_path = "{}/blenderscript.py".format(WORK_DIR)
     with open(blender_script_path, "w") as script_file:
         script_file.write(script_src)
 
@@ -57,5 +62,11 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task,
         sys.exit(exit_code)
 
 
-run_blender_task(params.outfilebasename, params.scene_file, params.script_src,
-                 params.start_task, params.frames, params.output_format)
+run_blender_task(
+    params['outfilebasename'],
+    params['scene_file'],
+    params['script_src'],
+    params['start_task'],
+    params['frames'],
+    params['output_format'],
+)
