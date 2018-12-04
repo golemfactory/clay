@@ -29,7 +29,8 @@ COPY scripts/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN sed -i -e 's/\r$//' /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
-COPY scripts/install_py_libs.sh /golem/install_py_libs.sh
-RUN chmod +x /golem/install_py_libs.sh
+COPY scripts/ /golem/
+RUN chmod +x /golem/install_py_libs.sh \ 
+    && chmod +x /golem/install_py_requirements.sh
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
