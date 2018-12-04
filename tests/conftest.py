@@ -1,6 +1,7 @@
 import os
 from unittest import mock
 
+from pydispatch import dispatcher
 import pytest
 
 from golem.core.common import is_windows
@@ -20,3 +21,17 @@ def disable_benchmarks(request):
 
     ctx.__enter__()
     request.addfinalizer(ctx.__exit__)
+
+
+@pytest.fixture(autouse=True)
+def clean_dispatcher():
+    """
+    Dispatcher is a global object shared between different tests so it may
+    happen that one tests subscribes to a signal than some completely different
+    tests sends this signal triggering code from the first test which is
+    completely unexpected and undefined.
+    """
+    yield
+    dispatcher.connections = {}
+    dispatcher.senders = {}
+    dispatcher.sendersBack = {}

@@ -21,14 +21,13 @@ from apps.blender.task.blenderrendertask import (BlenderDefaults,
                                                  BlenderTaskTypeInfo,
                                                  PreviewUpdater,
                                                  logger)
-from apps.core.task.coretask import AcceptClientVerdict
 from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
     RenderingTaskDefinition)
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import ResultType
+from golem.task.taskbase import AcceptClientVerdict
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -118,7 +117,7 @@ class TestBlenderFrameTask(TempDirFixture):
         self.assertEqual(len(self.bt.preview_task_file_path),
                          len(self.bt.frames))
 
-    @mock.patch('apps.blender.verification_task.deadline_to_timeout')
+    @mock.patch('apps.core.verification_task.deadline_to_timeout')
     def test_computation_failed_or_finished(self, mock_dtt):
         mock_dtt.return_value = 1.0
         assert self.bt.total_tasks == 6
@@ -130,8 +129,7 @@ class TestBlenderFrameTask(TempDirFixture):
         assert extra_data2.ctd is not None
 
         self.bt.computation_failed(extra_data1.ctd['subtask_id'])
-        self.bt.computation_finished(extra_data1.ctd['subtask_id'], [],
-                                     ResultType.DATA)
+        self.bt.computation_finished(extra_data1.ctd['subtask_id'], [])
         assert self.bt.subtasks_given[extra_data1.ctd['subtask_id']][
             'status'] == \
             SubtaskStatus.failure
@@ -165,7 +163,6 @@ class TestBlenderFrameTask(TempDirFixture):
             self.bt.computation_finished(
                 extra_data3.ctd['subtask_id'],
                 [file1],
-                ResultType.FILES,
                 lambda: None)
             assert self.bt.subtasks_given[extra_data3.ctd['subtask_id']][
                 'status'] == SubtaskStatus.finished
@@ -197,7 +194,6 @@ class TestBlenderFrameTask(TempDirFixture):
             self.bt.computation_finished(
                 extra_data4.ctd['subtask_id'],
                 [file2],
-                ResultType.FILES,
                 lambda: None)
             assert self.bt.subtasks_given[extra_data4.ctd['subtask_id']][
                 'status'] == SubtaskStatus.finished

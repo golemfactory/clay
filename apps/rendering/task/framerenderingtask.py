@@ -20,7 +20,6 @@ from apps.rendering.task.renderingtaskstate import RendererDefaults
 from golem_verificator.rendering_verifier import FrameRenderingVerifier
 from golem.core.common import update_dict, to_unicode
 from golem.rpc import utils as rpc_utils
-from golem.task.taskbase import ResultType
 from golem.task.taskstate import SubtaskStatus, TaskStatus, SubtaskState
 
 logger = logging.getLogger("apps.rendering")
@@ -136,12 +135,10 @@ class FrameRenderingTask(RenderingTask):
 
     @CoreTask.handle_key_error
     def computation_finished(self, subtask_id, task_result,
-                             result_type=ResultType.DATA,
                              verification_finished=None):
         super(FrameRenderingTask, self).computation_finished(
             subtask_id,
             task_result,
-            result_type,
             verification_finished)
 
     def verification_finished(self, subtask_id, verdict, result):
@@ -386,12 +383,13 @@ class FrameRenderingTask(RenderingTask):
         output_file_name = self.output_file
         self.collected_file_names = OrderedDict(sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
-            collector = RenderingTaskCollector(paste=True, width=self.res_x, height=self.res_y)
+            collector = RenderingTaskCollector(width=self.res_x,
+                                               height=self.res_y)
             for file in self.collected_file_names.values():
                 collector.add_img_file(file)
             with handle_image_error(logger), \
                     collector.finalize() as image:
-                image.save(output_file_name, self.output_format)
+                image.save_with_extension(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(os.path.join(self.tmp_dir, output_file_name),
                                                list(self.collected_file_names.values()), "paste")
@@ -403,12 +401,13 @@ class FrameRenderingTask(RenderingTask):
         collected = self.frames_given[frame_key]
         collected = OrderedDict(sorted(collected.items()))
         if not self._use_outer_task_collector():
-            collector = RenderingTaskCollector(paste=True, width=self.res_x, height=self.res_y)
+            collector = RenderingTaskCollector(width=self.res_x,
+                                               height=self.res_y)
             for file in collected.values():
                 collector.add_img_file(file)
             with handle_image_error(logger), \
                     collector.finalize() as image:
-                image.save(output_file_name, self.output_format)
+                image.save_with_extension(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(output_file_name, list(collected.values()), "paste")
 

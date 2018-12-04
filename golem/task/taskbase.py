@@ -21,6 +21,12 @@ from . import exceptions
 logger = logging.getLogger("golem.task")
 
 
+class AcceptClientVerdict(Enum):
+    ACCEPTED = 0
+    REJECTED = 1
+    SHOULD_WAIT = 2
+
+
 class TaskPurpose(Enum):
     TESTING = "testing"
     REQUESTING = "requesting"
@@ -48,16 +54,6 @@ class TaskTypeInfo(object):
     # pylint:disable=unused-argument
     def get_preview(cls, task, single=False):
         pass
-
-
-# TODO change types to enums - for now it gets
-# evt.comp.task.test.status Error WAMP message serialization
-# error: unsupported type: <enum 'ResultType'> undefined
-# Issue #2408
-
-class ResultType(object): # class ResultType(Enum):
-    DATA = 0
-    FILES = 1
 
 
 class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
@@ -465,12 +461,10 @@ class Task(abc.ABC):
 
     @abc.abstractmethod
     def computation_finished(self, subtask_id, task_result,
-                             result_type=ResultType.DATA,
                              verification_finished=None):
         """ Inform about finished subtask
         :param subtask_id: finished subtask id
         :param task_result: task result, can be binary data or list of files
-        :param result_type: ResultType representation
         """
         return  # Implement in derived class
 
@@ -623,4 +617,8 @@ class Task(abc.ABC):
 
     @abc.abstractmethod
     def should_accept_client(self, node_id):
+        pass
+
+    @abc.abstractmethod
+    def accept_client(self, node_id):
         pass

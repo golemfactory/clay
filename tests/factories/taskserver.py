@@ -4,7 +4,6 @@ from golem_messages import idgenerator
 
 from golem import clientconfigdescriptor
 from golem.task import taskserver
-from golem.task.taskbase import ResultType
 
 
 class TaskServer(factory.Factory):
@@ -23,7 +22,6 @@ class WaitingTaskResultFactory(factory.Factory):
     task_id = factory.Faker('uuid4')
     subtask_id = factory.Faker('uuid4')
     result = factory.Faker('text')
-    result_type = ResultType.DATA
     last_sending_trial = 0
     delay_time = 0
     owner = factory.SubFactory('tests.factories.p2p.Node')

@@ -189,6 +189,8 @@ def _ensure_task_deposit(client, task, force):
         return
 
     task_id = task.header.task_id
+    task_state = client.task_manager.tasks_states[task_id]
+    task_state.status = taskstate.TaskStatus.creatingDeposit
     min_amount, opt_amount = msg_helpers.requestor_deposit_amount(
         task.price,
     )
@@ -324,19 +326,13 @@ def enqueue_new_task(client, task, force=False) \
         raise CreateTaskError("Golem is not ready")
 
     task_id = task.header.task_id
-    client.funds_locker.lock_funds(task)
-    logger.info('Enqueue new task %r', task)
-
-    yield _ensure_task_deposit(
-        client=client,
-        task=task,
-        force=force,
-    )
-
-    logger.info(
-        "Deposit confirmed. Creating resource package. task_id=%r",
+    client.funds_locker.lock_funds(
         task_id,
+        task.subtask_price,
+        task.get_total_tasks(),
+        task.header.deadline,
     )
+    logger.info('Enqueue new task %r', task)
 
     packager_result = yield _create_task_package(
         client=client,
@@ -354,29 +350,54 @@ def enqueue_new_task(client, task, force=False) \
         packager_result=packager_result,
     )
 
-    logger.info("Task created. Starting... task_id=%r", task_id)
+    logger.info("Task created. Ensuring deposit. task_id=%r", task_id)
 
-    yield _start_task(
-        client=client,
-        task=task,
-        resource_server_result=resource_server_result,
-    )
+    try:
+        yield _ensure_task_deposit(
+            client=client,
+            task=task,
+            force=force,
+        )
 
-    logger.info("Task enqueued. task_id=%r", task_id)
+        logger.info(
+            "Deposit confirmed. Starting... task_id=%r",
+            task_id,
+        )
+
+        yield _start_task(
+            client=client,
+            task=task,
+            resource_server_result=resource_server_result,
+        )
+
+        logger.info("Task enqueued. task_id=%r", task_id)
+    except eth_exceptions.EthereumError as e:
+        logger.error(
+            "Can't enqueue_new_task. task_id=%(task_id)r, e=%(e_name)s: %(e)s",
+            {
+                'task_id': task_id,
+                'e': e,
+                'e_name': e.__class__.__name__,
+            },
+        )
+        raise
+    except Exception:  # pylint: disable=broad-except
+        logger.exception("Can't enqueue_new_task. task_id=%r", task_id)
+        raise
     return task
 
 
-def _create_task_error(e, _self, task_dict):
+def _create_task_error(e, _self, task_dict, **_kwargs):
     logger.error("Cannot create task %r: %s", task_dict, e)
     return None, str(e)
 
 
-def _restart_task_error(e, _self, task_id):
+def _restart_task_error(e, _self, task_id, **_kwargs):
     logger.error("Cannot restart task %r: %s", task_id, e)
     return None, str(e)
 
 
-def _test_task_error(e, self, task_dict):
+def _test_task_error(e, self, task_dict, **_kwargs):
     logger.error("Test task error: %s", e)
     logger.debug("Test task details. task_dict=%s", task_dict)
     self.client.task_test_result = {
@@ -407,22 +428,9 @@ class ClientProvider:
                  on failure
         """
 
-        # FIXME: Statement only for old DummyTask compatibility #2467
-        task: taskbase.Task
-        if isinstance(task_dict, taskbase.Task):
-            warnings.warn(
-                "create_task() called with {got_type}"
-                " instead of dict #2467".format(
-                    got_type=type(task_dict),
-                ),
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            task = task_dict
-        else:
-            prepare_and_validate_task_dict(self.client, task_dict)
+        prepare_and_validate_task_dict(self.client, task_dict)
 
-            task = self.task_manager.create_task(task_dict)
+        task: taskbase.Task = self.task_manager.create_task(task_dict)
 
         task_id = task.header.task_id
 
@@ -434,6 +442,7 @@ class ClientProvider:
                 e=failure.value,
                 _self=self,
                 task_dict=task_dict,
+                force=force
             ),
         )
         return task_id, None

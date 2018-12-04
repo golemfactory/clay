@@ -11,7 +11,7 @@ from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.docker.image import DockerImage
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
-from golem.task.taskbase import ResultType, TaskHeader
+from golem.task.taskbase import TaskHeader
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.tasktester import TaskTester
 from golem.tools.ci import ci_skip
@@ -32,7 +32,6 @@ class TestDockerBlenderTaskBase(
 
         # Check the number and type of result files:
         result = task_thread.result
-        assert result["result_type"] == ResultType.FILES
         assert len(result["data"]) >= 3
         assert any(path.basename(f) == DockerTaskThread.STDOUT_FILE
                    for f in result["data"])

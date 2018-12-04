@@ -167,8 +167,6 @@ class TestRestartTask(ProviderBase):
         task_manager = self.client.task_server.task_manager
 
         task_manager.dump_task = mock.Mock()
-        task_manager.listen_address = '127.0.0.1'
-        task_manager.listen_port = 40103
 
         some_file_path = self.new_path / "foo"
         # pylint thinks it's PurePath, but it's a concrete path
@@ -301,16 +299,6 @@ class TestEnqueueNewTask(ProviderBase):
         frames = c.task_server.task_manager.get_output_states(task_id)
         assert frames is not None
 
-    def test_create_from_task(self, *_):
-        task = self.client.task_manager.create_task(
-            copy.deepcopy(TestEnqueueNewTask.T_DICT),
-        )
-        with self.assertWarnsRegex(
-            DeprecationWarning,
-            r'instead of dict #2467',
-        ):
-            self.provider.create_task(task)
-
     def test_ensure_task_deposit(self, *_):
         force = fake.pybool()
         self.client.concent_service = mock.Mock()
@@ -324,6 +312,27 @@ class TestEnqueueNewTask(ProviderBase):
             expected=mock.ANY,
             force=force,
         )
+
+    @mock.patch('golem.task.rpc.logger.error')
+    @mock.patch('golem.task.rpc._ensure_task_deposit')
+    def test_ethereum_error(self, deposit_mock, log_mock, *_):
+        from golem.ethereum import exceptions as eth_exceptions
+        deposit_mock.side_effect = eth_exceptions.EthereumError('TEST ERROR')
+        task = self.client.task_manager.create_task(self.t_dict)
+        deferred = rpc.enqueue_new_task(self.client, task)
+        with self.assertRaises(eth_exceptions.EthereumError):
+            golem_deferred.sync_wait(deferred)
+        log_mock.assert_called_once()
+
+    @mock.patch('golem.task.rpc.logger.exception')
+    @mock.patch('golem.task.rpc._start_task')
+    def test_general_exception(self, start_mock, log_mock, *_):
+        start_mock.side_effect = RuntimeError("TEST ERROR")
+        task = self.client.task_manager.create_task(self.t_dict)
+        deferred = rpc.enqueue_new_task(self.client, task)
+        with self.assertRaises(RuntimeError):
+            golem_deferred.sync_wait(deferred)
+        log_mock.assert_called_once()
 
 
 @mock.patch('golem.task.rpc._run_test_task')
@@ -476,3 +485,47 @@ class TestRestartSubtasks(ProviderBase):
             task_dict=mock.ANY,
             force=force,
         )
+
+
+@mock.patch('os.path.getsize')
+class TestExceptionPropagation(ProviderBase):
+    def setUp(self):
+        super().setUp()
+        self.task = self.client.task_manager.create_task(self.t_dict)
+        with mock.patch('os.path.getsize'):
+            golem_deferred.sync_wait(
+                rpc.enqueue_new_task(self.client, self.task),
+            )
+
+    @mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
+    def test_create_task(self, mock_method, *_):
+        t = dummytaskstate.DummyTaskDefinition()
+        t.name = "test"
+        mock_method.side_effect = Exception("Test")
+
+        result = self.provider.create_task(t.to_dict())
+        mock_method.assert_called()
+        self.assertEqual(result, (None, "Test"))
+
+    def test_restart_task(self, *_):
+        t = dummytaskstate.DummyTaskDefinition()
+        t.name = "test"
+
+        self.provider.task_manager.assert_task_can_be_restarted =\
+            mock.MagicMock()
+        self.provider.task_manager.assert_task_can_be_restarted\
+            .side_effect = Exception("Test")
+
+        result = self.provider.restart_task(0)
+
+        self.assertEqual(result, (None, "Test"))
+
+    @mock.patch("golem.task.rpc.prepare_and_validate_task_dict")
+    def test_run_test_task_error(self, mock_method, *_):
+        t = dummytaskstate.DummyTaskDefinition()
+        t.name = "test"
+        mock_method.side_effect = Exception("Test")
+
+        result = self.provider.run_test_task(t.to_dict())
+        mock_method.assert_called()
+        self.assertEqual(result, False)

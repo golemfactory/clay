@@ -4,26 +4,38 @@ from golem.core.common import get_golem_path
 from golem.model import GenericKeyValue
 
 
-class TermsOfUse:
-    TERMS_ACCEPTED_KEY = 'terms_of_use_accepted'
-    TERMS_VERSION = 3
-    TERMS_PATH = Path('golem/TERMS.html')
+class TermsOfUseBase:
+    ACCEPTED_KEY: str
+    VERSION: int
+    PATH: Path
 
     @classmethod
-    def are_terms_accepted(cls):
+    def are_accepted(cls):
         return GenericKeyValue.select()\
             .where(
-                GenericKeyValue.key == cls.TERMS_ACCEPTED_KEY,
-                GenericKeyValue.value == cls.TERMS_VERSION)\
+                GenericKeyValue.key == cls.ACCEPTED_KEY,
+                GenericKeyValue.value == cls.VERSION)\
             .count() > 0
 
     @classmethod
-    def accept_terms(cls):
-        entry, _ = GenericKeyValue.get_or_create(key=cls.TERMS_ACCEPTED_KEY)
-        entry.value = cls.TERMS_VERSION
+    def accept(cls):
+        entry, _ = GenericKeyValue.get_or_create(key=cls.ACCEPTED_KEY)
+        entry.value = cls.VERSION
         entry.save()
 
     @classmethod
-    def show_terms(cls):
-        terms_path = Path(get_golem_path()) / cls.TERMS_PATH
+    def show(cls):
+        terms_path = Path(get_golem_path()) / cls.PATH
         return terms_path.read_text()
+
+
+class TermsOfUse(TermsOfUseBase):
+    ACCEPTED_KEY = 'terms_of_use_accepted'
+    VERSION = 3
+    PATH = Path('golem/TERMS.html')
+
+
+class ConcentTermsOfUse(TermsOfUseBase):
+    ACCEPTED_KEY = 'concent_terms_of_use_accepted'
+    VERSION = 0
+    PATH = Path('golem/CONCENT_TERMS.html')

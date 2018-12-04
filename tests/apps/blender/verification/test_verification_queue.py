@@ -4,7 +4,7 @@ import functools
 from golem_verificator.blender_verifier import BlenderVerifier
 from golem.core.common import timeout_to_deadline
 from golem.docker.task_thread import DockerTaskThread
-from apps.blender.verification_queue import VerificationQueue
+from apps.core.verification_queue import VerificationQueue
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 
 
@@ -13,7 +13,7 @@ class TestVerificationQueue(unittest.TestCase):
     def setUp(self):
         self.queue = VerificationQueue()
 
-    @mock.patch("apps.blender.verification_queue.VerificationQueue."
+    @mock.patch("apps.core.verification_queue.VerificationQueue."
                 "_verification_timed_out")
     @mock.patch(
         "golem_verificator.blender_verifier.BlenderVerifier."

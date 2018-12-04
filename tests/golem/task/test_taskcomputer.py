@@ -12,7 +12,6 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.deferred import sync_wait
 from golem.network.p2p.node import Node as P2PNode
-from golem.task.taskbase import ResultType
 from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
 from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
@@ -232,13 +231,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         if tt.is_alive():
             tt.join(timeout=5)
 
-    def test_host_state(self):
-        task_server = self.task_server
-        tc = TaskComputer(task_server, use_docker_manager=False)
-        self.assertEqual(tc.get_host_state(), "Idle")
-        tc.reset(counting_task="SOME_TASK_ID")
-        self.assertEqual(tc.get_host_state(), "Computing")
-
     def test_change_config(self):
         task_server = self.task_server
 
@@ -450,8 +442,7 @@ class TestTaskMonitor(DatabaseFixture):
         prepare()
         task_thread.error = False
         task_thread.error_msg = None
-        task_thread.result = {'data': 'oh senora!!!',
-                              'result_type': ResultType.DATA}
+        task_thread.result = {'data': 'oh senora!!!'}
         check(True)
 
         # default case (error)
