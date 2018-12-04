@@ -50,6 +50,14 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
 
     def start_vm(self, name: Optional[str] = None) -> None:
+        constr = self.constraints()
+        if not self._check_memory(constr):
+            logger.warning('Not enough memory to start the VM, lowering memory')
+            mem_key = CONSTRAINT_KEYS['mem']
+            constr[mem_key] = self.pad_memory(constr[mem_key])
+            name = name or self._vm_name
+            self.constrain(name, **constr)
+
         try:
             # The windows VM fails to start when too much memory is assigned
             super().start_vm(name)
@@ -220,15 +228,34 @@ class HyperVHypervisor(DockerMachineHypervisor):
         }
 
     def pad_memory(self, memory: int) -> int:
-        vmem = psutil.virtual_memory()
-        logger.debug("System memory: %r", vmem)
-        max_mem_in_mb = vmem.available // 1024 // 1024
-        if self.vm_running():
-            max_mem_in_mb += self.constraints()['memory_size']
+        max_mem_in_mb = self._get_max_memory()
 
         memory_size = min(memory, max_mem_in_mb - max_mem_in_mb // 10)
         logger.debug('Memory size capped by "free - 10%%": %r', memory_size)
         return super().pad_memory(memory_size)
+
+    def _check_memory(self, constr: Optional[dict] = None) -> bool:
+        """
+        Checks if there is enough memory on the system to start the VM
+        """
+        if self.vm_running():
+            return True
+
+        if constr is None:
+            constr = self.constraints()
+
+        return constr[CONSTRAINT_KEYS['mem']] <= self._get_max_memory(constr)
+
+    def _get_max_memory(self, constr: Optional[dict] = None) -> int:
+        vmem = psutil.virtual_memory()
+        logger.debug("System memory: %r", vmem)
+        max_mem_in_mb = vmem.available // 1024 // 1024
+        if self.vm_running():
+            if constr is None:
+                constr = self.constraints()
+            max_mem_in_mb += constr[CONSTRAINT_KEYS['mem']]
+
+        return max_mem_in_mb
 
     def _create_volume(self, hostname: str, shared_dir: Path) -> str:
         assert self._work_dir is not None
