@@ -55,7 +55,6 @@ class HyperVHypervisor(DockerMachineHypervisor):
             logger.warning('Not enough memory to start the VM, lowering memory')
             mem_key = CONSTRAINT_KEYS['mem']
             constr[mem_key] = self.pad_memory(constr[mem_key])
-            name = name or self._vm_name
             self.constrain(name, **constr)
 
         try:
@@ -241,8 +240,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if self.vm_running():
             return True
 
-        if constr is None:
-            constr = self.constraints()
+        constr = constr or self.constraints()
 
         return constr[CONSTRAINT_KEYS['mem']] <= self._get_max_memory(constr)
 
@@ -251,8 +249,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         logger.debug("System memory: %r", vmem)
         max_mem_in_mb = vmem.available // 1024 // 1024
         if self.vm_running():
-            if constr is None:
-                constr = self.constraints()
+            constr = constr or self.constraints()
             max_mem_in_mb += constr[CONSTRAINT_KEYS['mem']]
 
         return max_mem_in_mb
