@@ -1044,7 +1044,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             subtask.results = []
             subtask.stderr = 'error_{}'.format(i)
             subtask.stdout = 'output_{}'.format(i)
-            subtask.extra_data = {'start_task': i, 'end_task': i}
+            subtask.extra_data = {'start_task': i}
             subtask_id = subtask.subtask_id
 
             subtasks[subtask.subtask_id] = subtask

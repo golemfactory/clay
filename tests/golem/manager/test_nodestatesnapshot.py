@@ -17,7 +17,6 @@ class TestComputingSubtaskStateSnapshot(TestCase):
             'scene_file': "/golem/resources/cube.blend",
             'frames': [1],
             'start_task': 1,
-            'end_task': 1,
             'total_tasks': 1,
             'some_unused_field': 1234,
         }
