@@ -310,23 +310,18 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
         task.subtasks_given["deadbeef"] = {'status': SubtaskStatus.finished,
                                       'start_task': 1,
-                                      'end_task': 1,
                                       'node_id': 'ABC'}
         task.subtasks_given["abc"] = {'status': SubtaskStatus.failure,
                                       'start_task': 4,
-                                      'end_task': 4,
                                       'node_id': 'abc'}
         task.subtasks_given["def"] = {'status': SubtaskStatus.starting,
                                       'start_task': 8,
-                                      'end_task': 8,
                                       'node_id': 'DEF'}
         task.subtasks_given["ghi"] = {'status': SubtaskStatus.resent,
                                       'start_task': 2,
-                                      'end_task': 2,
                                       'node_id': 'aha'}
         task.subtasks_given["jkl"] = {'status': SubtaskStatus.downloading,
                                       'start_task': 8,
-                                      'end_task': 8,
                                       'node_id': 'DEF'}
         task.restart()
         assert task.num_tasks_received == 0

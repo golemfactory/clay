@@ -335,7 +335,8 @@ class TaskServer(
             if not self.verify_header_sig(header):
                 raise ValueError("Invalid signature")
 
-            if self.task_manager.is_this_my_task(header):
+            if self.task_manager.is_my_task(header.task_id) or \
+                    header.task_owner.key == self.node.key:
                 return True  # Own tasks are not added to task keeper
 
             return self.task_keeper.add_task_header(header)

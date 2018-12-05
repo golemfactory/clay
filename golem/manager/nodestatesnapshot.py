@@ -17,7 +17,6 @@ class ComputingSubtaskStateSnapshot:
             scene_file: str,
             frames: List[int],
             start_task: int,
-            end_task: int,
             total_tasks: int,
             # if there's something more in extra_data, just ignore it
             **_kwargs
@@ -31,7 +30,6 @@ class ComputingSubtaskStateSnapshot:
         self.scene_file = Path(scene_file).name
         self.frames = copy(frames)
         self.start_task = start_task
-        self.end_task = end_task
         self.total_tasks = total_tasks
 
 

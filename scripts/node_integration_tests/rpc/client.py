@@ -43,6 +43,7 @@ class RPCClient:
             deferred = self.session.call(method, *args, **kwargs)
             deferred.addCallbacks(on_success, on_error or default_errback)
             deferred.addBoth(self.shutdown)
+            return deferred
 
         def connection_error(error):
             sys.stderr.write("Error connecting to Golem instance ({}): {}\n"
