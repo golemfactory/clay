@@ -343,7 +343,6 @@ class CoreTask(Task):
         ctd['task_id'] = self.header.task_id
         ctd['subtask_id'] = subtask_id
         ctd['extra_data'] = extra_data
-        ctd['short_description'] = self.short_extra_data_repr(extra_data)
         ctd['src_code'] = self.src_code
         ctd['performance'] = perf_index
         if self.docker_images:

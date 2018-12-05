@@ -212,11 +212,6 @@ class RenderingTask(CoreTask):
         else:
             return ''
 
-    def short_extra_data_repr(self, extra_data):
-        l = extra_data
-        return "path_root: {path_root}, start_task: {start_task}, end_task: {end_task}, total_tasks: {total_tasks}, " \
-               "outfilebasename: {outfilebasename}, scene_file: {scene_file}".format(**l)
-
     def _open_preview(self, mode="RGB", ext=PREVIEW_EXT):
         """ If preview file doesn't exist create a new empty one with given mode and extension.
         Extension should be compatibile with selected mode. """

@@ -51,9 +51,6 @@ class DummyTask(CoreTask):
             total_tasks=total_tasks
         )
 
-    def short_extra_data_repr(self, extra_data):
-        return "Dummytask extra_data: {}".format(extra_data)
-
     def _extra_data(self, perf_index=0.0) -> ComputeTaskDef:
         subtask_id = self.create_subtask_id()
 
