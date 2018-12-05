@@ -52,4 +52,7 @@ class ForceDownload(NodeTestPlaybook):
         NodeTestPlaybook.step_get_task_id,
         NodeTestPlaybook.step_get_task_status,
         step_wait_task_finished,
+        NodeTestPlaybook.step_verify_output,
+        NodeTestPlaybook.step_get_subtasks,
+        NodeTestPlaybook.step_verify_provider_income,
     )

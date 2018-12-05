@@ -35,4 +35,9 @@ class AdditionalVerification(NodeTestPlaybook):
         NodeTestPlaybook.step_get_task_id,
         NodeTestPlaybook.step_get_task_status,
         step_wait,
+
+        # @TODO something here
+        # ...?
+        # profit!
+
     )

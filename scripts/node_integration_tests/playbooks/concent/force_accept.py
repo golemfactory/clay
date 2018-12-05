@@ -35,4 +35,6 @@ class ForceAccept(NodeTestPlaybook):
         NodeTestPlaybook.step_get_task_id,
         NodeTestPlaybook.step_get_task_status,
         step_wait,
+        NodeTestPlaybook.step_get_subtasks,
+        NodeTestPlaybook.step_verify_provider_income,
     )

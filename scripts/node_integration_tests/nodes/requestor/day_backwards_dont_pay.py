@@ -9,9 +9,7 @@ import freezegun
 import mock
 import sys
 
-from scripts.concent_integration_tests import params, helpers
-
-sys.path.insert(0, 'golem')
+from scripts.node_integration_tests import params, helpers
 
 from golemapp import start  # noqa: E402 module level import not at top of file
 
