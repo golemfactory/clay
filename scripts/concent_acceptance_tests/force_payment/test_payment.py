@@ -1,9 +1,11 @@
 import time
 import unittest
+from typing import Dict, Any, Optional
 
 from golem_messages import cryptography
 from golem_messages import factories as msg_factories
 from golem_messages import message
+from golem_messages.message import ReportComputedTask
 from golem_messages.utils import encode_hex as encode_key_id
 
 from golem.network.concent import exceptions as concent_exceptions
@@ -35,20 +37,21 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
 
         LAR - list of acceptances in request
         """
+        rct = self._prepare_signed_rct(self.gen_ttc_kwargs('task_to_compute__'))
         sra1 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
-            **self.gen_ttc_kwargs(
-                'task_to_compute__',
-            ),
+            report_computed_task=rct,
             payment_ts=int(time.time()) - 3600*24,
         )
         sra1.sign_message(self.requestor_priv_key)
+
         requestor2_keys = cryptography.ECCx(None)
         ttc2_kwargs = self.gen_ttc_kwargs('task_to_compute__')
         ttc2_kwargs.update(
             {'task_to_compute__sign__privkey': requestor2_keys.raw_privkey}
         )
+        rct2 = self._prepare_signed_rct(ttc2_kwargs)
         sra2 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
-            **ttc2_kwargs,
+            report_computed_task=rct2,
             payment_ts=int(time.time()) - 3600*24,
         )
         sra2.sign_message(requestor2_keys.raw_privkey)
@@ -71,24 +74,48 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
         response = self.provider_load_response(self.provider_send(fp))
         self.assertIsInstance(response, message.concents.ServiceRefused)
 
+    def _prepare_signed_rct(
+            self,
+            ttc_kwargs: Dict[str, Any],
+            privkey_for_ethsig: Optional[bytes] = None,
+            provider_privkey: Optional[bytes] = None,
+    ) -> ReportComputedTask:
+        rct = msg_factories.tasks.ReportComputedTaskFactory(
+            **self.gen_rtc_kwargs(),
+            **ttc_kwargs
+        )
+        privkey_for_ethsig = privkey_for_ethsig or self.requestor_priv_key
+        rct.task_to_compute.generate_ethsig(privkey_for_ethsig)
+        provider_priv_key = provider_privkey or self.provider_priv_key
+        rct.sign_message(provider_priv_key)
+        return rct
+
     def test_multiple_eth_accounts(self):
+        ttc_kwargs = self.gen_ttc_kwargs('task_to_compute__')
+        provider1_keys = cryptography.ECCx(None)
+        ttc_kwargs.update({
+            'task_to_compute__provider_ethereum_public_key': encode_key_id(
+                provider1_keys.raw_pubkey
+            ),
+        })
+        rct = self._prepare_signed_rct(ttc_kwargs,
+                                       provider_privkey=provider1_keys.privkey)
         sra1 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
-            **self.gen_ttc_kwargs(
-                'task_to_compute__',
-            ),
-            task_to_compute__provider_ethereum_public_key=encode_key_id(
-                cryptography.ECCx(None).raw_pubkey
-            ),
+            report_computed_task=rct,
             payment_ts=int(time.time()) - 3600*24,
         )
         sra1.sign_message(self.requestor_priv_key)
+        ttc2_kwargs = self.gen_ttc_kwargs('task_to_compute__')
+        provider2_keys = cryptography.ECCx(None)
+        ttc2_kwargs.update({
+            'task_to_compute__provider_ethereum_public_key': encode_key_id(
+                provider2_keys.raw_pubkey
+            ),
+        })
+        rct2 = self._prepare_signed_rct(ttc2_kwargs,
+                                        provider_privkey=provider2_keys.privkey)
         sra2 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
-            **self.gen_ttc_kwargs(
-                'task_to_compute__',
-            ),
-            task_to_compute__provider_ethereum_public_key=encode_key_id(
-                cryptography.ECCx(None).raw_pubkey
-            ),
+            report_computed_task=rct2,
             payment_ts=int(time.time()) - 3600*24,
         )
         sra2.sign_message(self.requestor_priv_key)
@@ -107,10 +134,9 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
         Concent service verifies wether all messages from LAO are due.
         It responds with ForcePaymentRejected TimestampError otherwise.
         """
+        rct = self._prepare_signed_rct(self.gen_ttc_kwargs('task_to_compute__'))
         sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
-            **self.gen_ttc_kwargs(
-                'task_to_compute__',
-            ),
+            report_computed_task=rct,
             payment_ts=int(time.time()) - 100,
         )
         sra.sign_message(self.requestor_priv_key)
@@ -132,10 +158,9 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
         NoUnsettledTasksFound.
         """
         # REASON.NoUnsetledTasksFound
+        rct = self._prepare_signed_rct(self.gen_ttc_kwargs('task_to_compute__'))
         sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
-            **self.gen_ttc_kwargs(
-                'task_to_compute__',
-            ),
+            report_computed_task=rct,
             payment_ts=int(time.time()),
         )
         sra.sign_message(self.requestor_priv_key)
@@ -159,10 +184,10 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
         """
         LOA = []
         for _ in range(3):
+            rct = self._prepare_signed_rct(
+                self.gen_ttc_kwargs('task_to_compute__'))
             sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
-                **self.gen_ttc_kwargs(
-                    'task_to_compute__',
-                ),
+                report_computed_task=rct,
                 payment_ts=int(time.time()) - 3600*24,
             )
             sra.sign_message(self.requestor_priv_key)
@@ -203,10 +228,9 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
         self.assertEqual(response_requestor.recipient_type, roles.Requestor)
 
     def test_sra_not_signed(self):
+        rct = self._prepare_signed_rct(self.gen_ttc_kwargs('task_to_compute__'))
         sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
-            **self.gen_ttc_kwargs(
-                'task_to_compute__',
-            ),
+            report_computed_task=rct,
             payment_ts=int(time.time()) - 3600*24,
         )
         sra.sig = None
