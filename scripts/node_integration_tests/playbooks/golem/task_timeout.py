@@ -5,7 +5,7 @@ from ..base import NodeTestPlaybook
 
 
 class TaskTimeoutAndRestart(NodeTestPlaybook):
-    provider_node_script = 'provider/no_second_wtct'
+    provider_node_script = 'provider/no_wtct_after_ttc'
     requestor_node_script = 'requestor/debug'
     task_settings = '2_short'
     provider_node_script_2 = 'provider/debug'
@@ -33,6 +33,9 @@ class TaskTimeoutAndRestart(NodeTestPlaybook):
                 self.previous_task_id = self.task_id
                 self.task_id = None
                 self.next()
+            elif result['status'] == 'Finished':
+                print(f'Task finished unexpectedly, failing test :(')
+                self.fail()
             else:
                 print("Task status: {} ... ".format(result['status']))
                 time.sleep(10)
