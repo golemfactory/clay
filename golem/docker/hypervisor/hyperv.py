@@ -9,7 +9,6 @@ import psutil
 from os_win.constants import HOST_SHUTDOWN_ACTION_SHUTDOWN, \
     VM_SNAPSHOT_TYPE_DISABLED
 from os_win.exceptions import OSWinException
-from os_win.utils import _wqlutils
 from os_win.utils.compute.vmutils import VMUtils
 
 from golem.core.common import get_golem_path
@@ -48,13 +47,23 @@ class HyperVHypervisor(DockerMachineHypervisor):
         super().__init__(*args, **kwargs)
         self._vm_utils = VMUtils()
 
-
     def start_vm(self, name: Optional[str] = None) -> None:
+
+        if not self._check_memory():
+            try:
+                from golem.os import windows_empty_working_sets
+                windows_empty_working_sets()
+            except (ImportError, OSError) as e:
+                logger.error('Unable to free memory: %r', e)
+
         constr = self.constraints()
+
         if not self._check_memory(constr):
             logger.warning('Not enough memory to start the VM, lowering memory')
             mem_key = CONSTRAINT_KEYS['mem']
+            constr[mem_key] = self._memory_cap(constr[mem_key])
             constr[mem_key] = self.pad_memory(constr[mem_key])
+            logger.debug('Memory capped by "free - 10%%": %r', constr[mem_key])
             self.constrain(name, **constr)
 
         try:
@@ -65,7 +74,6 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 "HyperV: VM failed to start, this can be caused "
                 "by insufficient RAM or HD free on the host machine")
             raise
-
 
     @classmethod
     def is_available(cls) -> bool:
@@ -226,12 +234,9 @@ class HyperVHypervisor(DockerMachineHypervisor):
             for bind in binds
         }
 
-    def pad_memory(self, memory: int) -> int:
+    def _memory_cap(self, memory: int) -> int:
         max_mem_in_mb = self._get_max_memory()
-
-        memory_size = min(memory, max_mem_in_mb - max_mem_in_mb // 10)
-        logger.debug('Memory size capped by "free - 10%%": %r', memory_size)
-        return super().pad_memory(memory_size)
+        return min(memory, max_mem_in_mb - max_mem_in_mb // 10)
 
     def _check_memory(self, constr: Optional[dict] = None) -> bool:
         """
