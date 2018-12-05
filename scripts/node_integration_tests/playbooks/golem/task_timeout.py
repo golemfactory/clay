@@ -34,7 +34,7 @@ class TaskTimeoutAndRestart(NodeTestPlaybook):
                 self.task_id = None
                 self.next()
             elif result['status'] == 'Finished':
-                print(f'Task finished unexpectedly, failing test :(')
+                print("Task finished unexpectedly, failing test :(")
                 self.fail()
             else:
                 print("Task status: {} ... ".format(result['status']))
