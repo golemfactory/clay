@@ -86,9 +86,6 @@ class TestGetTaskResources(TempDirFixture):
                                  node_name=None):
                 pass
 
-            def short_extra_data_repr(self, extra_data):
-                pass
-
             def query_extra_data_for_test_task(self):
                 pass
 

@@ -71,7 +71,6 @@ class TestVerificatorModuleIntegration(TempDirFixture):
             self.subtask_info['start_task']
         self.subtask_info['ctd']['extra_data']['total_tasks'] = \
             self.subtask_info['total_tasks']
-        self.subtask_info['ctd']['short_description'] = ''
         self.subtask_info['ctd']['src_code'] = open(
             os.path.join(
                 self.golem_dir,

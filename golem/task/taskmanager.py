@@ -828,9 +828,7 @@ class TaskManager(TaskEventListener):
                     t.get_total_tasks(),
                     t.get_active_tasks(),
                     t.get_progress(),
-                    t.short_extra_data_repr(task_state.extra_data)
-                )  # FIXME in short_extra_data_repr should there be extra data
-                # Issue #2460
+                )
                 tasks_progresses[task_id] = ltss
 
         return tasks_progresses
@@ -1052,7 +1050,6 @@ class TaskManager(TaskEventListener):
         ss.node_id = node_id
         ss.node_name = node_name
         ss.deadline = ctd['deadline']
-        ss.subtask_definition = ctd['short_description']
         ss.subtask_id = ctd['subtask_id']
         ss.extra_data = ctd['extra_data']
         ss.subtask_status = SubtaskStatus.starting

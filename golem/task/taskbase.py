@@ -438,14 +438,6 @@ class Task(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def short_extra_data_repr(self, extra_data: ExtraData) -> str:
-        """ Should return a short string with general task description that may be used for logging or stats gathering.
-        :param extra_data:
-        :return str:
-        """
-        pass  # Implement in derived class
-
-    @abc.abstractmethod
     def needs_computation(self) -> bool:
         """ Return information if there are still some subtasks that may be dispended
         :return bool: True if there are still subtask that should be computed, False otherwise

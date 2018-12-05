@@ -1088,7 +1088,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             'task_id': 'new_task_id',
             'subtask_id': 'subtask_id1',
             'extra_data': {'start_task': 1},
-            'short_description': 'desc1',
             'src_code': 'code1',
             'performance': 1000,
             'deadline': 1000000000
@@ -1096,7 +1095,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             'task_id': 'new_task_id',
             'subtask_id': 'subtask_id2',
             'extra_data': {'start_task': 2},
-            'short_description': 'desc2',
             'src_code': 'code2',
             'performance': 2000,
             'deadline': 2000000000
@@ -1134,8 +1132,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                 self.assertEqual(ss.deadline, ctd['deadline'])
                 self.assertEqual(ss.extra_data, ctd['extra_data'])
                 self.assertEqual(ss.subtask_status, SubtaskStatus.restarted)
-                self.assertEqual(
-                    ss.subtask_definition, ctd['short_description'])
 
     def test_copy_results_subtasks_properly_matched(self):
         old_task = MagicMock(spec=CoreTask)

@@ -32,16 +32,14 @@ class TestComputingSubtaskStateSnapshot(TestCase):
 
 class TestLocalTaskStateSnapshot(TestCase):
     def test_state(self):
-        ltss = LocalTaskStateSnapshot("xyz", 1000, 200, 0.8, "very big task")
+        ltss = LocalTaskStateSnapshot("xyz", 1000, 200, 0.8)
         assert isinstance(ltss, LocalTaskStateSnapshot)
         assert ltss.task_id == "xyz"
         assert ltss.total_tasks == 1000
         assert ltss.active_tasks == 200
         assert ltss.progress == 0.8
-        assert ltss.task_short_desc == "very big task"
 
         assert ltss.get_task_id() == "xyz"
         assert ltss.get_total_tasks() == 1000
         assert ltss.get_active_tasks() == 200
         assert ltss.get_progress() == 0.8
-        assert ltss.get_task_short_desc() == "very big task"
