@@ -7,7 +7,6 @@ from typing import Optional
 import enforce
 from golem_messages.message import ComputeTaskDef
 
-from apps.core.task import coretask
 from apps.core.task.coretask import (CoreTask,
                                      CoreTaskBuilder,
                                      CoreTaskTypeInfo)
@@ -78,7 +77,6 @@ class DummyTask(CoreTask):
                                           extra_data,
                                           perf_index=perf_index)
 
-    @coretask.accepting
     def query_extra_data(self,
                          perf_index: float,
                          num_cores: int = 1,
@@ -91,7 +89,6 @@ class DummyTask(CoreTask):
 
         self.subtasks_given[sid] = copy(ctd['extra_data'])
         self.subtasks_given[sid]["status"] = SubtaskStatus.starting
-        self.subtasks_given[sid]["perf"] = perf_index
         self.subtasks_given[sid]["node_id"] = node_id
         self.subtasks_given[sid]["result_extension"] = self.RESULT_EXT
         self.subtasks_given[sid]["shared_data_files"] = \
@@ -102,9 +99,6 @@ class DummyTask(CoreTask):
 
     def accept_results(self, subtask_id, result_files):
         super().accept_results(subtask_id, result_files)
-        self.counting_nodes[
-            self.subtasks_given[subtask_id]['node_id']
-        ].accept()
         self.num_tasks_received += 1
 
     def __get_result_file_name(self, subtask_id: str) -> str:

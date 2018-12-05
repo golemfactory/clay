@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import time
 from unittest import TestCase
 from unittest.mock import Mock
@@ -6,7 +7,7 @@ import requests
 from twisted.internet.defer import Deferred
 from twisted.python.failure import Failure
 
-from golem.core.async import AsyncRequest, async_run
+from golem.core import golem_async
 from golem.resource.client import ClientHandler, ClientError, \
     ClientOptions, ClientConfig
 from golem.tools.testwithreactor import TestWithReactor
@@ -34,7 +35,8 @@ class TestClientHandler(TestCase):
     def test_retry(self):
         valid_exceptions = filter(lambda t: t is not Failure,
                                   ClientHandler.retry_exceptions)
-        value_exc = list(valid_exceptions)[0]()
+        valid_exceptions = list(valid_exceptions)
+        value_exc = valid_exceptions[0]()
 
         def func(e):
             self.state.increment()
@@ -55,6 +57,20 @@ class TestClientHandler(TestCase):
                 raise ArithmeticError()
 
             self.handler._retry(func, raise_exc=False)
+
+        # Exception was raised on first retry
+        assert self.state.counter == 1
+
+
+    def test_retry_max_tries_exception(self):
+        self.handler.config.max_retries = 0
+        raised_exc = ClientHandler.retry_exceptions[0]
+        with self.assertRaises(raised_exc):
+            def func():
+                self.state.increment()
+                raise raised_exc()
+
+            self.handler._retry(func, raise_exc=True)
 
         # Exception was raised on first retry
         assert self.state.counter == 1
@@ -192,17 +208,17 @@ class TestAsyncRequest(TestWithReactor):
 
     @staticmethod
     def test_initialization():
-        request = AsyncRequest(lambda x: x)
+        request = golem_async.AsyncRequest(lambda x: x)
         assert request.args == []
         assert request.kwargs == {}
 
-        request = AsyncRequest(lambda x: x, "arg", kwarg="kwarg")
+        request = golem_async.AsyncRequest(lambda x: x, "arg", kwarg="kwarg")
         assert request.args == ("arg",)
         assert request.kwargs == {"kwarg": "kwarg"}
 
     def test_callbacks(self):
         method = Mock()
-        request = AsyncRequest(method)
+        request = golem_async.AsyncRequest(method)
         result = Mock(value=None)
 
         def success(*_):
@@ -211,20 +227,20 @@ class TestAsyncRequest(TestWithReactor):
         def error(*_):
             result.value = False
 
-        async_run(request)
+        golem_async.async_run(request)
         time.sleep(0.5)
 
         assert method.call_count == 1
         assert result.value is None
 
-        async_run(request, success)
+        golem_async.async_run(request, success)
         time.sleep(0.5)
 
         assert method.call_count == 2
         assert result.value is True
 
         method.side_effect = Exception
-        async_run(request, success, error)
+        golem_async.async_run(request, success, error)
         time.sleep(0.5)
 
         assert method.call_count == 3

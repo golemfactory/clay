@@ -2,7 +2,6 @@ from factory import Factory, Faker, SubFactory
 
 from golem import model
 from . import p2p
-# pylint: disable=too-few-public-methods
 
 
 class Income(Factory):
@@ -10,6 +9,7 @@ class Income(Factory):
         model = model.Income
 
     sender_node = Faker('binary', length=64)
+    payer_address = '0x' + 40 * '3'
     subtask = Faker('uuid4')
     value = Faker('pyint')
 

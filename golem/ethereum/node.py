@@ -20,8 +20,11 @@ class NodeProcess(object):
         """
         :param addr: address of a geth instance to connect with
         """
-        self.web3 = None  # web3 client interface
         self.provider_proxy = ProviderProxy()  # web3 ipc / rpc provider
+        self.web3 = Web3(self.provider_proxy)
+        middleware_builder = RemoteRPCErrorMiddlewareBuilder(
+            self._handle_remote_rpc_provider_failure)
+        self.web3.middleware_stack.add(middleware_builder.build)
 
         self.initial_addr_list = addresses
         self.addr_list = None
@@ -31,10 +34,7 @@ class NodeProcess(object):
         if not self.addr_list:
             self.addr_list = self.initial_addr_list.copy()
 
-        provider = self._create_remote_rpc_provider()
-
-        self.provider_proxy.provider = provider
-        self.web3 = Web3(self.provider_proxy)
+        self.provider_proxy.provider = self._create_remote_rpc_provider()
 
         started = time.time()
         deadline = started + self.CONNECTION_TIMEOUT
@@ -44,30 +44,26 @@ class NodeProcess(object):
                 return self.start()
             time.sleep(0.1)
 
-        middleware_builder = RemoteRPCErrorMiddlewareBuilder(
-            self._handle_remote_rpc_provider_failure)
-        self.web3.middleware_stack.add(middleware_builder.build)
-
         log.info("Connected to node in %ss", time.time() - started)
         return None
 
     def is_connected(self):
         try:
             return self.web3.isConnected()
-        except AssertionError:  # thrown if not all required APIs are available
+        except Exception:  # pylint:disable=broad-except
             return False
 
     def _create_remote_rpc_provider(self):
-        addr = self.addr_list.pop()
+        addr = self.addr_list.pop(0)
         log.info('GETH: connecting to remote RPC interface at %s', addr)
         return ProviderProxy(HTTPProvider(addr))
 
     def _handle_remote_rpc_provider_failure(self):
-        from golem.core.async import async_run, AsyncRequest
+        from golem.core import golem_async
         log.warning('GETH: reconnecting to another provider')
         self.provider_proxy.provider = None
 
-        request = AsyncRequest(self.start)
-        async_run(request).addErrback(
+        request = golem_async.AsyncRequest(self.start)
+        golem_async.async_run(request).addErrback(
             lambda err: self._handle_remote_rpc_provider_failure()
         )

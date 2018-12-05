@@ -1,6 +1,7 @@
 import inspect
 import logging
 
+from ethereum.utils import denoms
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 
@@ -99,6 +100,16 @@ def on_force_subtask_results_rejected(msg):
     logger.warning("[CONCENT] %r", msg)
 
 
+@library.register_handler(message.concents.ForcePaymentRejected)
+def on_force_payment_rejected(msg):
+    logger.warning("[CONCENT] ForcePaymentRejected by %r", msg)
+    if msg.reason is msg.REASON.TimestampError:
+        logger.warning(
+            "[CONCENT] Payment rejected due to time issue."
+            " Please check your clock",
+        )
+
+
 class TaskServerMessageHandler():
     """Container for received message handlers that require TaskServer."""
     def __init__(self, task_server: taskserver.TaskServer) -> None:
@@ -141,7 +152,7 @@ class TaskServerMessageHandler():
 
     @handler_for(message.concents.ServiceRefused)
     def on_service_refused(self, msg,
-                           response_to: message.Message = None):
+                           response_to: message.base.Message = None):
         logger.warning(
             "Concent service (%s) refused for subtask_id: %r %s",
             response_to.__class__.__name__ if response_to else '',
@@ -220,8 +231,18 @@ class TaskServerMessageHandler():
         Concent sends his own ForceSubtaskResults with AckReportComputedTask
         provided by a provider.
         """
-        sra = history.get('SubtaskResultsAccepted', msg.task_id, msg.subtask_id)
-        srr = history.get('SubtaskResultsRejected', msg.task_id, msg.subtask_id)
+        sra = history.get(
+            message_class_name='SubtaskResultsAccepted',
+            node_id=msg.provider_id,
+            subtask_id=msg.subtask_id,
+            task_id=msg.task_id
+        )
+        srr = history.get(
+            message_class_name='SubtaskResultsRejected',
+            node_id=msg.provider_id,
+            subtask_id=msg.subtask_id,
+            task_id=msg.task_id
+        )
         if not (sra or srr):
             #  I can't remember verification results,
             #  so try again and hope for the best
@@ -279,11 +300,14 @@ class TaskServerMessageHandler():
         """Concent forwards verified Requestors response to ForceSubtaskResults
         """
         if msg.subtask_results_accepted:
-            node_id = msg.subtask_results_accepted.task_to_compute.requestor_id
+            ttc = msg.subtask_results_accepted.task_to_compute
+            node_id = ttc.requestor_id
             sub_msg = msg.subtask_results_accepted
             self.task_server.subtask_accepted(
                 sender_node_id=msg.requestor_id,
                 subtask_id=msg.subtask_id,
+                payer_address=ttc.requestor_ethereum_address,
+                value=ttc.price,
                 accepted_ts=msg.subtask_results_accepted.payment_ts,
             )
         elif msg.subtask_results_rejected:
@@ -527,3 +551,35 @@ class TaskServerMessageHandler():
                 subtask_id=msg.subtask_id,
                 settled_ts=msg.timestamp,
             )
+
+    @handler_for(message.concents.ForcePaymentCommitted)
+    def on_force_payment_committed(self, msg, **_):
+        if msg.recipient_type == msg.Actor.Requestor:
+            handler = self.on_force_payment_committed_for_requestor
+        elif msg.recipient_type == msg.Actor.Provider:
+            handler = self.on_force_payment_committed_for_provider
+        else:
+            raise ValueError(
+                "Unknown Actor: {!r}".format(msg.recipient_type),
+            )
+        handler(msg)
+
+    def on_force_payment_committed_for_requestor(self, msg):  # noqa pylint: disable=no-self-use
+        logger.warning(
+            "[CONCENT] Our deposit was used to cover payment of %.6f GNT"
+            " for eth address: %s",
+            msg.amount_paid / denoms.ether,
+            msg.provider_eth_account,
+        )
+        # Stopping of awaiting payment will be handled
+        # when blockchain event is detected
+
+    def on_force_payment_committed_for_provider(self, msg):  # noqa pylint: disable=no-self-use
+        # This informative/redundant.
+        # SEE: golem.transactions.ethereum.ethereumincomeskeeper
+        #      ._on_forced_payment
+        logger.debug(
+            "[CONCENT] Forced payment from % should be on blockchain."
+            " Will wait for that.",
+            msg.task_owner_key,
+        )

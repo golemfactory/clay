@@ -8,15 +8,12 @@ from urllib.parse import urljoin
 import requests
 from pydispatch import dispatcher
 
-from golem.config.active import SEND_PAYMENT_INFO_TO_MONITOR
 from golem.core import variables
 from golem.decorators import log_error
 from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats
 from .model import statssnapshotmodel
-from .model.balancemodel import BalanceModel
 from .model.loginlogoutmodel import LoginModel, LogoutModel
 from .model.nodemetadatamodel import NodeInfoModel, NodeMetadataModel
-from .model.paymentmodel import ExpenditureModel, IncomeModel
 from .model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
 from .transport.sender import DefaultJSONSender as Sender
 
@@ -60,7 +57,6 @@ class SystemMonitor(object):
         self.meta_data = meta_data
         self.node_info = NodeInfoModel(meta_data.cliid, meta_data.sessid)
         self.config = monitor_config
-        self.send_payment_info = SEND_PAYMENT_INFO_TO_MONITOR
         dispatcher.connect(self.dispatch_listener, signal='golem.monitor')
         dispatcher.connect(self.p2p_listener, signal='golem.p2p')
 
@@ -87,15 +83,15 @@ class SystemMonitor(object):
         if not result:
             return
 
-        if not result['success']:
-            for port_status in result['port_statuses']:
-                if not port_status['is_open']:
-                    dispatcher.send(
-                        signal='golem.p2p',
-                        event='unreachable',
-                        port=port_status['port'],
-                        description=port_status['description']
-                    )
+        port_statuses = result.get('port_statuses')
+        if port_statuses:
+            for port_status in port_statuses:
+                dispatcher.send(
+                    signal='golem.p2p',
+                    event='open' if port_status['is_open'] else 'unreachable',
+                    port=port_status['port'],
+                    description=port_status['description']
+                )
 
         if result['time_diff'] > variables.MAX_TIME_DIFF:
             dispatcher.send(
@@ -203,40 +199,3 @@ class SystemMonitor(object):
         msg = statssnapshotmodel.RequestorStatsModel(
             self.meta_data, current_stats, finished_stats)
         self.sender_thread.send(msg)
-
-    def on_payment(self, addr, value):
-        if not self.send_payment_info:
-            return
-        self.sender_thread.send(
-            ExpenditureModel(
-                self.meta_data.cliid,
-                self.meta_data.sessid,
-                addr,
-                value
-            )
-        )
-
-    def on_income(self, addr, value):
-        if not self.send_payment_info:
-            return
-        self.sender_thread.send(
-            IncomeModel(
-                self.meta_data.cliid,
-                self.meta_data.sessid,
-                addr,
-                value
-            )
-        )
-
-    def on_balance_snapshot(self, eth_balance: int, gnt_balance: int,
-                            gntb_balance: int):
-        if not self.send_payment_info:
-            return
-        self.sender_thread.send(
-            BalanceModel(
-                self.meta_data,
-                eth_balance,
-                gnt_balance,
-                gntb_balance
-            )
-        )

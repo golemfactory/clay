@@ -4,23 +4,30 @@ import inspect
 import json
 import pickle
 import sys
-# Type is used for old-style (pre Python 3.6) type annotation
-from typing import Optional, Type  # pylint: disable=unused-import
+from typing import Optional
 
 from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
 from golem_messages import message
-from peewee import (Field, BooleanField, CharField, CompositeKey, DateTimeField,
-                    FloatField, IntegerField, Model, SmallIntegerField,
-                    TextField, BlobField)
+from peewee import (
+    BlobField,
+    BooleanField,
+    CharField,
+    CompositeKey,
+    DateTimeField,
+    Field,
+    FloatField,
+    IntegerField,
+    Model,
+    SmallIntegerField,
+    TextField,
+)
 
 from golem.core.simpleserializer import DictSerializable
 from golem.database import GolemSqliteDatabase
 from golem.network.p2p.node import Node
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
 
-# Indicates how many KnownHosts can be stored in the DB
-MAX_STORED_HOSTS = 4
 
 # TODO: migrate to golem.database. issue #2415
 db = GolemSqliteDatabase(None, threadlocals=True,
@@ -80,6 +87,31 @@ class HexIntegerField(CharField):
             return int(value, 16)
 
 
+class FixedLengthHexField(CharField):
+    EXPECTED_LENGTH: int = 0
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, max_length=self.EXPECTED_LENGTH, **kwargs)
+
+    def db_value(self, value: str):
+        value = super().db_value(value)
+        current_len = len(value)
+        if len(value) != self.EXPECTED_LENGTH:
+            raise ValueError(
+                "Value {value} has length of {has}"
+                " not {should} characters".format(
+                    value=value,
+                    has=current_len,
+                    should=self.EXPECTED_LENGTH,
+                ),
+            )
+        return value
+
+
+class BlockchainTransactionField(FixedLengthHexField):
+    EXPECTED_LENGTH = 66
+
+
 class EnumFieldBase:
     enum_type = None
 
@@ -128,7 +160,7 @@ class JsonField(TextField):
 
 class DictSerializableJSONField(TextField):
     """ Database field that stores a Node in JSON format. """
-    objtype = None  # type: Type[DictSerializable]
+    objtype: Optional[DictSerializable] = None
 
     def db_value(self, value: Optional[DictSerializable]) -> str:
         if value is None:
@@ -237,10 +269,30 @@ class Payment(BaseModel):
             )
 
 
+class DepositPayment(BaseModel):
+    tx = BlockchainTransactionField(primary_key=True)
+    value = HexIntegerField()
+    status = PaymentStatusField(index=True, default=PaymentStatus.awaiting)
+    fee = HexIntegerField(null=True)
+
+    class Meta:
+        database = db
+
+    def __repr__(self):
+        return "<DepositPayment: {value} s:{status} tx:{tx}>"\
+            .format(
+                value=self.value,
+                status=self.status,
+                tx=self.tx,
+            )
+
+
 class Income(BaseModel):
     sender_node = CharField()
     subtask = CharField()
+    payer_address = CharField()
     value = HexIntegerField()
+    value_received = HexIntegerField(default=0)
     accepted_ts = IntegerField(null=True)
     transaction = CharField(null=True)
     overdue = BooleanField(default=False)
@@ -259,6 +311,9 @@ class Income(BaseModel):
                 self.transaction,
             )
 
+    @property
+    def value_expected(self):
+        return self.value - self.value_received
 
 ##################
 # RANKING MODELS #
@@ -314,6 +369,7 @@ class KnownHosts(BaseModel):
     port = IntegerField()
     last_connected = DateTimeField(default=datetime.datetime.now)
     is_seed = BooleanField(default=False)
+    metadata = JsonField(default='{}')
 
     class Meta:
         database = db
@@ -432,7 +488,7 @@ class NetworkMessage(BaseModel):
     msg_cls = CharField(null=False)
     msg_data = BlobField(null=False)
 
-    def as_message(self) -> message.Message:
+    def as_message(self) -> message.base.Message:
         msg = pickle.loads(self.msg_data)
         return msg
 

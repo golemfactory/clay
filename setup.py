@@ -3,6 +3,7 @@
 import sys
 
 from setuptools import setup
+from setuptools_rust import Binding, RustExtension
 
 from setup_util.setup_commons import (
     path, parse_requirements, get_version,
@@ -56,9 +57,19 @@ setup(
             'golemcli = golemcli:start',
         ]
     },
+    rust_extensions=[
+        RustExtension(
+            'rust.golem',
+            'rust/golem/Cargo.toml',
+            binding=Binding.RustCPython,
+        ),
+    ],
     data_files=[
         (path.normpath('../../'), [
             'golemapp.py', 'golemcli.py', 'loggingconfig.py'
+        ]),
+        (path.normpath('../../golem/'), [
+            path.normpath('golem/CONCENT_TERMS.html'),
         ]),
         (path.normpath('../../golem/'), [
             path.normpath('golem/TERMS.html'),
@@ -74,10 +85,6 @@ setup(
         (path.normpath('../../golem/apps/blender/resources/scripts'), [
             path.normpath('apps/blender/resources/scripts/blendercrop.py.template'),
             path.normpath('apps/blender/resources/scripts/docker_blendertask.py')
-        ]),
-        (path.normpath('../../golem/apps/lux/resources/scripts'), [
-            path.normpath('apps/lux/resources/scripts/docker_luxtask.py'),
-            path.normpath('apps/lux/resources/scripts/docker_luxmerge.py')
         ]),
         (path.normpath('../../golem/apps/dummy/resources/scripts'), [
             path.normpath('apps/dummy/resources/scripts/docker_dummytask.py')
@@ -96,7 +103,7 @@ setup(
 
 if not (in_appveyor() or in_travis() or
         building_wheel or building_binary):
-    DockerManager.pull_images()
+    DockerManager().pull_images()
 
 if building_wheel:
     move_wheel()
@@ -108,3 +115,24 @@ if not building_migration:
                            "does not exist")
 
 print_errors(task_collector_err)
+
+
+# test a potential docker package conflict
+
+def _docker_conflict(e: Exception):
+    raise RuntimeError(
+        "Suspected conflict in python `docker` library.\n"
+        "Please run `pip uninstall -y docker docker-py` "
+        "and re-install golem's requirements. "
+    ) from e
+
+
+try:
+    from docker import DockerClient as Client
+except ImportError as import_error:
+    _docker_conflict(import_error)
+
+try:
+    Client().api
+except TypeError as type_error:
+    _docker_conflict(type_error)

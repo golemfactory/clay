@@ -8,14 +8,17 @@ import random
 from collections import Counter
 
 from eth_utils import decode_hex
-from golem_messages import message, helpers
+from golem_messages import (
+    idgenerator,
+    helpers,
+    message,
+)
 from golem_messages.constants import MTD
 from semantic_version import Version
 
 import golem
 from golem.core import common
-from golem.core.async import AsyncRequest, async_run
-from golem.core.idgenerator import check_id_seed
+from golem.core import golem_async
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.p2p.node import Node
@@ -52,32 +55,21 @@ class WrongOwnerException(Exception):
 class CompTaskInfo:
     def __init__(self, header: TaskHeader, price: int):
         self.header = header
-        self._price, self.subtask_price = 0, 0  # lints and typing
-        self.price = price
+        # subtask_price is total amount that will be payed
+        # for subtask of this task
+        self.subtask_price = compute_subtask_value(
+            price,
+            self.header.subtask_timeout,
+        )
         self.requests = 1
-        self.subtasks = {}
+        self.subtasks: dict = {}
         # TODO Add concent communication timeout. Issue #2406
         self.keeping_deadline = comp_task_info_keeping_timeout(
             self.header.subtask_timeout, self.header.resource_size)
 
-    @property
-    def price(self) -> int:
-        return self._price
-
-    @price.setter
-    def price(self, value: int):
-        self._price = value
-        # subtask_price is total amount that will be payed
-        # for subtask of this task
-        self.subtask_price = compute_subtask_value(
-            value,
-            self.header.subtask_timeout,
-        )
-
     def __repr__(self):
-        return "<CompTaskInfo(%r, %r) reqs: %r>" % (
+        return "<CompTaskInfo(%r) reqs: %r>" % (
             self.header,
-            self.price,
             self.requests
         )
 
@@ -105,7 +97,7 @@ class CompSubtaskInfo:
 
 
 def log_key_error(*args, **_):
-    if isinstance(args[1], message.ComputeTaskDef):
+    if isinstance(args[1], message.tasks.ComputeTaskDef):
         task_id = args[1]['task_id']
     else:
         task_id = args[1]
@@ -142,7 +134,7 @@ class CompTaskKeeper:
     def dump(self):
         if not self.persist:
             return
-        async_run(AsyncRequest(self._dump_tasks))
+        golem_async.async_run(golem_async.AsyncRequest(self._dump_tasks))
 
     def _dump_tasks(self):
         logger.debug('COMPTASK DUMP: %s', self.dump_path)
@@ -161,25 +153,26 @@ class CompTaskKeeper:
         if not self.dump_path.exists():
             logger.debug('No previous comptask dump found.')
             return
-        with self.dump_path.open('rb') as f:
-            try:
+        try:
+            with self.dump_path.open('rb') as f:
                 data = pickle.load(f)
                 active_tasks = data[0]
                 subtask_to_task = data[1]
                 task_package_paths = data[2] if len(data) > 2 else {}
-            except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
-                logger.exception(
-                    'Problem restoring dumpfile: %s',
-                    self.dump_path
-                )
-                return
+        except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
+            logger.exception(
+                'Problem restoring dumpfile: %s; deleting broken file',
+                self.dump_path
+            )
+            self.dump_path.unlink()
+            return
         self.active_tasks.update(active_tasks)
         self.subtask_to_task.update(subtask_to_task)
         self.task_package_paths.update(task_package_paths)
 
     def add_request(self, theader: TaskHeader, price: int):
         # price is task_header.max_price
-        logger.debug('CT.add_request()')
+        logger.debug('CT.add_request(%r, %d)', theader, price)
         if price < 0:
             raise ValueError("Price should be greater or equal zero")
         task_id = theader.task_id
@@ -198,7 +191,7 @@ class CompTaskKeeper:
         return self.active_tasks[task_id].header
 
     @handle_key_error
-    def receive_subtask(self, task_to_compute: message.TaskToCompute):
+    def receive_subtask(self, task_to_compute: message.tasks.TaskToCompute):
         comp_task_def = task_to_compute.compute_task_def
         logger.debug('CT.receive_subtask()')
         if not self.check_comp_task_def(comp_task_def):
@@ -225,12 +218,13 @@ class CompTaskKeeper:
 
     def check_comp_task_def(self, comp_task_def):
         task = self.active_tasks[comp_task_def['task_id']]
-        key_id = self.get_node_for_task_id(comp_task_def['task_id'])
+        key_id: str = self.get_node_for_task_id(comp_task_def['task_id'])
         not_accepted_message = "Cannot accept subtask %s for task %s. %s"
         log_args = [comp_task_def['subtask_id'], comp_task_def['task_id']]
 
-        if not check_id_seed(comp_task_def['subtask_id'],
-                             decode_hex(key_id)):
+        if not idgenerator.check_id_hex_seed(
+                comp_task_def['subtask_id'],
+                key_id,):
             logger.info(not_accepted_message, *log_args, "Subtask id was not "
                                                          "generated from "
                                                          "requestor's key.")
@@ -251,17 +245,12 @@ class CompTaskKeeper:
             return False
         return True
 
-    def get_task_id_for_subtask(self, subtask_id):
+    def get_task_id_for_subtask(self, subtask_id: str) -> typing.Optional[str]:
         return self.subtask_to_task.get(subtask_id)
 
     @handle_key_error
-    def get_node_for_task_id(self, task_id):
+    def get_node_for_task_id(self, task_id) -> typing.Optional[str]:
         return self.active_tasks[task_id].header.task_owner.key
-
-    @handle_key_error
-    def get_value(self, task_id: str) -> int:
-        comp_task_info: CompTaskInfo = self.active_tasks[task_id]
-        return comp_task_info.subtask_price
 
     def check_task_owner_by_subtask(self, task_owner_key_id, subtask_id):
         task_id = self.subtask_to_task.get(subtask_id)
@@ -421,9 +410,7 @@ class TaskHeaderKeeper:
         """
         remote = Version(remote)
         local = Version(self.app_version, partial=True)
-        if local.major != remote.major or local.minor != remote.minor:
-            return False
-        return local.patch >= remote.patch
+        return local.major == remote.major and local.minor == remote.minor
 
     def get_support_status(self, task_id) -> typing.Optional[SupportStatus]:
         """Return SupportStatus stating if and why the task is supported or not.
@@ -527,8 +514,8 @@ class TaskHeaderKeeper:
             self.supported_tasks.append(task_id)
 
     @staticmethod
-    def check_owner(task_id, owner_id):
-        if not check_id_seed(task_id, decode_hex(owner_id)):
+    def check_owner(task_id: str, owner_id: str) -> None:
+        if not idgenerator.check_id_hex_seed(task_id, owner_id):
             raise WrongOwnerException(
                 "Task_id %s doesn't match task owner %s", task_id, owner_id)
 
@@ -587,8 +574,7 @@ class TaskHeaderKeeper:
 
     def get_task(self) -> typing.Optional[TaskHeader]:
         """ Returns random task from supported tasks that may be computed
-        :return TaskHeader|None: returns either None if there are no tasks
-                                 that this node may want to compute
+        :return: None if there are no tasks that this node may want to compute
         """
         if self.supported_tasks:
             tn = random.randrange(0, len(self.supported_tasks))

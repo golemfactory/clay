@@ -1,20 +1,19 @@
 import calendar
 import logging
 import time
+
 from collections import defaultdict
 from typing import List
-
 from sortedcontainers import SortedListWithKey
-from eth_utils import encode_hex
+from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
-from pydispatch import dispatcher
 from twisted.internet import threads
 
 import golem_sci
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import Payment, PaymentStatus
 
-log = logging.getLogger("golem.pay")
+log = logging.getLogger(__name__)
 
 # We reserve 30 minutes for the payment to go through
 PAYMENT_MAX_DELAY = PAYMENT_DEADLINE - 30 * 60
@@ -41,28 +40,18 @@ class PaymentProcessor:
     BLOCK_GAS_LIMIT_RATIO = 0.75
 
     def __init__(self, sci) -> None:
-        self.ETH_BATCH_PAYMENT_BASE = \
-            sci.GAS_PRICE * sci.GAS_BATCH_PAYMENT_BASE
         self._sci = sci
         self._gntb_reserved = 0
         self._awaiting = SortedListWithKey(key=lambda p: p.processed_ts)
         self.load_from_db()
 
     @property
-    def reserved_eth(self) -> int:
-        if not self._awaiting:
-            return 0
-        return self.ETH_BATCH_PAYMENT_BASE + \
-            len(self._awaiting) * self.get_gas_cost_per_payment()
+    def recipients_count(self) -> int:
+        return len(self._awaiting)
 
     @property
     def reserved_gntb(self) -> int:
         return self._gntb_reserved
-
-    def get_gas_cost_per_payment(self) -> int:
-        gas_price = \
-            min(self._sci.GAS_PRICE, 2 * self._sci.get_current_gas_price())
-        return gas_price * self._sci.GAS_PER_PAYMENT
 
     def load_from_db(self):
         sent = {}
@@ -84,7 +73,14 @@ class PaymentProcessor:
         for awaiting_payment in Payment \
                 .select() \
                 .where(Payment.status == PaymentStatus.awaiting):
-            self.add(awaiting_payment)
+            log.info(
+                "Restoring awaiting payment for subtask %s to %s, value %f",
+                awaiting_payment.subtask,
+                encode_hex(awaiting_payment.payee),
+                awaiting_payment.value / denoms.ether,
+            )
+            self._awaiting.add(awaiting_payment)
+            self._gntb_reserved += awaiting_payment.value
 
     def _on_batch_confirmed(self, payments: List[Payment], receipt) -> None:
         if not receipt.status:
@@ -92,8 +88,7 @@ class PaymentProcessor:
             for p in payments:
                 p.status = PaymentStatus.awaiting  # type: ignore
                 p.save()
-                self._gntb_reserved -= p.value
-                self.add(p)
+                self._awaiting.add(p)
             return
 
         gas_price = self._sci.get_transaction_gas_price(receipt.tx_hash)
@@ -111,44 +106,38 @@ class PaymentProcessor:
             p.details.fee = fee
             p.save()
             self._gntb_reserved -= p.value
-            dispatcher.send(
-                signal='golem.monitor',
-                event='payment',
-                addr=encode_hex(p.payee),
-                value=p.value
-            )
             log.debug(
-                "- %.6f confirmed fee %.6f",
+                "- %s confirmed fee %.6f",
                 p.subtask,
                 fee / denoms.ether
             )
 
-    def add(self, payment: Payment) -> None:
-        if payment.status is not PaymentStatus.awaiting:
-            raise RuntimeError(
-                "Invalid payment status: {}".format(payment.status))
-
-        log.info("Payment {:.6} to {:.6} ({:.6f})".format(
-            payment.subtask,
-            encode_hex(payment.payee),
-            payment.value / denoms.ether))
-
-        if not payment.processed_ts:
-            payment.processed_ts = get_timestamp()
-            payment.save()
+    def add(self, subtask_id: str, eth_addr: str, value: int) -> Payment:
+        log.info(
+            "Adding payment for %s to %s (value: %f)",
+            subtask_id,
+            eth_addr,
+            value / denoms.ether,
+        )
+        payment = Payment.create(
+            subtask=subtask_id,
+            payee=decode_hex(eth_addr),
+            value=value,
+            processed_ts=get_timestamp(),
+        )
 
         self._awaiting.add(payment)
-
-        self._gntb_reserved += payment.value
+        self._gntb_reserved += value
 
         log.info("GNTB reserved %.6f", self._gntb_reserved / denoms.ether)
+        return payment.processed_ts
 
     def __get_next_batch(self, closure_time: int) -> int:
         gntb_balance = self._sci.get_gntb_balance(self._sci.get_eth_address())
         eth_balance = self._sci.get_eth_balance(self._sci.get_eth_address())
-        eth_balance = eth_balance - self.ETH_BATCH_PAYMENT_BASE
+        gas_price = self._sci.get_current_gas_price()
+
         ind = 0
-        eth_per_payment = self.get_gas_cost_per_payment()
         gas_limit = \
             self._sci.get_latest_block().gas_limit * self.BLOCK_GAS_LIMIT_RATIO
         payees = set()
@@ -157,14 +146,31 @@ class PaymentProcessor:
                 break
             gntb_balance -= p.value
             if gntb_balance < 0:
+                log.debug(
+                    'Insufficient GNTB balance.'
+                    ' value=%(value).6f, subtask_id=%(subtask)s',
+                    {
+                        'value': p.value / denoms.ether,
+                        'subtask': p.subtask,
+                    },
+                )
                 break
 
             payees.add(p.payee)
-            if len(payees) * eth_per_payment > eth_balance:
-                break
             gas = len(payees) * self._sci.GAS_PER_PAYMENT + \
                 self._sci.GAS_BATCH_PAYMENT_BASE
             if gas > gas_limit:
+                break
+            gas_cost = gas * gas_price
+            if gas_cost > eth_balance:
+                log.debug(
+                    'Not enough ETH to pay gas for transaction.'
+                    ' gas_cost=%(gas_cost).6f, subtask_id=%(subtask)s',
+                    {
+                        'gas_cost': gas_cost / denoms.ether,
+                        'subtask': p.subtask,
+                    },
+                )
                 break
 
             ind += 1

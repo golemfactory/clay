@@ -1,6 +1,5 @@
 import calendar
 import datetime
-import functools
 import logging
 import queue
 import threading
@@ -22,6 +21,8 @@ from golem.core import variables
 from golem.network.concent import exceptions
 from golem.network.concent.handlers_library import library
 
+from .helpers import ssl_kwargs
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,17 +31,6 @@ def verify_response(response: requests.Response) -> None:
         raise exceptions.ConcentUnavailableError('response is None')
 
     logger.debug('Headers received from Concent: %s', response.headers)
-    concent_version = response.headers['Concent-Golem-Messages-Version']
-    if not utils.is_version_compatible(
-            theirs=concent_version,
-            spec=gconst.GOLEM_MESSAGES_SPEC,):
-        raise exceptions.ConcentVersionMismatchError(
-            'Incompatible version',
-            ours=gconst.GOLEM_MESSAGES_VERSION,
-            theirs=concent_version,
-        )
-    if response.status_code == 200:
-        return
 
     if response.status_code % 500 < 100:
         raise exceptions.ConcentServiceError(
@@ -50,7 +40,7 @@ def verify_response(response: requests.Response) -> None:
             )
         )
 
-    if response.status_code % 400 < 100:
+    if not 200 <= response.status_code <= 299:
         logger.warning('Concent request failed with status %d and '
                        'response: %r', response.status_code, response.text)
 
@@ -61,17 +51,27 @@ def verify_response(response: requests.Response) -> None:
             )
         )
 
-
-def ssl_kwargs(concent_variant: dict) -> dict:
-    """Returns additional ssl related kwargs for requests"""
-    if 'certificate' not in concent_variant:
-        return {}
-    return {'verify': concent_variant['certificate'], }
+    try:
+        concent_version = response.headers['Concent-Golem-Messages-Version']
+    except KeyError:
+        raise exceptions.ConcentVersionMismatchError(
+            'Unknown version',
+            ours=gconst.GOLEM_MESSAGES_VERSION,
+            theirs=None,
+        )
+    if not utils.is_version_compatible(
+            theirs=concent_version,
+            spec=gconst.GOLEM_MESSAGES_SPEC,):
+        raise exceptions.ConcentVersionMismatchError(
+            'Incompatible version',
+            ours=gconst.GOLEM_MESSAGES_VERSION,
+            theirs=concent_version,
+        )
 
 
 def send_to_concent(
-        msg: message.Message,
-        signing_key,
+        msg: message.base.Message,
+        signing_key: bytes,
         concent_variant: dict) -> typing.Optional[bytes]:
     """Sends a message to the concent server
 
@@ -97,6 +97,9 @@ def send_to_concent(
     msg.header = header
 
     logger.debug('send_to_concent(): Encrypting msg %r', msg)
+    # if signature already exists, it must be set to None explicitly
+    if msg.sig is not None:
+        msg.sig = None
     data = golem_messages.dump(msg, signing_key, concent_variant['pubkey'])
     logger.debug('send_to_concent(): data: %r', data)
     concent_post_url = urljoin(concent_variant['url'], '/api/v1/send/')
@@ -158,12 +161,6 @@ def receive_from_concent(
 
     verify_response(response)
     return response.content or None
-
-
-receive_out_of_band = functools.partial(
-    receive_from_concent,
-    path='/api/v1/receive-out-of-band/',
-)
 
 
 class ConcentRequest(msg_datastructures.FrozenDict):
@@ -228,7 +225,7 @@ class ConcentClientService(threading.Thread):
         logger.info('%s stopped', self)
 
     def submit_task_message(
-            self, subtask_id: str, msg: message.Message,
+            self, subtask_id: str, msg: message.base.Message,
             delay: typing.Optional[datetime.timedelta] = None
     ) -> None:
         """
@@ -262,12 +259,13 @@ class ConcentClientService(threading.Thread):
 
     def submit(self,
                key: typing.Hashable,
-               msg: message.Message,
+               msg: message.base.Message,
                delay: typing.Optional[datetime.timedelta] = None) -> None:
         """
         Submit a message to Concent.
 
         :param key: Request identifier
+        :param msg: the message to send
         :param delay: Time to wait before sending the message
         :return: None
         """
@@ -345,23 +343,21 @@ class ConcentClientService(threading.Thread):
         if not self.enabled:
             return
 
-        for receive_function in (receive_from_concent, receive_out_of_band):
-            try:
-                # mypy, why u so silly?
-                res = receive_function(  # type: ignore
-                    signing_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
-                    public_key=self.keys_auth.public_key,
-                    concent_variant=self.variant,
-                )
-            except exceptions.ConcentError as e:
-                logger.warning("Can't receive message from Concent: %s", e)
-                self._grace_sleep()
-                return
-            except Exception:  # pylint: disable=broad-except
-                logger.exception('receive_from_concent() failed')
-                self._grace_sleep()
-                return
-            self.react_to_concent_message(res)
+        try:
+            res = receive_from_concent(
+                signing_key=self.keys_auth._private_key,  # noqa pylint: disable=protected-access
+                public_key=self.keys_auth.public_key,
+                concent_variant=self.variant,
+            )
+        except exceptions.ConcentError as e:
+            logger.warning("Can't receive message from Concent: %s", e)
+            self._grace_sleep()
+            return
+        except Exception:  # pylint: disable=broad-except
+            logger.exception('receive_from_concent() failed')
+            self._grace_sleep()
+            return
+        self.react_to_concent_message(res)
 
     @staticmethod
     def process_synchronous_response(

@@ -59,7 +59,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             self.peer_session.p2p_service.task_server = \
                 task_server_factory.TaskServer(client=client)
 
-    def __setup_handshake_server_test(self, send_mock) -> message.Hello:
+    def __setup_handshake_server_test(self, send_mock) -> message.base.Hello:
         self.peer_session.conn.server.node = node = p2p_factories.Node()
         self.peer_session.conn.server.node_name = node_name = node.node_name
         self.peer_session.conn.server.keys_auth.key_id = \
@@ -69,7 +69,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.peer_session.conn_type = self.peer_session.CONN_TYPE_SERVER
         self.peer_session.start()
         self.assertEqual(1, send_mock.call_count)
-        expected = message.Hello(
+        expected = message.base.Hello(
             challenge=None,
             client_key_id=key_id,
             client_ver=golem.__version__,
@@ -80,6 +80,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             proto_id=PROTOCOL_CONST.ID,
             rand_val=self.peer_session.rand_val,
             solve_challenge=False,
+            metadata={},
         )
 
         self.assertEqual(send_mock.call_args[0][1].slots(), expected.slots())
@@ -93,7 +94,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.peer_session.p2p_service.enough_peers = lambda: False
 
         client_peer_info = p2p_factories.Node()
-        client_hello = message.Hello(
+        client_hello = message.base.Hello(
             port=1,
             node_name='client',
             rand_val=random.random(),
@@ -108,26 +109,26 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         client_hello = self.__setup_handshake_server_test(send_mock)
         self.peer_session._react_to_hello(client_hello)
         self.peer_session._react_to_rand_val(
-            message.RandVal(rand_val=self.peer_session.rand_val))
+            message.base.RandVal(rand_val=self.peer_session.rand_val))
 
         self.assertTrue(self.peer_session.verified)
         self.assertEqual(2, send_mock.call_count)
         self.assertEqual(
             send_mock.call_args_list[1][0][1].slots(),
-            message.RandVal(rand_val=client_hello.rand_val).slots())
+            message.base.RandVal(rand_val=client_hello.rand_val).slots())
 
     @patch('golem.network.transport.session.BasicSession.disconnect')
     def test_react_to_hello_malformed(self, disconnect_mock):
         """Reaction to hello without attributes"""
 
-        malformed_hello = message.Hello()
+        malformed_hello = message.base.Hello()
         for attr in malformed_hello.__slots__:
-            if attr in message.Message.__slots__:
+            if attr in message.base.Message.__slots__:
                 continue
             delattr(malformed_hello, attr)
         self.peer_session.interpret(malformed_hello)
         disconnect_mock.assert_called_once_with(
-            message.Disconnect.REASON.ProtocolVersion,
+            message.base.Disconnect.REASON.ProtocolVersion,
         )
 
     @patch('golem.network.transport.session.BasicSession.send')
@@ -138,8 +139,8 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.assertEqual(2, send_mock.call_count)
         self.assertEqual(
             send_mock.call_args_list[1][0][1].slots(),
-            message.Disconnect(
-                reason=message.Disconnect.REASON.ProtocolVersion).slots())
+            message.base.Disconnect(
+                reason=message.base.Disconnect.REASON.ProtocolVersion).slots())
 
     @patch('golem.network.transport.session.BasicSession.send')
     @patch('golem.core.keysauth.KeysAuth.is_pubkey_difficult',
@@ -152,22 +153,22 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
 
         # should not throw
         self.peer_session._react_to_rand_val(
-            message.RandVal(rand_val=self.peer_session.rand_val))
+            message.base.RandVal(rand_val=self.peer_session.rand_val))
 
     @patch('golem.network.transport.session.BasicSession.send')
     def test_handshake_server_randval(self, send_mock):
         client_hello = self.__setup_handshake_server_test(send_mock)
         self.peer_session._react_to_hello(client_hello)
         self.peer_session._react_to_rand_val(
-            message.RandVal(rand_val=-1))
+            message.base.RandVal(rand_val=-1))
         self.assertEqual(3, send_mock.call_count)
         self.assertEqual(
             send_mock.call_args_list[1][0][1].slots(),
-            message.RandVal(rand_val=client_hello.rand_val).slots())
+            message.base.RandVal(rand_val=client_hello.rand_val).slots())
         self.assertEqual(
             send_mock.call_args_list[2][0][1].slots(),
-            message.Disconnect(
-                reason=message.Disconnect.REASON.Unverified).slots())
+            message.base.Disconnect(
+                reason=message.base.Disconnect.REASON.Unverified).slots())
 
     @patch('golem.network.transport.session.BasicSession.send')
     def test_handshake_server_key_not_difficult(self, send_mock):
@@ -177,8 +178,8 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
 
         self.assertEqual(
             send_mock.call_args_list[1][0][1].slots(),
-            message.Disconnect(
-                reason=message.Disconnect.REASON.KeyNotDifficult).slots())
+            message.base.Disconnect(
+                reason=message.base.Disconnect.REASON.KeyNotDifficult).slots())
 
     def __setup_handshake_client_test(self, send_mock):
         self.peer_session.conn.server.node = node = p2p_factories.Node()
@@ -199,15 +200,17 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.peer_session.p2p_service.find_peer = find_peer
         self.peer_session.p2p_service.should_solve_challenge = False
         self.peer_session.p2p_service.enough_peers = lambda: False
-        server_hello = message.Hello(
+        server_hello = message.base.Hello(
             port=1,
             node_name='server',
             rand_val=random.random(),
             client_key_id=server_peer_info.key,
             node_info=server_peer_info.to_dict(),
-            proto_id=PROTOCOL_CONST.ID)
+            proto_id=PROTOCOL_CONST.ID,
+            metadata={},
+        )
         fill_slots(server_hello)
-        expected = message.Hello(
+        expected = message.base.Hello(
             challenge=None,
             client_key_id=key_id,
             client_ver=golem.__version__,
@@ -218,9 +221,10 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             proto_id=PROTOCOL_CONST.ID,
             rand_val=self.peer_session.rand_val,
             solve_challenge=False,
+            metadata={},
         )
 
-        return (server_hello, expected)
+        return server_hello, expected
 
     @patch('golem.network.transport.session.BasicSession.send')
     def test_handshake_client_successful(self, send_mock):
@@ -232,10 +236,10 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             expected.slots())
         self.assertEqual(
             send_mock.call_args_list[1][0][1].slots(),
-            message.RandVal(rand_val=server_hello.rand_val).slots())
+            message.base.RandVal(rand_val=server_hello.rand_val).slots())
         self.assertFalse(self.peer_session.verified)
         self.peer_session._react_to_rand_val(
-            message.RandVal(rand_val=self.peer_session.rand_val))
+            message.base.RandVal(rand_val=self.peer_session.rand_val))
         self.assertTrue(self.peer_session.verified)
 
     @patch('golem.network.transport.session.BasicSession.send')
@@ -246,8 +250,8 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.assertEqual(1, send_mock.call_count)
         self.assertEqual(
             send_mock.call_args_list[0][0][1].slots(),
-            message.Disconnect(
-                reason=message.Disconnect.REASON.ProtocolVersion).slots())
+            message.base.Disconnect(
+                reason=message.base.Disconnect.REASON.ProtocolVersion).slots())
         self.assertFalse(self.peer_session.verified)
 
     @patch('golem.network.transport.session.BasicSession.send')
@@ -260,10 +264,10 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
             expected.slots())
         self.assertEqual(
             send_mock.call_args_list[1][0][1].slots(),
-            message.RandVal(rand_val=server_hello.rand_val).slots())
+            message.base.RandVal(rand_val=server_hello.rand_val).slots())
         self.assertFalse(self.peer_session.verified)
         self.peer_session._react_to_rand_val(
-            message.RandVal(rand_val=-1))
+            message.base.RandVal(rand_val=-1))
         self.assertFalse(self.peer_session.verified)
 
     def test_react_to_hello_new_version(self):
@@ -296,7 +300,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         }
 
         # Test not seed
-        msg = message.Hello(**msg_kwargs)
+        msg = message.base.Hello(**msg_kwargs)
         self.peer_session._react_to_hello(msg)
         self.assertEqual(listener.call_count, 0)
         listener.reset_mock()
@@ -307,7 +311,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.peer_session.address = chosen_seed[0]
 
         # Test with seed, default version (0)
-        msg = message.Hello(**msg_kwargs)
+        msg = message.base.Hello(**msg_kwargs)
         self.peer_session._react_to_hello(msg)
         self.assertEqual(listener.call_count, 0)
         listener.reset_mock()
@@ -315,7 +319,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         # Test with seed, newer version
         version = semantic_version.Version(golem.__version__).next_patch()
         msg_kwargs['client_ver'] = str(version)
-        msg = message.Hello(**msg_kwargs)
+        msg = message.base.Hello(**msg_kwargs)
         self.peer_session._react_to_hello(msg)
         listener.assert_called_once_with(
             signal='golem.p2p',
@@ -334,17 +338,17 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         peer_session.conn = Mock()
 
         peer_session.conn.opened = False
-        peer_session.disconnect(message.Disconnect.REASON.ProtocolVersion)
+        peer_session.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
         assert not peer_session.dropped.called
         assert not peer_session.send.called
 
         peer_session.conn.opened = True
-        peer_session.disconnect(message.Disconnect.REASON.ProtocolVersion)
+        peer_session.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
         assert peer_session.dropped.called
         assert peer_session.send.called
 
         peer_session.send.called = False
-        peer_session.disconnect(message.Disconnect.REASON.ProtocolVersion)
+        peer_session.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
         assert not peer_session.send.called
 
     def test_dropped(self):
@@ -367,13 +371,13 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         peer_session = PeerSession(conn)
         peer_session.p2p_service = P2PService(node, conf, keys_auth, False)
         peer_session.key_id = "NEW KEY_ID"
-        peer_session._react_to_stop_gossip(message.StopGossip())
+        peer_session._react_to_stop_gossip(message.p2p.StopGossip())
 
     def test_interpret(self):
         conn = MagicMock()
         peer_session = PeerSession(conn)
         peer_session.key_id = "KEY_ID"
-        msg = message.StopGossip()
+        msg = message.p2p.StopGossip()
         peer_session.interpret(msg)
         assert peer_session.p2p_service.set_last_message.called
 
@@ -499,7 +503,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
     def test_send_remove_task(self, send_mock):
         self.peer_session.send_remove_task("some random string")
         send_mock.assert_called()
-        assert isinstance(send_mock.call_args[0][0], message.RemoveTask)
+        assert isinstance(send_mock.call_args[0][0], message.p2p.RemoveTask)
 
     def _gen_data_for_test_react_to_remove_task(self):
         keys_auth = KeysAuth(self.path, 'priv_key', 'password')
@@ -517,7 +521,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.peer_session.p2p_service.peers["ABC"] = peer_mock
 
         task_id = "test_{}".format(uuid.uuid4())
-        msg = message.RemoveTask(task_id=task_id)
+        msg = message.p2p.RemoveTask(task_id=task_id)
         msg.serialize(sign_as=keys_auth._private_key)
         assert keys_auth.verify(msg.sig, msg.get_short_hash(), keys_auth.key_id)
         return msg, task_id, previous_ka
@@ -557,7 +561,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         assert task_server.task_keeper.task_headers.get(task_id) is None
         peer_mock = self.peer_session.p2p_service.peers["ABC"]
         arg = peer_mock.send.call_args[0][0]
-        assert isinstance(arg, message.RemoveTaskContainer)
+        assert isinstance(arg, message.p2p.RemoveTaskContainer)
         assert arg.remove_tasks == [msg]
         self.peer_session.p2p_service.keys_auth = previous_ka
 
@@ -577,7 +581,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.peer_session.send_want_to_start_task_session(node, "CONN_ID",
                                                           super_node)
         msg = mock_send.call_args[0][0]
-        assert isinstance(msg, message.WantToStartTaskSession)
+        assert isinstance(msg, message.p2p.WantToStartTaskSession)
         assert isinstance(msg.node_info, dict)
         assert isinstance(msg.super_node_info, dict)
 
@@ -589,7 +593,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.peer_session.send_want_to_start_task_session(node, "CONN_ID", None)
 
         msg = mock_send.call_args[0][0]
-        assert isinstance(msg, message.WantToStartTaskSession)
+        assert isinstance(msg, message.p2p.WantToStartTaskSession)
         assert isinstance(msg.node_info, dict)
         assert msg.super_node_info is None
 
@@ -602,7 +606,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.peer_session.send_set_task_session("KEY_ID", node, "CONN_ID",
                                                 super_node)
         msg = mock_send.call_args[0][0]
-        assert isinstance(msg, message.SetTaskSession)
+        assert isinstance(msg, message.p2p.SetTaskSession)
         assert isinstance(msg.node_info, dict)
         assert isinstance(msg.super_node_info, dict)
         assert msg.key_id == "KEY_ID"
@@ -614,7 +618,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         node = p2p_factories.Node()
         self.peer_session.send_set_task_session("KEY_ID", node, "CONN_ID", None)
         msg = mock_send.call_args[0][0]
-        assert isinstance(msg, message.SetTaskSession)
+        assert isinstance(msg, message.p2p.SetTaskSession)
         assert isinstance(msg.node_info, dict)
         assert msg.super_node_info is None
         assert msg.key_id == "KEY_ID"

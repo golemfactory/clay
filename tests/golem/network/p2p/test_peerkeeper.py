@@ -11,6 +11,9 @@ from golem.network.p2p.peerkeeper import PeerKeeper, K_SIZE, CONCURRENCY, \
 from golem import testutils
 
 
+from tests.factories import p2p as p2p_factories
+
+
 def random_key(n_bytes, prefix=None):
     prefix = prefix or bytes()
     n_bytes = n_bytes - len(prefix)
@@ -96,6 +99,14 @@ class TestPeerKeeper(unittest.TestCase, testutils.PEP8MixIn):
         assert peer_to_remove != neighs[0]
         neighs = self.peer_keeper.neighbours(not_added_peer.key_num ^ 1)
         assert not_added_peer == neighs[0]
+
+    def test_estimated_network_size_buckets_bigger_than_k(self):
+        for _ in range(self.peer_keeper.k):
+            self.peer_keeper.buckets[0].peers.append(
+                p2p_factories.Node(),
+            )
+        size = self.peer_keeper.get_estimated_network_size()
+        self.assertEqual(size, 0)
 
 
 class MockPeer:

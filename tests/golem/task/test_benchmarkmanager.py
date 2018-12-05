@@ -1,3 +1,4 @@
+import types
 from unittest.mock import Mock, patch
 
 from apps.appsmanager import AppsManager
@@ -5,6 +6,9 @@ from golem.environments.environment import Environment as DefaultEnvironment
 from golem.model import Performance
 from golem.task.benchmarkmanager import BenchmarkManager
 from golem.testutils import DatabaseFixture, PEP8MixIn
+
+
+benchmarks_needed = BenchmarkManager.benchmarks_needed
 
 
 class MockThread:
@@ -28,6 +32,7 @@ class TestBenchmarkManager(DatabaseFixture, PEP8MixIn):
         super().setUp()
         am = AppsManager()
         am.load_all_apps()
+        am._benchmark_enabled = Mock(return_value=True)
         self.b = BenchmarkManager("NODE1", Mock(), self.path,
                                   am.get_benchmarks())
 
@@ -35,6 +40,8 @@ class TestBenchmarkManager(DatabaseFixture, PEP8MixIn):
         assert not BenchmarkManager(None, None, None).benchmarks_needed()
 
     def test_benchmarks_needed_with_apps(self):
+        # restore the original (benchmarks are disabled in conftest.py)
+        self.b.benchmarks_needed = types.MethodType(benchmarks_needed, self.b)
         assert self.b.benchmarks_needed()
 
     def test_benchmarks_not_needed_when_results_saved(self):

@@ -10,8 +10,10 @@ import unittest.mock as mock
 
 from freezegun import freeze_time
 from golem_messages import constants as msg_constants
+from golem_messages import cryptography
 from golem_messages import factories
 from golem_messages import message
+from golem_messages.utils import encode_hex
 
 from golem import testutils
 from golem.core import keysauth
@@ -19,6 +21,7 @@ from golem.network import history
 from golem.task import taskbase
 from golem.task import tasksession
 from golem.task import taskstate
+
 from tests.factories.p2p import Node
 
 reject_reasons = message.tasks.RejectReportComputedTask.REASON
@@ -33,8 +36,23 @@ cannot_reasons = message.tasks.CannotComputeTask.REASON
 class TaskToComputeConcentTestCase(testutils.TempDirFixture):
     def setUp(self):
         super().setUp()
+        self.keys = cryptography.ECCx(None)
+        self.different_keys = cryptography.ECCx(None)
         self.msg = factories.tasks.TaskToComputeFactory()
+        self.msg._fake_sign()
+        self.msg.want_to_compute_task.sign_message(self.keys.raw_privkey)  # noqa pylint: disable=no-member
         self.task_session = tasksession.TaskSession(mock.MagicMock())
+        self.task_session.task_server.keys_auth.ecc.raw_pubkey = \
+            self.keys.raw_pubkey
+        self.task_session.task_server.task_keeper\
+            .task_headers[self.msg.task_id]\
+            .subtasks_count = 10
+        self.task_session.task_server.client.transaction_system\
+            .get_available_gnt.return_value = self.msg.price * 10
+        self.task_session.task_server.client.transaction_system\
+            .concent_balance.return_value = (self.msg.price * 10) * 2
+        self.task_session.task_server.client.transaction_system\
+            .concent_timelock.return_value = 0
 
     def assert_accepted(self, send_mock):  # pylint: disable=no-self-use
         send_mock.assert_not_called()
@@ -81,6 +99,81 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
             reason=cannot_reasons.ConcentDisabled,
         )
 
+    def test_requestor_low_balance(self, send_mock, *_):
+        self.task_session.concent_service.enabled = True
+        self.msg.concent_enabled = True
+        self.task_session.task_server.client.transaction_system\
+            .get_available_gnt.return_value = self.msg.price * 9
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_rejected(
+            send_mock,
+            reason=cannot_reasons.InsufficientBalance,
+        )
+
+    def test_requestor_low_balance_no_concent(
+            self,
+            send_mock,
+            *_):
+        self.task_session.task_server.client.transaction_system\
+            .get_available_gnt.return_value = self.msg.price * 9
+        self.task_session.concent_service.enabled = False
+        self.msg.concent_enabled = False
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_rejected(
+            send_mock,
+            reason=cannot_reasons.InsufficientBalance,
+        )
+
+    def test_requestor_low_deposit(self, send_mock, *_):
+        self.task_session.concent_service.enabled = True
+        self.msg.concent_enabled = True
+        self.task_session.task_server.client.transaction_system\
+            .concent_balance.return_value = int((self.msg.price * 10) * 1.5)
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_rejected(
+            send_mock,
+            reason=cannot_reasons.InsufficientDeposit,
+        )
+
+    def test_requestor_short_deposit(self, send_mock, *_):
+        self.task_session.concent_service.enabled = True
+        self.msg.concent_enabled = True
+        self.task_session.task_server.client.transaction_system\
+            .concent_timelock.return_value = 1
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_rejected(
+            send_mock,
+            reason=cannot_reasons.TooShortDeposit,
+        )
+
+    def test_requestor_low_short_deposit_no_concent(
+            self,
+            send_mock,
+            *_):
+        self.task_session.concent_service.enabled = False
+        self.msg.concent_enabled = False
+        self.task_session.task_server.client.transaction_system\
+            .concent_balance.return_value = int((self.msg.price * 10) * 1.5)
+        self.task_session.task_server.client.transaction_system\
+            .concent_timelock.return_value = 1
+        self.task_session._react_to_task_to_compute(self.msg)
+        self.assert_accepted(send_mock)
+
+    def test_want_to_compute_task_signed_by_different_key_than_it_contains(
+            self,
+            send_mock,
+            *_):
+        self.msg = factories.tasks.TaskToComputeFactory()
+        self.msg._fake_sign()
+        self.msg.want_to_compute_task.sign_message(  # pylint: disable=no-member
+            self.different_keys.raw_privkey)
+        with mock.patch(
+            'golem.task.tasksession.TaskSession.dropped'
+        ) as task_session_dropped:
+            self.task_session._react_to_task_to_compute(self.msg)
+        send_mock.assert_not_called()
+        task_session_dropped.assert_called_once()
+
 
 class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
     def setUp(self):
@@ -94,6 +187,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
             )
         self.task_session.key_id = "KEY_ID"
         self.msg = factories.tasks.ReportComputedTaskFactory()
+        self.msg._fake_sign()
         self.now = datetime.datetime.utcnow()
         now_ts = calendar.timegm(self.now.utctimetuple())
         self.msg.task_to_compute.compute_task_def['deadline'] = now_ts + 60
@@ -244,12 +338,22 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.assertEqual(ack_msg.report_computed_task, self.msg)
 
 
-@mock.patch('golem.task.tasksession.TaskSession.send')
+@mock.patch(
+    'golem.task.tasksession.TaskSession.send',
+    side_effect=lambda msg: msg._fake_sign(),
+)
 class ReactToWantToComputeTaskTestCase(unittest.TestCase):
     def setUp(self):
         super().setUp()
+        self.requestor_keys = cryptography.ECCx(None)
         self.msg = factories.tasks.WantToComputeTaskFactory()
+        self.msg._fake_sign()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
+        self.task_session.key_id = 'unittest_key_id'
+        self.task_session.task_server.keys_auth._private_key = \
+            self.requestor_keys.raw_privkey
+        self.task_session.task_server.keys_auth.public_key = \
+            self.requestor_keys.raw_pubkey
 
     def assert_blocked(self, send_mock):
         self.task_session._react_to_want_to_compute_task(self.msg)
@@ -262,12 +366,14 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         self.task_session.task_manager.got_want_to_compute.assert_not_called()
 
     def assert_allowed(self, send_mock):
-        self.task_session.task_manager.get_next_subtask.return_value = (
-            None, True, True)
+        task_manager = self.task_session.task_manager
+        task_manager.is_my_task.return_value = True
+        task_manager.should_wait_for_node.return_value = False
+        task_manager.check_next_subtask.return_value = False
         self.task_session._react_to_want_to_compute_task(self.msg)
         send_mock.assert_called()
         # ctd, wrong_task, wait
-        self.task_session.task_manager.get_next_subtask.assert_called_once()
+        self.task_session.task_manager.check_next_subtask.assert_called_once()
 
     def test_provider_with_concent_requestor_without_concent(
             self, send_mock):
@@ -294,15 +400,30 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         self.assert_allowed(send_mock)
 
     def test_concent_disabled_wtct_concent_flag_none(self, send_mock):
+        task_manager = self.task_session.task_manager
         self.msg.concent_enabled = None
-        self.task_session.concent_service.enabled = False
-        self.task_session.task_manager.get_next_subtask.return_value = (
-            factories.tasks.ComputeTaskDefFactory(),
-            False,
-            True
-        )
-        self.task_session._react_to_want_to_compute_task(self.msg)
+        task_session = self.task_session
+        task_session.concent_service.enabled = False
+        task_manager = task_session.task_manager
+        task_manager.check_next_subtask.return_value = True
+        task_manager.is_my_task.return_value = True
+        task_manager.should_wait_for_node.return_value = False
+        ctd = factories.tasks.ComputeTaskDefFactory()
+        task_manager.get_next_subtask.return_value = ctd
+
+        task = mock.MagicMock()
+        task_state = mock.MagicMock(package_hash='123', package_size=42)
+        task.header.task_owner.key = encode_hex(self.requestor_keys.raw_pubkey)
+        task_manager.tasks = {ctd['task_id']: task}
+        task_manager.tasks_states = {ctd['task_id']: task_state}
+
+        with mock.patch(
+            'golem.task.tasksession.taskkeeper.compute_subtask_value',
+            mock.Mock(return_value=667),
+        ):
+            task_session._react_to_want_to_compute_task(self.msg)
+
         send_mock.assert_called()
-        ttc = send_mock.call_args_list[2][0][0]
+        ttc = send_mock.call_args_list[0][0][0]
         self.assertIsInstance(ttc, message.tasks.TaskToCompute)
         self.assertFalse(ttc.concent_enabled)

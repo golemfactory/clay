@@ -1,10 +1,11 @@
-from typing import Dict, Any
+import datetime
 import getpass
 import sys
-import zxcvbn
+from typing import Dict, Any
 
 from decimal import Decimal
 from ethereum.utils import denoms
+import zxcvbn
 
 from golem.node import ShutdownResponse
 from golem.core.deferred import sync_wait
@@ -16,7 +17,7 @@ MIN_SCORE = 2
 
 @group(help="Manage account")
 class Account:
-    client = None  # type: 'golem.rpc.session.Client'
+    client = None
 
     amount_arg = Argument('amount', help='Amount to withdraw, eg 1.45')
     address_arg = Argument('destination', help='Address to send the funds to')
@@ -35,12 +36,13 @@ class Account:
 
         balance = sync_wait(client.get_balance())
 
-        gnt_balance = int(balance['gnt'])
         gnt_available = int(balance['av_gnt'])
         gnt_nonconverted = int(balance['gnt_nonconverted'])
         eth_balance = int(balance['eth'])
         gnt_locked = int(balance['gnt_lock'])
         eth_locked = int(balance['eth_lock'])
+
+        deposit_balance = sync_wait(client.get_deposit_balance())
 
         return dict(
             node_name=node['node_name'],
@@ -54,6 +56,7 @@ class Account:
                 gnt_available=_fmt(gnt_available),
                 gnt_locked=_fmt(gnt_locked),
                 gnt_unadopted=_fmt(gnt_nonconverted),
+                deposit_balance=_fmt_deposit(deposit_balance),
             )
         )
 
@@ -137,3 +140,19 @@ def _fmt(value: int, unit: str = "GNT") -> str:
     if decimals == '.':
         decimals = ''
     return "{}{} {}".format(full, decimals, unit)
+
+
+def _fmt_deposit(deposit_balance):
+    if not deposit_balance:
+        return None
+
+    deposit_balance['value'] = _fmt(int(deposit_balance['value']))
+    if deposit_balance['status'] == 'unlocking':
+        locked_until = datetime.datetime.utcfromtimestamp(
+            int(deposit_balance['timelock']),
+        )
+        delta = locked_until - datetime.datetime.utcnow()
+        deposit_balance['timelock'] = str(delta)
+    else:
+        deposit_balance['timelock'] = None
+    return deposit_balance

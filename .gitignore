@@ -21,6 +21,9 @@ ui_*.py
 # C extensions
 *.so
 
+# Rust
+rust/golem/target/*
+
 # Distribution / packaging
 .Python
 build/
@@ -77,3 +80,4 @@ venv/*
 apps/dummy/test_tmp
 .python-version
 luxrender-output.png
+.testmondata

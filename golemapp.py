@@ -11,6 +11,7 @@ import humanize
 import psutil
 from cpuinfo import get_cpu_info
 from ethereum import slogging
+from portalocker import Lock, LockException
 
 # Export pbr version for peewee_migrate user
 
@@ -20,12 +21,12 @@ os.environ["PBR_VERSION"] = '3.1.1'
 
 import golem  # noqa
 import golem.argsparser as argsparser  # noqa
-
 from golem.clientconfigdescriptor import ClientConfigDescriptor, \
     ConfigApprover  # noqa
 from golem.config.environments import set_environment  # noqa
 from golem.core import variables  # noqa
 from golem.core.common import install_reactor  # noqa
+from golem.core.simpleenv import get_local_datadir  # noqa
 
 logger = logging.getLogger('golemapp')  # using __name__ gives '__main__' here
 
@@ -84,8 +85,11 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--accept-terms', is_flag=True, default=False,
               help="Accept Golem terms of use. This is equivalent to calling "
                    "`golemcli terms accept`")
-@click.option('--generate-rpc-cert', is_flag=True, default=False,
-              help="Generate RPC certificate if they do not exist")
+@click.option('--accept-concent-terms', is_flag=True, default=False,
+              help="Accept Concent terms of use. This is equivalent to calling "
+                   "`golemcli concent terms accept`")
+@click.option('--accept-all-terms', is_flag=True, default=False,
+              help="Accept all terms of use")
 @click.option('--version', '-v', is_flag=True, default=False,
               help="Show Golem version information")
 @click.option('--log-level', default=None,
@@ -112,9 +116,10 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--realm', expose_value=False)
 @click.option('--loglevel', expose_value=False)  # Crossbar specific level
 @click.option('--title', expose_value=False)
-def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
-          net, geth_address, password, accept_terms, generate_rpc_cert, version,
-          log_level, enable_talkback, m):
+def start(  # pylint: disable=too-many-arguments, too-many-locals
+        monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
+        net, geth_address, password, accept_terms, accept_concent_terms,
+        accept_all_terms, version, log_level, enable_talkback, m):
 
     freeze_support()
     delete_reactor()
@@ -122,70 +127,88 @@ def start(monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
     # Crossbar
     if m == 'crossbar.worker.process':
         start_crossbar_worker(m)
-        return
-
-    set_environment('mainnet' if mainnet else net, concent)
-
-    # Import AFTER the active configuration has been set
-    from golem.config.active import CONCENT_VARIANT
-    from golem.appconfig import AppConfig
-    from golem.node import Node
-    from golem.core.simpleenv import get_local_datadir
+        return 0
 
     if version:
         print("GOLEM version: {}".format(golem.__version__))
         return 0
 
+    set_environment('mainnet' if mainnet else net, concent)
+    # These are done locally since they rely on golem.config.active to be set
+    from golem.config.active import CONCENT_VARIANT
+    from golem.appconfig import AppConfig
+    from golem.node import Node
+
     # We should use different directories for different chains
     datadir = get_local_datadir('default', root_dir=datadir)
+    os.makedirs(datadir, exist_ok=True)
 
-    if generate_rpc_cert:
+    def _start():
         generate_rpc_certificate(datadir)
-        return 0
 
-    # Workarounds for pyinstaller executable
-    sys.modules['win32com.gen_py.os'] = None
-    sys.modules['win32com.gen_py.pywintypes'] = None
-    sys.modules['win32com.gen_py.pythoncom'] = None
+        # Workarounds for pyinstaller executable
+        sys.modules['win32com.gen_py.os'] = None
+        sys.modules['win32com.gen_py.pywintypes'] = None
+        sys.modules['win32com.gen_py.pythoncom'] = None
 
-    app_config = AppConfig.load_config(datadir)
-    config_desc = ClientConfigDescriptor()
-    config_desc.init_from_app_config(app_config)
-    config_desc = ConfigApprover(config_desc).approve()
+        app_config = AppConfig.load_config(datadir)
+        config_desc = ClientConfigDescriptor()
+        config_desc.init_from_app_config(app_config)
+        config_desc = ConfigApprover(config_desc).approve()
 
-    if rpc_address:
-        config_desc.rpc_address = rpc_address.address
-        config_desc.rpc_port = rpc_address.port
-    if node_address:
-        config_desc.node_address = node_address
+        if rpc_address:
+            config_desc.rpc_address = rpc_address.address
+            config_desc.rpc_port = rpc_address.port
+        if node_address:
+            config_desc.node_address = node_address
 
-    # Golem headless
-    install_reactor()
+        # Golem headless
+        install_reactor()
 
-    from golem.core.common import config_logging
-    config_logging(datadir=datadir, loglevel=log_level, config_desc=config_desc)
+        from golem.core.common import config_logging
+        config_logging(
+            datadir=datadir,
+            loglevel=log_level,
+            config_desc=config_desc)
 
-    log_golem_version()
-    log_platform_info()
-    log_ethereum_chain()
-    log_concent_choice(CONCENT_VARIANT)
+        log_golem_version()
+        log_platform_info()
+        log_ethereum_chain()
+        log_concent_choice(CONCENT_VARIANT)
 
-    node = Node(
-        datadir=datadir,
-        app_config=app_config,
-        config_desc=config_desc,
-        peers=peer,
-        use_monitor=monitor,
-        use_talkback=enable_talkback,
-        concent_variant=CONCENT_VARIANT,
-        geth_address=geth_address,
-        password=password,
-    )
+        node = Node(
+            datadir=datadir,
+            app_config=app_config,
+            config_desc=config_desc,
+            peers=peer,
+            use_monitor=monitor,
+            use_talkback=enable_talkback,
+            concent_variant=CONCENT_VARIANT,
+            geth_address=geth_address,
+            password=password,
+        )
 
-    if accept_terms:
-        node.accept_terms()
+        if accept_terms:
+            node.accept_terms()
 
-    node.start()
+        if accept_concent_terms:
+            node.accept_concent_terms()
+
+        if accept_all_terms:
+            node.accept_terms()
+            node.accept_concent_terms()
+
+        node.start()
+
+    try:
+        with Lock(os.path.join(datadir, 'LOCK'), timeout=1):
+            _start()
+
+    except LockException:
+        logger.error(f'directory {datadir} is locked, possibly used by '
+                     'another Golem instance')
+        return 1
+    return 0
 
 
 def delete_reactor():
@@ -261,8 +284,6 @@ def generate_rpc_certificate(datadir: str):
 
     cert_manager = CertificateManager(cert_dir)
     cert_manager.generate_if_needed()
-
-    print('RPC self-signed certificate has been created')
 
 
 if __name__ == '__main__':

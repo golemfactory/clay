@@ -47,7 +47,6 @@ PUBLISH_BALANCE_INTERVAL = 3.0
 PUBLISH_TASKS_INTERVAL = 1.0
 NODE_SNAPSHOT_INTERVAL = 10.0
 NETWORK_CHECK_INTERVAL = 10.0
-PAYMENT_CHECK_INTERVAL = 10.0
 MASK_UPDATE_INTERVAL = 30.0
 MAX_SENDING_DELAY = 360
 # How frequently task archive should be saved to disk (in seconds)
@@ -119,7 +118,6 @@ class AppConfig:
         node_config = NodeConfig(
             node_name="",
             node_address="",
-            eth_account="",
             use_ipv6=USE_IP6,
             use_upnp=USE_UPNP,
             start_port=START_PORT,

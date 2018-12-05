@@ -3,6 +3,7 @@ from os import urandom
 import random
 import time
 import unittest.mock as mock
+from unittest.mock import MagicMock, patch
 import uuid
 
 from eth_utils import encode_hex
@@ -12,11 +13,11 @@ from twisted.internet.tcp import EISCONN
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.keysauth import KeysAuth
 from golem.diag.service import DiagnosticsOutputFormat
-from golem.model import MAX_STORED_HOSTS, KnownHosts
+from golem.model import KnownHosts
 from golem.network.p2p import peersession
 from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import HISTORY_LEN, P2PService, \
-    RANDOM_DISCONNECT_FRACTION
+    RANDOM_DISCONNECT_FRACTION, MAX_STORED_HOSTS
 from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
@@ -514,11 +515,40 @@ class TestP2PService(TestDatabaseWithReactor):
         assert SocketAddress(address, prv_port) in result
         assert SocketAddress(address, pub_port) in result
 
-    @mock.patch('golem.network.p2p.p2pservice.PERFORMANCE_STATS', (1, 2, 3, 4))
-    def test_get_performance_percentile_rank(self):
-        self.assertEqual(self.service.get_performance_percentile_rank(0), 0.0)
-        self.assertEqual(self.service.get_performance_percentile_rank(2), 0.5)
-        self.assertEqual(self.service.get_performance_percentile_rank(4), 1.0)
+    def test_get_performance_percentile_rank_single_env(self):
+        def _host(perf):
+            return MagicMock(metadata={'performance': {'env': perf}})
+
+        with patch('golem.network.p2p.p2pservice.KnownHosts') as hosts:
+            hosts.select.return_value = [_host(x) for x in (1, 2, 3, 4)]
+            self.assertEqual(
+                self.service.get_performance_percentile_rank(1, 'env'), 0.0)
+            self.assertEqual(
+                self.service.get_performance_percentile_rank(3, 'env'), 0.5)
+            self.assertEqual(
+                self.service.get_performance_percentile_rank(5, 'env'), 1.0)
+
+    def test_get_performance_percentile_rank_multiple_envs(self):
+        def _host(env, perf):
+            return MagicMock(metadata={'performance': {env: perf}})
+
+        with patch('golem.network.p2p.p2pservice.KnownHosts') as hosts:
+            hosts.select.return_value = [
+                _host('env1', 1),
+                _host('env1', 2),
+                _host('env2', 3),
+                _host('env3', 4),
+            ]
+            self.assertEqual(
+                self.service.get_performance_percentile_rank(0, 'env1'), 0.5)
+            self.assertEqual(
+                self.service.get_performance_percentile_rank(2, 'env1'), 0.75)
+
+    def test_get_performance_percentile_rank_no_hosts(self):
+        with patch('golem.network.p2p.p2pservice.KnownHosts') as hosts:
+            hosts.select.return_value = []
+            self.assertEqual(
+                self.service.get_performance_percentile_rank(1, 'env'), 1.0)
 
     def test_disconnect_random_peers_no_peers(self):
         self.service.config_desc.opt_peer_num = 10

@@ -74,7 +74,7 @@ class CLI(object):
         else:
             self.add_formatter(CommandJSONFormatter())
 
-        self.add_formatter(CommandFormatter())  # default
+        self.add_formatter(CommandFormatter(prettify=False))  # default
 
     def register_client(self, client):
         for root in self.roots:
@@ -197,6 +197,8 @@ class CLI(object):
         for root in self.roots:
             self._build_parser(self.subparsers, None, root)
 
+        self.rearrange_action_groups()
+
     def add_formatter(self, formatter):
         if formatter:
             self.formatters.append(formatter)
@@ -279,3 +281,12 @@ class CLI(object):
     @staticmethod
     def _normalize_key(key):
         return key.replace('-', '_')
+
+    def rearrange_action_groups(self):
+        for parser in self.subparsers.choices.values():
+            action_groups = parser._action_groups  # pylint: disable=protected-access
+            # If there are more action groups than just
+            # 'positional arguments' and 'optional arguments'...
+            if len(action_groups) > 2:
+                # ... then move them to the beginning.
+                parser._action_groups = action_groups[2:] + action_groups[:2]  # pylint: disable=protected-access

@@ -1,5 +1,6 @@
 import os
 
+from golem_sci import contracts
 from golem_sci.chains import MAINNET
 
 from golem.core.variables import PROTOCOL_CONST
@@ -22,7 +23,7 @@ os.environ[CONCENT_ENVIRONMENT_VARIABLE] = os.environ.get(
 
 # ETH
 
-class EthereumConfig:  # pylint:disable=too-few-public-methods
+class EthereumConfig:
     NODE_LIST = [
         'https://geth.golem.network:55555',
         'https://0.geth.golem.network:55555',
@@ -40,6 +41,11 @@ class EthereumConfig:  # pylint:disable=too-few-public-methods
 
     CHAIN = MAINNET
     FAUCET_ENABLED = False
+
+    CONTRACT_ADDRESSES = {
+        contracts.GNT: '0xa74476443119A942dE498590Fe1f2454d7D4aC0d',
+        contracts.GNTB: '0xA7dfb33234098c66FdE44907e918DAD70a3f211c',
+    }
 
     WITHDRAWALS_ENABLED = True
 
@@ -65,7 +71,3 @@ PROTOCOL_CONST.patch_protocol_id(value=PROTOCOL_CONST.NUM)
 APP_MANAGER_CONFIG_FILES = [
     os.path.join('apps', 'registered.ini')
 ]
-
-# MONITOR
-
-SEND_PAYMENT_INFO_TO_MONITOR = False

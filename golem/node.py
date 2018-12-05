@@ -2,32 +2,59 @@ from enum import IntEnum
 import functools
 import logging
 import time
-from typing import List, Optional, Callable, Any
+from typing import (
+    Any,
+    Callable,
+    cast,
+    List,
+    Optional,
+    TypeVar,
+)
 
+from pathlib import Path
 from twisted.internet import threads
 from twisted.internet.defer import gatherResults, Deferred
 from twisted.python.failure import Failure
 
 from apps.appsmanager import AppsManager
+import golem
 from golem.appconfig import AppConfig
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.config.active import IS_MAINNET
+from golem.config.active import IS_MAINNET, EthereumConfig
 from golem.core.deferred import chain_function
 from golem.core.keysauth import KeysAuth, WrongPassword
-from golem.core.async import async_run, AsyncRequest
+from golem.core import golem_async
 from golem.core.variables import PRIVATE_KEY
 from golem.database import Database
 from golem.docker.manager import DockerManager
+from golem.ethereum.transactionsystem import TransactionSystem
 from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.report import StatusPublisher, Component, Stage
-from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP, NODE_METHOD_MAP
+from golem.rpc import utils as rpc_utils
+from golem.rpc.mapping import rpceventnames
 from golem.rpc.router import CrossbarRouter
-from golem.rpc.session import object_method_map, Session, Publisher
-from golem.terms import TermsOfUse
+from golem.rpc.session import (
+    Publisher,
+    Session,
+)
+from golem import terms
 
+F = TypeVar('F', bound=Callable[..., Any])
 logger = logging.getLogger(__name__)
+
+
+def require_rpc_session() -> Callable:
+    def wrapped(f: F) -> F:
+        @functools.wraps(f)
+        def curry(self: 'Node', *args, **kwargs):
+            if self.rpc_session is None:
+                self._error("RPC session is not available")  # noqa pylint: disable=protected-access
+                return None
+            return f(self, *args, **kwargs)
+        return cast(F, curry)
+    return wrapped
 
 
 class ShutdownResponse(IntEnum):
@@ -37,7 +64,7 @@ class ShutdownResponse(IntEnum):
 
 
 # pylint: disable=too-many-instance-attributes
-class Node(object):  # pylint: disable=too-few-public-methods
+class Node(object):
     """ Simple Golem Node connecting console user interface with Client
     :type client golem.client.Client:
     """
@@ -53,7 +80,8 @@ class Node(object):  # pylint: disable=too-few-public-methods
                  use_talkback: bool = None,
                  use_docker_manager: bool = True,
                  geth_address: Optional[str] = None,
-                 password: Optional[str] = None) -> None:
+                 password: Optional[str] = None
+                ) -> None:
 
         # DO NOT MAKE THIS IMPORT GLOBAL
         # otherwise, reactor will install global signal handlers on import
@@ -65,6 +93,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self._config_desc = config_desc
         self._datadir = datadir
         self._use_docker_manager = use_docker_manager
+        self._docker_manager: Optional[DockerManager] = None
 
         self._use_monitor = config_desc.enable_monitor \
             if use_monitor is None else use_monitor
@@ -72,6 +101,12 @@ class Node(object):  # pylint: disable=too-few-public-methods
             if use_talkback is None else use_talkback
 
         self._keys_auth: Optional[KeysAuth] = None
+        self._ets = TransactionSystem(
+            Path(datadir) / 'transaction_system',
+            EthereumConfig,
+        )
+        self._ets.backwards_compatibility_tx_storage(Path(datadir))
+        self.concent_variant = concent_variant
 
         self.rpc_router: Optional[CrossbarRouter] = None
         self.rpc_session: Optional[Session] = None
@@ -93,6 +128,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
             config_desc=config_desc,
             keys_auth=keys_auth,
             database=self._db,
+            transaction_system=self._ets,
             use_docker_manager=use_docker_manager,
             use_monitor=self._use_monitor,
             concent_variant=concent_variant,
@@ -111,21 +147,27 @@ class Node(object):  # pylint: disable=too-few-public-methods
             rpc = self._start_rpc()
 
             def on_rpc_ready() -> Deferred:
-                terms = self._check_terms()
+                terms_ = self._check_terms()
                 keys = self._start_keys_auth()
                 docker = self._start_docker()
-                return gatherResults([terms, keys, docker], consumeErrors=True)
+                return gatherResults([terms_, keys, docker], consumeErrors=True)
+
             chain_function(rpc, on_rpc_ready).addCallbacks(
                 self._setup_client,
                 self._error('keys or docker'),
             ).addErrback(self._error('setup client'))
             self._reactor.run()
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.exception("Application error: %r", exc)
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Application error")
 
+    @rpc_utils.expose('ui.quit')
     def quit(self) -> None:
 
         def _quit():
+            docker_manager = self._docker_manager
+            if docker_manager:
+                docker_manager.quit()
+
             reactor = self._reactor
             if reactor.running:
                 reactor.callFromThread(reactor.stop)
@@ -134,6 +176,7 @@ class Node(object):  # pylint: disable=too-few-public-methods
         from threading import Thread
         Thread(target=_quit).start()
 
+    @rpc_utils.expose('golem.password.set')
     def set_password(self, password: str) -> bool:
         logger.info("Got password")
 
@@ -144,18 +187,30 @@ class Node(object):  # pylint: disable=too-few-public-methods
                 password=password,
                 difficulty=self._config_desc.key_difficulty,
             )
+            # When Golem is ready to use different Ethereum account for
+            # payments and identity this should be called only when
+            # idendity was not just created above for the first time.
+            self._ets.backwards_compatibility_privkey(
+                self._keys_auth._private_key,  # noqa pylint: disable=protected-access
+                password,
+            )
+            self._ets.set_password(password)
         except WrongPassword:
             logger.info("Password incorrect")
             return False
         return True
 
+    @rpc_utils.expose('golem.password.key_exists')
     def key_exists(self) -> bool:
         return KeysAuth.key_exists(self._datadir, PRIVATE_KEY)
 
+    @rpc_utils.expose('golem.password.unlocked')
     def is_account_unlocked(self) -> bool:
         return self._keys_auth is not None
 
-    def is_mainnet(self) -> bool:
+    @rpc_utils.expose('golem.mainnet')
+    @classmethod
+    def is_mainnet(cls) -> bool:
         return IS_MAINNET
 
     def _start_rpc(self) -> Deferred:
@@ -174,24 +229,37 @@ class Node(object):  # pylint: disable=too-few-public-methods
             self._stop_on_error("rpc", "RPC router is not available")
             return None
 
-        self.rpc_session = Session(self.rpc_router.address,
-                                   cert_manager=self.rpc_router.cert_manager,
-                                   use_ipv6=self._config_desc.use_ipv6)
+        crsb_user = self.rpc_router.cert_manager.CrossbarUsers.golemapp
+        self.rpc_session = Session(
+            self.rpc_router.address,
+            cert_manager=self.rpc_router.cert_manager,
+            use_ipv6=self._config_desc.use_ipv6,
+            crsb_user=crsb_user,
+            crsb_user_secret=self.rpc_router.cert_manager.get_secret(crsb_user)
+        )
         deferred = self.rpc_session.connect()
 
         def on_connect(*_):
-            methods = object_method_map(self, NODE_METHOD_MAP)
-            self.rpc_session.add_methods(methods)
-
+            methods = rpc_utils.object_method_map(self)
+            methods['sys.exposed_procedures'] = \
+                self.rpc_session.exposed_procedures
+            self.rpc_session.add_procedures(methods)
             self._rpc_publisher = Publisher(self.rpc_session)
             StatusPublisher.set_publisher(self._rpc_publisher)
 
         return deferred.addCallbacks(on_connect, self._error('rpc session'))
 
+    @rpc_utils.expose('golem.terms')
     @staticmethod
     def are_terms_accepted():
-        return TermsOfUse.are_terms_accepted()
+        return terms.TermsOfUse.are_accepted()
 
+    @rpc_utils.expose('golem.concent.terms')
+    @classmethod
+    def are_concent_terms_accepted(cls):
+        return terms.ConcentTermsOfUse.are_accepted()
+
+    @rpc_utils.expose('golem.terms.accept')
     def accept_terms(self,
                      enable_monitor: Optional[bool] = None,
                      enable_talkback: Optional[bool] = None) -> None:
@@ -205,12 +273,29 @@ class Node(object):  # pylint: disable=too-few-public-methods
             self._use_monitor = enable_monitor
 
         self._app_config.change_config(self._config_desc)
-        return TermsOfUse.accept_terms()
+        return terms.TermsOfUse.accept()
 
+    @rpc_utils.expose('golem.concent.terms.accept')
+    @classmethod
+    def accept_concent_terms(cls):
+        return terms.ConcentTermsOfUse.accept()
+
+    @rpc_utils.expose('golem.terms.show')
     @staticmethod
     def show_terms():
-        return TermsOfUse.show_terms()
+        return terms.TermsOfUse.show()
 
+    @rpc_utils.expose('golem.concent.terms.show')
+    @classmethod
+    def show_concent_terms(cls):
+        return terms.ConcentTermsOfUse.show()
+
+    @rpc_utils.expose('golem.version')
+    @staticmethod
+    def get_golem_version():
+        return golem.__version__
+
+    @rpc_utils.expose('golem.graceful_shutdown')
     def graceful_shutdown(self) -> ShutdownResponse:
         if self.client is None:
             logger.warning('Shutdown called when client=None, try again later')
@@ -268,30 +353,39 @@ class Node(object):  # pylint: disable=too-few-public-methods
             logger.debug('_is_task_in_progress? False: task_computer=None')
             return False
 
-        task_provider_progress = task_server.task_computer.assigned_subtasks
+        task_provider_progress = task_server.task_computer.assigned_subtask
         logger.debug('_is_task_in_progress? provider=%r, requestor=False',
                      task_provider_progress)
-        return task_provider_progress != {}
+        return bool(task_provider_progress)
 
+    @require_rpc_session()
     def _check_terms(self) -> Optional[Deferred]:
-        if not self.rpc_session:
-            self._error("RPC session is not available")
-            return None
 
         def wait_for_terms():
+            sleep_time = 5
             while not self.are_terms_accepted() and self._reactor.running:
                 logger.info(
                     'Terms of use must be accepted before using Golem. '
                     'Run `golemcli terms show` to display the terms '
                     'and `golemcli terms accept` to accept them.')
-                time.sleep(5)
+                time.sleep(sleep_time)
+            if None in self.concent_variant.values():
+                return  # Concent disabled
+            while not terms.ConcentTermsOfUse.are_accepted() \
+                    and self._reactor.running:
+                logger.info(
+                    'Concent terms of use must be accepted before using'
+                    ' Concent service.'
+                    ' Run `golemcli concent terms show`'
+                    ' to display the terms'
+                    ' and `golemcli concent terms accept` to accept them.',
+                )
+                time.sleep(sleep_time)
 
         return threads.deferToThread(wait_for_terms)
 
+    @require_rpc_session()
     def _start_keys_auth(self) -> Optional[Deferred]:
-        if not self.rpc_session:
-            self._error("RPC session is not available")
-            return None
 
         def create_keysauth():
             # If keys_auth already exists it means we used command line flag
@@ -324,14 +418,13 @@ class Node(object):  # pylint: disable=too-few-public-methods
             return None
 
         def start_docker():
-            DockerManager.install(self._config_desc).check_environment()  # noqa pylint: disable=no-member
+            self._docker_manager = DockerManager.install(self._config_desc)
+            self._docker_manager.check_environment()  # noqa pylint: disable=no-member
 
         return threads.deferToThread(start_docker)
 
+    @require_rpc_session()
     def _setup_client(self, *_) -> None:
-        if not self.rpc_session:
-            self._stop_on_error("rpc", "RPC session is not available")
-            return
 
         if not self._keys_auth:
             self._error("KeysAuth is not available")
@@ -344,14 +437,14 @@ class Node(object):  # pylint: disable=too-few-public-methods
         self._reactor.addSystemEventTrigger("before", "shutdown",
                                             self.client.quit)
 
-        methods = object_method_map(self.client, CORE_METHOD_MAP)
-        self.rpc_session.add_methods(methods)
-
         self.client.set_rpc_publisher(self._rpc_publisher)
 
-        async_run(AsyncRequest(self._run),
-                  error=self._error('Cannot start the client'))
+        golem_async.async_run(
+            golem_async.AsyncRequest(self._run),
+            error=self._error('Cannot start the client'),
+        )
 
+    @require_rpc_session()
     def _run(self, *_) -> None:
         if not self.client:
             self._stop_on_error("client", "Client is not available")
@@ -366,6 +459,20 @@ class Node(object):  # pylint: disable=too-few-public-methods
                 self.client.connect(peer)
         except SystemExit:
             self._reactor.callFromThread(self._reactor.stop)
+            return
+
+        methods = self.client.get_wamp_rpc_mapping()
+
+        def rpc_ready(_):
+            logger.info('All procedures registered in WAMP router')
+            self._rpc_publisher.publish(
+                rpceventnames.Golem.procedures_registered,
+            )
+        # pylint: disable=no-member
+        self.rpc_session.add_procedures(methods).addCallback(  # type: ignore
+            rpc_ready,
+        )
+        # pylint: enable=no-member
 
     def _setup_apps(self) -> None:
         if not self.client:

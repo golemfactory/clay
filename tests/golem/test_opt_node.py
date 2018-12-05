@@ -1,8 +1,9 @@
+# pylint: disable=protected-access
 from os import path
+import unittest
 from unittest.mock import patch, Mock, ANY, MagicMock
 
 from click.testing import CliRunner
-import pytest
 from twisted.internet.defer import Deferred
 
 import golem.argsparser as argsparser
@@ -40,18 +41,15 @@ class TestNode(TestWithDatabase):
             'concent_variant': concent_disabled,
         }
 
-    def tearDown(self):
-        super(TestNode, self).tearDown()
-
     @patch('twisted.internet.reactor', create=True)
-    def test_should_help_message_be_printed_out(self, mock_reactor, *_):
+    def test_should_help_message_be_printed_out(self, _mock_reactor, *_):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--help'], catch_exceptions=False)
         self.assertEqual(return_value.exit_code, 0)
         self.assertTrue(return_value.output.startswith('Usage'))
 
     @patch('twisted.internet.reactor', create=True)
-    def test_wrong_option_should_fail(self, mock_reactor, *_):
+    def test_wrong_option_should_fail(self, _mock_reactor, *_):
         runner = CliRunner()
         return_value = runner.invoke(start, ['--blargh'],
                                      catch_exceptions=False)
@@ -94,6 +92,7 @@ class TestNode(TestWithDatabase):
                                        ],
                                        keys_auth=keys_auth,
                                        database=ANY,
+                                       transaction_system=ANY,
                                        geth_address=None,
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
@@ -155,6 +154,7 @@ class TestNode(TestWithDatabase):
                                        config_desc=ANY,
                                        keys_auth=None,
                                        database=ANY,
+                                       transaction_system=ANY,
                                        geth_address=geth_address,
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
@@ -235,6 +235,7 @@ class TestNode(TestWithDatabase):
                                        config_desc=ANY,
                                        keys_auth=None,
                                        database=ANY,
+                                       transaction_system=ANY,
                                        geth_address=None,
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
@@ -309,8 +310,6 @@ class TestNode(TestWithDatabase):
             assert a.P2P_SEEDS == m.P2P_SEEDS
             assert a.PROTOCOL_CONST.ID == m.PROTOCOL_CONST.ID
             assert a.APP_MANAGER_CONFIG_FILES == m.APP_MANAGER_CONFIG_FILES
-            assert a.SEND_PAYMENT_INFO_TO_MONITOR == \
-                m.SEND_PAYMENT_INFO_TO_MONITOR
 
         with mock_config():
             args = self.args + ['--net', 'mainnet']
@@ -431,11 +430,11 @@ class TestNode(TestWithDatabase):
             )
             assert return_value.exit_code != 0
 
-    @patch('golem.terms.TermsOfUse.are_terms_accepted', return_value=object())
+    @patch('golem.terms.TermsOfUse.are_accepted', return_value=object())
     def test_are_terms_accepted(self, accepted, *_):
         self.assertEqual(Node.are_terms_accepted(), accepted.return_value)
 
-    @patch('golem.terms.TermsOfUse.accept_terms')
+    @patch('golem.terms.TermsOfUse.accept')
     def test_accept_terms(self, accept, *_):
         node = Mock()
 
@@ -446,7 +445,7 @@ class TestNode(TestWithDatabase):
         assert not isinstance(node._use_talkback, bool)
         assert node._app_config.change_config.called
 
-    @patch('golem.terms.TermsOfUse.accept_terms')
+    @patch('golem.terms.TermsOfUse.accept')
     def test_accept_terms_monitor_arg(self, accept, *_):
         node = Mock()
 
@@ -457,7 +456,7 @@ class TestNode(TestWithDatabase):
         assert not isinstance(node._use_talkback, bool)
         assert node._app_config.change_config.called
 
-    @patch('golem.terms.TermsOfUse.accept_terms')
+    @patch('golem.terms.TermsOfUse.accept')
     def test_accept_terms_talkback_arg(self, accept, *_):
         node = Mock()
 
@@ -468,7 +467,7 @@ class TestNode(TestWithDatabase):
         assert node._use_talkback is False
         assert node._app_config.change_config.called
 
-    @patch('golem.terms.TermsOfUse.show_terms', return_value=object())
+    @patch('golem.terms.TermsOfUse.show', return_value=object())
     def test_show_terms(self, show, *_):
         self.assertEqual(Node.show_terms(), show.return_value)
 
@@ -524,9 +523,10 @@ class MockThread:
         return self._target
 
 
+@patch('golem.client.node_info_str')
 @patch('golem.node.Node._start_keys_auth', set_keys_auth)
 @patch('golem.node.Node._start_docker')
-@patch('golem.node.async_run', mock_async_run)
+@patch('golem.core.golem_async.async_run', mock_async_run)
 @patch('golem.node.chain_function', chain_function)
 @patch('golem.node.threads.deferToThread', done_deferred)
 @patch('golem.node.CrossbarRouter', Mock(_start_node=done_deferred))
@@ -557,6 +557,7 @@ class TestOptNode(TempDirFixture):
                 self.node.client.quit()
             if self.node._db:
                 self.node._db.close()
+
         super().tearDown()
 
     def test_start_rpc_router(self, reactor, *_):
@@ -572,7 +573,7 @@ class TestOptNode(TempDirFixture):
         assert reactor.addSystemEventTrigger.call_args[0] == (
             'before', 'shutdown', self.node.rpc_router.stop)
 
-    @patch('golem.client.EthereumTransactionSystem')
+    @patch('golem.node.TransactionSystem')
     def test_start_creates_client(self, _ets, reactor, mock_gather_results, *_):
         mock_gather_results.return_value = mock_gather_results
         mock_gather_results.addCallbacks.side_effect = \
@@ -592,7 +593,7 @@ class TestOptNode(TempDirFixture):
         assert reactor.addSystemEventTrigger.call_args_list[1][0] == (
             'before', 'shutdown', self.node.client.quit)
 
-    @patch('golem.client.EthereumTransactionSystem')
+    @patch('golem.node.TransactionSystem')
     @patch('golem.node.Node._run')
     def test_start_creates_client_and_calls_run(
             self,
@@ -703,6 +704,7 @@ class TestOptNode(TempDirFixture):
         node = Node.__new__(Node)
 
         setattr(node, '_reactor', reactor)
+        setattr(node, '_docker_manager', Mock())
         setattr(node, 'client', None)
 
         node.quit()
@@ -793,7 +795,7 @@ class TestOptNode(TempDirFixture):
         self.node.client.task_server.task_computer = mock_tc
 
         mock_tm.get_progresses = Mock(return_value={})
-        mock_tc.assigned_subtasks = {}
+        mock_tc.assigned_subtask = None
 
         result = self.node._is_task_in_progress()
 
@@ -828,9 +830,28 @@ class TestOptNode(TempDirFixture):
         self.node.client.task_server.task_computer = mock_tc
 
         mock_tm.get_progresses = Mock(return_value={'a': 'a'})
-        mock_tc.assigned_subtasks = {'a': 'a'}
+        mock_tc.assigned_subtask = {'a': 'a'}
 
         result = self.node._is_task_in_progress()
 
         assert result is True
         assert mock_tm.get_progresses.called
+
+
+class TestConcentTermsOfService(unittest.TestCase):
+    def test_show(self):
+        result = Node.show_concent_terms()
+        self.assertIsInstance(result, str)
+
+    @classmethod
+    @patch("golem.terms.ConcentTermsOfUse.accept")
+    def test_accept(cls, accept_mock):
+        Node.accept_concent_terms()
+        accept_mock.assert_called_once_with()
+
+    @patch("golem.terms.ConcentTermsOfUse.are_accepted")
+    def test_are_accepted(self, are_mock):
+        sentinel = object()
+        are_mock.return_value = sentinel
+        result = Node.are_concent_terms_accepted()
+        self.assertEqual(result, sentinel)

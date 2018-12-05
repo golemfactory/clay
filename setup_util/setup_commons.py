@@ -133,17 +133,18 @@ class PyInstaller(Command):
 
         examples_dir = path.join(dist_dir, 'examples')
         blender_dir = path.join(examples_dir, 'blender')
-        lux_dir = path.join(examples_dir, 'lux')
 
-        blender_example = path.join('apps', 'blender', 'benchmark',
-                                    'test_task', 'bmw27_cpu.blend')
-        lux_example = path.join('apps', 'lux', 'benchmark', 'test_task')
+        blender_src_dir = path.join('apps', 'blender', 'benchmark', 'test_task')
+
+        blender_cpu_example = path.join(blender_src_dir, 'bmw27_cpu.blend')
+        blender_gpu_example = path.join(blender_src_dir, 'bmw27_gpu.blend')
 
         if not path.exists(blender_dir):
             makedirs(blender_dir)
 
-        shutil.copy(blender_example, blender_dir)
-        shutil.copytree(lux_example, lux_dir)
+        shutil.copy(blender_cpu_example, blender_dir)
+        shutil.copy(blender_gpu_example, blender_dir)
+
 
     def move(self, dist_dir):
         import shutil

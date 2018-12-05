@@ -1,20 +1,28 @@
 import os
-
+import random
+import numpy as np
+import cv2
+import pytest
 from PIL import Image
 
 from golem.tools.testdirfixture import TestDirFixture
 
-
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
 from apps.rendering.resources.imgcompare import (advance_verify_img,
                                                  compare_pil_imgs)
-from apps.rendering.resources.imgrepr import load_img
+from apps.rendering.resources.imgrepr import OpenCVImgRepr, OpenCVError
 
 
 def make_test_img(img_path, size=(10, 10), color=(255, 0, 0)):
     img = Image.new('RGB', size, color)
     img.save(img_path)
     img.close()
+
+
+def make_test_img_16bits(img_path, width, height, color=(0, 0, 255)):
+    img = np.zeros((height, width, 3), np.uint16)
+    img[0:height, 0:width] = color
+    cv2.imwrite(img_path, img)
 
 
 def _get_test_exr(alt=False):
@@ -29,23 +37,19 @@ def _get_test_exr(alt=False):
 class TestRenderingTaskCollector(TestDirFixture):
     def test_init(self):
         collector = RenderingTaskCollector()
-        assert not collector.paste
         assert collector.width is None
         assert collector.height is None
         assert collector.accepted_img_files == []
-        assert collector.accepted_alpha_files == []
 
     def test_add_files(self):
         collector = RenderingTaskCollector()
         for i in range(10):
             collector.add_img_file("file{}.png".format(i))
-            collector.add_alpha_file("file_alpha_{}.png".format(i))
 
         assert len(collector.accepted_img_files) == 10
-        assert len(collector.accepted_alpha_files) == 10
 
     def test_finalize(self):
-        collector = RenderingTaskCollector(paste=True)
+        collector = RenderingTaskCollector()
         assert collector.finalize() is None
 
         img1 = self.temp_file_name("img1.png")
@@ -53,53 +57,79 @@ class TestRenderingTaskCollector(TestDirFixture):
 
         collector.add_img_file(img1)
         final_img = collector.finalize()
-        assert isinstance(final_img, Image.Image)
-        assert final_img.size == (10, 10)
+        assert isinstance(final_img, OpenCVImgRepr)
+        assert final_img.img.shape[:2] == (10, 10)
         img2 = self.temp_file_name("img2.png")
         final_img.save(img2)
 
         assert compare_pil_imgs(img1, img2)
         collector.add_img_file(img2)
         final_img = collector.finalize()
-        assert isinstance(final_img, Image.Image)
+        assert isinstance(final_img, OpenCVImgRepr)
         img3 = self.temp_file_name("img3.png")
         final_img.save(img3)
 
-        assert final_img.size == (10, 20)
+        assert final_img.img.shape[:2] == (20, 10)
         assert advance_verify_img(img3, 10, 20, (0, 0), (10, 10), img1, (0, 0))
-
-        collector = RenderingTaskCollector(paste=False, width=10, height=10)
-        collector.add_img_file(img1)
-
-        make_test_img(img2, color=(0, 255, 0))
-        collector.add_img_file(img2)
-        make_test_img(img3, color=(0, 0, 255))
-        final_img = collector.finalize()
-        assert final_img.size == (10, 10)
-
-    def test_finalize_alpha(self):
-        collector = RenderingTaskCollector()
-
-        collector.add_alpha_file(_get_test_exr())
-        collector.add_alpha_file(_get_test_exr(alt=True))
-
-        img_path = self.temp_file_name("img1.png")
-        make_test_img(img_path)
-        img_repr = load_img(img_path)
-
-        collector.finalize_alpha(img_repr.img)
 
     def test_finalize_exr(self):
         collector = RenderingTaskCollector()
         collector.add_img_file(_get_test_exr())
         collector.add_img_file(_get_test_exr(alt=True))
         img = collector.finalize()
-        assert isinstance(img, Image.Image)
-        assert img.size == (10, 10)
+        assert isinstance(img, OpenCVImgRepr)
+        assert img.img.shape[:2] == (20, 10)
 
-        collector = RenderingTaskCollector(paste=True)
-        collector.add_img_file(_get_test_exr())
-        collector.add_img_file(_get_test_exr(alt=True))
-        img = collector.finalize()
-        assert isinstance(img, Image.Image)
-        assert img.size == (10, 20)
+    def test_opencv_nonexisting_img(self):
+        collector = RenderingTaskCollector()
+        collector.add_img_file("img.png")
+        with pytest.raises(OpenCVError):
+            collector.finalize()
+
+        make_test_img_16bits("img.png",
+                             width=10, height=10,
+                             color=(0, 0, 0))
+        collector.add_img_file("img1.png")
+        with pytest.raises(OpenCVError):
+            collector.finalize()
+        os.remove("img.png")
+        assert os.path.exists("img.png") is False
+
+    def test_finalize_16bits(self):
+        collector = RenderingTaskCollector()
+        w, h, r, g, b = 20, 15, 10, 11, 12
+        images = ["img1.png", "img2.png", "img3.png", "img4.png"]
+        for color_scale, img_path in enumerate(images):
+            make_test_img_16bits(img_path,
+                                 width=w, height=h,
+                                 color=((color_scale + 1) * b,
+                                        (color_scale + 1) * g,
+                                        (color_scale + 1) * r))
+            collector.add_img_file(img_path)
+
+        final_img = collector.finalize()
+        # check size and dtype
+        assert final_img is not None
+        assert final_img.img.dtype == np.uint16
+        assert final_img.img.shape == (len(images) * h, w, 3)
+
+        # verify each part of final img
+        for i in range(0, len(images)):
+            x, y = random.randint(0, w - 1), \
+                   random.randint(i * h, (i + 1) * h - 1)
+            assert final_img.img[y][x][0] == (i + 1) * b
+            assert final_img.img[y][x][1] == (i + 1) * g
+            assert final_img.img[y][x][2] == (i + 1) * r
+
+        images.append("final_img.png")
+        final_img.save(images[-1])
+        assert os.path.isfile(images[-1])
+
+        f_img = cv2.imread(images[-1], cv2.IMREAD_UNCHANGED)
+        assert f_img.dtype == np.uint16
+        assert f_img.shape == ((len(images) - 1) * h, w, 3)
+
+        # remove test images
+        for img_path in images:
+            os.remove(img_path)
+            assert os.path.exists(img_path) is False
