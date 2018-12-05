@@ -60,11 +60,9 @@ class Tasks:
     )
 
     current_task = Argument(
-        'current',
+        '--current',
         help='Show only current tasks',
         optional=True,
-        boolean=True,
-        default=False,
     )
 
     last_days = Argument('last_days', optional=True, default="0",
