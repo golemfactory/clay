@@ -186,7 +186,6 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         :return list: list of pixels that belong to a subtask border
         """
         start_task = subtask.extra_data['start_task']
-        end_task = subtask.extra_data['end_task']
         frames = len(definition.options.frames)
         res_x, res_y = definition.resolution
 
@@ -196,7 +195,7 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
             method = cls.__get_border
 
         if not definition.options.use_frames:
-            return method(start_task, end_task, subtasks_count, res_x, res_y)
+            return method(start_task, start_task, subtasks_count, res_x, res_y)
         elif subtasks_count <= frames:
             if not as_path:
                 return []
@@ -209,7 +208,7 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
 
         parts = int(subtasks_count / frames)
         return method((start_task - 1) % parts + 1,
-                      (end_task - 1) % parts + 1,
+                      (start_task - 1) % parts + 1,
                       parts, res_x, res_y)
 
     @classmethod
@@ -437,7 +436,7 @@ class BlenderRenderTask(FrameRenderingTask):
                          node_name: Optional[str] = None) \
             -> FrameRenderingTask.ExtraData:
 
-        start_task, end_task = self._get_next_task()
+        start_task = self._get_next_task()
         scene_file = self._get_scene_file_rel_path()
 
         if self.use_frames:
@@ -473,7 +472,6 @@ class BlenderRenderTask(FrameRenderingTask):
 
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": start_task,
-                      "end_task": end_task,
                       "total_tasks": self.total_tasks,
                       "outfilebasename": self.outfilebasename,
                       "scene_file": scene_file,
@@ -556,7 +554,6 @@ class BlenderRenderTask(FrameRenderingTask):
 
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": 1,
-                      "end_task": 1,
                       "total_tasks": 1,
                       "outfilebasename": "testresult",
                       "scene_file": scene_file,
