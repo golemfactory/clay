@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import json
 import time
 from unittest import mock, TestCase
@@ -16,6 +17,7 @@ from golem.monitor.monitor import SystemMonitor, SenderThread, Sender
 from golem.monitorconfig import MONITOR_CONFIG
 from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats, \
     EMPTY_FINISHED_SUMMARY
+from golem.tools.os_info import OSInfo
 
 random = Random(__name__)
 
@@ -34,6 +36,7 @@ class MockSenderThread:
 
 
 class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
+    maxDiff = None
     PEP8_FILES = (
         "golem/monitor/monitor.py",
     )
@@ -43,8 +46,14 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
         client_mock.get_key_id = mock.MagicMock(return_value='cliid')
         client_mock.session_id = 'sessid'
         client_mock.config_desc = ClientConfigDescriptor()
+        os_info = OSInfo(
+            'linux',
+            'Linux',
+            '1',
+            '1.2.3'
+        )
         meta_data = NodeMetadataModel(
-            client_mock, 'os', 'ver')
+            client_mock, os_info, 'ver')
         config = MONITOR_CONFIG.copy()
         config['PING_ME_HOSTS'] = ['']
         self.monitor = SystemMonitor(meta_data, config)
@@ -72,8 +81,14 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
         client_mock.get_key_id = mock.MagicMock(return_value='cliid')
         client_mock.session_id = 'sessid'
         client_mock.config_desc = ccd
+        os_info = OSInfo(
+            'win32',
+            'Windows',
+            '10',
+            '10.2.23'
+        )
         new_meta_data = NodeMetadataModel(
-            client_mock, "win32", "1.3")
+            client_mock, os_info, "1.3")
         self.monitor.on_config_update(new_meta_data)
         self.monitor.on_logout()
 
@@ -82,7 +97,8 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
             and protocol data were sent."""
 
         def check(f, msg_type):
-            f()
+            with mock.patch('apps.core.nvgpu.is_supported', return_value=True):
+                f()
             mock_send = self.monitor._sender_thread.sender.transport.post_json
             self.assertEqual(mock_send.call_count, 1)
             result = json.loads(mock_send.call_args[0][0])
@@ -101,13 +117,16 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
                         'timestamp': mock.ANY,
                         'cliid': 'cliid',
                         'sessid': 'sessid',
-                        'os': 'os',
                         'version': 'ver',
                         'settings': mock.ANY,
+                        'os_info': mock.ANY
                     },
                     'cliid': 'cliid',
                     'sessid': 'sessid',
                     'timestamp': mock.ANY,
+                    'nvgpu': {
+                        'is_supported': True,
+                    },
                 }
             }
             self.assertEqual(expected_d, result)

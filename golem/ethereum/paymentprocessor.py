@@ -1,11 +1,11 @@
 import calendar
 import logging
 import time
+
 from collections import defaultdict
 from typing import List
-
 from sortedcontainers import SortedListWithKey
-from eth_utils import encode_hex
+from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
 from twisted.internet import threads
 
@@ -73,7 +73,14 @@ class PaymentProcessor:
         for awaiting_payment in Payment \
                 .select() \
                 .where(Payment.status == PaymentStatus.awaiting):
-            self.add(awaiting_payment)
+            log.info(
+                "Restoring awaiting payment for subtask %s to %s, value %f",
+                awaiting_payment.subtask,
+                encode_hex(awaiting_payment.payee),
+                awaiting_payment.value / denoms.ether,
+            )
+            self._awaiting.add(awaiting_payment)
+            self._gntb_reserved += awaiting_payment.value
 
     def _on_batch_confirmed(self, payments: List[Payment], receipt) -> None:
         if not receipt.status:
@@ -81,8 +88,7 @@ class PaymentProcessor:
             for p in payments:
                 p.status = PaymentStatus.awaiting  # type: ignore
                 p.save()
-                self._gntb_reserved -= p.value
-                self.add(p)
+                self._awaiting.add(p)
             return
 
         gas_price = self._sci.get_transaction_gas_price(receipt.tx_hash)
@@ -106,23 +112,22 @@ class PaymentProcessor:
                 fee / denoms.ether
             )
 
-    def add(self, payment: Payment) -> int:
-        if payment.status is not PaymentStatus.awaiting:
-            raise RuntimeError(
-                "Invalid payment status: {}".format(payment.status))
-
-        log.info("Payment {:.6} to {:.6} ({:.6f})".format(
-            payment.subtask,
-            encode_hex(payment.payee),
-            payment.value / denoms.ether))
-
-        if not payment.processed_ts:
-            payment.processed_ts = get_timestamp()
-            payment.save()
+    def add(self, subtask_id: str, eth_addr: str, value: int) -> Payment:
+        log.info(
+            "Adding payment for %s to %s (value: %f)",
+            subtask_id,
+            eth_addr,
+            value / denoms.ether,
+        )
+        payment = Payment.create(
+            subtask=subtask_id,
+            payee=decode_hex(eth_addr),
+            value=value,
+            processed_ts=get_timestamp(),
+        )
 
         self._awaiting.add(payment)
-
-        self._gntb_reserved += payment.value
+        self._gntb_reserved += value
 
         log.info("GNTB reserved %.6f", self._gntb_reserved / denoms.ether)
         return payment.processed_ts
@@ -141,6 +146,14 @@ class PaymentProcessor:
                 break
             gntb_balance -= p.value
             if gntb_balance < 0:
+                log.debug(
+                    'Insufficient GNTB balance.'
+                    ' value=%(value).6f, subtask_id=%(subtask)s',
+                    {
+                        'value': p.value / denoms.ether,
+                        'subtask': p.subtask,
+                    },
+                )
                 break
 
             payees.add(p.payee)
@@ -148,7 +161,16 @@ class PaymentProcessor:
                 self._sci.GAS_BATCH_PAYMENT_BASE
             if gas > gas_limit:
                 break
-            if gas * gas_price > eth_balance:
+            gas_cost = gas * gas_price
+            if gas_cost > eth_balance:
+                log.debug(
+                    'Not enough ETH to pay gas for transaction.'
+                    ' gas_cost=%(gas_cost).6f, subtask_id=%(subtask)s',
+                    {
+                        'gas_cost': gas_cost / denoms.ether,
+                        'subtask': p.subtask,
+                    },
+                )
                 break
 
             ind += 1

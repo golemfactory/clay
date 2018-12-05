@@ -3,6 +3,7 @@
 import sys
 
 from setuptools import setup
+from setuptools_rust import Binding, RustExtension
 
 from setup_util.setup_commons import (
     path, parse_requirements, get_version,
@@ -56,9 +57,19 @@ setup(
             'golemcli = golemcli:start',
         ]
     },
+    rust_extensions=[
+        RustExtension(
+            'rust.golem',
+            'rust/golem/Cargo.toml',
+            binding=Binding.RustCPython,
+        ),
+    ],
     data_files=[
         (path.normpath('../../'), [
             'golemapp.py', 'golemcli.py', 'loggingconfig.py'
+        ]),
+        (path.normpath('../../golem/'), [
+            path.normpath('golem/CONCENT_TERMS.html'),
         ]),
         (path.normpath('../../golem/'), [
             path.normpath('golem/TERMS.html'),
@@ -104,3 +115,24 @@ if not building_migration:
                            "does not exist")
 
 print_errors(task_collector_err)
+
+
+# test a potential docker package conflict
+
+def _docker_conflict(e: Exception):
+    raise RuntimeError(
+        "Suspected conflict in python `docker` library.\n"
+        "Please run `pip uninstall -y docker docker-py` "
+        "and re-install golem's requirements. "
+    ) from e
+
+
+try:
+    from docker import DockerClient as Client
+except ImportError as import_error:
+    _docker_conflict(import_error)
+
+try:
+    Client().api
+except TypeError as type_error:
+    _docker_conflict(type_error)

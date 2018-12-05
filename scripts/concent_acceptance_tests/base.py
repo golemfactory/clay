@@ -27,7 +27,6 @@ from golem_messages.message import concents as concent_msg
 from golem_sci import (
     new_sci_rpc, SmartContractsInterface, JsonTransactionsStorage)
 
-from golem.config.environments.testnet import EthereumConfig
 
 from golem.core import variables
 from golem.network.concent import client
@@ -63,7 +62,9 @@ class ConcentBaseTest:
         return cryptography.ECCx(None)
 
     def setUp(self):
+        from golem.config.environments import set_environment
         concent_variant = os.environ.get('CONCENT_VARIANT', 'staging')
+        set_environment('testnet', concent_variant)
         self.variant = variables.CONCENT_CHOICES[concent_variant]
         self.provider_keys = self._fake_keys()
         self.requestor_keys = self._fake_keys()
@@ -94,7 +95,13 @@ class ConcentBaseTest:
             'requestor_public_key': msg_utils.encode_hex(
                 self.requestor_pub_key,
             ),
-            'provider_public_key': msg_utils.encode_hex(self.provider_pub_key),
+            'requestor_ethereum_public_key': msg_utils.encode_hex(
+                self.requestor_pub_key,
+            ),
+            'want_to_compute_task__provider_public_key':
+                msg_utils.encode_hex(self.provider_pub_key),
+            'want_to_compute_task__sign__privkey':
+                self.provider_keys.raw_privkey
         }
         return {prefix + k: v for k, v in kwargs.items()}
 
@@ -215,6 +222,7 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
 
     def setUp(self):
         super(SCIBaseTest, self).setUp()
+        from golem.config.environments.testnet import EthereumConfig
         random.seed()
 
         self.transaction_timeout = datetime.timedelta(seconds=300)
@@ -233,17 +241,17 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
             rpc=EthereumConfig.NODE_LIST[0],
             address=self.requestor_eth_addr,
             tx_sign=lambda tx: tx.sign(self.requestor_keys.raw_privkey),
+            contract_addresses=EthereumConfig.CONTRACT_ADDRESSES,
             chain=EthereumConfig.CHAIN,
         )
-        self.requestor_sci.REQUIRED_CONFS = 1
         self.provider_sci = new_sci_rpc(
             storage=provider_storage,
             rpc=EthereumConfig.NODE_LIST[0],
             address=self.provider_eth_addr,
             tx_sign=lambda tx: tx.sign(self.provider_keys.raw_privkey),
+            contract_addresses=EthereumConfig.CONTRACT_ADDRESSES,
             chain=EthereumConfig.CHAIN,
         )
-        self.provider_sci.REQUIRED_CONFS = 1
 
     # pylint: disable=too-many-arguments
     def retry_until_timeout(
@@ -253,7 +261,7 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
             timeout: typing.Optional[datetime.timedelta] = None,
             sleep_interval: typing.Optional[float] = None,
             sleep_action: typing.Optional[typing.Callable] =
-            lambda: sys.stderr.write('.\n'),
+            lambda: (sys.stderr.write('.'), sys.stderr.flush()),  # type: ignore
     ):
         if sleep_interval is None:
             sleep_interval = self.sleep_interval
@@ -306,6 +314,13 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
 
         self.assertGreater(amount, 0)
 
+        sys.stderr.write(
+            'Deposit contract %s\nRequired confirmations: %d\n' % (
+                sci._gntdeposit.address,
+                sci.REQUIRED_CONFS,
+            ),
+        )
+
         sys.stderr.write('Calling tETH faucet...\n')
         self.retry_until_timeout(
             lambda: not tETH_faucet_donate(sci.get_eth_address()),
@@ -325,7 +340,6 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
         def deposit_confirmed(_):
             nonlocal deposit
             deposit = True
-
         sys.stderr.write(
             'Depositing %.8f GNTB...\n' % (amount / denoms.ether, ),
         )
@@ -342,8 +356,8 @@ class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
 
         if sci.get_deposit_value(sci.get_eth_address()) < amount:
             raise RuntimeError("Deposit failed")
-        # sys.stderr.write('Long sleep. hrrrr\n')
-        # time.sleep(120)
+        sys.stderr.write('Long sleep. hrrrr\n')
+        time.sleep(120)
         dump_balance(sci)
 
     def requestor_put_deposit(self, price: int):

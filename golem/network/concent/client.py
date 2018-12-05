@@ -1,6 +1,5 @@
 import calendar
 import datetime
-import functools
 import logging
 import queue
 import threading
@@ -32,17 +31,6 @@ def verify_response(response: requests.Response) -> None:
         raise exceptions.ConcentUnavailableError('response is None')
 
     logger.debug('Headers received from Concent: %s', response.headers)
-    concent_version = response.headers['Concent-Golem-Messages-Version']
-    if not utils.is_version_compatible(
-            theirs=concent_version,
-            spec=gconst.GOLEM_MESSAGES_SPEC,):
-        raise exceptions.ConcentVersionMismatchError(
-            'Incompatible version',
-            ours=gconst.GOLEM_MESSAGES_VERSION,
-            theirs=concent_version,
-        )
-    if response.status_code == 200:
-        return
 
     if response.status_code % 500 < 100:
         raise exceptions.ConcentServiceError(
@@ -52,7 +40,7 @@ def verify_response(response: requests.Response) -> None:
             )
         )
 
-    if response.status_code % 400 < 100:
+    if not 200 <= response.status_code <= 299:
         logger.warning('Concent request failed with status %d and '
                        'response: %r', response.status_code, response.text)
 
@@ -63,10 +51,27 @@ def verify_response(response: requests.Response) -> None:
             )
         )
 
+    try:
+        concent_version = response.headers['Concent-Golem-Messages-Version']
+    except KeyError:
+        raise exceptions.ConcentVersionMismatchError(
+            'Unknown version',
+            ours=gconst.GOLEM_MESSAGES_VERSION,
+            theirs=None,
+        )
+    if not utils.is_version_compatible(
+            theirs=concent_version,
+            spec=gconst.GOLEM_MESSAGES_SPEC,):
+        raise exceptions.ConcentVersionMismatchError(
+            'Incompatible version',
+            ours=gconst.GOLEM_MESSAGES_VERSION,
+            theirs=concent_version,
+        )
+
 
 def send_to_concent(
         msg: message.base.Message,
-        signing_key,
+        signing_key: bytes,
         concent_variant: dict) -> typing.Optional[bytes]:
     """Sends a message to the concent server
 
@@ -92,6 +97,9 @@ def send_to_concent(
     msg.header = header
 
     logger.debug('send_to_concent(): Encrypting msg %r', msg)
+    # if signature already exists, it must be set to None explicitly
+    if msg.sig is not None:
+        msg.sig = None
     data = golem_messages.dump(msg, signing_key, concent_variant['pubkey'])
     logger.debug('send_to_concent(): data: %r', data)
     concent_post_url = urljoin(concent_variant['url'], '/api/v1/send/')

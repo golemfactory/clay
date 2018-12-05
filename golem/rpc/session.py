@@ -1,5 +1,6 @@
+import functools
 import logging
-from typing import Optional
+import typing
 
 from netaddr import IPAddress, valid_ipv4
 from autobahn.twisted import ApplicationSession
@@ -34,7 +35,7 @@ class RPCAddress(object):
         self.port = port
 
         if valid_ipv4(self.host) and IPAddress(self.host).is_loopback():
-            #IPv4 loopback address replaced with hostname
+            # IPv4 loopback address replaced with hostname
             self.host = "localhost"
 
         self.address = '{}://{}:{}'.format(self.protocol,
@@ -60,13 +61,13 @@ class WebSocketAddress(RPCAddress):
 class Session(ApplicationSession):
 
     # pylint: disable=too-many-arguments
-    def __init__(self, address, methods=None, events=None,
+    def __init__(self, address, mapping=None,
                  cert_manager=None, use_ipv6=False,
                  crsb_user=None, crsb_user_secret=None) -> None:
         self.address = address
-        self.methods = methods or []
-        self.events = events or []
-        self.subs = {}  # type: ignore
+        if mapping is None:
+            mapping = {}
+        self.mapping = mapping
 
         self.ready = Deferred()
         self.connected = False
@@ -85,6 +86,7 @@ class Session(ApplicationSession):
         super(self.__class__, self).__init__(self.config)  # type: ignore
 
     def connect(self, auto_reconnect=True):
+
         def init(proto):
             reactor.addSystemEventTrigger('before', 'shutdown', cleanup, proto)
             return proto
@@ -173,8 +175,7 @@ class Session(ApplicationSession):
 
     @inlineCallbacks
     def onJoin(self, details):
-        yield self.register_methods(self.methods)
-        yield self.register_events(self.events)
+        yield self.register_procedures(self.mapping)
         self.connected = True
         if not self.ready.called:
             self.ready.callback(details)
@@ -190,32 +191,24 @@ class Session(ApplicationSession):
         super(Session, self).onDisconnect()
 
     @inlineCallbacks
-    def add_methods(self, methods):
-        self.methods += methods
-        yield self.register_methods(methods)
+    def add_procedures(self, mapping):
+        self.mapping.update(mapping)
+        yield self.register_procedures(mapping)
 
     @inlineCallbacks
-    def register_methods(self, methods):
-        for method, rpc_name in methods:
-            deferred = self.register(method, str(rpc_name))
+    def register_procedures(self, mapping):
+        for uri, procedure in mapping.items():
+            deferred = self.register(procedure, uri)
             deferred.addErrback(self._on_error)
             yield deferred
 
-    @inlineCallbacks
-    def register_events(self, events):
-        for method, rpc_name in events:
-            deferred = self.subscribe(method, str(rpc_name))
-            deferred.addErrback(self._on_error)
-            self.subs[rpc_name] = yield deferred
-
-    @inlineCallbacks
-    def unregister_events(self, event_names):
-        for event_name in event_names:
-            if event_name in self.subs:
-                yield self.subs[event_name].unsubscribe()
-                self.subs.pop(event_name, None)
-            else:
-                logger.error("RPC: Not subscribed to: {}".format(event_name))
+    def exposed_procedures(self):
+        exposed: typing.Dict[str, str] = {}
+        for registration in self._registrations.values():
+            fn = registration.endpoint.fn
+            qname = '.'.join((fn.__module__, fn.__qualname__))
+            exposed[registration.procedure] = qname
+        return exposed
 
     def is_open(self):
         return self.connected and self.is_attached() and not self.is_closing()
@@ -225,22 +218,46 @@ class Session(ApplicationSession):
 
     @staticmethod
     def _on_error(err):
-        logger.error("RPC: Session error: {}".format(err))
+        logger.error("RPC: Session error: %r", err)
         return err
 
 
-class Client(object):
+class ClientProxy:  # pylint: disable=too-few-public-methods
+    PREFIXES: typing.Tuple[str, ...] = (
+        'golem.client.Client.',
+        'golem.node.Node.',
+    )
 
-    def __init__(self, session, method_map, timeout=2):
+    def __init__(self, session: ApplicationSession) -> None:
+        self._session: ApplicationSession = session
+        self._mapping: typing.Dict[str, str] = {}  # attribute_name, wamp_uri
 
-        self._session = session
-        self._timeout = timeout
+        if session is None:
+            self._ready = Deferred()
+            return
+        txdeferred = self._call('sys.exposed_procedures')
+        txdeferred.addCallback(self._init_mapping)
+        txdeferred.addErrback(logger.error)
+        self._ready = txdeferred
 
-        for method_name, method_alias in list(method_map.items()):
-            setattr(self, method_name, self._make_call(method_alias))
+    def __getattr__(self, name):
+        if name.startswith('_'):
+            return super().__getattr__(name)  # pylint: disable=no-member
+        if not self._ready.called:
+            raise RuntimeError("Proxy not ready yet")
+        try:
+            wamp_uri = self._mapping[name]
+        except KeyError:
+            raise AttributeError("{name} not mapped".format(name=name))
+        return functools.partial(self._call, wamp_uri)
 
-    def _make_call(self, method_alias):
-        return lambda *a, **kw: self._call(str(method_alias), *a, **kw)
+    def _init_mapping(self, result):
+        for wamp_uri, full_name in result.items():
+            for prefix in self.PREFIXES:
+                if not full_name.startswith(prefix):
+                    continue
+                short_name = full_name[len(prefix):]
+                self._mapping[short_name] = wamp_uri
 
     def _call(self, method_alias, *args, **kwargs):
         if self._session.is_open():
@@ -256,16 +273,16 @@ class Client(object):
 
     def _on_error(self, err):
         if not self._session.is_closing():
-            logger.error("RPC: call error: {}".format(err))
+            logger.error("RPC: call error: %r", err)
             return err
 
 
-class Publisher(object):
-
+class Publisher:  # pylint: disable=too-few-public-methods
     def __init__(self, session):
         self.session = session
 
-    def publish(self, event_alias, *args, **kwargs) -> Optional[Deferred]:
+    def publish(self, event_alias, *args, **kwargs) \
+            -> typing.Optional[Deferred]:
         """
         :return: deferred autobahn.wamp.request.Publication on success or None
                  if session is closing or there's an error
@@ -281,10 +298,3 @@ class Publisher(object):
             logger.warning("RPC: Cannot publish '%s', session is not yet "
                            "established", event_alias)
         return None
-
-
-def object_method_map(obj, method_map):
-    return [
-        (getattr(obj, method_name), method_alias)
-        for method_name, method_alias in list(method_map.items())
-    ]

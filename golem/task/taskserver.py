@@ -14,10 +14,10 @@ from pydispatch import dispatcher
 from twisted.internet.defer import inlineCallbacks
 
 from apps.appsmanager import AppsManager
-from apps.core.task.coretask import CoreTask, AcceptClientVerdict
+from apps.core.task.coretask import CoreTask
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
-from golem.core.common import node_info_str
+from golem.core.common import node_info_str, short_node_id
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.p2p import node as p2p_node
 from golem.network.transport.network import ProtocolFactory, SessionFactory
@@ -28,10 +28,10 @@ from golem.network.transport.tcpserver import (
 from golem.ranking.helper.trust import Trust
 from golem.task.acl import get_acl
 from golem.task.benchmarkmanager import BenchmarkManager
-from golem.task.taskbase import TaskHeader, Task
+from golem.task.taskbase import TaskHeader, Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
-from golem.utils import decode_hex, pubkeytoaddr
+from golem.utils import decode_hex
 
 from . import exceptions
 from .result.resultmanager import ExtractedPackage
@@ -43,7 +43,7 @@ from .taskmanager import TaskManager
 from .tasksession import TaskSession
 
 
-logger = logging.getLogger('golem.task.taskserver')
+logger = logging.getLogger(__name__)
 
 tmp_cycler = itertools.cycle(list(range(550)))
 
@@ -72,12 +72,9 @@ class TaskServer(
             min_price=config_desc.min_price,
             task_archiver=task_archiver)
         self.task_manager = TaskManager(
-            config_desc.node_name,
             self.node,
             self.keys_auth,
             root_path=TaskServer.__get_task_manager_root(client.datadir),
-            use_distributed_resources=config_desc.
-            use_distributed_resource_management,
             tasks_dir=os.path.join(client.datadir, 'tasks'),
             apps_manager=apps_manager,
             finished_cb=task_finished_cb,
@@ -250,20 +247,12 @@ class TaskServer(
 
     def send_results(self, subtask_id, task_id, result):
 
-        if 'data' not in result or 'result_type' not in result:
+        if 'data' not in result:
             raise AttributeError("Wrong result format")
 
         header = self.task_keeper.task_headers[task_id]
 
         if subtask_id not in self.results_to_send:
-            value = self.task_manager.comp_task_keeper.get_value(task_id)
-            self.client.transaction_system.expect_income(
-                sender_node=header.task_owner.key,
-                subtask_id=subtask_id,
-                payer_address=pubkeytoaddr(header.task_owner.key),
-                value=value,
-            )
-
             delay_time = 0.0
             last_sending_trial = 0
 
@@ -271,7 +260,6 @@ class TaskServer(
                 task_id=task_id,
                 subtask_id=subtask_id,
                 result=result['data'],
-                result_type=result['result_type'],
                 last_sending_trial=last_sending_trial,
                 delay_time=delay_time,
                 owner=header.task_owner)
@@ -289,7 +277,7 @@ class TaskServer(
         task_result_manager = self.task_manager.task_result_manager
 
         wtr.result_secret = task_result_manager.gen_secret()
-        result = task_result_manager.create(self.node, wtr, wtr.result_secret)
+        result = task_result_manager.create(wtr, wtr.result_secret)
         (
             wtr.result_hash,
             wtr.result_path,
@@ -421,9 +409,6 @@ class TaskServer(
         PendingConnectionsServer.change_config(self, config_desc)
         self.config_desc = config_desc
         self.last_message_time_threshold = config_desc.task_session_timeout
-        self.task_manager.change_config(
-            self.__get_task_manager_root(self.client.datadir),
-            config_desc.use_distributed_resource_management)
         self.task_keeper.change_config(config_desc)
         return self.task_computer.change_config(
             config_desc, run_benchmarks=run_benchmarks)
@@ -435,28 +420,28 @@ class TaskServer(
         """My (providers) results were rejected"""
         logger.debug("Subtask %r result rejected", subtask_id)
         self.task_result_sent(subtask_id)
-        task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(
-            subtask_id)
-        if task_id is None:
-            logger.warning("Not my subtask rejected %r", subtask_id)
-            return
 
-        self.client.transaction_system.reject_income(
-            sender_node_id,
-            subtask_id,
-        )
-        self.decrease_trust_payment(task_id)
+        self.decrease_trust_payment(sender_node_id)
         # self.remove_task_header(task_id)
         # TODO Inform transaction system and task manager about rejected
         # subtask. Issue #2405
 
-    def subtask_accepted(self, sender_node_id, subtask_id, accepted_ts):
+    # pylint:disable=too-many-arguments
+    def subtask_accepted(
+            self,
+            sender_node_id: str,
+            subtask_id: str,
+            payer_address: str,
+            value: int,
+            accepted_ts: int):
         """My (providers) results were accepted"""
         logger.debug("Subtask %r result accepted", subtask_id)
         self.task_result_sent(subtask_id)
-        self.client.transaction_system.accept_income(
+        self.client.transaction_system.expect_income(
             sender_node_id,
             subtask_id,
+            payer_address,
+            value,
             accepted_ts,
         )
 
@@ -473,18 +458,13 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def accept_result(self, subtask_id, key_id, eth_address: str):
+    def accept_result(self, subtask_id, key_id, eth_address: str, value: int):
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
             self.max_trust)
         Trust.COMPUTED.increase(key_id, mod)
 
         task_id = self.task_manager.get_task_id(subtask_id)
-        value = self.task_manager.get_value(subtask_id)
-
-        if not value:
-            logger.info("Invaluable subtask: %r value: %r", subtask_id, value)
-            return
 
         payment_processed_ts = self.client.transaction_system.add_payment_info(
             subtask_id,
@@ -496,16 +476,11 @@ class TaskServer(
                      subtask_id, payment_processed_ts)
         return payment_processed_ts
 
-    def income_listener(self, event='default', subtask_id=None, **_kwargs):
-        task_id = self.task_manager.comp_task_keeper.get_task_id_for_subtask(
-            subtask_id)
-        if not task_id:
-            return
-
+    def income_listener(self, event='default', node_id=None, **_kwargs):
         if event == 'confirmed':
-            self.increase_trust_payment(task_id)
+            self.increase_trust_payment(node_id)
         elif event == 'overdue_single':
-            self.decrease_trust_payment(task_id)
+            self.decrease_trust_payment(node_id)
 
     def finished_task_listener(self, event='default', task_id=None, op=None,
                                **_kwargs):
@@ -517,14 +492,10 @@ class TaskServer(
         self.client.p2pservice.remove_task(task_id)
         self.client.funds_locker.remove_task(task_id)
 
-    def increase_trust_payment(self, task_id):
-        node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
-            task_id)
+    def increase_trust_payment(self, node_id: str):
         Trust.PAYMENT.increase(node_id, self.max_trust)
 
-    def decrease_trust_payment(self, task_id):
-        node_id = self.task_manager.comp_task_keeper.get_node_for_task_id(
-            task_id)
+    def decrease_trust_payment(self, node_id: str):
         Trust.PAYMENT.decrease(node_id, self.max_trust)
 
     def reject_result(self, subtask_id, key_id):
@@ -680,10 +651,11 @@ class TaskServer(
     def should_accept_requestor(self, node_id):
         allowed, reason = self.acl.is_allowed(node_id)
         if not allowed:
-            logger.info(f'requestor {reason}; {node_id}')
+            short_id = short_node_id(node_id)
+            logger.info('requestor %s. node=%s', reason, short_id)
             return SupportStatus.err({UnsupportReason.DENY_LIST: node_id})
         trust = self.client.get_requesting_trust(node_id)
-        logger.debug("Requesting trust level: {}".format(trust))
+        logger.debug("Requesting trust level: %r", trust)
         if trust >= self.config_desc.requesting_trust:
             return SupportStatus.ok()
         else:
@@ -708,8 +680,6 @@ class TaskServer(
         self.cur_port = port
         logger.info(" Port {} opened - listening".format(self.cur_port))
         self.node.prv_port = self.cur_port
-        self.task_manager.listen_address = self.node.prv_addr
-        self.task_manager.listen_port = self.cur_port
         self.task_manager.node = self.node
 
     def _listening_failure(self, **kwargs):
@@ -900,22 +870,22 @@ class TaskServer(
             session: TaskSession,
             conn_id,
             extracted_package: ExtractedPackage,
-            key_id):
+            key_id,
+            subtask_id: str):
 
-        extra_data = extracted_package.to_extra_data()
+        full_path_files = extracted_package.get_full_path_files()
         self.new_session_prepare(
             session=session,
-            subtask_id=extra_data.get('subtask_id'),
+            subtask_id=subtask_id,
             key_id=key_id,
             conn_id=conn_id,
         )
 
         session.send_hello()
-        session.result_received(extra_data)
+        session.result_received(subtask_id, full_path_files)
 
     def __connection_for_task_verification_result_failure(  # noqa pylint:disable=no-self-use
-            self, conn_id, extracted_package, key_id):
-        subtask_id = extracted_package.to_extra_data().get('subtask_id')
+            self, _conn_id, _extracted_package, key_id, subtask_id: str):
         logger.warning("Failed to establish a session to deliver "
                        "the verification result for %s to the provider %s",
                        subtask_id, key_id)
@@ -1016,6 +986,7 @@ class TaskServer(
         kwargs = {
             'extracted_package': extracted_package,
             'key_id': report_computed_task.key_id,
+            'subtask_id': report_computed_task.subtask_id,
         }
 
         node = p2p_node.Node.from_dict(report_computed_task.node_info)
@@ -1081,7 +1052,7 @@ class TaskServer(
 #       and remove linter switch offs
 # pylint: disable=too-many-arguments, too-many-locals
 class WaitingTaskResult(object):
-    def __init__(self, task_id, subtask_id, result, result_type,
+    def __init__(self, task_id, subtask_id, result,
                  last_sending_trial, delay_time, owner, result_path=None,
                  result_hash=None, result_secret=None, package_sha1=None,
                  result_size=None, package_path=None):
@@ -1093,7 +1064,6 @@ class WaitingTaskResult(object):
         self.owner = owner
 
         self.result = result
-        self.result_type = result_type
         self.result_path = result_path
         self.result_hash = result_hash
         self.result_secret = result_secret

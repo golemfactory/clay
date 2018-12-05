@@ -1,4 +1,5 @@
 import uuid
+import tempfile
 
 from golem_messages.message import ComputeTaskDef
 import os
@@ -20,14 +21,13 @@ from apps.blender.task.blenderrendertask import (BlenderDefaults,
                                                  BlenderTaskTypeInfo,
                                                  PreviewUpdater,
                                                  logger)
-from apps.core.task.coretask import AcceptClientVerdict
 from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
     RenderingTaskDefinition)
 from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import ResultType
+from golem.task.taskbase import AcceptClientVerdict
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -117,7 +117,7 @@ class TestBlenderFrameTask(TempDirFixture):
         self.assertEqual(len(self.bt.preview_task_file_path),
                          len(self.bt.frames))
 
-    @mock.patch('apps.blender.verification_task.deadline_to_timeout')
+    @mock.patch('apps.core.verification_task.deadline_to_timeout')
     def test_computation_failed_or_finished(self, mock_dtt):
         mock_dtt.return_value = 1.0
         assert self.bt.total_tasks == 6
@@ -129,8 +129,7 @@ class TestBlenderFrameTask(TempDirFixture):
         assert extra_data2.ctd is not None
 
         self.bt.computation_failed(extra_data1.ctd['subtask_id'])
-        self.bt.computation_finished(extra_data1.ctd['subtask_id'], [],
-                                     ResultType.DATA)
+        self.bt.computation_finished(extra_data1.ctd['subtask_id'], [])
         assert self.bt.subtasks_given[extra_data1.ctd['subtask_id']][
             'status'] == \
             SubtaskStatus.failure
@@ -164,7 +163,6 @@ class TestBlenderFrameTask(TempDirFixture):
             self.bt.computation_finished(
                 extra_data3.ctd['subtask_id'],
                 [file1],
-                ResultType.FILES,
                 lambda: None)
             assert self.bt.subtasks_given[extra_data3.ctd['subtask_id']][
                 'status'] == SubtaskStatus.finished
@@ -196,7 +194,6 @@ class TestBlenderFrameTask(TempDirFixture):
             self.bt.computation_finished(
                 extra_data4.ctd['subtask_id'],
                 [file2],
-                ResultType.FILES,
                 lambda: None)
             assert self.bt.subtasks_given[extra_data4.ctd['subtask_id']][
                 'status'] == SubtaskStatus.finished
@@ -637,9 +634,29 @@ class TestPreviewUpdater(TempDirFixture, LogTestCase):
 
 class TestBlenderRenderTaskBuilder(TempDirFixture):
 
+    @property
+    def _task_dictionary(self):
+        return {
+            'type': "Blender",
+            'name': 'test task',
+            'timeout': "0:10:00",
+            "subtask_timeout": "0:09:50",
+            "subtasks_count": 1,
+            "bid": 1.0,
+            "resources": [tempfile.mkstemp('.blend')[1]],
+            "options": {
+                "output_path": '',
+                "format": "PNG",
+                "resolution": [
+                    320,
+                    240
+                ]
+            }
+        }
+
     def test_build(self):
         definition = RenderingTaskDefinition()
-        definition.total_subtasks = 1
+        definition.subtasks_count = 1
         definition.options = BlenderRendererOptions()
         builder = BlenderRenderTaskBuilder(
             owner=Node(),
@@ -648,6 +665,23 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
                 self.tempdir))
         blender_task = builder.build()
         self.assertIsInstance(blender_task, BlenderRenderTask)
+
+    def test_build_correct_format(self):
+        task_type = BlenderTaskTypeInfo()
+        task_dict = self._task_dictionary
+        output_format = task_dict.get('options').get('format')
+        definition = BlenderRenderTaskBuilder.build_full_definition(
+            task_type, task_dict)
+        self.assertEqual(definition.output_format, output_format)
+
+    def test_build_unsupported_format(self):
+        task_type = BlenderTaskTypeInfo()
+        task_dict = self._task_dictionary
+        output_format = 'JPG'
+        task_dict['options']['format'] = output_format
+        definition = BlenderRenderTaskBuilder.build_full_definition(
+            task_type, task_dict)
+        self.assertEqual(definition.output_format, 'PNG')
 
 
 class TestHelpers(unittest.TestCase):

@@ -18,7 +18,7 @@ from semantic_version import Version
 
 import golem
 from golem.core import common
-from golem.core.async import AsyncRequest, async_run
+from golem.core import golem_async
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.p2p.node import Node
@@ -55,32 +55,21 @@ class WrongOwnerException(Exception):
 class CompTaskInfo:
     def __init__(self, header: TaskHeader, price: int):
         self.header = header
-        self._price, self.subtask_price = 0, 0  # lints and typing
-        self.price = price
+        # subtask_price is total amount that will be payed
+        # for subtask of this task
+        self.subtask_price = compute_subtask_value(
+            price,
+            self.header.subtask_timeout,
+        )
         self.requests = 1
-        self.subtasks = {}
+        self.subtasks: dict = {}
         # TODO Add concent communication timeout. Issue #2406
         self.keeping_deadline = comp_task_info_keeping_timeout(
             self.header.subtask_timeout, self.header.resource_size)
 
-    @property
-    def price(self) -> int:
-        return self._price
-
-    @price.setter
-    def price(self, value: int):
-        self._price = value
-        # subtask_price is total amount that will be payed
-        # for subtask of this task
-        self.subtask_price = compute_subtask_value(
-            value,
-            self.header.subtask_timeout,
-        )
-
     def __repr__(self):
-        return "<CompTaskInfo(%r, %r) reqs: %r>" % (
+        return "<CompTaskInfo(%r) reqs: %r>" % (
             self.header,
-            self.price,
             self.requests
         )
 
@@ -145,7 +134,7 @@ class CompTaskKeeper:
     def dump(self):
         if not self.persist:
             return
-        async_run(AsyncRequest(self._dump_tasks))
+        golem_async.async_run(golem_async.AsyncRequest(self._dump_tasks))
 
     def _dump_tasks(self):
         logger.debug('COMPTASK DUMP: %s', self.dump_path)
@@ -256,17 +245,12 @@ class CompTaskKeeper:
             return False
         return True
 
-    def get_task_id_for_subtask(self, subtask_id):
+    def get_task_id_for_subtask(self, subtask_id: str) -> typing.Optional[str]:
         return self.subtask_to_task.get(subtask_id)
 
     @handle_key_error
-    def get_node_for_task_id(self, task_id):
+    def get_node_for_task_id(self, task_id) -> typing.Optional[str]:
         return self.active_tasks[task_id].header.task_owner.key
-
-    @handle_key_error
-    def get_value(self, task_id: str) -> int:
-        comp_task_info: CompTaskInfo = self.active_tasks[task_id]
-        return comp_task_info.subtask_price
 
     def check_task_owner_by_subtask(self, task_owner_key_id, subtask_id):
         task_id = self.subtask_to_task.get(subtask_id)

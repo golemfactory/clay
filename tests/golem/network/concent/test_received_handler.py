@@ -338,6 +338,7 @@ class ForceGetTaskResultTest(TaskServerMessageHandlerTestBase):
     @mock.patch('golem.task.taskmanager.TaskManager.task_computation_failure')
     def test_force_get_task_result_failed(self, tcf):
         fgtrf = msg_factories.concents.ForceGetTaskResultFailedFactory()
+        fgtrf._fake_sign()
         library.interpret(fgtrf)
 
         msg = history.MessageHistoryService.get_sync_as_message(
@@ -400,9 +401,11 @@ class ForceSubtaskResultsResponseTest(TaskServerMessageHandlerTestBase):
             ForceSubtaskResultsResponseFactory.with_accepted()
 
         library.interpret(msg)
-        self.client.transaction_system.accept_income.assert_called_once_with(
+        self.client.transaction_system.expect_income.assert_called_once_with(
             msg.task_to_compute.requestor_id,
             msg.subtask_id,
+            msg.task_to_compute.requestor_ethereum_address,
+            msg.task_to_compute.price,
             msg.subtask_results_accepted.payment_ts,
         )
 

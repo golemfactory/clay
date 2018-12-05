@@ -8,7 +8,6 @@ import requests
 
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob
-from golem.task.taskbase import ResultType
 from golem.task.taskthread import TaskThread, JobException, TimeoutException
 from golem.vm.memorychecker import MemoryChecker
 
@@ -72,7 +71,6 @@ class DockerTaskThread(TaskThread):
                  docker_images: List[Union[DockerImage, Dict, Tuple]],
                  src_code: str,
                  extra_data: Dict,
-                 short_desc: str,
                  dir_mapping: DockerDirMapping,
                  timeout: int,
                  check_mem: bool = False) -> None:
@@ -81,7 +79,7 @@ class DockerTaskThread(TaskThread):
             raise AttributeError("docker images is None")
         super(DockerTaskThread, self).__init__(
             subtask_id, src_code, extra_data,
-            short_desc, dir_mapping.resources, dir_mapping.temporary,
+            dir_mapping.resources, dir_mapping.temporary,
             timeout)
 
         # Find available image
@@ -174,7 +172,6 @@ class DockerTaskThread(TaskThread):
         ]
         self.result = {
             "data": out_files,
-            "result_type": ResultType.FILES,
         }
         if estm_mem is not None:
             self.result = (self.result, estm_mem)

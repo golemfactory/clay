@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 class TestVerifyResponse(TestCase):
     def setUp(self):
         self.response = requests.Response()
+        self.response.status_code = 200
         self.response.headers['Concent-Golem-Messages-Version'] = \
             golem_messages.__version__
 
@@ -43,8 +44,31 @@ class TestVerifyResponse(TestCase):
         with self.assertRaises(exceptions.ConcentServiceError):
             client.verify_response(self.response)
 
+    def test_message_server_199(self):
+        self.response.status_code = 199
+        with self.assertRaises(exceptions.ConcentRequestError):
+            client.verify_response(self.response)
+
+    def test_message_server_200(self):
+        self.response.status_code = 200
+        client.verify_response(self.response)
+
+    def test_message_server_299(self):
+        self.response.status_code = 299
+        client.verify_response(self.response)
+
+    def test_message_server_300(self):
+        self.response.status_code = 300
+        with self.assertRaises(exceptions.ConcentRequestError):
+            client.verify_response(self.response)
+
     def test_version_mismatch(self):
         self.response.headers['Concent-Golem-Messages-Version'] = 'dummy'
+        with self.assertRaises(exceptions.ConcentVersionMismatchError):
+            client.verify_response(self.response)
+
+    def test_no_version(self):
+        del self.response.headers['Concent-Golem-Messages-Version']
         with self.assertRaises(exceptions.ConcentVersionMismatchError):
             client.verify_response(self.response)
 
@@ -101,6 +125,24 @@ class TestSendToConcent(TestCase):
             concent_variant=self.variant,
         )
         verify_mock.assert_called_once_with(response)
+
+    def test_sending_same_message_twice_does_not_raise(self, post_mock):
+        response = requests.Response()
+        response.headers['Concent-Golem-Messages-Version'] = \
+            golem_messages.__version__
+        response.status_code = 200
+        post_mock.return_value = response
+
+        self.msg.sign_message(self.private_key)
+        try:
+            client.send_to_concent(
+                msg=self.msg,
+                signing_key=self.private_key,
+                concent_variant=self.variant,
+            )
+        except golem_messages.exceptions.SignatureAlreadyExists:
+            self.fail("Already existing signature should be cleared"
+                      " in `send_to_concent` function!")
 
     @mock.patch('golem.network.concent.client.verify_response')
     def test_delayed_timestamp(self, *_):
@@ -451,6 +493,7 @@ class OverdueIncomeTestCase(testutils.DatabaseFixture):
         local_role = history.Actor.Provider
         remote_role = history.Actor.Requestor
         for msg in (sra1, sra2):
+            msg._fake_sign()
             history.add(
                 msg=msg,
                 node_id='requestor_id',
@@ -463,10 +506,6 @@ class OverdueIncomeTestCase(testutils.DatabaseFixture):
                 subtask_id=msg.subtask_id,
                 payer_address='0x1234',
                 value=msg.task_to_compute.price,  # pylint: disable=no-member
-            )
-            self.incomes_keeper.update_awaiting(
-                sender_node='requestor_id',
-                subtask_id=msg.subtask_id,
                 accepted_ts=msg.payment_ts,
             )
         self.incomes_keeper.update_overdue_incomes()

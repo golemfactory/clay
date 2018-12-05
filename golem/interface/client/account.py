@@ -17,7 +17,7 @@ MIN_SCORE = 2
 
 @group(help="Manage account")
 class Account:
-    client = None  # type: 'golem.rpc.session.Client'
+    client = None
 
     amount_arg = Argument('amount', help='Amount to withdraw, eg 1.45')
     address_arg = Argument('destination', help='Address to send the funds to')
@@ -143,6 +143,9 @@ def _fmt(value: int, unit: str = "GNT") -> str:
 
 
 def _fmt_deposit(deposit_balance):
+    if not deposit_balance:
+        return None
+
     deposit_balance['value'] = _fmt(int(deposit_balance['value']))
     if deposit_balance['status'] == 'unlocking':
         locked_until = datetime.datetime.utcfromtimestamp(
