@@ -131,6 +131,18 @@ class TestClient(TestClientBase):
     # this may completely break. Issue #2456
     # pylint: disable=attribute-defined-outside-init
 
+    def test_get_gas_price(self, *_):
+        test_gas_price = 1234
+        test_price_limit = 12345
+        ets = self.client.transaction_system
+        ets.gas_price = test_gas_price
+        ets.gas_price_limit = test_price_limit
+
+        result = self.client.get_gas_price()
+
+        assert result["current_gas_price"] == str(test_gas_price)
+        assert result["gas_price_limit"] == str(test_price_limit)
+
     def test_get_payments(self, *_):
         ets = self.client.transaction_system
         assert self.client.get_payments_list() == \
