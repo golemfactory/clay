@@ -8,11 +8,9 @@ from multiprocessing import cpu_count
 
 
 BLENDER_COMMAND = "blender"
-# FIXME WORK_DIR shoudn't be hardcoded here if it's set in Dockerfile
-WORK_DIR = '/golem/work'
 
 
-with open('{}/params.json'.format(WORK_DIR), 'r') as params_file:
+with open('params.json', 'r') as params_file:
     params = json.load(params_file)
 
 
@@ -49,7 +47,7 @@ def run_blender_task(outfilebasename, scene_file, script_src, start_task,
               file=sys.stderr)
         sys.exit(1)
 
-    blender_script_path = "{}/blenderscript.py".format(WORK_DIR)
+    blender_script_path = "blenderscript.py"
     with open(blender_script_path, "w") as script_file:
         script_file.write(script_src)
 

@@ -5,7 +5,7 @@ import json
 import os
 
 
-with open('/golem/work/params.json', 'r') as params_file:
+with open('params.json', 'r') as params_file:
     params = json.load(params_file)
 
 
