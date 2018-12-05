@@ -286,7 +286,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task = self.task
         task.total_tasks = 10
         task.last_task = 10
-        assert task._get_next_task() == None
+        assert task._get_next_task() is None
 
     def test_put_collected_files_together(self):
         output_name = self.temp_file_name("output.exr")
