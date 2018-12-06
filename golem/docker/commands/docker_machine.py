@@ -15,6 +15,7 @@ class DockerMachineCommandHandler(DockerCommandHandler):
         inspect=['docker-machine', 'inspect'],
         regenerate_certs=['docker-machine', 'regenerate-certs', '--force'],
         restart=['docker-machine', 'restart'],
+        execute=['docker-machine', 'ssh'],
     )
 
     commands.update(DockerCommandHandler.commands)
