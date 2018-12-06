@@ -3,7 +3,7 @@ import subprocess
 
 from pathlib import Path
 from unittest import TestCase
-from unittest.mock import Mock, patch
+from unittest.mock import Mock, patch, ANY
 
 from os_win.exceptions import OSWinException
 
@@ -171,3 +171,29 @@ class TestHyperVHypervisor(TestCase):
     def test_get_hostname_for_sharing_error(self):
         with self.assertRaises(RuntimeError):
             self.hyperv._get_hostname_for_sharing()
+
+    @patch(PATCH_BASE + '.os.environ', {'COMPUTERNAME': 'foo'})
+    @patch(PATCH_BASE + '.logger')
+    @patch('golem.docker.commands.docker.DockerCommandHandler._command')
+    def test_check_smb_port_ok(self, command, logger):
+        command.return_value = 'OK'
+        with patch.object(self.hyperv, 'SMB_PORT', "123"):
+            self.hyperv._check_smb_port()
+
+        command.assert_called_once_with(
+            ['docker-machine', 'ssh'],
+            None,
+            [self.hyperv._vm_name, ANY],
+            False
+        )
+        self.assertIn("foo 123", command.call_args[0][2][1])
+        logger.error.assert_not_called()
+
+    @patch(PATCH_BASE + '.os.environ', {'COMPUTERNAME': 'foo'})
+    @patch(PATCH_BASE + '.logger')
+    @patch('golem.docker.commands.docker.DockerCommandHandler._command')
+    def test_check_smb_port_error(self, command, logger):
+        command.return_value = 'Error'
+        self.hyperv._check_smb_port()
+        command.assert_called_once()
+        logger.error.assert_called_once()
