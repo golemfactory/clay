@@ -127,13 +127,8 @@ class Client(HardwarePresetsMixin):
                           keys_auth.key_id),
             datadir
         )
+
         self.db = database
-
-        # Hardware configuration
-        HardwarePresets.initialize(self.datadir)
-        HardwarePresets.update_config(self.config_desc.hardware_preset_name,
-                                      self.config_desc)
-
         self.keys_auth = keys_auth
 
         # NETWORK
