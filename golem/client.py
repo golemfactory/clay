@@ -350,6 +350,10 @@ class Client(HardwarePresetsMixin):
             task_finished_cb=self._task_finished_cb,
         )
 
+        # Pause p2p and task sessions to prevent receiving messages before
+        # the node is ready
+        self.pause()
+
         monitoring_publisher_service = MonitoringPublisherService(
             self.task_server,
             interval_seconds=max(
@@ -395,6 +399,8 @@ class Client(HardwarePresetsMixin):
             keys_auth=self.keys_auth,
             client=self
         )
+
+        logger.info("Restoring resources ...")
         self.task_server.restore_resources()
 
         # Start service after restore_resources() to avoid race conditions
@@ -453,6 +459,9 @@ class Client(HardwarePresetsMixin):
 
         gatherResults([p2p, task], consumeErrors=True).addCallbacks(connect,
                                                                     terminate)
+
+        self.resume()
+
         logger.info("Starting p2p server ...")
         self.p2pservice.task_server = self.task_server
         self.p2pservice.set_resource_server(self.resource_server)
