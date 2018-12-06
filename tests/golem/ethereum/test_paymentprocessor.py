@@ -1,5 +1,6 @@
 # pylint: disable=protected-access
 import random
+import time
 import uuid
 import unittest
 import unittest.mock as mock
@@ -121,18 +122,6 @@ class PaymentProcessorInternalTest(DatabaseFixture):
     def test_recipients_count(self):
         assert self.pp.recipients_count == 0
 
-    def test_add_invalid_payment_status(self):
-        a1 = urandom(20)
-        p1 = Payment.create(
-            subtask="p1",
-            payee=a1,
-            value=1,
-            status=PaymentStatus.confirmed)
-        assert p1.status is PaymentStatus.confirmed
-
-        with self.assertRaises(RuntimeError):
-            self.pp.add(p1)
-
     def test_monitor_progress(self):
         balance_eth = 1 * denoms.ether
         balance_gntb = 99 * denoms.ether
@@ -146,8 +135,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         assert self.pp.recipients_count == 0
 
         gnt_value = 10**17
-        p = Payment.create(subtask="p1", payee=urandom(20), value=gnt_value)
-        self.pp.add(p)
+        self.pp.add("test_subtask_id", encode_hex(urandom(20)), gnt_value)
         assert self.pp.reserved_gntb == gnt_value
         assert self.pp.recipients_count == 1
 
@@ -171,13 +159,10 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         })
         with mock.patch('golem.ethereum.paymentprocessor.threads') as threads:
             self.sci.on_transaction_confirmed.call_args[0][1](receipt)
-            threads.deferToThread.assert_called_once_with(
-                self.pp._on_batch_confirmed,
-                [p],
-                receipt,
-            )
-            self.pp._on_batch_confirmed([p], receipt)
+            threads.deferToThread.call_args[0][0](
+                *threads.deferToThread.call_args[0][1:])
 
+        p = Payment.get()
         self.assertEqual(p.status, PaymentStatus.confirmed)
         self.assertEqual(p.details.block_number, tx_block_number)
         self.assertEqual(p.details.block_hash, 64 * 'f')
@@ -191,8 +176,7 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         self.sci.get_gntb_balance.return_value = balance_gntb
 
         gnt_value = 10**17
-        p = Payment.create(subtask="p1", payee=urandom(20), value=gnt_value)
-        self.pp.add(p)
+        self.pp.add("test_subtask_id", encode_hex(urandom(20)), gnt_value)
 
         self.pp.CLOSURE_TIME_DELAY = 0
         tx_hash = '0xdead'
@@ -209,38 +193,32 @@ class PaymentProcessorInternalTest(DatabaseFixture):
         })
         with mock.patch('golem.ethereum.paymentprocessor.threads') as threads:
             self.sci.on_transaction_confirmed.call_args[0][1](receipt)
-            threads.deferToThread.assert_called_once_with(
-                self.pp._on_batch_confirmed,
-                [p],
-                receipt,
-            )
-            self.pp._on_batch_confirmed([p], receipt)
-        self.assertEqual(p.status, PaymentStatus.awaiting)
+            threads.deferToThread.call_args[0][0](
+                *threads.deferToThread.call_args[0][1:])
+        assert self.pp.reserved_gntb == gnt_value
         assert len(self.pp._awaiting) == 1
 
     def test_payment_timestamp(self):
         self.sci.get_eth_balance.return_value = denoms.ether
 
         ts = 7000000
-        p = Payment.create(subtask="p1", payee=urandom(20), value=1)
         with freeze_time(timestamp_to_datetime(ts)):
-            self.pp.add(p)
-        self.assertEqual(ts, p.processed_ts)
+            processed_ts = self.pp.add(
+                "test_subtask_id",
+                encode_hex(urandom(20)),
+                1,
+            )
+        self.assertEqual(ts, processed_ts)
 
-        new_ts = 900000
-        with freeze_time(timestamp_to_datetime(new_ts)):
-            self.pp.add(p)
-        self.assertEqual(ts, p.processed_ts)
 
-
-def make_awaiting_payment(value=None, ts=None):
-    p = mock.Mock()
-    p.status = PaymentStatus.awaiting
-    p.payee = urandom(20)
-    p.value = value if value else random.randint(1, 10)
-    p.subtask = '123'
-    p.processed_ts = ts
-    return p, golem_sci.Payment(encode_hex(p.payee), p.value)
+def _add_payment(pp, value=None, ts=None):
+    payee = encode_hex(urandom(20))
+    value = value if value else random.randint(1, 10)
+    if not ts:
+        ts = int(time.time())
+    with freeze_time(timestamp_to_datetime(ts)):
+        pp.add(uuid.uuid4(), payee, value)
+    return golem_sci.Payment(payee, value)
 
 
 class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
@@ -288,10 +266,8 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
 
         ts1 = 1230000
         ts2 = ts1 + 2 * deadline
-        p1, scip1 = make_awaiting_payment(ts=ts1)
-        p2, scip2 = make_awaiting_payment(ts=ts2)
-        self.pp.add(p1)
-        self.pp.add(p2)
+        scip1 = _add_payment(self.pp, ts=ts1)
+        scip2 = _add_payment(self.pp, ts=ts2)
 
         with freeze_time(timestamp_to_datetime(ts1 + deadline - 1)):
             assert not self.pp.sendout()
@@ -320,15 +296,9 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.get_gnt_balance.return_value = 0
         self.sci.get_gntb_balance.return_value = 1000 * denoms.ether
 
-        p1, scip1 = make_awaiting_payment()
-        p2, scip2 = make_awaiting_payment()
-        p5, scip5 = make_awaiting_payment()
-        with freeze_time(timestamp_to_datetime(1000000)):
-            self.pp.add(p1)
-        with freeze_time(timestamp_to_datetime(2000000)):
-            self.pp.add(p2)
-        with freeze_time(timestamp_to_datetime(5000000)):
-            self.pp.add(p5)
+        scip1 = _add_payment(self.pp, ts=1000000)
+        scip2 = _add_payment(self.pp, ts=2000000)
+        scip5 = _add_payment(self.pp, ts=5000000)
 
         closure_time = 2000000
         time_value = closure_time + self.pp.CLOSURE_TIME_DELAY
@@ -361,12 +331,9 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.get_gntb_balance.return_value = 4 * denoms.ether
         self.pp.CLOSURE_TIME_DELAY = 0
 
-        p1, scip1 = make_awaiting_payment(value=1 * denoms.ether, ts=1)
-        p2, scip2 = make_awaiting_payment(value=2 * denoms.ether, ts=2)
-        p5, scip5 = make_awaiting_payment(value=5 * denoms.ether, ts=3)
-        self.pp.add(p1)
-        self.pp.add(p2)
-        self.pp.add(p5)
+        scip1 = _add_payment(self.pp, value=1 * denoms.ether, ts=1)
+        scip2 = _add_payment(self.pp, value=2 * denoms.ether, ts=2)
+        scip5 = _add_payment(self.pp, value=5 * denoms.ether, ts=3)
 
         with freeze_time(timestamp_to_datetime(10000)):
             self.pp.sendout(0)
@@ -391,12 +358,9 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         ts1 = 1000
         ts2 = 2000
 
-        p1, scip1 = make_awaiting_payment(value=1 * denoms.ether, ts=ts1)
-        p2, scip2 = make_awaiting_payment(value=2 * denoms.ether, ts=ts2)
-        p5, scip5 = make_awaiting_payment(value=5 * denoms.ether, ts=ts2)
-        self.pp.add(p1)
-        self.pp.add(p2)
-        self.pp.add(p5)
+        scip1 = _add_payment(self.pp, value=1 * denoms.ether, ts=ts1)
+        scip2 = _add_payment(self.pp, value=2 * denoms.ether, ts=ts2)
+        scip5 = _add_payment(self.pp, value=5 * denoms.ether, ts=ts2)
 
         with freeze_time(timestamp_to_datetime(10000)):
             self.pp.sendout(0)
@@ -420,12 +384,9 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.get_gntb_balance.return_value = 1000 * denoms.ether
         self.pp.CLOSURE_TIME_DELAY = 0
 
-        p1, scip1 = make_awaiting_payment(value=1, ts=1)
-        p2, scip2 = make_awaiting_payment(value=2, ts=2)
-        p5, scip5 = make_awaiting_payment(value=5, ts=3)
-        self.pp.add(p1)
-        self.pp.add(p2)
-        self.pp.add(p5)
+        scip1 = _add_payment(self.pp, value=1, ts=1)
+        scip2 = _add_payment(self.pp, value=2, ts=2)
+        scip5 = _add_payment(self.pp, value=5, ts=3)
 
         with freeze_time(timestamp_to_datetime(10000)):
             self.pp.sendout(0)
@@ -448,12 +409,9 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.sci.get_gntb_balance.return_value = 1000 * denoms.ether
         self.pp.CLOSURE_TIME_DELAY = 0
 
-        p1, _ = make_awaiting_payment(value=1, ts=300000)
-        p2, scip2 = make_awaiting_payment(value=2, ts=200000)
-        p3, scip3 = make_awaiting_payment(value=3, ts=100000)
-        self.pp.add(p1)
-        self.pp.add(p2)
-        self.pp.add(p3)
+        _add_payment(self.pp, value=1, ts=300000)
+        scip2 = _add_payment(self.pp, value=2, ts=200000)
+        scip3 = _add_payment(self.pp, value=3, ts=100000)
 
         with freeze_time(timestamp_to_datetime(200000)):
             self.pp.sendout(0)
@@ -466,8 +424,7 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
         self.pp.CLOSURE_TIME_DELAY = 0
 
         ts = 100000
-        p, scip = make_awaiting_payment(value=1, ts=ts)
-        self.pp.add(p)
+        scip = _add_payment(self.pp, value=1, ts=ts)
         self.sci.batch_transfer.side_effect = Exception
 
         with freeze_time(timestamp_to_datetime(ts)):
@@ -490,10 +447,8 @@ class InteractionWithSmartContractInterfaceTest(DatabaseFixture):
             self.pp.BLOCK_GAS_LIMIT_RATIO
         self.pp.CLOSURE_TIME_DELAY = 0
 
-        p1, scip1 = make_awaiting_payment(value=1, ts=1)
-        p2, _ = make_awaiting_payment(value=2, ts=2)
-        self.pp.add(p1)
-        self.pp.add(p2)
+        scip1 = _add_payment(self.pp, value=1, ts=1)
+        _add_payment(self.pp, value=2, ts=2)
 
         with freeze_time(timestamp_to_datetime(10000)):
             self.pp.sendout(0)

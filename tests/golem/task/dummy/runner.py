@@ -86,6 +86,10 @@ def create_client(datadir):
     database = Database(
         db, fields=DB_FIELDS, models=DB_MODELS, db_dir=datadir)
 
+    from golem.core.hardware import HardwarePresets
+    HardwarePresets.initialize(datadir)
+    HardwarePresets.update_config('default', config_desc)
+
     ets = _make_mock_ets()
     return Client(datadir=datadir,
                   app_config=app_config,

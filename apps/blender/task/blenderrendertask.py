@@ -186,7 +186,6 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         :return list: list of pixels that belong to a subtask border
         """
         start_task = subtask.extra_data['start_task']
-        end_task = subtask.extra_data['end_task']
         frames = len(definition.options.frames)
         res_x, res_y = definition.resolution
 
@@ -196,7 +195,7 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
             method = cls.__get_border
 
         if not definition.options.use_frames:
-            return method(start_task, end_task, subtasks_count, res_x, res_y)
+            return method(start_task, subtasks_count, res_x, res_y)
         elif subtasks_count <= frames:
             if not as_path:
                 return []
@@ -209,16 +208,14 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
 
         parts = int(subtasks_count / frames)
         return method((start_task - 1) % parts + 1,
-                      (end_task - 1) % parts + 1,
                       parts, res_x, res_y)
 
     @classmethod
-    def __get_border(cls, start, end, parts, res_x, res_y):
+    def __get_border(cls, start, parts, res_x, res_y):
         """
         Return list of pixels that should be marked as a border of subtasks
         with numbers between start and end.
         :param int start: number of first subtask
-        :param int end: number of last subtask
         :param int parts: number of parts for single frame
         :param int res_x: image resolution width
         :param int res_y: image resolution height
@@ -232,7 +229,7 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         x = int(math.floor(res_x * scale_factor))
 
         upper = offsets[start]
-        lower = offsets[end + 1]
+        lower = offsets[start + 1]
         for i in range(upper, lower):
             border.append((0, i))
             border.append((x, i))
@@ -242,12 +239,11 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         return border
 
     @classmethod
-    def __get_border_path(cls, start, end, parts, res_x, res_y):
+    def __get_border_path(cls, start, parts, res_x, res_y):
         """
         Return list of points that make a border of subtasks with numbers
         between start and end.
         :param int start: number of first subtask
-        :param int end: number of last subtask
         :param int parts: number of parts for single frame
         :param int res_x: image resolution width
         :param int res_y: image resolution height
@@ -261,7 +257,7 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
 
         x = int(math.floor(res_x * scale_factor))
         upper = offsets[start]
-        lower = max(0, offsets[end + 1] - 1)
+        lower = max(0, offsets[start + 1] - 1)
 
         return [(0, upper), (x, upper),
                 (x, lower), (0, lower)]
@@ -437,7 +433,7 @@ class BlenderRenderTask(FrameRenderingTask):
                          node_name: Optional[str] = None) \
             -> FrameRenderingTask.ExtraData:
 
-        start_task, end_task = self._get_next_task()
+        start_task = self._get_next_task()
         scene_file = self._get_scene_file_rel_path()
 
         if self.use_frames:
@@ -473,7 +469,6 @@ class BlenderRenderTask(FrameRenderingTask):
 
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": start_task,
-                      "end_task": end_task,
                       "total_tasks": self.total_tasks,
                       "outfilebasename": self.outfilebasename,
                       "scene_file": scene_file,
@@ -556,7 +551,6 @@ class BlenderRenderTask(FrameRenderingTask):
 
         extra_data = {"path_root": self.main_scene_dir,
                       "start_task": 1,
-                      "end_task": 1,
                       "total_tasks": 1,
                       "outfilebasename": "testresult",
                       "scene_file": scene_file,

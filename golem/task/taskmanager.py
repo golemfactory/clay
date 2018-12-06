@@ -437,8 +437,8 @@ class TaskManager(TaskEventListener):
 
         return ctd
 
-    def is_my_task(self, task_id) -> bool:
-        """ Check if the task_id is known by this node """
+    def is_my_task(self, task_id: str) -> bool:
+        """ Check if the task ID is known by this node. """
         return task_id in self.tasks
 
     def should_wait_for_node(self, task_id, node_id) -> bool:
@@ -656,10 +656,6 @@ class TaskManager(TaskEventListener):
         else:
             return False
 
-    def is_this_my_task(self, header: TaskHeader) -> bool:
-        return header.task_id in self.tasks or \
-               header.task_owner.key == self.node.key
-
     def get_node_id_for_subtask(self, subtask_id):
         if subtask_id not in self.subtask2task_mapping:
             return None
@@ -831,9 +827,7 @@ class TaskManager(TaskEventListener):
                     t.get_total_tasks(),
                     t.get_active_tasks(),
                     t.get_progress(),
-                    t.short_extra_data_repr(task_state.extra_data)
-                )  # FIXME in short_extra_data_repr should there be extra data
-                # Issue #2460
+                )
                 tasks_progresses[task_id] = ltss
 
         return tasks_progresses
@@ -1055,7 +1049,6 @@ class TaskManager(TaskEventListener):
         ss.node_id = node_id
         ss.node_name = node_name
         ss.deadline = ctd['deadline']
-        ss.subtask_definition = ctd['short_description']
         ss.subtask_id = ctd['subtask_id']
         ss.extra_data = ctd['extra_data']
         ss.subtask_status = SubtaskStatus.starting

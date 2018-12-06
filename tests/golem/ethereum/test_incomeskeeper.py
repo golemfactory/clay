@@ -234,7 +234,6 @@ class TestIncomesKeeper(TestWithDatabase):
             accepted_ts=int(time.time()),
             transaction='transaction')
         income2 = self._create_income(
-            created_date=datetime.now() - timedelta(seconds=2*PAYMENT_DEADLINE),
             accepted_ts=int(time.time()) - 2*PAYMENT_DEADLINE,
             transaction='transaction')
         self.incomes_keeper.update_overdue_incomes()
@@ -244,23 +243,13 @@ class TestIncomesKeeper(TestWithDatabase):
     @freeze_time()
     def test_update_overdue_incomes_accepted_deadline_passed(self):
         overdue_income = self._create_income(
-            created_date=datetime.now() - timedelta(seconds=2*PAYMENT_DEADLINE),
             accepted_ts=int(time.time()) - 2*PAYMENT_DEADLINE)
         self.incomes_keeper.update_overdue_incomes()
         self.assertTrue(overdue_income.refresh().overdue)
 
     @freeze_time()
-    def test_update_overdue_incomes_old_but_recently_accepted(self):
-        income = self._create_income(
-            created_date=datetime.now() - timedelta(seconds=2*PAYMENT_DEADLINE),
-            accepted_ts=int(time.time()))
-        self.incomes_keeper.update_overdue_incomes()
-        self.assertFalse(income.refresh().overdue)
-
-    @freeze_time()
     def test_update_overdue_incomes_already_marked_as_overdue(self):
         income = self._create_income(
-            created_date=datetime.now() - timedelta(seconds=2*PAYMENT_DEADLINE),
             accepted_ts=int(time.time()) - 2*PAYMENT_DEADLINE,
             overdue=True)
         self.incomes_keeper.update_overdue_incomes()

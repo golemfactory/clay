@@ -1,14 +1,15 @@
+from datetime import datetime, timedelta
 from unittest import TestCase
+from uuid import uuid4
+
+from freezegun import freeze_time
+import pytz
 
 from golem.network.p2p.node import Node
-from golem.task.taskarchiver import TaskArchiver, Archive, ArchTask, TimeInterval
+from golem.task.taskarchiver import TaskArchiver
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.task.taskbase import TaskHeader
-from golem.core.common import timeout_to_deadline, datetime_to_timestamp
-import time
-import pytz
-from datetime import datetime, timedelta
-from uuid import uuid4
+from golem.core.common import timeout_to_deadline
 
 
 class TestTaskArchiver(TestCase):
@@ -29,23 +30,19 @@ class TestTaskArchiver(TestCase):
         self.ssrt = SupportStatus.err(
             {UnsupportReason.REQUESTOR_TRUST: 0.5})
 
-    def header(self, max_price, last_checking=None,
+    def header(self, max_price,
                deadline=None, min_version="4"):
-        if not last_checking:
-            last_checking = time.time()
         if not deadline:
             deadline = timeout_to_deadline(36000)
 
-        ret = TaskHeader(
+        header = TaskHeader(
             task_id=str(uuid4()),
             environment="DEFAULT",
             task_owner=Node(),
             max_price=max_price,
             deadline=deadline,
             min_version=min_version)
-        if last_checking:
-            ret.last_checking = last_checking
-        return ret
+        return header
 
     def get_row(self, reasonsReport, unsupportReason):
         """From unsupport reasons report gets a row corresponding to given
@@ -105,30 +102,31 @@ class TestTaskArchiver(TestCase):
         today = datetime.now(pytz.utc)
         back1 = today - timedelta(days=1)
         back2 = today - timedelta(days=2)
-        todayts = datetime_to_timestamp(today)
-        back1ts = datetime_to_timestamp(back1)
-        back2ts = datetime_to_timestamp(back2)
-        th1 = self.header(3, deadline=past_deadline, last_checking=back2ts)
-        th2 = self.header(5, last_checking=back2ts)
-        th3 = self.header(7, min_version="2", deadline=past_deadline,
-                          last_checking=back2ts)
-        th4 = self.header(9, last_checking=back1ts)
-        th5 = self.header(11, deadline=past_deadline, last_checking=todayts)
+        th1 = self.header(3, deadline=past_deadline)
+        th2 = self.header(5)
+        th3 = self.header(7, min_version="2", deadline=past_deadline)
+        th4 = self.header(9)
+        th5 = self.header(11, deadline=past_deadline)
         s1 = self.ssrt
         s2 = self.ssmp.join(self.ssav)
         s3 = self.ssav.join(self.ssrt)
         s4 = self.ssok
         s5 = self.ssmp.join(self.ssav)
-        ta.add_task(th1)
+        with freeze_time(back2):
+            ta.add_task(th1)
         ta.add_support_status(th1.task_id, s1)
-        ta.add_task(th2)
+        with freeze_time(back2):
+            ta.add_task(th2)
         ta.add_support_status(th2.task_id, s2)
-        ta.add_task(th3)
-        ta.add_task(th4)
+        with freeze_time(back2):
+            ta.add_task(th3)
+        with freeze_time(back1):
+            ta.add_task(th4)
         ta.add_support_status(th3.task_id, s3)
         ta.add_support_status(th4.task_id, s4)
         ta.do_maintenance()
-        ta.add_task(th5)
+        with freeze_time(today):
+            ta.add_task(th5)
         ta.add_support_status(th5.task_id, s5)
         ta.do_maintenance()
         rep = ta.get_unsupport_reasons(1, today)

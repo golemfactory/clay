@@ -45,7 +45,6 @@ class TestBlenderDockerJob(TestDockerJob):
             "scene_file": str(dest_scene_file),
             "script_src": crop_script_contents,
             "start_task": 42,
-            "end_task": 42,
             "output_format": "EXR",
             "frames": [1],
         }

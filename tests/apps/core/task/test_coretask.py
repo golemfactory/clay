@@ -29,9 +29,6 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         def query_extra_data(self, *args, **kwargs):
             return self.EXTRA_DATA
 
-        def short_extra_data_repr(self, extra_data):
-            pass
-
         def query_extra_data_for_test_task(self):
             pass
 
@@ -59,9 +56,6 @@ class TestCoreTask(LogTestCase, TestDirFixture):
             def query_extra_data(self, *args, **kwargs):
                 pass
 
-            def short_extra_data_repr(self, extra_data):
-                pass
-
         # ENVIRONMENT has to be set
         with self.assertRaises(TypeError):
             CoreTaskDeabstacted(task_def, node)
@@ -70,9 +64,6 @@ class TestCoreTask(LogTestCase, TestDirFixture):
             ENVIRONMENT_CLASS = MagicMock()
 
             def query_extra_data(self, *args, **kwargs):
-                pass
-
-            def short_extra_data_repr(self, extra_data):
                 pass
 
             def query_extra_data_for_test_task(self):
@@ -319,23 +310,18 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
         task.subtasks_given["deadbeef"] = {'status': SubtaskStatus.finished,
                                       'start_task': 1,
-                                      'end_task': 1,
                                       'node_id': 'ABC'}
         task.subtasks_given["abc"] = {'status': SubtaskStatus.failure,
                                       'start_task': 4,
-                                      'end_task': 4,
                                       'node_id': 'abc'}
         task.subtasks_given["def"] = {'status': SubtaskStatus.starting,
                                       'start_task': 8,
-                                      'end_task': 8,
                                       'node_id': 'DEF'}
         task.subtasks_given["ghi"] = {'status': SubtaskStatus.resent,
                                       'start_task': 2,
-                                      'end_task': 2,
                                       'node_id': 'aha'}
         task.subtasks_given["jkl"] = {'status': SubtaskStatus.downloading,
                                       'start_task': 8,
-                                      'end_task': 8,
                                       'node_id': 'DEF'}
         task.restart()
         assert task.num_tasks_received == 0
@@ -494,7 +480,6 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert ctd['task_id'] == c.header.task_id
         assert ctd['subtask_id'] == hash
         assert ctd['extra_data'] == extra_data
-        assert ctd['short_description'] == c.short_extra_data_repr(extra_data)
         assert ctd['src_code'] == c.src_code
         assert ctd['performance'] == perf_index
         assert ctd['docker_images'] == c.docker_images

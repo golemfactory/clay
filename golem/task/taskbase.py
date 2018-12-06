@@ -80,8 +80,6 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
 
         self.task_id = task_id
         self.task_owner = task_owner
-        # TODO change last_checking param. Issue #2407
-        self.last_checking = time.time()
         self.deadline = deadline
         self.subtask_timeout = subtask_timeout
         self.subtasks_count = subtasks_count
@@ -116,7 +114,6 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
             dictionary['subtasks_count'] = 1
         th: TaskFixedHeader = \
             DictSerializer.load(dictionary, as_class=TaskFixedHeader)
-        th.last_checking = time.time()
 
         if isinstance(th.task_owner, dict):
             th.task_owner = Node.from_dict(th.task_owner)
@@ -135,7 +132,6 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
         resulting binary blob after serialization.
         """
         self_dict = dict(dictionary)
-        self_dict.pop('last_checking', None)
         self_dict.pop('checksum', None)
 
         # "port_statuses" is a nested dict and needs to be sorted;
@@ -436,14 +432,6 @@ class Task(abc.ABC):
         :return:
         """
         pass
-
-    @abc.abstractmethod
-    def short_extra_data_repr(self, extra_data: ExtraData) -> str:
-        """ Should return a short string with general task description that may be used for logging or stats gathering.
-        :param extra_data:
-        :return str:
-        """
-        pass  # Implement in derived class
 
     @abc.abstractmethod
     def needs_computation(self) -> bool:
