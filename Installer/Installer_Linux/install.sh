@@ -185,7 +185,7 @@ function install_dependencies()
         packages+=(nvidia-modprobe)
     fi
 
-    declare -r hyperg=$(release_url "https://api.github.com/repos/mfranciszkiewicz/golem-hyperdrive/releases")
+    declare -r hyperg=$(release_url "https://api.github.com/repos/golemfactory/golem-hyperdrive/releases")
     hyperg_release=$( echo ${hyperg} | cut -d '/' -f 8 | sed 's/v//' )
     # Older version of HyperG doesn't have `--version`, so need to kill
     ( hyperg_version=$( hyperg --version 2>/dev/null ) ) & pid=$!
