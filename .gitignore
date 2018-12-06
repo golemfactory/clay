@@ -23,7 +23,6 @@ ui_*.py
 
 # Rust
 rust/golem/target/*
-rust/golem/Cargo.lock
 
 # Distribution / packaging
 .Python
