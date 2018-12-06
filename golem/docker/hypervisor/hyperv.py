@@ -48,15 +48,14 @@ class HyperVHypervisor(DockerMachineHypervisor):
         self._vm_utils = VMUtils()
 
     def start_vm(self, name: Optional[str] = None) -> None:
+        constr = self.constraints()
 
-        if not self._check_memory():
+        if not self._check_memory(constr):
             try:
                 from golem.os import windows_empty_working_sets
                 windows_empty_working_sets()
             except (ImportError, OSError) as e:
                 logger.error('Unable to free memory: %r', e)
-
-        constr = self.constraints()
 
         if not self._check_memory(constr):
             logger.warning('Not enough memory to start the VM, lowering memory')
