@@ -4,8 +4,9 @@ from pathlib import Path
 import subprocess
 from typing import Any, ClassVar, Dict, Iterable, List, Optional, Union
 
-from os_win.constants import HOST_SHUTDOWN_ACTION_SHUTDOWN, \
-    VM_SNAPSHOT_TYPE_DISABLED
+from os_win.constants import HOST_SHUTDOWN_ACTION_SAVE, \
+    VM_SNAPSHOT_TYPE_DISABLED, HYPERV_VM_STATE_SUSPENDED, \
+    HYPERV_VM_STATE_ENABLED
 from os_win.exceptions import OSWinException
 from os_win.utils.compute.vmutils import VMUtils
 
@@ -63,6 +64,28 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 f'Port {self.SMB_PORT} unreachable. '
                 f'Please check firewall settings.')
 
+    def save_vm(self, vm_name: Optional[str] = None) -> None:
+        vm_name = vm_name or self._vm_name
+        logger.info('Hyper-V: Saving state of VM %s ...', vm_name)
+        try:
+            self._vm_utils.set_vm_state(vm_name, HYPERV_VM_STATE_SUSPENDED)
+        except OSWinException:
+            logger.exception(
+                'Hyper-V: Saving VM %s state failed. Stopping VM ...', vm_name)
+            self.stop_vm(vm_name)
+
+    def restore_vm(self, vm_name: Optional[str] = None) -> None:
+        vm_name = vm_name or self._vm_name
+        vm_state = self._vm_utils.get_vm_state(vm_name)
+        if vm_state == HYPERV_VM_STATE_SUSPENDED:
+            logger.info('Hyper-V: Restoring VM %s ...', vm_name)
+            self._vm_utils.set_vm_state(vm_name, HYPERV_VM_STATE_ENABLED)
+            return
+        else:
+            logger.info(
+                'Hyper-V: VM %s cannot be restored. Booting ...', vm_name)
+            self.start_vm(vm_name)
+
     def start_vm(self, name: Optional[str] = None) -> None:
         constr = self.constraints()
 
@@ -87,7 +110,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         try:
             # The windows VM fails to start when too much memory is assigned
             super().start_vm(name)
-        except subprocess.CalledProcessError as e:
+        except subprocess.CalledProcessError:
             logger.error(
                 "HyperV: VM failed to start, this can be caused "
                 "by insufficient RAM or HD free on the host machine")
@@ -175,7 +198,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 vcpus_per_numa_node=0,
                 limit_cpu_features=False,
                 dynamic_mem_ratio=1,
-                host_shutdown_action=HOST_SHUTDOWN_ACTION_SHUTDOWN,
+                host_shutdown_action=HOST_SHUTDOWN_ACTION_SAVE,
                 snapshot_type=VM_SNAPSHOT_TYPE_DISABLED,
             )
         except OSWinException:
