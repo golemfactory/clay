@@ -1,10 +1,10 @@
-from datetime import datetime, timedelta
+import datetime
 import threading
 import logging
 import pickle
 import os
 from collections import Counter
-from golem.core.common import get_timestamp_utc, timestamp_to_datetime
+from golem.core.common import get_timestamp_utc
 from golem.environments.environment import UnsupportReason
 from golem.core import golem_async
 from golem.appconfig import TASKARCHIVE_FILENAME, TASKARCHIVE_NUM_INTERVALS, \
@@ -109,9 +109,9 @@ class TaskArchiver(object):
         interval.merge_task(tsk)
 
     def _purge_old_intervals(self):
-        today = datetime.now(pytz.utc) \
+        today = datetime.datetime.now(pytz.utc) \
             .replace(hour=0, minute=0, second=0, microsecond=0)
-        old = today - timedelta(days=TASKARCHIVE_NUM_INTERVALS)
+        old = today - datetime.timedelta(days=TASKARCHIVE_NUM_INTERVALS)
         for interval in list(self._archive.intervals.values()):
             if interval.start_date <= old:
                 del self._archive.intervals[interval.start_date]
@@ -138,9 +138,9 @@ class TaskArchiver(object):
          status of this task.
         """
         if not today:
-            today = datetime.now(pytz.utc)
+            today = datetime.datetime.now(pytz.utc)
         today = today.replace(hour=0, minute=0, second=0, microsecond=0)
-        start_date = today - timedelta(days=last_n_days-1)
+        start_date = today - datetime.timedelta(days=last_n_days-1)
         result = TimeInterval(start_date)
         result.cnt_unsupport_reasons = Counter({r: 0 for r in UnsupportReason})
         for interval in self._archive.intervals.values():
@@ -178,8 +178,7 @@ class ArchTask(object):
     """All known tasks that have not been aggregated yet."""
     def __init__(self, task_header):
         self.uuid = task_header.task_id
-        self.interval_start_date =\
-            timestamp_to_datetime(task_header.last_checking)\
+        self.interval_start_date = datetime.datetime.now(pytz.utc)\
             .replace(hour=0, minute=0, second=0, microsecond=0)
         self.deadline = task_header.deadline
         self.min_version = task_header.min_version
