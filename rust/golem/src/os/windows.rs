@@ -28,7 +28,6 @@ impl Processes {
         }
     }
 
-    #[cfg(windows)]
     pub fn enumerate(&mut self) -> Result<(), OSError> {
         // A pointer to an array that receives the list of process identifiers
         let lpid_process = &mut self.array[0];
@@ -50,7 +49,6 @@ impl Processes {
         Ok(())
     }
 
-    #[cfg(windows)]
     pub fn open(&self, idx: usize) -> HANDLE {
         let id = self.array[idx];
         if id == 0 {
@@ -68,7 +66,6 @@ impl Processes {
 }
 
 
-#[cfg(windows)]
 pub fn empty_working_sets() -> Result<(), OSError> {
     let mut processes = Processes::new();
     processes.enumerate()?;
@@ -84,9 +81,4 @@ pub fn empty_working_sets() -> Result<(), OSError> {
     }
 
     Ok(())
-}
-
-#[cfg(not(windows))]
-pub fn empty_working_sets() -> Result<(), OSError> {
-    Err(OSError::new("Unsupported OS"))
 }
