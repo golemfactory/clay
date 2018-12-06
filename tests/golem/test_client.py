@@ -1038,7 +1038,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             'scene_file': "/golem/resources/cube.blend",
             'frames': [1],
             'start_task': start_task,
-            'end_task': 1,
             'total_tasks': 1,
         }
         task_computer.get_progress.return_value = \

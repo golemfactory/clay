@@ -352,7 +352,6 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.bt.accept_client("ABC")
         ctd = extra_data.ctd
         assert ctd['extra_data']['start_task'] == 1
-        assert ctd['extra_data']['end_task'] == 1
         self.bt.last_task = self.bt.total_tasks
         self.bt.subtasks_given[1] = {'status': SubtaskStatus.finished}
         assert self.bt.should_accept_client("ABC") != \
@@ -546,7 +545,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         # test the case with frames divided into multiple subtasks
 
         bt = self.build_bt(600, 200, 4, frames=[2, 3])
-        subtask = {"start_task": 2, "end_task": 2}
+        subtask = {"start_task": 2}
         file2 = self.temp_file_name('preview2.bmp')
         img_task2 = Image.new("RGB", (bt.res_x, bt.res_y))
         img_task2.save(file2, "BMP")
@@ -696,7 +695,7 @@ class TestHelpers(unittest.TestCase):
         definition.resolution = [800, 600]
 
         for k in range(1, 31):
-            subtask.extra_data = {'start_task': k, 'end_task': k}
+            subtask.extra_data = {'start_task': k}
             border = BlenderTaskTypeInfo.get_task_border(subtask, definition,
                                                          30, as_path=as_path)
             assert min(border) == (0, offsets[k])
@@ -707,14 +706,14 @@ class TestHelpers(unittest.TestCase):
         offsets = generate_expected_offsets(15, 800, 600)
 
         for k in range(1, 31):
-            subtask.extra_data = {'start_task': k, 'end_task': k}
+            subtask.extra_data = {'start_task': k}
             border = BlenderTaskTypeInfo.get_task_border(subtask, definition,
                                                          30, as_path=as_path)
             i = (k - 1) % 15 + 1
             assert min(border) == (0, offsets[i])
             assert max(border) == (798, offsets[i + 1] - 1)
 
-        subtask.extra_data = {'start_task': 2, 'end_task': 2}
+        subtask.extra_data = {'start_task': 2}
         definition.options.use_frames = True
         definition.options.frames = list(range(30))
         if as_path:

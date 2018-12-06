@@ -186,7 +186,6 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         :return list: list of pixels that belong to a subtask border
         """
         start_task = subtask.extra_data['start_task']
-        end_task = subtask.extra_data['end_task']
         frames = len(definition.options.frames)
         res_x, res_y = definition.resolution
 
@@ -196,7 +195,7 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
             method = cls.__get_border
 
         if not definition.options.use_frames:
-            return method(start_task, end_task, subtasks_count, res_x, res_y)
+            return method(start_task, subtasks_count, res_x, res_y)
         elif subtasks_count <= frames:
             if not as_path:
                 return []
@@ -209,16 +208,14 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
 
         parts = int(subtasks_count / frames)
         return method((start_task - 1) % parts + 1,
-                      (end_task - 1) % parts + 1,
                       parts, res_x, res_y)
 
     @classmethod
-    def __get_border(cls, start, end, parts, res_x, res_y):
+    def __get_border(cls, start, parts, res_x, res_y):
         """
         Return list of pixels that should be marked as a border of subtasks
         with numbers between start and end.
         :param int start: number of first subtask
-        :param int end: number of last subtask
         :param int parts: number of parts for single frame
         :param int res_x: image resolution width
         :param int res_y: image resolution height
@@ -232,7 +229,7 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         x = int(math.floor(res_x * scale_factor))
 
         upper = offsets[start]
-        lower = offsets[end + 1]
+        lower = offsets[start + 1]
         for i in range(upper, lower):
             border.append((0, i))
             border.append((x, i))
@@ -242,12 +239,11 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         return border
 
     @classmethod
-    def __get_border_path(cls, start, end, parts, res_x, res_y):
+    def __get_border_path(cls, start, parts, res_x, res_y):
         """
         Return list of points that make a border of subtasks with numbers
         between start and end.
         :param int start: number of first subtask
-        :param int end: number of last subtask
         :param int parts: number of parts for single frame
         :param int res_x: image resolution width
         :param int res_y: image resolution height
@@ -261,7 +257,7 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
 
         x = int(math.floor(res_x * scale_factor))
         upper = offsets[start]
-        lower = max(0, offsets[end + 1] - 1)
+        lower = max(0, offsets[start + 1] - 1)
 
         return [(0, upper), (x, upper),
                 (x, lower), (0, lower)]
@@ -437,7 +433,7 @@ class BlenderRenderTask(FrameRenderingTask):
                          node_name: Optional[str] = None) \
             -> FrameRenderingTask.ExtraData:
 
-        start_task, end_task = self._get_next_task()
+        start_task = self._get_next_task()
         scene_file = self._get_scene_file_rel_path()
 
         if self.use_frames:
@@ -458,13 +454,17 @@ class BlenderRenderTask(FrameRenderingTask):
             min_y = 0.0
             max_y = 1.0
 
+        #  Blender is using single precision math, we use numpy to emulate this.
+        #  Send already converted values to blender.
+        min_y = numpy.float32(min_y)
+        max_y = numpy.float32(max_y)
+
         crops = [
             {"outfilebasename": "{}_{}".format(self.outfilebasename, start_task),
              "borders_x": [0.0, 1.0],
              "borders_y": [min_y, max_y],
              }
         ]
-
         extra_data = {"RESOURCES_DIR": RESOURCES_DIR_RT,
                       "WORK_DIR": WORK_DIR_RT,
                       "OUTPUT_DIR": OUTPUT_DIR_RT,
@@ -476,7 +476,6 @@ class BlenderRenderTask(FrameRenderingTask):
                       "output_format": self.output_format,
                       "path_root": self.main_scene_dir,
                       "start_task": start_task,
-                      "end_task": end_task,
                       "total_tasks": self.total_tasks,
                       "crops": crops
                       }
@@ -563,7 +562,6 @@ class BlenderRenderTask(FrameRenderingTask):
                       "output_format": "PNG",
                       "path_root": self.main_scene_dir,
                       "start_task": 1,
-                      "end_task": 1,
                       "total_tasks": 1,
                       "crops": crops
                       }
@@ -636,7 +634,6 @@ class BlenderRenderTask(FrameRenderingTask):
                                         height=self.res_y)
             for file in self.collected_file_names.values():
                 collector.add_img_file(file)
-                logger.debug("File: " + str(file))
             with handle_image_error(logger), \
                     collector.finalize() as image:
                 image.save_with_extension(output_file_name, self.output_format)

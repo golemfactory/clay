@@ -49,7 +49,6 @@ class TestBlenderDockerJob(TestDockerJob):
             "frames": [1],
             "output_format": "EXR",
             "start_task": start_task,
-            "end_task": 42,
             "crops": crops
         }
 

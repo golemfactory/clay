@@ -40,7 +40,6 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         self.subtask_info['output_format'] = 'PNG'
         self.subtask_info['use_frames'] = False
         self.subtask_info['start_task'] = 1
-        self.subtask_info['end_task'] = 1
         self.subtask_info['total_tasks'] = 1
         self.subtask_info['crops'] = [
             {
@@ -77,8 +76,6 @@ class TestVerificatorModuleIntegration(TempDirFixture):
             self.subtask_info['output_format']
         self.subtask_info['ctd']['extra_data']['start_task'] = \
             self.subtask_info['start_task']
-        self.subtask_info['ctd']['extra_data']['end_task'] = \
-            self.subtask_info['end_task']
         self.subtask_info['ctd']['extra_data']['total_tasks'] = \
             self.subtask_info['total_tasks']
         self.subtask_info['ctd']['extra_data']['crops'] = \
