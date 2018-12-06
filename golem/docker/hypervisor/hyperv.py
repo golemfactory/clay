@@ -52,8 +52,8 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
         if not self._check_memory(constr):
             try:
-                from golem.os import windows_empty_working_sets
-                windows_empty_working_sets()
+                from golem.os import windows_ews
+                windows_ews()
             except (ImportError, OSError) as e:
                 logger.error('Unable to free memory: %r', e)
 
