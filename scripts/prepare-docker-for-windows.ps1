@@ -17,7 +17,7 @@ if( ! $currentGolemUser )
 {
     "Creating local user"
     $securePassword = ConvertTo-SecureString $golemUserName -AsPlainText -Force
-    New-LocalUser -Name $golemUserName -Password $securePassword -Description "Account to use docker with golem."
+    New-LocalUser -Name $golemUserName -Password $securePassword -Description "Account to use docker with golem." -AccountNeverExpires
     "Local user created"
 }
 # TODO: set execution policy here?
