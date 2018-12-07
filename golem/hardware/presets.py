@@ -1,15 +1,12 @@
 import logging
-from typing import Optional, Union, Dict, Tuple
+from typing import Dict, Optional, Tuple, Union
 
 import humanize
 
-from golem import appconfig
-from golem.appconfig import MIN_DISK_SPACE, \
-    DEFAULT_HARDWARE_PRESET_NAME as DEFAULT, \
-    CUSTOM_HARDWARE_PRESET_NAME as CUSTOM, MIN_CPU_CORES, MIN_MEMORY_SIZE
+from golem import appconfig, hardware
+from golem.appconfig import CUSTOM_HARDWARE_PRESET_NAME as CUSTOM, \
+    DEFAULT_HARDWARE_PRESET_NAME as DEFAULT
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.fileshelper import free_partition_space
-from golem.hardware import cpu_cores_available, memory_available
 from golem.model import HardwarePreset
 from golem.rpc import utils as rpc_utils
 
@@ -18,25 +15,20 @@ logger = logging.getLogger(__name__)
 
 class HardwarePresets:
 
-    default_values = {
-        'cpu_cores': len(cpu_cores_available()),
-        'memory': memory_available(),
-        'disk': MIN_DISK_SPACE
-    }
-
-    CUSTOM_VALUES = dict(default_values)
-
-    working_dir: Optional[str] = None
+    default_values: Optional[Dict[str, int]] = None
+    custom_values: Optional[Dict[str, int]] = None
 
     @classmethod
     def initialize(cls, working_dir: str):
-        cls.working_dir = working_dir
-        cls.default_values['disk'] = free_partition_space(cls.working_dir)
+        hardware.initialize(working_dir)
+
+        cls.default_values = hardware.caps()
+        cls.custom_values = dict(cls.default_values)
 
         HardwarePreset.get_or_create(name=DEFAULT,
                                      defaults=cls.default_values)
         HardwarePreset.get_or_create(name=CUSTOM,
-                                     defaults=cls.CUSTOM_VALUES)
+                                     defaults=cls.custom_values)
 
     @classmethod
     def update_config(cls,
@@ -75,19 +67,14 @@ class HardwarePresets:
     def from_config(cls, config: ClientConfigDescriptor) -> HardwarePreset:
         return HardwarePreset(
             name=config.hardware_preset_name,
-            cpu_cores=config.num_cores,
-            memory=config.max_memory_size,
-            disk=config.max_resource_size
+            cpu_cores=hardware.cap_cpus(config.num_cores),
+            memory=hardware.cap_memory(config.max_memory_size),
+            disk=hardware.cap_disk(config.max_resource_size),
         )
 
     @classmethod
     def caps(cls) -> Dict[str, int]:
-        cls._assert_initialized()
-        return {
-            'cpu_cores': len(cpu_cores_available()),
-            'memory': memory_available(),
-            'disk': free_partition_space(cls.working_dir)
-        }
+        return hardware.caps()
 
     @classmethod
     def values(cls, preset_or_name: Union[str, HardwarePreset]) \
@@ -100,31 +87,10 @@ class HardwarePresets:
             preset = preset_or_name
 
         return preset.name, {
-            'cpu_cores': cls.cpu_cores(preset.cpu_cores),
-            'memory': cls.memory(preset.memory),
-            'disk': cls.disk(preset.disk)
+            'cpu_cores': hardware.cap_cpus(preset.cpu_cores),
+            'memory': hardware.cap_memory(preset.memory),
+            'disk': hardware.cap_disk(preset.disk)
         }
-
-    @classmethod
-    def cpu_cores(cls, core_num: int) -> int:
-        available = len(cpu_cores_available())
-        return max(min(core_num, available), MIN_CPU_CORES)
-
-    @classmethod
-    def memory(cls, mem_size: int) -> int:
-        available = memory_available()
-        return max(min(mem_size, available), MIN_MEMORY_SIZE)
-
-    @classmethod
-    def disk(cls, disk_space: int) -> int:
-        cls._assert_initialized()
-        available = free_partition_space(cls.working_dir)
-        return max(min(disk_space, available), MIN_DISK_SPACE)
-
-    @classmethod
-    def _assert_initialized(cls):
-        if not cls.working_dir:
-            raise EnvironmentError("Class not initialized")
 
 
 class HardwarePresetsMixin:

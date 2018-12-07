@@ -1,16 +1,16 @@
 import logging
 import os
-from pathlib import Path
 import subprocess
+from pathlib import Path
 from subprocess import CalledProcessError, TimeoutExpired
-from typing import Optional, Union, Any, List, Dict, ClassVar, Iterable
-import psutil
+from typing import Any, ClassVar, Dict, Iterable, List, Optional, Union
 
 from os_win.constants import HOST_SHUTDOWN_ACTION_SHUTDOWN, \
     VM_SNAPSHOT_TYPE_DISABLED
 from os_win.exceptions import OSWinException
 from os_win.utils.compute.vmutils import VMUtils
 
+from golem import hardware
 from golem.core.common import get_golem_path
 from golem.docker import smbshare
 from golem.docker.client import local_client
@@ -79,8 +79,8 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if not self._check_memory(constr):
             logger.warning('Not enough memory to start the VM, lowering memory')
             mem_key = CONSTRAINT_KEYS['mem']
-            constr[mem_key] = self._memory_cap(constr[mem_key])
-            constr[mem_key] = self.pad_memory(constr[mem_key])
+            max_memory = self._memory_cap(constr[mem_key])
+            constr[mem_key] = hardware.cap_memory(constr[mem_key], max_memory)
             logger.debug('Memory capped by "free - 10%%": %r', constr[mem_key])
             self.constrain(name, **constr)
 
@@ -253,8 +253,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         }
 
     def _memory_cap(self, memory: int) -> int:
-        max_mem_in_mb = self._get_max_memory()
-        return min(memory, max_mem_in_mb - max_mem_in_mb // 10)
+        return min(memory, int(0.9 * self._get_max_memory()))
 
     def _check_memory(self, constr: Optional[dict] = None) -> bool:
         """
@@ -264,13 +263,11 @@ class HyperVHypervisor(DockerMachineHypervisor):
             return True
 
         constr = constr or self.constraints()
-
         return constr[CONSTRAINT_KEYS['mem']] <= self._get_max_memory(constr)
 
     def _get_max_memory(self, constr: Optional[dict] = None) -> int:
-        vmem = psutil.virtual_memory()
-        logger.debug("System memory: %r", vmem)
-        max_mem_in_mb = vmem.available // 1024 // 1024
+        max_mem_in_mb = hardware.memory_available() // 1024
+
         if self.vm_running():
             constr = constr or self.constraints()
             max_mem_in_mb += constr[CONSTRAINT_KEYS['mem']]
