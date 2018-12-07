@@ -24,7 +24,7 @@ fn os__windows__empty_working_sets(py: Python) -> PyResult<PyObject> {
         Err(e) => {
             let py_err = PyErr::new::<exc::OSError, _>(py, format!("{:?}", e));
             Err(py_err)
-        },
+        }
         Ok(_) => Ok(Python::None(py)),
     }
 }

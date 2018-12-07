@@ -1,7 +1,9 @@
+use os::error::OSError;
 use std::mem::size_of;
 use winapi::shared::minwindef::DWORD;
 use winapi::shared::minwindef::LPDWORD;
 use winapi::shared::ntdef::FALSE;
+use winapi::shared::ntdef::HANDLE;
 use winapi::shared::ntdef::NULL;
 use winapi::um::processthreadsapi::OpenProcess;
 use winapi::um::psapi::EmptyWorkingSet;
@@ -9,11 +11,8 @@ use winapi::um::psapi::EnumProcesses;
 use winapi::um::winnt::PROCESS_ALL_ACCESS;
 use winapi::um::winnt::PROCESS_QUERY_INFORMATION;
 use winapi::um::winnt::PROCESS_VM_READ;
-use winapi::shared::ntdef::HANDLE;
-use os::error::OSError;
 
 const MAX_PROCESS_COUNT: usize = 2048;
-
 
 struct Processes {
     array: [u32; MAX_PROCESS_COUNT],
@@ -64,7 +63,6 @@ impl Processes {
         }
     }
 }
-
 
 pub fn empty_working_sets() -> Result<(), OSError> {
     let mut processes = Processes::new();

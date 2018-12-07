@@ -3,12 +3,14 @@ use std::fmt;
 
 #[derive(Debug)]
 pub struct OSError {
-    message: String
+    message: String,
 }
 
 impl OSError {
     pub fn new(message: &str) -> Self {
-        OSError { message: message.to_string() }
+        OSError {
+            message: message.to_string(),
+        }
     }
 }
 
