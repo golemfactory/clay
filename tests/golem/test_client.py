@@ -140,8 +140,8 @@ class TestClient(TestClientBase):
 
         result = self.client.get_gas_price()
 
-        self.assertEquals(result["current_gas_price"], str(test_gas_price))
-        self.assertEquals(result["gas_price_limit"], str(test_price_limit))
+        self.assertEqual(result["current_gas_price"], str(test_gas_price))
+        self.assertEqual(result["gas_price_limit"], str(test_price_limit))
 
     def test_get_payments(self, *_):
         ets = self.client.transaction_system
