@@ -239,5 +239,7 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
                 sra,
             ],
         )
-        with self.assertRaises(concent_exceptions.ConcentRequestError):
-            self.provider_load_response(self.provider_send(fp))
+        response = self.provider_load_response(self.provider_send(fp))
+        self.assertIsInstance(response, message.concents.ServiceRefused)
+        self.assertEqual(response.reason,
+                         message.concents.ServiceRefused.REASON.InvalidRequest)
