@@ -1,6 +1,8 @@
 # Golem
 
-[![AppVeyor](https://ci.appveyor.com/api/projects/status/ieb6fm74e0f74qm1?svg=true)](https://ci.appveyor.com/project/golemfactory/golem)
+[![Buildbot](https://shield.lwan.ws/img/MN1w5S/buildpackage_linux)](https://buildbot.golem.network/buildbot/#/builders/buildpackage_linux)
+[![Buildbot](https://shield.lwan.ws/img/MN1w5S/buildpackage_macOS)](https://buildbot.golem.network/buildbot/#/builders/buildpackage_macOS)
+[![Buildbot](https://shield.lwan.ws/img/MN1w5S/buildpackage_windows)](https://buildbot.golem.network/buildbot/#/builders/buildpackage_windows)
 [![codecov](https://codecov.io/gh/golemfactory/golem/branch/develop/graph/badge.svg)](https://codecov.io/gh/golemfactory/golem)
 
 The aim of the Golem project is to create a global prosumer market for computing power, in which
@@ -51,13 +53,14 @@ Golem communicates with external technologies some of them may be downloaded and
 * [OpenExr](http://www.openexr.com/)
 * [OpenSSL](https://www.openssl.org/)
 * [Python3](https://www.python.org/)
+* [Rust](https://www.rust-lang.org/)
 * [SQLite3](https://sqlite.org/index.html)
 * [Pyvmmonitor](http://pyvmmonitor.com)
 
 Benchmarks:
 * General: [Minilight](http://www.hxa.name/minilight) by Harrison Ainsworth / HXA7241 and Juraj Sukop.
 * Blender: [scene-BMW](https://www.blender.org/download/demo-files/).
-* LuxRender: [SchoolCorridor](http://www.luxrender.net/wiki/Show-off_pack) by Simon Wendsche.
+
 
 Icons:
 * [Freeline](https://www.iconfinder.com/iconsets/freeline) by Enes Dal.

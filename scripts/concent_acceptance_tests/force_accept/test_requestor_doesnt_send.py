@@ -9,6 +9,7 @@ from golem_messages import constants
 from golem_messages import factories as msg_factories
 from golem_messages import helpers
 from golem_messages import message
+from golem_messages.factories.helpers import fake_golem_uuid
 
 from golem.network.concent import exceptions as concent_exceptions
 
@@ -104,10 +105,20 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
                 'ack_report_computed_task__'
                 'report_computed_task__'
                 'task_to_compute__'),
-            ack_report_computed_task__sign__privkey=self.requestor_priv_key,
             **kwargs,
-            sign__privkey=self.provider_priv_key,
         )
+        fsr.task_to_compute.generate_ethsig(private_key=self.requestor_priv_key)
+        fsr.task_to_compute.sign_message(
+            private_key=self.requestor_priv_key,
+        )
+        fsr.ack_report_computed_task.report_computed_task.sign_message(
+            private_key=self.provider_priv_key,
+        )
+        fsr.ack_report_computed_task.sign_message(
+            private_key=self.requestor_priv_key,
+        )
+        fsr.sign_message(private_key=self.provider_priv_key)
+        self.assertTrue(fsr.task_to_compute.verify_ethsig())
         self.assertEqual(fsr.task_to_compute.price, price)
         self.assertTrue(
             fsr.validate_ownership_chain(
@@ -121,7 +132,6 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
                 concent_public_key=self.variant['pubkey'],
             ),
         )
-        print(fsr)
         fsr.sig = None  # Will be signed in send_to_concent()
         response = self.provider_load_response(self.provider_send(fsr))
         self.assertIn(
@@ -163,13 +173,13 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
         )
 
     def test_already_processed(self):
-        task_id = str(uuid.uuid1())
-        subtask_id = str(uuid.uuid1())
-        ctd_prefix = 'task_to_compute__' \
-            'compute_task_def__'
+        requestor_id = "1234"
+        task_id = fake_golem_uuid(requestor_id)
+        subtask_id = fake_golem_uuid(requestor_id)
         kwargs = {
-            ctd_prefix+'task_id': task_id,
-            ctd_prefix+'subtask_id': subtask_id,
+            'task_to_compute__requestor_id': requestor_id,
+            'task_to_compute__task_id': task_id,
+            'task_to_compute__subtask_id': subtask_id,
         }
         self.assertIsNone(self.provider_send_force(rct_kwargs=kwargs))
         second_response = self.provider_send_force(rct_kwargs=kwargs)

@@ -45,12 +45,12 @@ class TestBlenderDockerJob(TestDockerJob):
             "scene_file": str(dest_scene_file),
             "script_src": crop_script_contents,
             "start_task": 42,
-            "end_task": 42,
             "output_format": "EXR",
             "frames": [1],
         }
 
-        with self._create_test_job(script=task_script_src, params=params) as job:  # noqa
+        with self._create_test_job(script=task_script_src, params=params) \
+                as job:
             job.start()
             exit_code = job.wait(timeout=300)
             self.assertEqual(exit_code, 0)

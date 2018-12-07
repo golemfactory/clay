@@ -13,16 +13,13 @@ class DummyTask(Task):
     def query_extra_data(self, perf_index, num_cores, node_id, node_name):
         pass
 
-    def short_extra_data_repr(self, extra_data):
-        pass
-
     def needs_computation(self):
         pass
 
     def finished_computation(self):
         pass
 
-    def computation_finished(self, subtask_id, task_result, result_type,
+    def computation_finished(self, subtask_id, task_result,
                              verification_finished):
         pass
 
@@ -72,6 +69,12 @@ class DummyTask(Task):
         pass
 
     def should_accept_client(self, node_id):
+        pass
+
+    def to_dictionary(self):
+        pass
+
+    def accept_client(self):
         pass
 
 

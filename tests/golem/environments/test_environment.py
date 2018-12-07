@@ -44,23 +44,6 @@ class EnvTest(DatabaseFixture, PEP8MixIn):
         self.env.main_program_file = file_name
         assert self.env.get_source_code() == "PROGRAM CODE"
 
-    def test_check_software(self):
-        # check defaults
-        assert not self.env.check_software()
-        self.env.allow_custom_main_program_file = True
-        assert self.env.check_software()
-
-        # given
-        self.env.allow_custom_main_program_file = False
-        file_name = path.join(self.path, "mainprogramfile")
-        self.env.main_program_file = file_name
-
-        with open(file_name, 'w') as f:
-            f.write("PROGRAM CODE")
-
-        # then
-        assert self.env.check_software()
-
     def test_run_default_benchmark(self):
         assert Environment.get_performance() == 0.0
         assert Environment.run_default_benchmark(save=True) > 0.0

@@ -21,6 +21,12 @@ from . import exceptions
 logger = logging.getLogger("golem.task")
 
 
+class AcceptClientVerdict(Enum):
+    ACCEPTED = 0
+    REJECTED = 1
+    SHOULD_WAIT = 2
+
+
 class TaskPurpose(Enum):
     TESTING = "testing"
     REQUESTING = "requesting"
@@ -44,15 +50,10 @@ class TaskTypeInfo(object):
     def for_purpose(self, purpose: TaskPurpose) -> 'TaskTypeInfo':
         return self
 
-
-# TODO change types to enums - for now it gets
-# evt.comp.task.test.status Error WAMP message serialization
-# error: unsupported type: <enum 'ResultType'> undefined
-# Issue #2408
-
-class ResultType(object): # class ResultType(Enum):
-    DATA = 0
-    FILES = 1
+    @classmethod
+    # pylint:disable=unused-argument
+    def get_preview(cls, task, single=False):
+        pass
 
 
 class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
@@ -79,8 +80,6 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
 
         self.task_id = task_id
         self.task_owner = task_owner
-        # TODO change last_checking param. Issue #2407
-        self.last_checking = time.time()
         self.deadline = deadline
         self.subtask_timeout = subtask_timeout
         self.subtasks_count = subtasks_count
@@ -115,7 +114,6 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
             dictionary['subtasks_count'] = 1
         th: TaskFixedHeader = \
             DictSerializer.load(dictionary, as_class=TaskFixedHeader)
-        th.last_checking = time.time()
 
         if isinstance(th.task_owner, dict):
             th.task_owner = Node.from_dict(th.task_owner)
@@ -134,7 +132,6 @@ class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
         resulting binary blob after serialization.
         """
         self_dict = dict(dictionary)
-        self_dict.pop('last_checking', None)
         self_dict.pop('checksum', None)
 
         # "port_statuses" is a nested dict and needs to be sorted;
@@ -263,6 +260,9 @@ class TaskHeader(object):
     def to_dict(self) -> dict:
         return DictSerializer.dump(self, typed=False)
 
+    def __repr__(self):
+        return "TaskHeader.from_dict({!r})".format(self.to_dict())
+
     def __getattr__(self, item: str) -> Any:
         if 'fixed_header' in self.__dict__ and hasattr(self.fixed_header, item):
             return getattr(self.fixed_header, item)
@@ -325,6 +325,13 @@ class TaskBuilder(abc.ABC):
         all necessary options must be specified in dictionary
         """
         pass
+
+    # TODO: Backward compatibility only. The rendering tasks should
+    # move to overriding their own TaskDefinitions instead of
+    # overriding `build_dictionary. Issue #2424`
+    @staticmethod
+    def build_dictionary(definition: TaskDefinition) -> dict:
+        return definition.to_dict()
 
 
 class TaskEventListener(object):
@@ -427,14 +434,6 @@ class Task(abc.ABC):
         pass
 
     @abc.abstractmethod
-    def short_extra_data_repr(self, extra_data: ExtraData) -> str:
-        """ Should return a short string with general task description that may be used for logging or stats gathering.
-        :param extra_data:
-        :return str:
-        """
-        pass  # Implement in derived class
-
-    @abc.abstractmethod
     def needs_computation(self) -> bool:
         """ Return information if there are still some subtasks that may be dispended
         :return bool: True if there are still subtask that should be computed, False otherwise
@@ -450,12 +449,10 @@ class Task(abc.ABC):
 
     @abc.abstractmethod
     def computation_finished(self, subtask_id, task_result,
-                             result_type=ResultType.DATA,
                              verification_finished=None):
         """ Inform about finished subtask
         :param subtask_id: finished subtask id
         :param task_result: task result, can be binary data or list of files
-        :param result_type: ResultType representation
         """
         return  # Implement in derived class
 
@@ -603,5 +600,13 @@ class Task(abc.ABC):
         raise NotImplementedError()
 
     @abc.abstractmethod
+    def to_dictionary(self):
+        pass
+
+    @abc.abstractmethod
     def should_accept_client(self, node_id):
+        pass
+
+    @abc.abstractmethod
+    def accept_client(self, node_id):
         pass

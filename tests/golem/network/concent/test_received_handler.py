@@ -338,6 +338,7 @@ class ForceGetTaskResultTest(TaskServerMessageHandlerTestBase):
     @mock.patch('golem.task.taskmanager.TaskManager.task_computation_failure')
     def test_force_get_task_result_failed(self, tcf):
         fgtrf = msg_factories.concents.ForceGetTaskResultFailedFactory()
+        fgtrf._fake_sign()
         library.interpret(fgtrf)
 
         msg = history.MessageHistoryService.get_sync_as_message(
@@ -459,7 +460,7 @@ class FiletransfersTestBase(TaskServerMessageHandlerTestBase):
         self.addCleanup(cft_patch.stop)
 
 
-class FileTransferTokenTestsBase:  # noqa pylint:disable=too-few-public-methods
+class FileTransferTokenTestsBase:
 
     def setUp(self):
         super().setUp()  # noqa: pylint:disable=no-member

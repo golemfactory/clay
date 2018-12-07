@@ -12,7 +12,7 @@ from twisted.internet.defer import Deferred
 
 from golem_messages import helpers as msg_helpers
 
-from golem.core.async import AsyncHTTPRequest
+from golem.core import golem_async
 from golem.resource.client import IClient, ClientOptions
 
 log = logging.getLogger(__name__)
@@ -237,7 +237,7 @@ class HyperdriveAsyncClient(HyperdriveClient):
             else:
                 _result.errback(HTTPError(decoded))
 
-        deferred = AsyncHTTPRequest.run(
+        deferred = golem_async.AsyncHTTPRequest.run(
             b'POST',
             self._url_bytes,
             self._headers_obj,

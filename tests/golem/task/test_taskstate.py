@@ -24,7 +24,6 @@ class TestSubtaskState(unittest.TestCase):
     @freeze_time()
     def test_to_dictionary():
         ss = SubtaskState()
-        ss.subtask_definition = "My long task definition"
         ss.subtask_id = "ABCDEF"
         ss.subtask_progress = 0.92
         ss.time_started = get_timestamp_utc()
@@ -37,14 +36,9 @@ class TestSubtaskState(unittest.TestCase):
         ss.stderr = "path/to/file2"
         ss.results = ["path/to/file3", "path/to/file4"]
         ss.computation_time = 130
-        ss.computer.node_name = "NODE1"
-        ss.computer.node_id = "abc131"
-        ss.computer.performance = 180
-        ss.computer.ip_address = "10.10.10.1"
-        ss.computer.port = 1311
+        ss.node_id = "NODE1"
 
         ss_dict = ss.to_dictionary()
-        assert ss_dict['description'] == "My long task definition"
         assert ss_dict['subtask_id'] == "ABCDEF"
         assert ss_dict['progress'] == 0.92
         assert ss_dict['time_started'] == get_timestamp_utc()
@@ -62,12 +56,7 @@ class TestSubtaskState(unittest.TestCase):
         assert ss_dict['results'] == ["path/to/file3", "path/to/file4"]
 
         assert ss_dict.get('computation_time') is None
-
-        assert ss_dict['node_name'] == "NODE1"
-        assert ss_dict['node_id'] == "abc131"
-        assert ss_dict['node_performance'] == "180"
-        assert ss_dict['node_ip_address'] == "10.10.10.1"
-        assert ss_dict['node_port'] == 1311
+        assert ss_dict['node_id'] == "NODE1"
 
 
 class TestTaskState(unittest.TestCase):

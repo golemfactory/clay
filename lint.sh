@@ -79,6 +79,9 @@ main() {
         exit -1
     fi
 
+    message "Checking if the requirements are sorted properly"
+    ls | grep '^requirements.*txt$' | LC_ALL=C xargs -I@ sort --ignore-case -c @
+
     files2chk=$(files_to_check)
 
     if [[ -z "${files2chk}" ]]; then
