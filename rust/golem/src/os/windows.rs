@@ -27,12 +27,12 @@ impl Processes {
         }
     }
 
-    pub fn enumerate(&mut self) -> Result<(), OSError> {
+    pub fn init(&mut self) -> Result<(), OSError> {
         // A pointer to an array that receives the list of process identifiers
         let lpid_process = &mut self.array[0];
-        // The size of the pProcessIds array, in bytes
+        // The size of self.array, in bytes
         let cb: DWORD = (size_of::<DWORD>() * MAX_PROCESS_COUNT) as DWORD;
-        // The number of bytes returned in the pProcessIds array
+        // The number of bytes returned in self.array
         let mut cb_needed: DWORD = 0;
         // A pointer to the number of bytes returned
         let lpcb_needed: LPDWORD = &mut cb_needed;
@@ -48,28 +48,22 @@ impl Processes {
         Ok(())
     }
 
-    pub fn open(&self, idx: usize) -> HANDLE {
+    pub fn get_handle(&self, idx: usize) -> HANDLE {
         let id = self.array[idx];
         if id == 0 {
             return NULL;
         }
 
-        unsafe {
-            OpenProcess(
-                PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_ALL_ACCESS,
-                FALSE as i32,
-                id,
-            )
-        }
+        unsafe { OpenProcess(PROCESS_ALL_ACCESS, FALSE as i32, id) }
     }
 }
 
 pub fn empty_working_sets() -> Result<(), OSError> {
     let mut processes = Processes::new();
-    processes.enumerate()?;
+    processes.init()?;
 
     for idx in 0..processes.count as usize {
-        let handle = processes.open(idx);
+        let handle = processes.get_handle(idx);
 
         if handle != NULL {
             unsafe {
