@@ -5,18 +5,18 @@ from golem.appconfig import DEFAULT_HARDWARE_PRESET_NAME as DEFAULT, \
     CUSTOM_HARDWARE_PRESET_NAME as CUSTOM, MIN_MEMORY_SIZE, MIN_DISK_SPACE, \
     MIN_CPU_CORES
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.hardware import HardwarePresets
+from golem.hardware.presets import HardwarePresets
 from golem.model import HardwarePreset
 
 
-@patch('golem.core.hardware.cpu_cores_available', return_value=[1] * 7)
-@patch('golem.core.hardware.memory_available', return_value=7e7)
-@patch('golem.core.hardware.free_partition_space', return_value=7e9)
+@patch('golem.hardware.presets.cpu_cores_available', return_value=[1] * 7)
+@patch('golem.hardware.presets.memory_available', return_value=7e7)
+@patch('golem.hardware.presets.free_partition_space', return_value=7e9)
 class TestHardwarePresets(testutils.DatabaseFixture):
 
     def setUp(self):
         super().setUp()
-        with patch('golem.core.hardware.free_partition_space',
+        with patch('golem.hardware.presets.free_partition_space',
                    return_value=7e9):
             HardwarePresets.initialize(self.tempdir)
         self.config = ClientConfigDescriptor()
@@ -141,7 +141,7 @@ class TestHardwarePresets(testutils.DatabaseFixture):
         assert not HardwarePresets.update_config(DEFAULT, self.config)
 
         # when env changes (disk space shrinks)
-        with patch('golem.core.hardware.free_partition_space',
+        with patch('golem.hardware.presets.free_partition_space',
                    return_value=5e9):
             # then
             assert HardwarePresets.update_config(DEFAULT, self.config)

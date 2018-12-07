@@ -4,8 +4,7 @@ from peewee import DoesNotExist, IntegrityError
 
 from golem.appconfig import DEFAULT_HARDWARE_PRESET_NAME, \
     CUSTOM_HARDWARE_PRESET_NAME
-from golem.config.presets import HardwarePresetsMixin
-from golem.core.hardware import HardwarePresets
+from golem.hardware.presets import HardwarePresets, HardwarePresetsMixin
 from golem.model import HardwarePreset
 from golem.tools.testwithdatabase import TestWithDatabase
 

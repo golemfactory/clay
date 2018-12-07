@@ -21,7 +21,6 @@ import golem
 from apps.appsmanager import AppsManager
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
-from golem.config.presets import HardwarePresetsMixin
 from golem.core import variables
 from golem.core.common import (
     datetime_to_timestamp_utc,
@@ -31,7 +30,7 @@ from golem.core.common import (
     to_unicode,
 )
 from golem.core.fileshelper import du
-from golem.core.hardware import HardwarePresets
+from golem.hardware.presets import HardwarePresets, HardwarePresetsMixin
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer

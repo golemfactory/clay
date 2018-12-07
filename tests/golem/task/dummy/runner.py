@@ -86,7 +86,7 @@ def create_client(datadir):
     database = Database(
         db, fields=DB_FIELDS, models=DB_MODELS, db_dir=datadir)
 
-    from golem.core.hardware import HardwarePresets
+    from golem.hardware.presets import HardwarePresets
     HardwarePresets.initialize(datadir)
     HardwarePresets.update_config('default', config_desc)
 
