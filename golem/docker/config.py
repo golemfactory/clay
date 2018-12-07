@@ -3,7 +3,7 @@ import os
 from typing import Callable, Dict, Any, Optional
 
 from golem.core.common import get_golem_path
-from golem.core.hardware import cpu_cores_available
+from golem.hardware import cpu_cores_available
 from golem.docker.task_thread import DockerTaskThread
 
 logger = logging.getLogger(__name__)

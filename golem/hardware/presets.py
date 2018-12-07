@@ -1,65 +1,22 @@
 import logging
-from multiprocessing import cpu_count
-from typing import Union, List, Tuple, Optional, Dict
-import humanize
-import psutil
-from psutil import virtual_memory
+from typing import Optional, Union, Dict, Tuple
 
-from golem.appconfig import \
-    MIN_MEMORY_SIZE, \
-    MIN_DISK_SPACE, \
-    MIN_CPU_CORES, \
+import humanize
+
+from golem import appconfig
+from golem.appconfig import MIN_DISK_SPACE, \
     DEFAULT_HARDWARE_PRESET_NAME as DEFAULT, \
-    CUSTOM_HARDWARE_PRESET_NAME as CUSTOM
+    CUSTOM_HARDWARE_PRESET_NAME as CUSTOM, MIN_CPU_CORES, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import is_osx, is_windows, is_linux
 from golem.core.fileshelper import free_partition_space
+from golem.hardware import cpu_cores_available, memory_available
 from golem.model import HardwarePreset
+from golem.rpc import utils as rpc_utils
 
 logger = logging.getLogger(__name__)
 
 
-MAX_CPU_WINDOWS = 32
-MAX_CPU_MACOS = 16
-
-
-def cpu_cores_available() -> List[int]:
-    """
-    Lists CPU cores affined to the process (Linux, Windows) or the available
-    core count (macOS). On Linux, tries to remove the first core from the list
-    if no custom affinity has been set.
-    :return list: A list of CPU cores available for computation.
-    """
-    core_count = cpu_count()
-
-    try:
-        affinity = psutil.Process().cpu_affinity()
-    except Exception as e:
-        logger.debug("Couldn't read CPU affinity: %r", e)
-        affinity = list(range(0, core_count - 1))
-
-    # FIXME: The Linux case will no longer be valid when VM computations are
-    #        introduced.
-    if is_linux():
-        if len(affinity) == core_count and 0 in affinity:
-            affinity.remove(0)
-    else:
-        if is_osx() and len(affinity) > MAX_CPU_MACOS:
-            affinity = affinity[:MAX_CPU_MACOS]
-        elif is_windows() and len(affinity) > MAX_CPU_WINDOWS:
-            affinity = affinity[:MAX_CPU_WINDOWS]
-        affinity = list(range(0, len(affinity)))
-    return affinity or [0]
-
-
-def memory_available() -> int:
-    """
-    :return int: 3/4 of total available memory in KiB
-    """
-    return max(int(virtual_memory().total * 0.75 / 1024), MIN_MEMORY_SIZE)
-
-
-class HardwarePresets(object):
+class HardwarePresets:
 
     default_values = {
         'cpu_cores': len(cpu_cores_available()),
@@ -168,3 +125,85 @@ class HardwarePresets(object):
     def _assert_initialized(cls):
         if not cls.working_dir:
             raise EnvironmentError("Class not initialized")
+
+
+class HardwarePresetsMixin:
+
+    @rpc_utils.expose('env.hw.caps')
+    @staticmethod
+    def get_hw_caps():
+        return HardwarePresets.caps()
+
+    @rpc_utils.expose('env.hw.presets')
+    @staticmethod
+    def get_hw_presets():
+        presets = HardwarePreset.select()
+        return [p.to_dict() for p in presets]
+
+    @rpc_utils.expose('env.hw.preset')
+    @staticmethod
+    def get_hw_preset(name):
+        return HardwarePreset.get(name=name).to_dict()
+
+    @rpc_utils.expose('env.hw.preset.create')
+    @staticmethod
+    def create_hw_preset(preset_dict):
+        preset = HardwarePreset(**preset_dict)
+        preset.save()
+        return preset.to_dict()
+
+    @rpc_utils.expose('env.hw.preset.update')
+    @classmethod
+    def update_hw_preset(cls, preset):
+        preset_dict = cls.__preset_to_dict(preset)
+        name = cls.__sanitize_preset_name(preset_dict['name'])
+
+        preset = HardwarePreset.get(name=name)
+        preset.apply(preset_dict)
+        preset.save()
+        return preset.to_dict()
+
+    @classmethod
+    def upsert_hw_preset(cls, preset):
+        preset_dict = cls.__preset_to_dict(preset)
+        name = cls.__sanitize_preset_name(preset_dict['name'])
+
+        defaults = dict(preset_dict)
+        defaults.pop('name')
+
+        preset, created = HardwarePreset.get_or_create(name=name,
+                                                       defaults=defaults)
+        if not created:
+            preset.apply(preset_dict)
+            preset.save()
+
+        return preset.to_dict()
+
+    @rpc_utils.expose('env.hw.preset.delete')
+    @staticmethod
+    def delete_hw_preset(name):
+        if name in [
+                appconfig.CUSTOM_HARDWARE_PRESET_NAME,
+                appconfig.DEFAULT_HARDWARE_PRESET_NAME,
+        ]:
+            raise ValueError('Cannot remove preset with name: ' + name)
+
+        deleted = HardwarePreset \
+            .delete() \
+            .where(HardwarePreset.name == name) \
+            .execute()
+
+        return bool(deleted)
+
+    def activate_hw_preset(self, name, run_benchmarks=False):
+        raise NotImplementedError
+
+    @staticmethod
+    def __preset_to_dict(preset):
+        return preset if isinstance(preset, dict) else preset.to_dict()
+
+    @staticmethod
+    def __sanitize_preset_name(name):
+        if not name or name == appconfig.DEFAULT_HARDWARE_PRESET_NAME:
+            return appconfig.CUSTOM_HARDWARE_PRESET_NAME
+        return name
