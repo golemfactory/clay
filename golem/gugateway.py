@@ -70,7 +70,7 @@ def usubscribe(node_id):
     return 'subscription deleted'
 
 
-@app.route('/<node_id>/tasks/<task_id>', methods=['POST'])
+@app.route('/<node_id>/tasks/<uuid:task_id>', methods=['POST'])
 def want_to_compute_task(node_id, task_id):
     """Sends task computation willingness"""
 
@@ -95,7 +95,7 @@ def task_info(node_id, task_id):
     """Gets task information"""
 
     if node_id not in subscriptions:
-        return 'Subscription not found', 404
+        return f'Subscription not found {task_id}', 404
 
     return json.dumps({
         'taskId': '682e9b26-ed89-11e8-a9e0-6e845eabffe0',
@@ -108,7 +108,7 @@ def task_info(node_id, task_id):
     })
 
 
-@app.route('/<node_id>/subtasks/<subtask_id>', methods=['PUT'])
+@app.route('/<node_id>/subtasks/<uuid:subtask_id>', methods=['PUT'])
 def confirm_subtask(node_id, subtask_id):
     """Confirms subtask computation start"""
 
@@ -118,7 +118,7 @@ def confirm_subtask(node_id, subtask_id):
     return 'OK'
 
 
-@app.route('/<node_id>/subtasks/<subtask_id>', methods=['GET'])
+@app.route('/<node_id>/subtasks/<uuid:subtask_id>', methods=['GET'])
 def subtask_info(node_id, subtask_id):
     """Gets subtask information"""
 
@@ -138,7 +138,7 @@ def subtask_info(node_id, subtask_id):
     })
 
 
-@app.route('/<node_id>/subtasks/<subtask_id>', methods=['POST'])
+@app.route('/<node_id>/subtasks/<uuid:subtask_id>', methods=['POST'])
 def subtask_result(node_id, subtask_id):
     """Reports subtask computation result"""
 
@@ -151,7 +151,7 @@ def subtask_result(node_id, subtask_id):
     return 'OK'
 
 
-@app.route('/<node_id>/subtask/<subtask_id>/cancel', methods=['POST'])
+@app.route('/<node_id>/subtask/<uuid:subtask_id>/cancel', methods=['POST'])
 def cancel_subtask(node_id, subtask_id):
     """Cancels subtask computation (upon failure or resignation)"""
 
@@ -174,7 +174,7 @@ def upload_resource(node_id):
     return f'upload successful {request.form}, {request.files}'
 
 
-@app.route('/<node_id>/resources/<resource_id>', methods=['GET'])
+@app.route('/<node_id>/resources/<uuid:resource_id>', methods=['GET'])
 def download_resource(node_id, resource_id):
     """Sends a binary resource to a caller"""
     if node_id not in subscriptions:

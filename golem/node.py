@@ -155,9 +155,25 @@ class Node(object):
                 self._setup_client,
                 self._error('keys or docker'),
             ).addErrback(self._error('setup client'))
+            self._start_wsgi()
             self._reactor.run()
         except Exception:  # pylint: disable=broad-except
             logger.exception("Application error")
+
+    # credit https://gist.github.com/ianschenck/977379a91154fe264897
+    def _start_wsgi(self):
+        from twisted.web.wsgi import WSGIResource
+        from twisted.web.server import Site
+        from .gugateway import app
+
+        logger.warning("starting WSGI")
+        resource = WSGIResource(self._reactor,
+                                         self._reactor.getThreadPool(),
+                                         app)
+        site = Site(resource)
+        logger.warning("listening WSGI")
+        self._reactor.listenTCP(5000, site)
+
 
     @rpc_utils.expose('ui.quit')
     def quit(self) -> None:

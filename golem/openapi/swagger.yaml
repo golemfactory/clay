@@ -10,7 +10,6 @@ host: unlimited.golem.network
 basePath: /gw/v1
 schemes:
   - https
-  - http
 paths:
   '/subscriptions/{nodeId}':
     parameters:
