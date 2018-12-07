@@ -8,7 +8,6 @@ from collections import OrderedDict
 from copy import copy
 from typing import Optional, Type
 from PIL import Image, ImageChops, ImageFile
-import numpy
 
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
@@ -381,15 +380,6 @@ class BlenderRenderTask(FrameRenderingTask):
         # https://github.com/golemfactory/golem/issues/2388
         self.compositing = False
         self.samples = task_definition.options.samples
-        return
-
-        self.compositing = task_definition.options.compositing \
-            and self.use_frames \
-            and (self.total_tasks <= len(self.frames))
-        if self.compositing != task_definition.options.compositing:
-            logger.warning("Task %s: Compositing not supported "
-                           "for this type of task, turning compositing off",
-                           task_definition.task_id)
 
     def initialize(self, dir_manager):
         super(BlenderRenderTask, self).initialize(dir_manager)
@@ -445,18 +435,13 @@ class BlenderRenderTask(FrameRenderingTask):
         if not self.use_frames:
             min_y, max_y = self._get_min_max_y(start_task)
         elif parts > 1:
-            min_y = (parts - self._count_part(start_task, parts)) * (
-                1.0 / parts)
-            max_y = (parts - self._count_part(start_task, parts) + 1) * (
-                1.0 / parts)
+            min_y = (parts - self._count_part(start_task, parts)) \
+                    * (1.0 / parts)
+            max_y = (parts - self._count_part(start_task, parts) + 1) \
+                * (1.0 / parts)
         else:
             min_y = 0.0
             max_y = 1.0
-
-        #  Blender is using single precision math, we use numpy to emulate this.
-        #  Send already converted values to blender.
-        min_y = numpy.float32(min_y)
-        max_y = numpy.float32(max_y)
 
         crops = [
             {"outfilebasename": "{}_{}".format(
