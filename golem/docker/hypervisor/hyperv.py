@@ -38,6 +38,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
     DOCKER_PASSWORD = "golem-docker"
     VOLUME_SIZE = "5000"  # = 5GB; default was 20GB
     VOLUME_DRIVER = "cifs"
+    SMB_PORT = "445"
 
     GET_VSWITCH_SCRIPT_PATH = \
         os.path.join(get_golem_path(), 'scripts', 'get-default-vswitch.ps1')
@@ -46,6 +47,22 @@ class HyperVHypervisor(DockerMachineHypervisor):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self._vm_utils = VMUtils()
+
+    def setup(self) -> None:
+        super().setup()
+        self._check_smb_port()
+
+    def _check_smb_port(self) -> None:
+        hostname = self._get_hostname_for_sharing()
+        output = self.command('execute', args=[
+            self._vm_name,
+            f'if nc -z -w 1 {hostname} {self.SMB_PORT} ; then echo OK ; '
+            f'else echo Error ; fi'
+        ])
+        if output is None or output.strip() != 'OK':
+            logger.error(
+                f'Port {self.SMB_PORT} unreachable. '
+                f'Please check firewall settings.')
 
     def start_vm(self, name: Optional[str] = None) -> None:
         constr = self.constraints()
