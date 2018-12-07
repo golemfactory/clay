@@ -77,7 +77,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task.accept_client("NODE 1")
         task.tmp_dir = self.path
         task.subtasks_given["SUBTASK1"] = {"start_task": 3, "node_id": "NODE 1", "parts": 1,
-                                           "end_task": 3, "frames": [1],
+                                           "frames": [1],
                                            "status": SubtaskStatus.starting}
         img_file = os.path.join(self.path, "img1.png")
         img = Image.new("RGB", (800, 600), "#0000ff")
@@ -93,10 +93,10 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         preview_img.close()
 
         task.subtasks_given["SUBTASK2"] = {"start_task": 2, "node_id": "NODE 1", "parts": 1,
-                                           "end_task": 2, "frames": [1],
+                                           "frames": [1],
                                            "status": SubtaskStatus.starting}
         task.subtasks_given["SUBTASK3"] = {"start_task": 1, "node_id": "NODE 1", "parts": 1,
-                                           "end_task": 1, "frames": [1],
+                                           "frames": [1],
                                            "status": SubtaskStatus.starting}
         task.accept_results("SUBTASK2", [img_file])
         task.accept_results("SUBTASK3", [img_file])
@@ -111,7 +111,6 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task.subtasks_given["SUBTASK1"] = {"start_task": 3,
                                            "node_id": "NODE 1",
                                            "parts": 1,
-                                           "end_task": 3,
                                            "frames": [4, 5],
                                            "status": SubtaskStatus.downloading}
         img_file2 = os.path.join(self.path, "img2.png")

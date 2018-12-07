@@ -110,7 +110,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             "\tcnt += 1\n" \
             "output={'data': cnt, 'result_type': 0}"
         ctd['extra_data'] = {}
-        ctd['short_description'] = "add cnt"
         ctd['deadline'] = timeout_to_deadline(10)
 
         task_server = self.task_server

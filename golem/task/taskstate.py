@@ -49,7 +49,6 @@ class TaskState(object):
 
 class SubtaskState(object):
     def __init__(self):
-        self.subtask_definition = ""
         self.subtask_id = ""
         self.subtask_progress = 0.0
         self.time_started = 0
@@ -60,7 +59,6 @@ class SubtaskState(object):
         # FIXME: subtask_rem_time is always equal 0 (#2562)
         self.subtask_rem_time = 0
         self.subtask_status: Optional[SubtaskStatus] = None
-        self.value = 0
         self.stdout = ""
         self.stderr = ""
         self.results = []
@@ -77,7 +75,6 @@ class SubtaskState(object):
             'results': [to_unicode(r) for r in self.results],
             'stderr': to_unicode(self.stderr),
             'stdout': to_unicode(self.stdout),
-            'description': self.subtask_definition,
         }
 
 

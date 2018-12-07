@@ -20,7 +20,6 @@ class TestAppConfig(TestDirFixture):
 
         config_desc = ClientConfigDescriptor()
         config_desc.init_from_app_config(cfg1)
-        config_desc.use_distributed_resource_management = 0
         config_desc.computing_trust = 0.23
         cfg1.change_config(config_desc)
 
@@ -30,7 +29,6 @@ class TestAppConfig(TestDirFixture):
         assert cfg1.get_node_name() == cfgC.get_node_name()
         config_descC = ClientConfigDescriptor()
         config_descC.init_from_app_config(cfgC)
-        assert config_descC.use_distributed_resource_management
         assert config_descC.computing_trust == 0.23
 
         with self.assertRaises(TypeError):

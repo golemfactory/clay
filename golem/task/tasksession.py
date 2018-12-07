@@ -226,6 +226,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 subtask_id,
                 self.key_id,
                 task_to_compute.provider_ethereum_address,
+                task_to_compute.price,
             )
 
             response_msg = message.tasks.SubtaskResultsAccepted(
@@ -572,10 +573,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             size=task_state.package_size
         )
         ttc.generate_ethsig(self.my_private_key)
-        self.task_manager.set_subtask_value(
-            subtask_id=ttc.subtask_id,
-            price=price,
-        )
         self.send(ttc)
         history.add(
             msg=copy_and_sign(
@@ -782,35 +779,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # This assert is for mypy, which only knows that it's Optional[str].
         assert self.key_id is not None
 
-        if msg.task_to_compute is None:
+        if msg.task_to_compute is None or \
+                msg.task_to_compute.requestor_public_key != self.key_id:
             logger.info(
                 'Empty task_to_compute in %s. Disconnecting: %r',
                 msg,
                 self.key_id,
             )
             self.disconnect(message.base.Disconnect.REASON.BadProtocol)
-            return
-
-        def should_accept_sra(msg) -> bool:
-            requestor_check_result = \
-                self.check_requestor_for_subtask(msg.subtask_id)
-
-            if requestor_check_result == RequestorCheckResult.OK:
-                return True
-            if requestor_check_result == RequestorCheckResult.MISMATCH:
-                return False
-
-            # requestor_check_result == RequestorCheckResult.NOT_FOUND:
-            transaction_system = self.task_server.client.transaction_system
-            return transaction_system.is_income_expected(
-                subtask_id=msg.subtask_id,
-                payer_address=msg.task_to_compute.requestor_ethereum_address
-            )
-
-        if not should_accept_sra(msg):
-            logger.debug("Unexpected income from %r for subtask %r",
-                         self.key_id, msg.subtask_id)
-            self.dropped()
             return
 
         self.concent_service.cancel_task_message(

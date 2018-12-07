@@ -24,7 +24,6 @@ class TestSubtaskState(unittest.TestCase):
     @freeze_time()
     def test_to_dictionary():
         ss = SubtaskState()
-        ss.subtask_definition = "My long task definition"
         ss.subtask_id = "ABCDEF"
         ss.subtask_progress = 0.92
         ss.time_started = get_timestamp_utc()
@@ -40,7 +39,6 @@ class TestSubtaskState(unittest.TestCase):
         ss.node_id = "NODE1"
 
         ss_dict = ss.to_dictionary()
-        assert ss_dict['description'] == "My long task definition"
         assert ss_dict['subtask_id'] == "ABCDEF"
         assert ss_dict['progress'] == 0.92
         assert ss_dict['time_started'] == get_timestamp_utc()

@@ -81,8 +81,8 @@ class TaskManager(TaskEventListener):
         pass
 
     def __init__(
-            self, node_name, node, keys_auth, listen_address="",
-            listen_port=0, root_path="res", use_distributed_resources=True,
+            self, node, keys_auth,
+            root_path="res",
             tasks_dir="tasks", task_persistence=True,
             apps_manager=AppsManager(), finished_cb=None):
         super().__init__()
@@ -92,17 +92,12 @@ class TaskManager(TaskEventListener):
         task_types = [app.task_type_info() for app in apps]
         self.task_types = {t.name.lower(): t for t in task_types}
 
-        self.node_name = node_name
         self.node = node
         self.keys_auth = keys_auth
-        self.key_id = keys_auth.key_id
 
         self.tasks: Dict[str, Task] = {}
         self.tasks_states: Dict[str, TaskState] = {}
         self.subtask2task_mapping: Dict[str, str] = {}
-
-        self.listen_address = listen_address
-        self.listen_port = listen_port
 
         self.task_persistence = task_persistence
 
@@ -123,7 +118,6 @@ class TaskManager(TaskEventListener):
 
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
                              TaskStatus.waiting]
-        self.use_distributed_resources = use_distributed_resources
 
         self.comp_task_keeper = CompTaskKeeper(
             tasks_dir,
@@ -172,12 +166,6 @@ class TaskManager(TaskEventListener):
         if task_id in self.tasks:
             raise RuntimeError("Task {} has been already added"
                                .format(task.header.task_id))
-        if not self.key_id:
-            raise ValueError("'key_id' is not set")
-        if not SocketAddress.is_proper_address(self.listen_address,
-                                               self.listen_port):
-            raise IOError("Incorrect socket address: %s:%s" % (
-                self.listen_address, self.listen_port))
 
         task.header.task_owner = self.node
         self.sign_task_header(task.header)
@@ -451,8 +439,8 @@ class TaskManager(TaskEventListener):
 
         return ctd
 
-    def is_my_task(self, task_id) -> bool:
-        """ Check if the task_id is known by this node """
+    def is_my_task(self, task_id: str) -> bool:
+        """ Check if the task ID is known by this node. """
         return task_id in self.tasks
 
     def should_wait_for_node(self, task_id, node_id) -> bool:
@@ -670,34 +658,12 @@ class TaskManager(TaskEventListener):
         else:
             return False
 
-    def is_this_my_task(self, header: dt_tasks.TaskHeader) -> bool:
-        return header.task_id in self.tasks or \
-               header.task_owner.key == self.node.key
-
     def get_node_id_for_subtask(self, subtask_id):
         if subtask_id not in self.subtask2task_mapping:
             return None
         task = self.subtask2task_mapping[subtask_id]
         subtask_state = self.tasks_states[task].subtask_states[subtask_id]
         return subtask_state.node_id
-
-    @handle_subtask_key_error
-    def set_subtask_value(self, subtask_id: str, price: int) -> None:
-        """Set price for a subtask"""
-        task_id = self.subtask2task_mapping[subtask_id]
-
-        ss = self.tasks_states[task_id].subtask_states[subtask_id]
-        ss.value = price
-
-    @handle_subtask_key_error
-    def get_value(self, subtask_id):
-        """ Return value of a given subtask
-        :param subtask_id:  id of a computed subtask
-        :return long: price that should be paid for given subtask
-        """
-        task_id = self.subtask2task_mapping[subtask_id]
-        value = self.tasks_states[task_id].subtask_states[subtask_id].value
-        return value
 
     @handle_subtask_key_error
     def computed_task_received(self, subtask_id, result,
@@ -863,9 +829,7 @@ class TaskManager(TaskEventListener):
                     t.get_total_tasks(),
                     t.get_active_tasks(),
                     t.get_progress(),
-                    t.short_extra_data_repr(task_state.extra_data)
-                )  # FIXME in short_extra_data_repr should there be extra data
-                # Issue #2460
+                )
                 tasks_progresses[task_id] = ltss
 
         return tasks_progresses
@@ -1003,10 +967,6 @@ class TaskManager(TaskEventListener):
             return None
         return task.get_subtasks(frame)
 
-    def change_config(self, root_path, use_distributed_resource_management):
-        self.dir_manager = DirManager(root_path)
-        self.use_distributed_resources = use_distributed_resource_management
-
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]
 
@@ -1072,14 +1032,6 @@ class TaskManager(TaskEventListener):
         """ Add a header of a task which this node may try to compute """
         self.comp_task_keeper.add_request(theader, price)
 
-    @handle_task_key_error
-    def get_payment_for_task_id(self, task_id):
-        val = 0.0
-        t = self.tasks_states[task_id]
-        for ss in list(t.subtask_states.values()):
-            val += ss.value
-        return val
-
     def get_estimated_cost(self, task_type, options):
         try:
             subtask_value = options['price'] * options['subtask_time']
@@ -1099,11 +1051,9 @@ class TaskManager(TaskEventListener):
         ss.node_id = node_id
         ss.node_name = node_name
         ss.deadline = ctd['deadline']
-        ss.subtask_definition = ctd['short_description']
         ss.subtask_id = ctd['subtask_id']
         ss.extra_data = ctd['extra_data']
         ss.subtask_status = SubtaskStatus.starting
-        ss.value = 0
 
         (self.tasks_states[ctd['task_id']].
             subtask_states[ctd['subtask_id']]) = ss

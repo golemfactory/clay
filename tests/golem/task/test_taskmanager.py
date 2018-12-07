@@ -84,7 +84,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         keys_auth = Mock()
         keys_auth.sign.return_value = 'sig_%s' % (self.test_nonce,)
         self.tm = TaskManager(
-            "ABC",
             dt_p2p_factory.Node(),
             keys_auth,
             root_path=self.path,
@@ -92,8 +91,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             finished_cb=Mock()
         )
         self.tm.key_id = "KEYID"
-        self.tm.listen_address = "10.10.10.10"
-        self.tm.listen_port = 2222
 
     def tearDown(self):
         super(TestTaskManager, self).tearDown()
@@ -209,14 +206,12 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         with self.assertLogs(logger, level="DEBUG") as log:
             keys_auth = Mock()
             keys_auth.sign.return_value = 'sig_%s' % (self.test_nonce,)
-            temp_tm = TaskManager("ABC", dt_p2p_factory.Node(),
+            temp_tm = TaskManager(dt_p2p_factory.Node(),
                                   keys_auth=keys_auth,
                                   root_path=self.path,
                                   task_persistence=True)
 
             temp_tm.key_id = "KEYID"
-            temp_tm.listen_address = "10.10.10.10"
-            temp_tm.listen_port = 2222
 
             for task, task_id in zip(tasks, task_ids):
                 temp_tm.add_new_task(task)
@@ -225,7 +220,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                     "TASK %s DUMPED" % task_id in log for log in log.output)
 
         with self.assertLogs(logger, level="DEBUG") as log:
-            fresh_tm = TaskManager("ABC", dt_p2p_factory.Node(), keys_auth=Mock(),
+            fresh_tm = TaskManager(dt_p2p_factory.Node(), keys_auth=Mock(),
                                    root_path=self.path, task_persistence=True)
 
             assert any(
@@ -396,42 +391,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             assert self.tm.tasks.get(task_id) is None
             assert self.tm.tasks_states.get(task_id) is None
             assert not paf.is_file()
-
-    def test_get_and_set_value(self):
-        with self.assertLogs(logger, level="WARNING"):
-            self.tm.get_value("xxyyzz")
-
-        task_mock = self._get_task_mock()
-
-        self.tm.add_new_task(task_mock)
-
-        self.tm.tasks_states["xyz"].status = self.tm.activeStatus[0]
-        with patch('golem.task.taskbase.Task.needs_computation',
-                   return_value=True):
-            wrong_task = not self.tm.is_my_task("xyz")
-            subtask = self.tm.get_next_subtask(
-                node_id="DEF",
-                node_name="DEF",
-                task_id="xyz",
-                estimated_performance=1000,
-                price=10,
-                max_resource_size=5,
-                max_memory_size=10,
-                num_cores=2,
-                address="10.10.10.10",
-            )
-            self.assertIsInstance(subtask, ComputeTaskDef)
-            self.assertFalse(wrong_task)
-
-        self.tm.set_subtask_value("xxyyzz", 13)
-        self.assertEqual(
-            self.tm.tasks_states["xyz"].subtask_states["xxyyzz"].value, 13)
-        self.assertEqual(self.tm.get_value("xxyyzz"), 13)
-
-    def test_change_config(self):
-        self.assertTrue(self.tm.use_distributed_resources)
-        self.tm.change_config(self.path, False)
-        self.assertFalse(self.tm.use_distributed_resources)
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')
     def test_computed_task_received(self, _):
@@ -847,7 +806,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         count = 3
         apps_manager = AppsManager()
         apps_manager.load_all_apps()
-        tm = TaskManager("ABC", dt_p2p_factory.Node(), Mock(), root_path=self.path,
+        tm = TaskManager(dt_p2p_factory.Node(), Mock(), root_path=self.path,
                          apps_manager=apps_manager)
         task_id, subtask_id = self.__build_tasks(tm, count)
 
@@ -877,7 +836,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     def test_get_task_preview(self, get_preview, _):
         apps_manager = AppsManager()
         apps_manager.load_all_apps()
-        tm = TaskManager("ABC", LocalNode(), Mock(), root_path=self.path,
+        tm = TaskManager(LocalNode(), Mock(), root_path=self.path,
                          apps_manager=apps_manager)
         task_id, _ = self.__build_tasks(tm, 1)
 
@@ -889,7 +848,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         count = 3
         apps_manager = AppsManager()
         apps_manager.load_all_apps()
-        tm = TaskManager("ABC", dt_p2p_factory.Node(), Mock(), root_path=self.path,
+        tm = TaskManager(dt_p2p_factory.Node(), Mock(), root_path=self.path,
                          apps_manager=apps_manager)
         task_id, _ = self.__build_tasks(tm, count)
 
@@ -931,7 +890,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert task.header.signature != sig
 
     def test_get_estimated_cost(self):
-        tm = TaskManager("ABC", dt_p2p_factory.Node(), Mock(), root_path=self.path)
+        tm = TaskManager(dt_p2p_factory.Node(), Mock(), root_path=self.path)
         options = {'price': 100,
                    'subtask_time': 1.5,
                    'num_subtasks': 7
@@ -946,15 +905,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         t = self._get_task_mock(task_id=task_id, subtask_id=subtask_id)
         self.tm.add_new_task(t)
         with self.assertRaises(RuntimeError):
-            self.tm.add_new_task(t)
-        self.tm.key_id = None
-        self.tm.listen_address = "not address"
-        self.tm.listen_port = "not a port"
-        t = self._get_task_mock(task_id="qaz123WSX2", subtask_id="qweasdzxc")
-        with self.assertRaises(ValueError):
-            self.tm.add_new_task(t)
-        self.tm.key_id = "1"
-        with self.assertRaises(IOError):
             self.tm.add_new_task(t)
 
     def test_put_task_in_restarted_state_two_times(self):
@@ -1099,7 +1049,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             subtask.results = []
             subtask.stderr = 'error_{}'.format(i)
             subtask.stdout = 'output_{}'.format(i)
-            subtask.extra_data = {'start_task': i, 'end_task': i}
+            subtask.extra_data = {'start_task': i}
             subtask_id = subtask.subtask_id
 
             subtasks[subtask.subtask_id] = subtask
@@ -1143,7 +1093,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             'task_id': 'new_task_id',
             'subtask_id': 'subtask_id1',
             'extra_data': {'start_task': 1},
-            'short_description': 'desc1',
             'src_code': 'code1',
             'performance': 1000,
             'deadline': 1000000000
@@ -1151,7 +1100,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             'task_id': 'new_task_id',
             'subtask_id': 'subtask_id2',
             'extra_data': {'start_task': 2},
-            'short_description': 'desc2',
             'src_code': 'code2',
             'performance': 2000,
             'deadline': 2000000000
@@ -1189,8 +1137,6 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                 self.assertEqual(ss.deadline, ctd['deadline'])
                 self.assertEqual(ss.extra_data, ctd['extra_data'])
                 self.assertEqual(ss.subtask_status, SubtaskStatus.restarted)
-                self.assertEqual(
-                    ss.subtask_definition, ctd['short_description'])
 
     def test_copy_results_subtasks_properly_matched(self):
         old_task = MagicMock(spec=CoreTask)
@@ -1287,7 +1233,6 @@ class TestCopySubtaskResults(TwistedTestCase):
 
     def setUp(self):
         self.tm = TaskManager(
-            node_name='node_name',
             node=dt_p2p_factory.Node(),
             keys_auth=MagicMock(spec=KeysAuth),
             root_path='/tmp',

@@ -77,12 +77,9 @@ class TaskServer(
             min_price=config_desc.min_price,
             task_archiver=task_archiver)
         self.task_manager = TaskManager(
-            config_desc.node_name,
             self.node,
             self.keys_auth,
             root_path=TaskServer.__get_task_manager_root(client.datadir),
-            use_distributed_resources=config_desc.
-            use_distributed_resource_management,
             tasks_dir=os.path.join(client.datadir, 'tasks'),
             apps_manager=apps_manager,
             finished_cb=task_finished_cb,
@@ -340,7 +337,8 @@ class TaskServer(
             if not self.verify_header_sig(task_header):
                 raise ValueError("Invalid signature")
 
-            if self.task_manager.is_this_my_task(task_header):
+            if self.task_manager.is_my_task(task_header.task_id) or \
+                    task_header.task_owner.key == self.node.key:
                 return True  # Own tasks are not added to task keeper
 
             return self.task_keeper.add_task_header(task_header)
@@ -409,9 +407,6 @@ class TaskServer(
         PendingConnectionsServer.change_config(self, config_desc)
         self.config_desc = config_desc
         self.last_message_time_threshold = config_desc.task_session_timeout
-        self.task_manager.change_config(
-            self.__get_task_manager_root(self.client.datadir),
-            config_desc.use_distributed_resource_management)
         self.task_keeper.change_config(config_desc)
         return self.task_computer.change_config(
             config_desc, run_benchmarks=run_benchmarks)
@@ -461,18 +456,13 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def accept_result(self, subtask_id, key_id, eth_address: str):
+    def accept_result(self, subtask_id, key_id, eth_address: str, value: int):
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
             self.max_trust)
         Trust.COMPUTED.increase(key_id, mod)
 
         task_id = self.task_manager.get_task_id(subtask_id)
-        value = self.task_manager.get_value(subtask_id)
-
-        if not value:
-            logger.info("Invaluable subtask: %r value: %r", subtask_id, value)
-            return
 
         payment_processed_ts = self.client.transaction_system.add_payment_info(
             subtask_id,
@@ -688,8 +678,6 @@ class TaskServer(
         self.cur_port = port
         logger.info(" Port {} opened - listening".format(self.cur_port))
         self.node.prv_port = self.cur_port
-        self.task_manager.listen_address = self.node.prv_addr
-        self.task_manager.listen_port = self.cur_port
         self.task_manager.node = self.node
 
     def _listening_failure(self, **kwargs):

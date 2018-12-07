@@ -5,7 +5,7 @@ from ..base import NodeTestPlaybook
 
 
 class TaskTimeoutAndRestart(NodeTestPlaybook):
-    provider_node_script = 'provider/no_second_wtct'
+    provider_node_script = 'provider/no_wtct_after_ttc'
     requestor_node_script = 'requestor/debug'
     task_settings = '2_short'
     provider_node_script_2 = 'provider/debug'
@@ -33,6 +33,9 @@ class TaskTimeoutAndRestart(NodeTestPlaybook):
                 self.previous_task_id = self.task_id
                 self.task_id = None
                 self.next()
+            elif result['status'] == 'Finished':
+                print("Task finished unexpectedly, failing test :(")
+                self.fail()
             else:
                 print("Task status: {} ... ".format(result['status']))
                 time.sleep(10)
@@ -86,6 +89,9 @@ class TaskTimeoutAndRestart(NodeTestPlaybook):
                                   on_success=on_success,
                                   on_error=self.print_error)
 
+    def step_success(self):
+        self.success()
+
     steps: typing.Tuple = (
         NodeTestPlaybook.step_get_provider_key,
         NodeTestPlaybook.step_get_requestor_key,
@@ -114,4 +120,6 @@ class TaskTimeoutAndRestart(NodeTestPlaybook):
         NodeTestPlaybook.step_get_task_id,
         NodeTestPlaybook.step_get_task_status,
         NodeTestPlaybook.step_wait_task_finished,
+        NodeTestPlaybook.step_verify_output,
+        step_success,
     )

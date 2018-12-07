@@ -96,7 +96,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
 
     def test_remove_from_preview(self):
         rt = self.task
-        rt.subtasks_given["xxyyzz"] = {"start_task": 2, "end_task": 2}
+        rt.subtasks_given["xxyyzz"] = {"start_task": 2}
         tmp_dir = DirManager(rt.root_path).get_task_temporary_dir(rt.header.task_id)
        # tmp_dir = get_tmp_path(rt.header.task_id, rt.root_path)
        # makedirs(tmp_dir)
@@ -167,13 +167,13 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
             task.restart_subtask("Not existing")
 
         task.accept_client("node_ABC")
-        task.subtasks_given["ABC"] = {'status': SubtaskStatus.starting, 'end_task':3,
+        task.subtasks_given["ABC"] = {'status': SubtaskStatus.starting,
                                       'start_task': 3, "node_id": "node_ABC"}
         task.restart_subtask("ABC")
         assert task.subtasks_given["ABC"]["status"] == SubtaskStatus.restarted
 
         task.accept_client("node_DEF")
-        task.subtasks_given["DEF"] = {'status': SubtaskStatus.finished, 'end_task': 3,
+        task.subtasks_given["DEF"] = {'status': SubtaskStatus.finished,
                                       'start_task': 3, "node_id": "node_DEF"}
         task.restart_subtask("DEF")
         assert task.subtasks_given["DEF"]["status"] == SubtaskStatus.restarted
@@ -182,19 +182,19 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         assert task.num_tasks_received == -1
 
         task.accept_client("node_GHI")
-        task.subtasks_given["GHI"] = {'status': SubtaskStatus.failure, 'end_task': 3,
+        task.subtasks_given["GHI"] = {'status': SubtaskStatus.failure,
                                       'start_task': 3, "node_id": "node_GHI"}
         task.restart_subtask("GHI")
         assert task.subtasks_given["GHI"]["status"] == SubtaskStatus.failure
 
         task.accept_client("node_JKL")
-        task.subtasks_given["JKL"] = {'status': SubtaskStatus.resent, 'end_task': 3,
+        task.subtasks_given["JKL"] = {'status': SubtaskStatus.resent,
                                       'start_task': 3, "node_id": "node_JKL"}
         task.restart_subtask("JKL")
         assert task.subtasks_given["JKL"]["status"] == SubtaskStatus.resent
 
         task.accept_client("node_MNO")
-        task.subtasks_given["MNO"] = {'status': SubtaskStatus.restarted, 'end_task': 3,
+        task.subtasks_given["MNO"] = {'status': SubtaskStatus.restarted,
                                       'start_task': 3, "node_id": "node_MNO"}
         task.restart_subtask("MNO")
         assert task.subtasks_given["MNO"]["status"] == SubtaskStatus.restarted
@@ -281,7 +281,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task = self.task
         task.total_tasks = 10
         task.last_task = 10
-        assert task._get_next_task() == (None, None)
+        assert task._get_next_task() is None
 
     def test_put_collected_files_together(self):
         output_name = self.temp_file_name("output.exr")

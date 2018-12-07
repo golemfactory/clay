@@ -127,13 +127,8 @@ class Client(HardwarePresetsMixin):
                           keys_auth.key_id),
             datadir
         )
+
         self.db = database
-
-        # Hardware configuration
-        HardwarePresets.initialize(self.datadir)
-        HardwarePresets.update_config(self.config_desc.hardware_preset_name,
-                                      self.config_desc)
-
         self.keys_auth = keys_auth
 
         # NETWORK
@@ -356,6 +351,9 @@ class Client(HardwarePresetsMixin):
             task_finished_cb=self._task_finished_cb,
         )
 
+        # Pause p2p and task sessions to prevent receiving messages before
+        # the node is ready
+        self.pause()
         self._restore_locks()
 
         monitoring_publisher_service = MonitoringPublisherService(
@@ -403,6 +401,8 @@ class Client(HardwarePresetsMixin):
             keys_auth=self.keys_auth,
             client=self
         )
+
+        logger.info("Restoring resources ...")
         self.task_server.restore_resources()
 
         # Start service after restore_resources() to avoid race conditions
@@ -461,6 +461,9 @@ class Client(HardwarePresetsMixin):
 
         gatherResults([p2p, task], consumeErrors=True).addCallbacks(connect,
                                                                     terminate)
+
+        self.resume()
+
         logger.info("Starting p2p server ...")
         self.p2pservice.task_server = self.task_server
         self.p2pservice.set_resource_server(self.resource_server)

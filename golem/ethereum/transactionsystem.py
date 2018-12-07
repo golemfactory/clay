@@ -293,16 +293,7 @@ class TransactionSystem(LoopingCallService):
             eth_address: str) -> int:
         if not self._payment_processor:
             raise Exception('Start was not called')
-        payee = decode_hex(eth_address)
-        if len(payee) != 20:
-            raise ValueError(
-                "Incorrect 'payee' length: {}. Should be 20".format(len(payee)))
-        payment = model.Payment.create(
-            subtask=subtask_id,
-            payee=payee,
-            value=value,
-        )
-        return self._payment_processor.add(payment)
+        return self._payment_processor.add(subtask_id, eth_address, value)
 
     @sci_required()
     def get_payment_address(self):
@@ -433,16 +424,6 @@ class TransactionSystem(LoopingCallService):
             payer_address,
             value,
             accepted_ts,
-        )
-
-    def is_income_expected(
-            self,
-            subtask_id: str,
-            payer_address: str,
-    ) -> bool:
-        return self._incomes_keeper.is_expected(
-            subtask_id,
-            payer_address,
         )
 
     def settle_income(

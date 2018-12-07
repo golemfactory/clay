@@ -102,17 +102,6 @@ class IncomesKeeper:
             income.save()
 
     @staticmethod
-    def is_expected(
-            subtask_id: str,
-            payer_address: str,
-    ) -> bool:
-        return Income.select().where(
-            Income.subtask == subtask_id,
-            Income.payer_address == payer_address,
-            Income.transaction.is_null()
-        ).exists()
-
-    @staticmethod
     def settled(
             sender_node: str,
             subtask_id: str,
@@ -158,15 +147,11 @@ class IncomesKeeper:
         :return: Updated incomes
         """
         accepted_ts_deadline = int(time.time()) - PAYMENT_DEADLINE
-        created_deadline = datetime.now() - timedelta(seconds=PAYMENT_DEADLINE)
 
         incomes = list(Income.select().where(
             Income.overdue == False,   # noqa pylint: disable=singleton-comparison
             Income.transaction.is_null(True),
-            (Income.accepted_ts < accepted_ts_deadline) | (
-                Income.accepted_ts.is_null(True) &
-                (Income.created_date < created_deadline)
-            )
+            Income.accepted_ts < accepted_ts_deadline,
         ))
 
         if not incomes:

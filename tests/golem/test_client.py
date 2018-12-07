@@ -27,6 +27,7 @@ from golem.client import Client, ClientTaskComputerEventListener, \
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
+from golem.core.hardware import HardwarePresets
 from golem.core.variables import CONCENT_CHOICES
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -200,10 +201,9 @@ class TestClient(TestClientBase):
 
     def test_activate_hw_preset(self, *_):
         config = self.client.config_desc
-        config.hardware_preset_name = 'non-existing'
-        config.num_cores = 0
-        config.max_memory_size = 0
-        config.max_resource_size = 0
+
+        HardwarePresets.initialize(self.client.datadir)
+        HardwarePresets.update_config('default', config)
 
         self.client.activate_hw_preset('custom')
 
@@ -1037,7 +1037,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             'scene_file': "/golem/resources/cube.blend",
             'frames': [1],
             'start_task': 1,
-            'end_task': 1,
             'total_tasks': 1,
         }
         task_computer.get_progress.return_value = \
