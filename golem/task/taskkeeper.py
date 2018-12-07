@@ -14,6 +14,8 @@ from golem_messages import (
     message,
 )
 from golem_messages.constants import MTD
+from golem_messages.datastructures import p2p as dt_p2p
+from golem_messages.datastructures import tasks as dt_tasks
 from semantic_version import Version
 
 import golem
@@ -21,8 +23,6 @@ from golem.core import common
 from golem.core import golem_async
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
-from golem.network.p2p.node import Node
-from .taskbase import TaskHeader
 
 logger = logging.getLogger('golem.task.taskkeeper')
 
@@ -53,7 +53,7 @@ class WrongOwnerException(Exception):
 
 
 class CompTaskInfo:
-    def __init__(self, header: TaskHeader, price: int):
+    def __init__(self, header: dt_tasks.TaskHeader, price: int):
         self.header = header
         # subtask_price is total amount that will be payed
         # for subtask of this task
@@ -170,7 +170,7 @@ class CompTaskKeeper:
         self.subtask_to_task.update(subtask_to_task)
         self.task_package_paths.update(task_package_paths)
 
-    def add_request(self, theader: TaskHeader, price: int):
+    def add_request(self, theader: dt_tasks.TaskHeader, price: int):
         # price is task_header.max_price
         logger.debug('CT.add_request(%r, %d)', theader, price)
         if price < 0:
@@ -306,7 +306,7 @@ class TaskHeaderKeeper:
     def __init__(
             self,
             environments_manager,
-            node: Node,
+            node: dt_p2p.Node,
             min_price=0.0,
             app_version=golem.__version__,
             remove_task_timeout=180,
@@ -314,7 +314,7 @@ class TaskHeaderKeeper:
             max_tasks_per_requestor=10,
             task_archiver=None):
         # all computing tasks that this node knows about
-        self.task_headers: typing.Dict[str, TaskHeader] = {}
+        self.task_headers: typing.Dict[str, dt_tasks.TaskHeader] = {}
         # ids of tasks that this node may try to compute
         self.supported_tasks = []
         # results of tasks' support checks
@@ -334,13 +334,12 @@ class TaskHeaderKeeper:
         self.task_archiver = task_archiver
         self.node = node
 
-    def check_support(self, header: TaskHeader) -> SupportStatus:
+    def check_support(self, header: dt_tasks.TaskHeader) -> SupportStatus:
         """Checks if task described with given task header dict
            may be computed by this node. This node must
            support proper environment, be allowed to make computation
            cheaper than with max price declared in task and have proper
            application version.
-        :param TaskHeader header: task header
         :return SupportStatus: ok() if this node may compute a task
         """
         supported = self.check_environment(header.environment)
@@ -365,16 +364,15 @@ class TaskHeaderKeeper:
                 {UnsupportReason.ENVIRONMENT_NOT_ACCEPTING_TASKS: env})
         return self.environments_manager.get_support_status(env).join(status)
 
-    def check_mask(self, header: TaskHeader) -> SupportStatus:
+    def check_mask(self, header: dt_tasks.TaskHeader) -> SupportStatus:
         """ Check if ID of this node matches the mask in task header """
         if header.mask.matches(decode_hex(self.node.key)):
             return SupportStatus.ok()
         return SupportStatus.err({UnsupportReason.MASK_MISMATCH: self.node.key})
 
-    def check_price(self, header: TaskHeader) -> SupportStatus:
+    def check_price(self, header: dt_tasks.TaskHeader) -> SupportStatus:
         """Check if this node offers prices that isn't greater than maximum
            price described in task header.
-        :param TaskHeader header: task header
         :return SupportStatus: err() if price offered by this node is higher
                                than maximum price for this task,
                                ok() otherwise.
@@ -385,10 +383,9 @@ class TaskHeaderKeeper:
         return SupportStatus.err(
             {UnsupportReason.MAX_PRICE: max_price})
 
-    def check_version(self, header: TaskHeader) -> SupportStatus:
+    def check_version(self, header: dt_tasks.TaskHeader) -> SupportStatus:
         """Check if this node has a version that isn't less than minimum
            version described in task header.
-        :param TaskHeader header: task header
         :return SupportStatus: err() if node's version is lower than minimum
                                version for this task, False otherwise.
         """
@@ -450,12 +447,11 @@ class TaskHeaderKeeper:
             if self.task_archiver:
                 self.task_archiver.add_support_status(id_, supported)
 
-    def add_task_header(self, header: TaskHeader) -> bool:
+    def add_task_header(self, header: dt_tasks.TaskHeader) -> bool:
         """This function will try to add to or update a task header
            in a list of known headers. The header will be added / updated
            only if it hasn't been removed recently. If it's new and supported
            its id will be put in supported task list.
-        :param TaskHeader header: task header
         :return bool: True if task header was well formatted and
                       no error occurs, False otherwise
         """
@@ -465,13 +461,6 @@ class TaskHeaderKeeper:
 
             old_header = self.task_headers.get(task_id)
             if old_header:
-                if header.checksum != old_header.checksum:
-                    # Fixed header cannot change so checksums should be equal
-                    logger.warning(
-                        "Fixed header checksums don't match. old: %r new: %r",
-                        old_header.checksum, header.checksum)
-                    return False
-
                 if header.signature == old_header.signature:
                     return True  # Nothing changed
 
@@ -502,7 +491,7 @@ class TaskHeaderKeeper:
             logger.warning("Wrong task header received: {}".format(err))
             return False
 
-    def update_supported_set(self, header: TaskHeader) -> None:
+    def update_supported_set(self, header: dt_tasks.TaskHeader) -> None:
 
         task_id = header.task_id
         support = self.check_support(header)
@@ -577,7 +566,7 @@ class TaskHeaderKeeper:
             return None
         return task.task_owner.key
 
-    def get_task(self) -> typing.Optional[TaskHeader]:
+    def get_task(self) -> typing.Optional[dt_tasks.TaskHeader]:
         """ Returns random task from supported tasks that may be computed
         :return: None if there are no tasks that this node may want to compute
         """

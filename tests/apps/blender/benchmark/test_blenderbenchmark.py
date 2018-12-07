@@ -3,6 +3,7 @@ import unittest
 from unittest import mock
 
 import pytest
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
 from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.blender.task import blenderrendertask
@@ -11,9 +12,7 @@ from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem import testutils
-from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import Task
 from golem.task.taskstate import TaskStatus
 from golem.tools.ci import ci_skip
 
@@ -57,10 +56,10 @@ class TestBenchmarkRunner(testutils.TempDirFixture):
 
         dir_manager = DirManager(self.path)
         task = blenderrendertask.BlenderRenderTaskBuilder(
-                Node(),
-                task_definition,
-                dir_manager
-            ).build()
+            dt_p2p_factory.Node(),
+            task_definition,
+            dir_manager
+        ).build()
 
         success = mock.MagicMock()
         error = mock.MagicMock()

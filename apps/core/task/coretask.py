@@ -1,25 +1,25 @@
 import decimal
 import logging
 import os
-from enum import Enum
-from typing import Type, Optional, Dict, Any
+from typing import Type, Dict, Any
 
-from golem_messages import idgenerator
-import golem_messages.message
 from ethereum.utils import denoms
 from golem_verificator.core_verifier import CoreVerifier
 from golem_verificator.verifier import SubtaskVerificationState
+from golem_messages import idgenerator
+from golem_messages.datastructures import p2p as dt_p2p
+from golem_messages.datastructures import tasks as dt_tasks
+import golem_messages.message
 
 from apps.blender.verification_queue import VerificationQueue
 from apps.core.task.coretaskstate import TaskDefinition, Options
+import golem
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
-from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
 from golem.docker.environment import DockerEnvironment
-from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import Task, TaskHeader, TaskBuilder, \
+from golem.task.taskbase import Task, TaskBuilder, \
     TaskTypeInfo, AcceptClientVerdict
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
@@ -96,11 +96,11 @@ class CoreTask(Task):
     # pylint:disable=too-many-arguments
     def __init__(self,
                  task_definition: TaskDefinition,
-                 owner: Node,
+                 owner: dt_p2p.Node,
                  max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
                  resource_size=None,
                  root_path=None,
-                 total_tasks=0):
+                 total_tasks=1):
         """Create more specific task implementation
         """
 
@@ -137,16 +137,17 @@ class CoreTask(Task):
         else:
             self.docker_images = None
 
-        th = TaskHeader(
+        th = dt_tasks.TaskHeader(
+            min_version=golem.__version__,
             task_id=task_definition.task_id,
             environment=self.environment.get_id(),
             task_owner=owner,
             deadline=self._deadline,
-            subtask_timeout=task_definition.subtask_timeout,
+            subtask_timeout=float(task_definition.subtask_timeout),
             subtasks_count=total_tasks,
             resource_size=self.resource_size,
             estimated_memory=task_definition.estimated_memory,
-            max_price=task_definition.max_price,
+            max_price=int(task_definition.max_price),
             concent_enabled=task_definition.concent_enabled,
         )
 
@@ -498,7 +499,7 @@ class CoreTaskBuilder(TaskBuilder):
     TASK_CLASS = CoreTask
 
     def __init__(self,
-                 owner: Node,
+                 owner: dt_p2p.Node,
                  task_definition: TaskDefinition,
                  dir_manager: DirManager) -> None:
         super(CoreTaskBuilder, self).__init__()
@@ -557,10 +558,12 @@ class CoreTaskBuilder(TaskBuilder):
         definition.max_price = \
             int(decimal.Decimal(dictionary['bid']) * denoms.ether)
 
-        definition.timeout = string_to_timeout(
-            dictionary['timeout'])
-        definition.subtask_timeout = string_to_timeout(
-            dictionary['subtask_timeout'])
+        definition.timeout = float(
+            string_to_timeout(dictionary['timeout']),
+        )
+        definition.subtask_timeout = float(
+            string_to_timeout(dictionary['subtask_timeout']),
+        )
         definition.output_file = cls.get_output_path(dictionary, definition)
         definition.estimated_memory = dictionary.get('estimated_memory', 0)
 

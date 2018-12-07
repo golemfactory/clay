@@ -1,9 +1,9 @@
 from unittest import TestCase
 
-from golem.network.p2p.node import Node
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from golem.task.taskarchiver import TaskArchiver, Archive, ArchTask, TimeInterval
 from golem.environments.environment import SupportStatus, UnsupportReason
-from golem.task.taskbase import TaskHeader
 from golem.core.common import timeout_to_deadline, datetime_to_timestamp
 import time
 import pytz
@@ -36,10 +36,10 @@ class TestTaskArchiver(TestCase):
         if not deadline:
             deadline = timeout_to_deadline(36000)
 
-        ret = TaskHeader(
+        ret = dt_tasks_factory.TaskHeader(
             task_id=str(uuid4()),
             environment="DEFAULT",
-            task_owner=Node(),
+            task_owner=dt_p2p_factory.Node(),
             max_price=max_price,
             deadline=deadline,
             min_version=min_version)

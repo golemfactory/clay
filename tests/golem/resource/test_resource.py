@@ -76,7 +76,7 @@ class TestGetTaskResources(TempDirFixture):
         return task_definition
 
     def _get_core_task(self):
-        from golem.network.p2p.node import Node
+        from golem_messages.datastructures.p2p import Node
         task_def = self._get_core_task_definition()
 
         class CoreTaskDeabstacted(CoreTask):

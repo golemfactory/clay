@@ -1,7 +1,8 @@
 import os
 from os import path, remove
-
 from unittest.mock import Mock, patch, ANY
+
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
 from apps.core.task.coretaskstate import TaskDefinition, TaskState, Options
 from apps.core.task.coretask import logger as core_logger
@@ -16,7 +17,6 @@ from apps.core.task.coretask import logger as logger_core
 from apps.rendering.task.renderingtask import logger as logger_render
 
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
-from golem.network.p2p.node import Node
 
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
@@ -59,7 +59,7 @@ class TestInitRenderingTask(TestDirFixture, LogTestCase):
         with self.assertLogs(logger_core, level="WARNING"):
             rt = RenderingTaskMock(main_program_file="notexisting",
                                    task_definition=RenderingTaskDefinition(),
-                                   owner=Node(node_name="ABC"),
+                                   owner=dt_p2p_factory.Node(),
                                    total_tasks=10,
                                    root_path=self.path
                                    )
@@ -75,8 +75,8 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task_definition.max_price = 1000
         task_definition.task_id = "xyz"
         task_definition.estimated_memory = 1024
-        task_definition.timeout = 3600
-        task_definition.subtask_timeout = 600
+        task_definition.timeout = 3600.0
+        task_definition.subtask_timeout = 600.0
         task_definition.main_scene_file=files[1]
         task_definition.resolution = [800, 600]
         task_definition.output_file = files[2]
@@ -87,12 +87,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
             task_definition=task_definition,
             total_tasks=100,
             root_path=self.path,
-            owner=Node(
-                node_name="ABC",
-                pub_addr="10.10.10.10",
-                pub_port=1023,
-                key="keyid"
-            ),
+            owner=dt_p2p_factory.Node(),
         )
 
         dm = DirManager(self.path)
@@ -330,7 +325,7 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
     def test_calculate_total(self):
         definition = RenderingTaskDefinition()
         definition.optimize_total = True
-        builder = RenderingTaskBuilder(owner=Node(node_name="node"),
+        builder = RenderingTaskBuilder(owner=dt_p2p_factory.Node(),
                                        dir_manager=DirManager(self.path),
                                        task_definition=definition)
 

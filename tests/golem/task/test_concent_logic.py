@@ -13,16 +13,16 @@ from golem_messages import constants as msg_constants
 from golem_messages import cryptography
 from golem_messages import factories
 from golem_messages import message
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from golem_messages.utils import encode_hex
 
 from golem import testutils
 from golem.core import keysauth
 from golem.network import history
-from golem.task import taskbase
 from golem.task import tasksession
 from golem.task import taskstate
 
-from tests.factories.p2p import Node
 
 reject_reasons = message.tasks.RejectReportComputedTask.REASON
 cannot_reasons = message.tasks.CannotComputeTask.REASON
@@ -195,10 +195,10 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
             inputb=self.msg.task_to_compute.get_short_hash(),
         )
         task_id = self.msg.task_to_compute.compute_task_def['task_id']
-        task_header = taskbase.TaskHeader(
+        task_header = dt_tasks_factory.TaskHeader(
             task_id='task_id',
             environment='env',
-            task_owner=Node()
+            task_owner=dt_p2p_factory.Node()
         )
         task_header.deadline = now_ts + 3600
         task = mock.Mock()
@@ -240,16 +240,9 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
             "KEY_ID"
 
     @mock.patch('golem.task.tasksession.TaskSession.dropped')
-    def test_no_task_to_compute(self, dropped_mock):
-        "Drop if task_to_compute is absent"
-        self.msg.task_to_compute = None
-        self.task_session._react_to_report_computed_task(self.msg)
-        dropped_mock.assert_called_once_with()
-
-    @mock.patch('golem.task.tasksession.TaskSession.dropped')
     def test_spoofed_task_to_compute(self, dropped_mock):
         "Drop if task_to_compute is spoofed"
-        self.msg.task_to_compute.sig = '31337'
+        self.msg.task_to_compute.sig = b'31337'
         self.task_session._react_to_report_computed_task(self.msg)
         dropped_mock.assert_called_once_with()
 

@@ -14,6 +14,8 @@ from golem_messages import factories as msg_factories
 from golem_messages import idgenerator
 from golem_messages import message
 from golem_messages import cryptography
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from golem_messages.utils import encode_hex
 
 from twisted.internet.defer import Deferred
@@ -28,18 +30,14 @@ from golem.docker.image import DockerImage
 from golem.network.hyperdrive import client as hyperdrive_client
 from golem.model import Actor
 from golem.network import history
-from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
 from golem.task import taskstate
-from golem.task.taskbase import TaskHeader
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.assertlogs import LogTestCase
 
 from tests import factories
-from tests.factories import p2p as p2p_factories
-from tests.factories.task import taskbase as taskbase_factories
 
 
 def fill_slots(msg):
@@ -127,10 +125,10 @@ class TaskSessionTaskToComputeTest(TestCase):
         return msg
 
     def _fake_add_task(self):
-        task_header = TaskHeader(
+        task_header = dt_tasks_factory.TaskHeader(
             task_id=self.task_id,
             environment='',
-            task_owner=Node(
+            task_owner=dt_p2p_factory.Node(
                 key=self.requestor_key,
                 node_name=self.node_name,
                 pub_addr='10.10.10.10',
@@ -151,7 +149,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts._handshake_required = Mock(return_value=False)
         params = self._get_task_parameters()
         ts.task_server.task_keeper.task_headers = task_headers = {}
-        task_headers[params['task_id']] = taskbase_factories.TaskHeader()
+        task_headers[params['task_id']] = dt_tasks_factory.TaskHeader()
         ts.concent_service.enabled = False
         ts.request_task(
             params['node_name'],
@@ -806,7 +804,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertFalse(cancel.called)
 
         # Save subtask information
-        task_owner = Node(key='owner_id')
+        task_owner = dt_p2p_factory.Node(key='owner_id')
         task = Mock(header=Mock(task_owner=task_owner))
         task_keeper.subtask_to_task[subtask_id] = task_id
         task_keeper.active_tasks[task_id] = task
@@ -880,12 +878,21 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
     def _test_react_to_cannot_assign_task(self, key_id="KEY_ID",
                                           expected_requests=0):
-        task_owner = Node(node_name="ABC", key="KEY_ID",
-                          pub_addr="10.10.10.10", pub_port=2311)
+        task_owner = dt_p2p_factory.Node(
+            node_name="ABC",
+            key="KEY_ID",
+            pub_addr="10.10.10.10",
+            pub_port=2311,
+        )
         task_keeper = CompTaskKeeper(self.new_path)
-        task_keeper.add_request(TaskHeader(environment='DEFAULT',
-                                           task_id="abc",
-                                           task_owner=task_owner), 20)
+        task_keeper.add_request(
+            dt_tasks_factory.TaskHeader(
+                environment='DEFAULT',
+                task_id="abc",
+                task_owner=task_owner,
+            ),
+            20,
+        )
         assert task_keeper.active_tasks["abc"].requests == 1
         self.task_session.task_manager.comp_task_keeper = task_keeper
         msg_cat = message.tasks.CannotAssignTask(task_id="abc")
@@ -971,7 +978,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
             password='',
         )
         self.ts.task_server.keys_auth = keys_auth
-        self.n = p2p_factories.Node()
+        self.n = dt_p2p_factory.Node()
         self.task_id = str(uuid.uuid4())
         self.subtask_id = str(uuid.uuid4())
         self.node_id = self.n.key

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional, Dict, List, Iterable
 from zipfile import ZipFile
 
+from golem_messages.datastructures import tasks as dt_tasks
 from golem_messages.message import ComputeTaskDef
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
@@ -26,7 +27,7 @@ from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener, Task, TaskHeader,\
+from golem.task.taskbase import TaskEventListener, Task,\
     TaskPurpose, AcceptClientVerdict
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
@@ -178,8 +179,8 @@ class TaskManager(TaskEventListener):
             raise IOError("Incorrect socket address: %s:%s" % (
                 self.listen_address, self.listen_port))
 
-        task.header.fixed_header.task_owner = self.node
-        task.header.signature = self.sign_task_header(task.header)
+        task.header.task_owner = self.node
+        self.sign_task_header(task.header)
 
         task.create_reference_data_for_task_validation()
         task.register_listener(self)
@@ -209,7 +210,7 @@ class TaskManager(TaskEventListener):
         except ValueError:
             logger.exception('Wrong number of bits for mask increase')
         else:
-            task.header.signature = self.sign_task_header(task.header)
+            self.sign_task_header(task.header)
 
     @handle_task_key_error
     def decrease_task_mask(self, task_id: str, num_bits: int = 1) -> None:
@@ -220,7 +221,7 @@ class TaskManager(TaskEventListener):
         except ValueError:
             logger.exception('Wrong number of bits for mask decrease')
         else:
-            task.header.signature = self.sign_task_header(task.header)
+            self.sign_task_header(task.header)
 
     @handle_task_key_error
     def start_task(self, task_id):
@@ -657,10 +658,10 @@ class TaskManager(TaskEventListener):
 
     def update_task_signatures(self):
         for task in list(self.tasks.values()):
-            task.header.signature = self.sign_task_header(task.header)
+            self.sign_task_header(task.header)
 
     def sign_task_header(self, task_header):
-        return self.keys_auth.sign(task_header.to_binary())
+        task_header.sign(private_key=self.keys_auth._private_key)  # noqa pylint: disable=protected-access
 
     def verify_subtask(self, subtask_id):
         if subtask_id in self.subtask2task_mapping:
@@ -669,7 +670,7 @@ class TaskManager(TaskEventListener):
         else:
             return False
 
-    def is_this_my_task(self, header: TaskHeader) -> bool:
+    def is_this_my_task(self, header: dt_tasks.TaskHeader) -> bool:
         return header.task_id in self.tasks or \
                header.task_owner.key == self.node.key
 

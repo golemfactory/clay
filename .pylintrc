@@ -128,6 +128,8 @@ ignored-classes=optparse.Values,
                 pathlib.PurePath,
                 types,
                 faker.generator.Generator,
+                golem_messages.datastructures.p2p.Node,
+                golem.network.p2p.local_node.LocalNode,
 
 # List of module names for which member attributes should not be checked
 # (useful for modules/projects where namespaces are manipulated during runtime
