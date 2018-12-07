@@ -1,12 +1,11 @@
-import scenefileeditor as scenefileeditor
-
-from typing import List, Dict
 import os
+import stat
 import subprocess
 import sys
-import stat
 from multiprocessing import cpu_count
+from typing import List
 
+import scenefileeditor
 
 BLENDER_COMMAND = "blender"
 
@@ -17,14 +16,14 @@ def exec_cmd(cmd):
 
 
 # pylint: disable=too-many-arguments
-def format_blender_render_cmd(  outfilebasename,
-                                scene_file,
-                                script_file,
-                                frames,
-                                output_format,
-                                mounted_paths,
-                                num_threads = cpu_count(),
-                                set_output_path = True ) -> List[str]:
+def format_blender_render_cmd(outfilebasename,
+                              scene_file,
+                              script_file,
+                              frames,
+                              output_format,
+                              mounted_paths,
+                              num_threads=cpu_count(),
+                              set_output_path=True) -> List[str]:
     cmd = [
         "{}".format(BLENDER_COMMAND),
         "-b", "{}".format(scene_file),
@@ -33,7 +32,8 @@ def format_blender_render_cmd(  outfilebasename,
     ]
 
     if set_output_path:
-        cmd += ["-o", "{}/{}".format(mounted_paths["OUTPUT_DIR"], outfilebasename) ]
+        cmd += ["-o", "{}/{}".format(mounted_paths["OUTPUT_DIR"],
+                                     outfilebasename)]
 
     cmd += [
         "-noaudio",
@@ -42,7 +42,6 @@ def format_blender_render_cmd(  outfilebasename,
         "-f", "{}".format(",".join(map(str, frames)))
     ]
     return cmd
-
 
 
 # Example parameters:
@@ -64,10 +63,7 @@ def format_blender_render_cmd(  outfilebasename,
 # }
 
 
-######################################
-##
-def params_to_dict( params ) -> dict:
-
+def params_to_dict(params) -> dict:
     params_dict = dict()
 
     params_dict["scene_file"] = params.scene_file
@@ -76,7 +72,6 @@ def params_to_dict( params ) -> dict:
     params_dict["resolution"] = params.resolution
     params_dict["use_compositing"] = params.use_compositing
     params_dict["samples"] = params.samples
-
     params_dict["crops"] = list()
     for crop_params in params.crops:
         params_dict["crops"].append(crop_params.copy())
@@ -84,40 +79,49 @@ def params_to_dict( params ) -> dict:
     return params_dict
 
 
-######################################
-##
 def params_to_paths(params) -> dict:
-
     mounted_paths = dict()
     mounted_paths["RESOURCES_DIR"] = params.RESOURCES_DIR
     mounted_paths["WORK_DIR"] = params.WORK_DIR
     mounted_paths["OUTPUT_DIR"] = params.OUTPUT_DIR
-
     return mounted_paths
 
-######################################
-##
-def gen_blender_script_file( parameters : dict, crop : dict, mounted_paths : dict, crop_counter : int, output_path = None ):
+
+def gen_blender_script_file(parameters: dict,
+                            crop: dict,
+                            mounted_paths: dict,
+                            crop_counter: int,
+                            output_path=None):
 
     outfilebasename = crop["outfilebasename"]
     borders_x = crop["borders_x"]
     borders_y = crop["borders_y"]
 
-    script_file = "scriptfile-" + outfilebasename + "-[crop_num=" + str(crop_counter) + "].py"
+    script_file = "scriptfile-" \
+                  + outfilebasename \
+                  + "-[crop_num=" \
+                  + str(crop_counter) \
+                  + "].py"
 
-    script_file = scenefileeditor.generate_blender_crop_file(script_file, parameters["resolution"],
-                                                            borders_x, borders_y,
-                                                            parameters["use_compositing"],
-                                                            parameters["samples"],
-                                                            mounted_paths,
-                                                            output_path)
+    script_file = scenefileeditor.generate_blender_crop_file(
+        script_file,
+        parameters["resolution"],
+        borders_x,
+        borders_y,
+        parameters["use_compositing"],
+        parameters["samples"],
+        mounted_paths,
+        output_path)
 
     return script_file
 
 
-######################################
-##
-def gen_blender_command( parameters : dict, crop : dict, mounted_paths : dict, script_file : str, num_threads = cpu_count(), set_output_path = True ):
+def gen_blender_command(parameters: dict,
+                        crop: dict,
+                        mounted_paths: dict,
+                        script_file: str,
+                        num_threads=cpu_count(),
+                        set_output_path=True):
 
     outfilebasename = crop["outfilebasename"]
     frames = parameters["frames"]
@@ -134,9 +138,8 @@ def gen_blender_command( parameters : dict, crop : dict, mounted_paths : dict, s
     return cmd
 
 
-######################################
-##
-def render( parameters : dict, mounted_paths : dict ) -> List[ dict ]:
+def render(parameters: dict,
+           mounted_paths: dict) -> List[dict]:
 
     crops = parameters["crops"]
 
@@ -145,14 +148,18 @@ def render( parameters : dict, mounted_paths : dict ) -> List[ dict ]:
 
     for crop in crops:
 
-        script_file = gen_blender_script_file( parameters, crop, mounted_paths, crop_counter )
-        cmd = gen_blender_command( parameters, crop, mounted_paths, script_file )
+        script_file = gen_blender_script_file(parameters,
+                                              crop, mounted_paths,
+                                              crop_counter)
+        cmd = gen_blender_command(parameters, crop, mounted_paths, script_file)
 
         output_format = parameters["output_format"].lower()
 
         results_list = list()
         for frame in parameters["frames"]:
-            filename = crop["outfilebasename"] + "{:04d}.".format(frame) + output_format
+            filename = crop["outfilebasename"] \
+                       + "{:04d}.".format(frame) \
+                       + output_format
             results_list.append(filename)
 
         crop_info = dict()
@@ -166,15 +173,15 @@ def render( parameters : dict, mounted_paths : dict ) -> List[ dict ]:
         if exit_code is not 0:
             sys.exit(exit_code)
 
-
         crop_counter += 1
 
     return output_info
 
 
-######################################
-##
-def gen_render_shell_scripts( parameters : dict, mounted_paths : dict, use_fixed_output_path = False ) -> List[ dict ]:
+# pylint: disable-msg=too-many-locals
+def gen_render_shell_scripts(parameters: dict,
+                             mounted_paths: dict,
+                             use_fixed_output_path=False) -> List[dict]:
 
     crops = parameters["crops"]
 
@@ -182,31 +189,42 @@ def gen_render_shell_scripts( parameters : dict, mounted_paths : dict, use_fixed
     output_info = list()
 
     for crop in crops:
-
-        # Blender generates file name using frame number. Avoid this and set your own name without changes.
+        # Blender generates file name using frame number. Avoid this and set
+        # your own name without changes.
         out_filename = None
         if use_fixed_output_path:
             output_format = parameters["output_format"].lower()
             out_filename = crop["outfilebasename"] + output_format
 
-        script_file = gen_blender_script_file( parameters, crop, mounted_paths, crop_counter, out_filename )
-        cmd = gen_blender_command( parameters, crop, mounted_paths, script_file, num_threads = 1, set_output_path=use_fixed_output_path )
+        script_file = gen_blender_script_file(parameters,
+                                              crop,
+                                              mounted_paths,
+                                              crop_counter,
+                                              out_filename)
+        cmd = gen_blender_command(parameters,
+                                  crop,
+                                  mounted_paths,
+                                  script_file,
+                                  num_threads=1,
+                                  set_output_path=use_fixed_output_path)
 
         shell_script_file = "render-[crop_num=" + str(crop_counter) + "].sh"
-        shell_script_file = os.path.join( scenefileeditor.get_generated_files_path( mounted_paths ), shell_script_file )
+        shell_script_file = os.path.join(
+            scenefileeditor.get_generated_files_path(mounted_paths),
+            shell_script_file)
 
         shell_cmd = "#!/bin/bash\n"
         for cmd_part in cmd:
-            shell_cmd += " " + str( cmd_part )
+            shell_cmd += " " + str(cmd_part)
 
         with open(shell_script_file, "w+") as sh_file:
             sh_file.write(shell_cmd)
 
         # Add permissions to execute script.
         st = os.stat(shell_script_file)
-        os.chmod(shell_script_file, st.st_mode | stat.S_IEXEC )
+        os.chmod(shell_script_file, st.st_mode | stat.S_IEXEC)
 
-        output_info.append( shell_script_file )
+        output_info.append(shell_script_file)
         crop_counter += 1
 
     return output_info

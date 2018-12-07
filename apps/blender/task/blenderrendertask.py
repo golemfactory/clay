@@ -7,9 +7,8 @@ import time
 from collections import OrderedDict
 from copy import copy
 from typing import Optional, Type
-
-import numpy
 from PIL import Image, ImageChops, ImageFile
+import numpy
 
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
@@ -22,8 +21,8 @@ from apps.rendering.resources.renderingtaskcollector import \
 from apps.rendering.resources.utils import handle_image_error, handle_none
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, \
     FrameRenderingTaskBuilder, FrameRendererOptions
-from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, PREVIEW_Y, \
-    RESOURCES_DIR_RT, WORK_DIR_RT, OUTPUT_DIR_RT
+from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, \
+    PREVIEW_Y, RESOURCES_DIR_RT, WORK_DIR_RT, OUTPUT_DIR_RT
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, \
     RendererDefaults
 from golem.core.common import short_node_id, to_unicode
@@ -460,10 +459,10 @@ class BlenderRenderTask(FrameRenderingTask):
         max_y = numpy.float32(max_y)
 
         crops = [
-            {"outfilebasename": "{}_{}".format(self.outfilebasename, start_task),
+            {"outfilebasename": "{}_{}".format(
+                self.outfilebasename, start_task),
              "borders_x": [0.0, 1.0],
-             "borders_y": [min_y, max_y],
-             }
+             "borders_y": [min_y, max_y]}
         ]
         extra_data = {"RESOURCES_DIR": RESOURCES_DIR_RT,
                       "WORK_DIR": WORK_DIR_RT,
@@ -547,8 +546,7 @@ class BlenderRenderTask(FrameRenderingTask):
         crops = [
             {"outfilebasename": "testresult_1",
              "borders_x": [0.0, 1.0],
-             "borders_y": [0.0, 1.0],
-             }
+             "borders_y": [0.0, 1.0]}
         ]
 
         extra_data = {"RESOURCES_DIR": RESOURCES_DIR_RT,

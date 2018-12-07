@@ -213,7 +213,8 @@ class TestBlenderFrameTask(TempDirFixture):
                                               node_name="node11",
                                               num_cores=0)
         assert extra_data.ctd is not None
-        assert extra_data.ctd['extra_data']['crops'][0]['borders_y'] == [0.0, 1.0]
+        assert extra_data.ctd['extra_data']['crops'][0]['borders_y'] \
+            == [0.0, 1.0]
 
     def test_put_frame_together(self):
         self.bt.output_format = "EXR"

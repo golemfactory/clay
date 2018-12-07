@@ -43,7 +43,8 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         self.subtask_info['total_tasks'] = 1
         self.subtask_info['crops'] = [
             {
-                'outfilebasename': 'GolemTask_{}'.format(self.subtask_info['start_task']),
+                'outfilebasename':
+                    'GolemTask_{}'.format(self.subtask_info['start_task']),
                 'borders_x': [0.0, 1.0],
                 'borders_y':[0.0, 1.0]
             }

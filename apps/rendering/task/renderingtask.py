@@ -30,6 +30,7 @@ OUTPUT_DIR_RT = '/golem/output'
 logger = logging.getLogger("apps.rendering")
 
 
+# pylint: disable-msg=too-many-instance-attributes
 class RenderingTask(CoreTask):
     VERIFIER_CLASS = RenderingVerifier
     ENVIRONMENT_CLASS = None  # type: Type[DockerEnvironment]
@@ -104,7 +105,8 @@ class RenderingTask(CoreTask):
 
     def update_task_state(self, task_state):
         if not self.finished_computation() and self.preview_task_file_path:
-            task_state.extra_data['result_preview'] = self.preview_task_file_path
+            task_state.extra_data['result_preview'] \
+                = self.preview_task_file_path
         elif self.preview_file_path:
             task_state.extra_data['result_preview'] = self.preview_file_path
 
@@ -113,9 +115,10 @@ class RenderingTask(CoreTask):
     #########################
     def query_extra_data_for_reference_task(self, *args, **kwargs):
         """
-        This method will generate extra data for reference task which will be solved on local computer (by requestor)
-        in order to obtain reference results.
-        The reference results will be used to validate the output given by providers.
+        This method will generate extra data for reference task which will be
+        solved on local computer (by requestor) in order to obtain reference
+        results. The reference results will be used to validate the output given
+        by providers.
         """
         pass
 
@@ -168,7 +171,9 @@ class RenderingTask(CoreTask):
     def _mark_task_area(self, subtask, img_task, color):
         x = int(round(self.res_x * self.scale_factor))
         y = int(round(self.res_y * self.scale_factor))
-        upper = max(0, int(math.floor(y / self.total_tasks * (subtask['start_task'] - 1))))
+        upper = max(0,
+                    int(math.floor(y / self.total_tasks
+                                   * (subtask['start_task'] - 1))))
         lower = min(
             int(math.floor(y / self.total_tasks * (subtask['start_task']))),
             y,
@@ -194,7 +199,8 @@ class RenderingTask(CoreTask):
             return start_task
         else:
             for sub in self.subtasks_given.values():
-                if sub['status'] in [SubtaskStatus.failure, SubtaskStatus.restarted]:
+                if sub['status'] \
+                        in [SubtaskStatus.failure, SubtaskStatus.restarted]:
                     sub['status'] = SubtaskStatus.resent
                     start_task = sub['start_task']
                     self.num_failed_subtasks -= 1
@@ -217,17 +223,25 @@ class RenderingTask(CoreTask):
         else:
             return ''
 
-    def short_extra_data_repr(self, extra_data):
-        l = extra_data
-        return "RESOURCES_DIR: {RESOURCES_DIR}, WORK_DIR: {WORK_DIR}, OUTPUT_DIR: {OUTPUT_DIR}," \
-               "scene_file: {scene_file}, resolution: {resolution}, use_compositing: {use_compositing}," \
-               "samples: {samples}, frames: {frames}, output_format: {output_format}," \
-               "start_task: {start_task}, total_tasks: {total_tasks}, crops: {crops}"\
-            .format(**l)
+    @staticmethod
+    def short_extra_data_repr(extra_data):
+        return "RESOURCES_DIR: {RESOURCES_DIR}, " \
+               "WORK_DIR: {WORK_DIR}, " \
+               "OUTPUT_DIR: {OUTPUT_DIR}," \
+               "scene_file: {scene_file}, " \
+               "resolution: {resolution}, " \
+               "use_compositing: {use_compositing}," \
+               "samples: {samples}, " \
+               "frames: {frames}, " \
+               "output_format: {output_format}," \
+               "start_task: {start_task}, " \
+               "total_tasks: {total_tasks}, " \
+               "crops: {crops}"\
+            .format(**extra_data)
 
     def _open_preview(self, mode="RGB", ext=PREVIEW_EXT):
-        """ If preview file doesn't exist create a new empty one with given mode and extension.
-        Extension should be compatibile with selected mode. """
+        """ If preview file doesn't exist create a new empty one with given mode
+         and extension. Extension should be compatible with selected mode. """
         if self.preview_file_path is None or not os.path.exists(
                 self.preview_file_path):
             preview_name = "current_preview.{}".format(ext)
@@ -288,8 +302,9 @@ class RenderingTaskBuilder(CoreTaskBuilder):
     @staticmethod
     def _scene_file(type, resources):
         extensions = type.output_file_ext
-        candidates = [res for res in resources if any(res.lower().endswith(ext.lower())
-                                            for ext in extensions)]
+        candidates = [res for res in resources
+                      if any(res.lower().endswith(ext.lower())
+                             for ext in extensions)]
         if not candidates:
             raise RenderingTaskBuilderError("Scene file was not found.")
 

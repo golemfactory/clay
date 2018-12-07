@@ -73,13 +73,22 @@ class TestBlenderReferenceGenerator(TempDirFixture):
             for desc in crops_desc:
                 assert 0 <= desc.pixel_region.left <= resolution[0]
                 assert 0 <= desc.pixel_region.top <= resolution[1]
+
             for desc in crops_desc:
                 assert crop_border[0] <= desc.crop_region.left <= crop_border[1]
-                assert crop_border[0] <= desc.crop_region.right <= crop_border[1]
+
+                assert crop_border[0] \
+                    <= desc.crop_region.right \
+                    <= crop_border[1]
+
                 assert desc.crop_region.left <= desc.crop_region.right
 
                 assert crop_border[2] <= desc.crop_region.top <= crop_border[3]
-                assert crop_border[2] <= desc.crop_region.bottom <= crop_border[3]
+
+                assert crop_border[2] \
+                    <= desc.crop_region.bottom \
+                    <= crop_border[3]
+
                 assert desc.crop_region.bottom <= desc.crop_region.top
 
         for _ in range(100):

@@ -222,9 +222,13 @@ class BlenderReferenceGenerator:
         """
 
         logger.debug("Subtasks borders left = %r,"
-                     " top = %r, right = %r, bottom=%r",
-                     subtask_border["borders_x"][0], subtask_border["borders_y"][1],
-                     subtask_border["borders_x"][1], subtask_border["borders_y"][0])
+                     " top = %r, "
+                     "right = %r, "
+                     "bottom=%r",
+                     subtask_border["borders_x"][0],
+                     subtask_border["borders_y"][1],
+                     subtask_border["borders_x"][1],
+                     subtask_border["borders_y"][0])
 
         subimage = SubImage(Region(subtask_border["borders_x"][0],
                                    subtask_border["borders_y"][1],

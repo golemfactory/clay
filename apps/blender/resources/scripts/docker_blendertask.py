@@ -4,8 +4,6 @@ import params  # This module is generated before this script is run
 import blender_render as blender
 
 
-
-
 def run_blender_task():
 
     # Creates dictionary with paths to RESOURCES_DIR, WORK_DIR and OUTPUT_DIR.

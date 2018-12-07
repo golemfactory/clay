@@ -1,24 +1,32 @@
 import os
 
-BLENDER_CROP_TEMPLATE_PATH = os.path.join(os.path.dirname(os.path.realpath(__file__)),
-                                          "templates", "blendercrop.py.template")
+BLENDER_CROP_TEMPLATE_PATH \
+    = os.path.join(os.path.dirname(os.path.realpath(__file__)),
+                   "templates",
+                   "blendercrop.py.template")
 
 
-######################################
-##
 def get_generated_files_path(mounted_paths: dict):
     return os.path.join(mounted_paths["WORK_DIR"], "render-scripts")
 
 
-######################################
-##
-def generate_blender_crop_file(script_file_out, resolution,
-                               borders_x, borders_y,
-                               use_compositing, samples,
+# pylint: disable-msg=too-many-arguments
+def generate_blender_crop_file(script_file_out,
+                               resolution,
+                               borders_x,
+                               borders_y,
+                               use_compositing,
+                               samples,
                                mounted_paths,
                                override_output=None):
-    content = _generate_blender_crop_file(BLENDER_CROP_TEMPLATE_PATH, resolution, borders_x, borders_y, use_compositing,
-                                          samples, override_output)
+
+    content = _generate_blender_crop_file(BLENDER_CROP_TEMPLATE_PATH,
+                                          resolution,
+                                          borders_x,
+                                          borders_y,
+                                          use_compositing,
+                                          samples,
+                                          override_output)
 
     scripts_dir = get_generated_files_path(mounted_paths)
     if not os.path.isdir(scripts_dir):
@@ -31,8 +39,7 @@ def generate_blender_crop_file(script_file_out, resolution,
     return blender_script_path
 
 
-######################################
-##
+# pylint: disable-msg=too-many-arguments
 def _generate_blender_crop_file(template_path, resolution, borders_x, borders_y,
                                 use_compositing, samples, override_output=None):
     with open(template_path) as f:
