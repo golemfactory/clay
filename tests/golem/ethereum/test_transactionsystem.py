@@ -136,12 +136,12 @@ class TestTransactionSystem(TransactionSystemBase):
         self.sci.get_current_gas_price.return_value = test_gas_price
         ets = self._make_ets()
 
-        assert ets.gas_price == test_gas_price
+        self.assertEquals(ets.gas_price, test_gas_price)
 
     def test_get_gas_price_limit(self):
         ets = self._make_ets()
 
-        assert ets.gas_price_limit == self.sci.GAS_PRICE
+        self.assertEquals(ets.gas_price_limit, self.sci.GAS_PRICE)
 
     def test_withdraw_unknown_currency(self):
         dest = '0x' + 40 * 'd'
