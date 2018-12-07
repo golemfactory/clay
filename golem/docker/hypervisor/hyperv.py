@@ -66,10 +66,22 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     def start_vm(self, name: Optional[str] = None) -> None:
         constr = self.constraints()
+
+        if not self._check_memory(constr):
+            logger.info("Attempting to free memory (empty working sets of "
+                        "running processes)")
+            try:
+                from golem.os import windows_ews
+                windows_ews()
+            except (ImportError, OSError):
+                logger.exception('Failed to free memory')
+
         if not self._check_memory(constr):
             logger.warning('Not enough memory to start the VM, lowering memory')
             mem_key = CONSTRAINT_KEYS['mem']
+            constr[mem_key] = self._memory_cap(constr[mem_key])
             constr[mem_key] = self.pad_memory(constr[mem_key])
+            logger.debug('Memory capped by "free - 10%%": %r', constr[mem_key])
             self.constrain(name, **constr)
 
         try:
@@ -240,12 +252,9 @@ class HyperVHypervisor(DockerMachineHypervisor):
             for bind in binds
         }
 
-    def pad_memory(self, memory: int) -> int:
+    def _memory_cap(self, memory: int) -> int:
         max_mem_in_mb = self._get_max_memory()
-
-        memory_size = min(memory, max_mem_in_mb - max_mem_in_mb // 10)
-        logger.debug('Memory size capped by "free - 10%%": %r', memory_size)
-        return super().pad_memory(memory_size)
+        return min(memory, max_mem_in_mb - max_mem_in_mb // 10)
 
     def _check_memory(self, constr: Optional[dict] = None) -> bool:
         """
