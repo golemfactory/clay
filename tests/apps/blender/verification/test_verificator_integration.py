@@ -29,9 +29,6 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         self.computer = ComputerAdapter()
 
         self.subtask_info = dict()
-        self.subtask_info['RESOURCES_DIR'] = '/golem/resources'
-        self.subtask_info['WORK_DIR'] = '/golem/work'
-        self.subtask_info['OUTPUT_DIR'] = '/golem/output'
         self.subtask_info['scene_file'] = '/golem/resources/bmw.blend'
         self.subtask_info['resolution'] = [150, 150]
         self.subtask_info['use_compositing'] = False

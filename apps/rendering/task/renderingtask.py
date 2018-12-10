@@ -23,9 +23,6 @@ PREVIEW_EXT = "PNG"
 PREVIEW_X = 1280
 PREVIEW_Y = 720
 
-RESOURCES_DIR_RT = '/golem/resources'
-WORK_DIR_RT = '/golem/work'
-OUTPUT_DIR_RT = '/golem/output'
 
 logger = logging.getLogger("apps.rendering")
 

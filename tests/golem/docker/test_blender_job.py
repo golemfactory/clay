@@ -39,9 +39,6 @@ class TestBlenderDockerJob(TestDockerJob):
             }
         ]
         params = {
-            "RESOURCES_DIR": '/golem/resources',
-            "WORK_DIR": '/golem/work',
-            "OUTPUT_DIR": '/golem/output',
             "scene_file": str(dest_scene_file),
             "resolution": [800, 600],
             "use_compositing": True,

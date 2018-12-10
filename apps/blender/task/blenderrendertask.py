@@ -21,7 +21,7 @@ from apps.rendering.resources.utils import handle_image_error, handle_none
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, \
     FrameRenderingTaskBuilder, FrameRendererOptions
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, \
-    PREVIEW_Y, RESOURCES_DIR_RT, WORK_DIR_RT, OUTPUT_DIR_RT
+    PREVIEW_Y
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, \
     RendererDefaults
 from golem.core.common import short_node_id, to_unicode
@@ -449,10 +449,7 @@ class BlenderRenderTask(FrameRenderingTask):
              "borders_x": [0.0, 1.0],
              "borders_y": [min_y, max_y]}
         ]
-        extra_data = {"RESOURCES_DIR": RESOURCES_DIR_RT,
-                      "WORK_DIR": WORK_DIR_RT,
-                      "OUTPUT_DIR": OUTPUT_DIR_RT,
-                      "scene_file": scene_file,
+        extra_data = {"scene_file": scene_file,
                       "resolution": [self.res_x, self.res_y],
                       "use_compositing": self.compositing,
                       "samples": self.samples,
@@ -534,10 +531,7 @@ class BlenderRenderTask(FrameRenderingTask):
              "borders_y": [0.0, 1.0]}
         ]
 
-        extra_data = {"RESOURCES_DIR": RESOURCES_DIR_RT,
-                      "WORK_DIR": WORK_DIR_RT,
-                      "OUTPUT_DIR": OUTPUT_DIR_RT,
-                      "scene_file": scene_file,
+        extra_data = {"scene_file": scene_file,
                       "resolution": BlenderRenderTask.BLENDER_MIN_BOX,
                       "use_compositing": False,
                       "samples": BlenderRenderTask.BLENDER_MIN_SAMPLE,
