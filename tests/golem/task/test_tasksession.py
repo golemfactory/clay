@@ -73,6 +73,7 @@ class ConcentMessageMixin():
 # pylint:disable=no-member
 class TaskSessionTaskToComputeTest(TestCase):
     def setUp(self):
+        self.maxDiff = None
         self.requestor_keys = cryptography.ECCx(None)
         self.requestor_key = encode_hex(self.requestor_keys.raw_pubkey)
         self.provider_keys = cryptography.ECCx(None)
@@ -133,7 +134,9 @@ class TaskSessionTaskToComputeTest(TestCase):
                 node_name=self.node_name,
                 pub_addr='10.10.10.10',
                 pub_port=12345,
-            )
+            ),
+            subtask_timeout=1.0,
+            max_price=1,
         )
         self.task_manager.tasks[self.task_id] = Mock(header=task_header)
 
@@ -246,10 +249,10 @@ class TaskSessionTaskToComputeTest(TestCase):
             ['requestor_public_key', self.requestor_key],
             ['requestor_ethereum_public_key', self.requestor_key],
             ['compute_task_def', ctd],
-            ['want_to_compute_task', mt],
+            ['want_to_compute_task', mt.serialize()],
             ['package_hash', 'sha1:' + task_state.package_hash],
             ['concent_enabled', self.use_concent],
-            ['price', 0],
+            ['price', 1],
             ['size', task_state.package_size],
         ]
         self.assertCountEqual(ms.slots(), expected)
@@ -890,6 +893,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 environment='DEFAULT',
                 task_id="abc",
                 task_owner=task_owner,
+                subtask_timeout=1.0,
+                max_price=1,
+                resource_size=1,
             ),
             20,
         )
@@ -990,7 +996,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
 
     @staticmethod
     def _mock_task_to_compute(task_id, subtask_id, node_id, **kwargs):
-        task_to_compute = message.tasks.TaskToCompute(**kwargs)
+        task_to_compute = msg_factories.tasks.TaskToComputeFactory(**kwargs)
         task_to_compute._fake_sign()
         nmsg_dict = dict(
             task=task_id,

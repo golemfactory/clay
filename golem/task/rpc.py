@@ -6,7 +6,6 @@ import logging
 import os.path
 import re
 import typing
-import warnings
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers

@@ -228,7 +228,9 @@ class TestGetMaskForTask(test_client.TestClientBase):
                     mock.patch.object(
                         self.client, 'task_server', spec=taskserver.TaskServer
                     ), \
-                    mock.patch('golem.task.masking.Mask') as mask:
+                    mock.patch(
+                        'golem_messages.datastructures.tasks.masking.Mask'
+                    ) as mask:
 
                 p2p.get_estimated_network_size.return_value = network_size
                 p2p.get_performance_percentile_rank.return_value = perf_rank

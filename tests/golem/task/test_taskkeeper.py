@@ -230,39 +230,6 @@ class TestTaskHeaderKeeper(LogTestCase):
         assert len(tk.supported_tasks) == 1
         assert tk.supported_tasks[0] == task_id
 
-    def test_task_header_update(self):
-        e = Environment()
-        e.accept_tasks = True
-
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10)
-        tk.environments_manager.add_environment(e)
-
-        task_header = get_task_header()
-        task_id = task_header.task_id
-
-        task_header.deadline = timeout_to_deadline(10)
-        task_header.update_checksum()
-        assert tk.add_task_header(task_header)
-        assert task_id in tk.supported_tasks
-        assert tk.add_task_header(task_header)
-        assert task_id in tk.supported_tasks
-
-        task_header = copy.deepcopy(task_header)
-        task_header.max_price = 1
-        task_header.update_checksum()
-        # An attempt to update fixed header should *not* succeed
-        assert not tk.add_task_header(task_header)
-        assert task_id in tk.supported_tasks
-
-        tk.task_headers = {}
-        tk.supported_tasks = []
-
-        assert tk.add_task_header(task_header)
-        assert task_id not in tk.supported_tasks
-
     @mock.patch('golem.task.taskarchiver.TaskArchiver')
     def test_task_header_update_stats(self, tar):
         e = Environment()
@@ -481,15 +448,15 @@ def get_dict_task_header(key_id_seed="kkk"):
             "pub_port": 10101
         },
         "environment": "DEFAULT",
-        "last_checking": time.time(),
         "deadline": timeout_to_deadline(1201),
-        "subtask_timeout": 120,
+        "subtask_timeout": 120.0,
+        "subtasks_count": 1,
         "max_price": 10,
         "min_version": golem.__version__,
         "resource_size": 0,
         "estimated_memory": 0,
         'mask': Mask().to_bytes(),
-        'timestamp': 0,
+        'timestamp': 0.0,
         'signature': None
     }
 

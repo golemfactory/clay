@@ -7,6 +7,7 @@ from collections import OrderedDict
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
+from faker import Faker
 from freezegun import freeze_time
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.factories.datastructures import tasks as dt_tasks_factory
@@ -22,6 +23,7 @@ from apps.blender.task.blenderrendertask import BlenderRenderTask
 from golem import testutils
 from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import KeysAuth
+from golem.network.p2p.local_node import LocalNode
 from golem.resource import dirmanager
 from golem.task.taskbase import Task, \
     TaskEventListener, AcceptClientVerdict
@@ -37,6 +39,9 @@ from apps.dummy.task.dummytask import (
     DummyTaskBuilder)
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from golem.resource.dirmanager import DirManager
+
+
+fake = Faker()
 
 
 class PickableMock(Mock):
@@ -82,6 +87,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         random.seed()
         self.test_nonce = "%.3f-%d" % (time.time(), random.random() * 10000)
         keys_auth = Mock()
+        keys_auth._private_key = b'a' * 32
         keys_auth.sign.return_value = 'sig_%s' % (self.test_nonce,)
         self.tm = TaskManager(
             dt_p2p_factory.Node(),
@@ -101,9 +107,9 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             task_id=task_id,
             task_owner=dt_p2p_factory.Node(
                 key="task_owner_key_%s" % (self.test_nonce,),
-                node_name="test_node_%s" % (self.test_nonce,),
-                pub_addr="task_owner_address_%s" % (self.test_nonce,),
-                pub_port="task_owner_port_%s" % (self.test_nonce,),
+                node_name=fake.name(),
+                pub_addr=fake.random_int(min=0, max=65535),
+                pub_port=fake.random_int(min=0, max=65535),
             ),
             environment="test_environ_%s" % (self.test_nonce,),
             resource_size=2 * 1024,
@@ -205,7 +211,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
         with self.assertLogs(logger, level="DEBUG") as log:
             keys_auth = Mock()
-            keys_auth.sign.return_value = 'sig_%s' % (self.test_nonce,)
+            keys_auth._private_key = b'a' * 32
             temp_tm = TaskManager(dt_p2p_factory.Node(),
                                   keys_auth=keys_auth,
                                   root_path=self.path,
@@ -402,6 +408,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         )
         th = dt_tasks_factory.TaskHeader(task_id="xyz", environment="DEFAULT", task_owner=owner)
         th.max_price = 50
+        th.subtask_timeout = 1.0
 
         class TestTask(Task):
             def __init__(self, header, src_code, subtasks_id, verify_subtasks):
@@ -709,8 +716,16 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             key="abcde",
         )
         t = TaskMock(
-            dt_tasks_factory.TaskHeader(task_id="xyz", environment="DEFAULT", task_owner=owner),
-            "print 'hello world'", None)
+            header=dt_tasks_factory.TaskHeader(
+                task_id="xyz",
+                environment="DEFAULT",
+                task_owner=owner,
+                subtask_timeout=1.0,
+                max_price=1,
+            ),
+            src_code="print 'hello world'",
+            task_definition=None,
+        )
         listener_mock = Mock()
 
         def listener(sender, signal, event, task_id):
@@ -836,7 +851,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     def test_get_task_preview(self, get_preview, _):
         apps_manager = AppsManager()
         apps_manager.load_all_apps()
-        tm = TaskManager(LocalNode(), Mock(), root_path=self.path,
+        ln = LocalNode(**dt_p2p_factory.Node().to_dict())
+        tm = TaskManager(ln, Mock(), root_path=self.path,
                          apps_manager=apps_manager)
         task_id, _ = self.__build_tasks(tm, 1)
 
@@ -874,7 +890,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             header=dt_tasks_factory.TaskHeader(
                 task_id="task_id",
                 environment="environment",
-                task_owner=node),
+                task_owner=node,
+                subtask_timeout=1.0,
+                max_price=1,
+            ),
             src_code='',
             task_definition=TaskDefinition())
 
@@ -980,7 +999,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
             definition.task_id = task_id
             definition.task_type = "blender"
-            definition.subtask_timeout = 3671
+            definition.subtask_timeout = 3671.0
             definition.subtask_status = [SubtaskStatus.failure,
                                          SubtaskStatus.finished][i % 2]
             definition.timeout = 3671 * 10

@@ -40,7 +40,7 @@ from golem.tools.testwithreactor import TestDatabaseWithReactor
 from tests.factories.resultpackage import ExtractedPackageFactory
 
 
-def get_example_task_header(key_id) -> dt_tasks.TaskHeader:
+def get_example_task_header(key_id: str) -> dt_tasks.TaskHeader:
     th_dict_repr = {
         "task_id": idgenerator.generate_id(key_id),
         "environment": "DEFAULT",
@@ -53,7 +53,7 @@ def get_example_task_header(key_id) -> dt_tasks.TaskHeader:
             pub_addr='1.2.3.4'
         ),
         "deadline": timeout_to_deadline(1201),
-        "subtask_timeout": 120,
+        "subtask_timeout": 120.0,
         "max_price": 20,
         "resource_size": 2 * 1024,
         "estimated_memory": 3 * 1024,
@@ -61,10 +61,8 @@ def get_example_task_header(key_id) -> dt_tasks.TaskHeader:
         "min_version": golem.__version__,
         "subtasks_count": 21,
         "concent_enabled": False,
-        "mask": {
-            "byte_repr": Mask().to_bytes()
-        },
-        "timestamp": 0,
+        "mask": Mask().to_bytes(),
+        "timestamp": 0.0,
     }
     task_header = dt_tasks.TaskHeader(**th_dict_repr)
     return task_header
@@ -204,6 +202,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         keys_auth = KeysAuth(self.path, 'prv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
         task_header.concent_enabled = False
+        task_header.sign(private_key=keys_auth._private_key)
         self.ts.add_task_header(task_header)
 
         self.assertIsNone(self.ts.request_task())
@@ -310,9 +309,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         task_header = get_example_task_header(keys_auth_2.public_key)
 
-        with self.assertRaises(Exception, msg="Invalid signature"):
-            ts.add_task_header(task_header)
-            self.assertEqual(len(ts.get_others_tasks_headers()), 0)
+        self.assertFalse(ts.add_task_header(task_header))
+        self.assertEqual(len(ts.get_others_tasks_headers()), 0)
 
         task_header.sign(private_key=keys_auth_2._private_key)
 
@@ -328,17 +326,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
-
-        new_header = dt_tasks.TaskHeader(**task_header.to_dict())
-        new_header.task_owner.pub_port = 9999
-        new_header.sign(private_key=keys_auth_2._private_key)
-
-        # An attempt to update fixed header should *not* succeed
-        self.assertFalse(ts.add_task_header(new_header))
-        self.assertEqual(len(ts.get_others_tasks_headers()), 2)
-        saved_task = next(th for th in ts.get_others_tasks_headers()
-                          if th.task_id == task_id2)
-        self.assertEqual(saved_task.signature, task_header.signature)
 
     @patch("golem.task.taskserver.TaskServer._sync_pending")
     def test_sync(self, *_):
@@ -888,6 +875,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         task_mock.should_accept_client.return_value = \
             AcceptClientVerdict.ACCEPTED
 
+        ts.task_manager.keys_auth._private_key = b'a' * 32
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states[task_id].status = \
             ts.task_manager.activeStatus[0]

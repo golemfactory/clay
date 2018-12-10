@@ -97,7 +97,7 @@ def make_client(*_, **kwargs):
         'app_config': Mock(),
         'config_desc': ClientConfigDescriptor(),
         'keys_auth': Mock(
-            _private_key='a' * 32,
+            _private_key=b'a' * 32,
             key_id='a' * 64,
             public_key=b'a' * 128,
         ),

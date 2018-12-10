@@ -32,7 +32,7 @@ class TestTaskArchiver(TestCase):
 
     @classmethod
     def header(cls, max_price,
-               deadline=None, min_version="4"):
+               deadline=None, min_version="4.0.0"):
         if not deadline:
             deadline = timeout_to_deadline(36000)
 
@@ -64,7 +64,7 @@ class TestTaskArchiver(TestCase):
         ta = TaskArchiver()
         th1 = self.header(7)
         th2 = self.header(8)
-        th3 = self.header(9, min_version="2")
+        th3 = self.header(9, min_version="2.0.0")
         th4 = self.header(10)
         s1 = self.ssok
         s2 = self.ssmp.join(self.ssav)
@@ -83,7 +83,7 @@ class TestTaskArchiver(TestCase):
 
         def check1(report):
             self.assertEqual(self.get_row(report, UnsupportReason.APP_VERSION),
-                             (2, "4"))
+                             (2, "4.0.0"))
             self.assertEqual(self.get_row(report, UnsupportReason.DENY_LIST),
                              (0, None))
             self.assertEqual(self.get_row(report,
@@ -104,11 +104,14 @@ class TestTaskArchiver(TestCase):
         today = datetime.now(pytz.utc)
         back1 = today - timedelta(days=1)
         back2 = today - timedelta(days=2)
-        th1 = self.header(3, deadline=past_deadline)
+        with freeze_time(back2):
+            th1 = self.header(3, deadline=past_deadline)
         th2 = self.header(5)
-        th3 = self.header(7, min_version="2", deadline=past_deadline)
+        with freeze_time(back2):
+            th3 = self.header(7, min_version="2.0.0", deadline=past_deadline)
         th4 = self.header(9)
-        th5 = self.header(11, deadline=past_deadline)
+        with freeze_time(back2):
+            th5 = self.header(11, deadline=past_deadline)
         s1 = self.ssrt
         s2 = self.ssmp.join(self.ssav)
         s3 = self.ssav.join(self.ssrt)
@@ -134,19 +137,19 @@ class TestTaskArchiver(TestCase):
         rep = ta.get_unsupport_reasons(1, today)
         self.assertEqual(self.get_row(rep, UnsupportReason.MAX_PRICE), (1, 11))
         self.assertEqual(self.get_row(rep, UnsupportReason.APP_VERSION),
-                         (1, "4"))
+                         (1, "4.0.0"))
         self.assertEqual(self.get_row(rep, UnsupportReason.REQUESTOR_TRUST),
                          (0, None))
         rep = ta.get_unsupport_reasons(2, today)
         self.assertEqual(self.get_row(rep, UnsupportReason.MAX_PRICE), (1, 10))
         self.assertEqual(self.get_row(rep, UnsupportReason.APP_VERSION),
-                         (1, "4"))
+                         (1, "4.0.0"))
         self.assertEqual(self.get_row(rep, UnsupportReason.REQUESTOR_TRUST),
                          (0, None))
         rep = ta.get_unsupport_reasons(3, today)
         self.assertEqual(self.get_row(rep, UnsupportReason.MAX_PRICE), (2, 7))
         self.assertEqual(self.get_row(rep, UnsupportReason.APP_VERSION),
-                         (3, "4"))
+                         (3, "4.0.0"))
         self.assertEqual(self.get_row(rep, UnsupportReason.REQUESTOR_TRUST),
                          (2, 0.5))
         self.assertEqual(self.get_row(rep, UnsupportReason.DENY_LIST),
@@ -167,7 +170,7 @@ class TestTaskArchiver(TestCase):
         self.assertNotEqual(rep, rep3)
         self.assertEqual(self.get_row(rep3, UnsupportReason.MAX_PRICE), (2, 6))
         self.assertEqual(self.get_row(rep3, UnsupportReason.APP_VERSION),
-                         (3, "4"))
+                         (3, "4.0.0"))
         self.assertEqual(self.get_row(rep3, UnsupportReason.REQUESTOR_TRUST),
                          (3, 0.5))
         self.assertEqual(self.get_row(rep3, UnsupportReason.DENY_LIST),

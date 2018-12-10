@@ -199,7 +199,7 @@ class TaskServer(
                     UnsupportReason.MAX_PRICE: theader.max_price}))
 
             if self.client.concent_service.enabled:
-                if not theader.fixed_header.concent_enabled:
+                if not theader.concent_enabled:
                     supported = supported.join(
                         SupportStatus.err({
                             UnsupportReason.CONCENT_REQUIRED: True,
@@ -333,10 +333,14 @@ class TaskServer(
         return self.task_keeper.get_all_tasks()
 
     def add_task_header(self, task_header: dt_tasks.TaskHeader) -> bool:
+        if not self.verify_header_sig(task_header):
+            logger.info(
+                'Invalid signature task_header:%r, signature: %r',
+                task_header,
+                task_header.signature,
+            )
+            return False
         try:
-            if not self.verify_header_sig(task_header):
-                raise ValueError("Invalid signature")
-
             if self.task_manager.is_my_task(task_header.task_id) or \
                     task_header.task_owner.key == self.node.key:
                 return True  # Own tasks are not added to task keeper
@@ -349,8 +353,13 @@ class TaskServer(
     @classmethod
     def verify_header_sig(cls, header: dt_tasks.TaskHeader):
         try:
-            header.verify(public_key=header.task_owner.key)
-        except msg_exceptions.InvalidSignature:
+            header.verify(public_key=decode_hex(header.task_owner.key))
+        except msg_exceptions.CryptoError:
+            logger.debug(
+                'hdr verification failed. hdr.task_owner.key: %r',
+                header.task_owner.key,
+                exc_info=True,
+            )
             return False
         return True
 
@@ -987,7 +996,7 @@ class TaskServer(
             'subtask_id': report_computed_task.subtask_id,
         }
 
-        node = dt_p2p.Node.from_dict(report_computed_task.node_info)
+        node = dt_p2p.Node(**report_computed_task.node_info)
 
         self._add_pending_request(
             TASK_CONN_TYPES['task_verification_result'],
