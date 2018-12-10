@@ -94,7 +94,9 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
         ttc_kwargs = self.gen_ttc_kwargs('task_to_compute__')
         provider1_keys = cryptography.ECCx(None)
         ttc_kwargs.update({
-            'task_to_compute__provider_ethereum_public_key': encode_key_id(
+            'task_to_compute__'
+            'want_to_compute_task__'
+            'provider_ethereum_public_key': encode_key_id(
                 provider1_keys.raw_pubkey
             ),
         })
@@ -108,7 +110,9 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
         ttc2_kwargs = self.gen_ttc_kwargs('task_to_compute__')
         provider2_keys = cryptography.ECCx(None)
         ttc2_kwargs.update({
-            'task_to_compute__provider_ethereum_public_key': encode_key_id(
+            'task_to_compute__'
+            'want_to_compute_task__'
+            'provider_ethereum_public_key': encode_key_id(
                 provider2_keys.raw_pubkey
             ),
         })
