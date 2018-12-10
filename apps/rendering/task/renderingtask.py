@@ -220,22 +220,6 @@ class RenderingTask(CoreTask):
         else:
             return ''
 
-    @staticmethod
-    def short_extra_data_repr(extra_data):
-        return "RESOURCES_DIR: {RESOURCES_DIR}, " \
-               "WORK_DIR: {WORK_DIR}, " \
-               "OUTPUT_DIR: {OUTPUT_DIR}," \
-               "scene_file: {scene_file}, " \
-               "resolution: {resolution}, " \
-               "use_compositing: {use_compositing}," \
-               "samples: {samples}, " \
-               "frames: {frames}, " \
-               "output_format: {output_format}," \
-               "start_task: {start_task}, " \
-               "total_tasks: {total_tasks}, " \
-               "crops: {crops}"\
-            .format(**extra_data)
-
     def _open_preview(self, mode="RGB", ext=PREVIEW_EXT):
         """ If preview file doesn't exist create a new empty one with given mode
          and extension. Extension should be compatible with selected mode. """

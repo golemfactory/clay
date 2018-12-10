@@ -6,7 +6,8 @@ hiddenimports = collect_submodules('golem') + \
 
 datas = [
     ('loggingconfig.py', '.'),
-    ('apps/entrypoint.sh', 'apps/'),
+    ('apps/core/resources/images/scripts/entrypoint.sh',
+     'apps/core/resources/images/scripts/'),
     ('apps/*.ini', 'apps/'),
     ('apps/core/resources/images/nvgpu.Dockerfile',
      'apps/core/resources/images/'),
