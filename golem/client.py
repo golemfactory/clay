@@ -30,7 +30,7 @@ from golem.core.common import (
     to_unicode,
 )
 from golem.core.fileshelper import du
-from golem.hardware.presets import HardwarePresets, HardwarePresetsMixin
+from golem.hardware.presets import HardwarePresets
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
@@ -86,7 +86,7 @@ class ClientTaskComputerEventListener(object):
         self.client.config_changed()
 
 
-class Client(HardwarePresetsMixin):
+class Client:
     _services = []  # type: List[IService]
 
     def __init__(  # noqa pylint: disable=too-many-arguments
