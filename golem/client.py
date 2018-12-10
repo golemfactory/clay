@@ -192,6 +192,8 @@ class Client:  # pylint: disable=too-many-instance-attributes
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = str(uuid.uuid4())
+
+        # TODO: Move to message queue #3160
         self._task_finished_cb = task_finished_cb
         self._update_hw_preset = update_hw_preset
 
