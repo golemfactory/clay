@@ -1,15 +1,22 @@
 from flask import Flask, request, send_file
 import json
 
-app = Flask(__name__)
+from golem.client import Client
 
+client: Client = None
+app = Flask(__name__)
 subscriptions = dict()
 
 
 @app.route('/')
 def hello():
     """shows API doc generated from `swagger.yaml` spec"""
-    return send_file('openapi/client-api-doc.html')
+    return send_file('client-api-doc.html')
+
+
+@app.route('/settings')
+def settings():
+    return json.dumps(client.get_settings())
 
 
 @app.errorhandler(404)
@@ -187,12 +194,15 @@ def download_resource(node_id, resource_id):
 def fetch_events(node_id):
     """List events for given node id; starting after last event id"""
 
-    if node_id not in subscriptions:
-        return 'Subscription not found', 404
+    # if node_id not in subscriptions:
+    #     return 'Subscription not found', 404
 
     last_event_id = request.args.get('lastEventId', 1)
 
-    return json.dumps([{
+    events_list = list()
+
+    last_event_id += 1
+    events_list.append({
         'eventId': last_event_id,
         'task': None,
         'resource': {
@@ -201,8 +211,11 @@ def fetch_events(node_id):
                 '{"size": 120, "filename": "foo.json", "atime": 1542903681123}'
         },
         'verificationResult': None
-    }, {
-        'eventId': 2,
+    })
+
+    last_event_id += 1
+    events_list.append({
+        'eventId': last_event_id,
         'task': {
             'taskId': '682e9b26-ed89-11e8-a9e0-6e845eabffe0',
             'perfIndex': 314,
@@ -214,4 +227,25 @@ def fetch_events(node_id):
         },
         'resource': None,
         'verificationResult': None
-    }])
+    })
+
+    for task_id, header in client.get_known_tasks().items():
+        last_event_id += 1
+        fixed_header = header['fixed_header']
+        events_list.append({
+            'eventId': last_event_id,
+            'task': {
+                'taskId': task_id,
+                # 'perfIndex': task['performance'],
+                'type': fixed_header['environment'],
+                # 'maxResourceSize': 110,
+                # 'maxMemorySize': 10,
+                # 'numCores': 2,
+                # 'price': 12,
+                # 'extraData': task
+            },
+            'resource': None,
+            'verificationResult': None
+        })
+
+    return json.dumps(events_list)
