@@ -195,9 +195,6 @@ class HardwarePresetsMixin:
 
         return bool(deleted)
 
-    def activate_hw_preset(self, name, run_benchmarks=False):
-        raise NotImplementedError
-
     @staticmethod
     def __preset_to_dict(preset):
         return preset if isinstance(preset, dict) else preset.to_dict()

@@ -608,6 +608,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
                 apps_manager=self.client.apps_manager,
             )
         self.client.monitor = Mock()
+        self.client._update_hw_preset = Mock()
 
     def test_node(self, *_):
         c = self.client
@@ -757,6 +758,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         c.update_setting('node_name', new_node_name)
         self.assertEqual(c.get_setting('node_name'), new_node_name)
         self.assertEqual(c.get_settings()['node_name'], new_node_name)
+        c._update_hw_preset.assert_called_once()
 
         newer_node_name = str(uuid.uuid4())
         self.assertNotEqual(c.get_setting('node_name'), newer_node_name)
