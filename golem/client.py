@@ -17,8 +17,8 @@ from twisted.internet.defer import (
     gatherResults,
     Deferred)
 
-import golem
 from apps.appsmanager import AppsManager
+import golem
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.core import variables
@@ -86,10 +86,10 @@ class ClientTaskComputerEventListener(object):
         self.client.config_changed()
 
 
-class Client:
+class Client:  # pylint: disable=too-many-instance-attributes
     _services = []  # type: List[IService]
 
-    def __init__(  # noqa pylint: disable=too-many-arguments
+    def __init__(  # noqa pylint: disable=too-many-arguments,too-many-locals
             self,
             datadir: str,
             app_config: AppConfig,

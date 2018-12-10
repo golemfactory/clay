@@ -129,8 +129,3 @@ class TestHardwarePresetsMixin(TestWithDatabase):
         assert sanitize(
             CUSTOM_HARDWARE_PRESET_NAME) == CUSTOM_HARDWARE_PRESET_NAME
         assert sanitize('test') == 'test'
-
-    def test_activate_hw_preset(self):
-        mixin = HardwarePresetsMixin()
-        with self.assertRaises(NotImplementedError):
-            mixin.activate_hw_preset('any')

@@ -1,4 +1,4 @@
-# pylint: disable=protected-access
+    # pylint: disable=protected-access
 from os import path
 import unittest
 from unittest.mock import patch, Mock, ANY, MagicMock
@@ -98,7 +98,8 @@ class TestNode(TestWithDatabase):
                                        concent_variant=concent_disabled,
                                        use_monitor=False,
                                        apps_manager=ANY,
-                                       task_finished_cb=node._try_shutdown)
+                                       task_finished_cb=node._try_shutdown,
+                                       update_hw_preset=node.upsert_hw_preset)
         self.assertEqual(
             self.node_kwargs['config_desc'].node_address,
             mock_client.mock_calls[0][2]['config_desc'].node_address,
@@ -160,7 +161,8 @@ class TestNode(TestWithDatabase):
                                        concent_variant=concent_disabled,
                                        use_monitor=False,
                                        apps_manager=ANY,
-                                       task_finished_cb=node._try_shutdown)
+                                       task_finished_cb=node._try_shutdown,
+                                       update_hw_preset=node.upsert_hw_preset)
 
     def test_geth_address_wo_http_should_fail(self, *_):
         runner = CliRunner()
@@ -241,7 +243,8 @@ class TestNode(TestWithDatabase):
                                        concent_variant=concent_disabled,
                                        use_monitor=False,
                                        apps_manager=ANY,
-                                       task_finished_cb=node._try_shutdown)
+                                       task_finished_cb=node._try_shutdown,
+                                       update_hw_preset=node.upsert_hw_preset)
 
     @patch('golem.node.Node')
     def test_net_testnet_should_be_passed_to_node(self, mock_node, *_):
