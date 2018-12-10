@@ -944,12 +944,19 @@ class Client(HardwarePresetsMixin):
             'timelock': str(timelock),
         }
 
+    @rpc_utils.expose('pay.gas_price')
+    def get_gas_price(self) -> Dict[str, str]:
+        return {
+            "current_gas_price": str(self.transaction_system.gas_price),
+            "gas_price_limit": str(self.transaction_system.gas_price_limit)
+        }
+
     @rpc_utils.expose('pay.payments')
-    def get_payments_list(self):
+    def get_payments_list(self) -> List[Dict[str, Any]]:
         return self.transaction_system.get_payments_list()
 
     @rpc_utils.expose('pay.incomes')
-    def get_incomes_list(self):
+    def get_incomes_list(self) -> List[Dict[str, Any]]:
         incomes = self.transaction_system.get_incomes_list()
 
         def item(o):
@@ -969,7 +976,8 @@ class Client(HardwarePresetsMixin):
 
     @rpc_utils.expose('pay.deposit_payments')
     @classmethod
-    def get_deposit_payments_list(cls, limit=1000, offset=0):
+    def get_deposit_payments_list(cls, limit=1000, offset=0)\
+            -> List[Dict[str, Any]]:
         deposit_payments = TransactionSystem.get_deposit_payments_list(
             limit,
             offset,
