@@ -1165,6 +1165,7 @@ class SubtaskResultsAcceptedTest(TestCase):
 
         rct = msg_factories.tasks.ReportComputedTaskFactory()
         ttc = rct.task_to_compute
+        ttc.sign_message(private_key=self.requestor_keys.raw_privkey)
 
         self.task_session.send = Mock()
 
