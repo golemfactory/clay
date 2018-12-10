@@ -104,7 +104,8 @@ class Client:
             concent_variant: dict = variables.CONCENT_CHOICES['disabled'],
             geth_address: Optional[str] = None,
             apps_manager: AppsManager = AppsManager(),
-            task_finished_cb=None) -> None:
+            task_finished_cb=None,
+            update_hw_preset=None) -> None:
 
         self.apps_manager = apps_manager
         self.datadir = datadir
@@ -192,6 +193,7 @@ class Client:
         self.monitor = None
         self.session_id = str(uuid.uuid4())
         self._task_finished_cb = task_finished_cb
+        self._update_hw_preset = update_hw_preset
 
         dispatcher.connect(
             self.p2p_listener,
@@ -1034,7 +1036,9 @@ class Client:
 
     def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
-        self.upsert_hw_preset(HardwarePresets.from_config(self.config_desc))
+        if self._update_hw_preset:
+            self._update_hw_preset(
+                HardwarePresets.from_config(self.config_desc))
 
         if self.p2pservice:
             self.p2pservice.change_config(self.config_desc)

@@ -135,7 +135,8 @@ class Node(HardwarePresetsMixin):
             concent_variant=concent_variant,
             geth_address=geth_address,
             apps_manager=self.apps_manager,
-            task_finished_cb=self._try_shutdown
+            task_finished_cb=self._try_shutdown,
+            update_hw_preset=self.upsert_hw_preset
         )
 
         if password is not None:
