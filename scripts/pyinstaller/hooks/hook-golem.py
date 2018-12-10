@@ -17,7 +17,7 @@ datas = [
      'apps/rendering/resources/scripts/'),
     ('apps/blender/resources/images/blender_nvgpu.Dockerfile',
      'apps/blender/resources/images/'),
-    ('apps/blender/resources/scripts/blendercrop.py.template',
+    ('apps/blender/resources/images/scripts/templates/blendercrop.py.template',
      'apps/blender/resources/scripts/'),
     ('apps/blender/resources/scripts/docker_blendertask.py',
      'apps/blender/resources/scripts/'),
