@@ -108,10 +108,15 @@ class TransactionSystem(LoopingCallService):
         # Amortized gas cost per payment used when dealing with locks
         self._eth_per_payment: int = 0
 
-    @property  # type: ignore
+    @property   # type: ignore
     @sci_required()
-    def gas_price(self):
+    def gas_price(self) -> int:
         return self._sci.get_current_gas_price()
+
+    @property   # type: ignore
+    @sci_required()
+    def gas_price_limit(self) -> int:
+        return self._sci.GAS_PRICE  # type: ignore
 
     def backwards_compatibility_tx_storage(self, old_datadir: Path) -> None:
         if self.running:

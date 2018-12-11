@@ -26,6 +26,7 @@ from golem.client import Client, ClientTaskComputerEventListener, \
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
+from golem.core.hardware import HardwarePresets
 from golem.core.variables import CONCENT_CHOICES
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.node import Node
@@ -131,6 +132,18 @@ class TestClient(TestClientBase):
     # this may completely break. Issue #2456
     # pylint: disable=attribute-defined-outside-init
 
+    def test_get_gas_price(self, *_):
+        test_gas_price = 1234
+        test_price_limit = 12345
+        ets = self.client.transaction_system
+        ets.gas_price = test_gas_price
+        ets.gas_price_limit = test_price_limit
+
+        result = self.client.get_gas_price()
+
+        self.assertEqual(result["current_gas_price"], str(test_gas_price))
+        self.assertEqual(result["gas_price_limit"], str(test_price_limit))
+
     def test_get_payments(self, *_):
         ets = self.client.transaction_system
         assert self.client.get_payments_list() == \
@@ -200,10 +213,9 @@ class TestClient(TestClientBase):
 
     def test_activate_hw_preset(self, *_):
         config = self.client.config_desc
-        config.hardware_preset_name = 'non-existing'
-        config.num_cores = 0
-        config.max_memory_size = 0
-        config.max_resource_size = 0
+
+        HardwarePresets.initialize(self.client.datadir)
+        HardwarePresets.update_config('default', config)
 
         self.client.activate_hw_preset('custom')
 
@@ -1037,7 +1049,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             'scene_file': "/golem/resources/cube.blend",
             'frames': [1],
             'start_task': 1,
-            'end_task': 1,
             'total_tasks': 1,
         }
         task_computer.get_progress.return_value = \

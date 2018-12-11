@@ -295,8 +295,7 @@ class CoreTask(Task):
             self._mark_subtask_failed(subtask_id)
         elif subtask_info['status'] == SubtaskStatus.finished:
             self._mark_subtask_failed(subtask_id)
-            tasks = subtask_info['end_task'] - subtask_info['start_task'] + 1
-            self.num_tasks_received -= tasks
+            self.num_tasks_received -= 1
 
         if not was_failure_before:
             subtask_info['status'] = SubtaskStatus.restarted
@@ -343,7 +342,6 @@ class CoreTask(Task):
         ctd['task_id'] = self.header.task_id
         ctd['subtask_id'] = subtask_id
         ctd['extra_data'] = extra_data
-        ctd['short_description'] = self.short_extra_data_repr(extra_data)
         ctd['src_code'] = self.src_code
         ctd['performance'] = perf_index
         if self.docker_images:
