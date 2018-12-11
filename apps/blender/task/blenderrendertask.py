@@ -95,13 +95,7 @@ class PreviewUpdater(object):
                 self.perfect_match_area_y += img_y
                 self.perfectly_placed_subtasks += 1
 
-            # this is the last task
-            if subtask_number + 1 >= len(self.expected_offsets):
-                height = self.preview_res_y - \
-                         self.expected_offsets[subtask_number]
-            else:
-                height = self.expected_offsets[subtask_number + 1] - \
-                         self.expected_offsets[subtask_number]
+            height = self._get_height(subtask_number)
 
             with subtask_img.resize((self.preview_res_x, height),
                                     resample=Image.BILINEAR) \
@@ -134,6 +128,10 @@ class PreviewUpdater(object):
                  Image.new("RGB", (self.preview_res_x, self.preview_res_y)) \
                     as img:
                 img.save(self.preview_file_path, PREVIEW_EXT)
+
+    def _get_height(self, subtask_number):
+        return self.expected_offsets.get(subtask_number + 1, self.preview_res_y) \
+               - self.expected_offsets[subtask_number]
 
 
 class RenderingTaskTypeInfo(CoreTaskTypeInfo):

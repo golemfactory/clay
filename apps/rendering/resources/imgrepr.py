@@ -80,9 +80,7 @@ class OpenCVImgRepr:
         # in OpenCV extension must be given in a filename
         # some paths are without extension, need to rename it then
 
-        file_path = '{}_{}.{}'.format(path,
-                                      "tmp",
-                                      extension.lower())
+        file_path = '{}_{}.{}'.format(path, "tmp", extension.lower())
         self.save(file_path)
         os.replace(file_path, path)
 
