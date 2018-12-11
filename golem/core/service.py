@@ -36,10 +36,8 @@ class LoopingCallService(IService):
 
     This implementation uses LoopingCall from Twisted framework.
     """
-    __interval_seconds = 0  # type: int
-    _loopingCall = None  # type: LoopingCall
 
-    def __init__(self, interval_seconds: int = 1):
+    def __init__(self, interval_seconds: int = 1) -> None:
         self.__interval_seconds = interval_seconds
         self._loopingCall = LoopingCall(self._run_async)
 
