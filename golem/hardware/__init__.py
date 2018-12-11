@@ -49,10 +49,10 @@ def cap_cpus(core_num: int, cap: int = sys.maxsize) -> int:
 
 
 def cap_memory(mem_size: int, cap: int = sys.maxsize) -> int:
-    mem_size = _pad_memory(mem_size)
     cap = max(cap, MIN_MEMORY_SIZE)
     available = min(cap, memory())
-    return max(min(mem_size, available), MIN_MEMORY_SIZE)
+    capped = max(min(mem_size, available), MIN_MEMORY_SIZE)
+    return _pad_memory(capped)
 
 
 def cap_disk(disk_space: int, cap: int = sys.maxsize) -> int:
