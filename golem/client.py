@@ -352,6 +352,9 @@ class Client:  # pylint: disable=too-many-instance-attributes
             task_finished_cb=self._task_finished_cb,
         )
 
+        # Pause p2p and task sessions to prevent receiving messages before
+        # the node is ready
+        self.pause()
         self._restore_locks()
 
         monitoring_publisher_service = MonitoringPublisherService(
@@ -399,6 +402,8 @@ class Client:  # pylint: disable=too-many-instance-attributes
             keys_auth=self.keys_auth,
             client=self
         )
+
+        logger.info("Restoring resources ...")
         self.task_server.restore_resources()
 
         # Start service after restore_resources() to avoid race conditions
@@ -457,6 +462,9 @@ class Client:  # pylint: disable=too-many-instance-attributes
 
         gatherResults([p2p, task], consumeErrors=True).addCallbacks(connect,
                                                                     terminate)
+
+        self.resume()
+
         logger.info("Starting p2p server ...")
         self.p2pservice.task_server = self.task_server
         self.p2pservice.set_resource_server(self.resource_server)
@@ -939,12 +947,19 @@ class Client:  # pylint: disable=too-many-instance-attributes
             'timelock': str(timelock),
         }
 
+    @rpc_utils.expose('pay.gas_price')
+    def get_gas_price(self) -> Dict[str, str]:
+        return {
+            "current_gas_price": str(self.transaction_system.gas_price),
+            "gas_price_limit": str(self.transaction_system.gas_price_limit)
+        }
+
     @rpc_utils.expose('pay.payments')
-    def get_payments_list(self):
+    def get_payments_list(self) -> List[Dict[str, Any]]:
         return self.transaction_system.get_payments_list()
 
     @rpc_utils.expose('pay.incomes')
-    def get_incomes_list(self):
+    def get_incomes_list(self) -> List[Dict[str, Any]]:
         incomes = self.transaction_system.get_incomes_list()
 
         def item(o):
@@ -964,7 +979,8 @@ class Client:  # pylint: disable=too-many-instance-attributes
 
     @rpc_utils.expose('pay.deposit_payments')
     @classmethod
-    def get_deposit_payments_list(cls, limit=1000, offset=0):
+    def get_deposit_payments_list(cls, limit=1000, offset=0)\
+            -> List[Dict[str, Any]]:
         deposit_payments = TransactionSystem.get_deposit_payments_list(
             limit,
             offset,
