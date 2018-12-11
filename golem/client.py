@@ -1630,10 +1630,6 @@ class NetworkConnectionPublisherService(LoopingCallService):
         self._client = client
         self._last_value = self.poll()
 
-    def _run_async(self):
-        # Skip the async_run call and publish events in the main thread
-        self._run()
-
     def _run(self):
         current_value = self.poll()
         if current_value == self._last_value:
@@ -1651,7 +1647,8 @@ class NetworkConnectionPublisherService(LoopingCallService):
 class TaskArchiverService(LoopingCallService):
     def __init__(self,
                  task_archiver: TaskArchiver) -> None:
-        super().__init__(interval_seconds=TASKARCHIVE_MAINTENANCE_INTERVAL)
+        super().__init__(interval_seconds=TASKARCHIVE_MAINTENANCE_INTERVAL,
+                         run_in_thread=True)
         self._task_archiver = task_archiver
 
     def _run(self):
@@ -1663,7 +1660,7 @@ class ResourceCleanerService(LoopingCallService):
                  client: Client,
                  interval_seconds: int,
                  older_than_seconds: int) -> None:
-        super().__init__(interval_seconds)
+        super().__init__(interval_seconds, run_in_thread=True)
         self._client = client
         self.older_than_seconds = older_than_seconds
 
