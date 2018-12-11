@@ -1,9 +1,9 @@
 import logging
 import os
-from typing import Callable, Dict, Any, Optional
+from typing import Any, Callable, Dict, Optional
 
+from golem import hardware
 from golem.core.common import get_golem_path
-from golem.hardware import cpu_cores_available
 from golem.docker.task_thread import DockerTaskThread
 
 logger = logging.getLogger(__name__)
@@ -63,9 +63,8 @@ class DockerConfigManager(object):
             max_memory_size = config_desc.max_memory_size
 
             try:
-                cpu_cores = cpu_cores_available()
-                max_cpus = min(len(cpu_cores), max(int(num_cores), 1))
-                cpu_set = [str(c) for c in cpu_cores[:max_cpus]]
+                cpu_cores = hardware.cpus()
+                cpu_set = [str(c) for c in cpu_cores[:num_cores]]
                 host_config['cpuset_cpus'] = ','.join(cpu_set)
             except Exception as exc:  # pylint: disable=broad-except
                 logger.warning('Cannot set the CPU set: %r', exc)

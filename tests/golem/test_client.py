@@ -751,6 +751,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_settings(self, *_):
         c = self.client
+        HardwarePresets.initialize(self.client.datadir)
 
         new_node_name = str(uuid.uuid4())
         self.assertNotEqual(c.get_setting('node_name'), new_node_name)
