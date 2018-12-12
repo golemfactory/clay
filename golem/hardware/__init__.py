@@ -63,10 +63,13 @@ def cap_cpus(core_num: int, cap: int = sys.maxsize) -> int:
     return max(min(core_num, available), MIN_CPU_CORES)
 
 
-def cap_memory(mem_size: int, cap: int = sys.maxsize) -> int:
-    cap = max(cap, MIN_MEMORY_SIZE)
+def cap_memory(mem_size: int, cap: int = sys.maxsize,
+               unit: MemSize = MemSize.kibi) -> int:
+    minimum = scale_memory(MIN_MEMORY_SIZE, MemSize.kibi, unit)
+    cap = max(cap, minimum)
     available = min(cap, memory())
-    capped = max(min(mem_size, available), MIN_MEMORY_SIZE)
+    available = scale_memory(available, MemSize.kibi, unit)
+    capped = max(min(mem_size, available), minimum)
     return _pad_memory(capped)
 
 

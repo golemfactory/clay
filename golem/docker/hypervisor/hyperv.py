@@ -80,7 +80,8 @@ class HyperVHypervisor(DockerMachineHypervisor):
             logger.warning('Not enough memory to start the VM, lowering memory')
             mem_key = CONSTRAINT_KEYS['mem']
             max_memory = self._memory_cap(constr[mem_key])
-            constr[mem_key] = hardware.cap_memory(constr[mem_key], max_memory)
+            constr[mem_key] = hardware.cap_memory(constr[mem_key], max_memory,
+                                                  unit=hardware.MemSize.mebi)
             logger.debug('Memory capped by "free - 10%%": %r', constr[mem_key])
             self.constrain(name, **constr)
 
