@@ -66,9 +66,12 @@ class NodeTestPlaybook:
     dump_output_on_fail = False
 
     @property
+    def task_settings_dict(self):
+        return tasks.get_settings(self.task_settings)
+
+    @property
     def output_extension(self):
-        settings = tasks.get_settings(self.task_settings)
-        return settings.get('options').get('format')
+        return self.task_settings_dict.get('options').get('format')
 
     @property
     def current_step_method(self):
@@ -290,7 +293,7 @@ class NodeTestPlaybook:
                        on_success=on_success, on_error=self.print_error)
 
     def step_verify_output(self):
-        settings = tasks.get_settings(self.task_settings)
+        settings = self.task_settings_dict
         output_file = self.output_path + '/' + \
             settings.get('name') + '.' + self.output_extension
         print("Verifying the output file: {}".format(output_file))

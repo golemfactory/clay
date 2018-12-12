@@ -106,3 +106,12 @@ def construct_test_task(task_package_name, output_path, task_settings):
     settings['resources'] = [str(f) for f in tasks_path]
     settings['options']['output_path'] = output_path
     return settings
+
+
+def timeout_to_seconds(timeout_str: str):
+    components = timeout_str.split(':')
+    return datetime.timedelta(
+        hours=int(components[0]),
+        minutes=int(components[1]),
+        seconds=int(components[2])
+    ).total_seconds()
