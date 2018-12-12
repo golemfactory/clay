@@ -5,6 +5,7 @@ from pathlib import Path
 from threading import Thread
 from typing import Optional, Callable, Any, Iterable
 
+from golem import hardware
 from golem.core.common import is_linux, is_windows, is_osx
 from golem.core.threads import ThreadQueueExecutor
 from golem.docker.commands.docker import DockerCommandHandler
@@ -118,27 +119,12 @@ class DockerManager(DockerConfigManager):
     def build_config(self, config_desc):
         super(DockerManager, self).build_config(config_desc)
 
-        cpu_count = MIN_CONSTRAINTS['cpu_count']
-        memory_size = MIN_CONSTRAINTS['memory_size']
-
-        try:
-            cpu_count = max(int(config_desc.num_cores), cpu_count)
-        except (TypeError, ValueError) as exc:
-            logger.warning('Cannot read the CPU count: %r', exc)
-
-        try:
-            memory_size = max(int(config_desc.max_memory_size) // 1024,
-                              memory_size)
-
-            if self.hypervisor:
-                memory_size = self.hypervisor.pad_memory(memory_size)
-            logger.debug('Memory size after padding: %r', memory_size)
-        except (TypeError, ValueError) as exc:
-            logger.warning('Cannot read the memory amount: %r', exc)
-
+        memory = hardware.scale_memory(config_desc.max_memory_size,
+                                       hardware.MemSize.kibi,
+                                       hardware.MemSize.mebi)
         self._config = dict(
-            memory_size=memory_size,
-            cpu_count=cpu_count
+            memory_size=memory,
+            cpu_count=config_desc.num_cores,
         )
 
     def get_host_config_for_task(self, binds: Iterable[DockerBind]) -> dict:

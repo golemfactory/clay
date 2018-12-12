@@ -1,5 +1,6 @@
 import logging
 import sys
+from enum import Enum
 from multiprocessing import cpu_count
 from typing import List, Optional, Dict
 
@@ -15,8 +16,16 @@ logger = logging.getLogger(__name__)
 
 MAX_CPU_WINDOWS = 32
 MAX_CPU_MACOS = 16
+MEM_MULTIPLE = 1024
 
 _working_dir: Optional[str] = None
+
+
+class MemSize(Enum):
+    byte = 0
+    kibi = 1
+    mebi = 2
+    gibi = 3
 
 
 def initialize(working_dir: str):
@@ -42,16 +51,25 @@ def defaults() -> Dict[str, int]:
     }
 
 
+def scale_memory(amount: int, unit: MemSize, to_unit: MemSize) -> int:
+    diff = to_unit.value - unit.value
+    scaled = int(amount / (MEM_MULTIPLE ** diff))
+    return _pad_memory(scaled)
+
+
 def cap_cpus(core_num: int, cap: int = sys.maxsize) -> int:
     cap = max(cap, MIN_CPU_CORES)
     available = min(cap, len(cpus()))
     return max(min(core_num, available), MIN_CPU_CORES)
 
 
-def cap_memory(mem_size: int, cap: int = sys.maxsize) -> int:
-    cap = max(cap, MIN_MEMORY_SIZE)
+def cap_memory(mem_size: int, cap: int = sys.maxsize,
+               unit: MemSize = MemSize.kibi) -> int:
+    minimum = scale_memory(MIN_MEMORY_SIZE, MemSize.kibi, unit)
+    cap = max(cap, minimum)
     available = min(cap, memory())
-    capped = max(min(mem_size, available), MIN_MEMORY_SIZE)
+    available = scale_memory(available, MemSize.kibi, unit)
+    capped = max(min(mem_size, available), minimum)
     return _pad_memory(capped)
 
 
@@ -95,11 +113,11 @@ def memory() -> int:
     """
     :return int: 3/4 of total memory in KiB
     """
-    capped = virtual_memory().total * TOTAL_MEMORY_CAP // 1024
+    capped = virtual_memory().total * TOTAL_MEMORY_CAP // MEM_MULTIPLE
     amount = max(capped, MIN_MEMORY_SIZE)
 
     logger.debug("Total memory: %r", amount)
-    return amount
+    return _pad_memory(amount)
 
 
 def memory_available() -> int:
@@ -109,7 +127,7 @@ def memory_available() -> int:
     vmem = virtual_memory()
 
     logger.debug("System memory: %r", vmem)
-    return vmem.available // 1024
+    return vmem.available // MEM_MULTIPLE
 
 
 def disk() -> int:
@@ -117,11 +135,11 @@ def disk() -> int:
     return free_partition_space(_working_dir)
 
 
-def _pad_memory(in_bytes: int) -> int:
+def _pad_memory(amount: int) -> int:
     """
     Returns the provided memory amount as a multiple of 2
     """
-    return int(in_bytes) & ~1
+    return int(amount) & ~1
 
 
 def _assert_initialized():
