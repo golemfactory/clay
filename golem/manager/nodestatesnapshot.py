@@ -17,7 +17,6 @@ class ComputingSubtaskStateSnapshot:
             scene_file: str,
             frames: List[int],
             start_task: int,
-            end_task: int,
             total_tasks: int,
             # if there's something more in extra_data, just ignore it
             **_kwargs
@@ -31,17 +30,15 @@ class ComputingSubtaskStateSnapshot:
         self.scene_file = Path(scene_file).name
         self.frames = copy(frames)
         self.start_task = start_task
-        self.end_task = end_task
         self.total_tasks = total_tasks
 
 
 class LocalTaskStateSnapshot:
-    def __init__(self, task_id, total_tasks, active_tasks, progress, task_short_desc):
+    def __init__(self, task_id, total_tasks, active_tasks, progress):
         self.task_id = task_id
         self.total_tasks = total_tasks
         self.active_tasks = active_tasks
         self.progress = progress
-        self.task_short_desc = task_short_desc
 
     def get_task_id(self):
         return self.task_id
@@ -54,6 +51,3 @@ class LocalTaskStateSnapshot:
 
     def get_progress(self):
         return self.progress
-
-    def get_task_short_desc(self):
-        return self.task_short_desc

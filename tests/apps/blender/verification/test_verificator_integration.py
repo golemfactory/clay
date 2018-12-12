@@ -34,7 +34,6 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         self.subtask_info['res_y'] = 150
         self.subtask_info['samples'] = 35
         self.subtask_info['use_frames'] = False
-        self.subtask_info['end_task'] = 1
         self.subtask_info['total_tasks'] = 1
         self.subtask_info['node_id'] = 'deadbeef'
         self.subtask_info['frames'] = [1]
@@ -56,8 +55,6 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         self.subtask_info['ctd']['docker_images'] = [DockerImage(
             'golemfactory/blender', tag='1.4').to_dict()]
         self.subtask_info['ctd']['extra_data'] = dict()
-        self.subtask_info['ctd']['extra_data']['end_task'] = \
-            self.subtask_info['end_task']
         self.subtask_info['ctd']['extra_data']['frames'] = \
             self.subtask_info['frames']
         self.subtask_info['ctd']['extra_data']['outfilebasename'] = \
@@ -74,7 +71,6 @@ class TestVerificatorModuleIntegration(TempDirFixture):
             self.subtask_info['start_task']
         self.subtask_info['ctd']['extra_data']['total_tasks'] = \
             self.subtask_info['total_tasks']
-        self.subtask_info['ctd']['short_description'] = ''
         self.subtask_info['ctd']['src_code'] = open(
             os.path.join(
                 self.golem_dir,

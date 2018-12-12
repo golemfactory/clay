@@ -187,7 +187,6 @@ class FrameRenderingTask(RenderingTask):
         super().accept_results(subtask_id, result_files)
         num_start = self.subtasks_given[subtask_id]['start_task']
         parts = self.subtasks_given[subtask_id]['parts']
-        num_end = self.subtasks_given[subtask_id]['end_task']
         frames = self.subtasks_given[subtask_id]['frames']
 
         for result_file in result_files:
@@ -198,7 +197,7 @@ class FrameRenderingTask(RenderingTask):
             else:
                 self._collect_frame_part(num_start, result_file, parts)
 
-        self.num_tasks_received += num_end - num_start + 1
+        self.num_tasks_received += 1
 
         if self.num_tasks_received == self.total_tasks and not self.use_frames:
             self._put_image_together()
