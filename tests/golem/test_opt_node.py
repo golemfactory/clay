@@ -583,7 +583,8 @@ class TestOptNode(TempDirFixture):
 
         # when
         self.node = Node(**self.node_kwargs)
-        self.node.start()
+        with patch('golem.task.taskarchiver.TaskArchiver._dump_archive'):
+            self.node.start()
 
         # then
         assert self.node.client
