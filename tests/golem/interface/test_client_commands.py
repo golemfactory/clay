@@ -754,7 +754,7 @@ class TestTasks(TempDirFixture):
 
         self.assertIn("bid", output)
         self.assertIn("0.0", output)
-        self.assertIn('"subtask_timeout": "0:00:00"', output)
+        self.assertIn('"subtask_timeout": "0:20:00"', output)
 
         self.assertEqual(json.loads(output), TaskDefinition().to_dict())
 

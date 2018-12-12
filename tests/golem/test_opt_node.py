@@ -503,7 +503,9 @@ def chain_function(_, fn, *args, **kwargs):
 
 
 def set_keys_auth(obj):
-    obj._keys_auth = Mock()
+    obj._keys_auth = Mock(
+        key_id='a'*32,
+    )
 
 
 def call_now(fn, *args, **kwargs):
