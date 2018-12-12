@@ -75,7 +75,7 @@ class DummyTask(Task):
             task_owner=task_owner,
             environment=environment,
             deadline=timeout_to_deadline(14400),
-            subtask_timeout=1200.0,
+            subtask_timeout=1200,
             subtasks_count=num_subtasks,
             resource_size=params.shared_data_size + params.subtask_data_size,
             estimated_memory=0,

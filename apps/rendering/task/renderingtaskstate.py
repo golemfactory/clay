@@ -13,11 +13,13 @@ class RendererDefaults(TaskDefaults):
         self._pixel_to_seconds = 384
 
     @property
-    def subtask_timeout(self) -> float:
-        return self.resolution[0] * self.resolution[1] / self._pixel_to_seconds
+    def subtask_timeout(self) -> int:
+        return int(
+            self.resolution[0] * self.resolution[1] / self._pixel_to_seconds,
+        )
 
     @property
-    def timeout(self) -> float:
+    def timeout(self) -> int:
         return self.subtask_timeout * self.default_subtasks
 
 

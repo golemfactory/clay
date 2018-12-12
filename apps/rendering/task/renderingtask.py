@@ -17,8 +17,8 @@ from golem.docker.environment import DockerEnvironment
 from golem.docker.job import DockerJob
 from golem.task.taskstate import SubtaskStatus
 
-MIN_TIMEOUT = 60.0
-SUBTASK_MIN_TIMEOUT = 60.0
+MIN_TIMEOUT = 60
+SUBTASK_MIN_TIMEOUT = 60
 PREVIEW_EXT = "PNG"
 PREVIEW_X = 1280
 PREVIEW_Y = 720

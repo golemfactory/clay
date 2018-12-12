@@ -789,7 +789,7 @@ class TaskManager(TaskEventListener):
             th = t.header
             if self.tasks_states[th.task_id].status not in self.activeStatus:
                 continue
-            cur_time = get_timestamp_utc()
+            cur_time = int(get_timestamp_utc())
             # Check subtask timeout
             ts = self.tasks_states[th.task_id]
             for s in list(ts.subtask_states.values()):

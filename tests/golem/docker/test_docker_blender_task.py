@@ -105,7 +105,7 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
         assert task.header.task_owner.pub_addr == '1.2.3.4'
         assert task.header.task_owner.pub_port == 40102
         assert isinstance(task.header.task_owner, dt_p2p.Node)
-        assert task.header.subtask_timeout == 1200.0
+        assert task.header.subtask_timeout == 1200
         assert task.header.task_owner.node_name == 'some_node'
         assert task.header.resource_size > 0
         assert task.header.environment == 'BLENDER'

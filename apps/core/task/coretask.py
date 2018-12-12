@@ -143,7 +143,7 @@ class CoreTask(Task):
             environment=self.environment.get_id(),
             task_owner=owner,
             deadline=self._deadline,
-            subtask_timeout=float(task_definition.subtask_timeout),
+            subtask_timeout=task_definition.subtask_timeout,
             subtasks_count=total_tasks,
             resource_size=self.resource_size,
             estimated_memory=task_definition.estimated_memory,
@@ -347,8 +347,10 @@ class CoreTask(Task):
         ctd['performance'] = perf_index
         if self.docker_images:
             ctd['docker_images'] = [di.to_dict() for di in self.docker_images]
-        ctd['deadline'] = min(timeout_to_deadline(self.header.subtask_timeout),
-                              self.header.deadline)
+        ctd['deadline'] = min(
+            int(timeout_to_deadline(self.header.subtask_timeout)),
+            self.header.deadline,
+        )
 
         return ctd
 
@@ -556,11 +558,9 @@ class CoreTaskBuilder(TaskBuilder):
         definition.max_price = \
             int(decimal.Decimal(dictionary['bid']) * denoms.ether)
 
-        definition.timeout = float(
-            string_to_timeout(dictionary['timeout']),
-        )
-        definition.subtask_timeout = float(
-            string_to_timeout(dictionary['subtask_timeout']),
+        definition.timeout = string_to_timeout(dictionary['timeout'])
+        definition.subtask_timeout = string_to_timeout(
+            dictionary['subtask_timeout'],
         )
         definition.output_file = cls.get_output_path(dictionary, definition)
         definition.estimated_memory = dictionary.get('estimated_memory', 0)

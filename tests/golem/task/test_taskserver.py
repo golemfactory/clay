@@ -53,7 +53,7 @@ def get_example_task_header(key_id: str) -> dt_tasks.TaskHeader:
             pub_addr='1.2.3.4'
         ),
         "deadline": timeout_to_deadline(1201),
-        "subtask_timeout": 120.0,
+        "subtask_timeout": 120,
         "max_price": 20,
         "resource_size": 2 * 1024,
         "estimated_memory": 3 * 1024,
@@ -62,7 +62,7 @@ def get_example_task_header(key_id: str) -> dt_tasks.TaskHeader:
         "subtasks_count": 21,
         "concent_enabled": False,
         "mask": Mask().to_bytes(),
-        "timestamp": 0.0,
+        "timestamp": 0,
     }
     task_header = dt_tasks.TaskHeader(**th_dict_repr)
     return task_header

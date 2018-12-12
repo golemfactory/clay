@@ -8,8 +8,8 @@ from golem.environments.environment import Environment
 from golem.task.taskstate import TaskState
 
 
-DEFAULT_TIMEOUT = 4 * 3600.0
-DEFAULT_SUBTASK_TIMEOUT = 20 * 60.0
+DEFAULT_TIMEOUT = 4 * 3600
+DEFAULT_SUBTASK_TIMEOUT = 20 * 60
 
 
 class TaskDefaults(object):

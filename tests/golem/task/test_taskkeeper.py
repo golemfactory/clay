@@ -449,14 +449,14 @@ def get_dict_task_header(key_id_seed="kkk"):
         },
         "environment": "DEFAULT",
         "deadline": timeout_to_deadline(1201),
-        "subtask_timeout": 120.0,
+        "subtask_timeout": 120,
         "subtasks_count": 1,
         "max_price": 10,
         "min_version": golem.__version__,
         "resource_size": 0,
         "estimated_memory": 0,
         'mask': Mask().to_bytes(),
-        'timestamp': 0.0,
+        'timestamp': 0,
         'signature': None
     }
 
@@ -489,7 +489,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         for x in range(10):
             header = get_task_header()
             header.deadline = timeout_to_deadline(1)
-            header.subtask_timeout = 1.5
+            header.subtask_timeout = 3
             header.resource_size = 1
 
             test_headers.append(header)
@@ -501,7 +501,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             ctd['subtask_id'] = idgenerator.generate_new_id_from_id(
                 header.task_id,
             )
-            ctd['deadline'] = timeout_to_deadline(header.subtask_timeout - 0.5)
+            ctd['deadline'] = timeout_to_deadline(header.subtask_timeout - 1)
             price = taskkeeper.compute_subtask_value(
                 price_bid,
                 header.subtask_timeout,
@@ -526,7 +526,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
     @mock.patch('golem.core.golem_async.async_run', async_run)
     @mock.patch('golem.task.taskkeeper.common.get_timestamp_utc')
     def test_remove_old_tasks(self, timestamp):
-        timestamp.return_value = time.time()
+        timestamp.return_value = int(time.time())
         tasks_dir = Path(self.path)
         self._dump_some_tasks(tasks_dir)
 
@@ -535,11 +535,11 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
 
         self.assertTrue(any(ctk.active_tasks))
         self.assertTrue(any(ctk.subtask_to_task))
-        timestamp.return_value = time.time() + 1
+        timestamp.return_value = int(time.time() + 1)
         ctk.remove_old_tasks()
         self.assertTrue(any(ctk.active_tasks))
         self.assertTrue(any(ctk.subtask_to_task))
-        timestamp.return_value = time.time() + 300
+        timestamp.return_value = int(time.time() + 300)
         ctk.remove_old_tasks()
         self.assertTrue(not any(ctk.active_tasks))
         self.assertTrue(not any(ctk.subtask_to_task))

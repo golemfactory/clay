@@ -135,7 +135,7 @@ class TaskSessionTaskToComputeTest(TestCase):
                 pub_addr='10.10.10.10',
                 pub_port=12345,
             ),
-            subtask_timeout=1.0,
+            subtask_timeout=1,
             max_price=1,
         )
         self.task_manager.tasks[self.task_id] = Mock(header=task_header)
@@ -893,7 +893,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 environment='DEFAULT',
                 task_id="abc",
                 task_owner=task_owner,
-                subtask_timeout=1.0,
+                subtask_timeout=1,
                 max_price=1,
                 resource_size=1,
             ),

@@ -76,7 +76,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task_definition.task_id = "xyz"
         task_definition.estimated_memory = 1024
         task_definition.timeout = 3600.0
-        task_definition.subtask_timeout = 600.0
+        task_definition.subtask_timeout = 600
         task_definition.main_scene_file=files[1]
         task_definition.resolution = [800, 600]
         task_definition.output_file = files[2]
