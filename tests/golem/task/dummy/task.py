@@ -9,6 +9,7 @@ from golem_messages.datastructures import p2p as dt_p2p
 from golem_messages.datastructures import tasks as dt_tasks
 from golem_messages.message import ComputeTaskDef
 
+import golem
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.task.taskbase import Task, AcceptClientVerdict
@@ -63,21 +64,23 @@ class DummyTask(Task):
         owner_port = 0
         owner_key_id = encode_hex(public_key)[2:]
         environment = self.ENVIRONMENT_NAME
-        header = dt_tasks.TaskHeader(
-            task_id=task_id,
-            environment=environment,
-            deadline=timeout_to_deadline(14400),
-            subtask_timeout=1200,
-            subtasks_count=num_subtasks,
-            resource_size=params.shared_data_size + params.subtask_data_size,
-            estimated_memory=0,
-            max_price=MIN_PRICE,
-        )
-        header.task_owner = dt_p2p.Node(
+        task_owner = dt_p2p.Node(
             node_name=client_id,
             pub_addr=owner_address,
             pub_port=owner_port,
             key=owner_key_id
+        )
+        header = dt_tasks.TaskHeader(
+            task_id=task_id,
+            task_owner=task_owner,
+            environment=environment,
+            deadline=timeout_to_deadline(14400),
+            subtask_timeout=1200.0,
+            subtasks_count=num_subtasks,
+            resource_size=params.shared_data_size + params.subtask_data_size,
+            estimated_memory=0,
+            max_price=MIN_PRICE,
+            min_version=golem.__version__,
         )
 
         # load the script to be run remotely from the file in the current dir
