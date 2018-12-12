@@ -80,7 +80,7 @@ class TestGetTaskResources(TempDirFixture):
         task_def = self._get_core_task_definition()
 
         class CoreTaskDeabstacted(CoreTask):
-            ENVIRONMENT_CLASS = mock.MagicMock()
+            ENVIRONMENT_CLASS = lambda _self: mock.MagicMock(get_id=lambda: 'test')
 
             def query_extra_data(self, perf_index, num_cores=0, node_id=None,
                                  node_name=None):
