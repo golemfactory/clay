@@ -206,6 +206,21 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
         self.put_deposit(self.requestor_sci, requestors_funds)
         self._perform_payments_scenario(LOA, requestors_funds, 0)
 
+    def test_requestor_has_no_funds(self):
+        LOA = self._prepare_list_of_acceptances()
+        fp = message.concents.ForcePayment(
+            subtask_results_accepted_list=LOA,
+        )
+        response = self.provider_load_response(self.provider_send(fp))
+        self.assertIsInstance(
+            response,
+            message.concents.ServiceRefused,
+        )
+        self.assertEqual(
+            response.reason,
+            message.concents.ServiceRefused.REASON.TooSmallRequestorDeposit
+        )
+
     def _perform_payments_scenario(self, acceptances, expected_amount_paid,
                                    expected_amount_pending):
         fp = message.concents.ForcePayment(
