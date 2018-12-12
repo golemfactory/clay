@@ -65,11 +65,12 @@ class HardwarePresets:
 
     @classmethod
     def from_config(cls, config: ClientConfigDescriptor) -> HardwarePreset:
+        scale = hardware.MEM_MULTIPLE
         return HardwarePreset(
             name=config.hardware_preset_name,
             cpu_cores=hardware.cap_cpus(config.num_cores),
-            memory=hardware.cap_memory(config.max_memory_size),
-            disk=hardware.cap_disk(config.max_resource_size),
+            memory=hardware.cap_memory(config.max_memory_size * scale) // scale,
+            disk=hardware.cap_disk(config.max_resource_size * scale) // scale,
         )
 
     @classmethod

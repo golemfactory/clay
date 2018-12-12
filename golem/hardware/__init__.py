@@ -1,5 +1,6 @@
 import logging
 import sys
+from enum import Enum
 from multiprocessing import cpu_count
 from typing import List, Optional, Dict
 
@@ -15,8 +16,16 @@ logger = logging.getLogger(__name__)
 
 MAX_CPU_WINDOWS = 32
 MAX_CPU_MACOS = 16
+MEM_MULTIPLE = 1024
 
 _working_dir: Optional[str] = None
+
+
+class MemSize(Enum):
+    byte = 0
+    kibi = 1
+    mebi = 2
+    gibi = 3
 
 
 def initialize(working_dir: str):
@@ -40,6 +49,12 @@ def defaults() -> Dict[str, int]:
         'memory': memory(),
         'disk': MIN_DISK_SPACE,
     }
+
+
+def scale_memory(amount: int, unit: MemSize, to_unit: MemSize) -> int:
+    diff = to_unit.value - unit.value
+    scaled = int(amount / (MEM_MULTIPLE ** diff))
+    return _pad_memory(scaled)
 
 
 def cap_cpus(core_num: int, cap: int = sys.maxsize) -> int:
@@ -95,11 +110,11 @@ def memory() -> int:
     """
     :return int: 3/4 of total memory in KiB
     """
-    capped = virtual_memory().total * TOTAL_MEMORY_CAP // 1024
+    capped = virtual_memory().total * TOTAL_MEMORY_CAP // MEM_MULTIPLE
     amount = max(capped, MIN_MEMORY_SIZE)
 
     logger.debug("Total memory: %r", amount)
-    return amount
+    return _pad_memory(amount)
 
 
 def memory_available() -> int:
@@ -109,7 +124,7 @@ def memory_available() -> int:
     vmem = virtual_memory()
 
     logger.debug("System memory: %r", vmem)
-    return vmem.available // 1024
+    return vmem.available // MEM_MULTIPLE
 
 
 def disk() -> int:
@@ -117,11 +132,11 @@ def disk() -> int:
     return free_partition_space(_working_dir)
 
 
-def _pad_memory(in_bytes: int) -> int:
+def _pad_memory(amount: int) -> int:
     """
     Returns the provided memory amount as a multiple of 2
     """
-    return int(in_bytes) & ~1
+    return int(amount) & ~1
 
 
 def _assert_initialized():
