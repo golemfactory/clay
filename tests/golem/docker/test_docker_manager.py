@@ -5,7 +5,7 @@ from collections import namedtuple
 from subprocess import CalledProcessError
 from unittest import TestCase, mock
 
-from golem.docker.config import DEFAULTS, MIN_CONSTRAINTS
+from golem.docker.config import DEFAULTS
 from tests.golem.docker.test_hypervisor import command, MockHypervisor, \
     MockDockerManager, raise_exception, raise_process_exception
 
@@ -13,38 +13,6 @@ ConfigMock = namedtuple('ConfigMock', ('num_cores', 'max_memory_size'))
 
 
 class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
-
-    def test_config_defaults(self):
-        manager = MockDockerManager()
-        self.assertDictEqual(manager.get_config(), DEFAULTS)
-
-    def test_build_config_empty(self):
-        manager = MockDockerManager()
-        config = ConfigMock(None, None)
-        manager.build_config(config)
-        self.assertEqual(manager.get_config(), DEFAULTS)
-
-    def test_build_config_default(self):
-        manager = MockDockerManager()
-        config = ConfigMock(DEFAULTS['cpu_count'], DEFAULTS['memory_size'])
-        manager.build_config(config)
-        self.assertEqual(manager.get_config(), DEFAULTS)
-
-    def test_build_config_below_min_cpu_count(self):
-        manager = MockDockerManager()
-        config = ConfigMock(0, None)
-        manager.build_config(config)
-        self.assertEqual(
-            manager.get_config()['cpu_count'],
-            MIN_CONSTRAINTS['cpu_count'])
-
-    def test_build_config_below_min_memory_size(self):
-        manager = MockDockerManager()
-        config = ConfigMock(None, 0)
-        manager.build_config(config)
-        self.assertEqual(
-            manager.get_config()['memory_size'],
-            MIN_CONSTRAINTS['memory_size'])
 
     def test_build_config_odd_memory_size(self):
         manager = MockDockerManager()
@@ -84,6 +52,10 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         hypervisor = mock.Mock()
         hypervisor.constraints.return_value = DEFAULTS
+        hypervisor.restart_ctx.return_value = mock.Mock(
+            __enter__=mock.Mock(),
+            __exit__=mock.Mock(),
+        )
 
         dmm._select_hypervisor = mock.Mock(return_value=hypervisor)
 
