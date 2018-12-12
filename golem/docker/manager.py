@@ -16,7 +16,6 @@ from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.docker.hypervisor.xhyve import XhyveHypervisor
 from golem.docker.task_thread import DockerBind
-from golem.hardware import MemSize
 from golem.report import report_calls, Component
 
 logger = logging.getLogger(__name__)
@@ -119,8 +118,10 @@ class DockerManager(DockerConfigManager):
 
     def build_config(self, config_desc):
         super(DockerManager, self).build_config(config_desc)
+
         memory = hardware.scale_memory(config_desc.max_memory_size,
-                                       MemSize.kibi, MemSize.mebi)
+                                       hardware.MemSize.kibi,
+                                       hardware.MemSize.mebi)
         self._config = dict(
             memory_size=memory,
             cpu_count=config_desc.num_cores,
