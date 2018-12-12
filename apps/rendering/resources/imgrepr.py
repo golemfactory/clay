@@ -12,7 +12,7 @@ from PIL import Image
 logger = logging.getLogger("apps.rendering")
 
 
-class OpenCVError(OSError):
+class OpenCVError(Exception):
     pass
 
 
@@ -50,29 +50,64 @@ class OpenCVImgRepr:
     def __init__(self):
         self.img = None
 
+    def set_pixel(self, xy, color):
+        xy = tuple(reversed(xy))
+        bgr_color = tuple(reversed(color))
+        self.img[xy] = bgr_color
+
+    def get_pixel(self, x, y):
+        # reverse because OpenCV stores colors as BGR
+        return tuple(reversed(self.img[y, x]))
+
     def __enter__(self):
         return self
 
     def __exit__(self, type, value, traceback):
         pass
 
+    def get_height(self):
+        assert self.img is not None
+        return self.img.shape[0]
+
+    def get_width(self):
+        assert self.img is not None
+        return self.img.shape[1]
+
+    def resize(self, width, height, interpolation=cv2.INTER_LINEAR):
+        assert self.img is not None
+        self.img = cv2.resize(self.img, (width, height),
+                              interpolation=interpolation)
+        return self
+
     def load_from_file(self, path):
         try:
             self.img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
             if self.img is None:
-                raise RuntimeError('cv2 read image \"{}\" as None'
-                                   .format(path))
-        except (cv2.error, RuntimeError) as e:
+                raise OpenCVError('cv2 read image \"{}\" as None'.format(path))
+        except cv2.error as e:
             logger.error('Error reading image: {}'.format(str(e)))
             raise OpenCVError('Cannot read image: {}'
                               .format(str(e)))
 
-    def empty(self, width, height, channels, dtype):
-        self.img = numpy.zeros((height, width, channels),
-                               dtype)
+    @staticmethod
+    def empty(width, height, channels=3, dtype=numpy.uint8):
+        imgRepr = OpenCVImgRepr()
+        imgRepr.img = numpy.zeros((height, width, channels), dtype)
+        return imgRepr
 
-    def paste_image(self, img, x, y):
-        self.img[y:y + img.shape[0], x:img.shape[1]] = img
+    @staticmethod
+    def from_image_file(image_path):
+        imgRepr = OpenCVImgRepr()
+        imgRepr.load_from_file(image_path)
+        return imgRepr
+
+    def paste_image(self, img_repr, x, y):
+        self.img[y:y + img_repr.img.shape[0], x:img_repr.img.shape[1]] = \
+            img_repr.img
+
+
+    def add(self, other):
+        self.img = cv2.add(self.img, other)
 
     def save_with_extension(self, path, extension):
         # in PIL one can specify output name without extension
@@ -91,6 +126,14 @@ class OpenCVImgRepr:
             logger.error('Error saving image: {}'.format(str(e)))
             raise OpenCVError('Cannot save image {}: {}'.format(path,
                                                                 str(e)))
+
+    @staticmethod
+    def load_from_file_or_empty(img_path, width, height, channels=3,
+                                dtype=numpy.uint8):
+        imgRepr = OpenCVImgRepr()
+        imgRepr.img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED) or \
+            OpenCVImgRepr.empty(width, height, channels, dtype)
+        return imgRepr
 
 
 class PILImgRepr(ImgRepr):
@@ -228,8 +271,8 @@ def load_img(file_: str) -> Optional[ImgRepr]:
         img.load_from_file(file_)
         return img
     except Exception as err:
-        logger.warning("Can't verify img file {}:{}".format(file_, err))
-        return None
+        logger.warning("Can't load img file {}:{}".format(file_, err))
+        return
 
 
 def load_as_pil(file_: str) -> Optional[Image.Image]:

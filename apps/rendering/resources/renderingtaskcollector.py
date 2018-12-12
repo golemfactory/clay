@@ -2,8 +2,6 @@ import logging
 import math
 from typing import Optional
 
-from PIL import Image, ImageChops
-
 from apps.rendering.resources.imgrepr import OpenCVImgRepr
 
 logger = logging.getLogger("apps.rendering")
@@ -39,8 +37,7 @@ class RenderingTaskCollector(object):
         res_x, res_y = 0, 0
 
         for name in self.accepted_img_files:
-            image = OpenCVImgRepr()
-            image.load_from_file(name)
+            image = OpenCVImgRepr.from_image_file(name)
             img_y, res_x = image.img.shape[:2]
             res_y += img_y
             self.dtype = image.img.dtype
@@ -50,22 +47,19 @@ class RenderingTaskCollector(object):
         self.width = res_x
         self.height = res_y
 
-        final_img = OpenCVImgRepr()
-        final_img.empty(self.width, self.height,
-                        self.channels,
-                        self.dtype)
+        final_img = OpenCVImgRepr.empty(self.width, self.height, self.channels,
+                                        self.dtype)
         offset = 0
         for img_path in self.accepted_img_files:
-            image = OpenCVImgRepr()
-            image.load_from_file(img_path)
-            final_img.paste_image(image.img, x=0, y=offset)
-            offset += image.img.shape[0]
+            image = OpenCVImgRepr.from_image_file(img_path)
+            final_img.paste_image(image, 0, offset)
+            offset += image.get_height()
         return final_img
 
     def _paste_image(self, final_img, new_part, num):
-        with Image.new("RGB", (self.width, self.height)) as img_offset:
-            offset = int(math.floor(num * float(self.height)
-                                    / float(len(self.accepted_img_files))))
-            img_offset.paste(new_part, (0, offset))
-            result = ImageChops.add(final_img, img_offset)
-        return result
+        img_offset = OpenCVImgRepr.empty(self.width, self.height)
+        offset = int(math.floor(num * float(self.height)
+                                / float(len(self.accepted_img_files))))
+        img_offset.paste_image(new_part, 0, offset)
+        img_offset.add(final_img)
+        return img_offset

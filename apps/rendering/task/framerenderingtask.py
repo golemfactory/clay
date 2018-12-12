@@ -4,15 +4,14 @@ import os
 from bisect import insort
 from collections import OrderedDict, defaultdict
 
-from PIL import Image, ImageChops
 from copy import deepcopy
 
 from apps.core.task.coretask import CoreTask
 from apps.core.task.coretaskstate import Options
-from apps.rendering.resources.imgrepr import load_as_pil
+from apps.rendering.resources.imgrepr import OpenCVImgRepr
 from apps.rendering.resources.renderingtaskcollector import \
     RenderingTaskCollector
-from apps.rendering.resources.utils import handle_image_error, handle_none
+from apps.rendering.resources.utils import handle_image_error
 from apps.rendering.task.renderingtask import (RenderingTask,
                                                RenderingTaskBuilder,
                                                PREVIEW_EXT)
@@ -233,29 +232,27 @@ class FrameRenderingTask(RenderingTask):
             # __mark_sub_frame() also saves preview_file_path(num)
             self.__mark_sub_frame(sub, frame, empty_color)
 
-    def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1, final=False):
+    def _update_frame_preview(self, new_chunk_file_path, frame_num, part=1,
+                              final=False):
         num = self.frames.index(frame_num)
         preview_task_file_path = self._get_preview_task_file_path(num)
 
-        with handle_image_error(logger), \
-                handle_none(load_as_pil(new_chunk_file_path),
-                            raise_if_none=IOError("load_as_pil failed")) as img:
+        with handle_image_error(logger):
+            img = OpenCVImgRepr.from_image_file(new_chunk_file_path)
 
             def resize_and_save(img):
-                img_x, img_y = img.size
-                with img.resize((int(round(self.scale_factor * img_x)),
-                                 int(round(self.scale_factor * img_y))),
-                                resample=Image.BILINEAR) as img_resized:
-                    img_resized.save(self._get_preview_file_path(num),
-                                     PREVIEW_EXT)
-                    img_resized.save(preview_task_file_path, PREVIEW_EXT)
+                img.resize(int(round(self.scale_factor * img.get_width())),
+                           int(round(self.scale_factor * img.get_height())))
+
+                img.save_with_extension(self._get_preview_file_path(num),
+                                        PREVIEW_EXT)
 
             if not final:
-                with self._paste_new_chunk(
+                img_pasted = self._paste_new_chunk(
                     img, self._get_preview_file_path(num), part,
                     int(self.total_tasks / len(self.frames))
-                ) as img_pasted:
-                    resize_and_save(img_pasted)
+                )
+                resize_and_save(img_pasted)
             else:
                 resize_and_save(img)
 
@@ -296,32 +293,29 @@ class FrameRenderingTask(RenderingTask):
             state.status = TaskStatus.aborted
         # Otherwise, do not change frame's status.
 
-    def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num, all_chunks_num):
+    def _paste_new_chunk(self, img_chunk, preview_file_path, chunk_num,
+                         all_chunks_num):
+
         try:
-            img_offset = Image.new("RGB", (int(round(self.res_x * self.scale_factor)),
-                                           int(round(self.res_y * self.scale_factor))))
-            offset = math.floor((chunk_num - 1) * self.res_y * self.scale_factor / all_chunks_num)
-            offset = int(offset)
-            img_offset.paste(img_chunk, (0, offset))
-        except Exception as err:
-            logger.error("Can't generate preview {}".format(err))
-            img_offset.close()
+            img_offset = OpenCVImgRepr.empty(int(round(self.res_x *
+                                                       self.scale_factor)),
+                                             int(round(self.res_y
+                                                       * self.scale_factor)))
+            offset = int(math.floor((chunk_num - 1) * self.res_y
+                                    * self.scale_factor / all_chunks_num))
+            img_offset.paste_image(img_chunk, 0, offset)
+
+        except Exception as e:
+            logger.error("Can't generate preview {}".format(e))
             img_offset = None
 
-        if not os.path.exists(preview_file_path):
-            return img_offset
-
-        try:
+        with handle_image_error(logger):
+            existing_frame_preview = OpenCVImgRepr.from_image_file(
+                preview_file_path)
             if img_offset:
-                with Image.open(preview_file_path) as img:
-                    result = ImageChops.add(img, img_offset)
-                    img_offset.close()
-                    return result
-            else:
-                return Image.open(preview_file_path)
-        except Exception as err:
-            logger.error("Can't add new chunk to preview{}".format(err))
-            return img_offset
+                existing_frame_preview.add(img_offset)
+            return existing_frame_preview
+        return img_offset
 
     def _update_frame_task_preview(self):
         sent_color = (0, 255, 0)
@@ -339,14 +333,13 @@ class FrameRenderingTask(RenderingTask):
     def _open_frame_preview(self, preview_file_path):
 
         if not os.path.exists(preview_file_path):
-            with handle_image_error(logger), \
-                    Image.new("RGB",
-                              (int(round(self.res_x * self.scale_factor)),
-                               int(round(self.res_y * self.scale_factor)))) \
-                    as img:
-                img.save(preview_file_path, PREVIEW_EXT)
+            with handle_image_error(logger):
+                img = OpenCVImgRepr.empty(
+                    int(round(self.res_x * self.scale_factor)),
+                    int(round(self.res_y * self.scale_factor)))
+                img.save_with_extension(preview_file_path, PREVIEW_EXT)
 
-        return Image.open(preview_file_path)
+        return OpenCVImgRepr.from_image_file(preview_file_path)
 
     def _mark_task_area(self, subtask, img_task, color, frame_index=0):
         if not self.use_frames:
@@ -366,7 +359,7 @@ class FrameRenderingTask(RenderingTask):
 
         for i in range(lower_x, upper_x):
             for j in range(upper_y, lower_y):
-                img_task.putpixel((i, j), color)
+                img_task.set_pixel((i, j), color)
 
     def _choose_frames(self, frames, start_task, total_tasks):
         if total_tasks <= len(frames):
@@ -446,9 +439,9 @@ class FrameRenderingTask(RenderingTask):
     def __mark_sub_frame(self, sub, frame, color):
         idx = self.frames.index(frame)
         preview_task_file_path = self._get_preview_task_file_path(idx)
-        with self._open_frame_preview(preview_task_file_path) as img_task:
-            self._mark_task_area(sub, img_task, color, idx)
-            img_task.save(preview_task_file_path, PREVIEW_EXT)
+        img_task = self._open_frame_preview(preview_task_file_path)
+        self._mark_task_area(sub, img_task, color, idx)
+        img_task.save_with_extension(preview_task_file_path, PREVIEW_EXT)
 
     def _get_subtask_file_path(self, subtask_dir_list, name_dir, num):
         if subtask_dir_list[num] is None:

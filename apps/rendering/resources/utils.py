@@ -1,6 +1,9 @@
+import cv2
 import logging
 from contextlib import contextmanager
 from typing import Optional
+
+from apps.rendering.resources.imgrepr import OpenCVError
 
 
 @contextmanager
@@ -42,6 +45,8 @@ def handle_image_error(logger: Optional[logging.Logger] = None):
         logger.error("Unsupported image format: %s", e)
     except IOError as e:
         logger.error("Failed to operate on image: %s", e)
+    except (cv2.error, OpenCVError) as e:
+        logger.exception("Failed to operate on image with OpenCV", e)
 
 
 @contextmanager
