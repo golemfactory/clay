@@ -66,9 +66,10 @@ def cap_cpus(core_num: int, cap: int = sys.maxsize) -> int:
 def cap_memory(mem_size: int, cap: int = sys.maxsize,
                unit: MemSize = MemSize.kibi) -> int:
     minimum = scale_memory(MIN_MEMORY_SIZE, MemSize.kibi, unit)
+    available = scale_memory(memory(), MemSize.kibi, unit)
+
     cap = max(cap, minimum)
-    available = min(cap, memory())
-    available = scale_memory(available, MemSize.kibi, unit)
+    available = min(cap, available)
     capped = max(min(mem_size, available), minimum)
     return _pad_memory(capped)
 
