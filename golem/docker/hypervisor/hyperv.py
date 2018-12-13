@@ -40,9 +40,13 @@ class HyperVHypervisor(DockerMachineHypervisor):
     VOLUME_DRIVER = "cifs"
     SMB_PORT = "445"
 
+    SCRIPTS_PATH = os.path.join(get_golem_path(), 'scripts', 'docker')
     GET_VSWITCH_SCRIPT_PATH = \
-        os.path.join(get_golem_path(), 'scripts', 'get-default-vswitch.ps1')
+        os.path.join(SCRIPTS_PATH, 'get-default-vswitch.ps1')
+    START_VM_SCRIPT_PATH = \
+        os.path.join(SCRIPTS_PATH, 'start-hyperv-docker-vm.ps1')
     SCRIPT_TIMEOUT = 5  # seconds
+    START_VM_TIMEOUT = 60  # seconds
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -87,6 +91,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
             self.start_vm(vm_name)
 
     def start_vm(self, name: Optional[str] = None) -> None:
+        name = name or self._vm_name
         constr = self.constraints()
 
         if not self._check_memory(constr):
@@ -109,10 +114,19 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
         try:
             # The windows VM fails to start when too much memory is assigned
-            super().start_vm(name)
+            logger.info("Hyper-V: Starting VM %s ...", name)
+            self._run_ps(
+                script=self.START_VM_SCRIPT_PATH,
+                args=[
+                    '-VMName', name,
+                    '-IPTimeoutSeconds', str(self.START_VM_TIMEOUT)
+                ],
+                timeout=self.START_VM_TIMEOUT
+            )
+            logger.info("Hyper-V: VM %s started successfully", name)
         except subprocess.CalledProcessError:
             logger.error(
-                "HyperV: VM failed to start, this can be caused "
+                "Hyper-V: VM failed to start, this can be caused "
                 "by insufficient RAM or HD free on the host machine")
             raise
 
@@ -231,6 +245,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
             cls,
             script: Optional[str] = None,
             command: Optional[str] = None,
+            args: Optional[List[str]] = None,
             timeout: int = SCRIPT_TIMEOUT
     ) -> str:
         """
@@ -249,6 +264,9 @@ class HyperVHypervisor(DockerMachineHypervisor):
             ]
         else:
             raise ValueError("Exactly one of (script, command) is required")
+
+        if args:
+            cmd += args
 
         try:
             return subprocess\
