@@ -123,7 +123,11 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if cpu is not None:
             args += [self.OPTIONS['cpu'], str(cpu)]
         if mem is not None:
-            args += [self.OPTIONS['mem'], str(mem)]
+            cap_mem = self._memory_cap(mem)
+            if not cap_mem == mem:
+                logger.warning('Not enough memory to create the VM, '
+                               'lowering memory')
+            args += [self.OPTIONS['mem'], str(cap_mem)]
 
         return args
 
