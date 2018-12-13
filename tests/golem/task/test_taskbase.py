@@ -1,5 +1,4 @@
 # pylint: disable=no-self-use
-import time
 from datetime import datetime
 from unittest import TestCase
 import unittest.mock as mock
@@ -25,16 +24,11 @@ class TestTaskBase(LogTestCase):
 
         task_header = TaskHeader(
             task_id="xyz", environment="DEFAULT", task_owner=node)
-        # ignore dynamic properties
-        task_header.fixed_header.last_checking = 0
 
         task_header_dict = task_header.to_dict()
         serialized = CBORSerializer.dumps(task_header_dict)
         deserialized = CBORSerializer.loads(serialized)
         task_header_from_dict = TaskHeader.from_dict(deserialized)
-
-        # ignore dynamic properties
-        task_header_from_dict.fixed_header.last_checking = 0
 
         assert task_header_from_dict.to_dict() == task_header_dict
         assert isinstance(task_header_from_dict.task_owner, Node)
@@ -66,7 +60,6 @@ class TestTaskHeader(TestCase):
                     "pub_port": 10101
                 },
                 "environment": "DEFAULT",
-                "last_checking": time.time(),
                 "deadline": timeout_to_deadline(1201),
                 "subtask_timeout": 120,
                 "subtasks_count": 21,

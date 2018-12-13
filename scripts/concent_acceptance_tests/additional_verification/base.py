@@ -59,7 +59,6 @@ class SubtaskResultsVerifyBaseTest(SCIBaseTest):
         return {
             "path_root": '',
             "start_task": 1,
-            "end_task": 1,
             "total_tasks": 1,
             "outfilebasename": 'test task',
             "scene_file": '/golem/resources/wlochaty3.blend',
