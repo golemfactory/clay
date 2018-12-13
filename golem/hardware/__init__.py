@@ -101,12 +101,17 @@ def cpus() -> List[int]:
         if len(affinity) == core_count and 0 in affinity:
             affinity.remove(0)
     else:
+        reserved_cpu = 1
         if is_osx() and len(affinity) > MAX_CPU_MACOS:
             affinity = affinity[:MAX_CPU_MACOS]
+            reserved_cpu = 0
         elif is_windows() and len(affinity) > MAX_CPU_WINDOWS:
             affinity = affinity[:MAX_CPU_WINDOWS]
-        affinity = list(range(0, len(affinity)))
-    return affinity or [0]
+            reserved_cpu = 0
+        affinity = list(range(0, len(affinity) - reserved_cpu))
+    cpu_list = affinity or [0]
+    logger.debug('cpus() -> %r', cpu_list)
+    return cpu_list
 
 
 def memory() -> int:
