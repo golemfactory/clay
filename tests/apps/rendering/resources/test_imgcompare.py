@@ -1,8 +1,7 @@
+import cv2
 import os
 
-from PIL import Image
-
-from apps.rendering.resources.imgcompare import *
+import numpy
 
 from apps.rendering.resources.imgcompare import (advance_verify_img,
                                                  check_size, compare_exr_imgs,
@@ -19,7 +18,6 @@ from .imghelper import (get_exr_img_repr, get_pil_img_repr, get_test_exr,
                        make_test_img)
 
 
-
 class TestCompareImgFunctions(TempDirFixture, LogTestCase, PEP8MixIn):
     PEP8_FILES = [
         'apps/rendering/resources/imgcompare.py',
@@ -29,8 +27,8 @@ class TestCompareImgFunctions(TempDirFixture, LogTestCase, PEP8MixIn):
         file1 = self.temp_file_name('img.png')
         for y in [10, 11]:
             x = 10
-            sample_img = Image.new("RGB", (x, y))
-            sample_img.save(file1)
+            sample_img = numpy.zeros((y, x, 3), dtype=numpy.uint8)
+            cv2.imwrite(file1, sample_img)
             self.assertTrue(os.path.isfile(file1))
             self.assertTrue(check_size(file1, x, y))
             self.assertFalse(check_size(file1, x, y + 1))

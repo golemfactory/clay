@@ -86,13 +86,13 @@ class OpenCVImgRepr:
                 raise OpenCVError('cv2 read image \"{}\" as None'.format(path))
         except cv2.error as e:
             logger.error('Error reading image: {}'.format(str(e)))
-            raise OpenCVError('Cannot read image: {}'
-                              .format(str(e)))
+            raise OpenCVError('Cannot read image: {}'.format(str(e))) from e
 
     @staticmethod
-    def empty(width, height, channels=3, dtype=numpy.uint8):
+    def empty(width, height, channels=3, dtype=numpy.uint8, color=(0, 0, 0)):
         imgRepr = OpenCVImgRepr()
         imgRepr.img = numpy.zeros((height, width, channels), dtype)
+        imgRepr.img[:] = tuple(reversed(color))
         return imgRepr
 
     @staticmethod
@@ -101,13 +101,18 @@ class OpenCVImgRepr:
         imgRepr.load_from_file(image_path)
         return imgRepr
 
+    def get_size(self):
+        return tuple(reversed(self.img.shape[:2]))
+
     def paste_image(self, img_repr, x, y):
         self.img[y:y + img_repr.img.shape[0], x:img_repr.img.shape[1]] = \
             img_repr.img
 
-
     def add(self, other):
-        self.img = cv2.add(self.img, other)
+        try:
+            self.img = cv2.add(self.img, other.img)
+        except cv2.error as e:
+            raise OpenCVError('opencv adding images failed') from e
 
     def save_with_extension(self, path, extension):
         # in PIL one can specify output name without extension
@@ -198,8 +203,7 @@ class EXRImgRepr(ImgRepr):
         self.img = OpenEXR.InputFile(file_)
         self.dw = self.img.header()['dataWindow']
         self.rgb = [Image.frombytes("F", self.get_size(),
-                                    self.img.channel(c, self.pt))
-                    for c in "RGB"]
+                                    self.img.channel("RGB", self.pt))]
         self.file_path = file_
         self.name = os.path.basename(file_)
 
@@ -273,19 +277,6 @@ def load_img(file_: str) -> Optional[ImgRepr]:
     except Exception as err:
         logger.warning("Can't load img file {}:{}".format(file_, err))
         return
-
-
-def load_as_pil(file_: str) -> Optional[Image.Image]:
-    """ Load image from file path and retun PIL Image representation
-     :param file_: path to the file
-     :return : return PIL Image represantion or None
-     if there was an error
-    """
-
-    img = load_img(file_)
-    if img is None:
-        return None
-    return img.to_pil()
 
 
 def load_as_PILImgRepr(file_: str) -> Optional[PILImgRepr]:

@@ -3,11 +3,10 @@ import math
 import os
 from typing import Type
 
-from PIL import Image
 from pathlib import Path
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
-from apps.rendering.resources.imgrepr import load_as_pil, OpenCVImgRepr
+from apps.rendering.resources.imgrepr import OpenCVImgRepr
 from apps.rendering.resources.utils import handle_image_error, handle_none
 from apps.rendering.task.renderingtaskstate import RendererDefaults
 from golem_verificator.rendering_verifier import RenderingVerifier

@@ -315,6 +315,7 @@ class FrameRenderingTask(RenderingTask):
             if img_offset:
                 existing_frame_preview.add(img_offset)
             return existing_frame_preview
+        logger.error("Can't add new chunk to preview")
         return img_offset
 
     def _update_frame_task_preview(self):

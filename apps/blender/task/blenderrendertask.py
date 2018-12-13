@@ -128,9 +128,10 @@ class PreviewUpdater(object):
                     .save_with_extension(self.preview_file_path, PREVIEW_EXT)
 
     def _get_height(self, subtask_number):
-        if subtask_number
-        return self.expected_offsets.get(subtask_number + 1, self.preview_res_y) \
-               - self.expected_offsets[subtask_number]
+        return self.preview_res_y - self.expected_offsets[subtask_number] \
+            if subtask_number + 1 >= len(self.expected_offsets) \
+            else self.expected_offsets[subtask_number + 1] - \
+            self.expected_offsets[subtask_number]
 
 
 class RenderingTaskTypeInfo(CoreTaskTypeInfo):

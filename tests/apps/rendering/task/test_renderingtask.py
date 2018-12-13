@@ -319,7 +319,8 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
 
     def test_update_task_preview_ioerror(self):
         e = IOError("test message")
-        with patch("PIL.Image.open", side_effect=e), \
+        with patch("apps.rendering.resources.imgrepr.OpenCVImgRepr."
+                   "from_image_file", side_effect=e), \
                 patch("apps.rendering.task.renderingtask.logger") as logger:
             self.task._update_task_preview()
             assert logger.error.called

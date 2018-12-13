@@ -1,9 +1,10 @@
 import os
 import random
+
+import numpy
 import numpy as np
 import cv2
 import pytest
-from PIL import Image
 
 from golem.tools.testdirfixture import TestDirFixture
 
@@ -14,9 +15,9 @@ from apps.rendering.resources.imgrepr import OpenCVImgRepr, OpenCVError
 
 
 def make_test_img(img_path, size=(10, 10), color=(255, 0, 0)):
-    img = Image.new('RGB', size, color)
-    img.save(img_path)
-    img.close()
+    img = numpy.zeros((size[0], size[1], 3), numpy.uint8)
+    img[:] = tuple(reversed(color))
+    cv2.imwrite(img_path, img)
 
 
 def make_test_img_16bits(img_path, width, height, color=(0, 0, 255)):

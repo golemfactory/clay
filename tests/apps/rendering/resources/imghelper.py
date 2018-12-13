@@ -1,14 +1,12 @@
 import os
 
-from PIL import Image
-
-from apps.rendering.resources.imgrepr import EXRImgRepr, PILImgRepr
+from apps.rendering.resources.imgrepr import EXRImgRepr, PILImgRepr, \
+    OpenCVImgRepr
 
 
 def make_test_img(img_path, size=(10, 10), color=(255, 0, 0)):
-    img = Image.new('RGB', size, color)
+    img = OpenCVImgRepr.empty(*size, color=color)
     img.save(img_path)
-    img.close()
 
 
 def get_test_exr(alt=False):

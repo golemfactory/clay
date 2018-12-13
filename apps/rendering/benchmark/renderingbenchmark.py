@@ -3,11 +3,10 @@ import logging
 import os.path
 import uuid
 
-from PIL import Image
-
 from apps.core.benchmark.benchmarkrunner import CoreBenchmark
 from apps.rendering.resources.utils import handle_image_error
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
+from apps.rendering.resources.imgrepr import OpenCVImgRepr
 
 logger = logging.getLogger("apps.core")
 
@@ -54,8 +53,8 @@ class RenderingBenchmark(CoreBenchmark):
 
     def verify_img(self, filename):
         with handle_image_error(logger):
-            with Image.open(filename) as image:
-                img_size = image.size
+            image = OpenCVImgRepr.from_image_file(filename)
+            img_size = image.get_size()
             expected = self._task_definition.resolution
             if tuple(img_size) == tuple(expected):
                 return True

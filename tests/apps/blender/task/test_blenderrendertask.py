@@ -13,7 +13,6 @@ import unittest
 from random import randrange, shuffle
 
 import OpenEXR
-from PIL import Image
 
 from apps.blender.task.blenderrendertask import (BlenderDefaults,
                                                  BlenderRenderTask,
@@ -144,8 +143,7 @@ class TestBlenderFrameTask(TempDirFixture):
             os.makedirs(file_dir)
 
         file1 = path.join(file_dir, 'result1')
-        img = empty_rgb_image()
-
+        img = _get_empty_rgb_image(self.bt.res_x, self.bt.res_y // 2)
         cv2.imwrite('{}.png'.format(file1), img)
 
         def verification_finished1(verification_data):

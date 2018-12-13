@@ -45,8 +45,8 @@ def handle_image_error(logger: Optional[logging.Logger] = None):
         logger.error("Unsupported image format: %s", e)
     except IOError as e:
         logger.error("Failed to operate on image: %s", e)
-    except (cv2.error, OpenCVError) as e:
-        logger.exception("Failed to operate on image with OpenCV", e)
+    except (cv2.error, OpenCVError):
+        logger.exception("Failed to operate on image with OpenCV")
 
 
 @contextmanager

@@ -7,7 +7,7 @@ import cv2
 
 import numpy as np
 from apps.rendering.resources.imgrepr import (blend, EXRImgRepr, ImgRepr,
-                                              load_as_pil, load_img, load_as_PILImgRepr,
+                                              load_img, load_as_PILImgRepr,
                                               logger, PILImgRepr, OpenCVImgRepr,
                                               OpenCVError)
 
@@ -287,24 +287,6 @@ class TestImgFunctions(TempDirFixture, LogTestCase):
 
         exr = blend(exr1, exr2, 0.9)
         almost_equal_pixels(exr.get_pixel((3, 2)), [0.0381, 0.0412, 0.0422])
-
-    def test_load_as_pil(self):
-        img_path = self.temp_file_name("path1.png")
-        make_test_img(img_path)
-        img = load_as_pil(img_path)
-        assert isinstance(img, Image.Image)
-        exr_path = get_test_exr()
-        img = load_as_pil(exr_path)
-        assert isinstance(img, Image.Image)
-
-    def test_load_as_PILImgRepr(self):
-        img_path = self.temp_file_name("path1.png")
-        make_test_img(img_path)
-        img = load_as_PILImgRepr(img_path)
-        assert isinstance(img, PILImgRepr)
-        exr_path = get_test_exr()
-        img = load_as_PILImgRepr(exr_path)
-        assert isinstance(img, PILImgRepr)
 
     def test_opencv_load_from_file(self):
         img_path = self.temp_file_name("path1.png")
