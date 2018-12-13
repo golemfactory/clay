@@ -254,7 +254,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         }
 
     def _memory_cap(self, memory: int) -> int:
-        return min(memory, int(0.9 * self._get_max_memory()))
+        return min(memory, self._get_max_memory())
 
     def _check_memory(self, constr: Optional[dict] = None) -> bool:
         """
@@ -273,7 +273,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
             constr = constr or self.constraints()
             max_mem_in_mb += constr[CONSTRAINT_KEYS['mem']]
 
-        return max_mem_in_mb
+        return int(0.9 * max_mem_in_mb)
 
     def _create_volume(self, hostname: str, shared_dir: Path) -> str:
         assert self._work_dir is not None
