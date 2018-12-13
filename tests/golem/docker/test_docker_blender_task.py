@@ -112,7 +112,7 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
         assert task.header.estimated_memory == 0
         assert task.docker_images[0].repository == 'golemfactory/blender'
         assert task.docker_images[0].tag == '1.4'
-        assert task.header.max_price == 10
+        assert task.header.max_price == 12
         assert not task.header.signature
         assert task.listeners == []
         assert len(task.task_resources) == 1
