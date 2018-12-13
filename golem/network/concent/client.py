@@ -163,21 +163,14 @@ def receive_from_concent(
     return response.content or None
 
 
-class ConcentRequest(msg_datastructures.FrozenDict):
-    ITEMS = {
-        'key': '',
-        'msg': None,
-    }
+def build_key(*args) -> str:
+    """
+    Build a ConcentRequest key from the given arguments.
 
-    @staticmethod
-    def build_key(*args) -> str:
-        """
-        Build a ConcentRequest key from the given arguments.
-
-        :param args: Arguments to build a key with
-        :return: str
-        """
-        return '/'.join(str(a) for a in args)
+    :param args: Arguments to build a key with
+    :return: str
+    """
+    return '/'.join(str(a) for a in args)
 
 
 class ConcentClientService(threading.Thread):
@@ -240,7 +233,7 @@ class ConcentClientService(threading.Thread):
         """
 
         self.submit(
-            ConcentRequest.build_key(subtask_id, msg.__class__.__name__),
+            build_key(subtask_id, msg.__class__.__name__),
             msg, delay,
         )
 
@@ -254,7 +247,7 @@ class ConcentClientService(threading.Thread):
         :return: whether the message was indeed found and cancelled
         """
         return self.cancel(
-            ConcentRequest.build_key(subtask_id, msg_classname)
+            build_key(subtask_id, msg_classname)
         )
 
     def submit(self,
@@ -281,19 +274,15 @@ class ConcentClientService(threading.Thread):
         if delay is None:
             delay = MSG_DELAYS[msg_cls]
 
-        req = ConcentRequest(
-            key=key,
-            msg=msg,
-        )
-
         if delay:
             self._delayed[key] = reactor.callLater(
                 delay.total_seconds(),
                 self._enqueue,
-                req,
+                key,
+                msg,
             )
         else:
-            self._enqueue(req)
+            self._enqueue(key, msg)
 
     def cancel(self, key: typing.Hashable) -> bool:
         """
@@ -315,17 +304,17 @@ class ConcentClientService(threading.Thread):
         In case of failure, service enters a grace period.
         """
         try:
-            req = self._queue.get_nowait()
+            msg = self._queue.get_nowait()
         except queue.Empty:
             return
 
         if not self.enabled:
-            logger.debug('Concent disabled. Dropping %r', req)
+            logger.debug('Concent disabled. Dropping %r', msg)
             return
 
         try:
             res = send_to_concent(
-                req['msg'],
+                msg,
                 self.keys_auth._private_key,  # pylint: disable=protected-access
                 concent_variant=self.variant,
             )
@@ -333,11 +322,11 @@ class ConcentClientService(threading.Thread):
             logger.info('send_to_concent error: %s', e)
             self._grace_sleep()
         except Exception:  # pylint: disable=broad-except
-            logger.exception('send_to_concent(%r) failed', req)
+            logger.exception('send_to_concent(%r) failed', msg)
             self._grace_sleep()
         else:
             self._grace_time = self.MIN_GRACE_TIME
-            self.react_to_concent_message(res, response_to=req['msg'])
+            self.react_to_concent_message(res, response_to=msg)
 
     def receive(self) -> None:
         if not self.enabled:
@@ -396,10 +385,10 @@ class ConcentClientService(threading.Thread):
         logger.debug('Concent grace time: %r', self._grace_time)
         time.sleep(self._grace_time)
 
-    def _enqueue(self, req: ConcentRequest):
-        logger.debug("_enqueue(%r)", req)
-        self._delayed.pop(req['key'], None)
-        self._queue.put(req)
+    def _enqueue(self, key, msg):
+        logger.debug("_enqueue(%r, %r)", key, msg)
+        self._delayed.pop(key, None)
+        self._queue.put(msg)
 
     def income_listener(self, event, **kwargs):
         if event != 'overdue':
