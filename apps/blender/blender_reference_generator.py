@@ -210,10 +210,10 @@ class BlenderReferenceGenerator:
 
         :param resolution: This is the x, y resolution of whole image from
         which split data should be generated
-        :param subtask_border: List of values. This is ROI from which split data
-        should be generated. This is in blender crop values format, which means
-        floats, where left, right, top, bottom. Values from 0 to 1. Where 1
-        means top or right and 0 bottom or left.
+        :param subtask_border: Dict of borders per direction. This is ROI
+        from which split data should be generated. This is in blender crop
+        values format, which means floats, where left, right, top, bottom.
+        Values from 0 to 1. Where 1 means top or right and 0 bottom or left.
         :param crops_number: Number of split data, sets
         :param crops_path: base crop path
         :return: Tuple of two list. First list is filled with float values

@@ -181,7 +181,7 @@ def render(parameters: dict,
 # pylint: disable-msg=too-many-locals
 def gen_render_shell_scripts(parameters: dict,
                              mounted_paths: dict,
-                             use_fixed_output_path=False) -> List[dict]:
+                             use_fixed_output_path=False) -> List[str]:
 
     crops = parameters["crops"]
 
