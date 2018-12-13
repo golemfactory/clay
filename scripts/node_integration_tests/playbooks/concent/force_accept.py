@@ -19,16 +19,16 @@ class ForceAccept(NodeTestPlaybook):
     sra_deadline = None
 
     @property
-    def sra_timeout_secs(self):
+    def subtask_timeout_secs(self):
         return helpers.timeout_to_seconds(
             self.task_settings_dict.get('subtask_timeout'))
 
-    def get_svt(self):
-        deadline = calendar.timegm(time.gmtime()) + self.sra_timeout_secs
+    def get_svt(self) -> datetime.timedelta:
+        deadline = calendar.timegm(time.gmtime()) + self.subtask_timeout_secs
         fake_rct = ReportComputedTaskFactory(
             task_to_compute__compute_task_def__deadline=deadline,
-            size=300000,  # @todo add proper size read from the provider's
-                          # results directory, if possible
+            size=1000000,  # @todo add proper size read from the provider's
+                           # results directory, if possible
         )
         return msg_helpers.subtask_verification_time(fake_rct)
 
@@ -39,10 +39,15 @@ class ForceAccept(NodeTestPlaybook):
     def step_wait_task_finished_and_sra_received(self):
         def on_success(result):
             if result['status'] == 'Finished':
-                print("Task finished.")
                 self.task_finished = True
-                self.sra_deadline = \
-                    datetime.datetime.now() + self.get_svt()
+                sra_delay = (self.subtask_timeout_secs +
+                             self.get_svt() +
+                             datetime.timedelta(minutes=3))
+                print(
+                    "Task finished. "
+                    "Now waiting for the SRA to arrive, %s" % sra_delay
+                )
+                self.sra_deadline = datetime.datetime.now() + sra_delay
             elif result['status'] == 'Timeout':
                 self.fail("Task timed out :( ... ")
             else:

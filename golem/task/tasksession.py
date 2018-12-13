@@ -944,12 +944,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         delayed_forcing_msg = message.concents.ForceSubtaskResults(
             ack_report_computed_task=msg,
         )
-        logger.debug('[CONCENT] ForceResults: %s', delayed_forcing_msg)
         ttc_deadline = datetime.datetime.utcfromtimestamp(
             msg.task_to_compute.compute_task_def['deadline']
         )
         svt = msg_helpers.subtask_verification_time(msg.report_computed_task)
         delay = ttc_deadline + svt - datetime.datetime.utcnow()
+        logger.debug('[CONCENT] Delayded ForceResults: %s, delay: %s', delayed_forcing_msg, delay)
         self.concent_service.submit_task_message(
             subtask_id=msg.subtask_id,
             msg=delayed_forcing_msg,
