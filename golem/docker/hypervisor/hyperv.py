@@ -1,12 +1,13 @@
 import logging
 import os
+import psutil
 from pathlib import Path
 import subprocess
 from typing import Any, ClassVar, Dict, Iterable, List, Optional, Union
 
 from os_win.constants import HOST_SHUTDOWN_ACTION_SAVE, \
     VM_SNAPSHOT_TYPE_DISABLED, HYPERV_VM_STATE_SUSPENDED, \
-    HYPERV_VM_STATE_ENABLED
+    HYPERV_VM_STATE_ENABLED, HOST_SHUTDOWN_ACTION_SHUTDOWN
 from os_win.exceptions import OSWinException
 from os_win.utils.compute.vmutils import VMUtils
 
@@ -110,7 +111,9 @@ class HyperVHypervisor(DockerMachineHypervisor):
             constr[mem_key] = hardware.cap_memory(constr[mem_key], max_memory,
                                                   unit=hardware.MemSize.mebi)
             logger.debug('Memory capped by "free - 10%%": %r', constr[mem_key])
-            self.constrain(name, **constr)
+
+        # Always constrain to set the appropriate shutdown action
+        self.constrain(name, **constr)
 
         try:
             # The windows VM fails to start when too much memory is assigned
@@ -203,6 +206,13 @@ class HyperVHypervisor(DockerMachineHypervisor):
         assert isinstance(mem, int)
         cpu = params.get(CONSTRAINT_KEYS['cpu'])
 
+        if self._check_system_drive_space(mem):
+            shutdown_action = HOST_SHUTDOWN_ACTION_SAVE
+        else:
+            logger.warning("Not enough space on system drive. VM state cannot"
+                           "be saved on system shutdown")
+            shutdown_action = HOST_SHUTDOWN_ACTION_SHUTDOWN
+
         try:
             self._vm_utils.update_vm(
                 vm_name=name,
@@ -212,7 +222,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 vcpus_per_numa_node=0,
                 limit_cpu_features=False,
                 dynamic_mem_ratio=1,
-                host_shutdown_action=HOST_SHUTDOWN_ACTION_SAVE,
+                host_shutdown_action=shutdown_action,
                 snapshot_type=VM_SNAPSHOT_TYPE_DISABLED,
             )
         except OSWinException:
@@ -310,6 +320,17 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
         constr = constr or self.constraints()
         return constr[CONSTRAINT_KEYS['mem']] <= self._get_max_memory(constr)
+
+    @staticmethod
+    def _check_system_drive_space(memory: int) -> bool:
+        """
+        Check if there is enough space on the system drive to dump virtual
+        machine memory when the host machine is shutting down
+        :param memory: VM assigned memory in MiB
+        """
+        drive = os.getenv('SystemDrive')
+        free_space = psutil.disk_usage(drive).free // 1024 // 1024
+        return memory < free_space
 
     def _get_max_memory(self, constr: Optional[dict] = None) -> int:
         max_mem_in_mb = hardware.memory_available() // 1024
