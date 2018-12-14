@@ -32,6 +32,14 @@ class ForceAccept(NodeTestPlaybook):
         )
         return msg_helpers.subtask_verification_time(fake_rct)
 
+    @property
+    def sra_delay(self):
+        return (
+                datetime.timedelta(seconds=self.subtask_timeout_secs) +
+                self.get_svt() +
+                datetime.timedelta(minutes=3)
+        )
+
     def step_clear_provider_output(self):
         helpers.clear_output(self.provider_output_queue)
         self.next()
@@ -40,14 +48,9 @@ class ForceAccept(NodeTestPlaybook):
         def on_success(result):
             if result['status'] == 'Finished':
                 self.task_finished = True
-                sra_delay = (self.subtask_timeout_secs +
-                             self.get_svt() +
-                             datetime.timedelta(minutes=3))
-                print(
-                    "Task finished. "
-                    "Now waiting for the SRA to arrive, %s" % sra_delay
-                )
-                self.sra_deadline = datetime.datetime.now() + sra_delay
+                print("Task finished. "
+                      "Now waiting for the SRA to arrive: %s" % self.sra_delay)
+                self.sra_deadline = datetime.datetime.now() + self.sra_delay
             elif result['status'] == 'Timeout':
                 self.fail("Task timed out :( ... ")
             else:
