@@ -106,6 +106,7 @@ def make_client(*_, **kwargs):
         'connect_to_known_hosts': False,
         'use_docker_manager': False,
         'use_monitor': False,
+        'concent_variant': CONCENT_CHOICES['disabled'],
     }
     default_kwargs.update(kwargs)
     client = Client(**default_kwargs)
