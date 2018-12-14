@@ -105,8 +105,11 @@ class OpenCVImgRepr:
         return tuple(reversed(self.img.shape[:2]))
 
     def paste_image(self, img_repr, x, y):
-        self.img[y:y + img_repr.img.shape[0], x:img_repr.img.shape[1]] = \
+        try:
+            self.img[y:y + img_repr.img.shape[0], x:img_repr.img.shape[1]] = \
             img_repr.img
+        except (cv2.error, ValueError) as e:
+            raise OpenCVError('Pasting image failed') from e
 
     def add(self, other):
         try:

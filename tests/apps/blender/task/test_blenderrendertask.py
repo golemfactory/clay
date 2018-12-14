@@ -22,7 +22,8 @@ from apps.blender.task.blenderrendertask import (BlenderDefaults,
                                                  BlenderTaskTypeInfo,
                                                  PreviewUpdater,
                                                  logger)
-from apps.rendering.resources.imgrepr import load_img, OpenCVImgRepr
+from apps.rendering.resources.imgrepr import load_img, OpenCVImgRepr, \
+    OpenCVError
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
     RenderingTaskDefinition)
@@ -501,10 +502,9 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
 
         bt._update_frame_preview(file1, 1, part=1, final=True)
         img = cv2.imread(file3)
-        self.assertTrue(img.size == (300, 200))
+        self.assertTrue(img.shape[:2] == (200, 300))
         img = cv2.imread(file4)
-        self.assertTrue(img.size == (300, 200))
-        img.close()
+        self.assertTrue(img.shape[:2] == (200, 300))
 
         preview = BlenderTaskTypeInfo.get_preview(bt, single=False)
         assert isinstance(preview, dict)
