@@ -20,6 +20,7 @@ from golem.core import keysauth
 from golem.core import variables
 from golem.network.concent import exceptions
 from golem.network.concent.handlers_library import library
+from golem.terms import ConcentTermsOfUse
 
 from . import soft_switch
 from .helpers import ssl_kwargs
@@ -200,15 +201,17 @@ class ConcentClientService(threading.Thread):
         )
 
     @property
-    def enabled(self):
+    def available(self):
         """Indicates whether this client will communicate with
             Remote Concent Service"""
+        if not ConcentTermsOfUse.are_accepted():
+            return False
         return None not in self.variant.values()
 
     @property
     def fully_enabled(self) -> bool:
-        """Indicates whether this client is enabled and user turned it on"""
-        return self.enabled and soft_switch.is_on()
+        """Indicates whether this client is available and user turned it on"""
+        return self.available and soft_switch.is_on()
 
     def run(self) -> None:
         last_receive = 0.0
@@ -316,7 +319,7 @@ class ConcentClientService(threading.Thread):
         except queue.Empty:
             return
 
-        if not self.enabled:
+        if not self.available:
             logger.debug('Concent disabled. Dropping %r', msg)
             return
 
@@ -337,7 +340,7 @@ class ConcentClientService(threading.Thread):
             self.react_to_concent_message(res, response_to=msg)
 
     def receive(self) -> None:
-        if not self.enabled:
+        if not self.available:
             return
 
         try:

@@ -438,11 +438,22 @@ class TestValidateTaskDict(ProviderBase):
     def test_concent_service_disabled(self, *_):
         self.t_dict['concent_enabled'] = True
         self.client.concent_service = mock.Mock()
-        self.client.concent_service.enabled = False
+        self.client.concent_service.available = False
 
         msg = "Cannot create task with concent enabled when " \
               "concent service is disabled"
-        with self.assertRaises(rpc.CreateTaskError, msg=msg):
+        with self.assertRaisesRegex(rpc.CreateTaskError, msg):
+            rpc._validate_task_dict(self.client, self.t_dict)
+
+    def test_concent_service_switched_off(self, *_):
+        self.t_dict['concent_enabled'] = True
+        self.client.concent_service = mock.Mock()
+        self.client.concent_service.available = True
+        self.client.concent_service.fully_enabled = False
+
+        msg = "Cannot create task with concent enabled when " \
+              "concent service is switched off"
+        with self.assertRaisesRegex(rpc.CreateTaskError, msg):
             rpc._validate_task_dict(self.client, self.t_dict)
 
     @mock.patch(
@@ -455,7 +466,7 @@ class TestValidateTaskDict(ProviderBase):
             self.t_dict['subtasks_count'],
             computed_subtasks,
         )
-        with self.assertRaises(ValueError, msg=msg):
+        with self.assertRaisesRegex(ValueError, msg):
             rpc._validate_task_dict(self.client, self.t_dict)
 
 

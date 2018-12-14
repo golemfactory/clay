@@ -18,7 +18,6 @@ from golem.core import common
 from golem.core import deferred as golem_deferred
 from golem.core import simpleserializer
 from golem.ethereum import exceptions as eth_exceptions
-from golem.network.concent import soft_switch as concent_soft_switch
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
 from golem.task import masking
@@ -86,12 +85,12 @@ def _validate_task_dict(client, task_dict) -> None:
             )
 
     if task_dict['concent_enabled']:
-        if not client.concent_service.enabled:
+        if not client.concent_service.available:
             raise CreateTaskError(
                 "Cannot create task with concent enabled when "
                 "concent service is disabled",
             )
-        if not concent_soft_switch.is_on():
+        if not client.concent_service.fully_enabled:
             raise CreateTaskError(
                 "Cannot create task with concent enabled when "
                 "concent service is switched off",
@@ -102,7 +101,7 @@ def prepare_and_validate_task_dict(client, task_dict):
     # Set default value for concent_enabled
     task_dict.setdefault(
         'concent_enabled',
-        client.concent_service.enabled,
+        client.concent_service.fully_enabled,
     )
     # TODO #3474
     if 'subtasks' in task_dict:
@@ -191,7 +190,10 @@ def _restart_subtasks(
 
 @defer.inlineCallbacks
 def _ensure_task_deposit(client, task, force):
-    if not client.concent_service.enabled:
+    if not task.header.concent_enabled:
+        return
+
+    if not client.concent_service.available:
         return
 
     task_id = task.header.task_id

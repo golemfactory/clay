@@ -17,6 +17,7 @@ from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 
 from golem import model
+from golem import terms
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
@@ -1174,10 +1175,13 @@ def test_task_computer_event_listener():
 
 
 class TestDepositBalance(TestClientBase):
+    def setUp(self):
+        super().setUp()
+        terms.ConcentTermsOfUse.accept()
 
     def test_no_concent(self):
         self.client.concent_service.variant = CONCENT_CHOICES['disabled']
-        self.assertFalse(self.client.concent_service.enabled)
+        self.assertFalse(self.client.concent_service.available)
         self.client.transaction_system.concent_timelock.side_effect\
             = Exception("Let's pretend there's no such contract")
         self.assertIsNone(sync_wait(self.client.get_deposit_balance()))
@@ -1185,7 +1189,7 @@ class TestDepositBalance(TestClientBase):
     @freeze_time("2018-01-01 01:00:00")
     def test_unlocking(self, *_):
         self.client.concent_service.variant = CONCENT_CHOICES['test']
-        self.assertTrue(self.client.concent_service.enabled)
+        self.assertTrue(self.client.concent_service.available)
         self.client.transaction_system.concent_timelock\
             .return_value = int(time.time())
         with freeze_time("2018-01-01 00:59:59"):
@@ -1195,7 +1199,7 @@ class TestDepositBalance(TestClientBase):
     @freeze_time("2018-01-01 01:00:00")
     def test_unlocked(self, *_):
         self.client.concent_service.variant = CONCENT_CHOICES['test']
-        self.assertTrue(self.client.concent_service.enabled)
+        self.assertTrue(self.client.concent_service.available)
         self.client.transaction_system.concent_timelock\
             .return_value = int(time.time())
         with freeze_time("2018-01-01 01:00:01"):
@@ -1204,7 +1208,7 @@ class TestDepositBalance(TestClientBase):
 
     def test_locked(self, *_):
         self.client.concent_service.variant = CONCENT_CHOICES['test']
-        self.assertTrue(self.client.concent_service.enabled)
+        self.assertTrue(self.client.concent_service.available)
         self.client.transaction_system.concent_timelock\
             .return_value = 0
         result = sync_wait(self.client.get_deposit_balance())
