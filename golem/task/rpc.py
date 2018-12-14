@@ -90,7 +90,7 @@ def _validate_task_dict(client, task_dict) -> None:
                 "Cannot create task with concent enabled when "
                 "concent service is disabled",
             )
-        if not client.concent_service.fully_enabled:
+        if not client.concent_service.enabled:
             raise CreateTaskError(
                 "Cannot create task with concent enabled when "
                 "concent service is switched off",
@@ -101,7 +101,7 @@ def prepare_and_validate_task_dict(client, task_dict):
     # Set default value for concent_enabled
     task_dict.setdefault(
         'concent_enabled',
-        client.concent_service.fully_enabled,
+        client.concent_service.enabled,
     )
     # TODO #3474
     if 'subtasks' in task_dict:

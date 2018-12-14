@@ -457,7 +457,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         reasons = message.tasks.CannotAssignTask.REASON
 
-        if msg.concent_enabled and not self.concent_service.fully_enabled:
+        if msg.concent_enabled and not self.concent_service.enabled:
             _cannot_assign(reasons.ConcentDisabled)
             return
 
@@ -619,12 +619,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         reasons = message.tasks.CannotComputeTask.REASON
 
-        concent_enabled = self.concent_service.fully_enabled
-        if concent_enabled and not msg.concent_enabled:
+        if self.concent_service.enabled and not msg.concent_enabled:
             # Provider requires concent if it's enabed locally
             _cannot_compute(reasons.ConcentRequired)
             return
-        if not concent_enabled and msg.concent_enabled:
+        if not self.concent_service.enabled and msg.concent_enabled:
             # We can't provide what requestor wants
             _cannot_compute(reasons.ConcentDisabled)
             return

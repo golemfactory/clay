@@ -90,7 +90,7 @@ class TaskServerTestBase(LogTestCase,
         super().setUp()
         random.seed()
         self.ccd = ClientConfigDescriptor()
-        self.client.concent_service.fully_enabled = False
+        self.client.concent_service.enabled = False
         with patch(
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
@@ -204,7 +204,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         return_value=SupportStatus(True),
     )
     def test_request_task_concent_required(self, *_):
-        self.ts.client.concent_service.fully_enabled = True
+        self.ts.client.concent_service.enabled = True
         self.ts.task_archiver = Mock()
         keys_auth = KeysAuth(self.path, 'prv_key', '')
         task_dict = get_example_task_header(keys_auth.public_key)

@@ -209,7 +209,7 @@ class ConcentClientService(threading.Thread):
         return None not in self.variant.values()
 
     @property
-    def fully_enabled(self) -> bool:
+    def enabled(self) -> bool:
         """Indicates whether this client is available and user turned it on"""
         return self.available and soft_switch.is_on()
 
