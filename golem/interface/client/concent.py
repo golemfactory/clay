@@ -15,7 +15,7 @@ if typing.TYPE_CHECKING:
 
 on_off_arg = Argument(
     "on_off",
-    choices=[True, False],
+    choices=["on", "off"],
 )
 
 
@@ -23,12 +23,27 @@ on_off_arg = Argument(
 class Concent:
     client: 'ClientProxy'
 
-    @command(help="Soft switch", arguments=(on_off_arg, ))
-    def switch(self, on_off):
-        return self.client._call(  # pylint: disable=protected-access
-            "golem.concent.switch",
-            on_off,
+
+@group(parent=Concent, help="Soft Switch")
+class Switch:
+    @classmethod
+    def _call(cls, uri, *args, **kwargs):
+        return Concent.client._call(  # pylint: disable=protected-access
+            f"golem.concent.switch{uri}",
+            *args,
+            **kwargs,
         )
+
+    @command(arguments=(on_off_arg, ))
+    def turn(self, on_off):
+        return sync_wait(self._call(
+            ".turn",
+            on_off == "on",
+        ))
+
+    @command()
+    def is_on(self):
+        return sync_wait(self._call(""))
 
 
 @group(parent=Concent, help="Terms of Use")
