@@ -58,15 +58,7 @@ class ForceDownload(NodeTestPlaybook):
                 "we didn't notice the Requestor<->Concent communicating."
             )
 
-    steps = (
-        NodeTestPlaybook.step_get_provider_key,
-        NodeTestPlaybook.step_get_requestor_key,
-        NodeTestPlaybook.step_get_provider_network_info,
-        NodeTestPlaybook.step_connect_nodes,
-        NodeTestPlaybook.step_verify_peer_connection,
-        NodeTestPlaybook.step_wait_provider_gnt,
-        NodeTestPlaybook.step_wait_requestor_gnt,
-        NodeTestPlaybook.step_get_known_tasks,
+    steps = NodeTestPlaybook.initial_steps + (
         step_clear_requestor_output,
         step_clear_provider_output,
         NodeTestPlaybook.step_create_task,

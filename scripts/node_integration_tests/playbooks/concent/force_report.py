@@ -66,8 +66,7 @@ class ForceReport(NodeTestPlaybook):
 
         if ((not self.ack_rct_received) and
                 self.ack_rct_deadline and
-                datetime.datetime.now() > self.ack_rct_deadline
-        ):
+                datetime.datetime.now() > self.ack_rct_deadline):
             self.fail("ARCT timeout...")
             return
 
@@ -78,15 +77,7 @@ class ForceReport(NodeTestPlaybook):
                 on_error=self.print_error
             )
 
-    steps = (
-        NodeTestPlaybook.step_get_provider_key,
-        NodeTestPlaybook.step_get_requestor_key,
-        NodeTestPlaybook.step_get_provider_network_info,
-        NodeTestPlaybook.step_connect_nodes,
-        NodeTestPlaybook.step_verify_peer_connection,
-        NodeTestPlaybook.step_wait_provider_gnt,
-        NodeTestPlaybook.step_wait_requestor_gnt,
-        NodeTestPlaybook.step_get_known_tasks,
+    steps = NodeTestPlaybook.initial_steps + (
         step_clear_provider_output,
         NodeTestPlaybook.step_create_task,
         NodeTestPlaybook.step_get_task_id,

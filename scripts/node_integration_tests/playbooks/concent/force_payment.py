@@ -44,15 +44,7 @@ class ForcePayment(NodeTestPlaybook):
         else:
             time.sleep(20)
 
-    steps = (
-        NodeTestPlaybook.step_get_provider_key,
-        NodeTestPlaybook.step_get_requestor_key,
-        NodeTestPlaybook.step_get_provider_network_info,
-        NodeTestPlaybook.step_connect_nodes,
-        NodeTestPlaybook.step_verify_peer_connection,
-        NodeTestPlaybook.step_wait_provider_gnt,
-        NodeTestPlaybook.step_wait_requestor_gnt,
-        NodeTestPlaybook.step_get_known_tasks,
+    steps = NodeTestPlaybook.initial_steps + (
         NodeTestPlaybook.step_create_task,
         NodeTestPlaybook.step_get_task_id,
         NodeTestPlaybook.step_get_task_status,

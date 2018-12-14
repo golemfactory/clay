@@ -387,7 +387,7 @@ class NodeTestPlaybook:
         print("Nodes restarted")
         self.next()
 
-    steps: typing.Tuple = (
+    initial_steps: typing.Tuple = (
         step_get_provider_key,
         step_get_requestor_key,
         step_get_provider_network_info,
@@ -397,6 +397,9 @@ class NodeTestPlaybook:
         step_wait_provider_gnt,
         step_wait_requestor_gnt,
         step_get_known_tasks,
+    )
+
+    steps: typing.Tuple = initial_steps + (
         step_create_task,
         step_get_task_id,
         step_get_task_status,

@@ -59,15 +59,7 @@ class TaskTimeoutAndRestart(NodeTestPlaybook):
     def step_success(self):
         self.success()
 
-    steps: typing.Tuple = (
-        NodeTestPlaybook.step_get_provider_key,
-        NodeTestPlaybook.step_get_requestor_key,
-        NodeTestPlaybook.step_get_provider_network_info,
-        NodeTestPlaybook.step_connect_nodes,
-        NodeTestPlaybook.step_verify_peer_connection,
-        NodeTestPlaybook.step_wait_provider_gnt,
-        NodeTestPlaybook.step_wait_requestor_gnt,
-        NodeTestPlaybook.step_get_known_tasks,
+    steps: typing.Tuple = NodeTestPlaybook.initial_steps + (
         NodeTestPlaybook.step_create_task,
         NodeTestPlaybook.step_get_task_id,
         NodeTestPlaybook.step_get_task_status,
@@ -75,14 +67,7 @@ class TaskTimeoutAndRestart(NodeTestPlaybook):
         step_wait_task_timeout,
         NodeTestPlaybook.step_stop_nodes,
         NodeTestPlaybook.step_restart_nodes,
-        NodeTestPlaybook.step_get_provider_key,
-        NodeTestPlaybook.step_get_requestor_key,
-        NodeTestPlaybook.step_get_provider_network_info,
-        NodeTestPlaybook.step_connect_nodes,
-        NodeTestPlaybook.step_verify_peer_connection,
-        NodeTestPlaybook.step_wait_provider_gnt,
-        NodeTestPlaybook.step_wait_requestor_gnt,
-        NodeTestPlaybook.step_get_known_tasks,
+    ) + NodeTestPlaybook.initial_steps + (
         step_restart_task,
         NodeTestPlaybook.step_get_task_id,
         NodeTestPlaybook.step_get_task_status,
