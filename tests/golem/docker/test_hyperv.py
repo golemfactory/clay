@@ -5,6 +5,8 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock, patch, ANY
 
+from os_win.constants import HOST_SHUTDOWN_ACTION_SAVE, \
+    HOST_SHUTDOWN_ACTION_SHUTDOWN
 from os_win.exceptions import OSWinException
 
 from golem.docker.config import DOCKER_VM_NAME
@@ -50,14 +52,16 @@ class TestHyperVHypervisor(TestCase):
         with self.assertRaises(RuntimeError):
             self.hyperv._parse_create_params()
 
+    @patch(PATCH_BASE + '.HyperVHypervisor._check_system_drive_space')
     @patch(PATCH_BASE + '.logger')
-    def test_constrain_error(self, logger):
+    def test_constrain_error(self, logger, _):
         with patch.object(self.hyperv._vm_utils, 'update_vm') as update_vm:
             update_vm.side_effect = OSWinException
             self.hyperv.constrain(cpu_count=2, memory_size=4096)
             logger.exception.assert_called_once()
 
-    def test_constrain_ok(self):
+    @patch(PATCH_BASE + '.HyperVHypervisor._check_system_drive_space')
+    def test_constrain_ok(self, _):
         with patch.object(self.hyperv._vm_utils, 'update_vm') as update_vm:
             self.hyperv.constrain(cpu_count=2, memory_size=4096)
 
@@ -70,6 +74,32 @@ class TestHyperVHypervisor(TestCase):
                 },
                 update_vm.call_args[1]
             )
+
+    def test_constrain_host_shutdown_action_save(self):
+        with patch.object(self.hyperv._vm_utils, 'update_vm') as update_vm, \
+                patch(self.PATCH_BASE + '.psutil') as psutil:
+            psutil.disk_usage().free = 2048 * 1024 * 1024
+            self.hyperv.constrain(cpu_count=1, memory_size=1024)
+
+            update_vm.assert_called_once()
+            self.assertEqual(
+                update_vm.call_args[1].get('host_shutdown_action'),
+                HOST_SHUTDOWN_ACTION_SAVE
+            )
+
+    @patch(PATCH_BASE + '.logger')
+    def test_constrain_host_shutdown_action_shutdown(self, logger):
+        with patch.object(self.hyperv._vm_utils, 'update_vm') as update_vm, \
+                patch(self.PATCH_BASE + '.psutil') as psutil:
+            psutil.disk_usage().free = 1024 * 1024 * 1024
+            self.hyperv.constrain(cpu_count=1, memory_size=2048)
+
+            update_vm.assert_called_once()
+            self.assertEqual(
+                update_vm.call_args[1].get('host_shutdown_action'),
+                HOST_SHUTDOWN_ACTION_SHUTDOWN
+            )
+            logger.warning.assert_called_once()
 
     @patch(PATCH_BASE + '.logger')
     def test_constraints_error(self, logger):
