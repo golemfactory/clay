@@ -4,12 +4,15 @@ from golem.model import GenericKeyValue
 from golem.rpc import utils as rpc_utils
 from golem.terms import ConcentTermsOfUse
 
+
 class SoftSwitch(enum.Enum):
     ON: str = 'on'
     OFF: str = 'off'
 
+
 KEY = "concent_soft_switch"
 DEFAULT = SoftSwitch.ON
+
 
 @rpc_utils.expose('golem.concent.switch')
 def is_on() -> bool:
@@ -23,6 +26,7 @@ def is_on() -> bool:
     except IndexError:
         value = DEFAULT
     return value == SoftSwitch.ON
+
 
 @rpc_utils.expose('golem.concent.switch.turn')
 def turn(on: bool) -> None:
