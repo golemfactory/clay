@@ -15,7 +15,7 @@ from golem import hardware
 from golem.core.common import get_golem_path
 from golem.docker import smbshare
 from golem.docker.client import local_client
-from golem.docker.config import CONSTRAINT_KEYS
+from golem.docker.config import CONSTRAINT_KEYS, MIN_CONSTRAINTS
 from golem.docker.hypervisor.docker_machine import DockerMachineHypervisor
 from golem.docker.task_thread import DockerBind
 
@@ -163,10 +163,17 @@ class HyperVHypervisor(DockerMachineHypervisor):
             args += [self.OPTIONS['cpu'], str(cpu)]
         if mem is not None:
             cap_mem = self._memory_cap(mem)
-            if not cap_mem == mem:
-                logger.warning('Not enough memory to create the VM, '
-                               'lowering memory')
-            args += [self.OPTIONS['mem'], str(cap_mem)]
+            if cap_mem != mem:
+                logger.warning('Not enough memory to create the VM. '
+                               'Lowering memory to %d MiB', cap_mem)
+
+            if self._check_system_drive_space(cap_mem):
+                args += [self.OPTIONS['mem'], str(cap_mem)]
+            else:
+                logger.warning("Not enough disk space. "
+                               "Creating VM with min memory")
+                mem_key = CONSTRAINT_KEYS['mem']
+                args += [self.OPTIONS['mem'], str(MIN_CONSTRAINTS[mem_key])]
 
         return args
 
