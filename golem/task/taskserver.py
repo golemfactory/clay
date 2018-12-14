@@ -193,7 +193,7 @@ class TaskServer(
                 supported = supported.join(SupportStatus.err({
                     UnsupportReason.MAX_PRICE: theader.max_price}))
 
-            if self.client.concent_service.enabled:
+            if self.client.concent_service.fully_enabled:
                 if not theader.fixed_header.concent_enabled:
                     supported = supported.join(
                         SupportStatus.err({

@@ -82,7 +82,7 @@ class ResourceHandshakeSessionMixin:
 
         key_id = self.key_id
         task_header = self.task_server.task_keeper.task_headers[task_id]
-        if not self.task_server.client.concent_service.enabled:
+        if not self.task_server.client.concent_service.fully_enabled:
             concent_enabled = False
         elif not task_header.concent_enabled:
             self._handshake_error(key_id, 'Concent required')

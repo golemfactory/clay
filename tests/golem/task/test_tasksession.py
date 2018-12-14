@@ -92,7 +92,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts = TaskSession(self.conn)
         ts._is_peer_blocked = Mock(return_value=False)
         ts.verified = True
-        ts.concent_service.enabled = self.use_concent
+        ts.concent_service.fully_enabled = self.use_concent
         ts.key_id = 'requestor key id'
         return ts
 
@@ -152,7 +152,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         params = self._get_task_parameters()
         ts.task_server.task_keeper.task_headers = task_headers = {}
         task_headers[params['task_id']] = taskbase_factories.TaskHeader()
-        ts.concent_service.enabled = False
+        ts.concent_service.fully_enabled = False
         ts.request_task(
             params['node_name'],
             params['task_id'],
@@ -575,7 +575,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_manager = MagicMock()
         ts.task_computer = Mock()
         ts.task_server = Mock()
-        ts.concent_service.enabled = False
+        ts.concent_service.fully_enabled = False
         ts.send = Mock()
 
         env = Mock()

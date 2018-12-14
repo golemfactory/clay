@@ -6,7 +6,6 @@ import logging
 import os.path
 import re
 import typing
-import warnings
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -19,6 +18,7 @@ from golem.core import common
 from golem.core import deferred as golem_deferred
 from golem.core import simpleserializer
 from golem.ethereum import exceptions as eth_exceptions
+from golem.network.concent import soft_switch as concent_soft_switch
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
 from golem.task import masking
@@ -85,11 +85,17 @@ def _validate_task_dict(client, task_dict) -> None:
                 )
             )
 
-    if task_dict['concent_enabled'] and \
-            not client.concent_service.enabled:
-        raise CreateTaskError(
-            "Cannot create task with concent enabled when "
-            "concent service is disabled")
+    if task_dict['concent_enabled']:
+        if not client.concent_service.enabled:
+            raise CreateTaskError(
+                "Cannot create task with concent enabled when "
+                "concent service is disabled",
+            )
+        if not concent_soft_switch.is_on():
+            raise CreateTaskError(
+                "Cannot create task with concent enabled when "
+                "concent service is switched off",
+            )
 
 
 def prepare_and_validate_task_dict(client, task_dict):

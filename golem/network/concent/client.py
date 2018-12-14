@@ -21,6 +21,7 @@ from golem.core import variables
 from golem.network.concent import exceptions
 from golem.network.concent.handlers_library import library
 
+from . import soft_switch
 from .helpers import ssl_kwargs
 
 logger = logging.getLogger(__name__)
@@ -200,7 +201,14 @@ class ConcentClientService(threading.Thread):
 
     @property
     def enabled(self):
+        """Indicates whether this client will communicate with
+            Remote Concent Service"""
         return None not in self.variant.values()
+
+    @property
+    def fully_enabled(self) -> bool:
+        """Indicates whether this client is enabled and user turned it on"""
+        return self.enabled and soft_switch.is_on()
 
     def run(self) -> None:
         last_receive = 0.0

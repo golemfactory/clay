@@ -92,7 +92,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         self.session._start_handshake = Mock()
         self.session.task_server.task_keeper.task_headers = task_headers = {}
         task_headers[self.message['task_id']] = taskbase_factory.TaskHeader()
-        self.session.task_server.client.concent_service.enabled = False
+        self.session.task_server.client.concent_service.fully_enabled = False
 
     def test_request_task_handshake(self, *_):
         self.session.send = Mock()
@@ -138,7 +138,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         "._handshake_error",
     )
     def test_request_task_concent_required(self, hs_error_mock, *_):
-        self.session.task_server.client.concent_service.enabled = True
+        self.session.task_server.client.concent_service.fully_enabled = True
         self.session.task_server.task_keeper \
             .task_headers[self.message['task_id']].concent_enabled = False
 
@@ -155,7 +155,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         return_value=False,
     )
     def test_request_task_concent_enabled(self, *_):
-        self.session.task_server.client.concent_service.enabled = True
+        self.session.task_server.client.concent_service.fully_enabled = True
         self.session.task_server.task_keeper \
             .task_headers[self.message['task_id']].concent_enabled = True
 
@@ -171,7 +171,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         return_value=False,
     )
     def test_request_task_concent_disabled(self, *_):
-        self.session.task_server.client.concent_service.enabled = False
+        self.session.task_server.client.concent_service.fully_enabled = False
 
         self.session.request_task(**self.message)
         self.session.send.assert_called_once()

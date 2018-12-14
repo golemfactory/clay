@@ -5,7 +5,6 @@ import datetime
 import enum
 import functools
 import logging
-import os
 import time
 from typing import TYPE_CHECKING, List
 
@@ -458,7 +457,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         reasons = message.tasks.CannotAssignTask.REASON
 
-        if msg.concent_enabled and not self.concent_service.enabled:
+        if msg.concent_enabled and not self.concent_service.fully_enabled:
             _cannot_assign(reasons.ConcentDisabled)
             return
 
@@ -620,12 +619,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         reasons = message.tasks.CannotComputeTask.REASON
 
-        if self.concent_service.enabled and not msg.concent_enabled:
+        concent_enabled = self.concent_service.fully_enabled
+        if concent_enabled and not msg.concent_enabled:
             # Provider requires concent if it's enabed locally
             _cannot_compute(reasons.ConcentRequired)
             return
-        if not self.concent_service.enabled and msg.concent_enabled:
-            # We can't provide what requestors wants
+        if not concent_enabled and msg.concent_enabled:
+            # We can't provide what requestor wants
             _cannot_compute(reasons.ConcentDisabled)
             return
 
@@ -858,7 +858,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.dropped()
 
     def _react_to_resource_list(self, msg):
-        resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
+        resource_server = self.task_server.client.resource_server
+        resource_manager = resource_server.resource_manager
         resources = resource_manager.from_wire(msg.resources)
 
         client_options = self.task_server.get_download_options(msg.options,
@@ -1035,7 +1036,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return True
 
     def _set_env_params(self, ctd):
-        environment = self.task_manager.comp_task_keeper.get_task_env(ctd['task_id'])  # noqa
+        environment = self.task_manager.comp_task_keeper.get_task_env(
+            ctd['task_id'],
+        )
         env = self.task_server.get_environment_by_id(environment)
         reasons = message.tasks.CannotComputeTask.REASON
         if not env:

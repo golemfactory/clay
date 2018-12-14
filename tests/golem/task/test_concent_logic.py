@@ -70,19 +70,19 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         )
 
     def test_requestor_failed_to_concent(self, send_mock, *_):
-        self.task_session.concent_service.enabled = True
+        self.task_session.concent_service.fully_enabled = True
         self.msg.concent_enabled = False
         self.task_session._react_to_task_to_compute(self.msg)
         self.assert_rejected(send_mock)
 
     def test_requestor_concented(self, send_mock, *_):
-        self.task_session.concent_service.enabled = True
+        self.task_session.concent_service.fully_enabled = True
         self.msg.concent_enabled = True
         self.task_session._react_to_task_to_compute(self.msg)
         self.assert_accepted(send_mock)
 
     def test_provider_doesnt_want_concent(self, send_mock, *_):
-        self.task_session.concent_service.enabled = False
+        self.task_session.concent_service.fully_enabled = False
         self.msg.concent_enabled = False
         self.task_session._react_to_task_to_compute(self.msg)
         self.assert_accepted(send_mock)
@@ -91,7 +91,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
             self,
             send_mock,
             *_):
-        self.task_session.concent_service.enabled = False
+        self.task_session.concent_service.fully_enabled = False
         self.msg.concent_enabled = True
         self.task_session._react_to_task_to_compute(self.msg)
         self.assert_rejected(
@@ -100,7 +100,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         )
 
     def test_requestor_low_balance(self, send_mock, *_):
-        self.task_session.concent_service.enabled = True
+        self.task_session.concent_service.fully_enabled = True
         self.msg.concent_enabled = True
         self.task_session.task_server.client.transaction_system\
             .get_available_gnt.return_value = self.msg.price * 9
@@ -116,7 +116,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
             *_):
         self.task_session.task_server.client.transaction_system\
             .get_available_gnt.return_value = self.msg.price * 9
-        self.task_session.concent_service.enabled = False
+        self.task_session.concent_service.fully_enabled = False
         self.msg.concent_enabled = False
         self.task_session._react_to_task_to_compute(self.msg)
         self.assert_rejected(
@@ -125,7 +125,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         )
 
     def test_requestor_low_deposit(self, send_mock, *_):
-        self.task_session.concent_service.enabled = True
+        self.task_session.concent_service.fully_enabled = True
         self.msg.concent_enabled = True
         self.task_session.task_server.client.transaction_system\
             .concent_balance.return_value = int((self.msg.price * 10) * 1.5)
@@ -136,7 +136,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         )
 
     def test_requestor_short_deposit(self, send_mock, *_):
-        self.task_session.concent_service.enabled = True
+        self.task_session.concent_service.fully_enabled = True
         self.msg.concent_enabled = True
         self.task_session.task_server.client.transaction_system\
             .concent_timelock.return_value = 1
@@ -150,7 +150,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
             self,
             send_mock,
             *_):
-        self.task_session.concent_service.enabled = False
+        self.task_session.concent_service.fully_enabled = False
         self.msg.concent_enabled = False
         self.task_session.task_server.client.transaction_system\
             .concent_balance.return_value = int((self.msg.price * 10) * 1.5)
@@ -378,32 +378,32 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
     def test_provider_with_concent_requestor_without_concent(
             self, send_mock):
         self.msg.concent_enabled = True
-        self.task_session.concent_service.enabled = False
+        self.task_session.concent_service.fully_enabled = False
         self.assert_blocked(send_mock)
 
     def test_provider_with_concent_requestor_with_concent(
             self, send_mock):
         self.msg.concent_enabled = True
-        self.task_session.concent_service.enabled = True
+        self.task_session.concent_service.fully_enabled = True
         self.assert_allowed(send_mock)
 
     def test_provider_without_concent_requestor_without_concent(
             self, send_mock):
         self.msg.concent_enabled = False
-        self.task_session.concent_service.enabled = False
+        self.task_session.concent_service.fully_enabled = False
         self.assert_allowed(send_mock)
 
     def test_provider_without_concent_requestor_with_concent(
             self, send_mock):
         self.msg.concent_enabled = False
-        self.task_session.concent_service.enabled = True
+        self.task_session.concent_service.fully_enabled = True
         self.assert_allowed(send_mock)
 
     def test_concent_disabled_wtct_concent_flag_none(self, send_mock):
         task_manager = self.task_session.task_manager
         self.msg.concent_enabled = None
         task_session = self.task_session
-        task_session.concent_service.enabled = False
+        task_session.concent_service.fully_enabled = False
         task_manager = task_session.task_manager
         task_manager.check_next_subtask.return_value = True
         task_manager.is_my_task.return_value = True
