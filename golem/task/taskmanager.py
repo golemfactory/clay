@@ -25,7 +25,7 @@ from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener, Task, TaskHeader, TaskPurpose
+from golem.task.taskbase import TaskEventListener, Task, TaskPurpose
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
@@ -290,7 +290,13 @@ class TaskManager(TaskEventListener):
                     task: Task
                     state: TaskState
                     task, state = pickle.load(f)
-
+                except Exception:  # pylint: disable=broad-except
+                    logger.exception('Problem restoring task from: %s', path)
+                    # On Windows, attempting to remove a file that is in use
+                    # causes an exception to be raised, therefore
+                    # we'll remove broken files later
+                    broken_paths.add(path)
+                else:
                     TaskManager._migrate_status_to_enum(state)
 
                     task.register_listener(self)
@@ -303,13 +309,6 @@ class TaskManager(TaskEventListener):
                         self.subtask2task_mapping[sub.subtask_id] = task_id
 
                     logger.debug('TASK %s RESTORED from %r', task_id, path)
-                except (pickle.UnpicklingError, EOFError, ImportError,
-                        KeyError):
-                    logger.exception('Problem restoring task from: %s', path)
-                    # On Windows, attempting to remove a file that is in use
-                    # causes an exception to be raised, therefore
-                    # we'll remove broken files later
-                    broken_paths.add(path)
 
             if task_id is not None:
                 self.notice_task_updated(task_id, op=TaskOp.RESTORED,
