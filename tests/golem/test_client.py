@@ -17,7 +17,6 @@ from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 
 from golem import model
-from golem import terms
 from golem import testutils
 from golem.client import Client, ClientTaskComputerEventListener, \
     DoWorkService, MonitoringPublisherService, \
@@ -1174,12 +1173,9 @@ def test_task_computer_event_listener():
     client.lock_config.assert_called_with(False)
 
 
+@patch('golem.terms.ConcentTermsOfUse.are_accepted', return_value=True)
 class TestDepositBalance(TestClientBase):
-    def setUp(self):
-        super().setUp()
-        terms.ConcentTermsOfUse.accept()
-
-    def test_no_concent(self):
+    def test_no_concent(self, *_):
         self.client.concent_service.variant = CONCENT_CHOICES['disabled']
         self.assertFalse(self.client.concent_service.available)
         self.client.transaction_system.concent_timelock.side_effect\
