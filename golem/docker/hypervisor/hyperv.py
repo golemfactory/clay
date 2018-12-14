@@ -1,8 +1,7 @@
 import logging
 import os
-import subprocess
 from pathlib import Path
-from subprocess import CalledProcessError, TimeoutExpired
+import subprocess
 from typing import Any, ClassVar, Dict, Iterable, List, Optional, Union
 
 from os_win.constants import HOST_SHUTDOWN_ACTION_SHUTDOWN, \
@@ -240,7 +239,8 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 .stdout\
                 .decode('utf8')\
                 .strip()
-        except (CalledProcessError, TimeoutExpired) as exc:
+        except (subprocess.CalledProcessError, \
+                subprocess.TimeoutExpired) as exc:
             raise RuntimeError(exc.stderr.decode('utf8') if exc.stderr else '')
 
     @staticmethod

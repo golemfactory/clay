@@ -38,7 +38,8 @@ class TestHyperVHypervisor(TestCase):
             args, '--hyperv-virtual-switch', 'Default Switch')
 
     @patch(PATCH_BASE + '.HyperVHypervisor._get_vswitch_name')
-    def test_parse_create_params_constraints(self, _):
+    @patch(PATCH_BASE + '.HyperVHypervisor._memory_cap', return_value=4096)
+    def test_parse_create_params_constraints(self, *_):
         args = self.hyperv._parse_create_params(cpu=4, mem=4096)
         self._assert_param(args, '--hyperv-cpu-count', '4')
         self._assert_param(args, '--hyperv-memory', '4096')

@@ -21,7 +21,6 @@ from apps.appsmanager import AppsManager
 import golem
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
-from golem.core import variables
 from golem.core.common import (
     datetime_to_timestamp_utc,
     get_timestamp_utc,
@@ -30,9 +29,10 @@ from golem.core.common import (
     to_unicode,
 )
 from golem.core.fileshelper import du
+from golem.core.variables import CONCENT_CHOICES
 from golem.hardware.presets import HardwarePresets
 from golem.core.keysauth import KeysAuth
-from golem.core.service import LoopingCallService
+from golem.core.service import LoopingCallService, IService
 from golem.core.simpleserializer import DictSerializer
 from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
@@ -86,7 +86,7 @@ class ClientTaskComputerEventListener(object):
         self.client.config_changed()
 
 
-class Client:  # pylint: disable=too-many-instance-attributes
+class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-public-methods
     _services = []  # type: List[IService]
 
     def __init__(  # noqa pylint: disable=too-many-arguments,too-many-locals
@@ -101,7 +101,7 @@ class Client:  # pylint: disable=too-many-instance-attributes
             use_docker_manager: bool = True,
             use_monitor: bool = True,
             # SEE: golem.core.variables.CONCENT_CHOICES
-            concent_variant: dict = variables.CONCENT_CHOICES['disabled'],
+            concent_variant: dict = CONCENT_CHOICES['disabled'],
             geth_address: Optional[str] = None,
             apps_manager: AppsManager = AppsManager(),
             task_finished_cb=None,
