@@ -651,6 +651,7 @@ class TaskManager(TaskEventListener):
         return self.keys_auth.sign(task_header.to_binary())
 
     def verify_subtask(self, subtask_id):
+        logger.debug("verify_subtask: %s", subtask_id)
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
             return self.tasks[task_id].verify_subtask(subtask_id)
