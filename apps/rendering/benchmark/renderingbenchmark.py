@@ -4,7 +4,8 @@ import os.path
 import uuid
 
 from apps.core.benchmark.benchmarkrunner import CoreBenchmark
-from apps.rendering.resources.utils import handle_image_error
+from apps.rendering.resources.utils import handle_image_error, \
+    handle_opencv_image_error
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from apps.rendering.resources.imgrepr import OpenCVImgRepr
 
@@ -52,7 +53,7 @@ class RenderingBenchmark(CoreBenchmark):
         return True
 
     def verify_img(self, filename):
-        with handle_image_error(logger):
+        with handle_opencv_image_error(logger):
             image = OpenCVImgRepr.from_image_file(filename)
             img_size = image.get_size()
             expected = self._task_definition.resolution

@@ -321,9 +321,8 @@ class TestImgFunctions(TempDirFixture, LogTestCase):
             img.load_from_file("path1.png")
         assert img.img is None
 
-        img.empty(width=10, height=20,
-                  channels=3, dtype=np.uint16)
-        assert isinstance(img, OpenCVImgRepr)
+        img = OpenCVImgRepr.empty(width=10, height=20, channels=3,
+                                  dtype=np.uint16)
         assert img.img is not None
         assert img.img.shape == (20, 10, 3)
         assert img.img.dtype == np.uint16

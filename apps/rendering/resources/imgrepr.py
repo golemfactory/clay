@@ -89,11 +89,18 @@ class OpenCVImgRepr:
             raise OpenCVError('Cannot read image: {}'.format(str(e))) from e
 
     @staticmethod
-    def empty(width, height, channels=3, dtype=numpy.uint8, color=(0, 0, 0)):
+    def empty(width, height, channels=3, dtype=numpy.uint8, color=None):
         imgRepr = OpenCVImgRepr()
         imgRepr.img = numpy.zeros((height, width, channels), dtype)
-        imgRepr.img[:] = tuple(reversed(color))
+        if channels == 4:
+            imgRepr.img[:] = (0, 0, 0, 255)
+        if color:
+            imgRepr.img[:] = tuple(reversed(color))
+
         return imgRepr
+
+    def get_number_of_channels(self):
+        return self.img.shape[2]
 
     @staticmethod
     def from_image_file(image_path):
@@ -103,6 +110,12 @@ class OpenCVImgRepr:
 
     def get_size(self):
         return tuple(reversed(self.img.shape[:2]))
+
+    def add_alpha_channel(self, value=0):
+        assert self.img.shape[2] == 3
+        b, g, r = cv2.split(self.img)
+        alpha_channel = numpy.ones(b.shape, dtype=b.dtype) * value
+        self.img = cv2.merge((b, g, r, alpha_channel))
 
     def paste_image(self, img_repr, x, y):
         try:
@@ -206,7 +219,9 @@ class EXRImgRepr(ImgRepr):
         self.img = OpenEXR.InputFile(file_)
         self.dw = self.img.header()['dataWindow']
         self.rgb = [Image.frombytes("F", self.get_size(),
-                                    self.img.channel("RGB", self.pt))]
+                                    self.img.channel(c, self.pt))
+                    for c in "RGB"]
+
         self.file_path = file_
         self.name = os.path.basename(file_)
 
@@ -279,7 +294,7 @@ def load_img(file_: str) -> Optional[ImgRepr]:
         return img
     except Exception as err:
         logger.warning("Can't load img file {}:{}".format(file_, err))
-        return
+        return None
 
 
 def load_as_PILImgRepr(file_: str) -> Optional[PILImgRepr]:

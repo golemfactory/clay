@@ -20,7 +20,8 @@ from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import OpenCVImgRepr
 from apps.rendering.resources.renderingtaskcollector import \
     RenderingTaskCollector
-from apps.rendering.resources.utils import handle_image_error
+from apps.rendering.resources.utils import handle_image_error, \
+    handle_opencv_image_error
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, \
     FrameRenderingTaskBuilder, FrameRendererOptions
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, PREVIEW_Y
@@ -76,15 +77,13 @@ class PreviewUpdater(object):
         self.perfectly_placed_subtasks = 0
 
     def get_offset(self, subtask_number):
-        if 0 < subtask_number < len(self.expected_offsets):
-            return self.expected_offsets[subtask_number]
-        return self.preview_res_y
+        return self.expected_offsets.get(subtask_number, self.preview_res_y)
 
     def update_preview(self, subtask_path, subtask_number):
         if subtask_number not in self.chunks:
             self.chunks[subtask_number] = subtask_path
 
-        with handle_image_error(logger) as handler_result:
+        with handle_opencv_image_error(logger) as handler_result:
 
             subtask_img = OpenCVImgRepr.from_image_file(subtask_path)
 
@@ -101,8 +100,10 @@ class PreviewUpdater(object):
             def open_or_create_image():
                 if not os.path.exists(self.preview_file_path) \
                         or len(self.chunks) == 1:
+                    chunk_channels = subtask_img.get_number_of_channels()
                     return OpenCVImgRepr.empty(self.preview_res_x,
-                                               self.preview_res_y)
+                                               self.preview_res_y,
+                                               channels=chunk_channels)
                 return OpenCVImgRepr.from_image_file(self.preview_file_path)
 
             preview_img = open_or_create_image()
@@ -110,7 +111,7 @@ class PreviewUpdater(object):
             preview_img.save_with_extension(self.preview_file_path, PREVIEW_EXT)
 
         if not handler_result.success:
-            return
+           return
 
         if subtask_number == self.perfectly_placed_subtasks and \
                 (subtask_number + 1) in self.chunks:
@@ -128,10 +129,9 @@ class PreviewUpdater(object):
                     .save_with_extension(self.preview_file_path, PREVIEW_EXT)
 
     def _get_height(self, subtask_number):
-        return self.preview_res_y - self.expected_offsets[subtask_number] \
-            if subtask_number + 1 >= len(self.expected_offsets) \
-            else self.expected_offsets[subtask_number + 1] - \
-            self.expected_offsets[subtask_number]
+        next_offset = \
+            self.expected_offsets.get(subtask_number + 1, self.preview_res_y)
+        return next_offset - self.expected_offsets.get(subtask_number)
 
 
 class RenderingTaskTypeInfo(CoreTaskTypeInfo):
@@ -740,17 +740,17 @@ def generate_expected_offsets(parts, res_x, res_y):
     # returns expected offsets for preview; the highest value is preview's
     # height
     scale_factor = BlenderTaskTypeInfo.scale_factor(res_x, res_y)
-    expected_offsets = [0]
+    expected_offsets = {}
     previous_end = 0
     for i in range(1, parts + 1):
         low, high = get_min_max_y(i, parts, res_y)
         low *= scale_factor * res_y
         high *= scale_factor * res_y
         height = int(math.floor(high - low))
-        expected_offsets.append(previous_end)
+        expected_offsets[i] = previous_end
         previous_end += height
 
-    expected_offsets.append(previous_end)
+    expected_offsets[parts + 1] = previous_end
     return expected_offsets
 
 

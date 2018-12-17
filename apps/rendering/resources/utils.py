@@ -50,6 +50,47 @@ def handle_image_error(logger: Optional[logging.Logger] = None):
 
 
 @contextmanager
+def handle_opencv_image_error(logger: Optional[logging.Logger] = None):
+    """
+    This context manager will catch exceptions that might be thrown by OpenCV
+    and write them to log.
+
+    The Result is to get outside the managed context if operation was
+    successful.
+
+    with handle_image_error() as handler_result:
+        do_stuff_with_images()
+
+    if handler_result.success:
+        print("do_stuff_with_images() went successfully")
+    else:
+        print("do_stuff_with_images() raised excetpion")
+
+
+    This can also be used as a function decorator:
+
+    @handle_image_error()
+    def do_other_stuff_with_images():
+        [...]
+    """
+    if logger is None:
+        logger = logging.getLogger("apps.rendering")
+
+    class Result:
+        def __init__(self):
+            self.success = False
+
+    try:
+        result = Result()
+        yield result
+        result.success = True
+    except (cv2.error, OpenCVError):
+        logger.exception("Failed to operate on image with OpenCV")
+
+
+
+
+@contextmanager
 def handle_none(opt_context, raise_if_none: Optional[Exception] = None):
     """
     The purpose of this context manager is to handle such situation:

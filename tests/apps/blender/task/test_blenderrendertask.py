@@ -144,8 +144,8 @@ class TestBlenderFrameTask(TempDirFixture):
             os.makedirs(file_dir)
 
         file1 = path.join(file_dir, 'result1')
-        img = _get_empty_rgb_image(self.bt.res_x, self.bt.res_y // 2)
-        cv2.imwrite('{}.png'.format(file1), img)
+        img = OpenCVImgRepr.empty(self.bt.res_x, self.bt.res_y // 2)
+        img.save_with_extension(file1, 'png')
 
         def verification_finished1(verification_data):
             result = {'reference_data': None,
@@ -187,8 +187,7 @@ class TestBlenderFrameTask(TempDirFixture):
         assert extra_data4.ctd is not None
 
         file2 = path.join(file_dir, 'result2')
-        img.save(file2, "PNG")
-        img.close()
+        img.save_with_extension(file2, "PNG")
 
         with mock.patch('golem_verificator.rendering_verifier.'
                         'RenderingVerifier.start_verification',
@@ -431,6 +430,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
             self.bt._put_image_together()
             self.assertTrue(path.isfile(self.bt.output_file))
             img = load_img(self.bt.output_file)
+
             img_x, img_y = img.get_size()
             self.assertEqual(self.bt.res_x, img_x)
             self.assertEqual(self.bt.res_y, img_y)

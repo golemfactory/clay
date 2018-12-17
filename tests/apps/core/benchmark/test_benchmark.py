@@ -30,9 +30,10 @@ class TestBenchmark(TempDirFixture):
         filepath = self.temp_file_name("broken.png")
         with open(filepath, "w") as f:
             f.write('notanimage,notanimageatall')
-        with mock.patch('apps.rendering.benchmark.renderingbenchmark.logger') as m:
+        with mock.patch('apps.rendering.benchmark.renderingbenchmark.logger') \
+                as m:
             self.assertFalse(self.benchmark.verify_img(filepath))
-            m.error.assert_called_once()
+            m.exception.assert_called_once()
 
     def test_verify_log(self):
         def verify_log(file_content):
