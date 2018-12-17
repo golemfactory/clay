@@ -374,18 +374,6 @@ class Node(object):
                     'Run `golemcli terms show` to display the terms '
                     'and `golemcli terms accept` to accept them.')
                 time.sleep(sleep_time)
-            if None in self.concent_variant.values():
-                return  # Concent disabled
-            while not terms.ConcentTermsOfUse.are_accepted() \
-                    and self._reactor.running:
-                logger.info(
-                    'Concent terms of use must be accepted before using'
-                    ' Concent service.'
-                    ' Run `golemcli concent terms show`'
-                    ' to display the terms'
-                    ' and `golemcli concent terms accept` to accept them.',
-                )
-                time.sleep(sleep_time)
 
         return threads.deferToThread(wait_for_terms)
 
