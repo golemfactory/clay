@@ -5,7 +5,6 @@ import time
 import unittest.mock as mock
 import uuid
 
-from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
 
 from golem.client import ClientTaskComputerEventListener
@@ -99,7 +98,8 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.task_resource_failure(task_id, 'reason')
         assert task_server.send_task_failed.called
 
-    def test_computation(self):
+    def test_computation(self):  # pylint: disable=too-many-statements
+        # FIXME Refactor too single tests and remove disable too many
         ctd = ComputeTaskDef()
         ctd['task_id'] = "xyz"
         ctd['subtask_id'] = "xxyyzz"
