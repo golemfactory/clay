@@ -22,8 +22,8 @@ class XhyveHypervisor(DockerMachineHypervisor):
     # pylint: disable=arguments-differ
     def _parse_create_params(
             self,
-            cpu: Optional[Union[str, int]] = None,
-            mem: Optional[Union[str, int]] = None,
+            cpu: Optional[int] = None,
+            mem: Optional[int] = None,
             **params: Any) -> List[str]:
 
         args = super()._parse_create_params(**params)
