@@ -177,7 +177,7 @@ class TestHyperVHypervisor(TestCase):
     @patch(PATCH_BASE + '.logger')
     @patch('golem.docker.commands.docker.DockerCommandHandler._command')
     def test_check_smb_port_ok(self, command, logger):
-        command.return_value = 'OK'
+        command.return_value = 'Port check OK'
         with patch.object(self.hyperv, 'SMB_PORT', "123"):
             self.hyperv._check_smb_port()
 
@@ -188,6 +188,20 @@ class TestHyperVHypervisor(TestCase):
             False
         )
         self.assertIn("foo 123", command.call_args[0][2][1])
+        logger.error.assert_not_called()
+
+    @patch(PATCH_BASE + '.os.environ', {'COMPUTERNAME': 'foo'})
+    @patch(PATCH_BASE + '.logger')
+    @patch('golem.docker.commands.docker.DockerCommandHandler._command')
+    def test_check_smb_port_debug(self, command, logger):
+        command.return_value = \
+            'DEBUG: blah blah blah\n'\
+            'DEBUG: running SSH command\n'\
+            'Port check OK\n'\
+            'DEBUG: blah blah blah\n'
+        self.hyperv._check_smb_port()
+
+        command.assert_called_once()
         logger.error.assert_not_called()
 
     @patch(PATCH_BASE + '.os.environ', {'COMPUTERNAME': 'foo'})
