@@ -9,6 +9,7 @@ import typing
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
+from golem_messages.datastructures import masking
 from twisted.internet import defer
 
 from apps.core.task import coretask
@@ -20,7 +21,6 @@ from golem.core import simpleserializer
 from golem.ethereum import exceptions as eth_exceptions
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
-from golem.task import masking
 from golem.task import taskbase
 from golem.task import taskstate
 from golem.task import tasktester

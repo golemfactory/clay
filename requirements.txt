@@ -10,7 +10,6 @@ base58==0.2.5
 bitcoin==1.1.42
 bitstring==3.1.5
 cached-property==1.4.2
-cbor2==3.0.4
 cbor==1.0.0
 certifi==2018.1.18
 cffi==1.10.0
@@ -33,7 +32,7 @@ eth-keys==0.2.0b3
 eth-tester==0.1.0-beta.24
 eth-utils==1.0.3
 ethereum==1.6.1
-Golem-Messages==2.17.0
+Golem-Messages==2.19.1
 Golem-Smart-Contracts-Interface==1.6.1
 Golem-Verificator==1.6.3
 greenlet==0.4.15

@@ -1,21 +1,13 @@
 import abc
-import hashlib
 import logging
-import time
 from enum import Enum
-from typing import List, Type, Optional, Tuple, Any
+from typing import List, Type, Optional
 
 import golem_messages
+from golem_messages.datastructures import tasks as dt_tasks
 
-import golem
 from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
-from golem.core import common
-from golem.core.common import get_timestamp_utc
-from golem.core.simpleserializer import CBORSerializer, DictSerializer
-from golem.network.p2p.node import Node
-from golem.task.masking import Mask
 from golem.task.taskstate import TaskState
-from . import exceptions
 
 logger = logging.getLogger("golem.task")
 
@@ -54,256 +46,6 @@ class TaskTypeInfo(object):
     # pylint:disable=unused-argument
     def get_preview(cls, task, single=False):
         pass
-
-
-class TaskFixedHeader(object):  # pylint: disable=too-many-instance-attributes
-    """
-    TaskFixedHeader is the fixed (i.e. unchangeable) part of TaskHeader
-    """
-    def __init__(self,  # pylint: disable=too-many-arguments
-                 task_id: str,
-                 environment: str,  # environment.get_id()
-                 task_owner: Node,
-                 deadline=0.0,
-                 subtask_timeout=0.0,
-                 resource_size=0,
-                 estimated_memory=0,
-                 min_version=golem.__version__,
-                 max_price: int = 0,
-                 subtasks_count: int = 0,
-                 concent_enabled: bool = False) -> None:
-        """
-        :param max_price: maximum price that this (requestor) node may
-        pay for an hour of computation
-        :param docker_images: docker image specification
-        """
-
-        self.task_id = task_id
-        self.task_owner = task_owner
-        self.deadline = deadline
-        self.subtask_timeout = subtask_timeout
-        self.subtasks_count = subtasks_count
-        self.resource_size = resource_size
-        self.environment = environment
-        self.estimated_memory = estimated_memory
-        self.min_version = min_version
-        self.max_price = max_price
-        self.concent_enabled = concent_enabled
-
-        self.update_checksum()
-
-    def __repr__(self):
-        return '<FixedHeader: %r>' % (self.task_id,)
-
-    def to_binary(self):
-        return self.dict_to_binary(self.to_dict())
-
-    def to_dict(self):
-        return DictSerializer.dump(self, typed=False)
-
-    def update_checksum(self) -> None:
-        self.checksum = hashlib.sha256(self.to_binary()).digest()
-
-    @staticmethod
-    def from_dict(dictionary) -> 'TaskFixedHeader':
-        if 'subtasks_count' not in dictionary:
-            logger.debug(
-                "Subtasks count missing. Implicit 1. dictionary=%r",
-                dictionary,
-            )
-            dictionary['subtasks_count'] = 1
-        th: TaskFixedHeader = \
-            DictSerializer.load(dictionary, as_class=TaskFixedHeader)
-
-        if isinstance(th.task_owner, dict):
-            th.task_owner = Node.from_dict(th.task_owner)
-
-        th.update_checksum()
-        return th
-
-    @classmethod
-    def dict_to_binary(cls, dictionary: dict) -> bytes:
-        return CBORSerializer.dumps(cls.dict_to_binarizable(dictionary))
-
-    @classmethod
-    def dict_to_binarizable(cls, dictionary: dict) -> List[tuple]:
-        """ Nullifies the properties not required for signature verification
-        and sorts the task dict representation in order to have the same
-        resulting binary blob after serialization.
-        """
-        self_dict = dict(dictionary)
-        self_dict.pop('checksum', None)
-
-        # "port_statuses" is a nested dict and needs to be sorted;
-        # Python < 3.7 does not guarantee the same dict iteration ordering
-        port_statuses = self_dict['task_owner'].get('port_statuses')
-        if isinstance(port_statuses, dict):
-            self_dict['task_owner']['port_statuses'] = \
-                cls._ordered(port_statuses)
-
-        self_dict['task_owner'] = cls._ordered(self_dict['task_owner'])
-
-        if 'docker_images' in self_dict:
-            self_dict['docker_images'] = [cls._ordered(di) for di
-                                          in self_dict['docker_images']]
-
-        return cls._ordered(self_dict)
-
-    @staticmethod
-    def validate(th_dict_repr: dict) -> None:
-        """Checks if task header dict representation has correctly
-           defined parameters
-         :param dict th_dict_repr: task header dictionary representation
-        """
-        task_id = th_dict_repr.get('task_id')
-        task_owner = th_dict_repr.get('task_owner')
-
-        try:
-            node_name = task_owner.get('node_name')  # type: ignore
-        except AttributeError:
-            raise exceptions.TaskHeaderError(
-                'Task owner missing',
-                task_id=task_id,
-                task_owner=task_owner,
-            )
-
-        if not isinstance(task_id, str):
-            raise exceptions.TaskHeaderError(
-                'Task ID missing',
-                task_id=task_id,
-                node_name=node_name,
-            )
-
-        if not isinstance(node_name, str):
-            raise exceptions.TaskHeaderError(
-                'Task owner node name missing',
-                task_id=task_id,
-                node_name=node_name,
-            )
-
-        if not isinstance(th_dict_repr['deadline'], (int, float)):
-            raise exceptions.TaskHeaderError(
-                "Deadline is not a timestamp",
-                task_id=task_id,
-                node_name=node_name,
-                deadline=th_dict_repr['deadline'],
-            )
-
-        now = common.get_timestamp_utc()
-        if th_dict_repr['deadline'] < now:
-            raise exceptions.TaskHeaderError(
-                "Deadline already passed",
-                task_id=task_id,
-                node_name=node_name,
-                deadline=th_dict_repr['deadline'],
-                now=now,
-            )
-
-        if not isinstance(th_dict_repr['subtask_timeout'], int):
-            raise exceptions.TaskHeaderError(
-                "Subtask timeout is not a number",
-                task_id=task_id,
-                node_name=node_name,
-                subtask_timeout=th_dict_repr['subtask_timeout'],
-            )
-
-        if th_dict_repr['subtask_timeout'] < 0:
-            raise exceptions.TaskHeaderError(
-                "Subtask timeout is less than 0",
-                task_id=task_id,
-                node_name=node_name,
-                subtask_timeout=th_dict_repr['subtask_timeout'],
-            )
-
-        try:
-            if th_dict_repr['subtasks_count'] < 1:
-                raise exceptions.TaskHeaderError(
-                    "Subtasks count is less than 1",
-                    task_id=task_id,
-                    node_name=node_name,
-                    subtasks_count=th_dict_repr['subtasks_count'],
-                )
-        except (KeyError, TypeError):
-            raise exceptions.TaskHeaderError(
-                "Subtasks count is missing",
-                task_id=task_id,
-                node_name=node_name,
-                subtask_count=th_dict_repr.get('subtask_count'),
-            )
-
-    @staticmethod
-    def _ordered(dictionary: dict) -> List[tuple]:
-        return sorted(dictionary.items())
-
-
-class TaskHeader(object):
-    """
-    Task header describes general information about task as an request and
-    is propagated in the network as an offer for computing nodes
-    """
-
-    def __init__(
-            self,
-            mask: Optional[Mask] = None,
-            timestamp: Optional[float] = None,
-            signature: Optional[bytes] = None,
-            *args, **kwargs) -> None:
-
-        self.fixed_header = TaskFixedHeader(*args, **kwargs)
-        self.mask = mask or Mask()
-        self.timestamp = timestamp or get_timestamp_utc()
-        self.signature = signature
-
-    def to_binary(self) -> bytes:
-        return self.dict_to_binary(self.to_dict())
-
-    def to_dict(self) -> dict:
-        return DictSerializer.dump(self, typed=False)
-
-    def __repr__(self):
-        return "TaskHeader.from_dict({!r})".format(self.to_dict())
-
-    def __getattr__(self, item: str) -> Any:
-        if 'fixed_header' in self.__dict__ and hasattr(self.fixed_header, item):
-            return getattr(self.fixed_header, item)
-        raise AttributeError('TaskHeader has no attribute %r' % item)
-
-    @staticmethod
-    def from_dict(dictionary: dict) -> 'TaskHeader':
-        th: TaskHeader = DictSerializer.load(dictionary, as_class=TaskHeader)
-        if isinstance(th.fixed_header, dict):
-            th.fixed_header = TaskFixedHeader.from_dict(th.fixed_header)
-        if isinstance(th.mask, dict):
-            th.mask = Mask.from_dict(th.mask)
-        return th
-
-    @classmethod
-    def dict_to_binary(cls, dictionary: dict) -> bytes:
-        return CBORSerializer.dumps(cls.dict_to_binarizable(dictionary))
-
-    @classmethod
-    def dict_to_binarizable(cls, dictionary: dict) -> List[tuple]:
-        self_dict = dict(dictionary)
-        self_dict.pop('signature', None)
-
-        self_dict['fixed_header'] = TaskFixedHeader.dict_to_binarizable(
-            self_dict['fixed_header'])
-
-        return cls._ordered(self_dict)
-
-    @staticmethod
-    def validate(th_dict_repr: dict) -> None:
-        fixed_header = th_dict_repr.get('fixed_header')
-        if fixed_header:
-            return TaskFixedHeader.validate(fixed_header)
-        raise exceptions.TaskHeaderError(
-            'Fixed header is missing',
-            header=th_dict_repr,
-        )
-
-    @staticmethod
-    def _ordered(dictionary: dict) -> List[Tuple]:
-        return sorted(dictionary.items())
 
 
 class TaskBuilder(abc.ABC):
@@ -352,7 +94,7 @@ class Task(abc.ABC):
                 setattr(self, key, value)
 
     def __init__(self,
-                 header: TaskHeader,
+                 header: dt_tasks.TaskHeader,
                  src_code: str,
                  task_definition: TaskDefinition) -> None:
         self.src_code = src_code

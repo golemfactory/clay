@@ -11,7 +11,6 @@ from golem.environments.environment import Environment as DefaultEnvironment
 
 from golem.model import Performance
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import Task
 from golem.task.taskstate import TaskStatus
 
 logger = logging.getLogger(__name__)
@@ -41,7 +40,7 @@ class BenchmarkManager(object):
                       error=None):
         logger.info('Running benchmark for %s', env_id)
 
-        from golem.network.p2p.node import Node
+        from golem_messages.datastructures.p2p import Node
 
         def success_callback(performance):
             logger.info('%s performance is %.2f', env_id, performance)
@@ -60,7 +59,7 @@ class BenchmarkManager(object):
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.task_definition
         self._validate_task_state(task_state)
-        builder = task_builder(Node(),
+        builder = task_builder(Node(node_name=self.node_name),
                                task_state.definition,
                                self.dir_manager)
         task = builder.build()

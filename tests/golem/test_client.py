@@ -13,6 +13,7 @@ from unittest.mock import (
 
 from ethereum.utils import denoms
 from freezegun import freeze_time
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 
@@ -29,7 +30,6 @@ from golem.core.deferred import sync_wait
 from golem.hardware.presets import HardwarePresets
 from golem.core.variables import CONCENT_CHOICES
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
-from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
@@ -91,13 +91,13 @@ def make_mock_ets(eth=100, gnt=100):
     '.register_handler',
 )
 @patch('signal.signal')
-@patch('golem.network.p2p.node.Node.collect_network_info')
+@patch('golem.network.p2p.local_node.LocalNode.collect_network_info')
 def make_client(*_, **kwargs):
     default_kwargs = {
         'app_config': Mock(),
         'config_desc': ClientConfigDescriptor(),
         'keys_auth': Mock(
-            _private_key='a' * 32,
+            _private_key=b'a' * 32,
             key_id='a' * 64,
             public_key=b'a' * 128,
         ),
@@ -601,7 +601,7 @@ class TestTaskCleanerService(testwithreactor.TestWithReactor):
 
 
 @patch('signal.signal')  # pylint: disable=too-many-ancestors
-@patch('golem.network.p2p.node.Node.collect_network_info')
+@patch('golem.network.p2p.local_node.LocalNode.collect_network_info')
 class TestClientRPCMethods(TestClientBase, LogTestCase):
     # pylint: disable=too-many-public-methods
 
@@ -614,7 +614,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler', ):
             self.client.task_server = TaskServer(
-                node=Node(),
+                node=dt_p2p_factory.Node(),
                 config_desc=ClientConfigDescriptor(),
                 client=self.client,
                 use_docker_manager=False,

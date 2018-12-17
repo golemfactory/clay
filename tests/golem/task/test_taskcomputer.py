@@ -5,6 +5,7 @@ import time
 import unittest.mock as mock
 import uuid
 
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
 
 from golem.client import ClientTaskComputerEventListener
@@ -12,7 +13,6 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.deferred import sync_wait
 from golem.docker.manager import DockerManager
-from golem.network.p2p.node import Node as P2PNode
 from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
 from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
@@ -101,7 +101,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         assert task_server.send_task_failed.called
 
     def test_computation(self):
-        p2p_node = P2PNode()
+        p2p_node = dt_p2p_factory.Node()
         ctd = ComputeTaskDef()
         ctd['task_id'] = "xyz"
         ctd['subtask_id'] = "xxyyzz"

@@ -10,6 +10,9 @@ from unittest.mock import Mock, MagicMock, patch, ANY
 from eth_utils import encode_hex
 from golem_messages import idgenerator
 from golem_messages import factories as msg_factories
+from golem_messages.datastructures import tasks as dt_tasks
+from golem_messages.datastructures.masking import Mask
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
 from requests import HTTPError
 
@@ -21,14 +24,12 @@ from golem.core.keysauth import KeysAuth
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
     HyperdriveClient, to_hyperg_peer
-from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resource import ResourceError
 from golem.resource.hyperdrive.resourcesmanager import HyperdriveResourceManager
 from golem.task import tasksession
-from golem.task.masking import Mask
 from golem.task.server import concent as server_concent
-from golem.task.taskbase import TaskHeader, AcceptClientVerdict
+from golem.task.taskbase import AcceptClientVerdict
 from golem.task.taskserver import TASK_CONN_TYPES
 from golem.task.taskserver import TaskServer, WaitingTaskResult, logger
 from golem.task.tasksession import TaskSession
@@ -36,44 +37,41 @@ from golem.task.taskstate import TaskState, TaskOp
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
-from tests.factories.p2p import Node as NodeFactory
 from tests.factories.resultpackage import ExtractedPackageFactory
 
 
-def get_example_task_header(key_id):
-    return {
-        "fixed_header": {
-            "task_id": idgenerator.generate_id(key_id),
-            "environment": "DEFAULT",
-            "task_owner": dict(
-                key=encode_hex(key_id)[2:],
-                node_name="ABC",
-                prv_port=40103,
-                prv_addr='10.0.0.10',
-                pub_port=40103,
-                pub_addr='1.2.3.4'
-            ),
-            "deadline": timeout_to_deadline(1201),
-            "subtask_timeout": 120,
-            "max_price": 20,
-            "resource_size": 2 * 1024,
-            "estimated_memory": 3 * 1024,
-            "signature": None,
-            "min_version": golem.__version__,
-            "subtasks_count": 21,
-            "concent_enabled": False,
-        },
-        "mask": {
-            "byte_repr": Mask().to_bytes()
-        },
+def get_example_task_header(key_id: str) -> dt_tasks.TaskHeader:
+    th_dict_repr = {
+        "task_id": idgenerator.generate_id(key_id),
+        "environment": "DEFAULT",
+        "task_owner": dict(
+            key=encode_hex(key_id)[2:],
+            node_name="ABC",
+            prv_port=40103,
+            prv_addr='10.0.0.10',
+            pub_port=40103,
+            pub_addr='1.2.3.4'
+        ),
+        "deadline": timeout_to_deadline(1201),
+        "subtask_timeout": 120,
+        "max_price": 20,
+        "resource_size": 2 * 1024,
+        "estimated_memory": 3 * 1024,
+        "signature": None,
+        "min_version": golem.__version__,
+        "subtasks_count": 21,
+        "concent_enabled": False,
+        "mask": Mask().to_bytes(),
         "timestamp": 0,
     }
+    task_header = dt_tasks.TaskHeader(**th_dict_repr)
+    return task_header
 
 
 def get_mock_task(key_gen="whatsoever", subtask_id="whatever"):
     task_mock = Mock()
     key_id = str.encode(key_gen)
-    task_mock.header = TaskHeader.from_dict(get_example_task_header(key_id))
+    task_mock.header = get_example_task_header(key_id)
     task_id = task_mock.header.task_id
     task_mock.header.max_price = 1010
     task_mock.query_extra_data.return_value.ctd = ComputeTaskDef(
@@ -95,7 +93,7 @@ class TaskServerTestBase(LogTestCase,
                 'golem.network.concent.handlers_library.HandlersLibrary'
                 '.register_handler',):
             self.ts = TaskServer(
-                node=NodeFactory(),
+                node=dt_p2p_factory.Node(),
                 config_desc=self.ccd,
                 client=self.client,
                 use_docker_manager=False,
@@ -118,7 +116,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
     def test_request(self, tar, *_):
         ccd = ClientConfigDescriptor()
         ccd.min_price = 10
-        n = NodeFactory()
+        n = dt_p2p_factory.Node()
         ts = TaskServer(
             node=n,
             config_desc=ccd,
@@ -137,21 +135,16 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         keys_auth = KeysAuth(self.path, 'prv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
-        task_id = task_header["fixed_header"]["task_id"]
+        task_id = task_header.task_id
         ts.add_task_header(task_header)
         self.assertEqual(ts.request_task(), task_id)
         assert ts.remove_task_header(task_id)
 
         task_header = get_example_task_header(keys_auth.public_key)
-        task_header["fixed_header"]["task_owner"]["pub_port"] = 0
-        task_id2 = task_header["fixed_header"]["task_id"]
+        task_header.task_owner.pub_port = 0
+        task_id2 = task_header.task_id
         self.assertTrue(ts.add_task_header(task_header))
         self.assertIsNotNone(ts.task_keeper.task_headers[task_id2])
-        # FIXME FIx this test
-        # self.assertIsNone(ts.request_task())
-        # self.assertIsNone(ts.task_keeper.task_headers.get(task_id2))
-        # assert not ts.remove_task_header(task_id2)
-        # FIXME remove me
         ts.remove_task_header(task_id2)
 
         # Task can be rejected for 3 reasons at this stage; in all cases
@@ -160,7 +153,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         tar.reset_mock()
         ts.config_desc.requesting_trust = 0.5
         task_header = get_example_task_header(keys_auth.public_key)
-        task_id3 = task_header["fixed_header"]["task_id"]
+        task_id3 = task_header.task_id
         ts.add_task_header(task_header)
         self.assertIsNone(ts.request_task())
         tar.add_support_status.assert_called_with(
@@ -174,8 +167,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         tar.reset_mock()
         ts.config_desc.requesting_trust = 0.0
         task_header = get_example_task_header(keys_auth.public_key)
-        task_id4 = task_header["fixed_header"]["task_id"]
-        task_header["fixed_header"]["max_price"] = 1
+        task_id4 = task_header.task_id
+        task_header.max_price = 1
         ts.add_task_header(task_header)
         self.assertIsNone(ts.request_task())
         tar.add_support_status.assert_called_with(
@@ -189,7 +182,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         tar.reset_mock()
         ts.acl.disallow(keys_auth.key_id)
         task_header = get_example_task_header(keys_auth.public_key)
-        task_id5 = task_header["fixed_header"]["task_id"]
+        task_id5 = task_header.task_id
         ts.add_task_header(task_header)
         self.assertIsNone(ts.request_task())
         tar.add_support_status.assert_called_with(
@@ -207,13 +200,14 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.ts.client.concent_service.enabled = True
         self.ts.task_archiver = Mock()
         keys_auth = KeysAuth(self.path, 'prv_key', '')
-        task_dict = get_example_task_header(keys_auth.public_key)
-        task_dict['fixed_header']['concent_enabled'] = False
-        self.ts.add_task_header(task_dict)
+        task_header = get_example_task_header(keys_auth.public_key)
+        task_header.concent_enabled = False
+        task_header.sign(private_key=keys_auth._private_key)
+        self.ts.add_task_header(task_header)
 
         self.assertIsNone(self.ts.request_task())
         self.ts.task_archiver.add_support_status.assert_called_once_with(
-            task_dict['fixed_header']['task_id'],
+            task_header.task_id,
             SupportStatus(
                 False,
                 {UnsupportReason.CONCENT_REQUIRED: True},
@@ -226,7 +220,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ccd.min_price = 11
         keys_auth = KeysAuth(self.path, 'priv_key', '')
         task_header = get_example_task_header(keys_auth.public_key)
-        n = Node.from_dict(task_header["fixed_header"]['task_owner'])
+        n = task_header.task_owner
 
         ts = self.ts
         ts._is_address_accessible = Mock(return_value=True)
@@ -238,7 +232,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         os.close(fd)
         results = {"data": [result_file]}
         task_header = get_example_task_header(keys_auth.public_key)
-        task_id = task_header["fixed_header"]["task_id"]
+        task_id = task_header.task_id
         assert ts.add_task_header(task_header)
         assert ts.request_task()
         subtask_id = idgenerator.generate_new_id_from_id(task_id)
@@ -315,39 +309,22 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         task_header = get_example_task_header(keys_auth_2.public_key)
 
-        with self.assertRaises(Exception) as raised:
-            ts.add_task_header(task_header)
-            self.assertEqual(raised.exception.message, "Invalid signature")
-            self.assertEqual(len(ts.get_others_tasks_headers()), 0)
+        self.assertFalse(ts.add_task_header(task_header))
+        self.assertEqual(len(ts.get_others_tasks_headers()), 0)
 
-        task_header["signature"] = keys_auth_2.sign(
-            TaskHeader.dict_to_binary(task_header))
+        task_header.sign(private_key=keys_auth_2._private_key)
 
         self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 1)
 
         task_header = get_example_task_header(keys_auth_2.public_key)
-        task_id2 = task_header["fixed_header"]["task_id"]
-        task_header["signature"] = keys_auth_2.sign(
-            TaskHeader.dict_to_binary(task_header))
+        task_header.sign(private_key=keys_auth_2._private_key)
 
         self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
 
         self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
-
-        new_header = dict(task_header)
-        new_header["fixed_header"]["task_owner"]["pub_port"] = 9999
-        new_header["signature"] = keys_auth_2.sign(
-            TaskHeader.dict_to_binary(new_header))
-
-        # An attempt to update fixed header should *not* succeed
-        self.assertFalse(ts.add_task_header(new_header))
-        self.assertEqual(len(ts.get_others_tasks_headers()), 2)
-        saved_task = next(th for th in ts.get_others_tasks_headers()
-                          if th["fixed_header"]["task_id"] == task_id2)
-        self.assertEqual(saved_task["signature"], task_header["signature"])
 
     @patch("golem.task.taskserver.TaskServer._sync_pending")
     def test_sync(self, *_):
@@ -850,7 +827,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler',):
             self.ts = TaskServer(
-                node=NodeFactory(),
+                node=dt_p2p_factory.Node(),
                 config_desc=self.ccd,
                 client=self.client,
                 use_docker_manager=False,
@@ -897,6 +874,7 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         task_mock.should_accept_client.return_value = \
             AcceptClientVerdict.ACCEPTED
 
+        ts.task_manager.keys_auth._private_key = b'a' * 32
         ts.task_manager.add_new_task(task_mock)
         ts.task_manager.tasks_states[task_id].status = \
             ts.task_manager.activeStatus[0]

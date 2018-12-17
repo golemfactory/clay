@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional, Dict, List, Iterable
 from zipfile import ZipFile
 
+from golem_messages.datastructures import tasks as dt_tasks
 from golem_messages.message import ComputeTaskDef
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
@@ -165,8 +166,8 @@ class TaskManager(TaskEventListener):
             raise RuntimeError("Task {} has been already added"
                                .format(task.header.task_id))
 
-        task.header.fixed_header.task_owner = self.node
-        task.header.signature = self.sign_task_header(task.header)
+        task.header.task_owner = self.node
+        self.sign_task_header(task.header)
 
         task.create_reference_data_for_task_validation()
         task.register_listener(self)
@@ -196,7 +197,7 @@ class TaskManager(TaskEventListener):
         except ValueError:
             logger.exception('Wrong number of bits for mask increase')
         else:
-            task.header.signature = self.sign_task_header(task.header)
+            self.sign_task_header(task.header)
 
     @handle_task_key_error
     def decrease_task_mask(self, task_id: str, num_bits: int = 1) -> None:
@@ -207,7 +208,7 @@ class TaskManager(TaskEventListener):
         except ValueError:
             logger.exception('Wrong number of bits for mask decrease')
         else:
-            task.header.signature = self.sign_task_header(task.header)
+            self.sign_task_header(task.header)
 
     @handle_task_key_error
     def start_task(self, task_id):
@@ -643,10 +644,10 @@ class TaskManager(TaskEventListener):
 
     def update_task_signatures(self):
         for task in list(self.tasks.values()):
-            task.header.signature = self.sign_task_header(task.header)
+            self.sign_task_header(task.header)
 
     def sign_task_header(self, task_header):
-        return self.keys_auth.sign(task_header.to_binary())
+        task_header.sign(private_key=self.keys_auth._private_key)  # noqa pylint: disable=protected-access
 
     def verify_subtask(self, subtask_id):
         if subtask_id in self.subtask2task_mapping:
@@ -786,7 +787,7 @@ class TaskManager(TaskEventListener):
             th = t.header
             if self.tasks_states[th.task_id].status not in self.activeStatus:
                 continue
-            cur_time = get_timestamp_utc()
+            cur_time = int(get_timestamp_utc())
             # Check subtask timeout
             ts = self.tasks_states[th.task_id]
             for s in list(ts.subtask_states.values()):
