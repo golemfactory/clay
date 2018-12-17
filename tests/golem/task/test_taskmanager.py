@@ -1070,7 +1070,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
             task = BlenderRenderTask(task_definition=definition,
                                      owner=dt_p2p_factory.Node(
-                                        node_name='node',
+                                         node_name='node',
                                      ),
                                      total_tasks=n,
                                      root_path=self.path)
