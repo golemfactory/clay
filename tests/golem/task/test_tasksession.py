@@ -249,7 +249,7 @@ class TaskSessionTaskToComputeTest(TestCase):
             ['requestor_public_key', self.requestor_key],
             ['requestor_ethereum_public_key', self.requestor_key],
             ['compute_task_def', ctd],
-            ['want_to_compute_task', mt.serialize()],
+            ['want_to_compute_task', (False, (mt.header, mt.sig, mt.slots()))],
             ['package_hash', 'sha1:' + task_state.package_hash],
             ['concent_enabled', self.use_concent],
             ['price', 1],
