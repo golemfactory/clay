@@ -7,6 +7,7 @@ import subprocess
 import sys
 import threading
 import tempfile
+import typing
 
 from . import tasks
 
@@ -86,7 +87,7 @@ def clear_output(q: queue.Queue):
         pass
 
 
-def search_output(q: queue.Queue, pattern):
+def search_output(q: queue.Queue, pattern) -> typing.Optional[typing.Match]:
     try:
         for line in iter(q.get_nowait, None):
             if line:

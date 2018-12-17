@@ -4,20 +4,16 @@ import time
 from scripts.node_integration_tests import helpers
 
 
-from ..base import NodeTestPlaybook
+from .concent_base import ConcentTestPlaybook
 
 
-class ForceReport(NodeTestPlaybook):
+class ForceReport(ConcentTestPlaybook):
     provider_node_script = 'provider/impatient_frct'
     requestor_node_script = 'requestor/no_ack_rct'
 
     task_finished = False
     ack_rct_received = False
     ack_rct_deadline = None
-
-    def step_clear_provider_output(self):
-        helpers.clear_output(self.provider_output_queue)
-        self.next()
 
     def step_wait_task_finished_and_arct_received(self):
         def on_success(result):
@@ -77,13 +73,12 @@ class ForceReport(NodeTestPlaybook):
                 on_error=self.print_error
             )
 
-    steps = NodeTestPlaybook.initial_steps + (
-        step_clear_provider_output,
-        NodeTestPlaybook.step_create_task,
-        NodeTestPlaybook.step_get_task_id,
-        NodeTestPlaybook.step_get_task_status,
+    steps = ConcentTestPlaybook.initial_steps + (
+        ConcentTestPlaybook.step_create_task,
+        ConcentTestPlaybook.step_get_task_id,
+        ConcentTestPlaybook.step_get_task_status,
         step_wait_task_finished_and_arct_received,
-        NodeTestPlaybook.step_verify_output,
-        NodeTestPlaybook.step_get_subtasks,
-        NodeTestPlaybook.step_verify_provider_income,
+        ConcentTestPlaybook.step_verify_output,
+        ConcentTestPlaybook.step_get_subtasks,
+        ConcentTestPlaybook.step_verify_provider_income,
     )

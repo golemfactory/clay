@@ -1,20 +1,13 @@
 from scripts.node_integration_tests import helpers
-from ..base import NodeTestPlaybook
+
+from .concent_base import ConcentTestPlaybook
 
 
-class ForceDownload(NodeTestPlaybook):
+class ForceDownload(ConcentTestPlaybook):
     provider_node_script = 'provider/debug'
     requestor_node_script = 'requestor/fail_results'
 
     forced_download_successful = False
-
-    def step_clear_requestor_output(self):
-        helpers.clear_output(self.requestor_output_queue)
-        self.next()
-
-    def step_clear_provider_output(self):
-        helpers.clear_output(self.provider_output_queue)
-        self.next()
 
     def step_wait_task_finished(self):
         fail_triggers = ['Concent request failed', ]
@@ -58,15 +51,13 @@ class ForceDownload(NodeTestPlaybook):
                 "we didn't notice the Requestor<->Concent communicating."
             )
 
-    steps = NodeTestPlaybook.initial_steps + (
-        step_clear_requestor_output,
-        step_clear_provider_output,
-        NodeTestPlaybook.step_create_task,
-        NodeTestPlaybook.step_get_task_id,
-        NodeTestPlaybook.step_get_task_status,
+    steps = ConcentTestPlaybook.initial_steps + (
+        ConcentTestPlaybook.step_create_task,
+        ConcentTestPlaybook.step_get_task_id,
+        ConcentTestPlaybook.step_get_task_status,
         step_wait_task_finished,
         step_verify_forced_download_happened,
-        NodeTestPlaybook.step_verify_output,
-        NodeTestPlaybook.step_get_subtasks,
-        NodeTestPlaybook.step_verify_provider_income,
+        ConcentTestPlaybook.step_verify_output,
+        ConcentTestPlaybook.step_get_subtasks,
+        ConcentTestPlaybook.step_verify_provider_income,
     )

@@ -3,17 +3,13 @@ import time
 
 from scripts.node_integration_tests import helpers
 
-from ..base import NodeTestPlaybook
+from .concent_base import ConcentTestPlaybook
 
 
-class AdditionalVerification(NodeTestPlaybook):
+class AdditionalVerification(ConcentTestPlaybook):
     provider_node_script = 'provider/debug'
     requestor_node_script = 'requestor/reject_results'
     concent_verification_timeout = None
-
-    def step_clear_provider_output(self):
-        helpers.clear_output(self.provider_output_queue)
-        self.next()
 
     def step_wait_task_started(self):
         def on_success(result):
@@ -110,11 +106,10 @@ class AdditionalVerification(NodeTestPlaybook):
         if datetime.datetime.now() > self.concent_verification_timeout:
             self.fail("Concent verification timed out... ")
 
-    steps = NodeTestPlaybook.initial_steps + (
-        step_clear_provider_output,
-        NodeTestPlaybook.step_create_task,
-        NodeTestPlaybook.step_get_task_id,
-        NodeTestPlaybook.step_get_task_status,
+    steps = ConcentTestPlaybook.initial_steps + (
+        ConcentTestPlaybook.step_create_task,
+        ConcentTestPlaybook.step_get_task_id,
+        ConcentTestPlaybook.step_get_task_status,
         step_wait_task_started,
         step_wait_task_rejected,
         step_wait_settled,

@@ -7,10 +7,10 @@ from golem_messages.factories.tasks import ReportComputedTaskFactory
 
 from scripts.node_integration_tests import helpers
 
-from ..base import NodeTestPlaybook
+from .concent_base  import ConcentTestPlaybook
 
 
-class ForceAccept(NodeTestPlaybook):
+class ForceAccept(ConcentTestPlaybook):
     provider_node_script = 'provider/debug'
     requestor_node_script = 'requestor/no_sra'
 
@@ -108,12 +108,11 @@ class ForceAccept(NodeTestPlaybook):
             print("Waiting for SRA...")
             time.sleep(30)
 
-    steps = NodeTestPlaybook.initial_steps + (
-        step_clear_provider_output,
-        NodeTestPlaybook.step_create_task,
-        NodeTestPlaybook.step_get_task_id,
-        NodeTestPlaybook.step_get_task_status,
+    steps = ConcentTestPlaybook.initial_steps + (
+        ConcentTestPlaybook.step_create_task,
+        ConcentTestPlaybook.step_get_task_id,
+        ConcentTestPlaybook.step_get_task_status,
         step_wait_task_finished_and_sra_received,
-        NodeTestPlaybook.step_get_subtasks,
-        NodeTestPlaybook.step_verify_provider_income,
+        ConcentTestPlaybook.step_get_subtasks,
+        ConcentTestPlaybook.step_verify_provider_income,
     )
