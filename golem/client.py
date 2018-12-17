@@ -22,7 +22,6 @@ from apps.appsmanager import AppsManager
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.config.presets import HardwarePresetsMixin
-from golem.core import variables
 from golem.core.common import (
     datetime_to_timestamp_utc,
     get_timestamp_utc,
@@ -98,11 +97,11 @@ class Client(HardwarePresetsMixin):
             keys_auth: KeysAuth,
             database: Database,
             transaction_system: TransactionSystem,
+            # SEE: golem.core.variables.CONCENT_CHOICES
+            concent_variant: dict,
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
-            # SEE: golem.core.variables.CONCENT_CHOICES
-            concent_variant: dict = variables.CONCENT_CHOICES['disabled'],
             geth_address: Optional[str] = None,
             apps_manager: AppsManager = AppsManager(),
             task_finished_cb=None) -> None:
