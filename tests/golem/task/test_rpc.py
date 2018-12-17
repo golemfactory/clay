@@ -439,6 +439,7 @@ class TestValidateTaskDict(ProviderBase):
         self.t_dict['concent_enabled'] = True
         self.client.concent_service = mock.Mock()
         self.client.concent_service.available = False
+        self.client.concent_service.enabled = False
 
         msg = "Cannot create task with concent enabled when " \
               "Concent Service is disabled"
