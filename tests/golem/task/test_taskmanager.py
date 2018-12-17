@@ -1227,6 +1227,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 class TestCopySubtaskResults(TwistedTestCase):
 
     def setUp(self):
+        super().setUp()
         self.tm = TaskManager(
             node=Node(),
             keys_auth=MagicMock(spec=KeysAuth),
