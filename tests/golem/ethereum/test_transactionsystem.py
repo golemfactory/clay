@@ -131,6 +131,18 @@ class TestTransactionSystem(TransactionSystemBase):
         cost = self.ets.get_withdraw_gas_cost(200, dest, 'GNT')
         assert cost == self.sci.GAS_WITHDRAW * gas_price
 
+    def test_get_gas_price(self):
+        test_gas_price = 1234
+        self.sci.get_current_gas_price.return_value = test_gas_price
+        ets = self._make_ets()
+
+        self.assertEqual(ets.gas_price, test_gas_price)
+
+    def test_get_gas_price_limit(self):
+        ets = self._make_ets()
+
+        self.assertEqual(ets.gas_price_limit, self.sci.GAS_PRICE)
+
     def test_withdraw_unknown_currency(self):
         dest = '0x' + 40 * 'd'
         with self.assertRaises(ValueError, msg="Unknown currency asd"):
