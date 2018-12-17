@@ -38,7 +38,6 @@ from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
 from golem.utils import decode_hex
 
-from . import exceptions
 from .result.resultmanager import ExtractedPackage
 from .server import resources
 from .server import concent
@@ -326,8 +325,7 @@ class TaskServer(
                 logger.error("Error closing incoming session: %s", exc)
 
     def get_own_tasks_headers(self):
-        ths_tm = self.task_manager.get_tasks_headers()
-        return [th.to_dict() for th in ths_tm]
+        return self.task_manager.get_tasks_headers()
 
     def get_others_tasks_headers(self) -> List[dt_tasks.TaskHeader]:
         return self.task_keeper.get_all_tasks()
