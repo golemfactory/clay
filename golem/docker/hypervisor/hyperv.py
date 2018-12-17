@@ -8,6 +8,7 @@ from os_win.constants import HOST_SHUTDOWN_ACTION_SHUTDOWN, \
     VM_SNAPSHOT_TYPE_DISABLED
 from os_win.exceptions import OSWinException
 from os_win.utils.compute.vmutils import VMUtils
+from pydispatch import dispatcher
 
 from golem import hardware
 from golem.core.common import get_golem_path
@@ -16,8 +17,30 @@ from golem.docker.client import local_client
 from golem.docker.config import CONSTRAINT_KEYS
 from golem.docker.hypervisor.docker_machine import DockerMachineHypervisor
 from golem.docker.task_thread import DockerBind
+from golem.report import Component, Stage
 
 logger = logging.getLogger(__name__)
+
+
+MESSAGES = {
+    'lowered_memory': 'Not enough free RAM to start the VM, lowering memory',
+}
+EVENTS = {
+    'lowered_memory': {
+        'component': Component.hypervisor,
+        'method': 'start_vm',
+        'stage': Stage.warning,
+        'data': MESSAGES['lowered_memory'],
+    },
+}
+
+
+def publish_event(event: Dict) -> None:
+    dispatcher.send(
+        signal='evt.golem.status',
+        event='publish',
+        **event
+    )
 
 
 class HyperVHypervisor(DockerMachineHypervisor):
@@ -76,7 +99,8 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 logger.exception('Failed to free memory')
 
         if not self._check_memory(constr):
-            logger.warning('Not enough memory to start the VM, lowering memory')
+            logger.warning(MESSAGES['lowered_memory'])
+            publish_event(EVENTS['lowered_memory'])
             mem_key = CONSTRAINT_KEYS['mem']
             max_memory = self._memory_cap(constr[mem_key])
             constr[mem_key] = hardware.cap_memory(constr[mem_key], max_memory,
@@ -124,8 +148,8 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if mem is not None:
             cap_mem = self._memory_cap(mem)
             if not cap_mem == mem:
-                logger.warning('Not enough memory to create the VM, '
-                               'lowering memory')
+                logger.warning(MESSAGES['lowered_memory'])
+                publish_event(EVENTS['lowered_memory'])
             args += [self.OPTIONS['mem'], str(cap_mem)]
 
         return args

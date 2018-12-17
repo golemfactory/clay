@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from functools import wraps
+from typing import ClassVar
 
 from golem.core.common import to_unicode
 from golem.rpc.mapping.rpceventnames import Golem
@@ -11,6 +12,7 @@ class Stage(object):
     """
     pre = 'pre'
     post = 'post'
+    warning = 'warning'
     exception = 'exception'
 
 
@@ -29,6 +31,7 @@ class StatusPublisher(object):
     """
     Publishes method execution stages via RPC.
     """
+    _initialized: ClassVar[bool] = False
     _rpc_publisher = None
     _last_status = None
 
@@ -62,8 +65,30 @@ class StatusPublisher(object):
         return cls._last_status
 
     @classmethod
-    def set_publisher(cls, rpc_publisher):
+    def initialize(cls, rpc_publisher):
+        cls._initialize()
         cls._rpc_publisher = rpc_publisher
+
+    @classmethod
+    def _initialize(cls) -> None:
+        if cls._initialized:
+            return
+
+        from pydispatch import dispatcher
+        dispatcher.connect(cls._publish_listener,
+                           signal='evt.golem.status')
+
+        cls._initialized = True
+
+    @classmethod
+    def _publish_listener(cls, event: str = 'default', **kwargs) -> None:
+        if event != 'publish':
+            return
+
+        cls.publish(kwargs['component'],
+                    kwargs['method'],
+                    kwargs['stage'],
+                    kwargs.get('data'))
 
 
 @contextmanager

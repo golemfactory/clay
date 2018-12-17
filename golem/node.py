@@ -251,7 +251,7 @@ class Node(HardwarePresetsMixin):
                 self.rpc_session.exposed_procedures
             self.rpc_session.add_procedures(methods)
             self._rpc_publisher = Publisher(self.rpc_session)
-            StatusPublisher.set_publisher(self._rpc_publisher)
+            StatusPublisher.initialize(self._rpc_publisher)
 
         return deferred.addCallbacks(on_connect, self._error('rpc session'))
 
