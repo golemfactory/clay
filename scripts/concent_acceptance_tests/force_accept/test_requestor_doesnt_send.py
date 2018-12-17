@@ -214,10 +214,9 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
             ),
         )
         accept_msg = msg_factories.tasks.SubtaskResultsAcceptedFactory(
-            task_to_compute=fsr
+            report_computed_task=fsr
             .ack_report_computed_task
-            .report_computed_task
-            .task_to_compute,
+            .report_computed_task,
         )
         accept_msg.sign_message(self.requestor_priv_key)
         self.assertTrue(

@@ -10,6 +10,8 @@ from unittest.mock import patch, Mock, MagicMock, ANY
 
 import semantic_version
 from golem_messages import message
+from golem_messages.datastructures import p2p as dt_p2p
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from pydispatch import dispatcher
 
 import golem
@@ -18,11 +20,9 @@ from golem import testutils
 from golem.core.keysauth import KeysAuth
 from golem.core.variables import PROTOCOL_CONST
 from golem.core.variables import TASK_HEADERS_LIMIT
-from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import (logger, PeerSession, PeerSessionInfo)
 from golem.tools.assertlogs import LogTestCase
-from tests.factories import p2p as p2p_factories
 from tests.factories import taskserver as task_server_factory
 
 
@@ -42,7 +42,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         super().setUp()
         random.seed()
         self.peer_session = PeerSession(MagicMock())
-        node = p2p_factories.Node()
+        node = dt_p2p_factory.Node()
         keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         self.peer_session.conn.server = \
             self.peer_session.p2p_service = P2PService(
@@ -60,7 +60,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
                 task_server_factory.TaskServer(client=client)
 
     def __setup_handshake_server_test(self, send_mock) -> message.base.Hello:
-        self.peer_session.conn.server.node = node = p2p_factories.Node()
+        self.peer_session.conn.server.node = node = dt_p2p_factory.Node()
         self.peer_session.conn.server.node_name = node_name = node.node_name
         self.peer_session.conn.server.keys_auth.key_id = \
             key_id = 'server_key_id'
@@ -93,7 +93,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.peer_session.p2p_service.find_peer = find_peer
         self.peer_session.p2p_service.enough_peers = lambda: False
 
-        client_peer_info = p2p_factories.Node()
+        client_peer_info = dt_p2p_factory.Node()
         client_hello = message.base.Hello(
             port=1,
             node_name='client',
@@ -182,7 +182,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
                 reason=message.base.Disconnect.REASON.KeyNotDifficult).slots())
 
     def __setup_handshake_client_test(self, send_mock):
-        self.peer_session.conn.server.node = node = p2p_factories.Node()
+        self.peer_session.conn.server.node = node = dt_p2p_factory.Node()
         self.peer_session.conn.server.node_name = node_name = node.node_name
         self.peer_session.conn.server.keys_auth.key_id = \
             key_id = node.key
@@ -190,7 +190,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         self.peer_session.conn_type = self.peer_session.CONN_TYPE_CLIENT
         self.peer_session.start()
         self.assertEqual(0, send_mock.call_count)
-        server_peer_info = p2p_factories.Node()
+        server_peer_info = dt_p2p_factory.Node()
 
         def find_peer(key):
             if key == key_id:
@@ -365,7 +365,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         conf = MagicMock()
         conf.opt_peer_num = 10
 
-        node = Node(node_name='node', key='ffffffff')
+        node = dt_p2p_factory.Node(node_name='node', key='ffffffff')
         keys_auth = KeysAuth(self.path, 'priv_key', 'password')
 
         peer_session = PeerSession(conn)
@@ -465,7 +465,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
     @patch('golem.network.p2p.p2pservice.P2PService.find_node')
     @patch('golem.network.p2p.peersession.PeerSession.send')
     def test_send_peers(self, send_mock, find_mock):
-        node = p2p_factories.Node()
+        node = dt_p2p_factory.Node()
         find_mock.return_value = [
             {
                 'address': node.prv_addr,
@@ -485,7 +485,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
 
     @patch('golem.network.p2p.p2pservice.P2PService.try_to_add_peer')
     def test_react_to_peers(self, add_peer_mock):
-        node = p2p_factories.Node()
+        node = dt_p2p_factory.Node()
         peers = [
             {
                 'address': node.prv_addr,
@@ -496,7 +496,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
         ]
         msg = message.p2p.Peers(peers=copy.deepcopy(peers))
         self.peer_session._react_to_peers(msg)
-        peers[0]['node'] = Node.from_dict(peers[0]['node'])
+        peers[0]['node'] = dt_p2p.Node(**peers[0]['node'])
         add_peer_mock.assert_called_once_with(peers[0])
 
     @patch('golem.network.p2p.peersession.PeerSession.send')
@@ -576,8 +576,8 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
 
     @patch('golem.network.p2p.peersession.PeerSession.send')
     def test_send_want_start_task_session(self, mock_send):
-        node = p2p_factories.Node()
-        super_node = p2p_factories.Node()
+        node = dt_p2p_factory.Node()
+        super_node = dt_p2p_factory.Node()
         self.peer_session.send_want_to_start_task_session(node, "CONN_ID",
                                                           super_node)
         msg = mock_send.call_args[0][0]
@@ -589,7 +589,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
 
     @patch('golem.network.p2p.peersession.PeerSession.send')
     def test_send_want_start_task_session_with_supernode_none(self, mock_send):
-        node = p2p_factories.Node()
+        node = dt_p2p_factory.Node()
         self.peer_session.send_want_to_start_task_session(node, "CONN_ID", None)
 
         msg = mock_send.call_args[0][0]
@@ -601,8 +601,8 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
 
     @patch('golem.network.p2p.peersession.PeerSession.send')
     def test_set_task_session(self, mock_send):
-        node = p2p_factories.Node()
-        super_node = p2p_factories.Node()
+        node = dt_p2p_factory.Node()
+        super_node = dt_p2p_factory.Node()
         self.peer_session.send_set_task_session("KEY_ID", node, "CONN_ID",
                                                 super_node)
         msg = mock_send.call_args[0][0]
@@ -615,7 +615,7 @@ class TestPeerSession(testutils.DatabaseFixture, LogTestCase,
 
     @patch('golem.network.p2p.peersession.PeerSession.send')
     def test_set_task_session_with_supernode_none(self, mock_send):
-        node = p2p_factories.Node()
+        node = dt_p2p_factory.Node()
         self.peer_session.send_set_task_session("KEY_ID", node, "CONN_ID", None)
         msg = mock_send.call_args[0][0]
         assert isinstance(msg, message.p2p.SetTaskSession)

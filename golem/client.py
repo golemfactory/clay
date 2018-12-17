@@ -22,7 +22,6 @@ from apps.appsmanager import AppsManager
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
 from golem.config.presets import HardwarePresetsMixin
-from golem.core import variables
 from golem.core.common import (
     datetime_to_timestamp_utc,
     get_timestamp_utc,
@@ -51,7 +50,7 @@ from golem.network.concent.client import ConcentClientService
 from golem.network.concent.filetransfers import ConcentFiletransferService
 from golem.network.history import MessageHistoryService
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
-from golem.network.p2p.node import Node
+from golem.network.p2p.local_node import LocalNode
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.tcpnetwork import SocketAddress
@@ -98,11 +97,11 @@ class Client(HardwarePresetsMixin):
             keys_auth: KeysAuth,
             database: Database,
             transaction_system: TransactionSystem,
+            # SEE: golem.core.variables.CONCENT_CHOICES
+            concent_variant: dict,
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
-            # SEE: golem.core.variables.CONCENT_CHOICES
-            concent_variant: dict = variables.CONCENT_CHOICES['disabled'],
             geth_address: Optional[str] = None,
             apps_manager: AppsManager = AppsManager(),
             task_finished_cb=None) -> None:
@@ -132,9 +131,11 @@ class Client(HardwarePresetsMixin):
         self.keys_auth = keys_auth
 
         # NETWORK
-        self.node = Node(node_name=self.config_desc.node_name,
-                         prv_addr=self.config_desc.node_address,
-                         key=self.keys_auth.key_id)
+        self.node = LocalNode(
+            node_name=self.config_desc.node_name,
+            prv_addr=self.config_desc.node_address,
+            key=self.keys_auth.key_id,
+        )
 
         self.p2pservice = None
         self.diag_service = None
@@ -216,10 +217,12 @@ class Client(HardwarePresetsMixin):
         from apps.rendering.task import framerenderingtask
         from golem.environments.minperformancemultiplier import \
             MinPerformanceMultiplier
+        from golem.network.concent import soft_switch as concent_soft_switch
         from golem.task import rpc as task_rpc
         task_rpc_provider = task_rpc.ClientProvider(self)
         providers = (
             self,
+            concent_soft_switch,
             framerenderingtask,
             MinPerformanceMultiplier,
             self.task_server.task_manager,
@@ -920,7 +923,7 @@ class Client(HardwarePresetsMixin):
 
     @rpc_utils.expose('pay.deposit_balance')
     def get_deposit_balance(self):
-        if not self.concent_service.enabled:
+        if not self.concent_service.available:
             return None
 
         balance: int = self.transaction_system.concent_balance()

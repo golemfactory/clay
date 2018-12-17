@@ -326,14 +326,20 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         definition.output_format = options['format'].upper()
         definition.resolution = [int(val) for val in options['resolution']]
         if definition.timeout < MIN_TIMEOUT:
-            logger.warning("Timeout %d too short for this task. "
-                           "Changing to %d" % (definition.timeout,
-                                               MIN_TIMEOUT))
+            logger.warning(
+                "Timeout %d too short for this task. "
+                "Changing to %f",
+                definition.timeout,
+                MIN_TIMEOUT,
+            )
             definition.timeout = MIN_TIMEOUT
         if definition.subtask_timeout < SUBTASK_MIN_TIMEOUT:
-            logger.warning("Subtask timeout %d too short for this task. "
-                           "Changing to %d" % (definition.subtask_timeout,
-                                               SUBTASK_MIN_TIMEOUT))
+            logger.warning(
+                "Subtask timeout %d too short for this task. "
+                "Changing to %f",
+                definition.subtask_timeout,
+                SUBTASK_MIN_TIMEOUT,
+            )
             definition.subtask_timeout = SUBTASK_MIN_TIMEOUT
         return definition
 

@@ -1,17 +1,15 @@
 import operator
 import random
+import sys
 import unittest
 import uuid
 
-import sys
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
 from eth_utils import encode_hex
 from golem.network.p2p.peerkeeper import PeerKeeper, K_SIZE, CONCURRENCY, \
     node_id_distance
 from golem import testutils
-
-
-from tests.factories import p2p as p2p_factories
 
 
 def random_key(n_bytes, prefix=None):
@@ -103,7 +101,7 @@ class TestPeerKeeper(unittest.TestCase, testutils.PEP8MixIn):
     def test_estimated_network_size_buckets_bigger_than_k(self):
         for _ in range(self.peer_keeper.k):
             self.peer_keeper.buckets[0].peers.append(
-                p2p_factories.Node(),
+                dt_p2p_factory.Node(),
             )
         size = self.peer_keeper.get_estimated_network_size()
         self.assertEqual(size, 0)

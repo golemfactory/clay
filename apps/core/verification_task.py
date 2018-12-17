@@ -1,4 +1,4 @@
-from typing import Any
+import typing
 from twisted.internet.defer import Deferred, succeed
 from golem.core.common import deadline_to_timeout
 
@@ -9,7 +9,7 @@ class VerificationTask:
         self.deadline = deadline
         self.kwargs = kwargs
         self.subtask_id = subtask_id
-        self.verifier: Any = None
+        self.verifier: typing.Any = None
 
     def start(self, verifier_class) -> Deferred:
         self.verifier = verifier_class(self.kwargs)

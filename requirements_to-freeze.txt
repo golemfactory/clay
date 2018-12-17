@@ -4,7 +4,7 @@ asn1crypto==0.22.0
 autobahn==17.10.1
 Automat==0.6.0
 base58
-cbor2==3.0.4
+cbor==1.0.0
 certifi
 cffi==1.10.0
 click>=4.0
@@ -15,7 +15,7 @@ enforce==0.3.4
 eth-utils==1.0.3
 ethereum==1.6.1
 freezegun==0.3.11
-Golem-Messages==2.17.0
+Golem-Messages==2.20.0
 Golem-Smart-Contracts-Interface==1.6.1
 Golem-Verificator==1.6.3
 html2text==2018.1.9
