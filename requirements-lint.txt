@@ -1,4 +1,4 @@
-astroid==1.5.3
+astroid==1.6.5
 attrs==17.4.0
 certifi==2018.1.18
 chardet==3.0.4

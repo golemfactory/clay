@@ -7,6 +7,7 @@ from golem_messages import message
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simplehash import SimpleHash
+from golem.core.variables import CONCENT_CHOICES
 from golem.database import Database
 from golem.model import db, DB_FIELDS, DB_MODELS
 from golem.network.p2p.node import Node
@@ -95,7 +96,8 @@ class AddGetResources(TempDirFixture, LogTestCase):
                             transaction_system=mock.Mock(),
                             connect_to_known_hosts=False,
                             use_docker_manager=False,
-                            use_monitor=False)
+                            use_monitor=False,
+                            concent_variant=CONCENT_CHOICES['disabled'])
 
         client.resource_server = BaseResourceServer(resource_manager,
                                                     dir_manager,

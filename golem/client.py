@@ -97,11 +97,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             keys_auth: KeysAuth,
             database: Database,
             transaction_system: TransactionSystem,
+            # SEE: golem.core.variables.CONCENT_CHOICES
+            concent_variant: dict,
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
-            # SEE: golem.core.variables.CONCENT_CHOICES
-            concent_variant: dict = CONCENT_CHOICES['disabled'],
             geth_address: Optional[str] = None,
             apps_manager: AppsManager = AppsManager(),
             task_finished_cb=None,
@@ -219,10 +219,12 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         from apps.rendering.task import framerenderingtask
         from golem.environments.minperformancemultiplier import \
             MinPerformanceMultiplier
+        from golem.network.concent import soft_switch as concent_soft_switch
         from golem.task import rpc as task_rpc
         task_rpc_provider = task_rpc.ClientProvider(self)
         providers = (
             self,
+            concent_soft_switch,
             framerenderingtask,
             MinPerformanceMultiplier,
             self.task_server.task_manager,
@@ -923,7 +925,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     @rpc_utils.expose('pay.deposit_balance')
     def get_deposit_balance(self):
-        if not self.concent_service.enabled:
+        if not self.concent_service.available:
             return None
 
         balance: int = self.transaction_system.concent_balance()
