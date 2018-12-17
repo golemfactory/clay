@@ -100,7 +100,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         assert task_server.send_task_failed.called
 
     def test_computation(self):
-        p2p_node = dt_p2p_factory.Node()
         ctd = ComputeTaskDef()
         ctd['task_id'] = "xyz"
         ctd['subtask_id'] = "xxyyzz"
