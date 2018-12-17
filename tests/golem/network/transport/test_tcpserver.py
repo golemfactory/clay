@@ -5,7 +5,6 @@ from golem.network.transport.tcpnetwork import SocketAddress
 
 from golem.network.transport.tcpserver import (
     TCPServer, PendingConnectionsServer, PendingConnection, PenConnStatus)
-from golem.network.p2p.node import Node
 
 
 class ConfigDescriptor(object):

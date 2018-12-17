@@ -50,7 +50,7 @@ from golem.network.concent.client import ConcentClientService
 from golem.network.concent.filetransfers import ConcentFiletransferService
 from golem.network.history import MessageHistoryService
 from golem.network.hyperdrive.daemon_manager import HyperdriveDaemonManager
-from golem.network.p2p.node import Node
+from golem.network.p2p.local_node import LocalNode
 from golem.network.p2p.p2pservice import P2PService
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.network.transport.tcpnetwork import SocketAddress
@@ -131,9 +131,11 @@ class Client(HardwarePresetsMixin):
         self.keys_auth = keys_auth
 
         # NETWORK
-        self.node = Node(node_name=self.config_desc.node_name,
-                         prv_addr=self.config_desc.node_address,
-                         key=self.keys_auth.key_id)
+        self.node = LocalNode(
+            node_name=self.config_desc.node_name,
+            prv_addr=self.config_desc.node_address,
+            key=self.keys_auth.key_id,
+        )
 
         self.p2pservice = None
         self.diag_service = None

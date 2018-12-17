@@ -1,9 +1,10 @@
 from datetime import datetime
 
+from golem_messages.datastructures import p2p as dt_p2p
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from peewee import IntegrityError
 
 import golem.model as m
-from golem.network.p2p.node import Node
 from golem.testutils import DatabaseFixture
 
 
@@ -68,13 +69,13 @@ class TestPayment(DatabaseFixture):
                          status=m.PaymentStatus.sent)
 
     def test_payment_details_serialization(self):
-        p = m.PaymentDetails(node_info=Node(node_name="bla", key="xxx"),
+        p = m.PaymentDetails(node_info=dt_p2p_factory.Node(),
                              fee=700)
         dct = p.to_dict()
         self.assertIsInstance(dct, dict)
         self.assertIsInstance(dct['node_info'], dict)
         pd = m.PaymentDetails.from_dict(dct)
-        self.assertIsInstance(pd.node_info, Node)
+        self.assertIsInstance(pd.node_info, dt_p2p.Node)
         self.assertEqual(p, pd)
 
 

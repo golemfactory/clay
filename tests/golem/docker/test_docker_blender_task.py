@@ -3,6 +3,9 @@
 from os import path
 from unittest.mock import Mock
 
+from golem_messages.datastructures import p2p as dt_p2p
+from golem_messages.datastructures import tasks as dt_tasks
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 import pytest
 
 from apps.blender.task.blenderrendertask import BlenderRenderTaskBuilder, \
@@ -11,7 +14,6 @@ from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.docker.image import DockerImage
 from golem.resource.dirmanager import DirManager
 from golem.task.localcomputer import LocalComputer
-from golem.task.taskbase import TaskHeader
 from golem.task.taskcomputer import DockerTaskThread
 from golem.task.tasktester import TaskTester
 from golem.tools.ci import ci_skip
@@ -75,15 +77,19 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
 
     def test_build(self):
         """ Test building docker blender task """
-        from golem.network.p2p.node import Node
         node_name = "some_node"
         task_def = self._get_test_task_definition()
         dir_manager = DirManager(self.path)
-        builder = BlenderRenderTaskBuilder(Node(node_name=node_name,
-                                                key='dd72b37a1f0c',
-                                                pub_addr='1.2.3.4',
-                                                pub_port=40102),
-                                           task_def, dir_manager)
+        builder = BlenderRenderTaskBuilder(
+            dt_p2p_factory.Node(
+                node_name=node_name,
+                key='dd72b37a1f0c',
+                pub_addr='1.2.3.4',
+                pub_port=40102,
+            ),
+            task_def,
+            dir_manager,
+        )
         task = builder.build()
         assert isinstance(task, BlenderRenderTask)
         assert not task.compositing
@@ -93,12 +99,12 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
         assert not task.preview_updaters
         assert task.scale_factor == 0.8
         assert task.src_code
-        assert isinstance(task.header, TaskHeader)
+        assert isinstance(task.header, dt_tasks.TaskHeader)
         assert task.header.task_id == '7220aa01-ad45-4fb4-b199-ba72b37a1f0c'
         assert task.header.task_owner.key == 'dd72b37a1f0c'
         assert task.header.task_owner.pub_addr == '1.2.3.4'
         assert task.header.task_owner.pub_port == 40102
-        assert isinstance(task.header.task_owner, Node)
+        assert isinstance(task.header.task_owner, dt_p2p.Node)
         assert task.header.subtask_timeout == 1200
         assert task.header.task_owner.node_name == 'some_node'
         assert task.header.resource_size > 0
@@ -106,7 +112,7 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
         assert task.header.estimated_memory == 0
         assert task.docker_images[0].repository == 'golemfactory/blender'
         assert task.docker_images[0].tag == '1.4'
-        assert task.header.max_price == 10.2
+        assert task.header.max_price == 12
         assert not task.header.signature
         assert task.listeners == []
         assert len(task.task_resources) == 1
