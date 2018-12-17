@@ -3,10 +3,20 @@ import typing
 import html2text
 
 from golem.core.deferred import sync_wait
-from golem.interface.command import group, command
+from golem.interface.command import (
+    Argument,
+    command,
+    group,
+)
 
 if typing.TYPE_CHECKING:
     from golem.rpc.session import ClientProxy  # noqa pylint: disable=unused-import
+
+
+on_off_arg = Argument(
+    "on_off",
+    choices=["on", "off"],
+)
 
 
 @group(help="Concent Service")
@@ -14,10 +24,30 @@ class Concent:
     client: 'ClientProxy'
 
 
+@group(parent=Concent, help="Soft Switch")
+class Switch:
+    @classmethod
+    def _call(cls, uri, *args, **kwargs):
+        return Concent.client._call(  # pylint: disable=protected-access
+            f"golem.concent.switch{uri}",
+            *args,
+            **kwargs,
+        )
+
+    @command(arguments=(on_off_arg, ))
+    def turn(self, on_off):
+        return sync_wait(self._call(
+            ".turn",
+            on_off == "on",
+        ))
+
+    @command()
+    def is_on(self):
+        return sync_wait(self._call(""))
+
+
 @group(parent=Concent, help="Terms of Use")
 class Terms:
-    client: 'ClientProxy'
-
     @classmethod
     def _call(cls, uri, *args, **kwargs):
         return Concent.client._call(  # pylint: disable=protected-access
