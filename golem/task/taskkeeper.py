@@ -54,7 +54,7 @@ class WrongOwnerException(Exception):
 
 
 class CompTaskInfo:
-    def __init__(self, header: dt_tasks.TaskHeader, price: int):
+    def __init__(self, header: dt_tasks.TaskHeader, price: int) -> None:
         self.header = header
         # subtask_price is total amount that will be payed
         # for subtask of this task

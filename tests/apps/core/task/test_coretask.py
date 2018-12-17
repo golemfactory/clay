@@ -31,7 +31,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
     # CoreTask is abstract, so in order to be able to instantiate it
     # we have to override some stuff
     class CoreTaskDeabstracted(CoreTask):
-        ENVIRONMENT_CLASS = env_with_file
+        ENVIRONMENT_CLASS = env_with_file  # type: ignore
         EXTRA_DATA = CoreTask.ExtraData(sth="sth")
 
         def query_extra_data(self, *args, **kwargs):
