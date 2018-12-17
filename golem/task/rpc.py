@@ -90,7 +90,7 @@ def _validate_task_dict(client, task_dict) -> None:
                 "Cannot create task with concent enabled when "
                 "Concent Service is " +
                 (
-                    'switched off' if client.concent_service.enabled
+                    'switched off' if client.concent_service.available
                     else 'disabled'
                 ),
             )

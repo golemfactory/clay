@@ -441,7 +441,7 @@ class TestValidateTaskDict(ProviderBase):
         self.client.concent_service.available = False
 
         msg = "Cannot create task with concent enabled when " \
-              "concent service is disabled"
+              "Concent Service is disabled"
         with self.assertRaisesRegex(rpc.CreateTaskError, msg):
             rpc._validate_task_dict(self.client, self.t_dict)
 
@@ -452,7 +452,7 @@ class TestValidateTaskDict(ProviderBase):
         self.client.concent_service.enabled = False
 
         msg = "Cannot create task with concent enabled when " \
-              "concent service is switched off"
+              "Concent Service is switched off"
         with self.assertRaisesRegex(rpc.CreateTaskError, msg):
             rpc._validate_task_dict(self.client, self.t_dict)
 
