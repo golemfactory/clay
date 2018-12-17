@@ -53,12 +53,13 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         rt.subtask_timeout = 600
         rt.estimated_memory = 1000
         rt.max_price = 15
-        task = FrameRenderingTaskMock(files_[0],
-                                      owner=dt_p2p_factory.Node(node_name="ABC"),
-                                      task_definition=rt,
-                                      total_tasks=num_tasks,
-                                      root_path=self.path
-                                      )
+        task = FrameRenderingTaskMock(
+            files_[0],
+            owner=dt_p2p_factory.Node(node_name="ABC", ),
+            task_definition=rt,
+            total_tasks=num_tasks,
+            root_path=self.path,
+        )
         dm = DirManager(self.path)
         task.initialize(dm)
         return task

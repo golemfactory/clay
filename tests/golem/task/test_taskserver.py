@@ -318,7 +318,6 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertEqual(len(ts.get_others_tasks_headers()), 1)
 
         task_header = get_example_task_header(keys_auth_2.public_key)
-        task_id2 = task_header.task_id
         task_header.sign(private_key=keys_auth_2._private_key)
 
         self.assertTrue(ts.add_task_header(task_header))

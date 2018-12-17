@@ -408,7 +408,11 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             pub_port=1024,
             key="key_id",
         )
-        th = dt_tasks_factory.TaskHeader(task_id="xyz", environment="DEFAULT", task_owner=owner)
+        th = dt_tasks_factory.TaskHeader(
+            task_id="xyz",
+            environment="DEFAULT",
+            task_owner=owner,
+        )
         th.max_price = 50
         th.subtask_timeout = 1
 
@@ -1065,7 +1069,9 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             state.subtask_states = subtask_states
 
             task = BlenderRenderTask(task_definition=definition,
-                                     owner=dt_p2p_factory.Node(node_name='node'),
+                                     owner=dt_p2p_factory.Node(
+                                        node_name='node',
+                                     ),
                                      total_tasks=n,
                                      root_path=self.path)
             task.initialize(dirmanager.DirManager(self.path))
