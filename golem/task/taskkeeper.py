@@ -598,7 +598,7 @@ class TaskHeaderKeeper:
         """
         tasks = self.supported_tasks
         if exclude:
-            tasks = list(filter(lambda t: t not in exclude, tasks))
+            tasks = [t for t in tasks if t not in exclude]
         if not tasks:
             return None
         task_id = random.choice(tasks)
