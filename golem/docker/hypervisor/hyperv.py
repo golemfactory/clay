@@ -18,6 +18,7 @@ from golem.docker.config import CONSTRAINT_KEYS
 from golem.docker.hypervisor.docker_machine import DockerMachineHypervisor
 from golem.docker.task_thread import DockerBind
 from golem.report import Component, Stage
+from golem.rpc.mapping.rpceventnames import Golem
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +38,7 @@ EVENTS = {
 
 def publish_event(event: Dict) -> None:
     dispatcher.send(
-        signal='evt.golem.status',
+        signal=Golem.evt_golem_status,
         event='publish',
         **event
     )

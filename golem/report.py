@@ -76,7 +76,7 @@ class StatusPublisher(object):
 
         from pydispatch import dispatcher
         dispatcher.connect(cls._publish_listener,
-                           signal='evt.golem.status')
+                           signal=Golem.evt_golem_status)
 
         cls._initialized = True
 
