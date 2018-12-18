@@ -23,6 +23,7 @@ from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.config.active import IS_MAINNET, EthereumConfig
 from golem.core.deferred import chain_function
+from golem.core.hardware import HardwarePresets
 from golem.core.keysauth import KeysAuth, WrongPassword
 from golem.core import golem_async
 from golem.core.variables import PRIVATE_KEY
@@ -142,6 +143,10 @@ class Node(object):
                 raise Exception("Password incorrect")
 
     def start(self) -> None:
+
+        HardwarePresets.initialize(self._datadir)
+        HardwarePresets.update_config(self._config_desc.hardware_preset_name,
+                                      self._config_desc)
 
         try:
             rpc = self._start_rpc()
@@ -368,18 +373,6 @@ class Node(object):
                     'Terms of use must be accepted before using Golem. '
                     'Run `golemcli terms show` to display the terms '
                     'and `golemcli terms accept` to accept them.')
-                time.sleep(sleep_time)
-            if None in self.concent_variant.values():
-                return  # Concent disabled
-            while not terms.ConcentTermsOfUse.are_accepted() \
-                    and self._reactor.running:
-                logger.info(
-                    'Concent terms of use must be accepted before using'
-                    ' Concent service.'
-                    ' Run `golemcli concent terms show`'
-                    ' to display the terms'
-                    ' and `golemcli concent terms accept` to accept them.',
-                )
                 time.sleep(sleep_time)
 
         return threads.deferToThread(wait_for_terms)

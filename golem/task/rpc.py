@@ -6,10 +6,10 @@ import logging
 import os.path
 import re
 import typing
-import warnings
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
+from golem_messages.datastructures import masking
 from twisted.internet import defer
 
 from apps.core.task import coretask
@@ -21,7 +21,6 @@ from golem.core import simpleserializer
 from golem.ethereum import exceptions as eth_exceptions
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
-from golem.task import masking
 from golem.task import taskbase
 from golem.task import taskstate
 from golem.task import tasktester
@@ -85,11 +84,16 @@ def _validate_task_dict(client, task_dict) -> None:
                 )
             )
 
-    if task_dict['concent_enabled'] and \
-            not client.concent_service.enabled:
-        raise CreateTaskError(
-            "Cannot create task with concent enabled when "
-            "concent service is disabled")
+    if task_dict['concent_enabled']:
+        if not client.concent_service.enabled:  # `enabled` implies `available`
+            raise CreateTaskError(
+                "Cannot create task with concent enabled when "
+                "Concent Service is " +
+                (
+                    'switched off' if client.concent_service.available
+                    else 'disabled'
+                ),
+            )
 
 
 def prepare_and_validate_task_dict(client, task_dict):
@@ -185,7 +189,10 @@ def _restart_subtasks(
 
 @defer.inlineCallbacks
 def _ensure_task_deposit(client, task, force):
-    if not client.concent_service.enabled:
+    if not task.header.concent_enabled:
+        return
+
+    if not client.concent_service.available:
         return
 
     task_id = task.header.task_id

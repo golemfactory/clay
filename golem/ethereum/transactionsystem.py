@@ -108,10 +108,15 @@ class TransactionSystem(LoopingCallService):
         # Amortized gas cost per payment used when dealing with locks
         self._eth_per_payment: int = 0
 
-    @property  # type: ignore
+    @property   # type: ignore
     @sci_required()
-    def gas_price(self):
+    def gas_price(self) -> int:
         return self._sci.get_current_gas_price()
+
+    @property   # type: ignore
+    @sci_required()
+    def gas_price_limit(self) -> int:
+        return self._sci.GAS_PRICE  # type: ignore
 
     def backwards_compatibility_tx_storage(self, old_datadir: Path) -> None:
         if self.running:
@@ -293,16 +298,7 @@ class TransactionSystem(LoopingCallService):
             eth_address: str) -> int:
         if not self._payment_processor:
             raise Exception('Start was not called')
-        payee = decode_hex(eth_address)
-        if len(payee) != 20:
-            raise ValueError(
-                "Incorrect 'payee' length: {}. Should be 20".format(len(payee)))
-        payment = model.Payment.create(
-            subtask=subtask_id,
-            payee=payee,
-            value=value,
-        )
-        return self._payment_processor.add(payment)
+        return self._payment_processor.add(subtask_id, eth_address, value)
 
     @sci_required()
     def get_payment_address(self):

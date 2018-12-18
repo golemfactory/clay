@@ -1,14 +1,10 @@
 import collections
 import inspect
-import json
 import logging
 import sys
 import types
 from abc import ABCMeta, abstractmethod
-from typing import Optional, Type, Union
-
-import cbor2
-import pytz
+from typing import Optional
 
 from golem.core.common import to_unicode
 
@@ -116,29 +112,6 @@ class DictCoder:
         return fmt.format(obj.__module__, obj.__class__.__name__)
 
 
-class CBORCoder(DictCoder):
-
-    tag = 0xef
-    # Leave nested and special object serialization to CBOR
-    deep_serialization = False
-    disable_value_sharing = True
-
-    @classmethod
-    def encode(cls, encoder, value, fp):
-        if value is not None:
-            obj_dict = cls.obj_to_dict(value)
-            encoder.encode_semantic(cls.tag, obj_dict, fp,
-                                    disable_value_sharing=cls.disable_value_sharing)
-
-    @classmethod
-    def decode(cls, decoder, value, fp, shareable_index=None):
-        obj = cls.obj_from_dict(value)
-        # As instructed in cbor2.CBORDecoder
-        if shareable_index is not None and not cls.disable_value_sharing:
-            decoder.shareables[shareable_index] = obj
-        return obj
-
-
 class DictSerializer(object):
     """ Serialize and deserialize objects to a dictionary"""
     @staticmethod
@@ -162,26 +135,6 @@ class DictSerializer(object):
         return DictCoder.from_dict(dictionary, as_class=as_class)
 
 
-class CBORSerializer(object):
-    """ Serialize and deserialize objects to and from CBOR"""
-    decoders = dict()
-    decoders[CBORCoder.tag] = CBORCoder.decode
-    encoders = {(object, CBORCoder.encode)}
-
-    @classmethod
-    def loads(cls, payload):
-        return cbor2.loads(payload, semantic_decoders=cls.decoders)
-
-    @classmethod
-    def dumps(cls, obj):
-        return cbor2.dumps(
-            obj,
-            encoders=cls.encoders,
-            datetime_as_timestamp=True,
-            timezone=pytz.utc
-        )
-
-
 class DictSerializable(metaclass=ABCMeta):
     @abstractmethod
     def to_dict(self) -> dict:
@@ -191,22 +144,3 @@ class DictSerializable(metaclass=ABCMeta):
     @abstractmethod
     def from_dict(data: Optional[dict]) -> 'DictSerializable':
         "Converts the object to a dict containing only primitive types"
-
-
-class JSONDictSerializer:
-    @staticmethod
-    def loads(data: Union[bytes, str], key_type: Type) -> dict:
-        """
-        Creates a dict from the JSON formatted data.
-        :param data: the JSON data
-        :param key_type: the type the keys should be converted to
-        """
-        deserialized = json.loads(data)
-        return {key_type(k): v for k, v in deserialized.items()}
-
-    @staticmethod
-    def dumps(obj) -> str:
-        """
-        Dumps the object obj to JSON, if can be easily serialied
-        """
-        return json.dumps(obj)

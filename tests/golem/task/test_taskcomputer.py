@@ -11,7 +11,6 @@ from golem.client import ClientTaskComputerEventListener
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.deferred import sync_wait
-from golem.network.p2p.node import Node as P2PNode
 from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
 from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
@@ -91,8 +90,8 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.task_resource_failure(task_id, 'reason')
         assert task_server.send_task_failed.called
 
-    def test_computation(self):
-        p2p_node = P2PNode()
+    def test_computation(self):  # pylint: disable=too-many-statements
+        # FIXME Refactor too single tests and remove disable too many
         ctd = ComputeTaskDef()
         ctd['task_id'] = "xyz"
         ctd['subtask_id'] = "xxyyzz"
@@ -102,7 +101,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             "\tcnt += 1\n" \
             "output={'data': cnt, 'result_type': 0}"
         ctd['extra_data'] = {}
-        ctd['short_description'] = "add cnt"
         ctd['deadline'] = timeout_to_deadline(10)
 
         task_server = self.task_server

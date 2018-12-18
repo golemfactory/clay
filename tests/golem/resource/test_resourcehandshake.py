@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch, ANY
 
 from golem_messages import message
+from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from twisted.internet.defer import Deferred
 
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
@@ -18,8 +19,6 @@ from golem.resource.resourcehandshake import ResourceHandshake, \
     ResourceHandshakeSessionMixin
 from golem.task.acl import get_acl
 from golem.testutils import TempDirFixture, DatabaseFixture
-
-from tests.factories.task import taskbase as taskbase_factory
 
 
 class TestResourceHandshake(TempDirFixture):
@@ -90,7 +89,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         self.session = MockTaskSession(self.tempdir)
         self.session._start_handshake = Mock()
         self.session.task_server.task_keeper.task_headers = task_headers = {}
-        task_headers[self.message['task_id']] = taskbase_factory.TaskHeader()
+        task_headers[self.message['task_id']] = dt_tasks_factory.TaskHeader()
         self.session.task_server.client.concent_service.enabled = False
 
     def test_request_task_handshake(self, *_):

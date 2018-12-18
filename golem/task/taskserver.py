@@ -7,9 +7,15 @@ import time
 import weakref
 from collections import deque
 from pathlib import Path
-from typing import Optional, Set
+from typing import (
+    List,
+    Optional,
+    Set)
 
+from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
+from golem_messages.datastructures import p2p as dt_p2p
+from golem_messages.datastructures import tasks as dt_tasks
 from pydispatch import dispatcher
 from twisted.internet.defer import inlineCallbacks
 
@@ -20,7 +26,6 @@ from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.core.common import node_info_str, short_node_id
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.marketplace import OfferPool
-from golem.network.p2p import node as p2p_node
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
     TCPNetwork, SocketAddress, SafeProtocol)
@@ -37,13 +42,12 @@ from golem.ranking.manager.database_manager import (
 )
 from golem.task.acl import get_acl
 from golem.task.benchmarkmanager import BenchmarkManager
-from golem.task.taskbase import TaskHeader, Task, AcceptClientVerdict
+from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
 from golem.task.timer import ProviderTimer
 from golem.utils import decode_hex
 
-from . import exceptions
 from .result.resultmanager import ExtractedPackage
 from .server import resources
 from .server import concent
@@ -93,12 +97,9 @@ class TaskServer(
             min_price=config_desc.min_price,
             task_archiver=task_archiver)
         self.task_manager = TaskManager(
-            config_desc.node_name,
             self.node,
             self.keys_auth,
             root_path=TaskServer.__get_task_manager_root(client.datadir),
-            use_distributed_resources=config_desc.
-            use_distributed_resource_management,
             tasks_dir=os.path.join(client.datadir, 'tasks'),
             apps_manager=apps_manager,
             finished_cb=task_finished_cb,
@@ -208,7 +209,7 @@ class TaskServer(
 
     # This method chooses random task from the network to compute on our machine
     def request_task(self) -> Optional[str]:
-        theader = self.task_keeper.get_random_task(self.requested_tasks)
+        theader = self.task_keeper.get_task(self.requested_tasks)
         if theader is None:
             return None
         try:
@@ -224,7 +225,7 @@ class TaskServer(
                     UnsupportReason.MAX_PRICE: theader.max_price}))
 
             if self.client.concent_service.enabled:
-                if not theader.fixed_header.concent_enabled:
+                if not theader.concent_enabled:
                     supported = supported.join(
                         SupportStatus.err({
                             UnsupportReason.CONCENT_REQUIRED: True,
@@ -369,37 +370,41 @@ class TaskServer(
                 logger.error("Error closing incoming session: %s", exc)
 
     def get_own_tasks_headers(self):
-        ths_tm = self.task_manager.get_tasks_headers()
-        return [th.to_dict() for th in ths_tm]
+        return self.task_manager.get_tasks_headers()
 
-    def get_others_tasks_headers(self):
-        ths_tk = self.task_keeper.get_all_tasks()
-        return [th.to_dict() for th in ths_tk]
+    def get_others_tasks_headers(self) -> List[dt_tasks.TaskHeader]:
+        return self.task_keeper.get_all_tasks()
 
-    def add_task_header(self, th_dict_repr: dict) -> bool:
+    def add_task_header(self, task_header: dt_tasks.TaskHeader) -> bool:
+        if not self.verify_header_sig(task_header):
+            logger.info(
+                'Invalid signature task_header:%r, signature: %r',
+                task_header,
+                task_header.signature,
+            )
+            return False
         try:
-            TaskHeader.validate(th_dict_repr)
-            header = TaskHeader.from_dict(th_dict_repr)
-            if not self.verify_header_sig(header):
-                raise ValueError("Invalid signature")
-
-            if self.task_manager.is_this_my_task(header):
+            if self.task_manager.is_my_task(task_header.task_id) or \
+                    task_header.task_owner.key == self.node.key:
                 return True  # Own tasks are not added to task keeper
 
-            return self.task_keeper.add_task_header(header)
-
-        except exceptions.TaskHeaderError as e:
-            logger.warning("Wrong task header received: %s", e)
-            return False
+            return self.task_keeper.add_task_header(task_header)
         except Exception:  # pylint: disable=broad-except
             logger.exception("Task header validation failed")
             return False
 
-    def verify_header_sig(self, header: TaskHeader):
-        _bin = header.to_binary()
-        _sig = header.signature
-        _key = header.task_owner.key
-        return self.verify_sig(_sig, _bin, _key)
+    @classmethod
+    def verify_header_sig(cls, header: dt_tasks.TaskHeader):
+        try:
+            header.verify(public_key=decode_hex(header.task_owner.key))
+        except msg_exceptions.CryptoError:
+            logger.debug(
+                'hdr verification failed. hdr.task_owner.key: %r',
+                header.task_owner.key,
+                exc_info=True,
+            )
+            return False
+        return True
 
     def remove_task_header(self, task_id) -> bool:
         return self.task_keeper.remove_task_header(task_id)
@@ -436,9 +441,6 @@ class TaskServer(
     def sign(self, data):
         return self.keys_auth.sign(data)
 
-    def verify_sig(self, sig, data, public_key):
-        return self.keys_auth.verify(sig, data, public_key)
-
     def get_resource_addr(self):
         return self.client.node.prv_addr
 
@@ -457,9 +459,6 @@ class TaskServer(
         PendingConnectionsServer.change_config(self, config_desc)
         self.config_desc = config_desc
         self.last_message_time_threshold = config_desc.task_session_timeout
-        self.task_manager.change_config(
-            self.__get_task_manager_root(self.client.datadir),
-            config_desc.use_distributed_resource_management)
         self.task_keeper.change_config(config_desc)
         return self.task_computer.change_config(
             config_desc, run_benchmarks=run_benchmarks)
@@ -545,7 +544,7 @@ class TaskServer(
         try:
 
             task_id = keeper.get_task_id_for_subtask(subtask_id)
-            header = keeper.get_task_header(task_id).fixed_header
+            header = keeper.get_task_header(task_id)
             environment = self.get_environment_by_id(header.environment)
             computation_time = ProviderTimer.time
 
@@ -1067,7 +1066,7 @@ class TaskServer(
             'subtask_id': report_computed_task.subtask_id,
         }
 
-        node = p2p_node.Node.from_dict(report_computed_task.node_info)
+        node = dt_p2p.Node(**report_computed_task.node_info)
 
         self._add_pending_request(
             TASK_CONN_TYPES['task_verification_result'],

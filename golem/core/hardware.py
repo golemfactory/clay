@@ -1,4 +1,5 @@
 import logging
+from multiprocessing import cpu_count
 from typing import Union, List, Tuple, Optional, Dict
 import humanize
 import psutil
@@ -11,30 +12,50 @@ from golem.appconfig import \
     DEFAULT_HARDWARE_PRESET_NAME as DEFAULT, \
     CUSTOM_HARDWARE_PRESET_NAME as CUSTOM
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import get_cpu_count, is_osx, is_windows, \
-    MAX_CPU_MACOS, MAX_CPU_WINDOWS
+from golem.core.common import is_osx, is_windows, is_linux
 from golem.core.fileshelper import free_partition_space
 from golem.model import HardwarePreset
 
 logger = logging.getLogger(__name__)
 
 
+MAX_CPU_WINDOWS = 32
+MAX_CPU_MACOS = 16
+
+
 def cpu_cores_available() -> List[int]:
-    """Retrieves available CPU cores except for the first one. Tries to read
-       process' CPU affinity first.
-    :return list: Available cpu cores except the first one.
     """
+    Lists CPU cores affined to the process (Linux, Windows) or the available
+    core count (macOS). On Linux, tries to remove the first core from the list
+    if no custom affinity has been set.
+    :return list: A list of CPU cores available for computation.
+    """
+    core_count = cpu_count()
+
     try:
         affinity = psutil.Process().cpu_affinity()
-        if is_osx() and len(affinity) > MAX_CPU_MACOS:
-            return list(range(0, MAX_CPU_MACOS))
-        if is_windows() and len(affinity) > MAX_CPU_WINDOWS:
-            return list(range(0, MAX_CPU_WINDOWS))
-        return affinity[:-1] or affinity
     except Exception as e:
         logger.debug("Couldn't read CPU affinity: %r", e)
-        num_cores = get_cpu_count()
-        return list(range(0, num_cores - 1)) or [0]
+        affinity = list(range(0, core_count - 1))
+
+    # FIXME: The Linux case will no longer be valid when VM computations are
+    #        introduced.
+    if is_linux():
+        if len(affinity) == core_count and 0 in affinity:
+            affinity.remove(0)
+    else:
+        reserved_cpu = 1
+        if is_osx() and len(affinity) > MAX_CPU_MACOS:
+            affinity = affinity[:MAX_CPU_MACOS]
+            reserved_cpu = 0
+        elif is_windows() and len(affinity) > MAX_CPU_WINDOWS:
+            affinity = affinity[:MAX_CPU_WINDOWS]
+            reserved_cpu = 0
+        affinity = list(range(0, len(affinity) - reserved_cpu))
+    cpu_list = affinity or [0]
+    logger.debug('cpus() -> %r', cpu_list)
+    return cpu_list
+
 
 
 def memory_available() -> int:

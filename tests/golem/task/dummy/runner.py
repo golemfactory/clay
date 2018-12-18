@@ -23,6 +23,7 @@ from twisted.internet import reactor
 
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.variables import CONCENT_CHOICES
 from golem.database import Database
 from golem.environments.environment import Environment
 from golem.resource.dirmanager import DirManager
@@ -86,6 +87,10 @@ def create_client(datadir):
     database = Database(
         db, fields=DB_FIELDS, models=DB_MODELS, db_dir=datadir)
 
+    from golem.core.hardware import HardwarePresets
+    HardwarePresets.initialize(datadir)
+    HardwarePresets.update_config('default', config_desc)
+
     ets = _make_mock_ets()
     return Client(datadir=datadir,
                   app_config=app_config,
@@ -95,7 +100,8 @@ def create_client(datadir):
                   transaction_system=ets,
                   use_monitor=False,
                   connect_to_known_hosts=False,
-                  use_docker_manager=False)
+                  use_docker_manager=False,
+                  concent_variant=CONCENT_CHOICES['disabled'])
 
 
 def _make_mock_ets():

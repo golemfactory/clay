@@ -4,13 +4,13 @@ import time
 
 import semantic_version
 from golem_messages import message
+from golem_messages.datastructures import p2p as dt_p2p
 from pydispatch import dispatcher
 
 import golem
 from golem.appconfig import SEND_PEERS_NUM
 from golem.core import variables
 from golem.core.keysauth import KeysAuth
-from golem.network.p2p.node import Node
 from golem.network.transport.session import BasicSafeSession
 from golem.network.transport.tcpnetwork import SafeProtocol
 
@@ -289,7 +289,7 @@ class PeerSession(BasicSafeSession):
             self.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
             return
 
-        self.node_info = Node.from_dict(msg.node_info)
+        self.node_info = dt_p2p.Node(**msg.node_info)
 
         if not KeysAuth.is_pubkey_difficult(
                 self.node_info.key,
@@ -338,7 +338,7 @@ class PeerSession(BasicSafeSession):
         peers_info = msg.peers[:SEND_PEERS_NUM]
         self.degree = len(peers_info)
         for pi in peers_info:
-            pi['node'] = Node.from_dict(pi['node'])
+            pi['node'] = dt_p2p.Node(**pi['node'])
             self.p2p_service.try_to_add_peer(pi)
 
     def _react_to_get_tasks(self, msg):
@@ -461,9 +461,9 @@ class PeerSession(BasicSafeSession):
     def _react_to_want_to_start_task_session(self, msg):
         super_node_info = None
         if msg.super_node_info:
-            super_node_info = Node.from_dict(msg.super_node_info)
+            super_node_info = dt_p2p.Node(**msg.super_node_info)
         self.p2p_service.peer_want_task_session(
-            Node.from_dict(msg.node_info),
+            dt_p2p.Node(**msg.node_info),
             super_node_info,
             msg.conn_id
         )
@@ -471,10 +471,10 @@ class PeerSession(BasicSafeSession):
     def _react_to_set_task_session(self, msg):
         super_node_info = None
         if msg.super_node_info:
-            super_node_info = Node.from_dict(msg.super_node_info)
+            super_node_info = dt_p2p.Node(**msg.super_node_info)
         self.p2p_service.want_to_start_task_session(
             msg.key_id,
-            Node.from_dict(msg.node_info),
+            dt_p2p.Node(**msg.node_info),
             msg.conn_id,
             super_node_info
         )

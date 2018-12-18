@@ -10,13 +10,14 @@ import shutil
 from typing import AnyStr, Generic, List, Optional, Type, TypeVar, Union
 from unittest.mock import Mock, patch
 
+from golem_messages.datastructures import p2p as dt_p2p
+
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.simpleserializer import DictSerializer
 from golem.docker.task_thread import DockerTaskThread
-from golem.network.p2p.node import Node as P2PNode
 from golem.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
@@ -85,7 +86,7 @@ class DockerTaskTestCase(
     def _get_test_task(self) -> Task:
         self.TASK_CLASS.VERIFICATION_QUEUE._reset()
         task_builder = self.TASK_BUILDER_CLASS(
-            owner=P2PNode(
+            owner=dt_p2p.Node(
                 node_name="0123456789abcdef",
                 key="0xdeadbeef",
                 prv_addr="10.0.0.10",

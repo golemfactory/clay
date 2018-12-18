@@ -9,6 +9,7 @@ from threading import Lock
 from typing import Callable, Any, Dict
 
 from golem_messages import message
+from golem_messages.datastructures import tasks as dt_tasks
 
 from golem.config.active import P2P_SEEDS
 from golem.core import simplechallenge
@@ -685,13 +686,13 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         """
         return self.task_server.get_others_tasks_headers()
 
-    def add_task_header(self, th_dict_repr):
+    def add_task_header(self, task_header: dt_tasks.TaskHeader):
         """ Add new task header to a list of known task headers
         :param dict th_dict_repr: new task header dictionary representation
         :return bool: True if a task header was in a right format,
                       False otherwise
         """
-        return self.task_server.add_task_header(th_dict_repr)
+        return self.task_server.add_task_header(task_header)
 
     def remove_task_header(self, task_id) -> bool:
         """ Remove header of a task with given id from a list of a known tasks

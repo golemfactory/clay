@@ -13,9 +13,6 @@ class DummyTask(Task):
     def query_extra_data(self, perf_index, num_cores, node_id, node_name):
         pass
 
-    def short_extra_data_repr(self, extra_data):
-        pass
-
     def needs_computation(self):
         pass
 
