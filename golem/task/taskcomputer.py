@@ -252,7 +252,7 @@ class TaskComputer(object):
     def get_environment(self):
         task_header = self.task_server.task_keeper.task_headers.get(
             self.counting_task)
-        return task_header.fixed_header.environment,
+        return task_header.environment,
 
     def change_config(self, config_desc, in_background=True,
                       run_benchmarks=False):
