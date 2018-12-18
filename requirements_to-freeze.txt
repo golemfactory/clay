@@ -42,7 +42,7 @@ pysha3>=1.0.2
 pytz
 PyYAML>=3.12
 raven
-requests==2.18.4
+requests==2.21.0
 scrypt
 semantic_version
 setuptools-rust==0.10.2
