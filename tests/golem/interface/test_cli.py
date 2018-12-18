@@ -3,13 +3,14 @@ import unittest
 from unittest.mock import patch, Mock
 
 from io import StringIO
+from twisted.internet.defer import Deferred, TimeoutError
+from twisted.internet.error import ReactorNotRunning
 
-from golem.interface.cli import CLI, _exit, _help, _debug, ArgumentParser
+from golem.interface.cli import CLI, _exit, _help, _debug, ArgumentParser, \
+    adapt_children
 from golem.interface.command import group, doc, argument,\
     identifier, name, command, CommandHelper, storage_context
 from golem.interface.exceptions import ParsingException, CommandException
-from twisted.internet.defer import Deferred, TimeoutError
-from twisted.internet.error import ReactorNotRunning
 
 
 def _nop(*a, **kw):
@@ -370,3 +371,26 @@ class TestArgumentParser(unittest.TestCase):
         ap = ArgumentParser()
         with self.assertRaises(ParsingException):
             ap.exit()
+
+
+class TestAdaptChildren(unittest.TestCase):
+    def setUp(self):
+        self.children = {
+            'withdraw': Mock(),
+            'sth else': Mock(),
+        }
+
+    def test_empty_remains_empty(self):
+        result = adapt_children({})
+        self.assertEqual(result, {})
+
+    def test_no_adaptation_for_mainnet(self):
+        with patch('golem.config.active.IS_MAINNET', True):
+            result = adapt_children(self.children)
+            self.assertEqual(result, self.children)
+
+    def test_remove_withdraw_if_not_mainnet(self):
+        with patch('golem.config.active.IS_MAINNET', False):
+            result = adapt_children(self.children)
+            self.children.pop('withdraw')
+            self.assertEqual(result, self.children)
