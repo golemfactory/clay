@@ -2,6 +2,7 @@ import argparse
 import shlex
 import sys
 import time
+from typing import Text, Dict, Callable
 
 from golem.interface.command import CommandHelper, CommandStorage, command, Argument
 from golem.interface.exceptions import ExecutionException, ParsingException, CommandException
@@ -38,6 +39,19 @@ class ArgumentParser(argparse.ArgumentParser):
 
     def exit(self, status=0, message=None):
         raise ParsingException(message, self)
+
+
+def adapt_children(children: Dict[Text, Callable]) -> Dict[Text, Callable]:
+    """
+    This function adapts children of an interface: if golemcli is not run on
+    mainnet, there should be no option to `withdraw` for `golemcli account`
+    """
+    new_children = {k: v for k, v in children.items()}
+    from golem.config.active import IS_MAINNET
+    if not IS_MAINNET:
+        if 'withdraw' in new_children:
+            new_children.pop('withdraw')
+    return new_children
 
 
 class CLI(object):
@@ -218,7 +232,7 @@ class CLI(object):
 
         name = interface['name']
         source = interface['source']
-        children = interface['children']
+        children = adapt_children(interface['children'])
         arguments = interface['arguments']
         is_callable = interface['callable']
 
