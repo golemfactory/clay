@@ -24,7 +24,7 @@ os.environ[CONCENT_ENVIRONMENT_VARIABLE] = os.environ.get(
 
 # ETH
 
-class EthereumConfig:  # pylint:disable=too-few-public-methods
+class EthereumConfig:
     NODE_LIST = [
         'https://rinkeby.golem.network:55555',
         'http://188.165.227.180:55555',

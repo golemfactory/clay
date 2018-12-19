@@ -4,6 +4,7 @@ from typing import Dict, Optional, Tuple
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.environments.environmentsconfig import EnvironmentsConfig
+from golem.rpc import utils as rpc_utils
 from .environment import Environment, SupportStatus, UnsupportReason
 
 logger = logging.getLogger(__name__)
@@ -100,6 +101,7 @@ class EnvironmentsManager:
         setter_for_env(int(state))
         self.env_config = self.env_config.change_config()
 
+    @rpc_utils.expose('comp.environment.performance')
     def get_performance_values(self) -> Dict[str, float]:
         perf_values = {env_id: env.get_performance()
                        for env_id, env in self.environments.items()}

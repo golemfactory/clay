@@ -1,21 +1,23 @@
-# pylint: disable=too-few-public-methods,too-many-locals
+# pylint: disable=too-many-locals
+# pylint: disable=protected-access
 
 import json
 import os
-import time
 from os import path
+import time
 from pathlib import Path
 import shutil
 from typing import AnyStr, Generic, List, Optional, Type, TypeVar, Union
 from unittest.mock import Mock, patch
 
+from golem_messages.datastructures import p2p as dt_p2p
+
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import get_golem_path, timeout_to_deadline, is_windows
+from golem.core.common import get_golem_path, timeout_to_deadline
 from golem.core.simpleserializer import DictSerializer
 from golem.docker.task_thread import DockerTaskThread
-from golem.network.p2p.node import Node as P2PNode
 from golem.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
@@ -32,7 +34,7 @@ PathOrStr = Union[Path, AnyStr]
 class TaskComputerExt(TaskComputer):
 
     @property  # type: ignore
-    def counting_thread(self):  # noqa
+    def counting_thread(self):
         return getattr(self, '_counting_thread', None)
 
     @counting_thread.setter
@@ -78,13 +80,13 @@ class DockerTaskTestCase(
         with open(task_path) as f:
             golem_path = get_golem_path()
             json_str = f.read().replace('$GOLEM_DIR',
-                                        Path(get_golem_path()).as_posix())
+                                        Path(golem_path).as_posix())
             return DictSerializer.load(json.loads(json_str))
 
     def _get_test_task(self) -> Task:
         self.TASK_CLASS.VERIFICATION_QUEUE._reset()
         task_builder = self.TASK_BUILDER_CLASS(
-            owner=P2PNode(
+            owner=dt_p2p.Node(
                 node_name="0123456789abcdef",
                 key="0xdeadbeef",
                 prv_addr="10.0.0.10",
@@ -125,6 +127,8 @@ class DockerTaskTestCase(
         mock_keys_auth.key_id = node_id
         self.node.client = self.node._client_factory(mock_keys_auth)
         self.node.client.start = Mock()
+        self.node.client.task_server = Mock()
+        self.node.rpc_session = Mock()
         self.node._run()
 
         ccd = ClientConfigDescriptor()
@@ -164,7 +168,10 @@ class DockerTaskTestCase(
 
         # Start task computation
         task_computer.task_given(ctd)
-        result = task_computer.resource_given(ctd['task_id'])
+        result = task_computer.task_resource_collected(
+            ctd['task_id'],
+            unpack_delta=False,
+        )
         self.assertTrue(result)
 
         task_thread = None

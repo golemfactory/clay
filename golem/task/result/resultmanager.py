@@ -3,7 +3,7 @@ import logging
 import abc
 import os
 
-from golem.core.async import AsyncRequest, async_run
+from golem.core import golem_async
 from golem.core.fileencrypt import FileEncryptor
 from .resultpackage import (
     EncryptingTaskResultPackager, ExtractedPackage, ZipTaskResultPackager)
@@ -36,7 +36,10 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
         super(EncryptedResultPackageManager, self).__init__(resource_manager)
 
     def gen_secret(self):
-        return FileEncryptor.gen_secret(self.min_secret_len, self.max_secret_len)
+        return FileEncryptor.gen_secret(
+            self.min_secret_len,
+            self.max_secret_len,
+        )
 
     def get_file_name_and_path(self, task_id, subtask_id):
         file_name = task_id + "." + subtask_id
@@ -56,10 +59,13 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
             os.remove(file_path)
 
         def package_downloaded(*args, **kwargs):
-            request = AsyncRequest(self.extract, file_path,
-                                   output_dir=output_dir,
-                                   key_or_secret=key_or_secret)
-            async_run(request, package_extracted, error)
+            request = golem_async.AsyncRequest(
+                self.extract,
+                file_path,
+                output_dir=output_dir,
+                key_or_secret=key_or_secret,
+            )
+            golem_async.async_run(request, package_extracted, error)
 
         def package_extracted(extracted_pkg, *args, **kwargs):
             success(extracted_pkg, content_hash, task_id, subtask_id)
@@ -71,7 +77,7 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
                                             error=error,
                                             async_=async_)
 
-    def create(self, node, task_result, key_or_secret=None):
+    def create(self, task_result, key_or_secret=None):
         if not key_or_secret:
             raise ValueError("Empty key / secret")
 
@@ -82,9 +88,10 @@ class EncryptedResultPackageManager(TaskResultPackageManager):
             os.remove(encrypted_package_path)
 
         packager = self.package_class(key_or_secret)
-        path, sha1 = packager.create(encrypted_package_path,
-                                     node=node,
-                                     task_result=task_result)
+        path, sha1 = packager.create(
+            encrypted_package_path,
+            task_result.result,
+        )
 
         package_path = packager.package_name(encrypted_package_path)
         package_size = os.path.getsize(package_path)

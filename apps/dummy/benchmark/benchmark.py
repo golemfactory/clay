@@ -39,7 +39,8 @@ class DummyTaskBenchmark(CoreBenchmark):
         self.verification_options["subtask_id"] = "DummyBenchmark"
         verification_data['subtask_info'] = self.verification_options
         self.verifier = DummyTaskVerifier(verification_data)
-        self.subtask_data = DummyTask.TESTING_CHAR * td.options.subtask_data_size  # noqa
+        self.subtask_data = \
+            DummyTask.TESTING_CHAR * td.options.subtask_data_size
 
     @property
     def normalization_constant(self):

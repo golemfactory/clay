@@ -19,6 +19,7 @@ logger = logging.getLogger(__name__)
 MIN_DISK_SPACE = 1024 * 1024
 MIN_MEMORY_SIZE = 1024 * 1024
 MIN_CPU_CORES = 1
+TOTAL_MEMORY_CAP = 0.75
 
 DEFAULT_HARDWARE_PRESET_NAME = "default"
 CUSTOM_HARDWARE_PRESET_NAME = "custom"
@@ -118,7 +119,6 @@ class AppConfig:
         node_config = NodeConfig(
             node_name="",
             node_address="",
-            eth_account="",
             use_ipv6=USE_IP6,
             use_upnp=USE_UPNP,
             start_port=START_PORT,

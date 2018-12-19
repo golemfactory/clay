@@ -7,6 +7,8 @@ from unittest.mock import MagicMock, patch
 import uuid
 
 from eth_utils import encode_hex
+from golem_messages.datastructures import p2p as dt_p2p
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import Disconnect
 from twisted.internet.tcp import EISCONN
 
@@ -15,7 +17,6 @@ from golem.core.keysauth import KeysAuth
 from golem.diag.service import DiagnosticsOutputFormat
 from golem.model import KnownHosts
 from golem.network.p2p import peersession
-from golem.network.p2p.node import Node
 from golem.network.p2p.p2pservice import HISTORY_LEN, P2PService, \
     RANDOM_DISCONNECT_FRACTION, MAX_STORED_HOSTS
 from golem.network.p2p.peersession import PeerSession
@@ -110,7 +111,7 @@ class TestP2PService(TestDatabaseWithReactor):
 
         # find_node() via kademlia neighbours
         neighbour_node_key_id = uuid.uuid4()
-        neighbour_node = Node(
+        neighbour_node = dt_p2p_factory.Node(
             node_name='Syndrom wstrząsu toksycznego',
             key=str(neighbour_node_key_id),
             prv_addr=randaddr(),
@@ -132,14 +133,14 @@ class TestP2PService(TestDatabaseWithReactor):
         self.assertEqual(self.service.find_node(node_key_id), expected)
 
     def test_add_to_peer_keeper(self):
-        node = Node()
+        node = dt_p2p_factory.Node()
         node.key = encode_hex(urandom(64))[2:]
         m_test2 = mock.MagicMock()
         m_test3 = mock.MagicMock()
         self.service.peers["TEST3"] = m_test3
         self.service.peers["TEST2"] = m_test2
         self.service.peer_keeper = mock.MagicMock()
-        node2 = Node()
+        node2 = dt_p2p_factory.Node()
         node2.key = "TEST2"
         self.service.peer_keeper.add_peer = mock.MagicMock(return_value=node2)
         self.service.add_to_peer_keeper(node)
@@ -216,7 +217,7 @@ class TestP2PService(TestDatabaseWithReactor):
         key_id = encode_hex(urandom(64))[2:]
         nominal_seeds = len(self.service.seeds)
 
-        node = Node(
+        node = dt_p2p_factory.Node(
             node_name='super_node',
             key=str(key_id),
             pub_addr='1.2.3.4',
@@ -225,7 +226,7 @@ class TestP2PService(TestDatabaseWithReactor):
             prv_port=10000)
         node.prv_addresses = [node.prv_addr, '172.1.2.3']
 
-        assert Node.is_super_node(node)
+        assert dt_p2p.Node.is_super_node(node)
 
         KnownHosts.delete().execute()
         len_start = len(KnownHosts.select())
@@ -252,12 +253,12 @@ class TestP2PService(TestDatabaseWithReactor):
         # try to add more than max, we already have at least 1
         pub_prefix = '2.2.3.'
         prv_prefix = '172.1.2.'
-        key_id_str = key_id
+        key_id_str = key_id[:-(MAX_STORED_HOSTS + 6)]
         for i in range(1, MAX_STORED_HOSTS + 6):
             i_str = str(i)
             pub = pub_prefix + i_str
             prv = prv_prefix + i_str
-            n = Node(
+            n = dt_p2p_factory.Node(
                 node_name=i_str,
                 key=key_id_str + i_str,
                 pub_addr=pub,
@@ -270,7 +271,7 @@ class TestP2PService(TestDatabaseWithReactor):
         assert len(self.service.seeds) == nominal_seeds
 
     def test_sync_free_peers(self):
-        node = Node(
+        node = dt_p2p_factory.Node(
             key=encode_hex(urandom(64))[2:],
             pub_addr='127.0.0.1',
             p2p_pub_port=10000

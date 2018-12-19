@@ -35,7 +35,6 @@ class TaskTester(LocalComputer):
                                     ctd['subtask_id'],
                                     ctd['src_code'],
                                     ctd['extra_data'],
-                                    ctd['short_description'],
                                     self.test_task_res_path,
                                     self.tmp_dir,
                                     0)

@@ -30,12 +30,15 @@ class TempDirFixture(unittest.TestCase):
                 # to avoid issues with mounting directories in Docker containers
                 cls.root_dir = os.path.join(get_local_datadir('tests'))
                 os.makedirs(cls.root_dir, exist_ok=True)
+            elif is_windows():
+                import win32api  # noqa pylint: disable=import-error
+                base_dir = get_local_datadir('default')
+                cls.root_dir = os.path.join(base_dir, 'ComputerRes', 'tests')
+                os.makedirs(cls.root_dir, exist_ok=True)
+                cls.root_dir = win32api.GetLongPathName(cls.root_dir)
             else:
                 # Select nice root temp dir exactly once.
                 cls.root_dir = tempfile.mkdtemp(prefix='golem-tests-')
-                if is_windows():
-                    import win32api
-                    cls.root_dir = win32api.GetLongPathName(cls.root_dir)
 
     # Concurrent tests will fail
     # @classmethod
@@ -153,11 +156,8 @@ class PEP8MixIn(object):
 
     def test_conformance(self):
         """Test that we conform to PEP-8."""
-
-        # TODO: https://github.com/golemfactory/golem/issues/3030
-
         style = pycodestyle.StyleGuide(
-            ignore=pycodestyle.DEFAULT_IGNORE.split(',') + ['W606'],
+            ignore=pycodestyle.DEFAULT_IGNORE.split(','),
             max_line_length=80)
 
         # PyCharm needs absolute paths

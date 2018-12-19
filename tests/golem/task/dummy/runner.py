@@ -23,9 +23,11 @@ from twisted.internet import reactor
 
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.variables import CONCENT_CHOICES
 from golem.database import Database
 from golem.environments.environment import Environment
 from golem.resource.dirmanager import DirManager
+from golem.task import rpc as task_rpc
 from golem.model import db, DB_FIELDS, DB_MODELS
 from golem.network.transport.tcpnetwork import SocketAddress
 from tests.golem.task.dummy.task import DummyTask, DummyTaskParameters
@@ -58,7 +60,6 @@ def report(msg):
 
 
 def override_ip_info(*_, **__):
-    from golem.network.stun.pystun import OpenInternet
     return '1.2.3.4', 40102
 
 
@@ -86,6 +87,10 @@ def create_client(datadir):
     database = Database(
         db, fields=DB_FIELDS, models=DB_MODELS, db_dir=datadir)
 
+    from golem.hardware.presets import HardwarePresets
+    HardwarePresets.initialize(datadir)
+    HardwarePresets.update_config('default', config_desc)
+
     ets = _make_mock_ets()
     return Client(datadir=datadir,
                   app_config=app_config,
@@ -95,7 +100,8 @@ def create_client(datadir):
                   transaction_system=ets,
                   use_monitor=False,
                   connect_to_known_hosts=False,
-                  use_docker_manager=False)
+                  use_docker_manager=False,
+                  concent_variant=CONCENT_CHOICES['disabled'])
 
 
 def _make_mock_ets():
@@ -159,7 +165,7 @@ def run_requesting_node(datadir, num_subtasks=3):
     task = DummyTask(client.get_node_name(), params, num_subtasks,
                      client.keys_auth.public_key)
     task.initialize(DirManager(datadir))
-    client.enqueue_new_task(task)
+    task_rpc.enqueue_new_task(client, task)
 
     port = client.p2pservice.cur_port
     requestor_addr = "{}:{}".format(client.node.prv_addr, port)

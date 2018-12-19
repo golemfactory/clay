@@ -66,8 +66,8 @@ class MockHypervisor(DockerMachineHypervisor):
     def constraints(self, name: Optional[str] = None) -> Dict:
         return dict()
 
-    def create(self, name: Optional[str] = None, **params):
-        pass
+    def create(self, vm_name: Optional[str] = None, **params) -> bool:
+        return True
 
     def constrain(self, name: Optional[str] = None, **params) -> None:
         pass
@@ -80,7 +80,6 @@ class MockHypervisor(DockerMachineHypervisor):
 
 
 class MockDockerManager(DockerManager):
-    # pylint: disable=too-few-public-methods
     # pylint: disable=too-many-instance-attributes
 
     def __init__(self, config_desc=None) -> None:
@@ -275,7 +274,7 @@ class TestVirtualBoxHypervisor(LogTestCase):
         with mock.patch.object(self.hypervisor, 'command') as cmd:
             self.hypervisor.create('test')
             assert ('create', 'test') == cmd.call_args[0]
-            assert {'args': ('--driver', 'virtualbox')} == cmd.call_args[1]
+            assert {'args': ['--driver', 'virtualbox']} == cmd.call_args[1]
 
         # errors
         with mock.patch.object(self.hypervisor, 'command',
@@ -374,9 +373,9 @@ class TestXhyveHypervisor(TempDirFixture, LogTestCase):
             memory_size=10000
         )
         expected_args = (
-            self.hypervisor.options['storage'],
-            self.hypervisor.options['cpu'], str(constraints['cpu_count']),
-            self.hypervisor.options['mem'], str(constraints['memory_size'])
+            self.hypervisor.OPTIONS['storage'],
+            self.hypervisor.OPTIONS['cpu'], str(constraints['cpu_count']),
+            self.hypervisor.OPTIONS['mem'], str(constraints['memory_size'])
         )
 
         with mock.patch.object(self.hypervisor, 'command') as cmd:

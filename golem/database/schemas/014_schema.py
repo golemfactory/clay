@@ -1,5 +1,4 @@
 # pylint: disable=no-member
-# pylint: disable=too-few-public-methods
 import peewee as pw
 
 SCHEMA_VERSION = 14

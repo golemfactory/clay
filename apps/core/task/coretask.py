@@ -1,27 +1,26 @@
 import decimal
 import logging
 import os
-from enum import Enum
-from typing import Type, Optional, Dict, Any
+from typing import Type, Dict, Any
 
-from golem_messages import idgenerator
-import golem_messages.message
 from ethereum.utils import denoms
+from golem_messages import idgenerator
+from golem_messages.datastructures import p2p as dt_p2p
+from golem_messages.datastructures import tasks as dt_tasks
+import golem_messages.message
 from golem_verificator.core_verifier import CoreVerifier
 from golem_verificator.verifier import SubtaskVerificationState
 
-from apps.blender.verification_queue import VerificationQueue
 from apps.core.task.coretaskstate import TaskDefinition, Options
+from apps.core.verification_queue import VerificationQueue
+import golem
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
-from golem.core.compress import decompress
 from golem.core.fileshelper import outer_dir_path
-from golem.core.simpleserializer import CBORSerializer
 from golem.docker.environment import DockerEnvironment
-from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import Task, TaskHeader, TaskBuilder, ResultType, \
-    TaskTypeInfo
+from golem.task.taskbase import Task, TaskBuilder, \
+    TaskTypeInfo, AcceptClientVerdict
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
 
@@ -31,12 +30,6 @@ logger = logging.getLogger("apps.core")
 def log_key_error(*args, **_):
     logger.warning("This is not my subtask %s", args[1], exc_info=True)
     return False
-
-
-class AcceptClientVerdict(Enum):
-    ACCEPTED = 0
-    REJECTED = 1
-    SHOULD_WAIT = 2
 
 
 MAX_PENDING_CLIENT_RESULTS = 1
@@ -59,13 +52,13 @@ class CoreTaskTypeInfo(TaskTypeInfo):
 
     @classmethod
     # pylint:disable=unused-argument
-    def get_task_num_from_pixels(cls, x, y, definition, total_subtasks,
+    def get_task_num_from_pixels(cls, x, y, definition, subtasks_count,
                                  output_num=1):
         return 0
 
     @classmethod
     # pylint:disable=unused-argument
-    def get_task_border(cls, subtask, definition, total_subtasks,
+    def get_task_border(cls, subtask, definition, subtasks_count,
                         output_num=1, as_path=False):
         return []
 
@@ -103,20 +96,20 @@ class CoreTask(Task):
     # pylint:disable=too-many-arguments
     def __init__(self,
                  task_definition: TaskDefinition,
-                 owner: Node,
+                 owner: dt_p2p.Node,
                  max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
                  resource_size=None,
                  root_path=None,
-                 total_tasks=0):
+                 total_tasks=1):
         """Create more specific task implementation
         """
 
-        task_timeout = task_definition.full_task_timeout
+        task_timeout = task_definition.timeout
         self._deadline = timeout_to_deadline(task_timeout)
 
         # resources stuff
         self.task_resources = list(
-            set(filter(os.path.isfile, task_definition.resources)))
+            set(filter(os.path.exists, task_definition.resources)))
         if resource_size is None:
             self.resource_size = 0
             for resource in self.task_resources:
@@ -144,7 +137,8 @@ class CoreTask(Task):
         else:
             self.docker_images = None
 
-        th = TaskHeader(
+        th = dt_tasks.TaskHeader(
+            min_version=golem.__version__,
             task_id=task_definition.task_id,
             environment=self.environment.get_id(),
             task_owner=owner,
@@ -166,7 +160,7 @@ class CoreTask(Task):
         self.subtasks_given = {}
         self.num_failed_subtasks = 0
 
-        self.full_task_timeout = task_timeout
+        self.timeout = task_timeout
         self.counting_nodes = {}
 
         self.root_path = root_path
@@ -207,13 +201,12 @@ class CoreTask(Task):
         self._mark_subtask_failed(subtask_id)
 
     def computation_finished(self, subtask_id, task_result,
-                             result_type=ResultType.DATA,
                              verification_finished=None):
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for %s", subtask_id)
             return
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.verifying
-        self.interpret_task_results(subtask_id, task_result, result_type)
+        self.interpret_task_results(subtask_id, task_result)
         result_files = self.results.get(subtask_id)
 
         def verification_finished_(subtask_id, verdict, result):
@@ -303,8 +296,7 @@ class CoreTask(Task):
             self._mark_subtask_failed(subtask_id)
         elif subtask_info['status'] == SubtaskStatus.finished:
             self._mark_subtask_failed(subtask_id)
-            tasks = subtask_info['end_task'] - subtask_info['start_task'] + 1
-            self.num_tasks_received -= tasks
+            self.num_tasks_received -= 1
 
         if not was_failure_before:
             subtask_info['status'] = SubtaskStatus.restarted
@@ -339,9 +331,9 @@ class CoreTask(Task):
     def to_dictionary(self):
         return {
             'id': to_unicode(self.header.task_id),
-            'name': to_unicode(self.task_definition.task_name),
+            'name': to_unicode(self.task_definition.name),
             'type': to_unicode(self.task_definition.task_type),
-            'subtasks': self.get_total_tasks(),
+            'subtasks_count': self.get_total_tasks(),
             'progress': self.get_progress()
         }
 
@@ -351,13 +343,14 @@ class CoreTask(Task):
         ctd['task_id'] = self.header.task_id
         ctd['subtask_id'] = subtask_id
         ctd['extra_data'] = extra_data
-        ctd['short_description'] = self.short_extra_data_repr(extra_data)
         ctd['src_code'] = self.src_code
         ctd['performance'] = perf_index
         if self.docker_images:
             ctd['docker_images'] = [di.to_dict() for di in self.docker_images]
-        ctd['deadline'] = min(timeout_to_deadline(self.header.subtask_timeout),
-                              self.header.deadline)
+        ctd['deadline'] = min(
+            int(timeout_to_deadline(self.header.subtask_timeout)),
+            self.header.deadline,
+        )
 
         return ctd
 
@@ -365,25 +358,18 @@ class CoreTask(Task):
     # Specific task methods #
     #########################
 
-    def interpret_task_results(self, subtask_id, task_results, result_type: int,
-                               sort=True):
+    def interpret_task_results(self, subtask_id, task_results, sort=True):
         """Filter out ".log" files from received results.
         Log files should represent stdout and stderr from computing machine.
         Other files should represent subtask results.
         :param subtask_id: id of a subtask for which results are received
-        :param task_results: it may be a list of files, if result_type is equal
-        to ResultType.files or it may be a cbor serialized zip file containing
-        all files, if result_type is equal to ResultType.data
-        :param result_type: a number from ResultType, it may represents data
-        format or files format
+        :param task_results: it may be a list of files
         :param bool sort: *default: True* Sort results, if set to True
         """
         self.stdout[subtask_id] = ""
         self.stderr[subtask_id] = ""
-        tr_files = self.load_task_results(
-            task_results, result_type, subtask_id)
         self.results[subtask_id] = self.filter_task_results(
-            tr_files, subtask_id)
+            task_results, subtask_id)
         if sort:
             self.results[subtask_id].sort()
 
@@ -392,34 +378,6 @@ class CoreTask(Task):
         self.counting_nodes[self.subtasks_given[
             subtask_id]['node_id']].finish()
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
-
-    def load_task_results(self, task_result, result_type, subtask_id):
-        """ Change results to a list of files. If result_type is equal to
-        ResultType.files this function only return task_results without making
-        any changes. If result_type is equal to ResultType.data tham task_result
-         is cbor and unzipped and files are saved in tmp_dir.
-        :param task_result: list of files of cbor serialized ziped file with
-        files
-        :param result_type: int, ResultType element
-        :param str subtask_id:
-        :return:
-        """
-        if result_type == ResultType.DATA:
-            output_dir = os.path.join(self.tmp_dir, subtask_id)
-            if not os.path.exists(output_dir):
-                os.makedirs(output_dir)
-            return [self._unpack_task_result(trp, output_dir)
-                    for trp in task_result]
-        elif result_type == ResultType.FILES:
-            return task_result
-        else:
-            logger.error(
-                "Task result type not supported %r",
-                result_type,
-            )
-            self.stderr[subtask_id] = "[GOLEM] Task result {} not supported" \
-                .format(result_type)
-            return []
 
     def filter_task_results(self, task_results, subtask_id, log_ext=".log",
                             err_log_ext="err.log"):
@@ -489,12 +447,6 @@ class CoreTask(Task):
             self.counting_nodes[node_id].reject()
         self.num_failed_subtasks += 1
 
-    def _unpack_task_result(self, trp, output_dir):
-        tr = CBORSerializer.loads(trp)
-        with open(os.path.join(output_dir, tr[0]), "wb") as fh:
-            fh.write(decompress(tr[1]))
-        return os.path.join(output_dir, tr[0])
-
     def get_resources(self):
         return self.task_resources
 
@@ -537,7 +489,7 @@ class CoreTask(Task):
         self.interpret_task_results(
             subtask_id=subtask_id,
             task_results=results,
-            result_type=ResultType.FILES)
+        )
         self.accept_results(
             subtask_id=subtask_id,
             result_files=self.results[subtask_id])
@@ -547,7 +499,7 @@ class CoreTaskBuilder(TaskBuilder):
     TASK_CLASS = CoreTask
 
     def __init__(self,
-                 owner: Node,
+                 owner: dt_p2p.Node,
                  task_definition: TaskDefinition,
                  dir_manager: DirManager) -> None:
         super(CoreTaskBuilder, self).__init__()
@@ -566,7 +518,7 @@ class CoreTaskBuilder(TaskBuilder):
         return task
 
     def get_task_kwargs(self, **kwargs):
-        kwargs['total_tasks'] = int(self.task_definition.total_subtasks)
+        kwargs['total_tasks'] = int(self.task_definition.subtasks_count)
         kwargs["task_definition"] = self.task_definition
         kwargs["owner"] = self.owner
         kwargs["root_path"] = self.root_path
@@ -579,7 +531,7 @@ class CoreTaskBuilder(TaskBuilder):
         definition.task_type = task_type.name
         definition.compute_on = dictionary.get('compute_on', 'cpu')
         definition.resources = set(dictionary['resources'])
-        definition.total_subtasks = int(dictionary['subtasks'])
+        definition.subtasks_count = int(dictionary['subtasks_count'])
         definition.main_program_file = task_type.defaults.main_program_file
         return definition
 
@@ -602,14 +554,14 @@ class CoreTaskBuilder(TaskBuilder):
                               task_type: CoreTaskTypeInfo,
                               dictionary: Dict[str, Any]):
         definition = cls.build_minimal_definition(task_type, dictionary)
-        definition.task_name = dictionary['name']
+        definition.name = dictionary['name']
         definition.max_price = \
             int(decimal.Decimal(dictionary['bid']) * denoms.ether)
 
-        definition.full_task_timeout = string_to_timeout(
-            dictionary['timeout'])
+        definition.timeout = string_to_timeout(dictionary['timeout'])
         definition.subtask_timeout = string_to_timeout(
-            dictionary['subtask_timeout'])
+            dictionary['subtask_timeout'],
+        )
         definition.output_file = cls.get_output_path(dictionary, definition)
         definition.estimated_memory = dictionary.get('estimated_memory', 0)
 
@@ -628,7 +580,7 @@ class CoreTaskBuilder(TaskBuilder):
 
         absolute_path = cls.get_nonexistent_path(
             options['output_path'],
-            definition.task_name,
+            definition.name,
             options.get('format', ''))
 
         return absolute_path

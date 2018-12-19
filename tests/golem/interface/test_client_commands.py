@@ -1,23 +1,24 @@
+# pylint: disable=protected-access
 from collections import namedtuple
 from contextlib import contextmanager
-from functools import partial
 import io
 import json
 import unittest
 from unittest.mock import MagicMock, Mock, mock_open, patch
-import uuid
 
 from ethereum.utils import denoms
+import faker
 from twisted.internet import defer
 
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.appconfig import AppConfig, MIN_MEMORY_SIZE
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.interface.client.account import Account
 from golem.interface.client.debug import Debug
 from golem.interface.client.environments import Environments
 from golem.interface.client.network import Network
-from golem.interface.client.payments import incomes, payments
+from golem.interface.client.payments import incomes, payments, deposit_payments
 from golem.interface.client.resources import Resources
 from golem.interface.client.settings import Settings, _virtual_mem, _cpu_count
 from golem.interface.client.tasks import Subtasks, Tasks
@@ -25,17 +26,12 @@ from golem.interface.client.terms import Terms
 from golem.interface.command import CommandResult, client_ctx
 from golem.interface.exceptions import CommandException
 from golem.resource.dirmanager import DirManager, DirectoryType
-from golem.rpc.mapping.rpcmethodnames import CORE_METHOD_MAP
-from golem.rpc.session import Client
+from golem.task.taskstate import TaskStatus
 from golem.task.tasktester import TaskTester
 from golem.testutils import TempDirFixture
 
-reference_client = Client(Mock(), CORE_METHOD_MAP)
 
-
-def assert_client_method(instance, name):
-    assert hasattr(reference_client, name)
-    return super(Mock, instance).__getattribute__(name)
+fake = faker.Faker()
 
 
 def mock_defer(a, b):
@@ -49,7 +45,6 @@ class TestAccount(unittest.TestCase):
         node = dict(node_name='node1', key='deadbeef')
 
         client = Mock()
-        client.__getattribute__ = assert_client_method
         client.get_node.return_value = node
         client.get_computing_trust.return_value = .01
         client.get_requesting_trust.return_value = .02
@@ -177,8 +172,8 @@ class TestAccount(unittest.TestCase):
 
 class TestEnvironments(unittest.TestCase):
 
-    @classmethod
-    def setUpClass(cls):
+    def setUp(self):
+        super().setUp()
 
         environments = [
             {
@@ -200,11 +195,10 @@ class TestEnvironments(unittest.TestCase):
         ]
 
         client = Mock()
-        client.__getattribute__ = assert_client_method
         client.run_benchmark = lambda x: x
         client.get_environments.return_value = environments
 
-        cls.client = client
+        self.client = client
 
     def test_enable(self):
         with client_ctx(Environments, self.client):
@@ -244,6 +238,23 @@ class TestEnvironments(unittest.TestCase):
             assert not result_3.data[1]
             assert not result_4.data[1]
 
+    def test_performance_multiplier(self):
+        with client_ctx(Environments, self.client):
+            Environments().perf_mult()
+        self.client._call.assert_called_once_with('performance.multiplier')
+
+    def test_performance_multiplier_set(self):
+        anInt = fake.random_int(
+            min=MinPerformanceMultiplier.MIN,
+            max=MinPerformanceMultiplier.MAX,
+        )
+        with client_ctx(Environments, self.client):
+            Environments().perf_mult_set(multiplier=anInt)
+        self.client._call.assert_called_once_with(
+            'performance.multiplier.update',
+            anInt,
+        )
+
 
 class TestNetwork(unittest.TestCase):
 
@@ -260,7 +271,6 @@ class TestNetwork(unittest.TestCase):
         ]
 
         client = Mock()
-        client.__getattribute__ = assert_client_method
         client.get_connected_peers.return_value = peer_info
         client.get_known_peers.return_value = peer_info
 
@@ -334,7 +344,6 @@ class TestNetwork(unittest.TestCase):
             '25001',
             'deadbeef01deadbe...beef01deadbeef01',
             'node_1',
-            '0.0.0'
         ])
 
         self.assertEqual(result_2.data[1][0], [
@@ -342,7 +351,6 @@ class TestNetwork(unittest.TestCase):
             '25001',
             'deadbeef01' * 8,
             'node_1',
-            '0.0.0'
         ])
 
         assert isinstance(result_1, CommandResult)
@@ -362,56 +370,188 @@ class TestPayments(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls):
-
+        statuses = ['awaiting', 'sent', 'confirmed']
         incomes_list = [{
             'payer': 'node_{}'.format(i),
-            'status': 'waiting',
-            'value': '{}'.format(i),
+            'status': statuses[i % 3],
+            'value': '{}'.format(i * 10**18),
         } for i in range(1, 6)]
 
         payments_list = [{
-            'fee': '{}'.format(i),
-            'value': '0.{}'.format(i),
-            'subtask': 'subtask_{}'.format(i),
-            'payee': 'node_{}'.format(i),
-            'status': 'waiting',
+            'fee': f'{i * 10**18}',
+            'value': f'{0.1 * i * 10**18}',
+            'subtask': f'subtask_{i}',
+            'payee': f'node_{i}',
+            'status': statuses[i % 3],
+        } for i in range(1, 6)]
+
+        deposit_payments_list = [{
+            'tx': f'deadbeaf{i}',
+            'status': statuses[i % 3],
+            'value': f'{1.1 * i * 10**18}',
+            'fee': f'{i * 10**18}',
         } for i in range(1, 6)]
 
         client = Mock()
-        client.__getattribute__ = assert_client_method
         client.get_incomes_list.return_value = incomes_list
         client.get_payments_list.return_value = payments_list
+        client.get_deposit_payments_list.return_value = deposit_payments_list
 
         cls.n_incomes = len(incomes_list)
         cls.n_payments = len(payments_list)
+        cls.n_deposit_payments = len(deposit_payments_list)
         cls.client = client
 
     def test_incomes(self):
         with client_ctx(incomes, self.client):
-            result = incomes(None)
+            result = incomes(None, None)
 
-            assert isinstance(result, CommandResult)
-            assert result.type == CommandResult.TABULAR
-            assert len(result.data[1]) == self.n_incomes
-            assert result.data[1][0] == [
-                'node_1', 'waiting', '0.000000 GNT'
-            ]
+            self._assert_type_and_length(result, self.n_incomes)
+            self.assertEqual(
+                result.data[1][0],
+                ['node_1', 'sent', '1.00000000 GNT']
+            )
+
+    def test_incomes_awaiting(self):
+        with client_ctx(incomes, self.client):
+            result = incomes(None, "awaiting")
+
+            self._assert_type_and_length(result, 1)
+            self.assertEqual(
+                result.data[1][0],
+                ['node_3', 'awaiting', '3.00000000 GNT']
+            )
+
+    def test_incomes_confirmed(self):
+        with client_ctx(incomes, self.client):
+            result = incomes(None, "confirmed")
+
+            self._assert_type_and_length(result, 2)
+            self.assertEqual(
+                result.data[1][0],
+                ['node_2', 'confirmed', '2.00000000 GNT']
+            )
+            self.assertEqual(
+                result.data[1][1],
+                ['node_5', 'confirmed', '5.00000000 GNT']
+            )
 
     def test_payments(self):
         with client_ctx(payments, self.client):
-            result = payments(None)
+            result = payments(None, None)
 
-            assert isinstance(result, CommandResult)
-            assert result.type == CommandResult.TABULAR
-            assert len(result.data[1]) == self.n_incomes
+            self._assert_type_and_length(result, self.n_payments)
+            self.assertEqual(
+                result.data[1][1],
+                [
+                    'subtask_2',
+                    'node_2',
+                    'confirmed',
+                    '0.20000000 GNT',
+                    '2.00000000 ETH',
+                ]
+            )
 
-            assert result.data[1][0][:-1] == [
-                'subtask_1',
-                'node_1',
-                'waiting',
-                '0.000000 GNT',
-            ]
-            assert result.data[1][0][4]
+    def test_payments_awaiting(self):
+        with client_ctx(payments, self.client):
+            result = payments(None, 'awaiting')
+
+            self._assert_type_and_length(result, 1)
+            self.assertEqual(
+                result.data[1][0],
+                [
+                    'subtask_3',
+                    'node_3',
+                    'awaiting',
+                    '0.30000000 GNT',
+                    '3.00000000 ETH',
+                ]
+            )
+
+    def test_payments_confirmed(self):
+        with client_ctx(payments, self.client):
+            result = payments(None, 'confirmed')
+
+            self._assert_type_and_length(result, 2)
+            self.assertEqual(
+                result.data[1][0],
+                [
+                    'subtask_2',
+                    'node_2',
+                    'confirmed',
+                    '0.20000000 GNT',
+                    '2.00000000 ETH',
+                ]
+            )
+            self.assertEqual(
+                result.data[1][1],
+                [
+                    'subtask_5',
+                    'node_5',
+                    'confirmed',
+                    '0.50000000 GNT',
+                    '5.00000000 ETH',
+                ]
+            )
+
+    def test_deposit_payments(self):
+        with client_ctx(payments, self.client):
+            result = deposit_payments(None, None)
+
+            self._assert_type_and_length(result, self.n_deposit_payments)
+            self.assertEqual(
+                result.data[1][3],
+                [
+                    'deadbeaf4',
+                    'sent',
+                    '4.40000000 GNT',
+                    '4.00000000 ETH',
+                ]
+            )
+
+    def test_deposit_payments_awaiting(self):
+        with client_ctx(payments, self.client):
+            result = deposit_payments(None, 'awaiting')
+
+            self._assert_type_and_length(result, 1)
+            self.assertEqual(
+                result.data[1][0],
+                [
+                    'deadbeaf3',
+                    'awaiting',
+                    '3.30000000 GNT',
+                    '3.00000000 ETH',
+                ]
+            )
+
+    def test_deposit_payments_confirmed(self):
+        with client_ctx(payments, self.client):
+            result = deposit_payments(None, 'confirmed')
+
+            self._assert_type_and_length(result, 2)
+            self.assertEqual(
+                result.data[1][0],
+                [
+                    'deadbeaf2',
+                    'confirmed',
+                    '2.20000000 GNT',
+                    '2.00000000 ETH',
+                ]
+            )
+            self.assertEqual(
+                result.data[1][1],
+                [
+                    'deadbeaf5',
+                    'confirmed',
+                    '5.50000000 GNT',
+                    '5.00000000 ETH',
+                ]
+            )
+
+    def _assert_type_and_length(self, result, length):
+        self.assertIsInstance(result, CommandResult)
+        self.assertEqual(result.type, CommandResult.TABULAR)
+        self.assertEqual(len(result.data[1]), length)
 
 
 class TestResources(unittest.TestCase):
@@ -419,7 +559,6 @@ class TestResources(unittest.TestCase):
     def setUp(self):
         super(TestResources, self).setUp()
         self.client = Mock()
-        self.client.__getattribute__ = assert_client_method
 
     def test_show(self):
         dirs = dict(
@@ -481,13 +620,21 @@ class TestTasks(TempDirFixture):
     def setUpClass(cls):
         super(TestTasks, cls).setUpClass()
 
+        task_statuses = [
+            TaskStatus.notStarted,
+            TaskStatus.sending,
+            TaskStatus.waiting,
+            TaskStatus.starting,
+            TaskStatus.computing,
+            TaskStatus.finished,
+        ]
         cls.tasks = [{
             'id': '745c1d0{}'.format(i),
             'time_remaining': i,
-            'subtasks': i + 2,
-            'status': 'waiting',
+            'subtasks_count': i + 2,
+            'status': task_statuses[(i-1) % len(task_statuses)].value,
             'progress': i / 100.0
-        } for i in range(1, 6)]
+        } for i in range(1, 7)]
 
         cls.subtasks = [{
             'node_name': 'node_{}'.format(i),
@@ -518,7 +665,6 @@ class TestTasks(TempDirFixture):
         super(TestTasks, self).setUp()
 
         client = Mock()
-        client.__getattribute__ = assert_client_method
 
         client.get_datadir.return_value = self.path
         client.get_dir_manager.return_value = DirManager(self.path)
@@ -546,40 +692,58 @@ class TestTasks(TempDirFixture):
 
     def test_restart_success(self):
         with client_ctx(Tasks, self.client):
-            self.client.restart_task.return_value = 'new_task_id', None
+            self.client._call.return_value = 'new_task_id', None
             tasks = Tasks()
             result = tasks.restart('task_id')
             self.assertEqual(result, 'new_task_id')
-            self.client.restart_task.assert_called_once_with('task_id')
+            self.client._call.assert_called_once_with(
+                'comp.task.restart',
+                'task_id',
+                force=False,
+            )
 
     def test_restart_error(self):
         with client_ctx(Tasks, self.client):
-            self.client.restart_task.return_value = None, 'error'
+            self.client._call.return_value = None, 'error'
             tasks = Tasks()
             with self.assertRaises(CommandException):
                 tasks.restart('task_id')
-            self.client.restart_task.assert_called_once_with('task_id')
+            self.client._call.assert_called_once_with(
+                'comp.task.restart',
+                'task_id',
+                force=False,
+            )
 
     def test_create(self) -> None:
         client = self.client
 
         definition = TaskDefinition()
-        definition.task_name = "The greatest task ever"
+        definition.name = "The greatest task ever"
         def_str = json.dumps(definition.to_dict())
 
         with client_ctx(Tasks, client):
             tasks = Tasks()
-            tasks._Tasks__create_from_json(def_str)
-            client.create_task.assert_called_with(definition.to_dict())
+            # pylint: disable=no-member
+            tasks._Tasks__create_from_json(def_str)  # type: ignore
+            # pylint: enable=no-member
+            client._call.assert_called_once_with(
+                'comp.task.create',
+                definition.to_dict(),
+            )
 
+            client._call.reset_mock()
             patched_open = "golem.interface.client.tasks.open"
             with patch(patched_open, mock_open(
                 read_data='{"name": "Golem task"}'
             )):
-                client.create_task.return_value = ('task_id', None)
+                client._call.return_value = ('task_id', None)
                 tasks.create("foo")
                 task_def = json.loads('{"name": "Golem task"}')
-                client.create_task.assert_called_with(task_def)
+                client._call.assert_called_once_with(
+                    'comp.task.create',
+                    task_def,
+                    force=False,
+                )
 
     def test_template(self) -> None:
         tasks = Tasks()
@@ -590,7 +754,7 @@ class TestTasks(TempDirFixture):
 
         self.assertIn("bid", output)
         self.assertIn("0.0", output)
-        self.assertIn('"subtask_timeout": "0:00:00"', output)
+        self.assertIn('"subtask_timeout": "0:20:00"', output)
 
         self.assertEqual(json.loads(output), TaskDefinition().to_dict())
 
@@ -614,24 +778,27 @@ class TestTasks(TempDirFixture):
         with client_ctx(Tasks, client):
             tasks = Tasks()
 
-            one_task = tasks.show('745c1d01', None)
-            all_tasks = tasks.show(None, None)
+            one_task = tasks.show('745c1d01', None, False)
+            all_tasks = tasks.show(None, None, False)
 
-            assert one_task and all_tasks
-            assert isinstance(one_task, dict)
-            assert isinstance(all_tasks, CommandResult)
+            self.assertIsInstance(one_task, dict)
+            self.assertIsInstance(all_tasks, CommandResult)
 
-            assert one_task == {
-                'time_remaining': '0:00:01',
-                'status': 'waiting',
-                'subtasks': 3,
-                'id': '745c1d01',
-                'progress': '1.00 %'
-            }
+            self.assertEqual(
+                one_task,
+                {
+                    'time_remaining': '0:00:01',
+                    'status': 'Not started',
+                    'subtasks_count': 3,
+                    'id': '745c1d01',
+                    'progress': '1.00 %'
+                }
+            )
 
-            assert all_tasks.data[1][0] == [
-                '745c1d01', '0:00:01', '3', 'waiting', '1.00 %'
-            ]
+            self.assertEqual(
+                all_tasks.data[1][0],
+                ['745c1d01', '0:00:01', '3', 'Not started', '1.00 %']
+            )
 
             self.client.get_tasks = lambda _: {
                 'time_remaining': None,
@@ -640,7 +807,7 @@ class TestTasks(TempDirFixture):
                 'id': 'XXX',
                 'progress': 0
             }
-            task = tasks.show('XXX', None)
+            task = tasks.show('XXX', None, False)
             self.assertDictEqual(task, {
                 'time_remaining': '???',
                 'status': 'XXX',
@@ -648,6 +815,44 @@ class TestTasks(TempDirFixture):
                 'id': 'XXX',
                 'progress': '0.00 %'
             })
+
+    def test_show_result_is_none(self):
+        client = Mock()
+        client.get_tasks.return_value = None
+
+        with client_ctx(Tasks, client):
+            tasks = Tasks()
+
+            one_task = tasks.show("non existing task_id", None, current=True)
+
+            self.assertIsNone(one_task)
+
+    def test_show_current(self):
+        client = self.client
+
+        with client_ctx(Tasks, client):
+            tasks = Tasks()
+
+            current_tasks = tasks.show(None, None, True)
+
+            self.assertIsInstance(current_tasks, CommandResult)
+            self.assertEqual(len(current_tasks.data[1]), 4)
+            self.assertEqual(
+                current_tasks.data[1][0],
+                ['745c1d02', '0:00:02', '4', 'Sending', '2.00 %']
+            )
+            self.assertEqual(
+                current_tasks.data[1][1],
+                ['745c1d03', '0:00:03', '5', 'Waiting', '3.00 %']
+            )
+            self.assertEqual(
+                current_tasks.data[1][2],
+                ['745c1d04', '0:00:04', '6', 'Starting', '4.00 %']
+            )
+            self.assertEqual(
+                current_tasks.data[1][3],
+                ['745c1d05', '0:00:05', '7', 'Computing', '5.00 %']
+            )
 
     def test_subtasks_ok(self):
         client = self.client
@@ -695,7 +900,6 @@ class TestSubtasks(unittest.TestCase):
         super(TestSubtasks, self).setUp()
 
         self.client = Mock()
-        self.client.__getattribute__ = assert_client_method
 
     def test_show_ok(self):
         with client_ctx(Subtasks, self.client):
@@ -738,8 +942,8 @@ class TestSettings(TempDirFixture):
         config_desc.init_from_app_config(app_config)
 
         client = Mock()
-        client.__getattribute__ = assert_client_method
-        client.get_settings.return_value = config_desc.__dict__
+        self.client_config_dict = config_desc.__dict__
+        client.get_settings.return_value = self.client_config_dict
 
         self.client = client
 
@@ -750,11 +954,11 @@ class TestSettings(TempDirFixture):
 
             result = settings.show(False, False, False)
             assert isinstance(result, dict)
-            assert len(result) >= len(Settings.settings)
+            assert len(result) == len(self.client_config_dict)
 
             result = settings.show(True, True, True)
             assert isinstance(result, dict)
-            assert len(result) >= len(Settings.settings)
+            assert len(result) == len(self.client_config_dict)
 
             result = settings.show(True, False, False)
             assert isinstance(result, dict)
@@ -769,6 +973,43 @@ class TestSettings(TempDirFixture):
             assert isinstance(result, dict)
             assert len(result) == len(Settings.basic_settings) + len(
                 Settings.requestor_settings)
+
+    def test_show_convertible_items(self):
+        convertible_items = {
+            'accept_me': 0,
+            'debug_sth': 1,
+            'use_your_brain': 1,
+            'enable_hyperspeed_boosters': 0,
+            'in_shutdown': 0,
+            'net_masking_enabled': 1,
+        }
+        self.client.get_settings.return_value = convertible_items
+        with client_ctx(Settings, self.client):
+            settings = Settings()
+
+            result = settings.show(False, False, False)
+            self.assertTrue(
+                all(
+                    (isinstance(v, bool) for _, v in result.items())
+                )
+            )
+
+    def test_show_mixed_items(self):
+        items = {
+            'enable_thinking': 1,
+            'this_is_not_converted': 1,
+        }
+        self. client.get_settings.return_value = items
+        with client_ctx(Settings, self.client):
+            settings = Settings()
+
+            result = settings.show(False, False, False)
+            self.assertTrue(
+                isinstance(result['enable_thinking'], bool)
+            )
+            self.assertFalse(
+                isinstance(result['this_is_not_converted'], bool)
+            )
 
     def test_set(self):
 
@@ -838,32 +1079,24 @@ class TestSettings(TempDirFixture):
                 settings.set('num_cores', _cpu_count + 1)
 
 
+@patch('golem.interface.client.debug.Debug.client')
 class TestDebug(unittest.TestCase):
-
     def setUp(self):
-        super(TestDebug, self).setUp()
+        self.uri = '.'.join(fake.words())
+        self.debug = Debug()
 
-        self.client = Mock()
-        self.client.__getattribute__ = assert_client_method
+    def _rpc(self, *args):
+        self.debug.rpc((self.uri,)+args)
+        self.debug.client._call.assert_called_once_with(self.uri, *args)
 
-    def test_show(self):
-        client = self.client
+    def test_no_args(self, *_):
+        self._rpc()
 
-        with client_ctx(Debug, client):
-            debug = Debug()
-            task_id = str(uuid.uuid4())
+    def test_one_arg(self, *_):
+        self._rpc(fake.uuid4())
 
-            debug.rpc(('net.ident',))
-            assert client.get_node.called
-
-            debug.rpc(('comp.task', task_id))
-            client.get_task.assert_called_with(task_id)
-
-            debug.rpc(('comp.task.subtasks.borders', task_id, 2))
-            client.get_subtasks_borders.assert_called_with(task_id, 2)
-
-            with self.assertRaises(CommandException):
-                debug.rpc((task_id, ))
+    def test_two_args(self, *_):
+        self._rpc(fake.uuid4(), fake.pyint())
 
 
 class TestTerms(unittest.TestCase):
@@ -872,7 +1105,6 @@ class TestTerms(unittest.TestCase):
         super(TestTerms, self).setUp()
 
         self.client = Mock()
-        self.client.__getattribute__ = assert_client_method
 
     @patch('golem.interface.client.terms.html2text.html2text',
            return_value=object())

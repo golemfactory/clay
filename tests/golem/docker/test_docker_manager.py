@@ -1,55 +1,35 @@
 # pylint: disable=too-many-lines
 import functools
 import sys
+from collections import namedtuple
 from subprocess import CalledProcessError
 from unittest import TestCase, mock
 
-from golem.docker.config import DEFAULTS, MIN_CONSTRAINTS
+from golem.docker.config import DEFAULTS
 from tests.golem.docker.test_hypervisor import command, MockHypervisor, \
     MockDockerManager, raise_exception, raise_process_exception
 
-
-class MockConfig(object):
-
-    def __init__(self, num_cores, max_memory_size, max_resource_size):
-        self.num_cores = num_cores
-        self.max_memory_size = max_memory_size
-        self.max_resource_size = max_resource_size
-
-    def to_dict(self):
-        return dict(
-            num_cores=self.num_cores,
-            max_memory_size=self.max_memory_size,
-            max_resource_size=self.max_resource_size,
-        )
+ConfigMock = namedtuple('ConfigMock', ('num_cores', 'max_memory_size'))
 
 
 class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
-    def test_build_config(self):
-        dmm = MockDockerManager()
-        assert dmm._config == DEFAULTS
+    def test_build_config_odd_memory_size(self):
+        manager = MockDockerManager()
+        manager.hypervisor = MockHypervisor(manager)
+        config = ConfigMock(None, 1025 * 1024)
+        manager.build_config(config)
+        self.assertEqual(manager.get_config()['memory_size'], 1024)
 
-        config_item_list = list(dmm._config.items())
-        assert all([val == DEFAULTS[key] for key, val in config_item_list])
-
-        config = MockConfig(0, 0, 0)
-
-        dmm.build_config(config)
-        assert len(dmm._config) < len(config.to_dict())
-        assert dmm._config == MIN_CONSTRAINTS
-
-        self.assertEqual(dmm._config.get('cpu_count'),
-                         MIN_CONSTRAINTS.get('cpu_count'))
-
-        assert dmm._config.get('memory_size') \
-            == MIN_CONSTRAINTS.get('memory_size')
-
-        config = MockConfig(10, 10000 * 1024, 20000)
-
-        dmm.build_config(config)
-        assert dmm._config.get('cpu_count') == 10
-        assert dmm._config.get('memory_size') >= 10000
+    def test_build_config_ok(self):
+        manager = MockDockerManager()
+        cpu_to_check = 4
+        mem_to_check = 4096
+        config = ConfigMock(cpu_to_check, mem_to_check * 1024)
+        manager.build_config(config)
+        self.assertEqual(
+            manager.get_config(),
+            {'cpu_count': cpu_to_check, 'memory_size': mem_to_check})
 
     def test_update_config(self):
         status_switch = [True]
@@ -64,7 +44,7 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
         def done_cb(_):
             pass
 
-        config = MockConfig(0, 768, 512)
+        config = ConfigMock(0, 768)
 
         dmm = MockDockerManager()
         dmm.pull_images = mock.Mock()
@@ -72,6 +52,10 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         hypervisor = mock.Mock()
         hypervisor.constraints.return_value = DEFAULTS
+        hypervisor.restart_ctx.return_value = mock.Mock(
+            __enter__=mock.Mock(),
+            __exit__=mock.Mock(),
+        )
 
         dmm._select_hypervisor = mock.Mock(return_value=hypervisor)
 
@@ -79,8 +63,10 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
             dmm.build_config(config)
             dmm.check_environment()
 
-        dmm.update_config(status_cb, done_cb, in_background=False)
-        dmm.update_config(status_cb, done_cb, in_background=True)
+        dmm.update_config(
+            status_cb, done_cb, in_background=False, work_dir=None)
+        dmm.update_config(
+            status_cb, done_cb, in_background=True, work_dir=None)
 
     def test_constrain_not_called(self):
         dmm = MockDockerManager()
@@ -139,23 +125,24 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
     @mock.patch('golem.docker.manager.DockerForMac.is_available',
                 return_value=False)
-    @mock.patch('golem.docker.manager.VirtualBoxHypervisor.instance')
+    @mock.patch('golem.docker.manager.HyperVHypervisor.is_available',
+                return_value=True)
+    @mock.patch('golem.docker.manager.HyperVHypervisor.instance')
     @mock.patch('golem.docker.manager.XhyveHypervisor.instance')
-    def test_get_hypervisor(self, xhyve_instance, virtualbox_instance, _):
+    def test_get_hypervisor(self, xhyve_instance, hyperv_instance, *_):
 
         def reset():
             xhyve_instance.called = False
-            virtualbox_instance.called = False
+            hyperv_instance.called = False
 
         dmm = MockDockerManager()
 
-        with mock.patch('golem.docker.hypervisor.virtualbox.init_pythoncom'):
-            with mock.patch('golem.docker.manager.is_windows',
-                            return_value=True):
+        with mock.patch('golem.docker.manager.is_windows',
+                        return_value=True):
 
-                assert dmm._select_hypervisor()
-                assert virtualbox_instance.called
-                assert not xhyve_instance.called
+            assert dmm._select_hypervisor()
+            assert hyperv_instance.called
+            assert not xhyve_instance.called
 
         reset()
 
@@ -165,7 +152,7 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
                             return_value=True):
 
                 assert dmm._select_hypervisor()
-                assert not virtualbox_instance.called
+                assert not hyperv_instance.called
                 assert xhyve_instance.called
 
         reset()
@@ -176,29 +163,52 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
                             return_value=False):
 
                 assert not dmm._select_hypervisor()
-                assert not virtualbox_instance.called
+                assert not hyperv_instance.called
                 assert not xhyve_instance.called
 
     @mock.patch('golem.docker.manager.is_windows', return_value=True)
     @mock.patch('golem.docker.manager.is_linux', return_value=False)
     @mock.patch('golem.docker.manager.is_osx', return_value=False)
-    def test_check_environment_windows(self, *_):
+    @mock.patch('golem.docker.manager.HyperVHypervisor.is_available',
+                return_value=True)
+    def test_check_environment_windows_hyperv(self, *_):
+        dmm = MockDockerManager()
+        dmm.pull_images = mock.Mock()
+        dmm.build_images = mock.Mock()
+
+        with mock.patch('golem.docker.manager.HyperVHypervisor.instance',
+                        mock.Mock(vm_running=mock.Mock(return_value=False))):
+            # pylint: disable=no-member
+
+            with mock.patch.object(dmm, 'command'):
+                dmm.check_environment()
+
+                assert dmm.hypervisor
+                assert dmm.hypervisor.setup.called
+                assert dmm.pull_images.called
+                assert not dmm.build_images.called
+
+    @mock.patch('golem.docker.manager.is_windows', return_value=True)
+    @mock.patch('golem.docker.manager.is_linux', return_value=False)
+    @mock.patch('golem.docker.manager.is_osx', return_value=False)
+    @mock.patch('golem.docker.manager.HyperVHypervisor.is_available',
+                return_value=False)
+    def test_check_environment_windows_no_hyperv(self, *_):
         dmm = MockDockerManager()
         dmm.pull_images = mock.Mock()
         dmm.build_images = mock.Mock()
 
         with mock.patch('golem.docker.manager.VirtualBoxHypervisor.instance',
                         mock.Mock(vm_running=mock.Mock(return_value=False))):
-            with mock.patch('golem.docker.hypervisor.virtualbox'
-                            '.init_pythoncom'):
-                with mock.patch.object(dmm, 'command'):
-                    # pylint: disable=no-member
+            # pylint: disable=no-member
 
-                    dmm.check_environment()
-                    assert dmm.hypervisor
-                    assert dmm.hypervisor.setup.called
-                    assert dmm.pull_images.called
-                    assert not dmm.build_images.called
+            with mock.patch.object(dmm, 'command'):
+                dmm.check_environment()
+
+                assert dmm.hypervisor
+                assert dmm.hypervisor.setup.called
+                assert dmm.pull_images.called
+                assert not dmm.build_images.called
 
     @mock.patch('golem.docker.manager.is_windows', return_value=False)
     @mock.patch('golem.docker.manager.is_linux', return_value=True)
@@ -293,9 +303,9 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         from apps.core import nvgpu
         if nvgpu.is_supported():
-            expected = 6
+            expected = 5
         else:
-            expected = 4
+            expected = 3
 
         assert pulls[0] == expected
 
@@ -322,9 +332,9 @@ class TestDockerManager(TestCase):  # pylint: disable=too-many-public-methods
 
         from apps.core import nvgpu
         if nvgpu.is_supported():
-            expected = 6
+            expected = 5
         else:
-            expected = 4
+            expected = 3
 
         assert builds[0] == expected
         assert tags[0] == expected

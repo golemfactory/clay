@@ -1,10 +1,12 @@
+# pylint: disable=too-many-lines
+
+import copy
 import datetime
 import enum
 import functools
 import logging
-import os
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -14,7 +16,6 @@ from golem_messages import exceptions as msg_exceptions
 import golem
 from golem.core import common
 from golem.core.keysauth import KeysAuth
-from golem.core.simpleserializer import CBORSerializer
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -26,7 +27,6 @@ from golem.network.transport.session import BasicSafeSession
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
-from golem.task.taskbase import ResultType
 from golem.task.taskstate import TaskState
 
 if TYPE_CHECKING:
@@ -59,14 +59,20 @@ def dropped_after():
     return inner
 
 
-def get_task_message(message_class_name, task_id, subtask_id, log_prefix=None):
+def get_task_message(
+        message_class_name,
+        node_id,
+        task_id,
+        subtask_id,
+        log_prefix=None):
     if log_prefix:
         log_prefix = '%s ' % log_prefix
 
     msg = history.get(
         message_class_name=message_class_name,
-        task_id=task_id,
+        node_id=node_id,
         subtask_id=subtask_id,
+        task_id=task_id
     )
     if msg is None:
         logger.debug(
@@ -76,6 +82,20 @@ def get_task_message(message_class_name, task_id, subtask_id, log_prefix=None):
             task_id,
             subtask_id,
         )
+    return msg
+
+
+def copy_and_sign(msg: message.base.Message, private_key) \
+        -> message.base.Message:
+    """Returns signed shallow copy of message
+
+    Copy is made only if original is unsigned.
+    """
+    if msg.sig is None:
+        # If message is delayed in msgs_to_send then will
+        # overcome this by making a signed copy
+        msg = copy.copy(msg)
+        msg.sign_message(private_key)
     return msg
 
 
@@ -171,38 +191,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     # FileSession methods #
     #######################
 
-    def result_received(self, extra_data):
+    def result_received(self, subtask_id: str, result_files: List[str]):
         """ Inform server about received result
-        :param dict extra_data: dictionary with information about
-                                received result
         """
-        result = extra_data.get('result')
-        result_type = extra_data.get("result_type")
-        subtask_id = extra_data.get("subtask_id")
-
-        if not subtask_id:
-            logger.error("No subtask_id value in extra_data for received data ")
-            self.dropped()
-
         def send_verification_failure():
             self._reject_subtask_result(
                 subtask_id,
                 reason=message.tasks.SubtaskResultsRejected.REASON
                 .VerificationNegative
             )
-
-        if result_type is None:
-            logger.error("No information about result_type for received data ")
-            send_verification_failure()
-            self.dropped()
-
-        if result_type == ResultType.DATA:
-            try:
-                result = CBORSerializer.loads(result)
-            except Exception:  # pylint: disable=broad-except
-                logger.exception("Can't load result data")
-                send_verification_failure()
-                return
 
         def verification_finished():
             if not self.task_manager.verify_subtask(subtask_id):
@@ -212,9 +209,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
             task_id = self._subtask_to_task(subtask_id, Actor.Requestor)
 
-            task_to_compute = get_task_message(
-                'TaskToCompute', task_id, subtask_id)
+            report_computed_task = get_task_message(
+                message_class_name='ReportComputedTask',
+                node_id=self.key_id,
+                task_id=task_id,
+                subtask_id=subtask_id
+            )
+            task_to_compute = report_computed_task.task_to_compute
 
+            # FIXME Remove in 0.20
             if not task_to_compute.sig:
                 task_to_compute.sign_message(self.my_private_key)
 
@@ -222,15 +225,19 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 subtask_id,
                 self.key_id,
                 task_to_compute.provider_ethereum_address,
+                task_to_compute.price,
             )
 
             response_msg = message.tasks.SubtaskResultsAccepted(
-                task_to_compute=task_to_compute,
+                report_computed_task=report_computed_task,
                 payment_ts=payment_processed_ts,
             )
             self.send(response_msg)
             history.add(
-                response_msg,
+                copy_and_sign(
+                    msg=response_msg,
+                    private_key=self.my_private_key,
+                ),
                 node_id=task_to_compute.provider_id,
                 local_role=Actor.Requestor,
                 remote_role=Actor.Provider,
@@ -239,8 +246,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         self.task_manager.computed_task_received(
             subtask_id,
-            result,
-            result_type,
+            result_files,
             verification_finished
         )
 
@@ -282,22 +288,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         :param Node node_info: information about this node
         :return:
         """
-        if task_result.result_type == ResultType.DATA:
-            extra_data = []
-        elif task_result.result_type == ResultType.FILES:
-            extra_data = [os.path.basename(x) for x in task_result.result]
-        else:
-            logger.error(
-                "Unknown result type %r",
-                task_result.result_type
-            )
-            return
+        extra_data = []
 
         node_name = self.task_server.get_node_name()
+
         task_to_compute = get_task_message(
-            'TaskToCompute',
-            task_result.task_id,
-            task_result.subtask_id,
+            message_class_name='TaskToCompute',
+            node_id=self.key_id,
+            task_id=task_result.task_id,
+            subtask_id=task_result.subtask_id
         )
 
         if not task_to_compute:
@@ -308,7 +307,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         report_computed_task = message.tasks.ReportComputedTask(
             task_to_compute=task_to_compute,
-            result_type=task_result.result_type,
             node_name=node_name,
             address=address,
             port=port,
@@ -322,13 +320,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             options=client_options.__dict__,
         )
 
+        self.send(report_computed_task)
+        report_computed_task = copy_and_sign(
+            msg=report_computed_task,
+            private_key=self.my_private_key,
+        )
         history.add(
             msg=report_computed_task,
             node_id=self.key_id,
             local_role=Actor.Provider,
             remote_role=Actor.Requestor,
         )
-        self.send(report_computed_task)
 
         # if the Concent is not available in the context of this subtask
         # we can only assume that `ReportComputedTask` above reaches
@@ -366,9 +368,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         task_id = self._subtask_to_task(subtask_id, Actor.Provider)
 
         task_to_compute = get_task_message(
-            'TaskToCompute',
-            task_id,
-            subtask_id,
+            message_class_name='TaskToCompute',
+            node_id=self.key_id,
+            task_id=task_id,
+            subtask_id=subtask_id
         )
 
         if not task_to_compute:
@@ -396,9 +399,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         task_id = self._subtask_to_task(subtask_id, Actor.Requestor)
 
         report_computed_task = get_task_message(
-            'ReportComputedTask',
-            task_id,
-            subtask_id,
+            message_class_name='ReportComputedTask',
+            node_id=self.key_id,
+            task_id=task_id,
+            subtask_id=subtask_id
         )
 
         response_msg = message.tasks.SubtaskResultsRejected(
@@ -406,6 +410,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             reason=reason,
         )
         self.send(response_msg)
+        response_msg = copy_and_sign(
+            msg=response_msg,
+            private_key=self.my_private_key,
+        )
         history.add(
             response_msg,
             node_id=report_computed_task.task_to_compute.provider_id,
@@ -564,17 +572,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             size=task_state.package_size
         )
         ttc.generate_ethsig(self.my_private_key)
-        self.task_manager.set_subtask_value(
-            subtask_id=ttc.subtask_id,
-            price=price,
-        )
+        self.send(ttc)
         history.add(
-            msg=ttc,
+            msg=copy_and_sign(
+                msg=ttc,
+                private_key=self.my_private_key,
+            ),
             node_id=self.key_id,
             local_role=Actor.Requestor,
             remote_role=Actor.Provider,
         )
-        self.send(ttc)
 
     @handle_attr_error_with_task_computer
     @history.provider_history
@@ -617,7 +624,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             _cannot_compute(reasons.ConcentRequired)
             return
         if not self.concent_service.enabled and msg.concent_enabled:
-            # We can't provide what requestors wants
+            # We can't provide what requestor wants
             _cannot_compute(reasons.ConcentDisabled)
             return
 
@@ -850,7 +857,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.dropped()
 
     def _react_to_resource_list(self, msg):
-        resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
+        resource_server = self.task_server.client.resource_server
+        resource_manager = resource_server.resource_manager
         resources = resource_manager.from_wire(msg.resources)
 
         client_options = self.task_server.get_download_options(msg.options,
@@ -1027,7 +1035,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return True
 
     def _set_env_params(self, ctd):
-        environment = self.task_manager.comp_task_keeper.get_task_env(ctd['task_id'])  # noqa
+        environment = self.task_manager.comp_task_keeper.get_task_env(
+            ctd['task_id'],
+        )
         env = self.task_server.get_environment_by_id(environment)
         reasons = message.tasks.CannotComputeTask.REASON
         if not env:

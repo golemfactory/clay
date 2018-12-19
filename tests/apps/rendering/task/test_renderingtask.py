@@ -1,7 +1,8 @@
 import os
 from os import path, remove
-
 from unittest.mock import Mock, patch, ANY
+
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
 from apps.core.task.coretaskstate import TaskDefinition, TaskState, Options
 from apps.core.task.coretask import logger as core_logger
@@ -16,7 +17,6 @@ from apps.core.task.coretask import logger as logger_core
 from apps.rendering.task.renderingtask import logger as logger_render
 
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
-from golem.network.p2p.node import Node
 
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
@@ -59,7 +59,7 @@ class TestInitRenderingTask(TestDirFixture, LogTestCase):
         with self.assertLogs(logger_core, level="WARNING"):
             rt = RenderingTaskMock(main_program_file="notexisting",
                                    task_definition=RenderingTaskDefinition(),
-                                   owner=Node(node_name="ABC"),
+                                   owner=dt_p2p_factory.Node(),
                                    total_tasks=10,
                                    root_path=self.path
                                    )
@@ -75,7 +75,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task_definition.max_price = 1000
         task_definition.task_id = "xyz"
         task_definition.estimated_memory = 1024
-        task_definition.full_task_timeout = 3600
+        task_definition.timeout = 3600.0
         task_definition.subtask_timeout = 600
         task_definition.main_scene_file=files[1]
         task_definition.resolution = [800, 600]
@@ -87,12 +87,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
             task_definition=task_definition,
             total_tasks=100,
             root_path=self.path,
-            owner=Node(
-                node_name="ABC",
-                pub_addr="10.10.10.10",
-                pub_port=1023,
-                key="keyid"
-            ),
+            owner=dt_p2p_factory.Node(),
         )
 
         dm = DirManager(self.path)
@@ -101,7 +96,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
 
     def test_remove_from_preview(self):
         rt = self.task
-        rt.subtasks_given["xxyyzz"] = {"start_task": 2, "end_task": 2}
+        rt.subtasks_given["xxyyzz"] = {"start_task": 2}
         tmp_dir = DirManager(rt.root_path).get_task_temporary_dir(rt.header.task_id)
        # tmp_dir = get_tmp_path(rt.header.task_id, rt.root_path)
        # makedirs(tmp_dir)
@@ -172,13 +167,13 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
             task.restart_subtask("Not existing")
 
         task.accept_client("node_ABC")
-        task.subtasks_given["ABC"] = {'status': SubtaskStatus.starting, 'end_task':3,
+        task.subtasks_given["ABC"] = {'status': SubtaskStatus.starting,
                                       'start_task': 3, "node_id": "node_ABC"}
         task.restart_subtask("ABC")
         assert task.subtasks_given["ABC"]["status"] == SubtaskStatus.restarted
 
         task.accept_client("node_DEF")
-        task.subtasks_given["DEF"] = {'status': SubtaskStatus.finished, 'end_task': 3,
+        task.subtasks_given["DEF"] = {'status': SubtaskStatus.finished,
                                       'start_task': 3, "node_id": "node_DEF"}
         task.restart_subtask("DEF")
         assert task.subtasks_given["DEF"]["status"] == SubtaskStatus.restarted
@@ -187,19 +182,19 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         assert task.num_tasks_received == -1
 
         task.accept_client("node_GHI")
-        task.subtasks_given["GHI"] = {'status': SubtaskStatus.failure, 'end_task': 3,
+        task.subtasks_given["GHI"] = {'status': SubtaskStatus.failure,
                                       'start_task': 3, "node_id": "node_GHI"}
         task.restart_subtask("GHI")
         assert task.subtasks_given["GHI"]["status"] == SubtaskStatus.failure
 
         task.accept_client("node_JKL")
-        task.subtasks_given["JKL"] = {'status': SubtaskStatus.resent, 'end_task': 3,
+        task.subtasks_given["JKL"] = {'status': SubtaskStatus.resent,
                                       'start_task': 3, "node_id": "node_JKL"}
         task.restart_subtask("JKL")
         assert task.subtasks_given["JKL"]["status"] == SubtaskStatus.resent
 
         task.accept_client("node_MNO")
-        task.subtasks_given["MNO"] = {'status': SubtaskStatus.restarted, 'end_task': 3,
+        task.subtasks_given["MNO"] = {'status': SubtaskStatus.restarted,
                                       'start_task': 3, "node_id": "node_MNO"}
         task.restart_subtask("MNO")
         assert task.subtasks_given["MNO"]["status"] == SubtaskStatus.restarted
@@ -286,7 +281,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task = self.task
         task.total_tasks = 10
         task.last_task = 10
-        assert task._get_next_task() == (None, None)
+        assert task._get_next_task() is None
 
     def test_put_collected_files_together(self):
         output_name = self.temp_file_name("output.exr")
@@ -330,7 +325,7 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
     def test_calculate_total(self):
         definition = RenderingTaskDefinition()
         definition.optimize_total = True
-        builder = RenderingTaskBuilder(owner=Node(node_name="node"),
+        builder = RenderingTaskBuilder(owner=dt_p2p_factory.Node(),
                                        dir_manager=DirManager(self.path),
                                        task_definition=definition)
 
@@ -348,28 +343,28 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
         assert builder._calculate_total(defaults) == 17
 
         definition.optimize_total = False
-        definition.total_subtasks = 18
+        definition.subtasks_count = 18
         assert builder._calculate_total(defaults) == 18
 
-        definition.total_subtasks = 2
+        definition.subtasks_count = 2
         with self.assertLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 17
 
-        definition.total_subtasks = 3
+        definition.subtasks_count = 3
         with self.assertNoLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 3
 
-        definition.total_subtasks = 34
+        definition.subtasks_count = 34
         with self.assertLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 17
 
-        definition.total_subtasks = 33
+        definition.subtasks_count = 33
         with self.assertNoLogs(logger_render, level="WARNING"):
             assert builder._calculate_total(defaults) == 33
 
     def test_get_output_path(self):
         td = TaskDefinition()
-        td.task_name = "MY task"
+        td.name = "MY task"
         tdict = {'options': {'output_path': '/dir3/dir4', 'format': 'txt'}}
         assert RenderingTaskBuilder.get_output_path(tdict, td) == \
             path.join("/dir3/dir4", "MY task.txt")
@@ -385,7 +380,7 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
             'resources': {"file1.png", "file2.txt", 'file3.jpg', 'file4.txt'},
             'compute_on': 'cpu',
             'task_type': 'TESTTASK',
-            'subtasks': 1
+            'subtasks_count': 1
         }
 
         # when
@@ -412,7 +407,7 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
             'resources': {"file1.png", "file2.txt", 'file3.jpg', 'file4.txt'},
             'compute_on': 'cpu',
             'task_type': 'TESTTASK',
-            'subtasks': 1,
+            'subtasks_count': 1,
             'options': {'output_path': self.path,
                         'format': 'PNG',
                         'resolution': [800, 600]},
@@ -428,9 +423,9 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
             self.tti, self.task_dict)
 
         # then
-        assert definition.task_name == "NAME OF THE TASK"
+        assert definition.name == "NAME OF THE TASK"
         assert definition.max_price == 250000000000000000
-        assert definition.full_task_timeout == 3600
+        assert definition.timeout == 3600
         assert definition.subtask_timeout == 1500
         output_file = self.task_dict['name'] + "." + \
             self.task_dict['options']['format']
@@ -451,7 +446,7 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
                MIN_TIMEOUT in log_.output[0]
         assert "Subtask timeout 1 too short for this task. Changing to %d" % \
                SUBTASK_MIN_TIMEOUT in log_.output[1]
-        assert definition.full_task_timeout == MIN_TIMEOUT
+        assert definition.timeout == MIN_TIMEOUT
         assert definition.subtask_timeout == SUBTASK_MIN_TIMEOUT
 
     def test_main_scene_file(self):

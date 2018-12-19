@@ -54,16 +54,16 @@ class NodeProcess(object):
             return False
 
     def _create_remote_rpc_provider(self):
-        addr = self.addr_list.pop()
+        addr = self.addr_list.pop(0)
         log.info('GETH: connecting to remote RPC interface at %s', addr)
         return ProviderProxy(HTTPProvider(addr))
 
     def _handle_remote_rpc_provider_failure(self):
-        from golem.core.async import async_run, AsyncRequest
+        from golem.core import golem_async
         log.warning('GETH: reconnecting to another provider')
         self.provider_proxy.provider = None
 
-        request = AsyncRequest(self.start)
-        async_run(request).addErrback(
+        request = golem_async.AsyncRequest(self.start)
+        golem_async.async_run(request).addErrback(
             lambda err: self._handle_remote_rpc_provider_failure()
         )

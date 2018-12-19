@@ -3,6 +3,7 @@ import unittest
 import uuid
 from pathlib import Path
 
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from PIL import Image
 
 from apps.rendering.resources.imgrepr import load_img, EXRImgRepr
@@ -11,7 +12,6 @@ from apps.rendering.task.framerenderingtask import (get_frame_name, FrameRenderi
                                                     FrameRendererOptions, logger)
 from apps.rendering.task.renderingtaskstate import RendererDefaults
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
-from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
@@ -49,16 +49,17 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         rt.output_file = files_[2]
         rt.resources = []
         rt.resolution = [800, 600]
-        rt.full_task_timeout = 3600
+        rt.timeout = 3600
         rt.subtask_timeout = 600
         rt.estimated_memory = 1000
         rt.max_price = 15
-        task = FrameRenderingTaskMock(files_[0],
-                                      owner=Node(node_name="ABC"),
-                                      task_definition=rt,
-                                      total_tasks=num_tasks,
-                                      root_path=self.path
-                                      )
+        task = FrameRenderingTaskMock(
+            files_[0],
+            owner=dt_p2p_factory.Node(node_name="ABC", ),
+            task_definition=rt,
+            total_tasks=num_tasks,
+            root_path=self.path,
+        )
         dm = DirManager(self.path)
         task.initialize(dm)
         return task
@@ -77,7 +78,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task.accept_client("NODE 1")
         task.tmp_dir = self.path
         task.subtasks_given["SUBTASK1"] = {"start_task": 3, "node_id": "NODE 1", "parts": 1,
-                                           "end_task": 3, "frames": [1],
+                                           "frames": [1],
                                            "status": SubtaskStatus.starting}
         img_file = os.path.join(self.path, "img1.png")
         img = Image.new("RGB", (800, 600), "#0000ff")
@@ -93,10 +94,10 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         preview_img.close()
 
         task.subtasks_given["SUBTASK2"] = {"start_task": 2, "node_id": "NODE 1", "parts": 1,
-                                           "end_task": 2, "frames": [1],
+                                           "frames": [1],
                                            "status": SubtaskStatus.starting}
         task.subtasks_given["SUBTASK3"] = {"start_task": 1, "node_id": "NODE 1", "parts": 1,
-                                           "end_task": 1, "frames": [1],
+                                           "frames": [1],
                                            "status": SubtaskStatus.starting}
         task.accept_results("SUBTASK2", [img_file])
         task.accept_results("SUBTASK3", [img_file])
@@ -111,7 +112,6 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task.subtasks_given["SUBTASK1"] = {"start_task": 3,
                                            "node_id": "NODE 1",
                                            "parts": 1,
-                                           "end_task": 3,
                                            "frames": [4, 5],
                                            "status": SubtaskStatus.downloading}
         img_file2 = os.path.join(self.path, "img2.png")
@@ -319,14 +319,16 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
     def test_calculate_total(self):
         definition = RenderingTaskDefinition()
         definition.optimize_total = True
-        definition.total_subtasks = 12
+        definition.subtasks_count = 12
         definition.options = FrameRendererOptions()
         definition.options.use_frames = True
         definition.options.frames = list(range(1, 7))
 
-        builder = FrameRenderingTaskBuilder(Node(node_name="node"),
-                                            dir_manager=DirManager(self.path),
-                                            task_definition=definition)
+        builder = FrameRenderingTaskBuilder(
+            dt_p2p_factory.Node(node_name="node"),
+            dir_manager=DirManager(self.path),
+            task_definition=definition,
+        )
 
         defaults = RendererDefaults()
         # More subtasks than frames -> use frames count
@@ -337,72 +339,72 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
         assert builder._calculate_total(defaults) == 20
 
         definition.optimize_total = False
-        # Don't optimize -> use total_subtasks
+        # Don't optimize -> use subtasks_count
         assert builder._calculate_total(defaults) == 12
 
-        definition.total_subtasks = None
-        # total_subtasks unknown -> use default
+        definition.subtasks_count = None
+        # subtasks_count unknown -> use default
         assert builder._calculate_total(defaults) == 20
 
-        definition.total_subtasks = 0
-        # total_subtasks invalid -> use default
+        definition.subtasks_count = 0
+        # subtasks_count invalid -> use default
         assert builder._calculate_total(defaults) == 20
 
-        definition.total_subtasks = 1
-        # total_subtasks min
+        definition.subtasks_count = 1
+        # subtasks_count min
         assert builder._calculate_total(defaults) == 1
 
-        definition.total_subtasks = 51
-        # total_subtasks over max -> use default
+        definition.subtasks_count = 51
+        # subtasks_count over max -> use default
         assert builder._calculate_total(defaults) == 20
 
-        definition.total_subtasks = 50
-        # total_subtasks max
+        definition.subtasks_count = 50
+        # subtasks_count max
         assert builder._calculate_total(defaults) == 50
 
         definition.options.use_frames = True
 
-        definition.total_subtasks = None
+        definition.subtasks_count = None
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 6
 
-        definition.total_subtasks = 0
+        definition.subtasks_count = 0
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 6
 
-        definition.total_subtasks = 1
+        definition.subtasks_count = 1
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 1
 
-        definition.total_subtasks = 2
+        definition.subtasks_count = 2
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 2
 
-        definition.total_subtasks = 3
+        definition.subtasks_count = 3
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 3
 
-        definition.total_subtasks = 6
+        definition.subtasks_count = 6
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 6
 
-        definition.total_subtasks = 12
+        definition.subtasks_count = 12
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 12
 
-        definition.total_subtasks = 4
+        definition.subtasks_count = 4
         with self.assertLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 3
 
-        definition.total_subtasks = 13
+        definition.subtasks_count = 13
         with self.assertLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 12
 
-        definition.total_subtasks = 17
+        definition.subtasks_count = 17
         with self.assertLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 12
 
-        definition.total_subtasks = 18
+        definition.subtasks_count = 18
         with self.assertNoLogs(logger, level="WARNING"):
             assert builder._calculate_total(defaults) == 18
 
