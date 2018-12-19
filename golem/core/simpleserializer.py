@@ -6,7 +6,7 @@ import types
 from abc import ABCMeta, abstractmethod
 from typing import Optional
 
-from golem_messages.datastructures import p2p as dt_p2p
+from golem_messages import datastructures
 
 from golem.core.common import to_unicode
 
@@ -80,7 +80,7 @@ class DictCoder:
             return obj.__class__(
                 [cls._to_dict_traverse_obj(o, typed) for o in obj]
             )
-        elif isinstance(obj, dt_p2p.Node):
+        elif isinstance(obj, datastructures.Container):
             return obj.to_dict()
         elif cls.deep_serialization:
             if hasattr(obj, '__dict__') and not cls._is_builtin(obj):
