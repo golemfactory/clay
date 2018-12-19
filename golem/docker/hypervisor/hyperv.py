@@ -58,13 +58,16 @@ class HyperVHypervisor(DockerMachineHypervisor):
         self._check_smb_port()
 
     def _check_smb_port(self) -> None:
+        ok_str = 'Port check OK'
         hostname = self._get_hostname_for_sharing()
         output = self.command('execute', args=[
             self._vm_name,
-            f'if nc -z -w 1 {hostname} {self.SMB_PORT} ; then echo OK ; '
+            f'if nc -z -w 1 {hostname} {self.SMB_PORT} ; then echo {ok_str} ; '
             f'else echo Error ; fi'
         ])
-        if output is None or output.strip() != 'OK':
+        # We use splitlines() because output may contain multiple lines with
+        # debug information
+        if output is None or ok_str not in output.splitlines():
             logger.error(
                 f'Port {self.SMB_PORT} unreachable. '
                 f'Please check firewall settings.')
