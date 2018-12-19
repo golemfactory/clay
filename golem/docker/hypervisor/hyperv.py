@@ -137,10 +137,10 @@ class HyperVHypervisor(DockerMachineHypervisor):
             max_memory = self._memory_cap(constr[mem_key])
             constr[mem_key] = hardware.cap_memory(constr[mem_key], max_memory,
                                                   unit=hardware.MemSize.mebi)
-
             self._lowered_memory_event(constr[mem_key])
-            # Always constrain to set the appropriate shutdown action
-            self.constrain(name, **constr)
+
+        # Always constrain to set the appropriate shutdown action
+        self.constrain(name, **constr)
 
         try:
             # The windows VM fails to start when too much memory is assigned
