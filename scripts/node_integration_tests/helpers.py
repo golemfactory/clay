@@ -57,7 +57,7 @@ def run_golem_node(node_type: str, *args):
     return node_process
 
 
-def get_output_queue(process: subprocess.Popen):
+def get_output_queue(process: subprocess.Popen) -> queue.Queue:
     def output_queue(stream, q):
         for line in iter(stream.readline, b''):
             q.put(line)

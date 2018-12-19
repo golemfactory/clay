@@ -38,10 +38,12 @@ class ForcePayment(ConcentTestPlaybook):
                        on_success=on_success, on_error=self.print_error)
 
     def step_init_force_payment_timeout(self):
+        print("Waiting for ForcePayment.")
         self.force_payment_timeout = (
                 datetime.datetime.now() +
                 datetime.timedelta(minutes=15)
         )
+        self.next()
 
     def step_wait_force_payment(self):
         if not self.force_payment_timeout:
@@ -49,6 +51,7 @@ class ForcePayment(ConcentTestPlaybook):
 
         force_payment_test, match = self.check_concent_logs(
             self.provider_output_queue,
+            outgoing=True,
             awaited_messages=['ForcePayment', ]
         )
 
@@ -66,10 +69,12 @@ class ForcePayment(ConcentTestPlaybook):
         time.sleep(15)
 
     def step_init_force_payment_committed_timeout(self):
+        print("Waiting for ForcePaymentCommitted.")
         self.force_payment_committed_timeout = (
                 datetime.datetime.now() +
                 datetime.timedelta(minutes=15)
         )
+        self.next()
 
     def step_wait_force_payment_committed(self):
         if not self.force_payment_committed_timeout:
