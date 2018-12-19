@@ -146,7 +146,7 @@ def _run_test_task(client, task_dict):
     }
     client.task_tester = tasktester.TaskTester(
         task,
-        client.datadir,
+        client.task_server.get_task_computer_root(),
         on_success,
         on_error,
     )

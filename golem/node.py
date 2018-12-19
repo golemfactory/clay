@@ -23,7 +23,7 @@ from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.config.active import IS_MAINNET, EthereumConfig
 from golem.core.deferred import chain_function
-from golem.core.hardware import HardwarePresets
+from golem.hardware.presets import HardwarePresets, HardwarePresetsMixin
 from golem.core.keysauth import KeysAuth, WrongPassword
 from golem.core import golem_async
 from golem.core.variables import PRIVATE_KEY
@@ -65,7 +65,7 @@ class ShutdownResponse(IntEnum):
 
 
 # pylint: disable=too-many-instance-attributes
-class Node(object):
+class Node(HardwarePresetsMixin):
     """ Simple Golem Node connecting console user interface with Client
     :type client golem.client.Client:
     """
@@ -135,7 +135,8 @@ class Node(object):
             concent_variant=concent_variant,
             geth_address=geth_address,
             apps_manager=self.apps_manager,
-            task_finished_cb=self._try_shutdown
+            task_finished_cb=self._try_shutdown,
+            update_hw_preset=self.upsert_hw_preset
         )
 
         if password is not None:
@@ -486,5 +487,6 @@ class Node(object):
             exc_info = (err.type, err.value, err.getTracebackObject()) \
                 if isinstance(err, Failure) else None
             logger.error(
-                "Stopping because of %r error: %r", msg, err, exc_info=exc_info)
+                "Stopping because of %r error, run debug for more info", msg)
+            logger.debug("%r", err, exc_info=exc_info)
             self._reactor.callFromThread(self._reactor.stop)

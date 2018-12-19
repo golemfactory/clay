@@ -27,7 +27,7 @@ from golem.client import Client, ClientTaskComputerEventListener, \
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
-from golem.core.hardware import HardwarePresets
+from golem.hardware.presets import HardwarePresets
 from golem.core.variables import CONCENT_CHOICES
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -621,6 +621,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
                 apps_manager=self.client.apps_manager,
             )
         self.client.monitor = Mock()
+        self.client._update_hw_preset = Mock()
 
     def test_node(self, *_):
         c = self.client
@@ -763,6 +764,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_settings(self, *_):
         c = self.client
+        HardwarePresets.initialize(self.client.datadir)
 
         new_node_name = str(uuid.uuid4())
         self.assertNotEqual(c.get_setting('node_name'), new_node_name)
@@ -770,6 +772,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         c.update_setting('node_name', new_node_name)
         self.assertEqual(c.get_setting('node_name'), new_node_name)
         self.assertEqual(c.get_settings()['node_name'], new_node_name)
+        c._update_hw_preset.assert_called_once()
 
         newer_node_name = str(uuid.uuid4())
         self.assertNotEqual(c.get_setting('node_name'), newer_node_name)

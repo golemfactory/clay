@@ -2,9 +2,12 @@ import logging
 import os
 import subprocess
 from abc import ABCMeta
+from contextlib import contextmanager
+from typing import Optional, ClassVar, Any, List
 
 from golem.docker.commands.docker_machine import DockerMachineCommandHandler
-from golem.docker.config import DOCKER_VM_NAME, GetConfigFunction
+from golem.docker.config import DOCKER_VM_NAME, GetConfigFunction, \
+    CONSTRAINT_KEYS
 from golem.docker.hypervisor import Hypervisor
 from golem.report import Component, report_calls
 
@@ -14,6 +17,8 @@ logger = logging.getLogger(__name__)
 class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
 
     COMMAND_HANDLER = DockerMachineCommandHandler
+    DRIVER_PARAM_NAME = "--driver"
+    DRIVER_NAME: ClassVar[str]
 
     def __init__(self,
                  get_config_fn: GetConfigFunction,
@@ -23,11 +28,60 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
 
     def setup(self) -> None:
         if self._vm_name not in self.vms:
-            logger.info("Creating Docker VM '%r'", self._vm_name)
-            self.create(self._vm_name, **self._get_config())
+            if not self.create(self._vm_name, **self._get_config()):
+                self._failed_to_create()
+                raise Exception('Docker: No vm available and failed to create')
 
         if not self.vm_running():
             self.start_vm()
+        self._set_env()
+
+    def _failed_to_create(self, vm_name: Optional[str] = None):
+        name = vm_name or self._vm_name
+        logger.warning('%s: Vm (%s) not found and create failed',
+                       self.DRIVER_NAME, name)
+
+    # pylint: disable=unused-argument
+    def _parse_create_params(self, **params: Any) -> List[str]:
+        return [self.DRIVER_PARAM_NAME, self.DRIVER_NAME]
+
+    @report_calls(Component.hypervisor, 'vm.create')
+    def create(self, vm_name: Optional[str] = None, **params) -> bool:
+        vm_name = vm_name or self._vm_name
+        constraints = {
+            k: params.pop(v, None)
+            for k, v in CONSTRAINT_KEYS.items()
+        }
+        command_args = self._parse_create_params(**constraints, **params)
+
+        logger.info('%s: creating VM "%s"', self.DRIVER_NAME, vm_name)
+
+        try:
+            self.command('create', vm_name, args=command_args)
+            return True
+        except subprocess.CalledProcessError as exc:
+            out = exc.stdout.decode('utf8') if exc.stdout is not None else ''
+            logger.error(
+                f'{self.DRIVER_NAME}: error creating VM "{vm_name}"" '
+                f'stdout="{out}"')
+            return False
+
+    @contextmanager
+    @report_calls(Component.hypervisor, 'vm.recover')
+    def recover_ctx(self, name: Optional[str] = None):
+        name = name or self._vm_name
+        with self.restart_ctx(name) as _name:
+            yield _name
+        self._set_env()
+
+    @contextmanager
+    @report_calls(Component.hypervisor, 'vm.restart')
+    def restart_ctx(self, name: Optional[str] = None):
+        name = name or self._vm_name
+        if self.vm_running(name):
+            self.stop_vm(name)
+        yield name
+        self.start_vm(name)
         self._set_env()
 
     @property
@@ -61,12 +115,9 @@ Ensure that you try the following before reporting an issue:
 
  1. The virtualization of Intel VT-x/EPT or AMD-V/RVI is enabled in BIOS
     or virtual machine settings.
- 2. The proper environment is set. On windows powershell please run:
-    & "C:\Program Files\Docker Toolbox\docker-machine.exe" ^
-    env golem | Invoke-Expression
- 3. virtualbox driver is available:
-    docker-machine.exe create --driver virtualbox golem
- 4. Restart Windows machine"""
+ 2. The windows feature 'Hyper-V' is enabled
+ 3. docker-machine is in your path `docker-machine --version` in ps or cmd
+ 4. docker-machine ls has no errors `docker-machine  ls` in ps or cmd"""
             logger.error(typical_solution_s)
             raise
 
@@ -87,7 +138,7 @@ Ensure that you try the following before reporting an issue:
             return self._set_env(retried=True)
 
         try:
-            self.command('start', self._vm_name)
+            self.command('restart', self._vm_name)
         except subprocess.CalledProcessError as e:
             logger.warning("DockerMachine:"
                            " failed to restart the VM: %s -- %s",

@@ -17,11 +17,10 @@ from twisted.internet.defer import (
     gatherResults,
     Deferred)
 
-import golem
 from apps.appsmanager import AppsManager
+import golem
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
-from golem.config.presets import HardwarePresetsMixin
 from golem.core.common import (
     datetime_to_timestamp_utc,
     get_timestamp_utc,
@@ -30,9 +29,10 @@ from golem.core.common import (
     to_unicode,
 )
 from golem.core.fileshelper import du
-from golem.core.hardware import HardwarePresets
+from golem.core.variables import CONCENT_CHOICES
+from golem.hardware.presets import HardwarePresets
 from golem.core.keysauth import KeysAuth
-from golem.core.service import LoopingCallService
+from golem.core.service import LoopingCallService, IService
 from golem.core.simpleserializer import DictSerializer
 from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
@@ -86,10 +86,10 @@ class ClientTaskComputerEventListener(object):
         self.client.config_changed()
 
 
-class Client(HardwarePresetsMixin):
+class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-public-methods
     _services = []  # type: List[IService]
 
-    def __init__(  # noqa pylint: disable=too-many-arguments
+    def __init__(  # noqa pylint: disable=too-many-arguments,too-many-locals
             self,
             datadir: str,
             app_config: AppConfig,
@@ -104,7 +104,8 @@ class Client(HardwarePresetsMixin):
             use_monitor: bool = True,
             geth_address: Optional[str] = None,
             apps_manager: AppsManager = AppsManager(),
-            task_finished_cb=None) -> None:
+            task_finished_cb=None,
+            update_hw_preset=None) -> None:
 
         self.apps_manager = apps_manager
         self.datadir = datadir
@@ -193,7 +194,10 @@ class Client(HardwarePresetsMixin):
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = str(uuid.uuid4())
+
+        # TODO: Move to message queue #3160
         self._task_finished_cb = task_finished_cb
+        self._update_hw_preset = update_hw_preset
 
         dispatcher.connect(
             self.p2p_listener,
@@ -1054,7 +1058,9 @@ class Client(HardwarePresetsMixin):
 
     def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
-        self.upsert_hw_preset(HardwarePresets.from_config(self.config_desc))
+        if self._update_hw_preset:
+            self._update_hw_preset(
+                HardwarePresets.from_config(self.config_desc))
 
         if self.p2pservice:
             self.p2pservice.change_config(self.config_desc)

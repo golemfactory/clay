@@ -25,6 +25,7 @@ ndg-httpsclient
 netifaces==0.10.4
 numpy==1.13.1
 OpenEXR
+os-win
 packaging
 peewee<2.11,>=2.8
 peewee_migrate==0.14.0
@@ -46,7 +47,7 @@ scrypt
 semantic_version
 setuptools-rust==0.10.2
 setuptools>=36.0.1,<39.0.0
-six==1.10.0
+six==1.11.0
 tabulate
 token_bucket==0.2.0
 Twisted==17.9.0

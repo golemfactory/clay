@@ -84,8 +84,12 @@ class TaskServer(
             finished_cb=task_finished_cb,
         )
         benchmarks = self.task_manager.apps_manager.get_benchmarks()
-        self.benchmark_manager = BenchmarkManager(config_desc.node_name, self,
-                                                  client.datadir, benchmarks)
+        self.benchmark_manager = BenchmarkManager(
+            node_name=config_desc.node_name,
+            task_server=self,
+            root_path=self.get_task_computer_root(),
+            benchmarks=benchmarks
+        )
         self.task_computer = TaskComputer(
             task_server=self,
             use_docker_manager=use_docker_manager,
@@ -1008,7 +1012,7 @@ class TaskServer(
     #############################
     @staticmethod
     def __get_task_manager_root(datadir):
-        return os.path.join(datadir, "res")
+        return os.path.join(datadir, "ComputerRes")
 
     def _set_conn_established(self):
         self.conn_established_for_type.update({

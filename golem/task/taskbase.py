@@ -38,6 +38,7 @@ class TaskTypeInfo(object):
         self.definition = definition
         self.task_builder_type = task_builder_type
 
+    # pylint: disable=unused-argument
     def for_purpose(self, purpose: TaskPurpose) -> 'TaskTypeInfo':
         return self
 

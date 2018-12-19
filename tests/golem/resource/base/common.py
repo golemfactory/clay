@@ -72,6 +72,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         return relative, absolute
 
+    @mock.patch('golem.task.taskserver.TaskComputer', mock.Mock())
     def _create_client(self, task_id, postfix):
         directory = os.path.join(self.tempdir, 'node' + postfix)
         dir_manager = DirManager(directory)
