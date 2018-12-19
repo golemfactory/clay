@@ -33,7 +33,7 @@ class DockerMachineHypervisor(Hypervisor, metaclass=ABCMeta):
                 raise Exception('Docker: No vm available and failed to create')
 
         if not self.vm_running():
-            self.start_vm()
+            self.restore_vm()
         self._set_env()
 
     def _failed_to_create(self, vm_name: Optional[str] = None):

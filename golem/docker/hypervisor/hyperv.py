@@ -1,11 +1,13 @@
 import logging
 import os
+import psutil
 from pathlib import Path
 import subprocess
 from typing import Any, ClassVar, Dict, Iterable, List, Optional, Union
 
-from os_win.constants import HOST_SHUTDOWN_ACTION_SHUTDOWN, \
-    VM_SNAPSHOT_TYPE_DISABLED
+from os_win.constants import HOST_SHUTDOWN_ACTION_SAVE, \
+    VM_SNAPSHOT_TYPE_DISABLED, HYPERV_VM_STATE_SUSPENDED, \
+    HYPERV_VM_STATE_ENABLED, HOST_SHUTDOWN_ACTION_SHUTDOWN
 from os_win.exceptions import OSWinException
 from os_win.utils.compute.vmutils import VMUtils
 from pydispatch import dispatcher
@@ -14,7 +16,7 @@ from golem import hardware
 from golem.core.common import get_golem_path
 from golem.docker import smbshare
 from golem.docker.client import local_client
-from golem.docker.config import CONSTRAINT_KEYS
+from golem.docker.config import CONSTRAINT_KEYS, MIN_CONSTRAINTS
 from golem.docker.hypervisor.docker_machine import DockerMachineHypervisor
 from golem.docker.task_thread import DockerBind
 from golem.report import Component, Stage
@@ -63,9 +65,13 @@ class HyperVHypervisor(DockerMachineHypervisor):
     VOLUME_DRIVER = "cifs"
     SMB_PORT = "445"
 
+    SCRIPTS_PATH = os.path.join(get_golem_path(), 'scripts', 'docker')
     GET_VSWITCH_SCRIPT_PATH = \
-        os.path.join(get_golem_path(), 'scripts', 'get-default-vswitch.ps1')
+        os.path.join(SCRIPTS_PATH, 'get-default-vswitch.ps1')
+    START_VM_SCRIPT_PATH = \
+        os.path.join(SCRIPTS_PATH, 'start-hyperv-docker-vm.ps1')
     SCRIPT_TIMEOUT = 5  # seconds
+    START_VM_TIMEOUT = 60  # seconds
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -76,18 +82,44 @@ class HyperVHypervisor(DockerMachineHypervisor):
         self._check_smb_port()
 
     def _check_smb_port(self) -> None:
+        ok_str = 'Port check OK'
         hostname = self._get_hostname_for_sharing()
         output = self.command('execute', args=[
             self._vm_name,
-            f'if nc -z -w 1 {hostname} {self.SMB_PORT} ; then echo OK ; '
+            f'if nc -z -w 1 {hostname} {self.SMB_PORT} ; then echo {ok_str} ; '
             f'else echo Error ; fi'
         ])
-        if output is None or output.strip() != 'OK':
+        # We use splitlines() because output may contain multiple lines with
+        # debug information
+        if output is None or ok_str not in output.splitlines():
             logger.error(
                 f'Port {self.SMB_PORT} unreachable. '
                 f'Please check firewall settings.')
 
+    def save_vm(self, vm_name: Optional[str] = None) -> None:
+        vm_name = vm_name or self._vm_name
+        logger.info('Hyper-V: Saving state of VM %s ...', vm_name)
+        try:
+            self._vm_utils.set_vm_state(vm_name, HYPERV_VM_STATE_SUSPENDED)
+        except OSWinException:
+            logger.exception(
+                'Hyper-V: Saving VM %s state failed. Stopping VM ...', vm_name)
+            self.stop_vm(vm_name)
+
+    def restore_vm(self, vm_name: Optional[str] = None) -> None:
+        vm_name = vm_name or self._vm_name
+        vm_state = self._vm_utils.get_vm_state(vm_name)
+        if vm_state == HYPERV_VM_STATE_SUSPENDED:
+            logger.info('Hyper-V: Restoring VM %s ...', vm_name)
+            self._vm_utils.set_vm_state(vm_name, HYPERV_VM_STATE_ENABLED)
+            return
+        else:
+            logger.info(
+                'Hyper-V: VM %s cannot be restored. Booting ...', vm_name)
+            self.start_vm(vm_name)
+
     def start_vm(self, name: Optional[str] = None) -> None:
+        name = name or self._vm_name
         constr = self.constraints()
 
         if not self._check_memory(constr):
@@ -107,14 +139,25 @@ class HyperVHypervisor(DockerMachineHypervisor):
             constr[mem_key] = hardware.cap_memory(constr[mem_key], max_memory,
                                                   unit=hardware.MemSize.mebi)
             logger.debug('Memory capped by "free - 10%%": %r', constr[mem_key])
-            self.constrain(name, **constr)
+
+        # Always constrain to set the appropriate shutdown action
+        self.constrain(name, **constr)
 
         try:
             # The windows VM fails to start when too much memory is assigned
-            super().start_vm(name)
-        except subprocess.CalledProcessError as e:
+            logger.info("Hyper-V: Starting VM %s ...", name)
+            self._run_ps(
+                script=self.START_VM_SCRIPT_PATH,
+                args=[
+                    '-VMName', name,
+                    '-IPTimeoutSeconds', str(self.START_VM_TIMEOUT)
+                ],
+                timeout=self.START_VM_TIMEOUT
+            )
+            logger.info("Hyper-V: VM %s started successfully", name)
+        except subprocess.CalledProcessError:
             logger.error(
-                "HyperV: VM failed to start, this can be caused "
+                "Hyper-V: VM failed to start, this can be caused "
                 "by insufficient RAM or HD free on the host machine")
             raise
 
@@ -148,10 +191,17 @@ class HyperVHypervisor(DockerMachineHypervisor):
             args += [self.OPTIONS['cpu'], str(cpu)]
         if mem is not None:
             cap_mem = self._memory_cap(mem)
-            if not cap_mem == mem:
+            if cap_mem != mem:
                 logger.warning(MESSAGES['lowered_memory'])
                 publish_event(EVENTS['lowered_memory'])
-            args += [self.OPTIONS['mem'], str(cap_mem)]
+
+            if self._check_system_drive_space(cap_mem):
+                args += [self.OPTIONS['mem'], str(cap_mem)]
+            else:
+                logger.warning("Not enough disk space. "
+                               "Creating VM with min memory")
+                mem_key = CONSTRAINT_KEYS['mem']
+                args += [self.OPTIONS['mem'], str(MIN_CONSTRAINTS[mem_key])]
 
         return args
 
@@ -191,6 +241,13 @@ class HyperVHypervisor(DockerMachineHypervisor):
         assert isinstance(mem, int)
         cpu = params.get(CONSTRAINT_KEYS['cpu'])
 
+        if self._check_system_drive_space(mem):
+            shutdown_action = HOST_SHUTDOWN_ACTION_SAVE
+        else:
+            logger.warning("Not enough space on system drive. VM state cannot"
+                           "be saved on system shutdown")
+            shutdown_action = HOST_SHUTDOWN_ACTION_SHUTDOWN
+
         try:
             self._vm_utils.update_vm(
                 vm_name=name,
@@ -200,7 +257,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 vcpus_per_numa_node=0,
                 limit_cpu_features=False,
                 dynamic_mem_ratio=1,
-                host_shutdown_action=HOST_SHUTDOWN_ACTION_SHUTDOWN,
+                host_shutdown_action=shutdown_action,
                 snapshot_type=VM_SNAPSHOT_TYPE_DISABLED,
             )
         except OSWinException:
@@ -233,6 +290,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
             cls,
             script: Optional[str] = None,
             command: Optional[str] = None,
+            args: Optional[List[str]] = None,
             timeout: int = SCRIPT_TIMEOUT
     ) -> str:
         """
@@ -251,6 +309,9 @@ class HyperVHypervisor(DockerMachineHypervisor):
             ]
         else:
             raise ValueError("Exactly one of (script, command) is required")
+
+        if args:
+            cmd += args
 
         try:
             return subprocess\
@@ -294,6 +355,17 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
         constr = constr or self.constraints()
         return constr[CONSTRAINT_KEYS['mem']] <= self._get_max_memory(constr)
+
+    @staticmethod
+    def _check_system_drive_space(memory: int) -> bool:
+        """
+        Check if there is enough space on the system drive to dump virtual
+        machine memory when the host machine is shutting down
+        :param memory: VM assigned memory in MiB
+        """
+        drive = os.getenv('SystemDrive')
+        free_space = psutil.disk_usage(drive).free // 1024 // 1024
+        return memory < free_space
 
     def _get_max_memory(self, constr: Optional[dict] = None) -> int:
         max_mem_in_mb = hardware.memory_available() // 1024

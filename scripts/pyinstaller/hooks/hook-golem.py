@@ -34,6 +34,7 @@ datas = [
     ('golem/database/schemas/*.py', 'golem/database/schemas/'),
     ('golem/network/concent/resources/ssl/certs/*.crt',
      'golem/network/concent/resources/ssl/certs/'),
-    ('scripts/create-share.ps1', 'scripts/'),
-    ('scripts/get-default-vswitch.ps1', 'scripts/'),
+    ('scripts/docker/create-share.ps1', 'scripts/docker/'),
+    ('scripts/docker/get-default-vswitch.ps1', 'scripts/docker/'),
+    ('scripts/docker/start-hyperv-docker-vm.ps1', 'scripts/docker/'),
 ]
