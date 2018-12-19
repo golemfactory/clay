@@ -22,7 +22,7 @@ pytest-cov==2.5.1
 pytest==3.3.1
 python-dateutil==2.7.2
 requests==2.18.4
-six==1.10.0
+six==1.11.0
 text-unidecode==1.2
 typed-ast==1.1.0
 urllib3==1.22

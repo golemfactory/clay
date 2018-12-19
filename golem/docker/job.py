@@ -2,14 +2,12 @@ import logging
 import os
 import posixpath
 import threading
-from typing import Dict, Optional
+from typing import Dict, Optional, Iterable
 
 import docker.errors
 
-from golem.core.common import is_windows, nt_path_to_posix_path, is_osx, \
-    posix_path
+from golem.core.common import nt_path_to_posix_path
 from golem.docker.image import DockerImage
-from golem.environments.environmentsmanager import EnvironmentsManager
 from .client import local_client
 
 __all__ = ['DockerJob']
@@ -67,6 +65,8 @@ class DockerJob(object):
                  resources_dir: str,
                  work_dir: str,
                  output_dir: str,
+                 volumes: Optional[Iterable[str]] = None,
+                 environment: Optional[dict] = None,
                  host_config: Optional[Dict] = None,
                  container_log_level: Optional[int] = None) -> None:
         """
@@ -86,6 +86,12 @@ class DockerJob(object):
 
         self.parameters.update(self.PATH_PARAMS)
 
+        self.volumes = list(volumes) if volumes else [
+            self.WORK_DIR,
+            self.RESOURCES_DIR,
+            self.OUTPUT_DIR
+        ]
+        self.environment = environment or {}
         self.host_config = host_config or {}
 
         self.resources_dir = resources_dir
@@ -127,71 +133,17 @@ class DockerJob(object):
         # Setup volumes for the container
         client = local_client()
 
-        container_config = dict(self.host_config)
-        cpuset = container_config.pop('cpuset', None)
-
-        volumes = [self.WORK_DIR, self.RESOURCES_DIR, self.OUTPUT_DIR]
-        binds = {
-            posix_path(self.work_dir): {
-                "bind": self.WORK_DIR,
-                "mode": "rw"
-            },
-            posix_path(self.resources_dir): {
-                "bind": self.RESOURCES_DIR,
-                "mode": "rw"
-            },
-            posix_path(self.output_dir): {
-                "bind": self.OUTPUT_DIR,
-                "mode": "rw"
-            },
-        }
-
-        if is_windows():
-            environment = {}
-        elif is_osx():
-            environment = dict(OSX_USER=1)
-        else:
-            environment = dict(LOCAL_USER_ID=os.getuid())
-
-        environment.update(
-            WORK_DIR=self.WORK_DIR,
-            RESOURCES_DIR=self.RESOURCES_DIR,
-            OUTPUT_DIR=self.OUTPUT_DIR
-        )
-
-        docker_env = EnvironmentsManager().get_environment_by_image(self.image)
-
-        if docker_env:
-            env_config = docker_env.get_container_config()
-
-            environment.update(env_config['environment'])
-            binds.update(env_config['binds'])
-            volumes += env_config['volumes']
-            devices = env_config['devices']
-            runtime = env_config['runtime']
-        else:
-            logger.debug('No Docker environment found for image %r', self.image)
-
-            devices = None
-            runtime = None
-
-        host_cfg = client.create_host_config(
-            cpuset_cpus=cpuset,
-            devices=devices,
-            binds=binds,
-            runtime=runtime,
-            **container_config
-        )
+        host_cfg = client.create_host_config(**self.host_config)
 
         # The location of the task script when mounted in the container
         container_script_path = self._get_container_script_path()
         self.container = client.create_container(
             image=self.image.name,
-            volumes=volumes,
+            volumes=self.volumes,
             host_config=host_cfg,
             command=[container_script_path],
             working_dir=self.WORK_DIR,
-            environment=environment,
+            environment=self.environment,
         )
         self.container_id = self.container["Id"]
         if self.container_id is None:

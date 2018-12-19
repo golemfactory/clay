@@ -1304,7 +1304,6 @@ class TestCopySubtaskResults(DatabaseFixture):
 
     def setUp(self):
         super().setUp()
-
         self.tm = TaskManager(
             node=dt_p2p_factory.Node(),
             keys_auth=MagicMock(spec=KeysAuth),

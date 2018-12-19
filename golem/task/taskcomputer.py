@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from typing import Any, Dict, Optional, TYPE_CHECKING
 
 import os
@@ -9,6 +10,7 @@ from threading import Lock
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred, TimeoutError
 
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import deadline_to_timeout
 from golem.core.deferred import sync_wait
 from golem.core.statskeeper import IntStatsKeeper
@@ -255,16 +257,26 @@ class TaskComputer(object):
         self.task_request_frequency = config_desc.task_request_interval
         self.compute_tasks = config_desc.accept_tasks \
             and not config_desc.in_shutdown
-        return self.change_docker_config(config_desc, run_benchmarks,
-                                         in_background)
+        return self.change_docker_config(
+            config_desc=config_desc,
+            run_benchmarks=run_benchmarks,
+            work_dir=Path(self.dir_manager.root_path),
+            in_background=in_background)
 
     def config_changed(self):
         for l in self.listeners:
             l.config_changed()
 
-    def change_docker_config(self, config_desc, run_benchmarks,
-                             in_background=True):
+    def change_docker_config(
+            self,
+            config_desc: ClientConfigDescriptor,
+            run_benchmarks: bool,
+            work_dir: Path,
+            in_background: bool = True
+    ) -> Optional[Deferred]:
+
         dm = self.docker_manager
+        assert isinstance(dm, DockerManager)
         dm.build_config(config_desc)
 
         deferred = Deferred()
@@ -292,11 +304,17 @@ class TaskComputer(object):
                 self.runnable = True
 
             self.runnable = False
-            dm.update_config(status_callback,
-                             done_callback,
-                             in_background)
+            # PyLint thinks dm is of type DockerConfigManager not DockerManager
+            # pylint: disable=no-member
+            dm.update_config(
+                status_callback=status_callback,
+                done_callback=done_callback,
+                work_dir=work_dir,
+                in_background=in_background)
 
             return deferred
+
+        return None
 
     def register_listener(self, listener):
         self.listeners.append(listener)

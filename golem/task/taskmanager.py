@@ -84,8 +84,7 @@ class TaskManager(TaskEventListener):
         pass
 
     def __init__(
-            self, node, keys_auth,
-            root_path="res",
+            self, node, keys_auth, root_path,
             tasks_dir="tasks", task_persistence=True,
             apps_manager=AppsManager(), finished_cb=None):
         super().__init__()

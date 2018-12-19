@@ -5,18 +5,18 @@ from golem.appconfig import DEFAULT_HARDWARE_PRESET_NAME as DEFAULT, \
     CUSTOM_HARDWARE_PRESET_NAME as CUSTOM, MIN_MEMORY_SIZE, MIN_DISK_SPACE, \
     MIN_CPU_CORES
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.hardware import HardwarePresets
+from golem.hardware.presets import HardwarePresets
 from golem.model import HardwarePreset
 
 
-@patch('golem.core.hardware.cpu_cores_available', return_value=[1] * 7)
-@patch('golem.core.hardware.memory_available', return_value=7e7)
-@patch('golem.core.hardware.free_partition_space', return_value=7e9)
+@patch('golem.hardware.presets.hardware.cpus', return_value=[1] * 7)
+@patch('golem.hardware.presets.hardware.memory', return_value=7e7)
+@patch('golem.hardware.presets.hardware.disk', return_value=7e9)
 class TestHardwarePresets(testutils.DatabaseFixture):
 
     def setUp(self):
         super().setUp()
-        with patch('golem.core.hardware.free_partition_space',
+        with patch('golem.hardware.presets.hardware.disk',
                    return_value=7e9):
             HardwarePresets.initialize(self.tempdir)
         self.config = ClientConfigDescriptor()
@@ -30,30 +30,6 @@ class TestHardwarePresets(testutils.DatabaseFixture):
         assert caps['cpu_cores'] == 7
         assert caps['memory'] == 7e7
         assert caps['disk'] == 7e9
-
-    def test_cpu_cores(self, *_):
-        assert HardwarePresets.cpu_cores(-1) == MIN_CPU_CORES
-        assert HardwarePresets.cpu_cores(0) == MIN_CPU_CORES
-        assert HardwarePresets.cpu_cores(1) == 1
-        assert HardwarePresets.cpu_cores(7) == 7
-        assert HardwarePresets.cpu_cores(8) == 7
-        assert HardwarePresets.cpu_cores(1e9) == 7
-
-    def test_memory(self, *_):
-        assert HardwarePresets.memory(-1) == MIN_MEMORY_SIZE
-        assert HardwarePresets.memory(1e6) == MIN_MEMORY_SIZE
-        assert HardwarePresets.memory(2 ** 20) == 2 ** 20
-        assert HardwarePresets.memory(1e7) == 1e7
-        assert HardwarePresets.memory(7e7) == 7e7
-        assert HardwarePresets.memory(9e9) == 7e7
-
-    def test_disk(self, *_):
-        assert HardwarePresets.disk(-1) == MIN_DISK_SPACE
-        assert HardwarePresets.disk(1e6) == MIN_DISK_SPACE
-        assert HardwarePresets.disk(2 ** 20) == 2 ** 20
-        assert HardwarePresets.disk(1e7) == 1e7
-        assert HardwarePresets.disk(7e9) == 7e9
-        assert HardwarePresets.disk(9e19) == 7e9
 
     def test_update_config_to_default(self, *_):
         # given
@@ -141,8 +117,7 @@ class TestHardwarePresets(testutils.DatabaseFixture):
         assert not HardwarePresets.update_config(DEFAULT, self.config)
 
         # when env changes (disk space shrinks)
-        with patch('golem.core.hardware.free_partition_space',
-                   return_value=5e9):
+        with patch('golem.hardware.disk', return_value=5e9):
             # then
             assert HardwarePresets.update_config(DEFAULT, self.config)
             assert self.config.max_resource_size == 5e9
