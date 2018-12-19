@@ -36,11 +36,11 @@ class Hypervisor(metaclass=ABCMeta):
 
     def setup(self) -> None:
         if not self.vm_running():
-            self.start_vm()
+            self.restore_vm()
 
     def quit(self) -> None:
         if self.vm_running():
-            self.stop_vm()
+            self.save_vm()
 
     @classmethod
     def instance(cls, get_config_fn: GetConfigFunction,
@@ -108,6 +108,14 @@ class Hypervisor(metaclass=ABCMeta):
         except subprocess.CalledProcessError as e:
             logger.warning("Docker: failed to stop the VM: %r", e)
         return False
+
+    def save_vm(self, vm_name: Optional[str] = None) -> None:
+        logger.info("Docker: saving machine state not implemented")
+        self.stop_vm(vm_name)
+
+    def restore_vm(self, vm_name: Optional[str] = None) -> None:
+        logger.info("Docker: restoring machine state not implemented")
+        self.start_vm(vm_name)
 
     def create(self, vm_name: Optional[str] = None, **params) -> bool:
         raise NotImplementedError

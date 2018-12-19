@@ -8,7 +8,8 @@ import sys
 
 from golem.core.common import get_golem_path, is_windows
 
-SCRIPT_PATH = path.join(get_golem_path(), 'scripts', 'create-share.ps1')
+SCRIPT_PATH = path.join(
+    get_golem_path(), 'scripts', 'docker', 'create-share.ps1')
 SCRIPT_TIMEOUT = 60  # seconds
 
 

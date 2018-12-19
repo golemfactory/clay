@@ -5,9 +5,11 @@ from pathlib import Path
 from unittest import TestCase
 from unittest.mock import Mock, patch, ANY
 
+from os_win.constants import HOST_SHUTDOWN_ACTION_SAVE, \
+    HOST_SHUTDOWN_ACTION_SHUTDOWN
 from os_win.exceptions import OSWinException
 
-from golem.docker.config import DOCKER_VM_NAME
+from golem.docker.config import DOCKER_VM_NAME, MIN_CONSTRAINTS, CONSTRAINT_KEYS
 from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.task_thread import DockerBind
 
@@ -27,9 +29,10 @@ class TestHyperVHypervisor(TestCase):
                 return
         self.fail(f'Parameter {name} = {value} not found in {args}')
 
+    @patch(PATCH_BASE + '.HyperVHypervisor._check_system_drive_space')
     @patch(PATCH_BASE + '.HyperVHypervisor._get_vswitch_name',
            return_value='Default Switch')
-    def test_parse_create_params_default(self, _):
+    def test_parse_create_params_default(self, *_):
         args = self.hyperv._parse_create_params()
         self._assert_param(args, '--driver', 'hyperv')
         self._assert_param(
@@ -37,27 +40,53 @@ class TestHyperVHypervisor(TestCase):
         self._assert_param(
             args, '--hyperv-virtual-switch', 'Default Switch')
 
+    @patch(PATCH_BASE + '.HyperVHypervisor._check_system_drive_space')
     @patch(PATCH_BASE + '.HyperVHypervisor._get_vswitch_name')
-    @patch(PATCH_BASE + '.HyperVHypervisor._memory_cap', return_value=4096)
+    @patch(PATCH_BASE + '.HyperVHypervisor._memory_cap', lambda _, x: x)
     def test_parse_create_params_constraints(self, *_):
         args = self.hyperv._parse_create_params(cpu=4, mem=4096)
         self._assert_param(args, '--hyperv-cpu-count', '4')
         self._assert_param(args, '--hyperv-memory', '4096')
 
+    @patch(PATCH_BASE + '.HyperVHypervisor._check_system_drive_space')
+    @patch(PATCH_BASE + '.HyperVHypervisor._get_vswitch_name')
+    @patch(PATCH_BASE + '.HyperVHypervisor._memory_cap', return_value=2048)
+    @patch(PATCH_BASE + '.logger')
+    def test_parse_create_params_constraints_memory_cap(self, logger, *_):
+        args = self.hyperv._parse_create_params(cpu=4, mem=4096)
+        self._assert_param(args, '--hyperv-cpu-count', '4')
+        self._assert_param(args, '--hyperv-memory', '2048')
+        logger.warning.assert_called_once()
+
+    @patch(PATCH_BASE + '.HyperVHypervisor._get_vswitch_name')
+    @patch(PATCH_BASE + '.HyperVHypervisor._memory_cap', lambda _, x: x)
+    @patch(PATCH_BASE + '.psutil')
+    @patch(PATCH_BASE + '.logger')
+    def test_parse_create_params_not_enough_disk_space(self, logger, psutil, _):
+        psutil.disk_usage().free = 2048 * 1024 * 1024
+        args = self.hyperv._parse_create_params(cpu=4, mem=4096)
+        self._assert_param(args, '--hyperv-cpu-count', '4')
+        self._assert_param(args, '--hyperv-memory',
+                           str(MIN_CONSTRAINTS[CONSTRAINT_KEYS['mem']]))
+        logger.warning.assert_called_once()
+
+    @patch(PATCH_BASE + '.HyperVHypervisor._check_system_drive_space')
     @patch(PATCH_BASE + '.subprocess.run',
            side_effect=subprocess.CalledProcessError(1, 'foo'))
-    def test_parse_create_params_error(self, _):
+    def test_parse_create_params_error(self, *_):
         with self.assertRaises(RuntimeError):
             self.hyperv._parse_create_params()
 
+    @patch(PATCH_BASE + '.HyperVHypervisor._check_system_drive_space')
     @patch(PATCH_BASE + '.logger')
-    def test_constrain_error(self, logger):
+    def test_constrain_error(self, logger, _):
         with patch.object(self.hyperv._vm_utils, 'update_vm') as update_vm:
             update_vm.side_effect = OSWinException
             self.hyperv.constrain(cpu_count=2, memory_size=4096)
             logger.exception.assert_called_once()
 
-    def test_constrain_ok(self):
+    @patch(PATCH_BASE + '.HyperVHypervisor._check_system_drive_space')
+    def test_constrain_ok(self, _):
         with patch.object(self.hyperv._vm_utils, 'update_vm') as update_vm:
             self.hyperv.constrain(cpu_count=2, memory_size=4096)
 
@@ -70,6 +99,32 @@ class TestHyperVHypervisor(TestCase):
                 },
                 update_vm.call_args[1]
             )
+
+    @patch(PATCH_BASE + '.psutil')
+    def test_constrain_host_shutdown_action_save(self, psutil):
+        psutil.disk_usage().free = 2048 * 1024 * 1024
+        with patch.object(self.hyperv._vm_utils, 'update_vm') as update_vm:
+            self.hyperv.constrain(cpu_count=1, memory_size=1024)
+
+            update_vm.assert_called_once()
+            self.assertEqual(
+                update_vm.call_args[1].get('host_shutdown_action'),
+                HOST_SHUTDOWN_ACTION_SAVE
+            )
+
+    @patch(PATCH_BASE + '.psutil')
+    @patch(PATCH_BASE + '.logger')
+    def test_constrain_host_shutdown_action_shutdown(self, logger, psutil):
+        psutil.disk_usage().free = 1024 * 1024 * 1024
+        with patch.object(self.hyperv._vm_utils, 'update_vm') as update_vm:
+            self.hyperv.constrain(cpu_count=1, memory_size=2048)
+
+            update_vm.assert_called_once()
+            self.assertEqual(
+                update_vm.call_args[1].get('host_shutdown_action'),
+                HOST_SHUTDOWN_ACTION_SHUTDOWN
+            )
+            logger.warning.assert_called_once()
 
     @patch(PATCH_BASE + '.logger')
     def test_constraints_error(self, logger):
