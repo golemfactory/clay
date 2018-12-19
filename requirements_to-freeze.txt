@@ -50,9 +50,6 @@ setuptools>=36.0.1,<39.0.0
 six==1.11.0
 tabulate
 token_bucket==0.2.0
-py-cpuinfo==3.3.0
-humanize==0.5.1
-raven
 Twisted==17.9.0
 txaio==2.8.2
 web3==4.2.1
