@@ -26,14 +26,15 @@ logger = logging.getLogger(__name__)
 
 
 MESSAGES = {
-    'lowered_memory': 'Not enough free RAM to start the VM, lowering memory',
+    'lowered_memory': 'Not enough free RAM to start the VM, lowering memory'
+                      'to {mem_mb} MB',
 }
 EVENTS = {
     'lowered_memory': {
         'component': Component.hypervisor,
         'method': 'start_vm',
         'stage': Stage.warning,
-        'data': MESSAGES['lowered_memory'],
+        'data': None,
     },
 }
 
@@ -132,16 +133,14 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 logger.exception('Failed to free memory')
 
         if not self._check_memory(constr):
-            logger.warning(MESSAGES['lowered_memory'])
-            publish_event(EVENTS['lowered_memory'])
             mem_key = CONSTRAINT_KEYS['mem']
             max_memory = self._memory_cap(constr[mem_key])
             constr[mem_key] = hardware.cap_memory(constr[mem_key], max_memory,
                                                   unit=hardware.MemSize.mebi)
-            logger.debug('Memory capped by "free - 10%%": %r', constr[mem_key])
 
-        # Always constrain to set the appropriate shutdown action
-        self.constrain(name, **constr)
+            self._lowered_memory_event(constr[mem_key])
+            # Always constrain to set the appropriate shutdown action
+            self.constrain(name, **constr)
 
         try:
             # The windows VM fails to start when too much memory is assigned
@@ -192,8 +191,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if mem is not None:
             cap_mem = self._memory_cap(mem)
             if cap_mem != mem:
-                logger.warning(MESSAGES['lowered_memory'])
-                publish_event(EVENTS['lowered_memory'])
+                self._lowered_memory_event(cap_mem)
 
             if self._check_system_drive_space(cap_mem):
                 args += [self.OPTIONS['mem'], str(cap_mem)]
@@ -375,6 +373,15 @@ class HyperVHypervisor(DockerMachineHypervisor):
             max_mem_in_mb += constr[CONSTRAINT_KEYS['mem']]
 
         return int(0.9 * max_mem_in_mb)
+
+    @staticmethod
+    def _lowered_memory_event(mem_mb: int) -> None:
+        message = MESSAGES['lowered_memory'].format(mem_mb=mem_mb)
+        event = EVENTS['lowered_memory'].copy()
+        event['data'] = message
+
+        logger.warning(message)
+        publish_event(event)
 
     def _create_volume(self, hostname: str, shared_dir: Path) -> str:
         assert self._work_dir is not None
