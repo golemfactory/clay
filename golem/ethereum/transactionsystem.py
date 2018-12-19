@@ -552,6 +552,8 @@ class TransactionSystem(LoopingCallService):
             -> Generator[defer.Deferred, TransactionReceipt, Optional[str]]:
         current = self.concent_balance()
         if current >= required:
+            if self.concent_timelock() != 0:
+                self._sci.lock_deposit()
             return None
         required -= current
         expected -= current
