@@ -649,21 +649,22 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             alpha = min(alpha, len(peers))
             neighbours = random.sample(peers, alpha)
 
-            def _mapper(peer: PeerSession) -> dt_p2p.Peer:
-                return {
-                    'address': peer.address,
-                    'port': peer.listen_port,
-                    'node': peer.node_info,
-                }
-        else:
-            neighbours = self.peer_keeper.neighbours(node_key_id, alpha)
+            def _mapper_session(session: PeerSession) -> dt_p2p.Peer:
+                return dt_p2p.Peer({
+                    'address': session.address,
+                    'port': session.listen_port,
+                    'node': session.node_info,
+                })
+            return [_mapper_session(session) for session in neighbours]
 
-            def _mapper(peer: dt_p2p.Node) -> dt_p2p.Peer:
-                return {
-                    "address": peer.prv_addr,
-                    "port": peer.prv_port,
-                    "node": peer,
-                }
+        neighbours = self.peer_keeper.neighbours(node_key_id, alpha)
+
+        def _mapper(peer: dt_p2p.Node) -> dt_p2p.Peer:
+            return dt_p2p.Peer({
+                "address": peer.prv_addr,
+                "port": peer.prv_port,
+                "node": peer,
+            })
 
         return [_mapper(peer) for peer in neighbours]
 
