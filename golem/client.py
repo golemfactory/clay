@@ -420,7 +420,9 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         def connect(ports):
             logger.info(
-                'Golem is listening on ports: P2P=%s, Task=%s, Hyperdrive=%r',
+                'Golem is listening on addr: %s'
+                ', ports: P2P=%s, Task=%s, Hyperdrive=%r',
+                self.node.prv_addr,
                 self.node.p2p_prv_port,
                 self.node.prv_port,
                 self.node.hyperdrive_prv_port
