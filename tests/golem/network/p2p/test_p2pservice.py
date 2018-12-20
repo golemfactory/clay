@@ -88,7 +88,7 @@ class TestP2PService(TestDatabaseWithReactor):
         node_session = peersession.PeerSession(conn=mock.MagicMock())
         node_session.listen_port = random.randint(1, 2 ** 16 - 1)
         node_session.address = random.randint(1, 2 ** 32 - 1)
-        node_session.node_info = None
+        node_session.node_info = node = dt_p2p_factory.Node()
         self.service.peers = {
             node_key_id: peersession.PeerSessionInfo(node_session),
         }
@@ -96,7 +96,7 @@ class TestP2PService(TestDatabaseWithReactor):
             {
                 'address': node_session.address,
                 'port': node_session.listen_port,
-                'node': None,
+                'node': node,
             },
         ]
         self.assertEqual(self.service.find_node(node_key_id=None), expected)
