@@ -1,9 +1,9 @@
 import logging
 import os
-from typing import Callable, Dict, Any, Optional
+from typing import Any, Callable, Dict, Optional
 
+from golem import hardware
 from golem.core.common import get_golem_path
-from golem.core.hardware import cpu_cores_available
 from golem.docker.task_thread import DockerTaskThread
 
 logger = logging.getLogger(__name__)
@@ -52,7 +52,7 @@ GetConfigFunction = Callable[[], Dict[str, Any]]
 class DockerConfigManager(object):
 
     def __init__(self):
-        self.container_host_config = dict(DEFAULT_HOST_CONFIG)
+        self._container_host_config = dict(DEFAULT_HOST_CONFIG)
         self.hypervisor: Optional['Hypervisor'] = None
 
     def build_config(self, config_desc) -> None:
@@ -63,10 +63,9 @@ class DockerConfigManager(object):
             max_memory_size = config_desc.max_memory_size
 
             try:
-                cpu_cores = cpu_cores_available()
-                max_cpus = min(len(cpu_cores), max(int(num_cores), 1))
-                cpu_set = [str(c) for c in cpu_cores[:max_cpus]]
-                host_config['cpuset'] = ','.join(cpu_set)
+                cpu_cores = hardware.cpus()
+                cpu_set = [str(c) for c in cpu_cores[:num_cores]]
+                host_config['cpuset_cpus'] = ','.join(cpu_set)
             except Exception as exc:  # pylint: disable=broad-except
                 logger.warning('Cannot set the CPU set: %r', exc)
 
@@ -75,7 +74,7 @@ class DockerConfigManager(object):
             except (TypeError, ValueError) as exc:
                 logger.warning('Cannot set the memory limit: %r', exc)
 
-        self.container_host_config.update(host_config)
+        self._container_host_config.update(host_config)
 
     @classmethod
     def install(cls, *args, **kwargs):

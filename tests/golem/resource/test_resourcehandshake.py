@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import Mock, patch, ANY
 
 from golem_messages import message
+from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from twisted.internet.defer import Deferred
 
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
@@ -19,15 +20,12 @@ from golem.resource.resourcehandshake import ResourceHandshake, \
 from golem.task.acl import get_acl
 from golem.testutils import TempDirFixture, DatabaseFixture
 
-from tests.factories.task import taskbase as taskbase_factory
-
 
 class TestResourceHandshake(TempDirFixture):
 
     def setUp(self):
         super().setUp()
-        key_id = str(uuid.uuid4())
-        self.handshake = ResourceHandshake(key_id)
+        self.handshake = ResourceHandshake()
 
     def test_start(self):
         handshake = self.handshake
@@ -91,7 +89,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         self.session = MockTaskSession(self.tempdir)
         self.session._start_handshake = Mock()
         self.session.task_server.task_keeper.task_headers = task_headers = {}
-        task_headers[self.message['task_id']] = taskbase_factory.TaskHeader()
+        task_headers[self.message['task_id']] = dt_tasks_factory.TaskHeader()
         self.session.task_server.client.concent_service.enabled = False
 
     def test_request_task_handshake(self, *_):
@@ -228,7 +226,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
 
         msg = message.resources.ResourceHandshakeStart(
             resource=str(uuid.uuid4()))
-        handshake = ResourceHandshake(self.key_id)
+        handshake = ResourceHandshake()
 
         self.session._set_handshake(self.session.key_id, handshake)
         self.session._react_to_resource_handshake_start(msg)
@@ -239,7 +237,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         self.session._finalize_handshake = Mock()
         self.session._handshake_error = Mock()
 
-        handshake = ResourceHandshake(self.key_id)
+        handshake = ResourceHandshake()
         handshake.start(self.tempdir)
 
         msg = message.resources.ResourceHandshakeNonce(nonce=handshake.nonce)
@@ -254,7 +252,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         self.session._finalize_handshake = Mock()
         self.session._handshake_error = Mock()
 
-        handshake = ResourceHandshake(self.key_id)
+        handshake = ResourceHandshake()
         handshake.start(self.tempdir)
 
         msg = message.resources.ResourceHandshakeNonce(nonce=handshake.nonce)
@@ -274,7 +272,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         self.session._finalize_handshake = Mock()
         self.session._handshake_error = Mock()
 
-        handshake = ResourceHandshake(self.key_id)
+        handshake = ResourceHandshake()
         handshake.start(self.tempdir)
 
         msg = message.resources.ResourceHandshakeVerdict(
@@ -301,7 +299,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         self.session._finalize_handshake = Mock()
         self.session._handshake_error = Mock()
 
-        handshake = ResourceHandshake(self.key_id)
+        handshake = ResourceHandshake()
         handshake.start(self.tempdir)
 
         msg = message.resources.ResourceHandshakeVerdict(
@@ -335,7 +333,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         assert not self.session._handshake_in_progress(self.session.key_id)
         assert not self.session._handshake_error.called
 
-        handshake = ResourceHandshake(self.key_id)
+        handshake = ResourceHandshake()
         self.session._set_handshake(self.session.key_id, handshake)
 
         assert not self.session._handshake_required(self.session.key_id)
@@ -368,7 +366,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         assert not self.session._handshake_in_progress(self.session.key_id)
         assert not self.session._handshake_error.called
 
-        handshake = ResourceHandshake(self.key_id)
+        handshake = ResourceHandshake()
         handshake.start(self.tempdir)
         self.session._set_handshake(self.session.key_id, handshake)
 
@@ -406,17 +404,16 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
 
     def test_finalize_handshake(self, *_):
         self.session._finalize_handshake(self.session.key_id)
+        self.session._task_request_message = self.message
         assert not self.session.send.called
 
-        handshake = ResourceHandshake(self.key_id)
+        handshake = ResourceHandshake()
         handshake.local_result = False
         handshake.remote_result = True
         self.session._set_handshake(self.session.key_id, handshake)
 
         self.session._finalize_handshake(self.session.key_id)
         assert not self.session.send.called
-
-        handshake.message = self.message
 
         self.session._finalize_handshake(self.session.key_id)
         assert not self.session.send.called
@@ -447,7 +444,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         assert not self.session.task_server.task_computer.session_closed.called
         assert not self.session.dropped.called
 
-        handshake = ResourceHandshake(self.key_id)
+        handshake = ResourceHandshake()
         handshake.local_result = False
         handshake.remote_result = True
         self.session._set_handshake(self.session.key_id, handshake)
@@ -459,7 +456,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         assert self.session.dropped.called
 
     def test_get_set_remove_handshake(self, *_):
-        handshake = ResourceHandshake(self.key_id)
+        handshake = ResourceHandshake()
         key_id = self.session.key_id
 
         assert not self.session._get_handshake(key_id)
@@ -567,7 +564,7 @@ class TestResourceHandshakeShare(DatabaseFixture):
         session = MockTaskSession(self.tempdir)
         self.__create_task_server(session)
 
-        handshake = ResourceHandshake(self.key_id)
+        handshake = ResourceHandshake()
         handshake.start(self.tempdir)
 
         session._set_handshake(session.key_id, handshake)
@@ -581,7 +578,7 @@ class TestResourceHandshakeShare(DatabaseFixture):
         session = MockTaskSession(self.tempdir)
         self.__create_task_server(session)
 
-        handshake = ResourceHandshake(self.key_id)
+        handshake = ResourceHandshake()
         handshake.start(self.tempdir)
 
         nonce_shared = session._nonce_shared

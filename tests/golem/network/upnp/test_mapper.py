@@ -1,7 +1,8 @@
 from unittest import TestCase
 from unittest.mock import Mock
 
-from golem.network.p2p.node import Node
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+
 from golem.network.upnp.mapper import PortMapperManager, IPortMapper
 
 
@@ -175,7 +176,7 @@ class TestPortMapperManagerQuit(TestCase):
 class TestPortMapperUpdateNode(TestCase):
 
     def setUp(self):
-        self.node = Node(
+        self.node = dt_p2p_factory.Node(
             prv_port=40102, pub_port=50102,
             p2p_prv_port=40103, p2p_pub_port=50103
         )

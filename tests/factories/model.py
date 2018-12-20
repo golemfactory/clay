@@ -1,7 +1,7 @@
 from factory import Factory, Faker, SubFactory
 
+from golem_messages.factories.datastructures import p2p
 from golem import model
-from . import p2p
 
 
 class Income(Factory):

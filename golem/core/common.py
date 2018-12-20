@@ -121,8 +121,8 @@ def get_timestamp_utc():
     return datetime_to_timestamp(now)
 
 
-def timeout_to_deadline(timeout):
-    return get_timestamp_utc() + timeout
+def timeout_to_deadline(timeout) -> int:
+    return int(get_timestamp_utc() + timeout)
 
 
 def deadline_to_timeout(timestamp):
@@ -150,7 +150,7 @@ def timeout_to_string(timeout):
     return TIMEOUT_FORMAT.format(hours, minutes, timeout)
 
 
-def string_to_timeout(string):
+def string_to_timeout(string) -> int:
     values = string.split(':')
     return int(values[0]) * 3600 + int(values[1]) * 60 + int(values[2])
 

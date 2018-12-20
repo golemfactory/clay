@@ -62,6 +62,7 @@ setup(
             'rust.golem',
             'rust/golem/Cargo.toml',
             binding=Binding.RustCPython,
+            debug=False,
         ),
     ],
     data_files=[

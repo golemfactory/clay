@@ -46,7 +46,7 @@
   "main_program_file":"$GOLEM_DIR/apps/dummy/resources/scripts/docker_dummytask.py",
   "subtask_timeout":1200,
   "subtasks_count":5,
-  "max_price": 10.2,
+  "max_price": 11,
   "docker_images":[
     {
       "py/object": "golem.docker.image.DockerImage",

@@ -1,19 +1,22 @@
 import logging
 import os
 import time
+from unittest import skip, mock
 
 from twisted.internet.defer import Deferred
 
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
+from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.task.blenderrendertask import BlenderRenderTask
 from golem_verificator.common.ci import ci_skip
 from golem.core.common import get_golem_path
+from golem.core.deferred import sync_wait
 from golem.docker.image import DockerImage
+from golem.docker.manager import DockerManager
+from golem.docker.task_thread import DockerTaskThread
+from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.task.localcomputer import ComputerAdapter
 from golem.testutils import TempDirFixture
-from golem.core.deferred import sync_wait
-
-logger = logging.getLogger(__name__)
 
 
 @ci_skip
@@ -23,6 +26,12 @@ class TestVerificatorModuleIntegration(TempDirFixture):
     def setUp(self):
         # pylint: disable=R0915
         super().setUp()
+        dm = DockerTaskThread.docker_manager = DockerManager.install()
+        dm.update_config(
+            status_callback=mock.Mock(),
+            done_callback=mock.Mock(),
+            work_dir=self.new_path,
+            in_background=True)
         self.blender_reference_generator = BlenderReferenceGenerator()
         self.golem_dir = get_golem_path()
         self.resources = ['tests/apps/blender/verification/test_data/bmw.blend']

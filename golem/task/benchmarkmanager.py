@@ -11,7 +11,6 @@ from golem.environments.environment import Environment as DefaultEnvironment
 
 from golem.model import Performance
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import Task
 from golem.task.taskstate import TaskStatus
 
 logger = logging.getLogger(__name__)
@@ -19,10 +18,10 @@ logger = logging.getLogger(__name__)
 
 class BenchmarkManager(object):
     def __init__(self, node_name, task_server, root_path, benchmarks=None):
-        self.benchmarks = benchmarks
         self.node_name = node_name
         self.task_server = task_server
         self.dir_manager = DirManager(root_path)
+        self.benchmarks = benchmarks
 
     @staticmethod
     def get_saved_benchmarks_ids():
@@ -41,7 +40,7 @@ class BenchmarkManager(object):
                       error=None):
         logger.info('Running benchmark for %s', env_id)
 
-        from golem.network.p2p.node import Node
+        from golem_messages.datastructures.p2p import Node
 
         def success_callback(performance):
             logger.info('%s performance is %.2f', env_id, performance)
@@ -60,13 +59,17 @@ class BenchmarkManager(object):
         task_state.status = TaskStatus.notStarted
         task_state.definition = benchmark.task_definition
         self._validate_task_state(task_state)
-        builder = task_builder(Node(),
+        builder = task_builder(Node(node_name=self.node_name),
                                task_state.definition,
                                self.dir_manager)
-        t = builder.build()
-        br = BenchmarkRunner(t, self.task_server.client.datadir,
-                             success_callback, error_callback,
-                             benchmark)
+        task = builder.build()
+        br = BenchmarkRunner(
+            task=task,
+            root_path=self.dir_manager.root_path,
+            success_callback=success_callback,
+            error_callback=error_callback,
+            benchmark=benchmark
+        )
         br.run()
 
     def run_all_benchmarks(self, success=None, error=None):

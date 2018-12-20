@@ -3,6 +3,7 @@ import unittest
 import uuid
 from pathlib import Path
 
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from PIL import Image
 
 from apps.rendering.resources.imgrepr import load_img, EXRImgRepr
@@ -11,7 +12,6 @@ from apps.rendering.task.framerenderingtask import (get_frame_name, FrameRenderi
                                                     FrameRendererOptions, logger)
 from apps.rendering.task.renderingtaskstate import RendererDefaults
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
-from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
@@ -53,12 +53,13 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         rt.subtask_timeout = 600
         rt.estimated_memory = 1000
         rt.max_price = 15
-        task = FrameRenderingTaskMock(files_[0],
-                                      owner=Node(node_name="ABC"),
-                                      task_definition=rt,
-                                      total_tasks=num_tasks,
-                                      root_path=self.path
-                                      )
+        task = FrameRenderingTaskMock(
+            files_[0],
+            owner=dt_p2p_factory.Node(node_name="ABC", ),
+            task_definition=rt,
+            total_tasks=num_tasks,
+            root_path=self.path,
+        )
         dm = DirManager(self.path)
         task.initialize(dm)
         return task
@@ -323,9 +324,11 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
         definition.options.use_frames = True
         definition.options.frames = list(range(1, 7))
 
-        builder = FrameRenderingTaskBuilder(Node(node_name="node"),
-                                            dir_manager=DirManager(self.path),
-                                            task_definition=definition)
+        builder = FrameRenderingTaskBuilder(
+            dt_p2p_factory.Node(node_name="node"),
+            dir_manager=DirManager(self.path),
+            task_definition=definition,
+        )
 
         defaults = RendererDefaults()
         # More subtasks than frames -> use frames count

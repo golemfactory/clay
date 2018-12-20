@@ -10,3 +10,6 @@ crate-type = ["dylib"]
 [dependencies.cpython]
 version = "0.2"
 features = ["extension-module"]
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["psapi", "processthreadsapi"] }
