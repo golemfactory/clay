@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import uuid
 
 from eth_utils import encode_hex
+import faker
 from golem_messages.datastructures import p2p as dt_p2p
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import Disconnect
@@ -23,6 +24,9 @@ from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.tools.testwithreactor import TestDatabaseWithReactor
+
+
+fake = faker.Faker()
 
 
 class TestSyncSeeds(TestDatabaseWithReactor):
@@ -101,21 +105,14 @@ class TestP2PService(TestDatabaseWithReactor):
         ]
         self.assertEqual(self.service.find_node(node_key_id=None), expected)
 
-        def randaddr() -> str:
-            def dig() -> int:
-                return random.randint(1, 255)
-
-            return '{}.{}.{}.{}'.format(dig(), dig(), dig(), dig())
-
         # find_node() via kademlia neighbours
         neighbour_node_key_id = uuid.uuid4()
         neighbour_node = dt_p2p_factory.Node(
-            node_name='Syndrom wstrząsu toksycznego',
             key=str(neighbour_node_key_id),
-            prv_addr=randaddr(),
-            pub_addr=randaddr(),
-            p2p_prv_port=random.randint(1, 2 ** 16 - 1),
-            p2p_pub_port=random.randint(1, 2 ** 16 - 1),
+            prv_addr=fake.ipv4(),
+            pub_addr=fake.ipv4(),
+            prv_port=random.randint(1, 2 ** 16 - 1),
+            pub_port=random.randint(1, 2 ** 16 - 1),
         )
         self.service.peer_keeper.neighbours = mock.MagicMock(
             return_value=[
