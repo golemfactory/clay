@@ -3,10 +3,11 @@ import subprocess
 
 from pathlib import Path
 from unittest import TestCase
-from unittest.mock import Mock, patch, ANY
+from unittest.mock import Mock, patch, ANY, call
 
 from os_win.constants import HOST_SHUTDOWN_ACTION_SAVE, \
-    HOST_SHUTDOWN_ACTION_SHUTDOWN
+    HOST_SHUTDOWN_ACTION_SHUTDOWN, HYPERV_VM_STATE_SUSPENDED, \
+    HYPERV_VM_STATE_ENABLED, HYPERV_VM_STATE_DISABLED
 from os_win.exceptions import OSWinException
 
 from golem.docker.config import DOCKER_VM_NAME, MIN_CONSTRAINTS, CONSTRAINT_KEYS
@@ -267,3 +268,67 @@ class TestHyperVHypervisor(TestCase):
         self.hyperv._check_smb_port()
         command.assert_called_once()
         logger.error.assert_called_once()
+
+    def test_restore_vm_ok(self):
+        with patch.object(self.hyperv, '_check_memory') as check_memory, \
+                patch.object(self.hyperv, '_vm_utils') as vm_utils:
+            vm_utils.get_vm_state.return_value = HYPERV_VM_STATE_SUSPENDED
+            check_memory.return_value = True
+
+            self.hyperv.restore_vm('test')
+
+            check_memory.assert_called_once()
+            vm_utils.set_vm_state.assert_called_once_with(
+                'test',
+                HYPERV_VM_STATE_ENABLED
+            )
+
+    def test_restore_vm_not_suspended(self):
+        with patch.object(self.hyperv, '_vm_utils') as vm_utils, \
+                patch.object(self.hyperv, 'start_vm') as start_vm:
+            vm_utils.get_vm_state.return_value = HYPERV_VM_STATE_DISABLED
+
+            self.hyperv.restore_vm('test')
+
+            vm_utils.set_vm_state.assert_not_called()
+            start_vm.assert_called_once_with('test')
+
+    def test_restore_vm_no_memory(self):
+        with patch.object(self.hyperv, '_check_memory') as check_memory, \
+                patch.object(self.hyperv, '_vm_utils') as vm_utils, \
+                patch.object(self.hyperv, 'start_vm') as start_vm:
+            vm_utils.get_vm_state.return_value = HYPERV_VM_STATE_SUSPENDED
+            check_memory.return_value = False
+
+            self.hyperv.restore_vm('test')
+
+            check_memory.assert_called_once()
+            vm_utils.set_vm_state.assert_called_once_with(
+                'test',
+                HYPERV_VM_STATE_DISABLED
+            )
+            start_vm.assert_called_once_with('test')
+
+    def test_restore_vm_error(self):
+        def _fail_to_start(_vm_name, state):
+            if state == HYPERV_VM_STATE_ENABLED:
+                raise OSWinException
+
+        with patch.object(self.hyperv, '_check_memory') as check_memory, \
+                patch.object(self.hyperv, '_vm_utils') as vm_utils, \
+                patch.object(self.hyperv, 'start_vm') as start_vm, \
+                patch(self.PATCH_BASE + '.logger') as logger:
+            vm_utils.get_vm_state.return_value = HYPERV_VM_STATE_SUSPENDED
+            vm_utils.set_vm_state.side_effect = _fail_to_start
+            check_memory.return_value = True
+
+            self.hyperv.restore_vm('test')
+
+            check_memory.assert_called_once()
+            self.assertEqual(vm_utils.set_vm_state.call_count, 2)
+            vm_utils.set_vm_state.assert_has_calls((
+                call('test', HYPERV_VM_STATE_ENABLED),
+                call('test', HYPERV_VM_STATE_DISABLED)
+            ))
+            start_vm.assert_called_once_with('test')
+            logger.exception.assert_called_once()
