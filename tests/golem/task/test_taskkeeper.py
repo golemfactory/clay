@@ -1,10 +1,8 @@
 # pylint: disable=protected-access
-import copy
 from datetime import timedelta
 from pathlib import Path
 import random
 import time
-from unittest import TestCase
 import unittest.mock as mock
 
 from eth_utils import encode_hex
@@ -22,12 +20,10 @@ from golem.environments.environment import Environment, UnsupportReason,\
     SupportStatus
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.task import taskkeeper
-from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper,\
-    CompSubtaskInfo, logger
+from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, logger
 from golem.testutils import PEP8MixIn
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-
 
 
 def async_run(request, success=None, error=None):
@@ -466,12 +462,7 @@ def get_task_header(key_id_seed="kkk"):
     return dt_tasks.TaskHeader(**th_dict_repr)
 
 
-class TestCompSubtaskInfo(TestCase):
-    def test_init(self):
-        csi = CompSubtaskInfo("xxyyzz")
-        self.assertIsInstance(csi, CompSubtaskInfo)
-
-
+@mock.patch('golem.task.taskkeeper.ProviderStatsManager', mock.Mock())
 class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
     PEP8_FILES = [
         "golem/task/taskkeeper.py",
@@ -544,26 +535,27 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         self.assertTrue(not any(ctk.active_tasks))
         self.assertTrue(not any(ctk.subtask_to_task))
 
-    @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump')
-    def test_comp_keeper(self, dump_mock):
+    @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump', mock.Mock())
+    def test_comp_keeper(self):
         ctk = CompTaskKeeper(Path('ignored'))
         header = get_task_header()
         header.task_id = "xyz"
+        header.subtask_timeout = 1
         with self.assertRaises(TypeError):
             ctk.add_request(header, "not a number")
         with self.assertRaises(ValueError):
             ctk.add_request(header, -2)
-        ctk.add_request(header, 7200)
+        ctk.add_request(header, 5 * 10 ** 18)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
-        self.assertEqual(ctk.active_tasks["xyz"].subtask_price, 240)
+        self.assertEqual(ctk.active_task_offers["xyz"], 1388888888888889)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
-        ctk.add_request(header, 23)
+        ctk.add_request(header, 1 * 10 ** 17)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 2)
-        self.assertEqual(ctk.active_tasks["xyz"].subtask_price, 240)
+        self.assertEqual(ctk.active_task_offers["xyz"], 27777777777778)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
         header.task_id = "xyz2"
-        ctk.add_request(header, 25000)
-        self.assertEqual(ctk.active_tasks["xyz2"].subtask_price, 834)
+        ctk.add_request(header, 314 * 10 ** 15)
+        self.assertEqual(ctk.active_task_offers["xyz2"], 87222222222223)
         header.task_id = "xyz"
         thread = get_task_header()
         thread.task_id = "qaz123WSX"
