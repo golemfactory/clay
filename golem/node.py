@@ -448,8 +448,13 @@ class Node(HardwarePresetsMixin):
         self.client.sync()
 
         try:
-            with self._docker_manager.locked_config():
+            if self._docker_manager:
+                # pylint: disable=no-member
+                with self._docker_manager.locked_config():
+                    self.client.start()
+            else:
                 self.client.start()
+
             for peer in self._peers:
                 self.client.connect(peer)
         except SystemExit:
