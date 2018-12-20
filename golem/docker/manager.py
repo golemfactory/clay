@@ -1,6 +1,7 @@
 import logging
 import os
 import time
+from contextlib import contextmanager
 from pathlib import Path
 from threading import Thread
 from typing import Optional, Callable, Any, Iterable
@@ -27,6 +28,7 @@ class DockerManager(DockerConfigManager):
         super().__init__()
 
         self._config = dict(DEFAULTS)
+        self._config_locked = False
         self._env_checked = False
         self._threads = ThreadQueueExecutor(queue_name='docker-machine')
 
@@ -127,6 +129,12 @@ class DockerManager(DockerConfigManager):
             cpu_count=config_desc.num_cores,
         )
 
+    @contextmanager
+    def locked_config(self):
+        self._config_locked = True
+        yield
+        self._config_locked = False
+
     def get_host_config_for_task(self, binds: Iterable[DockerBind]) -> dict:
         host_config = dict(self._container_host_config)
         if self.hypervisor and self.hypervisor.uses_volumes():
@@ -141,7 +149,7 @@ class DockerManager(DockerConfigManager):
             }
         return host_config
 
-    def constrain(self, **params) -> bool:
+    def constrain(self, restart_vm: bool = True, **params) -> bool:
         if not self.hypervisor:
             return False
 
@@ -162,14 +170,14 @@ class DockerManager(DockerConfigManager):
                 if constraint not in diff:
                     diff[constraint] = value
 
-            logger.info("Docker: applying configuration: %r", diff)
-            try:
-                with self.hypervisor.restart_ctx() as vm:
-                    self.hypervisor.constrain(vm, **diff)
-            except Exception as e:
-                logger.error("Docker: error updating configuration: %r", e)
-                raise
-
+            if restart_vm:
+                logger.info("Docker: applying configuration: %r", diff)
+                try:
+                    with self.hypervisor.restart_ctx() as vm:
+                        self.hypervisor.constrain(vm, **diff)
+                except Exception as e:
+                    logger.error("Docker: error updating configuration: %r", e)
+                    raise
         else:
 
             logger.info("Docker: configuration unchanged")
@@ -311,7 +319,8 @@ class DockerManager(DockerConfigManager):
         while sb():
             time.sleep(0.5)
 
-        config_differs = self.constrain(**self._config)
+        config_differs = self.constrain(restart_vm=not self._config_locked,
+                                        **self._config)
         cb(config_differs)
 
     def _save_and_resume(self, cb):
