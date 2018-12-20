@@ -46,7 +46,7 @@ class ConfigEntry(object):
         :param str val: string to be converse to value
         """
         value_type = self._value_type(val)
-        logger.error(
+        logger.debug(
             'set_value_from_str(%(val)r). value_type=%(value_type)r',
             {
                 'val': val,
