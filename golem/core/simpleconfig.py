@@ -18,7 +18,10 @@ class ConfigEntry(object):
         self._key = key
         self._value = value
         self._section = section
-        self._value_type = type(value)
+        if value is None:
+            self._value_type = lambda _: None
+        else:
+            self._value_type = type(value)
 
     def section(self):
         """ Return config entry section """
@@ -42,7 +45,15 @@ class ConfigEntry(object):
         """Change string to the value type and save it as a value
         :param str val: string to be converse to value
         """
-        self.set_value(self._value_type(val))
+        value_type = self._value_type(val)
+        logger.error(
+            'set_value_from_str(%(val)r). value_type=%(value_type)r',
+            {
+                'val': val,
+                'value_type': value_type,
+            },
+        )
+        self.set_value(value_type)
 
     @classmethod
     def create_property(cls, section, key, value, other, prop_name):
@@ -118,9 +129,9 @@ class SimpleConfig(object):
                 else:
                     cfg.add_section(self._node_config.section())
 
-                logger.info("{} ... successfully".format(logger_msg))
+                logger.info("%s ... successfully", logger_msg)
             else:
-                logger.info("{} ... failed".format(logger_msg))
+                logger.info("%s ... failed", logger_msg)
                 cfg = self.__create_fresh_config()
 
             if write_config:
@@ -130,11 +141,10 @@ class SimpleConfig(object):
                     cfg_file
                 )
                 self.__write_config(cfg, cfg_file)
-        except Exception as ex:
-            logger.warning(
-                "%r ... failed with an exception: %s",
+        except Exception:  # pylint: disable=broad-except
+            logger.exception(
+                "%r ... failed with an exception",
                 logger_msg,
-                ex
             )
             # no additional try catch because this cannot fail (if it
             # fails then the program shouldn't start anyway)

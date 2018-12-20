@@ -88,7 +88,6 @@ class TestP2PService(TestDatabaseWithReactor):
         node_session = peersession.PeerSession(conn=mock.MagicMock())
         node_session.listen_port = random.randint(1, 2 ** 16 - 1)
         node_session.address = random.randint(1, 2 ** 32 - 1)
-        node_session.node_name = 'approximately 16.8 million addresses'
         node_session.node_info = None
         self.service.peers = {
             node_key_id: peersession.PeerSessionInfo(node_session),
@@ -97,7 +96,6 @@ class TestP2PService(TestDatabaseWithReactor):
             {
                 'address': node_session.address,
                 'port': node_session.listen_port,
-                'node_name': node_session.node_name,
                 'node': None,
             },
         ]
@@ -126,9 +124,7 @@ class TestP2PService(TestDatabaseWithReactor):
         expected = [{
             'address': neighbour_node.prv_addr,
             'port': neighbour_node.prv_port,
-            'id': neighbour_node.key,
             'node': neighbour_node,
-            'node_name': neighbour_node.node_name,
         }]
         self.assertEqual(self.service.find_node(node_key_id), expected)
 
@@ -491,17 +487,21 @@ class TestP2PService(TestDatabaseWithReactor):
     def test_try_to_add_peer(self):
         key_id = 'abcde1234567890'
         peer_info = {
-            'node_name': 'test',
             'port': 1,
-            'node': mock.Mock(key=key_id),
+            'node': dt_p2p_factory.Node(key=key_id),
             'address': '10.0.0.1',
-            'conn_trials': 0,
         }
         self.service.try_to_add_peer(peer_info, True)
 
         assert key_id in self.service.free_peers
         assert key_id in self.service.incoming_peers
-        assert peer_info == self.service.incoming_peers[key_id]
+        incoming = self.service.incoming_peers[key_id]
+        del incoming['conn_trials']
+        del incoming['node_name']
+        self.assertEqual(
+            peer_info,
+            incoming,
+        )
 
     def test_get_socket_addresses(self):
         key_id = 'abcd'

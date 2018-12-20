@@ -29,10 +29,9 @@ from golem.core.common import (
     to_unicode,
 )
 from golem.core.fileshelper import du
-from golem.core.variables import CONCENT_CHOICES
 from golem.hardware.presets import HardwarePresets
 from golem.core.keysauth import KeysAuth
-from golem.core.service import LoopingCallService, IService
+from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
 from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat

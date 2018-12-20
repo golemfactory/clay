@@ -4,6 +4,7 @@ from threading import Lock
 from typing import Optional
 
 from eth_utils import encode_hex
+import faker
 from golem_messages import idgenerator
 from golem_messages.datastructures import p2p as dt_p2p
 from golem_messages.datastructures import tasks as dt_tasks
@@ -13,6 +14,9 @@ import golem
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
 from golem.task.taskbase import Task, AcceptClientVerdict
+
+
+fake = faker.Faker()
 
 
 class DummyTaskParameters(object):
@@ -60,8 +64,8 @@ class DummyTask(Task):
         1024 hashes on average
         """
         task_id = idgenerator.generate_id(public_key)
-        owner_address = ''
-        owner_port = 0
+        owner_address = fake.ipv4()
+        owner_port = fake.random_int(min=1, max=2**16-1)
         owner_key_id = encode_hex(public_key)[2:]
         environment = self.ENVIRONMENT_NAME
         task_owner = dt_p2p.Node(

@@ -6,9 +6,15 @@ import random
 import time
 from collections import deque
 from threading import Lock
-from typing import Callable, Any, Dict
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+)
 
 from golem_messages import message
+from golem_messages.datastructures import p2p as dt_p2p
 from golem_messages.datastructures import tasks as dt_tasks
 
 from golem.config.active import P2P_SEEDS
@@ -359,12 +365,12 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         """
         self.peer_keeper.pong_received(key_num)
 
-    def try_to_add_peer(self, peer_info, force=False):
+    def try_to_add_peer(self, peer_info: dt_p2p.Peer, force=False):
         """ Add peer to inner peer information
-        :param dict peer_info: dictionary with information about peer
         :param force: add or overwrite existing data
         """
         key_id = peer_info["node"].key
+        node_name = peer_info["node"].node_name
         add_peer = force or self.__is_new_peer(key_id)
         add_peer = add_peer and self._is_address_valid(peer_info["address"],
                                                        peer_info["port"])
@@ -375,14 +381,14 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             "add peer to incoming. address=%r:%r, node=%s",
             peer_info["address"],
             peer_info["port"],
-            node_info_str(peer_info["node_name"], key_id)
+            node_info_str(node_name, key_id)
         )
 
         self.incoming_peers[key_id] = {
             "address": peer_info["address"],
             "port": peer_info["port"],
             "node": peer_info["node"],
-            "node_name": peer_info["node_name"],
+            "node_name": node_name,
             "conn_trials": 0
         }
 
@@ -629,7 +635,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
 
     # Find node
     #############################
-    def find_node(self, node_key_id, alpha=None):
+    def find_node(self, node_key_id, alpha=None) -> List[dt_p2p.Peer]:
         """Kademlia find node function. Find closest neighbours of a node
            with given public key
         :param node_key_id: public key of a sought node
@@ -643,23 +649,20 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
             alpha = min(alpha, len(peers))
             neighbours = random.sample(peers, alpha)
 
-            def _mapper(peer):
+            def _mapper(peer: PeerSession) -> dt_p2p.Peer:
                 return {
                     'address': peer.address,
                     'port': peer.listen_port,
-                    'node_name': peer.node_name,
                     'node': peer.node_info,
                 }
         else:
             neighbours = self.peer_keeper.neighbours(node_key_id, alpha)
 
-            def _mapper(peer):
+            def _mapper(peer: dt_p2p.Node) -> dt_p2p.Peer:
                 return {
                     "address": peer.prv_addr,
                     "port": peer.prv_port,
-                    "id": peer.key,
                     "node": peer,
-                    "node_name": peer.node_name,
                 }
 
         return [_mapper(peer) for peer in neighbours]
