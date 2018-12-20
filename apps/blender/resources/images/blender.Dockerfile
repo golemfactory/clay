@@ -28,7 +28,7 @@ ENV BLENDER_BZ2_URL http://download.blender.org/release/Blender$BLENDER_MAJOR/bl
 RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C / && \
     mv /blender-${BLENDER_VERSION}-linux-glibc${GLIBC_VERSION}-x86_64 /blender
 
-RUN /golem/install_py_libs.sh typing
+RUN /golem/install_py_libs.sh 0 typing numpy
 
 ENV PATH=/blender:/usr/bin/:$PATH
 ENV PYTHONPATH=/golem/scripts:/golem:$PYTHONPATH
@@ -37,5 +37,3 @@ ENV PYTHONPATH=/golem/scripts:/golem:$PYTHONPATH
 RUN ln -s /usr/bin/python3.6 /usr/bin/python3
 
 COPY scripts/ /golem/scripts/
-
-WORKDIR /golem/work/

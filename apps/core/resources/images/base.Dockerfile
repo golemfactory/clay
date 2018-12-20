@@ -30,7 +30,8 @@ RUN sed -i -e 's/\r$//' /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
 COPY scripts/ /golem/
-RUN chmod +x /golem/install_py_libs.sh \ 
-    && chmod +x /golem/install_py_requirements.sh
+RUN chmod +x /golem/install_py_libs.sh
+
+WORKDIR /golem/work/
 
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

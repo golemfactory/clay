@@ -2,6 +2,7 @@ import os
 import stat
 import subprocess
 import sys
+import numpy
 from multiprocessing import cpu_count
 from typing import List
 
@@ -74,7 +75,12 @@ def params_to_dict(params) -> dict:
     params_dict["samples"] = params.samples
     params_dict["crops"] = list()
     for crop_params in params.crops:
-        params_dict["crops"].append(crop_params.copy())
+        crop = crop_params.copy()
+        borders_y = crop["borders_y"]
+        borders_y = [numpy.float32(float(borders_y[0])),
+                     numpy.float32(float(borders_y[1]))]
+        crop["borders_y"] = borders_y
+        params_dict["crops"].append(crop)
 
     return params_dict
 
