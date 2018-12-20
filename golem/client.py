@@ -133,7 +133,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         # NETWORK
         self.node = LocalNode(
             node_name=self.config_desc.node_name,
-            prv_addr=self.config_desc.node_address,
+            prv_addr=self.config_desc.node_address or None,
             key=self.keys_auth.key_id,
         )
 

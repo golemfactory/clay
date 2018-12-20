@@ -193,12 +193,6 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         for peer in peers.values():
             peer.dropped()
 
-    def pause(self):
-        super(P2PService, self).pause()
-
-    def resume(self):
-        super(P2PService, self).resume()
-
     def new_connection(self, session):
         if self.active:
             session.start()
@@ -1006,7 +1000,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
 
         self.seeds = set()
 
-        ip_address = self.config_desc.seed_host
+        ip_address = self.config_desc.seed_host or ''
         port = self.config_desc.seed_port
 
         for hostport in itertools.chain(

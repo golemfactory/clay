@@ -116,8 +116,8 @@ class AppConfig:
         cls.__loaded_configs.add(cfg_file)
 
         node_config = NodeConfig(
-            node_name=None,
-            node_address=None,
+            node_name="",
+            node_address="",
             use_ipv6=USE_IP6,
             use_upnp=USE_UPNP,
             start_port=START_PORT,
@@ -125,7 +125,7 @@ class AppConfig:
             rpc_address=RPC_ADDRESS,
             rpc_port=RPC_PORT,
             # peers
-            seed_host=None,
+            seed_host="",
             seed_port=START_PORT,
             seeds="",
             opt_peer_num=OPTIMAL_PEER_NUM,
