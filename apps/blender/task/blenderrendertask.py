@@ -620,7 +620,7 @@ class BlenderRenderTask(FrameRenderingTask):
 
     def _put_image_together(self):
         output_file_name = "{}".format(self.output_file, self.output_format)
-        logger.error('_put_image_together() out: %r', output_file_name)
+        logger.debug('_put_image_together() out: %r', output_file_name)
         self.collected_file_names = OrderedDict(
             sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():

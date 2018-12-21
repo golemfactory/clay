@@ -239,7 +239,7 @@ class FrameRenderingTask(RenderingTask):
         preview_task_file_path = self._get_preview_task_file_path(num)
 
         with handle_opencv_image_error(logger):
-            logger.info('new_chunk_file_path = {}'.format(new_chunk_file_path))
+            logger.debug('new_chunk_file_path = {}'.format(new_chunk_file_path))
             img = OpenCVImgRepr.from_image_file(new_chunk_file_path)
 
             def resize_and_save(img):
@@ -384,7 +384,6 @@ class FrameRenderingTask(RenderingTask):
                 collector.add_img_file(file)
             with handle_opencv_image_error(logger):
                 image = collector.finalize()
-                logger.warning('Saving file = {}, ext = {}'.format(output_file_name, self.output_file))
                 image.save_with_extension(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(os.path.join(self.tmp_dir, output_file_name),
