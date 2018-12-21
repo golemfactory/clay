@@ -539,7 +539,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         bt._mark_task_area(None, img_task, color, 0)
         for i in range(0, bt.res_x):
             for j in range(0, bt.res_y):
-                pixel = img_task.get_pixel(i, j)
+                pixel = img_task.get_pixel((i, j))
                 self.assertTrue(pixel == color)
 
         # test the case with frames divided into multiple subtasks
@@ -550,9 +550,9 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         img_task2 = OpenCVImgRepr.empty(bt.res_x, bt.res_y)
         img_task2.save_with_extension(file2, "BMP")
         bt._mark_task_area(subtask, img_task2, color)
-        pixel = img_task2.get_pixel(0, 99)
+        pixel = img_task2.get_pixel((0, 99))
         self.assertTrue(pixel == (0, 0, 0))
-        pixel = img_task2.get_pixel(0, 100)
+        pixel = img_task2.get_pixel((0, 100))
         self.assertTrue(pixel == color)
 
     def test_query_extra_data(self):

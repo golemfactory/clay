@@ -84,9 +84,9 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         assert task.num_tasks_received == 1
         assert task.collected_file_names[3] == img_file
         preview_img = OpenCVImgRepr.from_image_file(task.preview_file_path)
-        assert preview_img.get_pixel(100, 100) == (0, 0, 255)
+        assert preview_img.get_pixel((100, 100)) == (0, 0, 255)
         preview_img = OpenCVImgRepr.from_image_file(task.preview_task_file_path)
-        assert preview_img.get_pixel(100, 100) == (0, 0, 255)
+        assert preview_img.get_pixel((100, 100)) == (0, 0, 255)
         task.subtasks_given["SUBTASK2"] = {"start_task": 2, "node_id": "NODE 1", "parts": 1,
                                            "frames": [1],
                                            "status": SubtaskStatus.starting}
@@ -184,21 +184,21 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task._mark_task_area({'start_task': 2}, img, (121, 0, 0))
         for i in range(10):
             for j in range(20):
-                assert img.get_pixel(i, j) == (121, 0, 0)
+                assert img.get_pixel((i, j)) == (121, 0, 0)
 
         task.total_tasks = 2
         task._mark_task_area({'start_task': 2}, img, (0, 13, 0))
         for i in range(10):
             for j in range(20):
-                assert img.get_pixel(i, j) == (0, 13, 0)
+                assert img.get_pixel((i, j)) == (0, 13, 0)
 
         task.total_tasks = 8
         task._mark_task_area({'start_task': 2}, img, (0, 0, 201))
         for i in range(10):
             for j in range(10):
-                assert img.get_pixel(i, j) == (0, 13, 0)
+                assert img.get_pixel((i, j)) == (0, 13, 0)
             for j in range(10, 20):
-                assert img.get_pixel(i, j) == (0, 0, 201)
+                assert img.get_pixel((i, j)) == (0, 0, 201)
 
     def test_choose_frames(self):
         task = self._get_frame_task()

@@ -1,3 +1,4 @@
+import cv2
 import functools
 import logging
 import math
@@ -20,8 +21,7 @@ from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import OpenCVImgRepr
 from apps.rendering.resources.renderingtaskcollector import \
     RenderingTaskCollector
-from apps.rendering.resources.utils import handle_image_error, \
-    handle_opencv_image_error
+from apps.rendering.resources.utils import handle_opencv_image_error
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, \
     FrameRenderingTaskBuilder, FrameRendererOptions
 from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, PREVIEW_Y
@@ -100,13 +100,16 @@ class PreviewUpdater(object):
             def open_or_create_image():
                 if not os.path.exists(self.preview_file_path) \
                         or len(self.chunks) == 1:
-                    chunk_channels = subtask_img.get_number_of_channels()
+                    chunk_channels = subtask_img.get_channels()
                     return OpenCVImgRepr.empty(self.preview_res_x,
                                                self.preview_res_y,
                                                channels=chunk_channels)
                 return OpenCVImgRepr.from_image_file(self.preview_file_path)
 
             preview_img = open_or_create_image()
+
+            subtask_img_resized.try_adjust_type(OpenCVImgRepr.IMG_U8)
+
             preview_img.paste_image(subtask_img_resized, 0, offset)
             preview_img.save_with_extension(self.preview_file_path, PREVIEW_EXT)
 
@@ -123,7 +126,7 @@ class PreviewUpdater(object):
         self.perfect_match_area_y = 0
         self.perfectly_placed_subtasks = 0
         if os.path.exists(self.preview_file_path):
-            with handle_image_error(logger):
+            with handle_opencv_image_error(logger):
                 OpenCVImgRepr.empty(self.preview_res_x, self.preview_res_y, 3,
                                     numpy.uint8)\
                     .save_with_extension(self.preview_file_path, PREVIEW_EXT)
@@ -598,13 +601,15 @@ class BlenderRenderTask(FrameRenderingTask):
                               final=False):
         num = self.frames.index(frame_num)
         if final:
-            with handle_image_error(logger):
+            with handle_opencv_image_error(logger):
                 img = OpenCVImgRepr.from_image_file(new_chunk_file_path)
                 img.resize(int(round(self.res_x * self.scale_factor)),
                            int(round(self.res_y * self.scale_factor)))
 
                 preview_task_file_path = self._get_preview_task_file_path(num)
                 self.last_preview_path = preview_task_file_path
+
+                img.try_adjust_type(OpenCVImgRepr.IMG_U8)
 
                 img.save_with_extension(preview_task_file_path, PREVIEW_EXT)
                 img.save_with_extension(self._get_preview_file_path(num),
@@ -615,7 +620,7 @@ class BlenderRenderTask(FrameRenderingTask):
 
     def _put_image_together(self):
         output_file_name = "{}".format(self.output_file, self.output_format)
-        logger.debug('_put_image_together() out: %r', output_file_name)
+        logger.error('_put_image_together() out: %r', output_file_name)
         self.collected_file_names = OrderedDict(
             sorted(self.collected_file_names.items()))
         if not self._use_outer_task_collector():
@@ -623,8 +628,8 @@ class BlenderRenderTask(FrameRenderingTask):
                                         height=self.res_y)
             for file in self.collected_file_names.values():
                 collector.add_img_file(file)
-            with handle_image_error(logger), \
-                    collector.finalize() as image:
+            with handle_opencv_image_error(logger):
+                image = collector.finalize()
                 image.save_with_extension(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(
@@ -667,8 +672,8 @@ class BlenderRenderTask(FrameRenderingTask):
                                         height=self.res_y)
             for file in collected.values():
                 collector.add_img_file(file)
-            with handle_image_error(logger), \
-                    collector.finalize() as image:
+            with handle_opencv_image_error(logger):
+                image = collector.finalize()
                 image.save_with_extension(output_file_name, self.output_format)
         else:
             self._put_collected_files_together(output_file_name,

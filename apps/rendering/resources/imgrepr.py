@@ -47,17 +47,24 @@ class ImgRepr(object, metaclass=abc.ABCMeta):
 
 
 class OpenCVImgRepr:
+    RGB = 3
+    RGBA = 4
+    IMG_F32 = numpy.float32
+    IMG_U8 = numpy.uint8
+
     def __init__(self):
         self.img = None
 
     def set_pixel(self, xy, color):
         xy = tuple(reversed(xy))
         bgr_color = tuple(reversed(color))
+        if self.img.shape[2] == 4 and len(bgr_color) == 3:
+            bgr_color = bgr_color + (255,)
         self.img[xy] = bgr_color
 
-    def get_pixel(self, x, y):
+    def get_pixel(self, xy):
         # reverse because OpenCV stores colors as BGR
-        return tuple(reversed(self.img[y, x]))
+        return tuple(reversed(self.img[xy[1], xy[0]]))
 
     def __enter__(self):
         return self
@@ -77,11 +84,12 @@ class OpenCVImgRepr:
         assert self.img is not None
         self.img = cv2.resize(self.img, (width, height),
                               interpolation=interpolation)
+
         return self
 
-    def load_from_file(self, path):
+    def load_from_file(self, path, mode=cv2.IMREAD_UNCHANGED):
         try:
-            self.img = cv2.imread(path, cv2.IMREAD_UNCHANGED)
+            self.img = cv2.imread(path, mode)
             if self.img is None:
                 raise OpenCVError('cv2 read image \"{}\" as None'.format(path))
         except cv2.error as e:
@@ -99,8 +107,11 @@ class OpenCVImgRepr:
 
         return imgRepr
 
-    def get_number_of_channels(self):
+    def get_channels(self):
         return self.img.shape[2]
+
+    def get_type(self):
+        return self.img.dtype
 
     @staticmethod
     def from_image_file(image_path):
@@ -111,16 +122,10 @@ class OpenCVImgRepr:
     def get_size(self):
         return tuple(reversed(self.img.shape[:2]))
 
-    def add_alpha_channel(self, value=0):
-        assert self.img.shape[2] == 3
-        b, g, r = cv2.split(self.img)
-        alpha_channel = numpy.ones(b.shape, dtype=b.dtype) * value
-        self.img = cv2.merge((b, g, r, alpha_channel))
-
     def paste_image(self, img_repr, x, y):
         try:
             self.img[y:y + img_repr.img.shape[0], x:img_repr.img.shape[1]] = \
-            img_repr.img
+                img_repr.img
         except (cv2.error, ValueError) as e:
             raise OpenCVError('Pasting image failed') from e
 
@@ -129,6 +134,15 @@ class OpenCVImgRepr:
             self.img = cv2.add(self.img, other.img)
         except cv2.error as e:
             raise OpenCVError('opencv adding images failed') from e
+
+    def try_adjust_type(self, mode):
+        if mode == self.get_type():
+            return
+        elif self.get_type() == OpenCVImgRepr.IMG_F32:
+            self._img32F_to_img8U()
+        else:
+            raise OpenCVError('Conversion from {} to {} is not supported'
+                              .format(str(self.get_type()), str(mode)))
 
     def save_with_extension(self, path, extension):
         # in PIL one can specify output name without extension
@@ -155,6 +169,9 @@ class OpenCVImgRepr:
         imgRepr.img = cv2.imread(img_path, cv2.IMREAD_UNCHANGED) or \
             OpenCVImgRepr.empty(width, height, channels, dtype)
         return imgRepr
+
+    def _img32F_to_img8U(self):
+        self.img = cv2.convertScaleAbs(self.img, alpha=255, beta=0)
 
 
 class PILImgRepr(ImgRepr):

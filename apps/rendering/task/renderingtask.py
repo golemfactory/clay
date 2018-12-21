@@ -7,7 +7,8 @@ from pathlib import Path
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.rendering.resources.imgrepr import OpenCVImgRepr
-from apps.rendering.resources.utils import handle_image_error, handle_none
+from apps.rendering.resources.utils import handle_image_error, \
+    handle_opencv_image_error
 from apps.rendering.task.renderingtaskstate import RendererDefaults
 from golem_verificator.rendering_verifier import RenderingVerifier
 from golem.core.common import get_golem_path
@@ -117,7 +118,7 @@ class RenderingTask(CoreTask):
     def get_preview_file_path(self):
         return self.preview_file_path
 
-    @handle_image_error(logger)
+    @handle_opencv_image_error(logger)
     def _update_preview(self, new_chunk_file_path, num_start):
             img = OpenCVImgRepr.from_image_file(new_chunk_file_path)
             img_current = self._open_preview()
@@ -128,7 +129,7 @@ class RenderingTask(CoreTask):
     def _remove_from_preview(self, subtask_id):
         subtask = self.subtasks_given[subtask_id]
         empty_color = (0, 0, 0)
-        with handle_image_error(logger):
+        with handle_opencv_image_error(logger):
             img = self._open_preview()
             self._mark_task_area(subtask, img, empty_color)
             img.save_with_extension(self.preview_file_path, PREVIEW_EXT)
@@ -141,9 +142,8 @@ class RenderingTask(CoreTask):
         preview_task_file_path = "{}".format(os.path.join(self.tmp_dir,
                                                           preview_name))
 
-        with handle_image_error(logger):
+        with handle_opencv_image_error(logger):
             img_task = self._open_preview()
-
             subtasks_given = dict(self.subtasks_given)
             for sub in subtasks_given.values():
                 if sub['status'].is_active():
@@ -211,7 +211,7 @@ class RenderingTask(CoreTask):
         else:
             return ''
 
-    def _open_preview(self, ext=PREVIEW_EXT):
+    def _open_preview(self, mode=OpenCVImgRepr.RGB, ext=PREVIEW_EXT):
         """ If preview file doesn't exist create a new empty one with given mode and extension.
         Extension should be compatibile with selected mode. """
         if self.preview_file_path is None or not os.path.exists(
@@ -220,10 +220,10 @@ class RenderingTask(CoreTask):
             self.preview_file_path = "{}".format(os.path.join(self.tmp_dir,
                                                               preview_name))
 
-            with handle_image_error(logger):
+            with handle_opencv_image_error(logger):
                 img = OpenCVImgRepr.empty(
                     int(round(self.res_x * self.scale_factor)),
-                    int(round(self.res_y * self.scale_factor)))
+                    int(round(self.res_y * self.scale_factor)), channels=mode)
                 logger.debug('Saving new preview: %r', self.preview_file_path)
                 img.save_with_extension(self.preview_file_path, ext)
 

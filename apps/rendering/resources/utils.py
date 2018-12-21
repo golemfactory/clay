@@ -88,8 +88,6 @@ def handle_opencv_image_error(logger: Optional[logging.Logger] = None):
         logger.exception("Failed to operate on image with OpenCV")
 
 
-
-
 @contextmanager
 def handle_none(opt_context, raise_if_none: Optional[Exception] = None):
     """

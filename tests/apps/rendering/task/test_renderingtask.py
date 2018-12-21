@@ -6,7 +6,8 @@ from unittest.mock import Mock, patch, ANY
 from apps.core.task.coretaskstate import TaskDefinition, TaskState, Options
 from apps.core.task.coretask import logger as core_logger
 from apps.core.task.coretask import CoreTaskTypeInfo
-from apps.rendering.resources.imgrepr import load_img
+from apps.rendering.resources.imgrepr import load_img, OpenCVImgRepr, \
+    OpenCVError
 from apps.rendering.task.renderingtask import (MIN_TIMEOUT, PREVIEW_EXT,
                                                RenderingTask,
                                                RenderingTaskBuilderError,
@@ -108,29 +109,27 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         img = rt._open_preview()
         for i in range(int(round(rt.res_x * rt.scale_factor))):
             for j in range(int(round(rt.res_y * rt.scale_factor))):
-                img.putpixel((i, j), (1, 255, 255))
-        img.save(rt.preview_file_path, PREVIEW_EXT)
-        img.close()
+                img.set_pixel((i, j), (1, 255, 255))
+        img.save_with_extension(rt.preview_file_path, PREVIEW_EXT)
         rt._remove_from_preview("xxyyzz")
         img = rt._open_preview()
 
         max_x, max_y = 800 - 1, 600 - 1
 
-        assert img.getpixel((0, 0)) == (1, 255, 255)
-        assert img.getpixel((max_x, 0)) == (1, 255, 255)
-        assert img.getpixel((0, 5)) == (1, 255, 255)
-        assert img.getpixel((max_x, 5)) == (1, 255, 255)
+        assert img.get_pixel((0, 0)) == (1, 255, 255)
+        assert img.get_pixel((max_x, 0)) == (1, 255, 255)
+        assert img.get_pixel((0, 5)) == (1, 255, 255)
+        assert img.get_pixel((max_x, 5)) == (1, 255, 255)
 
         for i in range(6, 12):
-            assert img.getpixel((0, i)) == (0, 0, 0)
-            assert img.getpixel((max_x, i)) == (0, 0, 0)
+            assert img.get_pixel((0, i)) == (0, 0, 0)
+            assert img.get_pixel((max_x, i)) == (0, 0, 0)
 
-        assert img.getpixel((0, 13)) == (1, 255, 255)
-        assert img.getpixel((max_x, 13)) == (1, 255, 255)
-        assert img.getpixel((0, max_y)) == (1, 255, 255)
-        assert img.getpixel((max_x, max_y)) == (1, 255, 255)
+        assert img.get_pixel((0, 13)) == (1, 255, 255)
+        assert img.get_pixel((max_x, 13)) == (1, 255, 255)
+        assert img.get_pixel((0, max_y)) == (1, 255, 255)
+        assert img.get_pixel((max_x, max_y)) == (1, 255, 255)
 
-        img.close()
 
     def test_update_task_state(self):
         task = self.task
@@ -152,19 +151,16 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task = self.task
         preview = task._open_preview()
         assert path.isfile(task.preview_file_path)
-        assert preview.mode == "RGB"
-        assert preview.size == (800, 600)
-        preview.close()
+        assert preview.get_channels() == OpenCVImgRepr.RGB
+        assert preview.get_size() == (800, 600)
 
-        preview = task._open_preview("RGBA")
-        assert preview.mode == "RGB"
-        assert preview.size == (800, 600)
-        preview.close()
+        preview = task._open_preview(OpenCVImgRepr.RGB)
+        assert preview.get_channels() == OpenCVImgRepr.RGB
+        assert preview.get_size() == (800, 600)
         remove(task.preview_file_path)
-        preview = task._open_preview("RGBA", "PNG")
-        assert preview.mode == "RGBA"
-        assert preview.size == (800, 600)
-        preview.close()
+        preview = task._open_preview(OpenCVImgRepr.RGBA, "PNG")
+        assert preview.get_channels() == OpenCVImgRepr.RGBA
+        assert preview.get_size() == (800, 600)
 
     def test_restart_subtask(self):
         task = self.task
@@ -318,13 +314,12 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
             ))
 
     def test_update_task_preview_ioerror(self):
-        e = IOError("test message")
+        e = OpenCVError("test message")
         with patch("apps.rendering.resources.imgrepr.OpenCVImgRepr."
                    "from_image_file", side_effect=e), \
                 patch("apps.rendering.task.renderingtask.logger") as logger:
             self.task._update_task_preview()
-            assert logger.error.called
-            assert logger.error.call_args[0][1] == e
+            assert logger.exception.called
 
 
 class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):

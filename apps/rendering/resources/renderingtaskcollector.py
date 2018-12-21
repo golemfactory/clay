@@ -34,6 +34,7 @@ class RenderingTaskCollector(object):
         return self.finalize_img()
 
     def finalize_img(self):
+
         res_x, res_y = 0, 0
 
         for name in self.accepted_img_files:
@@ -46,7 +47,6 @@ class RenderingTaskCollector(object):
 
         self.width = res_x
         self.height = res_y
-
         final_img = OpenCVImgRepr.empty(self.width, self.height, self.channels,
                                         self.dtype)
         offset = 0
