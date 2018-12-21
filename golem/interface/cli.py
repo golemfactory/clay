@@ -2,6 +2,7 @@ import argparse
 import shlex
 import sys
 import time
+from copy import deepcopy
 from typing import Text, Dict, Callable
 
 from golem.interface.command import CommandHelper, CommandStorage, command, Argument
@@ -41,13 +42,13 @@ class ArgumentParser(argparse.ArgumentParser):
         raise ParsingException(message, self)
 
 
-def adapt_parser_children_to_target_net(
+def disable_withdraw(
         children: Dict[Text, Callable]) -> Dict[Text, Callable]:
     """
     This function adapts children of an interface: if golemcli is not run on
     mainnet, there should be no option to `withdraw` for `golemcli account`
     """
-    new_children = {k: v for k, v in children.items()}
+    new_children = deepcopy(children)
     from golem.config.active import IS_MAINNET
     if not IS_MAINNET:
         if 'withdraw' in new_children:
@@ -233,7 +234,7 @@ class CLI(object):
 
         name = interface['name']
         source = interface['source']
-        children = adapt_parser_children_to_target_net(interface['children'])
+        children = disable_withdraw(interface['children'])
         arguments = interface['arguments']
         is_callable = interface['callable']
 

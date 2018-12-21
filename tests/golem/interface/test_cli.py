@@ -7,7 +7,7 @@ from twisted.internet.defer import Deferred, TimeoutError
 from twisted.internet.error import ReactorNotRunning
 
 from golem.interface.cli import CLI, _exit, _help, _debug, ArgumentParser, \
-    adapt_parser_children_to_target_net
+    disable_withdraw
 from golem.interface.command import group, doc, argument,\
     identifier, name, command, CommandHelper, storage_context
 from golem.interface.exceptions import ParsingException, CommandException
@@ -375,22 +375,28 @@ class TestArgumentParser(unittest.TestCase):
 
 class TestAdaptChildren(unittest.TestCase):
     def setUp(self):
+        def foofun():
+            pass
+
+        def barfun():
+            pass
+
         self.children = {
-            'withdraw': Mock(),
-            'sth else': Mock(),
+            'withdraw': foofun,
+            'sth else': barfun,
         }
 
     def test_empty_remains_empty(self):
-        result = adapt_parser_children_to_target_net({})
+        result = disable_withdraw({})
         self.assertEqual(result, {})
 
     def test_no_adaptation_for_mainnet(self):
         with patch('golem.config.active.IS_MAINNET', True):
-            result = adapt_parser_children_to_target_net(self.children)
+            result = disable_withdraw(self.children)
             self.assertEqual(result, self.children)
 
     def test_remove_withdraw_if_not_mainnet(self):
         with patch('golem.config.active.IS_MAINNET', False):
-            result = adapt_parser_children_to_target_net(self.children)
+            result = disable_withdraw(self.children)
             self.children.pop('withdraw')
             self.assertEqual(result, self.children)
