@@ -41,7 +41,8 @@ class ArgumentParser(argparse.ArgumentParser):
         raise ParsingException(message, self)
 
 
-def adapt_children(children: Dict[Text, Callable]) -> Dict[Text, Callable]:
+def adapt_parser_children_to_target_net(
+        children: Dict[Text, Callable]) -> Dict[Text, Callable]:
     """
     This function adapts children of an interface: if golemcli is not run on
     mainnet, there should be no option to `withdraw` for `golemcli account`
@@ -232,7 +233,7 @@ class CLI(object):
 
         name = interface['name']
         source = interface['source']
-        children = adapt_children(interface['children'])
+        children = adapt_parser_children_to_target_net(interface['children'])
         arguments = interface['arguments']
         is_callable = interface['callable']
 
