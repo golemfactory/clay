@@ -2,7 +2,6 @@ import logging
 from os import path
 import sys
 
-from typing import Set, Any
 from ethereum.utils import denoms
 
 from golem.config.active import ENABLE_TALKBACK
@@ -198,8 +197,11 @@ class AppConfig:
         for var, val in list(vars(cfg_desc).items()):
             setter = "set_{}".format(var)
             if not hasattr(self, setter):
-                logger.info("Cannot set unknown config property: {} = {}"
-                            .format(var, val))
+                logger.info(
+                    "Cannot set unknown config property: %r = %r",
+                    var,
+                    val,
+                )
                 continue
 
             set_func = getattr(self, setter)
