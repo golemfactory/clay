@@ -16,6 +16,7 @@ from golem_messages import message
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from golem_messages.utils import encode_hex
+from twisted.internet.defer import Deferred
 
 from golem import testutils
 from golem.core import keysauth
@@ -42,6 +43,7 @@ class TaskToComputeConcentTestCase(testutils.TempDirFixture):
         self.msg._fake_sign()
         self.msg.want_to_compute_task.sign_message(self.keys.raw_privkey)  # noqa pylint: disable=no-member
         self.task_session = tasksession.TaskSession(mock.MagicMock())
+        self.task_session.task_computer.has_assigned_task.return_value = False
         self.task_session.task_server.keys_auth.ecc.raw_pubkey = \
             self.keys.raw_pubkey
         self.task_session.task_server.task_keeper\
@@ -331,6 +333,15 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
         self.assertEqual(ack_msg.report_computed_task, self.msg)
 
 
+def _offerpool_add(*_):
+    res = Deferred()
+    res.callback(True)
+    return res
+
+
+@mock.patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
+@mock.patch('golem.task.tasksession.get_provider_efficiency', mock.Mock())
+@mock.patch('golem.task.tasksession.get_provider_efficacy', mock.Mock())
 @mock.patch(
     'golem.task.tasksession.TaskSession.send',
     side_effect=lambda msg: msg._fake_sign(),
@@ -339,7 +350,7 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
     def setUp(self):
         super().setUp()
         self.requestor_keys = cryptography.ECCx(None)
-        self.msg = factories.tasks.WantToComputeTaskFactory()
+        self.msg = factories.tasks.WantToComputeTaskFactory(price=10 ** 18)
         self.msg._fake_sign()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
         self.task_session.key_id = 'unittest_key_id'
@@ -401,7 +412,7 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         task_manager.check_next_subtask.return_value = True
         task_manager.is_my_task.return_value = True
         task_manager.should_wait_for_node.return_value = False
-        ctd = factories.tasks.ComputeTaskDefFactory()
+        ctd = factories.tasks.ComputeTaskDefFactory(task_id=self.msg.task_id)
         task_manager.get_next_subtask.return_value = ctd
 
         task = mock.MagicMock()

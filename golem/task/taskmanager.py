@@ -22,6 +22,8 @@ from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.ranking.manager.database_manager import update_provider_efficiency, \
+    update_provider_efficacy
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
@@ -29,10 +31,11 @@ from golem.rpc import utils as rpc_utils
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task, \
     TaskPurpose, AcceptClientVerdict
-from golem.task.taskkeeper import CompTaskKeeper
+from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     SubtaskState, Operation, TaskOp, SubtaskOp, OtherOp
+from golem.task.timer import ProviderComputeTimers
 
 logger = logging.getLogger(__name__)
 
@@ -81,8 +84,7 @@ class TaskManager(TaskEventListener):
         pass
 
     def __init__(
-            self, node, keys_auth,
-            root_path="res",
+            self, node, keys_auth, root_path,
             tasks_dir="tasks", task_persistence=True,
             apps_manager=AppsManager(), finished_cb=None):
         super().__init__()
@@ -424,7 +426,7 @@ class TaskManager(TaskEventListener):
 
         self.subtask2task_mapping[ctd['subtask_id']] = task_id
         self.__add_subtask_to_tasks_states(
-            node_name, node_id, ctd, address,
+            node_name, node_id, ctd, address, price,
         )
         self.notice_task_updated(task_id,
                                  subtask_id=ctd['subtask_id'],
@@ -436,6 +438,7 @@ class TaskManager(TaskEventListener):
             ctd,
         )
 
+        ProviderComputeTimers.start(ctd['subtask_id'])
         return ctd
 
     def is_my_task(self, task_id: str) -> bool:
@@ -542,6 +545,7 @@ class TaskManager(TaskEventListener):
                 node_name=None,
                 node_id=None,
                 address=None,
+                price=0,
                 ctd=extra_data.ctd)
             new_subtasks_ids.append(new_subtask_id)
 
@@ -1040,7 +1044,7 @@ class TaskManager(TaskEventListener):
             return None
 
     def __add_subtask_to_tasks_states(self, node_name, node_id,
-                                      ctd, address):
+                                      ctd, address, price: int):
 
         logger.debug('add_subtask_to_tasks_states(%r, %r, %r, %r)',
                      node_name, node_id, ctd, address)
@@ -1053,6 +1057,7 @@ class TaskManager(TaskEventListener):
         ss.subtask_id = ctd['subtask_id']
         ss.extra_data = ctd['extra_data']
         ss.subtask_status = SubtaskStatus.starting
+        ss.price = price
 
         (self.tasks_states[ctd['task_id']].
             subtask_states[ctd['subtask_id']]) = ss
@@ -1107,6 +1112,91 @@ class TaskManager(TaskEventListener):
             op=op,
         )
 
+        self._stop_timers(task_id, subtask_id, op)
+        self._update_subtask_statistics(task_id, subtask_id, op)
+
         if self.finished_cb and persist and op \
                 and op.task_related() and op.is_completed():
             self.finished_cb()
+
+    def _stop_timers(self, task_id: str,
+                     subtask_id: Optional[str] = None,
+                     op: Optional[Operation] = None):
+
+        if subtask_id and isinstance(op, SubtaskOp) and op.is_completed():
+            ProviderComputeTimers.finish(subtask_id)
+
+        elif isinstance(op, TaskOp) and op in (
+                TaskOp.ABORTED,
+                TaskOp.TIMEOUT,
+                TaskOp.RESTARTED
+        ):
+            for _subtask_id in self.tasks_states[task_id].subtask_states:
+                ProviderComputeTimers.finish(_subtask_id)
+
+    def _update_subtask_statistics(self, task_id: str,
+                                   subtask_id: Optional[str] = None,
+                                   op: Optional[Operation] = None) -> None:
+
+        # Skip if subtask is not completed
+        if not (subtask_id and isinstance(op, SubtaskOp) and op.is_completed()):
+            return
+
+        try:
+            self._update_provider_statistics(task_id, subtask_id, op)
+        except (KeyError, ValueError) as e:
+            logger.error("Unable to update statistics for subtask %s: %r",
+                         subtask_id, e)
+
+        try:
+            self._update_provider_reputation(task_id, subtask_id, op)
+        except (KeyError, ValueError) as e:
+            logger.error("Unable to update reputation for subtask %s: %r",
+                         subtask_id, e)
+
+        # We're done processing the subtask
+        ProviderComputeTimers.remove(subtask_id)
+
+    def _update_provider_statistics(self, task_id: str,
+                                    subtask_id: str,
+                                    op: SubtaskOp) -> None:
+
+        header = self.tasks[task_id].header
+        subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
+
+        computation_price = compute_subtask_value(subtask_state.price,
+                                                  header.subtask_timeout)
+        computation_time = ProviderComputeTimers.time(subtask_id)
+
+        if not computation_time:
+            raise ValueError("Invalid value for computation_time: "
+                             f"{computation_time}")
+
+        computation_time = int(round(computation_time))
+
+        dispatcher.send(
+            signal='golem.subtask',
+            event='finished',
+            timed_out=(op == SubtaskOp.TIMEOUT),
+            subtask_count=header.subtasks_count,
+            subtask_timeout=header.subtask_timeout,
+            subtask_price=computation_price,
+            subtask_computation_time=computation_time,
+        )
+
+    def _update_provider_reputation(self, task_id: str,
+                                    subtask_id: str,
+                                    op: SubtaskOp) -> None:
+
+        timeout = self.tasks[task_id].header.subtask_timeout
+        subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
+        node_id = subtask_state.node_id
+
+        update_provider_efficacy(node_id, op)
+        computation_time = ProviderComputeTimers.time(subtask_id)
+
+        if not computation_time:
+            raise ValueError("computation_time cannot be equal to "
+                             f"{computation_time}")
+
+        update_provider_efficiency(node_id, timeout, computation_time)

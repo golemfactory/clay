@@ -1,8 +1,8 @@
+# pylint: disable=protected-access
 from os import path
 
 from golem.appconfig import AppConfig, ClientConfigDescriptor
 from golem.tools.testdirfixture import TestDirFixture
-
 
 
 class TestAppConfig(TestDirFixture):

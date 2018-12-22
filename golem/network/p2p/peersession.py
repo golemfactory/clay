@@ -1,6 +1,7 @@
 import logging
 import random
 import time
+import typing
 
 import semantic_version
 from golem_messages import message
@@ -67,7 +68,7 @@ class PeerSession(BasicSafeSession):
         # Information about peer
         self.degree = 0
         self.node_name = ""
-        self.node_info = None
+        self.node_info: typing.Optional[dt_p2p.Node] = None
         self.client_ver = None
         self.listen_port = None
         self.conn_id = None
@@ -219,12 +220,11 @@ class PeerSession(BasicSafeSession):
         :param Node|None super_node_info: information about known supernode
         """
 
-        sni = None if super_node_info is None else super_node_info.to_dict()
         self.send(
             message.p2p.WantToStartTaskSession(
-                node_info=node_info.to_dict(),
+                node_info=node_info,
                 conn_id=conn_id,
-                super_node_info=sni
+                super_node_info=super_node_info,
             )
         )
 
@@ -244,13 +244,12 @@ class PeerSession(BasicSafeSession):
         """
         logger.debug('Forwarding session request: %s -> %s to %s',
                      node_info.key, key_id, self.key_id)
-        sni = None if super_node_info is None else super_node_info.to_dict()
         self.send(
             message.p2p.SetTaskSession(
                 key_id=key_id,
-                node_info=node_info.to_dict(),
+                node_info=node_info,
                 conn_id=conn_id,
-                super_node_info=sni
+                super_node_info=super_node_info,
             )
         )
 
@@ -289,7 +288,7 @@ class PeerSession(BasicSafeSession):
             self.disconnect(message.base.Disconnect.REASON.ProtocolVersion)
             return
 
-        self.node_info = dt_p2p.Node(**msg.node_info)
+        self.node_info = msg.node_info
 
         if not KeysAuth.is_pubkey_difficult(
                 self.node_info.key,
@@ -338,7 +337,6 @@ class PeerSession(BasicSafeSession):
         peers_info = msg.peers[:SEND_PEERS_NUM]
         self.degree = len(peers_info)
         for pi in peers_info:
-            pi['node'] = dt_p2p.Node(**pi['node'])
             self.p2p_service.try_to_add_peer(pi)
 
     def _react_to_get_tasks(self, msg):
@@ -459,28 +457,19 @@ class PeerSession(BasicSafeSession):
             )
 
     def _react_to_want_to_start_task_session(self, msg):
-        super_node_info = None
-        if msg.super_node_info:
-            super_node_info = dt_p2p.Node(**msg.super_node_info)
         self.p2p_service.peer_want_task_session(
-            dt_p2p.Node(**msg.node_info),
-            super_node_info,
+            msg.node_info,
+            msg.super_node_info,
             msg.conn_id
         )
 
     def _react_to_set_task_session(self, msg):
-        super_node_info = None
-        if msg.super_node_info:
-            super_node_info = dt_p2p.Node(**msg.super_node_info)
         self.p2p_service.want_to_start_task_session(
             msg.key_id,
-            dt_p2p.Node(**msg.node_info),
+            msg.node_info,
             msg.conn_id,
-            super_node_info
+            msg.super_node_info
         )
-
-    def _react_to_disconnect(self, msg):
-        super(PeerSession, self)._react_to_disconnect(msg)
 
     def _send_pong(self):
         self.send(message.p2p.Pong())
@@ -499,7 +488,7 @@ class PeerSession(BasicSafeSession):
             port=self.p2p_service.cur_port,
             node_name=self.p2p_service.node_name,
             client_key_id=self.p2p_service.keys_auth.key_id,
-            node_info=self.p2p_service.node.to_dict(),
+            node_info=self.p2p_service.node,
             client_ver=golem.__version__,
             rand_val=self.rand_val,
             solve_challenge=self.solve_challenge,
@@ -514,8 +503,6 @@ class PeerSession(BasicSafeSession):
     def _send_peers(self, node_key_id=None):
         nodes_info = self.p2p_service.find_node(node_key_id=node_key_id,
                                                 alpha=SEND_PEERS_NUM)
-        for ni in nodes_info:
-            ni['node'] = ni['node'].to_dict()
         self.send(message.p2p.Peers(peers=nodes_info))
 
     def __set_verified_conn(self):
@@ -528,11 +515,13 @@ class PeerSession(BasicSafeSession):
             self._send_peers(node_key_id=self.p2p_service.get_key_id())
             self.disconnect(message.base.Disconnect.REASON.TooManyPeers)
 
-            self.p2p_service.try_to_add_peer({"address": self.address,
-                                              "port": self.listen_port,
-                                              "node": self.node_info,
-                                              "node_name": self.node_name,
-                                              "conn_trials": 0})
+            self.p2p_service.try_to_add_peer(
+                dt_p2p.Peer(
+                    address=self.address,
+                    port=self.listen_port,
+                    node=self.node_info,
+                ),
+            )
             return
 
         p = self.p2p_service.find_peer(self.key_id)

@@ -16,7 +16,6 @@ from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from golem_messages.message import ComputeTaskDef
 from pydispatch import dispatcher
 from twisted.internet.defer import fail
-from twisted.trial.unittest import TestCase as TwistedTestCase
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
@@ -33,8 +32,9 @@ from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, \
     TaskStatus, TaskOp, SubtaskOp, OtherOp
+from golem.testutils import DatabaseFixture
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.testwithreactor import TestDirFixtureWithReactor
+from golem.tools.testwithreactor import TestDatabaseWithReactor
 
 from apps.dummy.task.dummytask import (
     DummyTaskDefaults,
@@ -78,7 +78,7 @@ class TaskMock(Task):
 
 @patch.multiple(TaskMock, __abstractmethods__=frozenset())
 @patch.multiple(Task, __abstractmethods__=frozenset())
-class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
+class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: disable=too-many-ancestors
                       testutils.PEP8MixIn):
     PEP8_FILES = [
         'golem/task/taskmanager.py',
@@ -1300,9 +1300,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             restart.assert_called_once_with('new_subtask_id')
 
 
-class TestCopySubtaskResults(TwistedTestCase):
+class TestCopySubtaskResults(DatabaseFixture):
 
     def setUp(self):
+        super().setUp()
         self.tm = TaskManager(
             node=dt_p2p_factory.Node(),
             keys_auth=MagicMock(spec=KeysAuth),

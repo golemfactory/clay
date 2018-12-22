@@ -12,6 +12,8 @@ from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem import testutils
+from golem.docker.manager import DockerManager
+from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import TaskStatus
 from golem.tools.ci import ci_skip
@@ -47,6 +49,12 @@ class TestBenchmarkRunner(testutils.TempDirFixture):
 
     @pytest.mark.slow
     def test_run(self):
+        dm = DockerTaskThread.docker_manager = DockerManager.install()
+        dm.update_config(
+            status_callback=mock.Mock(),
+            done_callback=mock.Mock(),
+            work_dir=self.new_path,
+            in_background=True)
         benchmark = BlenderBenchmark()
         task_definition = benchmark.task_definition
 

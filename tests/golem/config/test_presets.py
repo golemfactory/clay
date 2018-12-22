@@ -4,8 +4,7 @@ from peewee import DoesNotExist, IntegrityError
 
 from golem.appconfig import DEFAULT_HARDWARE_PRESET_NAME, \
     CUSTOM_HARDWARE_PRESET_NAME
-from golem.config.presets import HardwarePresetsMixin
-from golem.core.hardware import HardwarePresets
+from golem.hardware.presets import HardwarePresets, HardwarePresetsMixin
 from golem.model import HardwarePreset
 from golem.tools.testwithdatabase import TestWithDatabase
 
@@ -130,8 +129,3 @@ class TestHardwarePresetsMixin(TestWithDatabase):
         assert sanitize(
             CUSTOM_HARDWARE_PRESET_NAME) == CUSTOM_HARDWARE_PRESET_NAME
         assert sanitize('test') == 'test'
-
-    def test_activate_hw_preset(self):
-        mixin = HardwarePresetsMixin()
-        with self.assertRaises(NotImplementedError):
-            mixin.activate_hw_preset('any')

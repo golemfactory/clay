@@ -17,11 +17,10 @@ from twisted.internet.defer import (
     gatherResults,
     Deferred)
 
-import golem
 from apps.appsmanager import AppsManager
+import golem
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
-from golem.config.presets import HardwarePresetsMixin
 from golem.core.common import (
     datetime_to_timestamp_utc,
     get_timestamp_utc,
@@ -30,7 +29,7 @@ from golem.core.common import (
     to_unicode,
 )
 from golem.core.fileshelper import du
-from golem.core.hardware import HardwarePresets
+from golem.hardware.presets import HardwarePresets
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
@@ -86,10 +85,10 @@ class ClientTaskComputerEventListener(object):
         self.client.config_changed()
 
 
-class Client(HardwarePresetsMixin):
+class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-public-methods
     _services = []  # type: List[IService]
 
-    def __init__(  # noqa pylint: disable=too-many-arguments
+    def __init__(  # noqa pylint: disable=too-many-arguments,too-many-locals
             self,
             datadir: str,
             app_config: AppConfig,
@@ -104,7 +103,8 @@ class Client(HardwarePresetsMixin):
             use_monitor: bool = True,
             geth_address: Optional[str] = None,
             apps_manager: AppsManager = AppsManager(),
-            task_finished_cb=None) -> None:
+            task_finished_cb=None,
+            update_hw_preset=None) -> None:
 
         self.apps_manager = apps_manager
         self.datadir = datadir
@@ -133,7 +133,7 @@ class Client(HardwarePresetsMixin):
         # NETWORK
         self.node = LocalNode(
             node_name=self.config_desc.node_name,
-            prv_addr=self.config_desc.node_address,
+            prv_addr=self.config_desc.node_address or None,
             key=self.keys_auth.key_id,
         )
 
@@ -193,7 +193,10 @@ class Client(HardwarePresetsMixin):
         self.use_monitor = use_monitor
         self.monitor = None
         self.session_id = str(uuid.uuid4())
+
+        # TODO: Move to message queue #3160
         self._task_finished_cb = task_finished_cb
+        self._update_hw_preset = update_hw_preset
 
         dispatcher.connect(
             self.p2p_listener,
@@ -417,7 +420,9 @@ class Client(HardwarePresetsMixin):
 
         def connect(ports):
             logger.info(
-                'Golem is listening on ports: P2P=%s, Task=%s, Hyperdrive=%r',
+                'Golem is listening on addr: %s'
+                ', ports: P2P=%s, Task=%s, Hyperdrive=%r',
+                self.node.prv_addr,
                 self.node.p2p_prv_port,
                 self.node.prv_port,
                 self.node.hyperdrive_prv_port
@@ -1054,7 +1059,9 @@ class Client(HardwarePresetsMixin):
 
     def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
-        self.upsert_hw_preset(HardwarePresets.from_config(self.config_desc))
+        if self._update_hw_preset:
+            self._update_hw_preset(
+                HardwarePresets.from_config(self.config_desc))
 
         if self.p2pservice:
             self.p2pservice.change_config(self.config_desc)
@@ -1450,6 +1457,18 @@ class MonitoringPublisherService(LoopingCallService):
                            .requestor_stats_manager.get_current_stats()),
             finished_stats=(self._task_server.task_manager
                             .requestor_stats_manager.get_finished_stats())
+        )
+        dispatcher.send(
+            signal='golem.monitor',
+            event='requestor_aggregate_stats_snapshot',
+            stats=(self._task_server.task_manager.requestor_stats_manager
+                   .get_aggregate_stats()),
+        )
+        dispatcher.send(
+            signal='golem.monitor',
+            event='provider_stats_snapshot',
+            stats=(self._task_server.task_manager.comp_task_keeper
+                   .provider_stats_manager.keeper.global_stats),
         )
 
 
