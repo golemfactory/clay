@@ -17,9 +17,17 @@ from golem.task import taskserver
 from golem.task import taskstate
 from golem.task import tasktester
 from tests.golem import test_client
-
+from tests.golem.test_client import TestClientBase
 
 fake = faker.Faker()
+
+
+def _raise_not_enough_funds(*_, **__):
+    from golem.ethereum import exceptions
+    raise exceptions.NotEnoughFunds(
+        required=166667000000000000,
+        available=0,
+    )
 
 
 class ProviderBase(test_client.TestClientBase):
@@ -102,7 +110,10 @@ class ProviderBase(test_client.TestClientBase):
         header=mock.MagicMock(task_id='task_id'),
     ),
 )
-class TestCreateTask(ProviderBase):
+class TestCreateTask(ProviderBase, TestClientBase):
+    @mock.patch(
+        'golem.ethereum.fundslocker.FundsLocker.validate_lock_funds_possibility'
+    )
     def test_create_task(self, *_):
         t = dummytaskstate.DummyTaskDefinition()
         t.name = "test"
@@ -132,6 +143,19 @@ class TestCreateTask(ProviderBase):
         assert result == (None,
                           "Task name can only contain letters, numbers, "
                           "spaces, underline, dash or dot.")
+
+    @mock.patch('golem.ethereum.fundslocker.FundsLocker.'
+                'validate_lock_funds_possibility',
+                side_effect=_raise_not_enough_funds)
+    def test_create_task_fail_if_not_enough_gnt_available(self, *_):
+        t = dummytaskstate.DummyTaskDefinition()
+        t.name = "test"
+
+        result = self.provider.create_task(t.to_dict())
+        rpc.enqueue_new_task.assert_not_called()
+
+        assert result == (None, 'Not enough GNT available. Required: '
+                                '0.166667, available: 0.000000')
 
 
 class TestRestartTask(ProviderBase):
@@ -302,17 +326,15 @@ class TestEnqueueNewTask(ProviderBase):
         assert frames is not None
 
     def test_ensure_task_deposit(self, *_):
-        force = fake.pybool()
         self.client.concent_service = mock.Mock()
         self.client.concent_service.enabled = True
         self.t_dict['concent_enabled'] = True
         task = self.client.task_manager.create_task(self.t_dict)
-        deferred = rpc.enqueue_new_task(self.client, task, force=force)
+        deferred = rpc.enqueue_new_task(self.client, task)
         golem_deferred.sync_wait(deferred)
         self.client.transaction_system.concent_deposit.assert_called_once_with(
             required=mock.ANY,
             expected=mock.ANY,
-            force=force,
         )
 
     @mock.patch('golem.task.rpc.logger.error')

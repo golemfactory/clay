@@ -5,6 +5,7 @@ from ethereum.utils import denoms
 
 from golem.core.service import LoopingCallService
 from golem.core.variables import PAYMENT_DEADLINE
+from golem.ethereum import exceptions
 
 from .transactionsystem import TransactionSystem
 
@@ -28,8 +29,23 @@ class FundsLocker(LoopingCallService):
             transaction_system: TransactionSystem,
             interval_seconds: int = 60) -> None:
         super().__init__(interval_seconds)
-        self.task_lock = {}
+        self.task_lock: dict = {}
         self.transaction_system = transaction_system
+
+    def validate_lock_funds_possibility(
+            self,
+            price: int,
+            num: int) -> None:
+        gnt = price * num
+        eth = self.transaction_system.eth_for_batch_payment(num)
+        if gnt > self.transaction_system.get_available_gnt():
+            raise exceptions.NotEnoughFunds(
+                gnt,
+                self.transaction_system.get_available_gnt(), 'GNT',
+            )
+        eth_available = self.transaction_system.get_available_eth()
+        if eth > eth_available:
+            raise exceptions.NotEnoughFunds(eth, eth_available, 'ETH')
 
     def lock_funds(
             self,

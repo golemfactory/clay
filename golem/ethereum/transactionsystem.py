@@ -64,7 +64,7 @@ class ConversionStatus(Enum):
     UNFINISHED = 3
 
 
-# pylint:disable=too-many-instance-attributes
+# pylint:disable=too-many-instance-attributes,too-many-public-methods
 class TransactionSystem(LoopingCallService):
     """ Transaction system connected with Ethereum """
 
@@ -380,17 +380,7 @@ class TransactionSystem(LoopingCallService):
         if not self._payment_processor:
             raise Exception('Start was not called')
         gnt = price * num
-        if gnt > self.get_available_gnt():
-            raise exceptions.NotEnoughFunds(
-                gnt,
-                self.get_available_gnt(), 'GNT',
-            )
-
         eth = self.eth_for_batch_payment(num)
-        eth_available = self.get_available_eth()
-        if eth > eth_available:
-            raise exceptions.NotEnoughFunds(eth, eth_available, 'ETH')
-
         log.info(
             "Locking %f GNT and ETH for %d payments",
             gnt / denoms.ether,
@@ -423,6 +413,7 @@ class TransactionSystem(LoopingCallService):
         self._gntb_locked -= gnt
         self._payments_locked -= num
 
+    # pylint: disable=too-many-arguments
     def expect_income(
             self,
             sender_node: str,
@@ -566,13 +557,27 @@ class TransactionSystem(LoopingCallService):
             account_address=account_address,
         )
 
+    @sci_required()
+    def validate_concent_deposit_possibility(
+            self,
+            required: int,
+            force: bool = False) -> None:
+        gntb_balance = self.get_available_gnt()
+        if gntb_balance < required:
+            raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
+        if self.gas_price >= self._sci.GAS_PRICE:  # type: ignore
+            if not force:
+                raise exceptions.LongTransactionTime("Gas price too high")
+            log.warning(
+                'Gas price is high. It can take some time to mine deposit.',
+            )
+
     @defer.inlineCallbacks
     @sci_required()
     def concent_deposit(
             self,
             required: int,
-            expected: int,
-            force: bool = False) \
+            expected: int) \
             -> Generator[defer.Deferred, TransactionReceipt, Optional[str]]:
         self._sci: SmartContractsInterface
         current = self.concent_balance()
@@ -583,14 +588,6 @@ class TransactionSystem(LoopingCallService):
         required -= current
         expected -= current
         gntb_balance = self.get_available_gnt()
-        if gntb_balance < required:
-            raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
-        if self.gas_price >= self._sci.GAS_PRICE:
-            if not force:
-                raise exceptions.LongTransactionTime("Gas price too high")
-            log.warning(
-                'Gas price is high. It can take some time to mine deposit.',
-            )
         max_possible_amount = min(expected, gntb_balance)
         tx_hash = self._sci.deposit_payment(max_possible_amount)
         log.info(

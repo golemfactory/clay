@@ -14,6 +14,7 @@ from twisted.internet import defer
 
 from apps.core.task import coretask
 from apps.rendering.task import framerenderingtask
+from golem.client import Client
 from golem.core import golem_async
 from golem.core import common
 from golem.core import deferred as golem_deferred
@@ -96,6 +97,15 @@ def _validate_task_dict(client, task_dict) -> None:
             )
 
 
+def validate_client(client: Client):
+    if client.config_desc.in_shutdown:
+        raise CreateTaskError(
+            'Can not enqueue task: shutdown is in progress, '
+            'toggle shutdown mode off to create a new tasks.')
+    if client.task_server is None:
+        raise CreateTaskError("Golem is not ready")
+
+
 def prepare_and_validate_task_dict(client, task_dict):
     # Set default value for concent_enabled
     task_dict.setdefault(
@@ -173,7 +183,6 @@ def _restart_subtasks(
         new_task = yield enqueue_new_task(
             client=client,
             task=client.task_manager.create_task(task_dict),
-            force=force,
         )
 
         client.task_manager.copy_results(
@@ -188,7 +197,7 @@ def _restart_subtasks(
 
 
 @defer.inlineCallbacks
-def _ensure_task_deposit(client, task, force):
+def _ensure_task_deposit(client, task):
     if not task.header.concent_enabled:
         return
 
@@ -214,7 +223,6 @@ def _ensure_task_deposit(client, task, force):
         yield client.transaction_system.concent_deposit(
             required=min_amount,
             expected=opt_amount,
-            force=force,
         )
     except eth_exceptions.EthereumError:
         client.funds_locker.remove_task(task_id)
@@ -322,16 +330,9 @@ def _start_task(client, task, resource_server_result):
 
 
 @defer.inlineCallbacks
-def enqueue_new_task(client, task, force=False) \
+def enqueue_new_task(client, task) \
             -> typing.Generator[defer.Deferred, typing.Any, taskbase.Task]:
     """Feed a fresh Task to all golem subsystems"""
-    if client.config_desc.in_shutdown:
-        raise CreateTaskError(
-            'Can not enqueue task: shutdown is in progress, '
-            'toggle shutdown mode off to create a new tasks.')
-    if client.task_server is None:
-        raise CreateTaskError("Golem is not ready")
-
     task_id = task.header.task_id
     client.funds_locker.lock_funds(
         task_id,
@@ -363,7 +364,6 @@ def enqueue_new_task(client, task, force=False) \
         yield _ensure_task_deposit(
             client=client,
             task=task,
-            force=force,
         )
 
         logger.info(
@@ -436,12 +436,23 @@ class ClientProvider:
         """
 
         prepare_and_validate_task_dict(self.client, task_dict)
+        validate_client(self.client)
 
         task: taskbase.Task = self.task_manager.create_task(task_dict)
-
+        self.client.funds_locker.validate_lock_funds_possibility(
+            task.subtask_price,
+            task.get_total_tasks(),
+        )
+        min_amount, _ = msg_helpers.requestor_deposit_amount(
+            task.price,
+        )
+        self.client.transaction_system.validate_concent_deposit_possibility(
+            required=min_amount,
+            force=force,
+        )
         task_id = task.header.task_id
 
-        deferred = enqueue_new_task(self.client, task, force=force)
+        deferred = enqueue_new_task(self.client, task)
         # We want to return quickly from create_task without waiting for
         # deferred completion.
         deferred.addErrback(  # pylint: disable=no-member
@@ -488,7 +499,6 @@ class ClientProvider:
         enqueue_new_task(  # pylint: disable=no-member
             client=self.client,
             task=new_task,
-            force=force,
         ).addErrback(
             lambda failure: _restart_task_error(
                 e=failure.value,
