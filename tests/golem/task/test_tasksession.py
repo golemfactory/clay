@@ -14,6 +14,8 @@ from golem_messages import factories as msg_factories
 from golem_messages import idgenerator
 from golem_messages import message
 from golem_messages import cryptography
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from golem_messages.utils import encode_hex
 
 from twisted.internet.defer import Deferred
@@ -28,18 +30,14 @@ from golem.docker.image import DockerImage
 from golem.network.hyperdrive import client as hyperdrive_client
 from golem.model import Actor
 from golem.network import history
-from golem.network.p2p.node import Node
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
 from golem.task import taskstate
-from golem.task.taskbase import TaskHeader
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
 from golem.tools.assertlogs import LogTestCase
 
 from tests import factories
-from tests.factories import p2p as p2p_factories
-from tests.factories.task import taskbase as taskbase_factories
 
 
 def fill_slots(msg):
@@ -72,9 +70,19 @@ class ConcentMessageMixin():
         self.assertIsInstance(mock_call[1], message_class)
 
 
-# pylint:disable=no-member
+def _offerpool_add(*_):
+    res = Deferred()
+    res.callback(True)
+    return res
+
+
+# pylint:disable=no-member,too-many-instance-attributes
+@patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
+@patch('golem.task.tasksession.get_provider_efficiency', Mock())
+@patch('golem.task.tasksession.get_provider_efficacy', Mock())
 class TaskSessionTaskToComputeTest(TestCase):
     def setUp(self):
+        self.maxDiff = None
         self.requestor_keys = cryptography.ECCx(None)
         self.requestor_key = encode_hex(self.requestor_keys.raw_pubkey)
         self.provider_keys = cryptography.ECCx(None)
@@ -127,15 +135,17 @@ class TaskSessionTaskToComputeTest(TestCase):
         return msg
 
     def _fake_add_task(self):
-        task_header = TaskHeader(
+        task_header = dt_tasks_factory.TaskHeader(
             task_id=self.task_id,
             environment='',
-            task_owner=Node(
+            task_owner=dt_p2p_factory.Node(
                 key=self.requestor_key,
                 node_name=self.node_name,
                 pub_addr='10.10.10.10',
                 pub_port=12345,
-            )
+            ),
+            subtask_timeout=1,
+            max_price=1,
         )
         self.task_manager.tasks[self.task_id] = Mock(header=task_header)
 
@@ -151,7 +161,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts._handshake_required = Mock(return_value=False)
         params = self._get_task_parameters()
         ts.task_server.task_keeper.task_headers = task_headers = {}
-        task_headers[params['task_id']] = taskbase_factories.TaskHeader()
+        task_headers[params['task_id']] = dt_tasks_factory.TaskHeader()
         ts.concent_service.enabled = False
         ts.request_task(
             params['node_name'],
@@ -248,10 +258,10 @@ class TaskSessionTaskToComputeTest(TestCase):
             ['requestor_public_key', self.requestor_key],
             ['requestor_ethereum_public_key', self.requestor_key],
             ['compute_task_def', ctd],
-            ['want_to_compute_task', mt],
+            ['want_to_compute_task', (False, (mt.header, mt.sig, mt.slots()))],
             ['package_hash', 'sha1:' + task_state.package_hash],
             ['concent_enabled', self.use_concent],
-            ['price', 0],
+            ['price', 1],
             ['size', task_state.package_size],
         ]
         self.assertCountEqual(ms.slots(), expected)
@@ -574,6 +584,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.key_id = "KEY_ID"
         ts.task_manager = MagicMock()
         ts.task_computer = Mock()
+        ts.task_computer.has_assigned_task.return_value = False
         ts.task_server = Mock()
         ts.concent_service.enabled = False
         ts.send = Mock()
@@ -600,7 +611,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         msg._fake_sign()
         ts._react_to_task_to_compute(msg)
         ts.task_server.add_task_session.assert_not_called()
-        ts.task_computer.task_given.assert_not_called()
+        ts.task_server.task_given.assert_not_called()
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.send.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -648,7 +659,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_manager.comp_task_keeper.receive_subtask.assert_called_with(msg)
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
-        ts.task_computer.task_given.assert_called_with(ctd)
+        ts.task_server.task_given.assert_called_with(
+            header.task_owner.key,
+            ctd,
+            msg.price,
+        )
         conn.close.assert_not_called()
 
         # Wrong key id -> failure
@@ -701,7 +716,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         msg = _prepare_and_react(ctd)
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
-        ts.task_computer.task_given.assert_called_with(ctd)
+        ts.task_server.task_given.assert_called_with(
+            header.task_owner.key,
+            ctd,
+            msg.price,
+        )
         conn.close.assert_not_called()
 
         # No environment available -> failure
@@ -750,7 +769,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         de.main_program_file = file_name
         msg = _prepare_and_react(ctd)
         ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
-        ts.task_computer.task_given.assert_called_with(ctd)
+        ts.task_server.task_given.assert_called_with(
+            header.task_owner.key,
+            ctd,
+            msg.price,
+        )
         conn.close.assert_not_called()
 
     # pylint: enable=too-many-statements
@@ -773,6 +796,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             message.base.Message.deserialize(db.buffered_data, lambda x: x)
         )
 
+    @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
     def test_react_to_ack_reject_report_computed_task(self):
         task_keeper = CompTaskKeeper(pathlib.Path(self.path))
 
@@ -806,7 +830,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertFalse(cancel.called)
 
         # Save subtask information
-        task_owner = Node(key='owner_id')
+        task_owner = dt_p2p_factory.Node(key='owner_id')
         task = Mock(header=Mock(task_owner=task_owner))
         task_keeper.subtask_to_task[subtask_id] = task_id
         task_keeper.active_tasks[task_id] = task
@@ -829,6 +853,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assert_concent_cancel(
             cancel.call_args[0], subtask_id, 'ForceReportComputedTask')
 
+    @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
     def test_react_to_resource_list(self):
         task_server = self.task_session.task_server
 
@@ -872,20 +897,34 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         assert not self.task_session._subtask_to_task('sid_2', Actor.Provider)
         assert not self.task_session._subtask_to_task('sid_1', Actor.Requestor)
 
+    @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
     def test_react_to_cannot_assign_task(self):
         self._test_react_to_cannot_assign_task()
 
+    @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
     def test_react_to_cannot_assign_task_with_wrong_sender(self):
         self._test_react_to_cannot_assign_task("KEY_ID2", expected_requests=1)
 
     def _test_react_to_cannot_assign_task(self, key_id="KEY_ID",
                                           expected_requests=0):
-        task_owner = Node(node_name="ABC", key="KEY_ID",
-                          pub_addr="10.10.10.10", pub_port=2311)
+        task_owner = dt_p2p_factory.Node(
+            node_name="ABC",
+            key="KEY_ID",
+            pub_addr="10.10.10.10",
+            pub_port=2311,
+        )
         task_keeper = CompTaskKeeper(self.new_path)
-        task_keeper.add_request(TaskHeader(environment='DEFAULT',
-                                           task_id="abc",
-                                           task_owner=task_owner), 20)
+        task_keeper.add_request(
+            dt_tasks_factory.TaskHeader(
+                environment='DEFAULT',
+                task_id="abc",
+                task_owner=task_owner,
+                subtask_timeout=1,
+                max_price=1,
+                resource_size=1,
+            ),
+            20,
+        )
         assert task_keeper.active_tasks["abc"].requests == 1
         self.task_session.task_manager.comp_task_keeper = task_keeper
         msg_cat = message.tasks.CannotAssignTask(task_id="abc")
@@ -971,7 +1010,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
             password='',
         )
         self.ts.task_server.keys_auth = keys_auth
-        self.n = p2p_factories.Node()
+        self.n = dt_p2p_factory.Node()
         self.task_id = str(uuid.uuid4())
         self.subtask_id = str(uuid.uuid4())
         self.node_id = self.n.key
@@ -983,7 +1022,7 @@ class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
 
     @staticmethod
     def _mock_task_to_compute(task_id, subtask_id, node_id, **kwargs):
-        task_to_compute = message.tasks.TaskToCompute(**kwargs)
+        task_to_compute = msg_factories.tasks.TaskToComputeFactory(**kwargs)
         task_to_compute._fake_sign()
         nmsg_dict = dict(
             task=task_id,
@@ -1152,6 +1191,7 @@ class SubtaskResultsAcceptedTest(TestCase):
 
         rct = msg_factories.tasks.ReportComputedTaskFactory()
         ttc = rct.task_to_compute
+        ttc.sign_message(private_key=self.requestor_keys.raw_privkey)
 
         self.task_session.send = Mock()
 

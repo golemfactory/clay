@@ -1,3 +1,4 @@
+import datetime
 import logging
 import pathlib
 import pickle
@@ -14,6 +15,8 @@ from golem_messages import (
     message,
 )
 from golem_messages.constants import MTD
+from golem_messages.datastructures import p2p as dt_p2p
+from golem_messages.datastructures import tasks as dt_tasks
 from semantic_version import Version
 
 import golem
@@ -21,8 +24,7 @@ from golem.core import common
 from golem.core import golem_async
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
-from golem.network.p2p.node import Node
-from .taskbase import TaskHeader
+from golem.task.taskproviderstats import ProviderStatsManager
 
 logger = logging.getLogger('golem.task.taskkeeper')
 
@@ -53,14 +55,8 @@ class WrongOwnerException(Exception):
 
 
 class CompTaskInfo:
-    def __init__(self, header: TaskHeader, price: int):
+    def __init__(self, header: dt_tasks.TaskHeader) -> None:
         self.header = header
-        # subtask_price is total amount that will be payed
-        # for subtask of this task
-        self.subtask_price = compute_subtask_value(
-            price,
-            self.header.subtask_timeout,
-        )
         self.requests = 1
         self.subtasks: dict = {}
         # TODO Add concent communication timeout. Issue #2406
@@ -91,11 +87,6 @@ class CompTaskInfo:
         return False
 
 
-class CompSubtaskInfo:
-    def __init__(self, subtask_id):
-        self.subtask_id = subtask_id
-
-
 def log_key_error(*args, **_):
     if isinstance(args[1], message.tasks.ComputeTaskDef):
         task_id = args[1]['task_id']
@@ -119,11 +110,17 @@ class CompTaskKeeper:
         # information about tasks that this node wants to compute
         self.active_tasks: typing.Dict[str, CompTaskInfo] = {}
 
+        # price information per last task request
+        self.active_task_offers: typing.Dict[str, int] = {}
+
         # subtask_id to task_id mapping
         self.subtask_to_task: typing.Dict[str, str] = {}
 
         # task_id to package paths mapping
         self.task_package_paths: typing.Dict[str, list] = {}
+
+        # stats
+        self.provider_stats_manager = ProviderStatsManager()
 
         if not tasks_path.is_dir():
             tasks_path.mkdir()
@@ -142,7 +139,8 @@ class CompTaskKeeper:
             dump_data = (
                 self.active_tasks,
                 self.subtask_to_task,
-                self.task_package_paths
+                self.task_package_paths,
+                self.active_task_offers,
             )
             pickle.dump(dump_data, f)
 
@@ -159,6 +157,7 @@ class CompTaskKeeper:
                 active_tasks = data[0]
                 subtask_to_task = data[1]
                 task_package_paths = data[2] if len(data) > 2 else {}
+                active_task_offers = data[3] if len(data) > 3 else {}
         except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
             logger.exception(
                 'Problem restoring dumpfile: %s; deleting broken file',
@@ -166,11 +165,13 @@ class CompTaskKeeper:
             )
             self.dump_path.unlink()
             return
+
         self.active_tasks.update(active_tasks)
         self.subtask_to_task.update(subtask_to_task)
         self.task_package_paths.update(task_package_paths)
+        self.active_task_offers.update(active_task_offers)
 
-    def add_request(self, theader: TaskHeader, price: int):
+    def add_request(self, theader: dt_tasks.TaskHeader, price: int):
         # price is task_header.max_price
         logger.debug('CT.add_request(%r, %d)', theader, price)
         if price < 0:
@@ -179,7 +180,10 @@ class CompTaskKeeper:
         if task_id in self.active_tasks:
             self.active_tasks[task_id].requests += 1
         else:
-            self.active_tasks[task_id] = CompTaskInfo(theader, price)
+            self.active_tasks[task_id] = CompTaskInfo(theader)
+        self.active_task_offers[task_id] = compute_subtask_value(
+            price, self.active_tasks[task_id].header.subtask_timeout
+        )
         self.dump()
 
     @handle_key_error
@@ -192,27 +196,32 @@ class CompTaskKeeper:
 
     @handle_key_error
     def receive_subtask(self, task_to_compute: message.tasks.TaskToCompute):
-        comp_task_def = task_to_compute.compute_task_def
         logger.debug('CT.receive_subtask()')
+
+        comp_task_def = task_to_compute.compute_task_def
         if not self.check_comp_task_def(comp_task_def):
             return False
-        comp_task_info: CompTaskInfo = self.active_tasks[
-            task_to_compute.task_id
-        ]
-        if task_to_compute.price != comp_task_info.subtask_price:
+
+        task_id = task_to_compute.task_id
+        subtask_id = task_to_compute.subtask_id
+        comp_task_info = self.active_tasks[task_id]
+        comp_task_price = self.active_task_offers[task_id]
+
+        if task_to_compute.price != comp_task_price:
             logger.info(
                 "Can't accept subtask %r for %r."
                 " %r<TTC.price> != %r<CTI.subtask_price>",
                 task_to_compute.subtask_id,
                 task_to_compute.task_id,
                 task_to_compute.price,
-                comp_task_info.subtask_price,
+                comp_task_price,
             )
             return False
+
         comp_task_info.requests -= 1
-        comp_task_info.subtasks[task_to_compute.subtask_id] = comp_task_def
-        self.subtask_to_task[task_to_compute.subtask_id] =\
-            task_to_compute.task_id
+        comp_task_info.subtasks[subtask_id] = comp_task_def
+
+        self.subtask_to_task[subtask_id] = task_id
         self.dump()
         return True
 
@@ -269,15 +278,15 @@ class CompTaskKeeper:
             delta = deadline - common.get_timestamp_utc()
             if delta > 0:
                 continue
+
             logger.info("Removing comp_task after deadline: %s", task_id)
 
             for subtask_id in self.active_tasks[task_id].subtasks:
-                del self.subtask_to_task[subtask_id]
+                self.subtask_to_task.pop(subtask_id, None)
 
-            del self.active_tasks[task_id]
-
-            if task_id in self.task_package_paths:
-                del self.task_package_paths[task_id]
+            self.active_tasks.pop(task_id, None)
+            self.active_task_offers.pop(task_id, None)
+            self.task_package_paths.pop(task_id, None)
 
         self.dump()
 
@@ -301,7 +310,7 @@ class TaskHeaderKeeper:
     def __init__(
             self,
             environments_manager,
-            node: Node,
+            node: dt_p2p.Node,
             min_price=0.0,
             app_version=golem.__version__,
             remove_task_timeout=180,
@@ -309,7 +318,7 @@ class TaskHeaderKeeper:
             max_tasks_per_requestor=10,
             task_archiver=None):
         # all computing tasks that this node knows about
-        self.task_headers: typing.Dict[str, TaskHeader] = {}
+        self.task_headers: typing.Dict[str, dt_tasks.TaskHeader] = {}
         # ids of tasks that this node may try to compute
         self.supported_tasks = []
         # results of tasks' support checks
@@ -318,7 +327,9 @@ class TaskHeaderKeeper:
         # be added again to task_headers
         self.removed_tasks = {}
         # task ids by owner
-        self.tasks_by_owner = {}
+        self.tasks_by_owner: typing.Dict[str, set] = {}
+        # Keep track which tasks were checked when
+        self.last_checking: typing.Dict[str, datetime.datetime] = {}
 
         self.min_price = min_price
         self.app_version = app_version
@@ -329,13 +340,12 @@ class TaskHeaderKeeper:
         self.task_archiver = task_archiver
         self.node = node
 
-    def check_support(self, header: TaskHeader) -> SupportStatus:
+    def check_support(self, header: dt_tasks.TaskHeader) -> SupportStatus:
         """Checks if task described with given task header dict
            may be computed by this node. This node must
            support proper environment, be allowed to make computation
            cheaper than with max price declared in task and have proper
            application version.
-        :param TaskHeader header: task header
         :return SupportStatus: ok() if this node may compute a task
         """
         supported = self.check_environment(header.environment)
@@ -360,16 +370,15 @@ class TaskHeaderKeeper:
                 {UnsupportReason.ENVIRONMENT_NOT_ACCEPTING_TASKS: env})
         return self.environments_manager.get_support_status(env).join(status)
 
-    def check_mask(self, header: TaskHeader) -> SupportStatus:
+    def check_mask(self, header: dt_tasks.TaskHeader) -> SupportStatus:
         """ Check if ID of this node matches the mask in task header """
         if header.mask.matches(decode_hex(self.node.key)):
             return SupportStatus.ok()
         return SupportStatus.err({UnsupportReason.MASK_MISMATCH: self.node.key})
 
-    def check_price(self, header: TaskHeader) -> SupportStatus:
+    def check_price(self, header: dt_tasks.TaskHeader) -> SupportStatus:
         """Check if this node offers prices that isn't greater than maximum
            price described in task header.
-        :param TaskHeader header: task header
         :return SupportStatus: err() if price offered by this node is higher
                                than maximum price for this task,
                                ok() otherwise.
@@ -380,10 +389,9 @@ class TaskHeaderKeeper:
         return SupportStatus.err(
             {UnsupportReason.MAX_PRICE: max_price})
 
-    def check_version(self, header: TaskHeader) -> SupportStatus:
+    def check_version(self, header: dt_tasks.TaskHeader) -> SupportStatus:
         """Check if this node has a version that isn't less than minimum
            version described in task header.
-        :param TaskHeader header: task header
         :return SupportStatus: err() if node's version is lower than minimum
                                version for this task, False otherwise.
         """
@@ -445,12 +453,11 @@ class TaskHeaderKeeper:
             if self.task_archiver:
                 self.task_archiver.add_support_status(id_, supported)
 
-    def add_task_header(self, header: TaskHeader) -> bool:
+    def add_task_header(self, header: dt_tasks.TaskHeader) -> bool:
         """This function will try to add to or update a task header
            in a list of known headers. The header will be added / updated
            only if it hasn't been removed recently. If it's new and supported
            its id will be put in supported task list.
-        :param TaskHeader header: task header
         :return bool: True if task header was well formatted and
                       no error occurs, False otherwise
         """
@@ -460,13 +467,6 @@ class TaskHeaderKeeper:
 
             old_header = self.task_headers.get(task_id)
             if old_header:
-                if header.checksum != old_header.checksum:
-                    # Fixed header cannot change so checksums should be equal
-                    logger.warning(
-                        "Fixed header checksums don't match. old: %r new: %r",
-                        old_header.checksum, header.checksum)
-                    return False
-
                 if header.signature == old_header.signature:
                     return True  # Nothing changed
 
@@ -480,6 +480,7 @@ class TaskHeaderKeeper:
                 return True
 
             self.task_headers[task_id] = header
+            self.last_checking[task_id] = datetime.datetime.now()
 
             self._get_tasks_by_owner_set(header.task_owner.key).add(task_id)
 
@@ -497,7 +498,7 @@ class TaskHeaderKeeper:
             logger.warning("Wrong task header received: {}".format(err))
             return False
 
-    def update_supported_set(self, header: TaskHeader) -> None:
+    def update_supported_set(self, header: dt_tasks.TaskHeader) -> None:
 
         task_id = header.task_id
         support = self.check_support(header)
@@ -532,7 +533,7 @@ class TaskHeaderKeeper:
             return
 
         by_age = sorted(owner_task_set,
-                        key=lambda tid: self.task_headers[tid].last_checking)
+                        key=lambda tid: self.last_checking[tid])
 
         # leave alone the first (oldest) max_tasks_per_requestor
         # headers, remove the rest
@@ -551,15 +552,34 @@ class TaskHeaderKeeper:
         if task_id in self.removed_tasks:
             return False
 
-        if task_id in self.task_headers:
+        try:
             owner_key_id = self.task_headers[task_id].task_owner.key
-            del self.task_headers[task_id]
-            if owner_key_id in self.tasks_by_owner:
-                self.tasks_by_owner[owner_key_id].discard(task_id)
-        if task_id in self.supported_tasks:
-            self.supported_tasks.remove(task_id)
-        if task_id in self.support_status:
-            del self.support_status[task_id]
+            self.tasks_by_owner[owner_key_id].discard(task_id)
+        except KeyError:
+            pass
+
+        for container in (
+                self.task_headers,
+                self.supported_tasks,
+                self.support_status,
+                self.last_checking
+        ):
+            if isinstance(container, list):
+                try:
+                    container.remove(task_id)
+                except ValueError:
+                    pass
+                continue
+            if isinstance(container, dict):
+                try:
+                    del container[task_id]
+                except KeyError:
+                    pass
+                continue
+            raise RuntimeError(
+                "Unknown container type {}".format(type(container)),
+            )
+
         self.removed_tasks[task_id] = time.time()
         return True
 
@@ -572,15 +592,21 @@ class TaskHeaderKeeper:
             return None
         return task.task_owner.key
 
-    def get_task(self) -> typing.Optional[TaskHeader]:
+    def get_task(
+            self,
+            exclude: typing.Optional[typing.Set[str]] = None
+    ) -> typing.Optional[dt_tasks.TaskHeader]:
         """ Returns random task from supported tasks that may be computed
+        :param exclude: Task ids to exclude
         :return: None if there are no tasks that this node may want to compute
         """
-        if self.supported_tasks:
-            tn = random.randrange(0, len(self.supported_tasks))
-            task_id = self.supported_tasks[tn]
-            return self.task_headers[task_id]
-        return None
+        tasks = self.supported_tasks
+        if exclude:
+            tasks = [t for t in tasks if t not in exclude]
+        if not tasks:
+            return None
+        task_id = random.choice(tasks)
+        return self.task_headers[task_id]
 
     def remove_old_tasks(self):
         for t in list(self.task_headers.values()):

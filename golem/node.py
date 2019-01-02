@@ -23,6 +23,7 @@ from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.config.active import IS_MAINNET, EthereumConfig
 from golem.core.deferred import chain_function
+from golem.hardware.presets import HardwarePresets, HardwarePresetsMixin
 from golem.core.keysauth import KeysAuth, WrongPassword
 from golem.core import golem_async
 from golem.core.variables import PRIVATE_KEY
@@ -64,7 +65,7 @@ class ShutdownResponse(IntEnum):
 
 
 # pylint: disable=too-many-instance-attributes
-class Node(object):
+class Node(HardwarePresetsMixin):
     """ Simple Golem Node connecting console user interface with Client
     :type client golem.client.Client:
     """
@@ -134,7 +135,8 @@ class Node(object):
             concent_variant=concent_variant,
             geth_address=geth_address,
             apps_manager=self.apps_manager,
-            task_finished_cb=self._try_shutdown
+            task_finished_cb=self._try_shutdown,
+            update_hw_preset=self.upsert_hw_preset
         )
 
         if password is not None:
@@ -142,6 +144,10 @@ class Node(object):
                 raise Exception("Password incorrect")
 
     def start(self) -> None:
+
+        HardwarePresets.initialize(self._datadir)
+        HardwarePresets.update_config(self._config_desc.hardware_preset_name,
+                                      self._config_desc)
 
         try:
             rpc = self._start_rpc()
@@ -369,18 +375,6 @@ class Node(object):
                     'Run `golemcli terms show` to display the terms '
                     'and `golemcli terms accept` to accept them.')
                 time.sleep(sleep_time)
-            if None in self.concent_variant.values():
-                return  # Concent disabled
-            while not terms.ConcentTermsOfUse.are_accepted() \
-                    and self._reactor.running:
-                logger.info(
-                    'Concent terms of use must be accepted before using'
-                    ' Concent service.'
-                    ' Run `golemcli concent terms show`'
-                    ' to display the terms'
-                    ' and `golemcli concent terms accept` to accept them.',
-                )
-                time.sleep(sleep_time)
 
         return threads.deferToThread(wait_for_terms)
 
@@ -454,7 +448,13 @@ class Node(object):
         self.client.sync()
 
         try:
-            self.client.start()
+            if self._docker_manager:
+                # pylint: disable=no-member
+                with self._docker_manager.locked_config():
+                    self.client.start()
+            else:
+                self.client.start()
+
             for peer in self._peers:
                 self.client.connect(peer)
         except SystemExit:
@@ -493,5 +493,6 @@ class Node(object):
             exc_info = (err.type, err.value, err.getTracebackObject()) \
                 if isinstance(err, Failure) else None
             logger.error(
-                "Stopping because of %r error: %r", msg, err, exc_info=exc_info)
+                "Stopping because of %r error, run debug for more info", msg)
+            logger.debug("%r", err, exc_info=exc_info)
             self._reactor.callFromThread(self._reactor.stop)

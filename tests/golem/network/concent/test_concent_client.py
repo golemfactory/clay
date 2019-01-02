@@ -223,6 +223,7 @@ class TestReceiveFromConcent(TestCase):
         verify_mock.assert_called_once_with(response)
 
 
+@mock.patch('golem.terms.ConcentTermsOfUse.are_accepted', return_value=True)
 @mock.patch('twisted.internet.reactor', create=True)
 @mock.patch('golem.network.concent.client.receive_from_concent')
 @mock.patch('golem.network.concent.client.send_to_concent')

@@ -1,15 +1,17 @@
-import copy
+# pylint: disable=protected-access
 from datetime import timedelta
 from pathlib import Path
 import random
 import time
-from unittest import TestCase
 import unittest.mock as mock
 
 from eth_utils import encode_hex
 from freezegun import freeze_time
 from golem_messages import idgenerator
 from golem_messages import factories as msg_factories
+from golem_messages.datastructures import tasks as dt_tasks
+from golem_messages.datastructures.masking import Mask
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
 
 import golem
@@ -17,17 +19,11 @@ from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.environments.environment import Environment, UnsupportReason,\
     SupportStatus
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.network.p2p.node import Node
 from golem.task import taskkeeper
-from golem.task.masking import Mask
-from golem.task.taskbase import TaskHeader
-from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper,\
-    CompSubtaskInfo, logger
+from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, logger
 from golem.testutils import PEP8MixIn
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-
-from tests.factories import p2p
 
 
 def async_run(request, success=None, error=None):
@@ -45,7 +41,7 @@ class TestTaskHeaderKeeper(LogTestCase):
     def test_init(self):
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
-            node=p2p.Node(),
+            node=dt_p2p_factory.Node(),
             min_price=10.0)
         self.assertIsInstance(tk, TaskHeaderKeeper)
 
@@ -56,17 +52,17 @@ class TestTaskHeaderKeeper(LogTestCase):
 
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
-            node=p2p.Node(),
+            node=dt_p2p_factory.Node(),
             min_price=10.0)
 
         header = get_task_header()
-        header.fixed_header.environment = None
-        header.fixed_header.max_price = None
-        header.fixed_header.min_version = None
+        header.environment = None
+        header.max_price = None
+        header.min_version = None
         self.assertFalse(tk.check_support(header))
 
-        header.fixed_header.environment = Environment.get_id()
-        header.fixed_header.max_price = 0
+        header.environment = Environment.get_id()
+        header.max_price = 0
         supported = tk.check_support(header)
         self.assertFalse(supported)
         self.assertIn(UnsupportReason.ENVIRONMENT_MISSING, supported.desc)
@@ -78,15 +74,15 @@ class TestTaskHeaderKeeper(LogTestCase):
         self.assertFalse(supported)
         self.assertIn(UnsupportReason.MAX_PRICE, supported.desc)
 
-        header.fixed_header.max_price = 10.0
+        header.max_price = 10.0
         supported = tk.check_support(header)
         self.assertFalse(supported)
         self.assertIn(UnsupportReason.APP_VERSION, supported.desc)
 
-        header.fixed_header.min_version = golem.__version__
+        header.min_version = golem.__version__
         self.assertTrue(tk.check_support(header))
 
-        header.fixed_header.max_price = 10.0
+        header.max_price = 10.0
         self.assertTrue(tk.check_support(header))
 
         config_desc = mock.Mock()
@@ -98,20 +94,20 @@ class TestTaskHeaderKeeper(LogTestCase):
         tk.change_config(config_desc)
         self.assertTrue(tk.check_support(header))
 
-        header.fixed_header.min_version = "120"
+        header.min_version = "120"
         self.assertFalse(tk.check_support(header))
 
-        header.fixed_header.min_version = tk.app_version
+        header.min_version = tk.app_version
         self.assertTrue(tk.check_support(header))
 
-        header.fixed_header.min_version = "abc"
+        header.min_version = "abc"
         with self.assertLogs(logger=logger, level='WARNING'):
             self.assertFalse(tk.check_support(header))
 
     def test_check_version_compatibility(self):
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
-            node=p2p.Node(),
+            node=dt_p2p_factory.Node(),
             min_price=10.0)
         tk.app_version = '0.4.5-dev+232.138018'
 
@@ -130,7 +126,7 @@ class TestTaskHeaderKeeper(LogTestCase):
     def test_change_config(self, tar):
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
-            node=p2p.Node(),
+            node=dt_p2p_factory.Node(),
             min_price=10.0,
             task_archiver=tar)
         e = Environment()
@@ -139,14 +135,14 @@ class TestTaskHeaderKeeper(LogTestCase):
 
         task_header = get_task_header()
         task_id = task_header.task_id
-        task_header.fixed_header.max_price = 9.0
+        task_header.max_price = 9.0
         tk.add_task_header(task_header)
         self.assertNotIn(task_id, tk.supported_tasks)
         self.assertIn(task_id, tk.task_headers)
 
         task_header = get_task_header("abc")
         task_id2 = task_header.task_id
-        task_header.fixed_header.max_price = 10.0
+        task_header.max_price = 10.0
         tk.add_task_header(task_header)
         self.assertIn(task_id2, tk.supported_tasks)
         self.assertIn(task_id2, tk.task_headers)
@@ -182,7 +178,7 @@ class TestTaskHeaderKeeper(LogTestCase):
 
         tk = TaskHeaderKeeper(
             environments_manager=em,
-            node=p2p.Node(),
+            node=dt_p2p_factory.Node(),
             min_price=10)
 
         self.assertIsNone(tk.get_task())
@@ -195,25 +191,24 @@ class TestTaskHeaderKeeper(LogTestCase):
         task_header2 = get_task_header("xyz")
         self.assertTrue(tk.add_task_header(task_header2))
         th = tk.get_task()
-        assert isinstance(th.task_owner, Node)
         self.assertEqual(task_header2.to_dict(), th.to_dict())
 
     @freeze_time(as_arg=True)
     def test_old_tasks(frozen_time, _):  # pylint: disable=no-self-argument
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
-            node=p2p.Node(),
+            node=dt_p2p_factory.Node(),
             min_price=10)
         e = Environment()
         e.accept_tasks = True
         tk.environments_manager.add_environment(e)
         task_header = get_task_header()
-        task_header.fixed_header.deadline = timeout_to_deadline(10)
+        task_header.deadline = timeout_to_deadline(10)
         assert tk.add_task_header(task_header)
 
         task_id = task_header.task_id
         task_header2 = get_task_header("abc")
-        task_header2.fixed_header.deadline = timeout_to_deadline(1)
+        task_header2.deadline = timeout_to_deadline(1)
         task_id2 = task_header2.task_id
         assert tk.add_task_header(task_header2)
         assert tk.task_headers.get(task_id2) is not None
@@ -231,46 +226,13 @@ class TestTaskHeaderKeeper(LogTestCase):
         assert len(tk.supported_tasks) == 1
         assert tk.supported_tasks[0] == task_id
 
-    def test_task_header_update(self):
-        e = Environment()
-        e.accept_tasks = True
-
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=p2p.Node(),
-            min_price=10)
-        tk.environments_manager.add_environment(e)
-
-        task_header = get_task_header()
-        task_id = task_header.task_id
-
-        task_header.fixed_header.deadline = timeout_to_deadline(10)
-        task_header.fixed_header.update_checksum()
-        assert tk.add_task_header(task_header)
-        assert task_id in tk.supported_tasks
-        assert tk.add_task_header(task_header)
-        assert task_id in tk.supported_tasks
-
-        task_header = copy.deepcopy(task_header)
-        task_header.fixed_header.max_price = 1
-        task_header.fixed_header.update_checksum()
-        # An attempt to update fixed header should *not* succeed
-        assert not tk.add_task_header(task_header)
-        assert task_id in tk.supported_tasks
-
-        tk.task_headers = {}
-        tk.supported_tasks = []
-
-        assert tk.add_task_header(task_header)
-        assert task_id not in tk.supported_tasks
-
     @mock.patch('golem.task.taskarchiver.TaskArchiver')
     def test_task_header_update_stats(self, tar):
         e = Environment()
         e.accept_tasks = True
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
-            node=p2p.Node(),
+            node=dt_p2p_factory.Node(),
             min_price=10,
             task_archiver=tar)
         tk.environments_manager.add_environment(e)
@@ -284,7 +246,7 @@ class TestTaskHeaderKeeper(LogTestCase):
         tar.reset_mock()
         task_header2 = get_task_header("bad")
         task_id2 = task_header2.task_id
-        task_header2.fixed_header.max_price = 1.0
+        task_header2.max_price = 1.0
         assert tk.add_task_header(task_header2)
         tar.add_task.assert_called_with(mock.ANY)
         tar.add_support_status.assert_any_call(
@@ -294,12 +256,12 @@ class TestTaskHeaderKeeper(LogTestCase):
     def test_task_limit(frozen_time, self):  # pylint: disable=no-self-argument
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
-            node=p2p.Node(),
+            node=dt_p2p_factory.Node(),
             min_price=10)
         limit = tk.max_tasks_per_requestor
 
         thd = get_task_header("ta")
-        thd.fixed_header.deadline = timeout_to_deadline(0.1)
+        thd.deadline = timeout_to_deadline(0.1)
         tk.add_task_header(thd)
 
         ids = [thd.task_id]
@@ -351,14 +313,14 @@ class TestTaskHeaderKeeper(LogTestCase):
     def test_check_max_tasks_per_owner(self):
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
-            node=p2p.Node(),
+            node=dt_p2p_factory.Node(),
             min_price=10,
             max_tasks_per_requestor=10)
         limit = tk.max_tasks_per_requestor
         new_limit = 3
 
         ids = []
-        for i in range(new_limit):
+        for _ in range(new_limit):
             thd = get_task_header("ta")
             ids.append(thd.task_id)
             tk.add_task_header(thd)
@@ -376,7 +338,7 @@ class TestTaskHeaderKeeper(LogTestCase):
             time.sleep(0.1)
 
         new_ids = []
-        for i in range(new_limit, limit):
+        for _ in range(new_limit, limit):
             thd = get_task_header("ta")
             new_ids.append(thd.task_id)
             tk.add_task_header(thd)
@@ -407,7 +369,7 @@ class TestTaskHeaderKeeper(LogTestCase):
     def test_get_unsupport_reasons(self):
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
-            node=p2p.Node(),
+            node=dt_p2p_factory.Node(),
             min_price=10)
         e = Environment()
         e.accept_tasks = True
@@ -419,28 +381,28 @@ class TestTaskHeaderKeeper(LogTestCase):
 
         # Wrong version
         thd = get_task_header("wrong version")
-        thd.fixed_header.min_version = "42.0.17"
+        thd.min_version = "42.0.17"
         tk.add_task_header(thd)
 
         # Wrong environment
         thd = get_task_header("wrong env")
-        thd.fixed_header.environment = "UNKNOWN"
+        thd.environment = "UNKNOWN"
         tk.add_task_header(thd)
 
         # Wrong price
         thd = get_task_header("wrong price")
-        thd.fixed_header.max_price = 1
+        thd.max_price = 1
         tk.add_task_header(thd)
 
         # Wrong price and version
         thd = get_task_header("wrong price and version")
-        thd.fixed_header.min_version = "42.0.17"
-        thd.fixed_header.max_price = 1
+        thd.min_version = "42.0.17"
+        thd.max_price = 1
         tk.add_task_header(thd)
 
         # And one more with wrong version
         thd = get_task_header("wrong version 2")
-        thd.fixed_header.min_version = "42.0.44"
+        thd.min_version = "42.0.44"
         tk.add_task_header(thd)
 
         reasons = tk.get_unsupport_reasons()
@@ -461,7 +423,7 @@ class TestTaskHeaderKeeper(LogTestCase):
     def test_get_owner(self):
         tk = TaskHeaderKeeper(
             environments_manager=EnvironmentsManager(),
-            node=p2p.Node(),
+            node=dt_p2p_factory.Node(),
             min_price=10)
         header = get_task_header()
         owner = header.task_owner.key
@@ -474,26 +436,22 @@ class TestTaskHeaderKeeper(LogTestCase):
 def get_dict_task_header(key_id_seed="kkk"):
     key_id = str.encode(key_id_seed)
     return {
-        'fixed_header': {
-            "task_id": idgenerator.generate_id(key_id),
-            "task_owner": {
-                "node_name": "Bob's node",
-                "key": encode_hex(key_id)[2:],
-                "pub_addr": "10.10.10.10",
-                "pub_port": 10101
-            },
-            "environment": "DEFAULT",
-            "last_checking": time.time(),
-            "deadline": timeout_to_deadline(1201),
-            "subtask_timeout": 120,
-            "max_price": 10,
-            "min_version": golem.__version__,
-            "resource_size": 0,
-            "estimated_memory": 0,
+        "task_id": idgenerator.generate_id(key_id),
+        "task_owner": {
+            "node_name": "Bob's node",
+            "key": encode_hex(key_id)[2:],
+            "pub_addr": "10.10.10.10",
+            "pub_port": 10101
         },
-        'mask': {
-            'byte_repr': Mask().to_bytes()
-        },
+        "environment": "DEFAULT",
+        "deadline": timeout_to_deadline(1201),
+        "subtask_timeout": 120,
+        "subtasks_count": 1,
+        "max_price": 10,
+        "min_version": golem.__version__,
+        "resource_size": 0,
+        "estimated_memory": 0,
+        'mask': Mask().to_bytes(),
         'timestamp': 0,
         'signature': None
     }
@@ -501,15 +459,10 @@ def get_dict_task_header(key_id_seed="kkk"):
 
 def get_task_header(key_id_seed="kkk"):
     th_dict_repr = get_dict_task_header(key_id_seed=key_id_seed)
-    return TaskHeader.from_dict(th_dict_repr)
+    return dt_tasks.TaskHeader(**th_dict_repr)
 
 
-class TestCompSubtaskInfo(TestCase):
-    def test_init(self):
-        csi = CompSubtaskInfo("xxyyzz")
-        self.assertIsInstance(csi, CompSubtaskInfo)
-
-
+@mock.patch('golem.task.taskkeeper.ProviderStatsManager', mock.Mock())
 class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
     PEP8_FILES = [
         "golem/task/taskkeeper.py",
@@ -527,7 +480,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         for x in range(10):
             header = get_task_header()
             header.deadline = timeout_to_deadline(1)
-            header.subtask_timeout = 1.5
+            header.subtask_timeout = 3
             header.resource_size = 1
 
             test_headers.append(header)
@@ -539,7 +492,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             ctd['subtask_id'] = idgenerator.generate_new_id_from_id(
                 header.task_id,
             )
-            ctd['deadline'] = timeout_to_deadline(header.subtask_timeout - 0.5)
+            ctd['deadline'] = timeout_to_deadline(header.subtask_timeout - 1)
             price = taskkeeper.compute_subtask_value(
                 price_bid,
                 header.subtask_timeout,
@@ -564,7 +517,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
     @mock.patch('golem.core.golem_async.async_run', async_run)
     @mock.patch('golem.task.taskkeeper.common.get_timestamp_utc')
     def test_remove_old_tasks(self, timestamp):
-        timestamp.return_value = time.time()
+        timestamp.return_value = int(time.time())
         tasks_dir = Path(self.path)
         self._dump_some_tasks(tasks_dir)
 
@@ -573,35 +526,36 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
 
         self.assertTrue(any(ctk.active_tasks))
         self.assertTrue(any(ctk.subtask_to_task))
-        timestamp.return_value = time.time() + 1
+        timestamp.return_value = int(time.time() + 1)
         ctk.remove_old_tasks()
         self.assertTrue(any(ctk.active_tasks))
         self.assertTrue(any(ctk.subtask_to_task))
-        timestamp.return_value = time.time() + 300
+        timestamp.return_value = int(time.time() + 300)
         ctk.remove_old_tasks()
         self.assertTrue(not any(ctk.active_tasks))
         self.assertTrue(not any(ctk.subtask_to_task))
 
-    @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump')
-    def test_comp_keeper(self, dump_mock):
+    @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump', mock.Mock())
+    def test_comp_keeper(self):
         ctk = CompTaskKeeper(Path('ignored'))
         header = get_task_header()
         header.task_id = "xyz"
+        header.subtask_timeout = 1
         with self.assertRaises(TypeError):
             ctk.add_request(header, "not a number")
         with self.assertRaises(ValueError):
             ctk.add_request(header, -2)
-        ctk.add_request(header, 7200)
+        ctk.add_request(header, 5 * 10 ** 18)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
-        self.assertEqual(ctk.active_tasks["xyz"].subtask_price, 240)
+        self.assertEqual(ctk.active_task_offers["xyz"], 1388888888888889)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
-        ctk.add_request(header, 23)
+        ctk.add_request(header, 1 * 10 ** 17)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 2)
-        self.assertEqual(ctk.active_tasks["xyz"].subtask_price, 240)
+        self.assertEqual(ctk.active_task_offers["xyz"], 27777777777778)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
         header.task_id = "xyz2"
-        ctk.add_request(header, 25000)
-        self.assertEqual(ctk.active_tasks["xyz2"].subtask_price, 834)
+        ctk.add_request(header, 314 * 10 ** 15)
+        self.assertEqual(ctk.active_task_offers["xyz2"], 87222222222223)
         header.task_id = "xyz"
         thread = get_task_header()
         thread.task_id = "qaz123WSX"

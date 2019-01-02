@@ -5,7 +5,6 @@ import datetime
 import enum
 import functools
 import logging
-import os
 import time
 from typing import TYPE_CHECKING, List
 
@@ -13,6 +12,7 @@ from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
 from golem_messages import message
 from golem_messages import exceptions as msg_exceptions
+from pydispatch import dispatcher
 
 import golem
 from golem.core import common
@@ -20,11 +20,16 @@ from golem.core.keysauth import KeysAuth
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
+from golem.marketplace import Offer, OfferPool
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
+from golem.ranking.manager.database_manager import (
+    get_provider_efficacy,
+    get_provider_efficiency,
+)
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
@@ -529,60 +534,85 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            msg.task_id, node_name_id)
             return
 
-        # TODO: Queue requests here
+        def _offer_chosen(is_chosen: bool) -> None:
+            if not is_chosen:
+                logger.info(
+                    "Provider not chosen by marketplace. task_id=%r, node=%r",
+                    msg.task_id,
+                    node_name_id,
+                )
+                _cannot_assign(reasons.NoMoreSubtasks)
+                return
 
-        logger.info("Offer confirmed, assigning subtask")
-        ctd = self.task_manager.get_next_subtask(
-            self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-            msg.price, msg.max_resource_size, msg.max_memory_size,
-            msg.num_cores, self.address)
+            if not self.conn.opened:
+                logger.info(
+                    "Provider disconnected. task_id=%r, node=%r",
+                    msg.task_id,
+                    node_name_id,
+                )
+                return
 
-        logger.debug(
-            "task_id=%s, node=%s ctd=%s",
-            msg.task_id,
-            node_name_id,
-            ctd,
+            logger.info("Offer confirmed, assigning subtask")
+            ctd = self.task_manager.get_next_subtask(
+                self.key_id, msg.node_name, msg.task_id, msg.perf_index,
+                msg.price, msg.max_resource_size, msg.max_memory_size,
+                msg.num_cores, self.address)
+
+            logger.debug(
+                "task_id=%s, node=%s ctd=%s",
+                msg.task_id,
+                node_name_id,
+                ctd,
+            )
+
+            if ctd is None:
+                _cannot_assign(reasons.NoMoreSubtasks)
+                return
+
+            logger.info(
+                "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
+                msg.task_id,
+                node_name_id,
+                ctd["subtask_id"],
+            )
+            task = self.task_manager.tasks[ctd['task_id']]
+            task_state = self.task_manager.tasks_states[ctd['task_id']]
+            price = taskkeeper.compute_subtask_value(
+                msg.price,
+                task.header.subtask_timeout,
+            )
+            ttc = message.tasks.TaskToCompute(
+                compute_task_def=ctd,
+                want_to_compute_task=msg,
+                requestor_id=task.header.task_owner.key,
+                requestor_public_key=task.header.task_owner.key,
+                requestor_ethereum_public_key=task.header.task_owner.key,
+                provider_id=self.key_id,
+                package_hash='sha1:' + task_state.package_hash,
+                concent_enabled=msg.concent_enabled,
+                price=price,
+                size=task_state.package_size
+            )
+            ttc.generate_ethsig(self.my_private_key)
+            self.send(ttc)
+            history.add(
+                msg=copy_and_sign(
+                    msg=ttc,
+                    private_key=self.my_private_key,
+                ),
+                node_id=self.key_id,
+                local_role=Actor.Requestor,
+                remote_role=Actor.Provider,
+            )
+
+        task = self.task_manager.tasks[msg.task_id]
+        offer = Offer(
+            scaled_price=task.header.max_price / msg.price,
+            reputation=get_provider_efficiency(self.key_id),
+            quality=get_provider_efficacy(self.key_id).vector,
         )
 
-        if ctd is None:
-            _cannot_assign(reasons.NoMoreSubtasks)
-            return
-
-        logger.info(
-            "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
-            msg.task_id,
-            node_name_id,
-            ctd["subtask_id"],
-        )
-        task = self.task_manager.tasks[ctd['task_id']]
-        task_state: TaskState = self.task_manager.tasks_states[ctd['task_id']]
-        price = taskkeeper.compute_subtask_value(
-            task.header.max_price,
-            task.header.subtask_timeout,
-        )
-        ttc = message.tasks.TaskToCompute(
-            compute_task_def=ctd,
-            want_to_compute_task=msg,
-            requestor_id=task.header.task_owner.key,
-            requestor_public_key=task.header.task_owner.key,
-            requestor_ethereum_public_key=task.header.task_owner.key,
-            provider_id=self.key_id,
-            package_hash='sha1:' + task_state.package_hash,
-            concent_enabled=msg.concent_enabled,
-            price=price,
-            size=task_state.package_size
-        )
-        ttc.generate_ethsig(self.my_private_key)
-        self.send(ttc)
-        history.add(
-            msg=copy_and_sign(
-                msg=ttc,
-                private_key=self.my_private_key,
-            ),
-            node_id=self.key_id,
-            local_role=Actor.Requestor,
-            remote_role=Actor.Provider,
-        )
+        OfferPool.add(msg.task_id, offer).addCallback(_offer_chosen)
 
     @handle_attr_error_with_task_computer
     @history.provider_history
@@ -607,6 +637,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.dropped()
             return
 
+        dispatcher.send(
+            signal='golem.message',
+            event='received',
+            message=msg
+        )
+
         def _cannot_compute(reason):
             logger.debug("Cannot %r", reason)
             self.send(
@@ -620,12 +656,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         reasons = message.tasks.CannotComputeTask.REASON
 
+        if self.task_computer.has_assigned_task():
+            _cannot_compute(reasons.OfferCancelled)
+            return
+
         if self.concent_service.enabled and not msg.concent_enabled:
             # Provider requires concent if it's enabed locally
             _cannot_compute(reasons.ConcentRequired)
             return
         if not self.concent_service.enabled and msg.concent_enabled:
-            # We can't provide what requestors wants
+            # We can't provide what requestor wants
             _cannot_compute(reasons.ConcentDisabled)
             return
 
@@ -671,11 +711,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.task_server.add_task_session(
                 ctd['subtask_id'], self
             )
-            if self.task_computer.task_given(ctd):
+            if self.task_server.task_given(self.key_id, ctd, msg.price):
                 return
         _cannot_compute(self.err_msg)
 
     def _react_to_waiting_for_results(self, _):
+        self.task_server.requested_tasks.remove(self.task_id)
         self.task_computer.session_closed()
         if not self.msgs_to_send:
             self.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
@@ -858,7 +899,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.dropped()
 
     def _react_to_resource_list(self, msg):
-        resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
+        resource_server = self.task_server.client.resource_server
+        resource_manager = resource_server.resource_manager
         resources = resource_manager.from_wire(msg.resources)
 
         client_options = self.task_server.get_download_options(msg.options,
@@ -1035,7 +1077,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return True
 
     def _set_env_params(self, ctd):
-        environment = self.task_manager.comp_task_keeper.get_task_env(ctd['task_id'])  # noqa
+        environment = self.task_manager.comp_task_keeper.get_task_env(
+            ctd['task_id'],
+        )
         env = self.task_server.get_environment_by_id(environment)
         reasons = message.tasks.CannotComputeTask.REASON
         if not env:

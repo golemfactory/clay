@@ -3,13 +3,13 @@ import copy
 from unittest import mock
 
 import faker
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from twisted.internet import defer
 
 from apps.dummy.task import dummytaskstate
 from golem import clientconfigdescriptor
 from golem.core import common
 from golem.core import deferred as golem_deferred
-from golem.network.p2p import node as p2p_node
 from golem.network.p2p import p2pservice
 from golem.task import rpc
 from golem.task import taskbase
@@ -59,7 +59,7 @@ class ProviderBase(test_client.TestClientBase):
             '.register_handler',
         ):
             self.client.task_server = taskserver.TaskServer(
-                node=p2p_node.Node(),
+                node=dt_p2p_factory.Node(),
                 config_desc=clientconfigdescriptor.ClientConfigDescriptor(),
                 client=self.client,
                 use_docker_manager=False,
@@ -94,7 +94,7 @@ class ProviderBase(test_client.TestClientBase):
 
 
 @mock.patch('signal.signal')
-@mock.patch('golem.network.p2p.node.Node.collect_network_info')
+@mock.patch('golem.network.p2p.local_node.LocalNode.collect_network_info')
 @mock.patch('golem.task.rpc.enqueue_new_task')
 @mock.patch(
     'golem.task.taskmanager.TaskManager.create_task',
@@ -135,7 +135,7 @@ class TestCreateTask(ProviderBase):
 
 
 class TestRestartTask(ProviderBase):
-    @mock.patch('os.path.getsize')
+    @mock.patch('os.path.getsize', return_value=123)
     @mock.patch('golem.network.concent.client.ConcentClientService.start')
     @mock.patch('golem.client.SystemMonitor')
     @mock.patch('golem.client.P2PService.connect_to_network')
@@ -228,7 +228,9 @@ class TestGetMaskForTask(test_client.TestClientBase):
                     mock.patch.object(
                         self.client, 'task_server', spec=taskserver.TaskServer
                     ), \
-                    mock.patch('golem.task.masking.Mask') as mask:
+                    mock.patch(
+                        'golem_messages.datastructures.tasks.masking.Mask'
+                    ) as mask:
 
                 p2p.get_estimated_network_size.return_value = network_size
                 p2p.get_performance_percentile_rank.return_value = perf_rank
@@ -438,11 +440,23 @@ class TestValidateTaskDict(ProviderBase):
     def test_concent_service_disabled(self, *_):
         self.t_dict['concent_enabled'] = True
         self.client.concent_service = mock.Mock()
+        self.client.concent_service.available = False
         self.client.concent_service.enabled = False
 
         msg = "Cannot create task with concent enabled when " \
-              "concent service is disabled"
-        with self.assertRaises(rpc.CreateTaskError, msg=msg):
+              "Concent Service is disabled"
+        with self.assertRaisesRegex(rpc.CreateTaskError, msg):
+            rpc._validate_task_dict(self.client, self.t_dict)
+
+    def test_concent_service_switched_off(self, *_):
+        self.t_dict['concent_enabled'] = True
+        self.client.concent_service = mock.Mock()
+        self.client.concent_service.available = True
+        self.client.concent_service.enabled = False
+
+        msg = "Cannot create task with concent enabled when " \
+              "Concent Service is switched off"
+        with self.assertRaisesRegex(rpc.CreateTaskError, msg):
             rpc._validate_task_dict(self.client, self.t_dict)
 
     @mock.patch(
@@ -455,7 +469,7 @@ class TestValidateTaskDict(ProviderBase):
             self.t_dict['subtasks_count'],
             computed_subtasks,
         )
-        with self.assertRaises(ValueError, msg=msg):
+        with self.assertRaisesRegex(ValueError, msg):
             rpc._validate_task_dict(self.client, self.t_dict)
 
 

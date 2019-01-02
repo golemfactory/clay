@@ -1,4 +1,5 @@
 import logging
+import typing
 
 from golem.core.variables import KEY_DIFFICULTY
 
@@ -10,12 +11,12 @@ class ClientConfigDescriptor(object):
 
     def __init__(self):
         """ Create new basic empty configuration scheme """
-        self.node_name = ""
-        self.node_address = ""
-        self.start_port = 0
-        self.end_port = 0
-        self.rpc_address = ""
-        self.rpc_port = 0
+        self.node_name: typing.Optional[str] = None
+        self.node_address: typing.Optional[str] = None
+        self.start_port: typing.Optional[int] = None
+        self.end_port: typing.Optional[int] = None
+        self.rpc_address: typing.Optional[str] = None
+        self.rpc_port: typing.Optional[int] = None
         self.opt_peer_num = 0
         self.send_pings = 0
         self.pings_interval = 0.0
@@ -25,7 +26,7 @@ class ClientConfigDescriptor(object):
         self.enable_talkback = 0
         self.enable_monitor = 0
 
-        self.seed_host = ""
+        self.seed_host = None
         self.seed_port = 0
         self.seeds = ""
 
@@ -39,6 +40,7 @@ class ClientConfigDescriptor(object):
         self.resource_session_timeout = 0
         self.clean_resources_older_than_seconds = 0
         self.clean_tasks_older_than_seconds = 0
+        self.offer_pooling_interval = 0.0
 
         self.node_snapshot_interval = 0.0
         self.network_check_interval = 0.0
