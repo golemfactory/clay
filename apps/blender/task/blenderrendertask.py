@@ -114,7 +114,7 @@ class PreviewUpdater(object):
             preview_img.save_with_extension(self.preview_file_path, PREVIEW_EXT)
 
         if not handler_result.success:
-           return
+            return
 
         if subtask_number == self.perfectly_placed_subtasks and \
                 (subtask_number + 1) in self.chunks:
@@ -127,8 +127,7 @@ class PreviewUpdater(object):
         self.perfectly_placed_subtasks = 0
         if os.path.exists(self.preview_file_path):
             with handle_opencv_image_error(logger):
-                OpenCVImgRepr.empty(self.preview_res_x, self.preview_res_y, 3,
-                                    numpy.uint8)\
+                OpenCVImgRepr.empty(self.preview_res_x, self.preview_res_y)\
                     .save_with_extension(self.preview_file_path, PREVIEW_EXT)
 
     def _get_height(self, subtask_number):

@@ -73,15 +73,12 @@ class OpenCVImgRepr:
         pass
 
     def get_height(self):
-        assert self.img is not None
         return self.img.shape[0]
 
     def get_width(self):
-        assert self.img is not None
         return self.img.shape[1]
 
     def resize(self, width, height, interpolation=cv2.INTER_LINEAR):
-        assert self.img is not None
         self.img = cv2.resize(self.img, (width, height),
                               interpolation=interpolation)
 
@@ -160,7 +157,7 @@ class OpenCVImgRepr:
         except cv2.error as e:
             logger.error('Error saving image: {}'.format(str(e)))
             raise OpenCVError('Cannot save image {}: {}'.format(path,
-                                                                str(e)))
+                                                                str(e))) from e
 
     @staticmethod
     def load_from_file_or_empty(img_path, width, height, channels=3,

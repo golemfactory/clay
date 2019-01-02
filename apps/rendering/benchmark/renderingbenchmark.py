@@ -4,8 +4,7 @@ import os.path
 import uuid
 
 from apps.core.benchmark.benchmarkrunner import CoreBenchmark
-from apps.rendering.resources.utils import handle_image_error, \
-    handle_opencv_image_error
+from apps.rendering.resources.utils import handle_opencv_image_error
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from apps.rendering.resources.imgrepr import OpenCVImgRepr
 

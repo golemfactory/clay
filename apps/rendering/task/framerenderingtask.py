@@ -11,8 +11,7 @@ from apps.core.task.coretaskstate import Options
 from apps.rendering.resources.imgrepr import OpenCVImgRepr
 from apps.rendering.resources.renderingtaskcollector import \
     RenderingTaskCollector
-from apps.rendering.resources.utils import handle_image_error, \
-    handle_opencv_image_error
+from apps.rendering.resources.utils import handle_opencv_image_error
 from apps.rendering.task.renderingtask import (RenderingTask,
                                                RenderingTaskBuilder,
                                                PREVIEW_EXT)
