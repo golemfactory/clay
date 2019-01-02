@@ -1,15 +1,20 @@
 import calendar
+import datetime
 import logging
 import time
 
 from collections import defaultdict
 from typing import List
+
+from pydispatch import dispatcher
 from sortedcontainers import SortedListWithKey
 from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
 from twisted.internet import threads
 
 import golem_sci
+
+from golem.core.common import datetime_to_timestamp
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.model import Payment, PaymentStatus
 
@@ -91,6 +96,7 @@ class PaymentProcessor:
                 self._awaiting.add(p)
             return
 
+        block = self._sci.get_block_by_number(receipt.block_number)
         gas_price = self._sci.get_transaction_gas_price(receipt.tx_hash)
         total_fee = receipt.gas_used * gas_price
         fee = total_fee // len(payments)
@@ -106,11 +112,26 @@ class PaymentProcessor:
             p.details.fee = fee
             p.save()
             self._gntb_reserved -= p.value
-            log.debug(
-                "- %s confirmed fee %.6f",
-                p.subtask,
-                fee / denoms.ether
-            )
+            self._payment_confirmed(p, block.timestamp)
+
+    @staticmethod
+    def _payment_confirmed(payment: Payment, timestamp: int) -> None:
+        log.debug(
+            "- %s confirmed fee %.6f",
+            payment.subtask,
+            payment.details.fee / denoms.ether
+        )
+
+        reference_date = datetime.datetime.fromtimestamp(timestamp)
+        delay = (reference_date - payment.created_date).seconds
+
+        dispatcher.send(
+            signal="golem.payment",
+            event="confirmed",
+            subtask_id=payment.subtask,
+            payee=payment.payee,
+            delay=delay,
+        )
 
     def add(self, subtask_id: str, eth_addr: str, value: int) -> Payment:
         log.info(

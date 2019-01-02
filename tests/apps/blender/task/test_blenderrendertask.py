@@ -1,16 +1,19 @@
-import cv2
-import uuid
-import tempfile
-
-import numpy
-from golem_messages.message import ComputeTaskDef
-import os
-import unittest.mock as mock
-from os import path
-
+# pylint: disable=protected-access
 import array
-import unittest
+import cv2
+import numpy
+import os
+from os import path
 from random import randrange, shuffle
+import tempfile
+import unittest
+import unittest.mock as mock
+import uuid
+
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+from golem_messages.message import ComputeTaskDef
+from golem_verificator.verifier import SubtaskVerificationState
+
 
 import OpenEXR
 
@@ -27,13 +30,11 @@ from apps.rendering.resources.imgrepr import load_img, OpenCVImgRepr, \
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
     RenderingTaskDefinition)
-from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import AcceptClientVerdict
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-from golem_verificator.verifier import SubtaskVerificationState
 
 
 class TestBlenderDefaults(unittest.TestCase):
@@ -58,7 +59,7 @@ class BlenderTaskInitTest(TempDirFixture, LogTestCase):
 
         def _get_blender_task(task_definition, total_tasks=6):
             return BlenderRenderTask(
-                owner=Node(node_name="exmaple-node-name"),
+                owner=dt_p2p_factory.Node(),
                 task_definition=task_definition,
                 total_tasks=total_tasks,
                 root_path=self.tempdir,
@@ -104,7 +105,7 @@ class TestBlenderFrameTask(TempDirFixture):
         task_definition.task_id = str(uuid.uuid4())
         BlenderRenderTask.VERIFICATION_QUEUE._reset()
         self.bt = BlenderRenderTask(
-            owner=Node(node_name="example-node-name"),
+            owner=dt_p2p_factory.Node(),
             task_definition=task_definition,
             total_tasks=6,
             root_path=self.tempdir,
@@ -255,7 +256,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         task_definition.main_scene_file = path.join(self.path, "example.blend")
         task_definition.task_id = str(uuid.uuid4())
         bt = BlenderRenderTask(
-            owner=Node(node_name="example-node-name"),
+            owner=dt_p2p_factory.Node(),
             task_definition=task_definition,
             total_tasks=total_tasks,
             root_path=self.tempdir)
@@ -430,7 +431,6 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
             self.bt._put_image_together()
             self.assertTrue(path.isfile(self.bt.output_file))
             img = load_img(self.bt.output_file)
-
             img_x, img_y = img.get_size()
             self.assertEqual(self.bt.res_x, img_x)
             self.assertEqual(self.bt.res_y, img_y)
@@ -654,7 +654,7 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
         definition.subtasks_count = 1
         definition.options = BlenderRendererOptions()
         builder = BlenderRenderTaskBuilder(
-            owner=Node(),
+            owner=dt_p2p_factory.Node(),
             task_definition=definition,
             dir_manager=DirManager(
                 self.tempdir))

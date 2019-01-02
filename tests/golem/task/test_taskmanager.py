@@ -1,3 +1,5 @@
+# pylint: disable=too-many-lines
+import datetime
 import os
 import random
 import shutil
@@ -7,11 +9,13 @@ from collections import OrderedDict
 from pathlib import Path
 from unittest.mock import Mock, patch, MagicMock
 
+from faker import Faker
 from freezegun import freeze_time
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from golem_messages.message import ComputeTaskDef
 from pydispatch import dispatcher
 from twisted.internet.defer import fail
-from twisted.trial.unittest import TestCase as TwistedTestCase
 
 from apps.appsmanager import AppsManager
 from apps.core.task.coretask import CoreTask
@@ -20,22 +24,26 @@ from apps.blender.task.blenderrendertask import BlenderRenderTask
 from golem import testutils
 from golem.core.common import timeout_to_deadline
 from golem.core.keysauth import KeysAuth
-from golem.network.p2p.node import Node
+from golem.network.p2p.local_node import LocalNode
 from golem.resource import dirmanager
-from golem.task.taskbase import Task, TaskHeader, \
+from golem.task.taskbase import Task, \
     TaskEventListener, AcceptClientVerdict
 from golem.task.taskclient import TaskClient
 from golem.task.taskmanager import TaskManager, logger
 from golem.task.taskstate import SubtaskStatus, SubtaskState, TaskState, \
     TaskStatus, TaskOp, SubtaskOp, OtherOp
+from golem.testutils import DatabaseFixture
 from golem.tools.assertlogs import LogTestCase
-from golem.tools.testwithreactor import TestDirFixtureWithReactor
+from golem.tools.testwithreactor import TestDatabaseWithReactor
 
 from apps.dummy.task.dummytask import (
     DummyTaskDefaults,
     DummyTaskBuilder)
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from golem.resource.dirmanager import DirManager
+
+
+fake = Faker()
 
 
 class PickableMock(Mock):
@@ -70,7 +78,7 @@ class TaskMock(Task):
 
 @patch.multiple(TaskMock, __abstractmethods__=frozenset())
 @patch.multiple(Task, __abstractmethods__=frozenset())
-class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
+class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: disable=too-many-ancestors
                       testutils.PEP8MixIn):
     PEP8_FILES = [
         'golem/task/taskmanager.py',
@@ -81,9 +89,10 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         random.seed()
         self.test_nonce = "%.3f-%d" % (time.time(), random.random() * 10000)
         keys_auth = Mock()
+        keys_auth._private_key = b'a' * 32
         keys_auth.sign.return_value = 'sig_%s' % (self.test_nonce,)
         self.tm = TaskManager(
-            Node(),
+            dt_p2p_factory.Node(),
             keys_auth,
             root_path=self.path,
             task_persistence=True,
@@ -96,13 +105,13 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         shutil.rmtree(str(self.tm.tasks_dir))
 
     def _get_task_header(self, task_id, timeout, subtask_timeout):
-        return TaskHeader(
+        return dt_tasks_factory.TaskHeader(
             task_id=task_id,
-            task_owner=Node(
+            task_owner=dt_p2p_factory.Node(
                 key="task_owner_key_%s" % (self.test_nonce,),
-                node_name="test_node_%s" % (self.test_nonce,),
-                pub_addr="task_owner_address_%s" % (self.test_nonce,),
-                pub_port="task_owner_port_%s" % (self.test_nonce,),
+                node_name=fake.name(),
+                pub_addr=fake.random_int(min=0, max=65535),
+                pub_port=fake.random_int(min=0, max=65535),
             ),
             environment="test_environ_%s" % (self.test_nonce,),
             resource_size=2 * 1024,
@@ -112,8 +121,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             subtask_timeout=subtask_timeout,
         )
 
-    def _get_task_mock(self, task_id="xyz", subtask_id="xxyyzz", timeout=120.0,
-                       subtask_timeout=120.0):
+    def _get_task_mock(self, task_id="xyz", subtask_id="xxyyzz", timeout=120,
+                       subtask_timeout=120):
         header = self._get_task_header(task_id, timeout, subtask_timeout)
         task_mock = TaskMock(header, src_code='', task_definition=Mock())
         task_mock.tmp_dir = self.path
@@ -188,11 +197,11 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         defaults = DummyTaskDefaults()
         tdd = DummyTaskDefinition(defaults)
         dm = DirManager(self.path)
-        dtb = DummyTaskBuilder(Node(node_name="MyNode"), tdd, dm)
+        dtb = DummyTaskBuilder(dt_p2p_factory.Node(node_name="MyNode"), tdd, dm)
 
         dummy_task = dtb.build()
-        header = self._get_task_header(task_id=task_id, timeout=120.0,
-                                       subtask_timeout=120.0)
+        header = self._get_task_header(task_id=task_id, timeout=120,
+                                       subtask_timeout=120)
         dummy_task.header = header
 
         return dummy_task
@@ -204,8 +213,8 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
         with self.assertLogs(logger, level="DEBUG") as log:
             keys_auth = Mock()
-            keys_auth.sign.return_value = 'sig_%s' % (self.test_nonce,)
-            temp_tm = TaskManager(Node(),
+            keys_auth._private_key = b'a' * 32
+            temp_tm = TaskManager(dt_p2p_factory.Node(),
                                   keys_auth=keys_auth,
                                   root_path=self.path,
                                   task_persistence=True)
@@ -219,7 +228,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
                     "TASK %s DUMPED" % task_id in log for log in log.output)
 
         with self.assertLogs(logger, level="DEBUG") as log:
-            fresh_tm = TaskManager(Node(), keys_auth=Mock(),
+            fresh_tm = TaskManager(dt_p2p_factory.Node(), keys_auth=Mock(),
                                    root_path=self.path, task_persistence=True)
 
             assert any(
@@ -393,12 +402,19 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')
     def test_computed_task_received(self, _):
-        owner = Node(node_name="ABC",
-                     pub_addr="10.10.10.10",
-                     pub_port=1024,
-                     key="key_id")
-        th = TaskHeader(task_id="xyz", environment="DEFAULT", task_owner=owner)
+        owner = dt_p2p_factory.Node(
+            node_name="ABC",
+            pub_addr="10.10.10.10",
+            pub_port=1024,
+            key="key_id",
+        )
+        th = dt_tasks_factory.TaskHeader(
+            task_id="xyz",
+            environment="DEFAULT",
+            task_owner=owner,
+        )
         th.max_price = 50
+        th.subtask_timeout = 1
 
         class TestTask(Task):
             def __init__(self, header, src_code, subtasks_id, verify_subtasks):
@@ -699,13 +715,23 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         # pylint: disable=abstract-class-instantiated
         from pydispatch import dispatcher
         self.tm.task_persistence = True
-        owner = Node(node_name="ABC",
-                     pub_addr="10.10.10.10",
-                     pub_port=1023,
-                     key="abcde")
+        owner = dt_p2p_factory.Node(
+            node_name="ABC",
+            pub_addr="10.10.10.10",
+            pub_port=1023,
+            key="abcde",
+        )
         t = TaskMock(
-            TaskHeader(task_id="xyz", environment="DEFAULT", task_owner=owner),
-            "print 'hello world'", None)
+            header=dt_tasks_factory.TaskHeader(
+                task_id="xyz",
+                environment="DEFAULT",
+                task_owner=owner,
+                subtask_timeout=1,
+                max_price=1,
+            ),
+            src_code="print 'hello world'",
+            task_definition=None,
+        )
         listener_mock = Mock()
 
         def listener(sender, signal, event, task_id):
@@ -722,45 +748,89 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         finally:
             dispatcher.disconnect(listener, signal='golem.taskmanager')
 
+    @freeze_time()
     def test_check_timeouts(self):
         # Task with timeout
-        t = self._get_task_mock(timeout=0.05)
-        self.tm.add_new_task(t)
-        assert self.tm.tasks_states["xyz"].status == TaskStatus.notStarted
-        self.tm.start_task(t.header.task_id)
-        assert self.tm.tasks_states["xyz"].status in self.tm.activeStatus
-        time.sleep(0.1)
-        self.tm.check_timeouts()
-        assert self.tm.tasks_states['xyz'].status == TaskStatus.timeout
+        start_time = datetime.datetime.now()
+        with freeze_time(start_time):
+            t = self._get_task_mock(timeout=1)
+            self.tm.add_new_task(t)
+            self.assertIs(
+                self.tm.tasks_states["xyz"].status,
+                TaskStatus.notStarted,
+            )
+            self.tm.start_task(t.header.task_id)
+            self.assertIn(
+                self.tm.tasks_states["xyz"].status,
+                self.tm.activeStatus,
+            )
+        with freeze_time(start_time + datetime.timedelta(seconds=2)):
+            self.tm.check_timeouts()
+        self.assertIs(
+            self.tm.tasks_states['xyz'].status,
+            TaskStatus.timeout,
+        )
         # Task with subtask timeout
         with patch('golem.task.taskbase.Task.needs_computation',
                    return_value=True):
-            t2 = self._get_task_mock(task_id="abc", subtask_id="aabbcc",
-                                     timeout=10, subtask_timeout=0.1)
-            self.tm.add_new_task(t2)
-            self.tm.start_task(t2.header.task_id)
-            self.tm.get_next_subtask("ABC", "ABC", "abc", 1000, 10, 5, 10, 2,
-                                     "10.10.10.10")
-            time.sleep(0.1)
-            self.tm.check_timeouts()
-            assert self.tm.tasks_states["abc"].status == TaskStatus.waiting
-            assert self.tm.tasks_states["abc"].subtask_states[
-                       "aabbcc"].subtask_status == SubtaskStatus.failure
+            start_time = datetime.datetime.now()
+            with freeze_time(start_time):
+                t2 = self._get_task_mock(task_id="abc", subtask_id="aabbcc",
+                                         timeout=10, subtask_timeout=1)
+                self.tm.add_new_task(t2)
+                self.tm.start_task(t2.header.task_id)
+                self.tm.get_next_subtask(
+                    "ABC", "ABC", "abc", 1000, 10, 5, 10, 2,
+                    "10.10.10.10",
+                )
+            with freeze_time(
+                start_time + datetime.timedelta(
+                    seconds=t2.header.subtask_timeout + 1,
+                ),
+            ):
+                self.tm.check_timeouts()
+            task_state = self.tm.tasks_states[t2.header.task_id]
+            self.assertIs(
+                task_state.status,
+                TaskStatus.waiting,
+            )
+            self.assertIs(
+                task_state.subtask_states["aabbcc"].subtask_status,
+                SubtaskStatus.failure,
+            )
         # Task with task and subtask timeout
         with patch('golem.task.taskbase.Task.needs_computation',
                    return_value=True):
-            t3 = self._get_task_mock(task_id="qwe", subtask_id="qwerty",
-                                     timeout=0.1, subtask_timeout=0.1)
-            self.tm.add_new_task(t3)
-            self.tm.start_task(t3.header.task_id)
-            self.tm.get_next_subtask("ABC", "ABC", "qwe", 1000, 10, 5, 10, 2,
-                                     "10.10.10.10")
-            time.sleep(0.1)
-            (handler, checker) = self._connect_signal_handler()
-            self.tm.check_timeouts()
-            assert self.tm.tasks_states["qwe"].status == TaskStatus.timeout
-            assert self.tm.tasks_states["qwe"].subtask_states[
-                "qwerty"].subtask_status == SubtaskStatus.failure
+            start_time = datetime.datetime.now()
+            with freeze_time(start_time):
+                t3 = self._get_task_mock(
+                    task_id="qwe",
+                    subtask_id="qwerty",
+                    timeout=1,
+                    subtask_timeout=1,
+                )
+                self.tm.add_new_task(t3)
+                self.tm.start_task(t3.header.task_id)
+                self.tm.get_next_subtask(
+                    "ABC", "ABC", "qwe", 1000, 10, 5, 10, 2,
+                    "10.10.10.10",
+                )
+            with freeze_time(
+                start_time + datetime.timedelta(
+                    seconds=t3.header.subtask_timeout + 1,
+                ),
+            ):
+                (handler, checker) = self._connect_signal_handler()
+                self.tm.check_timeouts()
+                task_state = self.tm.tasks_states["qwe"]
+            self.assertIs(
+                task_state.status,
+                TaskStatus.timeout,
+            )
+            self.assertIs(
+                task_state.subtask_states["qwerty"].subtask_status,
+                SubtaskStatus.failure,
+            )
             checker([("qwe", "qwerty", SubtaskOp.TIMEOUT),
                      ("qwe", None, TaskOp.TIMEOUT)])
             del handler
@@ -796,12 +866,12 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         checker([("xyz", None, TaskOp.ABORTED)])
         del handler
 
-    @patch('golem.network.p2p.node.Node.collect_network_info')
+    @patch('golem.network.p2p.local_node.LocalNode.collect_network_info')
     def test_get_tasks(self, _):
         count = 3
         apps_manager = AppsManager()
         apps_manager.load_all_apps()
-        tm = TaskManager(Node(), Mock(), root_path=self.path,
+        tm = TaskManager(dt_p2p_factory.Node(), Mock(), root_path=self.path,
                          apps_manager=apps_manager)
         task_id, subtask_id = self.__build_tasks(tm, count)
 
@@ -825,25 +895,26 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert isinstance(all_subtasks, list)
         assert all(isinstance(t, dict) for t in all_subtasks)
 
-    @patch('golem.network.p2p.node.Node.collect_network_info')
+    @patch('golem.network.p2p.local_node.LocalNode.collect_network_info')
     @patch('apps.blender.task.blenderrendertask.'
            'BlenderTaskTypeInfo.get_preview')
     def test_get_task_preview(self, get_preview, _):
         apps_manager = AppsManager()
         apps_manager.load_all_apps()
-        tm = TaskManager(Node(), Mock(), root_path=self.path,
+        ln = LocalNode(**dt_p2p_factory.Node().to_dict())
+        tm = TaskManager(ln, Mock(), root_path=self.path,
                          apps_manager=apps_manager)
         task_id, _ = self.__build_tasks(tm, 1)
 
         tm.get_task_preview(task_id)
         assert get_preview.called
 
-    @patch('golem.network.p2p.node.Node.collect_network_info')
+    @patch('golem.network.p2p.local_node.LocalNode.collect_network_info')
     def test_get_subtasks_borders(self, _):
         count = 3
         apps_manager = AppsManager()
         apps_manager.load_all_apps()
-        tm = TaskManager(Node(), Mock(), root_path=self.path,
+        tm = TaskManager(dt_p2p_factory.Node(), Mock(), root_path=self.path,
                          apps_manager=apps_manager)
         task_id, _ = self.__build_tasks(tm, count)
 
@@ -860,16 +931,19 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
     def test_update_signatures(self):
         # pylint: disable=abstract-class-instantiated
 
-        node = Node(
+        node = dt_p2p_factory.Node(
             node_name="node", key="key_id", prv_addr="10.0.0.10",
             prv_port=40103, pub_addr="1.2.3.4", pub_port=40103,
             p2p_prv_port=40102, p2p_pub_port=40102
         )
         task = TaskMock(
-            header=TaskHeader(
+            header=dt_tasks_factory.TaskHeader(
                 task_id="task_id",
                 environment="environment",
-                task_owner=node),
+                task_owner=node,
+                subtask_timeout=1,
+                max_price=1,
+            ),
             src_code='',
             task_definition=TaskDefinition())
 
@@ -885,7 +959,7 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
         assert task.header.signature != sig
 
     def test_get_estimated_cost(self):
-        tm = TaskManager(Node(), Mock(), root_path=self.path)
+        tm = TaskManager(dt_p2p_factory.Node(), Mock(), root_path=self.path)
         options = {'price': 100,
                    'subtask_time': 1.5,
                    'num_subtasks': 7
@@ -995,7 +1069,9 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             state.subtask_states = subtask_states
 
             task = BlenderRenderTask(task_definition=definition,
-                                     owner=Node(node_name='node'),
+                                     owner=dt_p2p_factory.Node(
+                                         node_name='node',
+                                     ),
                                      total_tasks=n,
                                      root_path=self.path)
             task.initialize(dirmanager.DirManager(self.path))
@@ -1224,11 +1300,12 @@ class TestTaskManager(LogTestCase, TestDirFixtureWithReactor,
             restart.assert_called_once_with('new_subtask_id')
 
 
-class TestCopySubtaskResults(TwistedTestCase):
+class TestCopySubtaskResults(DatabaseFixture):
 
     def setUp(self):
+        super().setUp()
         self.tm = TaskManager(
-            node=Node(),
+            node=dt_p2p_factory.Node(),
             keys_auth=MagicMock(spec=KeysAuth),
             root_path='/tmp',
             task_persistence=False

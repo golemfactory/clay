@@ -9,6 +9,7 @@ from typing import Optional
 from eth_utils import decode_hex, encode_hex
 from ethereum.utils import denoms
 from golem_messages import message
+from golem_messages.datastructures import p2p as dt_p2p
 from peewee import (
     BlobField,
     BooleanField,
@@ -25,8 +26,8 @@ from peewee import (
 
 from golem.core.simpleserializer import DictSerializable
 from golem.database import GolemSqliteDatabase
-from golem.network.p2p.node import Node
 from golem.ranking.helper.trust_const import NEUTRAL_TRUST
+from golem.ranking import ProviderEfficacy
 
 
 # TODO: migrate to golem.database. issue #2415
@@ -132,6 +133,20 @@ class EnumFieldBase:
         return self.enum_type(value)
 
 
+class ProviderEfficacyField(CharField):
+
+    def db_value(self, value):
+        if not isinstance(value, ProviderEfficacy):
+            raise TypeError("Value {} is not an instance of ProviderEfficacy"
+                            .format(value))
+        return value.serialize()
+
+    def python_value(self, value):
+        if value is not None:
+            return ProviderEfficacy.deserialize(value)
+        return None
+
+
 class EnumField(EnumFieldBase, IntegerField):
     """ Database field that maps enum type to integer."""
 
@@ -189,7 +204,7 @@ class PaymentStatus(enum.Enum):
 
 class PaymentDetails(DictSerializable):
     def __init__(self,
-                 node_info: Optional[Node] = None,
+                 node_info: Optional[dt_p2p.Node] = None,
                  fee: Optional[int] = None,
                  block_hash: Optional[str] = None,
                  block_number: Optional[int] = None,
@@ -212,7 +227,8 @@ class PaymentDetails(DictSerializable):
     def from_dict(data: dict) -> 'PaymentDetails':
         det = PaymentDetails()
         det.__dict__.update(data)
-        det.__dict__['node_info'] = Node.from_dict(data['node_info'])
+        if det.__dict__['node_info']:
+            det.__dict__['node_info'] = dt_p2p.Node(**data['node_info'])
         return det
 
     def __eq__(self, other: object) -> bool:
@@ -225,7 +241,7 @@ class PaymentDetails(DictSerializable):
 
 class NodeField(DictSerializableJSONField):
     """ Database field that stores a Node in JSON format. """
-    objtype = Node
+    objtype = dt_p2p.Node
 
 
 class PaymentDetailsField(DictSerializableJSONField):
@@ -334,6 +350,12 @@ class LocalRank(BaseModel):
     negative_payment = FloatField(default=0.0)
     positive_resource = FloatField(default=0.0)
     negative_resource = FloatField(default=0.0)
+    requestor_efficiency = FloatField(default=None, null=True)
+    requestor_assigned_sum = HexIntegerField(default=0)
+    requestor_paid_sum = HexIntegerField(default=0)
+    provider_efficiency = FloatField(default=1.0)
+    provider_efficacy = ProviderEfficacyField(
+        default=ProviderEfficacy(0., 0., 0., 0.))
 
 
 class GlobalRank(BaseModel):

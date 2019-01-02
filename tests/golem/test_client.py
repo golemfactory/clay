@@ -13,6 +13,7 @@ from unittest.mock import (
 
 from ethereum.utils import denoms
 from freezegun import freeze_time
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
 
@@ -26,9 +27,9 @@ from golem.client import Client, ClientTaskComputerEventListener, \
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
+from golem.hardware.presets import HardwarePresets
 from golem.core.variables import CONCENT_CHOICES
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
-from golem.network.p2p.node import Node
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
@@ -90,13 +91,13 @@ def make_mock_ets(eth=100, gnt=100):
     '.register_handler',
 )
 @patch('signal.signal')
-@patch('golem.network.p2p.node.Node.collect_network_info')
+@patch('golem.network.p2p.local_node.LocalNode.collect_network_info')
 def make_client(*_, **kwargs):
     default_kwargs = {
         'app_config': Mock(),
         'config_desc': ClientConfigDescriptor(),
         'keys_auth': Mock(
-            _private_key='a' * 32,
+            _private_key=b'a' * 32,
             key_id='a' * 64,
             public_key=b'a' * 128,
         ),
@@ -105,6 +106,7 @@ def make_client(*_, **kwargs):
         'connect_to_known_hosts': False,
         'use_docker_manager': False,
         'use_monitor': False,
+        'concent_variant': CONCENT_CHOICES['disabled'],
     }
     default_kwargs.update(kwargs)
     client = Client(**default_kwargs)
@@ -130,6 +132,18 @@ class TestClient(TestClientBase):
     # FIXME: if we someday decide to run parallel tests,
     # this may completely break. Issue #2456
     # pylint: disable=attribute-defined-outside-init
+
+    def test_get_gas_price(self, *_):
+        test_gas_price = 1234
+        test_price_limit = 12345
+        ets = self.client.transaction_system
+        ets.gas_price = test_gas_price
+        ets.gas_price_limit = test_price_limit
+
+        result = self.client.get_gas_price()
+
+        self.assertEqual(result["current_gas_price"], str(test_gas_price))
+        self.assertEqual(result["gas_price_limit"], str(test_price_limit))
 
     def test_get_payments(self, *_):
         ets = self.client.transaction_system
@@ -200,10 +214,9 @@ class TestClient(TestClientBase):
 
     def test_activate_hw_preset(self, *_):
         config = self.client.config_desc
-        config.hardware_preset_name = 'non-existing'
-        config.num_cores = 0
-        config.max_memory_size = 0
-        config.max_resource_size = 0
+
+        HardwarePresets.initialize(self.client.datadir)
+        HardwarePresets.update_config('default', config)
 
         self.client.activate_hw_preset('custom')
 
@@ -517,7 +530,7 @@ class TestMonitoringPublisherService(testwithreactor.TestWithReactor):
         self.service._run()
 
         logger.debug.assert_not_called()
-        assert send.call_count == 3
+        assert send.call_count == 5
 
 
 class TestNetworkConnectionPublisherService(testwithreactor.TestWithReactor):
@@ -588,7 +601,7 @@ class TestTaskCleanerService(testwithreactor.TestWithReactor):
 
 
 @patch('signal.signal')  # pylint: disable=too-many-ancestors
-@patch('golem.network.p2p.node.Node.collect_network_info')
+@patch('golem.network.p2p.local_node.LocalNode.collect_network_info')
 class TestClientRPCMethods(TestClientBase, LogTestCase):
     # pylint: disable=too-many-public-methods
 
@@ -601,13 +614,14 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         with patch('golem.network.concent.handlers_library.HandlersLibrary'
                    '.register_handler', ):
             self.client.task_server = TaskServer(
-                node=Node(),
+                node=dt_p2p_factory.Node(),
                 config_desc=ClientConfigDescriptor(),
                 client=self.client,
                 use_docker_manager=False,
                 apps_manager=self.client.apps_manager,
             )
         self.client.monitor = Mock()
+        self.client._update_hw_preset = Mock()
 
     def test_node(self, *_):
         c = self.client
@@ -750,6 +764,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_settings(self, *_):
         c = self.client
+        HardwarePresets.initialize(self.client.datadir)
 
         new_node_name = str(uuid.uuid4())
         self.assertNotEqual(c.get_setting('node_name'), new_node_name)
@@ -757,6 +772,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         c.update_setting('node_name', new_node_name)
         self.assertEqual(c.get_setting('node_name'), new_node_name)
         self.assertEqual(c.get_settings()['node_name'], new_node_name)
+        c._update_hw_preset.assert_called_once()
 
         newer_node_name = str(uuid.uuid4())
         self.assertNotEqual(c.get_setting('node_name'), newer_node_name)
@@ -1010,6 +1026,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         # then
         self.assertEqual(len(connected_peers), 4)
         self.assertTrue(all(peer for peer in connected_peers))
+        self.assertIsInstance(connected_peers[0]['node_info'], dict)
 
     def test_provider_status_starting(self, *_):
         # given
@@ -1147,6 +1164,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         session = Mock()
         for attr in PeerSessionInfo.attributes:
             setattr(session, attr, str(uuid.uuid4()))
+        session.node_info = dt_p2p_factory.Node()
         return session
 
 
@@ -1161,11 +1179,11 @@ def test_task_computer_event_listener():
     client.lock_config.assert_called_with(False)
 
 
+@patch('golem.terms.ConcentTermsOfUse.are_accepted', return_value=True)
 class TestDepositBalance(TestClientBase):
-
-    def test_no_concent(self):
+    def test_no_concent(self, *_):
         self.client.concent_service.variant = CONCENT_CHOICES['disabled']
-        self.assertFalse(self.client.concent_service.enabled)
+        self.assertFalse(self.client.concent_service.available)
         self.client.transaction_system.concent_timelock.side_effect\
             = Exception("Let's pretend there's no such contract")
         self.assertIsNone(sync_wait(self.client.get_deposit_balance()))
@@ -1173,7 +1191,7 @@ class TestDepositBalance(TestClientBase):
     @freeze_time("2018-01-01 01:00:00")
     def test_unlocking(self, *_):
         self.client.concent_service.variant = CONCENT_CHOICES['test']
-        self.assertTrue(self.client.concent_service.enabled)
+        self.assertTrue(self.client.concent_service.available)
         self.client.transaction_system.concent_timelock\
             .return_value = int(time.time())
         with freeze_time("2018-01-01 00:59:59"):
@@ -1183,7 +1201,7 @@ class TestDepositBalance(TestClientBase):
     @freeze_time("2018-01-01 01:00:00")
     def test_unlocked(self, *_):
         self.client.concent_service.variant = CONCENT_CHOICES['test']
-        self.assertTrue(self.client.concent_service.enabled)
+        self.assertTrue(self.client.concent_service.available)
         self.client.transaction_system.concent_timelock\
             .return_value = int(time.time())
         with freeze_time("2018-01-01 01:00:01"):
@@ -1192,7 +1210,7 @@ class TestDepositBalance(TestClientBase):
 
     def test_locked(self, *_):
         self.client.concent_service.variant = CONCENT_CHOICES['test']
-        self.assertTrue(self.client.concent_service.enabled)
+        self.assertTrue(self.client.concent_service.available)
         self.client.transaction_system.concent_timelock\
             .return_value = 0
         result = sync_wait(self.client.get_deposit_balance())

@@ -4,20 +4,20 @@ import uuid
 
 from golem_messages import message
 from golem.core.common import short_node_id
+from golem.task.timer import ProviderTTCDelayTimers
 
 logger = logging.getLogger('golem.resources')
 
 
 class ResourceHandshake:
 
-    __slots__ = ('nonce', 'file', 'hash', 'message',
-                 'started', 'local_result', 'remote_result')
+    __slots__ = ('nonce', 'file', 'hash', 'started',
+                 'local_result', 'remote_result')
 
-    def __init__(self, message_=None):
+    def __init__(self):
         self.nonce = str(uuid.uuid4())
         self.file = None
         self.hash = None
-        self.message = message_
 
         self.started = False
         self.local_result = None
@@ -89,7 +89,8 @@ class ResourceHandshakeSessionMixin:
             return
         else:
             concent_enabled = True
-        msg_d = dict(
+
+        self._task_request_message = dict(
             node_name=node_name,
             task_id=task_id,
             perf_index=perf_index,
@@ -107,11 +108,15 @@ class ResourceHandshakeSessionMixin:
             return
 
         if self._handshake_required(key_id):
-            self._task_request_message = msg_d
             self._start_handshake(key_id)
             return
 
-        self.send(message.tasks.WantToComputeTask(**msg_d))
+        self._send_want_to_compute_task()
+
+    def _send_want_to_compute_task(self) -> None:
+        wtct = message.tasks.WantToComputeTask(**self._task_request_message)
+        self.send(wtct)  # type: ignore
+        ProviderTTCDelayTimers.start(self._task_request_message['task_id'])
 
     # ########################
     #     MESSAGE HANDLERS
@@ -190,7 +195,7 @@ class ResourceHandshakeSessionMixin:
         logger.info('Starting resource handshake with %r',
                     short_node_id(key_id))
 
-        handshake = ResourceHandshake(self._task_request_message)
+        handshake = ResourceHandshake()
         directory = self.resource_manager.storage.get_dir(self.NONCE_TASK)
 
         try:
@@ -226,8 +231,8 @@ class ResourceHandshakeSessionMixin:
         if handshake.finished():
             logger.info('Finished resource handshake with %r',
                         short_node_id(key_id))
-        if handshake.success() and handshake.message:
-            self.send(message.tasks.WantToComputeTask(**handshake.message))
+        if handshake.success() and self._task_request_message:
+            self._send_want_to_compute_task()
 
     def _stop_handshake_timer(self):
         if self._handshake_timer:
