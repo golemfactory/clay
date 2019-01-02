@@ -1,14 +1,16 @@
 # pylint: disable=protected-access
 import array
-import cv2
-import numpy
 import os
-from os import path
-from random import randrange, shuffle
 import tempfile
 import unittest
 import unittest.mock as mock
 import uuid
+
+import cv2
+import numpy
+
+from os import path
+from random import randrange, shuffle
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
@@ -25,8 +27,7 @@ from apps.blender.task.blenderrendertask import (BlenderDefaults,
                                                  BlenderTaskTypeInfo,
                                                  PreviewUpdater,
                                                  logger)
-from apps.rendering.resources.imgrepr import load_img, OpenCVImgRepr, \
-    OpenCVError
+from apps.rendering.resources.imgrepr import load_img, OpenCVImgRepr
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
     RenderingTaskDefinition)
