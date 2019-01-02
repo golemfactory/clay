@@ -14,7 +14,7 @@ paths:
   '/subscriptions/{nodeId}':
     parameters:
       - $ref: '#/parameters/nodeId'
-    put:
+    post:
       summary: Creates or amends subscription to Golem network
       operationId: subscribe
       parameters:

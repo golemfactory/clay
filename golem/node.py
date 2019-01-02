@@ -453,10 +453,9 @@ class Node(object):
         from twisted.web.server import Site
         from .gugateway import gateway
 
-        port=5001
         gateway.client = self.client
-        logger.warning(f'starting WSGI on port {port}')
-        self._reactor.listenTCP(port, Site(WSGIResource(
+        logger.warning(f'Starting {gateway.app.name} on port {gateway.port}')
+        self._reactor.listenTCP(gateway.port, Site(WSGIResource(
             self._reactor, self._reactor.getThreadPool(), gateway.app)))
 
     def _setup_apps(self) -> None:

@@ -4,7 +4,8 @@ import json
 from golem.client import Client
 
 client: Client = None
-app = Flask(__name__)
+app = Flask("Golem Unlimited Gateway")
+port = 55001
 subscriptions = dict()
 
 
@@ -24,26 +25,27 @@ def page_not_found(error):
     return f'Not found. See <a href="/">API doc</a>', 404
 
 
-@app.route('/subscriptions/<node_id>', methods=['PUT'])
+@app.route('/subscriptions/<node_id>', methods=['POST'])
 def subscribe(node_id):
     """Creates or amends subscription to Golem Network"""
     if 'taskType' not in request.json:
         return 'no task type', 405
 
     task_type = request.json['taskType']
+    status_code = 200
     if node_id not in subscriptions:
         subscriptions[node_id] = set()
+        status_code = 201
 
     if task_type in subscriptions[node_id]:
         subscriptions[node_id].remove(task_type)
+    else:
+        subscriptions[node_id].add(task_type)
 
-        return f'node id: {node_id} already subscribed for {task_type} tasks. ' \
-               f'Removing. Current subscription is {subscriptions[node_id]}'
-
-    subscriptions[node_id].add(task_type)
-
-    return f'node id: {node_id} subscribed for {task_type} tasks. ' \
-           f'Current subscription is {subscriptions[node_id]}'
+    return json.dumps({
+        'node id': node_id,
+        'task_types': list(subscriptions[node_id])
+    }), status_code
 
 
 @app.route('/subscriptions/<node_id>', methods=['GET'])
