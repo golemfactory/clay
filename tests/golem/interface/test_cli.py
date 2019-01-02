@@ -391,12 +391,14 @@ class TestAdaptChildren(unittest.TestCase):
         self.assertEqual(result, {})
 
     def test_no_adaptation_for_mainnet(self):
-        with patch('golem.config.active.IS_MAINNET', True):
+        from golem.config.environments.mainnet import EthereumConfig
+        with patch('golem.config.active.EthereumConfig', EthereumConfig):
             result = disable_withdraw(self.children)
             self.assertEqual(result, self.children)
 
     def test_remove_withdraw_if_not_mainnet(self):
-        with patch('golem.config.active.IS_MAINNET', False):
+        from golem.config.environments.testnet import EthereumConfig
+        with patch('golem.config.active.EthereumConfig', EthereumConfig):
             result = disable_withdraw(self.children)
             self.children.pop('withdraw')
             self.assertEqual(result, self.children)

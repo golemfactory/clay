@@ -49,8 +49,8 @@ def disable_withdraw(
     mainnet, there should be no option to `withdraw` for `golemcli account`
     """
     new_children = deepcopy(children)
-    from golem.config.active import IS_MAINNET
-    if not IS_MAINNET:
+    from golem.config.active import EthereumConfig
+    if not EthereumConfig.WITHDRAWALS_ENABLED:
         if 'withdraw' in new_children:
             new_children.pop('withdraw')
     return new_children
