@@ -1,6 +1,9 @@
 # pylint: disable=protected-access
 import array
+
 import os
+from os import path
+
 import tempfile
 import unittest
 import unittest.mock as mock
@@ -9,7 +12,6 @@ import uuid
 import cv2
 import numpy
 
-from os import path
 from random import randrange, shuffle
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
