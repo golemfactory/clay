@@ -3,6 +3,7 @@ import array
 
 import os
 from os import path
+from random import randrange, shuffle
 
 import tempfile
 import unittest
@@ -12,7 +13,6 @@ import uuid
 import cv2
 import numpy
 
-from random import randrange, shuffle
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef

@@ -50,7 +50,8 @@ class TestBenchmark(TempDirFixture):
     def test_verify_result(self):
         """Wether verify_result calls correct methods."""
 
-        with mock.patch.multiple(self.benchmark, verify_img=mock.DEFAULT, verify_log=mock.DEFAULT) as mocks:
+        with mock.patch.multiple(self.benchmark, verify_img=mock.DEFAULT,
+                                 verify_log=mock.DEFAULT) as mocks:
             self.assertTrue(self.benchmark.verify_result(['a.txt', 'b.gif']))
             self.assertEqual(mocks['verify_img'].call_count, 0)
             self.assertEqual(mocks['verify_log'].call_count, 0)

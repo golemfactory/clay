@@ -163,7 +163,8 @@ class TestCompareImgFunctions(TempDirFixture, LogTestCase, PEP8MixIn):
         img2.set_pixel((0, 0), (0, 0, 0))
         assert calculate_mse(img1, img2) == 216.75
 
-        assert calculate_mse(img1, img2, start1=(0, 0), start2=(2, 2), box=(7, 7)) == 0
+        assert calculate_mse(img1, img2, start1=(0, 0), start2=(2, 2),
+                             box=(7, 7)) == 0
 
 
     def test_compare_imgs(self):

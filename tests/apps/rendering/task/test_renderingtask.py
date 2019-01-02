@@ -32,7 +32,8 @@ def _get_test_exr(alt=False):
     else:
         filename = 'testfile2.EXR'
 
-    return path.join(path.dirname(path.dirname(path.abspath(__file__))), "resources", filename)
+    return path.join(path.dirname(path.dirname(path.abspath(__file__))),
+                     "resources", filename)
 
 
 class RenderingTaskMock(RenderingTask):
@@ -78,7 +79,7 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task_definition.estimated_memory = 1024
         task_definition.timeout = 3600.0
         task_definition.subtask_timeout = 600
-        task_definition.main_scene_file=files[1]
+        task_definition.main_scene_file = files[1]
         task_definition.resolution = [800, 600]
         task_definition.output_file = files[2]
         task_definition.output_format = ".png"
@@ -98,7 +99,8 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
     def test_remove_from_preview(self):
         rt = self.task
         rt.subtasks_given["xxyyzz"] = {"start_task": 2}
-        tmp_dir = DirManager(rt.root_path).get_task_temporary_dir(rt.header.task_id)
+        tmp_dir = DirManager(rt.root_path).get_task_temporary_dir(rt.header
+                                                                  .task_id)
        # tmp_dir = get_tmp_path(rt.header.task_id, rt.root_path)
        # makedirs(tmp_dir)
         img = rt._open_preview()
@@ -289,7 +291,8 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         self.task.res_x = 10
         self.task.res_y = 20
 
-        self.task._put_collected_files_together(output_name, [exr1, exr2], "paste")
+        self.task._put_collected_files_together(output_name, [exr1, exr2],
+                                                "paste")
         assert load_img(output_name) is not None
 
     def test_get_task_collector_path(self):
@@ -297,7 +300,8 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
 
         mock_is_windows = Mock()
         mock_is_windows.return_value = False
-        with patch(target="apps.rendering.task.renderingtask.is_windows", new=mock_is_windows):
+        with patch(target="apps.rendering.task.renderingtask.is_windows",
+                   new=mock_is_windows):
             linux_path = self.task._get_task_collector_path()
             mock_is_windows.return_value = True
 

@@ -6,9 +6,11 @@ from pathlib import Path
 from apps.rendering.resources.imgrepr import load_img, EXRImgRepr, OpenCVImgRepr
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
-from apps.rendering.task.framerenderingtask import (get_frame_name, FrameRenderingTask,
+from apps.rendering.task.framerenderingtask import (get_frame_name,
+                                                    FrameRenderingTask,
                                                     FrameRenderingTaskBuilder,
-                                                    FrameRendererOptions, logger)
+                                                    FrameRendererOptions,
+                                                    logger)
 from apps.rendering.task.renderingtaskstate import RendererDefaults
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem.resource.dirmanager import DirManager
@@ -76,8 +78,8 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task = self._get_frame_task(use_frames=False)
         task.accept_client("NODE 1")
         task.tmp_dir = self.path
-        task.subtasks_given["SUBTASK1"] = {"start_task": 3, "node_id": "NODE 1", "parts": 1,
-                                           "frames": [1],
+        task.subtasks_given["SUBTASK1"] = {"start_task": 3, "node_id": "NODE 1",
+                                           "parts": 1, "frames": [1],
                                            "status": SubtaskStatus.starting}
         img_file = os.path.join(self.path, "img1.png")
         img = OpenCVImgRepr.empty(800, 600, color=(0, 0, 255))
@@ -89,10 +91,12 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         assert preview_img.get_pixel((100, 100)) == (0, 0, 255)
         preview_img = OpenCVImgRepr.from_image_file(task.preview_task_file_path)
         assert preview_img.get_pixel((100, 100)) == (0, 0, 255)
-        task.subtasks_given["SUBTASK2"] = {"start_task": 2, "node_id": "NODE 1", "parts": 1,
+        task.subtasks_given["SUBTASK2"] = {"start_task": 2, "node_id": "NODE 1",
+                                           "parts": 1,
                                            "frames": [1],
                                            "status": SubtaskStatus.starting}
-        task.subtasks_given["SUBTASK3"] = {"start_task": 1, "node_id": "NODE 1", "parts": 1,
+        task.subtasks_given["SUBTASK3"] = {"start_task": 1, "node_id": "NODE 1",
+                                           "parts": 1,
                                            "frames": [1],
                                            "status": SubtaskStatus.starting}
         task.accept_results("SUBTASK2", [img_file])
