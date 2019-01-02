@@ -6,7 +6,7 @@ from typing import Dict, Optional, Iterable
 
 import docker.errors
 
-from golem.core.common import nt_path_to_posix_path
+from golem.core.common import nt_path_to_posix_path, is_osx, is_linux
 from golem.docker.image import DockerImage
 from .client import local_client
 
@@ -132,6 +132,10 @@ class DockerJob(object):
 
         # Setup volumes for the container
         client = local_client()
+        if is_osx():
+            self.environment.update(OSX_USER=1)
+        elif is_linux():
+            self.environment.update(LOCAL_USER_ID=os.getuid())
 
         host_cfg = client.create_host_config(**self.host_config)
 
