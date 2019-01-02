@@ -3,16 +3,13 @@ import unittest
 import uuid
 from pathlib import Path
 
-from apps.rendering.resources.imgrepr import load_img, EXRImgRepr, OpenCVImgRepr
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+from apps.rendering.resources.imgrepr import load_img, EXRImgRepr, OpenCVImgRepr
 
-from apps.rendering.task.framerenderingtask import (get_frame_name,
-                                                    FrameRenderingTask,
-                                                    FrameRenderingTaskBuilder,
-                                                    FrameRendererOptions,
-                                                    logger)
-from apps.rendering.task.renderingtaskstate import RendererDefaults
-from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
+from apps.rendering.task.framerenderingtask import get_frame_name, \
+    FrameRenderingTask, FrameRenderingTaskBuilder, FrameRendererOptions, logger
+from apps.rendering.task.renderingtaskstate import RendererDefaults, \
+    RenderingTaskDefinition
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase

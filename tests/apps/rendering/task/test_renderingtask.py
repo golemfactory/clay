@@ -99,8 +99,6 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
     def test_remove_from_preview(self):
         rt = self.task
         rt.subtasks_given["xxyyzz"] = {"start_task": 2}
-        tmp_dir = DirManager(rt.root_path).get_task_temporary_dir(rt.header
-                                                                  .task_id)
        # tmp_dir = get_tmp_path(rt.header.task_id, rt.root_path)
        # makedirs(tmp_dir)
         img = rt._open_preview()
