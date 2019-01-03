@@ -24,6 +24,8 @@ class Subscription(object):
         self.task_types: set[TaskType] = set()
         self.stats: Counter = Counter()
 
+    # TODO: should we allow subscriptions w/o task type assigned
+    # TODO: maybe separate subscriptions per task type and node_id
     def toggle_task_type(self, task_type: Union[TaskType, str]) -> str:
         if isinstance(task_type, str):
             try:
