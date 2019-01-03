@@ -129,19 +129,19 @@ class Crop:
         return self.pixel_region.left, y
 
     def calculate_borders(self):
-        left = numpy.float32(
+        left = float(
             (numpy.float32(self.pixel_region.left) + SubImage.PIXEL_OFFSET) /
             numpy.float32(self.subimage.image_width))
 
-        right = numpy.float32(
+        right = float(
             (numpy.float32(self.pixel_region.right) + SubImage.PIXEL_OFFSET) /
             numpy.float32(self.subimage.image_width))
 
-        top = numpy.float32(
+        top = float(
             (numpy.float32(self.pixel_region.top) + SubImage.PIXEL_OFFSET) /
             numpy.float32(self.subimage.image_height))
 
-        bottom = numpy.float32(
+        bottom = float(
             (numpy.float32(self.pixel_region.bottom) + SubImage.PIXEL_OFFSET) /
             numpy.float32(self.subimage.image_height))
 
