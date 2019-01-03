@@ -59,9 +59,6 @@ class DummyTask(Task):
     def get_trust_mod(self, subtask_id):
         pass
 
-    def add_resources(self, resources):
-        pass
-
     def copy_subtask_results(self, subtask_id, old_subtask_info, results):
         pass
 

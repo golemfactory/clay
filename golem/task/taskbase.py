@@ -283,13 +283,6 @@ class Task(abc.ABC):
         """
         pass  # Implement in derived class
 
-    @abc.abstractmethod
-    def add_resources(self, resources: set):
-        """ Add resources to a task
-        :param resources:
-        """
-        return  # Implement in derived class
-
     def get_stdout(self, subtask_id) -> str:
         """ Return stdout received after computation of subtask_id, if there is no data available
         return empty string

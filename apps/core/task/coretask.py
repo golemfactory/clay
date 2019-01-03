@@ -99,7 +99,6 @@ class CoreTask(Task):
                  owner: dt_p2p.Node,
                  max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
                  resource_size=None,
-                 root_path=None,
                  total_tasks=1):
         """Create more specific task implementation
         """
@@ -111,19 +110,16 @@ class CoreTask(Task):
         self.task_resources = list(
             set(filter(os.path.exists, task_definition.resources)))
         if resource_size is None:
-            self.resource_size = 0
+            resource_size = 0
             for resource in self.task_resources:
-                self.resource_size += os.stat(resource).st_size
-        else:
-            self.resource_size = resource_size
+                resource_size += os.stat(resource).st_size
 
         # pylint: disable=not-callable
         self.environment = self.ENVIRONMENT_CLASS()
 
         # src_code stuff
-        self.main_program_file = self.environment.main_program_file
         try:
-            with open(self.main_program_file, "r") as src_file:
+            with open(self.environment.main_program_file, "r") as src_file:
                 src_code = src_file.read()
         except OSError as err:
             logger.warning("Wrong main program file: %s", err)
@@ -145,7 +141,7 @@ class CoreTask(Task):
             deadline=self._deadline,
             subtask_timeout=task_definition.subtask_timeout,
             subtasks_count=total_tasks,
-            resource_size=self.resource_size,
+            resource_size=resource_size,
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
             concent_enabled=task_definition.concent_enabled,
@@ -160,10 +156,8 @@ class CoreTask(Task):
         self.subtasks_given = {}
         self.num_failed_subtasks = 0
 
-        self.timeout = task_timeout
         self.counting_nodes = {}
 
-        self.root_path = root_path
         # for each subtask keep info about stdout received from computing node
         self.stdout: Dict[str, str] = {}
         # for each subtask keep info about stderr received from computing node
@@ -171,7 +165,6 @@ class CoreTask(Task):
         # for each subtask keep info about files containing results
         self.results: Dict[str, list] = {}
 
-        self.res_files = {}
         self.tmp_dir = None
         self.max_pending_client_results = max_pending_client_results
 
@@ -315,9 +308,6 @@ class CoreTask(Task):
     @handle_key_error
     def get_trust_mod(self, subtask_id):
         return 1.0
-
-    def add_resources(self, resources):
-        self.res_files = resources
 
     def get_stderr(self, subtask_id):
         return self.stderr.get(subtask_id, "")
@@ -504,7 +494,6 @@ class CoreTaskBuilder(TaskBuilder):
                  dir_manager: DirManager) -> None:
         super(CoreTaskBuilder, self).__init__()
         self.task_definition = task_definition
-        self.root_path = dir_manager.root_path
         self.dir_manager = dir_manager
         self.owner = owner
         self.src_code = ""
@@ -521,7 +510,6 @@ class CoreTaskBuilder(TaskBuilder):
         kwargs['total_tasks'] = int(self.task_definition.subtasks_count)
         kwargs["task_definition"] = self.task_definition
         kwargs["owner"] = self.owner
-        kwargs["root_path"] = self.root_path
         return kwargs
 
     @classmethod

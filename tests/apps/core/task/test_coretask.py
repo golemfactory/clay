@@ -417,11 +417,6 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         c = self._get_core_task()
         assert c.get_trust_mod("subtask1") == 1.0
 
-    def test_add_resources(self):
-        c = self._get_core_task()
-        c.add_resources(["file1", "file2"])
-        assert c.res_files == ["file1", "file2"]
-
     def test_query_extra_data_for_test_task(self):
         c = self._get_core_task()
         assert c.query_extra_data_for_test_task() is None

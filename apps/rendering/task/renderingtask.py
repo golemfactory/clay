@@ -45,13 +45,12 @@ class RenderingTask(CoreTask):
     # Task methods #
     ################
 
-    def __init__(self, task_definition, total_tasks, root_path, owner):
+    def __init__(self, task_definition, total_tasks, owner):
 
         CoreTask.__init__(
             self,
             task_definition=task_definition,
             owner=owner,
-            root_path=root_path,
             total_tasks=total_tasks)
 
         if task_definition.docker_images is None:

@@ -1072,8 +1072,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                                      owner=dt_p2p_factory.Node(
                                          node_name='node',
                                      ),
-                                     total_tasks=n,
-                                     root_path=self.path)
+                                     total_tasks=n)
             task.initialize(dirmanager.DirManager(self.path))
             task.get_total_tasks = Mock()
             task.get_progress = Mock()

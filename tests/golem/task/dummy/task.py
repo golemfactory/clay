@@ -102,7 +102,6 @@ class DummyTask(Task):
         self.task_id = task_id
         self.task_params = params
         self.task_resources = []
-        self.resource_parts = {}
 
         self.shared_data_file = None
         self.subtasks_count = num_subtasks
@@ -233,12 +232,6 @@ class DummyTask(Task):
 
     def get_resources(self):
         return self.task_resources
-
-    def add_resources(self, resource_parts):
-        """Add resources to this task.
-        :param map[str, list[str]] resource_parts:
-        """
-        self.resource_parts = resource_parts
 
     def computation_failed(self, subtask_id):
         print('DummyTask.computation_failed called')

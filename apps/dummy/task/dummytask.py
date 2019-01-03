@@ -42,12 +42,10 @@ class DummyTask(CoreTask):
     def __init__(self,
                  total_tasks: int,
                  task_definition: DummyTaskDefinition,
-                 root_path=None,
                  owner=None):
         super().__init__(
             owner=owner,
             task_definition=task_definition,
-            root_path=root_path,
             total_tasks=total_tasks
         )
 
