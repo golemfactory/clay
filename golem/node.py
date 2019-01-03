@@ -443,20 +443,10 @@ class Node(object):
         self.rpc_session.add_procedures(methods).addCallback(  # type: ignore
             rpc_ready,
         )
-        self._start_wsgi()
         # pylint: enable=no-member
 
-
-    # credit https://gist.github.com/ianschenck/977379a91154fe264897
-    def _start_wsgi(self):
-        from twisted.web.wsgi import WSGIResource
-        from twisted.web.server import Site
         from .gugateway import gateway
-
-        gateway.client = self.client
-        logger.warning(f'Starting {gateway.app.name} on port {gateway.port}')
-        self._reactor.listenTCP(gateway.port, Site(WSGIResource(
-            self._reactor, self._reactor.getThreadPool(), gateway.app)))
+        gateway.start(self.client)
 
     def _setup_apps(self) -> None:
         if not self.client:

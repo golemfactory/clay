@@ -6,8 +6,7 @@ info:
   license:
     name: GPL 3.0
     url: 'https://www.gnu.org/licenses/gpl-3.0.html'
-host: unlimited.golem.network
-basePath: /gw/v1
+host: 127.0.0.1:55001
 schemes:
   - https
 paths:
@@ -41,8 +40,6 @@ paths:
             $ref: '#/definitions/SubscriberStatus'
         '404':
           description: subscription not found
-        '405':
-          description: invalid input
     delete:
       summary: Removes subscription
       operationId: unsubscribe
@@ -51,8 +48,6 @@ paths:
           description: subscription deleted
         '404':
           description: subscription not found
-        '405':
-          description: invalid input
   '/{nodeId}/tasks/{taskId}':
     parameters:
       - $ref: '#/parameters/nodeId'
@@ -157,7 +152,7 @@ paths:
         '404':
           description: subscription not found
         '405':
-          description: invalid request
+          description: invalid input
   '/{nodeId}/resources/{resourceId}':
     parameters:
       - $ref: '#/parameters/nodeId'

@@ -1,12 +1,41 @@
 from flask import Flask, request, send_file
-import json
-
 from golem.client import Client
+import json
+import logging
+from .subscription import TaskStatus, Subscription, TaskType
+from typing import Dict
 
-client: Client = None
-app = Flask("Golem Unlimited Gateway")
-port = 55001
-subscriptions = dict()
+logger: logging.Logger = logging.getLogger(__name__)
+port: int = 55001
+app: Flask = Flask(__name__)
+golem_client: Client = None
+subscriptions: Dict[str, Subscription] = dict()
+
+
+# credit: https://gist.github.com/ianschenck/977379a91154fe264897
+def start(client: Client):
+    global golem_client
+    golem_client = client
+
+    from twisted.internet import reactor
+    from twisted.web.wsgi import WSGIResource
+    from twisted.web.server import Site
+
+    logger.info(f'Starting "Golem Unlimited Gateway" on port: {port}')
+    reactor.listenTCP(
+        port, Site(WSGIResource(reactor, reactor.getThreadPool(), app)))
+
+
+def _json_response(msg: str, http_status_code: int = 200):
+    return json.dumps({'msg': msg}), http_status_code
+
+
+def _not_found(msg: str):
+    return _json_response(msg + ' not found', 404)
+
+
+def _invalid_input(msg: str):
+    return _json_response('invalid input: ' + msg, 405)
 
 
 @app.route('/')
@@ -15,37 +44,32 @@ def hello():
     return send_file('client-api-doc.html')
 
 
-@app.route('/settings')
-def settings():
-    return json.dumps(client.get_settings())
-
-
 @app.errorhandler(404)
 def page_not_found(error):
     return f'Not found. See <a href="/">API doc</a>', 404
+
+
+@app.route('/settings')
+def settings():
+    return json.dumps(golem_client.get_settings())
 
 
 @app.route('/subscriptions/<node_id>', methods=['POST'])
 def subscribe(node_id):
     """Creates or amends subscription to Golem Network"""
     if 'taskType' not in request.json:
-        return 'no task type', 405
+        return _invalid_input('no task type')
 
-    task_type = request.json['taskType']
     status_code = 200
     if node_id not in subscriptions:
-        subscriptions[node_id] = set()
+        subscriptions[node_id] = Subscription()
         status_code = 201
 
-    if task_type in subscriptions[node_id]:
-        subscriptions[node_id].remove(task_type)
-    else:
-        subscriptions[node_id].add(task_type)
+    err_msg = subscriptions[node_id].toggle_task_type(request.json['taskType'])
+    if err_msg:
+        return _invalid_input(err_msg)
 
-    return json.dumps({
-        'node id': node_id,
-        'task_types': list(subscriptions[node_id])
-    }), status_code
+    return subscriptions[node_id].to_json(), status_code
 
 
 @app.route('/subscriptions/<node_id>', methods=['GET'])
@@ -53,18 +77,9 @@ def subscriber(node_id):
     """Gets subscription status"""
 
     if node_id not in subscriptions:
-        return 'Subscription not found', 404
+        return _not_found('subscription')
 
-    return json.dumps({
-        'active': True,
-        'tasksTypes': list(subscriptions[node_id]),
-        'tasksStats': {
-            'requested': 7,
-            'succeded': 5,
-            'failed': 1,
-            'timedout': 1
-        }
-    })
+    return subscriptions[node_id].to_json()
 
 
 @app.route('/subscriptions/<node_id>', methods=['DELETE'])
@@ -72,11 +87,11 @@ def usubscribe(node_id):
     """Removes subscription"""
 
     if node_id not in subscriptions:
-        return 'Subscription not found', 404
+        return _not_found('subscription')
 
     subscriptions.pop(node_id)
 
-    return 'subscription deleted'
+    return _json_response('subscription deleted')
 
 
 @app.route('/<node_id>/tasks/<uuid:task_id>', methods=['POST'])
@@ -84,7 +99,7 @@ def want_to_compute_task(node_id, task_id):
     """Sends task computation willingness"""
 
     if node_id not in subscriptions:
-        return 'Subscription not found', 404
+        return _not_found('subscription')
 
     return json.dumps({
         'subtaskId': '435bd45a-12d4-144f-233c-6e845eabffe0',
@@ -104,7 +119,7 @@ def task_info(node_id, task_id):
     """Gets task information"""
 
     if node_id not in subscriptions:
-        return f'Subscription not found {task_id}', 404
+        return _not_found(f'Task {task_id}')
 
     return json.dumps({
         'taskId': '682e9b26-ed89-11e8-a9e0-6e845eabffe0',
@@ -122,9 +137,11 @@ def confirm_subtask(node_id, subtask_id):
     """Confirms subtask computation start"""
 
     if node_id not in subscriptions:
-        return 'Subscription not found', 404
+        return _not_found('subscription')
 
-    return 'OK'
+    subscriptions[node_id].increment_stat(TaskStatus.requested)
+
+    return _json_response('OK')
 
 
 @app.route('/<node_id>/subtasks/<uuid:subtask_id>', methods=['GET'])
@@ -132,7 +149,7 @@ def subtask_info(node_id, subtask_id):
     """Gets subtask information"""
 
     if node_id not in subscriptions:
-        return 'Subscription not found', 404
+        return _not_found('subscription')
 
     return json.dumps({
         'subtaskId': '435bd45a-12d4-144f-233c-6e845eabffe0',
@@ -152,12 +169,16 @@ def subtask_result(node_id, subtask_id):
     """Reports subtask computation result"""
 
     if node_id not in subscriptions:
-        return 'Subscription not found', 404
+        return _not_found('subscription')
 
     if 'status' not in request.json:
-        return 'status required', 405
+        return _invalid_input('status required')
 
-    return 'OK'
+    err_msg = subscriptions[node_id].increment_stat(request.json['status'])
+    if err_msg:
+        return _invalid_input(err_msg)
+
+    return _json_response('OK')
 
 
 @app.route('/<node_id>/subtask/<uuid:subtask_id>/cancel', methods=['POST'])
@@ -165,29 +186,29 @@ def cancel_subtask(node_id, subtask_id):
     """Cancels subtask computation (upon failure or resignation)"""
 
     if node_id not in subscriptions:
-        return 'Subscription not found', 404
+        return _not_found('subscription')
 
-    return 'OK'
+    return _json_response('OK')
 
 
 @app.route('/<node_id>/resources', methods=['POST'])
 def upload_resource(node_id):
     """Receives a resource file from a caller"""
     if node_id not in subscriptions:
-        return 'Subscription not found', 404
+        return _not_found('subscription')
 
     for (filename, file) in request.files.items():
         # file.save(filename)
         print(f'file {file.filename} saved as {filename}')
 
-    return f'upload successful {request.form}, {request.files}'
+    return _json_response(f'upload successful {request.form}, {request.files}')
 
 
 @app.route('/<node_id>/resources/<uuid:resource_id>', methods=['GET'])
 def download_resource(node_id, resource_id):
     """Sends a binary resource to a caller"""
     if node_id not in subscriptions:
-        return 'Subscription not found', 404
+        return _not_found('subscription')
 
     return send_file('foo')
 
@@ -196,8 +217,8 @@ def download_resource(node_id, resource_id):
 def fetch_events(node_id):
     """List events for given node id; starting after last event id"""
 
-    # if node_id not in subscriptions:
-    #     return 'Subscription not found', 404
+    if node_id not in subscriptions:
+        return _not_found('subscription')
 
     last_event_id = request.args.get('lastEventId', 1)
 
@@ -231,7 +252,7 @@ def fetch_events(node_id):
         'verificationResult': None
     })
 
-    for task_id, header in client.get_known_tasks().items():
+    for task_id, header in golem_client.get_known_tasks().items():
         last_event_id += 1
         fixed_header = header['fixed_header']
         events_list.append({
