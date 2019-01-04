@@ -25,7 +25,7 @@ def compare_version(client_ver):
     except ValueError:
         logger.debug('Received invalid version tag: %r', client_ver)
         return
-    if gcons.GOLEM_VERSION < v_client:
+    if gconst.GOLEM_VERSION < v_client:
         dispatcher.send(
             signal='golem.p2p',
             event='new_version',
