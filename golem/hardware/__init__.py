@@ -94,7 +94,7 @@ def cpus() -> List[int]:
         affinity = psutil.Process().cpu_affinity()
     except Exception as e:
         logger.debug("Couldn't read CPU affinity: %r", e)
-        affinity = list(range(0, core_count - 1))
+        affinity = list(range(0, core_count))
 
     # FIXME: The Linux case will no longer be valid when VM computations are
     #        introduced.
