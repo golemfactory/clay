@@ -105,7 +105,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         shutil.rmtree(str(self.tm.tasks_dir))
 
     def _get_task_header(self, task_id, timeout, subtask_timeout):
-        return dt_tasks_factory.TaskHeader(
+        return dt_tasks_factory.TaskHeaderFactory(
             task_id=task_id,
             task_owner=dt_p2p_factory.Node(
                 key="task_owner_key_%s" % (self.test_nonce,),
@@ -408,7 +408,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             pub_port=1024,
             key="key_id",
         )
-        th = dt_tasks_factory.TaskHeader(
+        th = dt_tasks_factory.TaskHeaderFactory(
             task_id="xyz",
             environment="DEFAULT",
             task_owner=owner,
@@ -722,7 +722,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             key="abcde",
         )
         t = TaskMock(
-            header=dt_tasks_factory.TaskHeader(
+            header=dt_tasks_factory.TaskHeaderFactory(
                 task_id="xyz",
                 environment="DEFAULT",
                 task_owner=owner,
@@ -937,7 +937,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             p2p_prv_port=40102, p2p_pub_port=40102
         )
         task = TaskMock(
-            header=dt_tasks_factory.TaskHeader(
+            header=dt_tasks_factory.TaskHeaderFactory(
                 task_id="task_id",
                 environment="environment",
                 task_owner=node,

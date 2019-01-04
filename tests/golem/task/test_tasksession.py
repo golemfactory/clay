@@ -124,6 +124,7 @@ class TaskSessionTaskToComputeTest(TestCase):
             'max_resource_size': 3,
             'max_memory_size': 1,
             'num_cores': 8,
+            'task_header': self._get_task_header()
         }
 
     def _get_wtct(self):
@@ -135,7 +136,11 @@ class TaskSessionTaskToComputeTest(TestCase):
         return msg
 
     def _fake_add_task(self):
-        task_header = dt_tasks_factory.TaskHeader(
+        task_header = self._get_task_header()
+        self.task_manager.tasks[self.task_id] = Mock(header=task_header)
+
+    def _get_task_header(self):
+        return dt_tasks_factory.TaskHeaderFactory(
             task_id=self.task_id,
             environment='',
             task_owner=dt_p2p_factory.Node(
@@ -147,7 +152,6 @@ class TaskSessionTaskToComputeTest(TestCase):
             subtask_timeout=1,
             max_price=1,
         )
-        self.task_manager.tasks[self.task_id] = Mock(header=task_header)
 
     def _set_task_state(self):
         task_state = taskstate.TaskState()
@@ -161,7 +165,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts._handshake_required = Mock(return_value=False)
         params = self._get_task_parameters()
         ts.task_server.task_keeper.task_headers = task_headers = {}
-        task_headers[params['task_id']] = dt_tasks_factory.TaskHeader()
+        task_headers[params['task_id']] = dt_tasks_factory.TaskHeaderFactory()
         ts.concent_service.enabled = False
         ts.request_task(
             params['node_name'],
@@ -263,7 +267,7 @@ class TaskSessionTaskToComputeTest(TestCase):
             ['concent_enabled', self.use_concent],
             ['price', 1],
             ['size', task_state.package_size],
-            ['ethsig', ms.ethsig]
+            ['ethsig', ms.ethsig],
         ]
         self.assertCountEqual(ms.slots(), expected)
 
@@ -916,7 +920,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         )
         task_keeper = CompTaskKeeper(self.new_path)
         task_keeper.add_request(
-            dt_tasks_factory.TaskHeader(
+            dt_tasks_factory.TaskHeaderFactory(
                 environment='DEFAULT',
                 task_id="abc",
                 task_owner=task_owner,

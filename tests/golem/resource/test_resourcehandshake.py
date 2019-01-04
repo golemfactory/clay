@@ -89,7 +89,9 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         self.session = MockTaskSession(self.tempdir)
         self.session._start_handshake = Mock()
         self.session.task_server.task_keeper.task_headers = task_headers = {}
-        task_headers[self.message['task_id']] = dt_tasks_factory.TaskHeader()
+        task_headers[
+            self.message['task_id']
+        ] = dt_tasks_factory.TaskHeaderFactory()
         self.session.task_server.client.concent_service.enabled = False
 
     def test_request_task_handshake(self, *_):

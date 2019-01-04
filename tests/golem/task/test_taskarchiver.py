@@ -36,7 +36,7 @@ class TestTaskArchiver(TestCase):
         if not deadline:
             deadline = timeout_to_deadline(36000)
 
-        header = dt_tasks_factory.TaskHeader(
+        header = dt_tasks_factory.TaskHeaderFactory(
             task_id=str(uuid4()),
             environment="DEFAULT",
             task_owner=dt_p2p_factory.Node(),
