@@ -27,12 +27,10 @@ from golem_messages.message import concents as concent_msg
 from golem_sci import (
     new_sci_rpc, SmartContractsInterface, JsonTransactionsStorage)
 
-
 from golem.core import variables
+from golem.ethereum.transactionsystem import tETH_faucet_donate
 from golem.network.concent import client
 from golem.utils import privkeytoaddr
-
-from golem.ethereum.transactionsystem import tETH_faucet_donate
 
 logger = logging.getLogger(__name__)
 
@@ -63,6 +61,8 @@ class ConcentBaseTest:
 
     def setUp(self):
         from golem.config.environments import set_environment
+        from golem.core import common
+        common.config_logging(suffix='concent-acceptance')
         concent_variant = os.environ.get('CONCENT_VARIANT', 'staging')
         set_environment('testnet', concent_variant)
         self.variant = variables.CONCENT_CHOICES[concent_variant]
