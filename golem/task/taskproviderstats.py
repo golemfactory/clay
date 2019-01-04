@@ -56,9 +56,9 @@ class ProviderStatsManager:
             if isinstance(message, TaskToCompute):
                 self._on_ttc_message(message)
             elif isinstance(message, SubtaskResultsAccepted):
-                self._on_sra_message(message)
+                self._on_sra_message()
             elif isinstance(message, SubtaskResultsRejected):
-                self._on_srr_message(message)
+                self._on_srr_message()
 
     def _on_wtct_message(self, message: WantToComputeTask) -> None:
         ProviderTTCDelayTimers.start(message.task_id)
@@ -77,10 +77,10 @@ class ProviderStatsManager:
         self.keeper.increase_stat('provider_wtct_to_ttc_cnt')
         self.keeper.increase_stat('provider_wtct_to_ttc_delay_sum', dt)
 
-    def _on_sra_message(self, message: SubtaskResultsAccepted):
+    def _on_sra_message(self):
         self.keeper.increase_stat('provider_sra_cnt')
 
-    def _on_srr_message(self, message: SubtaskResultsRejected):
+    def _on_srr_message(self):
         self.keeper.increase_stat('provider_srr_cnt')
 
     # --- Subtask ---

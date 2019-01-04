@@ -898,7 +898,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 event='received',
                 message=msg
             )
-            
+
             self.task_server.subtask_rejected(
                 sender_node_id=self.key_id,
                 subtask_id=subtask_id,
