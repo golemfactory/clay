@@ -77,21 +77,24 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         super().setUp()
 
         self.key_id = str(uuid.uuid4())
+        task_id = str(uuid.uuid4())
+        self.task_header = dt_tasks_factory.TaskHeaderFactory()
         self.message = dict(
             node_name='test node',
-            task_id=str(uuid.uuid4()),
+            task_id=task_id,
             perf_index=4000,
             price=5,
             max_resource_size=10 * 10 ** 8,
             max_memory_size=10 * 10 ** 8,
-            num_cores=10
+            num_cores=10,
+            # task_header=task_header.to_dict(),
         )
         self.session = MockTaskSession(self.tempdir)
         self.session._start_handshake = Mock()
         self.session.task_server.task_keeper.task_headers = task_headers = {}
         task_headers[
-            self.message['task_id']
-        ] = dt_tasks_factory.TaskHeaderFactory()
+            task_id
+        ] = self.task_header
         self.session.task_server.client.concent_service.enabled = False
 
     def test_request_task_handshake(self, *_):
@@ -103,19 +106,22 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
     def test_request_task_success(self, *_):
         self.session._handshake_required = Mock()
         self.session.send = Mock()
+        wtct_dict = {k: v for k, v in self.message.items()}
+        wtct_dict.update({
+            'task_header': self.task_header.to_dict()
+        })
 
         self.session._handshake_required.return_value = False
         self.session.request_task(**self.message)
 
-        assert not self.session.disconnect.called
-        assert self.session.send.called
+        self.assertFalse(self.session.disconnect.called)
+        self.assertTrue(self.session.send.called)
 
-        slots = self.session.send.call_args[0][0].__slots__
+        sent_wtct = self.session.send.call_args[0][0]
 
-        msg = message.tasks.WantToComputeTask(**self.message)
-        msg_slots = msg.__slots__
-
-        assert slots == msg_slots
+        msg = message.tasks.WantToComputeTask(**wtct_dict)
+        self.assertEqual(sent_wtct.__slots__, msg.__slots__)
+        self.assertEqual(sent_wtct.task_header, self.task_header)
 
     def test_request_task_failure(self, *_):
         self.session._handshake_required = Mock()

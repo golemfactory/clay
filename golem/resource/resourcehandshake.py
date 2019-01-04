@@ -101,6 +101,7 @@ class ResourceHandshakeSessionMixin:
             concent_enabled=concent_enabled,
             provider_public_key=self.task_server.get_key_id(),
             provider_ethereum_public_key=self.task_server.get_key_id(),
+            task_header=task_header,
         )
 
         if self._is_peer_blocked(key_id):
