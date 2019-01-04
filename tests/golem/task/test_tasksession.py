@@ -543,12 +543,19 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             self.task_session._react_to_subtask_results_rejected(srr)
         dropped.assert_called_once_with()
 
-    def test_result_rejected(self):
+    @patch('golem.task.tasksession.dispatcher.send')
+    def test_result_rejected(self, send_mock):
         srr = self._get_srr()
         self.__call_react_to_srr(srr)
         self.task_session.task_server.subtask_rejected.assert_called_once_with(
             sender_node_id=self.task_session.key_id,
             subtask_id=srr.report_computed_task.subtask_id,  # noqa pylint:disable=no-member
+        )
+
+        send_mock.assert_called_once_with(
+            signal='golem.message',
+            event='received',
+            message=srr
         )
 
     def test_result_rejected_with_wrong_key(self):
@@ -1120,7 +1127,8 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.provider_keys = cryptography.ECCx(None)
         self.provider_key_id = encode_hex(self.provider_keys.raw_pubkey)
 
-    def test_react_to_subtask_result_accepted(self):
+    @patch('golem.task.tasksession.dispatcher.send')
+    def test_react_to_subtask_results_accepted(self, send_mock):
         # given
         rct = msg_factories.tasks.ReportComputedTaskFactory(
             task_to_compute__sign__privkey=self.requestor_keys.raw_privkey,
@@ -1145,7 +1153,7 @@ class SubtaskResultsAcceptedTest(TestCase):
                                                   .return_value = False
 
         # when
-        self.task_session._react_to_subtask_result_accepted(sra)
+        self.task_session._react_to_subtask_results_accepted(sra)
 
         # then
         self.task_server.subtask_accepted.assert_called_once_with(
@@ -1161,6 +1169,12 @@ class SubtaskResultsAcceptedTest(TestCase):
             'ForceSubtaskResults',
         )
 
+        send_mock.assert_called_once_with(
+            signal='golem.message',
+            event='received',
+            message=sra
+        )
+
     def test_react_with_wrong_key(self):
         # given
         key_id = "CDEF"
@@ -1170,7 +1184,7 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_session.key_id = key_id
 
         # when
-        self.task_session._react_to_subtask_result_accepted(sra)
+        self.task_session._react_to_subtask_results_accepted(sra)
 
         # then
         self.task_server.subtask_accepted.assert_not_called()

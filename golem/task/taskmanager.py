@@ -127,6 +127,8 @@ class TaskManager(TaskEventListener):
         )
 
         self.requestor_stats_manager = RequestorTaskStatsManager()
+        self.provider_stats_manager = \
+            self.comp_task_keeper.provider_stats_manager
 
         self.finished_cb = finished_cb
 

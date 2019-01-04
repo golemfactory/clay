@@ -873,9 +873,17 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             'in_network': self.get_task_count(),
             'supported': self.get_supported_task_count(),
             'subtasks_computed': self.get_computed_task_count(),
+            'subtasks_accepted': self.get_accepted_task_count(),
+            'subtasks_rejected': self.get_rejected_task_count(),
             'subtasks_with_errors': self.get_error_task_count(),
-            'subtasks_with_timeout': self.get_timeout_task_count()
+            'subtasks_with_timeout': self.get_timeout_task_count(),
         }
+
+    def get_accepted_task_count(self):
+        self.get_task_provider_stat('provider_sra_cnt')
+
+    def get_rejected_task_count(self):
+        self.get_task_provider_stat('provider_srr_cnt')
 
     def get_supported_task_count(self) -> int:
         if self.task_server:
@@ -909,6 +917,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         if self.task_server and self.task_server.task_computer:
             return self.task_server.task_computer.stats.get_stats(name)
         return None, None
+
+    def get_task_provider_stat(self, name):
+        if self.task_server and self.task_manager:
+            return self.task_manager.provider_stats_manager.get_stats(name)
 
     @rpc_utils.expose('pay.balance')
     def get_balance(self):
