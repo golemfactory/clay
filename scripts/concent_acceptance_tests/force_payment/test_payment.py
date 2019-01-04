@@ -1,3 +1,4 @@
+# pylint: disable=no-value-for-parameter
 import time
 import unittest
 
@@ -12,9 +13,30 @@ from ..base import SCIBaseTest
 
 
 fpr_reasons = message.concents.ForcePaymentRejected.REASON
+sr_reasons = message.concents.ServiceRefused.REASON
 
 
 class RequestorDoesntPayTestCase(SCIBaseTest):
+    def assertPaymentRejected(
+            self,
+            msg: message.concents.ForcePayment,
+            reason=None,
+        ):
+        response = self.provider_load_response(self.provider_send(msg))
+        self.assertIsInstance(response, message.concents.ForcePaymentRejected)
+        if reason:
+            self.assertEqual(response.reason, reason)
+        return response
+
+    def assertServiceRefused(
+            self,
+            msg: message.concents.ServiceRefused,
+            reason=None,
+        ):
+        self.assertIsInstance(msg, message.concents.ServiceRefused)
+        if reason:
+            self.assertEqual(msg.reason, reason)
+
     def test_empty_list(self):
         fp = message.concents.ForcePayment(
             subtask_results_accepted_list=[],
@@ -72,7 +94,6 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
                 sra1, sra2,
             ],
         )
-        print(fp)
         self.assertTrue(
             fp.subtask_results_accepted_list[0].verify_signature(  # noqa pylint:disable=no-member
                 self.requestor_pub_key
@@ -84,7 +105,7 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
             )
         )
         response = self.provider_load_response(self.provider_send(fp))
-        self.assertIsInstance(response, message.concents.ServiceRefused)
+        self.assertServiceRefused(response)
 
     def test_multiple_eth_accounts(self):
         ttc_kwargs = self.gen_ttc_kwargs('task_to_compute__')
@@ -130,9 +151,8 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
                 sra1, sra2,
             ],
         )
-        print(fp)
         response = self.provider_load_response(self.provider_send(fp))
-        self.assertIsInstance(response, message.concents.ServiceRefused)
+        self.assertServiceRefused(response)
 
     def test_provider_asks_too_early(self):
         """Test messages due date
@@ -155,9 +175,7 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
                 sra,
             ],
         )
-        response = self.provider_load_response(self.provider_send(fp))
-        self.assertIsInstance(response, message.concents.ForcePaymentRejected)
-        self.assertEqual(response.reason, fpr_reasons.TimestampError)
+        response = self.assertPaymentRejected(fp, fpr_reasons.TimestampError)
         self.assertEqual(response.force_payment, fp)
 
     @unittest.skip('too long')
@@ -186,8 +204,7 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
                 sra,
             ],
         )
-        response = self.provider_load_response(self.provider_send(fp))
-        self.assertIsInstance(response, message.concents.ForcePaymentRejected)
+        self.assertPaymentRejected(fp)
 
     def test_force_payment_committed_requestor_has_more_funds(self):
         """Concent service commits forced payment
@@ -225,10 +242,7 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
             response,
             message.concents.ServiceRefused,
         )
-        self.assertEqual(
-            response.reason,
-            message.concents.ServiceRefused.REASON.TooSmallRequestorDeposit
-        )
+        self.assertServiceRefused(response, sr_reasons.TooSmallRequestorDeposit)
 
     def test_sra_not_signed(self):
         rct = msg_factories.tasks.ReportComputedTaskFactory(
