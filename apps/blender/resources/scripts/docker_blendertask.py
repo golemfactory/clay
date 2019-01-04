@@ -8,7 +8,8 @@ with open('params.json', 'r') as params_file:
 
 def run_blender_task():
 
-    # Note: params dictionary contains both: rendering parameters and paths mounted by golem.
+    # Note: params dictionary contains both: rendering parameters
+    # and paths mounted by golem.
     paths = params
 
     results_info = blender.render(params, paths)

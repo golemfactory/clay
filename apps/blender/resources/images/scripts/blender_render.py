@@ -2,9 +2,9 @@ import os
 import stat
 import subprocess
 import sys
-import numpy
 from multiprocessing import cpu_count
 from typing import List
+import numpy
 
 import scenefileeditor
 
