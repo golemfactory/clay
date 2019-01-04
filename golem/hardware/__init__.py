@@ -54,7 +54,7 @@ def defaults() -> Dict[str, int]:
 def scale_memory(amount: int, unit: MemSize, to_unit: MemSize) -> int:
     diff = to_unit.value - unit.value
     scaled = int(amount / (MEM_MULTIPLE ** diff))
-    return _pad_memory(scaled)
+    return pad_memory(scaled)
 
 
 def cap_cpus(core_num: int, cap: int = sys.maxsize) -> int:
@@ -71,7 +71,7 @@ def cap_memory(mem_size: int, cap: int = sys.maxsize,
     cap = max(cap, minimum)
     available = min(cap, available)
     capped = max(min(mem_size, available), minimum)
-    return _pad_memory(capped)
+    return pad_memory(capped)
 
 
 def cap_disk(disk_space: int, cap: int = sys.maxsize) -> int:
@@ -123,7 +123,7 @@ def memory() -> int:
     amount = max(capped, MIN_MEMORY_SIZE)
 
     logger.debug("Total memory: %r", amount)
-    return _pad_memory(amount)
+    return pad_memory(amount)
 
 
 def memory_available() -> int:
@@ -141,7 +141,7 @@ def disk() -> int:
     return free_partition_space(_working_dir)
 
 
-def _pad_memory(amount: int) -> int:
+def pad_memory(amount: int) -> int:
     """
     Returns the provided memory amount as a multiple of 2
     """
