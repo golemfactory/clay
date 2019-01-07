@@ -1,13 +1,27 @@
 from collections import Counter
-from enum import auto, Enum, unique
+from enum import auto, Enum
 import json
 from typing import Union
 
 
-@unique
 class TaskType(Enum):
     Blender = auto()
     Transcoding = auto()
+
+    @classmethod
+    def match(cls, task_type: str):
+        try:
+            return TaskType[task_type]
+        except KeyError as e:
+            raise InvalidTaskType(str(e))
+
+
+class InvalidTaskType(Exception):
+    known_task_types = ', '.join(TaskType.__members__)
+
+    def __str__(self):
+        return f'task type {self.args[0]} not known. Here is a list' \
+               f' of supported task types: {self.known_task_types}'
 
 
 class TaskStatus(Enum):
@@ -16,42 +30,36 @@ class TaskStatus(Enum):
     failed = auto()
     timedout = auto()
 
+    @classmethod
+    def match(cls, task_status: str):
+        try:
+            return TaskStatus[task_status]
+        except KeyError as e:
+            raise InvalidTaskStatus(str(e))
+
+
+class InvalidTaskStatus(Exception):
+    known_task_status = ', '.join(TaskType.__members__)
+
+    def __str__(self):
+        return f'task status {self.args[0]} not known. Here is a list' \
+               f' of supported task types: {self.known_task_types}'
+
 
 class Subscription(object):
     """ Golem Unlimited Gateway subscription"""
 
-    def __init__(self):
-        self.task_types: set[TaskType] = set()
+    def __init__(self, task_type: TaskType):
+        self.task_type: TaskType = task_type
         self.stats: Counter = Counter()
 
-    # TODO: should we allow subscriptions w/o task type assigned
-    # TODO: maybe separate subscriptions per task type and node_id
-    def toggle_task_type(self, task_type: Union[TaskType, str]) -> str:
-        if isinstance(task_type, str):
-            try:
-                task_type = TaskType[task_type]
-            except KeyError:
-                known_task_types = ', '.join(TaskType.__members__)
-                return f'task type {task_type} not known. Here is a list of ' \
-                       f'supported task types: {known_task_types}'
-
-        if task_type in self.task_types:
-            self.task_types.remove(task_type)
-        else:
-            self.task_types.add(task_type)
-
-    def increment_stat(self, status: Union[TaskStatus, str]) -> str:
+    def increment(self, status: Union[TaskStatus, str]) -> str:
         if isinstance(status, str):
-            try:
-                status = TaskStatus[status]
-            except KeyError:
-                known_stats = ', '.join(TaskStatus.__members__)
-                return f'unknown task status {status}. Here is a list of ' \
-                       f'supported task statuses: {known_stats}'
+            status = TaskStatus.match(status)
         self.stats.update([status.name])
 
     def to_json(self) -> json:
         return json.dumps({
-            'taskTypes': list(map(lambda x: x.name, self.task_types)),
+            'taskType': self.task_type.name,
             'taskStats': dict(self.stats)
         })

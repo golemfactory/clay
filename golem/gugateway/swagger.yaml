@@ -13,31 +13,38 @@ paths:
   '/subscriptions/{nodeId}':
     parameters:
       - $ref: '#/parameters/nodeId'
-    post:
-      summary: Creates or amends subscription to Golem network
-      operationId: subscribe
-      parameters:
-        - name: body
-          in: body
-          description: Subscription spec
-          required: true
-          schema:
-            $ref: '#/definitions/SubscribeRequest'
+    get:
+      summary: Gets all subscriptions for node
+      operationId: all_subscriptions
       responses:
         '200':
-          description: subscription amended (supported taskTypes changed)
+          description: OK
+          schema:
+            type: array
+            items:
+              $ref: '#/definitions/SubscriptionStatus'
+        '404':
+          description: subscription not found
+  '/subscriptions/{nodeId}/{taskType}':
+    parameters:
+      - $ref: '#/parameters/nodeId'
+      - $ref: '#/parameters/taskType'
+    put:
+      summary: Creates or amends subscription to Golem network
+      operationId: subscribe
+      responses:
         '201':
           description: subscription created
         '405':
           description: invalid input
     get:
-      summary: Gets subscription status
+      summary: Gets single subscription details
       operationId: subscription
       responses:
         '200':
           description: OK
           schema:
-            $ref: '#/definitions/SubscriberStatus'
+            $ref: '#/definitions/SubscriptionStatus'
         '404':
           description: subscription not found
     delete:
@@ -169,16 +176,17 @@ paths:
             type: file
         '404':
           description: not found
-  '/{nodeId}/events':
+  '/{nodeId}/{taskType}/events':
     parameters:
       - $ref: '#/parameters/nodeId'
+      - $ref: '#/parameters/taskType'
       - name: lastEventId
         in: query
         description: provide event id from previous call
         type: integer
         format: int64
     get:
-      summary: List events for given node id; starting after last event id
+      summary: List events for given node id and task type; starting after last event id
       operationId: fetchEvents
       responses:
         '200':
@@ -197,6 +205,14 @@ parameters:
     description: >
       ethereum address identifying node e.g.,
       `0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b`
+  taskType:
+    name: taskType
+    type: string
+    in: path
+    required: true
+    enum:
+      - Blender
+      - Transcoding
   taskId:
     name: taskId
     type: string
@@ -219,21 +235,12 @@ parameters:
     required: true
     pattern: '[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}'
 definitions:
-  SubscribeRequest:
+  SubscriptionStatus:
     required:
       - taskType
     properties:
       taskType:
-        type: string
-        example: blender
-  SubscriberStatus:
-    required:
-      - taskTypes
-    properties:
-      taskTypes:
-        type: array
-        items:
-          type: string
+        $ref: '#/parameters/taskType'
       taskStats:
         properties:
           requested:

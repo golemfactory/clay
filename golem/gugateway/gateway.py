@@ -2,14 +2,15 @@ from flask import Flask, request, send_file
 from golem.client import Client
 import json
 import logging
-from .subscription import TaskStatus, Subscription, TaskType
+from .subscription import TaskStatus, Subscription, TaskType, InvalidTaskType,\
+    InvalidTaskStatus
 from typing import Dict
 
 logger: logging.Logger = logging.getLogger(__name__)
 port: int = 55001
 app: Flask = Flask(__name__)
 golem_client: Client = None
-subscriptions: Dict[str, Subscription] = dict()
+subscriptions: Dict[str, Dict[TaskType, Subscription]] = dict()
 
 
 # credit: https://gist.github.com/ianschenck/977379a91154fe264897
@@ -31,11 +32,11 @@ def _json_response(msg: str, http_status_code: int = 200):
 
 
 def _not_found(msg: str):
-    return _json_response(msg + ' not found', 404)
+    return _json_response(f'{msg} not found', 404)
 
 
-def _invalid_input(msg: str):
-    return _json_response('invalid input: ' + msg, 405)
+def _invalid_input(msg):
+    return _json_response(f'invalid input: {msg}', 405)
 
 
 @app.route('/')
@@ -54,43 +55,74 @@ def settings():
     return json.dumps(golem_client.get_settings())
 
 
-@app.route('/subscriptions/<node_id>', methods=['POST'])
-def subscribe(node_id):
-    """Creates or amends subscription to Golem Network"""
-    if 'taskType' not in request.json:
-        return _invalid_input('no task type')
-
-    status_code = 200
-    if node_id not in subscriptions:
-        subscriptions[node_id] = Subscription()
-        status_code = 201
-
-    err_msg = subscriptions[node_id].toggle_task_type(request.json['taskType'])
-    if err_msg:
-        return _invalid_input(err_msg)
-
-    return subscriptions[node_id].to_json(), status_code
-
-
 @app.route('/subscriptions/<node_id>', methods=['GET'])
-def subscriber(node_id):
+def all_subscriptions(node_id: str):
     """Gets subscription status"""
 
     if node_id not in subscriptions:
         return _not_found('subscription')
 
-    return subscriptions[node_id].to_json()
+    return '[%s]' % ','.join(
+        [s.to_json() for t, s in subscriptions[node_id].items()])
 
 
-@app.route('/subscriptions/<node_id>', methods=['DELETE'])
-def usubscribe(node_id):
+@app.route('/subscriptions/<node_id>/<task_type>', methods=['PUT'])
+def subscribe(node_id: str, task_type: str):
+    """Creates or amends subscription to Golem Network"""
+
+    status_code = 200
+    if node_id not in subscriptions:
+        subscriptions[node_id] = dict()
+
+    try:
+        task_type = TaskType.match(task_type)
+    except InvalidTaskType as e:
+        return _invalid_input(e)
+
+    if task_type not in subscriptions[node_id]:
+        subscription = Subscription(task_type)
+        subscriptions[node_id][task_type] = subscription
+        status_code = 201
+    else:
+        subscription = subscriptions[node_id][task_type]
+
+    return subscription.to_json(), status_code
+
+
+@app.route('/subscriptions/<node_id>/<task_type>', methods=['GET'])
+def subscription(node_id: str, task_type: str):
+    """Gets subscription status"""
+
+    if node_id not in subscriptions:
+        return _not_found('subscription')
+
+    try:
+        task_type = TaskType.match(task_type)
+    except InvalidTaskType as e:
+        return _invalid_input(e)
+
+    if task_type not in subscriptions[node_id]:
+        return _not_found('subscription')
+
+    return subscriptions[node_id][task_type].to_json()
+
+
+@app.route('/subscriptions/<node_id>/<task_type>', methods=['DELETE'])
+def unsubscribe(node_id: str, task_type: str):
     """Removes subscription"""
 
     if node_id not in subscriptions:
         return _not_found('subscription')
 
-    subscriptions.pop(node_id)
+    try:
+        task_type = TaskType.match(task_type)
+    except InvalidTaskType as e:
+        return _invalid_input(e)
 
+    if task_type not in subscriptions[node_id]:
+        return _not_found('subscription')
+
+    subscriptions.pop(node_id)
     return _json_response('subscription deleted')
 
 
@@ -139,7 +171,8 @@ def confirm_subtask(node_id, subtask_id):
     if node_id not in subscriptions:
         return _not_found('subscription')
 
-    subscriptions[node_id].increment_stat(TaskStatus.requested)
+    # TODO: get real task type
+    subscriptions[node_id][TaskType.Blender].increment(TaskStatus.requested)
 
     return _json_response('OK')
 
@@ -174,9 +207,12 @@ def subtask_result(node_id, subtask_id):
     if 'status' not in request.json:
         return _invalid_input('status required')
 
-    err_msg = subscriptions[node_id].increment_stat(request.json['status'])
-    if err_msg:
-        return _invalid_input(err_msg)
+    try:
+        # TODO: get real task type
+        subscriptions[node_id][TaskType.Blender].increment(
+            request.json['status'])
+    except InvalidTaskStatus as e:
+        return _invalid_input(e)
 
     return _json_response('OK')
 
