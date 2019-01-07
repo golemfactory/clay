@@ -2,6 +2,7 @@
 import logging
 import sys
 import time
+import typing
 import unittest
 
 from golem_messages import cryptography
@@ -57,8 +58,12 @@ class ForcePaymentBase(SCIBaseTest):
             LOA.append(sra)
         return LOA
 
-    def _perform_payments_scenario(self, acceptances, expected_amount_paid,
-                                   expected_amount_pending):
+    def assertPaymentCommited(
+            self,
+            acceptances,
+            expected_amount_paid,
+            expected_amount_pending,
+        ):
         fp = message.concents.ForcePayment(
             subtask_results_accepted_list=acceptances,
         )
@@ -247,20 +252,20 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
         LOA = self._prepare_list_of_acceptances()
         V = sum(sra.task_to_compute.price for sra in LOA)
         self.put_deposit(self.requestor_sci, V + 10)
-        self._perform_payments_scenario(LOA, V, 0)
+        self.assertPaymentCommited(LOA, V, 0)
 
     def test_force_payment_committed_requestor_has_exact_funds(self):
         LOA = self._prepare_list_of_acceptances()
         V = sum(sra.task_to_compute.price for sra in LOA)
         self.put_deposit(self.requestor_sci, V)
-        self._perform_payments_scenario(LOA, V, 0)
+        self.assertPaymentCommited(LOA, V, 0)
 
     def test_force_payment_committed_requestor_has_insufficient_funds(self):
         LOA = self._prepare_list_of_acceptances()
         V = sum(sra.task_to_compute.price for sra in LOA)
         requestors_funds = V - 10
         self.put_deposit(self.requestor_sci, requestors_funds)
-        self._perform_payments_scenario(LOA, requestors_funds, 0)
+        self.assertPaymentCommited(LOA, requestors_funds, 0)
 
     def test_requestor_has_no_funds(self):
         LOA = self._prepare_list_of_acceptances()
@@ -298,12 +303,11 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
 
 
 class RequestorPaysTest(ForcePaymentBase):
-    def test_requestor_already_payed(self):
-        """React to no debts
-
-        If V is <= 0 then Concent service responds with ForcePaymentRejected
-        NoUnsettledTasksFound.
-        """
+    def _pay_and_count(self, modifier) \
+            -> typing.Tuple(
+                    typing.List[message.tasks.SubtaskResultsAccepted],
+                    int,
+            ):
         LOA = self._prepare_list_of_acceptances()
         V = sum(sra.task_to_compute.price for sra in LOA)
         self.put_deposit(self.requestor_sci, V)
@@ -311,7 +315,7 @@ class RequestorPaysTest(ForcePaymentBase):
             payments=[
                 golem_sci.structs.Payment(
                     LOA[-1].task_to_compute.provider_ethereum_address,
-                    V,
+                    int(V*modifier),
                 ),
             ],
             closure_time=int(time.time()),
@@ -332,7 +336,21 @@ class RequestorPaysTest(ForcePaymentBase):
             'Batch transfer timeout',
         )
         sys.stderr.write('\n')
+        return LOA, V
+
+    def test_requestor_already_payed(self):
+        """React to no debts
+
+        If V is <= 0 then Concent service responds with ForcePaymentRejected
+        NoUnsettledTasksFound.
+        """
+        LOA, _V = self._pay_and_count(1)
         fp = message.concents.ForcePayment(
             subtask_results_accepted_list=LOA,
         )
         self.assertPaymentRejected(fp, fpr_reasons.NoUnsettledTasksFound)
+
+    def test_partial_payment(self):
+        LOA, V = self._pay_and_count(0.5)
+        debt = V - int(V * 0.5)
+        self.assertPaymentCommited(LOA, debt, 0)
