@@ -304,10 +304,10 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
 
 class RequestorPaysTest(ForcePaymentBase):
     def _pay_and_count(self, modifier) \
-            -> typing.Tuple(
+            -> typing.Tuple[
                     typing.List[message.tasks.SubtaskResultsAccepted],
                     int,
-            ):
+            ]:
         LOA = self._prepare_list_of_acceptances()
         V = sum(sra.task_to_compute.price for sra in LOA)
         self.put_deposit(self.requestor_sci, V)
