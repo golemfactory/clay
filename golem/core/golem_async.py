@@ -109,6 +109,10 @@ def deferred_run():
 ##
 
 
+_TO_ASYNCIO = queue.Queue()
+_TO_TWISTED = queue.Queue()
+
+
 def dispatch_from(queue_: queue.Queue):
     try:
         kwargs = queue_.get_nowait()
@@ -145,9 +149,7 @@ def asyncio_listen():
 ##
 
 _ASYNCIO_ID = 'Thread-aio'
-_RUN = asyncio.Event()
-_TO_ASYNCIO = queue.Queue()
-_TO_TWISTED = queue.Queue()
+_RUN = threading.Event()
 
 
 @defer.inlineCallbacks
