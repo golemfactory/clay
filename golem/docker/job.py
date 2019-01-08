@@ -7,7 +7,7 @@ from typing import Dict, Optional, Iterable
 
 import docker.errors
 
-from golem.core.common import nt_path_to_posix_path, is_osx, is_linux
+from golem.core.common import nt_path_to_posix_path, is_osx, is_windows
 from golem.docker.image import DockerImage
 from .client import local_client
 
@@ -131,10 +131,6 @@ class DockerJob(object):
 
         # Setup volumes for the container
         client = local_client()
-        if is_osx():
-            self.environment.update(OSX_USER=1)
-        elif is_linux():
-            self.environment.update(LOCAL_USER_ID=os.getuid())
 
         host_cfg = client.create_host_config(**self.host_config)
 
@@ -308,3 +304,12 @@ class DockerJob(object):
             inspect = client.inspect_container(self.container_id)
             return inspect["State"]["Status"]
         return self.state
+
+    @staticmethod
+    def get_environment() -> dict:
+        if is_windows():
+            return {}
+        if is_osx():
+            return dict(OSX_USER=1)
+
+        return dict(LOCAL_USER_ID=os.getuid())

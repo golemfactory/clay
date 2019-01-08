@@ -101,6 +101,7 @@ class TestDockerJob(DockerTestCase):
             resources_dir=self.resources_dir,
             work_dir=self.work_dir,
             output_dir=self.output_dir,
+            environment=DockerJob.get_environment(),
             host_config={
                 'binds': {
                     self.work_dir: {
