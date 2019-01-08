@@ -94,6 +94,7 @@ pyOpenSSL==17.1.0
 pyparsing==2.2.0
 PyQRCode==1.2.1
 pysha3==1.0.2
+pyssim==0.4
 PyTrie==0.3
 pytz==2018.4
 PyYAML==3.12
