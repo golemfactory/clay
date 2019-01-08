@@ -1090,13 +1090,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             if not self.__check_docker_images(ctd, env):
                 return False
 
-        if not env.allow_custom_main_program_file:
-            ctd['src_code'] = env.get_source_code()
-
-        if not ctd['src_code']:
-            self.err_msg = reasons.NoSourceCode
-            return False
-
         return True
 
     def __check_docker_images(self,

@@ -44,16 +44,13 @@ class BlenderDefaults(RendererDefaults):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
 
-        self.main_program_file = BlenderEnvironment().main_program_file
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 6
 
 
 class BlenderNVGPUDefaults(BlenderDefaults):
-    def __init__(self):
-        super().__init__()
-        self.main_program_file = BlenderNVGPUEnvironment().main_program_file
+    pass
 
 
 class PreviewUpdater(object):

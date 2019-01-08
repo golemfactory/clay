@@ -186,7 +186,7 @@ class LocalComputer:
         )
         return DockerTaskThread(
             ctd['docker_images'],
-            ctd['src_code'],
+            'job.py',
             ctd['extra_data'],
             dir_mapping,
             0,

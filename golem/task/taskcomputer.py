@@ -375,7 +375,7 @@ class TaskComputer(object):
             dir_mapping = DockerTaskThread.generate_dir_mapping(resource_dir,
                                                                 temp_dir)
             tt = DockerTaskThread(docker_images,
-                                  src_code, extra_data,
+                                  'job.py', extra_data,
                                   dir_mapping, task_timeout)
         elif self.support_direct_computation:
             tt = PyTaskThread(src_code,

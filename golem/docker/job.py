@@ -22,7 +22,7 @@ container_logger = logging.getLogger(__name__ + ".container")
 
 
 # pylint:disable=too-many-instance-attributes
-class DockerJob(object):
+class DockerJob:
     STATE_NEW = "new"
     STATE_CREATED = "created"  # container created by docker
     STATE_RUNNING = "running"  # docker container running
@@ -39,6 +39,9 @@ class DockerJob(object):
     # Mounted read-write in the container.
     WORK_DIR = "/golem/work"
 
+    # This dir contains scripts provided in the Docker image.
+    SCRIPTS_DIR = "/golem/scripts"
+
     # All files in this dir are treated as output files after the task finishes.
     # Mounted read-write in the container.
     OUTPUT_DIR = "/golem/output"
@@ -52,16 +55,13 @@ class DockerJob(object):
         "OUTPUT_DIR": OUTPUT_DIR
     }
 
-    # Name of the script file, relative to WORK_DIR
-    TASK_SCRIPT = "job.py"
-
     # Name of the parameters file, relative to WORK_DIR
     PARAMS_FILE = "params.json"
 
     # pylint:disable=too-many-arguments
     def __init__(self,
                  image: DockerImage,
-                 script_src: str,
+                 script_filename: str,
                  parameters: Dict,
                  resources_dir: str,
                  work_dir: str,
@@ -82,7 +82,7 @@ class DockerJob(object):
             raise TypeError('Incorrect image type: {}. '
                             'Should be: DockerImage'.format(type(image)))
         self.image = image
-        self.script_src = script_src
+        self.script_filename = script_filename
         self.parameters = parameters if parameters else {}
 
         self.parameters.update(self.PATH_PARAMS)
@@ -124,18 +124,15 @@ class DockerJob(object):
         with open(params_file_path, "w") as params_file:
             json.dump(self.parameters, params_file)
 
-        # Save the script in work_dir/TASK_SCRIPT
-        task_script_path = self._get_host_script_path()
-        with open(task_script_path, "wb") as script_file:
-            script_file.write(bytearray(self.script_src, "utf-8"))
-
         # Setup volumes for the container
         client = local_client()
 
         host_cfg = client.create_host_config(**self.host_config)
 
         # The location of the task script when mounted in the container
-        container_script_path = self._get_container_script_path()
+        container_script_path = \
+            self._get_container_script_path(self.script_filename)
+        print('container_script_path', container_script_path)
         self.container = client.create_container(
             image=self.image.name,
             volumes=self.volumes,
@@ -182,9 +179,6 @@ class DockerJob(object):
     def __exit__(self, exc_type, exc_value, traceback):
         self._cleanup()
 
-    def _get_host_script_path(self):
-        return os.path.join(self.work_dir, self.TASK_SCRIPT)
-
     def _get_host_params_path(self):
         return os.path.join(self.work_dir, self.PARAMS_FILE)
 
@@ -211,8 +205,8 @@ class DockerJob(object):
         return prev_mod
 
     @staticmethod
-    def _get_container_script_path():
-        return posixpath.join(DockerJob.WORK_DIR, DockerJob.TASK_SCRIPT)
+    def _get_container_script_path(script_filename: str):
+        return posixpath.join(DockerJob.SCRIPTS_DIR, script_filename)
 
     @staticmethod
     def get_absolute_resource_path(relative_path):
