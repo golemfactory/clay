@@ -412,8 +412,10 @@ class Node(HardwarePresetsMixin):
             return None
 
         def start_docker():
+            # pylint: disable=no-member
             self._docker_manager = DockerManager.install(self._config_desc)
-            self._docker_manager.check_environment()  # noqa pylint: disable=no-member
+            self._docker_manager.check_environment()
+            self._docker_manager.apply_config()
 
         return threads.deferToThread(start_docker)
 
