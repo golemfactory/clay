@@ -63,7 +63,7 @@ def all_subscriptions(node_id: str):
         return _not_found('subscription')
 
     return '[%s]' % ','.join(
-        [s.to_json() for t, s in subscriptions[node_id].items()])
+        [s.to_json() for _t, s in subscriptions[node_id].items()])
 
 
 @app.route('/subscriptions/<node_id>/<task_type>', methods=['PUT'])
@@ -256,6 +256,7 @@ def fetch_events(node_id):
     if node_id not in subscriptions:
         return _not_found('subscription')
 
+    # TODO
     last_event_id = request.args.get('lastEventId', 1)
 
     events_list = list()
