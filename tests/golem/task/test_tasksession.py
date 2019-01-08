@@ -145,10 +145,10 @@ class TaskSessionTaskToComputeTest(TestCase):
             task_id=self.task_id,
             environment='',
             task_owner=dt_p2p_factory.Node(
-             key=self.requestor_key,
-             node_name=self.node_name,
-             pub_addr='10.10.10.10',
-             pub_port=12345, ),
+                key=self.requestor_key,
+                node_name=self.node_name,
+                pub_addr='10.10.10.10',
+                pub_port=12345, ),
             subtask_timeout=1,
             max_price=1, )
         task_header.sign(self.requestor_keys.raw_privkey)
