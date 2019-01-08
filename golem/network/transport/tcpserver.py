@@ -40,11 +40,16 @@ class TCPServer:
         :param config_desc: new config descriptor
         """
         self.config_desc = config_desc
-        if self.config_desc.start_port <= self.cur_port <= self.config_desc.end_port:
+        if (self.config_desc.start_port or 0) \
+                <= self.cur_port <= (self.config_desc.end_port or 0):
             return
 
         if self.cur_port != 0:
-            listening_info = TCPListeningInfo(self.cur_port, self._stopped_callback, self._stopped_errback)
+            listening_info = TCPListeningInfo(
+                self.cur_port,
+                self._stopped_callback,
+                self._stopped_errback,
+            )
             self.network.stop_listening(listening_info)
 
         self.start_accepting()

@@ -23,6 +23,7 @@ from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.config.active import IS_MAINNET, EthereumConfig
 from golem.core.deferred import chain_function
+from golem.hardware.presets import HardwarePresets, HardwarePresetsMixin
 from golem.core.keysauth import KeysAuth, WrongPassword
 from golem.core import golem_async
 from golem.core.variables import PRIVATE_KEY
@@ -39,7 +40,7 @@ from golem.rpc.session import (
     Publisher,
     Session,
 )
-from golem.terms import TermsOfUse
+from golem import terms
 
 F = TypeVar('F', bound=Callable[..., Any])
 logger = logging.getLogger(__name__)
@@ -64,7 +65,7 @@ class ShutdownResponse(IntEnum):
 
 
 # pylint: disable=too-many-instance-attributes
-class Node(object):
+class Node(HardwarePresetsMixin):
     """ Simple Golem Node connecting console user interface with Client
     :type client golem.client.Client:
     """
@@ -106,6 +107,7 @@ class Node(object):
             EthereumConfig,
         )
         self._ets.backwards_compatibility_tx_storage(Path(datadir))
+        self.concent_variant = concent_variant
 
         self.rpc_router: Optional[CrossbarRouter] = None
         self.rpc_session: Optional[Session] = None
@@ -133,7 +135,8 @@ class Node(object):
             concent_variant=concent_variant,
             geth_address=geth_address,
             apps_manager=self.apps_manager,
-            task_finished_cb=self._try_shutdown
+            task_finished_cb=self._try_shutdown,
+            update_hw_preset=self.upsert_hw_preset
         )
 
         if password is not None:
@@ -142,14 +145,18 @@ class Node(object):
 
     def start(self) -> None:
 
+        HardwarePresets.initialize(self._datadir)
+        HardwarePresets.update_config(self._config_desc.hardware_preset_name,
+                                      self._config_desc)
+
         try:
             rpc = self._start_rpc()
 
             def on_rpc_ready() -> Deferred:
-                terms = self._check_terms()
+                terms_ = self._check_terms()
                 keys = self._start_keys_auth()
                 docker = self._start_docker()
-                return gatherResults([terms, keys, docker], consumeErrors=True)
+                return gatherResults([terms_, keys, docker], consumeErrors=True)
 
             chain_function(rpc, on_rpc_ready).addCallbacks(
                 self._setup_client,
@@ -251,7 +258,12 @@ class Node(object):
     @rpc_utils.expose('golem.terms')
     @staticmethod
     def are_terms_accepted():
-        return TermsOfUse.are_terms_accepted()
+        return terms.TermsOfUse.are_accepted()
+
+    @rpc_utils.expose('golem.concent.terms')
+    @classmethod
+    def are_concent_terms_accepted(cls):
+        return terms.ConcentTermsOfUse.are_accepted()
 
     @rpc_utils.expose('golem.terms.accept')
     def accept_terms(self,
@@ -267,12 +279,22 @@ class Node(object):
             self._use_monitor = enable_monitor
 
         self._app_config.change_config(self._config_desc)
-        return TermsOfUse.accept_terms()
+        return terms.TermsOfUse.accept()
+
+    @rpc_utils.expose('golem.concent.terms.accept')
+    @classmethod
+    def accept_concent_terms(cls):
+        return terms.ConcentTermsOfUse.accept()
 
     @rpc_utils.expose('golem.terms.show')
     @staticmethod
     def show_terms():
-        return TermsOfUse.show_terms()
+        return terms.TermsOfUse.show()
+
+    @rpc_utils.expose('golem.concent.terms.show')
+    @classmethod
+    def show_concent_terms(cls):
+        return terms.ConcentTermsOfUse.show()
 
     @rpc_utils.expose('golem.version')
     @staticmethod
@@ -346,12 +368,13 @@ class Node(object):
     def _check_terms(self) -> Optional[Deferred]:
 
         def wait_for_terms():
+            sleep_time = 5
             while not self.are_terms_accepted() and self._reactor.running:
                 logger.info(
                     'Terms of use must be accepted before using Golem. '
                     'Run `golemcli terms show` to display the terms '
                     'and `golemcli terms accept` to accept them.')
-                time.sleep(5)
+                time.sleep(sleep_time)
 
         return threads.deferToThread(wait_for_terms)
 
@@ -425,7 +448,13 @@ class Node(object):
         self.client.sync()
 
         try:
-            self.client.start()
+            if self._docker_manager:
+                # pylint: disable=no-member
+                with self._docker_manager.locked_config():
+                    self.client.start()
+            else:
+                self.client.start()
+
             for peer in self._peers:
                 self.client.connect(peer)
         except SystemExit:
@@ -467,5 +496,6 @@ class Node(object):
             exc_info = (err.type, err.value, err.getTracebackObject()) \
                 if isinstance(err, Failure) else None
             logger.error(
-                "Stopping because of %r error: %r", msg, err, exc_info=exc_info)
+                "Stopping because of %r error, run debug for more info", msg)
+            logger.debug("%r", err, exc_info=exc_info)
             self._reactor.callFromThread(self._reactor.stop)

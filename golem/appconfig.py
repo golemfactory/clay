@@ -2,7 +2,6 @@ import logging
 from os import path
 import sys
 
-from typing import Set, Any
 from ethereum.utils import denoms
 
 from golem.config.active import ENABLE_TALKBACK
@@ -19,6 +18,7 @@ logger = logging.getLogger(__name__)
 MIN_DISK_SPACE = 1024 * 1024
 MIN_MEMORY_SIZE = 1024 * 1024
 MIN_CPU_CORES = 1
+TOTAL_MEMORY_CAP = 0.75
 
 DEFAULT_HARDWARE_PRESET_NAME = "default"
 CUSTOM_HARDWARE_PRESET_NAME = "custom"
@@ -49,6 +49,7 @@ NODE_SNAPSHOT_INTERVAL = 10.0
 NETWORK_CHECK_INTERVAL = 10.0
 MASK_UPDATE_INTERVAL = 30.0
 MAX_SENDING_DELAY = 360
+OFFER_POOLING_INTERVAL = 15.0
 # How frequently task archive should be saved to disk (in seconds)
 TASKARCHIVE_MAINTENANCE_INTERVAL = 30
 # Filename for task archive disk file
@@ -118,7 +119,6 @@ class AppConfig:
         node_config = NodeConfig(
             node_name="",
             node_address="",
-            eth_account="",
             use_ipv6=USE_IP6,
             use_upnp=USE_UPNP,
             start_port=START_PORT,
@@ -153,6 +153,7 @@ class AppConfig:
             network_check_interval=NETWORK_CHECK_INTERVAL,
             mask_update_interval=MASK_UPDATE_INTERVAL,
             max_results_sending_delay=MAX_SENDING_DELAY,
+            offer_pooling_interval=OFFER_POOLING_INTERVAL,
             # timeouts
             p2p_session_timeout=P2P_SESSION_TIMEOUT,
             task_session_timeout=TASK_SESSION_TIMEOUT,
@@ -196,8 +197,11 @@ class AppConfig:
         for var, val in list(vars(cfg_desc).items()):
             setter = "set_{}".format(var)
             if not hasattr(self, setter):
-                logger.info("Cannot set unknown config property: {} = {}"
-                            .format(var, val))
+                logger.info(
+                    "Cannot set unknown config property: %r = %r",
+                    var,
+                    val,
+                )
                 continue
 
             set_func = getattr(self, setter)

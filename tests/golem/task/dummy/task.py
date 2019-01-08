@@ -4,14 +4,19 @@ from threading import Lock
 from typing import Optional
 
 from eth_utils import encode_hex
+import faker
 from golem_messages import idgenerator
+from golem_messages.datastructures import p2p as dt_p2p
+from golem_messages.datastructures import tasks as dt_tasks
 from golem_messages.message import ComputeTaskDef
 
+import golem
 from golem.appconfig import MIN_PRICE
 from golem.core.common import timeout_to_deadline
-from golem.network.p2p.node import Node
-from golem.task.taskbase import Task, TaskHeader, ResultType,\
-     AcceptClientVerdict
+from golem.task.taskbase import Task, AcceptClientVerdict
+
+
+fake = faker.Faker()
 
 
 class DummyTaskParameters(object):
@@ -59,32 +64,35 @@ class DummyTask(Task):
         1024 hashes on average
         """
         task_id = idgenerator.generate_id(public_key)
-        owner_address = ''
-        owner_port = 0
+        owner_address = fake.ipv4()
+        owner_port = fake.random_int(min=1, max=2**16-1)
         owner_key_id = encode_hex(public_key)[2:]
         environment = self.ENVIRONMENT_NAME
-        header = TaskHeader(
+        task_owner = dt_p2p.Node(
+            node_name=client_id,
+            pub_addr=owner_address,
+            pub_port=owner_port,
+            key=owner_key_id
+        )
+        header = dt_tasks.TaskHeader(
             task_id=task_id,
+            task_owner=task_owner,
             environment=environment,
-            task_owner=Node(
-                node_name=client_id,
-                pub_addr=owner_address,
-                pub_port=owner_port,
-                key=owner_key_id
-            ),
             deadline=timeout_to_deadline(14400),
             subtask_timeout=1200,
             subtasks_count=num_subtasks,
             resource_size=params.shared_data_size + params.subtask_data_size,
             estimated_memory=0,
-            max_price=MIN_PRICE)
+            max_price=MIN_PRICE,
+            min_version=golem.__version__,
+        )
 
         # load the script to be run remotely from the file in the current dir
         script_path = path.join(path.dirname(__file__), 'computation.py')
         with open(script_path, 'r') as f:
             src_code = f.read()
             src_code += '\noutput = run_dummy_task(' \
-                        'data_file, subtask_data, difficulty, result_size)'
+                'data_file, subtask_data, difficulty, result_size, tmp_path)'
 
         from apps.dummy.task.dummytaskstate import DummyTaskDefinition
         from apps.dummy.task.dummytaskstate import DummyTaskDefaults
@@ -133,9 +141,6 @@ class DummyTask(Task):
             shared.write(data)
 
         self.task_resources = [self.shared_data_file]
-
-    def short_extra_data_repr(self, extra_data):
-        return "dummy task " + self.task_id
 
     def get_trust_mod(self, subtask_id):
         return 0.
@@ -214,14 +219,15 @@ class DummyTask(Task):
                                      self.task_params.difficulty)
 
     def computation_finished(self, subtask_id, task_result,
-                             result_type=ResultType.DATA,
                              verification_finished=None):
         with self._lock:
             if subtask_id in self.assigned_subtasks:
                 node_id = self.assigned_subtasks.pop(subtask_id, None)
                 self.assigned_nodes.pop(node_id, None)
 
-        self.subtask_results[subtask_id] = task_result
+        with open(task_result[0], 'r') as f:
+            self.subtask_results[subtask_id] = f.read()
+
         if not self.verify_subtask(subtask_id):
             self.subtask_results[subtask_id] = None
 

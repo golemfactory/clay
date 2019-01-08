@@ -2,15 +2,7 @@ import random
 import unittest
 
 from golem.core.simpleserializer import \
-    CBORSerializer, DictCoder, DictSerializer, JSONDictSerializer
-
-
-class TestJSONDictSerializer(unittest.TestCase):
-    def test_jsondict_serializer(self):
-        test_dict = {7: 17, 28: 48}
-        ser = JSONDictSerializer.dumps(test_dict)
-        deser = JSONDictSerializer.loads(ser, int)
-        self.assertEqual(test_dict, deser)
+    DictCoder, DictSerializer
 
 
 class MockSerializationInnerSubject(object):
@@ -165,12 +157,3 @@ class TestDictSerializer(unittest.TestCase):
         self.assertFalse(
             DictCoder.cls_key in DictSerializer.dump(obj, typed=False)
         )
-
-
-class TestCBORSerializer(unittest.TestCase):
-
-    def test(self):
-        obj = MockSerializationSubject()
-        serialized = CBORSerializer.dumps(obj)
-        deserialized = CBORSerializer.loads(serialized)
-        assert_properties(deserialized, obj)

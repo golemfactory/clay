@@ -65,33 +65,13 @@ class Environment():
         return "DEFAULT"
 
     def __init__(self):
-        self.software = []  # list of software that should be installed
-        self.caps = []  # list of hardware requirements
         self.short_description = "Default environment for generic tasks" \
                                  " without any additional requirements."
 
-        self.long_description = ""
         self.accept_tasks = False
         # Check if tasks can define the source code
         self.allow_custom_main_program_file = False
         self.main_program_file = None
-
-    def check_software(self):
-        """ Check if required software is installed on this machine
-        :return bool:
-        """
-        if not self.allow_custom_main_program_file:
-            return self.main_program_file and \
-                path.isfile(self.main_program_file)
-
-        return True
-
-    # pylint: disable=no-self-use
-    def check_caps(self):
-        """ Check if required hardware is available on this machine
-        :return bool:
-        """
-        return True
 
     def check_support(self) -> SupportStatus:
         """ Check if this environment is supported on this machine
@@ -130,27 +110,6 @@ class Environment():
             pass
 
         return step * MinPerformanceMultiplier.get()
-
-    def description(self):
-        """ Return long description of this environment
-        :return str:
-        """
-        desc = self.short_description + "\n"
-        if self.caps or self.software:
-            desc += "REQUIREMENTS\n\n"
-            if self.caps:
-                desc += "CAPS:\n"
-                for c in self.caps:
-                    desc += "\t* " + c + "\n"
-                desc += "\n"
-            if self.software:
-                desc += "SOFTWARE:\n"
-                for s in self.software:
-                    desc += "\t * " + s + "\n"
-                desc += "\n"
-        if self.long_description:
-            desc += "Additional informations:\n" + self.long_description
-        return desc
 
     def get_source_code(self):
         if self.main_program_file and path.isfile(self.main_program_file):

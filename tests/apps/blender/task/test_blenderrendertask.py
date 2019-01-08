@@ -1,17 +1,20 @@
-import uuid
-import tempfile
-
-from golem_messages.message import ComputeTaskDef
-import os
-import unittest.mock as mock
-from os import path
-
+# pylint: disable=protected-access
 import array
-import unittest
+import os
+from os import path
 from random import randrange, shuffle
+import tempfile
+import unittest
+import unittest.mock as mock
+import uuid
+
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+from golem_messages.message import ComputeTaskDef
+from golem_verificator.verifier import SubtaskVerificationState
+from PIL import Image
+
 
 import OpenEXR
-from PIL import Image
 
 from apps.blender.task.blenderrendertask import (BlenderDefaults,
                                                  BlenderRenderTask,
@@ -25,13 +28,11 @@ from apps.rendering.resources.imgrepr import load_img
 from apps.rendering.task.renderingtask import PREVIEW_Y, PREVIEW_X
 from apps.rendering.task.renderingtaskstate import (
     RenderingTaskDefinition)
-from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import ResultType, AcceptClientVerdict
+from golem.task.taskbase import AcceptClientVerdict
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-from golem_verificator.verifier import SubtaskVerificationState
 
 
 class TestBlenderDefaults(unittest.TestCase):
@@ -56,7 +57,7 @@ class BlenderTaskInitTest(TempDirFixture, LogTestCase):
 
         def _get_blender_task(task_definition, total_tasks=6):
             return BlenderRenderTask(
-                owner=Node(node_name="exmaple-node-name"),
+                owner=dt_p2p_factory.Node(),
                 task_definition=task_definition,
                 total_tasks=total_tasks,
                 root_path=self.tempdir,
@@ -102,7 +103,7 @@ class TestBlenderFrameTask(TempDirFixture):
         task_definition.task_id = str(uuid.uuid4())
         BlenderRenderTask.VERIFICATION_QUEUE._reset()
         self.bt = BlenderRenderTask(
-            owner=Node(node_name="example-node-name"),
+            owner=dt_p2p_factory.Node(),
             task_definition=task_definition,
             total_tasks=6,
             root_path=self.tempdir,
@@ -117,7 +118,7 @@ class TestBlenderFrameTask(TempDirFixture):
         self.assertEqual(len(self.bt.preview_task_file_path),
                          len(self.bt.frames))
 
-    @mock.patch('apps.blender.verification_task.deadline_to_timeout')
+    @mock.patch('apps.core.verification_task.deadline_to_timeout')
     def test_computation_failed_or_finished(self, mock_dtt):
         mock_dtt.return_value = 1.0
         assert self.bt.total_tasks == 6
@@ -129,8 +130,7 @@ class TestBlenderFrameTask(TempDirFixture):
         assert extra_data2.ctd is not None
 
         self.bt.computation_failed(extra_data1.ctd['subtask_id'])
-        self.bt.computation_finished(extra_data1.ctd['subtask_id'], [],
-                                     ResultType.DATA)
+        self.bt.computation_finished(extra_data1.ctd['subtask_id'], [])
         assert self.bt.subtasks_given[extra_data1.ctd['subtask_id']][
             'status'] == \
             SubtaskStatus.failure
@@ -164,7 +164,6 @@ class TestBlenderFrameTask(TempDirFixture):
             self.bt.computation_finished(
                 extra_data3.ctd['subtask_id'],
                 [file1],
-                ResultType.FILES,
                 lambda: None)
             assert self.bt.subtasks_given[extra_data3.ctd['subtask_id']][
                 'status'] == SubtaskStatus.finished
@@ -196,7 +195,6 @@ class TestBlenderFrameTask(TempDirFixture):
             self.bt.computation_finished(
                 extra_data4.ctd['subtask_id'],
                 [file2],
-                ResultType.FILES,
                 lambda: None)
             assert self.bt.subtasks_given[extra_data4.ctd['subtask_id']][
                 'status'] == SubtaskStatus.finished
@@ -216,8 +214,8 @@ class TestBlenderFrameTask(TempDirFixture):
                                               node_name="node11",
                                               num_cores=0)
         assert extra_data.ctd is not None
-        assert "border_max_y = 1" in extra_data.ctd['extra_data']['script_src']
-        assert "border_min_y = 0" in extra_data.ctd['extra_data']['script_src']
+        assert extra_data.ctd['extra_data']['crops'][0]['borders_y'] \
+            == [0.0, 1.0]
 
     def test_put_frame_together(self):
         self.bt.output_format = "EXR"
@@ -257,7 +255,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         task_definition.main_scene_file = path.join(self.path, "example.blend")
         task_definition.task_id = str(uuid.uuid4())
         bt = BlenderRenderTask(
-            owner=Node(node_name="example-node-name"),
+            owner=dt_p2p_factory.Node(),
             task_definition=task_definition,
             total_tasks=total_tasks,
             root_path=self.tempdir)
@@ -356,7 +354,6 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.bt.accept_client("ABC")
         ctd = extra_data.ctd
         assert ctd['extra_data']['start_task'] == 1
-        assert ctd['extra_data']['end_task'] == 1
         self.bt.last_task = self.bt.total_tasks
         self.bt.subtasks_given[1] = {'status': SubtaskStatus.finished}
         assert self.bt.should_accept_client("ABC") != \
@@ -550,7 +547,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         # test the case with frames divided into multiple subtasks
 
         bt = self.build_bt(600, 200, 4, frames=[2, 3])
-        subtask = {"start_task": 2, "end_task": 2}
+        subtask = {"start_task": 2}
         file2 = self.temp_file_name('preview2.bmp')
         img_task2 = Image.new("RGB", (bt.res_x, bt.res_y))
         img_task2.save(file2, "BMP")
@@ -662,7 +659,7 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
         definition.subtasks_count = 1
         definition.options = BlenderRendererOptions()
         builder = BlenderRenderTaskBuilder(
-            owner=Node(),
+            owner=dt_p2p_factory.Node(),
             task_definition=definition,
             dir_manager=DirManager(
                 self.tempdir))
@@ -700,7 +697,7 @@ class TestHelpers(unittest.TestCase):
         definition.resolution = [800, 600]
 
         for k in range(1, 31):
-            subtask.extra_data = {'start_task': k, 'end_task': k}
+            subtask.extra_data = {'start_task': k}
             border = BlenderTaskTypeInfo.get_task_border(subtask, definition,
                                                          30, as_path=as_path)
             assert min(border) == (0, offsets[k])
@@ -711,14 +708,14 @@ class TestHelpers(unittest.TestCase):
         offsets = generate_expected_offsets(15, 800, 600)
 
         for k in range(1, 31):
-            subtask.extra_data = {'start_task': k, 'end_task': k}
+            subtask.extra_data = {'start_task': k}
             border = BlenderTaskTypeInfo.get_task_border(subtask, definition,
                                                          30, as_path=as_path)
             i = (k - 1) % 15 + 1
             assert min(border) == (0, offsets[i])
             assert max(border) == (798, offsets[i + 1] - 1)
 
-        subtask.extra_data = {'start_task': 2, 'end_task': 2}
+        subtask.extra_data = {'start_task': 2}
         definition.options.use_frames = True
         definition.options.frames = list(range(30))
         if as_path:

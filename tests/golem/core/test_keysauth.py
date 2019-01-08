@@ -10,7 +10,6 @@ from golem_messages.cryptography import ECCx, privtopub
 from golem import testutils
 from golem.core.keysauth import (
     KeysAuth, get_random, get_random_float, sha2, WrongPassword)
-from golem.core.simpleserializer import CBORSerializer
 from golem.tools.testwithreactor import TestWithReactor
 from eth_utils import decode_hex, encode_hex
 
@@ -189,25 +188,6 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
             max_memory_size=300000000,
             num_cores=4,
         )
-
-        data = msg.get_short_hash()
-        signature = ek.sign(data)
-
-        dumped_s = CBORSerializer.dumps(signature)
-        loaded_s = CBORSerializer.loads(dumped_s)
-
-        self.assertEqual(signature, loaded_s)
-
-        dumped_d = CBORSerializer.dumps(data)
-        loaded_d = CBORSerializer.loads(dumped_d)
-
-        self.assertEqual(data, loaded_d)
-
-        dumped_k = CBORSerializer.dumps(ek.key_id)
-        loaded_k = CBORSerializer.loads(dumped_k)
-
-        self.assertEqual(ek.key_id, loaded_k)
-        self.assertTrue(ek.verify(loaded_s, loaded_d, ek.public_key))
 
         dumped_l = msg.serialize(
             sign_as=ek._private_key, encrypt_func=lambda x: x)

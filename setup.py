@@ -62,11 +62,15 @@ setup(
             'rust.golem',
             'rust/golem/Cargo.toml',
             binding=Binding.RustCPython,
+            debug=False,
         ),
     ],
     data_files=[
         (path.normpath('../../'), [
             'golemapp.py', 'golemcli.py', 'loggingconfig.py'
+        ]),
+        (path.normpath('../../golem/'), [
+            path.normpath('golem/CONCENT_TERMS.html'),
         ]),
         (path.normpath('../../golem/'), [
             path.normpath('golem/TERMS.html'),
@@ -80,9 +84,13 @@ setup(
             path.normpath('apps/rendering/benchmark/minilight/cornellbox.ml.txt'),
         ]),
         (path.normpath('../../golem/apps/blender/resources/scripts'), [
-            path.normpath('apps/blender/resources/scripts/blendercrop.py.template'),
             path.normpath('apps/blender/resources/scripts/docker_blendertask.py')
         ]),
+        (path.normpath(
+            '../../golem/apps/blender/resources/images/scripts/templates'), [
+                path.normpath('apps/blender/resources/images/scripts/'
+                              'templates/blendercrop.py.template')]
+        ),
         (path.normpath('../../golem/apps/dummy/resources/scripts'), [
             path.normpath('apps/dummy/resources/scripts/docker_dummytask.py')
         ]),
@@ -107,6 +115,7 @@ if building_wheel:
 
 if not building_migration:
     from golem.database.migration.create import latest_migration_exists
+
     if not latest_migration_exists():
         raise RuntimeError("Database schema error: latest migration script "
                            "does not exist")

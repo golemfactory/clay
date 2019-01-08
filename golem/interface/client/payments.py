@@ -8,6 +8,8 @@ incomes_table_headers = ['payer', 'status', 'value']
 payments_table_headers = ['subtask', 'payee', 'status', 'value', 'fee']
 deposit_payments_table_headers = ['tx', 'status', 'value', 'fee']
 
+filterable_statuses = ['awaiting', 'confirmed']
+
 sort_incomes = Argument(
     '--sort',
     choices=incomes_table_headers,
@@ -32,36 +34,53 @@ sort_deposit_payments = Argument(
     help="Sort deposit payments",
 )
 
+status_filter = Argument(
+    'status',
+    optional=True,
+    choices=filterable_statuses,
+    help="Filter by status"
+)
 
-def __value(value):
-    return "{:.6f} GNT".format(float(value) / denoms.ether)
+
+def __value(value, currency):
+    return f"{float(value) / denoms.ether:.8f} {currency}"
 
 
-@command(argument=sort_incomes, help="Display incomes", root=True)
-def incomes(sort):
+def filter_by_status(results, status):
+    return [v for v in results if v['status'] == status]
+
+
+@command(arguments=(sort_incomes, status_filter),
+         help="Display incomes", root=True)
+def incomes(sort, status):
     deferred = incomes.client.get_incomes_list()
     result = sync_wait(deferred) or []
 
     values = []
+    if status is not None:
+        result = filter_by_status(result, status)
 
     for income in result:
         entry = [
             to_unicode(income["payer"]),
             to_unicode(income["status"]),
-            __value(float(income["value"])),
+            __value(float(income["value"]), "GNT"),
         ]
         values.append(entry)
 
     return CommandResult.to_tabular(incomes_table_headers, values, sort=sort)
 
 
-@command(argument=sort_payments, help="Display payments", root=True)
-def payments(sort):
+@command(arguments=(sort_payments, status_filter),
+         help="Display payments", root=True)
+def payments(sort, status):
 
     deferred = payments.client.get_payments_list()
     result = sync_wait(deferred) or []
 
     values = []
+    if status is not None:
+        result = filter_by_status(result, status)
 
     for payment in result:
 
@@ -69,14 +88,13 @@ def payments(sort):
         payment_fee = payment["fee"] or ""
 
         if payment_fee:
-            payment_fee = "{:.1f}%".format(float(payment_fee) * 100 /
-                                           payment_value)
+            payment_fee = __value(payment_fee, "ETH")
 
         entry = [
             to_unicode(payment["subtask"]),
             to_unicode(payment["payee"]),
             to_unicode(payment["status"]),
-            __value(payment_value),
+            __value(payment_value, "GNT"),
             to_unicode(payment_fee)
         ]
 
@@ -86,16 +104,18 @@ def payments(sort):
 
 
 @command(
-    argument=sort_deposit_payments,
+    arguments=(sort_deposit_payments, status_filter),
     help="Display deposit payments",
     root=True,
 )
-def deposit_payments(sort):
+def deposit_payments(sort, status):
 
     deferred = payments.client.get_deposit_payments_list()
     result = sync_wait(deferred) or []
 
     values = []
+    if status is not None:
+        result = filter_by_status(result, status)
 
     for payment in result:
 
@@ -103,13 +123,12 @@ def deposit_payments(sort):
         payment_fee = payment["fee"] or ""
 
         if payment_fee:
-            payment_fee = "{:.1f}%".format(float(payment_fee) * 100 /
-                                           payment_value)
+            payment_fee = __value(payment_fee, "ETH")
 
         entry = [
             to_unicode(payment["tx"]),
             to_unicode(payment["status"]),
-            __value(payment_value),
+            __value(payment_value, "GNT"),
             to_unicode(payment_fee)
         ]
 

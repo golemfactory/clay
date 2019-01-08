@@ -145,18 +145,31 @@ class ClientHandler(metaclass=abc.ABCMeta):
 
         while not result:
             retries += 1
+            logger.debug("Executing sync with retry. "
+                         "count=%r, method=%r, args=%r, kwargs=%r",
+                         retries, method, args, kwargs)
 
             try:
                 result = method(*args, **kwargs)
             except Exception as exc:
-                logger.error('Error executing %r (%r, %r): %r',
-                             method, args, kwargs, exc)
 
                 if exc.__class__ not in self.retry_exceptions:
+                    logger.error('Error executing, raising. '
+                                 'count=%r, method=%r, args=%r, '
+                                 'kwargs=%r, exc=%r',
+                                 retries, method, args, kwargs, exc)
                     raise exc
                 if retries < self.config.max_retries:
+                    logger.warning('Error executing, will retry. '
+                                   'count=%r, method=%r, args=%r, '
+                                   'kwargs=%r, exc=%r',
+                                   retries, method, args, kwargs, exc)
                     continue
                 if raise_exc:
+                    logger.error('Error executing, raising all. '
+                                 'count=%r, method=%r, args=%r, '
+                                 'kwargs=%r, exc=%r',
+                                 retries, method, args, kwargs, exc)
                     raise exc
 
                 return None
@@ -170,6 +183,10 @@ class ClientHandler(metaclass=abc.ABCMeta):
             nonlocal retries
             retries += 1
 
+            logger.debug("Executing async with retry. "
+                         "count=%r, method=%r, args=%r, kwargs=%r",
+                         retries, method, args, kwargs)
+
             deferred = method(*args, **kwargs)
             deferred.addCallbacks(result.callback, _error)
             return deferred
@@ -179,10 +196,22 @@ class ClientHandler(metaclass=abc.ABCMeta):
                 exc = exc.value
 
             if exc.__class__ not in self.retry_exceptions:
+                logger.error('Error executing async, raising. '
+                             'count=%r, method=%r, args=%r, '
+                             'kwargs=%r, exc=%r',
+                             retries, method, args, kwargs, exc)
                 result.errback(exc)
             elif retries < self.config.max_retries:
+                logger.warning('Error executing async, will retry. '
+                               'count=%r, method=%r, args=%r, '
+                               'kwargs=%r, exc=%r',
+                               retries, method, args, kwargs, exc)
                 _run()
             else:
+                logger.error('Error executing async, raising all. '
+                             'count=%r, method=%r, args=%r, '
+                             'kwargs=%r, exc=%r',
+                             retries, method, args, kwargs, exc)
                 result.errback(exc)
 
         _run()

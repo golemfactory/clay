@@ -3,6 +3,7 @@ import unittest
 import uuid
 from pathlib import Path
 
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from PIL import Image
 
 from apps.rendering.resources.imgrepr import load_img, EXRImgRepr
@@ -11,7 +12,6 @@ from apps.rendering.task.framerenderingtask import (get_frame_name, FrameRenderi
                                                     FrameRendererOptions, logger)
 from apps.rendering.task.renderingtaskstate import RendererDefaults
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
-from golem.network.p2p.node import Node
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.tools.assertlogs import LogTestCase
@@ -53,12 +53,13 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         rt.subtask_timeout = 600
         rt.estimated_memory = 1000
         rt.max_price = 15
-        task = FrameRenderingTaskMock(files_[0],
-                                      owner=Node(node_name="ABC"),
-                                      task_definition=rt,
-                                      total_tasks=num_tasks,
-                                      root_path=self.path
-                                      )
+        task = FrameRenderingTaskMock(
+            files_[0],
+            owner=dt_p2p_factory.Node(node_name="ABC", ),
+            task_definition=rt,
+            total_tasks=num_tasks,
+            root_path=self.path,
+        )
         dm = DirManager(self.path)
         task.initialize(dm)
         return task
@@ -77,7 +78,7 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task.accept_client("NODE 1")
         task.tmp_dir = self.path
         task.subtasks_given["SUBTASK1"] = {"start_task": 3, "node_id": "NODE 1", "parts": 1,
-                                           "end_task": 3, "frames": [1],
+                                           "frames": [1],
                                            "status": SubtaskStatus.starting}
         img_file = os.path.join(self.path, "img1.png")
         img = Image.new("RGB", (800, 600), "#0000ff")
@@ -93,10 +94,10 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         preview_img.close()
 
         task.subtasks_given["SUBTASK2"] = {"start_task": 2, "node_id": "NODE 1", "parts": 1,
-                                           "end_task": 2, "frames": [1],
+                                           "frames": [1],
                                            "status": SubtaskStatus.starting}
         task.subtasks_given["SUBTASK3"] = {"start_task": 1, "node_id": "NODE 1", "parts": 1,
-                                           "end_task": 1, "frames": [1],
+                                           "frames": [1],
                                            "status": SubtaskStatus.starting}
         task.accept_results("SUBTASK2", [img_file])
         task.accept_results("SUBTASK3", [img_file])
@@ -111,7 +112,6 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         task.subtasks_given["SUBTASK1"] = {"start_task": 3,
                                            "node_id": "NODE 1",
                                            "parts": 1,
-                                           "end_task": 3,
                                            "frames": [4, 5],
                                            "status": SubtaskStatus.downloading}
         img_file2 = os.path.join(self.path, "img2.png")
@@ -324,9 +324,11 @@ class TestFrameRenderingTaskBuilder(TestDirFixture, LogTestCase):
         definition.options.use_frames = True
         definition.options.frames = list(range(1, 7))
 
-        builder = FrameRenderingTaskBuilder(Node(node_name="node"),
-                                            dir_manager=DirManager(self.path),
-                                            task_definition=definition)
+        builder = FrameRenderingTaskBuilder(
+            dt_p2p_factory.Node(node_name="node"),
+            dir_manager=DirManager(self.path),
+            task_definition=definition,
+        )
 
         defaults = RendererDefaults()
         # More subtasks than frames -> use frames count

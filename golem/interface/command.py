@@ -432,8 +432,11 @@ class CommandHelper(object):
 
     @staticmethod
     def _public_method(entry):
-        return inspect.ismethod(entry) or inspect.isfunction(entry) \
-            and not entry.__name__.startswith('_')
+        if not (inspect.ismethod(entry) or inspect.isfunction(entry)):
+            return False
+        if entry.__name__.startswith('_'):
+            return False
+        return True
 
     @classmethod
     def debug(cls, elem, level=0):

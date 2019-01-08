@@ -1,14 +1,15 @@
 import logging
 import os
 from pathlib import Path
-from typing import ClassVar, Optional, TYPE_CHECKING, Tuple, Dict, Union, List
-
+from typing import ClassVar, Optional, TYPE_CHECKING, Tuple, Dict, Union, \
+    List, NamedTuple
 
 import requests
 
+from golem.core.common import is_windows, is_osx
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob
-from golem.task.taskbase import ResultType
+from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.task.taskthread import TaskThread, JobException, TimeoutException
 from golem.vm.memorychecker import MemoryChecker
 
@@ -32,31 +33,35 @@ class ImageException(RuntimeError):
 class DockerDirMapping:
 
     def __init__(self,   # pylint: disable=too-many-arguments
-                 resources: str, temporary: str,
+                 resources: Path, temporary: Path,
                  work: Path, output: Path, logs: Path) -> None:
 
-        self.resources = resources
-        self.temporary = temporary
-
+        self.resources: Path = resources
+        self.temporary: Path = temporary
         self.work: Path = work
         self.output: Path = output
         self.logs: Path = logs
 
     @classmethod
-    def generate(cls, resources: str, temporary: str) -> 'DockerDirMapping':
-        work = Path(temporary) / "work"
-        output = Path(temporary) / "output"
+    def generate(cls, resources: Path, temporary: Path) -> 'DockerDirMapping':
+        work = temporary / "work"
+        output = temporary / "output"
         logs = output
 
         return cls(resources, temporary, work, output, logs)
 
     def mkdirs(self, exist_ok: bool = True) -> None:
-        os.makedirs(self.resources, exist_ok=exist_ok)
-        os.makedirs(self.temporary, exist_ok=exist_ok)
-
+        self.resources.mkdir(parents=True, exist_ok=exist_ok)
+        self.temporary.mkdir(parents=True, exist_ok=exist_ok)
         self.work.mkdir(exist_ok=exist_ok)
         self.output.mkdir(exist_ok=exist_ok)
         self.logs.mkdir(exist_ok=exist_ok)
+
+
+class DockerBind(NamedTuple): # pylint: disable=too-few-public-methods
+    source: Path
+    target: str
+    mode: str = 'rw'
 
 
 class DockerTaskThread(TaskThread):
@@ -79,9 +84,13 @@ class DockerTaskThread(TaskThread):
         if not docker_images:
             raise AttributeError("docker images is None")
         super(DockerTaskThread, self).__init__(
-            subtask_id, src_code, extra_data,
-            dir_mapping.resources, dir_mapping.temporary,
-            timeout)
+            subtask_id=subtask_id,
+            src_code=src_code,
+            extra_data=extra_data,
+            res_path=str(dir_mapping.resources),
+            tmp_path=str(dir_mapping.temporary),
+            timeout=timeout
+        )
 
         # Find available image
         self.image = None
@@ -99,13 +108,13 @@ class DockerTaskThread(TaskThread):
     @staticmethod
     def specify_dir_mapping(resources: str, temporary: str, work: str,
                             output: str, logs: str) -> DockerDirMapping:
-        return DockerDirMapping(resources, temporary,
+        return DockerDirMapping(Path(resources), Path(temporary),
                                 Path(work), Path(output), Path(logs))
 
     @staticmethod
-    def generate_dir_mapping(resources: str,
-                             temporary: str) -> DockerDirMapping:
-        return DockerDirMapping.generate(resources, temporary)
+    def generate_dir_mapping(resources: str, temporary: str) \
+            -> DockerDirMapping:
+        return DockerDirMapping.generate(Path(resources), Path(temporary))
 
     def run(self) -> None:
         try:
@@ -136,8 +145,49 @@ class DockerTaskThread(TaskThread):
         finally:
             self.job = None
 
+    def _get_default_binds(self) -> List[DockerBind]:
+        return [
+            DockerBind(self.dir_mapping.work, DockerJob.WORK_DIR),
+            DockerBind(self.dir_mapping.resources, DockerJob.RESOURCES_DIR),
+            DockerBind(self.dir_mapping.output, DockerJob.OUTPUT_DIR)
+        ]
+
     def _run_docker_job(self) -> Optional[int]:
         self.dir_mapping.mkdirs()
+
+        binds = self._get_default_binds()
+        volumes = list(bind.target for bind in binds)
+        environment = DockerJob.get_environment()
+
+        environment.update(
+            WORK_DIR=DockerJob.WORK_DIR,
+            RESOURCES_DIR=DockerJob.RESOURCES_DIR,
+            OUTPUT_DIR=DockerJob.OUTPUT_DIR
+        )
+
+        assert self.image is not None
+        docker_env = EnvironmentsManager().get_environment_by_image(self.image)
+
+        if docker_env:
+            env_config = docker_env.get_container_config()
+
+            environment.update(env_config['environment'])
+            binds += env_config['binds']
+            volumes += env_config['volumes']
+            devices = env_config['devices']
+            runtime = env_config['runtime']
+        else:
+            logger.debug('No Docker environment found for image %r', self.image)
+
+            devices = None
+            runtime = None
+
+        assert self.docker_manager is not None
+        # PyLint still thinks docker_manager is of type DockerConfigManager
+        # pylint: disable=no-member
+        host_config = self.docker_manager.get_host_config_for_task(binds)
+        host_config['devices'] = devices
+        host_config['runtime'] = runtime
 
         params = dict(
             image=self.image,
@@ -146,8 +196,9 @@ class DockerTaskThread(TaskThread):
             resources_dir=str(self.dir_mapping.resources),
             work_dir=str(self.dir_mapping.work),
             output_dir=str(self.dir_mapping.output),
-            host_config=(self.docker_manager.container_host_config
-                         if self.docker_manager else None),
+            volumes=volumes,
+            environment=environment,
+            host_config=host_config
         )
 
         with DockerJob(**params) as job, MemoryChecker(self.check_mem) as mc:
@@ -173,7 +224,6 @@ class DockerTaskThread(TaskThread):
         ]
         self.result = {
             "data": out_files,
-            "result_type": ResultType.FILES,
         }
         if estm_mem is not None:
             self.result = (self.result, estm_mem)
