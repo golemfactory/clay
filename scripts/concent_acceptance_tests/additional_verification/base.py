@@ -7,7 +7,8 @@ from golem_messages import factories as msg_factories
 from golem_messages.message import tasks as tasks_msg
 
 from apps.blender.blenderenvironment import BlenderEnvironment
-from apps.blender.resources.scenefileeditor import generate_blender_crop_file
+from apps.blender.resources.images.scripts.scenefileeditor \
+    import generate_blender_crop_file
 
 from golem.core.simplehash import SimpleHash
 
@@ -60,7 +61,7 @@ class SubtaskResultsVerifyBaseTest(SCIBaseTest):
             "path_root": '',
             "start_task": 1,
             "total_tasks": 1,
-            "outfilebasename": 'test task',
+            "outfilebasename": 'test task_1',
             "scene_file": '/golem/resources/wlochaty3.blend',
             "script_src": generate_blender_crop_file(
                 (320, 240), (0.0, 1.0), (0.0, 1.0), False, 0),

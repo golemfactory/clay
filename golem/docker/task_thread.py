@@ -151,21 +151,12 @@ class DockerTaskThread(TaskThread):
             DockerBind(self.dir_mapping.output, DockerJob.OUTPUT_DIR)
         ]
 
-    @staticmethod
-    def _get_environment() -> dict:
-        if is_windows():
-            return {}
-        if is_osx():
-            return dict(OSX_USER=1)
-
-        return dict(LOCAL_USER_ID=os.getuid())
-
     def _run_docker_job(self) -> Optional[int]:
         self.dir_mapping.mkdirs()
 
         binds = self._get_default_binds()
         volumes = list(bind.target for bind in binds)
-        environment = self._get_environment()
+        environment = DockerJob.get_environment()
 
         environment.update(
             WORK_DIR=DockerJob.WORK_DIR,
