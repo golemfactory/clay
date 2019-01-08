@@ -27,7 +27,7 @@ PREVIEW_Y = 720
 logger = logging.getLogger("apps.rendering")
 
 
-# pylint: disable-msg=too-many-instance-attributes
+# pylint: disable-msg=too-many-instance-attributes,abstract-method
 class RenderingTask(CoreTask):
     VERIFIER_CLASS = RenderingVerifier
     ENVIRONMENT_CLASS = None  # type: Type[DockerEnvironment]

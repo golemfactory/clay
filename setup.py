@@ -88,8 +88,8 @@ setup(
         ]),
         (path.normpath(
             '../../golem/apps/blender/resources/images/scripts/templates'), [
-            path.normpath('apps/blender/resources/images/scripts/'
-                          'templates/blendercrop.py.template')
+                path.normpath('apps/blender/resources/images/scripts/'
+                              'templates/blendercrop.py.template')
         ]),
         (path.normpath('../../golem/apps/dummy/resources/scripts'), [
             path.normpath('apps/dummy/resources/scripts/docker_dummytask.py')
