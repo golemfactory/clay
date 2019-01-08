@@ -473,6 +473,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             _cannot_assign(reasons.NotMyTask)
             return
 
+        try:
+            msg.task_header.verify(self.my_public_key)
+        except msg_exceptions.InvalidSignature:
+            _cannot_assign(reasons.NotMyTask)
+            return
+
         node_name_id = common.node_info_str(msg.node_name, self.key_id)
         logger.info("Received offer to compute. task_id=%r, node=%r",
                     msg.task_id, node_name_id)

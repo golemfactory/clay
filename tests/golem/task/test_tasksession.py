@@ -112,6 +112,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts.task_server.config_desc.max_price = 100
         ts.task_server.keys_auth._private_key = \
             self.requestor_keys.raw_privkey
+        ts.task_server.keys_auth.public_key = self.requestor_keys.raw_pubkey
         ts.conn.send_message.side_effect = lambda msg: msg._fake_sign()
         return ts
 
@@ -140,18 +141,18 @@ class TaskSessionTaskToComputeTest(TestCase):
         self.task_manager.tasks[self.task_id] = Mock(header=task_header)
 
     def _get_task_header(self):
-        return dt_tasks_factory.TaskHeaderFactory(
+        task_header = dt_tasks_factory.TaskHeaderFactory(
             task_id=self.task_id,
             environment='',
             task_owner=dt_p2p_factory.Node(
-                key=self.requestor_key,
-                node_name=self.node_name,
-                pub_addr='10.10.10.10',
-                pub_port=12345,
-            ),
+             key=self.requestor_key,
+             node_name=self.node_name,
+             pub_addr='10.10.10.10',
+             pub_port=12345, ),
             subtask_timeout=1,
-            max_price=1,
-        )
+            max_price=1, )
+        task_header.sign(self.requestor_keys.raw_privkey)
+        return task_header
 
     def _set_task_state(self):
         task_state = taskstate.TaskState()

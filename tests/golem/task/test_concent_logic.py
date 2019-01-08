@@ -351,6 +351,7 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         super().setUp()
         self.requestor_keys = cryptography.ECCx(None)
         self.msg = factories.tasks.WantToComputeTaskFactory(price=10 ** 18)
+        self.msg.task_header.sign(self.requestor_keys.raw_privkey)
         self.msg._fake_sign()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
         self.task_session.key_id = 'unittest_key_id'
