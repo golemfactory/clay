@@ -412,8 +412,10 @@ class Node(HardwarePresetsMixin):
             return None
 
         def start_docker():
+            # pylint: disable=no-member
             self._docker_manager = DockerManager.install(self._config_desc)
-            self._docker_manager.check_environment()  # noqa pylint: disable=no-member
+            self._docker_manager.check_environment()
+            self._docker_manager.apply_config()
 
         return threads.deferToThread(start_docker)
 
@@ -448,7 +450,13 @@ class Node(HardwarePresetsMixin):
         self.client.sync()
 
         try:
-            self.client.start()
+            if self._docker_manager:
+                # pylint: disable=no-member
+                with self._docker_manager.locked_config():
+                    self.client.start()
+            else:
+                self.client.start()
+
             for peer in self._peers:
                 self.client.connect(peer)
         except SystemExit:

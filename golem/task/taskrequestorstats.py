@@ -1,10 +1,12 @@
 import logging
 import time
 from collections import defaultdict
+from threading import Lock
 from typing import NamedTuple, Optional
 
 from pydispatch import dispatcher
 
+from golem.core.statskeeper import StatsKeeper
 from golem.task.taskstate import Operation, TaskOp, SubtaskOp, \
     SubtaskStatus, TaskStatus, TaskState
 
@@ -488,6 +490,83 @@ class RequestorTaskStats:
         return self.finished_stats
 
 
+class AggregateTaskStats:
+
+    def __init__(self, **kwargs):
+        # Number of subtasks paid (batch transfers)
+        self.requestor_payment_cnt: int = 0
+        # Average batch payment delay
+        self.requestor_payment_delay_avg: float = 0.0
+        # Sum of batch payment delays
+        self.requestor_payment_delay_sum: float = 0.0
+        # Subtask timeout multiplied by count
+        self.requestor_subtask_timeout_mag: int = 0
+        # Subtask price multiplied by count
+        self.requestor_subtask_price_mag: int = 0
+        # Sum of time spent on computations that timed out
+        self.requestor_velocity_timeout: int = 0
+        # Sum of total computation time, including failures and timeouts
+        self.requestor_velocity_comp_time: int = 0
+
+        for key, value in kwargs.items():
+            if hasattr(self, key):
+                setattr(self, key, value)
+
+
+class RequestorAggregateStatsManager:
+
+    def __init__(self):
+        self.keeper = StatsKeeper(AggregateTaskStats, default_value='0')
+        self._payment_lock = Lock()
+        self._computed_lock = Lock()
+
+        dispatcher.connect(self._on_computed,
+                           signal='golem.subtask')
+        dispatcher.connect(self._on_payment,
+                           signal="golem.payment")
+
+    def _on_computed(self, event: str = 'default', **kwargs) -> None:
+        if event != 'finished':
+            return
+
+        subtask_count = int(kwargs['subtask_count'])
+        subtask_timeout = int(kwargs['subtask_timeout'])
+        subtask_price = int(kwargs['subtask_price'])
+        subtask_computation_time = int(kwargs['subtask_computation_time'])
+
+        with self._computed_lock:
+            self.keeper.increase_stat('requestor_subtask_timeout_mag',
+                                      subtask_count * subtask_timeout)
+            self.keeper.increase_stat('requestor_subtask_price_mag',
+                                      subtask_count * subtask_price)
+
+            if kwargs.get('timed_out', False):
+                self.keeper.increase_stat('requestor_velocity_timeout',
+                                          subtask_computation_time)
+            self.keeper.increase_stat('requestor_velocity_comp_time',
+                                      subtask_computation_time)
+
+    def _on_payment(self, event: str = 'default', **kwargs) -> None:
+        if event != 'confirmed':
+            return
+
+        delay = kwargs.get('delay')
+
+        with self._payment_lock:
+            _, payment_cnt = self.keeper.get_stats(
+                'requestor_payment_cnt')
+            _, payment_delay_sum = self.keeper.get_stats(
+                'requestor_payment_delay_sum')
+
+            new_cnt = payment_cnt + 1
+            new_sum = payment_delay_sum + delay
+            new_avg = new_sum / new_cnt
+
+            self.keeper.set_stat('requestor_payment_cnt', new_cnt)
+            self.keeper.set_stat('requestor_payment_delay_sum', new_sum)
+            self.keeper.set_stat('requestor_payment_delay_avg', new_avg)
+
+
 class RequestorTaskStatsManager:
     """Connects :py:class:`RequestorTaskStats` to pydispatcher.
 
@@ -498,6 +577,7 @@ class RequestorTaskStatsManager:
 
     def __init__(self):
         self.requestor_stats = RequestorTaskStats()
+        self.aggregate_stats = RequestorAggregateStatsManager()
         dispatcher.connect(self.cb_message,
                            signal="golem.taskmanager",
                            sender=dispatcher.Any)
@@ -522,3 +602,6 @@ class RequestorTaskStatsManager:
     def get_finished_stats(self) -> FinishedTasksStats:
         """See :py:meth:`RequestorTaskStats.get_finished_stats`"""
         return self.requestor_stats.get_finished_stats()
+
+    def get_aggregate_stats(self) -> AggregateTaskStats:
+        return self.aggregate_stats.keeper.global_stats

@@ -530,7 +530,7 @@ class TestMonitoringPublisherService(testwithreactor.TestWithReactor):
         self.service._run()
 
         logger.debug.assert_not_called()
-        assert send.call_count == 3
+        assert send.call_count == 5
 
 
 class TestNetworkConnectionPublisherService(testwithreactor.TestWithReactor):
@@ -1026,6 +1026,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         # then
         self.assertEqual(len(connected_peers), 4)
         self.assertTrue(all(peer for peer in connected_peers))
+        self.assertIsInstance(connected_peers[0]['node_info'], dict)
 
     def test_provider_status_starting(self, *_):
         # given
@@ -1163,6 +1164,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         session = Mock()
         for attr in PeerSessionInfo.attributes:
             setattr(session, attr, str(uuid.uuid4()))
+        session.node_info = dt_p2p_factory.Node()
         return session
 
 

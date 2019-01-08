@@ -29,10 +29,9 @@ from golem.core.common import (
     to_unicode,
 )
 from golem.core.fileshelper import du
-from golem.core.variables import CONCENT_CHOICES
 from golem.hardware.presets import HardwarePresets
 from golem.core.keysauth import KeysAuth
-from golem.core.service import LoopingCallService, IService
+from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
 from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
@@ -134,7 +133,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         # NETWORK
         self.node = LocalNode(
             node_name=self.config_desc.node_name,
-            prv_addr=self.config_desc.node_address,
+            prv_addr=self.config_desc.node_address or None,
             key=self.keys_auth.key_id,
         )
 
@@ -421,7 +420,9 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         def connect(ports):
             logger.info(
-                'Golem is listening on ports: P2P=%s, Task=%s, Hyperdrive=%r',
+                'Golem is listening on addr: %s'
+                ', ports: P2P=%s, Task=%s, Hyperdrive=%r',
+                self.node.prv_addr,
                 self.node.p2p_prv_port,
                 self.node.prv_port,
                 self.node.hyperdrive_prv_port
@@ -1456,6 +1457,18 @@ class MonitoringPublisherService(LoopingCallService):
                            .requestor_stats_manager.get_current_stats()),
             finished_stats=(self._task_server.task_manager
                             .requestor_stats_manager.get_finished_stats())
+        )
+        dispatcher.send(
+            signal='golem.monitor',
+            event='requestor_aggregate_stats_snapshot',
+            stats=(self._task_server.task_manager.requestor_stats_manager
+                   .get_aggregate_stats()),
+        )
+        dispatcher.send(
+            signal='golem.monitor',
+            event='provider_stats_snapshot',
+            stats=(self._task_server.task_manager.comp_task_keeper
+                   .provider_stats_manager.keeper.global_stats),
         )
 
 

@@ -28,7 +28,12 @@ class GolemSqliteDatabase(peewee.SqliteDatabase):
             try:
                 return super().execute_sql(sql, params, require_commit)
             except peewee.OperationalError as e:
-                if datetime.datetime.now() > deadline:
+                # Ignore transaction rollbacks
+                if str(e).startswith('no such savepoint'):
+                    logger.warning('execute_sql() tx rollback failed: %r', e)
+                    return
+                # Check retry deadline
+                elif datetime.datetime.now() > deadline:
                     logger.warning(
                         "execute_sql() retry timeout after %d iterations."
                         " Giving up.",
@@ -51,7 +56,7 @@ class GolemSqliteDatabase(peewee.SqliteDatabase):
 
 class Database:
 
-    SCHEMA_VERSION = 22
+    SCHEMA_VERSION = 23
 
     def __init__(self,  # noqa pylint: disable=too-many-arguments
                  db: peewee.Database,

@@ -419,14 +419,27 @@ class ConcentDepositTest(TransactionSystemBase):
         callback.assert_called_once()
         return callback.call_args[0][0]  # noqa pylint: disable=unsubscriptable-object
 
-    def test_enough(self):
+    def test_enough_locked(self):
         self.sci.get_deposit_value.return_value = 10
+        self.sci.get_deposit_locked_until.return_value = 0
         tx_hash = self._call_concent_deposit(
             required=10,
             expected=40,
         )
         self.assertIsNone(tx_hash)
         self.sci.deposit_payment.assert_not_called()
+        self.sci.lock_deposit.assert_not_called()
+
+    def test_enough_not_locked(self):
+        self.sci.get_deposit_value.return_value = 10
+        self.sci.get_deposit_locked_until.return_value = 1
+        tx_hash = self._call_concent_deposit(
+            required=10,
+            expected=40,
+        )
+        self.assertIsNone(tx_hash)
+        self.sci.deposit_payment.assert_not_called()
+        self.sci.lock_deposit.assert_called()
 
     def test_not_enough(self):
         self.sci.get_deposit_value.return_value = 0

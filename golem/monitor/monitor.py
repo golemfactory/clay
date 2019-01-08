@@ -10,7 +10,9 @@ from pydispatch import dispatcher
 
 from golem.core import variables
 from golem.decorators import log_error
-from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats
+from golem.task.taskproviderstats import ProviderStats
+from golem.task.taskrequestorstats import CurrentStats, FinishedTasksStats, \
+    AggregateTaskStats
 from .model import statssnapshotmodel
 from .model.loginlogoutmodel import LoginModel, LogoutModel
 from .model.nodemetadatamodel import NodeInfoModel, NodeMetadataModel
@@ -198,4 +200,13 @@ class SystemMonitor(object):
                                     finished_stats: FinishedTasksStats):
         msg = statssnapshotmodel.RequestorStatsModel(
             self.meta_data, current_stats, finished_stats)
+        self.sender_thread.send(msg)
+
+    def on_requestor_aggregate_stats_snapshot(self, stats: AggregateTaskStats):
+        msg = statssnapshotmodel.RequestorAggregateStatsModel(
+            self.meta_data, stats)
+        self.sender_thread.send(msg)
+
+    def on_provider_stats_snapshot(self, stats: ProviderStats):
+        msg = statssnapshotmodel.ProviderStatsModel(self.meta_data, stats)
         self.sender_thread.send(msg)

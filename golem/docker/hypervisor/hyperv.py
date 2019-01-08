@@ -7,7 +7,8 @@ from typing import Any, ClassVar, Dict, Iterable, List, Optional, Union
 
 from os_win.constants import HOST_SHUTDOWN_ACTION_SAVE, \
     VM_SNAPSHOT_TYPE_DISABLED, HYPERV_VM_STATE_SUSPENDED, \
-    HYPERV_VM_STATE_ENABLED, HOST_SHUTDOWN_ACTION_SHUTDOWN
+    HYPERV_VM_STATE_ENABLED, HOST_SHUTDOWN_ACTION_SHUTDOWN, \
+    HYPERV_VM_STATE_DISABLED
 from os_win.exceptions import OSWinException
 from os_win.utils.compute.vmutils import VMUtils
 from pydispatch import dispatcher
@@ -110,27 +111,33 @@ class HyperVHypervisor(DockerMachineHypervisor):
     def restore_vm(self, vm_name: Optional[str] = None) -> None:
         vm_name = vm_name or self._vm_name
         vm_state = self._vm_utils.get_vm_state(vm_name)
+
         if vm_state == HYPERV_VM_STATE_SUSPENDED:
-            logger.info('Hyper-V: Restoring VM %s ...', vm_name)
-            self._vm_utils.set_vm_state(vm_name, HYPERV_VM_STATE_ENABLED)
-            return
-        else:
-            logger.info(
-                'Hyper-V: VM %s cannot be restored. Booting ...', vm_name)
-            self.start_vm(vm_name)
+
+            if self._check_memory():
+                logger.info('Hyper-V: Restoring VM %s ...', vm_name)
+                try:
+                    self._vm_utils.set_vm_state(
+                        vm_name,
+                        HYPERV_VM_STATE_ENABLED
+                    )
+                    return
+                except OSWinException:
+                    logger.exception(f'Hyper-V: Failed to restore VM {vm_name}')
+
+            # If check_memory returned false or resuming raised an exception
+            # try to remove the saved state and restart it
+            logger.info('Hyper-V: VM %s cannot be restored. '
+                        'Removing the saved state ...', vm_name)
+            self._vm_utils.set_vm_state(vm_name, HYPERV_VM_STATE_DISABLED)
+
+        logger.info(
+            'Hyper-V: VM %s cannot be restored. Booting ...', vm_name)
+        self.start_vm(vm_name)
 
     def start_vm(self, name: Optional[str] = None) -> None:
         name = name or self._vm_name
         constr = self.constraints()
-
-        if not self._check_memory(constr):
-            logger.info("Attempting to free memory (empty working sets of "
-                        "running processes)")
-            try:
-                from golem.os import windows_ews
-                windows_ews()
-            except (ImportError, OSError):
-                logger.exception('Failed to free memory')
 
         if not self._check_memory(constr):
             mem_key = CONSTRAINT_KEYS['mem']
@@ -347,12 +354,24 @@ class HyperVHypervisor(DockerMachineHypervisor):
     def _check_memory(self, constr: Optional[dict] = None) -> bool:
         """
         Checks if there is enough memory on the system to start the VM
+        If not try to free memory and check again
         """
         if self.vm_running():
             return True
 
         constr = constr or self.constraints()
-        return constr[CONSTRAINT_KEYS['mem']] <= self._get_max_memory(constr)
+        mem = constr[CONSTRAINT_KEYS['mem']]
+
+        if mem > self._get_max_memory():
+            logger.info("Attempting to free memory (empty working sets of "
+                        "running processes)")
+            try:
+                from golem.os import windows_ews
+                windows_ews()
+            except (ImportError, OSError):
+                logger.exception('Failed to free memory')
+
+        return mem <= self._get_max_memory(constr)
 
     @staticmethod
     def _check_system_drive_space(memory: int) -> bool:
@@ -372,7 +391,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
             constr = constr or self.constraints()
             max_mem_in_mb += constr[CONSTRAINT_KEYS['mem']]
 
-        return int(0.9 * max_mem_in_mb)
+        return hardware.pad_memory(int(0.9 * max_mem_in_mb))
 
     @staticmethod
     def _lowered_memory_event(mem_mb: int) -> None:

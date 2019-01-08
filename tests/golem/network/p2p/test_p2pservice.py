@@ -7,6 +7,7 @@ from unittest.mock import MagicMock, patch
 import uuid
 
 from eth_utils import encode_hex
+import faker
 from golem_messages.datastructures import p2p as dt_p2p
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import Disconnect
@@ -23,6 +24,9 @@ from golem.network.p2p.peersession import PeerSession
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.tools.testwithreactor import TestDatabaseWithReactor
+
+
+fake = faker.Faker()
 
 
 class TestSyncSeeds(TestDatabaseWithReactor):
@@ -88,8 +92,7 @@ class TestP2PService(TestDatabaseWithReactor):
         node_session = peersession.PeerSession(conn=mock.MagicMock())
         node_session.listen_port = random.randint(1, 2 ** 16 - 1)
         node_session.address = random.randint(1, 2 ** 32 - 1)
-        node_session.node_name = 'approximately 16.8 million addresses'
-        node_session.node_info = None
+        node_session.node_info = node = dt_p2p_factory.Node()
         self.service.peers = {
             node_key_id: peersession.PeerSessionInfo(node_session),
         }
@@ -97,27 +100,19 @@ class TestP2PService(TestDatabaseWithReactor):
             {
                 'address': node_session.address,
                 'port': node_session.listen_port,
-                'node_name': node_session.node_name,
-                'node': None,
+                'node': node,
             },
         ]
         self.assertEqual(self.service.find_node(node_key_id=None), expected)
 
-        def randaddr() -> str:
-            def dig() -> int:
-                return random.randint(1, 255)
-
-            return '{}.{}.{}.{}'.format(dig(), dig(), dig(), dig())
-
         # find_node() via kademlia neighbours
         neighbour_node_key_id = uuid.uuid4()
         neighbour_node = dt_p2p_factory.Node(
-            node_name='Syndrom wstrząsu toksycznego',
             key=str(neighbour_node_key_id),
-            prv_addr=randaddr(),
-            pub_addr=randaddr(),
-            p2p_prv_port=random.randint(1, 2 ** 16 - 1),
-            p2p_pub_port=random.randint(1, 2 ** 16 - 1),
+            prv_addr=fake.ipv4(),
+            pub_addr=fake.ipv4(),
+            prv_port=random.randint(1, 2 ** 16 - 1),
+            pub_port=random.randint(1, 2 ** 16 - 1),
         )
         self.service.peer_keeper.neighbours = mock.MagicMock(
             return_value=[
@@ -126,9 +121,7 @@ class TestP2PService(TestDatabaseWithReactor):
         expected = [{
             'address': neighbour_node.prv_addr,
             'port': neighbour_node.prv_port,
-            'id': neighbour_node.key,
             'node': neighbour_node,
-            'node_name': neighbour_node.node_name,
         }]
         self.assertEqual(self.service.find_node(node_key_id), expected)
 
@@ -491,17 +484,21 @@ class TestP2PService(TestDatabaseWithReactor):
     def test_try_to_add_peer(self):
         key_id = 'abcde1234567890'
         peer_info = {
-            'node_name': 'test',
             'port': 1,
-            'node': mock.Mock(key=key_id),
+            'node': dt_p2p_factory.Node(key=key_id),
             'address': '10.0.0.1',
-            'conn_trials': 0,
         }
         self.service.try_to_add_peer(peer_info, True)
 
         assert key_id in self.service.free_peers
         assert key_id in self.service.incoming_peers
-        assert peer_info == self.service.incoming_peers[key_id]
+        incoming = self.service.incoming_peers[key_id]
+        del incoming['conn_trials']
+        del incoming['node_name']
+        self.assertEqual(
+            peer_info,
+            incoming,
+        )
 
     def test_get_socket_addresses(self):
         key_id = 'abcd'

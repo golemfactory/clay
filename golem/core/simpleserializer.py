@@ -6,6 +6,8 @@ import types
 from abc import ABCMeta, abstractmethod
 from typing import Optional
 
+from golem_messages import datastructures
+
 from golem.core.common import to_unicode
 
 logger = logging.getLogger('golem.core.simpleserializer')
@@ -57,7 +59,8 @@ class DictCoder:
     def _to_dict_traverse_dict(cls, dictionary, typed=True):
         result = dict()
         for k, v in list(dictionary.items()):
-            if (isinstance(k, str) and k.startswith('_')) or isinstance(v, collections.Callable):
+            if (isinstance(k, str) and k.startswith('_')) \
+                    or isinstance(v, collections.Callable):
                 continue
             result[str(k)] = cls._to_dict_traverse_obj(v, typed)
         return result
@@ -70,8 +73,15 @@ class DictCoder:
             return to_unicode(obj)
         elif isinstance(obj, collections.Iterable):
             if isinstance(obj, (set, frozenset)):
-                logger.warning('set/frozenset have known problems with umsgpack: %r', obj)
-            return obj.__class__([cls._to_dict_traverse_obj(o, typed) for o in obj])
+                logger.warning(
+                    'set/frozenset have known problems with umsgpack: %r',
+                    obj,
+                )
+            return obj.__class__(
+                [cls._to_dict_traverse_obj(o, typed) for o in obj]
+            )
+        elif isinstance(obj, datastructures.Container):
+            return obj.to_dict()
         elif cls.deep_serialization:
             if hasattr(obj, '__dict__') and not cls._is_builtin(obj):
                 return cls.obj_to_dict(obj, typed)
@@ -102,7 +112,9 @@ class DictCoder:
 
     @classmethod
     def _is_builtin(cls, obj):
-        return type(obj) in cls.builtin_types and not isinstance(obj, types.InstanceType)
+        # pylint: disable=unidiomatic-typecheck
+        return type(obj) in cls.builtin_types \
+            and not isinstance(obj, types.InstanceType)
 
     @staticmethod
     def module_and_class(obj):
