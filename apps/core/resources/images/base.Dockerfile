@@ -3,7 +3,7 @@
 
 FROM ubuntu:18.04
 
-MAINTAINER Golem Tech
+MAINTAINER Golem Tech <tech@golem.network>
 
 RUN set -x \
     && apt-get update \

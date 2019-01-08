@@ -4,7 +4,7 @@
 
 FROM golemfactory/base:1.3
 
-MAINTAINER Golem Tech
+MAINTAINER Golem Tech <tech@golem.network>
 
 RUN apt-get update && \
 	apt-get install -y \
