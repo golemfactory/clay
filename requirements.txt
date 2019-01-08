@@ -34,7 +34,7 @@ eth-utils==1.0.3
 ethereum==1.6.1
 Golem-Messages==2.21.1
 Golem-Smart-Contracts-Interface==1.6.1
-Golem-Verificator==1.6.3.1
+Golem-Verificator==1.7.0
 greenlet==0.4.15
 h2==3.0.1
 hpack==3.0.0
