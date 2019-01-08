@@ -154,9 +154,9 @@ class TaskComputer(object):
         work_wall_clock_time = task_thread.end_time - task_thread.start_time
         try:
             subtask = self.assigned_subtask
-            subtask_id = subtask['subtask_id']
             assert subtask is not None
             self.assigned_subtask = None
+            subtask_id = subtask['subtask_id']
             # get paid for max working time,
             # thus task withholding won't make profit
             task_header = \
@@ -221,7 +221,7 @@ class TaskComputer(object):
                 self.__request_task()
 
     def get_progress(self) -> Optional[ComputingSubtaskStateSnapshot]:
-        if not self.is_computing():
+        if not self.is_computing() or self.assigned_subtask is None:
             return None
 
         c: TaskThread = self.counting_thread
