@@ -3,7 +3,7 @@
 
 FROM ubuntu:18.04
 
-MAINTAINER Artur Zawłocki <artur.zawlocki@imapp.pl>
+MAINTAINER Golem Tech
 
 RUN set -x \
     && apt-get update \

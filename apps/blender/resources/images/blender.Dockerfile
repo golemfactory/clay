@@ -4,7 +4,7 @@
 
 FROM golemfactory/base:1.3
 
-MAINTAINER Artur Zawłocki <artur.zawlocki@imapp.pl>
+MAINTAINER Golem Tech
 
 RUN apt-get update && \
 	apt-get install -y \
@@ -28,7 +28,7 @@ ENV BLENDER_BZ2_URL http://download.blender.org/release/Blender$BLENDER_MAJOR/bl
 RUN curl -Ls ${BLENDER_BZ2_URL} | tar -xjv -C / && \
     mv /blender-${BLENDER_VERSION}-linux-glibc${GLIBC_VERSION}-x86_64 /blender
 
-RUN /golem/install_py_libs.sh 0 typing numpy
+RUN /golem/install_py_libs.sh 0 typing
 
 ENV PATH=/blender:/usr/bin/:$PATH
 ENV PYTHONPATH=/golem/scripts:/golem:$PYTHONPATH

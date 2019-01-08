@@ -4,7 +4,6 @@ import subprocess
 import sys
 from multiprocessing import cpu_count
 from typing import List
-import numpy
 
 import scenefileeditor
 
@@ -77,8 +76,8 @@ def params_to_dict(params) -> dict:
     for crop_params in params.crops:
         crop = crop_params.copy()
         borders_y = crop["borders_y"]
-        borders_y = [numpy.float32(float(borders_y[0])),
-                     numpy.float32(float(borders_y[1]))]
+        borders_y = [float(borders_y[0]),
+                     float(borders_y[1])]
         crop["borders_y"] = borders_y
         params_dict["crops"].append(crop)
 
