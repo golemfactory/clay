@@ -152,9 +152,9 @@ class TaskComputer(object):
             task_thread.end_time = time.time()
 
         work_wall_clock_time = task_thread.end_time - task_thread.start_time
-        subtask_id = task_thread.subtask_id
         try:
             subtask = self.assigned_subtask
+            subtask_id = subtask['subtask_id']
             assert subtask is not None
             self.assigned_subtask = None
             # get paid for max working time,
@@ -226,7 +226,7 @@ class TaskComputer(object):
 
         c: TaskThread = self.counting_thread
         tcss = ComputingSubtaskStateSnapshot(
-            subtask_id=c.get_subtask_id(),
+            subtask_id=self.assigned_subtask['subtask_id'],
             progress=c.get_progress(),
             seconds_to_timeout=c.task_timeout,
             running_time_seconds=(time.time() - c.start_time),
@@ -374,11 +374,11 @@ class TaskComputer(object):
             docker_images = [DockerImage(**did) for did in docker_images]
             dir_mapping = DockerTaskThread.generate_dir_mapping(resource_dir,
                                                                 temp_dir)
-            tt = DockerTaskThread(subtask_id, docker_images,
+            tt = DockerTaskThread(docker_images,
                                   src_code, extra_data,
                                   dir_mapping, task_timeout)
         elif self.support_direct_computation:
-            tt = PyTaskThread(subtask_id, src_code,
+            tt = PyTaskThread(src_code,
                               extra_data, resource_dir, temp_dir,
                               task_timeout)
         else:
@@ -429,17 +429,17 @@ class AssignedSubTask(object):
 
 class PyTaskThread(TaskThread):
     # pylint: disable=too-many-arguments
-    def __init__(self, subtask_id, src_code,
+    def __init__(self, src_code,
                  extra_data, res_path, tmp_path, timeout):
         super(PyTaskThread, self).__init__(
-            subtask_id, src_code, extra_data, res_path, tmp_path, timeout)
+            src_code, extra_data, res_path, tmp_path, timeout)
         self.vm = PythonProcVM()
 
 
 class PyTestTaskThread(PyTaskThread):
     # pylint: disable=too-many-arguments
-    def __init__(self, subtask_id, src_code,
+    def __init__(self, src_code,
                  extra_data, res_path, tmp_path, timeout):
         super(PyTestTaskThread, self).__init__(
-            subtask_id, src_code, extra_data, res_path, tmp_path, timeout)
+            src_code, extra_data, res_path, tmp_path, timeout)
         self.vm = PythonTestVM()

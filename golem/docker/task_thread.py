@@ -73,7 +73,7 @@ class DockerTaskThread(TaskThread):
 
     docker_manager: ClassVar[Optional['DockerManager']] = None
 
-    def __init__(self, subtask_id: str,  # pylint: disable=too-many-arguments
+    def __init__(self,  # pylint: disable=too-many-arguments
                  docker_images: List[Union[DockerImage, Dict, Tuple]],
                  src_code: str,
                  extra_data: Dict,
@@ -83,8 +83,7 @@ class DockerTaskThread(TaskThread):
 
         if not docker_images:
             raise AttributeError("docker images is None")
-        super(DockerTaskThread, self).__init__(
-            subtask_id=subtask_id,
+        super().__init__(
             src_code=src_code,
             extra_data=extra_data,
             res_path=str(dir_mapping.resources),
