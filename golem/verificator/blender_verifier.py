@@ -8,6 +8,8 @@ import json
 import numpy
 from threading import Lock
 from shutil import copy
+
+from golem.core.common import get_golem_path
 from golem.verificator.verifier import SubtaskVerificationState
 
 from .rendering_verifier import FrameRenderingVerifier
@@ -29,6 +31,12 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.verified_crops_counter = 0
         self.finished = Deferred()
         self.current_results_files = None
+        self.program_file = os.path.join(get_golem_path(),
+                                         'docker',
+                                         'blender',
+                                         'images',
+                                         'scripts',
+                                         'runner.py')
         self.already_called = False
         self.cropper = cropper_cls()
         self.docker_task_cls = docker_task_cls
@@ -131,6 +139,9 @@ class BlenderVerifier(FrameRenderingVerifier):
         logger.info("Crop no [%r] rendered for verification. Time spent: %r.",
                     crop_number, time_spend)
 
+        with open(self.program_file, "r") as src_file:
+            src_code = src_file.read()
+
         work_dir = verification_context.get_crop_path(
             str(crop_number))
         if not work_dir:
@@ -151,7 +162,7 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.docker_task = self.docker_task_cls(
             subtask_id=self.subtask_info['subtask_id'],
             docker_images=[(self.DOCKER_NAME, self.DOCKER_TAG)],
-            script_filename='runner.py',
+            src_code=src_code,
             extra_data=extra_data,
             dir_mapping=dir_mapping,
             timeout=self.timeout)
