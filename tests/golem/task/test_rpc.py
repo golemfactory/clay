@@ -147,15 +147,16 @@ class TestCreateTask(ProviderBase, TestClientBase):
     @mock.patch('golem.ethereum.fundslocker.FundsLocker.'
                 'validate_lock_funds_possibility',
                 side_effect=_raise_not_enough_funds)
-    def test_create_task_fail_if_not_enough_gnt_available(self, *_):
+    def test_create_task_fail_if_not_enough_gnt_available(self, mocked, *_):
         t = dummytaskstate.DummyTaskDefinition()
         t.name = "test"
 
         result = self.provider.create_task(t.to_dict())
         rpc.enqueue_new_task.assert_not_called()
-
-        assert result == (None, 'Not enough GNT available. Required: '
-                                '0.166667, available: 0.000000')
+        self.assertIn('validate_lock_funds_possibility', str(mocked))
+        mocked.assert_called()
+        self.assertEqual(result, (None, 'Not enough GNT available. Required: '
+                                        '0.166667, available: 0.000000'))
 
 
 class TestRestartTask(ProviderBase):

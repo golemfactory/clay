@@ -1,6 +1,7 @@
 import time
 from unittest import mock, TestCase
 
+from ethereum.utils import denoms
 from golem.core.variables import PAYMENT_DEADLINE
 from golem.ethereum import exceptions
 from golem.ethereum.fundslocker import (
@@ -125,9 +126,13 @@ class TestFundsLocker(TestCase):
         assert fl.task_lock[task_id].num_tasks == num_tasks + num
 
     def test_validate_lock_funds_possibility_raises_if_not_enough_gnt(self):
+        required = 50000000000000
+        available = 10000000000000
+        self.ts.get_available_gnt.return_value = available
         fl = FundsLocker(self.ts)
-        fl.transaction_system.get_available_gnt.return_value = 10000000000000
         with self.assertRaises(exceptions.NotEnoughFunds) as e:
-            fl.validate_lock_funds_possibility(50000000000000, 1)
-        x = 'Not enough GNT available. Required: 0.000050, available: 0.000010'
-        self.assertIn(str(e.exception), x)
+            fl.validate_lock_funds_possibility(required, 1)
+        expected = f'Not enough GNT available. ' \
+            f'Required: {required / denoms.ether:.6f}, ' \
+            f'available: {available / denoms.ether:.6f}'
+        self.assertIn(str(e.exception), expected)
