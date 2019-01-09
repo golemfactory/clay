@@ -32,6 +32,8 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.finished = Deferred()
         self.current_results_files = None
         self.program_file = os.path.join(get_golem_path(),
+                                         'golem',
+                                         'verificator',
                                          'docker',
                                          'blender',
                                          'images',
