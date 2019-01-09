@@ -20,32 +20,26 @@ import faker
 
 from ethereum.utils import denoms
 from twisted.internet import reactor
+from golem_messages import idgenerator
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
+from apps.dummy.task.dummytask import DummyTask
+from apps.dummy.task.dummytaskstate import DummyTaskDefinition
+from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from golem.appconfig import AppConfig
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.core.common import get_golem_path
 from golem.core.variables import CONCENT_CHOICES
 from golem.database import Database
-from golem.environments.environment import Environment
 from golem.resource.dirmanager import DirManager
 from golem.task import rpc as task_rpc
 from golem.model import db, DB_FIELDS, DB_MODELS
 from golem.network.transport.tcpnetwork import SocketAddress
-from tests.golem.task.dummy.task import DummyTask, DummyTaskParameters
 
 REQUESTING_NODE_KIND = "requestor"
 COMPUTING_NODE_KIND = "computer"
 
 logger = logging.getLogger(__name__)
-
-
-class DummyEnvironment(Environment):
-    @classmethod
-    def get_id(cls):
-        return DummyTask.ENVIRONMENT_NAME
-
-    def __init__(self):
-        super(DummyEnvironment, self).__init__()
-        self.allow_custom_main_program_file = True
 
 
 def format_msg(kind, pid, msg):
@@ -158,12 +152,30 @@ def run_requesting_node(datadir, num_subtasks=3):
     client.start()
     report("Started in {:.1f} s".format(time.time() - start_time))
 
-    dummy_env = DummyEnvironment()
+    dummy_env = DummyTaskEnvironment()
     client.environments_manager.add_environment(dummy_env)
 
-    params = DummyTaskParameters(1024, 2048, 256, 0x0001ffff)
-    task = DummyTask(client.get_node_name(), params, num_subtasks,
-                     client.keys_auth.public_key)
+    td = DummyTaskDefinition()
+    td.task_id = idgenerator.generate_id(client.keys_auth.public_key)
+    td.max_price = denoms.ether
+    td.resources = {
+        os.path.join(
+            get_golem_path(),
+            'apps',
+            'dummy',
+            'test_data',
+            'in.data',
+        ),
+    }
+    td.add_to_resources()
+    print(td.resources)
+    task = DummyTask(
+        num_subtasks,
+        td,
+        owner=dt_p2p_factory.Node(
+            node_name='test node',
+        ),
+    )
     task.initialize(DirManager(datadir))
     task_rpc.enqueue_new_task(client, task)
 
@@ -212,10 +224,9 @@ def run_computing_node(datadir, peer_address, fail_after=None):
     client = create_client(datadir)
     client.are_terms_accepted = lambda: True
     client.start()
-    client.task_server.task_computer.support_direct_computation = True
     report("Started in {:.1f} s".format(time.time() - start_time))
 
-    dummy_env = DummyEnvironment()
+    dummy_env = DummyTaskEnvironment()
     dummy_env.accept_tasks = True
     client.environments_manager.add_environment(dummy_env)
 

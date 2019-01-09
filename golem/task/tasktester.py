@@ -2,7 +2,6 @@ import logging
 
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import Task
-from golem.task.taskcomputer import PyTestTaskThread
 
 logger = logging.getLogger("golem.task")
 
@@ -30,14 +29,7 @@ class TaskTester(LocalComputer):
         # ctd: ComputeTaskDef
         if ctd['docker_images']:
             return LocalComputer._get_task_thread(self, ctd)
-        else:
-            return PyTestTaskThread(self,
-                                    ctd['subtask_id'],
-                                    ctd['src_code'],
-                                    ctd['extra_data'],
-                                    self.test_task_res_path,
-                                    self.tmp_dir,
-                                    0)
+        raise Exception("Empty docker images")
 
     def computation_success(self, task_thread):
         time_spent = self._get_time_spent()

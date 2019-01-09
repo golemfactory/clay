@@ -12,7 +12,7 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_deadline
 from golem.core.deferred import sync_wait
 from golem.docker.manager import DockerManager
-from golem.task.taskcomputer import TaskComputer, PyTaskThread, logger
+from golem.task.taskcomputer import TaskComputer, logger
 from golem.testutils import DatabaseFixture
 from golem.tools.ci import ci_skip
 from golem.tools.assertlogs import LogTestCase
@@ -136,11 +136,13 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_server.send_task_failed.assert_called_with(
             "xxyyzz", "xyz", "Host direct task not supported")
 
-        tc.support_direct_computation = True
+        ctd['docker_images'] = [
+            {'repository': 'golemfactory/base', 'tag': '1.3'},
+        ]
         tc.task_given(ctd)
         assert tc.task_resource_collected("xyz")
         assert tc.counting_thread is not None
-        self.assertGreater(tc.counting_thread.time_to_compute, 9)
+        self.assertGreater(tc.counting_thread.time_to_compute, 8)
         self.assertLessEqual(tc.counting_thread.time_to_compute, 10)
         mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
@@ -154,7 +156,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         args = task_server.send_results.call_args[0]
         self.assertEqual(args[0], "xxyyzz")
         self.assertEqual(args[1], "xyz")
-        self.assertEqual(args[2]["data"], 10000)
         mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
 
@@ -173,19 +174,8 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertIsNone(tc.counting_thread)
         self.assertIsNone(tc.assigned_subtask)
         task_server.send_task_failed.assert_called_with(
-            "aabbcc", "xyz", 'some exception')
-        mock_finished.assert_called_once_with()
-        mock_finished.reset_mock()
-
-        ctd['subtask_id'] = "aabbcc2"
-        ctd['src_code'] = "print('Hello world')"
-        ctd['deadline'] = timeout_to_deadline(5)
-        tc.task_given(ctd)
-        self.assertTrue(tc.task_resource_collected("xyz"))
-        self.__wait_for_tasks(tc)
-
-        task_server.send_task_failed.assert_called_with(
-            "aabbcc2", "xyz", "Wrong result format")
+            "aabbcc", "xyz", 'Subtask computation failed with exit code 1')
+        task_server.send_task_failed.reset_mock()
         mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
 
@@ -296,7 +286,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
 
         args = (task_computer, subtask_id)
         kwargs = dict(
-            docker_images=[],
+            docker_images=[{}],
             src_code='print("test")',
             extra_data=mock.Mock(),
             subtask_deadline=time.time() + 3600
@@ -326,54 +316,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc = TaskComputer(task_server, use_docker_manager=False)
         with self.assertLogs(logger, level="INFO"):
             tc.task_request_rejected("xyz", "my rejection reason")
-
-
-@ci_skip
-class TestTaskThread(DatabaseFixture):
-    def test_thread(self):
-        ts = mock.MagicMock()
-        ts.config_desc = ClientConfigDescriptor()
-        ts.benchmark_manager.benchmarks_needed.return_value = False
-        ts.get_task_computer_root.return_value = self.new_path
-
-        tc = TaskComputer(ts, use_docker_manager=False)
-
-        tt = self._new_task_thread(tc)
-        sync_wait(tt.start())
-
-        self.assertGreater(tt.end_time - tt.start_time, 0)
-        self.assertLess(tt.end_time - tt.start_time, 20)
-
-    def test_fail(self):
-        first_error = Exception("First error message")
-        second_error = Exception("Second error message")
-
-        tt = self._new_task_thread(mock.Mock())
-        tt._fail(first_error)
-
-        assert tt.error is True
-        assert tt.done is True
-        assert tt.error_msg == str(first_error)
-
-        tt._fail(second_error)
-        assert tt.error is True
-        assert tt.done is True
-        assert tt.error_msg == str(first_error)
-
-    def _new_task_thread(self, task_computer):
-        files = self.additional_dir_content([0, [1], [1], [1], [1]])
-        src_code = """
-                   cnt = 0
-                   for i in range(1000000):
-                       cnt += 1
-                   output = cnt
-                   """
-
-        return PyTaskThread(src_code=src_code,
-                            extra_data={},
-                            res_path=os.path.dirname(files[0]),
-                            tmp_path=os.path.dirname(files[1]),
-                            timeout=20)
 
 
 class TestTaskMonitor(DatabaseFixture):

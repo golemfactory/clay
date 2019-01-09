@@ -75,7 +75,10 @@ class DummyTaskDefinition(TaskDefinition):
         symlink_or_copy(data_file,
                         os.path.join(data_path, os.path.basename(data_file)))
 
-        self.resources = set(list_dir_recursive(self.tmp_dir))
+        self.resources = {
+            os.path.join(self.tmp_dir, 'data'),
+            os.path.join(self.tmp_dir, 'code'),
+        }
 
     # TODO maybe move it to the CoreTask? Issue #2428
     def set_defaults(self, defaults: DummyTaskDefaults):

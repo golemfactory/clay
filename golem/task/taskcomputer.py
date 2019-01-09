@@ -85,7 +85,6 @@ class TaskComputer(object):
 
         self.delta = None
         self.last_task_timeout_checking = None
-        self.support_direct_computation = False
         # Should this node behave as provider and compute tasks?
         self.compute_tasks = task_server.config_desc.accept_tasks \
             and not task_server.config_desc.in_shutdown
@@ -377,12 +376,8 @@ class TaskComputer(object):
             tt = DockerTaskThread(docker_images,
                                   src_code, extra_data,
                                   dir_mapping, task_timeout)
-        elif self.support_direct_computation:
-            tt = PyTaskThread(src_code,
-                              extra_data, resource_dir, temp_dir,
-                              task_timeout)
         else:
-            logger.error("Cannot run PyTaskThread in this version")
+            logger.error("Cannot run TaskThread in this version")
             subtask = self.assigned_subtask
             self.assigned_subtask = None
             self.task_server.send_task_failed(
@@ -425,21 +420,3 @@ class AssignedSubTask(object):
         self.extra_data = extra_data
         self.owner_address = owner_address
         self.owner_port = owner_port
-
-
-class PyTaskThread(TaskThread):
-    # pylint: disable=too-many-arguments
-    def __init__(self, src_code,
-                 extra_data, res_path, tmp_path, timeout):
-        super(PyTaskThread, self).__init__(
-            src_code, extra_data, res_path, tmp_path, timeout)
-        self.vm = PythonProcVM()
-
-
-class PyTestTaskThread(PyTaskThread):
-    # pylint: disable=too-many-arguments
-    def __init__(self, src_code,
-                 extra_data, res_path, tmp_path, timeout):
-        super(PyTestTaskThread, self).__init__(
-            src_code, extra_data, res_path, tmp_path, timeout)
-        self.vm = PythonTestVM()

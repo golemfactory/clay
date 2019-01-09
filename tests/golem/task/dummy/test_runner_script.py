@@ -1,8 +1,9 @@
 from unittest import mock
 
+from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from golem.network.transport.tcpnetwork import SocketAddress
 from golem.testutils import DatabaseFixture
-from tests.golem.task.dummy import runner, task
+from tests.golem.task.dummy import runner
 
 
 class TestDummyTaskRunnerScript(DatabaseFixture):
@@ -91,7 +92,7 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     def test_run_computing_node(self, mock_config_logging, mock_reactor, _):
         client = runner.run_computing_node(self.path,
                                            SocketAddress("127.0.0.1", 40102))
-        assert task.DummyTask.ENVIRONMENT_NAME in \
+        assert DummyTaskEnvironment.ENV_ID in \
             client.environments_manager.environments
         self.assertTrue(mock_reactor.run.called)
         self.assertTrue(mock_config_logging.called)
