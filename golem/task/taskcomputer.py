@@ -215,7 +215,7 @@ class TaskComputer(object):
         """ Main loop of task computer """
         if self.counting_thread is not None:
             self.counting_thread.check_timeout()
-        elif self.compute_tasks and self.runnable:
+        elif False and self.compute_tasks and self.runnable:
             last_request = time.time() - self.last_task_request
             if last_request > self.task_request_frequency:
                 self.__request_task()
