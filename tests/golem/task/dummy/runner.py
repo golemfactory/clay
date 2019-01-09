@@ -31,10 +31,11 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import get_golem_path
 from golem.core.variables import CONCENT_CHOICES
 from golem.database import Database
-from golem.resource.dirmanager import DirManager
-from golem.task import rpc as task_rpc
+from golem.marketplace.offerpool import OfferPool
 from golem.model import db, DB_FIELDS, DB_MODELS
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.resource.dirmanager import DirManager
+from golem.task import rpc as task_rpc
 
 REQUESTING_NODE_KIND = "requestor"
 COMPUTING_NODE_KIND = "computer"
@@ -113,6 +114,7 @@ def _make_mock_ets():
     ets.eth_base_for_batch_payment.return_value = 0.001 * denoms.ether
     ets.get_payment_address.return_value = '0x' + 40 * '6'
     ets.get_nodes_with_overdue_payments.return_value = []
+    ets.add_payment_info.return_value = int(time.time())
     return ets
 
 
@@ -127,6 +129,8 @@ def _print_golem_log(datadir):
 
 
 def run_requesting_node(datadir, num_subtasks=3):
+    OfferPool.change_interval(1)
+
     client = None
 
     def shutdown():
