@@ -86,8 +86,6 @@ class DockerTaskThread(TaskThread):
         super().__init__(
             src_code=src_code,
             extra_data=extra_data,
-            res_path=str(dir_mapping.resources),
-            tmp_path=str(dir_mapping.temporary),
             timeout=timeout
         )
 

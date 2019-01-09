@@ -1,3 +1,4 @@
+import abc
 import copy
 import logging
 import os
@@ -26,18 +27,13 @@ class TaskThread(threading.Thread):
     def __init__(self,
                  src_code: str,
                  extra_data: Dict,
-                 res_path: str,
-                 tmp_path: str,
                  timeout: float = 0) -> None:
         super(TaskThread, self).__init__()
 
-        self.vm = None
         self.src_code = src_code
         self.extra_data = extra_data
         self.result = None
         self.done = False
-        self.res_path = res_path
-        self.tmp_path = tmp_path
         self.lock = threading.Lock()
         self.error = False
         self.error_msg = ""
@@ -68,9 +64,9 @@ class TaskThread(threading.Thread):
                 except TimeoutException as e:
                     self._fail(e)
 
+    @abc.abstractmethod
     def get_progress(self):
-        with self.lock:
-            return self.vm.get_progress()
+        pass
 
     def get_error(self):
         with self.lock:
@@ -80,20 +76,12 @@ class TaskThread(threading.Thread):
         super().start()
         return self._deferred
 
+    @abc.abstractmethod
     def run(self):
-        logger.info("RUNNING ")
-        try:
-            self.__do_work()
-        except Exception as exc:  # pylint: disable=broad-except
-            logger.exception("__do_work failed")
-            self._fail(exc)
-        else:
-            self._deferred.callback(self)
+        pass
 
     def end_comp(self):
         self.end_time = time.time()
-        if self.vm:
-            self.vm.end_comp()
 
     def _fail(self, exception: Exception):
         # Preserves the original cause of failure
@@ -108,18 +96,3 @@ class TaskThread(threading.Thread):
         self.error_msg = str(exception)
         self.done = True
         self._deferred.errback(exception)
-
-    def __do_work(self):
-        extra_data = copy.copy(self.extra_data)
-        abs_res_path = os.path.abspath(os.path.normpath(self.res_path))
-        abs_tmp_path = os.path.abspath(os.path.normpath(self.tmp_path))
-
-        try:
-            extra_data["resourcePath"] = abs_res_path
-            extra_data["tmp_path"] = abs_tmp_path
-            self.result, self.error_msg = self.vm.run_task(
-                self.src_code,
-                extra_data
-            )
-        finally:
-            self.end_time = time.time()

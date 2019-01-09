@@ -21,7 +21,6 @@ from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.resource.dirmanager import DirManager
 from golem.resource.resourcesmanager import ResourcesManager
 from golem.task.timer import ProviderTimer
-from golem.vm.vm import PythonProcVM, PythonTestVM
 
 from .taskthread import TaskThread
 
