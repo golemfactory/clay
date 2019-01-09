@@ -181,6 +181,8 @@ font-style: italic;
   <body>
   <h1>Golem Gateway API</h1>
     <div class="app-desc">Golem Brass Gateway API for Golem Unlimited</div>
+    <div class="app-desc">More information: <a href="https://helloreverb.com">https://helloreverb.com</a></div>
+    <div class="app-desc">Contact Info: <a href="hello@helloreverb.com">hello@helloreverb.com</a></div>
     <div class="app-desc">Version: 1.0.0</div>
     <div class="app-desc">BasePath:</div>
     <div class="license-info">GPL 3.0</div>
@@ -648,12 +650,14 @@ Reason is supplied only in case of failure.</div>
     <h3 class="field-label">Example data</h3>
     <div class="example-data-content-type">Content-Type: application/json</div>
     <pre class="example"><code>{
-  "numCores" : 1,
-  "maxResourceSize" : 0,
-  "maxMemorySize" : 6,
-  "price" : 5,
-  "perfIndex" : 314.0,
-  "taskId" : ""
+  "subtasksCount" : 1,
+  "subtaskTimeout" : 6,
+  "minVersion" : "minVersion",
+  "resourceSize" : 5,
+  "maxPrice" : 2,
+  "deadline" : 0,
+  "taskId" : "",
+  "estimatedMemory" : 5
 }</code></pre>
 
 
@@ -906,11 +910,13 @@ Reason is supplied only in case of failure.</div>
     <div class='model-description'>A basic unit of work requested in Golem Network. Upon computation it is divided into a smaller chunks - subtasks. Number of subtasks is defined by the requestor.</div>
     <div class="field-items">
       <div class="param">taskId </div><div class="param-desc"><span class="param-type"><a href="##/parameters/taskId">#/parameters/taskId</a></span>  </div>
-<div class="param">perfIndex </div><div class="param-desc"><span class="param-type"><a href="#float">Float</a></span>  format: float</div>
-<div class="param">maxResourceSize </div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span>  format: int64</div>
-<div class="param">maxMemorySize </div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span>  format: int64</div>
-<div class="param">numCores </div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span>  format: int32</div>
-<div class="param">price </div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span> per second of computation format: int64</div>
+<div class="param">deadline </div><div class="param-desc"><span class="param-type"><a href="#integer">Integer</a></span> timestamp when computation must be finished to be accepted by a requestor </div>
+<div class="param">subtaskTimeout </div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span>  format: int64</div>
+<div class="param">subtasksCount </div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span>  format: int64</div>
+<div class="param">resourceSize (optional)</div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span>  format: int64</div>
+<div class="param">estimatedMemory (optional)</div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span>  format: int64</div>
+<div class="param">maxPrice </div><div class="param-desc"><span class="param-type"><a href="#long">Long</a></span> in GNT/10e+18 per second of computation format: int64</div>
+<div class="param">minVersion (optional)</div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span> minimal Golem version </div>
     </div>  <!-- field-items -->
   </div>
   </body>

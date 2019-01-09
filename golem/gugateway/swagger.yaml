@@ -258,31 +258,37 @@ definitions:
       Number of subtasks is defined by the requestor.
     required:
       - taskId
-      - perfIndex
-      - maxResourceSize
-      - maxMemorySize
-      - numCores
-      - price
+      - deadline
+      - subtaskTimeout
+      - subtasksCount
+      - maxPrice
     properties:
       taskId:
         $ref: '#/parameters/taskId'
-      perfIndex:
-        type: number
-        format: float
-        example: 314
-      maxResourceSize:
+      deadline:
+        type: integer
+        description: >
+          timestamp when computation must be finished
+          to be accepted by a requestor
+      subtaskTimeout:
         type: integer
         format: int64
-      maxMemorySize:
+      subtasksCount:
         type: integer
         format: int64
-      numCores:
-        type: integer
-        format: int32
-      price:
+      resourceSize:
         type: integer
         format: int64
-        description: per second of computation
+      estimatedMemory:
+        type: integer
+        format: int64
+      maxPrice:
+        type: integer
+        format: int64
+        description: in GNT/10e+18 per second of computation
+      minVersion:
+        type: string
+        description: minimal Golem version
     additionalProperties: true
   Subtask:
     description: >

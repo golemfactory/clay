@@ -1,10 +1,11 @@
-from flask import Flask, request, send_file
-from golem.client import Client
 import json
 import logging
-from .subscription import TaskStatus, Subscription, TaskType, InvalidTaskType,\
-    InvalidTaskStatus
+from flask import Flask, request, send_file
 from typing import Dict
+
+from golem.client import Client
+from .subscription import TaskStatus, Subscription, TaskType, InvalidTaskType, \
+    InvalidTaskStatus, Task
 
 logger: logging.Logger = logging.getLogger(__name__)
 port: int = 55001
@@ -13,11 +14,19 @@ golem_client: Client = None
 subscriptions: Dict[str, Dict[TaskType, Subscription]] = dict()
 
 
-# credit: https://gist.github.com/ianschenck/977379a91154fe264897
 def start(client: Client):
     global golem_client
     golem_client = client
 
+    from twisted.internet.error import CannotListenError
+    try:
+        _start(port)
+    except CannotListenError:
+        _start(port+1)
+
+
+# credit: https://gist.github.com/ianschenck/977379a91154fe264897
+def _start(port: int):
     from twisted.internet import reactor
     from twisted.web.wsgi import WSGIResource
     from twisted.web.server import Site
@@ -62,8 +71,8 @@ def all_subscriptions(node_id: str):
     if node_id not in subscriptions:
         return _not_found('subscription')
 
-    return '[%s]' % ','.join(
-        [s.to_json() for _t, s in subscriptions[node_id].items()])
+    return json.dumps(
+        [s.to_json_dict() for s in subscriptions[node_id].values()])
 
 
 @app.route('/subscriptions/<node_id>/<task_type>', methods=['PUT'])
@@ -147,11 +156,11 @@ def want_to_compute_task(node_id, task_id):
 
 
 @app.route('/<node_id>/tasks/<task_id>', methods=['GET'])
-def task_info(node_id, task_id):
+def task_info(node_id: str, task_id: str):
     """Gets task information"""
 
     if node_id not in subscriptions:
-        return _not_found(f'Task {task_id}')
+        return _not_found('subscription')
 
     return json.dumps({
         'taskId': '682e9b26-ed89-11e8-a9e0-6e845eabffe0',
@@ -249,63 +258,32 @@ def download_resource(node_id, resource_id):
     return send_file('foo')
 
 
-@app.route('/<node_id>/events', methods=['GET'])
-def fetch_events(node_id):
-    """List events for given node id; starting after last event id"""
+@app.route('/<node_id>/<task_type>/events', methods=['GET'])
+def fetch_events(node_id: str, task_type: str):
+    """List events for given node id and task type; newer than last event id"""
 
     if node_id not in subscriptions:
         return _not_found('subscription')
 
-    # TODO
-    last_event_id = request.args.get('lastEventId', 1)
+    try:
+        task_type = TaskType.match(task_type)
+    except InvalidTaskType as e:
+        return _invalid_input(e)
 
-    events_list = list()
+    if task_type not in subscriptions[node_id]:
+        return _not_found('subscription')
 
-    last_event_id += 1
-    events_list.append({
-        'eventId': last_event_id,
-        'task': None,
-        'resource': {
-            'resource_id': '1234',
-            'metadata':
-                '{"size": 120, "filename": "foo.json", "atime": 1542903681123}'
-        },
-        'verificationResult': None
-    })
-
-    last_event_id += 1
-    events_list.append({
-        'eventId': last_event_id,
-        'task': {
-            'taskId': '682e9b26-ed89-11e8-a9e0-6e845eabffe0',
-            'perfIndex': 314,
-            'maxResourceSize': 110,
-            'maxMemorySize': 10,
-            'numCores': 2,
-            'price': 12,
-            'extraData': '{"foo": "bar"}'
-        },
-        'resource': None,
-        'verificationResult': None
-    })
+    subscription = subscriptions[node_id][task_type]
 
     for task_id, header in golem_client.get_known_tasks().items():
-        last_event_id += 1
-        fixed_header = header['fixed_header']
-        events_list.append({
-            'eventId': last_event_id,
-            'task': {
-                'taskId': task_id,
-                # 'perfIndex': task['performance'],
-                'type': fixed_header['environment'],
-                # 'maxResourceSize': 110,
-                # 'maxMemorySize': 10,
-                # 'numCores': 2,
-                # 'price': 12,
-                # 'extraData': task
-            },
-            'resource': None,
-            'verificationResult': None
-        })
+        if header['environment'].lower() != task_type.name.lower():
+            continue
 
-    return json.dumps(events_list)
+        subscription.add_task_event(task_id, header)
+
+    last_event_id = int(request.args.get('lastEventId', -1))
+    try:
+        return json.dumps([e.to_json_dict()
+                           for e in subscription.events_after(last_event_id)])
+    except KeyError as e:
+        return _invalid_input(e)
