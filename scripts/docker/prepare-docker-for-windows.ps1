@@ -45,7 +45,7 @@ function EnsureShare {
     "Ensure Shared folder"
     md $folder -Force
     "Folder created, create share"
-    PowerShell.exe -File "$createShareScript" "$golemUserName" "$folder"
+    PowerShell.exe -WindowStyle hidden -File "$createShareScript" "$golemUserName" "$folder"
     "Share created"
 }
 
