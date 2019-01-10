@@ -1,9 +1,8 @@
 import logging
 import os
-import psutil
 from pathlib import Path
 import subprocess
-from typing import Any, ClassVar, Dict, Iterable, List, Optional, Union
+from typing import Any, ClassVar, Dict, Iterable, List, Optional
 
 from os_win.constants import HOST_SHUTDOWN_ACTION_SAVE, \
     VM_SNAPSHOT_TYPE_DISABLED, HYPERV_VM_STATE_SUSPENDED, \
@@ -11,6 +10,7 @@ from os_win.constants import HOST_SHUTDOWN_ACTION_SAVE, \
     HYPERV_VM_STATE_DISABLED
 from os_win.exceptions import OSWinException
 from os_win.utils.compute.vmutils import VMUtils
+import psutil
 from pydispatch import dispatcher
 
 from golem import hardware
@@ -330,7 +330,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 .stdout\
                 .decode('utf8')\
                 .strip()
-        except (subprocess.CalledProcessError, \
+        except (subprocess.CalledProcessError,
                 subprocess.TimeoutExpired) as exc:
             raise RuntimeError(exc.stderr.decode('utf8') if exc.stderr else '')
 
