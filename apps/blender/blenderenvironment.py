@@ -11,7 +11,7 @@ from golem.environments.environment import SupportStatus, UnsupportReason
 
 class BlenderEnvironment(DockerEnvironment):
     DOCKER_IMAGE = "golemfactory/blender"
-    DOCKER_TAG = "1.4"
+    DOCKER_TAG = "1.5"
     ENV_ID = "BLENDER"
     APP_DIR = path.join(get_golem_path(), 'apps', 'blender')
     SCRIPT_NAME = "docker_blendertask.py"

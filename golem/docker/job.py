@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import posixpath
@@ -6,7 +7,7 @@ from typing import Dict, Optional, Iterable
 
 import docker.errors
 
-from golem.core.common import nt_path_to_posix_path
+from golem.core.common import nt_path_to_posix_path, is_osx, is_windows
 from golem.docker.image import DockerImage
 from .client import local_client
 
@@ -55,7 +56,7 @@ class DockerJob(object):
     TASK_SCRIPT = "job.py"
 
     # Name of the parameters file, relative to WORK_DIR
-    PARAMS_FILE = "params.py"
+    PARAMS_FILE = "params.json"
 
     # pylint:disable=too-many-arguments
     def __init__(self,
@@ -120,10 +121,8 @@ class DockerJob(object):
 
         # Save parameters in work_dir/PARAMS_FILE
         params_file_path = self._get_host_params_path()
-        with open(params_file_path, "wb") as params_file:
-            for key, value in self.parameters.items():
-                line = "{} = {}\n".format(key, repr(value))
-                params_file.write(bytearray(line, encoding='utf-8'))
+        with open(params_file_path, "w") as params_file:
+            json.dump(self.parameters, params_file)
 
         # Save the script in work_dir/TASK_SCRIPT
         task_script_path = self._get_host_script_path()
@@ -305,3 +304,12 @@ class DockerJob(object):
             inspect = client.inspect_container(self.container_id)
             return inspect["State"]["Status"]
         return self.state
+
+    @staticmethod
+    def get_environment() -> dict:
+        if is_windows():
+            return {}
+        if is_osx():
+            return dict(OSX_USER=1)
+
+        return dict(LOCAL_USER_ID=os.getuid())

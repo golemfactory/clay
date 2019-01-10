@@ -185,7 +185,6 @@ class LocalComputer:
             temporary=self.tmp_dir,
         )
         return DockerTaskThread(
-            ctd['subtask_id'],
             ctd['docker_images'],
             ctd['src_code'],
             ctd['extra_data'],

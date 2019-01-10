@@ -10,7 +10,7 @@ import uuid
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
-from golem_verificator.verifier import SubtaskVerificationState
+from golem.verificator.verifier import SubtaskVerificationState
 from PIL import Image
 
 
@@ -158,7 +158,7 @@ class TestBlenderFrameTask(TempDirFixture):
                 SubtaskVerificationState.VERIFIED,
                 result)
 
-        with mock.patch('golem_verificator.rendering_verifier.'
+        with mock.patch('golem.verificator.rendering_verifier.'
                         'RenderingVerifier.start_verification',
                         side_effect=verification_finished1):
             self.bt.computation_finished(
@@ -189,7 +189,7 @@ class TestBlenderFrameTask(TempDirFixture):
         img.save(file2, "PNG")
         img.close()
 
-        with mock.patch('golem_verificator.rendering_verifier.'
+        with mock.patch('golem.verificator.rendering_verifier.'
                         'RenderingVerifier.start_verification',
                         side_effect=verification_finished2):
             self.bt.computation_finished(
@@ -214,8 +214,8 @@ class TestBlenderFrameTask(TempDirFixture):
                                               node_name="node11",
                                               num_cores=0)
         assert extra_data.ctd is not None
-        assert "border_max_y = 1" in extra_data.ctd['extra_data']['script_src']
-        assert "border_min_y = 0" in extra_data.ctd['extra_data']['script_src']
+        assert extra_data.ctd['extra_data']['crops'][0]['borders_y'] \
+            == [0.0, 1.0]
 
     def test_put_frame_together(self):
         self.bt.output_format = "EXR"

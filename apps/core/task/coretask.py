@@ -8,8 +8,8 @@ from golem_messages import idgenerator
 from golem_messages.datastructures import p2p as dt_p2p
 from golem_messages.datastructures import tasks as dt_tasks
 import golem_messages.message
-from golem_verificator.core_verifier import CoreVerifier
-from golem_verificator.verifier import SubtaskVerificationState
+from golem.verificator.core_verifier import CoreVerifier
+from golem.verificator.verifier import SubtaskVerificationState
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.core.verification_queue import VerificationQueue

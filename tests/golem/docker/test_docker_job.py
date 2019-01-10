@@ -1,5 +1,6 @@
 # coding: utf-8
 import logging.config
+import json
 import os
 import shutil
 import tempfile
@@ -100,6 +101,7 @@ class TestDockerJob(DockerTestCase):
             resources_dir=self.resources_dir,
             work_dir=self.work_dir,
             output_dir=self.output_dir,
+            environment=DockerJob.get_environment(),
             host_config={
                 'binds': {
                     self.work_dir: {
@@ -127,7 +129,7 @@ class TestBaseDockerJob(TestDockerJob):
         return "golemfactory/base"
 
     def _get_test_tag(self):
-        return "1.2"
+        return "1.3"
 
     def test_create(self):
         job = self._create_test_job()
@@ -141,13 +143,8 @@ class TestBaseDockerJob(TestDockerJob):
         self.assertTrue(job._get_host_script_path().startswith(job.work_dir))
 
     def _load_dict(self, path):
-        with open(path, 'rb') as f:
-            lines = f.readlines()
-        d = {}
-        for l in lines:
-            key, val = l.decode('utf-8').split("=")
-            d[key.strip()] = eval(val.strip())  # noqa pylint:disable=eval-used
-        return d
+        with open(path, 'r') as f:
+            return json.load(f)
 
     def _test_params_saved(self, task_params):
         with self._create_test_job(params=task_params) as job:
@@ -260,7 +257,7 @@ class TestBaseDockerJob(TestDockerJob):
 
     def test_logs_stdout(self):
         text = "Adventure Time!"
-        src = "print '{}'\n".format(text)
+        src = "print('{}')\n".format(text)
         with self._create_test_job(script=src) as job:
             job.start()
             out_file = path.join(self.output_dir, "stdout.log")
@@ -343,7 +340,7 @@ class TestBaseDockerJob(TestDockerJob):
         container_logger.setLevel(prev_level)
 
     def test_working_dir_set(self):
-        script = "import os\nprint os.getcwd()\n"
+        script = "import os\nprint(os.getcwd())\n"
         with self._create_test_job(script=script) as job:
             job.start()
             job.wait()
