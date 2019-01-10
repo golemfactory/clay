@@ -17,6 +17,7 @@ from golem_messages import cryptography
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from golem_messages.utils import encode_hex
+from pydispatch import dispatcher
 
 from twisted.internet.defer import Deferred
 
@@ -543,20 +544,19 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             self.task_session._react_to_subtask_results_rejected(srr)
         dropped.assert_called_once_with()
 
-    @patch('golem.task.tasksession.dispatcher.send')
-    def test_result_rejected(self, send_mock):
+    def test_result_rejected(self):
+        dispatch_listener = Mock()
+        dispatcher.connect(dispatch_listener, signal='golem.message')
+
         srr = self._get_srr()
         self.__call_react_to_srr(srr)
+
         self.task_session.task_server.subtask_rejected.assert_called_once_with(
             sender_node_id=self.task_session.key_id,
             subtask_id=srr.report_computed_task.subtask_id,  # noqa pylint:disable=no-member
         )
 
-        send_mock.assert_called_once_with(
-            signal='golem.message',
-            event='received',
-            message=srr
-        )
+        dispatch_listener.assert_called_once()
 
     def test_result_rejected_with_wrong_key(self):
         srr = self._get_srr(key2='notmine')
@@ -1127,8 +1127,7 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.provider_keys = cryptography.ECCx(None)
         self.provider_key_id = encode_hex(self.provider_keys.raw_pubkey)
 
-    @patch('golem.task.tasksession.dispatcher.send')
-    def test_react_to_subtask_results_accepted(self, send_mock):
+    def test_react_to_subtask_results_accepted(self):
         # given
         rct = msg_factories.tasks.ReportComputedTaskFactory(
             task_to_compute__sign__privkey=self.requestor_keys.raw_privkey,
@@ -1152,6 +1151,9 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_server.client.transaction_system.is_income_expected\
                                                   .return_value = False
 
+        dispatch_listener = Mock()
+        dispatcher.connect(dispatch_listener, signal='golem.message')
+
         # when
         self.task_session._react_to_subtask_results_accepted(sra)
 
@@ -1169,11 +1171,7 @@ class SubtaskResultsAcceptedTest(TestCase):
             'ForceSubtaskResults',
         )
 
-        send_mock.assert_called_once_with(
-            signal='golem.message',
-            event='received',
-            message=sra
-        )
+        dispatch_listener.assert_called_once()
 
     def test_react_with_wrong_key(self):
         # given
