@@ -261,13 +261,10 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
             subtask_results_accepted_list=acceptances,
         )
         response_provider = self.provider_load_response(self.provider_send(fp))
-        response_requestor = self.requestor_receive()
-
-        for response in (response_provider, response_requestor):
-            self.assertIsInstance(
-                response,
-                message.concents.ForcePaymentRejected,
-            )
+        self.assertIsInstance(
+            response_provider,
+            message.concents.ForcePaymentRejected,
+        )
 
     def _prepare_list_of_acceptances(self):
         LOA = []
