@@ -338,7 +338,7 @@ class RequestorPaysTest(ForcePaymentBase):
         sys.stderr.write('\n')
         return LOA, V
 
-    def test_requestor_already_payed(self):
+    def test_requestor_already_paid(self):
         """React to no debts
 
         If V is <= 0 then Concent service responds with ForcePaymentRejected
