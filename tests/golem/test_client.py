@@ -25,6 +25,7 @@ from golem.client import Client, ClientTaskComputerEventListener, \
     ResourceCleanerService, TaskArchiverService, \
     TaskCleanerService
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.config.active import EthereumConfig
 from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
 from golem.hardware.presets import HardwarePresets
@@ -715,6 +716,11 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             'last_gnt_update': "None",
             'last_eth_update': "None",
             'block_number': "222",
+            'contract_addresses': {
+                contract.name: address
+                for contract, address
+                in EthereumConfig.CONTRACT_ADDRESSES.items()
+            }
         }
         assert all(isinstance(entry, str) for entry in balance)
 
