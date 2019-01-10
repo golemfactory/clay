@@ -292,6 +292,16 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
         response = self.provider_load_response(self.provider_send(fp))
         self.assertServiceRefused(response, sr_reasons.InvalidRequest)
 
+    def test_provider_replay(self):
+        LOA = self._prepare_list_of_acceptances()
+        V = sum(sra.task_to_compute.price for sra in LOA)
+        self.put_deposit(self.requestor_sci, V*2)
+        self.assertPaymentCommited(LOA, V, 0)
+        fp = message.concents.ForcePayment(
+            subtask_results_accepted_list=LOA,
+        )
+        self.assertPaymentRejected(fp, fpr_reasons.NoUnsettledTasksFound)
+
 
 class RequestorPaysTest(ForcePaymentBase):
     def _pay_and_count(self, modifier) \

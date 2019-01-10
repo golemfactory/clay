@@ -6,7 +6,7 @@ from typing import ClassVar, Optional, TYPE_CHECKING, Tuple, Dict, Union, \
 
 import requests
 
-from golem.core.common import is_windows, is_osx
+from golem.core.common import is_windows, is_osx, posix_path
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob
 from golem.environments.environmentsmanager import EnvironmentsManager
@@ -58,10 +58,14 @@ class DockerDirMapping:
         self.logs.mkdir(exist_ok=exist_ok)
 
 
-class DockerBind(NamedTuple): # pylint: disable=too-few-public-methods
+class DockerBind(NamedTuple):  # pylint: disable=too-few-public-methods
     source: Path
     target: str
     mode: str = 'rw'
+
+    @property
+    def source_as_posix(self) -> str:
+        return posix_path(str(self.source))
 
 
 class DockerTaskThread(TaskThread):

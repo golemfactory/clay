@@ -50,6 +50,15 @@ class IsVersionCompatibleTest(unittest.TestCase):
         self.assertFalse(utils.is_version_compatible(fake.word(), self.spec))  # noqa pylint: disable=no-member
 
 
+class GetMinVersionTest(unittest.TestCase):
+    def setUp(self):
+        self.version = semantic_version.Version('0.11.1+dev347.gdb685e2')
+
+    def test_basic(self):
+        min_version = utils.get_min_version(self.version)
+        self.assertEqual(min_version, semantic_version.Version('0.11.0'))
+
+
 def test_pubkeytoaddr():
     pubkey = encode_hex(os.urandom(64))
     addr = utils.pubkeytoaddr(pubkey)

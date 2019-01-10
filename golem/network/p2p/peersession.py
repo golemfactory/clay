@@ -9,6 +9,7 @@ from golem_messages.datastructures import p2p as dt_p2p
 from pydispatch import dispatcher
 
 import golem
+from golem import constants as gconst
 from golem.appconfig import SEND_PEERS_NUM
 from golem.core import variables
 from golem.core.keysauth import KeysAuth
@@ -24,7 +25,7 @@ def compare_version(client_ver):
     except ValueError:
         logger.debug('Received invalid version tag: %r', client_ver)
         return
-    if semantic_version.Version(golem.__version__) < v_client:
+    if gconst.GOLEM_VERSION < v_client:
         dispatcher.send(
             signal='golem.p2p',
             event='new_version',
