@@ -25,6 +25,8 @@ paths:
               $ref: '#/definitions/SubscriptionStatus'
         '404':
           description: subscription not found
+          schema:
+            $ref: '#/definitions/Message'
   '/subscriptions/{nodeId}/{taskType}':
     parameters:
       - $ref: '#/parameters/nodeId'
@@ -35,8 +37,12 @@ paths:
       responses:
         '201':
           description: subscription created
+          schema:
+            $ref: '#/definitions/SubscriptionStatus'
         '405':
           description: invalid input
+          schema:
+            $ref: '#/definitions/Message'
     get:
       summary: Gets single subscription details
       operationId: subscription
@@ -47,14 +53,20 @@ paths:
             $ref: '#/definitions/SubscriptionStatus'
         '404':
           description: subscription not found
+          schema:
+            $ref: '#/definitions/Message'
     delete:
       summary: Removes subscription
       operationId: unsubscribe
       responses:
         '200':
           description: subscription deleted
+          schema:
+            $ref: '#/definitions/Message'
         '404':
           description: subscription not found
+          schema:
+            $ref: '#/definitions/Message'
   '/{nodeId}/tasks/{taskId}':
     parameters:
       - $ref: '#/parameters/nodeId'
@@ -77,6 +89,8 @@ paths:
             $ref: '#/definitions/Task'
         '404':
           description: not found
+          schema:
+            $ref: '#/definitions/Message'
   '/{nodeId}/subtasks/{subtaskId}':
     parameters:
       - $ref: '#/parameters/nodeId'
@@ -87,8 +101,12 @@ paths:
       responses:
         '200':
           description: OK
+          schema:
+            $ref: '#/definitions/Message'
         '404':
           description: not found
+          schema:
+            $ref: '#/definitions/Message'
     get:
       summary: Gets subtask information
       operationId: subtaskInfo
@@ -99,6 +117,8 @@ paths:
             $ref: '#/definitions/Subtask'
         '404':
           description: not found
+          schema:
+            $ref: '#/definitions/Message'
     post:
       summary: Reports subtask computation result
       description: >
@@ -116,10 +136,16 @@ paths:
       responses:
         '200':
           description: OK
+          schema:
+            $ref: '#/definitions/Message'
         '404':
           description: not found
+          schema:
+            $ref: '#/definitions/Message'
         '410':
           description: subtask timed out
+          schema:
+            $ref: '#/definitions/Message'
   '/{nodeId}/subtasks/{subtaskId}/cancel':
     parameters:
       - $ref: '#/parameters/nodeId'
@@ -130,8 +156,12 @@ paths:
       responses:
         '200':
           description: OK
+          schema:
+            $ref: '#/definitions/Message'
         '404':
           description: not found
+          schema:
+            $ref: '#/definitions/Message'
   '/{nodeId}/resources':
     parameters:
       - $ref: '#/parameters/nodeId'
@@ -158,8 +188,12 @@ paths:
             $ref: '#/definitions/Resource'
         '404':
           description: subscription not found
+          schema:
+            $ref: '#/definitions/Message'
         '405':
           description: invalid input
+          schema:
+            $ref: '#/definitions/Message'
   '/{nodeId}/resources/{resourceId}':
     parameters:
       - $ref: '#/parameters/nodeId'
@@ -176,6 +210,8 @@ paths:
             type: file
         '404':
           description: not found
+          schema:
+            $ref: '#/definitions/Message'
   '/{nodeId}/{taskType}/events':
     parameters:
       - $ref: '#/parameters/nodeId'
@@ -235,6 +271,12 @@ parameters:
     required: true
     pattern: '[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}'
 definitions:
+  Message:
+    required:
+      - msg
+    properties:
+      msg:
+        type: string
   SubscriptionStatus:
     required:
       - taskType

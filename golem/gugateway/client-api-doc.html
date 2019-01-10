@@ -264,7 +264,7 @@ font-style: italic;
         
     <h4 class="field-label">404</h4>
     subscription not found
-        <a href="#"></a>
+        <a href="#Message">Message</a>
   </div> <!-- method -->
   <hr/>
   <div class="method"><a name="cancelSubtask"/>
@@ -288,18 +288,28 @@ font-style: italic;
 
 
 
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#Message">Message</a>
+      
+    </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
 
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "msg" : "msg"
+}</code></pre>
 
 
     <h3 class="field-label">Responses</h3>
     <h4 class="field-label">200</h4>
     OK
-        <a href="#"></a>
+        <a href="#Message">Message</a>
     <h4 class="field-label">404</h4>
     not found
-        <a href="#"></a>
+        <a href="#Message">Message</a>
   </div> <!-- method -->
   <hr/>
   <div class="method"><a name="confirmSubtask"/>
@@ -323,18 +333,28 @@ font-style: italic;
 
 
 
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#Message">Message</a>
+      
+    </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
 
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "msg" : "msg"
+}</code></pre>
 
 
     <h3 class="field-label">Responses</h3>
     <h4 class="field-label">200</h4>
     OK
-        <a href="#"></a>
+        <a href="#Message">Message</a>
     <h4 class="field-label">404</h4>
     not found
-        <a href="#"></a>
+        <a href="#Message">Message</a>
   </div> <!-- method -->
   <hr/>
   <div class="method"><a name="downloadResource"/>
@@ -383,7 +403,7 @@ font-style: italic;
         <a href="#File">File</a>
     <h4 class="field-label">404</h4>
     not found
-        <a href="#"></a>
+        <a href="#Message">Message</a>
   </div> <!-- method -->
   <hr/>
   <div class="method"><a name="fetchEvents"/>
@@ -453,18 +473,34 @@ font-style: italic;
 
 
 
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#SubscriptionStatus">SubscriptionStatus</a>
+      
+    </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
 
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "taskType" : "",
+  "taskStats" : {
+    "requested" : 0,
+    "succeded" : 6,
+    "timedout" : 5,
+    "failed" : 1
+  }
+}</code></pre>
 
 
     <h3 class="field-label">Responses</h3>
     <h4 class="field-label">201</h4>
     subscription created
-        <a href="#"></a>
+        <a href="#SubscriptionStatus">SubscriptionStatus</a>
     <h4 class="field-label">405</h4>
     invalid input
-        <a href="#"></a>
+        <a href="#Message">Message</a>
   </div> <!-- method -->
   <hr/>
   <div class="method"><a name="subscription"/>
@@ -515,7 +551,7 @@ font-style: italic;
         <a href="#SubscriptionStatus">SubscriptionStatus</a>
     <h4 class="field-label">404</h4>
     subscription not found
-        <a href="#"></a>
+        <a href="#Message">Message</a>
   </div> <!-- method -->
   <hr/>
   <div class="method"><a name="subtaskInfo"/>
@@ -567,7 +603,7 @@ font-style: italic;
         <a href="#Subtask">Subtask</a>
     <h4 class="field-label">404</h4>
     not found
-        <a href="#"></a>
+        <a href="#Message">Message</a>
   </div> <!-- method -->
   <hr/>
   <div class="method"><a name="subtaskResult"/>
@@ -599,21 +635,31 @@ Reason is supplied only in case of failure.</div>
 
 
 
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#Message">Message</a>
+      
+    </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
 
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "msg" : "msg"
+}</code></pre>
 
 
     <h3 class="field-label">Responses</h3>
     <h4 class="field-label">200</h4>
     OK
-        <a href="#"></a>
+        <a href="#Message">Message</a>
     <h4 class="field-label">404</h4>
     not found
-        <a href="#"></a>
+        <a href="#Message">Message</a>
     <h4 class="field-label">410</h4>
     subtask timed out
-        <a href="#"></a>
+        <a href="#Message">Message</a>
   </div> <!-- method -->
   <hr/>
   <div class="method"><a name="taskInfo"/>
@@ -665,7 +711,7 @@ Reason is supplied only in case of failure.</div>
         <a href="#Task">Task</a>
     <h4 class="field-label">404</h4>
     not found
-        <a href="#"></a>
+        <a href="#Message">Message</a>
   </div> <!-- method -->
   <hr/>
   <div class="method"><a name="unsubscribe"/>
@@ -689,18 +735,28 @@ Reason is supplied only in case of failure.</div>
 
 
 
+    <h3 class="field-label">Return type</h3>
+    <div class="return-type">
+      <a href="#Message">Message</a>
+      
+    </div>
 
     <!--Todo: process Response Object and its headers, schema, examples -->
 
+    <h3 class="field-label">Example data</h3>
+    <div class="example-data-content-type">Content-Type: application/json</div>
+    <pre class="example"><code>{
+  "msg" : "msg"
+}</code></pre>
 
 
     <h3 class="field-label">Responses</h3>
     <h4 class="field-label">200</h4>
     subscription deleted
-        <a href="#"></a>
+        <a href="#Message">Message</a>
     <h4 class="field-label">404</h4>
     subscription not found
-        <a href="#"></a>
+        <a href="#Message">Message</a>
   </div> <!-- method -->
   <hr/>
   <div class="method"><a name="uploadResource"/>
@@ -757,10 +813,10 @@ Reason is supplied only in case of failure.</div>
         <a href="#Resource">Resource</a>
     <h4 class="field-label">404</h4>
     subscription not found
-        <a href="#"></a>
+        <a href="#Message">Message</a>
     <h4 class="field-label">405</h4>
     invalid input
-        <a href="#"></a>
+        <a href="#Message">Message</a>
   </div> <!-- method -->
   <hr/>
   <div class="method"><a name="wantToComputeTask"/>
@@ -820,6 +876,7 @@ Reason is supplied only in case of failure.</div>
   <ol>
     <li><a href="#Events"><code>Events</code> - </a></li>
     <li><a href="#Events_inner"><code>Events_inner</code> - </a></li>
+    <li><a href="#Message"><code>Message</code> - </a></li>
     <li><a href="#Resource"><code>Resource</code> - </a></li>
     <li><a href="#SubscriptionStatus"><code>SubscriptionStatus</code> - </a></li>
     <li><a href="#SubscriptionStatus_taskStats"><code>SubscriptionStatus_taskStats</code> - </a></li>
@@ -843,6 +900,13 @@ Reason is supplied only in case of failure.</div>
 <div class="param">task (optional)</div><div class="param-desc"><span class="param-type"><a href="#Task">Task</a></span>  </div>
 <div class="param">resource (optional)</div><div class="param-desc"><span class="param-type"><a href="#Resource">Resource</a></span>  </div>
 <div class="param">subtaskVerification (optional)</div><div class="param-desc"><span class="param-type"><a href="#SubtaskVerification">SubtaskVerification</a></span>  </div>
+    </div>  <!-- field-items -->
+  </div>
+  <div class="model">
+    <h3><a name="Message"><code>Message</code> - </a> <a class="up" href="#__Models">Up</a></h3>
+    <div class='model-description'></div>
+    <div class="field-items">
+      <div class="param">msg </div><div class="param-desc"><span class="param-type"><a href="#string">String</a></span>  </div>
     </div>  <!-- field-items -->
   </div>
   <div class="model">
