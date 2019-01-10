@@ -224,11 +224,13 @@ class TCPNetwork(Network):
     def __listening_failure(self, err_desc, listen_info: TCPListenInfo):
         err = str(err_desc.value)
         logger.debug("Can't listen on port %r: %r", listen_info.port_start, err)
+        if not (listen_info.port_start and listen_info.port_end):
+            self.__call_failure_callback(listen_info.failure_callback)
         if listen_info.port_start < listen_info.port_end:
             listen_info.port_start += 1
             self.__try_to_listen_on_port(listen_info)
-        else:
-            TCPNetwork.__call_failure_callback(listen_info.failure_callback)
+            return
+        self.__call_failure_callback(listen_info.failure_callback)
 
     @staticmethod
     def __call_failure_callback(failure_callback, *args, **kwargs):

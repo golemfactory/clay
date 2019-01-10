@@ -258,7 +258,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.task_manager.comp_task_keeper.receive_subtask(ttc)
 
         prev_call_count = trust.PAYMENT.increase.call_count
-        ts.increase_trust_payment("xyz")
+        ts.increase_trust_payment("xyz", 1)
         self.assertGreater(trust.PAYMENT.increase.call_count, prev_call_count)
         prev_call_count = trust.PAYMENT.decrease.call_count
         ts.decrease_trust_payment("xyz")

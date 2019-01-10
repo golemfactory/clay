@@ -70,7 +70,16 @@ class ConcentMessageMixin():
         self.assertIsInstance(mock_call[1], message_class)
 
 
-# pylint:disable=no-member
+def _offerpool_add(*_):
+    res = Deferred()
+    res.callback(True)
+    return res
+
+
+# pylint:disable=no-member,too-many-instance-attributes
+@patch('golem.task.tasksession.OfferPool.add', _offerpool_add)
+@patch('golem.task.tasksession.get_provider_efficiency', Mock())
+@patch('golem.task.tasksession.get_provider_efficacy', Mock())
 class TaskSessionTaskToComputeTest(TestCase):
     def setUp(self):
         self.maxDiff = None
@@ -254,6 +263,7 @@ class TaskSessionTaskToComputeTest(TestCase):
             ['concent_enabled', self.use_concent],
             ['price', 1],
             ['size', task_state.package_size],
+            ['ethsig', ms.ethsig]
         ]
         self.assertCountEqual(ms.slots(), expected)
 
@@ -575,6 +585,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.key_id = "KEY_ID"
         ts.task_manager = MagicMock()
         ts.task_computer = Mock()
+        ts.task_computer.has_assigned_task.return_value = False
         ts.task_server = Mock()
         ts.concent_service.enabled = False
         ts.send = Mock()
@@ -601,7 +612,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         msg._fake_sign()
         ts._react_to_task_to_compute(msg)
         ts.task_server.add_task_session.assert_not_called()
-        ts.task_computer.task_given.assert_not_called()
+        ts.task_server.task_given.assert_not_called()
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.send.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
@@ -649,7 +660,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_manager.comp_task_keeper.receive_subtask.assert_called_with(msg)
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
-        ts.task_computer.task_given.assert_called_with(ctd)
+        ts.task_server.task_given.assert_called_with(
+            header.task_owner.key,
+            ctd,
+            msg.price,
+        )
         conn.close.assert_not_called()
 
         # Wrong key id -> failure
@@ -702,7 +717,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         msg = _prepare_and_react(ctd)
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
-        ts.task_computer.task_given.assert_called_with(ctd)
+        ts.task_server.task_given.assert_called_with(
+            header.task_owner.key,
+            ctd,
+            msg.price,
+        )
         conn.close.assert_not_called()
 
         # No environment available -> failure
@@ -751,7 +770,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         de.main_program_file = file_name
         msg = _prepare_and_react(ctd)
         ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
-        ts.task_computer.task_given.assert_called_with(ctd)
+        ts.task_server.task_given.assert_called_with(
+            header.task_owner.key,
+            ctd,
+            msg.price,
+        )
         conn.close.assert_not_called()
 
     # pylint: enable=too-many-statements
@@ -774,6 +797,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             message.base.Message.deserialize(db.buffered_data, lambda x: x)
         )
 
+    @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
     def test_react_to_ack_reject_report_computed_task(self):
         task_keeper = CompTaskKeeper(pathlib.Path(self.path))
 
@@ -830,6 +854,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assert_concent_cancel(
             cancel.call_args[0], subtask_id, 'ForceReportComputedTask')
 
+    @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
     def test_react_to_resource_list(self):
         task_server = self.task_session.task_server
 
@@ -873,9 +898,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         assert not self.task_session._subtask_to_task('sid_2', Actor.Provider)
         assert not self.task_session._subtask_to_task('sid_1', Actor.Requestor)
 
+    @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
     def test_react_to_cannot_assign_task(self):
         self._test_react_to_cannot_assign_task()
 
+    @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
     def test_react_to_cannot_assign_task_with_wrong_sender(self):
         self._test_react_to_cannot_assign_task("KEY_ID2", expected_requests=1)
 

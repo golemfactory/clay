@@ -27,7 +27,7 @@ from golem.client import Client, ClientTaskComputerEventListener, \
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
-from golem.core.hardware import HardwarePresets
+from golem.hardware.presets import HardwarePresets
 from golem.core.variables import CONCENT_CHOICES
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.peersession import PeerSessionInfo
@@ -530,7 +530,7 @@ class TestMonitoringPublisherService(testwithreactor.TestWithReactor):
         self.service._run()
 
         logger.debug.assert_not_called()
-        assert send.call_count == 3
+        assert send.call_count == 5
 
 
 class TestNetworkConnectionPublisherService(testwithreactor.TestWithReactor):
@@ -621,6 +621,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
                 apps_manager=self.client.apps_manager,
             )
         self.client.monitor = Mock()
+        self.client._update_hw_preset = Mock()
 
     def test_node(self, *_):
         c = self.client
@@ -763,6 +764,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_settings(self, *_):
         c = self.client
+        HardwarePresets.initialize(self.client.datadir)
 
         new_node_name = str(uuid.uuid4())
         self.assertNotEqual(c.get_setting('node_name'), new_node_name)
@@ -770,6 +772,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         c.update_setting('node_name', new_node_name)
         self.assertEqual(c.get_setting('node_name'), new_node_name)
         self.assertEqual(c.get_settings()['node_name'], new_node_name)
+        c._update_hw_preset.assert_called_once()
 
         newer_node_name = str(uuid.uuid4())
         self.assertNotEqual(c.get_setting('node_name'), newer_node_name)
@@ -1023,6 +1026,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         # then
         self.assertEqual(len(connected_peers), 4)
         self.assertTrue(all(peer for peer in connected_peers))
+        self.assertIsInstance(connected_peers[0]['node_info'], dict)
 
     def test_provider_status_starting(self, *_):
         # given
@@ -1160,6 +1164,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         session = Mock()
         for attr in PeerSessionInfo.attributes:
             setattr(session, attr, str(uuid.uuid4()))
+        session.node_info = dt_p2p_factory.Node()
         return session
 
 

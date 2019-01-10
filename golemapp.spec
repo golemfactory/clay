@@ -41,6 +41,8 @@ icon = None
 if is_windows:
     import site
     icon = os.path.join(os.getcwd(), 'Installer', 'favicon.ico')
+    '''
+    FIXME: VirtualBox is disabled, to be fixed in #3476
     try:
         import vboxapi
     except ImportError:
@@ -49,7 +51,7 @@ if is_windows:
         sys.exit(1)
 
     hidden_imports += ['vboxapi']
-
+    '''
 a = Analysis(['golemapp.py'],
              hookspath=['./scripts/pyinstaller/hooks'],
              hiddenimports=hidden_imports,

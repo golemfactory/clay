@@ -81,6 +81,7 @@ class TestPayment(DatabaseFixture):
 
 class TestLocalRank(DatabaseFixture):
     def test_default_fields(self):
+        # pylint: disable=no-member
         r = m.LocalRank()
         self.assertGreaterEqual(datetime.now(), r.created_date)
         self.assertGreaterEqual(datetime.now(), r.modified_date)
@@ -93,6 +94,7 @@ class TestLocalRank(DatabaseFixture):
         self.assertEqual(0, r.negative_payment)
         self.assertEqual(0, r.positive_resource)
         self.assertEqual(0, r.negative_resource)
+        self.assertEqual((0, 0, 0, 0), r.provider_efficacy.vector)
 
 
 class TestGlobalRank(DatabaseFixture):

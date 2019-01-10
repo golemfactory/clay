@@ -24,6 +24,7 @@ from golem.core import common
 from golem.core import golem_async
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.task.taskproviderstats import ProviderStatsManager
 
 logger = logging.getLogger('golem.task.taskkeeper')
 
@@ -54,14 +55,8 @@ class WrongOwnerException(Exception):
 
 
 class CompTaskInfo:
-    def __init__(self, header: dt_tasks.TaskHeader, price: int) -> None:
+    def __init__(self, header: dt_tasks.TaskHeader) -> None:
         self.header = header
-        # subtask_price is total amount that will be payed
-        # for subtask of this task
-        self.subtask_price = compute_subtask_value(
-            price,
-            self.header.subtask_timeout,
-        )
         self.requests = 1
         self.subtasks: dict = {}
         # TODO Add concent communication timeout. Issue #2406
@@ -92,11 +87,6 @@ class CompTaskInfo:
         return False
 
 
-class CompSubtaskInfo:
-    def __init__(self, subtask_id):
-        self.subtask_id = subtask_id
-
-
 def log_key_error(*args, **_):
     if isinstance(args[1], message.tasks.ComputeTaskDef):
         task_id = args[1]['task_id']
@@ -120,11 +110,17 @@ class CompTaskKeeper:
         # information about tasks that this node wants to compute
         self.active_tasks: typing.Dict[str, CompTaskInfo] = {}
 
+        # price information per last task request
+        self.active_task_offers: typing.Dict[str, int] = {}
+
         # subtask_id to task_id mapping
         self.subtask_to_task: typing.Dict[str, str] = {}
 
         # task_id to package paths mapping
         self.task_package_paths: typing.Dict[str, list] = {}
+
+        # stats
+        self.provider_stats_manager = ProviderStatsManager()
 
         if not tasks_path.is_dir():
             tasks_path.mkdir()
@@ -143,7 +139,8 @@ class CompTaskKeeper:
             dump_data = (
                 self.active_tasks,
                 self.subtask_to_task,
-                self.task_package_paths
+                self.task_package_paths,
+                self.active_task_offers,
             )
             pickle.dump(dump_data, f)
 
@@ -160,6 +157,7 @@ class CompTaskKeeper:
                 active_tasks = data[0]
                 subtask_to_task = data[1]
                 task_package_paths = data[2] if len(data) > 2 else {}
+                active_task_offers = data[3] if len(data) > 3 else {}
         except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
             logger.exception(
                 'Problem restoring dumpfile: %s; deleting broken file',
@@ -167,9 +165,11 @@ class CompTaskKeeper:
             )
             self.dump_path.unlink()
             return
+
         self.active_tasks.update(active_tasks)
         self.subtask_to_task.update(subtask_to_task)
         self.task_package_paths.update(task_package_paths)
+        self.active_task_offers.update(active_task_offers)
 
     def add_request(self, theader: dt_tasks.TaskHeader, price: int):
         # price is task_header.max_price
@@ -180,7 +180,10 @@ class CompTaskKeeper:
         if task_id in self.active_tasks:
             self.active_tasks[task_id].requests += 1
         else:
-            self.active_tasks[task_id] = CompTaskInfo(theader, price)
+            self.active_tasks[task_id] = CompTaskInfo(theader)
+        self.active_task_offers[task_id] = compute_subtask_value(
+            price, self.active_tasks[task_id].header.subtask_timeout
+        )
         self.dump()
 
     @handle_key_error
@@ -193,27 +196,32 @@ class CompTaskKeeper:
 
     @handle_key_error
     def receive_subtask(self, task_to_compute: message.tasks.TaskToCompute):
-        comp_task_def = task_to_compute.compute_task_def
         logger.debug('CT.receive_subtask()')
+
+        comp_task_def = task_to_compute.compute_task_def
         if not self.check_comp_task_def(comp_task_def):
             return False
-        comp_task_info: CompTaskInfo = self.active_tasks[
-            task_to_compute.task_id
-        ]
-        if task_to_compute.price != comp_task_info.subtask_price:
+
+        task_id = task_to_compute.task_id
+        subtask_id = task_to_compute.subtask_id
+        comp_task_info = self.active_tasks[task_id]
+        comp_task_price = self.active_task_offers[task_id]
+
+        if task_to_compute.price != comp_task_price:
             logger.info(
                 "Can't accept subtask %r for %r."
                 " %r<TTC.price> != %r<CTI.subtask_price>",
                 task_to_compute.subtask_id,
                 task_to_compute.task_id,
                 task_to_compute.price,
-                comp_task_info.subtask_price,
+                comp_task_price,
             )
             return False
+
         comp_task_info.requests -= 1
-        comp_task_info.subtasks[task_to_compute.subtask_id] = comp_task_def
-        self.subtask_to_task[task_to_compute.subtask_id] =\
-            task_to_compute.task_id
+        comp_task_info.subtasks[subtask_id] = comp_task_def
+
+        self.subtask_to_task[subtask_id] = task_id
         self.dump()
         return True
 
@@ -270,15 +278,15 @@ class CompTaskKeeper:
             delta = deadline - common.get_timestamp_utc()
             if delta > 0:
                 continue
+
             logger.info("Removing comp_task after deadline: %s", task_id)
 
             for subtask_id in self.active_tasks[task_id].subtasks:
-                del self.subtask_to_task[subtask_id]
+                self.subtask_to_task.pop(subtask_id, None)
 
-            del self.active_tasks[task_id]
-
-            if task_id in self.task_package_paths:
-                del self.task_package_paths[task_id]
+            self.active_tasks.pop(task_id, None)
+            self.active_task_offers.pop(task_id, None)
+            self.task_package_paths.pop(task_id, None)
 
         self.dump()
 
@@ -584,15 +592,21 @@ class TaskHeaderKeeper:
             return None
         return task.task_owner.key
 
-    def get_task(self) -> typing.Optional[dt_tasks.TaskHeader]:
+    def get_task(
+            self,
+            exclude: typing.Optional[typing.Set[str]] = None
+    ) -> typing.Optional[dt_tasks.TaskHeader]:
         """ Returns random task from supported tasks that may be computed
+        :param exclude: Task ids to exclude
         :return: None if there are no tasks that this node may want to compute
         """
-        if self.supported_tasks:
-            tn = random.randrange(0, len(self.supported_tasks))
-            task_id = self.supported_tasks[tn]
-            return self.task_headers[task_id]
-        return None
+        tasks = self.supported_tasks
+        if exclude:
+            tasks = [t for t in tasks if t not in exclude]
+        if not tasks:
+            return None
+        task_id = random.choice(tasks)
+        return self.task_headers[task_id]
 
     def remove_old_tasks(self):
         for t in list(self.task_headers.values()):

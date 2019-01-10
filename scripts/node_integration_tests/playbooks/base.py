@@ -59,6 +59,10 @@ class NodeTestPlaybook:
     task_settings = 'default'
     task_dict = None
 
+    reconnect_attempts_left = 7
+    reconnect_countdown_initial = 10
+    reconnect_countdown = None
+
     playbook_description = 'Runs a golem node integration test'
 
     node_restart_count = 0
@@ -106,6 +110,10 @@ class NodeTestPlaybook:
 
     def next(self):
         self.current_step += 1
+
+    def previous(self):
+        assert (self.current_step > 0), "Cannot move back past step 0"
+        self.current_step -= 1
 
     def print_result(self, result):
         print("Result: {}".format(result))
@@ -194,6 +202,7 @@ class NodeTestPlaybook:
     def step_connect_nodes(self):
         def on_success(result):
             print("Peer connection initialized.")
+            self.reconnect_countdown = self.reconnect_countdown_initial
             self.next()
         return self.call_requestor('net.peer.connect',
                               ("localhost", self.provider_port, ),
@@ -216,7 +225,19 @@ class NodeTestPlaybook:
                 print("Requestor connected with provider.")
                 self.next()
             else:
-                print("Waiting for nodes to sync...")
+                if self.reconnect_countdown <= 0:
+                    if self.reconnect_attempts_left > 0:
+                        self.reconnect_attempts_left -= 1
+                        print("Retrying peer connection.")
+                        self.previous()
+                        return
+                    else:
+                        self.fail("Could not sync nodes despite trying hard.")
+                        return
+                else:
+                    self.reconnect_countdown -= 1
+                    print("Waiting for nodes to sync...")
+                    time.sleep(10)
 
         return self.call_requestor('net.peers.connected',
                               on_success=on_success, on_error=self.print_error)
