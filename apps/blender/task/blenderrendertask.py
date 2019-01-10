@@ -30,7 +30,7 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import TaskPurpose, TaskTypeInfo
 from golem.task.taskstate import SubtaskStatus, TaskStatus
-from golem_verificator.blender_verifier import BlenderVerifier
+from golem.verificator.blender_verifier import BlenderVerifier
 
 # Allow loading truncated images.
 # https://github.com/golemfactory/golem/issues/2059

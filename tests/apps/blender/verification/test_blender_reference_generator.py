@@ -1,7 +1,7 @@
 import logging
 
 import numpy
-from golem_verificator.common.rendering_task_utils import get_min_max_y
+from golem.verificator.common.rendering_task_utils import get_min_max_y
 
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 from apps.blender.blender_reference_generator import SubImage, Region, Crop, \
