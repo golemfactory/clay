@@ -94,33 +94,14 @@ class TestTaskHeaderKeeper(LogTestCase):
         tk.change_config(config_desc)
         self.assertTrue(tk.check_support(header))
 
-        header.min_version = "120"
+        header.min_version = "120.0.0"
         self.assertFalse(tk.check_support(header))
 
-        header.min_version = tk.app_version
+        header.min_version = golem.__version__
         self.assertTrue(tk.check_support(header))
 
         header.min_version = "abc"
-        with self.assertLogs(logger=logger, level='WARNING'):
-            self.assertFalse(tk.check_support(header))
-
-    def test_check_version_compatibility(self):
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10.0)
-        tk.app_version = '0.4.5-dev+232.138018'
-
-        for v in ['', '0', '1.5', '0.4-alpha+build.2004.01.01', '0.4-alpha']:
-            with self.assertRaises(ValueError, msg=v):
-                tk.check_version_compatibility(v)
-
-        for v in ['1.5.0', '1.4.0', '0.5.0', '0.3.0']:
-            self.assertFalse(tk.check_version_compatibility(v), msg=v)
-
-        for v in ['0.4.5', '0.4.1', '0.4.0', '0.4.0-alpha',
-                  '0.4.0-alpha+build', '0.4.0-alpha+build.2010', '0.4.6']:
-            self.assertTrue(tk.check_version_compatibility(v), msg=v)
+        self.assertFalse(tk.check_support(header))
 
     @mock.patch('golem.task.taskarchiver.TaskArchiver')
     def test_change_config(self, tar):
