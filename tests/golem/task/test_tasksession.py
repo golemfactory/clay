@@ -143,12 +143,9 @@ class TaskSessionTaskToComputeTest(TestCase):
     def _get_task_header(self):
         task_header = dt_tasks_factory.TaskHeaderFactory(
             task_id=self.task_id,
-            environment='',
             task_owner=dt_p2p_factory.Node(
                 key=self.requestor_key,
-                node_name=self.node_name,
-                pub_addr='10.10.10.10',
-                pub_port=12345, ),
+            ),
             subtask_timeout=1,
             max_price=1, )
         task_header.sign(self.requestor_keys.raw_privkey)
@@ -913,18 +910,13 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
     def _test_react_to_cannot_assign_task(self, key_id="KEY_ID",
                                           expected_requests=0):
-        task_owner = dt_p2p_factory.Node(
-            node_name="ABC",
-            key="KEY_ID",
-            pub_addr="10.10.10.10",
-            pub_port=2311,
-        )
         task_keeper = CompTaskKeeper(self.new_path)
         task_keeper.add_request(
             dt_tasks_factory.TaskHeaderFactory(
-                environment='DEFAULT',
                 task_id="abc",
-                task_owner=task_owner,
+                task_owner=dt_p2p_factory.Node(
+                    key="KEY_ID",
+                ),
                 subtask_timeout=1,
                 max_price=1,
                 resource_size=1,

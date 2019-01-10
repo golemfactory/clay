@@ -197,11 +197,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
             inputb=self.msg.task_to_compute.get_short_hash(),
         )
         task_id = self.msg.task_to_compute.compute_task_def['task_id']
-        task_header = dt_tasks_factory.TaskHeaderFactory(
-            task_id='task_id',
-            environment='env',
-            task_owner=dt_p2p_factory.Node()
-        )
+        task_header = dt_tasks_factory.TaskHeaderFactory()
         task_header.deadline = now_ts + 3600
         task = mock.Mock()
         task.header = task_header
