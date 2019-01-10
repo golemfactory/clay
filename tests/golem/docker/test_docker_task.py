@@ -106,8 +106,13 @@ class DockerTaskTestCase(
         task.max_pending_client_results = 5
         return task
 
-    def _run_task(self, task: Task, timeout: int = 60 * 5, *_) \
-            -> Optional[DockerTaskThread]:
+    @patch('golem.core.golem_async.start_asyncio_thread')
+    def _run_task(
+            self,
+            task: Task,
+            *_,
+            timeout: int = 60 * 5,
+        ) -> Optional[DockerTaskThread]:
         task_id = task.header.task_id
         node_id = '0xdeadbeef'
         extra_data = task.query_extra_data(1.0, 0, node_id)
