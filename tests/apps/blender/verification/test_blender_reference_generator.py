@@ -1,5 +1,4 @@
 import logging
-import math
 
 import numpy
 from golem_verificator.common.rendering_task_utils import get_min_max_y
