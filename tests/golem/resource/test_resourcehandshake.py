@@ -114,14 +114,13 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         self.session._handshake_required.return_value = False
         self.session.request_task(**self.message)
 
-        self.assertFalse(self.session.disconnect.called)
-        self.assertTrue(self.session.send.called)
+        self.session.disconnect.assert_not_called()
+        self.session.send.assert_called()
 
         sent_wtct = self.session.send.call_args[0][0]
 
         msg = message.tasks.WantToComputeTask(**wtct_dict)
-        self.assertEqual(sent_wtct.__slots__, msg.__slots__)
-        self.assertEqual(sent_wtct.task_header, self.task_header)
+        self.assertEqual(sent_wtct, msg)
 
     def test_request_task_failure(self, *_):
         self.session._handshake_required = Mock()
@@ -698,6 +697,7 @@ class MockTaskSession(ResourceHandshakeSessionMixin):
             node=Mock(key=str(uuid.uuid4())),
             acl=get_acl(Path(data_dir)),
             resource_handshakes=dict(),
+            get_key_id=lambda: None,
             task_manager=Mock(
                 task_result_manager=Mock(
                     resource_manager=resource_manager
