@@ -109,8 +109,8 @@ def deferred_run():
 ##
 
 
-_TO_ASYNCIO = queue.Queue()
-_TO_TWISTED = queue.Queue()
+_TO_ASYNCIO: queue.Queue = queue.Queue()
+_TO_TWISTED: queue.Queue = queue.Queue()
 
 
 def dispatch_from(queue_: queue.Queue):
