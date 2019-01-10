@@ -123,12 +123,12 @@ def dispatch_from(queue_: queue.Queue):
 
 
 def asyncio_dispatch(**kwargs):
-    global _TO_ASYNCIO
+    global _TO_ASYNCIO  # pylint: disable=global-statement
     _TO_ASYNCIO.put_nowait(kwargs)
 
 
 def twisted_dispatch(**kwargs):
-    global _TO_TWISTED
+    global _TO_TWISTED  # pylint: disable=global-statement
     _TO_TWISTED.put_nowait(kwargs)
 
 
@@ -183,14 +183,14 @@ def asyncio_start():
 
 
 def asyncio_stop():
-    global _RUN
+    global _RUN  # pylint: disable=global-statement
     print('Stopping ASYNCIO')
     _RUN.clear()
 
 
 async def asyncio_main():
     counter = 0
-    global _RUN
+    global _RUN  # pylint: disable=global-statement
     print('ASYNCIO started', threading.current_thread().name)
     while _RUN.is_set():
         print(str(counter)+'*'*80, threading.current_thread().name)
