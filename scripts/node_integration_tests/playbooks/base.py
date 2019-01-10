@@ -70,7 +70,7 @@ class NodeTestPlaybook:
     dump_output_on_fail = False
 
     @property
-    def task_settings_dict(self): -> dict
+    def task_settings_dict(self) -> dict:
         return tasks.get_settings(self.task_settings)
 
     @property
