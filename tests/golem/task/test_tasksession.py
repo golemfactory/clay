@@ -556,7 +556,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             subtask_id=srr.report_computed_task.subtask_id,  # noqa pylint:disable=no-member
         )
 
+        kwargs = dispatch_listener.call_args_list[0][1]
         dispatch_listener.assert_called_once()
+        self.assertEqual(kwargs['event'], 'received')
+        self.assertEqual(kwargs['signal'], 'golem.message')
+        self.assertEqual(kwargs['message'], srr)
 
     def test_result_rejected_with_wrong_key(self):
         srr = self._get_srr(key2='notmine')
@@ -1171,7 +1175,11 @@ class SubtaskResultsAcceptedTest(TestCase):
             'ForceSubtaskResults',
         )
 
+        kwargs = dispatch_listener.call_args_list[0][1]
         dispatch_listener.assert_called_once()
+        self.assertEqual(kwargs['event'], 'received')
+        self.assertEqual(kwargs['signal'], 'golem.message')
+        self.assertEqual(kwargs['message'], sra)
 
     def test_react_with_wrong_key(self):
         # given
