@@ -21,3 +21,6 @@ class ConcentNodeTest(NodeTestBase, unittest.TestCase):
         exit_code = self._run_test('concent.additional_verification.AdditionalVerification')
         self.assertEqual(exit_code, 0)
 
+    def test_force_payment(self):
+        exit_code = self._run_test('concent.force_payment.ForcePayment')
+        self.assertEqual(exit_code, 0)

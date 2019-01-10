@@ -35,6 +35,12 @@ if __name__ == '__main__':
         help="the requestor node's datadir",
     )
     parser.add_argument(
+        '--dump-output-on-fail',
+        action='store_true',
+        required=False,
+        help="dump the nodes' outputs on test fail",
+    )
+    parser.add_argument(
         '--mainnet',
         action='store_true',
         required=False,
@@ -79,6 +85,7 @@ if __name__ == '__main__':
             'task_settings',
             'provider_datadir',
             'requestor_datadir',
+            'dump_output_on_fail',
         ]
            and v
     }
