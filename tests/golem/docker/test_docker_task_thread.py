@@ -35,19 +35,19 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
             task_server.client.datadir
         task_computer = TaskComputer(task_server,
                                      use_docker_manager=False)
-        image = DockerImage("golemfactory/base", tag="1.2")
+        image = DockerImage("golemfactory/base", tag="1.3")
 
         with self.assertRaises(AttributeError):
             dir_mapping = DockerTaskThread.generate_dir_mapping(
                 self.resources_dir, self.output_dir)
-            DockerTaskThread("subtask_id", None,
+            DockerTaskThread(None,
                              script, None,
                              dir_mapping, timeout=30)
 
         def test():
             dir_mapping = DockerTaskThread.generate_dir_mapping(
                 self.resources_dir, self.output_dir)
-            tt = DockerTaskThread("subtask_id", [image],
+            tt = DockerTaskThread([image],
                                   script, None,
                                   "test task thread", dir_mapping, timeout=30)
             task_computer.counting_thread = tt

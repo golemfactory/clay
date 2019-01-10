@@ -7,15 +7,12 @@ import time
 from collections import OrderedDict
 from copy import copy
 from typing import Optional, Type
-
-import numpy
 from PIL import Image, ImageChops, ImageFile
 
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 from apps.blender.blenderenvironment import BlenderEnvironment, \
     BlenderNVGPUEnvironment
-from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import \
@@ -23,7 +20,8 @@ from apps.rendering.resources.renderingtaskcollector import \
 from apps.rendering.resources.utils import handle_image_error, handle_none
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, \
     FrameRenderingTaskBuilder, FrameRendererOptions
-from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, PREVIEW_Y
+from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, \
+    PREVIEW_Y
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, \
     RendererDefaults
 from golem.core.common import short_node_id, to_unicode
@@ -382,15 +380,6 @@ class BlenderRenderTask(FrameRenderingTask):
         # https://github.com/golemfactory/golem/issues/2388
         self.compositing = False
         self.samples = task_definition.options.samples
-        return
-
-        self.compositing = task_definition.options.compositing \
-            and self.use_frames \
-            and (self.total_tasks <= len(self.frames))
-        if self.compositing != task_definition.options.compositing:
-            logger.warning("Task %s: Compositing not supported "
-                           "for this type of task, turning compositing off",
-                           task_definition.task_id)
 
     def initialize(self, dir_manager):
         super(BlenderRenderTask, self).initialize(dir_manager)
@@ -446,35 +435,30 @@ class BlenderRenderTask(FrameRenderingTask):
         if not self.use_frames:
             min_y, max_y = self._get_min_max_y(start_task)
         elif parts > 1:
-            min_y = (parts - self._count_part(start_task, parts)) * (
-                1.0 / parts)
-            max_y = (parts - self._count_part(start_task, parts) + 1) * (
-                1.0 / parts)
+            min_y = (parts - self._count_part(start_task, parts)) \
+                    * (1.0 / parts)
+            max_y = (parts - self._count_part(start_task, parts) + 1) \
+                * (1.0 / parts)
         else:
             min_y = 0.0
             max_y = 1.0
 
-        #  Blender is using single precision math, we use numpy to emulate this.
-        #  Send already converted values to blender.
-        min_y = numpy.float32(min_y)
-        max_y = numpy.float32(max_y)
-
-        script_src = generate_blender_crop_file(
-            resolution=(self.res_x, self.res_y),
-            borders_x=(0.0, 1.0),
-            borders_y=(min_y, max_y),
-            use_compositing=self.compositing,
-            samples=self.samples
-        )
-
-        extra_data = {"path_root": self.main_scene_dir,
-                      "start_task": start_task,
-                      "total_tasks": self.total_tasks,
-                      "outfilebasename": self.outfilebasename,
-                      "scene_file": scene_file,
-                      "script_src": script_src,
+        crops = [
+            {"outfilebasename": "{}_{}".format(
+                self.outfilebasename, start_task),
+             "borders_x": [0.0, 1.0],
+             "borders_y": [min_y, max_y]}
+        ]
+        extra_data = {"scene_file": scene_file,
+                      "resolution": [self.res_x, self.res_y],
+                      "use_compositing": self.compositing,
+                      "samples": self.samples,
                       "frames": frames,
                       "output_format": self.output_format,
+                      "path_root": self.main_scene_dir,
+                      "start_task": start_task,
+                      "total_tasks": self.total_tasks,
+                      "crops": crops
                       }
 
         subtask_id = self.create_subtask_id()
@@ -541,22 +525,22 @@ class BlenderRenderTask(FrameRenderingTask):
 
         scene_file = self._get_scene_file_rel_path()
 
-        script_src = generate_blender_crop_file(
-            resolution=BlenderRenderTask.BLENDER_MIN_BOX,
-            borders_x=(0.0, 1.0),
-            borders_y=(0.0, 1.0),
-            use_compositing=False,
-            samples=BlenderRenderTask.BLENDER_MIN_SAMPLE
-        )
+        crops = [
+            {"outfilebasename": "testresult_1",
+             "borders_x": [0.0, 1.0],
+             "borders_y": [0.0, 1.0]}
+        ]
 
-        extra_data = {"path_root": self.main_scene_dir,
+        extra_data = {"scene_file": scene_file,
+                      "resolution": BlenderRenderTask.BLENDER_MIN_BOX,
+                      "use_compositing": False,
+                      "samples": BlenderRenderTask.BLENDER_MIN_SAMPLE,
+                      "frames": [1],
+                      "output_format": "PNG",
+                      "path_root": self.main_scene_dir,
                       "start_task": 1,
                       "total_tasks": 1,
-                      "outfilebasename": "testresult",
-                      "scene_file": scene_file,
-                      "script_src": script_src,
-                      "frames": [1],
-                      "output_format": "PNG"
+                      "crops": crops
                       }
 
         hash = "{}".format(random.getrandbits(128))

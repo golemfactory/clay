@@ -1,11 +1,10 @@
 import logging
-import math
 
 import numpy
 from golem_verificator.common.rendering_task_utils import get_min_max_y
 
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
-from apps.blender.blender_reference_generator import SubImage, Region, Crop,\
+from apps.blender.blender_reference_generator import SubImage, Region, Crop, \
     PixelRegion
 from golem.testutils import TempDirFixture
 
@@ -60,8 +59,13 @@ class TestBlenderReferenceGenerator(TempDirFixture):
 
     def test_generate_crops_data(self):
 
-        def _test_crop(resolution, crop, num):
+        def _test_crop(resolution, crop_border, num):
             blender_reference_generator = BlenderReferenceGenerator()
+            crop = {
+                "outbasefilename": 'outbasefilename',
+                "borders_x": [crop_border[0], crop_border[1]],
+                "borders_y": [crop_border[2], crop_border[3]]
+            }
             crops_desc = blender_reference_generator\
                 .generate_crops_data(resolution, crop, num, "")
 
@@ -69,13 +73,22 @@ class TestBlenderReferenceGenerator(TempDirFixture):
             for desc in crops_desc:
                 assert 0 <= desc.pixel_region.left <= resolution[0]
                 assert 0 <= desc.pixel_region.top <= resolution[1]
+
             for desc in crops_desc:
-                assert crop[0] <= desc.crop_region.left <= crop[1]
-                assert crop[0] <= desc.crop_region.right <= crop[1]
+                assert crop_border[0] <= desc.crop_region.left <= crop_border[1]
+
+                assert crop_border[0] \
+                    <= desc.crop_region.right \
+                    <= crop_border[1]
+
                 assert desc.crop_region.left <= desc.crop_region.right
 
-                assert crop[2] <= desc.crop_region.top <= crop[3]
-                assert crop[2] <= desc.crop_region.bottom <= crop[3]
+                assert crop_border[2] <= desc.crop_region.top <= crop_border[3]
+
+                assert crop_border[2] \
+                    <= desc.crop_region.bottom \
+                    <= crop_border[3]
+
                 assert desc.crop_region.bottom <= desc.crop_region.top
 
         for _ in range(100):
@@ -110,7 +123,11 @@ class TestBlenderReferenceGenerator(TempDirFixture):
                 min_y, max_y = get_min_max_y(i, 9, res[1])
                 min_y = numpy.float32(min_y)
                 max_y = numpy.float32(max_y)
-                crop_window = (0.0, 1.0, min_y, max_y)
+                crop_window = {
+                    "outfilebasename": "basename",
+                    "borders_x": [0.0, 1.0],
+                    "borders_y": [min_y, max_y],
+                }
                 blender_reference_generator = BlenderReferenceGenerator()
                 crops_desc = blender_reference_generator\
                     .generate_crops_data(res, crop_window, 3, "")

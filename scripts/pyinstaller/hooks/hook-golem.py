@@ -8,7 +8,8 @@ hiddenimports = collect_submodules('golem') + \
 
 datas = [
     ('loggingconfig.py', '.'),
-    ('apps/entrypoint.sh', 'apps/'),
+    ('apps/core/resources/images/scripts/entrypoint.sh',
+     'apps/core/resources/images/scripts/'),
     ('apps/*.ini', 'apps/'),
     ('apps/core/resources/images/nvgpu.Dockerfile',
      'apps/core/resources/images/'),
@@ -18,7 +19,7 @@ datas = [
      'apps/rendering/resources/scripts/'),
     ('apps/blender/resources/images/blender_nvgpu.Dockerfile',
      'apps/blender/resources/images/'),
-    ('apps/blender/resources/scripts/blendercrop.py.template',
+    ('apps/blender/resources/images/scripts/templates/blendercrop.py.template',
      'apps/blender/resources/scripts/'),
     ('apps/blender/resources/scripts/docker_blendertask.py',
      'apps/blender/resources/scripts/'),

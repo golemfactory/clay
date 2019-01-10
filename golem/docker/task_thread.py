@@ -73,7 +73,7 @@ class DockerTaskThread(TaskThread):
 
     docker_manager: ClassVar[Optional['DockerManager']] = None
 
-    def __init__(self, subtask_id: str,  # pylint: disable=too-many-arguments
+    def __init__(self,  # pylint: disable=too-many-arguments
                  docker_images: List[Union[DockerImage, Dict, Tuple]],
                  src_code: str,
                  extra_data: Dict,
@@ -83,8 +83,7 @@ class DockerTaskThread(TaskThread):
 
         if not docker_images:
             raise AttributeError("docker images is None")
-        super(DockerTaskThread, self).__init__(
-            subtask_id=subtask_id,
+        super().__init__(
             src_code=src_code,
             extra_data=extra_data,
             res_path=str(dir_mapping.resources),
@@ -152,21 +151,12 @@ class DockerTaskThread(TaskThread):
             DockerBind(self.dir_mapping.output, DockerJob.OUTPUT_DIR)
         ]
 
-    @staticmethod
-    def _get_environment() -> dict:
-        if is_windows():
-            return {}
-        if is_osx():
-            return dict(OSX_USER=1)
-
-        return dict(LOCAL_USER_ID=os.getuid())
-
     def _run_docker_job(self) -> Optional[int]:
         self.dir_mapping.mkdirs()
 
         binds = self._get_default_binds()
         volumes = list(bind.target for bind in binds)
-        environment = self._get_environment()
+        environment = DockerJob.get_environment()
 
         environment.update(
             WORK_DIR=DockerJob.WORK_DIR,
