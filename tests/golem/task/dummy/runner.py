@@ -129,7 +129,6 @@ def _print_golem_log(datadir):
 
 
 def run_requesting_node(datadir, num_subtasks=3):
-    OfferPool.change_interval(1)
 
     client = None
 
@@ -154,6 +153,7 @@ def run_requesting_node(datadir, num_subtasks=3):
     client = create_client(datadir)
     client.are_terms_accepted = lambda: True
     client.start()
+    OfferPool.change_interval(1)
     report("Started in {:.1f} s".format(time.time() - start_time))
 
     dummy_env = DummyTaskEnvironment()

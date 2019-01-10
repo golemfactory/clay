@@ -80,6 +80,7 @@ class DummyTask(CoreTask):
                          node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
         logger.debug("Query extra data on dummytask")
+        self.last_task += 1
 
         ctd = self._extra_data(perf_index)
         sid = ctd['subtask_id']
