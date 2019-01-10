@@ -21,7 +21,7 @@ class ConcentTestPlaybook(NodeTestPlaybook):
             outgoing: bool = False,
             additional_fail_triggers: typing.Optional[list] = None,
             awaited_messages: typing.Optional[list] = None
-    ) -> (typing.Optional[bool], typing.Optional[typing.Match]):
+    ) -> typing.Tuple[typing.Optional[bool], typing.Optional[typing.Match]]:
         """
         Process the golem node's log queue to look for names of expected
         messages, while at the same time checking if the logs don't contain
