@@ -777,26 +777,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         )
         conn.close.assert_not_called()
 
-    # pylint: enable=too-many-statements
-
-    def test_get_resource(self):
-        conn = BasicProtocol()
-        conn.transport = Mock()
-        conn.server = Mock()
-
-        db = DataBuffer()
-
-        sess = TaskSession(conn)
-        sess.send = lambda m: db.append_bytes(
-            m.serialize(),
-        )
-        sess._can_send = lambda *_: True
-        sess.request_resource(str(uuid.uuid4()))
-
-        self.assertTrue(
-            message.base.Message.deserialize(db.buffered_data, lambda x: x)
-        )
-
     @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
     def test_react_to_ack_reject_report_computed_task(self):
         task_keeper = CompTaskKeeper(pathlib.Path(self.path))
@@ -853,36 +833,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         session._react_to_reject_report_computed_task(msg_ack)
         self.assert_concent_cancel(
             cancel.call_args[0], subtask_id, 'ForceReportComputedTask')
-
-    @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
-    def test_react_to_resource_list(self):
-        task_server = self.task_session.task_server
-
-        client = 'test_client'
-        version = 1.0
-        peers = [{'TCP': ('127.0.0.1', 3282)}]
-        msg = message.resources.ResourceList(resources=[['1'], ['2']],
-                                             options=None)
-
-        # Use locally saved hyperdrive client options
-        self.task_session._react_to_resource_list(msg)
-        call_options = task_server.pull_resources.call_args[1]
-
-        assert task_server.get_download_options.called
-        assert task_server.pull_resources.called
-        assert isinstance(call_options['client_options'], Mock)
-
-        # Use download options built by TaskServer
-        client_options = ClientOptions(client, version,
-                                       options={'peers': peers})
-        task_server.get_download_options.return_value = client_options
-
-        self.task_session.task_server.pull_resources.reset_mock()
-        self.task_session._react_to_resource_list(msg)
-        call_options = task_server.pull_resources.call_args[1]
-
-        assert not isinstance(call_options['client_options'], Mock)
-        assert call_options['client_options'].options['peers'] == peers
 
     def test_subtask_to_task(self):
         task_keeper = Mock(subtask_to_task=dict())
