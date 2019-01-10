@@ -263,6 +263,7 @@ class TaskSessionTaskToComputeTest(TestCase):
             ['concent_enabled', self.use_concent],
             ['price', 1],
             ['size', task_state.package_size],
+            ['ethsig', ms.ethsig]
         ]
         self.assertCountEqual(ms.slots(), expected)
 

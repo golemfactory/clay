@@ -369,8 +369,7 @@ class TestTaskThread(DatabaseFixture):
                    output = cnt
                    """
 
-        return PyTaskThread(subtask_id="xxyyzz",
-                            src_code=src_code,
+        return PyTaskThread(src_code=src_code,
                             extra_data={},
                             res_path=os.path.dirname(files[0]),
                             tmp_path=os.path.dirname(files[1]),
@@ -417,7 +416,6 @@ class TestTaskMonitor(DatabaseFixture):
                 .task_keeper.task_headers[subtask_id].subtask_timeout = duration
 
             task.assigned_subtask = subtask
-            task_thread.subtask_id = subtask_id
 
         def check(expected):
             with mock.patch('golem.monitor.monitor.SenderThread.send') \
