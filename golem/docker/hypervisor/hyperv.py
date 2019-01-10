@@ -25,13 +25,31 @@ from golem.rpc.mapping.rpceventnames import Golem
 
 logger = logging.getLogger(__name__)
 
+EVENT_SMB = 'smb_blocked'
+EVENT_MEM = 'lowered_memory'
+EVENT_DISK = 'low_diskspace'
 
 MESSAGES = {
-    'lowered_memory': 'Not enough free RAM to start the VM, lowering memory'
-                      'to {mem_mb} MB',
+    EVENT_SMB: 'Port {SMB_PORT} unreachable. Please check firewall settings.',
+    EVENT_MEM: 'Not enough free RAM to start the VM, '
+               'lowering memory to {mem_mb} MB',
+    EVENT_DISK: 'Not enough disk space. Creating VM with min memory',
 }
+
 EVENTS = {
-    'lowered_memory': {
+    EVENT_SMB: {
+        'component': Component.hypervisor,
+        'method': 'setup',
+        'stage': Stage.exception,
+        'data': None,
+    },
+    EVENT_MEM: {
+        'component': Component.hypervisor,
+        'method': 'start_vm',
+        'stage': Stage.warning,
+        'data': None,
+    },
+    EVENT_DISK: {
         'component': Component.hypervisor,
         'method': 'start_vm',
         'stage': Stage.warning,
@@ -94,9 +112,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         # We use splitlines() because output may contain multiple lines with
         # debug information
         if output is None or ok_str not in output.splitlines():
-            logger.error(
-                f'Port {self.SMB_PORT} unreachable. '
-                f'Please check firewall settings.')
+            self._handle_event(EVENT_SMB, SMB_PORT=self.SMB_PORT)
 
     def save_vm(self, vm_name: Optional[str] = None) -> None:
         vm_name = vm_name or self._vm_name
@@ -144,7 +160,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
             max_memory = self._memory_cap(constr[mem_key])
             constr[mem_key] = hardware.cap_memory(constr[mem_key], max_memory,
                                                   unit=hardware.MemSize.mebi)
-            self._lowered_memory_event(constr[mem_key])
+            self._handle_event(EVENT_MEM, mem_mb=constr[mem_key])
 
         # Always constrain to set the appropriate shutdown action
         self.constrain(name, **constr)
@@ -198,13 +214,12 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if mem is not None:
             cap_mem = self._memory_cap(mem)
             if cap_mem != mem:
-                self._lowered_memory_event(cap_mem)
+                self._handle_event(EVENT_MEM, mem_mb=cap_mem)
 
             if self._check_system_drive_space(cap_mem):
                 args += [self.OPTIONS['mem'], str(cap_mem)]
             else:
-                logger.warning("Not enough disk space. "
-                               "Creating VM with min memory")
+                self._handle_event(EVENT_DISK)
                 mem_key = CONSTRAINT_KEYS['mem']
                 args += [self.OPTIONS['mem'], str(MIN_CONSTRAINTS[mem_key])]
 
@@ -394,12 +409,16 @@ class HyperVHypervisor(DockerMachineHypervisor):
         return hardware.pad_memory(int(0.9 * max_mem_in_mb))
 
     @staticmethod
-    def _lowered_memory_event(mem_mb: int) -> None:
-        message = MESSAGES['lowered_memory'].format(mem_mb=mem_mb)
-        event = EVENTS['lowered_memory'].copy()
+    def _handle_event(name, **kwargs) -> None:
+        message = MESSAGES[name].format(**kwargs)
+        event = EVENTS[name].copy()
         event['data'] = message
 
-        logger.warning(message)
+        if event['stage'] == Stage.warning:
+            logger.warning(message)
+        else:
+            logger.error(message)
+
         publish_event(event)
 
     def _create_volume(self, hostname: str, shared_dir: Path) -> str:
