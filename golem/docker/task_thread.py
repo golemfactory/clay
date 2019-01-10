@@ -75,7 +75,6 @@ class DockerTaskThread(TaskThread):
 
     def __init__(self,  # pylint: disable=too-many-arguments
                  docker_images: List[Union[DockerImage, Dict, Tuple]],
-                 script_filename: str,
                  extra_data: Dict,
                  dir_mapping: DockerDirMapping,
                  timeout: int,
@@ -84,7 +83,6 @@ class DockerTaskThread(TaskThread):
         if not docker_images:
             raise AttributeError("docker images is None")
         super().__init__(
-            script_filename=script_filename,
             extra_data=extra_data,
             res_path=str(dir_mapping.resources),
             tmp_path=str(dir_mapping.temporary),
@@ -190,7 +188,7 @@ class DockerTaskThread(TaskThread):
 
         params = dict(
             image=self.image,
-            script_filename=self.script_filename,
+            script_filepath=self.extra_data['script_filepath'],
             parameters=self.extra_data,
             resources_dir=str(self.dir_mapping.resources),
             work_dir=str(self.dir_mapping.work),

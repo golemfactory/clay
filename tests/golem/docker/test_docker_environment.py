@@ -7,12 +7,11 @@ from golem.tools.ci import ci_skip
 
 from .test_docker_image import DockerTestCase
 
+
 class DockerEnvironmentMock(DockerEnvironment):
     DOCKER_IMAGE = ""
     DOCKER_TAG = ""
     ENV_ID = ""
-    APP_DIR = ""
-    SCRIPT_NAME = ""
     SHORT_DESCRIPTION = ""
 
 

@@ -96,12 +96,12 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         ctd = ComputeTaskDef()
         ctd['task_id'] = "xyz"
         ctd['subtask_id'] = "xxyyzz"
-        ctd['src_code'] = \
+        ctd['extra_data'] = {}
+        ctd['extra_data']['src_code'] = \
             "cnt=0\n" \
             "for i in range(10000):\n" \
             "\tcnt += 1\n" \
             "output={'data': cnt, 'result_type': 0}"
-        ctd['extra_data'] = {}
         ctd['deadline'] = timeout_to_deadline(10)
 
         task_server = self.task_server
@@ -140,7 +140,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc.task_given(ctd)
         assert tc.task_resource_collected("xyz")
         assert tc.counting_thread is not None
-        self.assertGreater(tc.counting_thread.time_to_compute, 9)
+        self.assertGreater(tc.counting_thread.time_to_compute, 8)
         self.assertLessEqual(tc.counting_thread.time_to_compute, 10)
         mock_finished.assert_called_once_with()
         mock_finished.reset_mock()
@@ -159,7 +159,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         mock_finished.reset_mock()
 
         ctd['subtask_id'] = "aabbcc"
-        ctd['src_code'] = "raise Exception('some exception')"
+        ctd['extra_data']['src_code'] = "raise Exception('some exception')"
         ctd['deadline'] = timeout_to_deadline(5)
         tc.task_given(ctd)
         self.assertEqual(tc.assigned_subtask, ctd)
@@ -178,7 +178,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         mock_finished.reset_mock()
 
         ctd['subtask_id'] = "aabbcc2"
-        ctd['src_code'] = "print('Hello world')"
+        ctd['extra_data']['src_code'] = "print('Hello world')"
         ctd['deadline'] = timeout_to_deadline(5)
         tc.task_given(ctd)
         self.assertTrue(tc.task_resource_collected("xyz"))
@@ -192,7 +192,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         task_server.task_keeper.task_headers["xyz"].deadline = \
             timeout_to_deadline(20)
         ctd['subtask_id'] = "aabbcc3"
-        ctd['src_code'] = "output={'data': 0, 'result_type': 0}"
+        ctd['extra_data']['src_code'] = "output={'data': 0, 'result_type': 0}"
         ctd['deadline'] = timeout_to_deadline(40)
         tc.task_given(ctd)
         self.assertTrue(tc.task_resource_collected("xyz"))
@@ -297,7 +297,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         args = (task_computer, subtask_id)
         kwargs = dict(
             docker_images=[],
-            src_code='print("test")',
             extra_data=mock.Mock(),
             subtask_deadline=time.time() + 3600
         )
@@ -369,8 +368,7 @@ class TestTaskThread(DatabaseFixture):
                    output = cnt
                    """
 
-        return PyTaskThread(src_code=src_code,
-                            extra_data={},
+        return PyTaskThread(extra_data={'src_code': src_code},
                             res_path=os.path.dirname(files[0]),
                             tmp_path=os.path.dirname(files[1]),
                             timeout=20)

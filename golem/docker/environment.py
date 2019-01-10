@@ -80,11 +80,6 @@ class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
 
     @property
     @abc.abstractmethod
-    def APP_DIR(cls):
-        pass
-
-    @property
-    @abc.abstractmethod
     def SHORT_DESCRIPTION(cls):
         pass
 

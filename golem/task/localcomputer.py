@@ -63,7 +63,6 @@ class LocalComputer:
             self.start_time = time.time()
             self._prepare_tmp_dir()
             self._prepare_resources(self.resources)  # makes a copy
-
             if not self.compute_task_def:
                 ctd = self.get_compute_task_def()
             else:
@@ -186,7 +185,6 @@ class LocalComputer:
         )
         return DockerTaskThread(
             ctd['docker_images'],
-            'job.py',
             ctd['extra_data'],
             dir_mapping,
             0,

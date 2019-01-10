@@ -455,7 +455,8 @@ class BlenderRenderTask(FrameRenderingTask):
                       "path_root": self.main_scene_dir,
                       "start_task": start_task,
                       "total_tasks": self.total_tasks,
-                      "crops": crops
+                      "crops": crops,
+                      "script_filepath": "/golem/scripts/job.py",
                       }
 
         subtask_id = self.create_subtask_id()

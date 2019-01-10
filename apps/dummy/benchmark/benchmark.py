@@ -10,8 +10,6 @@ from apps.dummy.task.verifier import DummyTaskVerifier
 from golem.core.common import get_golem_path
 from golem.verificator.verifier import SubtaskVerificationState
 
-APP_DIR = join(get_golem_path(), 'apps', 'dummy')
-
 
 class DummyTaskBenchmark(CoreBenchmark):
     def __init__(self):

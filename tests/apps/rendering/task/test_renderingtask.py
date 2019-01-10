@@ -54,19 +54,6 @@ class RenderingTaskMock(RenderingTask):
         pass
 
 
-class TestInitRenderingTask(TestDirFixture, LogTestCase):
-    def test_init(self):
-        with self.assertLogs(logger_core, level="WARNING"):
-            rt = RenderingTaskMock(main_program_file="notexisting",
-                                   task_definition=RenderingTaskDefinition(),
-                                   owner=dt_p2p_factory.Node(),
-                                   total_tasks=10,
-                                   root_path=self.path
-                                   )
-        assert isinstance(rt, RenderingTask)
-        assert rt.src_code == ""
-
-
 class TestRenderingTask(TestDirFixture, LogTestCase):
     def setUp(self):
         super(TestRenderingTask, self).setUp()

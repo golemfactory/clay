@@ -39,9 +39,6 @@ class DockerJob:
     # Mounted read-write in the container.
     WORK_DIR = "/golem/work"
 
-    # This dir contains scripts provided in the Docker image.
-    SCRIPTS_DIR = "/golem/scripts"
-
     # All files in this dir are treated as output files after the task finishes.
     # Mounted read-write in the container.
     OUTPUT_DIR = "/golem/output"
@@ -61,7 +58,7 @@ class DockerJob:
     # pylint:disable=too-many-arguments
     def __init__(self,
                  image: DockerImage,
-                 script_filename: str,
+                 script_filepath: str,
                  parameters: Dict,
                  resources_dir: str,
                  work_dir: str,
@@ -82,7 +79,7 @@ class DockerJob:
             raise TypeError('Incorrect image type: {}. '
                             'Should be: DockerImage'.format(type(image)))
         self.image = image
-        self.script_filename = script_filename
+        self.script_filepath = script_filepath
         self.parameters = parameters if parameters else {}
 
         self.parameters.update(self.PATH_PARAMS)
@@ -129,15 +126,11 @@ class DockerJob:
 
         host_cfg = client.create_host_config(**self.host_config)
 
-        # The location of the task script when mounted in the container
-        container_script_path = \
-            self._get_container_script_path(self.script_filename)
-        print('container_script_path', container_script_path)
         self.container = client.create_container(
             image=self.image.name,
             volumes=self.volumes,
             host_config=host_cfg,
-            command=[container_script_path],
+            command=[self.script_filepath],
             working_dir=self.WORK_DIR,
             environment=self.environment,
         )
@@ -203,10 +196,6 @@ class DockerJob:
                 logger.debug("Cannot chmod %s (%s): %s", dst_dir, mod, e)
 
         return prev_mod
-
-    @staticmethod
-    def _get_container_script_path(script_filename: str):
-        return posixpath.join(DockerJob.SCRIPTS_DIR, script_filename)
 
     @staticmethod
     def get_absolute_resource_path(relative_path):

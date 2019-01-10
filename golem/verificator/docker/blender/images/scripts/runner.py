@@ -45,12 +45,8 @@ def run_img_compare_task(verification_files, xres, yres):
                 file=sys.stderr)
             sys.exit(1)
 
-        dir_path = os.path.dirname(os.path.realpath(__file__))
-        results_path = os.path.join(dir_path, params['OUTPUT_DIR'][1:])
         file_path = os.path.join(
             params['OUTPUT_DIR'], 'result_' + str(counter) + '.txt')
-        if not os.path.exists(results_path):
-            os.makedirs(results_path)
 
         results_path = img_metrics_calculator.\
             calculate_metrics(cropped_img_path,

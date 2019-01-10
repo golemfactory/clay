@@ -43,10 +43,6 @@ class DummyEnvironment(Environment):
     def get_id(cls):
         return DummyTask.ENVIRONMENT_NAME
 
-    def __init__(self):
-        super(DummyEnvironment, self).__init__()
-        self.allow_custom_main_program_file = True
-
 
 def format_msg(kind, pid, msg):
     return "[{} {:>5}] {}".format(kind, pid, msg)
