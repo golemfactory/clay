@@ -8,7 +8,7 @@ info:
     url: 'https://www.gnu.org/licenses/gpl-3.0.html'
 host: 127.0.0.1:55001
 schemes:
-  - https
+  - http
 paths:
   '/subscriptions/{nodeId}':
     parameters:
