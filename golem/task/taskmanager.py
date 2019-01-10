@@ -655,7 +655,7 @@ class TaskManager(TaskEventListener):
         task_header.sign(private_key=self.keys_auth._private_key)  # noqa pylint: disable=protected-access
 
     def verify_subtask(self, subtask_id):
-         logger.debug("verify_subtask. subtask_id=%r", subtask_id)
+        logger.debug("verify_subtask. subtask_id=%r", subtask_id)
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
             return self.tasks[task_id].verify_subtask(subtask_id)

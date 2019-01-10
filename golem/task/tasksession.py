@@ -210,7 +210,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         def verification_finished():
             logger.debug("Verification finished handler.")
             if not self.task_manager.verify_subtask(subtask_id):
-                 logger.debug("Verification failure. subtask_id=%r", subtask_id)
+                logger.debug("Verification failure. subtask_id=%r", subtask_id)
                 send_verification_failure()
                 self.dropped()
                 return
@@ -974,8 +974,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.subtask_id,
         )
         if not sender_is_owner:
-            logger.warning("Requestor '%r' acknowledged a computed task report "
-                           "of an unknown task (subtask_id='%s')",
+            logger.warning("Requestor '%r' acknowledged a computed task report"
+                           " of an unknown task (subtask_id='%s')",
                            self.key_id, msg.subtask_id)
             return
 
@@ -993,7 +993,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
         svt = msg_helpers.subtask_verification_time(msg.report_computed_task)
         delay = ttc_deadline + svt - datetime.datetime.utcnow()
-         logger.debug('[CONCENT] Delayed ForceResults. msg=%r, delay=%r', delayed_forcing_msg, delay)
+        logger.debug(
+            '[CONCENT] Delayed ForceResults. msg=%r, delay=%r',
+            delayed_forcing_msg,
+            delay
+        )
         self.concent_service.submit_task_message(
             subtask_id=msg.subtask_id,
             msg=delayed_forcing_msg,
