@@ -135,21 +135,39 @@ def unsubscribe(node_id: str, task_type: str):
     return _json_response('subscription deleted')
 
 
-@app.route('/<node_id>/tasks/<uuid:task_id>', methods=['POST'])
+@app.route('/<node_id>/tasks/<task_id>', methods=['POST'])
 def want_to_compute_task(node_id, task_id):
     """Sends task computation willingness"""
 
     if node_id not in subscriptions:
         return _not_found('subscription')
 
+    for s in subscriptions[node_id].values():
+        if task_id in s.events:
+            # TODO: do we need it
+            task = s.events[task_id].task
+            break
+    else:
+        return _not_found(f'task {task_id}')
+
+    try:
+        golem_client.task_server.request_task(task_id)
+    except KeyError as e:
+        return _not_found(f'task {e}')
+
+    # golem_client.task_server.task_computer.has_assigned_task():
+    #
+    # ctd = golem_client.task_server.task_computer.assigned_subtask
+    # print(repr(ctd))
+
     return json.dumps({
-        'subtaskId': '435bd45a-12d4-144f-233c-6e845eabffe0',
+        'subtaskId': ctd['subtask_id'],
         'description': 'some desc',
         'resource': {
-            'resourceId': '87da97cd-234s-bc32-3d42-6e845eabffe0',
+            'resourceId': '87da97cd-234d-bc32-3d42-6e845eabffe0',
             'metadata': '{"size": 123}'
         },
-        'deadline': 1542903681123,
+        'deadline': ctd['deadline'],
         'price': 3,
         'extraData': '{"foo": "bar"}'
     })
@@ -159,14 +177,11 @@ def want_to_compute_task(node_id, task_id):
 def task_info(node_id: str, task_id: str):
     """Gets task information"""
 
-    if node_id not in subscriptions:
-        return _not_found('subscription')
-
-    for s in subscriptions[node_id].values():
-        if task_id in s.events:
-            return json.dumps(s.events[task_id].task.to_json_dict())
-
-    return _not_found('task')
+    try:
+        task = Task(golem_client.get_known_tasks()[task_id])
+        return json.dumps(task.to_json_dict())
+    except KeyError as e:
+        return _not_found(f'task {e}')
 
 
 @app.route('/<node_id>/subtasks/<uuid:subtask_id>', methods=['PUT'])

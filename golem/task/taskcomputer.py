@@ -118,12 +118,12 @@ class TaskComputer(object):
             self.task_server.unpack_delta(rs_dir, self.delta, task_id)
         self.delta = None
         self.last_task_timeout_checking = time.time()
-        self.__compute_task(
-            subtask['subtask_id'],
-            subtask['docker_images'],
-            subtask['src_code'],
-            subtask['extra_data'],
-            subtask['deadline'])
+        # self.__compute_task(
+        #     subtask['subtask_id'],
+        #     subtask['docker_images'],
+        #     subtask['src_code'],
+        #     subtask['extra_data'],
+        #     subtask['deadline'])
         return True
 
     def task_resource_failure(self, task_id, reason):
