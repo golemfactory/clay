@@ -2,7 +2,7 @@
 """
 
 Requestor Node running a day in the past
-and not sending the sending out the payments
+and not sending out the payments
 
 """
 import freezegun

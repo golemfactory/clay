@@ -28,7 +28,7 @@ class ConcentTestPlaybook(NodeTestPlaybook):
         any indication of Golem<->Concent communication failure.
 
         :param output_queue: the provider or requestor standard output queue
-        :param outgoing: if `True` we're waiting for and outgoing message
+        :param outgoing: if `True` we're waiting for an outgoing message
                          (one that the node should send to Concent),
                          otherwise, when `False`, we're waiting for a message
                          from the Concent

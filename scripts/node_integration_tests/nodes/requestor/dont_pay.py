@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """
 
-Requestor Node not sending the sending out the payments
+Requestor Node not sending out the payments
 
 """
 import mock
