@@ -5,24 +5,23 @@ from click.testing import CliRunner
 from portalocker import LockException
 
 from golem.testutils import TempDirFixture, PEP8MixIn
-from golem.tools.ci import ci_skip
 from golemapp import start
 from tests.golem.config.utils import mock_config
 
 
-@ci_skip
+@mock.patch('golem.core.golem_async.start_asyncio_thread')
 class TestGolemApp(TempDirFixture, PEP8MixIn):
     PEP8_FILES = [
         "golemapp.py",
     ]
 
     @mock.patch('golem.node.Node')
-    def test_start_node(self, node_class):
+    def test_start_node(self, node_class, *_):
         runner = CliRunner()
         runner.invoke(start, ['--datadir', self.path], catch_exceptions=False)
         assert node_class.called
 
-    def test_start_crossbar_worker(self):
+    def test_start_crossbar_worker(self, *_):
         runner = CliRunner()
         args = ['--datadir', self.path, '-m', 'crossbar.worker.process']
 
@@ -32,7 +31,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
                 assert _run.called
                 assert '-m' not in sys.argv
 
-    def test_start_crossbar_worker_u(self):
+    def test_start_crossbar_worker_u(self, *_):
         runner = CliRunner()
         args = ['--datadir', self.path, '-m', 'crossbar.worker.process', '-u']
 
@@ -85,7 +84,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         assert cert_manager.generate_if_needed.called
 
     @mock.patch('golem.node.Node')
-    def test_accept_terms(self, node_cls):
+    def test_accept_terms(self, node_cls, *_):
         runner = CliRunner()
         runner.invoke(
             start,
@@ -95,7 +94,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         node_cls().accept_terms.assert_called_once_with()
 
     @mock.patch('golem.node.Node')
-    def test_accept_concent_terms(self, node_cls):
+    def test_accept_concent_terms(self, node_cls, *_):
         runner = CliRunner()
         runner.invoke(
             start,
@@ -105,7 +104,7 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
         node_cls().accept_concent_terms.assert_called_once_with()
 
     @mock.patch('golem.node.Node')
-    def test_accept_all_terms(self, node_cls):
+    def test_accept_all_terms(self, node_cls, *_):
         runner = CliRunner()
         runner.invoke(
             start,
@@ -138,11 +137,11 @@ class TestGolemApp(TempDirFixture, PEP8MixIn):
             catch_exceptions=False,
         )
 
-        args, kwargs = logger.error.call_args
+        args, _kwargs = logger.error.call_args
         assert self.path in args[0]
 
     @mock.patch('golem.node.Node')
-    def test_node_start_called(self, node_cls):
+    def test_node_start_called(self, node_cls, *_):
         runner = CliRunner()
         runner.invoke(
             start,
