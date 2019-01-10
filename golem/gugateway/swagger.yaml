@@ -9,6 +9,189 @@ info:
 host: 127.0.0.1:55001
 schemes:
   - http
+definitions:
+  Uuid: &Uuid
+    type: string
+    format: uuid
+    pattern: '[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}'
+  TaskType: &TaskType
+    type: string
+    enum:
+      - Blender
+      - Transcoding
+  Message:
+    required:
+      - msg
+    properties:
+      msg:
+        type: string
+  SubscriptionStatus:
+    required:
+      - taskType
+    properties:
+      taskType:
+        $ref: '#/definitions/TaskType'
+      taskStats:
+        properties:
+          requested:
+            type: integer
+          succeded:
+            type: integer
+          failed:
+            type: integer
+          timedout:
+            type: integer
+  Task:
+    description: >
+      A basic unit of work requested in Golem Network.
+      Upon computation it is divided into a smaller chunks - subtasks.
+      Number of subtasks is defined by the requestor.
+    required:
+      - taskId
+      - deadline
+      - subtaskTimeout
+      - subtasksCount
+      - maxPrice
+    properties:
+      taskId:
+        $ref: '#/definitions/Uuid'
+      deadline:
+        type: integer
+        description: >
+          timestamp when computation must be finished
+          to be accepted by a requestor
+      subtaskTimeout:
+        type: integer
+        format: int64
+      subtasksCount:
+        type: integer
+        format: int64
+      resourceSize:
+        type: integer
+        format: int64
+      estimatedMemory:
+        type: integer
+        format: int64
+      maxPrice:
+        type: integer
+        format: int64
+        description: in GNT/10e+18 per second of computation
+      minVersion:
+        type: string
+        description: minimal Golem version
+    additionalProperties: true
+  Resource:
+    description: Binary content (files) required to execute subtask
+    required:
+      - resourceId
+    properties:
+      resourceId:
+        $ref: '#/definitions/Uuid'
+      metadata:
+        type: string
+  Subtask:
+    description: >
+      Subtask is a part of task supossed to be executed by a provider,
+      which submited task computation willingness.
+    required:
+      - subtaskId
+      - price
+    properties:
+      subtaskId:
+        $ref: '#/definitions/Uuid'
+      description:
+        type: string
+      resource:
+        $ref: '#/definitions/Resource'
+      deadline:
+        type: integer
+        description: >
+          timestamp when computation must be finished
+          to be accepted by a requestor
+      price:
+        type: integer
+        format: int64
+        description: >
+          total subtask price computed as `task_max_price * subtask_timeout`
+    additionalProperties: true
+  SubtaskResult:
+    description: Subtask computation result
+    required:
+      - status
+    properties:
+      status:
+        type: string
+        enum:
+          - success
+          - failure
+      reason:
+        type: string
+        description: failure reason
+      resourceId:
+        $ref: '#/definitions/Uuid'
+  SubtaskVerification:
+    description: Subtask verification result
+    required:
+      - subtaskId
+      - verificationResult
+    properties:
+      subtaskId:
+        $ref: '#/definitions/Uuid'
+      verificationResult:
+        type: string
+        enum:
+          - OK
+          - failed
+          - timedout
+  Events:
+    description: >
+      Table with trhee types of events.
+      Every item has id and exactly one of remaining fields filled.
+    type: array
+    items:
+      required:
+        - eventId
+      properties:
+        eventId:
+          $ref: '#/definitions/Uuid'
+        task:
+          $ref: '#/definitions/Task'
+        resource:
+          $ref: '#/definitions/Resource'
+        subtaskVerification:
+          $ref: '#/definitions/SubtaskVerification'
+parameters:
+  nodeId:
+    name: nodeId
+    type: string
+    in: path
+    required: true
+    minLength: 42
+    maxLength: 42
+    pattern: '0x[0-9a-f]{40}'
+    description: >
+      ethereum address identifying node e.g.,
+      `0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b`
+  taskType:
+    name: taskType
+    in: path
+    required: true
+    <<: *TaskType
+  taskId:
+    name: taskId
+    in: path
+    required: true
+    <<: *Uuid
+  subtaskId:
+    name: subtaskId
+    in: path
+    required: true
+    <<: *Uuid
+  resourceId:
+    name: resourceId
+    in: path
+    required: true
+    <<: *Uuid
 paths:
   '/subscriptions/{nodeId}':
     parameters:
@@ -39,7 +222,7 @@ paths:
           description: subscription created
           schema:
             $ref: '#/definitions/SubscriptionStatus'
-        '405':
+        '400':
           description: invalid input
           schema:
             $ref: '#/definitions/Message'
@@ -190,7 +373,7 @@ paths:
           description: subscription not found
           schema:
             $ref: '#/definitions/Message'
-        '405':
+        '400':
           description: invalid input
           schema:
             $ref: '#/definitions/Message'
@@ -229,187 +412,3 @@ paths:
           description: list of events from `lastEventId`
           schema:
             $ref: '#/definitions/Events'
-parameters:
-  nodeId:
-    name: nodeId
-    type: string
-    in: path
-    required: true
-    minLength: 42
-    maxLength: 42
-    pattern: '0x[0-9a-f]{40}'
-    description: >
-      ethereum address identifying node e.g.,
-      `0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b`
-  taskType:
-    name: taskType
-    type: string
-    in: path
-    required: true
-    enum:
-      - Blender
-      - Transcoding
-  taskId:
-    name: taskId
-    type: string
-    format: uuid
-    in: path
-    required: true
-    pattern: '[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}'
-  subtaskId:
-    name: subtaskId
-    type: string
-    format: uuid
-    in: path
-    required: true
-    pattern: '[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}'
-  resourceId:
-    name: resourceId
-    type: string
-    format: uuid
-    in: path
-    required: true
-    pattern: '[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}'
-definitions:
-  Message:
-    required:
-      - msg
-    properties:
-      msg:
-        type: string
-  SubscriptionStatus:
-    required:
-      - taskType
-    properties:
-      taskType:
-        $ref: '#/parameters/taskType'
-      taskStats:
-        properties:
-          requested:
-            type: integer
-          succeded:
-            type: integer
-          failed:
-            type: integer
-          timedout:
-            type: integer
-  Task:
-    description: >
-      A basic unit of work requested in Golem Network.
-      Upon computation it is divided into a smaller chunks - subtasks.
-      Number of subtasks is defined by the requestor.
-    required:
-      - taskId
-      - deadline
-      - subtaskTimeout
-      - subtasksCount
-      - maxPrice
-    properties:
-      taskId:
-        $ref: '#/parameters/taskId'
-      deadline:
-        type: integer
-        description: >
-          timestamp when computation must be finished
-          to be accepted by a requestor
-      subtaskTimeout:
-        type: integer
-        format: int64
-      subtasksCount:
-        type: integer
-        format: int64
-      resourceSize:
-        type: integer
-        format: int64
-      estimatedMemory:
-        type: integer
-        format: int64
-      maxPrice:
-        type: integer
-        format: int64
-        description: in GNT/10e+18 per second of computation
-      minVersion:
-        type: string
-        description: minimal Golem version
-    additionalProperties: true
-  Subtask:
-    description: >
-      Subtask is a part of task supossed to be executed by a provider,
-      which submited task computation willingness.
-    required:
-      - subtaskId
-      - price
-    properties:
-      subtaskId:
-        $ref: '#/parameters/subtaskId'
-      description:
-        type: string
-      resource:
-        $ref: '#/definitions/Resource'
-      deadline:
-        type: integer
-        description: >
-          timestamp when computation must be finished
-          to be accepted by a requestor
-      price:
-        type: integer
-        format: int64
-        description: >
-          total subtask price computed as `task_price * subtask_timeout`
-    additionalProperties: true
-  Resource:
-    description: Binary content (files) required to execute subtask
-    required:
-      - resourceId
-    properties:
-      resourceId:
-        $ref: '#/parameters/resourceId'
-      metadata:
-        type: string
-  SubtaskResult:
-    description: Subtask computation result
-    required:
-      - status
-    properties:
-      status:
-        type: string
-        enum:
-          - success
-          - failure
-      reason:
-        type: string
-        description: failure reason
-      resourceId:
-        $ref: '#/parameters/resourceId'
-  SubtaskVerification:
-    description: Subtask verification result
-    required:
-      - subtaskId
-      - verificationResult
-    properties:
-      subtaskId:
-        $ref: '#/parameters/subtaskId'
-      verificationResult:
-        type: string
-        enum:
-          - OK
-          - failed
-          - timedout
-  Events:
-    description: >
-      Table with trhee types of events.
-      Every item has id and exactly one of remaining fields filled.
-    type: array
-    items:
-      required:
-        - eventId
-      properties:
-        eventId:
-          type: integer
-          format: int64
-        task:
-          $ref: '#/definitions/Task'
-        resource:
-          $ref: '#/definitions/Resource'
-        subtaskVerification:
-          $ref: '#/definitions/SubtaskVerification'

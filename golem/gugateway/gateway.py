@@ -45,7 +45,7 @@ def _not_found(msg: str):
 
 
 def _invalid_input(msg):
-    return _json_response(f'invalid input: {msg}', 405)
+    return _json_response(f'invalid input: {msg}', 400)
 
 
 @app.route('/')
