@@ -162,15 +162,11 @@ def task_info(node_id: str, task_id: str):
     if node_id not in subscriptions:
         return _not_found('subscription')
 
-    return json.dumps({
-        'taskId': '682e9b26-ed89-11e8-a9e0-6e845eabffe0',
-        'perfIndex': 314,
-        'maxResourceSize': 110,
-        'maxMemorySize': 10,
-        'numCores': 2,
-        'price': 12,
-        'extraData': '{"foo": "bar"}'
-    })
+    for s in subscriptions[node_id].values():
+        if task_id in s.events:
+            return json.dumps(s.events[task_id].task.to_json_dict())
+
+    return _not_found('task')
 
 
 @app.route('/<node_id>/subtasks/<uuid:subtask_id>', methods=['PUT'])
