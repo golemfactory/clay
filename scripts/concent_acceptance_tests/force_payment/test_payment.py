@@ -1,3 +1,4 @@
+# pylint: disable=no-value-for-parameter
 import time
 import unittest
 
@@ -250,6 +251,20 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
         self.assertIsInstance(response, message.concents.ServiceRefused)
         self.assertEqual(response.reason,
                          message.concents.ServiceRefused.REASON.InvalidRequest)
+
+    def test_provider_replay(self):
+        LOA = self._prepare_list_of_acceptances()
+        V = sum(sra.task_to_compute.price for sra in LOA)
+        self.put_deposit(self.requestor_sci, V*2)
+        self._perform_payments_scenario(LOA, V, 0)
+        fp = message.concents.ForcePayment(
+            subtask_results_accepted_list=acceptances,
+        )
+        response_provider = self.provider_load_response(self.provider_send(fp))
+        self.assertIsInstance(
+            response_provider,
+            message.concents.ForcePaymentRejected,
+        )
 
     def _prepare_list_of_acceptances(self):
         LOA = []
