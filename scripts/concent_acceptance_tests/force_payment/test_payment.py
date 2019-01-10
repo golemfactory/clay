@@ -33,15 +33,6 @@ class ForcePaymentBase(SCIBaseTest):
             self.assertEqual(response.reason, reason)
         return response
 
-    def assertServiceRefused(
-            self,
-            msg: message.concents.ServiceRefused,
-            reason=None,
-        ):
-        self.assertIsInstance(msg, message.concents.ServiceRefused)
-        if reason:
-            self.assertEqual(msg.reason, reason)
-
     def _prepare_list_of_acceptances(self):
         LOA = []
         for _ in range(3):

@@ -190,6 +190,15 @@ class ConcentBaseTest:
             )
         )
 
+    def assertServiceRefused(
+            self,
+            msg: message.concents.ServiceRefused,
+            reason=None,
+        ):
+        self.assertIsInstance(msg, message.concents.ServiceRefused)
+        if reason:
+            self.assertEqual(msg.reason, reason)
+
     def assertFttCorrect(self, ftt, subtask_id, client_key, operation):
         self.assertIsInstance(ftt, concent_msg.FileTransferToken)
 
