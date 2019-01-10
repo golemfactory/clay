@@ -22,7 +22,7 @@ from golem_messages import helpers
 from golem_messages import serializer
 from golem_messages import utils as msg_utils
 from golem_messages.message.base import Message
-from golem_messages.message import concents as concent_msg
+from golem_messages.message import concents
 
 from golem_sci import (
     new_sci_rpc, SmartContractsInterface, JsonTransactionsStorage)
@@ -54,7 +54,7 @@ def dump_balance(sci: SmartContractsInterface):
     sys.stderr.write(balance_str)
 
 
-class ConcentBaseTest:
+class ConcentBaseTest(unittest.TestCase):
     @staticmethod
     def _fake_keys():
         return cryptography.ECCx(None)
@@ -192,15 +192,15 @@ class ConcentBaseTest:
 
     def assertServiceRefused(
             self,
-            msg: message.concents.ServiceRefused,
+            msg: concents.ServiceRefused,
             reason=None,
         ):
-        self.assertIsInstance(msg, message.concents.ServiceRefused)
+        self.assertIsInstance(msg, concents.ServiceRefused)
         if reason:
             self.assertEqual(msg.reason, reason)
 
     def assertFttCorrect(self, ftt, subtask_id, client_key, operation):
-        self.assertIsInstance(ftt, concent_msg.FileTransferToken)
+        self.assertIsInstance(ftt, concents.FileTransferToken)
 
         self.assertIsNotNone(subtask_id)  # sanity check, just in case
         self.assertEqual(ftt.subtask_id, subtask_id)
@@ -223,14 +223,14 @@ class ConcentBaseTest:
         )
 
 
-class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
+class SCIBaseTest(ConcentBaseTest):
     """
     Base test providing instances of TransactionSystem
     for the provider and the requestor
     """
 
     def setUp(self):
-        super(SCIBaseTest, self).setUp()
+        super().setUp()
         from golem.config.environments.testnet import EthereumConfig
         random.seed()
 
