@@ -886,6 +886,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     msg=srv,
                 )
 
+            self.task_server.client.transaction_system.\
+                validate_concent_deposit_possibility(
+                    required=amount,
+                )
             self.task_server.client.transaction_system.concent_deposit(
                 required=amount,
                 expected=expected,

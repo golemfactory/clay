@@ -19,7 +19,7 @@ from typing import (
 
 from ethereum.utils import denoms
 from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
-from eth_utils import decode_hex, is_address
+from eth_utils import is_address
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import (
     JsonTransactionsStorage,
@@ -380,7 +380,17 @@ class TransactionSystem(LoopingCallService):
         if not self._payment_processor:
             raise Exception('Start was not called')
         gnt = price * num
+        if gnt > self.get_available_gnt():
+            raise exceptions.NotEnoughFunds(
+                gnt,
+                self.get_available_gnt(), 'GNT',
+            )
+
         eth = self.eth_for_batch_payment(num)
+        eth_available = self.get_available_eth()
+        if eth > eth_available:
+            raise exceptions.NotEnoughFunds(eth, eth_available, 'ETH')
+
         log.info(
             "Locking %f GNT and ETH for %d payments",
             gnt / denoms.ether,

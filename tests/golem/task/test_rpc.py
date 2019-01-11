@@ -112,7 +112,7 @@ class ProviderBase(test_client.TestClientBase):
 )
 class TestCreateTask(ProviderBase, TestClientBase):
     @mock.patch(
-        'golem.ethereum.fundslocker.FundsLocker.validate_lock_funds_possibility'
+        'golem.task.rpc._validate_lock_funds_possibility'
     )
     def test_create_task(self, *_):
         t = dummytaskstate.DummyTaskDefinition()
@@ -144,8 +144,7 @@ class TestCreateTask(ProviderBase, TestClientBase):
                           "Task name can only contain letters, numbers, "
                           "spaces, underline, dash or dot.")
 
-    @mock.patch('golem.ethereum.fundslocker.FundsLocker.'
-                'validate_lock_funds_possibility',
+    @mock.patch('golem.task.rpc._validate_lock_funds_possibility',
                 side_effect=_raise_not_enough_funds)
     def test_create_task_fail_if_not_enough_gnt_available(self, mocked, *_):
         t = dummytaskstate.DummyTaskDefinition()

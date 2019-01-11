@@ -20,6 +20,7 @@ from golem.core import common
 from golem.core import deferred as golem_deferred
 from golem.core import simpleserializer
 from golem.ethereum import exceptions as eth_exceptions
+from golem.ethereum.transactionsystem import TransactionSystem
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
 from golem.task import taskbase
@@ -163,6 +164,23 @@ def _run_test_task(client, task_dict):
     client.task_tester.run()
 
 
+def _validate_lock_funds_possibility(
+        transaction_system: TransactionSystem,
+        price: int,
+        num: int) -> None:
+    gnt = price * num
+    eth = transaction_system.eth_for_batch_payment(num)
+
+    if gnt > transaction_system.get_available_gnt():
+        raise eth_exceptions.NotEnoughFunds(
+            gnt,
+            transaction_system.get_available_gnt(), 'GNT',
+        )
+    eth_available = transaction_system.get_available_eth()
+    if eth > eth_available:
+        raise eth_exceptions.NotEnoughFunds(eth, eth_available, 'ETH')
+
+
 @golem_async.deferred_run()
 def _restart_subtasks(
         client,
@@ -183,6 +201,7 @@ def _restart_subtasks(
         new_task = yield enqueue_new_task(
             client=client,
             task=client.task_manager.create_task(task_dict),
+            force=force,
         )
 
         client.task_manager.copy_results(
@@ -193,11 +212,12 @@ def _restart_subtasks(
     # Function passed to twisted.threads.deferToThread can't itself
     # return a deferred, that's why I defined inner deferred function
     # and use sync_wait below.
+    validate_client(client)
     golem_deferred.sync_wait(deferred())
 
 
 @defer.inlineCallbacks
-def _ensure_task_deposit(client, task):
+def _ensure_task_deposit(client, task, force):
     if not task.header.concent_enabled:
         return
 
@@ -220,6 +240,10 @@ def _ensure_task_deposit(client, task):
     # fails. This case is most common but, the better way it to always
     # unlock them when the task fails regardless of the reason.
     try:
+        client.transaction_system.validate_concent_deposit_possibility(
+            required=min_amount,
+            force=force
+        )
         yield client.transaction_system.concent_deposit(
             required=min_amount,
             expected=opt_amount,
@@ -330,9 +354,10 @@ def _start_task(client, task, resource_server_result):
 
 
 @defer.inlineCallbacks
-def enqueue_new_task(client, task) \
+def enqueue_new_task(client, task, force=False) \
             -> typing.Generator[defer.Deferred, typing.Any, taskbase.Task]:
     """Feed a fresh Task to all golem subsystems"""
+    validate_client(client)
     task_id = task.header.task_id
     client.funds_locker.lock_funds(
         task_id,
@@ -364,6 +389,7 @@ def enqueue_new_task(client, task) \
         yield _ensure_task_deposit(
             client=client,
             task=task,
+            force=force
         )
 
         logger.info(
@@ -439,7 +465,8 @@ class ClientProvider:
         validate_client(self.client)
 
         task: taskbase.Task = self.task_manager.create_task(task_dict)
-        self.client.funds_locker.validate_lock_funds_possibility(
+        _validate_lock_funds_possibility(
+            self.client.transaction_system,
             task.subtask_price,
             task.get_total_tasks(),
         )
@@ -452,7 +479,7 @@ class ClientProvider:
         )
         task_id = task.header.task_id
 
-        deferred = enqueue_new_task(self.client, task)
+        deferred = enqueue_new_task(self.client, task, force=force)
         # We want to return quickly from create_task without waiting for
         # deferred completion.
         deferred.addErrback(  # pylint: disable=no-member
@@ -496,9 +523,11 @@ class ClientProvider:
         task_dict.pop('id', None)
         prepare_and_validate_task_dict(self.client, task_dict)
         new_task = self.task_manager.create_task(task_dict)
+        validate_client(self.client)
         enqueue_new_task(  # pylint: disable=no-member
             client=self.client,
             task=new_task,
+            force=force,
         ).addErrback(
             lambda failure: _restart_task_error(
                 e=failure.value,

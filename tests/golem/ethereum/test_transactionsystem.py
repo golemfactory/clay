@@ -17,12 +17,12 @@ import requests
 from golem import model
 from golem import testutils
 from golem.ethereum import exceptions
-from golem.ethereum.fundslocker import FundsLocker
 from golem.ethereum.transactionsystem import (
     TransactionSystem,
     tETH_faucet_donate,
 )
 from golem.ethereum.exceptions import NotEnoughFunds
+from golem.task.rpc import _validate_lock_funds_possibility
 
 fake = faker.Faker()
 PASSWORD = 'derp'
@@ -298,8 +298,10 @@ class TestTransactionSystem(TransactionSystemBase):
         assert self.ets.get_locked_gnt() == 0
 
         with self.assertRaisesRegex(NotEnoughFunds, 'GNT'):
-            fl = FundsLocker(transaction_system=self.ets)
-            fl.validate_lock_funds_possibility(gnt_balance, 2)
+            _validate_lock_funds_possibility(self.ets, gnt_balance, 2)
+
+        with self.assertRaisesRegex(NotEnoughFunds, 'GNT'):
+            self.ets.lock_funds_for_payments(gnt_balance, 2)
 
         with self.assertRaisesRegex(Exception, "Can't unlock .* GNT"):
             self.ets.unlock_funds_for_payments(1, 1)
@@ -612,6 +614,25 @@ class ConcentDepositTest(TransactionSystemBase):
             required=10,
             expected=40,
         )
+
+    @patch(
+        'golem.ethereum.transactionsystem.TransactionSystem.get_available_gnt',
+        return_value=0.0001*denoms.ether)
+    def test_validate_lock_funds_possibility_raises_if_not_enough_gnt(
+            self,
+            available
+    ):
+        required = 0.0005*denoms.ether
+        with self.assertRaises(exceptions.NotEnoughFunds) as e:
+            _validate_lock_funds_possibility(
+                transaction_system=self.ets,
+                price=required,
+                num=1
+            )
+        expected = f'Not enough GNT available. ' \
+            f'Required: {required/denoms.ether:.6f}, ' \
+            f'available: {available.return_value/denoms.ether:.6f}'
+        self.assertIn(str(e.exception), expected)
 
 
 class ConcentWithdrawTest(TransactionSystemBase):
