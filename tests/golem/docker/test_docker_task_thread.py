@@ -44,8 +44,7 @@ class TestDockerTaskThread(TestDockerJob, TestWithDatabase):
         def test():
             dir_mapping = DockerTaskThread.generate_dir_mapping(
                 self.resources_dir, self.output_dir)
-            tt = DockerTaskThread([image], None,
-                                  "test task thread", dir_mapping, timeout=30)
+            tt = DockerTaskThread([image], None, dir_mapping, timeout=30)
             task_computer.counting_thread = tt
             task_computer.counting_task = True
             tt.setDaemon(True)

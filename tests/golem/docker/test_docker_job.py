@@ -241,8 +241,8 @@ class TestBaseDockerJob(TestDockerJob):
     def test_logs_stdout(self):
         text = "Adventure Time!"
         src = "print('{}')\n".format(text)
-        with open(path.join(self.resources_dir, "custom.py"), "w") as input:
-            input.write(src)
+        with open(path.join(self.resources_dir, "custom.py"), "w") as f:
+            f.write(src)
         with self._create_test_job(script='/golem/resources/custom.py') as job:
             job.start()
             out_file = path.join(self.output_dir, "stdout.log")
@@ -316,8 +316,8 @@ class TestBaseDockerJob(TestDockerJob):
 
     def test_working_dir_set(self):
         script = "import os\nprint(os.getcwd())\n"
-        with open(path.join(self.resources_dir, "custom.py"), "w") as input:
-            input.write(script)
+        with open(path.join(self.resources_dir, "custom.py"), "w") as f:
+            f.write(script)
         with self._create_test_job(script='/golem/resources/custom.py') as job:
             job.start()
             job.wait()
@@ -341,10 +341,10 @@ with open("../output/out.txt", "w") as f:
 """
         sample_text = "Adventure Time!\n"
 
-        with open(path.join(self.resources_dir, "in.txt"), "w") as input:
-            input.write(sample_text)
-        with open(path.join(self.resources_dir, "copy.py"), "w") as input:
-            input.write(copy_script)
+        with open(path.join(self.resources_dir, "in.txt"), "w") as f:
+            f.write(sample_text)
+        with open(path.join(self.resources_dir, "copy.py"), "w") as f:
+            f.write(copy_script)
 
         with self._create_test_job(script='/golem/resources/copy.py') as job:
             job.start()

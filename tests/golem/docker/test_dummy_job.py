@@ -53,7 +53,7 @@ class TestDummyTaskDockerJob(TestDockerJob):
         }
 
         with self._create_test_job(
-                script='/golem/scripts/job.py', params=params) as job:
+            script='/golem/scripts/job.py', params=params) as job:
             job.start()
             exit_code = job.wait()
             self.assertEqual(exit_code, 0)
