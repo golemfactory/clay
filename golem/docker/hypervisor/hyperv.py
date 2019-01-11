@@ -1,3 +1,4 @@
+from enum import Enum
 import logging
 import os
 from pathlib import Path
@@ -25,31 +26,34 @@ from golem.rpc.mapping.rpceventnames import Golem
 
 logger = logging.getLogger(__name__)
 
-EVENT_SMB = 'smb_blocked'
-EVENT_MEM = 'lowered_memory'
-EVENT_DISK = 'low_diskspace'
+
+class events(Enum):
+    SMB = 'smb_blocked'
+    MEM = 'lowered_memory'
+    DISK = 'low_diskspace'
+
 
 MESSAGES = {
-    EVENT_SMB: 'Port {SMB_PORT} unreachable. Please check firewall settings.',
-    EVENT_MEM: 'Not enough free RAM to start the VM, '
-               'lowering memory to {mem_mb} MB',
-    EVENT_DISK: 'Not enough disk space. Creating VM with min memory',
+    events.SMB: 'Port {SMB_PORT} unreachable. Please check firewall settings.',
+    events.MEM: 'Not enough free RAM to start the VM, '
+                'lowering memory to {mem_mb} MB',
+    events.DISK: 'Not enough disk space. Creating VM with min memory',
 }
 
 EVENTS = {
-    EVENT_SMB: {
+    events.SMB: {
         'component': Component.hypervisor,
         'method': 'setup',
         'stage': Stage.exception,
         'data': None,
     },
-    EVENT_MEM: {
+    events.MEM: {
         'component': Component.hypervisor,
         'method': 'start_vm',
         'stage': Stage.warning,
         'data': None,
     },
-    EVENT_DISK: {
+    events.DISK: {
         'component': Component.hypervisor,
         'method': 'start_vm',
         'stage': Stage.warning,
@@ -112,7 +116,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         # We use splitlines() because output may contain multiple lines with
         # debug information
         if output is None or ok_str not in output.splitlines():
-            self._handle_event(EVENT_SMB, SMB_PORT=self.SMB_PORT)
+            self._handle_event(events.SMB, SMB_PORT=self.SMB_PORT)
 
     @report_calls(Component.hypervisor, 'vm.save')
     def save_vm(self, vm_name: Optional[str] = None) -> None:
@@ -162,7 +166,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
             max_memory = self._memory_cap(constr[mem_key])
             constr[mem_key] = hardware.cap_memory(constr[mem_key], max_memory,
                                                   unit=hardware.MemSize.mebi)
-            self._handle_event(EVENT_MEM, mem_mb=constr[mem_key])
+            self._handle_event(events.MEM, mem_mb=constr[mem_key])
 
         # Always constrain to set the appropriate shutdown action
         self.constrain(name, **constr)
@@ -216,12 +220,12 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if mem is not None:
             cap_mem = self._memory_cap(mem)
             if cap_mem != mem:
-                self._handle_event(EVENT_MEM, mem_mb=cap_mem)
+                self._handle_event(events.MEM, mem_mb=cap_mem)
 
             if self._check_system_drive_space(cap_mem):
                 args += [self.OPTIONS['mem'], str(cap_mem)]
             else:
-                self._handle_event(EVENT_DISK)
+                self._handle_event(events.DISK)
                 mem_key = CONSTRAINT_KEYS['mem']
                 args += [self.OPTIONS['mem'], str(MIN_CONSTRAINTS[mem_key])]
 
