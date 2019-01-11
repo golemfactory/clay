@@ -1176,11 +1176,12 @@ class SubtaskResultsAcceptedTest(TestCase):
             'ForceSubtaskResults',
         )
 
-        dispatch_listener.assert_called_once()
-        # FIXME Look at .test_results_rejected()
-        self.assertEqual(kwargs['event'], 'received')
-        self.assertEqual(kwargs['signal'], 'golem.message')
-        self.assertEqual(kwargs['message'], sra)
+        dispatch_listener.assert_called_once_with(
+            event='received',
+            signal='golem.message',
+            message=sra,
+            sender=ANY,
+        )
 
     def test_react_with_wrong_key(self):
         # given
