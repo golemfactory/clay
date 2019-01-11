@@ -20,7 +20,7 @@ from golem.docker.client import local_client
 from golem.docker.config import CONSTRAINT_KEYS, MIN_CONSTRAINTS
 from golem.docker.hypervisor.docker_machine import DockerMachineHypervisor
 from golem.docker.task_thread import DockerBind
-from golem.report import Component, Stage
+from golem.report import Component, Stage, report_calls
 from golem.rpc.mapping.rpceventnames import Golem
 
 logger = logging.getLogger(__name__)
@@ -114,6 +114,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if output is None or ok_str not in output.splitlines():
             self._handle_event(EVENT_SMB, SMB_PORT=self.SMB_PORT)
 
+    @report_calls(Component.hypervisor, 'vm.save')
     def save_vm(self, vm_name: Optional[str] = None) -> None:
         vm_name = vm_name or self._vm_name
         logger.info('Hyper-V: Saving state of VM %s ...', vm_name)
@@ -124,6 +125,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 'Hyper-V: Saving VM %s state failed. Stopping VM ...', vm_name)
             self.stop_vm(vm_name)
 
+    @report_calls(Component.hypervisor, 'vm.restore')
     def restore_vm(self, vm_name: Optional[str] = None) -> None:
         vm_name = vm_name or self._vm_name
         vm_state = self._vm_utils.get_vm_state(vm_name)
