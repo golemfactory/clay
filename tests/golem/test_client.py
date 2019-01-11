@@ -15,7 +15,7 @@ from ethereum.utils import denoms
 from freezegun import freeze_time
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from pydispatch import dispatcher
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, inlineCallbacks
 
 from golem import model
 from golem import testutils
@@ -34,7 +34,7 @@ from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
-from golem.rpc.mapping.rpceventnames import UI, Environment
+from golem.rpc.mapping.rpceventnames import UI, Environment, Golem
 from golem.task.acl import Acl
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
@@ -1104,20 +1104,30 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         }
         assert status == expected_status
 
-    def test_golem_status(self, *_):
-        status = 'component', 'method', 'stage', 'data'
-
-        # no statuses published
-        assert not self.client.get_golem_status()
+    def test_golem_status_no_publisher(self, *_):
+        component = 'component'
+        status = 'method', 'stage', 'data'
 
         # status published, no rpc publisher
-        StatusPublisher.publish(*status)
-        assert not self.client.get_golem_status()
+        StatusPublisher.publish(component, *status)
+        assert self.client.get_golem_status()[component] == status
+
+    @inlineCallbacks
+    def test_golem_status_with_publisher(self, *_):
+        component = 'component'
+        status = 'method', 'stage', 'data'
 
         # status published, with rpc publisher
         StatusPublisher._rpc_publisher = Mock()
-        StatusPublisher.publish(*status)
-        assert self.client.get_golem_status() == status
+        deferred: Deferred = StatusPublisher.publish(component, *status)
+        assert self.client.get_golem_status()[component] == status
+
+        yield deferred
+
+        assert StatusPublisher._rpc_publisher.publish.called
+        call = StatusPublisher._rpc_publisher.publish.call_args
+        assert call[0][0] == Golem.evt_golem_status
+        assert call[0][1][component] == status
 
     def test_port_status_open(self, *_):
         port = random.randint(1, 65535)
