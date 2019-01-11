@@ -116,7 +116,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         # We use splitlines() because output may contain multiple lines with
         # debug information
         if output is None or ok_str not in output.splitlines():
-            self._handle_event(events.SMB, SMB_PORT=self.SMB_PORT)
+            self._log_and_publish_event(events.SMB, SMB_PORT=self.SMB_PORT)
 
     @report_calls(Component.hypervisor, 'vm.save')
     def save_vm(self, vm_name: Optional[str] = None) -> None:
@@ -166,7 +166,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
             max_memory = self._memory_cap(constr[mem_key])
             constr[mem_key] = hardware.cap_memory(constr[mem_key], max_memory,
                                                   unit=hardware.MemSize.mebi)
-            self._handle_event(events.MEM, mem_mb=constr[mem_key])
+            self._log_and_publish_event(events.MEM, mem_mb=constr[mem_key])
 
         # Always constrain to set the appropriate shutdown action
         self.constrain(name, **constr)
@@ -220,12 +220,12 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if mem is not None:
             cap_mem = self._memory_cap(mem)
             if cap_mem != mem:
-                self._handle_event(events.MEM, mem_mb=cap_mem)
+                self._log_and_publish_event(events.MEM, mem_mb=cap_mem)
 
             if self._check_system_drive_space(cap_mem):
                 args += [self.OPTIONS['mem'], str(cap_mem)]
             else:
-                self._handle_event(events.DISK)
+                self._log_and_publish_event(events.DISK)
                 mem_key = CONSTRAINT_KEYS['mem']
                 args += [self.OPTIONS['mem'], str(MIN_CONSTRAINTS[mem_key])]
 
@@ -415,7 +415,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         return hardware.pad_memory(int(0.9 * max_mem_in_mb))
 
     @staticmethod
-    def _handle_event(name, **kwargs) -> None:
+    def _log_and_publish_event(name, **kwargs) -> None:
         message = MESSAGES[name].format(**kwargs)
         event = EVENTS[name].copy()
         event['data'] = message
