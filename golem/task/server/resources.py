@@ -104,7 +104,7 @@ class TaskResourcesMixin:
             logger.error("Cannot map subtask_id %r to session", subtask_id)
             return False
 
-        self.pull_resources(task_id, resources)
+        self.pull_resources(task_id, resources, self.resources_options)
         return True
 
     def pull_resources(self, task_id, resources, client_options=None):

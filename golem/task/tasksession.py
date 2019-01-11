@@ -140,9 +140,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # verified yet)
         self.msgs_to_send = []
         self.err_msg = None  # Keep track of errors
+        self.resources_options = None  # Download options for resources
         self.__set_msg_interpretations()
-
         # self.threads = []
+
     ########################
     # BasicSession methods #
     ########################
@@ -576,7 +577,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 package_hash='sha1:' + task_state.package_hash,
                 concent_enabled=msg.concent_enabled,
                 price=price,
-                size=task_state.package_size
+                size=task_state.package_size,
+                resources_options=self.task_server.get_share_options(
+                    ctd['task_id'], self.address)
             )
             ttc.generate_ethsig(self.my_private_key)
             self.send(ttc)
@@ -696,6 +699,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.task_server.add_task_session(
                 ctd['subtask_id'], self
             )
+            self.resources_options = msg.resources_options
             if self.task_server.task_given(self.key_id, ctd, msg.price):
                 return
         _cannot_compute(self.err_msg)

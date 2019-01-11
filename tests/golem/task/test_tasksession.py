@@ -91,6 +91,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         self.task_manager = Mock(tasks_states={}, tasks={})
         server = Mock(task_manager=self.task_manager)
         server.get_key_id = lambda: self.provider_key
+        server.get_share_options.return_value = None
         self.conn = Mock(server=server)
         self.use_concent = True
         self.task_id = uuid.uuid4().hex
@@ -263,7 +264,8 @@ class TaskSessionTaskToComputeTest(TestCase):
             ['concent_enabled', self.use_concent],
             ['price', 1],
             ['size', task_state.package_size],
-            ['ethsig', ms.ethsig]
+            ['ethsig', ms.ethsig],
+            ['resources_options', None],
         ]
         self.assertCountEqual(ms.slots(), expected)
 
