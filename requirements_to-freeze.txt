@@ -1,4 +1,4 @@
---editable git://github.com/golemfactory/golem-messages.git@bd5fed664238070dbd3756a535eb700364daa9f6#egg=Golem_Messages
+--editable git://github.com/golemfactory/golem-messages.git@feature-include-task-header-in-want-to-compute-task#egg=Golem_Messages
 --extra-index-url https://builds.golem.network
 appdirs>=1.4
 asn1crypto==0.22.0
