@@ -67,7 +67,6 @@ class TestDockerBlenderCyclesTask(TestDockerBlenderTaskBase):
 
     @pytest.mark.slow
     def test_blender_test(self):
-        return  # FIXME
         render_task = self._get_test_task()
         tt = self._run_docker_test_task(render_task)
         _, mem = tt.result
