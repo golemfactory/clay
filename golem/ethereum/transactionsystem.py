@@ -57,6 +57,17 @@ def sci_required():
     return wrapper
 
 
+def gnt_deposit_required(default=None):
+    def wrapper(f):
+        @functools.wraps(f)
+        def curry(self, *args, **kwargs):
+            if contracts.GNTDeposit not in self._config.CONTRACT_ADDRESSESS:
+                return default
+            return f(self, *args, **kwargs)
+        return curry
+    return wrapper
+
+
 class ConversionStatus(Enum):
     NONE = 0
     OPENING_GATE = 1
@@ -231,6 +242,7 @@ class TransactionSystem(LoopingCallService):
                 json.dump(keystore, f)
 
     @sci_required()
+    @gnt_deposit_required()
     def _subscribe_to_events(self) -> None:
         self._sci: SmartContractsInterface
         values = model.GenericKeyValue.select().where(
@@ -250,34 +262,29 @@ class TransactionSystem(LoopingCallService):
             )
         )
 
-        # Temporary try-catch block, until GNTDeposit is deployed on mainnet.
-        # Remove it after that.
-        try:
-            self._sci.subscribe_to_forced_subtask_payments(
-                None,
-                self._sci.get_eth_address(),
-                from_block,
-                lambda event: ik.received_forced_subtask_payment(
-                    event.tx_hash,
-                    event.requestor,
-                    str(bytes32_to_uuid(event.subtask_id)),
-                    event.amount,
-                )
+        self._sci.subscribe_to_forced_subtask_payments(
+            None,
+            self._sci.get_eth_address(),
+            from_block,
+            lambda event: ik.received_forced_subtask_payment(
+                event.tx_hash,
+                event.requestor,
+                str(bytes32_to_uuid(event.subtask_id)),
+                event.amount,
             )
-            self._sci.subscribe_to_forced_payments(
-                requestor_address=None,
-                provider_address=self._sci.get_eth_address(),
-                from_block=from_block,
-                cb=lambda event: ik.received_forced_payment(
-                    tx_hash=event.tx_hash,
-                    sender=event.requestor,
-                    amount=event.amount,
-                    closure_time=event.closure_time,
-                ),
-            )
-            self._schedule_concent_withdraw()
-        except AttributeError as e:
-            log.info("Can't use GNTDeposit on mainnet yet: %r", e)
+        )
+        self._sci.subscribe_to_forced_payments(
+            requestor_address=None,
+            provider_address=self._sci.get_eth_address(),
+            from_block=from_block,
+            cb=lambda event: ik.received_forced_payment(
+                tx_hash=event.tx_hash,
+                sender=event.requestor,
+                amount=event.amount,
+                closure_time=event.closure_time,
+            ),
+        )
+        self._schedule_concent_withdraw()
 
     @sci_required()
     def _save_subscription_block_number(self) -> None:
@@ -532,6 +539,7 @@ class TransactionSystem(LoopingCallService):
 
         raise ValueError('Unknown currency {}'.format(currency))
 
+    @gnt_deposit_required()
     @sci_required()
     def concent_balance(self, account_address: Optional[str] = None) -> int:
         self._sci: SmartContractsInterface
@@ -541,9 +549,9 @@ class TransactionSystem(LoopingCallService):
             account_address=account_address,
         )
 
+    @gnt_deposit_required()
     @sci_required()
     def concent_timelock(self, account_address: Optional[str] = None) -> int:
-        # FIXME Use decorator to DRY #3190
         # possible lock values:
         # 0 - locked
         # > now - unlocking
@@ -556,6 +564,7 @@ class TransactionSystem(LoopingCallService):
         )
 
     @defer.inlineCallbacks
+    @gnt_deposit_required()
     @sci_required()
     def concent_deposit(
             self,
@@ -617,12 +626,16 @@ class TransactionSystem(LoopingCallService):
         return dpayment.tx
 
     @rpc_utils.expose('pay.deposit.relock')
+    @gnt_deposit_required()
+    @sci_required()
     def concent_relock(self):
         if self.concent_balance() == 0:
             return
         self._sci.lock_deposit()
 
     @rpc_utils.expose('pay.deposit.unlock')
+    @gnt_deposit_required()
+    @sci_required()
     def concent_unlock(self):
         if self.concent_balance() == 0:
             return
@@ -644,6 +657,8 @@ class TransactionSystem(LoopingCallService):
         delay = max(0, timelock - int(time.time()))
         call_later(delay, self.concent_withdraw)
 
+    @gnt_deposit_required()
+    @sci_required()
     def concent_withdraw(self):
         if self._concent_withdraw_requested:
             return
