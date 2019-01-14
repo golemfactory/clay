@@ -15,8 +15,8 @@ def is_virtualization_enabled() -> bool:
     """
     if is_windows():
         return __check_vt_windows()
-    else:
-        return __check_vt_unix()
+
+    return __check_vt_unix()
 
 
 def __check_vt_unix() -> bool:
@@ -27,7 +27,6 @@ def __check_vt_unix() -> bool:
 def __check_vt_windows() -> bool:
     sys_info: subprocess.CompletedProcess = \
         subprocess.run('systeminfo', check=True, stdout=subprocess.PIPE)
-    output: str = None
 
     # https://stackoverflow.com/a/9228117
     try:
