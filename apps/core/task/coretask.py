@@ -14,7 +14,7 @@ from golem.verificator.verifier import SubtaskVerificationState
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.core.verification_queue import VerificationQueue
-import golem
+from golem import constants as gconst
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.fileshelper import outer_dir_path
@@ -139,7 +139,7 @@ class CoreTask(Task):
             self.docker_images = None
 
         th = dt_tasks.TaskHeader(
-            min_version=golem.__version__,
+            min_version=str(gconst.GOLEM_MIN_VERSION),
             task_id=task_definition.task_id,
             environment=self.environment.get_id(),
             task_owner=owner,
