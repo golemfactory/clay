@@ -68,7 +68,7 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         self.subtask_info['ctd'] = dict()
         self.subtask_info['ctd']['deadline'] = time.time() + 3600
         self.subtask_info['ctd']['docker_images'] = [DockerImage(
-            'golemfactory/blender', tag='1.5').to_dict()]
+            'golemfactory/blender', tag='igor_pr').to_dict()]
         self.subtask_info['ctd']['extra_data'] = dict()
         self.subtask_info['ctd']['extra_data']['scene_file'] = \
             self.subtask_info['scene_file']
