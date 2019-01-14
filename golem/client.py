@@ -1375,7 +1375,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             return self.environments_manager.get_performance_values()
 
     @rpc_utils.expose('env.hw.virtualization')
-    def get_virtualization_support(self):
+    @staticmethod
+    def get_virtualization_support():
         return is_virtualization_enabled()
 
     @staticmethod
