@@ -267,8 +267,11 @@ class TestBaseDockerJob(TestDockerJob):
 
     def test_wait_timeout(self):
         src = "import time\ntime.sleep(10)\n"
+        with open(path.join(self.resources_dir, "custom.py"), "w") as f:
+            f.write(src)
         with self.assertRaises(requests.exceptions.ConnectionError):
-            with self._create_test_job(script=src) as job:
+            with self._create_test_job(script='/golem/resources/custom.py') \
+                    as job:
                 job.start()
                 self.assertEqual(job.get_status(), DockerJob.STATE_RUNNING)
                 job.wait(1)
