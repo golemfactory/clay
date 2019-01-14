@@ -87,7 +87,6 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
             max_resource_size=10 * 10 ** 8,
             max_memory_size=10 * 10 ** 8,
             num_cores=10,
-            # task_header=task_header.to_dict(),
         )
         self.session = MockTaskSession(self.tempdir)
         self.session._start_handshake = Mock()
@@ -105,6 +104,7 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         self.session._handshake_required = Mock()
         self.session.send = Mock()
         wtct_dict = {k: v for k, v in self.message.items()}
+        wtct_dict.pop('task_id')
         wtct_dict.update({
             'task_header': self.task_header.to_dict()
         })
@@ -409,7 +409,10 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
 
     def test_finalize_handshake(self, *_):
         self.session._finalize_handshake(self.session.key_id)
-        self.session._task_request_message = self.message
+        task_request_message = {k: v for k, v in self.message.items()}
+        task_request_message.pop('task_id')
+        task_request_message['task_header'] = self.task_header
+        self.session._task_request_message = task_request_message
         assert not self.session.send.called
 
         handshake = ResourceHandshake()

@@ -119,7 +119,6 @@ class TaskSessionTaskToComputeTest(TestCase):
     def _get_task_parameters(self):
         return {
             'node_name': self.node_name,
-            'task_id': self.task_id,
             'perf_index': 1030,
             'price': 30,
             'max_resource_size': 3,
@@ -148,7 +147,7 @@ class TaskSessionTaskToComputeTest(TestCase):
             ),
             subtask_timeout=1,
             max_price=1, )
-        task_header.sign(self.requestor_keys.raw_privkey)
+        task_header.sign(self.requestor_keys.raw_privkey)  # noqa pylint: disable=no-value-for-parameter
         return task_header
 
     def _set_task_state(self):
@@ -163,11 +162,13 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts._handshake_required = Mock(return_value=False)
         params = self._get_task_parameters()
         ts.task_server.task_keeper.task_headers = task_headers = {}
-        task_headers[params['task_id']] = dt_tasks_factory.TaskHeaderFactory()
+        task_headers[self.task_id] = dt_tasks_factory.TaskHeaderFactory(
+            task_id=self.task_id
+        )
         ts.concent_service.enabled = False
         ts.request_task(
             params['node_name'],
-            params['task_id'],
+            self.task_id,
             params['perf_index'],
             params['price'],
             params['max_resource_size'],
@@ -178,7 +179,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         mt = ts.conn.send_message.call_args[0][0]
         self.assertIsInstance(mt, message.tasks.WantToComputeTask)
         self.assertEqual(mt.node_name, params['node_name'])
-        self.assertEqual(mt.task_id, params['task_id'])
+        self.assertEqual(mt.task_id, self.task_id)
         self.assertEqual(mt.perf_index, params['perf_index'])
         self.assertEqual(mt.price, params['price'])
         self.assertEqual(mt.max_resource_size, params['max_resource_size'])
@@ -305,6 +306,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             password='',
         )
         self.task_session.task_server.keys_auth = keys_auth
+        self.pubkey = keys_auth.public_key
+        self.privkey = keys_auth._private_key
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_hello(self, send_mock):
@@ -965,6 +968,44 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         with self.assertLogs(logger, level='WARNING'):
             ts._react_to_want_to_compute_task(mock_msg)
+
+    def test_react_to_want_to_compute_invalid_task_header_signature(self):
+        different_requestor_keys = cryptography.ECCx(None)
+        provider_keys = cryptography.ECCx(None)
+        wtct = msg_factories.tasks.WantToComputeTaskFactory(
+            sign__privkey=provider_keys.raw_privkey,
+            task_header__sign__privkey=different_requestor_keys.raw_privkey,
+        )
+        self._prepare_handshake_test()
+        ts = self.task_session
+        ts.verified = True
+
+        ts._react_to_want_to_compute_task(wtct)
+
+        sent_msg = ts.conn.send_message.call_args[0][0]
+        ts.task_server.remove_task_session.assert_called()
+        self.assertIsInstance(sent_msg, message.tasks.CannotAssignTask)
+        self.assertEqual(sent_msg.reason,
+                         message.tasks.CannotAssignTask.REASON.NotMyTask)
+
+    def test_react_to_want_to_compute_not_my_task_id(self):
+        provider_keys = cryptography.ECCx(None)
+        wtct = msg_factories.tasks.WantToComputeTaskFactory(
+            sign__privkey=provider_keys.raw_privkey,
+            task_header__sign__privkey=self.privkey,
+        )
+        self._prepare_handshake_test()
+        ts = self.task_session
+        ts.verified = True
+        ts.task_manager.is_my_task.return_value = False
+
+        ts._react_to_want_to_compute_task(wtct)
+
+        sent_msg = ts.conn.send_message.call_args[0][0]
+        ts.task_server.remove_task_session.assert_called()
+        self.assertIsInstance(sent_msg, message.tasks.CannotAssignTask)
+        self.assertEqual(sent_msg.reason,
+                         message.tasks.CannotAssignTask.REASON.NotMyTask)
 
     def _prepare_handshake_test(self):
         ts = self.task_session.task_server
