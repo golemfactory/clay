@@ -34,6 +34,7 @@ from golem.config.active import EthereumConfig
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
+from golem.core.virtualization import is_virtualization_enabled
 from golem.database import Database
 from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
@@ -1372,6 +1373,10 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             result = yield deferred
             logger.info('change hw config result: %r', result)
             return self.environments_manager.get_performance_values()
+
+    @rpc_utils.expose('env.hw.virtualization')
+    def get_virtualization_support(self):
+        return is_virtualization_enabled()
 
     @staticmethod
     def enable_talkback(value):
