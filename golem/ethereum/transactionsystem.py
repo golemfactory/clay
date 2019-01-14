@@ -108,10 +108,17 @@ class TransactionSystem(LoopingCallService):
         # Amortized gas cost per payment used when dealing with locks
         self._eth_per_payment: int = 0
 
-    @property  # type: ignore
+    @property   # type: ignore
     @sci_required()
-    def gas_price(self):
+    def gas_price(self) -> int:
+        self._sci: SmartContractsInterface
         return self._sci.get_current_gas_price()
+
+    @property   # type: ignore
+    @sci_required()
+    def gas_price_limit(self) -> int:
+        self._sci: SmartContractsInterface
+        return self._sci.GAS_PRICE
 
     def backwards_compatibility_tx_storage(self, old_datadir: Path) -> None:
         if self.running:
@@ -225,6 +232,7 @@ class TransactionSystem(LoopingCallService):
 
     @sci_required()
     def _subscribe_to_events(self) -> None:
+        self._sci: SmartContractsInterface
         values = model.GenericKeyValue.select().where(
             model.GenericKeyValue.key == self.BLOCK_NUMBER_DB_KEY)
         from_block = int(values.get().value) if values.count() == 1 else 0
@@ -273,6 +281,7 @@ class TransactionSystem(LoopingCallService):
 
     @sci_required()
     def _save_subscription_block_number(self) -> None:
+        self._sci: SmartContractsInterface
         block_number = self._sci.get_block_number() - self._sci.REQUIRED_CONFS
         kv, _ = model.GenericKeyValue.get_or_create(
             key=self.BLOCK_NUMBER_DB_KEY,
@@ -293,20 +302,12 @@ class TransactionSystem(LoopingCallService):
             eth_address: str) -> int:
         if not self._payment_processor:
             raise Exception('Start was not called')
-        payee = decode_hex(eth_address)
-        if len(payee) != 20:
-            raise ValueError(
-                "Incorrect 'payee' length: {}. Should be 20".format(len(payee)))
-        payment = model.Payment.create(
-            subtask=subtask_id,
-            payee=payee,
-            value=value,
-        )
-        return self._payment_processor.add(payment)
+        return self._payment_processor.add(subtask_id, eth_address, value)
 
     @sci_required()
     def get_payment_address(self):
         """ Human readable Ethereum address for incoming payments."""
+        self._sci: SmartContractsInterface
         return self._sci.get_eth_address()
 
     def get_payments_list(self):
@@ -349,6 +350,7 @@ class TransactionSystem(LoopingCallService):
 
     @sci_required()
     def get_available_gnt(self, account_address: Optional[str] = None) -> int:
+        self._sci: SmartContractsInterface
         if (account_address is None) \
                 or (account_address == self._sci.get_eth_address()):
             return self._gntb_balance - self.get_locked_gnt() - \
@@ -362,6 +364,7 @@ class TransactionSystem(LoopingCallService):
 
     @sci_required()
     def get_balance(self) -> Dict[str, Any]:
+        self._sci: SmartContractsInterface
         return {
             'gnt_available': self.get_available_gnt(),
             'gnt_locked': self.get_locked_gnt(),
@@ -435,16 +438,6 @@ class TransactionSystem(LoopingCallService):
             accepted_ts,
         )
 
-    def is_income_expected(
-            self,
-            subtask_id: str,
-            payer_address: str,
-    ) -> bool:
-        return self._incomes_keeper.is_expected(
-            subtask_id,
-            payer_address,
-        )
-
     def settle_income(
             self,
             sender_node: str,
@@ -463,12 +456,14 @@ class TransactionSystem(LoopingCallService):
 
     @sci_required()
     def _eth_base_for_batch_payment(self) -> int:
+        self._sci: SmartContractsInterface
         return self._sci.GAS_BATCH_PAYMENT_BASE * self._sci.GAS_PRICE
 
     @sci_required()
     def _current_eth_per_payment(self) -> int:
+        self._sci: SmartContractsInterface
         gas_price = \
-            min(self._sci.GAS_PRICE, 2 * self.gas_price)  # type: ignore
+            min(self._sci.GAS_PRICE, 2 * self.gas_price)
         return gas_price * self._sci.GAS_PER_PAYMENT
 
     @sci_required()
@@ -477,7 +472,12 @@ class TransactionSystem(LoopingCallService):
             amount: int,
             destination: str,
             currency: str) -> int:
+
+        self._sci: SmartContractsInterface
         assert self._sci is not None
+
+        gas_price = self.gas_price
+
         if currency == 'ETH':
             return self._sci.estimate_transfer_eth_gas(destination, amount)
         if currency == 'GNT':
@@ -491,7 +491,10 @@ class TransactionSystem(LoopingCallService):
             destination: str,
             currency: str,
             gas_price: Optional[int] = None) -> str:
+
+        self._sci: SmartContractsInterface
         assert self._sci is not None
+
         if not self._config.WITHDRAWALS_ENABLED:
             raise Exception("Withdrawals are disabled")
 
@@ -542,6 +545,7 @@ class TransactionSystem(LoopingCallService):
 
     @sci_required()
     def concent_balance(self, account_address: Optional[str] = None) -> int:
+        self._sci: SmartContractsInterface
         if account_address is None:
             account_address = self._sci.get_eth_address()
         return self._sci.get_deposit_value(
@@ -555,6 +559,7 @@ class TransactionSystem(LoopingCallService):
         # 0 - locked
         # > now - unlocking
         # < now - unlocked
+        self._sci: SmartContractsInterface
         if account_address is None:
             account_address = self._sci.get_eth_address()
         return self._sci.get_deposit_locked_until(
@@ -569,15 +574,18 @@ class TransactionSystem(LoopingCallService):
             expected: int,
             force: bool = False) \
             -> Generator[defer.Deferred, TransactionReceipt, Optional[str]]:
+        self._sci: SmartContractsInterface
         current = self.concent_balance()
         if current >= required:
+            if self.concent_timelock() != 0:
+                self._sci.lock_deposit()
             return None
         required -= current
         expected -= current
         gntb_balance = self.get_available_gnt()
         if gntb_balance < required:
             raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
-        if self.gas_price >= self._sci.GAS_PRICE:  # type: ignore
+        if self.gas_price >= self._sci.GAS_PRICE:
             if not force:
                 raise exceptions.LongTransactionTime("Gas price too high")
             log.warning(
@@ -611,7 +619,7 @@ class TransactionSystem(LoopingCallService):
                 transaction_receipt=receipt,
             )
 
-        tx_gas_price = self._sci.get_transaction_gas_price(  # type: ignore
+        tx_gas_price = self._sci.get_transaction_gas_price(
             receipt.tx_hash,
         )
         dpayment.fee = receipt.gas_used * tx_gas_price
@@ -663,6 +671,7 @@ class TransactionSystem(LoopingCallService):
 
     @sci_required()
     def _get_funds_from_faucet(self) -> None:
+        self._sci: SmartContractsInterface
         if not self._config.FAUCET_ENABLED:
             return
         if self._eth_balance < 0.01 * denoms.ether:
@@ -680,6 +689,7 @@ class TransactionSystem(LoopingCallService):
 
     @sci_required()
     def _refresh_balances(self) -> None:
+        self._sci: SmartContractsInterface
         now = time.mktime(datetime.today().timetuple())
         addr = self._sci.get_eth_address()
 
@@ -697,6 +707,7 @@ class TransactionSystem(LoopingCallService):
 
     @sci_required()
     def _try_convert_gnt(self) -> None:  # pylint: disable=too-many-branches
+        self._sci: SmartContractsInterface
         if self._gnt_conversion_status == ConversionStatus.UNFINISHED:
             if self._gnt_balance > 0:
                 self._gnt_conversion_status = ConversionStatus.NONE

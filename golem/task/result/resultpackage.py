@@ -1,7 +1,7 @@
 import binascii
 import uuid
 import zipfile
-from typing import Iterable, Optional
+from typing import Iterable, Optional, List, Dict
 
 import abc
 import os
@@ -35,46 +35,27 @@ class Packager(object):
 
     def create(self,
                output_path: str,
-               disk_files: Optional[Iterable[str]] = None,
-               **_kwargs):
+               disk_files: Iterable[str]):
 
         if not disk_files:
             raise ValueError('No files to pack')
 
         disk_files = self._prepare_file_dict(disk_files)
         with self.generator(output_path) as of:
+            for file_path, file_name in disk_files.items():
+                self.write_disk_file(of, file_path, file_name)
 
-            if disk_files:
-                for file_path, file_name in disk_files.items():
-                    self.write_disk_file(of, file_path, file_name)
-
-        pkg_sha1 = self.write_sha1(output_path, output_path)
+        pkg_sha1 = self.compute_sha1(output_path)
         return output_path, pkg_sha1
 
-    @classmethod
-    def read_sha1(cls, package_path: str):
-        sha1_file_path = package_path + '.sha1'
-
-        with open(sha1_file_path, 'r') as sf:
-            return sf.read().strip()
-
-    @classmethod
-    def write_sha1(cls, source_path: str, package_path: str):
-        sha1_path = package_path + '.sha1'
+    @staticmethod
+    def compute_sha1(source_path: str):
         pkg_sha1 = SimpleHash.hash_file(source_path)
-        pkg_sha1 = binascii.hexlify(pkg_sha1).decode('utf8')
-
-        with open(sha1_path, 'w') as sf:
-            sf.write(pkg_sha1)
-        return pkg_sha1
+        return binascii.hexlify(pkg_sha1).decode('utf8')
 
     @classmethod
-    def _prepare_file_dict(cls, disk_files):
-        if len(disk_files) == 1:
-            disk_file = next(iter(disk_files))
-            prefix = os.path.dirname(disk_file)
-        else:
-            prefix = common_dir(disk_files)
+    def _prepare_file_dict(cls, disk_files) -> Dict[str, str]:
+        prefix = common_dir(disk_files)
 
         return {
             absolute_path: relative_path(absolute_path, prefix)
@@ -82,7 +63,7 @@ class Packager(object):
         }
 
     @abc.abstractmethod
-    def extract(self, input_path, output_dir=None, **kwargs):
+    def extract(self, input_path, output_dir=None):
         pass
 
     @abc.abstractmethod
@@ -102,7 +83,7 @@ class ZipPackager(Packager):
 
     ZIP_MODE = zipfile.ZIP_STORED  # no compression
 
-    def extract(self, input_path, output_dir=None, **kwargs):
+    def extract(self, input_path, output_dir=None):
 
         if not output_dir:
             output_dir = os.path.dirname(input_path)
@@ -159,20 +140,18 @@ class EncryptingPackager(Packager):
 
     def create(self,
                output_path: str,
-               disk_files: Optional[Iterable[str]] = None,
-               **_kwargs):
+               disk_files: Iterable[str]):
 
         tmp_file_path = self.package_name(output_path)
         backup_rename(tmp_file_path)
 
-        pkg_file_path, pkg_sha1 = super().create(tmp_file_path,
-                                                 disk_files=disk_files)
+        pkg_file_path, pkg_sha1 = super().create(tmp_file_path, disk_files)
 
         self.encryptor_class.encrypt(pkg_file_path, output_path,
                                      secret=self._secret)
         return output_path, pkg_sha1
 
-    def extract(self, input_path, output_dir=None, **kwargs):
+    def extract(self, input_path, output_dir=None):
         tmp_file_path = self.package_name(input_path)
         backup_rename(tmp_file_path)
 
@@ -196,29 +175,18 @@ class TaskResultPackager:
 
     def create(self,
                output_path: str,
-               disk_files: Optional[Iterable[str]] = None,
-               **kwargs):
-        task_result = kwargs.get('task_result')
-        disk_files = self.__collect_files(
-            task_result,
-            disk_files=disk_files,
+               disk_files: List[str]):
+        return super().create(  # type: ignore # pylint:disable=no-member
+            output_path,
+            disk_files,
         )
 
-        return super().create(output_path,
-                              disk_files=disk_files)
-
-    def extract(self, input_path, output_dir=None, **kwargs):
+    def extract(self, input_path, output_dir=None):
         files, files_dir = super().extract(input_path, output_dir=output_dir)  # noqa pylint:disable=no-member
 
         extracted = ExtractedPackage(files, files_dir)
 
         return extracted
-
-    @staticmethod
-    def __collect_files(result, disk_files=None):
-        disk_files = disk_files[:] if disk_files else []
-        disk_files.extend(result.result)
-        return disk_files
 
 
 class EncryptingTaskResultPackager(TaskResultPackager, EncryptingPackager):
@@ -236,15 +204,10 @@ class ExtractedPackage(PrintableObject):
         self.files_dir = files_dir
         self.result = result
 
-    def to_extra_data(self):
+    def get_full_path_files(self):
         full_path_files = []
 
         for filename in self.files:
             full_path = os.path.join(self.files_dir, filename)
             full_path_files.append(full_path)
-
-        extra_data = {
-            "result": full_path_files,
-        }
-
-        return extra_data
+        return full_path_files

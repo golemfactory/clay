@@ -54,7 +54,7 @@ class NodeProcess(object):
             return False
 
     def _create_remote_rpc_provider(self):
-        addr = self.addr_list.pop()
+        addr = self.addr_list.pop(0)
         log.info('GETH: connecting to remote RPC interface at %s', addr)
         return ProviderProxy(HTTPProvider(addr))
 

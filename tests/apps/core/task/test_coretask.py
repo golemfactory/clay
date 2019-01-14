@@ -4,13 +4,15 @@ from copy import copy
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, patch
 
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+
 from apps.core.task.coretask import (
     CoreTask, logger, log_key_error,
     CoreTaskTypeInfo, CoreTaskBuilder, AcceptClientVerdict)
 from apps.core.task.coretaskstate import TaskDefinition
 from golem.core.common import is_linux
 from golem.core.fileshelper import outer_dir_path
-from golem.network.p2p.node import Node
+from golem.environments import environment
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import TaskEventListener
 from golem.task.taskstate import SubtaskStatus
@@ -18,19 +20,22 @@ from golem.tools.assertlogs import LogTestCase
 from golem.tools.testdirfixture import TestDirFixture
 
 
+def env_with_file(_self):
+    env = environment.Environment()
+    env.main_program_file = "abcde"
+    return env
+
+
 class TestCoreTask(LogTestCase, TestDirFixture):
 
     # CoreTask is abstract, so in order to be able to instantiate it
     # we have to override some stuff
     class CoreTaskDeabstracted(CoreTask):
-        ENVIRONMENT_CLASS = MagicMock()
+        ENVIRONMENT_CLASS = env_with_file  # type: ignore
         EXTRA_DATA = CoreTask.ExtraData(sth="sth")
 
         def query_extra_data(self, *args, **kwargs):
             return self.EXTRA_DATA
-
-        def short_extra_data_repr(self, extra_data):
-            pass
 
         def query_extra_data_for_test_task(self):
             pass
@@ -47,19 +52,16 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
     def test_instantiation(self):
         task_def = self._get_core_task_definition()
-        node = Node()
+        node = dt_p2p_factory.Node()
 
         # abstract class cannot be instantiated
         # pylint: disable=abstract-class-instantiated
         with self.assertRaises(TypeError):
-            CoreTask(task_def, owner=Node(node_name="ABC"))
+            CoreTask(task_def, owner=dt_p2p_factory.Node())
 
         class CoreTaskDeabstacted(CoreTask):
 
             def query_extra_data(self, *args, **kwargs):
-                pass
-
-            def short_extra_data_repr(self, extra_data):
                 pass
 
         # ENVIRONMENT has to be set
@@ -67,12 +69,9 @@ class TestCoreTask(LogTestCase, TestDirFixture):
             CoreTaskDeabstacted(task_def, node)
 
         class CoreTaskDeabstractedEnv(CoreTask):
-            ENVIRONMENT_CLASS = MagicMock()
+            ENVIRONMENT_CLASS = env_with_file
 
             def query_extra_data(self, *args, **kwargs):
-                pass
-
-            def short_extra_data_repr(self, extra_data):
                 pass
 
             def query_extra_data_for_test_task(self):
@@ -83,21 +82,14 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
     def test_init(self):
         task_def = TestCoreTask._get_core_task_definition()
-        wrong_file = MagicMock()
-        wrong_file.return_value.main_program_file = "abcde"
 
         class CoreTaskWrongFile(self.CoreTaskDeabstracted):
-            ENVIRONMENT_CLASS = wrong_file
+            ENVIRONMENT_CLASS = env_with_file
 
         with patch("logging.Logger.warning") as log_mock:
             task = CoreTaskWrongFile(
                 task_definition=task_def,
-                owner=Node(
-                    node_name="ABC",
-                    pub_addr="10.10.10.10",
-                    pub_port=123,
-                    key="key",
-                ),
+                owner=dt_p2p_factory.Node(),
                 resource_size=1024
             )
         log_mock.assert_called_once()
@@ -108,12 +100,7 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         task_def = TestCoreTask._get_core_task_definition()
         task = self.CoreTaskDeabstracted(
             task_definition=task_def,
-            owner=Node(
-                node_name="ABC",
-                pub_addr="10.10.10.10",
-                pub_port=123,
-                key="key",
-            ),
+            owner=dt_p2p_factory.Node(),
             resource_size=1024
         )
         dm = DirManager(self.path)
@@ -319,23 +306,18 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
         task.subtasks_given["deadbeef"] = {'status': SubtaskStatus.finished,
                                       'start_task': 1,
-                                      'end_task': 1,
                                       'node_id': 'ABC'}
         task.subtasks_given["abc"] = {'status': SubtaskStatus.failure,
                                       'start_task': 4,
-                                      'end_task': 4,
                                       'node_id': 'abc'}
         task.subtasks_given["def"] = {'status': SubtaskStatus.starting,
                                       'start_task': 8,
-                                      'end_task': 8,
                                       'node_id': 'DEF'}
         task.subtasks_given["ghi"] = {'status': SubtaskStatus.resent,
                                       'start_task': 2,
-                                      'end_task': 2,
                                       'node_id': 'aha'}
         task.subtasks_given["jkl"] = {'status': SubtaskStatus.downloading,
                                       'start_task': 8,
-                                      'end_task': 8,
                                       'node_id': 'DEF'}
         task.restart()
         assert task.num_tasks_received == 0
@@ -494,7 +476,6 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert ctd['task_id'] == c.header.task_id
         assert ctd['subtask_id'] == hash
         assert ctd['extra_data'] == extra_data
-        assert ctd['short_description'] == c.short_extra_data_repr(extra_data)
         assert ctd['src_code'] == c.src_code
         assert ctd['performance'] == perf_index
         assert ctd['docker_images'] == c.docker_images

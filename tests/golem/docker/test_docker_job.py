@@ -94,8 +94,28 @@ class TestDockerJob(DockerTestCase):
 
     def _create_test_job(self, script=TEST_SCRIPT, params=None):
         self.test_job = DockerJob(
-            self.image, script, params,
-            self.resources_dir, self.work_dir, self.output_dir)
+            image=self.image,
+            script_src=script,
+            parameters=params,
+            resources_dir=self.resources_dir,
+            work_dir=self.work_dir,
+            output_dir=self.output_dir,
+            host_config={
+                'binds': {
+                    self.work_dir: {
+                        "bind": DockerJob.WORK_DIR,
+                        "mode": "rw"
+                    },
+                    self.resources_dir: {
+                        "bind": DockerJob.RESOURCES_DIR,
+                        "mode": "rw"
+                    },
+                    self.output_dir: {
+                        "bind": DockerJob.OUTPUT_DIR,
+                        "mode": "rw"
+                    }
+                }
+            })
         return self.test_job
 
 
@@ -123,11 +143,11 @@ class TestBaseDockerJob(TestDockerJob):
     def _load_dict(self, path):
         with open(path, 'rb') as f:
             lines = f.readlines()
-        dict = {}
+        d = {}
         for l in lines:
             key, val = l.decode('utf-8').split("=")
-            dict[key.strip()] = eval(val.strip())
-        return dict
+            d[key.strip()] = eval(val.strip())  # noqa pylint:disable=eval-used
+        return d
 
     def _test_params_saved(self, task_params):
         with self._create_test_job(params=task_params) as job:

@@ -127,7 +127,11 @@ ignored-classes=optparse.Values,
                 twisted.internet.reactor,
                 pathlib.PurePath,
                 types,
+                factory.declarations.SubFactory,
                 faker.generator.Generator,
+                golem_messages.datastructures.p2p.Node,
+                golem_messages.datastructures.tasks.TaskHeader,
+                golem.network.p2p.local_node.LocalNode,
 
 # List of module names for which member attributes should not be checked
 # (useful for modules/projects where namespaces are manipulated during runtime

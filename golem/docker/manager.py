@@ -1,17 +1,22 @@
 import logging
 import os
 import time
+from contextlib import contextmanager
+from pathlib import Path
 from threading import Thread
-from typing import Optional
+from typing import Optional, Callable, Any, Iterable
 
+from golem import hardware
 from golem.core.common import is_linux, is_windows, is_osx
 from golem.core.threads import ThreadQueueExecutor
 from golem.docker.commands.docker import DockerCommandHandler
 from golem.docker.config import DockerConfigManager, APPS_DIR, IMAGES_INI, \
     CONSTRAINT_KEYS, MIN_CONSTRAINTS, DEFAULTS
 from golem.docker.hypervisor.docker_for_mac import DockerForMac
+from golem.docker.hypervisor.hyperv import HyperVHypervisor
 from golem.docker.hypervisor.virtualbox import VirtualBoxHypervisor
 from golem.docker.hypervisor.xhyve import XhyveHypervisor
+from golem.docker.task_thread import DockerBind
 from golem.report import report_calls, Component
 
 logger = logging.getLogger(__name__)
@@ -23,6 +28,7 @@ class DockerManager(DockerConfigManager):
         super().__init__()
 
         self._config = dict(DEFAULTS)
+        self._config_locked = False
         self._env_checked = False
         self._threads = ThreadQueueExecutor(queue_name='docker-machine')
 
@@ -40,14 +46,15 @@ class DockerManager(DockerConfigManager):
             if not is_linux():
                 self.hypervisor = self._select_hypervisor()
                 self.hypervisor.setup()
-        except Exception:  # pylint: disable=broad-except
+        except Exception as e:  # pylint: disable=broad-except
             logger.error(
                 """
                 ***************************************************************
                 No supported VM hypervisor was found.
                 Golem will not be able to compute anything.
+                hypervisor.setup() returned {}
                 ***************************************************************
-                """
+                """.format(e)
             )
             raise EnvironmentError
 
@@ -78,6 +85,8 @@ class DockerManager(DockerConfigManager):
 
     def _select_hypervisor(self):
         if is_windows():
+            if HyperVHypervisor.is_available():
+                return HyperVHypervisor.instance(self.get_config)
             if VirtualBoxHypervisor.is_available():
                 return VirtualBoxHypervisor.instance(self.get_config)
         elif is_osx():
@@ -90,8 +99,17 @@ class DockerManager(DockerConfigManager):
     def get_config(self) -> dict:
         return dict(self._config)
 
-    def update_config(self, status_callback, done_callback, in_background=True):
+    def update_config(
+            self,
+            status_callback: Callable[[], Any],
+            done_callback: Callable[[bool], Any],
+            work_dir: Path,
+            in_background: bool = True
+    ) -> None:
         self.check_environment()
+
+        if self.hypervisor:
+            self.hypervisor.update_work_dir(work_dir)
 
         if in_background:
             thread = Thread(target=self._wait_for_tasks,
@@ -100,29 +118,42 @@ class DockerManager(DockerConfigManager):
         else:
             self._wait_for_tasks(status_callback, done_callback)
 
+    def apply_config(self) -> bool:
+        return self.constrain(restart_vm=not self._config_locked,
+                              **self._config)
+
     def build_config(self, config_desc):
         super(DockerManager, self).build_config(config_desc)
 
-        cpu_count = MIN_CONSTRAINTS['cpu_count']
-        memory_size = MIN_CONSTRAINTS['memory_size']
-
-        try:
-            cpu_count = max(int(config_desc.num_cores), cpu_count)
-        except (TypeError, ValueError) as exc:
-            logger.warning('Cannot read the CPU count: %r', exc)
-
-        try:
-            memory_size = max(int(config_desc.max_memory_size) // 1024,
-                              memory_size)
-        except (TypeError, ValueError) as exc:
-            logger.warning('Cannot read the memory amount: %r', exc)
-
+        memory = hardware.scale_memory(config_desc.max_memory_size,
+                                       hardware.MemSize.kibi,
+                                       hardware.MemSize.mebi)
         self._config = dict(
-            memory_size=memory_size,
-            cpu_count=cpu_count
+            memory_size=memory,
+            cpu_count=config_desc.num_cores,
         )
 
-    def constrain(self, **params) -> bool:
+    @contextmanager
+    def locked_config(self):
+        self._config_locked = True
+        yield
+        self._config_locked = False
+
+    def get_host_config_for_task(self, binds: Iterable[DockerBind]) -> dict:
+        host_config = dict(self._container_host_config)
+        if self.hypervisor and self.hypervisor.uses_volumes():
+            host_config['binds'] = self.hypervisor.create_volumes(binds)
+        else:
+            host_config['binds'] = {
+                bind.source_as_posix: {
+                    'bind': bind.target,
+                    'mode': bind.mode
+                }
+                for bind in binds
+            }
+        return host_config
+
+    def constrain(self, restart_vm: bool = True, **params) -> bool:
         if not self.hypervisor:
             return False
 
@@ -143,13 +174,14 @@ class DockerManager(DockerConfigManager):
                 if constraint not in diff:
                     diff[constraint] = value
 
-            logger.info("Docker: applying configuration: %r", diff)
-            try:
-                with self.hypervisor.restart_ctx() as vm:
-                    self.hypervisor.constrain(vm, **diff)
-            except Exception as e:
-                logger.error("Docker: error updating configuration: %r", e)
-
+            if restart_vm:
+                logger.info("Docker: applying configuration: %r", diff)
+                try:
+                    with self.hypervisor.restart_ctx() as vm:
+                        self.hypervisor.constrain(vm, **diff)
+                except Exception as e:
+                    logger.error("Docker: error updating configuration: %r", e)
+                    raise
         else:
 
             logger.info("Docker: configuration unchanged")
@@ -280,6 +312,8 @@ class DockerManager(DockerConfigManager):
             old_value = old_values.get(key)
             new_value = new_values.get(key)
 
+            logger.debug('_diff_constraint. key=%r, old_value=%r, new_value=%r',
+                         key, old_value, new_value)
             if new_value != old_value and new_value is not None:
                 result[key] = new_value
 
@@ -289,7 +323,7 @@ class DockerManager(DockerConfigManager):
         while sb():
             time.sleep(0.5)
 
-        config_differs = self.constrain(**self._config)
+        config_differs = self.apply_config()
         cb(config_differs)
 
     def _save_and_resume(self, cb):

@@ -1,4 +1,4 @@
-# pylint: disable=no-member
+# pylint: disable=no-member,protected-access
 import struct
 import unittest
 from unittest import mock
@@ -9,6 +9,7 @@ from freezegun import freeze_time
 from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
 from golem_messages import factories as msg_factories
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
 from golem import testutils
 from golem.network.transport import tcpnetwork
@@ -16,7 +17,6 @@ from golem.network.transport.tcpnetwork import (SafeProtocol, SocketAddress,
                                                 MAX_MESSAGE_SIZE, TCPNetwork)
 from golem.network.transport.tcpnetwork_helpers import TCPConnectInfo
 from golem.tools.assertlogs import LogTestCase
-from tests.factories import p2p as p2p_factories
 
 MagicMock = mock.MagicMock
 gm_version = semantic_version.Version(golem_messages.__version__)
@@ -110,11 +110,11 @@ class SafeProtocolTestCase(unittest.TestCase):
     @mock.patch('golem_messages.load')
     def test_drop_set_task(self, load_mock):
         with freeze_time("2017-01-14 10:30:20") as frozen_datetime:
-            node = p2p_factories.Node()
+            node = dt_p2p_factory.Node()
 
             msg = message.p2p.SetTaskSession(
                 key_id=None,
-                node_info=node.to_dict(),
+                node_info=node,
                 conn_id=None,
                 super_node_info=None)
             data = msg.serialize()

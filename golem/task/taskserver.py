@@ -7,9 +7,15 @@ import time
 import weakref
 from collections import deque
 from pathlib import Path
-from typing import Optional
+from typing import (
+    List,
+    Optional,
+    Set)
 
+from golem_messages import exceptions as msg_exceptions
 from golem_messages import message
+from golem_messages.datastructures import p2p as dt_p2p
+from golem_messages.datastructures import tasks as dt_tasks
 from pydispatch import dispatcher
 from twisted.internet.defer import inlineCallbacks
 
@@ -19,21 +25,29 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.variables import MAX_CONNECT_SOCKET_ADDRESSES
 from golem.core.common import node_info_str, short_node_id
 from golem.environments.environment import SupportStatus, UnsupportReason
-from golem.network.p2p import node as p2p_node
+from golem.marketplace import OfferPool
 from golem.network.transport.network import ProtocolFactory, SessionFactory
 from golem.network.transport.tcpnetwork import (
     TCPNetwork, SocketAddress, SafeProtocol)
 from golem.network.transport.tcpserver import (
     PendingConnectionsServer, PenConnStatus)
 from golem.ranking.helper.trust import Trust
+from golem.ranking.manager.database_manager import (
+    get_requestor_efficiency,
+    get_requestor_assigned_sum,
+    get_requestor_paid_sum,
+    update_requestor_paid_sum,
+    update_requestor_assigned_sum,
+    update_requestor_efficiency,
+)
 from golem.task.acl import get_acl
 from golem.task.benchmarkmanager import BenchmarkManager
-from golem.task.taskbase import TaskHeader, Task, AcceptClientVerdict
+from golem.task.taskbase import Task, AcceptClientVerdict
 from golem.task.taskconnectionshelper import TaskConnectionsHelper
 from golem.task.taskstate import TaskOp
+from golem.task.timer import ProviderTimer
 from golem.utils import decode_hex
 
-from . import exceptions
 from .result.resultmanager import ExtractedPackage
 from .server import resources
 from .server import concent
@@ -46,6 +60,17 @@ from .tasksession import TaskSession
 logger = logging.getLogger(__name__)
 
 tmp_cycler = itertools.cycle(list(range(550)))
+
+
+def _calculate_price(min_price: int, requestor_id: str) -> int:
+    r = min_price * (1.0 + ProviderTimer.thirst)
+    v_paid = get_requestor_paid_sum(requestor_id)
+    v_assigned = get_requestor_assigned_sum(requestor_id)
+    c = min_price
+    Q = min(1.0, (min_price + 1 + v_paid + c) / (min_price + 1 + v_assigned))
+    R = get_requestor_efficiency(requestor_id)
+    S = Q * R
+    return max(int(r / S), min_price)
 
 
 class TaskServer(
@@ -72,19 +97,20 @@ class TaskServer(
             min_price=config_desc.min_price,
             task_archiver=task_archiver)
         self.task_manager = TaskManager(
-            config_desc.node_name,
             self.node,
             self.keys_auth,
             root_path=TaskServer.__get_task_manager_root(client.datadir),
-            use_distributed_resources=config_desc.
-            use_distributed_resource_management,
             tasks_dir=os.path.join(client.datadir, 'tasks'),
             apps_manager=apps_manager,
             finished_cb=task_finished_cb,
         )
         benchmarks = self.task_manager.apps_manager.get_benchmarks()
-        self.benchmark_manager = BenchmarkManager(config_desc.node_name, self,
-                                                  client.datadir, benchmarks)
+        self.benchmark_manager = BenchmarkManager(
+            node_name=config_desc.node_name,
+            task_server=self,
+            root_path=self.get_task_computer_root(),
+            benchmarks=benchmarks
+        )
         self.task_computer = TaskComputer(
             task_server=self,
             use_docker_manager=use_docker_manager,
@@ -93,6 +119,8 @@ class TaskServer(
         self.task_connections_helper.task_server = self
         self.task_sessions = {}
         self.task_sessions_incoming = weakref.WeakSet()
+
+        OfferPool.change_interval(self.config_desc.offer_pooling_interval)
 
         self.max_trust = 1.0
         self.min_trust = 0.0
@@ -111,6 +139,7 @@ class TaskServer(
         self.response_list = {}
         self.acl = get_acl(Path(client.datadir))
         self.resource_handshakes = {}
+        self.requested_tasks: Set[str] = set()
 
         network = TCPNetwork(
             ProtocolFactory(SafeProtocol, self, SessionFactory(TaskSession)),
@@ -127,7 +156,10 @@ class TaskServer(
             self.income_listener,
             signal='golem.income'
         )
-
+        dispatcher.connect(
+            self.finished_subtask_listener,
+            signal='golem.taskcomputer'
+        )
         dispatcher.connect(
             self.finished_task_listener,
             signal='golem.taskmanager'
@@ -181,7 +213,7 @@ class TaskServer(
 
     # This method chooses random task from the network to compute on our machine
     def request_task(self) -> Optional[str]:
-        theader = self.task_keeper.get_task()
+        theader = self.task_keeper.get_task(self.requested_tasks)
         if theader is None:
             return None
         try:
@@ -197,7 +229,7 @@ class TaskServer(
                     UnsupportReason.MAX_PRICE: theader.max_price}))
 
             if self.client.concent_service.enabled:
-                if not theader.fixed_header.concent_enabled:
+                if not theader.concent_enabled:
                     supported = supported.join(
                         SupportStatus.err({
                             UnsupportReason.CONCENT_REQUIRED: True,
@@ -205,7 +237,11 @@ class TaskServer(
                     )
 
             if supported.is_ok():
-                price = int(theader.max_price)
+                price = _calculate_price(
+                    self.config_desc.min_price,
+                    theader.task_owner.key,
+                )
+                price = min(price, theader.max_price)
                 self.task_manager.add_comp_task_request(
                     theader=theader, price=price)
                 args = {
@@ -213,7 +249,7 @@ class TaskServer(
                     'key_id': theader.task_owner.key,
                     'task_id': theader.task_id,
                     'estimated_performance': performance,
-                    'price': self.config_desc.min_price,
+                    'price': price,
                     'max_resource_size': self.config_desc.max_resource_size,
                     'max_memory_size': self.config_desc.max_memory_size,
                     'num_cores': self.config_desc.num_cores
@@ -228,6 +264,7 @@ class TaskServer(
                     args=args
                 )
                 if added:
+                    self.requested_tasks.add(theader.task_id)
                     return theader.task_id
 
                 supported = supported.join(SupportStatus.err({
@@ -247,6 +284,19 @@ class TaskServer(
             self.task_keeper.remove_task_header(theader.task_id)
 
         return None
+
+    def task_given(self, node_id: str, ctd, price: int) -> bool:
+        if not self.task_computer.task_given(ctd):
+            return False
+        self.requested_tasks.remove(ctd['task_id'])
+        update_requestor_assigned_sum(node_id, price)
+        dispatcher.send(
+            signal='golem.subtask',
+            event='started',
+            subtask_id=ctd['subtask_id'],
+            price=price,
+        )
+        return True
 
     def send_results(self, subtask_id, task_id, result):
 
@@ -280,7 +330,7 @@ class TaskServer(
         task_result_manager = self.task_manager.task_result_manager
 
         wtr.result_secret = task_result_manager.gen_secret()
-        result = task_result_manager.create(self.node, wtr, wtr.result_secret)
+        result = task_result_manager.create(wtr, wtr.result_secret)
         (
             wtr.result_hash,
             wtr.result_path,
@@ -324,37 +374,41 @@ class TaskServer(
                 logger.error("Error closing incoming session: %s", exc)
 
     def get_own_tasks_headers(self):
-        ths_tm = self.task_manager.get_tasks_headers()
-        return [th.to_dict() for th in ths_tm]
+        return self.task_manager.get_tasks_headers()
 
-    def get_others_tasks_headers(self):
-        ths_tk = self.task_keeper.get_all_tasks()
-        return [th.to_dict() for th in ths_tk]
+    def get_others_tasks_headers(self) -> List[dt_tasks.TaskHeader]:
+        return self.task_keeper.get_all_tasks()
 
-    def add_task_header(self, th_dict_repr: dict) -> bool:
+    def add_task_header(self, task_header: dt_tasks.TaskHeader) -> bool:
+        if not self.verify_header_sig(task_header):
+            logger.info(
+                'Invalid signature task_header:%r, signature: %r',
+                task_header,
+                task_header.signature,
+            )
+            return False
         try:
-            TaskHeader.validate(th_dict_repr)
-            header = TaskHeader.from_dict(th_dict_repr)
-            if not self.verify_header_sig(header):
-                raise ValueError("Invalid signature")
-
-            if self.task_manager.is_this_my_task(header):
+            if self.task_manager.is_my_task(task_header.task_id) or \
+                    task_header.task_owner.key == self.node.key:
                 return True  # Own tasks are not added to task keeper
 
-            return self.task_keeper.add_task_header(header)
-
-        except exceptions.TaskHeaderError as e:
-            logger.warning("Wrong task header received: %s", e)
-            return False
+            return self.task_keeper.add_task_header(task_header)
         except Exception:  # pylint: disable=broad-except
             logger.exception("Task header validation failed")
             return False
 
-    def verify_header_sig(self, header: TaskHeader):
-        _bin = header.to_binary()
-        _sig = header.signature
-        _key = header.task_owner.key
-        return self.verify_sig(_sig, _bin, _key)
+    @classmethod
+    def verify_header_sig(cls, header: dt_tasks.TaskHeader):
+        try:
+            header.verify(public_key=decode_hex(header.task_owner.key))
+        except msg_exceptions.CryptoError:
+            logger.debug(
+                'hdr verification failed. hdr.task_owner.key: %r',
+                header.task_owner.key,
+                exc_info=True,
+            )
+            return False
+        return True
 
     def remove_task_header(self, task_id) -> bool:
         return self.task_keeper.remove_task_header(task_id)
@@ -391,9 +445,6 @@ class TaskServer(
     def sign(self, data):
         return self.keys_auth.sign(data)
 
-    def verify_sig(self, sig, data, public_key):
-        return self.keys_auth.verify(sig, data, public_key)
-
     def get_resource_addr(self):
         return self.client.node.prv_addr
 
@@ -412,9 +463,6 @@ class TaskServer(
         PendingConnectionsServer.change_config(self, config_desc)
         self.config_desc = config_desc
         self.last_message_time_threshold = config_desc.task_session_timeout
-        self.task_manager.change_config(
-            self.__get_task_manager_root(self.client.datadir),
-            config_desc.use_distributed_resource_management)
         self.task_keeper.change_config(config_desc)
         return self.task_computer.change_config(
             config_desc, run_benchmarks=run_benchmarks)
@@ -464,18 +512,13 @@ class TaskServer(
         Trust.COMPUTED.decrease(node_id)
         self.task_manager.task_computation_failure(subtask_id, err)
 
-    def accept_result(self, subtask_id, key_id, eth_address: str):
+    def accept_result(self, subtask_id, key_id, eth_address: str, value: int):
         mod = min(
             max(self.task_manager.get_trust_mod(subtask_id), self.min_trust),
             self.max_trust)
         Trust.COMPUTED.increase(key_id, mod)
 
         task_id = self.task_manager.get_task_id(subtask_id)
-        value = self.task_manager.get_value(subtask_id)
-
-        if not value:
-            logger.info("Invaluable subtask: %r value: %r", subtask_id, value)
-            return
 
         payment_processed_ts = self.client.transaction_system.add_payment_info(
             subtask_id,
@@ -487,11 +530,39 @@ class TaskServer(
                      subtask_id, payment_processed_ts)
         return payment_processed_ts
 
-    def income_listener(self, event='default', node_id=None, **_kwargs):
+    def income_listener(self, event='default', node_id=None, **kwargs):
         if event == 'confirmed':
-            self.increase_trust_payment(node_id)
+            self.increase_trust_payment(node_id, kwargs['amount'])
         elif event == 'overdue_single':
             self.decrease_trust_payment(node_id)
+
+    def finished_subtask_listener(self,  # pylint: disable=too-many-arguments
+                                  event='default', subtask_id=None,
+                                  min_performance=None, **_kwargs):
+
+        if event != 'subtask_finished':
+            return
+
+        keeper = self.task_manager.comp_task_keeper
+
+        try:
+
+            task_id = keeper.get_task_id_for_subtask(subtask_id)
+            header = keeper.get_task_header(task_id)
+            environment = self.get_environment_by_id(header.environment)
+            computation_time = ProviderTimer.time
+
+            update_requestor_efficiency(
+                node_id=keeper.get_node_for_task_id(task_id),
+                timeout=header.subtask_timeout,
+                computation_time=computation_time,
+                performance=environment.get_performance(),
+                min_performance=min_performance,
+            )
+
+        except (KeyError, ValueError, AttributeError) as exc:
+            logger.error("Finished subtask listener: %r", exc)
+            return
 
     def finished_task_listener(self, event='default', task_id=None, op=None,
                                **_kwargs):
@@ -503,8 +574,9 @@ class TaskServer(
         self.client.p2pservice.remove_task(task_id)
         self.client.funds_locker.remove_task(task_id)
 
-    def increase_trust_payment(self, node_id: str):
+    def increase_trust_payment(self, node_id: str, amount: int):
         Trust.PAYMENT.increase(node_id, self.max_trust)
+        update_requestor_paid_sum(node_id, amount)
 
     def decrease_trust_payment(self, node_id: str):
         Trust.PAYMENT.decrease(node_id, self.max_trust)
@@ -589,8 +661,6 @@ class TaskServer(
         super(TaskServer, self).final_conn_failure(conn_id)
 
     def add_forwarded_session_request(self, key_id, conn_id):
-        if self.task_computer.waiting_for_task:
-            self.task_computer.wait(ttl=self.forwarded_session_request_timeout)
         self.forwarded_session_requests[key_id] = dict(
             conn_id=conn_id, time=time.time())
 
@@ -691,8 +761,6 @@ class TaskServer(
         self.cur_port = port
         logger.info(" Port {} opened - listening".format(self.cur_port))
         self.node.prv_port = self.cur_port
-        self.task_manager.listen_address = self.node.prv_addr
-        self.task_manager.listen_port = self.cur_port
         self.task_manager.node = self.node
 
     def _listening_failure(self, **kwargs):
@@ -886,7 +954,7 @@ class TaskServer(
             key_id,
             subtask_id: str):
 
-        extra_data = extracted_package.to_extra_data()
+        full_path_files = extracted_package.get_full_path_files()
         self.new_session_prepare(
             session=session,
             subtask_id=subtask_id,
@@ -895,7 +963,7 @@ class TaskServer(
         )
 
         session.send_hello()
-        session.result_received(subtask_id, extra_data['result'])
+        session.result_received(subtask_id, full_path_files)
 
     def __connection_for_task_verification_result_failure(  # noqa pylint:disable=no-self-use
             self, _conn_id, _extracted_package, key_id, subtask_id: str):
@@ -1002,7 +1070,7 @@ class TaskServer(
             'subtask_id': report_computed_task.subtask_id,
         }
 
-        node = p2p_node.Node.from_dict(report_computed_task.node_info)
+        node = dt_p2p.Node(**report_computed_task.node_info)
 
         self._add_pending_request(
             TASK_CONN_TYPES['task_verification_result'],
@@ -1016,7 +1084,7 @@ class TaskServer(
     #############################
     @staticmethod
     def __get_task_manager_root(datadir):
-        return os.path.join(datadir, "res")
+        return os.path.join(datadir, "ComputerRes")
 
     def _set_conn_established(self):
         self.conn_established_for_type.update({

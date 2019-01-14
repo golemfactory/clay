@@ -97,8 +97,6 @@ class TestIncomesKeeper(TestWithDatabase):
             accepted_ts=accepted_ts2,
         )
         assert Income.select().count() == 2
-        assert self.incomes_keeper.is_expected(subtask_id1, payer_address)
-        assert self.incomes_keeper.is_expected(subtask_id2, payer_address)
 
         transaction_id = '0x' + 64 * '1'
         transaction_id1 = '0x' + 64 * 'b'
@@ -115,8 +113,6 @@ class TestIncomesKeeper(TestWithDatabase):
         assert income1.transaction is None
         income2 = Income.get(sender_node=sender_node, subtask=subtask_id2)
         assert income2.transaction is None
-        assert self.incomes_keeper.is_expected(subtask_id1, payer_address)
-        assert self.incomes_keeper.is_expected(subtask_id2, payer_address)
 
         self.incomes_keeper.received_batch_transfer(
             transaction_id1,
@@ -128,8 +124,6 @@ class TestIncomesKeeper(TestWithDatabase):
         assert transaction_id1[2:] == income1.transaction
         income2 = Income.get(sender_node=sender_node, subtask=subtask_id2)
         assert income2.transaction is None
-        assert not self.incomes_keeper.is_expected(subtask_id1, payer_address)
-        assert self.incomes_keeper.is_expected(subtask_id2, payer_address)
 
         self.incomes_keeper.received_batch_transfer(
             transaction_id2,
@@ -141,8 +135,6 @@ class TestIncomesKeeper(TestWithDatabase):
         assert transaction_id1[2:] == income1.transaction
         income2 = Income.get(sender_node=sender_node, subtask=subtask_id2)
         assert transaction_id2[2:] == income2.transaction
-        assert not self.incomes_keeper.is_expected(subtask_id1, payer_address)
-        assert not self.incomes_keeper.is_expected(subtask_id2, payer_address)
 
     def test_received_batch_transfer_two_senders(self):
         sender_node1 = 64 * 'a'
@@ -172,8 +164,6 @@ class TestIncomesKeeper(TestWithDatabase):
             accepted_ts=closure_time2,
         )
         assert Income.select().count() == 2
-        assert self.incomes_keeper.is_expected(subtask_id1, payer_address1)
-        assert self.incomes_keeper.is_expected(subtask_id2, payer_address2)
 
         transaction_id1 = '0x' + 64 * 'b'
         transaction_id2 = '0x' + 64 * 'd'
@@ -188,8 +178,6 @@ class TestIncomesKeeper(TestWithDatabase):
         assert transaction_id1[2:] == income1.transaction
         income2 = Income.get(sender_node=sender_node2, subtask=subtask_id2)
         assert income2.transaction is None
-        assert not self.incomes_keeper.is_expected(subtask_id1, payer_address1)
-        assert self.incomes_keeper.is_expected(subtask_id2, payer_address2)
 
         self.incomes_keeper.received_batch_transfer(
             transaction_id2,
@@ -201,8 +189,6 @@ class TestIncomesKeeper(TestWithDatabase):
         assert transaction_id1[2:] == income1.transaction
         income2 = Income.get(sender_node=sender_node2, subtask=subtask_id2)
         assert transaction_id2[2:] == income2.transaction
-        assert not self.incomes_keeper.is_expected(subtask_id1, payer_address1)
-        assert not self.incomes_keeper.is_expected(subtask_id2, payer_address2)
 
     @staticmethod
     def _create_income(**kwargs):
@@ -248,7 +234,6 @@ class TestIncomesKeeper(TestWithDatabase):
             accepted_ts=int(time.time()),
             transaction='transaction')
         income2 = self._create_income(
-            created_date=datetime.now() - timedelta(seconds=2*PAYMENT_DEADLINE),
             accepted_ts=int(time.time()) - 2*PAYMENT_DEADLINE,
             transaction='transaction')
         self.incomes_keeper.update_overdue_incomes()
@@ -258,23 +243,13 @@ class TestIncomesKeeper(TestWithDatabase):
     @freeze_time()
     def test_update_overdue_incomes_accepted_deadline_passed(self):
         overdue_income = self._create_income(
-            created_date=datetime.now() - timedelta(seconds=2*PAYMENT_DEADLINE),
             accepted_ts=int(time.time()) - 2*PAYMENT_DEADLINE)
         self.incomes_keeper.update_overdue_incomes()
         self.assertTrue(overdue_income.refresh().overdue)
 
     @freeze_time()
-    def test_update_overdue_incomes_old_but_recently_accepted(self):
-        income = self._create_income(
-            created_date=datetime.now() - timedelta(seconds=2*PAYMENT_DEADLINE),
-            accepted_ts=int(time.time()))
-        self.incomes_keeper.update_overdue_incomes()
-        self.assertFalse(income.refresh().overdue)
-
-    @freeze_time()
     def test_update_overdue_incomes_already_marked_as_overdue(self):
         income = self._create_income(
-            created_date=datetime.now() - timedelta(seconds=2*PAYMENT_DEADLINE),
             accepted_ts=int(time.time()) - 2*PAYMENT_DEADLINE,
             overdue=True)
         self.incomes_keeper.update_overdue_incomes()

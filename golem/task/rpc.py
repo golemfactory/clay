@@ -6,10 +6,10 @@ import logging
 import os.path
 import re
 import typing
-import warnings
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
+from golem_messages.datastructures import masking
 from twisted.internet import defer
 
 from apps.core.task import coretask
@@ -21,7 +21,6 @@ from golem.core import simpleserializer
 from golem.ethereum import exceptions as eth_exceptions
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
-from golem.task import masking
 from golem.task import taskbase
 from golem.task import taskstate
 from golem.task import tasktester
@@ -85,11 +84,16 @@ def _validate_task_dict(client, task_dict) -> None:
                 )
             )
 
-    if task_dict['concent_enabled'] and \
-            not client.concent_service.enabled:
-        raise CreateTaskError(
-            "Cannot create task with concent enabled when "
-            "concent service is disabled")
+    if task_dict['concent_enabled']:
+        if not client.concent_service.enabled:  # `enabled` implies `available`
+            raise CreateTaskError(
+                "Cannot create task with concent enabled when "
+                "Concent Service is " +
+                (
+                    'switched off' if client.concent_service.available
+                    else 'disabled'
+                ),
+            )
 
 
 def prepare_and_validate_task_dict(client, task_dict):
@@ -142,7 +146,7 @@ def _run_test_task(client, task_dict):
     }
     client.task_tester = tasktester.TaskTester(
         task,
-        client.datadir,
+        client.task_server.get_task_computer_root(),
         on_success,
         on_error,
     )
@@ -185,7 +189,10 @@ def _restart_subtasks(
 
 @defer.inlineCallbacks
 def _ensure_task_deposit(client, task, force):
-    if not client.concent_service.enabled:
+    if not task.header.concent_enabled:
+        return
+
+    if not client.concent_service.available:
         return
 
     task_id = task.header.task_id
@@ -423,27 +430,14 @@ class ClientProvider:
     def create_task(self, task_dict, force=False) \
             -> typing.Tuple[typing.Optional[str], typing.Optional[str]]:
         """
-        - force: if True will ignore warnings
+        :param force: if True will ignore warnings
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
 
-        # FIXME: Statement only for old DummyTask compatibility #2467
-        task: taskbase.Task
-        if isinstance(task_dict, taskbase.Task):
-            warnings.warn(
-                "create_task() called with {got_type}"
-                " instead of dict #2467".format(
-                    got_type=type(task_dict),
-                ),
-                DeprecationWarning,
-                stacklevel=2,
-            )
-            task = task_dict
-        else:
-            prepare_and_validate_task_dict(self.client, task_dict)
+        prepare_and_validate_task_dict(self.client, task_dict)
 
-            task = self.task_manager.create_task(task_dict)
+        task: taskbase.Task = self.task_manager.create_task(task_dict)
 
         task_id = task.header.task_id
 

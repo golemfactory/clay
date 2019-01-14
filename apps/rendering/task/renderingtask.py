@@ -165,7 +165,10 @@ class RenderingTask(CoreTask):
         x = int(round(self.res_x * self.scale_factor))
         y = int(round(self.res_y * self.scale_factor))
         upper = max(0, int(math.floor(y / self.total_tasks * (subtask['start_task'] - 1))))
-        lower = min(int(math.floor(y / self.total_tasks * (subtask['end_task']))), y)
+        lower = min(
+            int(math.floor(y / self.total_tasks * (subtask['start_task']))),
+            y,
+        )
         for i in range(0, x):
             for j in range(upper, lower):
                 img_task.putpixel((i, j), color)
@@ -184,17 +187,15 @@ class RenderingTask(CoreTask):
         if self.last_task != self.total_tasks:
             self.last_task += 1
             start_task = self.last_task
-            end_task = self.last_task
-            return start_task, end_task
+            return start_task
         else:
             for sub in self.subtasks_given.values():
                 if sub['status'] in [SubtaskStatus.failure, SubtaskStatus.restarted]:
                     sub['status'] = SubtaskStatus.resent
-                    end_task = sub['end_task']
                     start_task = sub['start_task']
                     self.num_failed_subtasks -= 1
-                    return start_task, end_task
-        return None, None
+                    return start_task
+        return None
 
     def _get_scene_file_rel_path(self):
         """Returns the path to the scene file relative to the directory where
@@ -211,11 +212,6 @@ class RenderingTask(CoreTask):
             return abs_scene_path
         else:
             return ''
-
-    def short_extra_data_repr(self, extra_data):
-        l = extra_data
-        return "path_root: {path_root}, start_task: {start_task}, end_task: {end_task}, total_tasks: {total_tasks}, " \
-               "outfilebasename: {outfilebasename}, scene_file: {scene_file}".format(**l)
 
     def _open_preview(self, mode="RGB", ext=PREVIEW_EXT):
         """ If preview file doesn't exist create a new empty one with given mode and extension.
@@ -330,14 +326,20 @@ class RenderingTaskBuilder(CoreTaskBuilder):
         definition.output_format = options['format'].upper()
         definition.resolution = [int(val) for val in options['resolution']]
         if definition.timeout < MIN_TIMEOUT:
-            logger.warning("Timeout %d too short for this task. "
-                           "Changing to %d" % (definition.timeout,
-                                               MIN_TIMEOUT))
+            logger.warning(
+                "Timeout %d too short for this task. "
+                "Changing to %f",
+                definition.timeout,
+                MIN_TIMEOUT,
+            )
             definition.timeout = MIN_TIMEOUT
         if definition.subtask_timeout < SUBTASK_MIN_TIMEOUT:
-            logger.warning("Subtask timeout %d too short for this task. "
-                           "Changing to %d" % (definition.subtask_timeout,
-                                               SUBTASK_MIN_TIMEOUT))
+            logger.warning(
+                "Subtask timeout %d too short for this task. "
+                "Changing to %f",
+                definition.subtask_timeout,
+                SUBTASK_MIN_TIMEOUT,
+            )
             definition.subtask_timeout = SUBTASK_MIN_TIMEOUT
         return definition
 

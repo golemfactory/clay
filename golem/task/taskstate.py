@@ -1,6 +1,6 @@
 from enum import Enum, auto
 import time
-from typing import Optional
+from typing import Dict, Optional
 
 from golem.core.common import to_unicode
 
@@ -16,7 +16,7 @@ class TaskState(object):
         self.payment_settled = False
         self.outputs = []
         self.subtasks_count = 0
-        self.subtask_states = {}
+        self.subtask_states: Dict[str, SubtaskState] = {}
         self.resource_hash = None
         self.package_hash = None
         self.package_path = None
@@ -49,18 +49,17 @@ class TaskState(object):
 
 class SubtaskState(object):
     def __init__(self):
-        self.subtask_definition = ""
         self.subtask_id = ""
         self.subtask_progress = 0.0
         self.time_started = 0
         self.node_id = ""
         self.node_name = ""
         self.deadline = 0
+        self.price = 0
         self.extra_data = {}
         # FIXME: subtask_rem_time is always equal 0 (#2562)
         self.subtask_rem_time = 0
         self.subtask_status: Optional[SubtaskStatus] = None
-        self.value = 0
         self.stdout = ""
         self.stderr = ""
         self.results = []
@@ -77,7 +76,6 @@ class SubtaskState(object):
             'results': [to_unicode(r) for r in self.results],
             'stderr': to_unicode(self.stderr),
             'stdout': to_unicode(self.stdout),
-            'description': self.subtask_definition,
         }
 
 
@@ -191,6 +189,13 @@ class SubtaskOp(Operation):
     FAILED = auto()
     TIMEOUT = auto()
     RESTARTED = auto()
+
+    def is_completed(self) -> bool:
+        return self not in (
+            SubtaskOp.ASSIGNED,
+            SubtaskOp.RESULT_DOWNLOADING,
+            SubtaskOp.RESTARTED
+        )
 
 
 class OtherOp(Operation):

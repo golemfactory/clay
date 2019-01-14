@@ -3,13 +3,14 @@ import uuid
 from unittest import TestCase
 from unittest.mock import patch
 
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from apps.dummy.task.dummytask import (
     DummyTaskDefaults,
     DummyTaskBuilder,
     DummyTaskTypeInfo, DummyTask)
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition, DummyTaskOptions
-from golem.network.p2p.node import Node
 from golem.testutils import PEP8MixIn, TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 
@@ -22,7 +23,7 @@ class TestDummyTask(TempDirFixture, LogTestCase, PEP8MixIn):
     def _get_new_dummy(self):
         td = DummyTaskDefinition(DummyTaskDefaults())
         td.task_id = str(uuid.uuid4())
-        dt = DummyTask(5, td, "root/path", Node())
+        dt = DummyTask(5, td, "root/path", dt_p2p_factory.Node())
         return dt, td
 
     def test_constants(self):
