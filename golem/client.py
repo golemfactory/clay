@@ -30,6 +30,7 @@ from golem.core.common import (
 )
 from golem.core.fileshelper import du
 from golem.hardware.presets import HardwarePresets
+from golem.config.active import EthereumConfig
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
@@ -68,7 +69,6 @@ from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
 from golem.tools.os_info import OSInfo
 from golem.tools.talkback import enable_sentry_logger
-
 
 logger = logging.getLogger(__name__)
 
@@ -924,6 +924,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             'block_number': str(balances['block_number']),
             'last_gnt_update': str(balances['gnt_update_time']),
             'last_eth_update': str(balances['eth_update_time']),
+            'contract_addresses': {
+                contract.name: address
+                for contract, address in
+                EthereumConfig.CONTRACT_ADDRESSES.items()
+            }
         }
 
     @rpc_utils.expose('pay.deposit_balance')

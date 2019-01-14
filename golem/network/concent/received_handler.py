@@ -374,7 +374,7 @@ class TaskServerMessageHandler():
             return
 
         def success(response):
-            logger.debug("Concent results upload sucessful: %r, %s",
+            logger.debug("Concent results upload successful: %r, %s",
                          subtask_id, response)
 
         def error(exc):
@@ -406,7 +406,7 @@ class TaskServerMessageHandler():
             return
 
         def success(response):
-            logger.debug("Concent resources upload sucessful: %r, %s",
+            logger.debug("Concent resources upload successful: %r, %s",
                          task_id, response)
 
         def error(exc):
@@ -479,7 +479,7 @@ class TaskServerMessageHandler():
         output_dir = getattr(task, 'tmp_dir', None)
 
         def success(response):
-            logger.debug("Concent results download sucessful: %r, %s",
+            logger.debug("Concent results download successful: %r, %s",
                          msg.subtask_id, response)
 
             try:

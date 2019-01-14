@@ -322,15 +322,16 @@ class HyperVHypervisor(DockerMachineHypervisor):
         """
         Run a powershell script or command and return its output in UTF8
         """
+        cmd = [
+            'powershell.exe', '-NoProfile'
+        ]
         if script and not command:
-            cmd = [
-                'powershell.exe',
+            cmd += [
                 '-ExecutionPolicy', 'RemoteSigned',
                 '-File', script
             ]
         elif command and not script:
-            cmd = [
-                'powershell.exe',
+            cmd += [
                 '-Command', command
             ]
         else:

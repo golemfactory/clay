@@ -145,7 +145,7 @@ class DockerManager(DockerConfigManager):
             host_config['binds'] = self.hypervisor.create_volumes(binds)
         else:
             host_config['binds'] = {
-                str(bind.source): {
+                bind.source_as_posix: {
                     'bind': bind.target,
                     'mode': bind.mode
                 }

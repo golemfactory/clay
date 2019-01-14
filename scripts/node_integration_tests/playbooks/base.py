@@ -50,6 +50,7 @@ class NodeTestPlaybook:
     known_tasks = None
     task_id = None
     started = False
+    nodes_started = False
     task_in_creation = False
     output_path = None
     subtasks = None
@@ -64,10 +65,17 @@ class NodeTestPlaybook:
 
     playbook_description = 'Runs a golem node integration test'
 
+    node_restart_count = 0
+
+    dump_output_on_fail = False
+
+    @property
+    def task_settings_dict(self) -> dict:
+        return tasks.get_settings(self.task_settings)
+
     @property
     def output_extension(self):
-        settings = tasks.get_settings(self.task_settings)
-        return settings.get('options').get('format')
+        return self.task_settings_dict.get('options', {}).get('format')
 
     @property
     def current_step_method(self):
@@ -88,6 +96,11 @@ class NodeTestPlaybook:
     def fail(self, msg=None):
         print(msg or "Test run failed after {} seconds on step {}: {}".format(
                 self.time_elapsed, self.current_step, self.current_step_name))
+
+        if self.dump_output_on_fail:
+            helpers.print_output(self.provider_output_queue, 'PROVIDER ')
+            helpers.print_output(self.requestor_output_queue, 'REQUESTOR ')
+
         self.stop(1)
 
     def success(self):
@@ -301,7 +314,7 @@ class NodeTestPlaybook:
                        on_success=on_success, on_error=self.print_error)
 
     def step_verify_output(self):
-        settings = tasks.get_settings(self.task_settings)
+        settings = self.task_settings_dict
         output_file = self.output_path + '/' + \
             settings.get('name') + '.' + self.output_extension
         print("Verifying the output file: {}".format(output_file))
@@ -345,7 +358,57 @@ class NodeTestPlaybook:
         return self.call_provider(
             'pay.incomes', on_success=on_success, on_error=self.print_error)
 
-    steps: typing.Tuple = (
+    def step_stop_nodes(self):
+        if self.nodes_started:
+            print("Stopping nodes")
+            self.stop_nodes()
+
+        time.sleep(10)
+        provider_exit = self.provider_node.poll()
+        requestor_exit = self.requestor_node.poll()
+        if provider_exit is not None and requestor_exit is not None:
+            if provider_exit or requestor_exit:
+                print(
+                    "Abnormal termination provider: %s, requestor: %s",
+                    provider_exit,
+                    requestor_exit,
+                )
+                self.fail()
+            else:
+                print("Stopped nodes")
+                self.next()
+        else:
+            print("...")
+
+    def step_restart_nodes(self):
+        print("Starting nodes again")
+        self.node_restart_count += 1
+
+        # replace the the nodes with different versions
+        provider_replacement_script = getattr(
+            self,
+            'provider_node_script_%s' % (self.node_restart_count + 1),
+            None,
+        )
+        requestor_replacement_script = getattr(
+            self,
+            'requestor_node_script_%s' % (self.node_restart_count + 1),
+            None,
+        )
+
+        if provider_replacement_script:
+            self.provider_node_script = provider_replacement_script
+        if requestor_replacement_script:
+            self.requestor_node_script = requestor_replacement_script
+
+        self.task_in_creation = False
+        time.sleep(60)
+
+        self.start_nodes()
+        print("Nodes restarted")
+        self.next()
+
+    initial_steps: typing.Tuple = (
         step_get_provider_key,
         step_get_requestor_key,
         step_get_provider_network_info,
@@ -355,6 +418,9 @@ class NodeTestPlaybook:
         step_wait_provider_gnt,
         step_wait_requestor_gnt,
         step_get_known_tasks,
+    )
+
+    steps: typing.Tuple = initial_steps + (
         step_create_task,
         step_get_task_id,
         step_get_task_status,
@@ -426,20 +492,21 @@ class NodeTestPlaybook:
             self.provider_node)
         self.requestor_output_queue = helpers.get_output_queue(
             self.requestor_node)
-        self.started = True
+        self.nodes_started = True
 
     def stop_nodes(self):
-        helpers.gracefully_shutdown(self.provider_node, 'Provider')
-        helpers.gracefully_shutdown(self.requestor_node, 'Requestor')
-        self.started = False
+        if self.nodes_started:
+            helpers.gracefully_shutdown(self.provider_node, 'Provider')
+            helpers.gracefully_shutdown(self.requestor_node, 'Requestor')
+            self.nodes_started = False
 
     def run(self):
-        if self.started:
+        if self.nodes_started:
             provider_exit = self.provider_node.poll()
             requestor_exit = self.requestor_node.poll()
             helpers.report_termination(provider_exit, "Provider")
             helpers.report_termination(requestor_exit, "Requestor")
-            if provider_exit is not None and requestor_exit is not None:
+            if provider_exit is not None or requestor_exit is not None:
                 self.fail()
 
         try:
