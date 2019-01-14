@@ -2,26 +2,44 @@ import locale
 import re
 import subprocess
 
-from golem.core.common import is_windows, is_osx
+from cpuinfo import get_cpu_info
 
-win_key_vt_supported = 'VM Monitor Mode Extensions'
-win_key_vt_enabled = 'Virtualization Enabled In Firmware'
+from golem.core.common import is_windows
 
 
-def is_vt_enabled() -> bool:
+def is_virtualization_enabled() -> bool:
+    """ Checks if hardware virtualization is available on this machine.
+    Currently, this check is limited to Intel CPUs (VT and VT-x support).
+    :return bool: True if virtualization is available. On Windows, we also check
+    if the feature is enabled in firmware.
+    """
     if is_windows():
-        sys_info: subprocess.CompletedProcess = \
-            subprocess.run('systeminfo', check=True, stdout=subprocess.PIPE)
-        output: str = None
+        return __check_vt_windows()
+    else:
+        return __check_vt_unix()
 
-        # https://stackoverflow.com/a/9228117
-        try:
-            output = sys_info.stdout.decode(locale.getpreferredencoding())
-        except ValueError:
-            output = sys_info.stdout.decode()
 
-        return __check_systeminfo_field(win_key_vt_supported, output) and \
-            __check_systeminfo_field(win_key_vt_enabled, output)
+def __check_vt_unix() -> bool:
+    cpu_flags: list = get_cpu_info()['flags']
+    return 'vmx' in cpu_flags
+
+
+def __check_vt_windows() -> bool:
+    sys_info: subprocess.CompletedProcess = \
+        subprocess.run('systeminfo', check=True, stdout=subprocess.PIPE)
+    output: str = None
+
+    # https://stackoverflow.com/a/9228117
+    try:
+        output = sys_info.stdout.decode(locale.getpreferredencoding())
+    except ValueError:
+        output = sys_info.stdout.decode()
+
+    key_vt_supported = 'VM Monitor Mode Extensions'
+    key_vt_enabled = 'Virtualization Enabled In Firmware'
+
+    return __check_systeminfo_field(key_vt_supported, output) and \
+        __check_systeminfo_field(key_vt_enabled, output)
 
 
 def __check_systeminfo_field(key: str, command_output: str) -> bool:
