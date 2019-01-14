@@ -1028,7 +1028,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self,
             amount: Union[str, int],
             destination: str,
-            currency: str) -> List[str]:
+            currency: str,
+            gas_price: Optional[int] = None) -> List[str]:
         if isinstance(amount, str):
             amount = int(amount)
         # It returns a list for backwards compatibility with Electron.
@@ -1036,6 +1037,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             amount,
             destination,
             currency,
+            gas_price,
         )]
 
     @rpc_utils.expose('rep.comp')

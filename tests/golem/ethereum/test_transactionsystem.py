@@ -119,17 +119,15 @@ class TestTransactionSystem(TransactionSystemBase):
 
     def test_get_withdraw_gas_cost(self):
         dest = '0x' + 40 * '0'
-        gas_price = 123
         eth_gas_cost = 21000
         self.sci.GAS_WITHDRAW = 555
-        self.sci.get_current_gas_price.return_value = gas_price
         self.sci.estimate_transfer_eth_gas.return_value = eth_gas_cost
 
         cost = self.ets.get_withdraw_gas_cost(100, dest, 'ETH')
-        assert cost == eth_gas_cost * gas_price
+        assert cost == eth_gas_cost
 
         cost = self.ets.get_withdraw_gas_cost(200, dest, 'GNT')
-        assert cost == self.sci.GAS_WITHDRAW * gas_price
+        assert cost == self.sci.GAS_WITHDRAW
 
     def test_get_gas_price(self):
         test_gas_price = 1234
@@ -176,14 +174,35 @@ class TestTransactionSystem(TransactionSystemBase):
             self.ets.withdraw(eth_balance + 1, dest, 'ETH')
 
         # Enough GNTB
-        res = self.ets.withdraw(gntb_balance - 1, dest, 'GNT')
+        withdraw_gntb = 2 * denoms.ether
+        res = self.ets.withdraw(withdraw_gntb, dest, 'GNT')
         assert res == gntb_tx
         self.sci.convert_gntb_to_gnt.assert_called_once_with(
             dest,
-            gntb_balance - 1,
+            withdraw_gntb,
+            None,
+        )
+        self.sci.reset_mock()
+        gntb_balance -= withdraw_gntb
+
+        # Custom gas price
+        gas_price = 111
+        withdraw_gntb_custom_gas = 3 * denoms.ether
+        res = self.ets.withdraw(
+            withdraw_gntb_custom_gas,
+            dest,
+            'GNT',
+            gas_price,
+        )
+        assert res == gntb_tx
+        self.sci.convert_gntb_to_gnt.assert_called_once_with(
+            dest,
+            withdraw_gntb_custom_gas,
+            gas_price,
         )
         self.sci.on_transaction_confirmed.call_args[0][1](Mock(status=True))
         self.sci.reset_mock()
+        gntb_balance -= withdraw_gntb_custom_gas
 
         # Not enough GNTB
         with self.assertRaises(NotEnoughFunds):
@@ -193,7 +212,22 @@ class TestTransactionSystem(TransactionSystemBase):
         # Enough ETH
         res = self.ets.withdraw(eth_balance - 1, dest, 'ETH')
         assert res == eth_tx
-        self.sci.transfer_eth.assert_called_once_with(dest, eth_balance - 1)
+        self.sci.transfer_eth.assert_called_once_with(
+            dest,
+            eth_balance - 1,
+            None,
+        )
+        self.sci.reset_mock()
+
+        # Custom gas price
+        gas_price = 1111
+        res = self.ets.withdraw(eth_balance - 1, dest, 'ETH', gas_price)
+        assert res == eth_tx
+        self.sci.transfer_eth.assert_called_once_with(
+            dest,
+            eth_balance - 1,
+            gas_price,
+        )
         self.sci.reset_mock()
 
         # Enough ETH with lock
@@ -207,6 +241,7 @@ class TestTransactionSystem(TransactionSystemBase):
         self.sci.transfer_eth.assert_called_once_with(
             dest,
             eth_balance - locked_eth,
+            None,
         )
         self.sci.reset_mock()
 
@@ -219,7 +254,8 @@ class TestTransactionSystem(TransactionSystemBase):
         res = self.ets.withdraw(gntb_balance - locked_gnt, dest, 'GNT')
         self.sci.convert_gntb_to_gnt.assert_called_once_with(
             dest,
-            gntb_balance - 1,
+            gntb_balance - locked_gnt,
+            None,
         )
         self.sci.reset_mock()
 

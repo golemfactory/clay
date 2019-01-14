@@ -161,8 +161,8 @@ class TestClient(TestClientBase):
         ets = self.client.transaction_system
         ets.return_value = ets
         ets.return_value.eth_base_for_batch_payment.return_value = 0
-        self.client.withdraw('123', '0xdead', 'ETH')
-        ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH')
+        self.client.withdraw('123', '0xdead', 'ETH', 123)
+        ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH', 123)
 
     def test_get_withdraw_gas_cost(self, *_):
         dest = '0x' + 40 * '0'
