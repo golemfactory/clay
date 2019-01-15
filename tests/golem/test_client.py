@@ -917,6 +917,8 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             'in_network': 0,
             'supported': 0,
             'subtasks_computed': (0, 0),
+            'subtasks_accepted': (0, 0),
+            'subtasks_rejected': (0, 0),
             'subtasks_with_errors': (0, 0),
             'subtasks_with_timeout': (0, 0)
         }

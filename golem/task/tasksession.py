@@ -824,7 +824,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         ))
 
     @history.provider_history
-    def _react_to_subtask_result_accepted(
+    def _react_to_subtask_results_accepted(
             self, msg: message.tasks.SubtaskResultsAccepted):
         # The message must be verified, and verification requires self.key_id.
         # This assert is for mypy, which only knows that it's Optional[str].
@@ -840,10 +840,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.disconnect(message.base.Disconnect.REASON.BadProtocol)
             return
 
+        dispatcher.send(
+            signal='golem.message',
+            event='received',
+            message=msg
+        )
+
         self.concent_service.cancel_task_message(
             msg.subtask_id,
             'ForceSubtaskResults',
         )
+
         self.task_server.subtask_accepted(
             self.key_id,
             msg.subtask_id,
@@ -896,6 +903,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
 
         else:
+            dispatcher.send(
+                signal='golem.message',
+                event='received',
+                message=msg
+            )
+
             self.task_server.subtask_rejected(
                 sender_node_id=self.key_id,
                 subtask_id=subtask_id,
@@ -1144,7 +1157,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.resources.ResourceList:
                 self._react_to_resource_list,
             message.tasks.SubtaskResultsAccepted:
-                self._react_to_subtask_result_accepted,
+                self._react_to_subtask_results_accepted,
             message.tasks.SubtaskResultsRejected:
                 self._react_to_subtask_results_rejected,
             message.tasks.TaskFailure:

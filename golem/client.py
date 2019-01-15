@@ -872,24 +872,17 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             'provider_state': self.get_provider_status(),
             'in_network': self.get_task_count(),
             'supported': self.get_supported_task_count(),
-            'subtasks_computed': self.get_computed_task_count(),
-            'subtasks_with_errors': self.get_error_task_count(),
-            'subtasks_with_timeout': self.get_timeout_task_count()
+            'subtasks_computed': self.get_comp_stat('computed_tasks'),
+            'subtasks_accepted': self.get_provider_stat('provider_sra_cnt'),
+            'subtasks_rejected': self.get_provider_stat('provider_srr_cnt'),
+            'subtasks_with_errors': self.get_comp_stat('tasks_with_errors'),
+            'subtasks_with_timeout': self.get_comp_stat('tasks_with_timeout'),
         }
 
     def get_supported_task_count(self) -> int:
         if self.task_server:
             return len(self.task_server.task_keeper.supported_tasks)
         return 0
-
-    def get_computed_task_count(self):
-        return self.get_task_computer_stat('computed_tasks')
-
-    def get_timeout_task_count(self):
-        return self.get_task_computer_stat('tasks_with_timeout')
-
-    def get_error_task_count(self):
-        return self.get_task_computer_stat('tasks_with_errors')
 
     @rpc_utils.expose('comp.tasks.unsupport')
     def get_unsupport_reasons(self, last_days):
@@ -905,9 +898,14 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         address = self.transaction_system.get_payment_address()
         return str(address) if address else None
 
-    def get_task_computer_stat(self, name):
+    def get_comp_stat(self, name):
         if self.task_server and self.task_server.task_computer:
             return self.task_server.task_computer.stats.get_stats(name)
+        return None, None
+
+    def get_provider_stat(self, name):
+        if self.task_server and self.task_manager:
+            return self.task_manager.provider_stats_manager.get_stats(name)
         return None, None
 
     @rpc_utils.expose('pay.balance')

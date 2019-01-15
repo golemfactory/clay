@@ -1,6 +1,8 @@
 from typing import Any
 
 from golem_messages.message import WantToComputeTask, TaskToCompute
+from golem_messages.message.tasks import SubtaskResultsAccepted, \
+    SubtaskResultsRejected
 from pydispatch import dispatcher
 
 from golem.core.statskeeper import IntStatsKeeper
@@ -17,6 +19,9 @@ class ProviderStats:
         # WantToComputeTask [tx] to TaskToCompute [rx] delta time
         self.provider_wtct_to_ttc_delay_sum: int = 0
         self.provider_wtct_to_ttc_cnt: int = 0
+        # Verification messages count
+        self.provider_sra_cnt: int = 0
+        self.provider_srr_cnt: int = 0
         # Incomes
         self.provider_income_assigned_sum: int = 0
         self.provider_income_completed_sum: int = 0
@@ -47,8 +52,13 @@ class ProviderStatsManager:
 
         if event == 'sent' and isinstance(message, WantToComputeTask):
             self._on_wtct_message(message)
-        elif event == 'received' and isinstance(message, TaskToCompute):
-            self._on_ttc_message(message)
+        elif event == 'received':
+            if isinstance(message, TaskToCompute):
+                self._on_ttc_message(message)
+            elif isinstance(message, SubtaskResultsAccepted):
+                self._on_sra_message()
+            elif isinstance(message, SubtaskResultsRejected):
+                self._on_srr_message()
 
     def _on_wtct_message(self, message: WantToComputeTask) -> None:
         ProviderTTCDelayTimers.start(message.task_id)
@@ -67,6 +77,12 @@ class ProviderStatsManager:
         self.keeper.increase_stat('provider_wtct_to_ttc_cnt')
         self.keeper.increase_stat('provider_wtct_to_ttc_delay_sum', dt)
 
+    def _on_sra_message(self):
+        self.keeper.increase_stat('provider_sra_cnt')
+
+    def _on_srr_message(self):
+        self.keeper.increase_stat('provider_srr_cnt')
+
     # --- Subtask ---
 
     def _on_subtask_started(self, event='default', **kwargs) -> None:
@@ -83,3 +99,6 @@ class ProviderStatsManager:
         elif event == 'confirmed':
             self.keeper.increase_stat('provider_income_paid_sum',
                                       int(kwargs['amount']))
+
+    def get_stats(self, name):
+        return self.keeper.get_stats(name)
