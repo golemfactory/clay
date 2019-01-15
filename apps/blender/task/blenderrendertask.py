@@ -538,7 +538,8 @@ class BlenderRenderTask(FrameRenderingTask):
                       "path_root": self.main_scene_dir,
                       "start_task": 1,
                       "total_tasks": 1,
-                      "crops": crops
+                      "crops": crops,
+                      "script_filepath": "/golem/scripts/job.py",
                       }
 
         hash = "{}".format(random.getrandbits(128))

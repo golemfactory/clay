@@ -43,7 +43,6 @@
   "estimated_memory":0,
   "timeout":14400,
   "task_type":"Dummy",
-  "main_program_file":"$GOLEM_DIR/apps/dummy/resources/scripts/docker_dummytask.py",
   "subtask_timeout":1200,
   "subtasks_count":5,
   "max_price": 11,
