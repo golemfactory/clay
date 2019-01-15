@@ -102,7 +102,14 @@ setup(
 
 if not (in_appveyor() or in_travis() or
         building_wheel or building_binary):
-    DockerManager().pull_images()
+
+    docker_manager = DockerManager()
+
+    try:
+        DockerManager().pull_images()
+    except Exception as exc:  # pylint: disable=broad-except
+        print('Exception occurred:', exc)
+        DockerManager().build_images()
 
 if building_wheel:
     move_wheel()
