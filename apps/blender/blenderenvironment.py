@@ -9,7 +9,7 @@ from golem.environments.environment import SupportStatus, UnsupportReason
 
 class BlenderEnvironment(DockerEnvironment):
     DOCKER_IMAGE = "golemfactory/blender"
-    DOCKER_TAG = "igor_pr"
+    DOCKER_TAG = "1.7"
     ENV_ID = "BLENDER"
     SHORT_DESCRIPTION = "Blender (www.blender.org)"
 
