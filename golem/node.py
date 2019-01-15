@@ -498,6 +498,6 @@ class Node(HardwarePresetsMixin):
             exc_info = (err.type, err.value, err.getTracebackObject()) \
                 if isinstance(err, Failure) else None
             logger.error(
-                "Stopping because of %r error, run debug for more info", msg)
+                "Stopping because of %r error, run debug for more info: %r", msg, err)
             logger.debug("%r", err, exc_info=exc_info)
             self._reactor.callFromThread(self._reactor.stop)
