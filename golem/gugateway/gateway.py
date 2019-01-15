@@ -36,6 +36,24 @@ def _start(port: int):
         port, Site(WSGIResource(reactor, reactor.getThreadPool(), app)))
 
 
+# from flask import after_this_request
+# @app.before_request
+# def before():
+#     print(request.json)
+#
+#     @after_this_request
+#     def after(response):
+#         print(response)
+#         return response
+# def log_exception(e, **extra):
+#     # add all necessary log info here
+#     logger.info(f'dumping flask request: {request}, args: {request.args},'
+#                 f'json: {request.json}')
+#
+# from flask import got_request_exception
+# got_request_exception.connect(log_exception)
+
+
 def _json_response(msg: str, http_status_code: int = 200):
     return json.dumps({'msg': msg}), http_status_code
 
@@ -143,35 +161,17 @@ def want_to_compute_task(node_id, task_id):
 
     for s in subscriptions[node_id].values():
         if task_id in s.events:
-            # TODO: do we need it
             subscription = s
-            task = s.events[task_id].task
             break
     else:
         return _not_found(f'task {task_id}')
 
     try:
-        subscription.set_config_to(golem_client.task_server.config_desc)
-        golem_client.task_server.request_task(task_id, subscription.performance)
+        subscription.request_task(golem_client, task_id)
     except KeyError as e:
         return _not_found(f'task {e}')
 
-    # golem_client.task_server.task_computer.has_assigned_task():
-    #
-    # ctd = golem_client.task_server.task_computer.assigned_subtask
-    # print(repr(ctd))
-
-    return json.dumps({
-        'subtaskId': ctd['subtask_id'],
-        'description': 'some desc',
-        'resource': {
-            'resourceId': '87da97cd-234d-bc32-3d42-6e845eabffe0',
-            'metadata': '{"size": 123}'
-        },
-        'deadline': ctd['deadline'],
-        'price': 3,
-        'extraData': '{"foo": "bar"}'
-    })
+    return _json_response('OK')
 
 
 @app.route('/<node_id>/tasks/<task_id>', methods=['GET'])

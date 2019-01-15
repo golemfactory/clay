@@ -181,6 +181,8 @@ definitions:
           $ref: '#/definitions/Uuid'
         task:
           $ref: '#/definitions/Task'
+        subtask:
+          $ref: '#/definitions/Subtask'
         resource:
           $ref: '#/definitions/Resource'
         subtaskVerification:
@@ -294,9 +296,7 @@ paths:
       operationId: wantToComputeTask
       responses:
         '200':
-          description: subtask to compute
-          schema:
-            $ref: '#/definitions/Subtask'
+          description: OK
     get:
       summary: Gets task information
       operationId: taskInfo

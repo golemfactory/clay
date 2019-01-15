@@ -93,8 +93,9 @@ class TaskComputer(object):
 
     def task_given(self, ctd):
         if self.assigned_subtask is not None:
+            # TODO
             logger.error("Trying to assign a task, when it's already assigned")
-            return False
+            #return True
 
         ProviderTimer.start()
 
@@ -106,18 +107,26 @@ class TaskComputer(object):
         return True
 
     def has_assigned_task(self) -> bool:
-        return bool(self.assigned_subtask)
+        return False
 
     def task_resource_collected(self, task_id, unpack_delta=True):
         subtask = self.assigned_subtask
         if not subtask or subtask['task_id'] != task_id:
             logger.error("Resource collected for a wrong task, %s", task_id)
             return False
+
+        rs_dir = self.dir_manager.get_task_resource_dir(task_id)
         if unpack_delta:
-            rs_dir = self.dir_manager.get_task_resource_dir(task_id)
             self.task_server.unpack_delta(rs_dir, self.delta, task_id)
         self.delta = None
         self.last_task_timeout_checking = time.time()
+        dispatcher.send(
+            signal='golem.resource',
+            event='collected',
+            task_id=task_id,
+            subtask_id=subtask['subtask_id'],
+            path=rs_dir,
+        )
         # self.__compute_task(
         #     subtask['subtask_id'],
         #     subtask['docker_images'],

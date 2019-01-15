@@ -301,6 +301,7 @@ class TaskServer(
             event='started',
             subtask_id=ctd['subtask_id'],
             price=price,
+            ctd=ctd,
         )
         return True
 

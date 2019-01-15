@@ -61,6 +61,8 @@ class ThirstTimer(ActionTimer):
 
     @property
     def thirst(self):
+        if not self.finished:
+            return 0
         return self._thirst *\
             math.exp(-self._ALPHA * (time.time() - self._finished))
 

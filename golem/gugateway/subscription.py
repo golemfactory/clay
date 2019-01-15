@@ -1,8 +1,9 @@
 from collections import Counter
 from enum import auto, Enum
-import json
+from pydispatch import dispatcher
 from typing import Union, Dict, List, Optional
 
+from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 
@@ -52,8 +53,8 @@ class Task(object):
     """ Golem task representation for GU gateway. Just header values"""
 
     __slots__ = ['task_id', 'deadline', 'subtask_timeout', 'subtasks_count',
-                 'resource_size', 'estimated_memory', 'max_price', 'min_version'
-                 ]
+                 'resource_size', 'estimated_memory', 'max_price',
+                 'min_version']
 
     def __init__(self, header: dict):
         self.task_id = header['task_id']
@@ -78,20 +79,87 @@ class Task(object):
         }
 
 
+class Subtask(object):
+    """ Golem subtask representation for GU gateway"""
+
+    __slots__ = ['task_id', 'subtask_id', 'description', 'price', 'deadline',
+                 'docker_images', 'extra_data']
+
+    def __init__(self, **kwargs):
+        self.price = int(kwargs['price'])
+        ctd = kwargs['ctd']
+        self.task_id = ctd['task_id']
+        self.subtask_id = ctd['subtask_id']
+        self.description = ctd['short_description']
+        self.deadline: int = int(ctd['deadline'])
+        self.docker_images = ctd['docker_images']
+        self.extra_data: dict = ctd['extra_data']
+        self.extra_data['src_code'] = ctd['src_code']
+
+    def to_json_dict(self) -> dict:
+        return {
+            'taskId': self.task_id,
+            'subtaskId': self.subtask_id,
+            'description': self.description,
+            'price': self.price,
+            'deadline': self.deadline,
+            'docker_images': self.docker_images,
+            'extra_data': self.extra_data
+        }
+
+
+# TODO: assign uuid for download
+class Resource(object):
+
+    __slots__ = ['task_id', 'subtask_id', 'path']
+
+    def __init__(self, **kwargs):
+        self.task_id = kwargs['task_id']
+        self.subtask_id = kwargs['subtask_id']
+        self.path = kwargs['path']
+
+    def to_json_dict(self) -> dict:
+        return {
+            'taskId': self.task_id,
+            'subtaskId': self.subtask_id,
+            'path': self.path,
+        }
+
+
+# TODO
+class SubtaskVerification(object):
+
+    def __init__(self, **kwargs):
+        for key, value in kwargs.items():
+            setattr(self, key, value)
+
+    def to_json_dict(self) -> dict:
+        return self.__dict__
+
+
 class Event(object):
-    """Three types of events: task, resources and subtask verification result"""
+    """Events: task, subtask, resource and subtask verification result"""
 
-    __slots__ = ['event_id', 'task', 'resources', 'verification_res']
+    __slots__ = ['event_id', 'task', 'subtask', 'resource',
+                 'subtask_verification']
 
-    def __init__(self, event_id: int, task: Task):
+    def __init__(self, event_id: int, **kwargs):
+
         self.event_id = event_id
-        self.task: Task = task
-        # TODO: resource and verification
+        self.task: Optional[Task] = kwargs.get('task')
+        self.subtask: Optional[Subtask] = kwargs.get('subtask')
+        self.resource = kwargs.get('resource')
+        self.subtask_verification = kwargs.get('subtask_verification')
 
     def to_json_dict(self) -> dict:
         return {
             'eventId': self.event_id,
-            'task': self.task.to_json_dict()
+            'task': self.task and self.task.to_json_dict(),
+            'subtask': self.subtask and self.subtask.to_json_dict(),
+            'resource': self.resource and self.resource.to_json_dict(),
+            'subtaskVerification':
+                self.subtask_verification
+                and self.subtask_verification.to_json_dict()
         }
 
 
@@ -112,17 +180,42 @@ class Subscription(object):
         # TODO: events TTL and cleanup
         self.events: Dict[str, Event] = dict()
 
-    def _add_event(self, event_hash: str, event: Event):
-        self.events[event_hash] = event
+    def _add_event(self, event_hash: str, **kwargs):
+        event = Event(self.event_counter, **kwargs)
         self.event_counter += 1
+        self.events[event_hash] = event
 
     def add_task_event(self, task_id: str, header: dict):
         if task_id in self.events:
             return
 
-        self._add_event(task_id, Event(self.event_counter, Task(header)))
+        self._add_event(task_id, task=Task(header))
 
-    def increment(self, status: Union[TaskStatus, str]) -> str:
+    def request_task(self, golem_client: Client, task_id: str) -> None:
+        self.set_config_to(golem_client.task_server.config_desc)
+        golem_client.task_server.request_task(task_id, self.performance)
+        dispatcher.connect(self.add_subtask_event, signal='golem.subtask')
+        self.increment(TaskStatus.requested)
+
+    def add_subtask_event(self, event='default', **kwargs) -> None:
+        # print(f'sub event: {event}, {kwargs}')
+        if event == 'started':  # TODO and kwargs['ctd']['task_id'] == task_id:
+            subtask_id = kwargs['subtask_id']
+            self._add_event(subtask_id, subtask=Subtask(**kwargs))
+            dispatcher.disconnect(self.add_subtask_event,
+                                  signal='golem.subtask')
+            dispatcher.connect(self.add_resource_event,
+                               signal='golem.resource')
+
+    def add_resource_event(self, event='default', **kwargs) -> None:
+        # print(f'event: {event}, kwargs: {kwargs}')
+        subtask_id = kwargs['subtask_id']
+        if event == 'collected':  # TODO and kwargs['subtask_id'] == subtask_id:
+            self._add_event(f'rs-{subtask_id}', resource=Resource(**kwargs))
+            dispatcher.disconnect(self.add_resource_event,
+                                  signal='golem.resource')
+
+    def increment(self, status: Union[TaskStatus, str]) -> None:
         if isinstance(status, str):
             status = TaskStatus.match(status)
         self.stats.update([status.name])
