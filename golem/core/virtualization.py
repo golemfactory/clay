@@ -5,8 +5,10 @@ import subprocess
 from cpuinfo import get_cpu_info
 
 from golem.core.common import is_windows
+from golem.rpc import utils as rpc_utils
 
 
+@rpc_utils.expose('env.hw.virtualization')
 def is_virtualization_enabled() -> bool:
     """ Checks if hardware virtualization is available on this machine.
     Currently, this check is limited to Intel CPUs (VT and VT-x support).

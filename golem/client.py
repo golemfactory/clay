@@ -1374,11 +1374,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             logger.info('change hw config result: %r', result)
             return self.environments_manager.get_performance_values()
 
-    @rpc_utils.expose('env.hw.virtualization')
-    @staticmethod
-    def get_virtualization_support():
-        return is_virtualization_enabled()
-
     @staticmethod
     def enable_talkback(value):
         enable_sentry_logger(value)
