@@ -25,6 +25,29 @@ definitions:
     properties:
       msg:
         type: string
+  Subscription:
+    required:
+      - minPrice
+      - maxCpuCores
+      - maxMemorySize
+      - maxDiskSize
+    properties:
+      name:
+        type: string
+      minPrice:
+        type: integer
+        description: minimal accepted price in 10e-18 GNT
+      performance:
+        type: integer
+        format: float
+      maxCpuCores:
+        type: integer
+      maxMemorySize:
+        type: integer
+        description: max available RAM in KiB
+      maxDiskSize:
+        type: integer
+        description: max available disk in KiB
   SubscriptionStatus:
     required:
       - taskType
@@ -75,7 +98,7 @@ definitions:
       maxPrice:
         type: integer
         format: int64
-        description: in GNT/10e+18 per second of computation
+        description: in 10e-18 GNT per second of computation
       minVersion:
         type: string
         description: minimal Golem version
@@ -217,6 +240,12 @@ paths:
     put:
       summary: Creates or amends subscription to Golem network
       operationId: subscribe
+      parameters:
+        - name: body
+          in: body
+          required: true
+          schema:
+            $ref: '#/definitions/Subscription'
       responses:
         '201':
           description: subscription created

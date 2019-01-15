@@ -212,7 +212,8 @@ class TaskServer(
             env_id)
 
     # This method chooses random task from the network to compute on our machine
-    def request_task(self, task_id: Optional[str]) -> Optional[str]:
+    def request_task(self, task_id: Optional[str],
+                     performance: float) -> Optional[str]:
         if task_id is not None:
             theader = self.task_keeper.task_headers[task_id]
         else:
@@ -221,11 +222,12 @@ class TaskServer(
         if theader is None:
             return None
         try:
-            env = self.get_environment_by_id(theader.environment)
-            if env is not None:
-                performance = env.get_performance()
-            else:
-                performance = 0.0
+            if not performance:
+                env = self.get_environment_by_id(theader.environment)
+                if env is not None:
+                    performance = env.get_performance()
+                else:
+                    performance = 0.0
 
             supported = self.should_accept_requestor(theader.task_owner.key)
             if self.config_desc.min_price > theader.max_price:

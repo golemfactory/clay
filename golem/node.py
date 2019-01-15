@@ -476,7 +476,7 @@ class Node(HardwarePresetsMixin):
         )
         # pylint: enable=no-member
 
-        from .gugateway import gateway
+        from golem.gugateway import gateway
         gateway.start(self.client)
 
     def _setup_apps(self) -> None:

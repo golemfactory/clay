@@ -1,7 +1,9 @@
 from collections import Counter
 from enum import auto, Enum
 import json
-from typing import Union, Dict, List
+from typing import Union, Dict, List, Optional
+
+from golem.clientconfigdescriptor import ClientConfigDescriptor
 
 
 class TaskType(Enum):
@@ -96,10 +98,16 @@ class Event(object):
 class Subscription(object):
     """ Golem Unlimited Gateway subscription"""
 
-    def __init__(self, task_type: TaskType):
+    def __init__(self, task_type: TaskType, request_body):
         self.task_type: TaskType = task_type
+        self.name = request_body.get('name', '')
+        self.min_price = int(request_body['minPrice'])
+        self.performance = float(request_body.get('performance', 0.0))
+        self.max_cpu_cores = int(request_body['maxCpuCores'])
+        self.max_memory_size = int(request_body['maxMemorySize'])
+        self.max_disk_size = int(request_body['maxDiskSize'])
         self.stats: Counter = Counter()
-        # self.tasks: Dict[str, Task] = dict()
+
         self.event_counter: int = 0
         # TODO: events TTL and cleanup
         self.events: Dict[str, Event] = dict()
@@ -122,6 +130,12 @@ class Subscription(object):
     def to_json_dict(self) -> dict:
         return {
             'taskType': self.task_type.name,
+            'name': self.name,
+            'minPrice': self.min_price,
+            'performance': self.performance,
+            'maxCpuCores': self.max_cpu_cores,
+            'maxMemorySize': self.max_memory_size,
+            'maxDiskSize': self.max_disk_size,
             'taskStats': dict(self.stats)
         }
 
@@ -133,4 +147,11 @@ class Subscription(object):
             raise KeyError(f'event id {event_id} should be less than '
                            f'{self.event_counter}')
         return [e for e in self.events.values() if e.event_id > event_id]
+
+    def set_config_to(self, config_desc: ClientConfigDescriptor):
+        config_desc.node_name = self.name
+        config_desc.min_price = self.min_price
+        config_desc.num_cores = self.max_cpu_cores
+        config_desc.max_memory_size = self.max_memory_size
+        config_desc.max_resource_size = self.max_disk_size
 

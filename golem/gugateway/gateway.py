@@ -89,7 +89,7 @@ def subscribe(node_id: str, task_type: str):
         return _invalid_input(e)
 
     if task_type not in subscriptions[node_id]:
-        subscription = Subscription(task_type)
+        subscription = Subscription(task_type, request.json)
         subscriptions[node_id][task_type] = subscription
         status_code = 201
     else:
@@ -145,13 +145,15 @@ def want_to_compute_task(node_id, task_id):
     for s in subscriptions[node_id].values():
         if task_id in s.events:
             # TODO: do we need it
+            subscription = s
             task = s.events[task_id].task
             break
     else:
         return _not_found(f'task {task_id}')
 
     try:
-        golem_client.task_server.request_task(task_id)
+        subscription.set_config_to(golem_client.task_server.config_desc)
+        golem_client.task_server.request_task(task_id, subscription.performance)
     except KeyError as e:
         return _not_found(f'task {e}')
 
