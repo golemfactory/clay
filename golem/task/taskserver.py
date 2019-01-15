@@ -286,7 +286,8 @@ class TaskServer(
                 self.task_archiver.add_support_status(theader.task_id,
                                                       supported)
         except Exception as err:
-            logger.warning("Cannot send request for task: {}".format(err))
+            logger.warning(f'Cannot send request for task: {err}'
+                           f'{err.getTracebackObject()}')
             self.task_keeper.remove_task_header(theader.task_id)
 
         return None
