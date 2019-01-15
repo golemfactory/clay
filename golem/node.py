@@ -6,6 +6,7 @@ from typing import (
     Any,
     Callable,
     cast,
+    Dict,
     List,
     Optional,
     TypeVar,
@@ -326,8 +327,8 @@ class Node(HardwarePresetsMixin):
 
         return ShutdownResponse.on
 
-    def get_rpc_mapping(self) -> dict:
-        mapping = {}
+    def get_rpc_mapping(self) -> Dict[str, Callable]:
+        mapping: Dict[str, Callable] = {}
         rpc_providers = (
             self,
             virtualization,
