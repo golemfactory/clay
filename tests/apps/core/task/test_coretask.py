@@ -22,7 +22,6 @@ from golem.tools.testdirfixture import TestDirFixture
 
 def env_with_file(_self):
     env = environment.Environment()
-    env.main_program_file = "abcde"
     return env
 
 

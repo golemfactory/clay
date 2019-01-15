@@ -37,15 +37,10 @@ def _get_test_exr(alt=False):
 class RenderingTaskMock(RenderingTask):
 
     class ENVIRONMENT_CLASS(object):
-        main_program_file = None
         docker_images = []
 
         def get_id(self):
             return "TEST"
-
-    def __init__(self, main_program_file, *args, **kwargs):
-        self.ENVIRONMENT_CLASS.main_program_file = main_program_file
-        super(RenderingTaskMock, self).__init__(*args, **kwargs)
 
     def query_extra_data(*args, **kwargs):
         pass
@@ -70,7 +65,6 @@ class TestRenderingTask(TestDirFixture, LogTestCase):
         task_definition.output_format = ".png"
 
         task = RenderingTaskMock(
-            main_program_file=files[0],
             task_definition=task_definition,
             total_tasks=100,
             root_path=self.path,
@@ -359,7 +353,6 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
     def test_build_definition_minimal(self):
         # given
         defaults_mock = Mock()
-        defaults_mock.main_program_file = "src_code.py"
         tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition,
                                defaults_mock, Options, RenderingTaskBuilder)
         tti.output_file_ext = 'txt'
@@ -385,7 +378,6 @@ class TestBuildDefinition(TestDirFixture, LogTestCase):
     def setUp(self):
         super().setUp()
         defaults_mock = Mock()
-        defaults_mock.main_program_file = "src_code.py"
         self.tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition,
                                     defaults_mock, Options,
                                     RenderingTaskBuilder)
