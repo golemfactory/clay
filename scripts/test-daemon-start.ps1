@@ -1,5 +1,7 @@
 "Ensure hyperg is started"
 
+New-Variable -Name workDir -Value C:\BuildResources\hyperg
+
 $HyperdriveProcess = Get-Process hyperg -ErrorAction SilentlyContinue
 
 if ($HyperdriveProcess) {
@@ -7,7 +9,11 @@ if ($HyperdriveProcess) {
 }
 
 "Starting..."
-$HyperdriveProcess = Start-Process C:\BuildResources\hyperg\hyperg.exe -WorkingDirectory C:\Users\buildbot-worker -PassThru
+
+$env:Path += ";$workDir"
+$env:SEE_MASK_NOZONECHECKS = 1
+
+$HyperdriveProcess = Start-Process $workDir\hyperg.exe -WorkingDirectory $workDir -PassThru
 
 $HyperdriveProcess
 
