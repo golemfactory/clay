@@ -11,7 +11,7 @@ from golem.tools.ci import ci_skip
 class DockerTestCase(unittest.TestCase):
 
     TEST_REPOSITORY = "golemfactory/base"
-    TEST_TAG = "1.3"
+    TEST_TAG = "1.4"
     TEST_IMAGE = "{}:{}".format(TEST_REPOSITORY, TEST_TAG)
     TEST_ENV_ID = None
 
