@@ -122,8 +122,6 @@ function check_dependencies()
         info_msg "Already installed: nvidia-docker2"
     fi
 
-    INSTALL_NVIDIA_DOCKER=1
-
     # Check for nvidia-modprobe
     if [[ ${INSTALL_NVIDIA_DOCKER} -eq 1 ]]; then
         if [[ -z "$(which nvidia-modprobe)" ]]; then
