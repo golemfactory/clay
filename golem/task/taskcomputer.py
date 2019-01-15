@@ -27,6 +27,7 @@ from .taskthread import TaskThread
 
 if TYPE_CHECKING:
     from .taskserver import TaskServer  # noqa pylint:disable=unused-import
+    from golem_messages.message.tasks import ComputeTaskDef  # noqa pylint:disable=unused-import
 
 
 logger = logging.getLogger(__name__)
@@ -81,7 +82,7 @@ class TaskComputer(object):
 
         self.stats = IntStatsKeeper(CompStats)
 
-        self.assigned_subtask: Optional[Dict[str, Any]] = None
+        self.assigned_subtask: Optional['ComputeTaskDef'] = None
 
         self.delta = None
         self.last_task_timeout_checking = None
@@ -91,7 +92,7 @@ class TaskComputer(object):
             and not task_server.config_desc.in_shutdown
         self.finished_cb = finished_cb
 
-    def task_given(self, ctd):
+    def task_given(self, ctd: 'ComputeTaskDef'):
         if self.assigned_subtask is not None:
             logger.error("Trying to assign a task, when it's already assigned")
             return False
@@ -399,7 +400,7 @@ class TaskComputer(object):
 
         tt.start().addBoth(lambda _: self.task_computed(tt))
 
-    def __task_finished(self, ctd: dict) -> None:
+    def __task_finished(self, ctd: 'ComputeTaskDef') -> None:
 
         ProviderTimer.finish()
         dispatcher.send(
