@@ -7,15 +7,12 @@ import time
 from collections import OrderedDict
 from copy import copy
 from typing import Optional, Type
-
-import numpy
 from PIL import Image, ImageChops, ImageFile
 
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 from apps.blender.blenderenvironment import BlenderEnvironment, \
     BlenderNVGPUEnvironment
-from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import \
@@ -23,7 +20,8 @@ from apps.rendering.resources.renderingtaskcollector import \
 from apps.rendering.resources.utils import handle_image_error, handle_none
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, \
     FrameRenderingTaskBuilder, FrameRendererOptions
-from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, PREVIEW_Y
+from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, \
+    PREVIEW_Y
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, \
     RendererDefaults
 from golem.core.common import short_node_id, to_unicode
@@ -32,7 +30,7 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import TaskPurpose, TaskTypeInfo
 from golem.task.taskstate import SubtaskStatus, TaskStatus
-from golem_verificator.blender_verifier import BlenderVerifier
+from golem.verificator.blender_verifier import BlenderVerifier
 
 # Allow loading truncated images.
 # https://github.com/golemfactory/golem/issues/2059
@@ -46,16 +44,13 @@ class BlenderDefaults(RendererDefaults):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
 
-        self.main_program_file = BlenderEnvironment().main_program_file
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 6
 
 
 class BlenderNVGPUDefaults(BlenderDefaults):
-    def __init__(self):
-        super().__init__()
-        self.main_program_file = BlenderNVGPUEnvironment().main_program_file
+    pass
 
 
 class PreviewUpdater(object):
@@ -186,7 +181,6 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         :return list: list of pixels that belong to a subtask border
         """
         start_task = subtask.extra_data['start_task']
-        end_task = subtask.extra_data['end_task']
         frames = len(definition.options.frames)
         res_x, res_y = definition.resolution
 
@@ -196,7 +190,7 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
             method = cls.__get_border
 
         if not definition.options.use_frames:
-            return method(start_task, end_task, subtasks_count, res_x, res_y)
+            return method(start_task, subtasks_count, res_x, res_y)
         elif subtasks_count <= frames:
             if not as_path:
                 return []
@@ -209,16 +203,14 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
 
         parts = int(subtasks_count / frames)
         return method((start_task - 1) % parts + 1,
-                      (end_task - 1) % parts + 1,
                       parts, res_x, res_y)
 
     @classmethod
-    def __get_border(cls, start, end, parts, res_x, res_y):
+    def __get_border(cls, start, parts, res_x, res_y):
         """
         Return list of pixels that should be marked as a border of subtasks
         with numbers between start and end.
         :param int start: number of first subtask
-        :param int end: number of last subtask
         :param int parts: number of parts for single frame
         :param int res_x: image resolution width
         :param int res_y: image resolution height
@@ -232,7 +224,7 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         x = int(math.floor(res_x * scale_factor))
 
         upper = offsets[start]
-        lower = offsets[end + 1]
+        lower = offsets[start + 1]
         for i in range(upper, lower):
             border.append((0, i))
             border.append((x, i))
@@ -242,12 +234,11 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         return border
 
     @classmethod
-    def __get_border_path(cls, start, end, parts, res_x, res_y):
+    def __get_border_path(cls, start, parts, res_x, res_y):
         """
         Return list of points that make a border of subtasks with numbers
         between start and end.
         :param int start: number of first subtask
-        :param int end: number of last subtask
         :param int parts: number of parts for single frame
         :param int res_x: image resolution width
         :param int res_y: image resolution height
@@ -261,7 +252,7 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
 
         x = int(math.floor(res_x * scale_factor))
         upper = offsets[start]
-        lower = max(0, offsets[end + 1] - 1)
+        lower = max(0, offsets[start + 1] - 1)
 
         return [(0, upper), (x, upper),
                 (x, lower), (0, lower)]
@@ -386,15 +377,6 @@ class BlenderRenderTask(FrameRenderingTask):
         # https://github.com/golemfactory/golem/issues/2388
         self.compositing = False
         self.samples = task_definition.options.samples
-        return
-
-        self.compositing = task_definition.options.compositing \
-            and self.use_frames \
-            and (self.total_tasks <= len(self.frames))
-        if self.compositing != task_definition.options.compositing:
-            logger.warning("Task %s: Compositing not supported "
-                           "for this type of task, turning compositing off",
-                           task_definition.task_id)
 
     def initialize(self, dir_manager):
         super(BlenderRenderTask, self).initialize(dir_manager)
@@ -437,7 +419,7 @@ class BlenderRenderTask(FrameRenderingTask):
                          node_name: Optional[str] = None) \
             -> FrameRenderingTask.ExtraData:
 
-        start_task, end_task = self._get_next_task()
+        start_task = self._get_next_task()
         scene_file = self._get_scene_file_rel_path()
 
         if self.use_frames:
@@ -450,36 +432,31 @@ class BlenderRenderTask(FrameRenderingTask):
         if not self.use_frames:
             min_y, max_y = self._get_min_max_y(start_task)
         elif parts > 1:
-            min_y = (parts - self._count_part(start_task, parts)) * (
-                1.0 / parts)
-            max_y = (parts - self._count_part(start_task, parts) + 1) * (
-                1.0 / parts)
+            min_y = (parts - self._count_part(start_task, parts)) \
+                    * (1.0 / parts)
+            max_y = (parts - self._count_part(start_task, parts) + 1) \
+                * (1.0 / parts)
         else:
             min_y = 0.0
             max_y = 1.0
 
-        #  Blender is using single precision math, we use numpy to emulate this.
-        #  Send already converted values to blender.
-        min_y = numpy.float32(min_y)
-        max_y = numpy.float32(max_y)
-
-        script_src = generate_blender_crop_file(
-            resolution=(self.res_x, self.res_y),
-            borders_x=(0.0, 1.0),
-            borders_y=(min_y, max_y),
-            use_compositing=self.compositing,
-            samples=self.samples
-        )
-
-        extra_data = {"path_root": self.main_scene_dir,
-                      "start_task": start_task,
-                      "end_task": end_task,
-                      "total_tasks": self.total_tasks,
-                      "outfilebasename": self.outfilebasename,
-                      "scene_file": scene_file,
-                      "script_src": script_src,
+        crops = [
+            {"outfilebasename": "{}_{}".format(
+                self.outfilebasename, start_task),
+             "borders_x": [0.0, 1.0],
+             "borders_y": [min_y, max_y]}
+        ]
+        extra_data = {"scene_file": scene_file,
+                      "resolution": [self.res_x, self.res_y],
+                      "use_compositing": self.compositing,
+                      "samples": self.samples,
                       "frames": frames,
                       "output_format": self.output_format,
+                      "path_root": self.main_scene_dir,
+                      "start_task": start_task,
+                      "total_tasks": self.total_tasks,
+                      "crops": crops,
+                      "script_filepath": "/golem/scripts/job.py",
                       }
 
         subtask_id = self.create_subtask_id()
@@ -546,23 +523,23 @@ class BlenderRenderTask(FrameRenderingTask):
 
         scene_file = self._get_scene_file_rel_path()
 
-        script_src = generate_blender_crop_file(
-            resolution=BlenderRenderTask.BLENDER_MIN_BOX,
-            borders_x=(0.0, 1.0),
-            borders_y=(0.0, 1.0),
-            use_compositing=False,
-            samples=BlenderRenderTask.BLENDER_MIN_SAMPLE
-        )
+        crops = [
+            {"outfilebasename": "testresult_1",
+             "borders_x": [0.0, 1.0],
+             "borders_y": [0.0, 1.0]}
+        ]
 
-        extra_data = {"path_root": self.main_scene_dir,
-                      "start_task": 1,
-                      "end_task": 1,
-                      "total_tasks": 1,
-                      "outfilebasename": "testresult",
-                      "scene_file": scene_file,
-                      "script_src": script_src,
+        extra_data = {"scene_file": scene_file,
+                      "resolution": BlenderRenderTask.BLENDER_MIN_BOX,
+                      "use_compositing": False,
+                      "samples": BlenderRenderTask.BLENDER_MIN_SAMPLE,
                       "frames": [1],
-                      "output_format": "PNG"
+                      "output_format": "PNG",
+                      "path_root": self.main_scene_dir,
+                      "start_task": 1,
+                      "total_tasks": 1,
+                      "crops": crops,
+                      "script_filepath": "/golem/scripts/job.py",
                       }
 
         hash = "{}".format(random.getrandbits(128))

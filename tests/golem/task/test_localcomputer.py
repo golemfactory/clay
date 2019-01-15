@@ -5,6 +5,8 @@ from pathlib import Path
 
 from golem_messages.message import ComputeTaskDef
 
+from golem.docker.manager import DockerManager
+from golem.docker.task_thread import DockerTaskThread
 from golem.task.localcomputer import LocalComputer
 from golem.task.taskbase import Task
 from golem.tools.ci import ci_skip
@@ -29,6 +31,12 @@ class TestLocalComputer(TestDirFixture):
 
     def test_computer(self):
 
+        dm = DockerTaskThread.docker_manager = DockerManager.install()
+        dm.update_config(
+            status_callback=mock.Mock(),
+            done_callback=mock.Mock(),
+            work_dir=self.new_path,
+            in_background=True)
         files = self.additional_dir_content([1])
         lc = LocalComputer(root_path=self.path,
                            success_callback=self._success_callback,
@@ -39,6 +47,7 @@ class TestLocalComputer(TestDirFixture):
         assert self.last_error is not None
         assert self.last_result is None
         assert self.error_counter == 1
+        assert self.success_counter == 0
 
         lc = LocalComputer(root_path=self.path,
                            success_callback=self._success_callback,
@@ -127,6 +136,8 @@ class TestLocalComputer(TestDirFixture):
         ctd['docker_images'] = [
             di.to_dict() for di in BlenderEnvironment().docker_images
         ]
+        # Hack, we don't really need to execute any script here
+        ctd['extra_data']['script_filepath'] = '--version'
         return ctd
 
     def _success_callback(self, result, time_spent):

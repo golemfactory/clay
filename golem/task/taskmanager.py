@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional, Dict, List, Iterable
 from zipfile import ZipFile
 
+from golem_messages.datastructures import tasks as dt_tasks
 from golem_messages.message import ComputeTaskDef
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
@@ -21,17 +22,20 @@ from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
 from golem.network.transport.tcpnetwork import SocketAddress
+from golem.ranking.manager.database_manager import update_provider_efficiency, \
+    update_provider_efficacy
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import \
     HyperdriveResourceManager
 from golem.rpc import utils as rpc_utils
 from golem.task.result.resultmanager import EncryptedResultPackageManager
-from golem.task.taskbase import TaskEventListener, Task, TaskHeader,\
+from golem.task.taskbase import TaskEventListener, Task, \
     TaskPurpose, AcceptClientVerdict
-from golem.task.taskkeeper import CompTaskKeeper
+from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
 from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     SubtaskState, Operation, TaskOp, SubtaskOp, OtherOp
+from golem.task.timer import ProviderComputeTimers
 
 logger = logging.getLogger(__name__)
 
@@ -80,8 +84,7 @@ class TaskManager(TaskEventListener):
         pass
 
     def __init__(
-            self, node_name, node, keys_auth, listen_address="",
-            listen_port=0, root_path="res", use_distributed_resources=True,
+            self, node, keys_auth, root_path,
             tasks_dir="tasks", task_persistence=True,
             apps_manager=AppsManager(), finished_cb=None):
         super().__init__()
@@ -91,17 +94,12 @@ class TaskManager(TaskEventListener):
         task_types = [app.task_type_info() for app in apps]
         self.task_types = {t.name.lower(): t for t in task_types}
 
-        self.node_name = node_name
         self.node = node
         self.keys_auth = keys_auth
-        self.key_id = keys_auth.key_id
 
         self.tasks: Dict[str, Task] = {}
         self.tasks_states: Dict[str, TaskState] = {}
         self.subtask2task_mapping: Dict[str, str] = {}
-
-        self.listen_address = listen_address
-        self.listen_port = listen_port
 
         self.task_persistence = task_persistence
 
@@ -122,7 +120,6 @@ class TaskManager(TaskEventListener):
 
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
                              TaskStatus.waiting]
-        self.use_distributed_resources = use_distributed_resources
 
         self.comp_task_keeper = CompTaskKeeper(
             tasks_dir,
@@ -171,15 +168,9 @@ class TaskManager(TaskEventListener):
         if task_id in self.tasks:
             raise RuntimeError("Task {} has been already added"
                                .format(task.header.task_id))
-        if not self.key_id:
-            raise ValueError("'key_id' is not set")
-        if not SocketAddress.is_proper_address(self.listen_address,
-                                               self.listen_port):
-            raise IOError("Incorrect socket address: %s:%s" % (
-                self.listen_address, self.listen_port))
 
-        task.header.fixed_header.task_owner = self.node
-        task.header.signature = self.sign_task_header(task.header)
+        task.header.task_owner = self.node
+        self.sign_task_header(task.header)
 
         task.create_reference_data_for_task_validation()
         task.register_listener(self)
@@ -209,7 +200,7 @@ class TaskManager(TaskEventListener):
         except ValueError:
             logger.exception('Wrong number of bits for mask increase')
         else:
-            task.header.signature = self.sign_task_header(task.header)
+            self.sign_task_header(task.header)
 
     @handle_task_key_error
     def decrease_task_mask(self, task_id: str, num_bits: int = 1) -> None:
@@ -220,13 +211,13 @@ class TaskManager(TaskEventListener):
         except ValueError:
             logger.exception('Wrong number of bits for mask decrease')
         else:
-            task.header.signature = self.sign_task_header(task.header)
+            self.sign_task_header(task.header)
 
     @handle_task_key_error
     def start_task(self, task_id):
         task_state = self.tasks_states[task_id]
 
-        if task_state.status != TaskStatus.notStarted:
+        if not task_state.status.is_preparing():
             raise RuntimeError("Task {} has already been started"
                                .format(task_id))
 
@@ -294,7 +285,13 @@ class TaskManager(TaskEventListener):
                     task: Task
                     state: TaskState
                     task, state = pickle.load(f)
-
+                except Exception:  # pylint: disable=broad-except
+                    logger.exception('Problem restoring task from: %s', path)
+                    # On Windows, attempting to remove a file that is in use
+                    # causes an exception to be raised, therefore
+                    # we'll remove broken files later
+                    broken_paths.add(path)
+                else:
                     TaskManager._migrate_status_to_enum(state)
 
                     task.register_listener(self)
@@ -307,13 +304,6 @@ class TaskManager(TaskEventListener):
                         self.subtask2task_mapping[sub.subtask_id] = task_id
 
                     logger.debug('TASK %s RESTORED from %r', task_id, path)
-                except (pickle.UnpicklingError, EOFError, ImportError,
-                        KeyError):
-                    logger.exception('Problem restoring task from: %s', path)
-                    # On Windows, attempting to remove a file that is in use
-                    # causes an exception to be raised, therefore
-                    # we'll remove broken files later
-                    broken_paths.add(path)
 
             if task_id is not None:
                 self.notice_task_updated(task_id, op=TaskOp.RESTORED,
@@ -436,7 +426,7 @@ class TaskManager(TaskEventListener):
 
         self.subtask2task_mapping[ctd['subtask_id']] = task_id
         self.__add_subtask_to_tasks_states(
-            node_name, node_id, ctd, address,
+            node_name, node_id, ctd, address, price,
         )
         self.notice_task_updated(task_id,
                                  subtask_id=ctd['subtask_id'],
@@ -448,10 +438,11 @@ class TaskManager(TaskEventListener):
             ctd,
         )
 
+        ProviderComputeTimers.start(ctd['subtask_id'])
         return ctd
 
-    def is_my_task(self, task_id) -> bool:
-        """ Check if the task_id is known by this node """
+    def is_my_task(self, task_id: str) -> bool:
+        """ Check if the task ID is known by this node. """
         return task_id in self.tasks
 
     def should_wait_for_node(self, task_id, node_id) -> bool:
@@ -554,6 +545,7 @@ class TaskManager(TaskEventListener):
                 node_name=None,
                 node_id=None,
                 address=None,
+                price=0,
                 ctd=extra_data.ctd)
             new_subtasks_ids.append(new_subtask_id)
 
@@ -628,8 +620,6 @@ class TaskManager(TaskEventListener):
                 self.__set_subtask_state_finished(new_subtask_id)
             old_subtask_state = self.tasks_states[old_task_id] \
                 .subtask_states[old_subtask_id]
-            new_subtask_state.computer = \
-                copy.deepcopy(old_subtask_state.computer)
 
             self.notice_task_updated(
                 task_id=new_task_id,
@@ -659,49 +649,28 @@ class TaskManager(TaskEventListener):
 
     def update_task_signatures(self):
         for task in list(self.tasks.values()):
-            task.header.signature = self.sign_task_header(task.header)
+            self.sign_task_header(task.header)
 
     def sign_task_header(self, task_header):
-        return self.keys_auth.sign(task_header.to_binary())
+        task_header.sign(private_key=self.keys_auth._private_key)  # noqa pylint: disable=protected-access
 
     def verify_subtask(self, subtask_id):
+        logger.debug("verify_subtask. subtask_id=%r", subtask_id)
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
             return self.tasks[task_id].verify_subtask(subtask_id)
         else:
             return False
 
-    def is_this_my_task(self, header: TaskHeader) -> bool:
-        return header.task_id in self.tasks or \
-               header.task_owner.key == self.node.key
-
     def get_node_id_for_subtask(self, subtask_id):
         if subtask_id not in self.subtask2task_mapping:
             return None
         task = self.subtask2task_mapping[subtask_id]
         subtask_state = self.tasks_states[task].subtask_states[subtask_id]
-        return subtask_state.computer.node_id
+        return subtask_state.node_id
 
     @handle_subtask_key_error
-    def set_subtask_value(self, subtask_id: str, price: int) -> None:
-        """Set price for a subtask"""
-        task_id = self.subtask2task_mapping[subtask_id]
-
-        ss = self.tasks_states[task_id].subtask_states[subtask_id]
-        ss.value = price
-
-    @handle_subtask_key_error
-    def get_value(self, subtask_id):
-        """ Return value of a given subtask
-        :param subtask_id:  id of a computed subtask
-        :return long: price that should be paid for given subtask
-        """
-        task_id = self.subtask2task_mapping[subtask_id]
-        value = self.tasks_states[task_id].subtask_states[subtask_id].value
-        return value
-
-    @handle_subtask_key_error
-    def computed_task_received(self, subtask_id, result, result_type,
+    def computed_task_received(self, subtask_id, result,
                                verification_finished):
         task_id = self.subtask2task_mapping[subtask_id]
 
@@ -753,7 +722,7 @@ class TaskManager(TaskEventListener):
             verification_finished()
 
         self.tasks[task_id].computation_finished(
-            subtask_id, result, result_type, verification_finished_
+            subtask_id, result, verification_finished_
         )
 
     @handle_subtask_key_error
@@ -824,7 +793,7 @@ class TaskManager(TaskEventListener):
             th = t.header
             if self.tasks_states[th.task_id].status not in self.activeStatus:
                 continue
-            cur_time = get_timestamp_utc()
+            cur_time = int(get_timestamp_utc())
             # Check subtask timeout
             ts = self.tasks_states[th.task_id]
             for s in list(ts.subtask_states.values()):
@@ -834,7 +803,7 @@ class TaskManager(TaskEventListener):
                                     s.subtask_id,
                                     s.subtask_status.value)
                         s.subtask_status = SubtaskStatus.failure
-                        nodes_with_timeouts.append(s.computer.node_id)
+                        nodes_with_timeouts.append(s.node_id)
                         t.computation_failed(s.subtask_id)
                         s.stderr = "[GOLEM] Timeout"
                         self.notice_task_updated(th.task_id,
@@ -864,9 +833,7 @@ class TaskManager(TaskEventListener):
                     t.get_total_tasks(),
                     t.get_active_tasks(),
                     t.get_progress(),
-                    t.short_extra_data_repr(task_state.extra_data)
-                )  # FIXME in short_extra_data_repr should there be extra data
-                # Issue #2460
+                )
                 tasks_progresses[task_id] = ltss
 
         return tasks_progresses
@@ -1004,10 +971,6 @@ class TaskManager(TaskEventListener):
             return None
         return task.get_subtasks(frame)
 
-    def change_config(self, root_path, use_distributed_resource_management):
-        self.dir_manager = DirManager(root_path)
-        self.use_distributed_resources = use_distributed_resource_management
-
     def get_task_id(self, subtask_id):
         return self.subtask2task_mapping[subtask_id]
 
@@ -1073,14 +1036,6 @@ class TaskManager(TaskEventListener):
         """ Add a header of a task which this node may try to compute """
         self.comp_task_keeper.add_request(theader, price)
 
-    @handle_task_key_error
-    def get_payment_for_task_id(self, task_id):
-        val = 0.0
-        t = self.tasks_states[task_id]
-        for ss in list(t.subtask_states.values()):
-            val += ss.value
-        return val
-
     def get_estimated_cost(self, task_type, options):
         try:
             subtask_value = options['price'] * options['subtask_time']
@@ -1090,26 +1045,20 @@ class TaskManager(TaskEventListener):
             return None
 
     def __add_subtask_to_tasks_states(self, node_name, node_id,
-                                      ctd, address):
+                                      ctd, address, price: int):
 
         logger.debug('add_subtask_to_tasks_states(%r, %r, %r, %r)',
                      node_name, node_id, ctd, address)
 
-        price = self.tasks[ctd['task_id']].header.max_price
-
         ss = SubtaskState()
-        ss.computer.node_id = node_id
-        ss.computer.node_name = node_name
-        ss.computer.performance = ctd['performance']
-        ss.computer.ip_address = address
-        ss.computer.price = price
         ss.time_started = time.time()
+        ss.node_id = node_id
+        ss.node_name = node_name
         ss.deadline = ctd['deadline']
-        ss.subtask_definition = ctd['short_description']
         ss.subtask_id = ctd['subtask_id']
         ss.extra_data = ctd['extra_data']
         ss.subtask_status = SubtaskStatus.starting
-        ss.value = 0
+        ss.price = price
 
         (self.tasks_states[ctd['task_id']].
             subtask_states[ctd['subtask_id']]) = ss
@@ -1164,6 +1113,91 @@ class TaskManager(TaskEventListener):
             op=op,
         )
 
+        self._stop_timers(task_id, subtask_id, op)
+        self._update_subtask_statistics(task_id, subtask_id, op)
+
         if self.finished_cb and persist and op \
                 and op.task_related() and op.is_completed():
             self.finished_cb()
+
+    def _stop_timers(self, task_id: str,
+                     subtask_id: Optional[str] = None,
+                     op: Optional[Operation] = None):
+
+        if subtask_id and isinstance(op, SubtaskOp) and op.is_completed():
+            ProviderComputeTimers.finish(subtask_id)
+
+        elif isinstance(op, TaskOp) and op in (
+                TaskOp.ABORTED,
+                TaskOp.TIMEOUT,
+                TaskOp.RESTARTED
+        ):
+            for _subtask_id in self.tasks_states[task_id].subtask_states:
+                ProviderComputeTimers.finish(_subtask_id)
+
+    def _update_subtask_statistics(self, task_id: str,
+                                   subtask_id: Optional[str] = None,
+                                   op: Optional[Operation] = None) -> None:
+
+        # Skip if subtask is not completed
+        if not (subtask_id and isinstance(op, SubtaskOp) and op.is_completed()):
+            return
+
+        try:
+            self._update_provider_statistics(task_id, subtask_id, op)
+        except (KeyError, ValueError) as e:
+            logger.error("Unable to update statistics for subtask %s: %r",
+                         subtask_id, e)
+
+        try:
+            self._update_provider_reputation(task_id, subtask_id, op)
+        except (KeyError, ValueError) as e:
+            logger.error("Unable to update reputation for subtask %s: %r",
+                         subtask_id, e)
+
+        # We're done processing the subtask
+        ProviderComputeTimers.remove(subtask_id)
+
+    def _update_provider_statistics(self, task_id: str,
+                                    subtask_id: str,
+                                    op: SubtaskOp) -> None:
+
+        header = self.tasks[task_id].header
+        subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
+
+        computation_price = compute_subtask_value(subtask_state.price,
+                                                  header.subtask_timeout)
+        computation_time = ProviderComputeTimers.time(subtask_id)
+
+        if not computation_time:
+            raise ValueError("Invalid value for computation_time: "
+                             f"{computation_time}")
+
+        computation_time = int(round(computation_time))
+
+        dispatcher.send(
+            signal='golem.subtask',
+            event='finished',
+            timed_out=(op == SubtaskOp.TIMEOUT),
+            subtask_count=header.subtasks_count,
+            subtask_timeout=header.subtask_timeout,
+            subtask_price=computation_price,
+            subtask_computation_time=computation_time,
+        )
+
+    def _update_provider_reputation(self, task_id: str,
+                                    subtask_id: str,
+                                    op: SubtaskOp) -> None:
+
+        timeout = self.tasks[task_id].header.subtask_timeout
+        subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
+        node_id = subtask_state.node_id
+
+        update_provider_efficacy(node_id, op)
+        computation_time = ProviderComputeTimers.time(subtask_id)
+
+        if not computation_time:
+            raise ValueError("computation_time cannot be equal to "
+                             f"{computation_time}")
+
+        update_provider_efficiency(node_id, timeout, computation_time)

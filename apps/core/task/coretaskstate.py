@@ -8,12 +8,15 @@ from golem.environments.environment import Environment
 from golem.task.taskstate import TaskState
 
 
+DEFAULT_TIMEOUT = 4 * 3600
+DEFAULT_SUBTASK_TIMEOUT = 20 * 60
+
+
 class TaskDefaults(object):
     """ Suggested default values for task parameters """
 
     def __init__(self):
         self.output_format = ""
-        self.main_program_file = ""
         self.min_subtasks = 1
         self.max_subtasks = 50
         self.default_subtasks = 20
@@ -21,11 +24,11 @@ class TaskDefaults(object):
 
     @property
     def timeout(self):
-        return 4 * 3600
+        return DEFAULT_TIMEOUT
 
     @property
     def subtask_timeout(self):
-        return 20 * 60
+        return DEFAULT_SUBTASK_TIMEOUT
 
 
 class TaskDefinition(object):
@@ -33,15 +36,14 @@ class TaskDefinition(object):
 
     def __init__(self):
         self.task_id = ""
-        self.timeout = 0
-        self.subtask_timeout = 0
+        self.timeout = DEFAULT_TIMEOUT
+        self.subtask_timeout = DEFAULT_SUBTASK_TIMEOUT
 
         self.resources = set()
         self.estimated_memory = 0
 
         self.subtasks_count = 0
         self.optimize_total = False
-        self.main_program_file = ""
         self.output_file = ""
         self.task_type = None
         self.name = ""
@@ -90,9 +92,6 @@ class TaskDefinition(object):
             setattr(self, key, attributes[key])
 
     def is_valid(self):
-        if not path.exists(self.main_program_file):
-            return False, "Main program file does not exist: {}".format(
-                self.main_program_file)
         return self._check_output_file(self.output_file)
 
     @staticmethod
@@ -138,8 +137,8 @@ class TaskDefinition(object):
         self.verification_options = preset["verification_options"]
 
     def to_dict(self) -> dict:
-        task_timeout = timeout_to_string(self.timeout)
-        subtask_timeout = timeout_to_string(self.subtask_timeout)
+        task_timeout = timeout_to_string(int(self.timeout))
+        subtask_timeout = timeout_to_string(int(self.subtask_timeout))
         output_path = self.build_output_path()
 
         return {

@@ -3,13 +3,14 @@ import uuid
 from unittest import mock as mock
 
 from golem_messages import message
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.core.simplehash import SimpleHash
+from golem.core.variables import CONCENT_CHOICES
 from golem.database import Database
 from golem.model import db, DB_FIELDS, DB_MODELS
-from golem.network.p2p.node import Node
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
 from golem.task.taskserver import TaskServer
@@ -71,6 +72,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
 
         return relative, absolute
 
+    @mock.patch('golem.task.taskserver.TaskComputer', mock.Mock())
     def _create_client(self, task_id, postfix):
         directory = os.path.join(self.tempdir, 'node' + postfix)
         dir_manager = DirManager(directory)
@@ -89,12 +91,13 @@ class AddGetResources(TempDirFixture, LogTestCase):
             client = Client(datadir=dir_manager.root_path,
                             app_config=mock.Mock(),
                             config_desc=ClientConfigDescriptor(),
-                            keys_auth=mock.Mock(),
+                            keys_auth=mock.Mock(key_id='a'*32),
                             database=database,
                             transaction_system=mock.Mock(),
                             connect_to_known_hosts=False,
                             use_docker_manager=False,
-                            use_monitor=False)
+                            use_monitor=False,
+                            concent_variant=CONCENT_CHOICES['disabled'])
 
         client.resource_server = BaseResourceServer(resource_manager,
                                                     dir_manager,
@@ -104,7 +107,7 @@ class AddGetResources(TempDirFixture, LogTestCase):
                 ".HandlersLibrary"
                 ".register_handler"):
             client.task_server = TaskServer(
-                node=Node(prv_addr='127.0.0.1', hyperdrive_prv_port=3282),
+                node=dt_p2p_factory.Node(prv_addr='127.0.0.1', hyperdrive_prv_port=3282),
                 config_desc=mock.Mock(),
                 client=client,
                 use_docker_manager=False,

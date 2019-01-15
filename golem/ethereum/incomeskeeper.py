@@ -54,6 +54,7 @@ class IncomesKeeper:
                     signal='golem.income',
                     event='confirmed',
                     node_id=e.sender_node,
+                    amount=e.value_received,
                 )
 
     def received_forced_payment(
@@ -97,20 +98,17 @@ class IncomesKeeper:
                 'accepted_ts': accepted_ts,
             },
         )
-        if not inserted and not income.accepted_ts:
+        if inserted:
+            dispatcher.send(
+                signal='golem.income',
+                event='created',
+                subtask_id=subtask_id,
+                amount=value
+            )
+        elif not income.accepted_ts:
             income.accepted_ts = accepted_ts
             income.save()
-
-    @staticmethod
-    def is_expected(
-            subtask_id: str,
-            payer_address: str,
-    ) -> bool:
-        return Income.select().where(
-            Income.subtask == subtask_id,
-            Income.payer_address == payer_address,
-            Income.transaction.is_null()
-        ).exists()
+        return income
 
     @staticmethod
     def settled(
@@ -158,15 +156,11 @@ class IncomesKeeper:
         :return: Updated incomes
         """
         accepted_ts_deadline = int(time.time()) - PAYMENT_DEADLINE
-        created_deadline = datetime.now() - timedelta(seconds=PAYMENT_DEADLINE)
 
         incomes = list(Income.select().where(
             Income.overdue == False,   # noqa pylint: disable=singleton-comparison
             Income.transaction.is_null(True),
-            (Income.accepted_ts < accepted_ts_deadline) | (
-                Income.accepted_ts.is_null(True) &
-                (Income.created_date < created_deadline)
-            )
+            Income.accepted_ts < accepted_ts_deadline,
         ))
 
         if not incomes:

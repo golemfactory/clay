@@ -2,10 +2,8 @@ import os
 import pathlib
 import shutil
 
-from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from golem.core.common import get_golem_path
 from golem.docker.job import DockerJob
-from golem.resource.dirmanager import find_task_script
 from .test_docker_job import TestDockerJob
 
 
@@ -16,42 +14,37 @@ class TestBlenderDockerJob(TestDockerJob):
         return "golemfactory/blender"
 
     def _get_test_tag(self):
-        return "1.4"
+        return "1.7"
 
     def test_blender_job(self):
-        app_dir = os.path.join(get_golem_path(), "apps", "blender")
-        task_script = find_task_script(app_dir, "docker_blendertask.py")
-        with open(task_script) as f:
-            task_script_src = f.read()
-
-        # prepare dummy crop script
-        crop_script_contents = generate_blender_crop_file(
-            resolution=(800, 600),
-            borders_x=(0, 1),
-            borders_y=(0, 1),
-            use_compositing=True,
-            samples=5
-        )
-
         # copy the scene file to the resources dir
         scene_file = pathlib.Path(get_golem_path())
         scene_file /= "apps/blender/benchmark/test_task/cube.blend"
         shutil.copy(str(scene_file), self.resources_dir)
         dest_scene_file = pathlib.PurePosixPath(DockerJob.RESOURCES_DIR)
         dest_scene_file /= scene_file.name
+        start_task = 42
 
+        crops = [
+            {
+                "outfilebasename": "out_{}".format(start_task),
+                "borders_x": [0.0, 1.0],
+                "borders_y": [0.0, 1.0]
+            }
+        ]
         params = {
-            "outfilebasename": "out",
             "scene_file": str(dest_scene_file),
-            "script_src": crop_script_contents,
-            "start_task": 42,
-            "end_task": 42,
-            "output_format": "EXR",
+            "resolution": [800, 600],
+            "use_compositing": True,
+            "samples": 5,
             "frames": [1],
+            "output_format": "EXR",
+            "start_task": start_task,
+            "crops": crops
         }
 
-        with self._create_test_job(script=task_script_src, params=params) \
-                as job:
+        with self._create_test_job(
+            script="/golem/scripts/job.py", params=params) as job:
             job.start()
             exit_code = job.wait(timeout=300)
             self.assertEqual(exit_code, 0)

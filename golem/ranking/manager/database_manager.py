@@ -4,8 +4,14 @@ import logging
 from peewee import IntegrityError
 
 from golem.model import LocalRank, GlobalRank, NeighbourLocRank, db
+from golem.ranking import ProviderEfficacy
+from golem.task.taskstate import SubtaskOp
 
 logger = logging.getLogger(__name__)
+
+
+REQUESTOR_FORGETTING_FACTOR = 0.9
+PROVIDER_FORGETTING_FACTOR = 0.9
 
 
 def increase_positive_computed(node_id, trust_mod):
@@ -96,6 +102,105 @@ def increase_negative_resource(node_id, trust_mod):
         LocalRank.update(negative_resource=LocalRank.negative_resource + trust_mod,
                          modified_date=str(datetime.datetime.now())) \
             .where(LocalRank.node_id == node_id).execute()
+
+
+def _calculate_efficiency(efficiency: float,
+                          timeout: float,
+                          computation_time: float,
+                          psi: float) -> float:
+
+    if computation_time == 0.:
+        raise ValueError("computation_time cannot be equal to 0.")
+
+    v = timeout / computation_time
+    return psi * efficiency + (1 - psi) * v
+
+
+def get_requestor_efficiency(node_id: str) -> float:
+    with db.transaction():
+        rank, _ = LocalRank.get_or_create(node_id=node_id)
+        efficiency = rank.requestor_efficiency
+        return efficiency or 1.0
+
+
+def update_requestor_efficiency(node_id: str,
+                                timeout: float,
+                                computation_time: float,
+                                performance: float,
+                                min_performance: float) -> None:
+    with db.transaction():
+        rank, _ = LocalRank.get_or_create(node_id=node_id)
+        efficiency = rank.requestor_efficiency
+
+        if efficiency is None:
+            efficiency = (
+                1. if not min_performance else
+                performance / min_performance
+            )
+
+        rank.requestor_efficiency = _calculate_efficiency(
+            efficiency, timeout, computation_time, REQUESTOR_FORGETTING_FACTOR)
+        rank.save()
+
+
+def get_requestor_assigned_sum(node_id: str) -> int:
+    with db.transaction():
+        rank, _ = LocalRank.get_or_create(node_id=node_id)
+        return rank.requestor_assigned_sum or 0
+
+
+def update_requestor_assigned_sum(node_id: str, amount: int) -> None:
+
+    with db.transaction():
+        rank, _ = LocalRank.get_or_create(node_id=node_id)
+        rank.requestor_assigned_sum += amount
+        rank.save()
+
+
+def update_requestor_paid_sum(node_id: str, amount: int) -> None:
+    with db.transaction():
+        rank, _ = LocalRank.get_or_create(node_id=node_id)
+        rank.requestor_paid_sum += amount
+        rank.save()
+
+
+def get_requestor_paid_sum(node_id: str) -> int:
+    with db.transaction():
+        rank, _ = LocalRank.get_or_create(node_id=node_id)
+        return rank.requestor_paid_sum or 0
+
+
+def get_provider_efficiency(node_id: str) -> float:
+    with db.transaction():
+        rank, _ = LocalRank.get_or_create(node_id=node_id)
+        return rank.provider_efficiency
+
+
+def update_provider_efficiency(node_id: str,
+                               timeout: float,
+                               computation_time: float) -> None:
+
+    with db.transaction():
+        rank, _ = LocalRank.get_or_create(node_id=node_id)
+        efficiency = rank.provider_efficiency
+
+        rank.provider_efficiency = _calculate_efficiency(
+            efficiency, timeout, computation_time, PROVIDER_FORGETTING_FACTOR)
+        rank.save()
+
+
+def get_provider_efficacy(node_id: str) -> ProviderEfficacy:
+    with db.transaction():
+        rank, _ = LocalRank.get_or_create(node_id=node_id)
+        return rank.provider_efficacy
+
+
+def update_provider_efficacy(node_id: str, op: SubtaskOp) -> None:
+
+    with db.transaction():
+        rank, _ = LocalRank.get_or_create(node_id=node_id)
+        rank.provider_efficacy.update(op)
+        rank.save()
 
 
 def get_global_rank(node_id):

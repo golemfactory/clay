@@ -5,31 +5,34 @@ import datetime
 import enum
 import functools
 import logging
-import os
 import time
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
 from golem_messages import message
 from golem_messages import exceptions as msg_exceptions
+from pydispatch import dispatcher
 
 import golem
 from golem.core import common
 from golem.core.keysauth import KeysAuth
-from golem.core.simpleserializer import CBORSerializer
 from golem.core import variables
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
+from golem.marketplace import Offer, OfferPool
 from golem.model import Actor
 from golem.network import history
 from golem.network.concent import helpers as concent_helpers
 from golem.network.transport import tcpnetwork
 from golem.network.transport.session import BasicSafeSession
+from golem.ranking.manager.database_manager import (
+    get_provider_efficacy,
+    get_provider_efficiency,
+)
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
-from golem.task.taskbase import ResultType
 from golem.task.taskstate import TaskState
 
 if TYPE_CHECKING:
@@ -194,19 +197,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     # FileSession methods #
     #######################
 
-    def result_received(self, extra_data):
+    def result_received(self, subtask_id: str, result_files: List[str]):
         """ Inform server about received result
-        :param dict extra_data: dictionary with information about
-                                received result
         """
-        result = extra_data.get('result')
-        result_type = extra_data.get("result_type")
-        subtask_id = extra_data.get("subtask_id")
-
-        if not subtask_id:
-            logger.error("No subtask_id value in extra_data for received data ")
-            self.dropped()
-
         def send_verification_failure():
             self._reject_subtask_result(
                 subtask_id,
@@ -214,33 +207,23 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 .VerificationNegative
             )
 
-        if result_type is None:
-            logger.error("No information about result_type for received data ")
-            send_verification_failure()
-            self.dropped()
-
-        if result_type == ResultType.DATA:
-            try:
-                result = CBORSerializer.loads(result)
-            except Exception:  # pylint: disable=broad-except
-                logger.exception("Can't load result data")
-                send_verification_failure()
-                return
-
         def verification_finished():
+            logger.debug("Verification finished handler.")
             if not self.task_manager.verify_subtask(subtask_id):
+                logger.debug("Verification failure. subtask_id=%r", subtask_id)
                 send_verification_failure()
                 self.dropped()
                 return
 
             task_id = self._subtask_to_task(subtask_id, Actor.Requestor)
 
-            task_to_compute = get_task_message(
-                message_class_name='TaskToCompute',
+            report_computed_task = get_task_message(
+                message_class_name='ReportComputedTask',
                 node_id=self.key_id,
                 task_id=task_id,
                 subtask_id=subtask_id
             )
+            task_to_compute = report_computed_task.task_to_compute
 
             # FIXME Remove in 0.20
             if not task_to_compute.sig:
@@ -250,10 +233,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 subtask_id,
                 self.key_id,
                 task_to_compute.provider_ethereum_address,
+                task_to_compute.price,
             )
 
             response_msg = message.tasks.SubtaskResultsAccepted(
-                task_to_compute=task_to_compute,
+                report_computed_task=report_computed_task,
                 payment_ts=payment_processed_ts,
             )
             self.send(response_msg)
@@ -270,8 +254,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         self.task_manager.computed_task_received(
             subtask_id,
-            result,
-            result_type,
+            result_files,
             verification_finished
         )
 
@@ -313,16 +296,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         :param Node node_info: information about this node
         :return:
         """
-        if task_result.result_type == ResultType.DATA:
-            extra_data = []
-        elif task_result.result_type == ResultType.FILES:
-            extra_data = [os.path.basename(x) for x in task_result.result]
-        else:
-            logger.error(
-                "Unknown result type %r",
-                task_result.result_type
-            )
-            return
+        extra_data = []
 
         node_name = self.task_server.get_node_name()
 
@@ -341,7 +315,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         report_computed_task = message.tasks.ReportComputedTask(
             task_to_compute=task_to_compute,
-            result_type=task_result.result_type,
             node_name=node_name,
             address=address,
             port=port,
@@ -563,64 +536,85 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            msg.task_id, node_name_id)
             return
 
-        # TODO: Queue requests here
+        def _offer_chosen(is_chosen: bool) -> None:
+            if not is_chosen:
+                logger.info(
+                    "Provider not chosen by marketplace. task_id=%r, node=%r",
+                    msg.task_id,
+                    node_name_id,
+                )
+                _cannot_assign(reasons.NoMoreSubtasks)
+                return
 
-        logger.info("Offer confirmed, assigning subtask")
-        ctd = self.task_manager.get_next_subtask(
-            self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-            msg.price, msg.max_resource_size, msg.max_memory_size,
-            msg.num_cores, self.address)
+            if not self.conn.opened:
+                logger.info(
+                    "Provider disconnected. task_id=%r, node=%r",
+                    msg.task_id,
+                    node_name_id,
+                )
+                return
 
-        logger.debug(
-            "task_id=%s, node=%s ctd=%s",
-            msg.task_id,
-            node_name_id,
-            ctd,
+            logger.info("Offer confirmed, assigning subtask")
+            ctd = self.task_manager.get_next_subtask(
+                self.key_id, msg.node_name, msg.task_id, msg.perf_index,
+                msg.price, msg.max_resource_size, msg.max_memory_size,
+                msg.num_cores, self.address)
+
+            logger.debug(
+                "task_id=%s, node=%s ctd=%s",
+                msg.task_id,
+                node_name_id,
+                ctd,
+            )
+
+            if ctd is None:
+                _cannot_assign(reasons.NoMoreSubtasks)
+                return
+
+            logger.info(
+                "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
+                msg.task_id,
+                node_name_id,
+                ctd["subtask_id"],
+            )
+            task = self.task_manager.tasks[ctd['task_id']]
+            task_state = self.task_manager.tasks_states[ctd['task_id']]
+            price = taskkeeper.compute_subtask_value(
+                msg.price,
+                task.header.subtask_timeout,
+            )
+            ttc = message.tasks.TaskToCompute(
+                compute_task_def=ctd,
+                want_to_compute_task=msg,
+                requestor_id=task.header.task_owner.key,
+                requestor_public_key=task.header.task_owner.key,
+                requestor_ethereum_public_key=task.header.task_owner.key,
+                provider_id=self.key_id,
+                package_hash='sha1:' + task_state.package_hash,
+                concent_enabled=msg.concent_enabled,
+                price=price,
+                size=task_state.package_size
+            )
+            ttc.generate_ethsig(self.my_private_key)
+            self.send(ttc)
+            history.add(
+                msg=copy_and_sign(
+                    msg=ttc,
+                    private_key=self.my_private_key,
+                ),
+                node_id=self.key_id,
+                local_role=Actor.Requestor,
+                remote_role=Actor.Provider,
+            )
+
+        task = self.task_manager.tasks[msg.task_id]
+        offer = Offer(
+            scaled_price=task.header.max_price / msg.price,
+            reputation=get_provider_efficiency(self.key_id),
+            quality=get_provider_efficacy(self.key_id).vector,
         )
 
-        if ctd is None:
-            _cannot_assign(reasons.NoMoreSubtasks)
-            return
-
-        logger.info(
-            "Subtask assigned. task_id=%r, node=%s, subtask_id=%r",
-            msg.task_id,
-            node_name_id,
-            ctd["subtask_id"],
-        )
-        task = self.task_manager.tasks[ctd['task_id']]
-        task_state: TaskState = self.task_manager.tasks_states[ctd['task_id']]
-        price = taskkeeper.compute_subtask_value(
-            task.header.max_price,
-            task.header.subtask_timeout,
-        )
-        ttc = message.tasks.TaskToCompute(
-            compute_task_def=ctd,
-            want_to_compute_task=msg,
-            requestor_id=task.header.task_owner.key,
-            requestor_public_key=task.header.task_owner.key,
-            requestor_ethereum_public_key=task.header.task_owner.key,
-            provider_id=self.key_id,
-            package_hash='sha1:' + task_state.package_hash,
-            concent_enabled=msg.concent_enabled,
-            price=price,
-            size=task_state.package_size
-        )
-        ttc.generate_ethsig(self.my_private_key)
-        self.task_manager.set_subtask_value(
-            subtask_id=ttc.subtask_id,
-            price=price,
-        )
-        self.send(ttc)
-        history.add(
-            msg=copy_and_sign(
-                msg=ttc,
-                private_key=self.my_private_key,
-            ),
-            node_id=self.key_id,
-            local_role=Actor.Requestor,
-            remote_role=Actor.Provider,
-        )
+        OfferPool.add(msg.task_id, offer).addCallback(_offer_chosen)
 
     @handle_attr_error_with_task_computer
     @history.provider_history
@@ -645,6 +639,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.dropped()
             return
 
+        dispatcher.send(
+            signal='golem.message',
+            event='received',
+            message=msg
+        )
+
         def _cannot_compute(reason):
             logger.debug("Cannot %r", reason)
             self.send(
@@ -658,12 +658,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         reasons = message.tasks.CannotComputeTask.REASON
 
+        if self.task_computer.has_assigned_task():
+            _cannot_compute(reasons.OfferCancelled)
+            return
+
         if self.concent_service.enabled and not msg.concent_enabled:
             # Provider requires concent if it's enabed locally
             _cannot_compute(reasons.ConcentRequired)
             return
         if not self.concent_service.enabled and msg.concent_enabled:
-            # We can't provide what requestors wants
+            # We can't provide what requestor wants
             _cannot_compute(reasons.ConcentDisabled)
             return
 
@@ -709,11 +713,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.task_server.add_task_session(
                 ctd['subtask_id'], self
             )
-            if self.task_computer.task_given(ctd):
+            if self.task_server.task_given(self.key_id, ctd, msg.price):
                 return
         _cannot_compute(self.err_msg)
 
     def _react_to_waiting_for_results(self, _):
+        self.task_server.requested_tasks.remove(self.task_id)
         self.task_computer.session_closed()
         if not self.msgs_to_send:
             self.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
@@ -817,35 +822,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # This assert is for mypy, which only knows that it's Optional[str].
         assert self.key_id is not None
 
-        if msg.task_to_compute is None:
+        if msg.task_to_compute is None or \
+                msg.task_to_compute.requestor_public_key != self.key_id:
             logger.info(
                 'Empty task_to_compute in %s. Disconnecting: %r',
                 msg,
                 self.key_id,
             )
             self.disconnect(message.base.Disconnect.REASON.BadProtocol)
-            return
-
-        def should_accept_sra(msg) -> bool:
-            requestor_check_result = \
-                self.check_requestor_for_subtask(msg.subtask_id)
-
-            if requestor_check_result == RequestorCheckResult.OK:
-                return True
-            if requestor_check_result == RequestorCheckResult.MISMATCH:
-                return False
-
-            # requestor_check_result == RequestorCheckResult.NOT_FOUND:
-            transaction_system = self.task_server.client.transaction_system
-            return transaction_system.is_income_expected(
-                subtask_id=msg.subtask_id,
-                payer_address=msg.task_to_compute.requestor_ethereum_address
-            )
-
-        if not should_accept_sra(msg):
-            logger.debug("Unexpected income from %r for subtask %r",
-                         self.key_id, msg.subtask_id)
-            self.dropped()
             return
 
         self.concent_service.cancel_task_message(
@@ -917,7 +901,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.dropped()
 
     def _react_to_resource_list(self, msg):
-        resource_manager = self.task_server.client.resource_server.resource_manager  # noqa
+        resource_server = self.task_server.client.resource_server
+        resource_manager = resource_server.resource_manager
         resources = resource_manager.from_wire(msg.resources)
 
         client_options = self.task_server.get_download_options(msg.options,
@@ -989,8 +974,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.subtask_id,
         )
         if not sender_is_owner:
-            logger.warning("Requestor '%r' acknowledged a computed task report "
-                           "of an unknown task (subtask_id='%s')",
+            logger.warning("Requestor '%r' acknowledged a computed task report"
+                           " of an unknown task (subtask_id='%s')",
                            self.key_id, msg.subtask_id)
             return
 
@@ -1003,12 +988,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         delayed_forcing_msg = message.concents.ForceSubtaskResults(
             ack_report_computed_task=msg,
         )
-        logger.debug('[CONCENT] ForceResults: %s', delayed_forcing_msg)
         ttc_deadline = datetime.datetime.utcfromtimestamp(
             msg.task_to_compute.compute_task_def['deadline']
         )
         svt = msg_helpers.subtask_verification_time(msg.report_computed_task)
         delay = ttc_deadline + svt - datetime.datetime.utcnow()
+        logger.debug(
+            '[CONCENT] Delayed ForceResults. msg=%r, delay=%r',
+            delayed_forcing_msg,
+            delay
+        )
         self.concent_service.submit_task_message(
             subtask_id=msg.subtask_id,
             msg=delayed_forcing_msg,
@@ -1094,7 +1083,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         return True
 
     def _set_env_params(self, ctd):
-        environment = self.task_manager.comp_task_keeper.get_task_env(ctd['task_id'])  # noqa
+        environment = self.task_manager.comp_task_keeper.get_task_env(
+            ctd['task_id'],
+        )
         env = self.task_server.get_environment_by_id(environment)
         reasons = message.tasks.CannotComputeTask.REASON
         if not env:
@@ -1104,13 +1095,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if isinstance(env, DockerEnvironment):
             if not self.__check_docker_images(ctd, env):
                 return False
-
-        if not env.allow_custom_main_program_file:
-            ctd['src_code'] = env.get_source_code()
-
-        if not ctd['src_code']:
-            self.err_msg = reasons.NoSourceCode
-            return False
 
         return True
 

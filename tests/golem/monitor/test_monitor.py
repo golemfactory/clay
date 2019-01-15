@@ -1,3 +1,4 @@
+# pylint: disable=protected-access
 import json
 import time
 from unittest import mock, TestCase
@@ -35,6 +36,7 @@ class MockSenderThread:
 
 
 class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
+    maxDiff = None
     PEP8_FILES = (
         "golem/monitor/monitor.py",
     )
@@ -95,7 +97,8 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
             and protocol data were sent."""
 
         def check(f, msg_type):
-            f()
+            with mock.patch('apps.core.nvgpu.is_supported', return_value=True):
+                f()
             mock_send = self.monitor._sender_thread.sender.transport.post_json
             self.assertEqual(mock_send.call_count, 1)
             result = json.loads(mock_send.call_args[0][0])
@@ -121,6 +124,9 @@ class TestSystemMonitor(TestCase, testutils.PEP8MixIn):
                     'cliid': 'cliid',
                     'sessid': 'sessid',
                     'timestamp': mock.ANY,
+                    'nvgpu': {
+                        'is_supported': True,
+                    },
                 }
             }
             self.assertEqual(expected_d, result)

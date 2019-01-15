@@ -3,6 +3,7 @@ import unittest
 from unittest import mock
 
 import pytest
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
 from apps.blender.benchmark.benchmark import BlenderBenchmark
 from apps.blender.task import blenderrendertask
@@ -11,9 +12,9 @@ from apps.core.benchmark.benchmarkrunner import BenchmarkRunner
 from apps.rendering.benchmark.renderingbenchmark import RenderingBenchmark
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition
 from golem import testutils
-from golem.network.p2p.node import Node
+from golem.docker.manager import DockerManager
+from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
-from golem.task.taskbase import Task
 from golem.task.taskstate import TaskStatus
 from golem.tools.ci import ci_skip
 
@@ -38,9 +39,6 @@ class TestBlenderBenchmark(unittest.TestCase, testutils.PEP8MixIn):
         self.assertTrue(
             os.path.isfile(self.bb.task_definition.main_scene_file)
         )
-        self.assertTrue(
-            os.path.isfile(self.bb.task_definition.main_program_file)
-        )
 
 
 @ci_skip
@@ -48,6 +46,12 @@ class TestBenchmarkRunner(testutils.TempDirFixture):
 
     @pytest.mark.slow
     def test_run(self):
+        dm = DockerTaskThread.docker_manager = DockerManager.install()
+        dm.update_config(
+            status_callback=mock.Mock(),
+            done_callback=mock.Mock(),
+            work_dir=self.new_path,
+            in_background=True)
         benchmark = BlenderBenchmark()
         task_definition = benchmark.task_definition
 
@@ -57,10 +61,10 @@ class TestBenchmarkRunner(testutils.TempDirFixture):
 
         dir_manager = DirManager(self.path)
         task = blenderrendertask.BlenderRenderTaskBuilder(
-                Node(),
-                task_definition,
-                dir_manager
-            ).build()
+            dt_p2p_factory.Node(),
+            task_definition,
+            dir_manager
+        ).build()
 
         success = mock.MagicMock()
         error = mock.MagicMock()

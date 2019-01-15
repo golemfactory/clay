@@ -17,10 +17,9 @@ from apps.rendering.task.renderingtask import (RenderingTask,
                                                RenderingTaskBuilder,
                                                PREVIEW_EXT)
 from apps.rendering.task.renderingtaskstate import RendererDefaults
-from golem_verificator.rendering_verifier import FrameRenderingVerifier
+from golem.verificator.rendering_verifier import FrameRenderingVerifier
 from golem.core.common import update_dict, to_unicode
 from golem.rpc import utils as rpc_utils
-from golem.task.taskbase import ResultType
 from golem.task.taskstate import SubtaskStatus, TaskStatus, SubtaskState
 
 logger = logging.getLogger("apps.rendering")
@@ -136,12 +135,10 @@ class FrameRenderingTask(RenderingTask):
 
     @CoreTask.handle_key_error
     def computation_finished(self, subtask_id, task_result,
-                             result_type=ResultType.DATA,
                              verification_finished=None):
         super(FrameRenderingTask, self).computation_finished(
             subtask_id,
             task_result,
-            result_type,
             verification_finished)
 
     def verification_finished(self, subtask_id, verdict, result):
@@ -190,7 +187,6 @@ class FrameRenderingTask(RenderingTask):
         super().accept_results(subtask_id, result_files)
         num_start = self.subtasks_given[subtask_id]['start_task']
         parts = self.subtasks_given[subtask_id]['parts']
-        num_end = self.subtasks_given[subtask_id]['end_task']
         frames = self.subtasks_given[subtask_id]['frames']
 
         for result_file in result_files:
@@ -201,7 +197,7 @@ class FrameRenderingTask(RenderingTask):
             else:
                 self._collect_frame_part(num_start, result_file, parts)
 
-        self.num_tasks_received += num_end - num_start + 1
+        self.num_tasks_received += 1
 
         if self.num_tasks_received == self.total_tasks and not self.use_frames:
             self._put_image_together()

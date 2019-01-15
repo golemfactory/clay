@@ -51,9 +51,6 @@ class DummyTask(CoreTask):
             total_tasks=total_tasks
         )
 
-    def short_extra_data_repr(self, extra_data):
-        return "Dummytask extra_data: {}".format(extra_data)
-
     def _extra_data(self, perf_index=0.0) -> ComputeTaskDef:
         subtask_id = self.create_subtask_id()
 
@@ -71,6 +68,7 @@ class DummyTask(CoreTask):
             "result_size": self.task_definition.result_size,
             "result_file": self.__get_result_file_name(subtask_id),
             "subtask_data_size": sbs,
+            "script_filepath": "/golem/scripts/job.py",
         }
 
         return self._new_compute_task_def(subtask_id,

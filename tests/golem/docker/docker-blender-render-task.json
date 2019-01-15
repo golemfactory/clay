@@ -11,10 +11,10 @@
       "docker_images":[
         {
           "py/object":"golem.docker.image.DockerImage",
-          "tag":"1.4",
+          "tag":"1.7",
           "id":null,
           "repository":"golemfactory/blender",
-          "name":"golemfactory/blender:1.4"
+          "name":"golemfactory/blender:1.7"
         }
       ],
       "caps":[],
@@ -44,10 +44,10 @@
   "docker_images":[
     {
       "py/object":"golem.docker.image.DockerImage",
-      "tag":"1.4",
+      "tag":"1.7",
       "id":null,
       "repository":"golemfactory/blender",
-      "name":"golemfactory/blender:1.4"
+      "name":"golemfactory/blender:1.7"
     }
   ],
   "resolution":[
@@ -61,9 +61,8 @@
   "verification_options":null,
   "estimated_memory":0,
   "timeout":14400,
-  "max_price": 10.23,
+  "max_price": 13,
   "task_type":"Blender",
-  "main_program_file":"$GOLEM_DIR/apps/blender/resources/scripts/docker_blendertask.py",
   "subtask_timeout":1200,
   "subtasks_count":6,
   "concent_enabled": false

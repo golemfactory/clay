@@ -6,7 +6,6 @@ import enforce
 from golem.docker.image import DockerImage
 from golem.environments.environment import (Environment, SupportStatus,
                                             UnsupportReason)
-from golem.resource.dirmanager import find_task_script
 
 
 @enforce.runtime_validation()
@@ -21,10 +20,6 @@ class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
         image = DockerImage(image_id=image_id) if image_id \
             else DockerImage(self.DOCKER_IMAGE, tag=tag)
         Environment.__init__(self)
-        self.software.append('Docker')
-
-        self.main_program_file = find_task_script(self.APP_DIR,
-                                                  self.SCRIPT_NAME)
 
         self.docker_images = [image]
         if additional_images:
@@ -81,16 +76,6 @@ class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
     @property
     @abc.abstractmethod
     def ENV_ID(cls):
-        pass
-
-    @property
-    @abc.abstractmethod
-    def APP_DIR(cls):
-        pass
-
-    @property
-    @abc.abstractmethod
-    def SCRIPT_NAME(cls):
         pass
 
     @property
