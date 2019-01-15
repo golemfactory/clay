@@ -60,6 +60,7 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         self.subtask_info['all_frames'] = [1]
         self.subtask_info['tmp_dir'] = self.tempdir
         self.subtask_info['subtask_timeout'] = 600
+        self.subtask_info['script_filepath'] = '/golem/scripts/job.py'
 
         self.subtask_info['path_root'] = os.path.dirname(self.resources[0])
         self.subtask_info['parts'] = 1
@@ -67,7 +68,7 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         self.subtask_info['ctd'] = dict()
         self.subtask_info['ctd']['deadline'] = time.time() + 3600
         self.subtask_info['ctd']['docker_images'] = [DockerImage(
-            'golemfactory/blender', tag='1.5').to_dict()]
+            'golemfactory/blender', tag='1.7').to_dict()]
         self.subtask_info['ctd']['extra_data'] = dict()
         self.subtask_info['ctd']['extra_data']['scene_file'] = \
             self.subtask_info['scene_file']
@@ -89,12 +90,9 @@ class TestVerificatorModuleIntegration(TempDirFixture):
             self.subtask_info['crops']
         self.subtask_info['ctd']['extra_data']['path_root'] = \
             self.subtask_info['path_root']
+        self.subtask_info['ctd']['extra_data']['script_filepath'] = \
+            self.subtask_info['script_filepath']
         self.subtask_info['ctd']['short_description'] = ''
-        self.subtask_info['ctd']['src_code'] = open(
-            os.path.join(
-                self.golem_dir,
-                'apps/blender/resources/scripts/docker_blendertask.py'),
-            'r').read()
         self.subtask_info['ctd']['subtask_id'] = self.subtask_info['subtask_id']
 
     def test_bad_image(self):

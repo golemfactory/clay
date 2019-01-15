@@ -90,14 +90,14 @@ class DummyTask(Task):
         # load the script to be run remotely from the file in the current dir
         script_path = path.join(path.dirname(__file__), 'computation.py')
         with open(script_path, 'r') as f:
-            src_code = f.read()
-            src_code += '\noutput = run_dummy_task(' \
+            self.src_code = f.read()
+            self.src_code += '\noutput = run_dummy_task(' \
                 'data_file, subtask_data, difficulty, result_size, tmp_path)'
 
         from apps.dummy.task.dummytaskstate import DummyTaskDefinition
         from apps.dummy.task.dummytaskstate import DummyTaskDefaults
         task_definition = DummyTaskDefinition(DummyTaskDefaults())
-        Task.__init__(self, header, src_code, task_definition)
+        Task.__init__(self, header, task_definition)
 
         self.task_id = task_id
         self.task_params = params
@@ -182,14 +182,14 @@ class DummyTask(Task):
         subtask_def = ComputeTaskDef()
         subtask_def['task_id'] = self.task_id
         subtask_def['subtask_id'] = subtask_id
-        subtask_def['src_code'] = self.src_code
         subtask_def['deadline'] = timeout_to_deadline(5 * 60)
         subtask_def['extra_data'] = {
             'data_file': self.shared_data_file,
             'subtask_data': self.subtask_data[subtask_id],
             'difficulty': self.task_params.difficulty,
             'result_size': self.task_params.result_size,
-            'result_file': 'result.' + subtask_id[0:6]
+            'result_file': 'result.' + subtask_id[0:6],
+            'src_code': self.src_code,
         }
 
         return self.ExtraData(ctd=subtask_def)

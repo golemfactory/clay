@@ -16,8 +16,7 @@ from PIL import Image
 
 import OpenEXR
 
-from apps.blender.task.blenderrendertask import (BlenderDefaults,
-                                                 BlenderRenderTask,
+from apps.blender.task.blenderrendertask import (BlenderRenderTask,
                                                  BlenderRenderTaskBuilder,
                                                  BlenderRendererOptions,
                                                  generate_expected_offsets,
@@ -33,13 +32,6 @@ from golem.task.taskbase import AcceptClientVerdict
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-
-
-class TestBlenderDefaults(unittest.TestCase):
-
-    def test_init(self):
-        bd = BlenderDefaults()
-        self.assertTrue(path.isfile(bd.main_program_file))
 
 
 class BlenderTaskInitTest(TempDirFixture, LogTestCase):

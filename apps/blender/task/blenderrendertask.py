@@ -44,16 +44,13 @@ class BlenderDefaults(RendererDefaults):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
 
-        self.main_program_file = BlenderEnvironment().main_program_file
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 6
 
 
 class BlenderNVGPUDefaults(BlenderDefaults):
-    def __init__(self):
-        super().__init__()
-        self.main_program_file = BlenderNVGPUEnvironment().main_program_file
+    pass
 
 
 class PreviewUpdater(object):
@@ -458,7 +455,8 @@ class BlenderRenderTask(FrameRenderingTask):
                       "path_root": self.main_scene_dir,
                       "start_task": start_task,
                       "total_tasks": self.total_tasks,
-                      "crops": crops
+                      "crops": crops,
+                      "script_filepath": "/golem/scripts/job.py",
                       }
 
         subtask_id = self.create_subtask_id()
@@ -540,7 +538,8 @@ class BlenderRenderTask(FrameRenderingTask):
                       "path_root": self.main_scene_dir,
                       "start_task": 1,
                       "total_tasks": 1,
-                      "crops": crops
+                      "crops": crops,
+                      "script_filepath": "/golem/scripts/job.py",
                       }
 
         hash = "{}".format(random.getrandbits(128))

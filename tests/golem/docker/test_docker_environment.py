@@ -7,12 +7,11 @@ from golem.tools.ci import ci_skip
 
 from .test_docker_image import DockerTestCase
 
+
 class DockerEnvironmentMock(DockerEnvironment):
     DOCKER_IMAGE = ""
     DOCKER_TAG = ""
     ENV_ID = ""
-    APP_DIR = ""
-    SCRIPT_NAME = ""
     SHORT_DESCRIPTION = ""
 
 
@@ -26,7 +25,7 @@ class TestDockerEnvironment(DockerTestCase):
             DockerEnvironmentMock(additional_images=["aaa"])
 
         de = DockerEnvironmentMock(additional_images=[
-            DockerImage("golemfactory/blender", tag="1.5")])
+            DockerImage("golemfactory/blender", tag="1.7")])
         self.assertTrue(de.check_support())
         self.assertTrue(de.check_docker_images())
 

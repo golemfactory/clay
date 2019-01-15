@@ -5,8 +5,7 @@ import time
 
 from golem.core.common import is_linux, is_osx
 from golem.resource.dirmanager import symlink_or_copy, DirManager, \
-    find_task_script, logger, list_dir_recursive
-from golem.tools.assertlogs import LogTestCase
+    list_dir_recursive
 from golem.testutils import TempDirFixture
 
 
@@ -57,7 +56,6 @@ class TestDirManager(TempDirFixture):
 
     def testInit(self):
         self.assertIsNotNone(DirManager(self.path))
-
 
     def test_getFileExtension(self):
         dm = DirManager(self.path)
@@ -262,20 +260,6 @@ class TestDirManager(TempDirFixture):
         self.assertFalse(os.path.isfile(file2))
         self.assertFalse(os.path.isfile(file3))
         self.assertFalse(os.path.isdir(dir1))
-
-
-class TestFindTaskScript(TempDirFixture, LogTestCase):
-    def test_find_task_script(self):
-        script_path = os.path.join(self.path, "resources", "scripts")
-        os.makedirs(script_path)
-        script = os.path.join(script_path, "bla")
-        open(script, "w").close()
-        task_file = os.path.join(self.path, "task", "testtask.py")
-        path = find_task_script(self.path, "bla")
-        self.assertTrue(os.path.isdir(os.path.dirname(path)))
-        self.assertEqual(os.path.basename(path), "bla")
-        with self.assertLogs(logger, level="ERROR"):
-            find_task_script(self.path, "notexisting")
 
 
 class TestUtilityFunction(TempDirFixture):

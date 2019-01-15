@@ -124,7 +124,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
     def _get_task_mock(self, task_id="xyz", subtask_id="xxyyzz", timeout=120,
                        subtask_timeout=120):
         header = self._get_task_header(task_id, timeout, subtask_timeout)
-        task_mock = TaskMock(header, src_code='', task_definition=Mock())
+        task_mock = TaskMock(header, task_definition=Mock())
         task_mock.tmp_dir = self.path
 
         ctd = ComputeTaskDef()
@@ -417,8 +417,8 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         th.subtask_timeout = 1
 
         class TestTask(Task):
-            def __init__(self, header, src_code, subtasks_id, verify_subtasks):
-                super(TestTask, self).__init__(header, src_code, Mock())
+            def __init__(self, header, subtasks_id, verify_subtasks):
+                super(TestTask, self).__init__(header, Mock())
                 self.finished = {k: False for k in subtasks_id}
                 self.restarted = {k: False for k in subtasks_id}
                 self.verify_subtasks = verify_subtasks
@@ -463,7 +463,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             def accept_client(self, node_id):
                 return AcceptClientVerdict.ACCEPTED
 
-        t = TestTask(th, "print 'Hello world'", ["xxyyzz"],
+        t = TestTask(th, ["xxyyzz"],
                      verify_subtasks={"xxyyzz": True})
         self.tm.add_new_task(t)
         self.tm.start_task(t.header.task_id)
@@ -493,7 +493,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         del handler
 
         th.task_id = "abc"
-        t2 = TestTask(th, "print 'Hello world'", ["aabbcc"],
+        t2 = TestTask(th, ["aabbcc"],
                       verify_subtasks={"aabbcc": True})
         self.tm.add_new_task(t2)
         self.tm.start_task(t2.header.task_id)
@@ -521,7 +521,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         del handler
 
         th.task_id = "qwe"
-        t3 = TestTask(th, "print 'Hello world!", ["qqwwee", "rrttyy"],
+        t3 = TestTask(th, ["qqwwee", "rrttyy"],
                       {"qqwwee": True, "rrttyy": True})
         self.tm.add_new_task(t3)
         self.tm.start_task(t3.header.task_id)
@@ -549,7 +549,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             del handler
         assert self.tm.verification_finished.call_count == 3
         th.task_id = "task4"
-        t2 = TestTask(th, "print 'Hello world!", ["ttt4", "sss4"],
+        t2 = TestTask(th, ["ttt4", "sss4"],
                       {'ttt4': False, 'sss4': True})
         self.tm.add_new_task(t2)
         self.tm.start_task(t2.header.task_id)
@@ -729,7 +729,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                 subtask_timeout=1,
                 max_price=1,
             ),
-            src_code="print 'hello world'",
             task_definition=None,
         )
         listener_mock = Mock()
@@ -944,7 +943,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                 subtask_timeout=1,
                 max_price=1,
             ),
-            src_code='',
             task_definition=TaskDefinition())
 
         self.tm.keys_auth = KeysAuth(self.path, 'priv_key', 'password')

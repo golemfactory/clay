@@ -39,9 +39,6 @@ class TestBlenderBenchmark(unittest.TestCase, testutils.PEP8MixIn):
         self.assertTrue(
             os.path.isfile(self.bb.task_definition.main_scene_file)
         )
-        self.assertTrue(
-            os.path.isfile(self.bb.task_definition.main_program_file)
-        )
 
 
 @ci_skip

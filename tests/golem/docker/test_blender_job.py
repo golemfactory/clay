@@ -4,7 +4,6 @@ import shutil
 
 from golem.core.common import get_golem_path
 from golem.docker.job import DockerJob
-from golem.resource.dirmanager import find_task_script
 from .test_docker_job import TestDockerJob
 
 
@@ -15,14 +14,9 @@ class TestBlenderDockerJob(TestDockerJob):
         return "golemfactory/blender"
 
     def _get_test_tag(self):
-        return "1.5"
+        return "1.7"
 
     def test_blender_job(self):
-        app_dir = os.path.join(get_golem_path(), "apps", "blender")
-        task_script = find_task_script(app_dir, "docker_blendertask.py")
-        with open(task_script) as f:
-            task_script_src = f.read()
-
         # copy the scene file to the resources dir
         scene_file = pathlib.Path(get_golem_path())
         scene_file /= "apps/blender/benchmark/test_task/cube.blend"
@@ -49,8 +43,8 @@ class TestBlenderDockerJob(TestDockerJob):
             "crops": crops
         }
 
-        with self._create_test_job(script=task_script_src, params=params) \
-                as job:
+        with self._create_test_job(
+            script="/golem/scripts/job.py", params=params) as job:
             job.start()
             exit_code = job.wait(timeout=300)
             self.assertEqual(exit_code, 0)

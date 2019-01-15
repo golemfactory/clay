@@ -95,9 +95,7 @@ class Task(abc.ABC):
 
     def __init__(self,
                  header: dt_tasks.TaskHeader,
-                 src_code: str,
                  task_definition: TaskDefinition) -> None:
-        self.src_code = src_code
         self.header = header
         self.task_definition = task_definition
 
