@@ -1,15 +1,19 @@
 # pylint: disable=protected-access,too-many-ancestors
 import copy
+import unittest
 from unittest import mock
 
 import faker
+from ethereum.utils import denoms
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+from mock import Mock
 from twisted.internet import defer
 
 from apps.dummy.task import dummytaskstate
 from golem import clientconfigdescriptor
 from golem.core import common
 from golem.core import deferred as golem_deferred
+from golem.ethereum import exceptions
 from golem.network.p2p import p2pservice
 from golem.task import rpc
 from golem.task import taskbase
@@ -23,7 +27,6 @@ fake = faker.Faker()
 
 
 def _raise_not_enough_funds(*_, **__):
-    from golem.ethereum import exceptions
     raise exceptions.NotEnoughFunds(
         required=166667000000000000,
         available=0,
@@ -156,6 +159,26 @@ class TestCreateTask(ProviderBase, TestClientBase):
         mocked.assert_called()
         self.assertEqual(result, (None, 'Not enough GNT available. Required: '
                                         '0.166667, available: 0.000000'))
+
+
+class ConcentDepositLockPossibilityTest(unittest.TestCase):
+
+    def test_validate_lock_funds_possibility_raises_if_not_enough_gnt(self):
+        available = 0.0001 * denoms.ether
+        required = 0.0005 * denoms.ether
+        ets = Mock()
+        ets.get_available_gnt.return_value = available
+
+        with self.assertRaises(exceptions.NotEnoughFunds) as e:
+            rpc._validate_lock_funds_possibility(
+                transaction_system=ets,
+                price=required,
+                num=1
+            )
+        expected = f'Not enough GNT available. ' \
+            f'Required: {required / denoms.ether:.6f}, ' \
+            f'available: {available / denoms.ether:.6f}'
+        self.assertIn(str(e.exception), expected)
 
 
 class TestRestartTask(ProviderBase):
