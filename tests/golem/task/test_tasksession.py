@@ -112,18 +112,19 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts.task_server.config_desc.max_price = 100
         ts.task_server.keys_auth._private_key = \
             self.requestor_keys.raw_privkey
+        ts.task_server.keys_auth.public_key = self.requestor_keys.raw_pubkey
         ts.conn.send_message.side_effect = lambda msg: msg._fake_sign()
         return ts
 
     def _get_task_parameters(self):
         return {
             'node_name': self.node_name,
-            'task_id': self.task_id,
             'perf_index': 1030,
             'price': 30,
             'max_resource_size': 3,
             'max_memory_size': 1,
             'num_cores': 8,
+            'task_header': self._get_task_header()
         }
 
     def _get_wtct(self):
@@ -135,19 +136,19 @@ class TaskSessionTaskToComputeTest(TestCase):
         return msg
 
     def _fake_add_task(self):
-        task_header = dt_tasks_factory.TaskHeader(
+        task_header = self._get_task_header()
+        self.task_manager.tasks[self.task_id] = Mock(header=task_header)
+
+    def _get_task_header(self):
+        task_header = dt_tasks_factory.TaskHeaderFactory(
             task_id=self.task_id,
-            environment='',
             task_owner=dt_p2p_factory.Node(
                 key=self.requestor_key,
-                node_name=self.node_name,
-                pub_addr='10.10.10.10',
-                pub_port=12345,
             ),
             subtask_timeout=1,
-            max_price=1,
-        )
-        self.task_manager.tasks[self.task_id] = Mock(header=task_header)
+            max_price=1, )
+        task_header.sign(self.requestor_keys.raw_privkey)  # noqa pylint: disable=no-value-for-parameter
+        return task_header
 
     def _set_task_state(self):
         task_state = taskstate.TaskState()
@@ -161,11 +162,13 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts._handshake_required = Mock(return_value=False)
         params = self._get_task_parameters()
         ts.task_server.task_keeper.task_headers = task_headers = {}
-        task_headers[params['task_id']] = dt_tasks_factory.TaskHeader()
+        task_headers[self.task_id] = dt_tasks_factory.TaskHeaderFactory(
+            task_id=self.task_id
+        )
         ts.concent_service.enabled = False
         ts.request_task(
             params['node_name'],
-            params['task_id'],
+            self.task_id,
             params['perf_index'],
             params['price'],
             params['max_resource_size'],
@@ -176,7 +179,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         mt = ts.conn.send_message.call_args[0][0]
         self.assertIsInstance(mt, message.tasks.WantToComputeTask)
         self.assertEqual(mt.node_name, params['node_name'])
-        self.assertEqual(mt.task_id, params['task_id'])
+        self.assertEqual(mt.task_id, self.task_id)
         self.assertEqual(mt.perf_index, params['perf_index'])
         self.assertEqual(mt.price, params['price'])
         self.assertEqual(mt.max_resource_size, params['max_resource_size'])
@@ -263,7 +266,7 @@ class TaskSessionTaskToComputeTest(TestCase):
             ['concent_enabled', self.use_concent],
             ['price', 1],
             ['size', task_state.package_size],
-            ['ethsig', ms.ethsig]
+            ['ethsig', ms.ethsig],
         ]
         self.assertCountEqual(ms.slots(), expected)
 
@@ -303,6 +306,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             password='',
         )
         self.task_session.task_server.keys_auth = keys_auth
+        self.pubkey = keys_auth.public_key
+        self.privkey = keys_auth._private_key
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_hello(self, send_mock):
@@ -908,18 +913,13 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
     def _test_react_to_cannot_assign_task(self, key_id="KEY_ID",
                                           expected_requests=0):
-        task_owner = dt_p2p_factory.Node(
-            node_name="ABC",
-            key="KEY_ID",
-            pub_addr="10.10.10.10",
-            pub_port=2311,
-        )
         task_keeper = CompTaskKeeper(self.new_path)
         task_keeper.add_request(
-            dt_tasks_factory.TaskHeader(
-                environment='DEFAULT',
+            dt_tasks_factory.TaskHeaderFactory(
                 task_id="abc",
-                task_owner=task_owner,
+                task_owner=dt_p2p_factory.Node(
+                    key="KEY_ID",
+                ),
                 subtask_timeout=1,
                 max_price=1,
                 resource_size=1,
@@ -968,6 +968,44 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         with self.assertLogs(logger, level='WARNING'):
             ts._react_to_want_to_compute_task(mock_msg)
+
+    def test_react_to_want_to_compute_invalid_task_header_signature(self):
+        different_requestor_keys = cryptography.ECCx(None)
+        provider_keys = cryptography.ECCx(None)
+        wtct = msg_factories.tasks.WantToComputeTaskFactory(
+            sign__privkey=provider_keys.raw_privkey,
+            task_header__sign__privkey=different_requestor_keys.raw_privkey,
+        )
+        self._prepare_handshake_test()
+        ts = self.task_session
+        ts.verified = True
+
+        ts._react_to_want_to_compute_task(wtct)
+
+        sent_msg = ts.conn.send_message.call_args[0][0]
+        ts.task_server.remove_task_session.assert_called()
+        self.assertIsInstance(sent_msg, message.tasks.CannotAssignTask)
+        self.assertEqual(sent_msg.reason,
+                         message.tasks.CannotAssignTask.REASON.NotMyTask)
+
+    def test_react_to_want_to_compute_not_my_task_id(self):
+        provider_keys = cryptography.ECCx(None)
+        wtct = msg_factories.tasks.WantToComputeTaskFactory(
+            sign__privkey=provider_keys.raw_privkey,
+            task_header__sign__privkey=self.privkey,
+        )
+        self._prepare_handshake_test()
+        ts = self.task_session
+        ts.verified = True
+        ts.task_manager.is_my_task.return_value = False
+
+        ts._react_to_want_to_compute_task(wtct)
+
+        sent_msg = ts.conn.send_message.call_args[0][0]
+        ts.task_server.remove_task_session.assert_called()
+        self.assertIsInstance(sent_msg, message.tasks.CannotAssignTask)
+        self.assertEqual(sent_msg.reason,
+                         message.tasks.CannotAssignTask.REASON.NotMyTask)
 
     def _prepare_handshake_test(self):
         ts = self.task_session.task_server

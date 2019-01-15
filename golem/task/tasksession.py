@@ -452,6 +452,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     # Reactions to messages #
     #########################
 
+    # pylint: disable=too-many-return-statements
     def _react_to_want_to_compute_task(self, msg):
         def _cannot_assign(reason):
             logger.debug("Cannot assign task: %r", reason)
@@ -470,6 +471,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         if not self.task_manager.is_my_task(msg.task_id):
+            _cannot_assign(reasons.NotMyTask)
+            return
+
+        try:
+            msg.task_header.verify(self.my_public_key)
+        except msg_exceptions.InvalidSignature:
             _cannot_assign(reasons.NotMyTask)
             return
 
@@ -616,6 +623,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         OfferPool.add(msg.task_id, offer).addCallback(_offer_chosen)
 
+    # pylint: disable=too-many-return-statements
     @handle_attr_error_with_task_computer
     @history.provider_history
     def _react_to_task_to_compute(self, msg):

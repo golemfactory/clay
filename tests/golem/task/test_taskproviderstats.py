@@ -1,6 +1,7 @@
 from unittest import TestCase
 from unittest.mock import Mock, patch, call
 
+from golem_messages.factories.datastructures.tasks import TaskHeaderFactory
 from golem_messages.message import WantToComputeTask, TaskToCompute, \
     ComputeTaskDef
 
@@ -55,7 +56,7 @@ class TestProviderStatsManager(TestCase):
 
     def test_on_wtct_message(self, _):
         manager = self.manager
-        message = WantToComputeTask(task_id="deadbeef")
+        message = WantToComputeTask(task_header=TaskHeaderFactory())
 
         manager._on_message(event="sent", message=message)
         manager.keeper.increase_stat.assert_called_once_with(
