@@ -222,9 +222,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             MinPerformanceMultiplier
         from golem.network.concent import soft_switch as concent_soft_switch
         from golem.task import rpc as task_rpc
+        from golem.core import virtualization
         task_rpc_provider = task_rpc.ClientProvider(self)
         providers = (
             self,
+            virtualization,
             concent_soft_switch,
             framerenderingtask,
             MinPerformanceMultiplier,
