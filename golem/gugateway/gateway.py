@@ -89,13 +89,12 @@ def subscribe(node_id: str, task_type: str):
         return _invalid_input(e)
 
     if task_type not in subscriptions[node_id]:
-        subscription = Subscription(task_type, request.json)
-        subscriptions[node_id][task_type] = subscription
         status_code = 201
-    else:
-        subscription = subscriptions[node_id][task_type]
 
-    return subscription.to_json(), status_code
+    subscription = Subscription(task_type, request.json)
+    subscriptions[node_id][task_type] = subscription
+
+    return json.dumps(subscription.to_json_dict()), status_code
 
 
 @app.route('/subscriptions/<node_id>/<task_type>', methods=['GET'])
@@ -113,7 +112,7 @@ def subscription(node_id: str, task_type: str):
     if task_type not in subscriptions[node_id]:
         return _not_found('subscription')
 
-    return subscriptions[node_id][task_type].to_json()
+    return json.dumps(subscriptions[node_id][task_type].to_json_dict())
 
 
 @app.route('/subscriptions/<node_id>/<task_type>', methods=['DELETE'])

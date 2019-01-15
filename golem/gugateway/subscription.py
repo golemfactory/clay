@@ -127,21 +127,6 @@ class Subscription(object):
             status = TaskStatus.match(status)
         self.stats.update([status.name])
 
-    def to_json_dict(self) -> dict:
-        return {
-            'taskType': self.task_type.name,
-            'name': self.name,
-            'minPrice': self.min_price,
-            'performance': self.performance,
-            'maxCpuCores': self.max_cpu_cores,
-            'maxMemorySize': self.max_memory_size,
-            'maxDiskSize': self.max_disk_size,
-            'taskStats': dict(self.stats)
-        }
-
-    def to_json(self):
-        return json.dumps(self.to_json_dict())
-
     def events_after(self, event_id: int) -> List[Event]:
         if event_id >= self.event_counter:
             raise KeyError(f'event id {event_id} should be less than '
@@ -154,4 +139,18 @@ class Subscription(object):
         config_desc.num_cores = self.max_cpu_cores
         config_desc.max_memory_size = self.max_memory_size
         config_desc.max_resource_size = self.max_disk_size
+
+    def to_json_dict(self) -> dict:
+        return {
+            'taskType': self.task_type.name,
+            'subscription': {
+                'name': self.name,
+                'minPrice': self.min_price,
+                'performance': self.performance,
+                'maxCpuCores': self.max_cpu_cores,
+                'maxMemorySize': self.max_memory_size,
+                'maxDiskSize': self.max_disk_size,
+            },
+            'taskStats': dict(self.stats)
+        }
 

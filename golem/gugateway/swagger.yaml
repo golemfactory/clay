@@ -54,6 +54,8 @@ definitions:
     properties:
       taskType:
         $ref: '#/definitions/TaskType'
+      subscription:
+        $ref: '#/definitions/Subscription'
       taskStats:
         properties:
           requested:
@@ -168,7 +170,7 @@ definitions:
           - timedout
   Events:
     description: >
-      Table with trhee types of events.
+      Events array.
       Every item has id and exactly one of remaining fields filled.
     type: array
     items:
@@ -247,6 +249,10 @@ paths:
           schema:
             $ref: '#/definitions/Subscription'
       responses:
+        '200':
+          description: subscription amended
+          schema:
+            $ref: '#/definitions/SubscriptionStatus'
         '201':
           description: subscription created
           schema:
