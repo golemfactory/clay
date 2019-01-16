@@ -80,7 +80,6 @@ class Node(HardwarePresetsMixin):
                  use_monitor: bool = None,
                  use_talkback: bool = None,
                  use_docker_manager: bool = True,
-                 geth_address: Optional[str] = None,
                  password: Optional[str] = None
                 ) -> None:
 
@@ -133,7 +132,6 @@ class Node(HardwarePresetsMixin):
             use_docker_manager=use_docker_manager,
             use_monitor=self._use_monitor,
             concent_variant=concent_variant,
-            geth_address=geth_address,
             apps_manager=self.apps_manager,
             task_finished_cb=self._try_shutdown,
             update_hw_preset=self.upsert_hw_preset
