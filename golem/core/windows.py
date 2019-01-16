@@ -8,7 +8,7 @@ def run_powershell(
         script: Optional[str] = None,
         command: Optional[str] = None,
         args: Optional[List[str]] = None,
-        use_profile: Optional[bool] = False,
+        use_profile: bool = False,
         timeout: int = DEFAULT_SCRIPT_TIMEOUT
 ) -> str:
     """
