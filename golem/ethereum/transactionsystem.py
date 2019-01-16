@@ -58,12 +58,14 @@ def sci_required():
     return wrapper
 
 
-def gnt_deposit_required(default=None):
+def gnt_deposit_required():
     def wrapper(f):
         @functools.wraps(f)
         def curry(self, *args, **kwargs):
             if contracts.GNTDeposit not in self._config.CONTRACT_ADDRESSES:  # noqa pylint: disable=protected-access
-                return default
+                raise exceptions.ContractUnavailable(
+                    'Deposit contract unavailable',
+                )
             return f(self, *args, **kwargs)
         return curry
     return wrapper
