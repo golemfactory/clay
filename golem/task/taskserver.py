@@ -285,7 +285,8 @@ class TaskServer(
 
         return None
 
-    def task_given(self, node_id: str, ctd, price: int) -> bool:
+    def task_given(self, node_id: str, ctd: message.ComputeTaskDef,
+                   price: int) -> bool:
         if not self.task_computer.task_given(ctd):
             return False
         self.requested_tasks.remove(ctd['task_id'])
