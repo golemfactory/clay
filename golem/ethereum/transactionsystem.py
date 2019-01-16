@@ -62,7 +62,7 @@ def gnt_deposit_required():
     def wrapper(f):
         @functools.wraps(f)
         def curry(self, *args, **kwargs):
-            if contracts.GNTDeposit not in self._config.CONTRACT_ADDRESSES:  # noqa pylint: disable=protected-access
+            if not self.deposit_contract_available:
                 raise exceptions.ContractUnavailable(
                     'Deposit contract unavailable',
                 )
@@ -133,6 +133,11 @@ class TransactionSystem(LoopingCallService):
     def gas_price_limit(self) -> int:
         self._sci: SmartContractsInterface
         return self._sci.GAS_PRICE
+
+    @property  # type: ignore
+    @sci_required()
+    def deposit_contract_available(self) -> bool:
+        return contracts.GNTDeposit in self._config.CONTRACT_ADDRESSES
 
     def backwards_compatibility_tx_storage(self, old_datadir: Path) -> None:
         if self.running:
@@ -212,7 +217,10 @@ class TransactionSystem(LoopingCallService):
             if required_eth > self._eth_balance:
                 self._eth_per_payment = self._eth_balance // recipients_count
 
-        self._subscribe_to_events()
+        try:
+            self._subscribe_to_events()
+        except exceptions.ContractUnavailable:
+            pass
 
         self._refresh_balances()
         log.info(

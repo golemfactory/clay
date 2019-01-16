@@ -6,6 +6,7 @@ import uuid
 from random import Random
 from unittest import TestCase
 from unittest.mock import (
+    ANY,
     MagicMock,
     Mock,
     patch,
@@ -28,8 +29,8 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.config.active import EthereumConfig
 from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
-from golem.hardware.presets import HardwarePresets
 from golem.core.variables import CONCENT_CHOICES
+from golem.hardware.presets import HardwarePresets
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
@@ -1264,6 +1265,31 @@ class DepositPaymentsListTest(TestClientBase):
             expected,
             self.client.get_deposit_payments_list(),
         )
+
+
+@patch(
+    'golem.network.concent.client.ConcentClientService.__init__',
+    return_value=None,
+)
+class TestConcentInitialization(TestClientBase):
+    def setUp(self):
+        super(TestClientBase, self).setUp()  # pylint: disable=bad-super-call
+
+    @patch('golem.network.concent.client.ConcentClientService.stop')
+    def tearDown(self, *_):  # pylint: disable=arguments-differ
+        super().tearDown()
+
+    def test_no_contract(self, CCS, *_):
+        self.client = make_client(
+            datadir=self.path,
+            transaction_system=Mock(deposit_contract_available=False),
+            concent_variant=CONCENT_CHOICES['test'],
+        )
+        CCS.assert_called_once_with(
+            keys_auth=ANY,
+            variant=CONCENT_CHOICES['disabled'],
+        )
+
 
 
 class TestClientPEP8(TestCase, testutils.PEP8MixIn):
