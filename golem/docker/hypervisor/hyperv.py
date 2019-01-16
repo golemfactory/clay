@@ -218,16 +218,20 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if cpu is not None:
             args += [self.OPTIONS['cpu'], str(cpu)]
         if mem is not None:
-            cap_mem = self._memory_cap(mem)
-            if cap_mem != mem:
-                self._log_and_publish_event(events.MEM, mem_mb=cap_mem)
+            # cap_mem = self._memory_cap(mem)
+            # if cap_mem != mem:
+            #     self._log_and_publish_event(events.MEM, mem_mb=cap_mem)
+            #
+            # if self._check_system_drive_space(cap_mem):
+            #     args += [self.OPTIONS['mem'], str(cap_mem)]
+            # else:
+            #     self._log_and_publish_event(events.DISK)
+            #     mem_key = CONSTRAINT_KEYS['mem']
+            #     args += [self.OPTIONS['mem'], str(MIN_CONSTRAINTS[mem_key])]
 
-            if self._check_system_drive_space(cap_mem):
-                args += [self.OPTIONS['mem'], str(cap_mem)]
-            else:
-                self._log_and_publish_event(events.DISK)
-                mem_key = CONSTRAINT_KEYS['mem']
-                args += [self.OPTIONS['mem'], str(MIN_CONSTRAINTS[mem_key])]
+            # TODO: Restore when we have a better estimation of available RAM
+            mem_key = CONSTRAINT_KEYS['mem']
+            args += [self.OPTIONS['mem'], str(MIN_CONSTRAINTS[mem_key])]
 
         return args
 
