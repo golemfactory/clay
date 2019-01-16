@@ -184,7 +184,6 @@ def start(  # pylint: disable=too-many-arguments, too-many-locals
             use_monitor=monitor,
             use_talkback=enable_talkback,
             concent_variant=CONCENT_VARIANT,
-            geth_address=geth_address,
             password=password,
         )
 
