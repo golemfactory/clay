@@ -6,6 +6,7 @@ import unittest
 import unittest.mock as mock
 
 from faker import Faker
+from freezegun import freeze_time
 from peewee import DataError, PeeweeException, IntegrityError
 
 from golem_messages import factories as msg_factories
@@ -336,6 +337,7 @@ class TestMessageToModel(unittest.TestCase):
     def setUp(self):
         self.msg = msg_factories.tasks.TaskToComputeFactory()
 
+    @freeze_time()
     def test_basic(self):
         node_id = fake.binary(length=64)
         local_role = fake.random_element(Actor)
@@ -350,7 +352,7 @@ class TestMessageToModel(unittest.TestCase):
             'task': self.msg.task_id,
             'subtask': self.msg.subtask_id,
             'node': node_id,
-            'msg_date': mock.ANY,
+            'msg_date': datetime.datetime.now(),
             'msg_cls': 'TaskToCompute',
             'msg_data': mock.ANY,
             'local_role': local_role,

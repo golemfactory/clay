@@ -490,13 +490,16 @@ class TransactionSystem(LoopingCallService):
             amount: int,
             destination: str,
             currency: str) -> int:
+
         self._sci: SmartContractsInterface
+        assert self._sci is not None
+
         gas_price = self.gas_price
+
         if currency == 'ETH':
-            return self._sci.estimate_transfer_eth_gas(destination, amount) * \
-                gas_price
+            return self._sci.estimate_transfer_eth_gas(destination, amount)
         if currency == 'GNT':
-            return self._sci.GAS_WITHDRAW * gas_price
+            return self._sci.GAS_WITHDRAW
         raise ValueError('Unknown currency {}'.format(currency))
 
     @sci_required()
@@ -504,8 +507,12 @@ class TransactionSystem(LoopingCallService):
             self,
             amount: int,
             destination: str,
-            currency: str) -> str:
+            currency: str,
+            gas_price: Optional[int] = None) -> str:
+
         self._sci: SmartContractsInterface
+        assert self._sci is not None
+
         if not self._config.WITHDRAWALS_ENABLED:
             raise Exception("Withdrawals are disabled")
 
@@ -524,7 +531,7 @@ class TransactionSystem(LoopingCallService):
                 amount / denoms.ether,
                 destination,
             )
-            return self._sci.transfer_eth(destination, amount)
+            return self._sci.transfer_eth(destination, amount, gas_price)
 
         if currency == 'GNT':
             if amount > self.get_available_gnt():
@@ -538,7 +545,11 @@ class TransactionSystem(LoopingCallService):
                 amount / denoms.ether,
                 destination,
             )
-            tx_hash = self._sci.convert_gntb_to_gnt(destination, amount)
+            tx_hash = self._sci.convert_gntb_to_gnt(
+                destination,
+                amount,
+                gas_price,
+            )
 
             def on_receipt(receipt) -> None:
                 self._gntb_withdrawn -= amount

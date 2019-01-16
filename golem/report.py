@@ -1,5 +1,6 @@
 from contextlib import contextmanager
 from functools import wraps
+
 from typing import Any, ClassVar, Dict, Optional, Tuple
 
 from twisted.internet.defer import Deferred, succeed
@@ -15,6 +16,7 @@ class Stage(object):
     """
     pre = 'pre'
     post = 'post'
+    warning = 'warning'
     exception = 'exception'
 
 
@@ -33,6 +35,7 @@ class StatusPublisher(object):
     """
     Publishes method execution stages via RPC.
     """
+    _initialized: ClassVar[bool] = False
     _rpc_publisher: ClassVar[Optional[Publisher]] = None
     _last_status: ClassVar[Dict[str, Tuple[str, str, Any]]] = dict()
 
@@ -78,8 +81,26 @@ class StatusPublisher(object):
         return cls._last_status
 
     @classmethod
-    def set_publisher(cls, rpc_publisher: Publisher):
+    def initialize(cls, rpc_publisher):
+        if cls._initialized:
+            return
+
+        from pydispatch import dispatcher
+        dispatcher.connect(cls._publish_listener,
+                           signal=Golem.evt_golem_status)
+
         cls._rpc_publisher = rpc_publisher
+        cls._initialized = True
+
+    @classmethod
+    def _publish_listener(cls, event: str = 'default', **kwargs) -> None:
+        if event != 'publish':
+            return
+
+        cls.publish(kwargs['component'],
+                    kwargs['method'],
+                    kwargs['stage'],
+                    kwargs.get('data'))
 
 
 @contextmanager
