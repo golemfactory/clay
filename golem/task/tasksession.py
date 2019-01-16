@@ -6,7 +6,7 @@ import enum
 import functools
 import logging
 import time
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -627,7 +627,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     @handle_attr_error_with_task_computer
     @history.provider_history
     def _react_to_task_to_compute(self, msg):
-        ctd = msg.compute_task_def
+        ctd: Optional[message.tasks.ComputeTaskDef] = msg.compute_task_def
         want_to_compute_task = msg.want_to_compute_task
         if ctd is None or want_to_compute_task is None:
             logger.debug(
@@ -1103,7 +1103,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
-    def _set_env_params(self, ctd):
+    def _set_env_params(self, ctd: message.tasks.ComputeTaskDef):
         environment = self.task_manager.comp_task_keeper.get_task_env(
             ctd['task_id'],
         )
