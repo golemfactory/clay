@@ -208,7 +208,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
 
         def verification_finished():
+            logger.debug("Verification finished handler.")
             if not self.task_manager.verify_subtask(subtask_id):
+                logger.debug("Verification failure. subtask_id=%r", subtask_id)
                 send_verification_failure()
                 self.dropped()
                 return
@@ -475,12 +477,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         logger.info("Received offer to compute. task_id=%r, node=%r",
                     msg.task_id, node_name_id)
 
-        if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
-            logger.warning("Can not accept offer: Still waiting on results."
-                           "task_id=%r, node=%r", msg.task_id, node_name_id)
-            self.send(message.tasks.WaitingForResults())
-            return
-
         logger.debug(
             "Calling `task_manager.got_wants_to_compute`,"
             "task_id=%s, node=%s",
@@ -519,6 +515,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 node_name_id,
             )
             _cannot_assign(reasons.NoMoreSubtasks)
+            return
+
+        if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
+            logger.warning("Can not accept offer: Still waiting on results."
+                           "task_id=%r, node=%r", msg.task_id, node_name_id)
+            self.send(message.tasks.WaitingForResults())
             return
 
         if self._handshake_required(self.key_id):
@@ -972,8 +974,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.subtask_id,
         )
         if not sender_is_owner:
-            logger.warning("Requestor '%r' acknowledged a computed task report "
-                           "of an unknown task (subtask_id='%s')",
+            logger.warning("Requestor '%r' acknowledged a computed task report"
+                           " of an unknown task (subtask_id='%s')",
                            self.key_id, msg.subtask_id)
             return
 
@@ -986,12 +988,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         delayed_forcing_msg = message.concents.ForceSubtaskResults(
             ack_report_computed_task=msg,
         )
-        logger.debug('[CONCENT] ForceResults: %s', delayed_forcing_msg)
         ttc_deadline = datetime.datetime.utcfromtimestamp(
             msg.task_to_compute.compute_task_def['deadline']
         )
         svt = msg_helpers.subtask_verification_time(msg.report_computed_task)
         delay = ttc_deadline + svt - datetime.datetime.utcnow()
+        logger.debug(
+            '[CONCENT] Delayed ForceResults. msg=%r, delay=%r',
+            delayed_forcing_msg,
+            delay
+        )
         self.concent_service.submit_task_message(
             subtask_id=msg.subtask_id,
             msg=delayed_forcing_msg,
@@ -1089,13 +1095,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if isinstance(env, DockerEnvironment):
             if not self.__check_docker_images(ctd, env):
                 return False
-
-        if not env.allow_custom_main_program_file:
-            ctd['src_code'] = env.get_source_code()
-
-        if not ctd['src_code']:
-            self.err_msg = reasons.NoSourceCode
-            return False
 
         return True
 

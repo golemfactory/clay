@@ -1,6 +1,7 @@
 import decimal
 import logging
 import os
+import time
 from typing import Type, Dict, Any
 
 from ethereum.utils import denoms
@@ -8,12 +9,12 @@ from golem_messages import idgenerator
 from golem_messages.datastructures import p2p as dt_p2p
 from golem_messages.datastructures import tasks as dt_tasks
 import golem_messages.message
-from golem_verificator.core_verifier import CoreVerifier
-from golem_verificator.verifier import SubtaskVerificationState
+from golem.verificator.core_verifier import CoreVerifier
+from golem.verificator.verifier import SubtaskVerificationState
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.core.verification_queue import VerificationQueue
-import golem
+from golem import constants as gconst
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.fileshelper import outer_dir_path
@@ -120,15 +121,6 @@ class CoreTask(Task):
         # pylint: disable=not-callable
         self.environment = self.ENVIRONMENT_CLASS()
 
-        # src_code stuff
-        self.main_program_file = self.environment.main_program_file
-        try:
-            with open(self.main_program_file, "r") as src_file:
-                src_code = src_file.read()
-        except OSError as err:
-            logger.warning("Wrong main program file: %s", err)
-            src_code = ""
-
         # docker_images stuff
         if task_definition.docker_images:
             self.docker_images = task_definition.docker_images
@@ -138,7 +130,7 @@ class CoreTask(Task):
             self.docker_images = None
 
         th = dt_tasks.TaskHeader(
-            min_version=golem.__version__,
+            min_version=str(gconst.GOLEM_MIN_VERSION),
             task_id=task_definition.task_id,
             environment=self.environment.get_id(),
             task_owner=owner,
@@ -149,9 +141,10 @@ class CoreTask(Task):
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
             concent_enabled=task_definition.concent_enabled,
+            timestamp=int(time.time()),
         )
 
-        Task.__init__(self, th, src_code, task_definition)
+        Task.__init__(self, th, task_definition)
 
         self.total_tasks = total_tasks
         self.last_task = 0
@@ -343,7 +336,6 @@ class CoreTask(Task):
         ctd['task_id'] = self.header.task_id
         ctd['subtask_id'] = subtask_id
         ctd['extra_data'] = extra_data
-        ctd['src_code'] = self.src_code
         ctd['performance'] = perf_index
         if self.docker_images:
             ctd['docker_images'] = [di.to_dict() for di in self.docker_images]
@@ -507,7 +499,6 @@ class CoreTaskBuilder(TaskBuilder):
         self.root_path = dir_manager.root_path
         self.dir_manager = dir_manager
         self.owner = owner
-        self.src_code = ""
         self.environment = None
 
     def build(self):
@@ -532,7 +523,6 @@ class CoreTaskBuilder(TaskBuilder):
         definition.compute_on = dictionary.get('compute_on', 'cpu')
         definition.resources = set(dictionary['resources'])
         definition.subtasks_count = int(dictionary['subtasks_count'])
-        definition.main_program_file = task_type.defaults.main_program_file
         return definition
 
     @classmethod

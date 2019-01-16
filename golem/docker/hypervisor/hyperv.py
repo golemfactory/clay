@@ -278,15 +278,16 @@ class HyperVHypervisor(DockerMachineHypervisor):
         """
         Run a powershell script or command and return its output in UTF8
         """
+        cmd = [
+            'powershell.exe', '-NoProfile'
+        ]
         if script and not command:
-            cmd = [
-                'powershell.exe',
+            cmd += [
                 '-ExecutionPolicy', 'RemoteSigned',
                 '-File', script
             ]
         elif command and not script:
-            cmd = [
-                'powershell.exe',
+            cmd += [
                 '-Command', command
             ]
         else:
@@ -368,7 +369,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
             constr = constr or self.constraints()
             max_mem_in_mb += constr[CONSTRAINT_KEYS['mem']]
 
-        return int(0.9 * max_mem_in_mb)
+        return hardware.pad_memory(int(0.9 * max_mem_in_mb))
 
     def _create_volume(self, hostname: str, shared_dir: Path) -> str:
         assert self._work_dir is not None

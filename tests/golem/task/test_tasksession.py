@@ -51,8 +51,6 @@ class DockerEnvironmentMock(DockerEnvironment):
     DOCKER_IMAGE = ""
     DOCKER_TAG = ""
     ENV_ID = ""
-    APP_DIR = ""
-    SCRIPT_NAME = ""
     SHORT_DESCRIPTION = ""
 
 
@@ -592,8 +590,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         env = Mock()
         env.docker_images = [DockerImage("dockerix/xii", tag="323")]
-        env.allow_custom_main_program_file = False
-        env.get_source_code.return_value = None
         ts.task_server.get_environment_by_id.return_value = env
 
         keys = cryptography.ECCx(None)
@@ -648,11 +644,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             ts._react_to_task_to_compute(msg)
             return msg
 
-        _prepare_and_react(ctd)
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
-
         # Source code from local environment -> proper execution
         __reset_mocks()
         env.get_source_code.return_value = "print 'Hello world'"
@@ -702,18 +693,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         _prepare_and_react(ctd)
         conn.close.assert_not_called()
 
-        # Allow custom code / no code in ComputeTaskDef -> failure
-        __reset_mocks()
-        env.allow_custom_main_program_file = True
-        ctd['src_code'] = ""
-        _prepare_and_react(ctd)
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
-
         # Allow custom code / code in ComputerTaskDef -> proper execution
         __reset_mocks()
-        ctd['src_code'] = "print 'Hello world!'"
+        ctd['extra_data']['src_code'] = "print 'Hello world!'"
         msg = _prepare_and_react(ctd)
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
@@ -746,36 +728,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
-
-        # Envrionment is Docker environment with proper images,
-        # but no srouce code -> failure
-        __reset_mocks()
-        de = DockerEnvironmentMock(additional_images=[
-            DockerImage("dockerix/xii", tag="323"),
-            DockerImage("dockerix/xiii", tag="325"),
-            DockerImage("dockerix/xiii", tag="323")
-        ])
-        ts.task_server.get_environment_by_id.return_value = de
-        _prepare_and_react(ctd)
-        assert ts.err_msg == reasons.NoSourceCode
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
-
-        # Proper Docker environment with source code
-        __reset_mocks()
-        file_name = os.path.join(self.path, "main_program_file")
-        with open(file_name, 'w') as f:
-            f.write("Hello world!")
-        de.main_program_file = file_name
-        msg = _prepare_and_react(ctd)
-        ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
-        ts.task_server.task_given.assert_called_with(
-            header.task_owner.key,
-            ctd,
-            msg.price,
-        )
-        conn.close.assert_not_called()
 
     # pylint: enable=too-many-statements
 

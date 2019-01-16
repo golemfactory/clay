@@ -6,6 +6,7 @@ Regular, unmodified Provider node, running with DEBUG loglevel
 """
 
 import sys
+
 from scripts.node_integration_tests import params
 
 from golemapp import start

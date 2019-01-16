@@ -430,7 +430,7 @@ class ClientProvider:
     def create_task(self, task_dict, force=False) \
             -> typing.Tuple[typing.Optional[str], typing.Optional[str]]:
         """
-        - force: if True will ignore warnings
+        :param force: if True will ignore warnings
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
