@@ -16,6 +16,7 @@ from pydispatch import dispatcher
 
 from golem import hardware
 from golem.core.common import get_golem_path
+from golem.core.windows import run_powershell
 from golem.docker import smbshare
 from golem.docker.client import local_client
 from golem.docker.config import CONSTRAINT_KEYS, MIN_CONSTRAINTS
@@ -174,7 +175,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         try:
             # The windows VM fails to start when too much memory is assigned
             logger.info("Hyper-V: Starting VM %s ...", name)
-            self._run_ps(
+            run_powershell(
                 script=self.START_VM_SCRIPT_PATH,
                 args=[
                     '-VMName', name,
@@ -193,7 +194,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
     def is_available(cls) -> bool:
         command = "@(Get-Module -ListAvailable hyper-v).Name | Get-Unique"
         try:
-            output = cls._run_ps(command=command)
+            output = run_powershell(command=command)
             return output == "Hyper-V"
         except (RuntimeError, OSError) as e:
             logger.warning(f"Error checking Hyper-V availability: {e}")
@@ -302,7 +303,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     @classmethod
     def _get_vswitch_name(cls) -> str:
-        return cls._run_ps(script=cls.GET_VSWITCH_SCRIPT_PATH)
+        return run_powershell(script=cls.GET_VSWITCH_SCRIPT_PATH)
 
     @classmethod
     def _get_hostname_for_sharing(cls) -> str:
@@ -314,51 +315,6 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if not hostname:
             raise RuntimeError('COMPUTERNAME environment variable not set')
         return hostname
-
-    @classmethod
-    def _run_ps(
-            cls,
-            script: Optional[str] = None,
-            command: Optional[str] = None,
-            args: Optional[List[str]] = None,
-            timeout: int = SCRIPT_TIMEOUT
-    ) -> str:
-        """
-        Run a powershell script or command and return its output in UTF8
-        """
-        cmd = [
-            'powershell.exe', '-NoProfile'
-        ]
-        if script and not command:
-            cmd += [
-                '-ExecutionPolicy', 'RemoteSigned',
-                '-File', script
-            ]
-        elif command and not script:
-            cmd += [
-                '-Command', command
-            ]
-        else:
-            raise ValueError("Exactly one of (script, command) is required")
-
-        if args:
-            cmd += args
-
-        try:
-            return subprocess\
-                .run(
-                    cmd,
-                    timeout=timeout,  # seconds
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )\
-                .stdout\
-                .decode('utf8')\
-                .strip()
-        except (subprocess.CalledProcessError,
-                subprocess.TimeoutExpired) as exc:
-            raise RuntimeError(exc.stderr.decode('utf8') if exc.stderr else '')
 
     @staticmethod
     def uses_volumes() -> bool:

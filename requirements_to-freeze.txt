@@ -33,7 +33,7 @@ Pillow==4.2.1
 pluggy==0.6.0
 portalocker==1.2.1
 psutil==5.2.2
-py-cpuinfo==3.3.0
+py-cpuinfo==4.0.0
 pyasn1==0.4.1
 pycparser==2.17
 pydispatcher
