@@ -118,7 +118,7 @@ slogging.SManager.getLogger = monkey_patched_getLogger
 @click.option('--title', expose_value=False)
 def start(  # pylint: disable=too-many-arguments, too-many-locals
         monitor, concent, datadir, node_address, rpc_address, peer, mainnet,
-        net, geth_address, password, accept_terms, accept_concent_terms,
+        net, password, accept_terms, accept_concent_terms,
         accept_all_terms, version, log_level, enable_talkback, m):
 
     freeze_support()

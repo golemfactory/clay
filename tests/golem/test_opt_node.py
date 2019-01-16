@@ -93,7 +93,6 @@ class TestNode(TestWithDatabase):
                                        keys_auth=keys_auth,
                                        database=ANY,
                                        transaction_system=ANY,
-                                       geth_address=None,
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
                                        use_monitor=False,
@@ -118,88 +117,6 @@ class TestNode(TestWithDatabase):
         self.assertEqual(return_value.exit_code, 2)
         self.assertIn('Error: --node-address', return_value.output)
 
-    @patch('twisted.internet.reactor', create=True)
-    @patch('golem.node.Node')
-    def test_geth_address_should_be_passed_to_node(self, mock_node, *_):
-        geth_address = 'https://3.14.15.92:6535'
-
-        runner = CliRunner()
-        args = self.args + ['--geth-address', geth_address]
-        return_value = runner.invoke(start, args, catch_exceptions=False)
-        self.assertEqual(return_value.exit_code, 0)
-
-        mock_node.assert_called_with(datadir=path.join(self.path, 'rinkeby'),
-                                     app_config=ANY,
-                                     config_desc=ANY,
-                                     geth_address=geth_address,
-                                     peers=[],
-                                     concent_variant=variables.CONCENT_CHOICES[
-                                         'test'
-                                     ],
-                                     use_monitor=None,
-                                     use_talkback=None,
-                                     password=None)
-
-    @patch('golem.node.Client')
-    def test_geth_address_should_be_passed_to_client(self, mock_client, *_):
-        # given
-        geth_address = 'https://3.14.15.92:6535'
-
-        # when
-        node = Node(**self.node_kwargs, geth_address=geth_address)
-        node._client_factory(None)
-
-        # then
-        mock_client.assert_called_with(datadir=self.path,
-                                       app_config=ANY,
-                                       config_desc=ANY,
-                                       keys_auth=None,
-                                       database=ANY,
-                                       transaction_system=ANY,
-                                       geth_address=geth_address,
-                                       use_docker_manager=True,
-                                       concent_variant=concent_disabled,
-                                       use_monitor=False,
-                                       apps_manager=ANY,
-                                       task_finished_cb=node._try_shutdown,
-                                       update_hw_preset=node.upsert_hw_preset)
-
-    def test_geth_address_wo_http_should_fail(self, *_):
-        runner = CliRunner()
-        geth_addr = '3.14.15.92'
-        args = self.args + ['--geth-address', geth_addr]
-        return_value = runner.invoke(start, args, catch_exceptions=False)
-        self.assertEqual(return_value.exit_code, 2)
-        self.assertIn('Invalid value for "--geth-address"', return_value.output)
-        self.assertIn('Address without https:// prefix', return_value.output)
-        self.assertIn(geth_addr, return_value.output)
-
-    def test_geth_address_w_wrong_prefix_should_fail(self, *_):
-        runner = CliRunner()
-        geth_addr = 'http://3.14.15.92'
-        args = self.args + ['--geth-address', geth_addr]
-        return_value = runner.invoke(start, args, catch_exceptions=False)
-        self.assertEqual(return_value.exit_code, 2)
-        self.assertIn('Invalid value for "--geth-address"', return_value.output)
-        self.assertIn('Address without https:// prefix', return_value.output)
-        self.assertIn(geth_addr, return_value.output)
-
-    def test_geth_address_wo_port_should_fail(self, *_):
-        runner = CliRunner()
-        geth_addr = 'https://3.14.15.92'
-        args = self.args + ['--geth-address', geth_addr]
-        return_value = runner.invoke(start, args, catch_exceptions=False)
-        self.assertEqual(return_value.exit_code, 2)
-        self.assertIn('Invalid value for "--geth-address"', return_value.output)
-        self.assertIn('Invalid network address specified', return_value.output)
-        self.assertIn(geth_addr[len(geth_addr):], return_value.output)
-
-    def test_geth_address_missing_should_fail(self, *_):
-        runner = CliRunner()
-        return_value = runner.invoke(start, self.args + ['--geth-address'])
-        self.assertEqual(return_value.exit_code, 2)
-        self.assertIn('Error: --geth-address', return_value.output)
-
     @patch('golem.node.Node')
     def test_mainnet_should_be_passed_to_node(self, mock_node, *_):
 
@@ -217,7 +134,6 @@ class TestNode(TestWithDatabase):
         mock_node.assert_called_with(datadir=path.join(self.path, 'mainnet'),
                                      app_config=ANY,
                                      config_desc=ANY,
-                                     geth_address=None,
                                      peers=[],
                                      concent_variant=concent_disabled,
                                      use_monitor=None,
@@ -238,7 +154,6 @@ class TestNode(TestWithDatabase):
                                        keys_auth=None,
                                        database=ANY,
                                        transaction_system=ANY,
-                                       geth_address=None,
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
                                        use_monitor=False,
@@ -266,7 +181,6 @@ class TestNode(TestWithDatabase):
         mock_node.assert_called_with(datadir=path.join(self.path, 'rinkeby'),
                                      app_config=ANY,
                                      config_desc=ANY,
-                                     geth_address=None,
                                      peers=[],
                                      concent_variant=concent_disabled,
                                      use_monitor=None,
@@ -293,7 +207,6 @@ class TestNode(TestWithDatabase):
         mock_node.assert_called_with(datadir=path.join(self.path, 'mainnet'),
                                      app_config=ANY,
                                      config_desc=ANY,
-                                     geth_address=None,
                                      peers=[],
                                      concent_variant=concent_disabled,
                                      use_monitor=None,
