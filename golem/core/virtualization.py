@@ -6,7 +6,12 @@ from golem.core.common import get_golem_path, is_windows
 from golem.core.windows import run_powershell
 from golem.rpc import utils as rpc_utils
 
-WIN_SCRIPT_PATH = os.path.join(get_golem_path(), 'scripts', 'virtualization', 'get-virtualization-state.ps1')
+WIN_SCRIPT_PATH = os.path.join(
+    get_golem_path(),
+    'scripts',
+    'virtualization',
+    'get-virtualization-state.ps1'
+)
 
 
 @rpc_utils.expose('env.hw.virtualization')
