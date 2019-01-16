@@ -23,7 +23,7 @@ def run_powershell(
     cmd = ['powershell.exe']
 
     if not use_profile:
-        cmd += '-NoProfile'
+        cmd += ['-NoProfile']
 
     if script and not command:
         cmd += [
