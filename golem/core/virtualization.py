@@ -1,11 +1,12 @@
-import locale
-import re
-import subprocess
+import os
 
 from cpuinfo import get_cpu_info
 
-from golem.core.common import is_windows
+from golem.core.common import get_golem_path, is_windows
+from golem.core.windows import run_powershell
 from golem.rpc import utils as rpc_utils
+
+WIN_SCRIPT_PATH = os.path.join(get_golem_path(), 'scripts', 'virtualization', 'get-virtualization-state.ps1')
 
 
 @rpc_utils.expose('env.hw.virtualization')
@@ -27,24 +28,5 @@ def __check_vt_unix() -> bool:
 
 
 def __check_vt_windows() -> bool:
-    sys_info: subprocess.CompletedProcess = \
-        subprocess.run('systeminfo', check=True, stdout=subprocess.PIPE)
-
-    # https://stackoverflow.com/a/9228117
-    try:
-        output = sys_info.stdout.decode(locale.getpreferredencoding())
-    except ValueError:
-        output = sys_info.stdout.decode()
-
-    key_vt_supported = 'VM Monitor Mode Extensions'
-    key_vt_enabled = 'Virtualization Enabled In Firmware'
-
-    return __check_systeminfo_field(key_vt_supported, output) and \
-        __check_systeminfo_field(key_vt_enabled, output)
-
-
-def __check_systeminfo_field(key: str, command_output: str) -> bool:
-    pattern = re.compile(f'(.*){key}:(\\s+)(\\w*)')
-    match = pattern.search(command_output)
-
-    return match and match.group(match.lastindex) == 'Yes'
+    virtualization_state = run_powershell(script=WIN_SCRIPT_PATH)
+    return virtualization_state == 'True'
