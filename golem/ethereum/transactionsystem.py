@@ -19,9 +19,10 @@ from typing import (
 
 from ethereum.utils import denoms
 from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
-from eth_utils import decode_hex, is_address
+from eth_utils import is_address
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import (
+    contracts,
     JsonTransactionsStorage,
     new_sci,
     SmartContractsInterface,
@@ -61,7 +62,7 @@ def gnt_deposit_required(default=None):
     def wrapper(f):
         @functools.wraps(f)
         def curry(self, *args, **kwargs):
-            if contracts.GNTDeposit not in self._config.CONTRACT_ADDRESSESS:
+            if contracts.GNTDeposit not in self._config.CONTRACT_ADDRESSESS:  # noqa pylint: disable=protected-access
                 return default
             return f(self, *args, **kwargs)
         return curry
