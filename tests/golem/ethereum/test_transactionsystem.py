@@ -11,6 +11,7 @@ from eth_utils import encode_hex
 from ethereum.utils import denoms
 import faker
 from freezegun import freeze_time
+import golem_sci.contracts
 import golem_sci.structs
 import requests
 
@@ -54,13 +55,16 @@ class TransactionSystemBase(testutils.DatabaseFixture):
             patch('golem.ethereum.transactionsystem.new_sci',
                   return_value=self.sci):
             ets = TransactionSystem(
-                datadir or self.new_path,
-                Mock(
+                datadir=datadir or self.new_path,
+                config=Mock(
                     NODE_LIST=[],
                     FALLBACK_NODE_LIST=[],
                     CHAIN='test_chain',
                     FAUCET_ENABLED=False,
                     WITHDRAWALS_ENABLED=withdrawals,
+                    CONTRACT_ADDRESSES={
+                        golem_sci.contracts.GNTDeposit: 'some address',
+                    },
                 )
             )
             if not just_create:
@@ -88,11 +92,14 @@ class TestTransactionSystem(TransactionSystemBase):
     def test_chain_arg(self, new_sci):
         new_sci.return_value = self.sci
         ets = TransactionSystem(
-            self.new_path,
-            Mock(
+            datadir=self.new_path,
+            config=Mock(
                 NODE_LIST=[],
                 FALLBACK_NODE_LIST=[],
                 CHAIN='test_chain',
+                CONTRACT_ADDRESSES={
+                    golem_sci.contracts.GNTDeposit: 'some address',
+                },
             )
         )
         ets.set_password(PASSWORD)
