@@ -20,6 +20,7 @@ from golem.core import variables
 from golem.network.transport.tcpnetwork_helpers import SocketAddress
 from golem.node import Node, ShutdownResponse
 from golem.testutils import TempDirFixture
+from golem.tools.ci import ci_skip
 from golem.tools.testwithdatabase import TestWithDatabase
 from golemapp import start
 from tests.golem.config.utils import mock_config
@@ -28,6 +29,7 @@ concent_disabled = variables.CONCENT_CHOICES['disabled']
 
 
 # pylint: disable=too-many-public-methods
+@ci_skip
 @patch('golem.core.golem_async.start_asyncio_thread')
 @patch('twisted.internet.iocpreactor', create=True)
 @patch('twisted.internet.kqreactor', create=True)

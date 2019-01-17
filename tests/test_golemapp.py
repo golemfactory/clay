@@ -5,10 +5,12 @@ from click.testing import CliRunner
 from portalocker import LockException
 
 from golem.testutils import TempDirFixture, PEP8MixIn
+from golem.tools.ci import ci_skip
 from golemapp import start
 from tests.golem.config.utils import mock_config
 
 
+@ci_skip
 @mock.patch('golem.core.golem_async.start_asyncio_thread')
 class TestGolemApp(TempDirFixture, PEP8MixIn):
     PEP8_FILES = [
