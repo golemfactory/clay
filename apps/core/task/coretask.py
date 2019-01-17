@@ -53,12 +53,6 @@ class CoreTaskTypeInfo(TaskTypeInfo):
 
     @classmethod
     # pylint:disable=unused-argument
-    def get_task_num_from_pixels(cls, x, y, definition, subtasks_count,
-                                 output_num=1):
-        return 0
-
-    @classmethod
-    # pylint:disable=unused-argument
     def get_task_border(cls, subtask, definition, subtasks_count,
                         output_num=1, as_path=False):
         return []
