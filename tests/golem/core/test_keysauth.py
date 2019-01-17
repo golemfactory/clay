@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from golem_messages import message
 from golem_messages.cryptography import ECCx, privtopub
+from golem_messages.factories.datastructures.tasks import TaskHeaderFactory
 
 from golem import testutils
 from golem.core.keysauth import (
@@ -181,11 +182,11 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
 
         msg = message.tasks.WantToComputeTask(
             node_name='node_name',
-            task_id='task_id',
             perf_index=2200,
             price=5 * 10 ** 18,
             max_resource_size=250000000,
             max_memory_size=300000000,
+            task_header=TaskHeaderFactory(),
         )
 
         dumped_l = msg.serialize(

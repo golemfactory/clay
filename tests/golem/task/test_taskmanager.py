@@ -105,17 +105,8 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         shutil.rmtree(str(self.tm.tasks_dir))
 
     def _get_task_header(self, task_id, timeout, subtask_timeout):
-        return dt_tasks_factory.TaskHeader(
+        return dt_tasks_factory.TaskHeaderFactory(
             task_id=task_id,
-            task_owner=dt_p2p_factory.Node(
-                key="task_owner_key_%s" % (self.test_nonce,),
-                node_name=fake.name(),
-                pub_addr=fake.random_int(min=0, max=65535),
-                pub_port=fake.random_int(min=0, max=65535),
-            ),
-            environment="test_environ_%s" % (self.test_nonce,),
-            resource_size=2 * 1024,
-            estimated_memory=3 * 1024,
             max_price=1010,
             deadline=timeout_to_deadline(timeout),
             subtask_timeout=subtask_timeout,
@@ -402,16 +393,8 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
 
     @patch('golem.task.taskmanager.TaskManager.dump_task')
     def test_computed_task_received(self, _):
-        owner = dt_p2p_factory.Node(
-            node_name="ABC",
-            pub_addr="10.10.10.10",
-            pub_port=1024,
-            key="key_id",
-        )
-        th = dt_tasks_factory.TaskHeader(
+        th = dt_tasks_factory.TaskHeaderFactory(
             task_id="xyz",
-            environment="DEFAULT",
-            task_owner=owner,
         )
         th.max_price = 50
         th.subtask_timeout = 1
@@ -722,10 +705,8 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             key="abcde",
         )
         t = TaskMock(
-            header=dt_tasks_factory.TaskHeader(
+            header=dt_tasks_factory.TaskHeaderFactory(
                 task_id="xyz",
-                environment="DEFAULT",
-                task_owner=owner,
                 subtask_timeout=1,
                 max_price=1,
             ),
@@ -936,10 +917,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
             p2p_prv_port=40102, p2p_pub_port=40102
         )
         task = TaskMock(
-            header=dt_tasks_factory.TaskHeader(
-                task_id="task_id",
-                environment="environment",
-                task_owner=node,
+            header=dt_tasks_factory.TaskHeaderFactory(
                 subtask_timeout=1,
                 max_price=1,
             ),

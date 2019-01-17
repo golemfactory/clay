@@ -163,15 +163,6 @@ class Task(abc.ABC):
     def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa pylint:disable=line-too-long
         pass  # Implement in derived methods
 
-    def create_reference_data_for_task_validation(self):
-        """
-        If task validation requires some reference data, then the overriding methods have to generate it.
-        The reference task will be solved on local computer (by requestor) in order to obtain reference results.
-        The reference results will be used to validate the output given by providers.
-        :return:
-        """
-        pass
-
     @abc.abstractmethod
     def needs_computation(self) -> bool:
         """ Return information if there are still some subtasks that may be dispended

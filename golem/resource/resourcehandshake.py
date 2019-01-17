@@ -91,7 +91,6 @@ class ResourceHandshakeSessionMixin:
 
         self._task_request_message = dict(
             node_name=node_name,
-            task_id=task_id,
             perf_index=perf_index,
             price=price,
             max_resource_size=max_resource_size,
@@ -99,6 +98,7 @@ class ResourceHandshakeSessionMixin:
             concent_enabled=concent_enabled,
             provider_public_key=self.task_server.get_key_id(),
             provider_ethereum_public_key=self.task_server.get_key_id(),
+            task_header=task_header,
         )
 
         if self._is_peer_blocked(key_id):
@@ -114,7 +114,7 @@ class ResourceHandshakeSessionMixin:
     def _send_want_to_compute_task(self) -> None:
         wtct = message.tasks.WantToComputeTask(**self._task_request_message)
         self.send(wtct)  # type: ignore
-        ProviderTTCDelayTimers.start(self._task_request_message['task_id'])
+        ProviderTTCDelayTimers.start(wtct.task_id)
 
     # ########################
     #     MESSAGE HANDLERS

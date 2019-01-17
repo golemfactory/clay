@@ -127,6 +127,8 @@ class TaskManager(TaskEventListener):
         )
 
         self.requestor_stats_manager = RequestorTaskStatsManager()
+        self.provider_stats_manager = \
+            self.comp_task_keeper.provider_stats_manager
 
         self.finished_cb = finished_cb
 
@@ -172,7 +174,6 @@ class TaskManager(TaskEventListener):
         task.header.task_owner = self.node
         self.sign_task_header(task.header)
 
-        task.create_reference_data_for_task_validation()
         task.register_listener(self)
 
         ts = TaskState()
