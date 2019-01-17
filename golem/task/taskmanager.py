@@ -172,7 +172,6 @@ class TaskManager(TaskEventListener):
         task.header.task_owner = self.node
         self.sign_task_header(task.header)
 
-        task.create_reference_data_for_task_validation()
         task.register_listener(self)
 
         ts = TaskState()
