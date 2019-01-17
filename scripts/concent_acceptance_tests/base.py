@@ -22,17 +22,15 @@ from golem_messages import helpers
 from golem_messages import serializer
 from golem_messages import utils as msg_utils
 from golem_messages.message.base import Message
-from golem_messages.message import concents as concent_msg
+from golem_messages.message import concents
 
 from golem_sci import (
     new_sci_rpc, SmartContractsInterface, JsonTransactionsStorage)
 
-
 from golem.core import variables
+from golem.ethereum.transactionsystem import tETH_faucet_donate
 from golem.network.concent import client
 from golem.utils import privkeytoaddr
-
-from golem.ethereum.transactionsystem import tETH_faucet_donate
 
 logger = logging.getLogger(__name__)
 
@@ -56,13 +54,15 @@ def dump_balance(sci: SmartContractsInterface):
     sys.stderr.write(balance_str)
 
 
-class ConcentBaseTest:
+class ConcentBaseTest(unittest.TestCase):
     @staticmethod
     def _fake_keys():
         return cryptography.ECCx(None)
 
     def setUp(self):
         from golem.config.environments import set_environment
+        from golem.core import common
+        common.config_logging(suffix='concent-acceptance')
         concent_variant = os.environ.get('CONCENT_VARIANT', 'staging')
         set_environment('testnet', concent_variant)
         self.variant = variables.CONCENT_CHOICES[concent_variant]
@@ -190,8 +190,17 @@ class ConcentBaseTest:
             )
         )
 
+    def assertServiceRefused(
+            self,
+            msg: concents.ServiceRefused,
+            reason=None,
+        ):
+        self.assertIsInstance(msg, concents.ServiceRefused)
+        if reason:
+            self.assertEqual(msg.reason, reason)
+
     def assertFttCorrect(self, ftt, subtask_id, client_key, operation):
-        self.assertIsInstance(ftt, concent_msg.FileTransferToken)
+        self.assertIsInstance(ftt, concents.FileTransferToken)
 
         self.assertIsNotNone(subtask_id)  # sanity check, just in case
         self.assertEqual(ftt.subtask_id, subtask_id)
@@ -214,14 +223,14 @@ class ConcentBaseTest:
         )
 
 
-class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
+class SCIBaseTest(ConcentBaseTest):
     """
     Base test providing instances of TransactionSystem
     for the provider and the requestor
     """
 
     def setUp(self):
-        super(SCIBaseTest, self).setUp()
+        super().setUp()
         from golem.config.environments.testnet import EthereumConfig
         random.seed()
 

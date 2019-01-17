@@ -43,6 +43,7 @@ class Hypervisor(metaclass=ABCMeta):
             self.save_vm()
 
     @classmethod
+    @report_calls(Component.hypervisor, 'instance.check')
     def instance(cls, get_config_fn: GetConfigFunction,
                  docker_vm: str = DOCKER_VM_NAME) -> 'Hypervisor':
         if not cls._instance:
