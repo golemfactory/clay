@@ -271,6 +271,10 @@ function install_dependencies()
     info_msg "Installing: ${packages[*]}"
     sudo apt-get install -q -y ${packages[*]} >/dev/null
 
+    if [[ ${INSTALL_NVIDIA_DOCKER} -eq 1 ]]; then
+        ! sudo apt-mark hold nvidia-docker2 docker-ce
+    fi
+
     declare -r hyperg=$(release_url "https://api.github.com/repos/golemfactory/golem-hyperdrive/releases")
     hyperg_release=$( echo ${hyperg} | cut -d '/' -f 8 | sed 's/v//' )
     # Older version of HyperG doesn't have `--version`, so need to kill
