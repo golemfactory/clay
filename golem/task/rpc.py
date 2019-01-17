@@ -166,14 +166,13 @@ def _run_test_task(client, task_dict):
 
 def _validate_lock_funds_possibility(
         transaction_system: TransactionSystem,
-        price: int,
-        num: int) -> None:
-    gnt = price * num
-    eth = transaction_system.eth_for_batch_payment(num)
+        total_price_gnt: int,
+        number_of_tasks: int) -> None:
+    eth = transaction_system.eth_for_batch_payment(number_of_tasks)
 
-    if gnt > transaction_system.get_available_gnt():
+    if total_price_gnt > transaction_system.get_available_gnt():
         raise eth_exceptions.NotEnoughFunds(
-            gnt,
+            total_price_gnt,
             transaction_system.get_available_gnt(), 'GNT',
         )
     eth_available = transaction_system.get_available_eth()
@@ -241,7 +240,7 @@ def _ensure_task_deposit(client, task, force):
     # unlock them when the task fails regardless of the reason.
     try:
         client.transaction_system.validate_concent_deposit_possibility(
-            required=min_amount,
+            required_deposit_for_task=min_amount,
             force=force
         )
         yield client.transaction_system.concent_deposit(
@@ -389,7 +388,7 @@ def enqueue_new_task(client, task, force=False) \
         yield _ensure_task_deposit(
             client=client,
             task=task,
-            force=force
+            force=force,
         )
 
         logger.info(
@@ -460,23 +459,11 @@ class ClientProvider:
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
-
-        prepare_and_validate_task_dict(self.client, task_dict)
         validate_client(self.client)
+        prepare_and_validate_task_dict(self.client, task_dict)
 
         task: taskbase.Task = self.task_manager.create_task(task_dict)
-        _validate_lock_funds_possibility(
-            self.client.transaction_system,
-            task.subtask_price,
-            task.get_total_tasks(),
-        )
-        min_amount, _ = msg_helpers.requestor_deposit_amount(
-            task.price,
-        )
-        self.client.transaction_system.validate_concent_deposit_possibility(
-            required=min_amount,
-            force=force,
-        )
+        self._validate_enough_founds_to_pay_for_task(task, force)
         task_id = task.header.task_id
 
         deferred = enqueue_new_task(self.client, task, force=force)
@@ -491,6 +478,25 @@ class ClientProvider:
             ),
         )
         return task_id, None
+
+    def _validate_enough_founds_to_pay_for_task(
+            self, task: taskbase.Task, force: bool
+    ):
+        _validate_lock_funds_possibility(
+            self.client.transaction_system,
+            task.price,
+            task.get_total_tasks(),
+        )
+        min_amount, _ = msg_helpers.requestor_deposit_amount(
+            task.price,
+        )
+        concent_enabled = task.header.concent_enabled
+        concent_available = self.client.concent_service.available
+        if concent_enabled and concent_available:
+            self.client.transaction_system.validate_concent_deposit_possibility(
+                required_deposit_for_task=min_amount,
+                force=force,
+            )
 
     @rpc_utils.expose('comp.task.restart')
     @safe_run(_restart_task_error)

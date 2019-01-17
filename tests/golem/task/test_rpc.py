@@ -26,13 +26,6 @@ from tests.golem.test_client import TestClientBase
 fake = faker.Faker()
 
 
-def _raise_not_enough_funds(*_, **__):
-    raise exceptions.NotEnoughFunds(
-        required=166667000000000000,
-        available=0,
-    )
-
-
 class ProviderBase(test_client.TestClientBase):
     T_DICT = {
         'compute_on': 'cpu',
@@ -148,7 +141,10 @@ class TestCreateTask(ProviderBase, TestClientBase):
                           "spaces, underline, dash or dot.")
 
     @mock.patch('golem.task.rpc._validate_lock_funds_possibility',
-                side_effect=_raise_not_enough_funds)
+                side_effect=exceptions.NotEnoughFunds(
+                    required=0.166667 * denoms.ether,
+                    available=0,
+                ))
     def test_create_task_fail_if_not_enough_gnt_available(self, mocked, *_):
         t = dummytaskstate.DummyTaskDefinition()
         t.name = "test"
@@ -172,8 +168,8 @@ class ConcentDepositLockPossibilityTest(unittest.TestCase):
         with self.assertRaises(exceptions.NotEnoughFunds) as e:
             rpc._validate_lock_funds_possibility(
                 transaction_system=ets,
-                price=required,
-                num=1
+                total_price_gnt=required,
+                number_of_tasks=1
             )
         expected = f'Not enough GNT available. ' \
             f'Required: {required / denoms.ether:.6f}, ' \

@@ -572,10 +572,13 @@ class TransactionSystem(LoopingCallService):
             self,
             required: int,
             force: bool = False) -> None:
+        current_concent_deposit = self.concent_balance()
+        required_deposit_difference = required - current_concent_deposit
+
         gntb_balance = self.get_available_gnt()
-        if gntb_balance < required:
+        if gntb_balance < required_deposit_difference:
             raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
-        if self.gas_price >= self._sci.GAS_PRICE:  # type: ignore
+        if self.gas_price >= self.gas_price_limit:
             if not force:
                 raise exceptions.LongTransactionTime("Gas price too high")
             log.warning(
