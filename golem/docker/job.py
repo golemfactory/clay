@@ -130,7 +130,7 @@ class DockerJob:
             image=self.image.name,
             volumes=self.volumes,
             host_config=host_cfg,
-            command=[self.script_filepath],
+            command=[f'/usr/bin/python3 "{self.script_filepath}"'],
             working_dir=self.WORK_DIR,
             environment=self.environment,
         )
