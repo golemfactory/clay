@@ -715,8 +715,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 _cannot_compute(reasons.TooShortDeposit)
                 return
 
+        env_id = msg.want_to_compute_task.task_header.environment
         if self._check_ctd_params(ctd)\
-                and self._set_env_params(ctd)\
+                and self._set_env_params(env_id, ctd)\
                 and self.task_manager.comp_task_keeper.receive_subtask(msg):
             self.task_server.add_task_session(
                 ctd['subtask_id'], self
@@ -1103,11 +1104,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
-    def _set_env_params(self, ctd: message.tasks.ComputeTaskDef):
-        environment = self.task_manager.comp_task_keeper.get_task_env(
-            ctd['task_id'],
-        )
-        env = self.task_server.get_environment_by_id(environment)
+    def _set_env_params(self, env_id: str, ctd: message.tasks.ComputeTaskDef):
+        env = self.task_server.get_environment_by_id(env_id)
         reasons = message.tasks.CannotComputeTask.REASON
         if not env:
             self.err_msg = reasons.WrongEnvironment
