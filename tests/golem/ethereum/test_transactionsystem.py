@@ -1,26 +1,19 @@
 # pylint: disable=protected-access
-from os import urandom
 from pathlib import Path
 import sys
 import time
 from typing import Optional
 from unittest.mock import patch, Mock, ANY, PropertyMock
-from unittest import TestCase
 
-from eth_utils import encode_hex
 from ethereum.utils import denoms
 import faker
 from freezegun import freeze_time
 import golem_sci.structs
-import requests
 
 from golem import model
 from golem import testutils
 from golem.ethereum import exceptions
-from golem.ethereum.transactionsystem import (
-    TransactionSystem,
-    tETH_faucet_donate,
-)
+from golem.ethereum.transactionsystem import TransactionSystem
 from golem.ethereum.exceptions import NotEnoughFunds
 
 fake = faker.Faker()
@@ -673,37 +666,3 @@ class ConcentUnlockTest(TransactionSystemBase):
             int(time.time()) + delay
         self.sci.on_transaction_confirmed.call_args[0][1](Mock())
         call_later.assert_called_once_with(delay, self.ets.concent_withdraw)
-
-
-class FaucetTest(TestCase):
-    @classmethod
-    @patch('requests.get')
-    def test_error_code(cls, get):
-        addr = encode_hex(urandom(20))
-        response = Mock(spec=requests.Response)
-        response.status_code = 500
-        get.return_value = response
-        assert tETH_faucet_donate(addr) is False
-
-    @classmethod
-    @patch('requests.get')
-    def test_error_msg(cls, get):
-        addr = encode_hex(urandom(20))
-        response = Mock(spec=requests.Response)
-        response.status_code = 200
-        response.json.return_value = {'paydate': 0, 'message': "Ooops!"}
-        get.return_value = response
-        assert tETH_faucet_donate(addr) is False
-
-    @classmethod
-    @patch('requests.get')
-    def test_success(cls, get):
-        addr = encode_hex(urandom(20))
-        response = Mock(spec=requests.Response)
-        response.status_code = 200
-        response.json.return_value = {'paydate': 1486605259,
-                                      'amount': 999999999999999}
-        get.return_value = response
-        assert tETH_faucet_donate(addr) is True
-        assert get.call_count == 1
-        assert addr in get.call_args[0][0]
