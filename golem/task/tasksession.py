@@ -501,7 +501,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         task_server_ok = self.task_server.should_accept_provider(
             self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-            msg.max_resource_size, msg.max_memory_size, msg.num_cores)
+            msg.max_resource_size, msg.max_memory_size)
 
         logger.debug(
             "Task server ok? should_accept_provider=%s task_id=%s node=%s",
@@ -565,7 +565,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             ctd = self.task_manager.get_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.perf_index,
                 msg.price, msg.max_resource_size, msg.max_memory_size,
-                msg.num_cores, self.address)
+                self.address)
 
             logger.debug(
                 "task_id=%s, node=%s ctd=%s",

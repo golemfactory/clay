@@ -122,7 +122,6 @@ class TaskSessionTaskToComputeTest(TestCase):
             'price': 30,
             'max_resource_size': 3,
             'max_memory_size': 1,
-            'num_cores': 8,
             'task_header': self._get_task_header()
         }
 
@@ -172,7 +171,6 @@ class TaskSessionTaskToComputeTest(TestCase):
             params['price'],
             params['max_resource_size'],
             params['max_memory_size'],
-            params['num_cores']
         )
         ts.conn.send_message.assert_called_once()
         mt = ts.conn.send_message.call_args[0][0]
@@ -183,7 +181,6 @@ class TaskSessionTaskToComputeTest(TestCase):
         self.assertEqual(mt.price, params['price'])
         self.assertEqual(mt.max_resource_size, params['max_resource_size'])
         self.assertEqual(mt.max_memory_size, params['max_memory_size'])
-        self.assertEqual(mt.num_cores, params['num_cores'])
         self.assertEqual(mt.provider_public_key, self.provider_key)
         self.assertEqual(mt.provider_ethereum_public_key, self.provider_key)
 
