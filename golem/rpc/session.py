@@ -16,6 +16,7 @@ from twisted.internet.endpoints import (
 )
 
 from golem.rpc.common import X509_COMMON_NAME
+from golem.rpc import utils as rpc_utils
 
 logger = logging.getLogger('golem.rpc')
 
@@ -202,6 +203,7 @@ class Session(ApplicationSession):
             deferred.addErrback(self._on_error)
             yield deferred
 
+    @rpc_utils.expose('sys.exposed_procedures')
     def exposed_procedures(self):
         exposed: typing.Dict[str, str] = {}
         for registration in self._registrations.values():
