@@ -28,7 +28,6 @@ from golem_sci import (
     TransactionReceipt,
 )
 from twisted.internet import defer
-import requests
 
 from golem import model
 from golem.core.deferred import call_later
@@ -41,6 +40,7 @@ from golem.rpc import utils as rpc_utils
 from golem.utils import privkeytoaddr
 
 from . import exceptions
+from .faucet import tETH_faucet_donate
 
 
 log = logging.getLogger(__name__)
@@ -789,20 +789,3 @@ class TransactionSystem(LoopingCallService):
         self._try_convert_gnt()
         self._payment_processor.sendout()
         self._incomes_keeper.update_overdue_incomes()
-
-
-def tETH_faucet_donate(addr: str):
-    request = "http://188.165.227.180:4000/donate/{}".format(addr)
-    resp = requests.get(request)
-    if resp.status_code != 200:
-        log.warning("tETH Faucet error code %r", resp.status_code)
-        return False
-    response = resp.json()
-    if response['paydate'] == 0:
-        log.warning("tETH Faucet warning %r", response['message'])
-        return False
-    # The paydate is not actually very reliable, usually some day in the past.
-    paydate = datetime.fromtimestamp(response['paydate'])
-    amount = int(response['amount']) / denoms.ether
-    log.info("Faucet: %.6f ETH on %r", amount, paydate)
-    return True
