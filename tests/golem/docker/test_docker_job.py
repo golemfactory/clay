@@ -128,7 +128,7 @@ class TestBaseDockerJob(TestDockerJob):
         return "golemfactory/base"
 
     def _get_test_tag(self):
-        return "1.3"
+        return "1.4"
 
     def test_create(self):
         job = self._create_test_job()
@@ -263,7 +263,8 @@ class TestBaseDockerJob(TestDockerJob):
         self.assertEqual(out_files, ["stderr.log"])
         with open(err_file, "r") as out:
             line = out.readline().strip()
-        self.assertTrue(line.startswith("python3: can't open file"))
+        print(line)
+        self.assertTrue(line.find("python3: can't open file") != -1)
 
     def test_wait_timeout(self):
         src = "import time\ntime.sleep(10)\n"
