@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch, Mock, ANY, MagicMock
 
 from click.testing import CliRunner
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, succeed
 
 import golem.argsparser as argsparser
 from golem.appconfig import AppConfig
@@ -666,6 +666,31 @@ class TestOptNode(TempDirFixture):
         assert self.node.client.start.call_count == 1
         self.node.client.connect.assert_called_with(parsed_peer[0])
         assert reactor.addSystemEventTrigger.call_count == 2
+
+    def test_start_prints_exception_message(self, *_):
+        # given
+        self.node = Node(**self.node_kwargs)
+        self.node._start_rpc = lambda: succeed(None)
+        self.node._check_terms = lambda: succeed(None)
+        self.node._start_keys_auth = lambda: succeed(None)
+        self.node._start_docker = lambda: succeed(None)
+
+        msg = "setup client error message"
+
+        def _setup_client(_):
+            raise Exception(msg)
+        self.node._setup_client = _setup_client
+
+        # when
+        with self.assertLogs('golem.node', level='INFO') as logs:
+            self.node.start()
+        output = "\n".join(logs.output)
+
+        # then
+        full_msg = \
+            "ERROR:golem.node:Stopping because of " \
+            f"'setup client' error: {msg}"
+        assert full_msg in output
 
     def test_is_mainnet(self, *_):
         self.node = Node(**self.node_kwargs)
