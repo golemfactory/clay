@@ -84,7 +84,6 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
             price=5,
             max_resource_size=10 * 10 ** 8,
             max_memory_size=10 * 10 ** 8,
-            num_cores=10
         )
         self.session = MockTaskSession(self.tempdir)
         self.session._start_handshake = Mock()

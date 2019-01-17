@@ -414,7 +414,7 @@ class BlenderRenderTask(FrameRenderingTask):
                                                   expected_offsets)
 
     # pylint: disable-msg=too-many-locals
-    def query_extra_data(self, perf_index: float, num_cores: int = 0,
+    def query_extra_data(self, perf_index: float,
                          node_id: Optional[str] = None,
                          node_name: Optional[str] = None) \
             -> FrameRenderingTask.ExtraData:

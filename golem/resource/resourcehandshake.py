@@ -67,7 +67,7 @@ class ResourceHandshakeSessionMixin:
         self._handshake_timer = None
 
     def request_task(self, node_name, task_id, perf_index, price,
-                     max_resource_size, max_memory_size, num_cores):
+                     max_resource_size, max_memory_size):
 
         """ Inform that node wants to compute given task
         :param str node_name: name of that node
@@ -76,7 +76,6 @@ class ResourceHandshakeSessionMixin:
         :param float price: price for an hour
         :param int max_resource_size: how much disk space can this node offer
         :param int max_memory_size: how much ram can this node offer
-        :param int num_cores: how many cpu cores this node can offer
         :return:
         """
 
@@ -97,7 +96,6 @@ class ResourceHandshakeSessionMixin:
             price=price,
             max_resource_size=max_resource_size,
             max_memory_size=max_memory_size,
-            num_cores=num_cores,
             concent_enabled=concent_enabled,
             provider_public_key=self.task_server.get_key_id(),
             provider_ethereum_public_key=self.task_server.get_key_id(),

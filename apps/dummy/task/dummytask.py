@@ -77,7 +77,6 @@ class DummyTask(CoreTask):
 
     def query_extra_data(self,
                          perf_index: float,
-                         num_cores: int = 1,
                          node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
         logger.debug("Query extra data on dummytask")

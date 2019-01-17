@@ -186,7 +186,6 @@ class TestKeysAuth(testutils.PEP8MixIn, testutils.TempDirFixture):
             price=5 * 10 ** 18,
             max_resource_size=250000000,
             max_memory_size=300000000,
-            num_cores=4,
         )
 
         dumped_l = msg.serialize(

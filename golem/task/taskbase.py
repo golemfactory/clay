@@ -148,13 +148,12 @@ class Task(abc.ABC):
         return  # Implement in derived class
 
     @abc.abstractmethod
-    def query_extra_data(self, perf_index: float, num_cores: int = 1,
+    def query_extra_data(self, perf_index: float,
                          node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> 'ExtraData':
         """ Called when a node asks with given parameters asks for a new
         subtask to compute.
         :param perf_index: performance that given node declares
-        :param num_cores: number of cores that current node declares
         :param node_id: id of a node that wants to get a next subtask
         :param node_name: name of a node that wants to get a next subtask
         """
