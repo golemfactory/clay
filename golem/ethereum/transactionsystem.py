@@ -134,8 +134,7 @@ class TransactionSystem(LoopingCallService):
         self._sci: SmartContractsInterface
         return self._sci.GAS_PRICE
 
-    @property  # type: ignore
-    @sci_required()
+    @property
     def deposit_contract_available(self) -> bool:
         return contracts.GNTDeposit in self._config.CONTRACT_ADDRESSES
 
