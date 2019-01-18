@@ -27,7 +27,7 @@ from .taskthread import TaskThread
 
 if TYPE_CHECKING:
     from .taskserver import TaskServer  # noqa pylint:disable=unused-import
-    from golem_messages.message.tasks import ComputeTaskDef  # noqa pylint:disable=unused-import
+    from golem_messages.message.tasks import TaskToCompute  # noqa pylint:disable=unused-import
 
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ class TaskComputer(object):
 
         self.stats = IntStatsKeeper(CompStats)
 
-        self.assigned_subtask: Optional['ComputeTaskDef'] = None
+        self.assigned_subtask: Optional['TaskToCompute'] = None
 
         self.delta = None
         self.last_task_timeout_checking = None
@@ -92,17 +92,17 @@ class TaskComputer(object):
             and not task_server.config_desc.in_shutdown
         self.finished_cb = finished_cb
 
-    def task_given(self, ctd: 'ComputeTaskDef'):
+    def task_given(self, ttc: 'TaskToCompute'):
         if self.assigned_subtask is not None:
             logger.error("Trying to assign a task, when it's already assigned")
             return False
 
         ProviderTimer.start()
 
-        self.assigned_subtask = ctd
+        self.assigned_subtask = ttc
         self.__request_resource(
-            ctd['task_id'],
-            ctd['subtask_id']
+            ttc.task_id,
+            ttc.subtask_id,
         )
         return True
 
@@ -111,7 +111,7 @@ class TaskComputer(object):
 
     def task_resource_collected(self, task_id, unpack_delta=True):
         subtask = self.assigned_subtask
-        if not subtask or subtask['task_id'] != task_id:
+        if not subtask or subtask.task_id != task_id:
             logger.error("Resource collected for a wrong task, %s", task_id)
             return False
         if unpack_delta:
@@ -120,20 +120,20 @@ class TaskComputer(object):
         self.delta = None
         self.last_task_timeout_checking = time.time()
         self.__compute_task(
-            subtask['subtask_id'],
-            subtask['docker_images'],
-            subtask['extra_data'],
-            subtask['deadline'])
+            subtask.subtask_id,
+            subtask.compute_task_def['docker_images'],
+            subtask.compute_task_def['extra_data'],
+            subtask.compute_task_def['deadline'])
         return True
 
     def task_resource_failure(self, task_id, reason):
         subtask = self.assigned_subtask
-        if not subtask or subtask['task_id'] != task_id:
+        if not subtask or subtask.task_id != task_id:
             logger.error("Resource failure for a wrong task, %s", task_id)
             return
         self.task_server.send_task_failed(
-            subtask['subtask_id'],
-            subtask['task_id'],
+            subtask.subtask_id,
+            subtask.task_id,
             'Error downloading resources: {}'.format(reason),
         )
         self.__task_finished(subtask)
@@ -141,7 +141,7 @@ class TaskComputer(object):
 
     def wait_for_resources(self, task_id, delta):
         if self.assigned_subtask and \
-                self.assigned_subtask['task_id'] == task_id:
+                self.assigned_subtask.task_id == task_id:
             self.delta = delta
 
     def task_request_rejected(self, task_id, reason):
@@ -156,11 +156,10 @@ class TaskComputer(object):
             subtask = self.assigned_subtask
             assert subtask is not None
             self.assigned_subtask = None
-            subtask_id = subtask['subtask_id']
+            subtask_id = subtask.subtask_id
             # get paid for max working time,
             # thus task withholding won't make profit
-            task_header = \
-                self.task_server.task_keeper.task_headers[subtask['task_id']]
+            task_header = subtask.want_to_compute_task.task_header
             work_time_to_be_paid = task_header.subtask_timeout
 
         except KeyError:
@@ -177,7 +176,7 @@ class TaskComputer(object):
                 self.stats.increase_stat('tasks_with_errors')
                 self.task_server.send_task_failed(
                     subtask_id,
-                    subtask['task_id'],
+                    subtask.task_id,
                     task_thread.error_msg,
                 )
 
@@ -191,7 +190,7 @@ class TaskComputer(object):
             try:
                 self.task_server.send_results(
                     subtask_id,
-                    subtask['task_id'],
+                    subtask.task_id,
                     task_thread.result,
                 )
             except Exception as exc:  # pylint: disable=broad-except
@@ -203,7 +202,7 @@ class TaskComputer(object):
             self.stats.increase_stat('tasks_with_errors')
             self.task_server.send_task_failed(
                 subtask_id,
-                subtask['task_id'],
+                subtask.task_id,
                 "Wrong result format",
             )
 
@@ -226,7 +225,7 @@ class TaskComputer(object):
 
         c: TaskThread = self.counting_thread
         tcss = ComputingSubtaskStateSnapshot(
-            subtask_id=self.assigned_subtask['subtask_id'],
+            subtask_id=self.assigned_subtask.subtask_id,
             progress=c.get_progress(),
             seconds_to_timeout=c.task_timeout,
             running_time_seconds=(time.time() - c.start_time),
@@ -245,16 +244,9 @@ class TaskComputer(object):
         return "Idle"
 
     def get_environment(self):
-        task_header_keeper = self.task_server.task_keeper
-
         if not self.assigned_subtask:
             return None
-
-        task_id = self.assigned_subtask['task_id']
-        task_header = task_header_keeper.task_headers.get(task_id)
-        if not task_header:
-            return None
-
+        task_header = self.assigned_subtask.want_to_compute_task.task_header
         return task_header.environment
 
     def change_config(self, config_desc, in_background=True,
@@ -351,14 +343,8 @@ class TaskComputer(object):
 
     def __compute_task(self, subtask_id, docker_images,
                        extra_data, subtask_deadline):
-        task_id = self.assigned_subtask['task_id']
-        task_header = self.task_server.task_keeper.task_headers.get(task_id)
-
-        if not task_header:
-            logger.warning("Subtask '%s' of task '%s' cannot be computed: "
-                           "task header has been unexpectedly removed",
-                           subtask_id, task_id)
-            return self.session_closed()
+        task_id = self.assigned_subtask.task_id
+        task_header = self.assigned_subtask.want_to_compute_task.task_header
 
         deadline = min(task_header.deadline, subtask_deadline)
         task_timeout = deadline_to_timeout(deadline)
@@ -393,7 +379,7 @@ class TaskComputer(object):
             self.assigned_subtask = None
             self.task_server.send_task_failed(
                 subtask_id,
-                subtask['task_id'],
+                subtask.task_id,
                 "Host direct task not supported",
             )
 
@@ -405,14 +391,13 @@ class TaskComputer(object):
 
         tt.start().addBoth(lambda _: self.task_computed(tt))
 
-    def __task_finished(self, ctd: 'ComputeTaskDef') -> None:
-
+    def __task_finished(self, ttc: 'TaskToCompute') -> None:
         ProviderTimer.finish()
         dispatcher.send(
             signal='golem.taskcomputer',
             event='subtask_finished',
-            subtask_id=ctd['subtask_id'],
-            min_performance=ctd['performance'],
+            subtask_id=ttc.subtask_id,
+            min_performance=ttc.compute_task_def['performance'],
         )
 
         with self.lock:

@@ -722,7 +722,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.task_server.add_task_session(
                 ctd['subtask_id'], self
             )
-            if self.task_server.task_given(self.key_id, ctd, msg.price):
+            if self.task_server.task_given(msg):
                 return
         _cannot_compute(self.err_msg)
 

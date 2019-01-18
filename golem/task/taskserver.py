@@ -284,17 +284,16 @@ class TaskServer(
 
         return None
 
-    def task_given(self, node_id: str, ctd: message.ComputeTaskDef,
-                   price: int) -> bool:
-        if not self.task_computer.task_given(ctd):
+    def task_given(self, msg: message.TaskToCompute) -> bool:
+        if not self.task_computer.task_given(msg):
             return False
-        self.requested_tasks.remove(ctd['task_id'])
-        update_requestor_assigned_sum(node_id, price)
+        self.requested_tasks.remove(msg.task_id)
+        update_requestor_assigned_sum(msg.requestor_id, msg.price)
         dispatcher.send(
             signal='golem.subtask',
             event='started',
-            subtask_id=ctd['subtask_id'],
-            price=price,
+            subtask_id=msg.subtask_id,
+            price=msg.price,
         )
         return True
 

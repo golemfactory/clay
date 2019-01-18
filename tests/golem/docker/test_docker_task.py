@@ -11,6 +11,7 @@ from typing import AnyStr, Generic, List, Optional, Type, TypeVar, Union
 from unittest.mock import Mock, patch
 
 from golem_messages.datastructures import p2p as dt_p2p
+from golem_messages.message import TaskToCompute, WantToComputeTask
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder
 from apps.core.task.coretaskstate import TaskDefinition
@@ -113,6 +114,10 @@ class DockerTaskTestCase(
         extra_data = task.query_extra_data(1.0, 0, node_id)
         ctd = extra_data.ctd
         ctd['deadline'] = timeout_to_deadline(timeout)
+        ttc = TaskToCompute()
+        ttc.compute_task_def = ctd
+        ttc.want_to_compute_task = WantToComputeTask()
+        ttc.want_to_compute_task.task_header = task.header
 
         # Create the computing node
         with patch('golem.node.TransactionSystem'):
@@ -144,7 +149,6 @@ class DockerTaskTestCase(
                 )
 
         patch.object(task_server, 'create_and_set_result_package').start()
-        task_server.task_keeper.task_headers[task_id] = task.header
         task_computer = task_server.task_computer
 
         assert isinstance(task_computer.resource_manager, ResourcesManager)
@@ -167,7 +171,7 @@ class DockerTaskTestCase(
             shutil.copyfile(res_file, dest_file)
 
         # Start task computation
-        task_computer.task_given(ctd)
+        task_computer.task_given(ttc)
         result = task_computer.task_resource_collected(
             ctd['task_id'],
             unpack_delta=False,
