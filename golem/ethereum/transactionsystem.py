@@ -135,7 +135,6 @@ class TransactionSystem(LoopingCallService):
         return self._sci.GAS_PRICE
 
     @property  # type: ignore
-    @sci_required()
     def deposit_contract_available(self) -> bool:
         return contracts.GNTDeposit in self._config.CONTRACT_ADDRESSES
 
