@@ -30,6 +30,7 @@ from golem.docker.image import DockerImage
 from golem.network.hyperdrive import client as hyperdrive_client
 from golem.model import Actor
 from golem.network import history
+from golem.network.hyperdrive.client import HyperdriveClientOptions
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
 from golem.task import taskstate
@@ -250,6 +251,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts2.task_manager.should_wait_for_node.return_value = False
         ts2.conn.send_message.side_effect = \
             lambda msg: msg.sign_message(self.requestor_keys.raw_privkey)
+        ts2.task_server.get_share_options.return_value = HyperdriveClientOptions("CLI1", 0.3)
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.tasks.TaskToCompute)
@@ -265,7 +267,7 @@ class TaskSessionTaskToComputeTest(TestCase):
             ['price', 1],
             ['size', task_state.package_size],
             ['ethsig', ms.ethsig],
-            ['resources_options', None],
+            ['resources_options', {'client_id': 'CLI1', 'version': 0.3, 'options': {}}],
         ]
         self.assertCountEqual(ms.slots(), expected)
 
@@ -279,6 +281,7 @@ class TaskSessionTaskToComputeTest(TestCase):
 
         ts2.task_manager.get_next_subtask.return_value = ctd
         ts2.task_manager.should_wait_for_node.return_value = False
+        ts2.task_server.get_share_options.return_value = HyperdriveClientOptions("CLI1", 0.3)
         ts2.interpret(wtct)
         ttc = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ttc, message.tasks.TaskToCompute)

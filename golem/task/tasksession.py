@@ -579,7 +579,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 price=price,
                 size=task_state.package_size,
                 resources_options=self.task_server.get_share_options(
-                    ctd['task_id'], self.address)
+                    ctd['task_id'], self.address).__dict__
             )
             ttc.generate_ethsig(self.my_private_key)
             self.send(ttc)
