@@ -157,8 +157,8 @@
     <ROW Component="vcruntime140.dll" ComponentId="{6758B61A-9EF0-4A58-8631-F9FD5D330363}" Directory_="APPDIR" Attributes="256" KeyPath="vcruntime140.dll"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiFeatsComponent">
-    <ROW Feature="Feature" Feature_Parent="MainFeature" Title="DockerForWin" Description="Description" Display="3" Level="4" Directory_="APPDIR" Attributes="0" Components="docker.exe dockermachine.exe"/>
-    <ROW Feature="MainFeature" Title="MainFeature" Description="Description" Display="1" Level="1" Directory_="APPDIR" Attributes="16" Components="AIShRegAnswer AI_CustomARPName AI_ExePath APPDIR CL.command.1.tlog FreeImage.dll NewFolder ProductInformation SHORTCUTDIR am.pak apimswincoreconsolel110.dll apimswincoredatetimel110.dll apimswincoredebugl110.dll apimswincoreerrorhandlingl110.dll apimswincorefilel110.dll apimswincorefilel120.dll apimswincorefilel210.dll apimswincorehandlel110.dll apimswincoreheapl110.dll apimswincoreinterlockedl110.dll apimswincorelibraryloaderl110.dll apimswincorelocalizationl120.dll apimswincorememoryl110.dll apimswincorenamedpipel110.dll apimswincoreprocessenvironmentl110.dll apimswincoreprocessthreadsl110.dll apimswincoreprocessthreadsl111.dll apimswincoreprofilel110.dll apimswincorertlsupportl110.dll apimswincorestringl110.dll apimswincoresynchl110.dll apimswincoresynchl120.dll apimswincoresysinfol110.dll apimswincoretimezonel110.dll apimswincoreutill110.dll apimswincrtconiol110.dll apimswincrtconvertl110.dll apimswincrtenvironmentl110.dll apimswincrtfilesysteml110.dll apimswincrtheapl110.dll apimswincrtlocalel110.dll apimswincrtmathl110.dll apimswincrtmultibytel110.dll apimswincrtprivatel110.dll apimswincrtprocessl110.dll apimswincrtruntimel110.dll apimswincrtstdiol110.dll apimswincrtstringl110.dll apimswincrttimel110.dll apimswincrtutilityl110.dll appupdate.yml blink_image_resources_200_percent.pak bmw27_cpu.blend d3dcompiler_47.dll elevate.exe ffmpeg.dll golem.exe golemapp.exe golemcli.exe hyperg.exe hypergclient.exe libEGL.dll libGLESv2.dll libeay32.dll msvcp140.dll node.dll ssleay32.dll taskcollector.exe taskcollector.iobj ucrtbase.dll vc141.pdb vcruntime140.dll"/>
+    <ROW Feature="DockerForWin" Title="DockerForWin" Description="Description" Display="5" Level="4" Directory_="APPDIR" Attributes="0" Components="docker.exe dockermachine.exe"/>
+    <ROW Feature="MainFeature" Title="MainFeature" Description="Description" Display="3" Level="1" Directory_="APPDIR" Attributes="16" Components="AIShRegAnswer AI_CustomARPName AI_ExePath APPDIR CL.command.1.tlog FreeImage.dll NewFolder ProductInformation SHORTCUTDIR am.pak apimswincoreconsolel110.dll apimswincoredatetimel110.dll apimswincoredebugl110.dll apimswincoreerrorhandlingl110.dll apimswincorefilel110.dll apimswincorefilel120.dll apimswincorefilel210.dll apimswincorehandlel110.dll apimswincoreheapl110.dll apimswincoreinterlockedl110.dll apimswincorelibraryloaderl110.dll apimswincorelocalizationl120.dll apimswincorememoryl110.dll apimswincorenamedpipel110.dll apimswincoreprocessenvironmentl110.dll apimswincoreprocessthreadsl110.dll apimswincoreprocessthreadsl111.dll apimswincoreprofilel110.dll apimswincorertlsupportl110.dll apimswincorestringl110.dll apimswincoresynchl110.dll apimswincoresynchl120.dll apimswincoresysinfol110.dll apimswincoretimezonel110.dll apimswincoreutill110.dll apimswincrtconiol110.dll apimswincrtconvertl110.dll apimswincrtenvironmentl110.dll apimswincrtfilesysteml110.dll apimswincrtheapl110.dll apimswincrtlocalel110.dll apimswincrtmathl110.dll apimswincrtmultibytel110.dll apimswincrtprivatel110.dll apimswincrtprocessl110.dll apimswincrtruntimel110.dll apimswincrtstdiol110.dll apimswincrtstringl110.dll apimswincrttimel110.dll apimswincrtutilityl110.dll appupdate.yml blink_image_resources_200_percent.pak bmw27_cpu.blend d3dcompiler_47.dll elevate.exe ffmpeg.dll golem.exe golemapp.exe golemcli.exe hyperg.exe hypergclient.exe libEGL.dll libGLESv2.dll libeay32.dll msvcp140.dll node.dll ssleay32.dll taskcollector.exe taskcollector.iobj ucrtbase.dll vc141.pdb vcruntime140.dll"/>
     <ROW Feature="TileAssets_DefaultBuild" Title="TileAssets_DefaultBuild" Description="Description" Display="0" Level="1" Directory_="APPDIR" Attributes="0" Options="271" Components="golem.VisualElementsManifest.xml golem_Square150x150Logo.scale400.png golem_Square70x70Logo.scale400.png resources.pri" Builds="DefaultBuild"/>
     <ATTRIBUTE name="CurrentFeature" value="MainFeature"/>
   </COMPONENT>
@@ -410,7 +410,7 @@
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiConditionComponent">
     <ROW Feature_="TileAssets_DefaultBuild" Level="4" Condition="VersionNT &lt; 603"/>
-    <ROW Feature_="Feature" Level="1" Condition="HYPER_V_AVAILABLE &lt;&gt; &quot;&quot;"/>
+    <ROW Feature_="DockerForWin" Level="1" Condition="(HYPER_V_AVAILABLE &lt;&gt; &quot;&quot;) AND (INSTALL_HYPERV = &quot;IDYES&quot;)"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiControlComponent">
     <ROW Dialog_="LicenseAgreementDlg" Control="AgreementText" Type="ScrollableText" X="20" Y="60" Width="330" Height="120" Attributes="7" Text="Installer\Installer_Win\LICENCE.rtf" Order="400" TextLocId="Control.Text.LicenseAgreementDlg#AgreementText_2" MsiKey="LicenseAgreementDlg#AgreementText"/>
@@ -468,8 +468,8 @@
     <ROW Action="AI_DATA_SETTER_11" Type="51" Source="CustomActionData" Target="AEkAcwA2ADQAQgBpAHQAAgAxAAEAUABhAHIAYQBtAHMAAgABAFMAYwByAGkAcAB0AAIAQQBJAF8AUwBlAHQATQBzAGkAUAByAG8AcABlAHIAdAB5ACAASABZAFAARQBSAF8AVgBfAEEAVgBBAEkATABBAEIATABFACAAKABHAGUAdAAtAFcAbQBpAE8AYgBqAGUAYwB0ACAALQBxAHUAZQByAHkAIAAiAHMAZQBsAGUAYwB0ACAAKgAgAGYAcgBvAG0AIABXAGkAbgAzADIAXwBPAHAAdABpAG8AbgBhAGwARgBlAGEAdAB1AHIAZQAgAHcAaABlAHIAZQAgAG4AYQBtAGUAIAA9ACAAJwBNAGkAYwByAG8AcwBvAGYAdAAtAEgAeQBwAGUAcgAtAFYAJwAiACk="/>
     <ROW Action="AI_DATA_SETTER_12" Type="51" Source="AI_RemoveAllTempFiles" Target="[AI_TEMP_FILE_ROLLBACK_INFO]"/>
     <ROW Action="AI_DATA_SETTER_13" Type="51" Source="CustomActionData" Target="AEYAbABhAGcAcwACADMAAQBTAGMAcgBpAHAAdABTAHIAYwBCAGkAbgBhAHIAeQBSAG8AdwBJAGQAAgBwAHIAZQBwAGEAcgBlAGQAbwBjAGsAZQByAGYAbwByAHcAaQBuAGQAbwB3AHMALgBwAHMAMQ=="/>
-    <ROW Action="AI_DATA_SETTER_14" Type="51" Source="CustomActionData" Target="Your operating system doesn&apos;t support Hyper-V. You can still use Golem with Docker Toolbox but this solution is deprecated. Also if you don&apos;t have Docker Toolbox installed you will have to do this manually before running Golem for the first time. |Hyper-V unavailable |MB_OK,MB_ICONWARNING,MB_DEFBUTTON1|BTN_PRESSED|[CLIENTPROCESSID]"/>
-    <ROW Action="AI_DATA_SETTER_15" Type="51" Source="CustomActionData" Target="AEkAcwA2ADQAQgBpAHQAAgAxAAEAUABhAHIAYQBtAHMAAgABAFMAYwByAGkAcAB0AAIAQQBJAF8AUwBlAHQATQBzAGkAUAByAG8AcABlAHIAdAB5ACAASABZAFAARQBSAF8AVgBfAEEAVgBBAEkATABBAEIATABFACAAKABHAGUAdAAtAFcAbQBpAE8AYgBqAGUAYwB0ACAALQBxAHUAZQByAHkAIAAiAHMAZQBsAGUAYwB0ACAAKgAgAGYAcgBvAG0AIABXAGkAbgAzADIAXwBPAHAAdABpAG8AbgBhAGwARgBlAGEAdAB1AHIAZQAgAHcAaABlAHIAZQAgAG4AYQBtAGUAIAA9ACAAJwBNAGkAYwByAG8AcwBvAGYAdAAtAEgAeQBwAGUAcgAtAFYAJwAiACk="/>
+    <ROW Action="AI_DATA_SETTER_14" Type="51" Source="CustomActionData" Target="We have detected that you are trying to install Golem on Windows 10 Home. Unfortunately, your operating system does not support Hyper-V, but we have kept Docker Toolbox support.&#13;\n&#13;\nPlease download it manually from the official website https://docs.docker.com/toolbox/toolbox_install_windows/ in case you don&apos;t have it already installed on your computer. |Virtualization for Windows Home |MB_OK,MB_ICONINFORMATION,MB_DEFBUTTON1|BTN_PRESSED|[CLIENTPROCESSID]"/>
+    <ROW Action="AI_DATA_SETTER_16" Type="51" Source="CustomActionData" Target="Since 0.19.0 Golem supports Hyper-V.&#13;\n&#13;\nPlease be aware that if you are using any other virtualization software (e.g. Docker Toolbox, VMware) do not to install Hyper-V as this may cause issues with other applications on your system. &#13;\n&#13;\nBy clicking &quot;Yes&quot; you are agreeing for Hyper-V to be installed. Otherwise please make sure you have Docker Toolbox installed before running Golem. |Hyper-V in Windows Professional |MB_YESNO,MB_ICONINFORMATION,MB_DEFBUTTON1|INSTALL_HYPERV|[CLIENTPROCESSID]"/>
     <ROW Action="AI_DATA_SETTER_2" Type="51" Source="StopProcess_Golemapp" Target="Golemapp.exe"/>
     <ROW Action="AI_DATA_SETTER_3" Type="51" Source="StopProcess_hyperg" Target="hyperg.exe"/>
     <ROW Action="AI_DATA_SETTER_4" Type="51" Source="StopProcess_DockerToolbox" Target="DockerToolbox.exe"/>
@@ -510,12 +510,12 @@
     <ROW Action="AI_WinOptFeaturesRollback" Type="11521" Source="WinOptionalFeatures.dll" Target="OnWinOptFeaturesRollback" WithoutSeq="true"/>
     <ROW Action="AI_WinOptFeaturesUninstall" Type="1" Source="WinOptionalFeatures.dll" Target="OnWinOptFeaturesUninstall"/>
     <ROW Action="CheckHyperVAvailability" Type="1" Source="PowerShellScriptLauncher.dll" Target="RunPowerShellScript" Options="1" AdditionalSeq="AI_DATA_SETTER_11"/>
-    <ROW Action="CheckHyperVAvailabilityAgain" Type="1" Source="PowerShellScriptLauncher.dll" Target="RunPowerShellScript" Options="1" AdditionalSeq="AI_DATA_SETTER_15"/>
     <ROW Action="ExecuteUninstallDockerTb" Type="3122" Source="DOCKER_UNINSTALL_CLEAN" Target="/SILENT"/>
     <ROW Action="ExecuteUninstallPre011" Type="3122" Source="GOLEM_UNINSTALL_CLEAN" Target="/SILENT"/>
     <ROW Action="Execute_CleanDockerVM" Type="65" Source="PowerShellScriptLauncher.dll" Target="RunPowerShellFileScript" Options="134217729" AdditionalSeq="AI_DATA_SETTER_10"/>
     <ROW Action="Execute_PrepareDocker" Type="1" Source="PowerShellScriptLauncher.dll" Target="RunPowerShellFileScript" Options="134217729" AdditionalSeq="AI_DATA_SETTER_13"/>
     <ROW Action="ForceReboot" Type="51" Source="REBOOT" Target="Force"/>
+    <ROW Action="MessageBox_DoYouWantHyperV" Type="1" Source="aicustact.dll" Target="MsgBox" Options="1" AdditionalSeq="AI_DATA_SETTER_16"/>
     <ROW Action="MessageBox_HyperVUnavailable" Type="1" Source="aicustact.dll" Target="MsgBox" Options="1" AdditionalSeq="AI_DATA_SETTER_14"/>
     <ROW Action="MessageBox_OldVersionDetected" Type="1" Source="aicustact.dll" Target="MsgBox" Options="1" AdditionalSeq="AI_DATA_SETTER_9"/>
     <ROW Action="SET_APPDIR" Type="307" Source="APPDIR" Target="[ProgramFilesFolder][Manufacturer]\[ProductName]" MultiBuildTarget="DefaultBuild:[ProgramFiles64Folder][ProductName]"/>
@@ -545,7 +545,7 @@
     <ROW Action="AI_STORE_LOCATION" Condition="(Not Installed) OR REINSTALL" Sequence="1504"/>
     <ROW Action="AI_PREPARE_UPGRADE" Condition="AI_UPGRADE=&quot;No&quot; AND (Not Installed)" Sequence="1399"/>
     <ROW Action="AI_ResolveKnownFolders" Sequence="56"/>
-    <ROW Action="AI_EnableDebugLog" Sequence="54"/>
+    <ROW Action="AI_EnableDebugLog" Sequence="52"/>
     <ROW Action="AI_BACKUP_AI_SETUPEXEPATH" Sequence="99" Builds="DefaultBuild"/>
     <ROW Action="AI_RESTORE_AI_SETUPEXEPATH" Condition="AI_SETUPEXEPATH_ORIGINAL" Sequence="102" Builds="DefaultBuild"/>
     <ROW Action="AI_DeleteCadLzma" Condition="SETUPEXEDIR=&quot;&quot; AND Installed AND (REMOVE&lt;&gt;&quot;ALL&quot;) AND (AI_INSTALL_MODE&lt;&gt;&quot;Remove&quot;) AND (NOT PATCH)" Sequence="199" Builds="DefaultBuild"/>
@@ -585,17 +585,15 @@
     <ROW Action="AI_WinOptFeaturesInstall" Condition="(VersionNT &gt;= 600) AND (REMOVE &lt;&gt; &quot;ALL&quot;)" Sequence="1503"/>
     <ROW Action="AI_WinOptFeaturesUninstall" Condition="(VersionNT &gt;= 600) AND (REMOVE=&quot;ALL&quot;)" Sequence="1699"/>
     <ROW Action="AI_WinOptFeaturesCheckReboot" Condition="(VersionNT &gt;= 600)" Sequence="6501"/>
-    <ROW Action="ExecuteUninstallDockerTb" Condition="( NOT Installed ) AND ( (DOCKER_UNINSTALL_CLEAN &lt;&gt; &quot;&quot;) AND (HYPER_V_AVAILABLE &lt;&gt; &quot;&quot;) )" Sequence="1622"/>
+    <ROW Action="ExecuteUninstallDockerTb" Condition="( NOT Installed ) AND ( False )" Sequence="1622"/>
     <ROW Action="StripQuotesFromUninstallPath_1" Condition="( NOT Installed ) AND ( DOCKER_TB_UNINSTALL  &lt;&gt; &quot;&quot; )" Sequence="1620"/>
     <ROW Action="AI_ExtractTempFiles" Sequence="1001"/>
     <ROW Action="AI_RemoveTempFiles" Sequence="6601"/>
     <ROW Action="AI_RemoveAllTempFiles" Sequence="1502"/>
     <ROW Action="AI_DATA_SETTER_12" Sequence="1501"/>
-    <ROW Action="Execute_PrepareDocker" Condition="( NOT Installed ) AND ( (Not Installed) AND (HYPER_V_AVAILABLE &lt;&gt; &quot;&quot;) )" Sequence="1610"/>
-    <ROW Action="AI_DATA_SETTER_13" Condition="( NOT Installed ) AND ( (Not Installed) AND (HYPER_V_AVAILABLE &lt;&gt; &quot;&quot;) )" Sequence="1609"/>
+    <ROW Action="Execute_PrepareDocker" Condition="( NOT Installed ) AND ( (Not Installed) AND (&amp;DockerForWin = 3) )" Sequence="1610"/>
+    <ROW Action="AI_DATA_SETTER_13" Condition="( NOT Installed ) AND ( (Not Installed) AND (&amp;DockerForWin = 3) )" Sequence="1609"/>
     <ROW Action="AI_AiRemoveFilesImmediate" Sequence="3499"/>
-    <ROW Action="CheckHyperVAvailabilityAgain" Condition="( NOT Installed )" Sequence="52"/>
-    <ROW Action="AI_DATA_SETTER_15" Condition="( NOT Installed )" Sequence="51"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiInstallUISequenceComponent">
     <ROW Action="AI_RESTORE_LOCATION" Condition="APPDIR=&quot;&quot;" Sequence="749"/>
@@ -605,14 +603,16 @@
     <ROW Action="AI_BACKUP_AI_SETUPEXEPATH" Sequence="99"/>
     <ROW Action="AI_RESTORE_AI_SETUPEXEPATH" Condition="AI_SETUPEXEPATH_ORIGINAL" Sequence="102"/>
     <ROW Action="AI_AppSearchEx" Sequence="101"/>
-    <ROW Action="MessageBox_OldVersionDetected" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="204"/>
-    <ROW Action="AI_DATA_SETTER_9" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="203"/>
+    <ROW Action="MessageBox_OldVersionDetected" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="206"/>
+    <ROW Action="AI_DATA_SETTER_9" Condition="( NOT Installed ) AND ( GOLEM_UNINSTALL &lt;&gt; &quot;&quot; )" Sequence="205"/>
     <ROW Action="ForceReboot" Condition="( Installed AND ( REMOVE = &quot;ALL&quot; OR AI_INSTALL_MODE = &quot;Remove&quot; ) )" Sequence="1301"/>
     <ROW Action="AI_ExtractTempFiles" Sequence="1001"/>
     <ROW Action="MessageBox_HyperVUnavailable" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE = &quot;&quot; )" Sequence="202"/>
     <ROW Action="AI_DATA_SETTER_14" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE = &quot;&quot; )" Sequence="201"/>
     <ROW Action="CheckHyperVAvailability" Condition="( NOT Installed )" Sequence="52"/>
     <ROW Action="AI_DATA_SETTER_11" Condition="( NOT Installed )" Sequence="51"/>
+    <ROW Action="MessageBox_DoYouWantHyperV" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE &lt;&gt; &quot;&quot; )" Sequence="204"/>
+    <ROW Action="AI_DATA_SETTER_16" Condition="( NOT Installed ) AND ( HYPER_V_AVAILABLE &lt;&gt; &quot;&quot; )" Sequence="203"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiLaunchConditionsComponent">
     <ROW Condition="( Version9X OR ( NOT VersionNT64 ) OR ( VersionNT64 AND ((VersionNT64 &lt;&gt; 502) OR (ServicePackLevel &lt;&gt; 2) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 502) OR (ServicePackLevel &lt;&gt; 2) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 600) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 600) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 601) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 601) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 602) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 602) OR (MsiNTProductType = 1)) AND ((VersionNT64 &lt;&gt; 603) OR (MsiNTProductType &lt;&gt; 1)) AND ((VersionNT64 &lt;&gt; 603) OR (MsiNTProductType = 1)) ) )" Description="[ProductName] can not be installed on the following Windows versions: [WindowsTypeNT64Display]." DescriptionLocId="AI.LaunchCondition.NoSpecificNT64" IsPredefined="true" Builds="DefaultBuild"/>
@@ -691,6 +691,6 @@
     <ROW FileId="createshare.ps1" Name="CREATE~1.PS1|create-share.ps1" Directory_="TempFolder" Property="AI_CREATESHARE_FILE" Options="0" Data="scripts\docker\create-share.ps1"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.WinOptionalFeatureBundleComponent">
-    <ROW Name="HyperV" FeatureList="Microsoft-Hyper-V-Management-PowerShell,Microsoft-Hyper-V-Hypervisor,Microsoft-Hyper-V-Services,Microsoft-Hyper-V-Management-Clients" OSTargets="256" Condition="1" Flags="3"/>
+    <ROW Name="HyperV" FeatureList="Microsoft-Hyper-V-Management-PowerShell,Microsoft-Hyper-V-Hypervisor,Microsoft-Hyper-V-Services,Microsoft-Hyper-V-Management-Clients" OSTargets="256" Condition="&amp;DockerForWin = 3" Flags="3"/>
   </COMPONENT>
 </DOCUMENT>

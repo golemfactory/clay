@@ -6,7 +6,7 @@ from typing import ClassVar, Optional, TYPE_CHECKING, Tuple, Dict, Union, \
 
 import requests
 
-from golem.core.common import is_windows, is_osx
+from golem.core.common import is_windows, is_osx, posix_path
 from golem.docker.image import DockerImage
 from golem.docker.job import DockerJob
 from golem.environments.environmentsmanager import EnvironmentsManager
@@ -58,10 +58,14 @@ class DockerDirMapping:
         self.logs.mkdir(exist_ok=exist_ok)
 
 
-class DockerBind(NamedTuple): # pylint: disable=too-few-public-methods
+class DockerBind(NamedTuple):  # pylint: disable=too-few-public-methods
     source: Path
     target: str
     mode: str = 'rw'
+
+    @property
+    def source_as_posix(self) -> str:
+        return posix_path(str(self.source))
 
 
 class DockerTaskThread(TaskThread):
@@ -75,7 +79,6 @@ class DockerTaskThread(TaskThread):
 
     def __init__(self,  # pylint: disable=too-many-arguments
                  docker_images: List[Union[DockerImage, Dict, Tuple]],
-                 src_code: str,
                  extra_data: Dict,
                  dir_mapping: DockerDirMapping,
                  timeout: int,
@@ -84,7 +87,6 @@ class DockerTaskThread(TaskThread):
         if not docker_images:
             raise AttributeError("docker images is None")
         super().__init__(
-            src_code=src_code,
             extra_data=extra_data,
             res_path=str(dir_mapping.resources),
             tmp_path=str(dir_mapping.temporary),
@@ -190,7 +192,7 @@ class DockerTaskThread(TaskThread):
 
         params = dict(
             image=self.image,
-            script_src=self.src_code,
+            script_filepath=self.extra_data['script_filepath'],
             parameters=self.extra_data,
             resources_dir=str(self.dir_mapping.resources),
             work_dir=str(self.dir_mapping.work),

@@ -83,17 +83,11 @@ setup(
         (path.normpath('../../golem/apps/rendering/benchmark/minilight'), [
             path.normpath('apps/rendering/benchmark/minilight/cornellbox.ml.txt'),
         ]),
-        (path.normpath('../../golem/apps/blender/resources/scripts'), [
-            path.normpath('apps/blender/resources/scripts/docker_blendertask.py')
-        ]),
         (path.normpath(
             '../../golem/apps/blender/resources/images/scripts/templates'), [
                 path.normpath('apps/blender/resources/images/scripts/'
                               'templates/blendercrop.py.template')]
         ),
-        (path.normpath('../../golem/apps/dummy/resources/scripts'), [
-            path.normpath('apps/dummy/resources/scripts/docker_dummytask.py')
-        ]),
         (path.normpath('../../golem/apps/dummy/resources/code_dir'), [
             path.normpath('apps/dummy/resources/code_dir/computing.py')
         ]),
@@ -108,7 +102,14 @@ setup(
 
 if not (in_appveyor() or in_travis() or
         building_wheel or building_binary):
-    DockerManager().pull_images()
+
+    docker_manager = DockerManager()
+
+    try:
+        DockerManager().pull_images()
+    except Exception as exc:  # pylint: disable=broad-except
+        print('Exception occurred:', exc)
+        DockerManager().build_images()
 
 if building_wheel:
     move_wheel()

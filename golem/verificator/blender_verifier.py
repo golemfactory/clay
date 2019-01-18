@@ -9,7 +9,6 @@ import numpy
 from threading import Lock
 from shutil import copy
 
-from golem.core.common import get_golem_path
 from golem.verificator.verifier import SubtaskVerificationState
 
 from .rendering_verifier import FrameRenderingVerifier
@@ -22,7 +21,7 @@ logger = logging.getLogger("apps.blender")
 # pylint: disable=R0902
 class BlenderVerifier(FrameRenderingVerifier):
     DOCKER_NAME = "golemfactory/image_metrics"
-    DOCKER_TAG = '1.8'
+    DOCKER_TAG = '1.12'
 
     def __init__(self, verification_data, cropper_cls: Type,
                  docker_task_cls: Type) -> None:
@@ -31,14 +30,6 @@ class BlenderVerifier(FrameRenderingVerifier):
         self.verified_crops_counter = 0
         self.finished = Deferred()
         self.current_results_files = None
-        self.program_file = os.path.join(get_golem_path(),
-                                         'golem',
-                                         'verificator',
-                                         'docker',
-                                         'blender',
-                                         'images',
-                                         'scripts',
-                                         'runner.py')
         self.already_called = False
         self.cropper = cropper_cls()
         self.docker_task_cls = docker_task_cls
@@ -141,9 +132,6 @@ class BlenderVerifier(FrameRenderingVerifier):
         logger.info("Crop no [%r] rendered for verification. Time spent: %r.",
                     crop_number, time_spend)
 
-        with open(self.program_file, "r") as src_file:
-            src_code = src_file.read()
-
         work_dir = verification_context.get_crop_path(
             str(crop_number))
         if not work_dir:
@@ -162,9 +150,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             crop_number, dir_mapping)
 
         self.docker_task = self.docker_task_cls(
-            subtask_id=self.subtask_info['subtask_id'],
             docker_images=[(self.DOCKER_NAME, self.DOCKER_TAG)],
-            src_code=src_code,
             extra_data=extra_data,
             dir_mapping=dir_mapping,
             timeout=self.timeout)
@@ -175,7 +161,6 @@ class BlenderVerifier(FrameRenderingVerifier):
 
         self.docker_task.run()
         self.docker_task._deferred.addErrback(error)
-        was_failure = self.docker_task.error
 
         self.metrics[crop_number] = dict()
         for root, _, files in os.walk(str(dir_mapping.output)):
@@ -225,6 +210,7 @@ class BlenderVerifier(FrameRenderingVerifier):
             verification_files=verification_pairs,
             xres=x,
             yres=y,
+            script_filepath="/golem/scripts/runner.py",
         )
 
     def make_verdict(self, result):

@@ -17,9 +17,10 @@ from golem_messages import (
 from golem_messages.constants import MTD
 from golem_messages.datastructures import p2p as dt_p2p
 from golem_messages.datastructures import tasks as dt_tasks
-from semantic_version import Version
 
 import golem
+from golem import constants as gconst
+from golem import utils
 from golem.core import common
 from golem.core import golem_async
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
@@ -187,10 +188,6 @@ class CompTaskKeeper:
         self.dump()
 
     @handle_key_error
-    def get_task_env(self, task_id):
-        return self.active_tasks[task_id].header.environment
-
-    @handle_key_error
     def get_task_header(self, task_id):
         return self.active_tasks[task_id].header
 
@@ -312,7 +309,6 @@ class TaskHeaderKeeper:
             environments_manager,
             node: dt_p2p.Node,
             min_price=0.0,
-            app_version=golem.__version__,
             remove_task_timeout=180,
             verification_timeout=3600,
             max_tasks_per_requestor=10,
@@ -332,7 +328,6 @@ class TaskHeaderKeeper:
         self.last_checking: typing.Dict[str, datetime.datetime] = {}
 
         self.min_price = min_price
-        self.app_version = app_version
         self.verification_timeout = verification_timeout
         self.removed_task_timeout = remove_task_timeout
         self.environments_manager = environments_manager
@@ -389,7 +384,8 @@ class TaskHeaderKeeper:
         return SupportStatus.err(
             {UnsupportReason.MAX_PRICE: max_price})
 
-    def check_version(self, header: dt_tasks.TaskHeader) -> SupportStatus:
+    @classmethod
+    def check_version(cls, header: dt_tasks.TaskHeader) -> SupportStatus:
         """Check if this node has a version that isn't less than minimum
            version described in task header.
         :return SupportStatus: err() if node's version is lower than minimum
@@ -399,26 +395,19 @@ class TaskHeaderKeeper:
 
         ok = False
         try:
-            ok = self.check_version_compatibility(min_v)
+            ok = utils.is_version_compatible(
+                theirs=min_v,
+                spec=gconst.GOLEM_SPEC,
+            )
         except ValueError:
             logger.error(
                 "Wrong app version - app version %r, required version %r",
-                self.app_version,
+                golem.__version__,
                 min_v
             )
         if ok:
             return SupportStatus.ok()
         return SupportStatus.err({UnsupportReason.APP_VERSION: min_v})
-
-    def check_version_compatibility(self, remote):
-        """For local a1.b1.c1 and remote a2.b2.c2, check if "a1.b1" == "a2.b2"
-           and c1 >= c2
-        :param remote: remote version string
-        :return: whether the local version is compatible with remote version
-        """
-        remote = Version(remote)
-        local = Version(self.app_version, partial=True)
-        return local.major == remote.major and local.minor == remote.minor
 
     def get_support_status(self, task_id) -> typing.Optional[SupportStatus]:
         """Return SupportStatus stating if and why the task is supported or not.

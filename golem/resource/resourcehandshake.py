@@ -67,7 +67,7 @@ class ResourceHandshakeSessionMixin:
         self._handshake_timer = None
 
     def request_task(self, node_name, task_id, perf_index, price,
-                     max_resource_size, max_memory_size, num_cores):
+                     max_resource_size, max_memory_size):
 
         """ Inform that node wants to compute given task
         :param str node_name: name of that node
@@ -76,7 +76,6 @@ class ResourceHandshakeSessionMixin:
         :param float price: price for an hour
         :param int max_resource_size: how much disk space can this node offer
         :param int max_memory_size: how much ram can this node offer
-        :param int num_cores: how many cpu cores this node can offer
         :return:
         """
 
@@ -92,15 +91,14 @@ class ResourceHandshakeSessionMixin:
 
         self._task_request_message = dict(
             node_name=node_name,
-            task_id=task_id,
             perf_index=perf_index,
             price=price,
             max_resource_size=max_resource_size,
             max_memory_size=max_memory_size,
-            num_cores=num_cores,
             concent_enabled=concent_enabled,
             provider_public_key=self.task_server.get_key_id(),
             provider_ethereum_public_key=self.task_server.get_key_id(),
+            task_header=task_header,
         )
 
         if self._is_peer_blocked(key_id):
@@ -116,7 +114,7 @@ class ResourceHandshakeSessionMixin:
     def _send_want_to_compute_task(self) -> None:
         wtct = message.tasks.WantToComputeTask(**self._task_request_message)
         self.send(wtct)  # type: ignore
-        ProviderTTCDelayTimers.start(self._task_request_message['task_id'])
+        ProviderTTCDelayTimers.start(wtct.task_id)
 
     # ########################
     #     MESSAGE HANDLERS

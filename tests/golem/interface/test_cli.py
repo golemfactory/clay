@@ -3,13 +3,17 @@ import unittest
 from unittest.mock import patch, Mock
 
 from io import StringIO
-from twisted.internet.defer import Deferred, TimeoutError
+
+from twisted.internet import defer
 from twisted.internet.error import ReactorNotRunning
 
-from golem.interface.cli import CLI, _exit, _help, _debug, ArgumentParser, \
-    disable_withdraw
-from golem.interface.command import group, doc, argument,\
-    identifier, name, command, CommandHelper, storage_context
+from golem.interface.cli import (
+    CLI, _exit, _help, _debug, ArgumentParser, disable_withdraw,
+)
+from golem.interface.command import (
+    group, doc, argument, identifier, name, command, CommandHelper,
+    storage_context,
+)
 from golem.interface.exceptions import ParsingException, CommandException
 
 
@@ -59,7 +63,7 @@ class TestCLI(unittest.TestCase):
         return_value = None
 
         def __deferred_return_value(self):
-            deferred = Deferred()
+            deferred = defer.Deferred()
             deferred.callback(self.return_value)
             return deferred
 
@@ -180,7 +184,7 @@ class TestCLI(unittest.TestCase):
     def test_process_errors(self, config_logging, cli_exit):
 
         exceptions = [
-            ParsingException, CommandException, TimeoutError, Exception,
+            ParsingException, CommandException, defer.TimeoutError, Exception,
         ]
 
         with storage_context():

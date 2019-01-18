@@ -15,7 +15,7 @@ from ethereum.utils import denoms
 from freezegun import freeze_time
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from pydispatch import dispatcher
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, inlineCallbacks
 
 from golem import model
 from golem import testutils
@@ -25,6 +25,7 @@ from golem.client import Client, ClientTaskComputerEventListener, \
     ResourceCleanerService, TaskArchiverService, \
     TaskCleanerService
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.config.active import EthereumConfig
 from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
 from golem.hardware.presets import HardwarePresets
@@ -33,7 +34,7 @@ from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
 from golem.resource.dirmanager import DirManager
-from golem.rpc.mapping.rpceventnames import UI, Environment
+from golem.rpc.mapping.rpceventnames import UI, Environment, Golem
 from golem.task.acl import Acl
 from golem.task.taskserver import TaskServer
 from golem.task.taskstate import TaskTestStatus
@@ -160,8 +161,8 @@ class TestClient(TestClientBase):
         ets = self.client.transaction_system
         ets.return_value = ets
         ets.return_value.eth_base_for_batch_payment.return_value = 0
-        self.client.withdraw('123', '0xdead', 'ETH')
-        ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH')
+        self.client.withdraw('123', '0xdead', 'ETH', 123)
+        ets.withdraw.assert_called_once_with(123, '0xdead', 'ETH', 123)
 
     def test_get_withdraw_gas_cost(self, *_):
         dest = '0x' + 40 * '0'
@@ -715,6 +716,11 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             'last_gnt_update': "None",
             'last_eth_update': "None",
             'block_number': "222",
+            'contract_addresses': {
+                contract.name: address
+                for contract, address
+                in EthereumConfig.CONTRACT_ADDRESSES.items()
+            }
         }
         assert all(isinstance(entry, str) for entry in balance)
 
@@ -911,6 +917,8 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             'in_network': 0,
             'supported': 0,
             'subtasks_computed': (0, 0),
+            'subtasks_accepted': (0, 0),
+            'subtasks_rejected': (0, 0),
             'subtasks_with_errors': (0, 0),
             'subtasks_with_timeout': (0, 0)
         }
@@ -1099,20 +1107,30 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         }
         assert status == expected_status
 
-    def test_golem_status(self, *_):
-        status = 'component', 'method', 'stage', 'data'
-
-        # no statuses published
-        assert not self.client.get_golem_status()
+    def test_golem_status_no_publisher(self, *_):
+        component = 'component'
+        status = 'method', 'stage', 'data'
 
         # status published, no rpc publisher
-        StatusPublisher.publish(*status)
-        assert not self.client.get_golem_status()
+        StatusPublisher.publish(component, *status)
+        assert self.client.get_golem_status()[component] == status
+
+    @inlineCallbacks
+    def test_golem_status_with_publisher(self, *_):
+        component = 'component'
+        status = 'method', 'stage', 'data'
 
         # status published, with rpc publisher
         StatusPublisher._rpc_publisher = Mock()
-        StatusPublisher.publish(*status)
-        assert self.client.get_golem_status() == status
+        deferred: Deferred = StatusPublisher.publish(component, *status)
+        assert self.client.get_golem_status()[component] == status
+
+        yield deferred
+
+        assert StatusPublisher._rpc_publisher.publish.called
+        call = StatusPublisher._rpc_publisher.publish.call_args
+        assert call[0][0] == Golem.evt_golem_status
+        assert call[0][1][component] == status
 
     def test_port_status_open(self, *_):
         port = random.randint(1, 65535)

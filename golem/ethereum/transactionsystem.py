@@ -28,7 +28,6 @@ from golem_sci import (
     TransactionReceipt,
 )
 from twisted.internet import defer
-import requests
 
 from golem import model
 from golem.core.deferred import call_later
@@ -41,6 +40,7 @@ from golem.rpc import utils as rpc_utils
 from golem.utils import privkeytoaddr
 
 from . import exceptions
+from .faucet import tETH_faucet_donate
 
 
 log = logging.getLogger(__name__)
@@ -472,13 +472,16 @@ class TransactionSystem(LoopingCallService):
             amount: int,
             destination: str,
             currency: str) -> int:
+
         self._sci: SmartContractsInterface
+        assert self._sci is not None
+
         gas_price = self.gas_price
+
         if currency == 'ETH':
-            return self._sci.estimate_transfer_eth_gas(destination, amount) * \
-                gas_price
+            return self._sci.estimate_transfer_eth_gas(destination, amount)
         if currency == 'GNT':
-            return self._sci.GAS_WITHDRAW * gas_price
+            return self._sci.GAS_WITHDRAW
         raise ValueError('Unknown currency {}'.format(currency))
 
     @sci_required()
@@ -486,8 +489,12 @@ class TransactionSystem(LoopingCallService):
             self,
             amount: int,
             destination: str,
-            currency: str) -> str:
+            currency: str,
+            gas_price: Optional[int] = None) -> str:
+
         self._sci: SmartContractsInterface
+        assert self._sci is not None
+
         if not self._config.WITHDRAWALS_ENABLED:
             raise Exception("Withdrawals are disabled")
 
@@ -506,7 +513,7 @@ class TransactionSystem(LoopingCallService):
                 amount / denoms.ether,
                 destination,
             )
-            return self._sci.transfer_eth(destination, amount)
+            return self._sci.transfer_eth(destination, amount, gas_price)
 
         if currency == 'GNT':
             if amount > self.get_available_gnt():
@@ -520,7 +527,11 @@ class TransactionSystem(LoopingCallService):
                 amount / denoms.ether,
                 destination,
             )
-            tx_hash = self._sci.convert_gntb_to_gnt(destination, amount)
+            tx_hash = self._sci.convert_gntb_to_gnt(
+                destination,
+                amount,
+                gas_price,
+            )
 
             def on_receipt(receipt) -> None:
                 self._gntb_withdrawn -= amount
@@ -778,20 +789,3 @@ class TransactionSystem(LoopingCallService):
         self._try_convert_gnt()
         self._payment_processor.sendout()
         self._incomes_keeper.update_overdue_incomes()
-
-
-def tETH_faucet_donate(addr: str):
-    request = "http://188.165.227.180:4000/donate/{}".format(addr)
-    resp = requests.get(request)
-    if resp.status_code != 200:
-        log.warning("tETH Faucet error code %r", resp.status_code)
-        return False
-    response = resp.json()
-    if response['paydate'] == 0:
-        log.warning("tETH Faucet warning %r", response['message'])
-        return False
-    # The paydate is not actually very reliable, usually some day in the past.
-    paydate = datetime.fromtimestamp(response['paydate'])
-    amount = int(response['amount']) / denoms.ether
-    log.info("Faucet: %.6f ETH on %r", amount, paydate)
-    return True

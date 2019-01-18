@@ -94,33 +94,14 @@ class TestTaskHeaderKeeper(LogTestCase):
         tk.change_config(config_desc)
         self.assertTrue(tk.check_support(header))
 
-        header.min_version = "120"
+        header.min_version = "120.0.0"
         self.assertFalse(tk.check_support(header))
 
-        header.min_version = tk.app_version
+        header.min_version = golem.__version__
         self.assertTrue(tk.check_support(header))
 
         header.min_version = "abc"
-        with self.assertLogs(logger=logger, level='WARNING'):
-            self.assertFalse(tk.check_support(header))
-
-    def test_check_version_compatibility(self):
-        tk = TaskHeaderKeeper(
-            environments_manager=EnvironmentsManager(),
-            node=dt_p2p_factory.Node(),
-            min_price=10.0)
-        tk.app_version = '0.4.5-dev+232.138018'
-
-        for v in ['', '0', '1.5', '0.4-alpha+build.2004.01.01', '0.4-alpha']:
-            with self.assertRaises(ValueError, msg=v):
-                tk.check_version_compatibility(v)
-
-        for v in ['1.5.0', '1.4.0', '0.5.0', '0.3.0']:
-            self.assertFalse(tk.check_version_compatibility(v), msg=v)
-
-        for v in ['0.4.5', '0.4.1', '0.4.0', '0.4.0-alpha',
-                  '0.4.0-alpha+build', '0.4.0-alpha+build.2010', '0.4.6']:
-            self.assertTrue(tk.check_version_compatibility(v), msg=v)
+        self.assertFalse(tk.check_support(header))
 
     @mock.patch('golem.task.taskarchiver.TaskArchiver')
     def test_change_config(self, tar):
@@ -614,24 +595,6 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ttc.compute_task_def = ctd
         self.assertFalse(ctk.receive_subtask(ttc))
         assert ctk.active_tasks[task_id].requests == 1
-
-    @mock.patch('golem.task.taskkeeper.CompTaskKeeper.dump')
-    def test_get_task_env(self, dump_mock):
-        ctk = CompTaskKeeper(Path('ignored'))
-        with self.assertLogs(logger, level="WARNING"):
-            assert ctk.get_task_env("task1") is None
-
-        header = get_task_header()
-        task_id1 = header.task_id
-        ctk.add_request(header, 4002)
-
-        header = get_task_header()
-        task_id2 = header.task_id
-        header.environment = "NOTDEFAULT"
-        ctk.add_request(header, 4002)
-
-        assert ctk.get_task_env(task_id2) == "NOTDEFAULT"
-        assert ctk.get_task_env(task_id1) == "DEFAULT"
 
     def test_check_comp_task_def(self):
         ctk = CompTaskKeeper(self.new_path)

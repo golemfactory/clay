@@ -68,6 +68,7 @@ class DummyTask(CoreTask):
             "result_size": self.task_definition.result_size,
             "result_file": self.__get_result_file_name(subtask_id),
             "subtask_data_size": sbs,
+            "script_filepath": "/golem/scripts/job.py",
         }
 
         return self._new_compute_task_def(subtask_id,
@@ -76,7 +77,6 @@ class DummyTask(CoreTask):
 
     def query_extra_data(self,
                          perf_index: float,
-                         num_cores: int = 1,
                          node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
         logger.debug("Query extra data on dummytask")

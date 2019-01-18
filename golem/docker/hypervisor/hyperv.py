@@ -1,9 +1,9 @@
+from enum import Enum
 import logging
 import os
-import psutil
 from pathlib import Path
 import subprocess
-from typing import Any, ClassVar, Dict, Iterable, List, Optional, Union
+from typing import Any, ClassVar, Dict, Iterable, List, Optional
 
 from os_win.constants import HOST_SHUTDOWN_ACTION_SAVE, \
     VM_SNAPSHOT_TYPE_DISABLED, HYPERV_VM_STATE_SUSPENDED, \
@@ -11,16 +11,64 @@ from os_win.constants import HOST_SHUTDOWN_ACTION_SAVE, \
     HYPERV_VM_STATE_DISABLED
 from os_win.exceptions import OSWinException
 from os_win.utils.compute.vmutils import VMUtils
+import psutil
+from pydispatch import dispatcher
 
 from golem import hardware
 from golem.core.common import get_golem_path
+from golem.core.windows import run_powershell
 from golem.docker import smbshare
 from golem.docker.client import local_client
 from golem.docker.config import CONSTRAINT_KEYS, MIN_CONSTRAINTS
 from golem.docker.hypervisor.docker_machine import DockerMachineHypervisor
 from golem.docker.task_thread import DockerBind
+from golem.report import Component, Stage, report_calls
+from golem.rpc.mapping.rpceventnames import Golem
 
 logger = logging.getLogger(__name__)
+
+
+class events(Enum):
+    SMB = 'smb_blocked'
+    MEM = 'lowered_memory'
+    DISK = 'low_diskspace'
+
+
+MESSAGES = {
+    events.SMB: 'Port {SMB_PORT} unreachable. Please check firewall settings.',
+    events.MEM: 'Not enough free RAM to start the VM, '
+                'lowering memory to {mem_mb} MB',
+    events.DISK: 'Not enough disk space. Creating VM with min memory',
+}
+
+EVENTS = {
+    events.SMB: {
+        'component': Component.hypervisor,
+        'method': 'setup',
+        'stage': Stage.exception,
+        'data': None,
+    },
+    events.MEM: {
+        'component': Component.hypervisor,
+        'method': 'start_vm',
+        'stage': Stage.warning,
+        'data': None,
+    },
+    events.DISK: {
+        'component': Component.hypervisor,
+        'method': 'start_vm',
+        'stage': Stage.warning,
+        'data': None,
+    },
+}
+
+
+def publish_event(event: Dict) -> None:
+    dispatcher.send(
+        signal=Golem.evt_golem_status,
+        event='publish',
+        **event
+    )
 
 
 class HyperVHypervisor(DockerMachineHypervisor):
@@ -69,10 +117,9 @@ class HyperVHypervisor(DockerMachineHypervisor):
         # We use splitlines() because output may contain multiple lines with
         # debug information
         if output is None or ok_str not in output.splitlines():
-            logger.error(
-                f'Port {self.SMB_PORT} unreachable. '
-                f'Please check firewall settings.')
+            self._log_and_publish_event(events.SMB, SMB_PORT=self.SMB_PORT)
 
+    @report_calls(Component.hypervisor, 'vm.save')
     def save_vm(self, vm_name: Optional[str] = None) -> None:
         vm_name = vm_name or self._vm_name
         logger.info('Hyper-V: Saving state of VM %s ...', vm_name)
@@ -83,6 +130,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 'Hyper-V: Saving VM %s state failed. Stopping VM ...', vm_name)
             self.stop_vm(vm_name)
 
+    @report_calls(Component.hypervisor, 'vm.restore')
     def restore_vm(self, vm_name: Optional[str] = None) -> None:
         vm_name = vm_name or self._vm_name
         vm_state = self._vm_utils.get_vm_state(vm_name)
@@ -115,12 +163,11 @@ class HyperVHypervisor(DockerMachineHypervisor):
         constr = self.constraints()
 
         if not self._check_memory(constr):
-            logger.warning('Not enough memory to start the VM, lowering memory')
             mem_key = CONSTRAINT_KEYS['mem']
             max_memory = self._memory_cap(constr[mem_key])
             constr[mem_key] = hardware.cap_memory(constr[mem_key], max_memory,
                                                   unit=hardware.MemSize.mebi)
-            logger.debug('Memory capped by "free - 10%%": %r', constr[mem_key])
+            self._log_and_publish_event(events.MEM, mem_mb=constr[mem_key])
 
         # Always constrain to set the appropriate shutdown action
         self.constrain(name, **constr)
@@ -128,7 +175,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         try:
             # The windows VM fails to start when too much memory is assigned
             logger.info("Hyper-V: Starting VM %s ...", name)
-            self._run_ps(
+            run_powershell(
                 script=self.START_VM_SCRIPT_PATH,
                 args=[
                     '-VMName', name,
@@ -147,7 +194,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
     def is_available(cls) -> bool:
         command = "@(Get-Module -ListAvailable hyper-v).Name | Get-Unique"
         try:
-            output = cls._run_ps(command=command)
+            output = run_powershell(command=command)
             return output == "Hyper-V"
         except (RuntimeError, OSError) as e:
             logger.warning(f"Error checking Hyper-V availability: {e}")
@@ -172,18 +219,20 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if cpu is not None:
             args += [self.OPTIONS['cpu'], str(cpu)]
         if mem is not None:
-            cap_mem = self._memory_cap(mem)
-            if cap_mem != mem:
-                logger.warning('Not enough memory to create the VM. '
-                               'Lowering memory to %d MiB', cap_mem)
+            # cap_mem = self._memory_cap(mem)
+            # if cap_mem != mem:
+            #     self._log_and_publish_event(events.MEM, mem_mb=cap_mem)
+            #
+            # if self._check_system_drive_space(cap_mem):
+            #     args += [self.OPTIONS['mem'], str(cap_mem)]
+            # else:
+            #     self._log_and_publish_event(events.DISK)
+            #     mem_key = CONSTRAINT_KEYS['mem']
+            #     args += [self.OPTIONS['mem'], str(MIN_CONSTRAINTS[mem_key])]
 
-            if self._check_system_drive_space(cap_mem):
-                args += [self.OPTIONS['mem'], str(cap_mem)]
-            else:
-                logger.warning("Not enough disk space. "
-                               "Creating VM with min memory")
-                mem_key = CONSTRAINT_KEYS['mem']
-                args += [self.OPTIONS['mem'], str(MIN_CONSTRAINTS[mem_key])]
+            # TODO: Restore when we have a better estimation of available RAM
+            mem_key = CONSTRAINT_KEYS['mem']
+            args += [self.OPTIONS['mem'], str(MIN_CONSTRAINTS[mem_key])]
 
         return args
 
@@ -254,7 +303,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     @classmethod
     def _get_vswitch_name(cls) -> str:
-        return cls._run_ps(script=cls.GET_VSWITCH_SCRIPT_PATH)
+        return run_powershell(script=cls.GET_VSWITCH_SCRIPT_PATH)
 
     @classmethod
     def _get_hostname_for_sharing(cls) -> str:
@@ -266,50 +315,6 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if not hostname:
             raise RuntimeError('COMPUTERNAME environment variable not set')
         return hostname
-
-    @classmethod
-    def _run_ps(
-            cls,
-            script: Optional[str] = None,
-            command: Optional[str] = None,
-            args: Optional[List[str]] = None,
-            timeout: int = SCRIPT_TIMEOUT
-    ) -> str:
-        """
-        Run a powershell script or command and return its output in UTF8
-        """
-        if script and not command:
-            cmd = [
-                'powershell.exe',
-                '-ExecutionPolicy', 'RemoteSigned',
-                '-File', script
-            ]
-        elif command and not script:
-            cmd = [
-                'powershell.exe',
-                '-Command', command
-            ]
-        else:
-            raise ValueError("Exactly one of (script, command) is required")
-
-        if args:
-            cmd += args
-
-        try:
-            return subprocess\
-                .run(
-                    cmd,
-                    timeout=timeout,  # seconds
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )\
-                .stdout\
-                .decode('utf8')\
-                .strip()
-        except (subprocess.CalledProcessError, \
-                subprocess.TimeoutExpired) as exc:
-            raise RuntimeError(exc.stderr.decode('utf8') if exc.stderr else '')
 
     @staticmethod
     def uses_volumes() -> bool:
@@ -368,7 +373,20 @@ class HyperVHypervisor(DockerMachineHypervisor):
             constr = constr or self.constraints()
             max_mem_in_mb += constr[CONSTRAINT_KEYS['mem']]
 
-        return int(0.9 * max_mem_in_mb)
+        return hardware.pad_memory(int(0.9 * max_mem_in_mb))
+
+    @staticmethod
+    def _log_and_publish_event(name, **kwargs) -> None:
+        message = MESSAGES[name].format(**kwargs)
+        event = EVENTS[name].copy()
+        event['data'] = message
+
+        if event['stage'] == Stage.warning:
+            logger.warning(message)
+        else:
+            logger.error(message)
+
+        publish_event(event)
 
     def _create_volume(self, hostname: str, shared_dir: Path) -> str:
         assert self._work_dir is not None

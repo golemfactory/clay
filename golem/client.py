@@ -30,6 +30,7 @@ from golem.core.common import (
 )
 from golem.core.fileshelper import du
 from golem.hardware.presets import HardwarePresets
+from golem.config.active import EthereumConfig
 from golem.core.keysauth import KeysAuth
 from golem.core.service import LoopingCallService
 from golem.core.simpleserializer import DictSerializer
@@ -68,7 +69,6 @@ from golem.task.taskserver import TaskServer
 from golem.task.tasktester import TaskTester
 from golem.tools.os_info import OSInfo
 from golem.tools.talkback import enable_sentry_logger
-
 
 logger = logging.getLogger(__name__)
 
@@ -872,24 +872,17 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             'provider_state': self.get_provider_status(),
             'in_network': self.get_task_count(),
             'supported': self.get_supported_task_count(),
-            'subtasks_computed': self.get_computed_task_count(),
-            'subtasks_with_errors': self.get_error_task_count(),
-            'subtasks_with_timeout': self.get_timeout_task_count()
+            'subtasks_computed': self.get_comp_stat('computed_tasks'),
+            'subtasks_accepted': self.get_provider_stat('provider_sra_cnt'),
+            'subtasks_rejected': self.get_provider_stat('provider_srr_cnt'),
+            'subtasks_with_errors': self.get_comp_stat('tasks_with_errors'),
+            'subtasks_with_timeout': self.get_comp_stat('tasks_with_timeout'),
         }
 
     def get_supported_task_count(self) -> int:
         if self.task_server:
             return len(self.task_server.task_keeper.supported_tasks)
         return 0
-
-    def get_computed_task_count(self):
-        return self.get_task_computer_stat('computed_tasks')
-
-    def get_timeout_task_count(self):
-        return self.get_task_computer_stat('tasks_with_timeout')
-
-    def get_error_task_count(self):
-        return self.get_task_computer_stat('tasks_with_errors')
 
     @rpc_utils.expose('comp.tasks.unsupport')
     def get_unsupport_reasons(self, last_days):
@@ -905,9 +898,14 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         address = self.transaction_system.get_payment_address()
         return str(address) if address else None
 
-    def get_task_computer_stat(self, name):
+    def get_comp_stat(self, name):
         if self.task_server and self.task_server.task_computer:
             return self.task_server.task_computer.stats.get_stats(name)
+        return None, None
+
+    def get_provider_stat(self, name):
+        if self.task_server and self.task_manager:
+            return self.task_manager.provider_stats_manager.get_stats(name)
         return None, None
 
     @rpc_utils.expose('pay.balance')
@@ -924,6 +922,11 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             'block_number': str(balances['block_number']),
             'last_gnt_update': str(balances['gnt_update_time']),
             'last_eth_update': str(balances['eth_update_time']),
+            'contract_addresses': {
+                contract.name: address
+                for contract, address in
+                EthereumConfig.CONTRACT_ADDRESSES.items()
+            }
         }
 
     @rpc_utils.expose('pay.deposit_balance')
@@ -1023,7 +1026,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self,
             amount: Union[str, int],
             destination: str,
-            currency: str) -> List[str]:
+            currency: str,
+            gas_price: Optional[int] = None) -> List[str]:
         if isinstance(amount, str):
             amount = int(amount)
         # It returns a list for backwards compatibility with Electron.
@@ -1031,6 +1035,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             amount,
             destination,
             currency,
+            gas_price,
         )]
 
     @rpc_utils.expose('rep.comp')

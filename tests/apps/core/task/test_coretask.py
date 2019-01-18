@@ -22,7 +22,6 @@ from golem.tools.testdirfixture import TestDirFixture
 
 def env_with_file(_self):
     env = environment.Environment()
-    env.main_program_file = "abcde"
     return env
 
 
@@ -79,22 +78,6 @@ class TestCoreTask(LogTestCase, TestDirFixture):
 
         task = CoreTaskDeabstractedEnv(task_def, node)
         self.assertIsInstance(task, CoreTask)
-
-    def test_init(self):
-        task_def = TestCoreTask._get_core_task_definition()
-
-        class CoreTaskWrongFile(self.CoreTaskDeabstracted):
-            ENVIRONMENT_CLASS = env_with_file
-
-        with patch("logging.Logger.warning") as log_mock:
-            task = CoreTaskWrongFile(
-                task_definition=task_def,
-                owner=dt_p2p_factory.Node(),
-                resource_size=1024
-            )
-        log_mock.assert_called_once()
-        self.assertIn("Wrong main program file", log_mock.call_args[0][0])
-        self.assertEqual(task.src_code, "")
 
     def _get_core_task(self):
         task_def = TestCoreTask._get_core_task_definition()
@@ -476,7 +459,6 @@ class TestCoreTask(LogTestCase, TestDirFixture):
         assert ctd['task_id'] == c.header.task_id
         assert ctd['subtask_id'] == hash
         assert ctd['extra_data'] == extra_data
-        assert ctd['src_code'] == c.src_code
         assert ctd['performance'] == perf_index
         assert ctd['docker_images'] == c.docker_images
 
@@ -514,7 +496,6 @@ class TestTaskTypeInfo(TestCase):
         assert tti.output_file_ext == []
 
     def test_preview_methods(self):
-        assert CoreTaskTypeInfo.get_task_num_from_pixels(0, 0, None, 10) == 0
         assert CoreTaskTypeInfo.get_task_border("subtask1", None, 10) == []
 
 

@@ -28,9 +28,9 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 WORKDIR /golem/work
 
 # Copy the current directory contents into the container at /golem/work
-ADD requirements.txt /golem/work/
+ADD rendering/resources/images/requirements.txt /golem/work/
 
-ADD scripts /golem/scripts
+ADD rendering/resources/scripts /golem/scripts
 
 RUN pip3 install -r /golem/work/requirements.txt
 
