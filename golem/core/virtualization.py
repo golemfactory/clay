@@ -1,7 +1,6 @@
 import os
 
 from cpuinfo import get_cpu_info
-from psutil import process_iter
 
 from golem.core.common import get_golem_path, is_windows
 from golem.core.windows import run_powershell
@@ -13,7 +12,6 @@ WIN_SCRIPT_PATH = os.path.join(
     'virtualization',
     'get-virtualization-state.ps1'
 )
-WIN_HYPERV_PROCS = ['vmcompute.exe', 'vmms.exe', 'vmsp.exe', 'vmwp.exe']
 
 
 @rpc_utils.expose('env.hw.virtualization')
@@ -35,9 +33,5 @@ def _check_vt_unix() -> bool:
 
 
 def _check_vt_windows() -> bool:
-    for proc in process_iter():
-        if proc.name().lower() in WIN_HYPERV_PROCS:
-            return True
-
     virtualization_state = run_powershell(script=WIN_SCRIPT_PATH)
     return virtualization_state == 'True'
