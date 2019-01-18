@@ -257,6 +257,7 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         return [(0, upper), (x, upper),
                 (x, lower), (0, lower)]
 
+    # pylint: disable=too-many-arguments
     @classmethod
     def get_task_num_from_pixels(cls, x, y, definition, subtasks_count,
                                  output_num=1):
@@ -284,6 +285,7 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         parts = int(subtasks_count / frames)
         return (output_num - 1) * parts + cls.__num_from_pixel(y, res_x,
                                                                res_y, parts)
+    # pylint: enable=too-many-arguments
 
     @classmethod
     def __num_from_pixel(cls, p_y, res_x, res_y, parts):

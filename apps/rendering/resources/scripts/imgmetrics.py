@@ -1,26 +1,26 @@
 import io
-import os
 import json
-import numpy as np
+import os
 import sys
 
+import numpy as np
+
 from . import metrics
- 
+
 
 class MyEncoder(json.JSONEncoder):
-    def default(self, obj):
-        print("There were obj %r" % obj, file=sys.stderr)
-        
-        if isinstance(obj, np.integer):
-            return int(obj)
-        elif isinstance(obj, np.float32):
-            return float(obj)
-        elif isinstance(obj, np.float64):
-            return float(obj)
-        elif isinstance(obj, np.ndarray):
-            return obj.tolist()
-        else:
-            return obj.__dict__
+    def default(self, o):  # pylint: disable=method-hidden
+        print("There were obj %r" % o, file=sys.stderr)
+
+        if isinstance(o, np.integer):
+            return int(o)
+        if isinstance(o, np.float32):
+            return float(o)
+        if isinstance(o, np.float64):
+            return float(o)
+        if isinstance(o, np.ndarray):
+            return o.tolist()
+        return o.__dict__
 
 
 class ImgMetrics:
@@ -72,15 +72,13 @@ class ImgMetrics:
     @staticmethod
     def get_metric_classes():
         available_metrics = [
-            metrics.ssim.MetricSSIM,
-            metrics.psnr.MetricPSNR,
-            metrics.variance.ImageVariance,
-            metrics.edges.MetricEdgeFactor,
+            metrics.ssim.MetricSSIM, metrics.psnr.MetricPSNR,
+            metrics.variance.ImageVariance, metrics.edges.MetricEdgeFactor,
             metrics.wavelet.MetricWavelet,
             metrics.histograms_correlation.MetricHistogramsCorrelation,
             metrics.mass_center_distance.MetricMassCenterDistance
         ]
-        
+
         return available_metrics
 
     @staticmethod
@@ -91,12 +89,13 @@ class ImgMetrics:
         return metric_names
 
     def to_json(self):
-        str_ = json.dumps(self,
-                          cls=MyEncoder,
-                          indent=4,
-                          sort_keys=True,
-                          separators=(',', ': '),
-                          ensure_ascii=False)
+        str_ = json.dumps(
+            self,
+            cls=MyEncoder,
+            indent=4,
+            sort_keys=True,
+            separators=(',', ': '),
+            ensure_ascii=False)
         return str_
 
     def write_to_file(self, file_name='img_metrics.txt'):

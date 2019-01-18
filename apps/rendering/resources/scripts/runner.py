@@ -35,17 +35,19 @@ def run_img_compare_task(verification_files, xres, yres):
     counter = 0
     for rendered_scene_path, cropped_img_path in verification_files.items():
         if not os.path.exists(cropped_img_path):
-            print("Scene file '{}' does not exist".format(cropped_img_path),
+            print(
+                "Scene file '{}' does not exist".format(cropped_img_path),
                 file=sys.stderr)
             sys.exit(1)
 
         if not os.path.exists(rendered_scene_path):
-            print("Scene file '{}' does not exist".format(rendered_scene_path),
+            print(
+                "Scene file '{}' does not exist".format(rendered_scene_path),
                 file=sys.stderr)
             sys.exit(1)
 
-        file_path = os.path.join(
-            params['OUTPUT_DIR'], 'result_' + str(counter) + '.txt')
+        file_path = os.path.join(params['OUTPUT_DIR'],
+                                 'result_' + str(counter) + '.txt')
 
         results_path = img_metrics_calculator.\
             calculate_metrics(cropped_img_path,

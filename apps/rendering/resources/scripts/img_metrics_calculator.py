@@ -6,10 +6,8 @@ import OpenEXR
 from PIL import Image
 
 from . import decision_tree
-from .img_format_converter import \
-    ConvertTGAToPNG, ConvertEXRToPNG
-from .imgmetrics import \
-    ImgMetrics
+from .img_format_converter import ConvertTGAToPNG, ConvertEXRToPNG
+from .imgmetrics import ImgMetrics
 
 CROP_NAME = "scene_crop.png"
 VERIFICATION_SUCCESS = "TRUE"
@@ -33,7 +31,9 @@ def calculate_metrics(reference_img_path,
     :return:
     """
 
-    cropped_img, scene_crops, rendered_scene = \
+    # pylint: disable=too-many-locals
+
+    cropped_img, scene_crops, _rendered_scene = \
         _load_and_prepare_images_for_comparison(reference_img_path,
                                                 result_img_path,
                                                 xres,
@@ -44,47 +44,61 @@ def calculate_metrics(reference_img_path,
     img_metrics = dict()
     img_metrics['Label'] = VERIFICATION_FAIL
 
-    effective_metrics, classifier, labels, available_metrics = get_metrics()
+    _effective_metrics, classifier, labels, available_metrics = get_metrics()
 
     # First try not offset crop
     # TODO this shouldn't depend on the crops' ordering
     default_crop = scene_crops[0]
-    default_metrics = compare_images(cropped_img, default_crop, available_metrics)
+    default_metrics = compare_images(cropped_img, default_crop,
+                                     available_metrics)
     try:
         label = classify_with_tree(default_metrics, classifier, labels)
         default_metrics['Label'] = label
-    except Exception as e:
+    except Exception as e:  # pylint: disable=broad-except
         print("There were errors %r" % e, file=sys.stderr)
         default_metrics['Label'] = VERIFICATION_FAIL
     if default_metrics['Label'] == VERIFICATION_SUCCESS:
         default_crop.save(CROP_NAME)
-        return ImgMetrics(default_metrics).write_to_file(metrics_output_filename)
-    else:
-        # Try offset crops
-        for crop in scene_crops[1:]:
-            try:
-                img_metrics = compare_images(cropped_img, crop, available_metrics)
-                img_metrics['Label'] = classify_with_tree(img_metrics, classifier, labels)
-            except Exception as e:
-                print("There were error %r" % e, file=sys.stderr)
-                img_metrics['Label'] = VERIFICATION_FAIL
-            if img_metrics['Label'] == VERIFICATION_SUCCESS:
-                best_img_metrics = img_metrics
-                best_crop = crop
-                break
-        if best_crop and best_img_metrics:
-            best_crop.save(CROP_NAME)
-            return ImgMetrics(best_img_metrics).write_to_file(metrics_output_filename)
-        else:
-            # We didnt find any better match in offset crops, return the default one
-            default_crop.save(CROP_NAME)
-            path_to_metrics = ImgMetrics(default_metrics).write_to_file(metrics_output_filename)
-            return path_to_metrics
+        return ImgMetrics(default_metrics).write_to_file(
+            metrics_output_filename)
+
+    # Try offset crops
+    for crop in scene_crops[1:]:
+        try:
+            img_metrics = compare_images(cropped_img, crop,
+                                         available_metrics)
+            img_metrics['Label'] = classify_with_tree(
+                img_metrics, classifier, labels)
+        except Exception as e:  # pylint: disable=broad-except
+            print("There were errors %r" % e, file=sys.stderr)
+            img_metrics['Label'] = VERIFICATION_FAIL
+        if img_metrics['Label'] == VERIFICATION_SUCCESS:
+            best_img_metrics = img_metrics
+            best_crop = crop
+            break
+    if best_crop and best_img_metrics:
+        best_crop.save(CROP_NAME)
+        return ImgMetrics(best_img_metrics).write_to_file(
+            metrics_output_filename)
+
+    # We didnt find any better match in offset crops, return
+    # the default one
+    default_crop.save(CROP_NAME)
+    path_to_metrics = ImgMetrics(default_metrics).write_to_file(
+        metrics_output_filename)
+    return path_to_metrics
+
+    # Fixme: unreachable code
+    # pylint: disable=unreachable
 
     # This is unexpected but handle in case of errors
-    stub_data = {element:-1 for element in get_labels_from_metrics(available_metrics)}
+    stub_data = {
+        element: -1
+        for element in get_labels_from_metrics(available_metrics)
+    }
     stub_data['Label'] = VERIFICATION_FAIL
-    path_to_metrics = ImgMetrics(stub_data).write_to_file(metrics_output_filename)
+    path_to_metrics = ImgMetrics(stub_data).write_to_file(
+        metrics_output_filename)
     return path_to_metrics
 
 
@@ -102,10 +116,7 @@ def classify_with_tree(metrics, classifier, feature_labels):
 
 
 def _load_and_prepare_images_for_comparison(reference_img_path,
-                                            result_img_path,
-                                            xres,
-                                            yres):
-
+                                            result_img_path, xres, yres):
     """
     This function prepares (i.e. crops) the rendered_scene so that it will
     fit the sample(cropped_img) generated for comparison.
@@ -148,10 +159,9 @@ def get_crops(rendered_scene, x, y, width, height):
     offsets = [0, 1, -1]
     for x_offset in offsets:
         for y_offset in offsets:
-            crop = rendered_scene.crop((x + x_offset,
-                                        y + y_offset,
-                                        x + width - x_offset,
-                                        y + height - y_offset))
+            crop = rendered_scene.crop(
+                (x + x_offset, y + y_offset, x + width - x_offset,
+                 y + height - y_offset))
             crops.append(crop)
     return crops
 
@@ -181,10 +191,10 @@ def compare_images(image_a, image_b, metrics) -> Dict:
     once they are cropped to the same size.
     :param image_a:
     :param image_b:
+    :param metrics:
     :return: ImgMetrics
     """
-
-    """imageA/B are images read by: PIL.Image.open(img.png)"""
+    # imageA/B are images read by: PIL.Image.open(img.png)
     (crop_height, crop_width) = image_a.size
     crop_resolution = str(crop_height) + "x" + str(crop_width)
 
