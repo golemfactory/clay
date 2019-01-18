@@ -1,13 +1,13 @@
 import asyncio
+import concurrent.futures
+import datetime
 import functools
 import logging
 import queue
 import threading
 from typing import Callable, Optional
 
-from pydispatch import dispatcher
 from twisted.internet import defer
-from twisted.internet import task as twisted_task
 from twisted.internet import threads
 from twisted.web.iweb import IBodyProducer
 from zope.interface import implementer
@@ -105,97 +105,135 @@ def deferred_run():
 
 
 ##
-# DISPATCHING
-##
-
-
-_TO_ASYNCIO: queue.Queue = queue.Queue()
-_TO_TWISTED: queue.Queue = queue.Queue()
-
-
-def dispatch_from(queue_: queue.Queue):
-    try:
-        kwargs = queue_.get_nowait()
-    except queue.Empty:
-        pass
-    else:
-        dispatcher.send(**kwargs)
-
-
-def asyncio_dispatch(**kwargs):
-    global _TO_ASYNCIO  # pylint: disable=global-statement
-    _TO_ASYNCIO.put_nowait(kwargs)
-
-
-def twisted_dispatch(**kwargs):
-    global _TO_TWISTED  # pylint: disable=global-statement
-    _TO_TWISTED.put_nowait(kwargs)
-
-
-def asyncio_listen():
-    def wrapper(f):
-        @functools.wraps(f)
-        def curry(**kwargs):
-            if threading.current_thread().name != _ASYNCIO_ID:
-                asyncio_dispatch(**kwargs)
-                return
-            f(**kwargs)
-        return curry
-    return wrapper
-
-
-##
 # ASYNCIO
 ##
 
+_ASYNCIO_RUN = threading.Event()
 _ASYNCIO_ID = 'Thread-aio'
-_RUN = threading.Event()
+_ASYNCIO_QUEUE = queue.Queue()
+_ASYNCIO_THREAD_POOL = concurrent.futures.ThreadPoolExecutor()
 
 
-@defer.inlineCallbacks
+def in_asyncio_thread() -> bool:
+    return threading.current_thread().name == _ASYNCIO_ID
+
+
 def start_asyncio_thread():
     asyncio_thread = threading.Thread(
         target=asyncio_start,
         name=_ASYNCIO_ID,
     )
-    counter = 0
-    def listener(**kwargs):
-        nonlocal counter
-        print('IN TWISTED', threading.current_thread().name, kwargs)
-        counter += 1
-        dispatcher.send(signal='asyncio', nonce=counter)
-    dispatcher.connect(listener, signal='twisted', weak=False)
     asyncio_thread.start()
-    loop = twisted_task.LoopingCall(
-        functools.partial(dispatch_from, _TO_TWISTED),
-    )
-    yield loop.start(1.0)
+
+
+def in_asyncio():
+    def wrapper(f):
+        @functools.wraps(f)
+        def curry(*args, **kwargs):
+            if not in_asyncio_thread():
+                _ASYNCIO_QUEUE.put_nowait((f, args, kwargs))
+                return None
+            return f(*args, **kwargs)
+        return curry
+    return wrapper
+
+
+def run_at_most_every(delta: datetime.timedelta):
+    last_run = datetime.datetime.min
+
+    def wrapped(f):
+        @functools.wraps(f)
+        async def curry(*args, **kwargs):
+            nonlocal last_run
+            current_delta = datetime.datetime.now() - last_run
+            while current_delta < delta:
+                sleep_for = delta - current_delta
+                logger.debug(
+                    'Will wait for %(delta)s until next run of'
+                    ' %(func)s(*%(args)r, **%(kwargs)r)',
+                    {
+                        'delta': sleep_for,
+                        'func': f.__name__,
+                        'args': args,
+                        'kwargs': kwargs,
+                    },
+                )
+                await asyncio.sleep(sleep_for.total_seconds())
+                current_delta = datetime.datetime.now() - last_run
+            last_run = datetime.datetime.now()
+            result = f(*args, **kwargs)
+            if asyncio.iscoroutine(result):
+                return await result
+            return result
+        return curry
+    return wrapped
+
+
+def run_in_thread():
+    # Use for IO bound operations
+    # SEE: https://docs.python.org/3/library/asyncio-eventloop.html#asyncio.loop.run_in_executor  pylint: disable=line-too-long
+    def wrapped(f):
+        # No coroutines in a pool
+        assert not asyncio.iscoroutinefunction(f)
+
+        @functools.wraps(f)
+        async def curry(*args, **kwargs):
+            await asyncio.get_event_loop().run_in_executor(
+                executor=_ASYNCIO_THREAD_POOL,
+                func=functools.partial(f, *args, **kwargs),
+            )
+        return curry
+    return wrapped
+
+
+def locked():
+    lock = asyncio.Lock()
+
+    def wrapped(f):
+        @functools.wraps(f)
+        async def curry(*args, **kwargs):
+            nonlocal lock
+            async with lock:
+                result = f(*args, **kwargs)
+                if asyncio.iscoroutine(result):
+                    return await result
+                return result
+        return curry
+    return wrapped
 
 
 def asyncio_start():
-    @asyncio_listen()
-    def listener(**kwargs):
-        print('IN ASYNCIO', threading.current_thread().name, kwargs)
-    dispatcher.connect(listener, signal='asyncio')
-    _RUN.set()
+    _ASYNCIO_RUN.set()
+    logger.info(
+        'ASYNCIO thread started. name=%r',
+        threading.current_thread().name,
+    )
     loop = asyncio.new_event_loop()
     loop.run_until_complete(asyncio_main())
+    logger.info("ASYNCIO thread finished")
 
 
 def asyncio_stop():
-    global _RUN  # pylint: disable=global-statement
-    print('Stopping ASYNCIO')
-    _RUN.clear()
+    global _ASYNCIO_RUN  # pylint: disable=global-statement
+    logger.info('Stopping ASYNCIO thread')
+    _ASYNCIO_RUN.clear()
 
+
+async def _asyncio_process_queue():
+    for _ in range(10):
+        try:
+            f, args, kwargs = _ASYNCIO_QUEUE.get_nowait()
+        except queue.Empty:
+            return
+        result = f(*args, **kwargs)
+        if asyncio.iscoroutine(result):
+            await result
 
 async def asyncio_main():
-    counter = 0
-    global _RUN  # pylint: disable=global-statement
-    print('ASYNCIO started', threading.current_thread().name)
-    while _RUN.is_set():
-        print(str(counter)+'*'*80, threading.current_thread().name)
-        twisted_dispatch(signal="twisted", nonce=counter)
-        counter += 1
-        dispatch_from(_TO_ASYNCIO)
-        await asyncio.sleep(1)
-    print("ASYNCIO finished")
+    global _ASYNCIO_RUN  # pylint: disable=global-statement
+    while _ASYNCIO_RUN.is_set():
+        await _asyncio_process_queue()
+        await asyncio.sleep(0.1)
+    logger.info('Cleaning up ASYNCIO queue. estimated_size=%r', _ASYNCIO_QUEUE.qsize())
+    while not _ASYNCIO_QUEUE.empty():
+        await _asyncio_process_queue()
