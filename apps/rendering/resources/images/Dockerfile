@@ -2,9 +2,14 @@
 FROM revolutionsystems/python:3.6.3-wee-optimized-lto
 
 # Install any needed packages specified in requirements.txt
-RUN apt-get update && apt-get install -y libglib2.0-0 \
+RUN apt-get update && apt-get install -y build-essential \
+    && apt-get install -y g++ \
+    && apt-get install -y apt-utils \
+    && apt-get install -y libglib2.0-0 \
     && apt-get install -y libsm6 \
     && apt-get install -y libxrender1 \
+    && apt-get install -y libopenexr-dev \
+    && apt-get install -y zlib1g-dev \
     && apt-get install -y wget
 
 RUN mkdir -v /golem \
@@ -30,9 +35,10 @@ WORKDIR /golem/work
 # Copy the current directory contents into the container at /golem/work
 ADD rendering/resources/images/requirements.txt /golem/work/
 
-ADD rendering/resources/scripts /golem/scripts
 
 RUN pip3 install -r /golem/work/requirements.txt
+
+ADD rendering/resources/scripts /golem/scripts
 
 RUN apt-get clean \
     && apt-get -y autoremove

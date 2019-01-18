@@ -1,8 +1,8 @@
-import Imath
 import numpy as np
 from PIL import Image
 import OpenEXR
 
+import Imath
 
 # converting .exr file to .png if user gave .exr file as a rendered scene
 def ConvertEXRToPNG(exrfile, pngfile):
@@ -18,7 +18,6 @@ def ConvertEXRToPNG(exrfile, pngfile):
                           (1.055 * (rgb[i] ** (1.0 / 2.4)) - 0.055) * 255.0)
     rgb8 = [Image.frombytes("F", Size, c.tostring()).convert("L") for c in rgb]
     Image.merge("RGB", rgb8).save(pngfile, "PNG")
-
 
 # converting .tga file to .png if user gave .tga file as a rendered scene
 def ConvertTGAToPNG(tgafile, pngfile):
