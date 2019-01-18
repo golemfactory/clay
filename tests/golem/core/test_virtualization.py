@@ -1,6 +1,6 @@
 from pathlib import Path
-import unittest
 from typing import Iterator
+from unittest import TestCase
 from unittest.mock import patch, Mock
 
 from psutil import Process
@@ -22,12 +22,13 @@ def get_mock_cpuinfo_output(vt_supported=True) -> dict:
 
 def get_mock_process_iter(hyperv_enabled=True) -> Iterator[Process]:
     mock_process = Mock(spec=Process)
-    mock_process.name.return_value = 'vmcompute.exe' if hyperv_enabled else 'test.exe'
+    mock_process.name.return_value =\
+        'vmcompute.exe' if hyperv_enabled else 'test.exe'
     return iter([mock_process])
 
 
 @patch('golem.core.virtualization.is_windows', side_effect=lambda: False)
-class VirtualizationTestUnix(unittest.TestCase):
+class VirtualizationTestUnix(TestCase):
 
     @patch('golem.core.virtualization.get_cpu_info',
            return_value=get_mock_cpuinfo_output())
@@ -41,7 +42,7 @@ class VirtualizationTestUnix(unittest.TestCase):
 
 
 @patch('golem.core.virtualization.is_windows', side_effect=lambda: True)
-class VirtualizationTestWindows(unittest.TestCase):
+class VirtualizationTestWindows(TestCase):
 
     @patch('golem.core.virtualization.run_powershell',
            return_value='True')
@@ -58,6 +59,8 @@ class VirtualizationTestWindows(unittest.TestCase):
 
     @patch('golem.core.virtualization.process_iter',
            return_value=get_mock_process_iter())
+    @patch('golem.core.virtualization.run_powershell',
+           return_value='False')
     def test_hyperv_enabled(self, *_):
         self.assertTrue(is_virtualization_enabled())
 
