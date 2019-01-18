@@ -104,6 +104,8 @@ class Node(HardwarePresetsMixin):
             if use_talkback is None else use_talkback
 
         self._keys_auth: Optional[KeysAuth] = None
+        if geth_address:
+            EthereumConfig.NODE_LIST = [geth_address]
         self._ets = TransactionSystem(
             Path(datadir) / 'transaction_system',
             EthereumConfig,
@@ -135,7 +137,6 @@ class Node(HardwarePresetsMixin):
             use_docker_manager=use_docker_manager,
             use_monitor=self._use_monitor,
             concent_variant=concent_variant,
-            geth_address=geth_address,
             apps_manager=self.apps_manager,
             task_finished_cb=self._try_shutdown,
             update_hw_preset=self.upsert_hw_preset

@@ -102,7 +102,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
-            geth_address: Optional[str] = None,
             apps_manager: AppsManager = AppsManager(),
             task_finished_cb=None,
             update_hw_preset=None) -> None:
