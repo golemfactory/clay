@@ -93,8 +93,9 @@ EOC
 # are installed and set proper 'global' variables
 function check_dependencies()
 {
-    # Check if docker-ce is installed
-    if [[ -z "$(dpkg -s docker-ce 2>/dev/null | grep -i 'status: install ok installed')" ]]; then
+    # Check if docker is installed
+    $(docker -v > /dev/null 2>&1)
+    if [[ $? -ne 0 ]]; then
         info_msg "To be installed: docker-ce"
         INSTALL_DOCKER=1
     fi
@@ -241,9 +242,9 @@ function install_dependencies()
     fi
 
     if [[ ${remove_docker} -eq 1 ]]; then
-        info_msg "Removing: docker-engine docker.io docker-ce nvidia-docker2"
+        info_msg "Removing: docker, nvidia-docker2"
         ! sudo service docker stop > /dev/null 2>&1
-        ! sudo apt-get purge -y docker-engine docker.io docker-ce nvidia-docker2 > /dev/null 2>&1
+        ! sudo apt-get purge -y docker-engine docker.io docker-ce docker-ce-cli nvidia-docker2 > /dev/null 2>&1
     fi
 
     if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
@@ -267,6 +268,12 @@ function install_dependencies()
     echo -e "\e[91m"
     info_msg "Installing: ${packages[*]}"
     sudo apt-get install -q -y ${packages[*]} >/dev/null
+
+    if [[ $? -ne 0 ]]; then
+        error_msg "Unable to install the required packages. Aborting."
+        error_msg "Please make sure that there is no system update running and there are no broken packages."
+        return 1
+    fi
 
     if [[ ${INSTALL_NVIDIA_DOCKER} -eq 1 ]]; then
         ! sudo apt-mark hold nvidia-docker2 docker-ce
@@ -463,7 +470,11 @@ function main()
     if [[ ${result} -ne 0 ]]; then
         error_msg "Installation failed"
     else
-        info_msg "Installation complete"
+        if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
+            warning_msg "You need to restart your PC to finish installation"
+        else
+            info_msg "Installation complete"
+        fi
     fi
     return ${result}
 }
