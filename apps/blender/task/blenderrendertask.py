@@ -257,55 +257,6 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         return [(0, upper), (x, upper),
                 (x, lower), (0, lower)]
 
-    # pylint: disable=too-many-arguments
-    @classmethod
-    def get_task_num_from_pixels(cls, x, y, definition, subtasks_count,
-                                 output_num=1):
-        """
-        Compute number of subtask that represents pixel (x, y) on preview
-        :param int x: x coordinate
-        :param int y: y coordiante
-        :param TaskDefintion definition: task definition
-        :param int subtasks_count: total number of subtasks used in this task
-        :param int output_num: number of final output files
-        :return int: subtask's number
-        """
-
-        res_x = definition.resolution[0]
-        res_y = definition.resolution[1]
-
-        if not definition.options.use_frames:
-            return cls.__num_from_pixel(y, res_x, res_y, subtasks_count)
-
-        frames = len(definition.options.frames)
-        if subtasks_count <= frames:
-            subtask_frames = int(math.ceil(frames / subtasks_count))
-            return int(math.ceil(output_num / subtask_frames))
-
-        parts = int(subtasks_count / frames)
-        return (output_num - 1) * parts + cls.__num_from_pixel(y, res_x,
-                                                               res_y, parts)
-    # pylint: enable=too-many-arguments
-
-    @classmethod
-    def __num_from_pixel(cls, p_y, res_x, res_y, parts):
-        """
-        Compute number of subtask that represents pixel with y coordiante equal
-        to py on preview with given resolution
-        :param int p_y: y coordinate of a pixel
-        :param int res_x: image width
-        :param int res_y: image height
-        :param int parts: number of parts on one frame
-        :return:
-        """
-        offsets = generate_expected_offsets(parts, res_x, res_y)
-        for task_num in range(1, parts + 1):
-            low = offsets[task_num]
-            high = offsets[task_num + 1]
-            if low <= p_y < high:
-                return task_num
-        return parts
-
 
 class BlenderTaskTypeInfo(RenderingTaskTypeInfo):
     """ Blender App description that can be used by interface to define

@@ -496,7 +496,6 @@ class TestTaskTypeInfo(TestCase):
         assert tti.output_file_ext == []
 
     def test_preview_methods(self):
-        assert CoreTaskTypeInfo.get_task_num_from_pixels(0, 0, None, 10) == 0
         assert CoreTaskTypeInfo.get_task_border("subtask1", None, 10) == []
 
 
