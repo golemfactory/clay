@@ -1,16 +1,18 @@
 from __future__ import print_function
 
+import cloudpickle
 import functools
 import json
 import os
-import cloudpickle
+import traceback
 
-import params  # This module is generated before this script is run
+with open('params.json', 'rb') as params_file:
+    params = cloudpickle.load(params_file)
 
 result_obj = {}
 
 result_path = os.path.join(os.environ['OUTPUT_DIR'],
-                           'result.txt')
+                        'result.txt')
 
 def write_path(path, content):
     with open(path, 'w') as out:
@@ -19,8 +21,8 @@ def write_path(path, content):
 write_result = functools.partial(write_path, result_path)
 
 try:
-    method_code = cloudpickle.loads(params.method)
-    args = cloudpickle.loads(params.args)
+    method_code = cloudpickle.loads(params['method'])
+    args = cloudpickle.loads(params['args'])
     result = method_code(args)
 except Exception as e:
     result_obj['error'] = str(e)

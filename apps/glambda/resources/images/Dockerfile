@@ -26,7 +26,7 @@ RUN mkdir /golem \
  && mkdir /golem/resources \
  && mkdir /golem/output
 
-COPY entrypoint3.sh /usr/local/bin/entrypoint.sh
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN sed -i -e 's/\r$//' /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 
@@ -60,3 +60,6 @@ RUN mkdir /golem/raspa && \
     make  -j8 && \
     make install && \
     chmod -R 757 ${RASPA_DIR}
+
+RUN mkdir -p /golem/scripts
+COPY glambda/resources/scripts/job.py /golem/scripts/job.py

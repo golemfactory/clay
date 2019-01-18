@@ -2,6 +2,7 @@ import decimal
 import json
 import logging
 import os
+import time
 import shutil
 from typing import List, Optional
 
@@ -15,6 +16,7 @@ from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.glambda.glambdaenvironment import GLambdaTaskEnvironment
 from golem_messages.datastructures import p2p as dt_p2p
 from golem_messages.datastructures import tasks as dt_tasks
+from golem import constants as gconst
 from golem.resource.dirmanager import DirManager
 from golem.core.common import timeout_to_deadline, string_to_timeout,\
                               to_unicode
@@ -45,7 +47,6 @@ class BasicTaskBuilder(TaskBuilder):
         self.root_path = dir_manager.root_path
         self.dir_manager = dir_manager
         self.owner = owner
-        self.src_code = ""
 
     @classmethod
     def build_definition(cls, task_type: TaskTypeInfo, dictionary,
@@ -62,11 +63,10 @@ class BasicTaskBuilder(TaskBuilder):
 
 class ExtraDataBuilder(object):
     def __init__(self, header, subtask_id, subtask_data,
-                    src_code, short_desc, performance, docker_images=None):
+                    short_desc, performance, docker_images=None):
         self.header = header
         self.subtask_id = subtask_id
         self.subtask_data = subtask_data
-        self.src_code = src_code
         self.short_desc = short_desc
         self.performance = performance
         self.docker_images = docker_images
@@ -77,7 +77,6 @@ class ExtraDataBuilder(object):
         ctd['subtask_id'] = self.subtask_id
         ctd['extra_data'] = self.subtask_data
         ctd['short_description'] = self.short_desc
-        ctd['src_code'] = self.src_code
         ctd['performance'] = self.performance
         if self.docker_images:
             ctd['docker_images'] = [di.to_dict() for di in self.docker_images]
@@ -103,6 +102,7 @@ class DockerTask(Task):
             self.docker_images = None
 
         th = dt_tasks.TaskHeader(
+            min_version=str(gconst.GOLEM_MIN_VERSION),
             task_id=task_definition.task_id,
             environment=self.environment.get_id(),
             task_owner=owner,
@@ -113,10 +113,9 @@ class DockerTask(Task):
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
             concent_enabled=task_definition.concent_enabled,
+            timestamp=int(time.time())
         )
-        with open(self.environment.main_program_file, 'r') as script_file:
-            src_code = script_file.read()
-        super().__init__(th, src_code, task_definition)
+        super().__init__(th, task_definition)
 
 
 class GLambdaTaskTypeInfo(TaskTypeInfo):
@@ -186,11 +185,11 @@ class GLambdaTask(DockerTask):
 
         subtask_data = {
                 'method': self.method,
-                'args': self.args
+                'args': self.args,
+                'script_filepath': '/golem/scripts/job.py'
         }
 
         subtask_builder = ExtraDataBuilder(self.header, subtask_id, subtask_data,
-                                           self.src_code,
                                            self.short_extra_data_repr(subtask_data),
                                            perf_index, self.docker_images)
 
