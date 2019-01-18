@@ -309,33 +309,3 @@ def load_img(file_: str) -> Optional[ImgRepr]:
     except Exception as err:
         logger.warning("Can't load img file {}:{}".format(file_, err))
         return None
-
-
-def load_as_PILImgRepr(file_: str) -> Optional[PILImgRepr]:
-    img = load_img(file_)
-
-    if isinstance(img, EXRImgRepr):
-        img_pil = PILImgRepr()
-        img_pil. \
-            load_from_pil_object(img.to_pil())
-        img = img_pil
-
-    return img
-
-
-def blend(img1, img2, alpha):
-    (res_x, res_y) = img1.get_size()
-    if img2.get_size() != (res_x, res_y):
-        logger.error("Both images must have the same size.")
-        return
-
-    img = img1.copy()
-
-    for x in range(0, res_x):
-        for y in range(0, res_y):
-            p1 = img1.get_pixel((x, y))
-            p2 = img2.get_pixel((x, y))
-            p = list(map(lambda c1, c2: c1 * (1 - alpha) + c2 * alpha, p1, p2))
-            img.set_pixel((x, y), p)
-
-    return img

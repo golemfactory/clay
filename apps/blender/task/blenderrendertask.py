@@ -1,4 +1,3 @@
-import cv2
 import functools
 import logging
 import math
@@ -10,7 +9,6 @@ from copy import copy
 from typing import Optional, Type
 
 import numpy
-from PIL import ImageFile
 
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
@@ -34,10 +32,6 @@ from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import TaskPurpose, TaskTypeInfo
 from golem.task.taskstate import SubtaskStatus, TaskStatus
 from golem_verificator.blender_verifier import BlenderVerifier
-
-# Allow loading truncated images.
-# https://github.com/golemfactory/golem/issues/2059
-ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 logger = logging.getLogger(__name__)
 

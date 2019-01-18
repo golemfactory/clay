@@ -6,9 +6,9 @@ from PIL import Image
 import cv2
 
 import numpy as np
-from apps.rendering.resources.imgrepr import (blend, EXRImgRepr, ImgRepr,
-                                              load_img, load_as_PILImgRepr,
-                                              logger, PILImgRepr, OpenCVImgRepr,
+from apps.rendering.resources.imgrepr import (EXRImgRepr, ImgRepr,
+                                              load_img,
+                                              PILImgRepr, OpenCVImgRepr,
                                               OpenCVError)
 
 from golem.testutils import TempDirFixture, PEP8MixIn
@@ -223,70 +223,6 @@ class TestImgFunctions(TempDirFixture, LogTestCase):
         assert pil_img.get_size() == (10, 10)
 
         assert load_img("notexisting") is None
-
-    def test_blend_pil(self):
-        img_path1 = self.temp_file_name("img1.png")
-        img_path2 = self.temp_file_name("img2.png")
-        make_test_img(img_path1)
-        make_test_img(img_path2)
-
-        img1 = PILImgRepr()
-        img2 = PILImgRepr()
-        img1.load_from_file(img_path1)
-        img2.load_from_file(img_path2)
-        img1 = get_pil_img_repr(img_path1)
-
-        img = blend(img1, img2, 0.5)
-        assert isinstance(img, PILImgRepr)
-        assert img.get_pixel((3, 2)) == [255, 0, 0]
-
-        make_test_img(img_path2, size=(15, 15))
-        img2.load_from_file(img_path2)
-
-        with self.assertLogs(logger, "ERROR"):
-            assert blend(img1, img2, 0.5) is None
-
-        make_test_img(img_path2, color=(0, 255, 30))
-        img2.load_from_file(img_path2)
-
-        assert img1.get_pixel((3, 2)) == [255, 0, 0]
-        assert img2.get_pixel((3, 2)) == [0, 255, 30]
-
-        img = blend(img1, img2, 0)
-        assert img.get_pixel((3, 2)) == [255, 0, 0]
-        img = blend(img1, img2, 1)
-        assert img.get_pixel((3, 2)) == [0, 255, 30]
-
-        assert img1.get_pixel((3, 2)) == [255, 0, 0]
-        assert img2.get_pixel((3, 2)) == [0, 255, 30]
-        img = blend(img1, img2, 0.5)
-        assert img.get_pixel((3, 2)) == [127, 127, 15]
-
-        img = blend(img1, img2, 0.1)
-        assert img.get_pixel((3, 2)) == [229, 25, 3]
-
-    def test_blend_exr(self):
-        exr1 = get_exr_img_repr()
-        exr2 = get_exr_img_repr(alt=True)
-
-        exr = blend(exr1, exr2, 0)
-        assert exr.get_pixel((3, 2)) == exr1.get_pixel((3, 2))
-
-        exr = blend(exr1, exr2, 1)
-        assert exr.get_pixel((3, 2)) == exr2.get_pixel((3, 2))
-
-        assert exr2.get_pixel((3, 2)) == [0, 0, 0]
-
-        assert exr1.get_pixel((3, 2)) == [0.381103515625,
-                                          0.412353515625,
-                                          0.42236328125]
-        assert exr2.get_pixel((3, 2)) == [0, 0, 0]
-
-        exr = blend(exr1, exr2, 0.5)
-        almost_equal_pixels(exr.get_pixel((3, 2)), [0.1905, 0.206, 0.211])
-
-        exr = blend(exr1, exr2, 0.9)
-        almost_equal_pixels(exr.get_pixel((3, 2)), [0.0381, 0.0412, 0.0422])
 
     def test_opencv_load_from_file(self):
         img_path = self.temp_file_name("path1.png")

@@ -2,15 +2,12 @@ import os
 import random
 
 import numpy
-import numpy as np
 import cv2
 import pytest
 
 from golem.tools.testdirfixture import TestDirFixture
 
 from apps.rendering.resources.renderingtaskcollector import RenderingTaskCollector
-from apps.rendering.resources.imgcompare import (advance_verify_img,
-                                                 compare_pil_imgs)
 from apps.rendering.resources.imgrepr import OpenCVImgRepr, OpenCVError
 
 
@@ -21,7 +18,7 @@ def make_test_img(img_path, size=(10, 10), color=(255, 0, 0)):
 
 
 def make_test_img_16bits(img_path, width, height, color=(0, 0, 255)):
-    img = np.zeros((height, width, 3), np.uint16)
+    img = numpy.zeros((height, width, 3), numpy.uint16)
     img[0:height, 0:width] = color
     cv2.imwrite(img_path, img)
 
@@ -49,6 +46,12 @@ class TestRenderingTaskCollector(TestDirFixture):
 
         assert len(collector.accepted_img_files) == 10
 
+    @staticmethod
+    def _compare_opencv_images(img1, img2_path):
+        """ img1 as read by cv1.imread """
+        img2 = cv2.imread(img2_path)
+        return numpy.array_equal(img1, img2)
+
     def test_finalize(self):
         collector = RenderingTaskCollector()
         assert collector.finalize() is None
@@ -63,7 +66,7 @@ class TestRenderingTaskCollector(TestDirFixture):
         img2 = self.temp_file_name("img2.png")
         final_img.save(img2)
 
-        assert compare_pil_imgs(img1, img2)
+        assert TestRenderingTaskCollector._compare_opencv_images(final_img.img, img1)
         collector.add_img_file(img2)
         final_img = collector.finalize()
         assert isinstance(final_img, OpenCVImgRepr)
@@ -71,7 +74,8 @@ class TestRenderingTaskCollector(TestDirFixture):
         final_img.save(img3)
 
         assert final_img.img.shape[:2] == (20, 10)
-        assert advance_verify_img(img3, 10, 20, (0, 0), (10, 10), img1, (0, 0))
+        cut_image = final_img.img[10:20, 0:10]
+        assert TestRenderingTaskCollector._compare_opencv_images(cut_image, img1)
 
     def test_finalize_exr(self):
         collector = RenderingTaskCollector()
@@ -111,7 +115,7 @@ class TestRenderingTaskCollector(TestDirFixture):
         final_img = collector.finalize()
         # check size and dtype
         assert final_img is not None
-        assert final_img.img.dtype == np.uint16
+        assert final_img.img.dtype == numpy.uint16
         assert final_img.img.shape == (len(images) * h, w, 3)
 
         # verify each part of final img
@@ -127,7 +131,7 @@ class TestRenderingTaskCollector(TestDirFixture):
         assert os.path.isfile(images[-1])
 
         f_img = cv2.imread(images[-1], cv2.IMREAD_UNCHANGED)
-        assert f_img.dtype == np.uint16
+        assert f_img.dtype == numpy.uint16
         assert f_img.shape == ((len(images) - 1) * h, w, 3)
 
         # remove test images
