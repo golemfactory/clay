@@ -59,10 +59,7 @@ function info_msg()
 # @return 1 if answer is 'yes', 0 if 'no'
 function ask_user()
 {
-    # if want to install only deps,
-    # we don't have to ask if want to install any dependency
-    [[ ${DEPS_ONLY} -eq 1 ]] && return 1
-    while [ 1 ]; do
+    while [[ 1 ]]; do
         read -p "$@ " yn
         case ${yn} in
             y|Y ) return 1;;
@@ -96,8 +93,8 @@ EOC
 # are installed and set proper 'global' variables
 function check_dependencies()
 {
-    # Check if docker daemon exists
-    if [[ -z "$( service docker status 2>/dev/null )" ]]; then
+    # Check if docker-ce is installed
+    if [[ -z "$(dpkg -s docker-ce 2>/dev/null | grep -i 'status: install ok installed')" ]]; then
         info_msg "To be installed: docker-ce"
         INSTALL_DOCKER=1
     fi
@@ -463,11 +460,10 @@ function main()
     fi
     install_golem
     result=$?
-    if [[ ${INSTALL_DOCKER} -eq 1 ]]; then
-        info_msg "You need to restart your PC to finish installation"
-    fi
     if [[ ${result} -ne 0 ]]; then
         error_msg "Installation failed"
+    else
+        info_msg "Installation complete"
     fi
     return ${result}
 }
