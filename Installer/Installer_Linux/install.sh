@@ -89,6 +89,11 @@ EOC
     echo ${json} | ${PYTHON} -c "${code}"
 }
 
+function installed_package_version()
+{
+    echo $(dpkg -l 2>/dev/null | grep "$@\s" | grep -E 'hi|ii' | head -1 | awk '{print $3}')
+}
+
 # @brief check if dependencies (Docker, nvidia-docker + nvidia-modprobe)
 # are installed and set proper 'global' variables
 function check_dependencies()
@@ -101,7 +106,7 @@ function check_dependencies()
     fi
 
     # Check if nvidia-docker2 is installed
-    if [[ -z "$(dpkg -s nvidia-docker2 2>/dev/null | grep -i 'status: install ok installed')" ]]; then
+    if [[ -z "$(installed_package_version nvidia_docker2)" ]]; then
         if [[ -z "$(lspci | grep -i nvidia)" ]]; then
             warning_msg "Not supported: nvidia-docker2: incompatible device"
         elif [[ ! -z "$(lsmod | grep -i nouveau)" ]]; then
@@ -199,7 +204,14 @@ function install_dependencies()
                libgtk2.0-0 libxss1 libgconf-2-4 libnss3 libasound2 \
                libfreeimage3 )
 
-    docker_version="$(dpkg -l 2>/dev/null | grep "docker-ce\s" | grep -E 'hi|ii' | head -1 | awk '{print $3}')"
+    declare -a docker_packages=("docker-ce" "docker.io" "docker-engine")
+
+    for docker_package in "${docker_packages[@]}"; do
+       docker_version=$(installed_package_version ${docker_package})
+       if [[ ! -z "${docker_version}" ]]; then
+           break
+       fi
+    done
 
     if [[ ${INSTALL_NVIDIA_DOCKER} -eq 1 ]]; then
 
@@ -227,7 +239,7 @@ function install_dependencies()
             warning_msg "Dependency version mismatch:"
             warning_msg "\t required by: nvidia-docker2"
             warning_msg "\t dependency:  docker-ce=${nv_docker_version}"
-            warning_msg "\t installed:   docker-ce=${docker_version}"
+            warning_msg "\t installed:   ${docker_package}=${docker_version}"
 
             remove_docker=1
         fi
@@ -242,6 +254,13 @@ function install_dependencies()
     fi
 
     if [[ ${remove_docker} -eq 1 ]]; then
+
+        ask_user "The installer will now remove any existing Docker installations. Do you want to continue?"
+        if [[ $? -ne 1 ]]; then
+            warning_msg "Aborting"
+            exit 1
+        fi
+
         info_msg "Removing: docker, nvidia-docker2"
         ! sudo service docker stop > /dev/null 2>&1
         ! sudo apt-get purge -y docker-engine docker.io docker-ce docker-ce-cli nvidia-docker2 > /dev/null 2>&1
