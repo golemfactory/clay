@@ -1,3 +1,4 @@
+import cloudpickle
 import json
 import logging
 import os
@@ -118,8 +119,8 @@ class DockerJob:
 
         # Save parameters in work_dir/PARAMS_FILE
         params_file_path = self._get_host_params_path()
-        with open(params_file_path, "w") as params_file:
-            json.dump(self.parameters, params_file)
+        with open(params_file_path, "wb") as params_file:
+            cloudpickle.dump(self.parameters, params_file)
 
         # Setup volumes for the container
         client = local_client()
