@@ -16,7 +16,6 @@ certifi==2018.1.18
 cffi==1.10.0
 chardet==3.0.4
 click==6.7
-cloudpickle==0.6.1
 coincurve==7.1.0
 constantly==15.1.0
 crossbar==17.12.1
