@@ -201,7 +201,7 @@ function install_dependencies()
                libgtk2.0-0 libxss1 libgconf-2-4 libnss3 libasound2 \
                libfreeimage3 )
 
-    docker_version="$(dpkg -l 2>/dev/null | grep "docker-ce\s" | grep ii | head -1 | awk '{print $3}')"
+    docker_version="$(dpkg -l 2>/dev/null | grep "docker-ce\s" | grep -E 'hi|ii' | head -1 | awk '{print $3}')"
 
     if [[ ${INSTALL_NVIDIA_DOCKER} -eq 1 ]]; then
 
@@ -244,7 +244,7 @@ function install_dependencies()
     fi
 
     if [[ ${remove_docker} -eq 1 ]]; then
-        info_msg "Removing: docker-engine docker.io docker-ce"
+        info_msg "Removing: docker-engine docker.io docker-ce nvidia-docker2"
         ! sudo service docker stop > /dev/null 2>&1
         ! sudo apt-get purge -y docker-engine docker.io docker-ce nvidia-docker2 > /dev/null 2>&1
     fi
