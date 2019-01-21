@@ -266,7 +266,6 @@ class BlenderTaskTypeInfo(RenderingTaskTypeInfo):
     def __init__(self):
         super(BlenderTaskTypeInfo, self).__init__("Blender",
                                                   RenderingTaskDefinition,
-                                                  BlenderDefaults(),
                                                   BlenderRendererOptions,
                                                   BlenderRenderTaskBuilder)
 
@@ -279,7 +278,6 @@ class BlenderNVGPUTaskTypeInfo(RenderingTaskTypeInfo):
     def __init__(self):
         super().__init__("Blender_NVGPU",
                          RenderingTaskDefinition,
-                         BlenderNVGPUDefaults(),
                          BlenderNVGPURendererOptions,
                          BlenderNVGPURenderTaskBuilder)
 

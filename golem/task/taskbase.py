@@ -6,7 +6,7 @@ from typing import List, Type, Optional
 import golem_messages
 from golem_messages.datastructures import tasks as dt_tasks
 
-from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
+from apps.core.task.coretaskstate import TaskDefinition, Options
 from golem.task.taskstate import TaskState
 
 logger = logging.getLogger("golem.task")
@@ -29,11 +29,9 @@ class TaskTypeInfo(object):
     def __init__(self,
                  name: str,
                  definition: Type[TaskDefinition],
-                 defaults: TaskDefaults,
                  options: Type[Options],
                  task_builder_type: 'Type[TaskBuilder]') -> None:
         self.name = name
-        self.defaults = defaults
         self.options = options
         self.definition = definition
         self.task_builder_type = task_builder_type
