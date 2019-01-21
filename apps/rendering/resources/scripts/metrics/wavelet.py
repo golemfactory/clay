@@ -2,9 +2,10 @@
 
 import sys
 
+from PIL import Image
+
 import numpy
 import pywt
-from PIL import Image
 
 
 def calculate_sum(coeff):

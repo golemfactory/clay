@@ -1,3 +1,5 @@
+# pylint: disable=import-error
+
 import numpy
 from sklearn.externals import joblib
 

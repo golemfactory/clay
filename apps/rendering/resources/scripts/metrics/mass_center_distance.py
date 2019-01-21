@@ -1,5 +1,6 @@
-from PIL import Image
 import sys
+
+from PIL import Image
 
 
 class MetricMassCenterDistance:
@@ -11,7 +12,7 @@ class MetricMassCenterDistance:
         mass_centers_2 = MetricMassCenterDistance.compute_mass_centers(image2)
         max_x_distance = 0
         max_y_distance = 0
-        for channel_index in mass_centers_1.keys():
+        for channel_index in mass_centers_1:
             x1, y1 = mass_centers_1[channel_index]
             x2, y2 = mass_centers_2[channel_index]
             x_distance = abs(x1 - x2)

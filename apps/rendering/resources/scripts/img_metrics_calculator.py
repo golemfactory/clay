@@ -2,8 +2,9 @@ import os
 import sys
 from typing import Dict
 
-import OpenEXR
 from PIL import Image
+
+import OpenEXR
 
 from . import decision_tree
 from .img_format_converter import ConvertTGAToPNG, ConvertEXRToPNG
