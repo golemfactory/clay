@@ -110,7 +110,8 @@ def deferred_run():
 
 _ASYNCIO_RUN = threading.Event()
 _ASYNCIO_ID = 'Thread-aio'
-_ASYNCIO_QUEUE = queue.Queue()
+_ASYNCIO_THREAD_QUEUE = queue.Queue()
+_ASYNCIO_TASKS = None
 _ASYNCIO_THREAD_POOL = concurrent.futures.ThreadPoolExecutor()
 
 
@@ -131,7 +132,7 @@ def in_asyncio():
         @functools.wraps(f)
         def curry(*args, **kwargs):
             if not in_asyncio_thread():
-                _ASYNCIO_QUEUE.put_nowait((f, args, kwargs))
+                _ASYNCIO_THREAD_QUEUE.put_nowait((f, args, kwargs))
                 return None
             return f(*args, **kwargs)
         return curry
@@ -202,38 +203,58 @@ def locked():
     return wrapped
 
 
+def asyncio_run(coro):
+    """Simulate asyncio.run() from python3.7"""
+    loop = asyncio.get_event_loop()
+    try:
+        loop.run_until_complete(coro)
+    finally:
+        loop.run_until_complete(loop.shutdown_asyncgens())
+        loop.close()
+
+
 def asyncio_start():
+    global _ASYNCIO_TASKS  # pylint: disable=global-statement
     _ASYNCIO_RUN.set()
     logger.info(
         'ASYNCIO thread started. name=%r',
         threading.current_thread().name,
     )
     loop = asyncio.new_event_loop()
-    loop.run_until_complete(asyncio_main())
+    _ASYNCIO_TASKS = asyncio.Queue(loop=loop)
+    loop.set_debug(True)
+    asyncio.set_event_loop(loop)
+    asyncio_run(asyncio_main())
     logger.info("ASYNCIO thread finished")
 
 
 def asyncio_stop():
-    global _ASYNCIO_RUN  # pylint: disable=global-statement
     logger.info('Stopping ASYNCIO thread')
     _ASYNCIO_RUN.clear()
 
 
-async def _asyncio_process_queue():
+async def _asyncio_process_thread_queue():
     for _ in range(10):
         try:
-            f, args, kwargs = _ASYNCIO_QUEUE.get_nowait()
+            f, args, kwargs = _ASYNCIO_THREAD_QUEUE.get_nowait()
         except queue.Empty:
             return
         result = f(*args, **kwargs)
         if asyncio.iscoroutine(result):
-            await result
+            await _ASYNCIO_TASKS.put(asyncio.ensure_future(result))
+
+
+async def _asyncio_wait_for_tasks():
+    while True:
+        task = await _ASYNCIO_TASKS.get()
+        await asyncio.wait({task})
+        _ASYNCIO_TASKS.task_done()
 
 async def asyncio_main():
-    global _ASYNCIO_RUN  # pylint: disable=global-statement
+    wait_task = asyncio.ensure_future(_asyncio_wait_for_tasks())
     while _ASYNCIO_RUN.is_set():
-        await _asyncio_process_queue()
+        await _asyncio_process_thread_queue()
         await asyncio.sleep(0.1)
-    logger.info('Cleaning up ASYNCIO queue. estimated_size=%r', _ASYNCIO_QUEUE.qsize())
-    while not _ASYNCIO_QUEUE.empty():
-        await _asyncio_process_queue()
+    logger.info('Cleaning up ASYNCIO queue. size=%r', _ASYNCIO_TASKS.qsize())
+    await _ASYNCIO_TASKS.join()
+    wait_task.cancel()

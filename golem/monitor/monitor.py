@@ -159,7 +159,7 @@ class SystemMonitor(object):
     async def on_config_update(self, meta_data):
         self.meta_data = meta_data
         self.node_info = NodeInfoModel(meta_data.cliid, meta_data.sessid)
-        self.on_login()
+        await self.on_login()
 
     async def on_computation_time_spent(self, success, value):
         msg = statssnapshotmodel.ComputationTime(

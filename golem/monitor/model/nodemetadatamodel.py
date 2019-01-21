@@ -14,7 +14,7 @@ class NodeMetadataModel(BasicModel):
 
         # FIXME Remove double jsonification.
         # This model will be put through json.dumps().
-        # There no need to dumps os_info & settings
+        # There is no need to dumps os_info & settings
         self.os_info = json.dumps({
             'type': "OSInfo",
             'obj': os_info.__dict__,
