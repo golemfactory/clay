@@ -1,10 +1,11 @@
+from copy import copy
 import decimal
 import json
 import logging
 import os
 import time
 import shutil
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 
 import mock
 from ethereum.utils import denoms
@@ -12,6 +13,7 @@ from ethereum.utils import denoms
 import golem_messages
 from golem_messages import idgenerator
 
+from apps.core.task.coretask import CoreTask, CoreTaskBuilder, CoreTaskTypeInfo
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.glambda.glambdaenvironment import GLambdaTaskEnvironment
 from golem_messages.datastructures import p2p as dt_p2p
@@ -25,6 +27,8 @@ from golem.task.taskbase import Task, TaskState, TaskBuilder, \
                                 TaskTypeInfo, TaskDefaults,  \
                                 AcceptClientVerdict
 from golem.task.taskclient import TaskClient
+from golem.task.taskstate import SubtaskStatus
+from golem.verificator.verifier import SubtaskVerificationState
 
 logger = logging.getLogger(__name__)
 
@@ -35,30 +39,6 @@ def apply(obj, *initial_data, **kwargs):
             setattr(obj, key, dictionary[key])
     for key in kwargs:
         setattr(obj, key, kwargs[key])
-
-
-class BasicTaskBuilder(TaskBuilder):
-    def __init__(self,
-                 owner: dt_p2p.Node,
-                 task_definition: TaskDefinition,
-                 dir_manager: DirManager) -> None:
-        super().__init__()
-        self.task_definition = task_definition
-        self.root_path = dir_manager.root_path
-        self.dir_manager = dir_manager
-        self.owner = owner
-
-    @classmethod
-    def build_definition(cls, task_type: TaskTypeInfo, dictionary,
-                         minimal=False):
-        td = task_type.definition()
-        apply(td, dictionary)
-        td.task_type = task_type.name
-        td.timeout = string_to_timeout(dictionary['timeout'])
-        td.subtask_timeout = string_to_timeout(dictionary['subtask_timeout'])
-        td.max_price = \
-            int(decimal.Decimal(dictionary['bid']) * denoms.ether)
-        return td
 
 
 class ExtraDataBuilder(object):
@@ -85,39 +65,6 @@ class ExtraDataBuilder(object):
         return Task.ExtraData(ctd=ctd)
 
 
-class DockerTask(Task):
-    ENVIRONMENT_CLASS=DockerEnvironment
-
-    def __init__(self,
-                 owner: dt_p2p.Node,
-                 task_definition: TaskDefinition,
-                 dir_manager: DirManager) -> None:
-        self.environment = self.ENVIRONMENT_CLASS()
-
-        if task_definition.docker_images:
-            self.docker_images = task_definition.docker_images
-        elif isinstance(self.environment, DockerEnvironment):
-            self.docker_images = self.environment.docker_images
-        else:
-            self.docker_images = None
-
-        th = dt_tasks.TaskHeader(
-            min_version=str(gconst.GOLEM_MIN_VERSION),
-            task_id=task_definition.task_id,
-            environment=self.environment.get_id(),
-            task_owner=owner,
-            deadline=timeout_to_deadline(task_definition.timeout),
-            subtask_timeout=task_definition.subtask_timeout,
-            subtasks_count=task_definition.subtasks_count,
-            resource_size=1024,
-            estimated_memory=task_definition.estimated_memory,
-            max_price=task_definition.max_price,
-            concent_enabled=task_definition.concent_enabled,
-            timestamp=int(time.time())
-        )
-        super().__init__(th, task_definition)
-
-
 class GLambdaTaskTypeInfo(TaskTypeInfo):
     def __init__(self):
         super().__init__(
@@ -129,58 +76,37 @@ class GLambdaTaskTypeInfo(TaskTypeInfo):
         )
 
 
-class GLambdaTaskBuilder(BasicTaskBuilder):
-    def build(self) -> 'Task':
-        return GLambdaTask(self.owner,
-                             self.task_definition,
-                             self.dir_manager,
-                             self.task_definition.extra_data['method'],
-                             self.task_definition.extra_data['args']
-                        )
-
-
-class GLambdaBenchmarkTaskBuilder(GLambdaTaskBuilder):
-    def build(self) -> 'Task':
-        mock_obj = mock.MagicMock()
-        return mock_obj
-
-
-class GLambdaTask(DockerTask):
+class GLambdaTask(CoreTask):
 
     class BasicAcceptStrategy(object):
         def accept(self, client):
             return True
 
     ENVIRONMENT_CLASS = GLambdaTaskEnvironment
+    MAX_PENDING_CLIENT_RESULTS=1
 
     def __init__(self,
-                 owner: dt_p2p.Node,
                  task_definition: TaskDefinition,
-                 dir_manager: DirManager,
-                 method,
-                 args):
-        super().__init__(owner, task_definition, dir_manager)
-        self.dir_manager = dir_manager
+                 owner: dt_p2p.Node,
+                 max_pending_client_results=MAX_PENDING_CLIENT_RESULTS,
+                 resource_size=None,
+                 root_path=None,
+                 total_tasks=1,
+                 method=None,
+                 args=None,
+                 dir_manager=None):
+        super(GLambdaTask, self).__init__(task_definition, owner, max_pending_client_results,
+            resource_size, root_path, total_tasks)
         self.method = method
         self.args = args
-        self.finished = False
-        self.output_path = dir_manager.get_task_output_dir(task_definition.task_id)
         self.results = None
+        self.dir_manager = dir_manager
+        self.output_path = dir_manager.get_task_output_dir(task_definition.task_id)
 
-        # State tracking structure helps to determine when
-        # the task has been finished
-        self.dispatched_subtasks = {}
-        self.progress = 0.0
-
-    def initialize(self, dir_manager):
-        pass
-
-    def create_subtask_id(self) -> str:
-        return idgenerator.generate_new_id_from_id(self.header.task_id)
-
-    def query_extra_data(self, perf_index: float, num_cores: int = 1,
+    def query_extra_data(self, perf_index: float,
                          node_id: Optional[str] = None,
-                         node_name: Optional[str] = None) -> 'ExtraData':
+                         node_name: Optional[str] = None):
+        start_task = self._get_next_task()
         subtask_id = self.create_subtask_id()
 
         subtask_data = {
@@ -193,25 +119,75 @@ class GLambdaTask(DockerTask):
                                            self.short_extra_data_repr(subtask_data),
                                            perf_index, self.docker_images)
 
+        logger.debug(
+            'Created new subtask for task. '
+            'task_id=%s, subtask_id=%s, node_id=%s',
+            self.header.task_id,
+            subtask_id,
+            (node_id or '')
+        )
+
+        self.subtasks_given[subtask_id] = {
+            'header': self.header,
+            'subtask_id': subtask_id,
+            'subtask_data': subtask_data,
+            'performance': perf_index,
+            'docker_images': self.docker_images
+        }
+        self.subtasks_given[subtask_id]['subtask_id'] = subtask_id
+        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.starting
+        self.subtasks_given[subtask_id]['node_id'] = node_id
+        self.subtasks_given[subtask_id]['subtask_timeout'] = \
+            self.header.subtask_timeout
+        self.subtasks_given[subtask_id]['tmp_dir'] = self.tmp_dir
+
         subtask = subtask_builder.get_result()
-        self.dispatched_subtasks[subtask_id] = subtask
 
         return subtask
 
-    def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa pylint:disable=line-too-long
+    def _get_next_task(self):
+        if self.last_task != self.total_tasks:
+            self.last_task += 1
+            start_task = self.last_task
+            return start_task
+        else:
+            for sub in self.subtasks_given.values():
+                if sub['status'] \
+                        in [SubtaskStatus.failure, SubtaskStatus.restarted]:
+                    sub['status'] = SubtaskStatus.resent
+                    start_task = sub['start_task']
+                    self.num_failed_subtasks -= 1
+                    return start_task
+        return None
+
+    def query_extra_data_for_test_task(self):
         pass
 
     def short_extra_data_repr(self, extra_data: Task.ExtraData) -> str:
         return 'glambda task'
 
-    def needs_computation(self) -> bool:
-        return not self.dispatched_subtasks
-
-    def finished_computation(self) -> bool:
-        return self.finished and not self.dispatched_subtasks
-
     def computation_finished(self, subtask_id, task_result,
                              verification_finished=None):
+        if not self.should_accept(subtask_id):
+            logger.info("Not accepting results for %s", subtask_id)
+            return
+
+        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.verifying
+        self.num_tasks_received += 1
+
+        if True:
+            verdict = SubtaskVerificationState.VERIFIED
+
+        try:
+            if verdict == SubtaskVerificationState.VERIFIED:
+                self.accept_results(subtask_id, None)
+            # TODO Add support for different verification states. issue #2422
+            else:
+                self.computation_failed(subtask_id)
+        except Exception as exc:
+            logger.warning("Failed during accepting results %s", exc)
+
+        verification_finished()
         try:
             outdir_content = os.listdir(
                 os.path.join(
@@ -230,109 +206,98 @@ class GLambdaTask(DockerTask):
                                                                  os.path.basename(obj))
                 )
 
-            del self.dispatched_subtasks[subtask_id]
-
-            if True:
-                # Do some verification with the result data here
-                self.progress = 1.0
-                self.finished = True
         except BaseException as e:
             logger.exception('')
-        # Verification is always positive in this case
-        try:
-            if verification_finished:
-                verification_finished()
-        except Exception as e:
-            logger.exception('')
 
-    def computation_failed(self, subtask_id):
-        self.finished = True
-        self.progress = 1.0
-        del self.dispatched_subtasks[subtask_id]
-
-    def verify_subtask(self, subtask_id):
-        return True
-
-    def verify_task(self):
-        return self.finished_computation()
-
-    def get_total_tasks(self) -> int:
-        return 1
-
-    def get_active_tasks(self) -> int:
-        return 0 if self.finished else 1 
-
-    def get_tasks_left(self) -> int:
-        return 0 if self.finished else 1
-
-    def restart(self):
-        raise NotImplementedError()
-
-    def restart_subtask(self, subtask_id):
-        raise NotImplementedError()
-
-    def abort(self):
-        raise NotImplementedError()
-
-    def get_progress(self) -> float:
-        return 1.0 if self.finished_computation() else 0.0
-
-    def get_resources(self) -> list:
-        return self.task_definition.resources
-
-    def update_task_state(self, task_state: TaskState):
-        return  # Implement in derived class
-
-    def get_trust_mod(self, subtask_id) -> int:
-        return 1.0
-
-    def add_resources(self, resources: set):
-        raise NotImplementedError()
-
-    def copy_subtask_results(
-            self, subtask_id: int, old_subtask_info: dict, results: List[str]) \
-            -> None:
-        raise NotImplementedError()
-
-    def should_accept_client(self, node_id):
-        if self.needs_computation():
-            return AcceptClientVerdict.ACCEPTED
-        elif self.finished_computation():
-            return AcceptClientVerdict.ACCEPTED
-        else:
-            return AcceptClientVerdict.SHOULD_WAIT
-
-    def get_stdout(self, subtask_id) -> str:
-        return ""
-
-    def get_stderr(self, subtask_id) -> str:
-        return ""
-
-    def get_results(self, subtask_id) -> List:
+    def get_results(self, subtask_id):
         return self.results
-
-    def result_incoming(self, subtask_id):
-        pass
 
     def get_output_names(self) -> List:
         return [self.output_path]
 
-    def get_output_states(self) -> List:
-        return []
 
-    def to_dictionary(self):
-        return {
-            'id': to_unicode(self.header.task_id),
-            'name': to_unicode(self.task_definition.name),
-            'type': to_unicode(self.task_definition.task_type),
-            'subtasks_count': self.get_total_tasks(),
-            'progress': self.get_progress()
-        }
+class GLambdaTaskBuilder(CoreTaskBuilder):
+    TASK_CLASS = GLambdaTask
 
-    def accept_client(self, node_id):
-        verdict = self.should_accept_client(node_id)
+    def __init__(self,
+                 owner: dt_p2p.Node,
+                 task_definition: TaskDefinition,
+                 dir_manager: DirManager) -> None:
+        super(CoreTaskBuilder, self).__init__()
+        self.task_definition = task_definition
+        self.root_path = dir_manager.root_path
+        self.dir_manager = dir_manager
+        self.owner = owner
+        self.environment = None
 
-        if verdict == AcceptClientVerdict.ACCEPTED:
-            client = TaskClient(node_id)
-            client.start()
-        return verdict
+    def build(self):
+        # pylint:disable=abstract-class-instantiated
+        task = self.TASK_CLASS(**self.get_task_kwargs())
+
+        task.initialize(self.dir_manager)
+        return task
+
+    def get_task_kwargs(self, **kwargs):
+        kwargs['total_tasks'] = 1
+        kwargs["task_definition"] = self.task_definition
+        kwargs["owner"] = self.owner
+        kwargs["root_path"] = self.root_path
+        kwargs["method"] = self.task_definition.extra_data['method']
+        kwargs["args"] = self.task_definition.extra_data['args']
+        kwargs["dir_manager"] = self.dir_manager
+        return kwargs
+
+    @classmethod
+    def build_minimal_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
+        definition = task_type.definition()
+        definition.task_type = task_type.name
+        definition.compute_on = dictionary.get('compute_on', 'cpu')
+        if 'resources' in dictionary:
+            definition.resources = set(dictionary['resources'])
+        definition.subtasks_count = int(dictionary['subtasks_count'])
+        definition.extra_data = dictionary['extra_data']
+        return definition
+
+    @classmethod
+    def build_definition(cls,  # type: ignore
+                         task_type: CoreTaskTypeInfo,
+                         dictionary: Dict[str, Any],
+                         minimal=False):
+        # dictionary comes from the GUI
+        if not minimal:
+            definition = cls.build_full_definition(task_type, dictionary)
+        else:
+            definition = cls.build_minimal_definition(task_type, dictionary)
+
+        definition.add_to_resources()
+        return definition
+
+    @classmethod
+    def build_full_definition(cls,
+                              task_type: CoreTaskTypeInfo,
+                              dictionary: Dict[str, Any]):
+        definition = cls.build_minimal_definition(task_type, dictionary)
+        definition.name = dictionary['name']
+        definition.max_price = \
+            int(decimal.Decimal(dictionary['bid']) * denoms.ether)
+
+        definition.timeout = string_to_timeout(dictionary['timeout'])
+        definition.subtask_timeout = string_to_timeout(
+            dictionary['subtask_timeout'],
+        )
+        definition.estimated_memory = dictionary.get('estimated_memory', 0)
+
+        return definition
+
+    # TODO: Backward compatibility only. The rendering tasks should
+    # move to overriding their own TaskDefinitions instead of
+    # overriding `build_dictionary. Issue #2424`
+    @staticmethod
+    def build_dictionary(definition: TaskDefinition) -> dict:
+        return definition.to_dict()
+
+
+class GLambdaBenchmarkTaskBuilder(GLambdaTaskBuilder):
+    def build(self) -> 'Task':
+        mock_obj = mock.MagicMock()
+        return mock_obj
