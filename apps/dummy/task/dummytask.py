@@ -11,7 +11,7 @@ from apps.core.task.coretask import (CoreTask,
                                      CoreTaskBuilder,
                                      CoreTaskTypeInfo)
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
-from apps.dummy.task.dummytaskstate import DummyTaskDefaults, DummyTaskOptions
+from apps.dummy.task.dummytaskstate import DummyTaskOptions
 from apps.dummy.task.dummytaskstate import DummyTaskDefinition
 from apps.dummy.task.verifier import DummyTaskVerifier
 from golem.task.taskbase import Task
@@ -25,7 +25,6 @@ class DummyTaskTypeInfo(CoreTaskTypeInfo):
         super().__init__(
             "Dummy",
             DummyTaskDefinition,
-            DummyTaskDefaults(),
             DummyTaskOptions,
             DummyTaskBuilder
         )

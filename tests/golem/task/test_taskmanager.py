@@ -36,10 +36,11 @@ from golem.testutils import DatabaseFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.tools.testwithreactor import TestDatabaseWithReactor
 
-from apps.dummy.task.dummytask import (
+from apps.dummy.task.dummytask import DummyTaskBuilder
+from apps.dummy.task.dummytaskstate import (
+    DummyTaskDefinition,
     DummyTaskDefaults,
-    DummyTaskBuilder)
-from apps.dummy.task.dummytaskstate import DummyTaskDefinition
+)
 from golem.resource.dirmanager import DirManager
 
 
