@@ -129,8 +129,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             "xyz", "xxyyzz")
 
         assert tc.task_resource_collected("xyz")
-        tc.task_server.unpack_delta.assert_called_with(
-            tc.dir_manager.get_task_resource_dir("xyz"), None, "xyz")
         assert tc.counting_thread is None
         assert tc.assigned_subtask is None
         task_server.send_task_failed.assert_called_with(
@@ -242,7 +240,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             status_callback()
         tc.docker_manager.update_config = _update_config
 
-        tc.counting_task = True
         tc.change_config(mock.Mock(), in_background=False)
 
         # pylint: disable=unused-argument
@@ -250,7 +247,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             done_callback(False)
         tc.docker_manager.update_config = _update_config_2
 
-        tc.counting_task = None
         tc.change_config(mock.Mock(), in_background=False)
 
     def test_event_listeners(self):
@@ -325,6 +321,23 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         tc = TaskComputer(task_server, use_docker_manager=False)
         with self.assertLogs(logger, level="INFO"):
             tc.task_request_rejected("xyz", "my rejection reason")
+
+    def test_get_environment_no_assigned_subtask(self):
+        tc = TaskComputer(self.task_server, use_docker_manager=False)
+        assert tc.get_environment() is None
+
+    def test_get_environment(self):
+        task_server = self.task_server
+        task_server.task_keeper.task_headers = {
+            "task_id": mock.Mock(
+                environment="env"
+            )
+        }
+
+        tc = TaskComputer(task_server, use_docker_manager=False)
+        tc.assigned_subtask = ComputeTaskDef()
+        tc.assigned_subtask['task_id'] = "task_id"
+        assert tc.get_environment() == "env"
 
 
 @ci_skip

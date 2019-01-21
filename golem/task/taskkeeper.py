@@ -188,10 +188,6 @@ class CompTaskKeeper:
         self.dump()
 
     @handle_key_error
-    def get_task_env(self, task_id):
-        return self.active_tasks[task_id].header.environment
-
-    @handle_key_error
     def get_task_header(self, task_id):
         return self.active_tasks[task_id].header
 

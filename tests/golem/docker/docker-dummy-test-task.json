@@ -8,8 +8,8 @@
         {
           "py/object": "golem.docker.image.DockerImage",
           "repository": "golemfactory/dummy",
-          "tag": "1.0",
-          "name": "golemfactory/dummy:1.0",
+          "tag": "1.1",
+          "name": "golemfactory/dummy:1.1",
           "id": null
         }
       ],
@@ -50,8 +50,8 @@
     {
       "py/object": "golem.docker.image.DockerImage",
       "repository": "golemfactory/dummy",
-      "tag": "1.0",
-      "name": "golemfactory/dummy:1.0",
+      "tag": "1.1",
+      "name": "golemfactory/dummy:1.1",
       "id": null
     }
   ],

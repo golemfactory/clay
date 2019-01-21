@@ -161,7 +161,7 @@ class DummyTask(Task):
     def finished_computation(self):
         return self.get_tasks_left() == 0
 
-    def query_extra_data(self, perf_index: float, num_cores: int = 1,
+    def query_extra_data(self, perf_index: float,
                          node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
         """ Returns data for the next subtask. """

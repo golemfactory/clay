@@ -197,11 +197,7 @@ class ReactToReportComputedTaskTestCase(testutils.TempDirFixture):
             inputb=self.msg.task_to_compute.get_short_hash(),
         )
         task_id = self.msg.task_to_compute.compute_task_def['task_id']
-        task_header = dt_tasks_factory.TaskHeader(
-            task_id='task_id',
-            environment='env',
-            task_owner=dt_p2p_factory.Node()
-        )
+        task_header = dt_tasks_factory.TaskHeaderFactory()
         task_header.deadline = now_ts + 3600
         task = mock.Mock()
         task.header = task_header
@@ -351,6 +347,7 @@ class ReactToWantToComputeTaskTestCase(unittest.TestCase):
         super().setUp()
         self.requestor_keys = cryptography.ECCx(None)
         self.msg = factories.tasks.WantToComputeTaskFactory(price=10 ** 18)
+        self.msg.task_header.sign(self.requestor_keys.raw_privkey)
         self.msg._fake_sign()
         self.task_session = tasksession.TaskSession(mock.MagicMock())
         self.task_session.key_id = 'unittest_key_id'

@@ -6,7 +6,7 @@ from typing import List, Type, Optional
 import golem_messages
 from golem_messages.datastructures import tasks as dt_tasks
 
-from apps.core.task.coretaskstate import TaskDefinition, TaskDefaults, Options
+from apps.core.task.coretaskstate import TaskDefinition, Options
 from golem.task.taskstate import TaskState
 
 logger = logging.getLogger("golem.task")
@@ -29,11 +29,9 @@ class TaskTypeInfo(object):
     def __init__(self,
                  name: str,
                  definition: Type[TaskDefinition],
-                 defaults: TaskDefaults,
                  options: Type[Options],
                  task_builder_type: 'Type[TaskBuilder]') -> None:
         self.name = name
-        self.defaults = defaults
         self.options = options
         self.definition = definition
         self.task_builder_type = task_builder_type
@@ -148,13 +146,12 @@ class Task(abc.ABC):
         return  # Implement in derived class
 
     @abc.abstractmethod
-    def query_extra_data(self, perf_index: float, num_cores: int = 1,
+    def query_extra_data(self, perf_index: float,
                          node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> 'ExtraData':
         """ Called when a node asks with given parameters asks for a new
         subtask to compute.
         :param perf_index: performance that given node declares
-        :param num_cores: number of cores that current node declares
         :param node_id: id of a node that wants to get a next subtask
         :param node_name: name of a node that wants to get a next subtask
         """
@@ -163,15 +160,6 @@ class Task(abc.ABC):
     @abc.abstractmethod
     def query_extra_data_for_test_task(self) -> golem_messages.message.ComputeTaskDef:  # noqa pylint:disable=line-too-long
         pass  # Implement in derived methods
-
-    def create_reference_data_for_task_validation(self):
-        """
-        If task validation requires some reference data, then the overriding methods have to generate it.
-        The reference task will be solved on local computer (by requestor) in order to obtain reference results.
-        The reference results will be used to validate the output given by providers.
-        :return:
-        """
-        pass
 
     @abc.abstractmethod
     def needs_computation(self) -> bool:

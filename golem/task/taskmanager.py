@@ -127,6 +127,8 @@ class TaskManager(TaskEventListener):
         )
 
         self.requestor_stats_manager = RequestorTaskStatsManager()
+        self.provider_stats_manager = \
+            self.comp_task_keeper.provider_stats_manager
 
         self.finished_cb = finished_cb
 
@@ -172,7 +174,6 @@ class TaskManager(TaskEventListener):
         task.header.task_owner = self.node
         self.sign_task_header(task.header)
 
-        task.create_reference_data_for_task_validation()
         task.register_listener(self)
 
         ts = TaskState()
@@ -353,7 +354,7 @@ class TaskManager(TaskEventListener):
 
     def get_next_subtask(
             self, node_id, node_name, task_id, estimated_performance, price,
-            max_resource_size, max_memory_size, num_cores=0, address=""):
+            max_resource_size, max_memory_size, address=""):
         """ Assign next subtask from task <task_id> to node with given
         id <node_id> and name. If subtask is assigned the function
         is returning a tuple
@@ -364,7 +365,6 @@ class TaskManager(TaskEventListener):
         :param price:
         :param max_resource_size:
         :param max_memory_size:
-        :param num_cores:
         :param address:
         :return (ComputeTaskDef|None: Function returns a ComputeTaskDef.
         First element is either ComputeTaskDef that describe assigned subtask
@@ -372,9 +372,9 @@ class TaskManager(TaskEventListener):
         before this to find the reason why the task is not able to be picked up
         """
         logger.debug(
-            'get_next_subtask(%r, %r, %r, %r, %r, %r, %r, %r, %r)',
+            'get_next_subtask(%r, %r, %r, %r, %r, %r, %r, %r)',
             node_id, node_name, task_id, estimated_performance, price,
-            max_resource_size, max_memory_size, num_cores, address,
+            max_resource_size, max_memory_size, address,
         )
 
         if not self.is_my_task(task_id):
@@ -396,7 +396,6 @@ class TaskManager(TaskEventListener):
 
         extra_data = task.query_extra_data(
             estimated_performance,
-            num_cores,
             node_id,
             node_name
         )

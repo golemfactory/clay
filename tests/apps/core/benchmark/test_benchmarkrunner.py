@@ -10,7 +10,7 @@ class DummyTask(Task):
     def initialize(self, dir_manager):
         pass
 
-    def query_extra_data(self, perf_index, num_cores, node_id, node_name):
+    def query_extra_data(self, perf_index, node_id, node_name):
         pass
 
     def needs_computation(self):
@@ -260,7 +260,7 @@ class TestBenchmarkRunnerIsSuccess(BenchmarkRunnerFixture):
 
 
 class WrongTask(DummyTask):
-    def query_extra_data(self, perf_index, num_cores, node_id, node_name):
+    def query_extra_data(self, perf_index, node_id, node_name):
         raise ValueError("Wrong task")
 
 

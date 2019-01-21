@@ -252,7 +252,6 @@ class TaskServer(
                     'price': price,
                     'max_resource_size': self.config_desc.max_resource_size,
                     'max_memory_size': self.config_desc.max_memory_size,
-                    'num_cores': self.config_desc.num_cores
                 }
 
                 node = theader.task_owner
@@ -285,7 +284,8 @@ class TaskServer(
 
         return None
 
-    def task_given(self, node_id: str, ctd, price: int) -> bool:
+    def task_given(self, node_id: str, ctd: message.ComputeTaskDef,
+                   price: int) -> bool:
         if not self.task_computer.task_given(ctd):
             return False
         self.requested_tasks.remove(ctd['task_id'])
@@ -587,9 +587,6 @@ class TaskServer(
             self.max_trust)
         Trust.WRONG_COMPUTED.decrease(key_id, mod)
 
-    def unpack_delta(self, dest_dir, delta, task_id):
-        self.client.resource_server.unpack_delta(dest_dir, delta, task_id)
-
     def get_computing_trust(self, node_id):
         return self.client.get_computing_trust(node_id)
 
@@ -678,8 +675,7 @@ class TaskServer(
             task_id,
             provider_perf,
             max_resource_size,
-            max_memory_size,
-            num_cores):
+            max_memory_size):
 
         node_name_id = node_info_str(node_name, node_id)
         ids = f'provider={node_name_id}, task_id={task_id}'
@@ -774,8 +770,7 @@ class TaskServer(
     #############################
     def __connection_for_task_request_established(
             self, session: TaskSession, conn_id, node_name, key_id, task_id,
-            estimated_performance, price, max_resource_size, max_memory_size,
-            num_cores):
+            estimated_performance, price, max_resource_size, max_memory_size):
         self.new_session_prepare(
             session=session,
             subtask_id=task_id,
@@ -784,16 +779,16 @@ class TaskServer(
         )
         session.send_hello()
         session.request_task(node_name, task_id, estimated_performance, price,
-                             max_resource_size, max_memory_size, num_cores)
+                             max_resource_size, max_memory_size)
 
     def __connection_for_task_request_failure(
             self, conn_id, node_name, key_id, task_id, estimated_performance,
-            price, max_resource_size, max_memory_size, num_cores, *args):
+            price, max_resource_size, max_memory_size, *args):
         def response(session):
             return self.__connection_for_task_request_established(
                 session, conn_id, node_name, key_id, task_id,
                 estimated_performance, price, max_resource_size,
-                max_memory_size, num_cores)
+                max_memory_size)
 
         if key_id in self.response_list:
             self.response_list[conn_id].append(response)
@@ -892,7 +887,7 @@ class TaskServer(
 
     def __connection_for_task_request_final_failure(
             self, conn_id, node_name, key_id, task_id, estimated_performance,
-            price, max_resource_size, max_memory_size, num_cores, *args):
+            price, max_resource_size, max_memory_size, *args):
         logger.info("Cannot connect to task {} owner".format(task_id))
         logger.info("Removing task {} from task list".format(task_id))
 

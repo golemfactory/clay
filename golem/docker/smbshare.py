@@ -7,6 +7,7 @@ from subprocess import CalledProcessError, TimeoutExpired
 import sys
 
 from golem.core.common import get_golem_path, is_windows
+from golem.core.windows import run_powershell
 
 SCRIPT_PATH = path.join(
     get_golem_path(), 'scripts', 'docker', 'create-share.ps1')
@@ -19,22 +20,12 @@ def create_share(user_name: str, shared_dir_path: Path) -> None:
 
     if not shared_dir_path.is_dir():
         makedirs(shared_dir_path, exist_ok=True)
-    try:
-        subprocess.run(
-            [
-                'powershell.exe',
-                '-ExecutionPolicy', 'RemoteSigned',
-                '-File', SCRIPT_PATH,
-                '-UserName', user_name,
-                '-SharedDirPath', str(shared_dir_path)
-            ],
-            timeout=SCRIPT_TIMEOUT,
-            check=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT
-        )
-    except (CalledProcessError, TimeoutExpired) as exc:
-        raise RuntimeError(exc.stdout.decode('utf8'))
+
+    run_powershell(
+        script=SCRIPT_PATH,
+        timeout=SCRIPT_TIMEOUT,
+        args=['-UserName', user_name, '-SharedDirPath', str(shared_dir_path)],
+    )
 
 
 def get_share_name(shared_dir_path: Path) -> str:

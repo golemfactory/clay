@@ -6,6 +6,7 @@ from typing import (
     Any,
     Callable,
     cast,
+    Dict,
     List,
     Optional,
     TypeVar,
@@ -27,6 +28,7 @@ from golem.hardware.presets import HardwarePresets, HardwarePresetsMixin
 from golem.core.keysauth import KeysAuth, WrongPassword
 from golem.core import golem_async
 from golem.core.variables import PRIVATE_KEY
+from golem.core import virtualization
 from golem.database import Database
 from golem.docker.manager import DockerManager
 from golem.ethereum.transactionsystem import TransactionSystem
@@ -246,12 +248,10 @@ class Node(HardwarePresetsMixin):
         deferred = self.rpc_session.connect()
 
         def on_connect(*_):
-            methods = rpc_utils.object_method_map(self)
-            methods['sys.exposed_procedures'] = \
-                self.rpc_session.exposed_procedures
+            methods = self.get_rpc_mapping()
             self.rpc_session.add_procedures(methods)
             self._rpc_publisher = Publisher(self.rpc_session)
-            StatusPublisher.set_publisher(self._rpc_publisher)
+            StatusPublisher.initialize(self._rpc_publisher)
 
         return deferred.addCallbacks(on_connect, self._error('rpc session'))
 
@@ -326,6 +326,19 @@ class Node(HardwarePresetsMixin):
         # subscribe to events
 
         return ShutdownResponse.on
+
+    def get_rpc_mapping(self) -> Dict[str, Callable]:
+        mapping: Dict[str, Callable] = {}
+        rpc_providers = (
+            self,
+            virtualization,
+            self.rpc_session
+        )
+
+        for provider in rpc_providers:
+            mapping.update(rpc_utils.object_method_map(provider))
+
+        return mapping
 
     def _try_shutdown(self) -> None:
         # is not in shutdown?

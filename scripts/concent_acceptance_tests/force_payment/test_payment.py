@@ -1,11 +1,15 @@
 # pylint: disable=no-value-for-parameter
+import logging
+import sys
 import time
+import typing
 import unittest
 
 from golem_messages import cryptography
 from golem_messages import factories as msg_factories
 from golem_messages import message
 from golem_messages.utils import encode_hex as encode_key_id
+import golem_sci.structs
 
 from golem.network.concent import exceptions as concent_exceptions
 
@@ -13,9 +17,80 @@ from ..base import SCIBaseTest
 
 
 fpr_reasons = message.concents.ForcePaymentRejected.REASON
+logger = logging.getLogger(__name__)
+sr_reasons = message.concents.ServiceRefused.REASON
 
 
-class RequestorDoesntPayTestCase(SCIBaseTest):
+class ForcePaymentBase(SCIBaseTest):
+    def assertPaymentRejected(
+            self,
+            msg: message.concents.ForcePayment,
+            reason=None,
+        ):
+        response = self.provider_load_response(self.provider_send(msg))
+        self.assertIsInstance(response, message.concents.ForcePaymentRejected)
+        if reason:
+            self.assertEqual(response.reason, reason)
+        return response
+
+    def _prepare_list_of_acceptances(self):
+        LOA = []
+        for _ in range(3):
+            rct = msg_factories.tasks.ReportComputedTaskFactory(
+                **self.gen_rtc_kwargs(),
+                **self.gen_ttc_kwargs('task_to_compute__'),
+                task_to_compute__ethsig__privkey=self.requestor_priv_key,
+            )
+            sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
+                report_computed_task=rct,
+                payment_ts=int(time.time()) - 3600 * 24,
+            )
+            sra.sign_message(self.requestor_priv_key)
+            LOA.append(sra)
+        return LOA
+
+    def assertPaymentCommited(
+            self,
+            acceptances,
+            expected_amount_paid,
+            expected_amount_pending,
+        ):
+        fp = message.concents.ForcePayment(
+            subtask_results_accepted_list=acceptances,
+        )
+        response_provider = self.provider_load_response(self.provider_send(fp))
+        response_requestor = self.requestor_receive()
+        roles = message.concents.ForcePaymentCommitted.Actor
+        for response in (response_provider, response_requestor):
+            self.assertIsInstance(
+                response,
+                message.concents.ForcePaymentCommitted,
+            )
+            self.assertEqual(
+                response.payment_ts,
+                max(sra.payment_ts for sra in acceptances),
+            )
+            self.assertEqual(
+                response.task_owner_key,
+                self.requestor_pub_key,
+            )
+            self.assertEqual(
+                response.provider_eth_account,
+                acceptances[0].task_to_compute.provider_ethereum_address,
+            )
+            self.assertEqual(
+                response.amount_paid,
+                expected_amount_paid,
+            )
+            self.assertEqual(
+                response.amount_pending,
+                expected_amount_pending,
+            )
+        self.assertEqual(response_provider.recipient_type, roles.Provider)
+        self.assertEqual(response_requestor.recipient_type, roles.Requestor)
+
+
+class RequestorDoesntPayTestCase(ForcePaymentBase):
     def test_empty_list(self):
         fp = message.concents.ForcePayment(
             subtask_results_accepted_list=[],
@@ -73,7 +148,6 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
                 sra1, sra2,
             ],
         )
-        print(fp)
         self.assertTrue(
             fp.subtask_results_accepted_list[0].verify_signature(  # noqa pylint:disable=no-member
                 self.requestor_pub_key
@@ -85,7 +159,7 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
             )
         )
         response = self.provider_load_response(self.provider_send(fp))
-        self.assertIsInstance(response, message.concents.ServiceRefused)
+        self.assertServiceRefused(response)
 
     def test_multiple_eth_accounts(self):
         ttc_kwargs = self.gen_ttc_kwargs('task_to_compute__')
@@ -131,9 +205,8 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
                 sra1, sra2,
             ],
         )
-        print(fp)
         response = self.provider_load_response(self.provider_send(fp))
-        self.assertIsInstance(response, message.concents.ServiceRefused)
+        self.assertServiceRefused(response)
 
     def test_provider_asks_too_early(self):
         """Test messages due date
@@ -156,39 +229,8 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
                 sra,
             ],
         )
-        response = self.provider_load_response(self.provider_send(fp))
-        self.assertIsInstance(response, message.concents.ForcePaymentRejected)
-        self.assertEqual(response.reason, fpr_reasons.TimestampError)
+        response = self.assertPaymentRejected(fp, fpr_reasons.TimestampError)
         self.assertEqual(response.force_payment, fp)
-
-    @unittest.skip('too long')
-    def test_no_debt(self):
-        """React to no debts
-
-        If V is <= 0 then Concent service responds with ForcePaymentRejected
-        NoUnsettledTasksFound.
-        """
-        # REASON.NoUnsetledTasksFound
-        rct = msg_factories.tasks.ReportComputedTaskFactory(
-            **self.gen_rtc_kwargs(),
-            **self.gen_ttc_kwargs('task_to_compute__'),
-            task_to_compute__ethsig__privkey=self.requestor_priv_key,
-        )
-        sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
-            report_computed_task=rct,
-            payment_ts=int(time.time()),
-        )
-        sra.sign_message(self.requestor_priv_key)
-        self.requestor_put_deposit(sra.task_to_compute.price)  # noqa pylint: disable=no-member
-        # TODO pay
-        # TODO sleep till timeout
-        fp = message.concents.ForcePayment(
-            subtask_results_accepted_list=[
-                sra,
-            ],
-        )
-        response = self.provider_load_response(self.provider_send(fp))
-        self.assertIsInstance(response, message.concents.ForcePaymentRejected)
 
     def test_force_payment_committed_requestor_has_more_funds(self):
         """Concent service commits forced payment
@@ -201,20 +243,20 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
         LOA = self._prepare_list_of_acceptances()
         V = sum(sra.task_to_compute.price for sra in LOA)
         self.put_deposit(self.requestor_sci, V + 10)
-        self._perform_payments_scenario(LOA, V, 0)
+        self.assertPaymentCommited(LOA, V, 0)
 
     def test_force_payment_committed_requestor_has_exact_funds(self):
         LOA = self._prepare_list_of_acceptances()
         V = sum(sra.task_to_compute.price for sra in LOA)
         self.put_deposit(self.requestor_sci, V)
-        self._perform_payments_scenario(LOA, V, 0)
+        self.assertPaymentCommited(LOA, V, 0)
 
     def test_force_payment_committed_requestor_has_insufficient_funds(self):
         LOA = self._prepare_list_of_acceptances()
         V = sum(sra.task_to_compute.price for sra in LOA)
         requestors_funds = V - 10
         self.put_deposit(self.requestor_sci, requestors_funds)
-        self._perform_payments_scenario(LOA, requestors_funds, 0)
+        self.assertPaymentCommited(LOA, requestors_funds, 0)
 
     def test_requestor_has_no_funds(self):
         LOA = self._prepare_list_of_acceptances()
@@ -222,14 +264,7 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
             subtask_results_accepted_list=LOA,
         )
         response = self.provider_load_response(self.provider_send(fp))
-        self.assertIsInstance(
-            response,
-            message.concents.ServiceRefused,
-        )
-        self.assertEqual(
-            response.reason,
-            message.concents.ServiceRefused.REASON.TooSmallRequestorDeposit
-        )
+        self.assertServiceRefused(response, sr_reasons.TooSmallRequestorDeposit)
 
     def test_sra_not_signed(self):
         rct = msg_factories.tasks.ReportComputedTaskFactory(
@@ -248,72 +283,75 @@ class RequestorDoesntPayTestCase(SCIBaseTest):
             ],
         )
         response = self.provider_load_response(self.provider_send(fp))
-        self.assertIsInstance(response, message.concents.ServiceRefused)
-        self.assertEqual(response.reason,
-                         message.concents.ServiceRefused.REASON.InvalidRequest)
+        self.assertServiceRefused(response, sr_reasons.InvalidRequest)
+
+    def test_empty_sra(self):
+        fp = message.concents.ForcePayment(
+            subtask_results_accepted_list=[],
+        )
+        response = self.provider_load_response(self.provider_send(fp))
+        self.assertServiceRefused(response, sr_reasons.InvalidRequest)
 
     def test_provider_replay(self):
         LOA = self._prepare_list_of_acceptances()
         V = sum(sra.task_to_compute.price for sra in LOA)
         self.put_deposit(self.requestor_sci, V*2)
-        self._perform_payments_scenario(LOA, V, 0)
+        self.assertPaymentCommited(LOA, V, 0)
         fp = message.concents.ForcePayment(
-            subtask_results_accepted_list=acceptances,
+            subtask_results_accepted_list=LOA,
         )
-        response_provider = self.provider_load_response(self.provider_send(fp))
-        self.assertIsInstance(
-            response_provider,
-            message.concents.ForcePaymentRejected,
+        self.assertPaymentRejected(fp, fpr_reasons.NoUnsettledTasksFound)
+
+
+class RequestorPaysTest(ForcePaymentBase):
+    def _pay_and_count(self, modifier) \
+            -> typing.Tuple[
+                    typing.List[message.tasks.SubtaskResultsAccepted],
+                    int,
+            ]:
+        LOA = self._prepare_list_of_acceptances()
+        V = sum(sra.task_to_compute.price for sra in LOA)
+        self.put_deposit(self.requestor_sci, V)
+        tx_hash = self.requestor_sci.batch_transfer(
+            payments=[
+                golem_sci.structs.Payment(
+                    LOA[-1].task_to_compute.provider_ethereum_address,
+                    int(V*modifier),
+                ),
+            ],
+            closure_time=int(time.time()),
         )
+        logger.debug(
+            'Batch transfer tx hash: https://etherscan.io/tx/%s',
+            tx_hash,
+        )
+        confirmed = False
+        def _on_batch(receipt: golem_sci.structs.TransactionReceipt):
+            nonlocal confirmed
+            self.assertTrue(receipt.status)
+            confirmed = True
+        self.requestor_sci.on_transaction_confirmed(tx_hash, _on_batch)
+        sys.stderr.write('Waiting for confirmation %s' % (tx_hash,))
+        self.retry_until_timeout(
+            lambda: confirmed,
+            'Batch transfer timeout',
+        )
+        sys.stderr.write('\n')
+        return LOA, V
 
-    def _prepare_list_of_acceptances(self):
-        LOA = []
-        for _ in range(3):
-            rct = msg_factories.tasks.ReportComputedTaskFactory(
-                **self.gen_rtc_kwargs(),
-                **self.gen_ttc_kwargs('task_to_compute__'),
-                task_to_compute__ethsig__privkey=self.requestor_priv_key,
-            )
-            sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
-                report_computed_task=rct,
-                payment_ts=int(time.time()) - 3600 * 24,
-            )
-            sra.sign_message(self.requestor_priv_key)
-            LOA.append(sra)
-        return LOA
+    def test_requestor_already_paid(self):
+        """React to no debts
 
-    def _perform_payments_scenario(self, acceptances, expected_amount_paid,
-                                   expected_amount_pending):
+        If V is <= 0 then Concent service responds with ForcePaymentRejected
+        NoUnsettledTasksFound.
+        """
+        LOA, _V = self._pay_and_count(1)
         fp = message.concents.ForcePayment(
-            subtask_results_accepted_list=acceptances,
+            subtask_results_accepted_list=LOA,
         )
-        response_provider = self.provider_load_response(self.provider_send(fp))
-        response_requestor = self.requestor_receive()
-        roles = message.concents.ForcePaymentCommitted.Actor
-        for response in (response_provider, response_requestor):
-            self.assertIsInstance(
-                response,
-                message.concents.ForcePaymentCommitted,
-            )
-            self.assertEqual(
-                response.payment_ts,
-                max(sra.payment_ts for sra in acceptances),
-            )
-            self.assertEqual(
-                response.task_owner_key,
-                self.requestor_pub_key,
-            )
-            self.assertEqual(
-                response.provider_eth_account,
-                acceptances[0].task_to_compute.provider_ethereum_address,
-            )
-            self.assertEqual(
-                response.amount_paid,
-                expected_amount_paid,
-            )
-            self.assertEqual(
-                response.amount_pending,
-                expected_amount_pending,
-            )
-        self.assertEqual(response_provider.recipient_type, roles.Provider)
-        self.assertEqual(response_requestor.recipient_type, roles.Requestor)
+        self.assertPaymentRejected(fp, fpr_reasons.NoUnsettledTasksFound)
+
+    def test_partial_payment(self):
+        LOA, V = self._pay_and_count(0.5)
+        debt = V - int(V * 0.5)
+        self.assertPaymentCommited(LOA, debt, 0)

@@ -4,7 +4,6 @@ import operator
 import pickle
 import queue
 import threading
-import time
 from functools import reduce, wraps
 from typing import List
 from typing import Optional
@@ -270,7 +269,7 @@ def message_to_model(msg: message.base.Message,
         'task': getattr(msg, 'task_id', None),
         'subtask': getattr(msg, 'subtask_id', None),
         'node': node_id,
-        'msg_date': time.time(),
+        'msg_date': datetime.datetime.now(),
         'msg_cls': msg.__class__.__name__,
         'msg_data': pickle.dumps(msg),
         'local_role': local_role,
