@@ -930,7 +930,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         client_options = self.task_server.get_download_options(msg.options,
                                                                self.task_id)
 
-        self.task_computer.wait_for_resources(self.task_id, resources)
         self.task_server.pull_resources(self.task_id, resources,
                                         client_options=client_options)
 
