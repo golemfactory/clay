@@ -1,3 +1,4 @@
+# pylint: disable=no-value-for-parameter
 import asyncio
 import datetime
 import json
@@ -22,6 +23,7 @@ from .model.taskcomputersnapshotmodel import TaskComputerSnapshotModel
 
 log = logging.getLogger('golem.monitor')
 
+
 @golem_async.run_at_most_every(datetime.timedelta(minutes=10))
 def log_sometimes(msg, d):
     log.warning(msg, d)
@@ -39,7 +41,10 @@ class SystemMonitor(object):
     async def p2p_listener(self, *_, event='default', ports=None, **__):
         if event != 'listening':
             return
-        result = await self.ping_request(ports)
+        await self.ping_request(ports)
+
+    async def ping_request(self, ports) -> None:
+        result = await self.ping_request_io(ports)
         if not result:
             return
 
@@ -63,7 +68,7 @@ class SystemMonitor(object):
             )
 
     @golem_async.run_in_thread()
-    def ping_request(self, ports) -> Optional[Dict]:
+    def ping_request_io(self, ports, **_kwargs) -> Optional[Dict]:
         timeout = 2.5  # seconds
 
         for host in self.config['PING_ME_HOSTS']:
@@ -116,7 +121,7 @@ class SystemMonitor(object):
         )
 
     @golem_async.run_in_thread()
-    def send(self, model):
+    def send(self, model, loop):
         url = self.config['HOST']
         request_timeout = self.config['REQUEST_TIMEOUT']
         # sender_thread_timeout = self.config['SENDER_THREAD_TIMEOUT']
@@ -140,13 +145,13 @@ class SystemMonitor(object):
             if not result.status_code == 200:
                 log.debug("Monitor request error. result=%r", result)
         except requests.exceptions.RequestException as e:
-            log_sometimes(
+            asyncio.ensure_future(log_sometimes(
                 'Problem sending payload to: %(url)r, because %(e)s',
                 {
                     'url': url,
                     'e': e,
                 },
-            )
+            ), loop=loop)
 
     # handlers
 
@@ -205,7 +210,7 @@ class SystemMonitor(object):
             self,
             current_stats: CurrentStats,
             finished_stats: FinishedTasksStats,
-        ):
+    ):
         msg = statssnapshotmodel.RequestorStatsModel(
             self.meta_data, current_stats, finished_stats)
         await self.send(msg)

@@ -110,7 +110,7 @@ def deferred_run():
 
 _ASYNCIO_RUN = threading.Event()
 _ASYNCIO_ID = 'Thread-aio'
-_ASYNCIO_THREAD_QUEUE = queue.Queue()
+_ASYNCIO_THREAD_QUEUE: queue.Queue = queue.Queue()
 _ASYNCIO_TASKS = None
 _ASYNCIO_THREAD_POOL = concurrent.futures.ThreadPoolExecutor()
 
@@ -179,9 +179,9 @@ def run_in_thread():
 
         @functools.wraps(f)
         async def curry(*args, **kwargs):
-            await asyncio.get_event_loop().run_in_executor(
+            return await asyncio.get_event_loop().run_in_executor(
                 executor=_ASYNCIO_THREAD_POOL,
-                func=functools.partial(f, *args, **kwargs),
+                func=functools.partial(f, *args, **kwargs, loop=asyncio.get_event_loop()),
             )
         return curry
     return wrapped
