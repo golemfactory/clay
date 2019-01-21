@@ -7,7 +7,7 @@ from eth_utils import encode_hex
 import faker
 from golem_messages import idgenerator
 from golem_messages.datastructures import p2p as dt_p2p
-from golem_messages.datastructures import tasks as dt_tasks
+from golem_messages.factories.datastructures.tasks import TaskHeaderFactory
 from golem_messages.message import ComputeTaskDef
 
 import golem
@@ -74,18 +74,19 @@ class DummyTask(Task):
             pub_port=owner_port,
             key=owner_key_id
         )
-        header = dt_tasks.TaskHeader(
-            task_id=task_id,
-            task_owner=task_owner,
-            environment=environment,
-            deadline=timeout_to_deadline(14400),
-            subtask_timeout=1200,
-            subtasks_count=num_subtasks,
-            resource_size=params.shared_data_size + params.subtask_data_size,
-            estimated_memory=0,
-            max_price=MIN_PRICE,
-            min_version=golem.__version__,
-        )
+
+        header = TaskHeaderFactory()
+        header.task_id = task_id
+        header.task_owner = task_owner
+        header.environment = environment
+        header.deadline = timeout_to_deadline(14400)
+        header.subtask_timeout = 1200
+        header.subtasks_count = num_subtasks
+        rs = params.shared_data_size + params.subtask_data_size
+        header.resource_size = rs
+        header.estimated_memory = 0
+        header.max_price = MIN_PRICE
+        header.min_version = golem.__version__
 
         # load the script to be run remotely from the file in the current dir
         script_path = path.join(path.dirname(__file__), 'computation.py')
