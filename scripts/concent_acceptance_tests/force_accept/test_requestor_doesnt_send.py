@@ -32,8 +32,7 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
 
         report_computed_task = msg_factories.tasks.ReportComputedTaskFactory(
             **self.gen_rtc_kwargs(),
-            **self.gen_ttc_kwargs(
-                'task_to_compute__'),
+            **self.gen_ttc_kwargs('task_to_compute__'),
             **kwargs,
         )
         # Difference between timestamp and deadline has to be constant
@@ -90,7 +89,7 @@ class RequestorDoesntSendTestCase(SCIBaseTest):
         if rct_kwargs is None:
             rct_kwargs = {}
         price = random.randint(1 << 20, 10 << 20)
-        self.requestor_put_deposit(price)
+        self.requestor_put_deposit(price * 3)
         rct_kwargs['task_to_compute__price'] = price
         report_computed_task = self.prepare_report_computed_task(
             mode=mode,
