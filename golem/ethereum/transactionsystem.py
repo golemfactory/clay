@@ -489,11 +489,8 @@ class TransactionSystem(LoopingCallService):
             amount: int,
             destination: str,
             currency: str) -> int:
-
         self._sci: SmartContractsInterface
         assert self._sci is not None
-
-        gas_price = self.gas_price
 
         if currency == 'ETH':
             return self._sci.estimate_transfer_eth_gas(destination, amount)
@@ -508,7 +505,6 @@ class TransactionSystem(LoopingCallService):
             destination: str,
             currency: str,
             gas_price: Optional[int] = None) -> str:
-
         self._sci: SmartContractsInterface
         assert self._sci is not None
 
@@ -518,19 +514,28 @@ class TransactionSystem(LoopingCallService):
         if not is_address(destination):
             raise ValueError("{} is not valid ETH address".format(destination))
 
+        log.info(
+            "Trying to withdraw %f %s to %s",
+            amount / denoms.ether,
+            currency,
+            destination,
+        )
         if currency == 'ETH':
+            if gas_price is None:
+                gas_price = self.gas_price
+            gas_eth = self.get_withdraw_gas_cost(amount, destination, currency)\
+                * gas_price
             if amount > self.get_available_eth():
                 raise exceptions.NotEnoughFunds(
                     amount,
                     self.get_available_eth(),
                     currency,
                 )
-            log.info(
-                "Withdrawing %f ETH to %s",
-                amount / denoms.ether,
+            return self._sci.transfer_eth(
                 destination,
+                amount - gas_eth,
+                gas_price,
             )
-            return self._sci.transfer_eth(destination, amount, gas_price)
 
         if currency == 'GNT':
             if amount > self.get_available_gnt():
@@ -539,11 +544,6 @@ class TransactionSystem(LoopingCallService):
                     self.get_available_gnt(),
                     currency,
                 )
-            log.info(
-                "Withdrawing %f GNT to %s",
-                amount / denoms.ether,
-                destination,
-            )
             tx_hash = self._sci.convert_gntb_to_gnt(
                 destination,
                 amount,
