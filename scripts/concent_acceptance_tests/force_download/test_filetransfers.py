@@ -96,6 +96,7 @@ class ForceGetTaskResultFiletransferTest(ForceDownloadBaseTest,
         # inside Concent's storage cluster
         while not fgtrd and datetime.datetime.now() < timeout:
             fgtrd = self.requestor_receive()
+            time.sleep(1)
 
         self.assertIsInstance(fgtrd, concent_msg.ForceGetTaskResultDownload)
         self.assertEqual(fgtrd.subtask_id, fgtru.subtask_id)
