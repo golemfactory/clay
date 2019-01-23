@@ -554,28 +554,28 @@ class TestGetEstimatedCost(ProviderBase):
         ts.eth_for_deposit.return_value = 20000
 
     def test_basic(self, *_):
-        num_subtasks = 5
+        subtasks = 5
         result = self.provider.get_estimated_cost(
             "task type",
             {
-                "price": '150.0',
-                "subtask_time": '2.5',
-                "num_subtasks": str(num_subtasks),
+                "price": '150',
+                "subtask_timeout": '00:00:02',
+                "subtasks": str(subtasks),
             },
         )
         self.assertEqual(
             result,
             {
-                "GNT": '1875.000000000000000000',
-                'ETH': '0.000000000000010000',
+                "GNT": '5',
+                'ETH': '10000',
                 'deposit': {
-                    'GNT_required': '3750.000000000000000000',
-                    'GNT_suggested': '7500.000000000000000000',
-                    'ETH': '0.000000000000020000',
+                    'GNT_required': '10',
+                    'GNT_suggested': '20',
+                    'ETH': '20000',
                 },
             },
         )
         self.transaction_system.eth_for_batch_payment.assert_called_once_with(
-            num_subtasks,
+            subtasks,
         )
         self.transaction_system.eth_for_deposit.assert_called_once_with()
