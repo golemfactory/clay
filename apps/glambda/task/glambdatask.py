@@ -136,6 +136,7 @@ class GLambdaTask(CoreTask):
         }
         self.subtasks_given[subtask_id]['subtask_id'] = subtask_id
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.starting
+        self.subtasks_given[subtask_id]['start_task'] = start_task
         self.subtasks_given[subtask_id]['node_id'] = node_id
         self.subtasks_given[subtask_id]['subtask_timeout'] = \
             self.header.subtask_timeout
