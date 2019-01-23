@@ -484,6 +484,11 @@ class TransactionSystem(LoopingCallService):
         return gas_price * self._sci.GAS_PER_PAYMENT
 
     @sci_required()
+    def eth_for_deposit(self) -> int:
+        self._sci: SmartContractsInterface
+        return self.gas_price * self._sci.GAS_TRANSFER_AND_CALL
+
+    @sci_required()
     def get_withdraw_gas_cost(
             self,
             amount: int,
@@ -492,8 +497,6 @@ class TransactionSystem(LoopingCallService):
 
         self._sci: SmartContractsInterface
         assert self._sci is not None
-
-        gas_price = self.gas_price
 
         if currency == 'ETH':
             return self._sci.estimate_transfer_eth_gas(destination, amount)

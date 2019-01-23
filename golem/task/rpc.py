@@ -567,3 +567,38 @@ class ClientProvider:
         )
         # Don't wait for _deferred
         return True
+
+    @rpc_utils.expose('comp.tasks.estimated.cost')
+    def get_estimated_cost(self, _task_type: str, options: dict) -> dict:
+        # FIXME task_type is unused
+        options['price'] = float(options['price'])
+        options['subtask_time'] = float(options['subtask_time'])
+        options['num_subtasks'] = int(options['num_subtasks'])
+        def float_to_str(f: float) -> str:
+            return "{0:.18f}".format(f)
+
+        estimated_gnt: float = options['num_subtasks'] \
+            * options['price'] * options['subtask_time']
+        estimated_eth: float = self.client \
+            .transaction_system.eth_for_batch_payment(
+                options['num_subtasks'],
+            ) / denoms.ether
+        estimated_gnt_deposit: typing.List[float] = [
+            value / denoms.ether for value in
+            msg_helpers.requestor_deposit_amount(
+                int(estimated_gnt * denoms.ether),
+            )
+        ]
+        estimated_deposit_eth: float = self.client.transaction_system \
+            .eth_for_deposit() / denoms.ether
+        result = {
+            'GNT': float_to_str(estimated_gnt),
+            'ETH': float_to_str(estimated_eth),
+            'deposit': {
+                'GNT_required': float_to_str(estimated_gnt_deposit[0]),
+                'GNT_suggested': float_to_str(estimated_gnt_deposit[1]),
+                'ETH': float_to_str(estimated_deposit_eth),
+            },
+        }
+        logger.info('Estimated task cost. result=%r', result)
+        return result
