@@ -17,6 +17,7 @@ from golem_messages import cryptography
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from golem_messages.utils import encode_hex
+from pydispatch import dispatcher
 
 from twisted.internet.defer import Deferred
 
@@ -51,8 +52,6 @@ class DockerEnvironmentMock(DockerEnvironment):
     DOCKER_IMAGE = ""
     DOCKER_TAG = ""
     ENV_ID = ""
-    APP_DIR = ""
-    SCRIPT_NAME = ""
     SHORT_DESCRIPTION = ""
 
 
@@ -112,18 +111,18 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts.task_server.config_desc.max_price = 100
         ts.task_server.keys_auth._private_key = \
             self.requestor_keys.raw_privkey
+        ts.task_server.keys_auth.public_key = self.requestor_keys.raw_pubkey
         ts.conn.send_message.side_effect = lambda msg: msg._fake_sign()
         return ts
 
     def _get_task_parameters(self):
         return {
             'node_name': self.node_name,
-            'task_id': self.task_id,
             'perf_index': 1030,
             'price': 30,
             'max_resource_size': 3,
             'max_memory_size': 1,
-            'num_cores': 8,
+            'task_header': self._get_task_header()
         }
 
     def _get_wtct(self):
@@ -135,19 +134,19 @@ class TaskSessionTaskToComputeTest(TestCase):
         return msg
 
     def _fake_add_task(self):
-        task_header = dt_tasks_factory.TaskHeader(
+        task_header = self._get_task_header()
+        self.task_manager.tasks[self.task_id] = Mock(header=task_header)
+
+    def _get_task_header(self):
+        task_header = dt_tasks_factory.TaskHeaderFactory(
             task_id=self.task_id,
-            environment='',
             task_owner=dt_p2p_factory.Node(
                 key=self.requestor_key,
-                node_name=self.node_name,
-                pub_addr='10.10.10.10',
-                pub_port=12345,
             ),
             subtask_timeout=1,
-            max_price=1,
-        )
-        self.task_manager.tasks[self.task_id] = Mock(header=task_header)
+            max_price=1, )
+        task_header.sign(self.requestor_keys.raw_privkey)  # noqa pylint: disable=no-value-for-parameter
+        return task_header
 
     def _set_task_state(self):
         task_state = taskstate.TaskState()
@@ -161,27 +160,27 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts._handshake_required = Mock(return_value=False)
         params = self._get_task_parameters()
         ts.task_server.task_keeper.task_headers = task_headers = {}
-        task_headers[params['task_id']] = dt_tasks_factory.TaskHeader()
+        task_headers[self.task_id] = dt_tasks_factory.TaskHeaderFactory(
+            task_id=self.task_id
+        )
         ts.concent_service.enabled = False
         ts.request_task(
             params['node_name'],
-            params['task_id'],
+            self.task_id,
             params['perf_index'],
             params['price'],
             params['max_resource_size'],
             params['max_memory_size'],
-            params['num_cores']
         )
         ts.conn.send_message.assert_called_once()
         mt = ts.conn.send_message.call_args[0][0]
         self.assertIsInstance(mt, message.tasks.WantToComputeTask)
         self.assertEqual(mt.node_name, params['node_name'])
-        self.assertEqual(mt.task_id, params['task_id'])
+        self.assertEqual(mt.task_id, self.task_id)
         self.assertEqual(mt.perf_index, params['perf_index'])
         self.assertEqual(mt.price, params['price'])
         self.assertEqual(mt.max_resource_size, params['max_resource_size'])
         self.assertEqual(mt.max_memory_size, params['max_memory_size'])
-        self.assertEqual(mt.num_cores, params['num_cores'])
         self.assertEqual(mt.provider_public_key, self.provider_key)
         self.assertEqual(mt.provider_ethereum_public_key, self.provider_key)
 
@@ -263,6 +262,7 @@ class TaskSessionTaskToComputeTest(TestCase):
             ['concent_enabled', self.use_concent],
             ['price', 1],
             ['size', task_state.package_size],
+            ['ethsig', ms.ethsig],
         ]
         self.assertCountEqual(ms.slots(), expected)
 
@@ -302,6 +302,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             password='',
         )
         self.task_session.task_server.keys_auth = keys_auth
+        self.pubkey = keys_auth.public_key
+        self.privkey = keys_auth._private_key
 
     @patch('golem.task.tasksession.TaskSession.send')
     def test_hello(self, send_mock):
@@ -544,11 +546,22 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         dropped.assert_called_once_with()
 
     def test_result_rejected(self):
+        dispatch_listener = Mock()
+        dispatcher.connect(dispatch_listener, signal='golem.message')
+
         srr = self._get_srr()
         self.__call_react_to_srr(srr)
+
         self.task_session.task_server.subtask_rejected.assert_called_once_with(
             sender_node_id=self.task_session.key_id,
             subtask_id=srr.report_computed_task.subtask_id,  # noqa pylint:disable=no-member
+        )
+
+        dispatch_listener.assert_called_once_with(
+            event='received',
+            signal='golem.message',
+            message=srr,
+            sender=ANY,
         )
 
     def test_result_rejected_with_wrong_key(self):
@@ -591,8 +604,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         env = Mock()
         env.docker_images = [DockerImage("dockerix/xii", tag="323")]
-        env.allow_custom_main_program_file = False
-        env.get_source_code.return_value = None
         ts.task_server.get_environment_by_id.return_value = env
 
         keys = cryptography.ECCx(None)
@@ -647,11 +658,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             ts._react_to_task_to_compute(msg)
             return msg
 
-        _prepare_and_react(ctd)
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
-
         # Source code from local environment -> proper execution
         __reset_mocks()
         env.get_source_code.return_value = "print 'Hello world'"
@@ -701,18 +707,9 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         _prepare_and_react(ctd)
         conn.close.assert_not_called()
 
-        # Allow custom code / no code in ComputeTaskDef -> failure
-        __reset_mocks()
-        env.allow_custom_main_program_file = True
-        ctd['src_code'] = ""
-        _prepare_and_react(ctd)
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
-
         # Allow custom code / code in ComputerTaskDef -> proper execution
         __reset_mocks()
-        ctd['src_code'] = "print 'Hello world!'"
+        ctd['extra_data']['src_code'] = "print 'Hello world!'"
         msg = _prepare_and_react(ctd)
         ts.task_computer.session_closed.assert_not_called()
         ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
@@ -745,36 +742,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
-
-        # Envrionment is Docker environment with proper images,
-        # but no srouce code -> failure
-        __reset_mocks()
-        de = DockerEnvironmentMock(additional_images=[
-            DockerImage("dockerix/xii", tag="323"),
-            DockerImage("dockerix/xiii", tag="325"),
-            DockerImage("dockerix/xiii", tag="323")
-        ])
-        ts.task_server.get_environment_by_id.return_value = de
-        _prepare_and_react(ctd)
-        assert ts.err_msg == reasons.NoSourceCode
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
-
-        # Proper Docker environment with source code
-        __reset_mocks()
-        file_name = os.path.join(self.path, "main_program_file")
-        with open(file_name, 'w') as f:
-            f.write("Hello world!")
-        de.main_program_file = file_name
-        msg = _prepare_and_react(ctd)
-        ts.task_server.add_task_session.assert_called_with(msg.subtask_id, ts)
-        ts.task_server.task_given.assert_called_with(
-            header.task_owner.key,
-            ctd,
-            msg.price,
-        )
-        conn.close.assert_not_called()
 
     # pylint: enable=too-many-statements
 
@@ -907,18 +874,13 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
     def _test_react_to_cannot_assign_task(self, key_id="KEY_ID",
                                           expected_requests=0):
-        task_owner = dt_p2p_factory.Node(
-            node_name="ABC",
-            key="KEY_ID",
-            pub_addr="10.10.10.10",
-            pub_port=2311,
-        )
         task_keeper = CompTaskKeeper(self.new_path)
         task_keeper.add_request(
-            dt_tasks_factory.TaskHeader(
-                environment='DEFAULT',
+            dt_tasks_factory.TaskHeaderFactory(
                 task_id="abc",
-                task_owner=task_owner,
+                task_owner=dt_p2p_factory.Node(
+                    key="KEY_ID",
+                ),
                 subtask_timeout=1,
                 max_price=1,
                 resource_size=1,
@@ -967,6 +929,44 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         with self.assertLogs(logger, level='WARNING'):
             ts._react_to_want_to_compute_task(mock_msg)
+
+    def test_react_to_want_to_compute_invalid_task_header_signature(self):
+        different_requestor_keys = cryptography.ECCx(None)
+        provider_keys = cryptography.ECCx(None)
+        wtct = msg_factories.tasks.WantToComputeTaskFactory(
+            sign__privkey=provider_keys.raw_privkey,
+            task_header__sign__privkey=different_requestor_keys.raw_privkey,
+        )
+        self._prepare_handshake_test()
+        ts = self.task_session
+        ts.verified = True
+
+        ts._react_to_want_to_compute_task(wtct)
+
+        sent_msg = ts.conn.send_message.call_args[0][0]
+        ts.task_server.remove_task_session.assert_called()
+        self.assertIsInstance(sent_msg, message.tasks.CannotAssignTask)
+        self.assertEqual(sent_msg.reason,
+                         message.tasks.CannotAssignTask.REASON.NotMyTask)
+
+    def test_react_to_want_to_compute_not_my_task_id(self):
+        provider_keys = cryptography.ECCx(None)
+        wtct = msg_factories.tasks.WantToComputeTaskFactory(
+            sign__privkey=provider_keys.raw_privkey,
+            task_header__sign__privkey=self.privkey,
+        )
+        self._prepare_handshake_test()
+        ts = self.task_session
+        ts.verified = True
+        ts.task_manager.is_my_task.return_value = False
+
+        ts._react_to_want_to_compute_task(wtct)
+
+        sent_msg = ts.conn.send_message.call_args[0][0]
+        ts.task_server.remove_task_session.assert_called()
+        self.assertIsInstance(sent_msg, message.tasks.CannotAssignTask)
+        self.assertEqual(sent_msg.reason,
+                         message.tasks.CannotAssignTask.REASON.NotMyTask)
 
     def _prepare_handshake_test(self):
         ts = self.task_session.task_server
@@ -1120,7 +1120,7 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.provider_keys = cryptography.ECCx(None)
         self.provider_key_id = encode_hex(self.provider_keys.raw_pubkey)
 
-    def test_react_to_subtask_result_accepted(self):
+    def test_react_to_subtask_results_accepted(self):
         # given
         rct = msg_factories.tasks.ReportComputedTaskFactory(
             task_to_compute__sign__privkey=self.requestor_keys.raw_privkey,
@@ -1144,8 +1144,11 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_server.client.transaction_system.is_income_expected\
                                                   .return_value = False
 
+        dispatch_listener = Mock()
+        dispatcher.connect(dispatch_listener, signal='golem.message')
+
         # when
-        self.task_session._react_to_subtask_result_accepted(sra)
+        self.task_session._react_to_subtask_results_accepted(sra)
 
         # then
         self.task_server.subtask_accepted.assert_called_once_with(
@@ -1161,6 +1164,13 @@ class SubtaskResultsAcceptedTest(TestCase):
             'ForceSubtaskResults',
         )
 
+        dispatch_listener.assert_called_once_with(
+            event='received',
+            signal='golem.message',
+            message=sra,
+            sender=ANY,
+        )
+
     def test_react_with_wrong_key(self):
         # given
         key_id = "CDEF"
@@ -1170,7 +1180,7 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_session.key_id = key_id
 
         # when
-        self.task_session._react_to_subtask_result_accepted(sra)
+        self.task_session._react_to_subtask_results_accepted(sra)
 
         # then
         self.task_server.subtask_accepted.assert_not_called()

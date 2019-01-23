@@ -18,15 +18,10 @@ from golem.tools.testdirfixture import TestDirFixture
 
 class FrameRenderingTaskMock(FrameRenderingTask):
     class ENVIRONMENT_CLASS(object):
-        main_program_file = None
         docker_images = []
 
         def get_id(self):
             return "TEST"
-
-    def __init__(self, main_program_file, *args, **kwargs):
-        self.ENVIRONMENT_CLASS.main_program_file = main_program_file
-        super(FrameRenderingTaskMock, self).__init__(*args, **kwargs)
 
     def query_extra_data(*args, **kwargs):
         pass
@@ -52,7 +47,6 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         rt.estimated_memory = 1000
         rt.max_price = 15
         task = FrameRenderingTaskMock(
-            files_[0],
             owner=dt_p2p_factory.Node(node_name="ABC", ),
             task_definition=rt,
             total_tasks=num_tasks,

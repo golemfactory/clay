@@ -11,6 +11,7 @@ from golem_messages import exceptions as msg_exceptions
 from golem_messages import factories as msg_factories
 from golem_messages import message
 from golem_messages import utils as msg_utils
+from golem_messages.factories.datastructures.tasks import TaskHeaderFactory
 from golem_messages.message.concents import FileTransferToken
 
 from golem import testutils
@@ -234,14 +235,21 @@ class VerdictReportComputedTaskFactory(TaskServerMessageHandlerTestBase):
             self.requestor_keys.raw_pubkey
 
     def get_vrct(self):
+        wtct = msg_factories.tasks.WantToComputeTaskFactory(
+            provider_public_key=msg_utils.encode_hex(
+                self.provider_keys.raw_pubkey
+            ),
+            sign__privkey=self.provider_keys.raw_privkey,
+            task_header=TaskHeaderFactory(
+                sign__privkey=self.requestor_keys.raw_privkey
+            )
+        )
         ttc = msg_factories.tasks.TaskToComputeFactory(
             requestor_public_key=msg_utils.encode_hex(
                 self.requestor_keys.raw_pubkey,
             ),
             sign__privkey=self.requestor_keys.raw_privkey,
-            want_to_compute_task__provider_public_key=msg_utils.encode_hex(
-                self.provider_keys.raw_pubkey),
-            want_to_compute_task__sign__privkey=self.provider_keys.raw_privkey,
+            want_to_compute_task=wtct,
         )
         frct = msg_factories.concents.ForceReportComputedTaskFactory(
             report_computed_task__task_to_compute=ttc,
@@ -536,7 +544,7 @@ class ForceGetTaskResultUploadTest(FileTransferTokenTests,  # noqa pylint:disabl
             fgtru.file_transfer_token)
 
         log_mock.assert_called_with(
-            "Concent results upload sucessful: %r, %s",
+            "Concent results upload successful: %r, %s",
             fgtru.subtask_id,
             response)
 

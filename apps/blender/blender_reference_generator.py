@@ -8,7 +8,6 @@ from twisted.internet.defer import Deferred, inlineCallbacks
 
 import numpy
 
-from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from golem.core.common import timeout_to_deadline
 from golem.task.localcomputer import ComputerAdapter
 
@@ -39,7 +38,6 @@ class PixelRegion:
 
 
 class SubImage:
-
     CROP_RELATIVE_SIZE = 0.1
     PIXEL_OFFSET = numpy.float32(0.5)
     MIN_CROP_SIZE = 8
@@ -116,7 +114,7 @@ class Crop:
         crop.crop_region = crop.calculate_borders()
         return crop
 
-    def __init__(self, crop_id: str, subimage: SubImage, crops_path: str)\
+    def __init__(self, crop_id: str, subimage: SubImage, crops_path: str) \
             -> None:
         self.crop_id = crop_id
         self.subimage = subimage
@@ -131,20 +129,19 @@ class Crop:
         return self.pixel_region.left, y
 
     def calculate_borders(self):
-
-        left = numpy.float32(
+        left = float(
             (numpy.float32(self.pixel_region.left) + SubImage.PIXEL_OFFSET) /
             numpy.float32(self.subimage.image_width))
 
-        right = numpy.float32(
+        right = float(
             (numpy.float32(self.pixel_region.right) + SubImage.PIXEL_OFFSET) /
             numpy.float32(self.subimage.image_width))
 
-        top = numpy.float32(
+        top = float(
             (numpy.float32(self.pixel_region.top) + SubImage.PIXEL_OFFSET) /
             numpy.float32(self.subimage.image_height))
 
-        bottom = numpy.float32(
+        bottom = float(
             (numpy.float32(self.pixel_region.bottom) + SubImage.PIXEL_OFFSET) /
             numpy.float32(self.subimage.image_height))
 
@@ -204,7 +201,7 @@ class BlenderReferenceGenerator:
     # pylint: disable=R0914
     def generate_crops_data(self,
                             resolution: Tuple[int, int],
-                            subtask_border: List[float],
+                            subtask_border: Dict,
                             crops_number: int, crops_path: str):
         """
         This function will generate split data for performing random crops.
@@ -213,10 +210,10 @@ class BlenderReferenceGenerator:
 
         :param resolution: This is the x, y resolution of whole image from
         which split data should be generated
-        :param subtask_border: List of values. This is ROI from which split data
-        should be generated. This is in blender crop values format, which means
-        floats, where left, right, top, bottom. Values from 0 to 1. Where 1
-        means top or right and 0 bottom or left.
+        :param subtask_border: Dict of borders per direction. This is ROI
+        from which split data should be generated. This is in blender crop
+        values format, which means floats, where left, right, top, bottom.
+        Values from 0 to 1. Where 1 means top or right and 0 bottom or left.
         :param crops_number: Number of split data, sets
         :param crops_path: base crop path
         :return: Tuple of two list. First list is filled with float values
@@ -225,14 +222,19 @@ class BlenderReferenceGenerator:
         """
 
         logger.debug("Subtasks borders left = %r,"
-                     " top = %r, right = %r, bottom=%r",
-                     subtask_border[0], subtask_border[3],
-                     subtask_border[1], subtask_border[2])
+                     " top = %r, "
+                     "right = %r, "
+                     "bottom=%r",
+                     subtask_border["borders_x"][0],
+                     subtask_border["borders_y"][1],
+                     subtask_border["borders_x"][1],
+                     subtask_border["borders_y"][0])
 
-        subimage = SubImage(Region(subtask_border[0],
-                                   subtask_border[3],
-                                   subtask_border[1],
-                                   subtask_border[2]), resolution)
+        subimage = SubImage(Region(subtask_border["borders_x"][0],
+                                   subtask_border["borders_y"][1],
+                                   subtask_border["borders_x"][1],
+                                   subtask_border["borders_y"][0]),
+                            resolution)
 
         for i in range(crops_number):
             self.crops_desc.append(
@@ -298,8 +300,8 @@ class BlenderReferenceGenerator:
         crops_path = os.path.join(subtask_info['tmp_dir'],
                                   subtask_info['subtask_id'])
         crops_descriptors = self.generate_crops_data(
-            (subtask_info['res_x'], subtask_info['res_y']),
-            subtask_info['crop_window'],
+            (subtask_info['resolution'][0], subtask_info['resolution'][1]),
+            subtask_info['crops'][0],
             num_crops, crops_path)
 
         verification_context = \
@@ -332,18 +334,15 @@ class BlenderReferenceGenerator:
 
             left, top, right, bottom = crop.calculate_borders().to_tuple()
 
-            script_src = generate_blender_crop_file(
-                resolution=(verification_context.subtask_info['res_x'],
-                            verification_context.subtask_info['res_y']),
-                borders_x=(left, right),
-                borders_y=(bottom, top),
-                use_compositing=False,
-                samples=verification_context.subtask_info['samples']
-            )
-            task_definition = BlenderReferenceGenerator\
+            verification_context.subtask_info['use_compositing'] = False
+            crops = verification_context.subtask_info['crops']
+            crops[0]['outfilebasename'] = "ref_" + crops[0]['outfilebasename']
+            crops[0]['borders_x'] = [left, right]
+            crops[0]['borders_y'] = [bottom, top]
+            verification_context.subtask_info['crops'] = crops
+            task_definition = BlenderReferenceGenerator \
                 .generate_computational_task_definition(
-                    verification_context.subtask_info,
-                    script_src)
+                    verification_context.subtask_info)
 
             yield self.schedule_crop_job(verification_context, task_definition,
                                          i)
@@ -390,16 +389,10 @@ class BlenderReferenceGenerator:
         return defer
 
     @staticmethod
-    def generate_computational_task_definition(subtask_info: Dict[str, Any],
-                                               script_src: str) \
+    def generate_computational_task_definition(subtask_info: Dict[str, Any]) \
             -> Dict[str, Any]:
 
         task_definition = deepcopy(subtask_info['ctd'])
-
-        task_definition['extra_data']['outfilebasename'] = \
-            "ref_" + subtask_info['outfilebasename']
-
-        task_definition['extra_data']['script_src'] = script_src
 
         task_definition['deadline'] = timeout_to_deadline(
             subtask_info['subtask_timeout'])

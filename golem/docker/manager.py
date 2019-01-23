@@ -118,6 +118,10 @@ class DockerManager(DockerConfigManager):
         else:
             self._wait_for_tasks(status_callback, done_callback)
 
+    def apply_config(self) -> bool:
+        return self.constrain(restart_vm=not self._config_locked,
+                              **self._config)
+
     def build_config(self, config_desc):
         super(DockerManager, self).build_config(config_desc)
 
@@ -141,7 +145,7 @@ class DockerManager(DockerConfigManager):
             host_config['binds'] = self.hypervisor.create_volumes(binds)
         else:
             host_config['binds'] = {
-                str(bind.source): {
+                bind.source_as_posix: {
                     'bind': bind.target,
                     'mode': bind.mode
                 }
@@ -319,8 +323,7 @@ class DockerManager(DockerConfigManager):
         while sb():
             time.sleep(0.5)
 
-        config_differs = self.constrain(restart_vm=not self._config_locked,
-                                        **self._config)
+        config_differs = self.apply_config()
         cb(config_differs)
 
     def _save_and_resume(self, cb):

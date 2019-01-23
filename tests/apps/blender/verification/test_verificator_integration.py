@@ -8,7 +8,7 @@ from twisted.internet.defer import Deferred
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 from apps.blender.blenderenvironment import BlenderEnvironment
 from apps.blender.task.blenderrendertask import BlenderRenderTask
-from golem_verificator.common.ci import ci_skip
+from golem.verificator.common.ci import ci_skip
 from golem.core.common import get_golem_path
 from golem.core.deferred import sync_wait
 from golem.docker.image import DockerImage
@@ -21,7 +21,6 @@ from golem.testutils import TempDirFixture
 
 @ci_skip
 class TestVerificatorModuleIntegration(TempDirFixture):
-
     TIMEOUT = 30
 
     def setUp(self):
@@ -39,52 +38,61 @@ class TestVerificatorModuleIntegration(TempDirFixture):
         self.computer = ComputerAdapter()
 
         self.subtask_info = dict()
-        self.subtask_info['res_x'] = 150
-        self.subtask_info['res_y'] = 150
+        self.subtask_info['scene_file'] = '/golem/resources/bmw.blend'
+        self.subtask_info['resolution'] = [150, 150]
+        self.subtask_info['use_compositing'] = False
         self.subtask_info['samples'] = 35
-        self.subtask_info['use_frames'] = False
-        self.subtask_info['total_tasks'] = 1
-        self.subtask_info['node_id'] = 'deadbeef'
         self.subtask_info['frames'] = [1]
-        self.subtask_info['start_task'] = 1
-        self.subtask_info['subtask_id'] = '250771152547690738285326338136457465'
-        self.subtask_info['crop_window'] = (0.0, 1.0, 0.0, 1.0)
         self.subtask_info['output_format'] = 'PNG'
+        self.subtask_info['use_frames'] = False
+        self.subtask_info['start_task'] = 1
+        self.subtask_info['total_tasks'] = 1
+        self.subtask_info['crops'] = [
+            {
+                'outfilebasename':
+                    'GolemTask_{}'.format(self.subtask_info['start_task']),
+                'borders_x': [0.0, 1.0],
+                'borders_y':[0.0, 1.0]
+            }
+        ]
+        self.subtask_info['node_id'] = 'deadbeef'
+        self.subtask_info['subtask_id'] = '250771152547690738285326338136457465'
         self.subtask_info['all_frames'] = [1]
-        self.subtask_info['script_src'] = ''
         self.subtask_info['tmp_dir'] = self.tempdir
         self.subtask_info['subtask_timeout'] = 600
-        self.subtask_info['scene_file'] = '/golem/resources/bmw.blend'
+        self.subtask_info['script_filepath'] = '/golem/scripts/job.py'
+
         self.subtask_info['path_root'] = os.path.dirname(self.resources[0])
         self.subtask_info['parts'] = 1
-        self.subtask_info['outfilebasename'] = 'GolemTask'
         self.subtask_info['owner'] = "deadbeef"
         self.subtask_info['ctd'] = dict()
         self.subtask_info['ctd']['deadline'] = time.time() + 3600
         self.subtask_info['ctd']['docker_images'] = [DockerImage(
-            'golemfactory/blender', tag='1.4').to_dict()]
+            'golemfactory/blender', tag='1.8').to_dict()]
         self.subtask_info['ctd']['extra_data'] = dict()
-        self.subtask_info['ctd']['extra_data']['frames'] = \
-            self.subtask_info['frames']
-        self.subtask_info['ctd']['extra_data']['outfilebasename'] = \
-            self.subtask_info['outfilebasename']
-        self.subtask_info['ctd']['extra_data']['output_format'] = \
-            self.subtask_info['output_format']
-        self.subtask_info['ctd']['extra_data']['path_root'] = \
-            self.subtask_info['path_root']
         self.subtask_info['ctd']['extra_data']['scene_file'] = \
             self.subtask_info['scene_file']
-        self.subtask_info['ctd']['extra_data']['script_src'] = \
-            self.subtask_info['script_src']
+        self.subtask_info['ctd']['extra_data']['resolution'] = \
+            self.subtask_info['resolution']
+        self.subtask_info['ctd']['extra_data']['use_compositing'] = \
+            self.subtask_info['use_compositing']
+        self.subtask_info['ctd']['extra_data']['samples'] = \
+            self.subtask_info['samples']
+        self.subtask_info['ctd']['extra_data']['frames'] = \
+            self.subtask_info['frames']
+        self.subtask_info['ctd']['extra_data']['output_format'] = \
+            self.subtask_info['output_format']
         self.subtask_info['ctd']['extra_data']['start_task'] = \
             self.subtask_info['start_task']
         self.subtask_info['ctd']['extra_data']['total_tasks'] = \
             self.subtask_info['total_tasks']
-        self.subtask_info['ctd']['src_code'] = open(
-            os.path.join(
-                self.golem_dir,
-                'apps/blender/resources/scripts/docker_blendertask.py'),
-            'r').read()
+        self.subtask_info['ctd']['extra_data']['crops'] = \
+            self.subtask_info['crops']
+        self.subtask_info['ctd']['extra_data']['path_root'] = \
+            self.subtask_info['path_root']
+        self.subtask_info['ctd']['extra_data']['script_filepath'] = \
+            self.subtask_info['script_filepath']
+        self.subtask_info['ctd']['short_description'] = ''
         self.subtask_info['ctd']['subtask_id'] = self.subtask_info['subtask_id']
 
     def test_bad_image(self):

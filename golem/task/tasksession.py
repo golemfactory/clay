@@ -6,7 +6,7 @@ import enum
 import functools
 import logging
 import time
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -208,7 +208,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
 
         def verification_finished():
+            logger.debug("Verification finished handler.")
             if not self.task_manager.verify_subtask(subtask_id):
+                logger.debug("Verification failure. subtask_id=%r", subtask_id)
                 send_verification_failure()
                 self.dropped()
                 return
@@ -450,6 +452,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     # Reactions to messages #
     #########################
 
+    # pylint: disable=too-many-return-statements
     def _react_to_want_to_compute_task(self, msg):
         def _cannot_assign(reason):
             logger.debug("Cannot assign task: %r", reason)
@@ -471,15 +474,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             _cannot_assign(reasons.NotMyTask)
             return
 
+        try:
+            msg.task_header.verify(self.my_public_key)
+        except msg_exceptions.InvalidSignature:
+            _cannot_assign(reasons.NotMyTask)
+            return
+
         node_name_id = common.node_info_str(msg.node_name, self.key_id)
         logger.info("Received offer to compute. task_id=%r, node=%r",
                     msg.task_id, node_name_id)
-
-        if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
-            logger.warning("Can not accept offer: Still waiting on results."
-                           "task_id=%r, node=%r", msg.task_id, node_name_id)
-            self.send(message.tasks.WaitingForResults())
-            return
 
         logger.debug(
             "Calling `task_manager.got_wants_to_compute`,"
@@ -498,7 +501,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         task_server_ok = self.task_server.should_accept_provider(
             self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-            msg.max_resource_size, msg.max_memory_size, msg.num_cores)
+            msg.max_resource_size, msg.max_memory_size)
 
         logger.debug(
             "Task server ok? should_accept_provider=%s task_id=%s node=%s",
@@ -519,6 +522,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 node_name_id,
             )
             _cannot_assign(reasons.NoMoreSubtasks)
+            return
+
+        if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
+            logger.warning("Can not accept offer: Still waiting on results."
+                           "task_id=%r, node=%r", msg.task_id, node_name_id)
+            self.send(message.tasks.WaitingForResults())
             return
 
         if self._handshake_required(self.key_id):
@@ -556,7 +565,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             ctd = self.task_manager.get_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.perf_index,
                 msg.price, msg.max_resource_size, msg.max_memory_size,
-                msg.num_cores, self.address)
+                self.address)
 
             logger.debug(
                 "task_id=%s, node=%s ctd=%s",
@@ -614,10 +623,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         OfferPool.add(msg.task_id, offer).addCallback(_offer_chosen)
 
+    # pylint: disable=too-many-return-statements
     @handle_attr_error_with_task_computer
     @history.provider_history
     def _react_to_task_to_compute(self, msg):
-        ctd = msg.compute_task_def
+        ctd: Optional[message.tasks.ComputeTaskDef] = msg.compute_task_def
         want_to_compute_task = msg.want_to_compute_task
         if ctd is None or want_to_compute_task is None:
             logger.debug(
@@ -705,8 +715,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 _cannot_compute(reasons.TooShortDeposit)
                 return
 
+        env_id = msg.want_to_compute_task.task_header.environment
         if self._check_ctd_params(ctd)\
-                and self._set_env_params(ctd)\
+                and self._set_env_params(env_id, ctd)\
                 and self.task_manager.comp_task_keeper.receive_subtask(msg):
             self.task_server.add_task_session(
                 ctd['subtask_id'], self
@@ -814,7 +825,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         ))
 
     @history.provider_history
-    def _react_to_subtask_result_accepted(
+    def _react_to_subtask_results_accepted(
             self, msg: message.tasks.SubtaskResultsAccepted):
         # The message must be verified, and verification requires self.key_id.
         # This assert is for mypy, which only knows that it's Optional[str].
@@ -830,10 +841,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.disconnect(message.base.Disconnect.REASON.BadProtocol)
             return
 
+        dispatcher.send(
+            signal='golem.message',
+            event='received',
+            message=msg
+        )
+
         self.concent_service.cancel_task_message(
             msg.subtask_id,
             'ForceSubtaskResults',
         )
+
         self.task_server.subtask_accepted(
             self.key_id,
             msg.subtask_id,
@@ -886,6 +904,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
 
         else:
+            dispatcher.send(
+                signal='golem.message',
+                event='received',
+                message=msg
+            )
+
             self.task_server.subtask_rejected(
                 sender_node_id=self.key_id,
                 subtask_id=subtask_id,
@@ -906,7 +930,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         client_options = self.task_server.get_download_options(msg.options,
                                                                self.task_id)
 
-        self.task_computer.wait_for_resources(self.task_id, resources)
         self.task_server.pull_resources(self.task_id, resources,
                                         client_options=client_options)
 
@@ -972,8 +995,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.subtask_id,
         )
         if not sender_is_owner:
-            logger.warning("Requestor '%r' acknowledged a computed task report "
-                           "of an unknown task (subtask_id='%s')",
+            logger.warning("Requestor '%r' acknowledged a computed task report"
+                           " of an unknown task (subtask_id='%s')",
                            self.key_id, msg.subtask_id)
             return
 
@@ -986,12 +1009,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         delayed_forcing_msg = message.concents.ForceSubtaskResults(
             ack_report_computed_task=msg,
         )
-        logger.debug('[CONCENT] ForceResults: %s', delayed_forcing_msg)
         ttc_deadline = datetime.datetime.utcfromtimestamp(
             msg.task_to_compute.compute_task_def['deadline']
         )
         svt = msg_helpers.subtask_verification_time(msg.report_computed_task)
         delay = ttc_deadline + svt - datetime.datetime.utcnow()
+        logger.debug(
+            '[CONCENT] Delayed ForceResults. msg=%r, delay=%r',
+            delayed_forcing_msg,
+            delay
+        )
         self.concent_service.submit_task_message(
             subtask_id=msg.subtask_id,
             msg=delayed_forcing_msg,
@@ -1076,11 +1103,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
-    def _set_env_params(self, ctd):
-        environment = self.task_manager.comp_task_keeper.get_task_env(
-            ctd['task_id'],
-        )
-        env = self.task_server.get_environment_by_id(environment)
+    def _set_env_params(self, env_id: str, ctd: message.tasks.ComputeTaskDef):
+        env = self.task_server.get_environment_by_id(env_id)
         reasons = message.tasks.CannotComputeTask.REASON
         if not env:
             self.err_msg = reasons.WrongEnvironment
@@ -1089,13 +1113,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if isinstance(env, DockerEnvironment):
             if not self.__check_docker_images(ctd, env):
                 return False
-
-        if not env.allow_custom_main_program_file:
-            ctd['src_code'] = env.get_source_code()
-
-        if not ctd['src_code']:
-            self.err_msg = reasons.NoSourceCode
-            return False
 
         return True
 
@@ -1130,7 +1147,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.resources.ResourceList:
                 self._react_to_resource_list,
             message.tasks.SubtaskResultsAccepted:
-                self._react_to_subtask_result_accepted,
+                self._react_to_subtask_results_accepted,
             message.tasks.SubtaskResultsRejected:
                 self._react_to_subtask_results_rejected,
             message.tasks.TaskFailure:

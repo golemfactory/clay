@@ -74,6 +74,13 @@ bpy.context.scene.render.border_min_y = %(border_min_y)r
 bpy.context.scene.render.border_max_y = %(border_max_y)r
 bpy.context.scene.render.use_compositing = bool(%(use_compositing)r)
 
+
+output_path = %(override_output)s
+
+if output_path != None:
+    bpy.context.scene.render.filepath = output_path
+
+
 if engine == "CYCLES":
     preferences = bpy.context.user_preferences.addons['cycles'].preferences
     samples = %(samples)d

@@ -1,7 +1,12 @@
 from contextlib import contextmanager
 from functools import wraps
 
+from typing import Any, ClassVar, Dict, Optional, Tuple
+
+from twisted.internet.defer import Deferred, succeed
+
 from golem.core.common import to_unicode
+from golem.rpc.session import Publisher
 from golem.rpc.mapping.rpceventnames import Golem
 
 
@@ -11,6 +16,7 @@ class Stage(object):
     """
     pre = 'pre'
     post = 'post'
+    warning = 'warning'
     exception = 'exception'
 
 
@@ -29,11 +35,12 @@ class StatusPublisher(object):
     """
     Publishes method execution stages via RPC.
     """
-    _rpc_publisher = None
-    _last_status = None
+    _initialized: ClassVar[bool] = False
+    _rpc_publisher: ClassVar[Optional[Publisher]] = None
+    _last_status: ClassVar[Dict[str, Tuple[str, str, Any]]] = dict()
 
     @classmethod
-    def publish(cls, component, method, stage, data=None):
+    def publish(cls, component, method, stage, data=None) -> Optional[Deferred]:
         """
         Convenience function for publishing the execution stage event.
 
@@ -43,27 +50,57 @@ class StatusPublisher(object):
         golem.report.Stage). Exceptions are always reported. If not specified,
         both 'pre' and 'post' are used.
         :param data: Payload (optional)
-        :return: None
+        :return: None if there's no rpc publisher; deferred
+                 autobahn.wamp.request.Publication on success or None if
+                 session is closing or there was an error
         """
+        cls._last_status[to_unicode(component)] = (
+            to_unicode(method),
+            to_unicode(stage),
+            data)
         if cls._rpc_publisher:
             from twisted.internet import reactor
 
-            cls._last_status = (to_unicode(component),
-                                to_unicode(method),
-                                to_unicode(stage),
-                                data)
+            deferred = Deferred()
 
-            reactor.callFromThread(cls._rpc_publisher.publish,
-                                   Golem.evt_golem_status,
-                                   *cls._last_status)
+            def _publish():
+                publish_deferred: Optional[Deferred] = \
+                    cls._rpc_publisher.publish(
+                        Golem.evt_golem_status,
+                        cls._last_status)
+                if publish_deferred is None:
+                    publish_deferred = succeed(None)
+                publish_deferred.chainDeferred(deferred)
+
+            reactor.callFromThread(_publish)
+            return deferred
+        return None
 
     @classmethod
     def last_status(cls):
         return cls._last_status
 
     @classmethod
-    def set_publisher(cls, rpc_publisher):
+    def initialize(cls, rpc_publisher):
+        if cls._initialized:
+            return
+
+        from pydispatch import dispatcher
+        dispatcher.connect(cls._publish_listener,
+                           signal=Golem.evt_golem_status)
+
         cls._rpc_publisher = rpc_publisher
+        cls._initialized = True
+
+    @classmethod
+    def _publish_listener(cls, event: str = 'default', **kwargs) -> None:
+        if event != 'publish':
+            return
+
+        cls.publish(kwargs['component'],
+                    kwargs['method'],
+                    kwargs['stage'],
+                    kwargs.get('data'))
 
 
 @contextmanager

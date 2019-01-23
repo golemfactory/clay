@@ -77,19 +77,20 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
         super().setUp()
 
         self.key_id = str(uuid.uuid4())
+        task_id = str(uuid.uuid4())
+        self.task_header = dt_tasks_factory.TaskHeaderFactory()
         self.message = dict(
             node_name='test node',
-            task_id=str(uuid.uuid4()),
+            task_id=task_id,
             perf_index=4000,
             price=5,
             max_resource_size=10 * 10 ** 8,
             max_memory_size=10 * 10 ** 8,
-            num_cores=10
         )
         self.session = MockTaskSession(self.tempdir)
         self.session._start_handshake = Mock()
         self.session.task_server.task_keeper.task_headers = task_headers = {}
-        task_headers[self.message['task_id']] = dt_tasks_factory.TaskHeader()
+        task_headers[task_id] = self.task_header
         self.session.task_server.client.concent_service.enabled = False
 
     def test_request_task_handshake(self, *_):
@@ -101,19 +102,22 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
     def test_request_task_success(self, *_):
         self.session._handshake_required = Mock()
         self.session.send = Mock()
+        wtct_dict = {k: v for k, v in self.message.items()}
+        wtct_dict.pop('task_id')
+        wtct_dict.update({
+            'task_header': self.task_header.to_dict()
+        })
 
         self.session._handshake_required.return_value = False
         self.session.request_task(**self.message)
 
-        assert not self.session.disconnect.called
-        assert self.session.send.called
+        self.session.disconnect.assert_not_called()
+        self.session.send.assert_called()
 
-        slots = self.session.send.call_args[0][0].__slots__
+        sent_wtct = self.session.send.call_args[0][0]
 
-        msg = message.tasks.WantToComputeTask(**self.message)
-        msg_slots = msg.__slots__
-
-        assert slots == msg_slots
+        msg = message.tasks.WantToComputeTask(**wtct_dict)
+        self.assertEqual(sent_wtct, msg)
 
     def test_request_task_failure(self, *_):
         self.session._handshake_required = Mock()
@@ -404,7 +408,10 @@ class TestResourceHandshakeSessionMixin(TempDirFixture):
 
     def test_finalize_handshake(self, *_):
         self.session._finalize_handshake(self.session.key_id)
-        self.session._task_request_message = self.message
+        task_request_message = {k: v for k, v in self.message.items()}
+        task_request_message.pop('task_id')
+        task_request_message['task_header'] = self.task_header
+        self.session._task_request_message = task_request_message
         assert not self.session.send.called
 
         handshake = ResourceHandshake()
@@ -690,6 +697,7 @@ class MockTaskSession(ResourceHandshakeSessionMixin):
             node=Mock(key=str(uuid.uuid4())),
             acl=get_acl(Path(data_dir)),
             resource_handshakes=dict(),
+            get_key_id=lambda: None,
             task_manager=Mock(
                 task_result_manager=Mock(
                     resource_manager=resource_manager

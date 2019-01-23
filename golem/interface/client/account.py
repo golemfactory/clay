@@ -22,6 +22,11 @@ class Account:
     amount_arg = Argument('amount', help='Amount to withdraw, eg 1.45')
     address_arg = Argument('destination', help='Address to send the funds to')
     currency_arg = Argument('currency', help='ETH or GNT')
+    gas_price_arg = Argument(
+        'gas_price',
+        help='Gas price in wei (not gwei)',
+        optional=True,
+    )
 
     @command(help="Display account & financial info")
     def info(self) -> Dict[str, Any]:  # pylint: disable=no-self-use
@@ -114,16 +119,23 @@ class Account:
         return "Account unlock success"
 
     @command(
-        arguments=(address_arg, amount_arg, currency_arg),
+        arguments=(address_arg, amount_arg, currency_arg, gas_price_arg),
         help=("Withdraw GNT/ETH\n"
               "(withdrawals are not available for the testnet)"))
     def withdraw(  # pylint: disable=no-self-use
             self,
             destination,
             amount,
-            currency) -> str:
+            currency,
+            gas_price) -> str:
+        assert Account.client is not None
         amount = str(int(Decimal(amount) * denoms.ether))
-        return sync_wait(Account.client.withdraw(amount, destination, currency))
+        return sync_wait(Account.client.withdraw(
+            amount,
+            destination,
+            currency,
+            int(gas_price) if gas_price else None,
+        ))
 
     @command(help="Trigger graceful shutdown of your golem")
     def shutdown(self) -> str:  # pylint: disable=no-self-use
