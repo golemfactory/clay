@@ -571,7 +571,9 @@ class TransactionSystem(LoopingCallService):
     def validate_concent_deposit_possibility(
             self,
             required: int,
-            force: bool = False) -> None:
+            tasks_num: int,
+            force: bool = False,
+    ) -> None:
         current_concent_deposit = self.concent_balance()
         required_deposit_difference = required - current_concent_deposit
 
@@ -584,6 +586,15 @@ class TransactionSystem(LoopingCallService):
             log.warning(
                 'Gas price is high. It can take some time to mine deposit.',
             )
+
+        eth_for_batch_payment_for_task = self.eth_for_batch_payment(tasks_num)
+        eth_to_put_deposit = self.gas_price * self._sci.GAS_TRANSFER_AND_CALL
+
+        eth_required = eth_for_batch_payment_for_task + eth_to_put_deposit
+
+        eth_available = self.get_available_eth()
+        if eth_required > eth_available:
+            raise exceptions.NotEnoughFunds(eth_required, eth_available, 'ETH')
 
     @defer.inlineCallbacks
     @sci_required()

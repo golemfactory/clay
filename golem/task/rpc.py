@@ -241,7 +241,8 @@ def _ensure_task_deposit(client, task, force):
     try:
         client.transaction_system.validate_concent_deposit_possibility(
             required_deposit_for_task=min_amount,
-            force=force
+            tasks_num=task.get_total_tasks(),
+            force=force,
         )
         yield client.transaction_system.concent_deposit(
             required=min_amount,
@@ -495,6 +496,7 @@ class ClientProvider:
         if concent_enabled and concent_available:
             self.client.transaction_system.validate_concent_deposit_possibility(
                 required_deposit_for_task=min_amount,
+                tasks_num=task.get_total_tasks(),
                 force=force,
             )
 
