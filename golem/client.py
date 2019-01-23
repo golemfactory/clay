@@ -402,7 +402,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.resource_server = BaseResourceServer(
             resource_manager=resource_manager,
             dir_manager=dir_manager,
-            keys_auth=self.keys_auth,
             client=self
         )
 
@@ -605,11 +604,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     def task_resource_send(self, task_id):
         self.task_server.task_manager.resources_send(task_id)
 
-    def task_resource_collected(self, task_id, unpack_delta=True):
-        self.task_server.task_computer.task_resource_collected(
-            task_id,
-            unpack_delta
-        )
+    def task_resource_collected(self, task_id):
+        self.task_server.task_computer.task_resource_collected(task_id)
 
     def task_resource_failure(self, task_id, reason):
         self.task_server.task_computer.task_resource_failure(task_id, reason)

@@ -84,7 +84,6 @@ class TaskComputer(object):
 
         self.assigned_subtask: Optional['ComputeTaskDef'] = None
 
-        self.delta = None
         self.last_task_timeout_checking = None
         self.support_direct_computation = False
         # Should this node behave as provider and compute tasks?
@@ -110,15 +109,11 @@ class TaskComputer(object):
     def has_assigned_task(self) -> bool:
         return bool(self.assigned_subtask)
 
-    def task_resource_collected(self, task_id, unpack_delta=True):
+    def task_resource_collected(self, task_id):
         subtask = self.assigned_subtask
         if not subtask or subtask['task_id'] != task_id:
             logger.error("Resource collected for a wrong task, %s", task_id)
             return False
-        if unpack_delta:
-            rs_dir = self.dir_manager.get_task_resource_dir(task_id)
-            self.task_server.unpack_delta(rs_dir, self.delta, task_id)
-        self.delta = None
         self.last_task_timeout_checking = time.time()
         self.__compute_task(
             subtask['subtask_id'],
@@ -139,11 +134,6 @@ class TaskComputer(object):
         )
         self.__task_finished(subtask)
         self.session_closed()
-
-    def wait_for_resources(self, task_id, delta):
-        if self.assigned_subtask and \
-                self.assigned_subtask['task_id'] == task_id:
-            self.delta = delta
 
     def task_request_rejected(self, task_id, reason):
         logger.info("Task %r request rejected: %r", task_id, reason)
