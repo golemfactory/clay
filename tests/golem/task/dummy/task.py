@@ -12,7 +12,7 @@ from golem_messages.message import ComputeTaskDef
 
 import golem
 from golem.appconfig import MIN_PRICE
-from golem.core.common import timeout_to_deadline
+from golem.core.common import timeout_to_deadline, get_timestamp_utc
 from golem.task.taskbase import Task, AcceptClientVerdict
 
 
@@ -85,6 +85,7 @@ class DummyTask(Task):
             estimated_memory=0,
             max_price=MIN_PRICE,
             min_version=golem.__version__,
+            timestamp=int(get_timestamp_utc()),
         )
 
         # load the script to be run remotely from the file in the current dir
