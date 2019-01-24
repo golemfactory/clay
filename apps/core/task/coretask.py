@@ -528,12 +528,16 @@ class CoreTaskBuilder(TaskBuilder):
 
     @classmethod
     def build_minimal_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
+        logger.debug(
+            "build_minimal_definition. task_type=%r, dictionary=%r",
+            task_type, dictionary
+        )
         definition = task_type.definition()
         definition.options = task_type.options()
         definition.task_type = task_type.name
         definition.compute_on = dictionary.get('compute_on', 'cpu')
         definition.resources = set(dictionary['resources'])
-        definition.subtasks_count = int(dictionary['subtasks_count'])
+        definition.subtasks_count = int(dictionary['subtasks'])
         definition.main_program_file = task_type.defaults.main_program_file
         return definition
 
