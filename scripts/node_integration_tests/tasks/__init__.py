@@ -91,7 +91,7 @@ _TASK_SETTINGS = {
         'name': 'test task',
         'timeout': "0:20:00",
         "subtask_timeout": "0:19:50",
-        "subtasks": 1,
+        "subtasks_count": 1,
         "bid": 1.0,
         "resources": [],
         "options": {
