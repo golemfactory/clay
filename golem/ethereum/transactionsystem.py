@@ -611,9 +611,7 @@ class TransactionSystem(LoopingCallService):
             )
 
         eth_for_batch_payment_for_task = self.eth_for_batch_payment(tasks_num)
-        eth_to_put_deposit = self.gas_price * self._sci.GAS_TRANSFER_AND_CALL
-
-        eth_required = eth_for_batch_payment_for_task + eth_to_put_deposit
+        eth_required = eth_for_batch_payment_for_task + self.eth_for_deposit()
 
         eth_available = self.get_available_eth()
         if eth_required > eth_available:
