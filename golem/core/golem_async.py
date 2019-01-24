@@ -253,7 +253,10 @@ async def _asyncio_wait_for_tasks():
 async def asyncio_main():
     wait_task = asyncio.ensure_future(_asyncio_wait_for_tasks())
     while _ASYNCIO_RUN.is_set():
-        await _asyncio_process_thread_queue()
+        try:
+            await _asyncio_process_thread_queue()
+        except Exception:  # pylint: disable=broad-except
+            logger.exception("Error in asyncio main loop")
         await asyncio.sleep(0.1)
     logger.info('Cleaning up ASYNCIO queue. size=%r', _ASYNCIO_TASKS.qsize())
     await _ASYNCIO_TASKS.join()
