@@ -798,13 +798,13 @@ class TaskServerTaskHeaderTest(TaskServerTestBase):
         self.assertFalse(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 0)
 
-        task_header.sign(private_key=keys_auth_2._private_key)
+        task_header.sign(private_key=keys_auth_2._private_key)  # noqa pylint:disable=no-value-for-parameter
 
         self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 1)
 
         task_header = get_example_task_header(keys_auth_2.public_key)
-        task_header.sign(private_key=keys_auth_2._private_key)
+        task_header.sign(private_key=keys_auth_2._private_key)  # noqa pylint:disable=no-value-for-parameter
 
         self.assertTrue(ts.add_task_header(task_header))
         self.assertEqual(len(ts.get_others_tasks_headers()), 2)
@@ -823,7 +823,7 @@ class TaskServerTaskHeaderTest(TaskServerTestBase):
 
         with freezegun.freeze_time(datetime.utcnow() - timedelta(hours=2)):
             task_header = get_example_task_header(keys_auth_2.public_key)
-            task_header.sign(private_key=keys_auth_2._private_key)
+            task_header.sign(private_key=keys_auth_2._private_key)  # noqa pylint:disable=no-value-for-parameter
 
         self.assertFalse(ts.add_task_header(task_header))
 
