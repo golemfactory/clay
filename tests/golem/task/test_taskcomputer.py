@@ -131,8 +131,6 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             "xyz", "xxyyzz")
 
         assert tc.task_resource_collected("xyz")
-        tc.task_server.unpack_delta.assert_called_with(
-            tc.dir_manager.get_task_resource_dir("xyz"), None, "xyz")
         assert tc.counting_thread is None
         assert tc.assigned_subtask is None
         task_server.send_task_failed.assert_called_with(

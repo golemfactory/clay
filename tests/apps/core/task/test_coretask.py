@@ -476,19 +476,17 @@ class TestTaskTypeInfo(TestCase):
 
     def test_init(self):
         tti = CoreTaskTypeInfo("Name1", "Definition1",
-                               "Defaults", "Options", "builder")
+                               "Options", "builder")
         assert tti.name == "Name1"
-        assert tti.defaults == "Defaults"
         assert tti.options == "Options"
         assert tti.task_builder_type == "builder"
         assert tti.definition == "Definition1"
         assert tti.output_formats == []
         assert tti.output_file_ext == []
 
-        tti = CoreTaskTypeInfo("Name2", "Definition2", "Defaults2", "Options2",
+        tti = CoreTaskTypeInfo("Name2", "Definition2", "Options2",
                                "builder2")
         assert tti.name == "Name2"
-        assert tti.defaults == "Defaults2"
         assert tti.options == "Options2"
         assert tti.task_builder_type == "builder2"
         assert tti.definition == "Definition2"
@@ -496,7 +494,6 @@ class TestTaskTypeInfo(TestCase):
         assert tti.output_file_ext == []
 
     def test_preview_methods(self):
-        assert CoreTaskTypeInfo.get_task_num_from_pixels(0, 0, None, 10) == 0
         assert CoreTaskTypeInfo.get_task_border("subtask1", None, 10) == []
 
 

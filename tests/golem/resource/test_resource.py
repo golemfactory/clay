@@ -84,7 +84,7 @@ class TestGetTaskResources(TempDirFixture):
                 get_id=lambda: 'test',
             )
 
-            def query_extra_data(self, perf_index, num_cores=0, node_id=None,
+            def query_extra_data(self, perf_index, node_id=None,
                                  node_name=None):
                 pass
 

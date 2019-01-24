@@ -501,7 +501,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         task_server_ok = self.task_server.should_accept_provider(
             self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-            msg.max_resource_size, msg.max_memory_size, msg.num_cores)
+            msg.max_resource_size, msg.max_memory_size)
 
         logger.debug(
             "Task server ok? should_accept_provider=%s task_id=%s node=%s",
@@ -565,7 +565,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             ctd = self.task_manager.get_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.perf_index,
                 msg.price, msg.max_resource_size, msg.max_memory_size,
-                msg.num_cores, self.address)
+                self.address)
 
             logger.debug(
                 "task_id=%s, node=%s ctd=%s",
@@ -715,8 +715,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 _cannot_compute(reasons.TooShortDeposit)
                 return
 
+        env_id = msg.want_to_compute_task.task_header.environment
         if self._check_ctd_params(ctd)\
-                and self._set_env_params(ctd)\
+                and self._set_env_params(env_id, ctd)\
                 and self.task_manager.comp_task_keeper.receive_subtask(msg):
             self.task_server.add_task_session(
                 ctd['subtask_id'], self
@@ -929,7 +930,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         client_options = self.task_server.get_download_options(msg.options,
                                                                self.task_id)
 
-        self.task_computer.wait_for_resources(self.task_id, resources)
         self.task_server.pull_resources(self.task_id, resources,
                                         client_options=client_options)
 
@@ -1103,11 +1103,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
-    def _set_env_params(self, ctd: message.tasks.ComputeTaskDef):
-        environment = self.task_manager.comp_task_keeper.get_task_env(
-            ctd['task_id'],
-        )
-        env = self.task_server.get_environment_by_id(environment)
+    def _set_env_params(self, env_id: str, ctd: message.tasks.ComputeTaskDef):
+        env = self.task_server.get_environment_by_id(env_id)
         reasons = message.tasks.CannotComputeTask.REASON
         if not env:
             self.err_msg = reasons.WrongEnvironment
