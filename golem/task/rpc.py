@@ -22,6 +22,7 @@ from golem.ethereum import exceptions as eth_exceptions
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
 from golem.task import taskbase
+from golem.task import taskkeeper
 from golem.task import taskstate
 from golem.task import tasktester
 
@@ -567,3 +568,40 @@ class ClientProvider:
         )
         # Don't wait for _deferred
         return True
+
+    @rpc_utils.expose('comp.tasks.estimated.cost')
+    def get_estimated_cost(self, _task_type: str, options: dict) -> dict:
+        # FIXME task_type is unused
+        options['price'] = int(options['price'])
+        options['subtask_timeout'] = common.string_to_timeout(
+            options['subtask_timeout'],
+        )
+        options['subtasks'] = int(options['subtasks'])
+
+        subtask_price: int = taskkeeper.compute_subtask_value(
+            price=options['price'],
+            computation_time=options['subtask_timeout'],
+        )
+        estimated_gnt: int = options['subtasks'] \
+            * subtask_price
+        estimated_eth: int = self.client \
+            .transaction_system.eth_for_batch_payment(
+                options['subtasks'],
+            )
+        estimated_gnt_deposit: typing.Tuple[int, int] = \
+            msg_helpers.requestor_deposit_amount(
+                estimated_gnt,
+            )
+        estimated_deposit_eth: int = self.client.transaction_system \
+            .eth_for_deposit()
+        result = {
+            'GNT': str(estimated_gnt),
+            'ETH': str(estimated_eth),
+            'deposit': {
+                'GNT_required': str(estimated_gnt_deposit[0]),
+                'GNT_suggested': str(estimated_gnt_deposit[1]),
+                'ETH': str(estimated_deposit_eth),
+            },
+        }
+        logger.info('Estimated task cost. result=%r', result)
+        return result

@@ -30,7 +30,7 @@ from golem.task.taskproviderstats import ProviderStatsManager
 logger = logging.getLogger('golem.task.taskkeeper')
 
 
-def compute_subtask_value(price: int, computation_time: int):
+def compute_subtask_value(price: int, computation_time: int) -> int:
     """
     Don't use math.ceil (this is general advice, not specific to the case here)
     >>> math.ceil(10 ** 18 / 6)
