@@ -1052,17 +1052,18 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
 
     def test_provider_status_computing(self, *_):
         # given
+        start_task = 1
         task_computer = Mock()
         state_snapshot_dict = {
             'subtask_id': str(uuid.uuid4()),
             'progress': 0.0,
             'seconds_to_timeout': 0.0,
             'running_time_seconds': 0.0,
-            'outfilebasename': "Test Task",
+            'outfilebasename': "Test Task_{}".format(start_task),
             'output_format': "PNG",
             'scene_file': "/golem/resources/cube.blend",
             'frames': [1],
-            'start_task': 1,
+            'start_task': start_task,
             'total_tasks': 1,
         }
         task_computer.get_progress.return_value = \

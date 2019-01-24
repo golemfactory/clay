@@ -484,12 +484,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         logger.info("Received offer to compute. task_id=%r, node=%r",
                     msg.task_id, node_name_id)
 
-        if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
-            logger.warning("Can not accept offer: Still waiting on results."
-                           "task_id=%r, node=%r", msg.task_id, node_name_id)
-            self.send(message.tasks.WaitingForResults())
-            return
-
         logger.debug(
             "Calling `task_manager.got_wants_to_compute`,"
             "task_id=%s, node=%s",
@@ -507,7 +501,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         task_server_ok = self.task_server.should_accept_provider(
             self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-            msg.max_resource_size, msg.max_memory_size, msg.num_cores)
+            msg.max_resource_size, msg.max_memory_size)
 
         logger.debug(
             "Task server ok? should_accept_provider=%s task_id=%s node=%s",
@@ -528,6 +522,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 node_name_id,
             )
             _cannot_assign(reasons.NoMoreSubtasks)
+            return
+
+        if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
+            logger.warning("Can not accept offer: Still waiting on results."
+                           "task_id=%r, node=%r", msg.task_id, node_name_id)
+            self.send(message.tasks.WaitingForResults())
             return
 
         if self._handshake_required(self.key_id):
@@ -565,7 +565,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             ctd = self.task_manager.get_next_subtask(
                 self.key_id, msg.node_name, msg.task_id, msg.perf_index,
                 msg.price, msg.max_resource_size, msg.max_memory_size,
-                msg.num_cores, self.address)
+                self.address)
 
             logger.debug(
                 "task_id=%s, node=%s ctd=%s",
@@ -715,8 +715,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 _cannot_compute(reasons.TooShortDeposit)
                 return
 
+        env_id = msg.want_to_compute_task.task_header.environment
         if self._check_ctd_params(ctd)\
-                and self._set_env_params(ctd)\
+                and self._set_env_params(env_id, ctd)\
                 and self.task_manager.comp_task_keeper.receive_subtask(msg):
             self.task_server.add_task_session(
                 ctd['subtask_id'], self
@@ -929,7 +930,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         client_options = self.task_server.get_download_options(msg.options,
                                                                self.task_id)
 
-        self.task_computer.wait_for_resources(self.task_id, resources)
         self.task_server.pull_resources(self.task_id, resources,
                                         client_options=client_options)
 
@@ -1103,11 +1103,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
-    def _set_env_params(self, ctd: message.tasks.ComputeTaskDef):
-        environment = self.task_manager.comp_task_keeper.get_task_env(
-            ctd['task_id'],
-        )
-        env = self.task_server.get_environment_by_id(environment)
+    def _set_env_params(self, env_id: str, ctd: message.tasks.ComputeTaskDef):
+        env = self.task_server.get_environment_by_id(env_id)
         reasons = message.tasks.CannotComputeTask.REASON
         if not env:
             self.err_msg = reasons.WrongEnvironment
@@ -1116,13 +1113,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if isinstance(env, DockerEnvironment):
             if not self.__check_docker_images(ctd, env):
                 return False
-
-        if not env.allow_custom_main_program_file:
-            ctd['src_code'] = env.get_source_code()
-
-        if not ctd['src_code']:
-            self.err_msg = reasons.NoSourceCode
-            return False
 
         return True
 

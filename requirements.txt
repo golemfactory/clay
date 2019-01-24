@@ -34,7 +34,6 @@ eth-utils==1.0.3
 ethereum==1.6.1
 Golem-Messages==2.24.0
 Golem-Smart-Contracts-Interface==1.6.1
-Golem-Verificator==1.6.3
 greenlet==0.4.15
 h2==3.0.1
 hpack==3.0.0
@@ -95,12 +94,13 @@ pyOpenSSL==17.1.0
 pyparsing==2.2.0
 PyQRCode==1.2.1
 pysha3==1.0.2
+pyssim==0.4
 PyTrie==0.3
 pytz==2018.4
 PyYAML==3.12
 raven==6.6.0
 repoze.lru==0.7
-requests==2.18.4
+requests==2.21.0
 rlp==0.6.0
 scrypt==0.8.6
 sdnotify==0.3.2
@@ -122,7 +122,7 @@ Twisted==17.9.0
 txaio==2.8.2
 txtorcon==0.20.0
 u-msgpack-python==2.5.0
-urllib3==1.22
+urllib3==1.23
 watchdog==0.8.3
 web3==4.2.1
 websocket-client==0.47.0

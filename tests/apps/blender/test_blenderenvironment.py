@@ -1,5 +1,3 @@
-from os import path
-
 from apps.blender.blenderenvironment import BlenderEnvironment
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 
@@ -47,6 +45,3 @@ class BlenderEnvTest(DatabaseFixture, PEP8MixIn):
         # then
         self.assertEqual(MinPerformanceMultiplier.get(), 3.141)
         self.assertEqual(self.env.get_min_accepted_performance(), 314.1)
-
-    def test_main_program_file(self):
-        assert path.isfile(BlenderEnvironment().main_program_file)

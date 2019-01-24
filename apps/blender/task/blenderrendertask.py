@@ -7,15 +7,12 @@ import time
 from collections import OrderedDict
 from copy import copy
 from typing import Optional, Type
-
-import numpy
 from PIL import Image, ImageChops, ImageFile
 
 import apps.blender.resources.blenderloganalyser as log_analyser
 from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 from apps.blender.blenderenvironment import BlenderEnvironment, \
     BlenderNVGPUEnvironment
-from apps.blender.resources.scenefileeditor import generate_blender_crop_file
 from apps.core.task.coretask import CoreTaskTypeInfo
 from apps.rendering.resources.imgrepr import load_as_pil
 from apps.rendering.resources.renderingtaskcollector import \
@@ -23,7 +20,8 @@ from apps.rendering.resources.renderingtaskcollector import \
 from apps.rendering.resources.utils import handle_image_error, handle_none
 from apps.rendering.task.framerenderingtask import FrameRenderingTask, \
     FrameRenderingTaskBuilder, FrameRendererOptions
-from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, PREVIEW_Y
+from apps.rendering.task.renderingtask import PREVIEW_EXT, PREVIEW_X, \
+    PREVIEW_Y
 from apps.rendering.task.renderingtaskstate import RenderingTaskDefinition, \
     RendererDefaults
 from golem.core.common import short_node_id, to_unicode
@@ -32,7 +30,7 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import TaskPurpose, TaskTypeInfo
 from golem.task.taskstate import SubtaskStatus, TaskStatus
-from golem_verificator.blender_verifier import BlenderVerifier
+from golem.verificator.blender_verifier import BlenderVerifier
 
 # Allow loading truncated images.
 # https://github.com/golemfactory/golem/issues/2059
@@ -46,16 +44,13 @@ class BlenderDefaults(RendererDefaults):
         RendererDefaults.__init__(self)
         self.output_format = "EXR"
 
-        self.main_program_file = BlenderEnvironment().main_program_file
         self.min_subtasks = 1
         self.max_subtasks = 100
         self.default_subtasks = 6
 
 
 class BlenderNVGPUDefaults(BlenderDefaults):
-    def __init__(self):
-        super().__init__()
-        self.main_program_file = BlenderNVGPUEnvironment().main_program_file
+    pass
 
 
 class PreviewUpdater(object):
@@ -262,53 +257,6 @@ class RenderingTaskTypeInfo(CoreTaskTypeInfo):
         return [(0, upper), (x, upper),
                 (x, lower), (0, lower)]
 
-    @classmethod
-    def get_task_num_from_pixels(cls, x, y, definition, subtasks_count,
-                                 output_num=1):
-        """
-        Compute number of subtask that represents pixel (x, y) on preview
-        :param int x: x coordinate
-        :param int y: y coordiante
-        :param TaskDefintion definition: task definition
-        :param int subtasks_count: total number of subtasks used in this task
-        :param int output_num: number of final output files
-        :return int: subtask's number
-        """
-
-        res_x = definition.resolution[0]
-        res_y = definition.resolution[1]
-
-        if not definition.options.use_frames:
-            return cls.__num_from_pixel(y, res_x, res_y, subtasks_count)
-
-        frames = len(definition.options.frames)
-        if subtasks_count <= frames:
-            subtask_frames = int(math.ceil(frames / subtasks_count))
-            return int(math.ceil(output_num / subtask_frames))
-
-        parts = int(subtasks_count / frames)
-        return (output_num - 1) * parts + cls.__num_from_pixel(y, res_x,
-                                                               res_y, parts)
-
-    @classmethod
-    def __num_from_pixel(cls, p_y, res_x, res_y, parts):
-        """
-        Compute number of subtask that represents pixel with y coordiante equal
-        to py on preview with given resolution
-        :param int p_y: y coordinate of a pixel
-        :param int res_x: image width
-        :param int res_y: image height
-        :param int parts: number of parts on one frame
-        :return:
-        """
-        offsets = generate_expected_offsets(parts, res_x, res_y)
-        for task_num in range(1, parts + 1):
-            low = offsets[task_num]
-            high = offsets[task_num + 1]
-            if low <= p_y < high:
-                return task_num
-        return parts
-
 
 class BlenderTaskTypeInfo(RenderingTaskTypeInfo):
     """ Blender App description that can be used by interface to define
@@ -318,7 +266,6 @@ class BlenderTaskTypeInfo(RenderingTaskTypeInfo):
     def __init__(self):
         super(BlenderTaskTypeInfo, self).__init__("Blender",
                                                   RenderingTaskDefinition,
-                                                  BlenderDefaults(),
                                                   BlenderRendererOptions,
                                                   BlenderRenderTaskBuilder)
 
@@ -331,7 +278,6 @@ class BlenderNVGPUTaskTypeInfo(RenderingTaskTypeInfo):
     def __init__(self):
         super().__init__("Blender_NVGPU",
                          RenderingTaskDefinition,
-                         BlenderNVGPUDefaults(),
                          BlenderNVGPURendererOptions,
                          BlenderNVGPURenderTaskBuilder)
 
@@ -382,15 +328,6 @@ class BlenderRenderTask(FrameRenderingTask):
         # https://github.com/golemfactory/golem/issues/2388
         self.compositing = False
         self.samples = task_definition.options.samples
-        return
-
-        self.compositing = task_definition.options.compositing \
-            and self.use_frames \
-            and (self.total_tasks <= len(self.frames))
-        if self.compositing != task_definition.options.compositing:
-            logger.warning("Task %s: Compositing not supported "
-                           "for this type of task, turning compositing off",
-                           task_definition.task_id)
 
     def initialize(self, dir_manager):
         super(BlenderRenderTask, self).initialize(dir_manager)
@@ -428,7 +365,7 @@ class BlenderRenderTask(FrameRenderingTask):
                                                   expected_offsets)
 
     # pylint: disable-msg=too-many-locals
-    def query_extra_data(self, perf_index: float, num_cores: int = 0,
+    def query_extra_data(self, perf_index: float,
                          node_id: Optional[str] = None,
                          node_name: Optional[str] = None) \
             -> FrameRenderingTask.ExtraData:
@@ -446,35 +383,31 @@ class BlenderRenderTask(FrameRenderingTask):
         if not self.use_frames:
             min_y, max_y = self._get_min_max_y(start_task)
         elif parts > 1:
-            min_y = (parts - self._count_part(start_task, parts)) * (
-                1.0 / parts)
-            max_y = (parts - self._count_part(start_task, parts) + 1) * (
-                1.0 / parts)
+            min_y = (parts - self._count_part(start_task, parts)) \
+                    * (1.0 / parts)
+            max_y = (parts - self._count_part(start_task, parts) + 1) \
+                * (1.0 / parts)
         else:
             min_y = 0.0
             max_y = 1.0
 
-        #  Blender is using single precision math, we use numpy to emulate this.
-        #  Send already converted values to blender.
-        min_y = numpy.float32(min_y)
-        max_y = numpy.float32(max_y)
-
-        script_src = generate_blender_crop_file(
-            resolution=(self.res_x, self.res_y),
-            borders_x=(0.0, 1.0),
-            borders_y=(min_y, max_y),
-            use_compositing=self.compositing,
-            samples=self.samples
-        )
-
-        extra_data = {"path_root": self.main_scene_dir,
-                      "start_task": start_task,
-                      "total_tasks": self.total_tasks,
-                      "outfilebasename": self.outfilebasename,
-                      "scene_file": scene_file,
-                      "script_src": script_src,
+        crops = [
+            {"outfilebasename": "{}_{}".format(
+                self.outfilebasename, start_task),
+             "borders_x": [0.0, 1.0],
+             "borders_y": [min_y, max_y]}
+        ]
+        extra_data = {"scene_file": scene_file,
+                      "resolution": [self.res_x, self.res_y],
+                      "use_compositing": self.compositing,
+                      "samples": self.samples,
                       "frames": frames,
                       "output_format": self.output_format,
+                      "path_root": self.main_scene_dir,
+                      "start_task": start_task,
+                      "total_tasks": self.total_tasks,
+                      "crops": crops,
+                      "script_filepath": "/golem/scripts/job.py",
                       }
 
         subtask_id = self.create_subtask_id()
@@ -541,22 +474,23 @@ class BlenderRenderTask(FrameRenderingTask):
 
         scene_file = self._get_scene_file_rel_path()
 
-        script_src = generate_blender_crop_file(
-            resolution=BlenderRenderTask.BLENDER_MIN_BOX,
-            borders_x=(0.0, 1.0),
-            borders_y=(0.0, 1.0),
-            use_compositing=False,
-            samples=BlenderRenderTask.BLENDER_MIN_SAMPLE
-        )
+        crops = [
+            {"outfilebasename": "testresult_1",
+             "borders_x": [0.0, 1.0],
+             "borders_y": [0.0, 1.0]}
+        ]
 
-        extra_data = {"path_root": self.main_scene_dir,
+        extra_data = {"scene_file": scene_file,
+                      "resolution": BlenderRenderTask.BLENDER_MIN_BOX,
+                      "use_compositing": False,
+                      "samples": BlenderRenderTask.BLENDER_MIN_SAMPLE,
+                      "frames": [1],
+                      "output_format": "PNG",
+                      "path_root": self.main_scene_dir,
                       "start_task": 1,
                       "total_tasks": 1,
-                      "outfilebasename": "testresult",
-                      "scene_file": scene_file,
-                      "script_src": script_src,
-                      "frames": [1],
-                      "output_format": "PNG"
+                      "crops": crops,
+                      "script_filepath": "/golem/scripts/job.py",
                       }
 
         hash = "{}".format(random.getrandbits(128))
