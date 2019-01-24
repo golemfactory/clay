@@ -367,7 +367,9 @@ class PeerSession(BasicSafeSession):
         self.send(message.p2p.Tasks(tasks=tasks_to_send))
 
     def _react_to_tasks(self, msg):
+        logger.debug("Running handler for `Tasks`. msg=%r", msg)
         for t in msg.tasks:
+            logger.debug("Task information received. task header: %r", t)
             if not self.p2p_service.add_task_header(t):
                 self.disconnect(
                     message.base.Disconnect.REASON.BadProtocol
