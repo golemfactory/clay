@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import patch, Mock, ANY, MagicMock
 
 from click.testing import CliRunner
-from twisted.internet.defer import Deferred
+from twisted.internet.defer import Deferred, succeed
 
 import golem.argsparser as argsparser
 from golem.appconfig import AppConfig
@@ -93,7 +93,6 @@ class TestNode(TestWithDatabase):
                                        keys_auth=keys_auth,
                                        database=ANY,
                                        transaction_system=ANY,
-                                       geth_address=None,
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
                                        use_monitor=False,
@@ -140,29 +139,20 @@ class TestNode(TestWithDatabase):
                                      use_talkback=None,
                                      password=None)
 
-    @patch('golem.node.Client')
-    def test_geth_address_should_be_passed_to_client(self, mock_client, *_):
+    @patch('golem.node.TransactionSystem')
+    def test_geth_address_should_be_passed_to_transaction_system(
+            self,
+            mock_ts,
+            *_):
         # given
         geth_address = 'https://3.14.15.92:6535'
 
         # when
-        node = Node(**self.node_kwargs, geth_address=geth_address)
-        node._client_factory(None)
+        Node(**self.node_kwargs, geth_address=geth_address)
 
         # then
-        mock_client.assert_called_with(datadir=self.path,
-                                       app_config=ANY,
-                                       config_desc=ANY,
-                                       keys_auth=None,
-                                       database=ANY,
-                                       transaction_system=ANY,
-                                       geth_address=geth_address,
-                                       use_docker_manager=True,
-                                       concent_variant=concent_disabled,
-                                       use_monitor=False,
-                                       apps_manager=ANY,
-                                       task_finished_cb=node._try_shutdown,
-                                       update_hw_preset=node.upsert_hw_preset)
+        self.assertTrue(mock_ts.called)
+        self.assertEqual([geth_address], mock_ts.call_args[0][1].NODE_LIST)
 
     def test_geth_address_wo_http_should_fail(self, *_):
         runner = CliRunner()
@@ -238,7 +228,6 @@ class TestNode(TestWithDatabase):
                                        keys_auth=None,
                                        database=ANY,
                                        transaction_system=ANY,
-                                       geth_address=None,
                                        use_docker_manager=True,
                                        concent_variant=concent_disabled,
                                        use_monitor=False,
@@ -666,6 +655,31 @@ class TestOptNode(TempDirFixture):
         assert self.node.client.start.call_count == 1
         self.node.client.connect.assert_called_with(parsed_peer[0])
         assert reactor.addSystemEventTrigger.call_count == 2
+
+    def test_start_prints_exception_message(self, *_):
+        # given
+        self.node = Node(**self.node_kwargs)
+        self.node._start_rpc = lambda: succeed(None)
+        self.node._check_terms = lambda: succeed(None)
+        self.node._start_keys_auth = lambda: succeed(None)
+        self.node._start_docker = lambda: succeed(None)
+
+        msg = "setup client error message"
+
+        def _setup_client(_):
+            raise Exception(msg)
+        self.node._setup_client = _setup_client
+
+        # when
+        with self.assertLogs('golem.node', level='INFO') as logs:
+            self.node.start()
+        output = "\n".join(logs.output)
+
+        # then
+        full_msg = \
+            "ERROR:golem.node:Stopping because of " \
+            f"'setup client' error: {msg}"
+        assert full_msg in output
 
     def test_is_mainnet(self, *_):
         self.node = Node(**self.node_kwargs)

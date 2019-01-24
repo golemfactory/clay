@@ -19,9 +19,10 @@ from typing import (
 
 from ethereum.utils import denoms
 from eth_keyfile import create_keyfile_json, extract_key_from_keyfile
-from eth_utils import decode_hex, is_address
+from eth_utils import is_address
 from golem_messages.utils import bytes32_to_uuid
 from golem_sci import (
+    contracts,
     JsonTransactionsStorage,
     new_sci,
     SmartContractsInterface,
@@ -52,6 +53,19 @@ def sci_required():
         def curry(self, *args, **kwargs):
             if not self._sci:  # pylint: disable=protected-access
                 raise RuntimeError('Start was not called')
+            return f(self, *args, **kwargs)
+        return curry
+    return wrapper
+
+
+def gnt_deposit_required():
+    def wrapper(f):
+        @functools.wraps(f)
+        def curry(self, *args, **kwargs):
+            if not self.deposit_contract_available:
+                raise exceptions.ContractUnavailable(
+                    'Deposit contract unavailable',
+                )
             return f(self, *args, **kwargs)
         return curry
     return wrapper
@@ -119,6 +133,10 @@ class TransactionSystem(LoopingCallService):
     def gas_price_limit(self) -> int:
         self._sci: SmartContractsInterface
         return self._sci.GAS_PRICE
+
+    @property
+    def deposit_contract_available(self) -> bool:
+        return contracts.GNTDeposit in self._config.CONTRACT_ADDRESSES
 
     def backwards_compatibility_tx_storage(self, old_datadir: Path) -> None:
         if self.running:
@@ -198,7 +216,10 @@ class TransactionSystem(LoopingCallService):
             if required_eth > self._eth_balance:
                 self._eth_per_payment = self._eth_balance // recipients_count
 
-        self._subscribe_to_events()
+        try:
+            self._subscribe_to_events()
+        except exceptions.ContractUnavailable:
+            pass
 
         self._refresh_balances()
         log.info(
@@ -231,6 +252,7 @@ class TransactionSystem(LoopingCallService):
                 json.dump(keystore, f)
 
     @sci_required()
+    @gnt_deposit_required()
     def _subscribe_to_events(self) -> None:
         self._sci: SmartContractsInterface
         values = model.GenericKeyValue.select().where(
@@ -250,34 +272,29 @@ class TransactionSystem(LoopingCallService):
             )
         )
 
-        # Temporary try-catch block, until GNTDeposit is deployed on mainnet.
-        # Remove it after that.
-        try:
-            self._sci.subscribe_to_forced_subtask_payments(
-                None,
-                self._sci.get_eth_address(),
-                from_block,
-                lambda event: ik.received_forced_subtask_payment(
-                    event.tx_hash,
-                    event.requestor,
-                    str(bytes32_to_uuid(event.subtask_id)),
-                    event.amount,
-                )
+        self._sci.subscribe_to_forced_subtask_payments(
+            None,
+            self._sci.get_eth_address(),
+            from_block,
+            lambda event: ik.received_forced_subtask_payment(
+                event.tx_hash,
+                event.requestor,
+                str(bytes32_to_uuid(event.subtask_id)),
+                event.amount,
             )
-            self._sci.subscribe_to_forced_payments(
-                requestor_address=None,
-                provider_address=self._sci.get_eth_address(),
-                from_block=from_block,
-                cb=lambda event: ik.received_forced_payment(
-                    tx_hash=event.tx_hash,
-                    sender=event.requestor,
-                    amount=event.amount,
-                    closure_time=event.closure_time,
-                ),
-            )
-            self._schedule_concent_withdraw()
-        except AttributeError as e:
-            log.info("Can't use GNTDeposit on mainnet yet: %r", e)
+        )
+        self._sci.subscribe_to_forced_payments(
+            requestor_address=None,
+            provider_address=self._sci.get_eth_address(),
+            from_block=from_block,
+            cb=lambda event: ik.received_forced_payment(
+                tx_hash=event.tx_hash,
+                sender=event.requestor,
+                amount=event.amount,
+                closure_time=event.closure_time,
+            ),
+        )
+        self._schedule_concent_withdraw()
 
     @sci_required()
     def _save_subscription_block_number(self) -> None:
@@ -472,11 +489,8 @@ class TransactionSystem(LoopingCallService):
             amount: int,
             destination: str,
             currency: str) -> int:
-
         self._sci: SmartContractsInterface
         assert self._sci is not None
-
-        gas_price = self.gas_price
 
         if currency == 'ETH':
             return self._sci.estimate_transfer_eth_gas(destination, amount)
@@ -491,7 +505,6 @@ class TransactionSystem(LoopingCallService):
             destination: str,
             currency: str,
             gas_price: Optional[int] = None) -> str:
-
         self._sci: SmartContractsInterface
         assert self._sci is not None
 
@@ -501,19 +514,28 @@ class TransactionSystem(LoopingCallService):
         if not is_address(destination):
             raise ValueError("{} is not valid ETH address".format(destination))
 
+        log.info(
+            "Trying to withdraw %f %s to %s",
+            amount / denoms.ether,
+            currency,
+            destination,
+        )
         if currency == 'ETH':
+            if gas_price is None:
+                gas_price = self.gas_price
+            gas_eth = self.get_withdraw_gas_cost(amount, destination, currency)\
+                * gas_price
             if amount > self.get_available_eth():
                 raise exceptions.NotEnoughFunds(
                     amount,
                     self.get_available_eth(),
                     currency,
                 )
-            log.info(
-                "Withdrawing %f ETH to %s",
-                amount / denoms.ether,
+            return self._sci.transfer_eth(
                 destination,
+                amount - gas_eth,
+                gas_price,
             )
-            return self._sci.transfer_eth(destination, amount, gas_price)
 
         if currency == 'GNT':
             if amount > self.get_available_gnt():
@@ -522,11 +544,6 @@ class TransactionSystem(LoopingCallService):
                     self.get_available_gnt(),
                     currency,
                 )
-            log.info(
-                "Withdrawing %f GNT to %s",
-                amount / denoms.ether,
-                destination,
-            )
             tx_hash = self._sci.convert_gntb_to_gnt(
                 destination,
                 amount,
@@ -543,6 +560,7 @@ class TransactionSystem(LoopingCallService):
 
         raise ValueError('Unknown currency {}'.format(currency))
 
+    @gnt_deposit_required()
     @sci_required()
     def concent_balance(self, account_address: Optional[str] = None) -> int:
         self._sci: SmartContractsInterface
@@ -552,9 +570,9 @@ class TransactionSystem(LoopingCallService):
             account_address=account_address,
         )
 
+    @gnt_deposit_required()
     @sci_required()
     def concent_timelock(self, account_address: Optional[str] = None) -> int:
-        # FIXME Use decorator to DRY #3190
         # possible lock values:
         # 0 - locked
         # > now - unlocking
@@ -567,6 +585,7 @@ class TransactionSystem(LoopingCallService):
         )
 
     @defer.inlineCallbacks
+    @gnt_deposit_required()
     @sci_required()
     def concent_deposit(
             self,
@@ -628,12 +647,16 @@ class TransactionSystem(LoopingCallService):
         return dpayment.tx
 
     @rpc_utils.expose('pay.deposit.relock')
+    @gnt_deposit_required()
+    @sci_required()
     def concent_relock(self):
         if self.concent_balance() == 0:
             return
         self._sci.lock_deposit()
 
     @rpc_utils.expose('pay.deposit.unlock')
+    @gnt_deposit_required()
+    @sci_required()
     def concent_unlock(self):
         if self.concent_balance() == 0:
             return
@@ -655,6 +678,8 @@ class TransactionSystem(LoopingCallService):
         delay = max(0, timelock - int(time.time()))
         call_later(delay, self.concent_withdraw)
 
+    @gnt_deposit_required()
+    @sci_required()
     def concent_withdraw(self):
         if self._concent_withdraw_requested:
             return

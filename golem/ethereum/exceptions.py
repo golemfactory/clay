@@ -39,5 +39,9 @@ class DepositError(TransactionError):
     pass
 
 
+class ContractUnavailable(EthereumError):
+    pass
+
+
 class LongTransactionTime(EthereumError):
     pass

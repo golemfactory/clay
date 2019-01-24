@@ -55,13 +55,12 @@ class SendTest(ConcentBaseTest, unittest.TestCase):
             **self.gen_ttc_kwargs('report_computed_task__task_to_compute__'),
         )
         with mock.patch('golem_messages.__version__', version):
-            # TODO: Update to proper regex when issue is fixed
-            # https://github.com/golemfactory/concent/issues/1049
             with self.assertRaisesRegex(
                 ConcentRequestError,
-                r'''Invalid version''',
+                r'''Concent request exception \(404\).*''',
             ):
                 self.send_to_concent(msg)
+
 
 class ReceiveTest(ConcentBaseTest, unittest.TestCase):
     def test_receive(self):

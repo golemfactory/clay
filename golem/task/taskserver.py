@@ -387,6 +387,12 @@ class TaskServer(
                 task_header.signature,
             )
             return False
+        if task_header.deadline < time.time():
+            logger.info(
+                "Task's deadline already in the past. task_header: %r",
+                task_header
+            )
+            return False
         try:
             if self.task_manager.is_my_task(task_header.task_id) or \
                     task_header.task_owner.key == self.node.key:
