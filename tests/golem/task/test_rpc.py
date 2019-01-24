@@ -27,6 +27,7 @@ fake = faker.Faker()
 
 
 class ProviderBase(test_client.TestClientBase):
+    maxDiff = None
     T_DICT = {
         'compute_on': 'cpu',
         'resources': [
@@ -584,3 +585,38 @@ class TestExceptionPropagation(ProviderBase):
         result = self.provider.run_test_task(t.to_dict())
         mock_method.assert_called()
         self.assertEqual(result, False)
+
+
+class TestGetEstimatedCost(ProviderBase):
+    def setUp(self):
+        super().setUp()
+        self.transaction_system = ts = self.client.transaction_system
+        ts.eth_for_batch_payment.return_value = 10000
+        ts.eth_for_deposit.return_value = 20000
+
+    def test_basic(self, *_):
+        subtasks = 5
+        result = self.provider.get_estimated_cost(
+            "task type",
+            {
+                "price": '150',
+                "subtask_timeout": '00:00:02',
+                "subtasks_count": str(subtasks),
+            },
+        )
+        self.assertEqual(
+            result,
+            {
+                "GNT": '5',
+                'ETH': '10000',
+                'deposit': {
+                    'GNT_required': '10',
+                    'GNT_suggested': '20',
+                    'ETH': '20000',
+                },
+            },
+        )
+        self.transaction_system.eth_for_batch_payment.assert_called_once_with(
+            subtasks,
+        )
+        self.transaction_system.eth_for_deposit.assert_called_once_with()

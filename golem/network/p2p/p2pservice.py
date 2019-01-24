@@ -960,7 +960,7 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
 
     def __sync_peer_keeper(self):
         self.__remove_sessions_to_end_from_peer_keeper()
-        peers_to_find = self.peer_keeper.sync()
+        peers_to_find: Dict[int, List[dt_p2p.Node]] = self.peer_keeper.sync()
         self.__remove_sessions_to_end_from_peer_keeper()
         if peers_to_find:
             self.send_find_nodes(peers_to_find)

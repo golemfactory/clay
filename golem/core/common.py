@@ -150,7 +150,7 @@ def timeout_to_string(timeout):
     return TIMEOUT_FORMAT.format(hours, minutes, timeout)
 
 
-def string_to_timeout(string) -> int:
+def string_to_timeout(string: str) -> int:
     values = string.split(':')
     return int(values[0]) * 3600 + int(values[1]) * 60 + int(values[2])
 

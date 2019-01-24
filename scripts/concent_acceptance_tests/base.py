@@ -61,13 +61,13 @@ class ConcentBaseTest(unittest.TestCase):
 
     def setUp(self):
         from golem.config.environments import set_environment
-        from golem.core import common
-        common.config_logging(suffix='concent-acceptance')
         concent_variant = os.environ.get('CONCENT_VARIANT', 'staging')
         set_environment('testnet', concent_variant)
         self.variant = variables.CONCENT_CHOICES[concent_variant]
         self.provider_keys = self._fake_keys()
         self.requestor_keys = self._fake_keys()
+        from golem.core import common
+        common.config_logging(suffix='concent-acceptance')
         logger.debug('Provider key: %s',
                      base64.b64encode(self.provider_pub_key).decode())
         logger.debug('Requestor key: %s',
@@ -90,18 +90,20 @@ class ConcentBaseTest(unittest.TestCase):
         return self.requestor_keys.raw_pubkey
 
     def gen_ttc_kwargs(self, prefix=''):
+        encoded_requestor_pubkey = msg_utils.encode_hex(self.requestor_pub_key)
         kwargs = {
             'sign__privkey': self.requestor_priv_key,
-            'requestor_public_key': msg_utils.encode_hex(
-                self.requestor_pub_key,
-            ),
-            'requestor_ethereum_public_key': msg_utils.encode_hex(
-                self.requestor_pub_key,
-            ),
+            'ethsig__privkey': self.requestor_priv_key,
+            'requestor_public_key': encoded_requestor_pubkey,
+            'requestor_ethereum_public_key': encoded_requestor_pubkey,
             'want_to_compute_task__provider_public_key':
                 msg_utils.encode_hex(self.provider_pub_key),
             'want_to_compute_task__sign__privkey':
-                self.provider_keys.raw_privkey
+                self.provider_priv_key,
+            'want_to_compute_task__task_header__requestor_public_key':
+                encoded_requestor_pubkey,
+            'want_to_compute_task__task_header__sign__privkey':
+                self.requestor_priv_key,
         }
         return {prefix + k: v for k, v in kwargs.items()}
 

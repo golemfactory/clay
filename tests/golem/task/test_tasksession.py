@@ -17,6 +17,7 @@ from golem_messages import cryptography
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.factories.datastructures import tasks as dt_tasks_factory
 from golem_messages.utils import encode_hex
+from pydispatch import dispatcher
 
 from twisted.internet.defer import Deferred
 
@@ -550,11 +551,22 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         dropped.assert_called_once_with()
 
     def test_result_rejected(self):
+        dispatch_listener = Mock()
+        dispatcher.connect(dispatch_listener, signal='golem.message')
+
         srr = self._get_srr()
         self.__call_react_to_srr(srr)
+
         self.task_session.task_server.subtask_rejected.assert_called_once_with(
             sender_node_id=self.task_session.key_id,
             subtask_id=srr.report_computed_task.subtask_id,  # noqa pylint:disable=no-member
+        )
+
+        dispatch_listener.assert_called_once_with(
+            event='received',
+            signal='golem.message',
+            message=srr,
+            sender=ANY,
         )
 
     def test_result_rejected_with_wrong_key(self):
@@ -1159,7 +1171,7 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.provider_keys = cryptography.ECCx(None)
         self.provider_key_id = encode_hex(self.provider_keys.raw_pubkey)
 
-    def test_react_to_subtask_result_accepted(self):
+    def test_react_to_subtask_results_accepted(self):
         # given
         rct = msg_factories.tasks.ReportComputedTaskFactory(
             task_to_compute__sign__privkey=self.requestor_keys.raw_privkey,
@@ -1183,8 +1195,11 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_server.client.transaction_system.is_income_expected\
                                                   .return_value = False
 
+        dispatch_listener = Mock()
+        dispatcher.connect(dispatch_listener, signal='golem.message')
+
         # when
-        self.task_session._react_to_subtask_result_accepted(sra)
+        self.task_session._react_to_subtask_results_accepted(sra)
 
         # then
         self.task_server.subtask_accepted.assert_called_once_with(
@@ -1200,6 +1215,13 @@ class SubtaskResultsAcceptedTest(TestCase):
             'ForceSubtaskResults',
         )
 
+        dispatch_listener.assert_called_once_with(
+            event='received',
+            signal='golem.message',
+            message=sra,
+            sender=ANY,
+        )
+
     def test_react_with_wrong_key(self):
         # given
         key_id = "CDEF"
@@ -1209,7 +1231,7 @@ class SubtaskResultsAcceptedTest(TestCase):
         self.task_session.key_id = key_id
 
         # when
-        self.task_session._react_to_subtask_result_accepted(sra)
+        self.task_session._react_to_subtask_results_accepted(sra)
 
         # then
         self.task_server.subtask_accepted.assert_not_called()

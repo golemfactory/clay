@@ -6,6 +6,7 @@ from typing import (
     Any,
     Callable,
     cast,
+    Dict,
     List,
     Optional,
     TypeVar,
@@ -27,6 +28,7 @@ from golem.hardware.presets import HardwarePresets, HardwarePresetsMixin
 from golem.core.keysauth import KeysAuth, WrongPassword
 from golem.core import golem_async
 from golem.core.variables import PRIVATE_KEY
+from golem.core import virtualization
 from golem.database import Database
 from golem.docker.manager import DockerManager
 from golem.ethereum.transactionsystem import TransactionSystem
@@ -102,6 +104,8 @@ class Node(HardwarePresetsMixin):
             if use_talkback is None else use_talkback
 
         self._keys_auth: Optional[KeysAuth] = None
+        if geth_address:
+            EthereumConfig.NODE_LIST = [geth_address]
         self._ets = TransactionSystem(
             Path(datadir) / 'transaction_system',
             EthereumConfig,
@@ -133,7 +137,6 @@ class Node(HardwarePresetsMixin):
             use_docker_manager=use_docker_manager,
             use_monitor=self._use_monitor,
             concent_variant=concent_variant,
-            geth_address=geth_address,
             apps_manager=self.apps_manager,
             task_finished_cb=self._try_shutdown,
             update_hw_preset=self.upsert_hw_preset
@@ -246,9 +249,7 @@ class Node(HardwarePresetsMixin):
         deferred = self.rpc_session.connect()
 
         def on_connect(*_):
-            methods = rpc_utils.object_method_map(self)
-            methods['sys.exposed_procedures'] = \
-                self.rpc_session.exposed_procedures
+            methods = self.get_rpc_mapping()
             self.rpc_session.add_procedures(methods)
             self._rpc_publisher = Publisher(self.rpc_session)
             StatusPublisher.initialize(self._rpc_publisher)
@@ -326,6 +327,19 @@ class Node(HardwarePresetsMixin):
         # subscribe to events
 
         return ShutdownResponse.on
+
+    def get_rpc_mapping(self) -> Dict[str, Callable]:
+        mapping: Dict[str, Callable] = {}
+        rpc_providers = (
+            self,
+            virtualization,
+            self.rpc_session
+        )
+
+        for provider in rpc_providers:
+            mapping.update(rpc_utils.object_method_map(provider))
+
+        return mapping
 
     def _try_shutdown(self) -> None:
         # is not in shutdown?
@@ -494,7 +508,8 @@ class Node(HardwarePresetsMixin):
         if self._reactor.running:
             exc_info = (err.type, err.value, err.getTracebackObject()) \
                 if isinstance(err, Failure) else None
+            err_msg = str(err.value) if isinstance(err, Failure) else None
             logger.error(
-                "Stopping because of %r error, run debug for more info", msg)
+                "Stopping because of %r error: %s", msg, err_msg)
             logger.debug("%r", err, exc_info=exc_info)
             self._reactor.callFromThread(self._reactor.stop)

@@ -127,6 +127,8 @@ class TaskManager(TaskEventListener):
         )
 
         self.requestor_stats_manager = RequestorTaskStatsManager()
+        self.provider_stats_manager = \
+            self.comp_task_keeper.provider_stats_manager
 
         self.finished_cb = finished_cb
 
@@ -1035,14 +1037,6 @@ class TaskManager(TaskEventListener):
     def add_comp_task_request(self, theader, price):
         """ Add a header of a task which this node may try to compute """
         self.comp_task_keeper.add_request(theader, price)
-
-    def get_estimated_cost(self, task_type, options):
-        try:
-            subtask_value = options['price'] * options['subtask_time']
-            return options['num_subtasks'] * subtask_value
-        except (KeyError, ValueError):
-            logger.exception("Cannot estimate price, wrong params")
-            return None
 
     def __add_subtask_to_tasks_states(self, node_name, node_id,
                                       ctd, address, price: int):

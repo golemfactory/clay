@@ -6,6 +6,7 @@ import uuid
 from random import Random
 from unittest import TestCase
 from unittest.mock import (
+    ANY,
     MagicMock,
     Mock,
     patch,
@@ -28,8 +29,8 @@ from golem.clientconfigdescriptor import ClientConfigDescriptor
 from golem.config.active import EthereumConfig
 from golem.core.common import timeout_to_string
 from golem.core.deferred import sync_wait
-from golem.hardware.presets import HardwarePresets
 from golem.core.variables import CONCENT_CHOICES
+from golem.hardware.presets import HardwarePresets
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
 from golem.network.p2p.peersession import PeerSessionInfo
 from golem.report import StatusPublisher
@@ -672,23 +673,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             self.assertIsInstance(value, str)
             self.assertTrue(key in res_dirs)
 
-    def test_get_estimated_cost(self, *_):
-        self.client.transaction_system = make_mock_ets()
-        self.assertEqual(
-            self.client.get_estimated_cost(
-                "task type",
-                {
-                    "price": 150,
-                    "subtask_time": 2.5,
-                    "num_subtasks": 5,
-                },
-            ),
-            {
-                "GNT": 1875.0,
-                "ETH": 0.0001,
-            },
-        )
-
     def test_get_balance(self, *_):
         c = self.client
 
@@ -917,6 +901,8 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             'in_network': 0,
             'supported': 0,
             'subtasks_computed': (0, 0),
+            'subtasks_accepted': (0, 0),
+            'subtasks_rejected': (0, 0),
             'subtasks_with_errors': (0, 0),
             'subtasks_with_timeout': (0, 0)
         }
@@ -1264,6 +1250,31 @@ class DepositPaymentsListTest(TestClientBase):
             expected,
             self.client.get_deposit_payments_list(),
         )
+
+
+@patch(
+    'golem.network.concent.client.ConcentClientService.__init__',
+    return_value=None,
+)
+class TestConcentInitialization(TestClientBase):
+    def setUp(self):
+        super(TestClientBase, self).setUp()  # pylint: disable=bad-super-call
+
+    @patch('golem.network.concent.client.ConcentClientService.stop')
+    def tearDown(self, *_):  # pylint: disable=arguments-differ
+        super().tearDown()
+
+    def test_no_contract(self, CCS, *_):
+        self.client = make_client(
+            datadir=self.path,
+            transaction_system=Mock(deposit_contract_available=False),
+            concent_variant=CONCENT_CHOICES['test'],
+        )
+        CCS.assert_called_once_with(
+            keys_auth=ANY,
+            variant=CONCENT_CHOICES['disabled'],
+        )
+
 
 
 class TestClientPEP8(TestCase, testutils.PEP8MixIn):

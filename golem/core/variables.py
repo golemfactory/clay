@@ -30,7 +30,7 @@ DEFAULT_CONNECT_TO_PORT = 80
 
 CONCENT_CERTIFICATES_DIR = pathlib.Path(common.get_golem_path()) \
     / 'golem/network/concent/resources/ssl/certs'
-CONCENT_CHOICES = {
+CONCENT_CHOICES: dict = {
     'disabled': {'url': None, 'pubkey': None},
     'dev': {
         'url': 'http://devel.concent.golem.network',

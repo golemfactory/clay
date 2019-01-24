@@ -1,8 +1,10 @@
 import binascii
+import datetime
 import filecmp
 import logging
 import os
 import tempfile
+import time
 import shutil
 import unittest
 from unittest import mock
@@ -87,8 +89,15 @@ class ForceGetTaskResultFiletransferTest(ForceDownloadBaseTest,
         self._log_concent_response(upload_response)
 
         self.assertEqual(upload_response.status_code, 200)
+        timeout = datetime.datetime.now() + datetime.timedelta(seconds=10)
+        fgtrd = None
 
-        fgtrd = self.requestor_receive()
+        # we may need to retry because the message goes through a queue
+        # inside Concent's storage cluster
+        while not fgtrd and datetime.datetime.now() < timeout:
+            fgtrd = self.requestor_receive()
+            time.sleep(1)
+
         self.assertIsInstance(fgtrd, concent_msg.ForceGetTaskResultDownload)
         self.assertEqual(fgtrd.subtask_id, fgtru.subtask_id)
         self.assertSamePayload(

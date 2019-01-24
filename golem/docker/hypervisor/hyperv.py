@@ -16,6 +16,7 @@ from pydispatch import dispatcher
 
 from golem import hardware
 from golem.core.common import get_golem_path
+from golem.core.windows import run_powershell
 from golem.docker import smbshare
 from golem.docker.client import local_client
 from golem.docker.config import CONSTRAINT_KEYS, MIN_CONSTRAINTS
@@ -81,8 +82,9 @@ class HyperVHypervisor(DockerMachineHypervisor):
         no_virt_mem='--hyperv-disable-dynamic-memory',
         virtual_switch='--hyperv-virtual-switch'
     )
-    BOOT2DOCKER_URL = "https://github.com/golemfactory/boot2docker/releases/" \
-                      "download/v18.06.1-ce%2Bdvn-v0.35/boot2docker.iso"
+    BOOT2DOCKER_URL = "https://s3.eu-central-1.amazonaws.com/" \
+                      "golem-bootdocker/boot2docker/v18.06.1-ce%2Bdvn-v0.35/" \
+                      "boot2docker-v18.06.1-ce%2Bdvn-v0.35-release.iso"
     DOCKER_USER = "golem-docker"
     DOCKER_PASSWORD = "golem-docker"
     VOLUME_SIZE = "5000"  # = 5GB; default was 20GB
@@ -174,7 +176,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         try:
             # The windows VM fails to start when too much memory is assigned
             logger.info("Hyper-V: Starting VM %s ...", name)
-            self._run_ps(
+            run_powershell(
                 script=self.START_VM_SCRIPT_PATH,
                 args=[
                     '-VMName', name,
@@ -193,7 +195,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
     def is_available(cls) -> bool:
         command = "@(Get-Module -ListAvailable hyper-v).Name | Get-Unique"
         try:
-            output = cls._run_ps(command=command)
+            output = run_powershell(command=command)
             return output == "Hyper-V"
         except (RuntimeError, OSError) as e:
             logger.warning(f"Error checking Hyper-V availability: {e}")
@@ -218,16 +220,20 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if cpu is not None:
             args += [self.OPTIONS['cpu'], str(cpu)]
         if mem is not None:
-            cap_mem = self._memory_cap(mem)
-            if cap_mem != mem:
-                self._log_and_publish_event(events.MEM, mem_mb=cap_mem)
+            # cap_mem = self._memory_cap(mem)
+            # if cap_mem != mem:
+            #     self._log_and_publish_event(events.MEM, mem_mb=cap_mem)
+            #
+            # if self._check_system_drive_space(cap_mem):
+            #     args += [self.OPTIONS['mem'], str(cap_mem)]
+            # else:
+            #     self._log_and_publish_event(events.DISK)
+            #     mem_key = CONSTRAINT_KEYS['mem']
+            #     args += [self.OPTIONS['mem'], str(MIN_CONSTRAINTS[mem_key])]
 
-            if self._check_system_drive_space(cap_mem):
-                args += [self.OPTIONS['mem'], str(cap_mem)]
-            else:
-                self._log_and_publish_event(events.DISK)
-                mem_key = CONSTRAINT_KEYS['mem']
-                args += [self.OPTIONS['mem'], str(MIN_CONSTRAINTS[mem_key])]
+            # TODO: Restore when we have a better estimation of available RAM
+            mem_key = CONSTRAINT_KEYS['mem']
+            args += [self.OPTIONS['mem'], str(MIN_CONSTRAINTS[mem_key])]
 
         return args
 
@@ -298,7 +304,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
     @classmethod
     def _get_vswitch_name(cls) -> str:
-        return cls._run_ps(script=cls.GET_VSWITCH_SCRIPT_PATH)
+        return run_powershell(script=cls.GET_VSWITCH_SCRIPT_PATH)
 
     @classmethod
     def _get_hostname_for_sharing(cls) -> str:
@@ -310,51 +316,6 @@ class HyperVHypervisor(DockerMachineHypervisor):
         if not hostname:
             raise RuntimeError('COMPUTERNAME environment variable not set')
         return hostname
-
-    @classmethod
-    def _run_ps(
-            cls,
-            script: Optional[str] = None,
-            command: Optional[str] = None,
-            args: Optional[List[str]] = None,
-            timeout: int = SCRIPT_TIMEOUT
-    ) -> str:
-        """
-        Run a powershell script or command and return its output in UTF8
-        """
-        cmd = [
-            'powershell.exe', '-NoProfile'
-        ]
-        if script and not command:
-            cmd += [
-                '-ExecutionPolicy', 'RemoteSigned',
-                '-File', script
-            ]
-        elif command and not script:
-            cmd += [
-                '-Command', command
-            ]
-        else:
-            raise ValueError("Exactly one of (script, command) is required")
-
-        if args:
-            cmd += args
-
-        try:
-            return subprocess\
-                .run(
-                    cmd,
-                    timeout=timeout,  # seconds
-                    check=True,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                )\
-                .stdout\
-                .decode('utf8')\
-                .strip()
-        except (subprocess.CalledProcessError,
-                subprocess.TimeoutExpired) as exc:
-            raise RuntimeError(exc.stderr.decode('utf8') if exc.stderr else '')
 
     @staticmethod
     def uses_volumes() -> bool:
