@@ -560,7 +560,7 @@ class TestGetEstimatedCost(ProviderBase):
             {
                 "price": '150',
                 "subtask_timeout": '00:00:02',
-                "subtasks": str(subtasks),
+                "subtasks_count": str(subtasks),
             },
         )
         self.assertEqual(

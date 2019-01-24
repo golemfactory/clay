@@ -103,13 +103,6 @@ def prepare_and_validate_task_dict(client, task_dict):
         'concent_enabled',
         client.concent_service.enabled,
     )
-    # TODO #3474
-    if 'subtasks' in task_dict:
-        logger.warning(
-            "Using soon to be deprecated data format for input JSON."
-            " Change `subtasks` to `subtasks_count`",
-        )
-        task_dict['subtasks_count'] = task_dict.pop('subtasks')
     _validate_task_dict(client, task_dict)
 
 
@@ -576,17 +569,17 @@ class ClientProvider:
         options['subtask_timeout'] = common.string_to_timeout(
             options['subtask_timeout'],
         )
-        options['subtasks'] = int(options['subtasks'])
+        options['subtasks_count'] = int(options['subtasks_count'])
 
         subtask_price: int = taskkeeper.compute_subtask_value(
             price=options['price'],
             computation_time=options['subtask_timeout'],
         )
-        estimated_gnt: int = options['subtasks'] \
+        estimated_gnt: int = options['subtasks_count'] \
             * subtask_price
         estimated_eth: int = self.client \
             .transaction_system.eth_for_batch_payment(
-                options['subtasks'],
+                options['subtasks_count'],
             )
         estimated_gnt_deposit: typing.Tuple[int, int] = \
             msg_helpers.requestor_deposit_amount(
