@@ -332,9 +332,6 @@ class PeerSession(BasicSafeSession):
         self._send_peers()
 
     def _react_to_peers(self, msg):
-        if not isinstance(msg.peers, list):
-            return
-
         peers_info = msg.peers[:SEND_PEERS_NUM]
         self.degree = len(peers_info)
         for pi in peers_info:
