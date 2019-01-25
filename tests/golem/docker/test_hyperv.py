@@ -151,7 +151,7 @@ class TestHyperVHypervisor(TestCase):
             'NumberOfProcessors': 1,
         }
         mem_settings = dict()
-        mem_settings['Limit'] = 2048
+        mem_settings['Reservation'] = 2048
         get_memory.return_value = mem_settings
 
         #  WHEN
