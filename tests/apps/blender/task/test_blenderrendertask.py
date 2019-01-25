@@ -726,39 +726,6 @@ class TestHelpers(unittest.TestCase):
     def test_get_task_border_path(self):
         self._get_task_border(as_path=True)
 
-    def test_get_task_num_from_pixels(self):
-        offsets = generate_expected_offsets(30, 1920, 1080)
-        frame_offsets = generate_expected_offsets(15, 1920, 1080)
-        task_definition = RenderingTaskDefinition()
-        task_definition.options = BlenderRendererOptions()
-        task_definition.resolution = [1920, 1080]
-
-        for k in range(1, 31):
-            task_definition.options.use_frames = False
-            num = BlenderTaskTypeInfo.get_task_num_from_pixels(
-                6, offsets[k] + 1, task_definition, 30
-            )
-            assert num == k
-
-            task_definition.options.use_frames = True
-            task_definition.options.frames = list(range(30))
-            num = BlenderTaskTypeInfo.get_task_num_from_pixels(
-                1, 0, task_definition, 30, k
-            )
-            assert num == k
-
-            i = (k - 1) % 15 + 1
-            task_definition.options.frames = list(range(2))
-            num = BlenderTaskTypeInfo.get_task_num_from_pixels(
-                1, frame_offsets[i] + 3, task_definition, 30, (k - 1) // 15 + 1
-            )
-            assert num == k
-
-        task_definition.options.use_frames = False
-        assert BlenderTaskTypeInfo.get_task_num_from_pixels(
-            5, 1200, task_definition, 30
-        ) == 30
-
 
 def _get_empty_rgb_image(width, height):
     img = numpy.zeros((height, width, 3), numpy.uint8)
