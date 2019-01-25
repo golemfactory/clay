@@ -61,7 +61,7 @@ class StreamOperator:
         # REMOVE BINDING
 
         with open(split_result_file) as f:
-            # obsluga ze nieporawny json
+            # incorrect JSON?
             params = json.loads(f)  # wait for status implementation
             if(params.get('status', 'Success') is not 'Success'):
                 raise ffmpegException()

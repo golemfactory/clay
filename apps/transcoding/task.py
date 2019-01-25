@@ -1,67 +1,19 @@
-import json
+import copy
+import os
 from multiprocessing import Lock
-from typing import Any, Dict, Tuple, Optional
+from typing import Any, Dict, Tuple
 
-import golem_messages
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder, CoreTaskTypeInfo
 from apps.core.task.coretaskstate import Options, TaskDefinition
 from apps.transcoding import common
 from apps.transcoding.common import AudioCodec, VideoCodec, Container
-from apps.transcoding.ffmpeg.utils import StreamOperator
+from apps.transcoding.ffmpeg.utils import StreamOperator, FFMPEG_BASE_SCRIPT
 from golem.core.common import HandleError
+from golem.docker.job import DockerJob
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 
-
-class TranscodingTask(CoreTask):
-
-    def __init__(self, task_definition, **kwargs):
-        super(TranscodingTask, self).__init__(task_definition=task_definition,
-                                              **kwargs)
-        self.lock = Lock()
-
-
-    def initialize(self, dir_manager: DirManager):
-        super(TranscodingTask, self).initialize(dir_manager)
-
-        if len(self.task_resources) == 0:
-            raise TranscodingException('There is no specified resources')
-        stream_operator = StreamOperator()
-        chunks = stream_operator.split_video(
-            self.task_resources[0], self.task_definition['parts'], dir_manager,
-            self.task_definition['task_id'])
-        self.task_resources = chunks
-        self.pending_subtasks = len(chunks)
-
-    def _get_next_task(self):
-        with self.lock:
-            subtasks = self.subtasks_given.values()
-            subtasks = filter(lambda sub: sub['status'] in [
-                SubtaskStatus.failure, SubtaskStatus.restarted], subtasks)
-            # Jakie statusy trzeba restartowac
-            failed_subtask = next(iter(subtasks), None)
-            if failed_subtask:
-                assert self.num_failed_subtasks > 0
-                failed_subtask['status'] = SubtaskStatus.resent
-                self.num_failed_subtasks -= 1
-                return failed_subtask
-
-            return failed_subtask['sub_id']
-
-
-            if self.last_task != self.total_tasks:
-                self.last_task += 1
-                start_task = self.last_task
-                return start_task
-            else:
-                    if sub['status'] \
-                            in [SubtaskStatus.failure, SubtaskStatus.restarted]:
-
-                        start_task = sub['start_task']
-                        self.num_failed_subtasks -= 1
-                        return start_task
-            return None
 
 
 
@@ -84,6 +36,70 @@ class TranscodingTaskDefinition(TaskDefinition):
         self.input_stream_path = input_stream_path
         self.audio_params = audio_params
         self.video_params = video_params
+
+
+
+class TranscodingTask(CoreTask):
+
+    def __init__(self, task_definition : TranscodingTaskDefinition, **kwargs):
+        super(TranscodingTask, self).__init__(task_definition=task_definition,
+                                              **kwargs)
+        self.task_definition = task_definition
+        self.lock = Lock()
+
+    def initialize(self, dir_manager: DirManager):
+        super(TranscodingTask, self).initialize(dir_manager)
+
+        if len(self.task_resources) == 0:
+            raise TranscodingException('There is no specified resources')
+        stream_operator = StreamOperator()
+        chunks = stream_operator.split_video(
+            self.task_resources[0], self.task_definition['parts'], dir_manager,
+            self.task_definition['task_id'])
+        self.task_resources = chunks
+        # It may turn out that number of stream chunks after splitting
+        # is less than requested number of subtasks
+        self.total_tasks = len(chunks)
+
+    def _get_next_task(self):
+        with self.lock:
+            subtasks = self.subtasks_given.values()
+            subtasks = filter(lambda sub: sub['status'] in [
+                SubtaskStatus.failure, SubtaskStatus.restarted], subtasks)
+            failed_subtask = next(iter(subtasks), None)
+            if failed_subtask:
+                return self._refresh_existing_subtask(failed_subtask)  # set new id, new status
+            else:
+                assert self.last_task < self.total_tasks
+                curr = self.last_task + 1
+                self.last_task = curr # someone else read that field
+                return self._get_new_subtask(curr)
+
+    def _refresh_existing_subtask(self, subtask):
+        assert self.num_failed_subtasks > 0
+        copied = copy.deepcopy(subtask)
+        subtask['status'] = SubtaskStatus.resent
+        self.num_failed_subtasks -= 1
+        return copied
+
+    def _get_new_subtask(self, subtask):
+        stream_path = os.path.relpath(self.task_definition.input_stream_path,
+                                      self._get_resources_root_dir())
+        stream_path = DockerJob.get_absolute_resource_path(stream_path)
+        resolution = self.task_definition.video_params.resolution
+
+
+        extra_data = {
+            'stream_file': stream_path,
+            'resolution': [resolution[0], resolution[1]],
+            'output_file': '/golem/output/',  # type of container
+            'video_bitrate': self.task_definition.video_params.bitrate,
+            'audio_bitrate': self.task_definition.audio_params.bitrate,
+            'video_codec': self.task_definition.video_params.codec,
+            'audio_codec': self.task_definition.audio_params.codec,
+            'frame_rate': self.task_definition.video_params.frame_rate,
+            'script_filepath': FFMPEG_BASE_SCRIPT
+        }
 
 
 class TranscodingTaskBuilder(CoreTaskBuilder):
