@@ -673,23 +673,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             self.assertIsInstance(value, str)
             self.assertTrue(key in res_dirs)
 
-    def test_get_estimated_cost(self, *_):
-        self.client.transaction_system = make_mock_ets()
-        self.assertEqual(
-            self.client.get_estimated_cost(
-                "task type",
-                {
-                    "price": 150,
-                    "subtask_time": 2.5,
-                    "num_subtasks": 5,
-                },
-            ),
-            {
-                "GNT": 1875.0,
-                "ETH": 0.0001,
-            },
-        )
-
     def test_get_balance(self, *_):
         c = self.client
 

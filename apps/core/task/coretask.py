@@ -510,6 +510,10 @@ class CoreTaskBuilder(TaskBuilder):
 
     @classmethod
     def build_minimal_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
+        logger.debug(
+            "build_minimal_definition. task_type=%r, dictionary=%r",
+            task_type, dictionary
+        )
         definition = task_type.definition()
         definition.options = task_type.options()
         definition.task_type = task_type.name
