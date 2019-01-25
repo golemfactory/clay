@@ -22,16 +22,16 @@ def is_virtualization_enabled() -> bool:
     if the feature is enabled in firmware.
     """
     if is_windows():
-        return __check_vt_windows()
+        return _check_vt_windows()
 
-    return __check_vt_unix()
+    return _check_vt_unix()
 
 
-def __check_vt_unix() -> bool:
+def _check_vt_unix() -> bool:
     cpu_flags: list = get_cpu_info()['flags']
     return 'vmx' in cpu_flags
 
 
-def __check_vt_windows() -> bool:
+def _check_vt_windows() -> bool:
     virtualization_state = run_powershell(script=WIN_SCRIPT_PATH)
     return virtualization_state == 'True'

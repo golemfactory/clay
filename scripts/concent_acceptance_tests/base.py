@@ -90,18 +90,20 @@ class ConcentBaseTest(unittest.TestCase):
         return self.requestor_keys.raw_pubkey
 
     def gen_ttc_kwargs(self, prefix=''):
+        encoded_requestor_pubkey = msg_utils.encode_hex(self.requestor_pub_key)
         kwargs = {
             'sign__privkey': self.requestor_priv_key,
-            'requestor_public_key': msg_utils.encode_hex(
-                self.requestor_pub_key,
-            ),
-            'requestor_ethereum_public_key': msg_utils.encode_hex(
-                self.requestor_pub_key,
-            ),
+            'ethsig__privkey': self.requestor_priv_key,
+            'requestor_public_key': encoded_requestor_pubkey,
+            'requestor_ethereum_public_key': encoded_requestor_pubkey,
             'want_to_compute_task__provider_public_key':
                 msg_utils.encode_hex(self.provider_pub_key),
             'want_to_compute_task__sign__privkey':
-                self.provider_keys.raw_privkey
+                self.provider_priv_key,
+            'want_to_compute_task__task_header__requestor_public_key':
+                encoded_requestor_pubkey,
+            'want_to_compute_task__task_header__sign__privkey':
+                self.requestor_priv_key,
         }
         return {prefix + k: v for k, v in kwargs.items()}
 

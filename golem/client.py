@@ -21,6 +21,7 @@ from apps.appsmanager import AppsManager
 import golem
 from golem.appconfig import TASKARCHIVE_MAINTENANCE_INTERVAL, AppConfig
 from golem.clientconfigdescriptor import ConfigApprover, ClientConfigDescriptor
+from golem.core import variables
 from golem.core.common import (
     datetime_to_timestamp_utc,
     get_timestamp_utc,
@@ -39,7 +40,7 @@ from golem.diag.service import DiagnosticsService, DiagnosticsOutputFormat
 from golem.diag.vm import VMDiagnosticsProvider
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.manager.nodestatesnapshot import ComputingSubtaskStateSnapshot
-from golem.ethereum.exceptions import NotEnoughFunds
+from golem.ethereum import exceptions as eth_exceptions
 from golem.ethereum.fundslocker import FundsLocker
 from golem.ethereum.paymentskeeper import PaymentStatus
 from golem.ethereum.transactionsystem import TransactionSystem
@@ -101,7 +102,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             connect_to_known_hosts: bool = True,
             use_docker_manager: bool = True,
             use_monitor: bool = True,
-            geth_address: Optional[str] = None,
             apps_manager: AppsManager = AppsManager(),
             task_finished_cb=None,
             update_hw_preset=None) -> None:
@@ -139,6 +139,12 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         self.p2pservice = None
         self.diag_service = None
+
+        if not transaction_system.deposit_contract_available:
+            logger.warning(
+                'Disabling concent because deposit contract is unavailable',
+            )
+            concent_variant = variables.CONCENT_CHOICES['disabled']
         self.concent_service = ConcentClientService(
             variant=concent_variant,
             keys_auth=self.keys_auth,
@@ -497,7 +503,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
                         unfinished_subtasks,
                         task.header.deadline,
                     )
-                except NotEnoughFunds as e:
+                except eth_exceptions.NotEnoughFunds as e:
                     # May happen when gas prices increase, not much we can do
                     logger.info("Not enough funds to restore old locks: %r", e)
 
