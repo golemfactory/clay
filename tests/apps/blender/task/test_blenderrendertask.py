@@ -730,4 +730,3 @@ class TestHelpers(unittest.TestCase):
 def _get_empty_rgb_image(width, height):
     img = numpy.zeros((height, width, 3), numpy.uint8)
     return cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-

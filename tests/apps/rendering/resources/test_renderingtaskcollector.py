@@ -66,7 +66,8 @@ class TestRenderingTaskCollector(TestDirFixture):
         img2 = self.temp_file_name("img2.png")
         final_img.save(img2)
 
-        assert TestRenderingTaskCollector._compare_opencv_images(final_img.img, img1)
+        assert TestRenderingTaskCollector._compare_opencv_images(final_img.img,
+                                                                 img1)
         collector.add_img_file(img2)
         final_img = collector.finalize()
         assert isinstance(final_img, OpenCVImgRepr)
@@ -75,7 +76,8 @@ class TestRenderingTaskCollector(TestDirFixture):
 
         assert final_img.img.shape[:2] == (20, 10)
         cut_image = final_img.img[10:20, 0:10]
-        assert TestRenderingTaskCollector._compare_opencv_images(cut_image, img1)
+        assert TestRenderingTaskCollector._compare_opencv_images(cut_image,
+                                                                 img1)
 
     def test_finalize_exr(self):
         collector = RenderingTaskCollector()
