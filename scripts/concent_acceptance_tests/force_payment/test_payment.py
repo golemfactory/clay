@@ -39,7 +39,6 @@ class ForcePaymentBase(SCIBaseTest):
             rct = msg_factories.tasks.ReportComputedTaskFactory(
                 **self.gen_rtc_kwargs(),
                 **self.gen_ttc_kwargs('task_to_compute__'),
-                task_to_compute__ethsig__privkey=self.requestor_priv_key,
             )
             sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
                 report_computed_task=rct,
@@ -114,7 +113,6 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
         rct = msg_factories.tasks.ReportComputedTaskFactory(
             **self.gen_rtc_kwargs(),
             **self.gen_ttc_kwargs('task_to_compute__'),
-            task_to_compute__ethsig__privkey=self.requestor_priv_key,
         )
         sra1 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             report_computed_task=rct,
