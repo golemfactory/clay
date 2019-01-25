@@ -599,7 +599,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 provider_id=self.key_id,
                 package_hash='sha1:' + task_state.package_hash,
                 concent_enabled=msg.concent_enabled,
-                price=price,
                 size=task_state.package_size
             )
             ttc.generate_ethsig(self.my_private_key)

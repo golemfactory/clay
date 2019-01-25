@@ -528,15 +528,12 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             ctk.add_request(header, -2)
         ctk.add_request(header, 5 * 10 ** 18)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 1)
-        self.assertEqual(ctk.active_task_offers["xyz"], 1388888888888889)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
         ctk.add_request(header, 1 * 10 ** 17)
         self.assertEqual(ctk.active_tasks["xyz"].requests, 2)
-        self.assertEqual(ctk.active_task_offers["xyz"], 27777777777778)
         self.assertEqual(ctk.active_tasks["xyz"].header, header)
         header.task_id = "xyz2"
         ctk.add_request(header, 314 * 10 ** 15)
-        self.assertEqual(ctk.active_task_offers["xyz2"], 87222222222223)
         header.task_id = "xyz"
         thread = get_task_header()
         thread.task_id = "qaz123WSX"

@@ -111,9 +111,6 @@ class CompTaskKeeper:
         # information about tasks that this node wants to compute
         self.active_tasks: typing.Dict[str, CompTaskInfo] = {}
 
-        # price information per last task request
-        self.active_task_offers: typing.Dict[str, int] = {}
-
         # subtask_id to task_id mapping
         self.subtask_to_task: typing.Dict[str, str] = {}
 
@@ -141,7 +138,6 @@ class CompTaskKeeper:
                 self.active_tasks,
                 self.subtask_to_task,
                 self.task_package_paths,
-                self.active_task_offers,
             )
             pickle.dump(dump_data, f)
 
@@ -158,7 +154,6 @@ class CompTaskKeeper:
                 active_tasks = data[0]
                 subtask_to_task = data[1]
                 task_package_paths = data[2] if len(data) > 2 else {}
-                active_task_offers = data[3] if len(data) > 3 else {}
         except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
             logger.exception(
                 'Problem restoring dumpfile: %s; deleting broken file',
@@ -170,7 +165,6 @@ class CompTaskKeeper:
         self.active_tasks.update(active_tasks)
         self.subtask_to_task.update(subtask_to_task)
         self.task_package_paths.update(task_package_paths)
-        self.active_task_offers.update(active_task_offers)
 
     def add_request(self, theader: dt_tasks.TaskHeader, price: int):
         # price is task_header.max_price
@@ -182,9 +176,6 @@ class CompTaskKeeper:
             self.active_tasks[task_id].requests += 1
         else:
             self.active_tasks[task_id] = CompTaskInfo(theader)
-        self.active_task_offers[task_id] = compute_subtask_value(
-            price, self.active_tasks[task_id].header.subtask_timeout
-        )
         self.dump()
 
     @handle_key_error
@@ -202,18 +193,6 @@ class CompTaskKeeper:
         task_id = task_to_compute.task_id
         subtask_id = task_to_compute.subtask_id
         comp_task_info = self.active_tasks[task_id]
-        comp_task_price = self.active_task_offers[task_id]
-
-        if task_to_compute.price != comp_task_price:
-            logger.info(
-                "Can't accept subtask %r for %r."
-                " %r<TTC.price> != %r<CTI.subtask_price>",
-                task_to_compute.subtask_id,
-                task_to_compute.task_id,
-                task_to_compute.price,
-                comp_task_price,
-            )
-            return False
 
         comp_task_info.requests -= 1
         comp_task_info.subtasks[subtask_id] = comp_task_def
@@ -282,7 +261,6 @@ class CompTaskKeeper:
                 self.subtask_to_task.pop(subtask_id, None)
 
             self.active_tasks.pop(task_id, None)
-            self.active_task_offers.pop(task_id, None)
             self.task_package_paths.pop(task_id, None)
 
         self.dump()
