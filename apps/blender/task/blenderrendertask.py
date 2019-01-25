@@ -525,6 +525,9 @@ class BlenderRenderTask(FrameRenderingTask):
 
         return return_data
 
+    def get_output_names(self):
+        return [self.output_file]
+
     def _update_preview(self, new_chunk_file_path, num_start):
         self.preview_updater.update_preview(new_chunk_file_path, num_start)
 
