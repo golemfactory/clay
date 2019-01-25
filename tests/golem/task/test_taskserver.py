@@ -647,8 +647,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:provider {node_id}'
-                f' is not allowed for this task at this moment '
-                f'(either waiting for results or previously failed)'
+                f' is not allowed for this task (it has previously failed)'
             )
 
         # given
