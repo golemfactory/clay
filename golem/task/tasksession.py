@@ -140,7 +140,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # verified yet)
         self.msgs_to_send = []
         self.err_msg = None  # Keep track of errors
-        self.resources_options = None  # Download options for resources
         self.__set_msg_interpretations()
         # self.threads = []
 
@@ -710,7 +709,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.task_server.add_task_session(
                 ctd['subtask_id'], self
             )
-            self.resources_options = msg.resources_options
             if self.task_server.task_given(self.key_id, ctd, msg.price):
                 return
         _cannot_compute(self.err_msg)

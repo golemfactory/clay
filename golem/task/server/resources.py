@@ -107,7 +107,8 @@ class TaskResourcesMixin:
         resource_manager = self.client.resource_server.resource_manager
         resources = resource_manager.from_wire(resources)
 
-        options = self.task_sessions[subtask_id].resources_options
+        task_keeper = self.task_manager.comp_task_keeper
+        options = task_keeper.get_resources_options(subtask_id)
         client_options = self.get_download_options(options, task_id)
         self.pull_resources(task_id, resources, client_options)
         return True
