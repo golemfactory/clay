@@ -91,7 +91,7 @@ class TestP2PService(TestDatabaseWithReactor):
         # find_node() without parameter
         node_session = peersession.PeerSession(conn=mock.MagicMock())
         node_session.listen_port = random.randint(1, 2 ** 16 - 1)
-        node_session.address = random.randint(1, 2 ** 32 - 1)
+        node_session.address = fake.ipv4()
         node_session.node_info = node = dt_p2p_factory.Node()
         self.service.peers = {
             node_key_id: peersession.PeerSessionInfo(node_session),

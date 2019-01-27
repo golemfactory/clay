@@ -10,7 +10,7 @@ class SoftSwitch(enum.Enum):
 
 
 KEY = "concent_soft_switch"
-DEFAULT = SoftSwitch.ON
+DEFAULT = SoftSwitch.OFF
 
 
 @rpc_utils.expose('golem.concent.switch')

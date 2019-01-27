@@ -404,7 +404,15 @@ class BasicProtocol(SessionProtocol):
                 self.close()
                 return []
             except golem_messages.exceptions.MessageError as e:
-                logger.info("Failed to deserialize message (%r) %r", e, data)
+                logger.debug(
+                    "Failed to deserialize message: %(e)s from %(peer)s."
+                    " data=%(data)r",
+                    {
+                        'e': e,
+                        'peer': self.transport.getPeer(),
+                        'data': data,
+                    },
+                )
                 logger.debug(
                     "BasicProtocol._data_to_messages() failed %r",
                     data,

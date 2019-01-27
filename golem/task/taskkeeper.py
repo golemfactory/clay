@@ -31,7 +31,7 @@ from golem.task.taskproviderstats import ProviderStatsManager
 logger = logging.getLogger('golem.task.taskkeeper')
 
 
-def compute_subtask_value(price: int, computation_time: int):
+def compute_subtask_value(price: int, computation_time: int) -> int:
     """
     Don't use math.ceil (this is general advice, not specific to the case here)
     >>> math.ceil(10 ** 18 / 6)
@@ -603,12 +603,15 @@ class TaskHeaderKeeper:
         :param exclude: Task ids to exclude
         :return: None if there are no tasks that this node may want to compute
         """
+        logger.debug("`get_task` called. exclude=%r", exclude)
         tasks = self.supported_tasks
         if exclude:
             tasks = [t for t in tasks if t not in exclude]
         if not tasks:
+            logger.debug("`get_task`: no potential task candidates found.")
             return None
         task_id = random.choice(tasks)
+        logger.debug("`get_task`: task candidate found. task_id=%r", task_id)
         return self.task_headers[task_id]
 
     def remove_old_tasks(self):
