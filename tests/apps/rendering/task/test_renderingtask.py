@@ -352,9 +352,8 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
 
     def test_build_definition_minimal(self):
         # given
-        defaults_mock = Mock()
         tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition,
-                               defaults_mock, Options, RenderingTaskBuilder)
+                               Options, RenderingTaskBuilder)
         tti.output_file_ext = 'txt'
         task_dict = {
             'resources': {"file1.png", "file2.txt", 'file3.jpg', 'file4.txt'},
@@ -377,9 +376,8 @@ class TestRenderingTaskBuilder(TestDirFixture, LogTestCase):
 class TestBuildDefinition(TestDirFixture, LogTestCase):
     def setUp(self):
         super().setUp()
-        defaults_mock = Mock()
         self.tti = CoreTaskTypeInfo("TESTTASK", RenderingTaskDefinition,
-                                    defaults_mock, Options,
+                                    Options,
                                     RenderingTaskBuilder)
         self.tti.output_file_ext = 'txt'
         self.task_dict = {

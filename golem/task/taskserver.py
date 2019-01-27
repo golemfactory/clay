@@ -587,9 +587,6 @@ class TaskServer(
             self.max_trust)
         Trust.WRONG_COMPUTED.decrease(key_id, mod)
 
-    def unpack_delta(self, dest_dir, delta, task_id):
-        self.client.resource_server.unpack_delta(dest_dir, delta, task_id)
-
     def get_computing_trust(self, node_id):
         return self.client.get_computing_trust(node_id)
 

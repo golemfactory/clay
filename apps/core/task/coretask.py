@@ -44,10 +44,9 @@ class CoreTaskTypeInfo(TaskTypeInfo):
     def __init__(self,
                  name: str,
                  definition: 'Type[TaskDefinition]',
-                 defaults: 'TaskDefaults',
                  options: Type[Options],
                  builder_type: Type[TaskBuilder]):
-        super().__init__(name, definition, defaults, options, builder_type)
+        super().__init__(name, definition, options, builder_type)
         self.output_formats = []
         self.output_file_ext = []
 
