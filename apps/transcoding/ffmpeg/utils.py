@@ -1,9 +1,13 @@
 import enum
 import json
+import logging
 import os
 
+from apps.transcoding import common
+from apps.transcoding.common import ffmpegException
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
-from golem.docker.task_thread import DockerTaskThread
+from golem.core.common import HandleError
+from golem.docker.task_thread import DockerTaskThread, DockerBind
 from golem.docker.image import DockerImage
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.resource.dirmanager import DirManager
@@ -14,59 +18,72 @@ FFMPEG_BASE_SCRIPT = '/golem/scripts/ffmpeg_task.py'
 FFMPEG_RESULT_FILE = '/golem/scripts/ffmpeg_task.py'
 
 
+logger = logging.getLogger(__name__)
+
 class Commands(enum.Enum):
     SPLIT = ('split', 'split-results.json')
+    TRANSCODE = ('transcode', '')
 
 
 class StreamOperator:
-    def __init__(self):
-        self.environment_manager = EnvironmentsManager()
-        self.env = ffmpegEnvironment()
-
-    def _add_binding_to_container(self, left, right, mode='ro'):
-        self.env.add_binding(left, right, mode)
-        self.environment_manager.add_environment(self.env) # POPRAWIC
-
+    @HandleError(ValueError, common.not_valid_json)
     def split_video(self, input_stream, parts, dir_manager: DirManager, task_id):
         name = os.path.basename(input_stream)
         tmp_task_dir = dir_manager.get_task_temporary_dir(task_id)
-        resources_task_dir = dir_manager.get_task_resource_dir(task_id)
-        # do kwargs to cos
-        task_output_dir = dir_manager.get_task_output_dir(task_id)
         stream_container_path = os.path.join(tmp_task_dir, name)
-        self._add_binding_to_container(input_stream, stream_container_path)
+        task_output_dir = dir_manager.get_task_output_dir(task_id)
+        env = ffmpegEnvironment(binds=[
+            DockerBind(input_stream, stream_container_path, 'ro')])
+
         extra_data = {
             'script_filepath': FFMPEG_BASE_SCRIPT,
-            'command': Commands.SPLIT,
+            'command': Commands.SPLIT.value[0],
             'path_to_stream': stream_container_path,
             'parts': parts
         }
-        dir_mapping = DockerTaskThread.specify_dir_mapping(output=dir_manager.get_task_output_dir(task_id),
-            temporary=tmp_task_dir, resources=resources_task_dir)
+
+        result = self._do_job_in_container(dir_manager, task_id, extra_data,
+                                           env)
+
+        split_result_file = os.path.join(task_output_dir,
+                                         Commands.SPLIT.value[1])
+        output_files = result.get('data', [])
+        if split_result_file not in output_files:
+            raise ffmpegException('Result file {} does not exist'.
+                                  format(split_result_file))
+
+        logger.warning('Split result file is = {} [parts = {}]'.format(split_result_file, parts))
+        with open(split_result_file) as f:
+            params = json.load(f)  # FIXME: wait for status implementation
+            if params.get('status', 'Success') is not 'Success':
+                raise ffmpegException('Splitting video failed')
+            return map(lambda x: x.get('video_segment'), params.get('segments',
+                                                                    []))
+
+    def _do_job_in_container(self, dir_manager: DirManager, task_id,
+                             extra_data, env=None, timeout=120):
+
+        if env:
+            EnvironmentsManager().add_environment(env)
 
         dtt = DockerTaskThread(docker_images=[DockerImage(
             repository=FFMPEG_DOCKER_IMAGE, tag=FFMPEG_DOCKER_TAG)],
             extra_data=extra_data,
-            dir_mapping=dir_mapping, timeout=1024)  # TIMEOUT!!
+            dir_mapping=self._get_dir_mapping(dir_manager, task_id),
+            timeout=timeout)
 
         dtt.run()
         if dtt.error:
             raise ffmpegException(dtt.error_msg)
-        result = dtt.result[0] if isinstance(dtt.result, tuple) else dtt.result
-        split_result_file = os.path.join(task_output_dir, Commands.SPLIT[1])
-        output_files = result.get('data', [])
-        if split_result_file not in output_files:
-            raise ffmpegException('Result file {} does not exist'.format(split_result_file))
+        return dtt.result[0] if isinstance(dtt.result, tuple) else dtt.result
 
-        # REMOVE BINDING
+    def _get_dir_mapping(self, dir_manager: DirManager, task_id):
+        tmp_task_dir = dir_manager.get_task_temporary_dir(task_id)
+        resources_task_dir = dir_manager.get_task_resource_dir(task_id)
+        task_output_dir = dir_manager.get_task_output_dir(task_id)
 
-        with open(split_result_file) as f:
-            # incorrect JSON?
-            params = json.loads(f)  # wait for status implementation
-            if(params.get('status', 'Success') is not 'Success'):
-                raise ffmpegException()
-            return map(lambda x: x.get('video_segment'), params.get('segments', []))
+        return DockerTaskThread.specify_dir_mapping(
+            output=task_output_dir, temporary=tmp_task_dir,
+            resources=resources_task_dir, logs=tmp_task_dir, work=tmp_task_dir)
 
 
-class ffmpegException(Exception):
-    pass

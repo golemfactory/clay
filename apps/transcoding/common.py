@@ -1,7 +1,6 @@
 import logging
 from enum import Enum
 
-from apps.transcoding.task import TranscodingException
 from golem.core.common import HandleKeyError
 
 
@@ -69,6 +68,15 @@ CONTAINER_SUPPORTED_CODECS = {
     Container.AVI: ALL_SUPPORTED_CODECS,
     Container.MKV: ALL_SUPPORTED_CODECS,
     Container.MP4: ([VideoCodec.H_264, VideoCodec.MPEG_4_Part_2,
-                     VideoCodec.MPEG_2, VideoCodec.MPEG_1],
+                     VideoCodec.MPEG_2],
                     [AudioCodec.AAC, AudioCodec.MP3])
 }
+
+
+
+class ffmpegException(Exception):
+    pass
+
+
+class TranscodingException(Exception):
+    pass

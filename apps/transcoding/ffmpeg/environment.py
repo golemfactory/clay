@@ -6,7 +6,8 @@ from golem.docker.task_thread import DockerBind
 class ffmpegEnvironment(DockerEnvironment):
     DOCKER_IMAGE = 'golemfactory/ffmpeg'
     DOCKER_TAG = '1.0'
-    ENV_ID = "FFMPEG"
+    ENV_ID = 'FFMPEG'
+    SHORT_DESCRIPTION = ''
 
     def __init__(self, binds=None):
         super().__init__(additional_images=[DockerImage(
@@ -21,5 +22,5 @@ class ffmpegEnvironment(DockerEnvironment):
         return d
 
     def add_binding(self, left, right, mode):
-        self.binds.append(DockerBind(left, right, mode))
+        self.binds.append()
 

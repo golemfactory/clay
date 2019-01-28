@@ -62,6 +62,7 @@ class BenchmarkManager(object):
         builder = task_builder(Node(node_name=self.node_name),
                                task_state.definition,
                                self.dir_manager)
+        logger.info(builder)
         task = builder.build()
         br = BenchmarkRunner(
             task=task,
