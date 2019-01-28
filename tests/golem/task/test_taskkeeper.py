@@ -483,8 +483,8 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             ttc = msg_factories.tasks.TaskToComputeFactory(price=price)
             ttc.compute_task_def = ctd
             ttc.resources_options = HyperdriveClientOptions(
-                    HyperdriveClient.CLIENT_ID,
-                    HyperdriveClient.VERSION)
+                HyperdriveClient.CLIENT_ID,
+                HyperdriveClient.VERSION)
             self.assertTrue(ctk.receive_subtask(ttc))
             test_subtasks_ids.append(ctd['subtask_id'])
         del ctk
@@ -686,4 +686,5 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
 
         assert ctk.get_resources_options("unknown") is None
         subtask_id = random.choice(list(ctk.subtask_to_task.keys()))
-        assert isinstance(ctk.get_resources_options(subtask_id), HyperdriveClientOptions)
+        res = ctk.get_resources_options(subtask_id)
+        assert isinstance(res, HyperdriveClientOptions)

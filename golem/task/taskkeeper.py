@@ -114,7 +114,7 @@ class CompTaskKeeper:
 
         # information about resource options for subtask
         self.resources_options: typing.Dict[str, typing.Optional[
-            HyperDriveClientOptions]] = {}
+            HyperdriveClientOptions]] = {}
 
         # price information per last task request
         self.active_task_offers: typing.Dict[str, int] = {}
