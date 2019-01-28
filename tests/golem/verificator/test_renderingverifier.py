@@ -1,6 +1,7 @@
 import os
 
-from PIL import Image
+import cv2
+import numpy as np
 
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
@@ -56,17 +57,16 @@ class TestRenderingVerifier(TempDirFixture, LogTestCase):
         assert self.last_verdict == SubtaskVerificationState.WRONG_ANSWER
 
         img_path = os.path.join(self.path, "img1.png")
-        img = Image.new("RGB", (80, 60))
-        img.save(img_path)
+        img = np.zeros((60, 80, 3), np.uint8)
+        cv2.imwrite(img_path, img)
 
         img_path2 = os.path.join(self.path, "img2.png")
-        img = Image.new("RGB", (80, 60))
-        img.save(img_path2)
+        cv2.imwrite(img_path2, img)
 
         ver_dir = os.path.join(self.path, "ver_img")
         os.makedirs(ver_dir)
         img_path3 = os.path.join(ver_dir, "img3.png")
-        img.save(img_path3)
+        cv2.imwrite(img_path3, img)
 
         # Proper simple verification - just check if images have proper sizes
         self.last_verdict = None

@@ -38,10 +38,6 @@ class ImgRepr(object, metaclass=abc.ABCMeta):
         return
 
     @abc.abstractmethod
-    def to_pil(self):
-        return
-
-    @abc.abstractmethod
     def close(self):
         return
 
@@ -171,53 +167,6 @@ class OpenCVImgRepr:
         self.img = cv2.convertScaleAbs(self.img, alpha=255, beta=0)
 
 
-class PILImgRepr(ImgRepr):
-    def __init__(self):
-        self.img = None
-        self.type = "PIL"
-
-    def load_from_file(self, file_):
-        self.img = Image.open(file_)
-        self.img = self.img.convert('RGB')
-        self.img.name = os.path.basename(file_)
-
-    def load_from_pil_object(self, pil_img, name="noname.png"):
-        import PIL
-        if not isinstance(pil_img, PIL.Image.Image):
-            raise TypeError("img must be an instance of PIL.Image.Image")
-
-        self.img = pil_img
-        self.img = self.img.convert('RGB')
-        self.img.name = name
-
-    def get_name(self):
-        return self.img.name
-
-    def get_size(self):
-        return self.img.size
-
-    def get_pixel(self, xy):
-        return list(self.img.getpixel(xy))
-
-    @property
-    def size(self):
-        return self.get_size()
-
-    def set_pixel(self, xy, color):
-        color = tuple(int(c) for c in color)
-        self.img.putpixel(xy, color)
-
-    def copy(self):
-        return deepcopy(self)
-
-    def to_pil(self):
-        return self.img
-
-    def close(self):
-        if self.img:
-            self.img.close()
-
-
 class EXRImgRepr(ImgRepr):
     def __init__(self):
         self.img = None
@@ -255,27 +204,6 @@ class EXRImgRepr(ImgRepr):
         darkest = min([lo for (lo, hi) in extrema])
         lightest = max([hi for (lo, hi) in extrema])
         return lightest, darkest
-
-    def to_pil(self, use_extremas=False):
-        if use_extremas:
-            lightest, darkest = self.get_rgbf_extrema()
-        else:
-            lightest = self.max
-            darkest = self.min
-
-        if lightest == darkest:
-            lightest = 0.1 + darkest
-        scale = 255.0 / (lightest - darkest)
-
-        def normalize_0_255(v):
-            return v * scale
-
-        rgb8 = [im.point(normalize_0_255).convert("L") for im in self.rgb]
-        return Image.merge("RGB", rgb8)
-
-    def to_l_image(self):
-        img = self.to_pil()
-        return img.convert('L')
 
     def copy(self):
         e = EXRImgRepr()

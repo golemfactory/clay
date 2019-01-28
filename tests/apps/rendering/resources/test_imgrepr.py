@@ -2,20 +2,19 @@ import os
 import unittest
 
 import pytest
-from PIL import Image
 import cv2
 
 import numpy as np
 from apps.rendering.resources.imgrepr import (EXRImgRepr, ImgRepr,
                                               load_img,
-                                              PILImgRepr, OpenCVImgRepr,
+                                              OpenCVImgRepr,
                                               OpenCVError)
 
 from golem.testutils import TempDirFixture, PEP8MixIn
 from golem.tools.assertlogs import (LogTestCase)
 
 from tests.apps.rendering.resources.imghelper import \
-    (get_exr_img_repr, get_pil_img_repr, get_test_exr, make_test_img)
+    (get_exr_img_repr, get_test_exr, make_test_img)
 
 from tests.apps.rendering.resources.test_renderingtaskcollector import \
     make_test_img_16bits
@@ -37,9 +36,6 @@ class TImgRepr(ImgRepr):
     def copy(self):
         super(TImgRepr, self).copy()
 
-    def to_pil(self):
-        super(TImgRepr, self).to_pil()
-
     def close(self):
         super(TImgRepr, self).close()
 
@@ -55,51 +51,7 @@ class TestImgRepr(unittest.TestCase, PEP8MixIn):
         t.get_pixel((0, 0))
         t.get_size()
         t.copy()
-        t.to_pil()
         t.set_pixel((0, 0), (0, 0, 0))
-
-
-class TestPILImgRepr(TempDirFixture, PEP8MixIn):
-    PEP8_FILES = [
-        'apps/rendering/resources/imgrepr.py',
-    ]
-
-    def test_init(self):
-        p = PILImgRepr()
-        assert isinstance(p, ImgRepr)
-        assert p.img is None
-        assert p.type == "PIL"
-
-    def test_errors(self):
-        p = PILImgRepr()
-
-        with self.assertRaises(Exception):
-            p.load_from_file("unknown file")
-        with self.assertRaises(Exception):
-            p.get_size()
-        with self.assertRaises(Exception):
-            p.get_pixel((0, 0))
-
-    def test_pil_repr(self):
-        img_path = self.temp_file_name('img.png')
-        p = get_pil_img_repr(img_path)
-        assert isinstance(p.img, Image.Image)
-        assert p.get_size() == (10, 10)
-        assert p.get_pixel((0, 0)) == [255, 0, 0]
-        assert p.get_pixel((5, 5)) == [255, 0, 0]
-        assert p.get_pixel((9, 9)) == [255, 0, 0]
-        with self.assertRaises(Exception):
-            p.get_pixel((10, 10))
-
-        p_copy = p.copy()
-
-        p.set_pixel((3, 5), [10, 11, 12])
-        assert p.get_pixel((3, 5)) == [10, 11, 12]
-        assert p_copy.get_pixel((3, 5)) == [255, 0, 0]
-
-        p_copy.set_pixel((5, 3), [200, 210, 220])
-        assert p_copy.get_pixel((5, 3)) == [200, 210, 220]
-        assert p.get_pixel((5, 3)) == [255, 0, 0]
 
 
 def almost_equal(v1, v2):
@@ -182,28 +134,6 @@ class TestExrImgRepr(TempDirFixture, PEP8MixIn):
         assert e_copy.min == 0.0
         assert e_copy.max == 1.0
 
-    def test_to_pil(self):
-        e = get_exr_img_repr()
-
-        img = e.to_pil()
-        img_file = os.path.join(self.path, "img1.jpg")
-        img.save(img_file)
-        img.close()
-        p = PILImgRepr()
-        p.load_from_file(img_file)
-
-        img2 = e.to_pil(use_extremas=True)
-        assert isinstance(img2, Image.Image)
-        img_alt = get_exr_img_repr(alt=True)
-        img3 = img_alt.to_pil(use_extremas=True)
-        assert isinstance(img3, Image.Image)
-
-    def test_to_l_image(self):
-        e = get_exr_img_repr()
-        img = e.to_l_image()
-        assert isinstance(img, Image.Image)
-        assert img.mode == "L"
-
     def test_get_rgbf_extrema(self):
         e = get_exr_img_repr(alt=True)
         assert e.get_rgbf_extrema() == (0.0, 0.0)
@@ -216,12 +146,6 @@ class TestImgFunctions(TempDirFixture, LogTestCase):
         exr_img = load_img(get_test_exr())
         assert isinstance(exr_img, EXRImgRepr)
         assert exr_img.get_size() == (10, 10)
-
-        img_path = self.temp_file_name("img.jpg")
-        pil_img = get_pil_img_repr(img_path)
-        assert isinstance(pil_img, PILImgRepr)
-        assert pil_img.get_size() == (10, 10)
-
         assert load_img("notexisting") is None
 
     def test_opencv_load_from_file(self):

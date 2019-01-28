@@ -1,6 +1,7 @@
 import unittest.mock as mock
 
-from PIL import Image
+import cv2
+import numpy as np
 
 from apps.rendering.benchmark import renderingbenchmark
 from golem.testutils import TempDirFixture
@@ -16,14 +17,14 @@ class TestBenchmark(TempDirFixture):
         filepath = self.temp_file_name("img.png")
         resolution = self.benchmark.task_definition.resolution
 
-        with open(filepath, "wb") as fd:
-            img = Image.new("RGB", resolution)
-            img.save(fd, "PNG")
+        with open(filepath, "wb"):
+            img = np.zeros((resolution[1], resolution[0], 3), np.uint8)
+            cv2.imwrite(filepath, img)
             self.assertTrue(self.benchmark.verify_img(filepath))
 
-        with open(filepath, "wb") as fd:
-            img = Image.new("RGB", (resolution[0]+1, resolution[1]))
-            img.save(fd, "PNG")
+        with open(filepath, "wb"):
+            img = np.zeros((resolution[1]+1, resolution[0], 3), np.uint8)
+            cv2.imwrite(filepath, img)
             self.assertFalse(self.benchmark.verify_img(filepath))
 
     def test_broken_image(self):
