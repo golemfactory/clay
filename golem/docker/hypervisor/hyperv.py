@@ -258,7 +258,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
             logger.debug('raw hyperv info: summary=%r, memory=%r',
                          summary, mem_settings)
             result = dict()
-            result[CONSTRAINT_KEYS['mem']] = mem_settings['Limit']
+            result[CONSTRAINT_KEYS['mem']] = mem_settings['Reservation']
             result[CONSTRAINT_KEYS['cpu']] = summary['NumberOfProcessors']
             return result
         except (OSWinException, KeyError):
