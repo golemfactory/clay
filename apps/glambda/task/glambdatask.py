@@ -24,7 +24,7 @@ from golem.core.common import timeout_to_deadline, string_to_timeout,\
                               to_unicode
 from golem.docker.environment import DockerEnvironment
 from golem.task.taskbase import Task, TaskState, TaskBuilder, \
-                                TaskTypeInfo, TaskDefaults,  \
+                                TaskTypeInfo, \
                                 AcceptClientVerdict
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
@@ -70,7 +70,6 @@ class GLambdaTaskTypeInfo(TaskTypeInfo):
         super().__init__(
             "GLambda",
             TaskDefinition,
-            TaskDefaults(),
             Options,
             GLambdaTaskBuilder
         )
