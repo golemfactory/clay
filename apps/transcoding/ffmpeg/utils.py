@@ -52,13 +52,19 @@ class StreamOperator:
             raise ffmpegException('Result file {} does not exist'.
                                   format(split_result_file))
 
-        logger.warning('Split result file is = {} [parts = {}]'.format(split_result_file, parts))
+        logger.info('Split result file is = {} [parts = {}]'.
+                       format(split_result_file, parts))
         with open(split_result_file) as f:
             params = json.load(f)  # FIXME: wait for status implementation
             if params.get('status', 'Success') is not 'Success':
                 raise ffmpegException('Splitting video failed')
-            return map(lambda x: x.get('video_segment'), params.get('segments',
-                                                                    []))
+            streams_list = map(lambda x: x.get('video_segment'),
+                               params.get('segments', []))
+            streams_list = list(map(lambda x: x if os.path.isabs(x) else os.path
+                                    .join(task_output_dir, x), streams_list))
+            logger.info('Video {} was successfully splitted to {}'
+                        .format(input_stream, streams_list))
+            return streams_list
 
     def _do_job_in_container(self, dir_manager: DirManager, task_id,
                              extra_data, env=None, timeout=120):

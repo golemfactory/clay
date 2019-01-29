@@ -122,8 +122,6 @@ class CoreTask(Task):
         else:
             self.docker_images = None
 
-#        logger.warning('total_tasks = {}, self = {}'.format(total_tasks, self))
-
         th = dt_tasks.TaskHeader(
             min_version=str(gconst.GOLEM_MIN_VERSION),
             task_id=task_definition.task_id,
@@ -498,10 +496,6 @@ class CoreTaskBuilder(TaskBuilder):
 
     def build(self):
         # pylint:disable=abstract-class-instantiated
-        try:
-            logger.warning('Task definition = {}'.format(self._task_definition))
-        except:
-            pass
         task = self.TASK_CLASS(**self.get_task_kwargs())
 
         task.initialize(self.dir_manager)
@@ -512,7 +506,6 @@ class CoreTaskBuilder(TaskBuilder):
         kwargs["task_definition"] = self.task_definition
         kwargs["owner"] = self.owner
         kwargs["root_path"] = self.root_path
-        logger.warning(kwargs)
         return kwargs
 
     @classmethod

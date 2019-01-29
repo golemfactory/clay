@@ -25,7 +25,7 @@ def unsupported(name: str):
 
 
 class VideoCodec(Enum):
-    H_264 = 'H.264'
+    H_264 = 'libx264'
     MPEG_2 = 'MPEG-2'
     MPEG_4 = 'MPEG-4'
     MPEG_4_Part_2 = 'MPEG-4 Part 2'
@@ -57,10 +57,10 @@ class Container(Enum):
         return Container(name.lower())
 
     def get_supported_video_codecs(self):
-        return map(lambda v, a: v, CONTAINER_SUPPORTED_CODECS[self])
+        return CONTAINER_SUPPORTED_CODECS[self][0]
 
     def get_supported_audio_codecs(self):
-        return map(lambda v, a: a, CONTAINER_SUPPORTED_CODECS[self])
+        return CONTAINER_SUPPORTED_CODECS[self][1]
 
 
 ALL_SUPPORTED_CODECS = ([c for c in VideoCodec], [c for c in AudioCodec])

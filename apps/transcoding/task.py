@@ -22,69 +22,73 @@ from golem.task.taskstate import SubtaskStatus
 logger = logging.getLogger(__name__)
 
 
-class TranscodingTaskDefinition(TaskDefinition):
-    class TranscodingAudioParams:
-        def __init__(self, codec: AudioCodec, bitrate: int = None):
+class TranscodingTaskOptions(Options):
+    class AudioParams:
+        def __init__(self, codec: AudioCodec = None, bitrate: str = None):
             self.codec = codec
             self.bitrate = bitrate
 
-    class TranscodingVideoParams:
-        def __init__(self, codec: VideoCodec, bit_rate = None, frame_rate: int = None,
+    class VideoParams:
+        def __init__(self, codec: VideoCodec = None, bitrate: str = None,
+                     frame_rate: int = None,
                      resolution: Tuple[int, int] = None):
             self.codec = codec
-            self.bit_rate = bit_rate
+            self.bitrate = bitrate
             self.frame_rate = frame_rate
             self.resolution = resolution
 
-    def __init__(self, input_stream_path, audio_params, video_params,
-                 output_container, task_id, parts):
+    def __init__(self, use_playlist=False):
         super().__init__()
-        self.input_stream_path = input_stream_path
-        self.audio_params = audio_params
-        self.video_params = video_params
-        self.output_container = output_container
-        self.task_id = task_id
-        self.subtasks_count = parts
+        self.video_params = TranscodingTaskOptions.VideoParams()
+        self.audio_params = TranscodingTaskOptions.AudioParams()
+        self.input_stream_path = None
+        self.output_container = None
+        self.use_playlist = use_playlist
+
+
+class TranscodingTaskDefinition(TaskDefinition):
+    def __init__(self):
+        super(TranscodingTaskDefinition, self).__init__()
+        self.options = TranscodingTaskOptions()
 
 
 class TranscodingTask(CoreTask):
-
     def __init__(self, task_definition: TranscodingTaskDefinition, **kwargs):
-        logger.warning('kwargs = {}'.format(kwargs))
         super(TranscodingTask, self).__init__(task_definition=task_definition,
                                               **kwargs)
         self.task_definition = task_definition
-        self.lock = Lock()
+        # self.lock = Lock()
 
     def initialize(self, dir_manager: DirManager):
         super(TranscodingTask, self).initialize(dir_manager)
-
         if len(self.task_resources) == 0:
             raise TranscodingException('There is no specified resources')
         stream_operator = StreamOperator()
         chunks = stream_operator.split_video(
-            self.task_resources[0], self.task_definition.subtasks_count, dir_manager,
-            self.task_definition.task_id)
+            self.task_resources[0], self.task_definition.subtasks_count,
+            dir_manager, self.task_definition.task_id)
         self.task_resources = chunks
-        # It may turn out that number of stream chunks after splitting
-        # is less than requested number of subtasks
+        if len(chunks) < self.total_tasks:
+            logger.warning('{} subtasks was requested but video splitting '
+                           'process resulted in {} chunks.'
+                           .format(self.total_tasks, len(chunks)))
         self.total_tasks = len(chunks)
 
     def _get_next_subtask(self):
-        with self.lock:
-            subtasks = self.subtasks_given.values()
-            subtasks = filter(lambda sub: sub['status'] in [
-                SubtaskStatus.failure, SubtaskStatus.restarted], subtasks)
-            failed_subtask = next(iter(subtasks), None)
-            if failed_subtask:
-                failed_subtask['status'] = SubtaskStatus.resent
-                self.num_failed_subtasks -= 1
-                return failed_subtask['subtask_num']
-            else:
-                assert self.last_task < self.total_tasks
-                curr = self.last_task + 1
-                self.last_task = curr # someone else read that field
-                return curr
+        #with self.lock:
+        subtasks = self.subtasks_given.values()
+        subtasks = filter(lambda sub: sub['status'] in [
+            SubtaskStatus.failure, SubtaskStatus.restarted], subtasks)
+        failed_subtask = next(iter(subtasks), None)
+        if failed_subtask:
+            failed_subtask['status'] = SubtaskStatus.resent
+            self.num_failed_subtasks -= 1
+            return failed_subtask['subtask_num']
+        else:
+            assert self.last_task < self.total_tasks
+            curr = self.last_task + 1
+            self.last_task = curr # someone else read that field
+            return curr - 1
 
     def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
@@ -93,7 +97,7 @@ class TranscodingTask(CoreTask):
 
         subtask_num = self._get_next_subtask()
         subtask = {}
-        transcoding_params = self._get_extra_data(subtask['subtask_num'])
+        transcoding_params = self._get_extra_data(subtask_num)
         # filter recursively None
         subtask['perf'] = perf_index
         subtask['node_id'] = node_id
@@ -145,42 +149,55 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
     @classmethod
     def build_full_definition(cls, task_type: CoreTaskTypeInfo,
                               dict: Dict[str, Any]):
-        super().build_full_definition(task_type, dict)
-        input_stream_path = cls._get_required_field(dict, 'resources')
+        task_def = super().build_full_definition(task_type, dict)
+        resources = cls._get_required_field(dict, 'resources')
+        if not isinstance(resources, list) or len(resources) == 0:
+            raise TranscodingTaskBuilderExcpetion('resources list cannot be '
+                                                  'empty')
+        input_stream_path = resources[0]
         presets = cls._get_presets(input_stream_path)
         options = dict.get('options', {})
         video_options = options.get('video', {})
         audio_options = options.get('audio', {})
 
-        audio_params = TranscodingTaskDefinition.TranscodingAudioParams(
-            AudioCodec.from_name(audio_options.get('codec')),
+        ac = audio_options.get('codec')
+        vc = video_options.get('codec')
+
+        audio_params = TranscodingTaskOptions.AudioParams(
+            AudioCodec.from_name(ac) if ac else None,
             audio_options.get('bit_rate'))
 
-        video_params = TranscodingTaskDefinition.TranscodingVideoParams(
-            VideoCodec.from_name(video_options.get('codec')),
-            video_options.get('bit_rate', presets.get('video_bit_rate')))
+        video_params = TranscodingTaskOptions.VideoParams(
+            VideoCodec.from_name(vc) if vc else None,
+            video_options.get('bit_rate', presets.get('video_bit_rate')),
+            video_options.get('frame_rate'),
+            video_options.get('resolution'))
 
         output_container = Container.from_name(options.get(
-            'output_container', presets.get('container')))
+            'container', presets.get('container')))
 
         cls._assert_codec_container_support(audio_params.codec,
                                             video_params.codec,
                                             output_container)
-
-        return TranscodingTaskDefinition(input_stream_path, audio_params,
-                                         video_params, output_container,
-                                         dict['task_id'],
-                                         dict.get('parts', 1))
+        task_def.options.video_params = video_params
+        task_def.options.output_container = output_container
+        task_def.options.audio_params = audio_params
+        task_def.options.audio_params = audio_params
+        task_def.options.name = dict.get('name', '')
+        task_def.options.input_stream_path = input_stream_path
+        return task_def
 
     @classmethod
     def _assert_codec_container_support(cls, audio_codec, video_codec,
                                         output_container):
-        if audio_codec not in output_container.get_supported_audio_codecs():
+        if audio_codec and audio_codec \
+                not in output_container.get_supported_audio_codecs():
             raise TranscodingTaskBuilderExcpetion(
                 'Container {} does not support {}'.format(output_container,
                                                           audio_codec))
 
-        if video_codec not in output_container.get_supported_video_codecs():
+        if video_codec and video_codec \
+                not in output_container.get_supported_video_codecs():
             raise TranscodingTaskBuilderExcpetion(
                 'Container {} does not support {}'.format(output_container,
                                                           video_codec))
@@ -188,7 +205,8 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
     @classmethod
     def build_minimal_definition(cls, task_type: CoreTaskTypeInfo,
                                  dict: Dict[str, Any]):
-        return cls.build_full_definition(task_type, dict)
+        return super(TranscodingTaskBuilder, cls).build_minimal_definition(
+            task_type, dict)
 
     @classmethod
     @HandleError(ValueError, apps.transcoding.common.not_valid_json)
@@ -197,7 +215,7 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         # FIXME get metadata by ffmpeg docker container
         # with open(path) as f:
         # return json.load(f)
-        return {}
+        return {'container': 'mp4'}
 
     @classmethod
     def _get_required_field(cls, dict, key : str) -> str:
@@ -207,9 +225,12 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
                 'Field {} is required in the task definition'.format(key))
         return v
 
+    @classmethod
+    def get_output_path(cls, dictionary, definition):
+        parent = super(TranscodingTaskBuilder, cls)
+        path = parent.get_output_path(dictionary, definition)
+        return '{}.{}'.format(path, dictionary['options']['container'])
 
-class TranscodingTaskOptions(Options):
-    pass
 
 
 class TranscodingTaskBuilderExcpetion(Exception):

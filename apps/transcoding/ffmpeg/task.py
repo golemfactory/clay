@@ -1,3 +1,4 @@
+import logging
 import os
 import pathlib
 
@@ -19,49 +20,64 @@ from golem.docker.job import DockerJob
 # Obsluga bledow
 # LOGI
 
+logger = logging.getLogger(__name__)
+
 
 class ffmpegTaskTypeInfo(CoreTaskTypeInfo):
     def __init__(self):
         super().__init__('FFMPEG', TranscodingTaskDefinition,
-                         TranscodingTaskOptions, TranscodingTaskBuilder)
+                         ffmpegTaskOptions, ffmpegTaskBuilder)
 
 
 class ffmpegTask(TranscodingTask):
     ENVIRONMENT_CLASS = ffmpegEnvironment
 
     def _get_extra_data(self, subtask_num):
+        logger.info('{}:{}'.format(subtask_num, self.task_resources))
+        transcoding_options = self.task_definition.options
+        video_params = transcoding_options.video_params
+        audio_params = transcoding_options.audio_params
         assert subtask_num < len(self.task_resources)
 
         stream_path = os.path.relpath(self.task_resources[subtask_num],
                                       self._get_resources_root_dir())
         stream_path = DockerJob.get_absolute_resource_path(stream_path)
-        output_stream_path = str(pathlib.Path(stream_path).with_suffix(
-            '.{}'.format(self.task_definition.output_container)))
+        filename = os.path.basename(stream_path)
 
-        resolution = self.task_definition.video_params.resolution
-        filename = os.path.splitext(os.path.basename(stream_path))[0]
-        os.path.join(os.path.dirname(os.path.abspath(stream_path)), filename)
+        output_stream_path = pathlib.Path(os.path.join(DockerJob.OUTPUT_DIR,
+                                                       filename))
+        output_stream_path = str(output_stream_path.with_suffix(
+            '.{}'.format(transcoding_options.output_container.value)))
+
+        resolution = video_params.resolution
+        resolution = [resolution[0], resolution[1]] if resolution else None
+        vc = video_params.codec.value if video_params.codec else None
+        ac = audio_params.codec.value if audio_params.codec else None
         extra_data = {
             'track': stream_path,
             'targs': {
                 'video': {
-                    'codec': self.task_definition.video_params.codec,
-                    'bitrate': self.task_definition.video_params.bitrate
+                    'codec': vc,
+                    'bitrate': video_params.bitrate
                     },
                 'audio': {
-                    'codec': self.task_definition.audio_params.codec,
-                    'bitrate': self.task_definition.audio_params.bitrate
+                    'codec': ac,
+                    'bitrate': audio_params.bitrate
                 },
-                'resolution': [resolution[0], resolution[1]],
-                'frame_rate': self.task_definition.video_params.frame_rate
+                'resolution': resolution,
+                'frame_rate': video_params.frame_rate
             },
             'output_stream': output_stream_path,
-            'use_playlist': self.task_definition.use_playlist,
-            'command': Commands.TRANSCODE,
+            'use_playlist': transcoding_options.use_playlist,
+            'command': Commands.TRANSCODE.value[0],
             'script_filepath': FFMPEG_BASE_SCRIPT
         }
+        logger.warning(extra_data)
+        return self._clear_none_values(extra_data)
 
-        return extra_data
+    def _clear_none_values(self, d):
+        return {k: v if not isinstance(v, dict) else self._clear_none_values(v)
+                for k, v in d.items() if v is not None}
 
 
 class ffmpegDefaults(TaskDefaults):
@@ -83,3 +99,7 @@ class ffmpegTaskDefinition(TranscodingTaskDefinition):
     pass
 
 
+class ffmpegTaskOptions(TranscodingTaskOptions):
+    def __init__(self):
+        super(ffmpegTaskOptions, self).__init__()
+        self.environment = ffmpegEnvironment()
