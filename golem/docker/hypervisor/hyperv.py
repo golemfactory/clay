@@ -15,7 +15,7 @@ import psutil
 from pydispatch import dispatcher
 
 from golem import hardware
-from golem.core.common import get_golem_path
+from golem.core.common import get_golem_path, retry
 from golem.core.windows import run_powershell
 from golem.docker import smbshare
 from golem.docker.client import local_client
@@ -61,6 +61,8 @@ EVENTS = {
         'data': None,
     },
 }
+
+START_VM_RETRIES = 2
 
 
 def publish_event(event: Dict) -> None:
@@ -159,6 +161,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
             'Hyper-V: VM %s cannot be restored. Booting ...', vm_name)
         self.start_vm(vm_name)
 
+    @retry(subprocess.CalledProcessError, count=START_VM_RETRIES)
     def start_vm(self, name: Optional[str] = None) -> None:
         name = name or self._vm_name
         constr = self.constraints()
