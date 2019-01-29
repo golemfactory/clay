@@ -3,7 +3,7 @@ import math
 from datetime import datetime
 from collections import Callable
 from .core_verifier import CoreVerifier
-from .imgrepr import load_img
+from apps.rendering.resources.imgrepr import load_img
 from .verifier import SubtaskVerificationState
 
 logger = logging.getLogger("apps.rendering")

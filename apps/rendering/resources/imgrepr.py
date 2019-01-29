@@ -229,7 +229,7 @@ def load_img(file_: str) -> Optional[ImgRepr]:
     try:
         _, ext = os.path.splitext(file_)
         if ext.upper() != ".EXR":
-            img = PILImgRepr()
+            img = OpenCVImgRepr()
         else:
             img = EXRImgRepr()
         img.load_from_file(file_)
