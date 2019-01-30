@@ -208,12 +208,7 @@ class CoreTask(Task):
                           **{'owner': self.header.task_owner.key}},
             results=result_files,
             resources=self.task_resources,
-            reference_data=self.get_reference_data()
         )
-
-    # pylint:disable=no-self-use
-    def get_reference_data(self):
-        return []
 
     def verification_finished(self, subtask_id, verdict, result):
         try:
