@@ -317,7 +317,7 @@ class RequestorPaysTest(ForcePaymentBase):
         self.requestor_sci.on_transaction_confirmed(tx_hash, _on_batch)
         sys.stderr.write('Waiting for confirmation %s' % (tx_hash,))
         self.retry_until_timeout(
-            lambda: confirmed,
+            lambda: not confirmed,
             'Batch transfer timeout',
         )
         sys.stderr.write('\n')
