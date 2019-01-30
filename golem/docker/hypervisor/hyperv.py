@@ -161,7 +161,10 @@ class HyperVHypervisor(DockerMachineHypervisor):
             'Hyper-V: VM %s cannot be restored. Booting ...', vm_name)
         self.start_vm(vm_name)
 
-    @retry(subprocess.CalledProcessError, count=START_VM_RETRIES)
+    @retry(
+        (subprocess.CalledProcessError, RuntimeError),
+        count=START_VM_RETRIES
+    )
     def start_vm(self, name: Optional[str] = None) -> None:
         name = name or self._vm_name
         constr = self.constraints()
