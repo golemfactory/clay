@@ -82,7 +82,7 @@ class Task(object):
 class Subtask(object):
     """ Golem subtask representation for GU gateway"""
 
-    __slots__ = ['task_id', 'subtask_id', 'description', 'price', 'deadline',
+    __slots__ = ['task_id', 'subtask_id', 'price', 'deadline',
                  'docker_images', 'extra_data']
 
     def __init__(self, **kwargs):
@@ -90,7 +90,6 @@ class Subtask(object):
         ctd = kwargs['ctd']
         self.task_id = ctd['task_id']
         self.subtask_id = ctd['subtask_id']
-        self.description = ctd['short_description']
         self.deadline: int = int(ctd['deadline'])
         self.docker_images = ctd['docker_images']
         self.extra_data: dict = ctd['extra_data']
@@ -100,7 +99,6 @@ class Subtask(object):
         return {
             'taskId': self.task_id,
             'subtaskId': self.subtask_id,
-            'description': self.description,
             'price': self.price,
             'deadline': self.deadline,
             'docker_images': self.docker_images,
