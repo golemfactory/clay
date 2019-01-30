@@ -73,3 +73,12 @@ def is_version_compatible(theirs: str,
         logger.debug("Can't parse version: %r -> %s", theirs, e)
         return False
     return theirs_v in spec
+
+
+def get_min_version(ours_v: semantic_version.Version) \
+        -> semantic_version.Version:
+    min_version = semantic_version.Version(str(ours_v))  # copy
+    min_version.patch = 0
+    min_version.prerelease = ()
+    min_version.build = ()
+    return min_version

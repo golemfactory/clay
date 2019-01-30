@@ -5,7 +5,7 @@ import typing
 from netaddr import IPAddress, valid_ipv4
 from autobahn.twisted import ApplicationSession
 from autobahn.twisted.websocket import WampWebSocketClientFactory
-from autobahn.wamp import ProtocolError, auth
+from autobahn.wamp import Error as WampError, ProtocolError, auth
 from autobahn.wamp import types
 from twisted.application.internet import ClientService, backoffPolicy
 from twisted.internet import ssl as twisted_ssl
@@ -16,6 +16,7 @@ from twisted.internet.endpoints import (
 )
 
 from golem.rpc.common import X509_COMMON_NAME
+from golem.rpc import utils as rpc_utils
 
 logger = logging.getLogger('golem.rpc')
 
@@ -202,6 +203,7 @@ class Session(ApplicationSession):
             deferred.addErrback(self._on_error)
             yield deferred
 
+    @rpc_utils.expose('sys.exposed_procedures')
     def exposed_procedures(self):
         exposed: typing.Dict[str, str] = {}
         for registration in self._registrations.values():
@@ -281,10 +283,20 @@ class Publisher:  # pylint: disable=too-few-public-methods
     def __init__(self, session):
         self.session = session
 
-    def publish(self, event_alias, *args, **kwargs):
+    def publish(self, event_alias, *args, **kwargs) \
+            -> typing.Optional[Deferred]:
+        """
+        :return: deferred autobahn.wamp.request.Publication on success or None
+                 if session is closing or there's an error
+        """
         if self.session.is_open():
-            self.session.publish(str(event_alias), *args, **kwargs)
+            try:
+                return self.session.publish(str(event_alias), *args,
+                                            **kwargs)
+            except WampError as e:
+                logger.error("RPC: Cannot publish '%s', because %r",
+                             event_alias, e)
         elif not self.session.is_closing():
-            logger.warning("RPC: Cannot publish %r, "
-                           "session is not yet established",
-                           event_alias)
+            logger.warning("RPC: Cannot publish '%s', session is not yet "
+                           "established", event_alias)
+        return None

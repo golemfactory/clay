@@ -22,6 +22,7 @@ from golem.ethereum import exceptions as eth_exceptions
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
 from golem.task import taskbase
+from golem.task import taskkeeper
 from golem.task import taskstate
 from golem.task import tasktester
 
@@ -102,13 +103,6 @@ def prepare_and_validate_task_dict(client, task_dict):
         'concent_enabled',
         client.concent_service.enabled,
     )
-    # TODO #3474
-    if 'subtasks' in task_dict:
-        logger.warning(
-            "Using soon to be deprecated data format for input JSON."
-            " Change `subtasks` to `subtasks_count`",
-        )
-        task_dict['subtasks_count'] = task_dict.pop('subtasks')
     _validate_task_dict(client, task_dict)
 
 
@@ -430,7 +424,7 @@ class ClientProvider:
     def create_task(self, task_dict, force=False) \
             -> typing.Tuple[typing.Optional[str], typing.Optional[str]]:
         """
-        - force: if True will ignore warnings
+        :param force: if True will ignore warnings
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
@@ -567,3 +561,40 @@ class ClientProvider:
         )
         # Don't wait for _deferred
         return True
+
+    @rpc_utils.expose('comp.tasks.estimated.cost')
+    def get_estimated_cost(self, _task_type: str, options: dict) -> dict:
+        # FIXME task_type is unused
+        options['price'] = int(options['price'])
+        options['subtask_timeout'] = common.string_to_timeout(
+            options['subtask_timeout'],
+        )
+        options['subtasks_count'] = int(options['subtasks_count'])
+
+        subtask_price: int = taskkeeper.compute_subtask_value(
+            price=options['price'],
+            computation_time=options['subtask_timeout'],
+        )
+        estimated_gnt: int = options['subtasks_count'] \
+            * subtask_price
+        estimated_eth: int = self.client \
+            .transaction_system.eth_for_batch_payment(
+                options['subtasks_count'],
+            )
+        estimated_gnt_deposit: typing.Tuple[int, int] = \
+            msg_helpers.requestor_deposit_amount(
+                estimated_gnt,
+            )
+        estimated_deposit_eth: int = self.client.transaction_system \
+            .eth_for_deposit()
+        result = {
+            'GNT': str(estimated_gnt),
+            'ETH': str(estimated_eth),
+            'deposit': {
+                'GNT_required': str(estimated_gnt_deposit[0]),
+                'GNT_suggested': str(estimated_gnt_deposit[1]),
+                'ETH': str(estimated_deposit_eth),
+            },
+        }
+        logger.info('Estimated task cost. result=%r', result)
+        return result

@@ -292,7 +292,8 @@ class TaskServer(
 
         return None
 
-    def task_given(self, node_id: str, ctd, price: int) -> bool:
+    def task_given(self, node_id: str, ctd: message.ComputeTaskDef,
+                   price: int) -> bool:
         if not self.task_computer.task_given(ctd):
             return False
         self.requested_tasks.remove(ctd['task_id'])
@@ -393,6 +394,12 @@ class TaskServer(
                 'Invalid signature task_header:%r, signature: %r',
                 task_header,
                 task_header.signature,
+            )
+            return False
+        if task_header.deadline < time.time():
+            logger.info(
+                "Task's deadline already in the past. task_header: %r",
+                task_header
             )
             return False
         try:

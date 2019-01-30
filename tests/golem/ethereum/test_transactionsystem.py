@@ -1,26 +1,20 @@
 # pylint: disable=protected-access
-from os import urandom
 from pathlib import Path
 import sys
 import time
 from typing import Optional
 from unittest.mock import patch, Mock, ANY, PropertyMock
-from unittest import TestCase
 
-from eth_utils import encode_hex
 from ethereum.utils import denoms
 import faker
 from freezegun import freeze_time
+import golem_sci.contracts
 import golem_sci.structs
-import requests
 
 from golem import model
 from golem import testutils
 from golem.ethereum import exceptions
-from golem.ethereum.transactionsystem import (
-    TransactionSystem,
-    tETH_faucet_donate,
-)
+from golem.ethereum.transactionsystem import TransactionSystem
 from golem.ethereum.exceptions import NotEnoughFunds
 
 fake = faker.Faker()
@@ -54,13 +48,16 @@ class TransactionSystemBase(testutils.DatabaseFixture):
             patch('golem.ethereum.transactionsystem.new_sci',
                   return_value=self.sci):
             ets = TransactionSystem(
-                datadir or self.new_path,
-                Mock(
+                datadir=datadir or self.new_path,
+                config=Mock(
                     NODE_LIST=[],
                     FALLBACK_NODE_LIST=[],
                     CHAIN='test_chain',
                     FAUCET_ENABLED=False,
                     WITHDRAWALS_ENABLED=withdrawals,
+                    CONTRACT_ADDRESSES={
+                        golem_sci.contracts.GNTDeposit: 'some address',
+                    },
                 )
             )
             if not just_create:
@@ -88,11 +85,14 @@ class TestTransactionSystem(TransactionSystemBase):
     def test_chain_arg(self, new_sci):
         new_sci.return_value = self.sci
         ets = TransactionSystem(
-            self.new_path,
-            Mock(
+            datadir=self.new_path,
+            config=Mock(
                 NODE_LIST=[],
                 FALLBACK_NODE_LIST=[],
                 CHAIN='test_chain',
+                CONTRACT_ADDRESSES={
+                    golem_sci.contracts.GNTDeposit: 'some address',
+                },
             )
         )
         ets.set_password(PASSWORD)
@@ -119,17 +119,15 @@ class TestTransactionSystem(TransactionSystemBase):
 
     def test_get_withdraw_gas_cost(self):
         dest = '0x' + 40 * '0'
-        gas_price = 123
         eth_gas_cost = 21000
         self.sci.GAS_WITHDRAW = 555
-        self.sci.get_current_gas_price.return_value = gas_price
         self.sci.estimate_transfer_eth_gas.return_value = eth_gas_cost
 
         cost = self.ets.get_withdraw_gas_cost(100, dest, 'ETH')
-        assert cost == eth_gas_cost * gas_price
+        assert cost == eth_gas_cost
 
         cost = self.ets.get_withdraw_gas_cost(200, dest, 'GNT')
-        assert cost == self.sci.GAS_WITHDRAW * gas_price
+        assert cost == self.sci.GAS_WITHDRAW
 
     def test_get_gas_price(self):
         test_gas_price = 1234
@@ -142,96 +140,6 @@ class TestTransactionSystem(TransactionSystemBase):
         ets = self._make_ets()
 
         self.assertEqual(ets.gas_price_limit, self.sci.GAS_PRICE)
-
-    def test_withdraw_unknown_currency(self):
-        dest = '0x' + 40 * 'd'
-        with self.assertRaises(ValueError, msg="Unknown currency asd"):
-            self.ets.withdraw(1, dest, 'asd')
-
-    def test_withdraw(self):
-        eth_balance = 40 * denoms.ether
-        gnt_balance = 10 * denoms.ether
-        gntb_balance = 20 * denoms.ether
-        self.sci.get_eth_balance.return_value = eth_balance
-        self.sci.get_gnt_balance.return_value = gnt_balance
-        self.sci.get_gntb_balance.return_value = gntb_balance
-        eth_tx = '0xee'
-        gntb_tx = '0xfad'
-        self.sci.transfer_eth.return_value = eth_tx
-        self.sci.convert_gntb_to_gnt.return_value = gntb_tx
-        dest = '0x' + 40 * 'd'
-
-        self.ets._refresh_balances()
-
-        # Invalid address
-        with self.assertRaisesRegex(ValueError, 'is not valid ETH address'):
-            self.ets.withdraw(1, 'asd', 'ETH')
-
-        # Not enough GNT
-        with self.assertRaises(NotEnoughFunds):
-            self.ets.withdraw(gnt_balance + gntb_balance + 1, dest, 'GNT')
-
-        # Not enough ETH
-        with self.assertRaises(NotEnoughFunds):
-            self.ets.withdraw(eth_balance + 1, dest, 'ETH')
-
-        # Enough GNTB
-        res = self.ets.withdraw(gntb_balance - 1, dest, 'GNT')
-        assert res == gntb_tx
-        self.sci.convert_gntb_to_gnt.assert_called_once_with(
-            dest,
-            gntb_balance - 1,
-        )
-        self.sci.on_transaction_confirmed.call_args[0][1](Mock(status=True))
-        self.sci.reset_mock()
-
-        # Not enough GNTB
-        with self.assertRaises(NotEnoughFunds):
-            self.ets.withdraw(gnt_balance + gntb_balance - 1, dest, 'GNT')
-        self.sci.reset_mock()
-
-        # Enough ETH
-        res = self.ets.withdraw(eth_balance - 1, dest, 'ETH')
-        assert res == eth_tx
-        self.sci.transfer_eth.assert_called_once_with(dest, eth_balance - 1)
-        self.sci.reset_mock()
-
-        # Enough ETH with lock
-        self.ets.lock_funds_for_payments(1, 1)
-        locked_eth = self.ets.get_locked_eth()
-        locked_gnt = self.ets.get_locked_gnt()
-        assert 0 < locked_eth < eth_balance
-        assert 0 < locked_gnt < gnt_balance
-        res = self.ets.withdraw(eth_balance - locked_eth, dest, 'ETH')
-        assert res == eth_tx
-        self.sci.transfer_eth.assert_called_once_with(
-            dest,
-            eth_balance - locked_eth,
-        )
-        self.sci.reset_mock()
-
-        # Not enough ETH with lock
-        with self.assertRaises(NotEnoughFunds):
-            self.ets.withdraw(eth_balance - locked_eth + 1, dest, 'ETH')
-        self.sci.reset_mock()
-
-        # Enough GNTB with lock
-        res = self.ets.withdraw(gntb_balance - locked_gnt, dest, 'GNT')
-        self.sci.convert_gntb_to_gnt.assert_called_once_with(
-            dest,
-            gntb_balance - 1,
-        )
-        self.sci.reset_mock()
-
-        # Not enough GNT with lock
-        with self.assertRaises(NotEnoughFunds):
-            self.ets.withdraw(gntb_balance + locked_gnt + 1, dest, 'GNT')
-        self.sci.reset_mock()
-
-    def test_withdraw_disabled(self):
-        ets = self._make_ets(withdrawals=False)
-        with self.assertRaisesRegex(Exception, 'Withdrawals are disabled'):
-            ets.withdraw(1, '0x' + 40 * '0', 'GNT')
 
     def test_locking_funds(self):
         eth_balance = 10 * denoms.ether
@@ -265,24 +173,6 @@ class TestTransactionSystem(TransactionSystemBase):
 
         with self.assertRaisesRegex(Exception, "Can't unlock .* GNT"):
             self.ets.unlock_funds_for_payments(1, 1)
-
-    def test_withdraw_lock_gntb(self):
-        eth_balance = 10 * denoms.ether
-        gntb_balance = 1000 * denoms.ether
-        self.sci.get_eth_balance.return_value = eth_balance
-        self.sci.get_gntb_balance.return_value = gntb_balance
-        self.ets._refresh_balances()
-
-        assert self.ets.get_available_gnt() == gntb_balance
-
-        self.ets.withdraw(gntb_balance, '0x' + 40 * '0', 'GNT')
-        assert self.ets.get_available_gnt() == 0
-        self.sci.on_transaction_confirmed.assert_called_once()
-
-        self.sci.get_gntb_balance.return_value = 0
-        self.ets._refresh_balances()
-        self.sci.on_transaction_confirmed.call_args[0][1](Mock(status=True))
-        assert self.ets.get_available_gnt() == 0
 
     def test_locking_funds_changing_gas_price(self):
         eth_balance = 10 * denoms.ether
@@ -401,6 +291,144 @@ class TestTransactionSystem(TransactionSystemBase):
 
         # Shouldn't throw
         self._make_ets(datadir=self.new_path / 'other', password=password)
+
+
+class WithdrawTest(TransactionSystemBase):
+    def setUp(self):
+        super().setUp()
+        self.eth_balance = 10 * denoms.ether
+        self.gnt_balance = 1000 * denoms.ether
+        self.gas_price = 10 ** 9
+        self.gas_cost = 21000
+        self.sci.get_eth_balance.return_value = self.eth_balance
+        self.sci.get_gntb_balance.return_value = self.gnt_balance
+        self.sci.get_current_gas_price.return_value = self.gas_price
+        self.sci.estimate_transfer_eth_gas.return_value = self.gas_cost
+        self.dest = '0x' + 40 * 'd'
+
+        self.eth_tx = '0xee'
+        self.gntb_tx = '0xfad'
+        self.sci.transfer_eth.return_value = self.eth_tx
+        self.sci.convert_gntb_to_gnt.return_value = self.gntb_tx
+
+        self.ets._refresh_balances()
+
+    def test_unknown_currency(self):
+        with self.assertRaises(ValueError, msg="Unknown currency asd"):
+            self.ets.withdraw(1, self.dest, 'asd')
+
+    def test_invalid_address(self):
+        with self.assertRaisesRegex(ValueError, 'is not valid ETH address'):
+            self.ets.withdraw(1, 'asd', 'ETH')
+
+    def test_not_enough_gnt(self):
+        with self.assertRaises(NotEnoughFunds):
+            self.ets.withdraw(self.gnt_balance + 1, self.dest, 'GNT')
+
+    def test_not_enough_eth(self):
+        with self.assertRaises(NotEnoughFunds):
+            self.ets.withdraw(self.eth_balance + 1, self.dest, 'ETH')
+
+    def test_enough_gnt(self):
+        amount = 3 * denoms.ether
+        res = self.ets.withdraw(amount, self.dest, 'GNT')
+        assert res == self.gntb_tx
+        self.sci.convert_gntb_to_gnt.assert_called_once_with(
+            self.dest,
+            amount,
+            None,
+        )
+
+    def test_custom_gas_price_gnt(self):
+        gas_price = 111
+        amount = 3 * denoms.ether
+        self.ets.withdraw(amount, self.dest, 'GNT', gas_price)
+        self.sci.convert_gntb_to_gnt.assert_called_once_with(
+            self.dest,
+            amount,
+            gas_price,
+        )
+
+    def test_enough_eth(self):
+        amount = denoms.ether
+        res = self.ets.withdraw(amount, self.dest, 'ETH')
+        assert res == self.eth_tx
+        self.sci.transfer_eth.assert_called_once_with(
+            self.dest,
+            amount - self.gas_price * self.gas_cost,
+            self.gas_price,
+        )
+
+    def test_custom_gas_price_eth(self):
+        gas_price = 1111
+        amount = denoms.ether
+        self.ets.withdraw(amount, self.dest, 'ETH', gas_price)
+        self.sci.transfer_eth.assert_called_once_with(
+            self.dest,
+            amount - gas_price * self.gas_cost,
+            gas_price,
+        )
+
+    def test_eth_with_lock(self):
+        self.ets.lock_funds_for_payments(1, 1)
+        locked_eth = self.ets.get_locked_eth()
+        assert 0 < locked_eth < self.eth_balance
+        self.ets.withdraw(self.eth_balance - locked_eth, self.dest, 'ETH')
+        self.sci.transfer_eth.assert_called_once_with(
+            self.dest,
+            self.eth_balance - locked_eth - self.gas_price * self.gas_cost,
+            self.gas_price,
+        )
+
+    def test_not_enough_eth_with_lock(self):
+        self.ets.lock_funds_for_payments(1, 1)
+        locked_eth = self.ets.get_locked_eth()
+        assert 0 < locked_eth < self.eth_balance
+        with self.assertRaisesRegex(NotEnoughFunds, 'ETH'):
+            self.ets.withdraw(
+                self.eth_balance - locked_eth + 1,
+                self.dest,
+                'ETH',
+            )
+
+    def test_gnt_with_lock(self):
+        self.ets.lock_funds_for_payments(1, 1)
+        locked_gnt = self.ets.get_locked_gnt()
+        assert 0 < locked_gnt < self.gnt_balance
+        self.ets.withdraw(self.gnt_balance - locked_gnt, self.dest, 'GNT')
+        self.sci.convert_gntb_to_gnt.assert_called_once_with(
+            self.dest,
+            self.gnt_balance - locked_gnt,
+            None,
+        )
+
+    def test_not_enough_gnt_with_lock(self):
+        self.ets.lock_funds_for_payments(1, 1)
+        locked_gnt = self.ets.get_locked_gnt()
+        assert 0 < locked_gnt < self.gnt_balance
+        with self.assertRaisesRegex(NotEnoughFunds, 'GNT'):
+            self.ets.withdraw(
+                self.gnt_balance + locked_gnt + 1,
+                self.dest,
+                'GNT',
+            )
+
+    def test_disabled(self):
+        ets = self._make_ets(withdrawals=False)
+        with self.assertRaisesRegex(Exception, 'Withdrawals are disabled'):
+            ets.withdraw(1, self.dest, 'GNT')
+
+    def test_lock_gntb(self):
+        assert self.ets.get_available_gnt() == self.gnt_balance
+
+        self.ets.withdraw(self.gnt_balance, self.dest, 'GNT')
+        assert self.ets.get_available_gnt() == 0
+        self.sci.on_transaction_confirmed.assert_called_once()
+
+        self.sci.get_gntb_balance.return_value = 0
+        self.ets._refresh_balances()
+        self.sci.on_transaction_confirmed.call_args[0][1](Mock(status=True))
+        assert self.ets.get_available_gnt() == 0
 
 
 class ConcentDepositTest(TransactionSystemBase):
@@ -637,37 +665,3 @@ class ConcentUnlockTest(TransactionSystemBase):
             int(time.time()) + delay
         self.sci.on_transaction_confirmed.call_args[0][1](Mock())
         call_later.assert_called_once_with(delay, self.ets.concent_withdraw)
-
-
-class FaucetTest(TestCase):
-    @classmethod
-    @patch('requests.get')
-    def test_error_code(cls, get):
-        addr = encode_hex(urandom(20))
-        response = Mock(spec=requests.Response)
-        response.status_code = 500
-        get.return_value = response
-        assert tETH_faucet_donate(addr) is False
-
-    @classmethod
-    @patch('requests.get')
-    def test_error_msg(cls, get):
-        addr = encode_hex(urandom(20))
-        response = Mock(spec=requests.Response)
-        response.status_code = 200
-        response.json.return_value = {'paydate': 0, 'message': "Ooops!"}
-        get.return_value = response
-        assert tETH_faucet_donate(addr) is False
-
-    @classmethod
-    @patch('requests.get')
-    def test_success(cls, get):
-        addr = encode_hex(urandom(20))
-        response = Mock(spec=requests.Response)
-        response.status_code = 200
-        response.json.return_value = {'paydate': 1486605259,
-                                      'amount': 999999999999999}
-        get.return_value = response
-        assert tETH_faucet_donate(addr) is True
-        assert get.call_count == 1
-        assert addr in get.call_args[0][0]

@@ -47,7 +47,10 @@ class TestHyperVHypervisor(TestCase):
     def test_parse_create_params_constraints(self, *_):
         args = self.hyperv._parse_create_params(cpu=4, mem=4096)
         self._assert_param(args, '--hyperv-cpu-count', '4')
-        self._assert_param(args, '--hyperv-memory', '4096')
+        # self._assert_param(args, '--hyperv-memory', '4096')
+        # TODO: Restore when we have a better estimation of available RAM
+        self._assert_param(args, '--hyperv-memory',
+                           str(MIN_CONSTRAINTS[CONSTRAINT_KEYS['mem']]))
 
     @patch(PATCH_BASE + '.HyperVHypervisor._check_system_drive_space')
     @patch(PATCH_BASE + '.HyperVHypervisor._get_vswitch_name')
@@ -56,8 +59,11 @@ class TestHyperVHypervisor(TestCase):
     def test_parse_create_params_constraints_memory_cap(self, logger, *_):
         args = self.hyperv._parse_create_params(cpu=4, mem=4096)
         self._assert_param(args, '--hyperv-cpu-count', '4')
-        self._assert_param(args, '--hyperv-memory', '2048')
-        logger.warning.assert_called_once()
+        # self._assert_param(args, '--hyperv-memory', '2048')
+        # logger.warning.assert_called_once()
+        # TODO: Restore when we have a better estimation of available RAM
+        self._assert_param(args, '--hyperv-memory',
+                           str(MIN_CONSTRAINTS[CONSTRAINT_KEYS['mem']]))
 
     @patch(PATCH_BASE + '.HyperVHypervisor._get_vswitch_name')
     @patch(PATCH_BASE + '.HyperVHypervisor._memory_cap', lambda _, x: x)
@@ -69,7 +75,8 @@ class TestHyperVHypervisor(TestCase):
         self._assert_param(args, '--hyperv-cpu-count', '4')
         self._assert_param(args, '--hyperv-memory',
                            str(MIN_CONSTRAINTS[CONSTRAINT_KEYS['mem']]))
-        logger.warning.assert_called_once()
+        # logger.warning.assert_called_once()
+        # TODO: Restore when we have a better estimation of available RAM
 
     @patch(PATCH_BASE + '.HyperVHypervisor._check_system_drive_space')
     @patch(PATCH_BASE + '.subprocess.run',
@@ -144,7 +151,7 @@ class TestHyperVHypervisor(TestCase):
             'NumberOfProcessors': 1,
         }
         mem_settings = dict()
-        mem_settings['Limit'] = 2048
+        mem_settings['Reservation'] = 2048
         get_memory.return_value = mem_settings
 
         #  WHEN

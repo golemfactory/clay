@@ -1,6 +1,7 @@
 import decimal
 import logging
 import os
+import time
 from typing import Type, Dict, Any
 
 from ethereum.utils import denoms
@@ -13,7 +14,7 @@ from golem_verificator.verifier import SubtaskVerificationState
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.core.verification_queue import VerificationQueue
-import golem
+from golem import constants as gconst
 from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.fileshelper import outer_dir_path
@@ -138,7 +139,7 @@ class CoreTask(Task):
             self.docker_images = None
 
         th = dt_tasks.TaskHeader(
-            min_version=golem.__version__,
+            min_version=str(gconst.GOLEM_MIN_VERSION),
             task_id=task_definition.task_id,
             environment=self.environment.get_id(),
             task_owner=owner,
@@ -149,6 +150,7 @@ class CoreTask(Task):
             estimated_memory=task_definition.estimated_memory,
             max_price=task_definition.max_price,
             concent_enabled=task_definition.concent_enabled,
+            timestamp=int(time.time()),
         )
 
         Task.__init__(self, th, src_code, task_definition)
@@ -526,6 +528,10 @@ class CoreTaskBuilder(TaskBuilder):
 
     @classmethod
     def build_minimal_definition(cls, task_type: CoreTaskTypeInfo, dictionary):
+        logger.debug(
+            "build_minimal_definition. task_type=%r, dictionary=%r",
+            task_type, dictionary
+        )
         definition = task_type.definition()
         definition.options = task_type.options()
         definition.task_type = task_type.name

@@ -143,8 +143,13 @@ class TestBaseDockerJob(TestDockerJob):
         self.assertTrue(job._get_host_script_path().startswith(job.work_dir))
 
     def _load_dict(self, path):
-        with open(path, 'r') as f:
-            return json.load(f)
+        with open(path, 'rb') as f:
+            lines = f.readlines()
+        d = {}
+        for l in lines:
+            key, val = l.decode('utf-8').split("=")
+            d[key.strip()] = eval(val.strip())  # noqa pylint:disable=eval-used
+        return d
 
     def _test_params_saved(self, task_params):
         with self._create_test_job(params=task_params) as job:

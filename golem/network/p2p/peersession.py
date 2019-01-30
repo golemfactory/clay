@@ -9,6 +9,7 @@ from golem_messages.datastructures import p2p as dt_p2p
 from pydispatch import dispatcher
 
 import golem
+from golem import constants as gconst
 from golem.appconfig import SEND_PEERS_NUM
 from golem.core import variables
 from golem.core.keysauth import KeysAuth
@@ -24,7 +25,7 @@ def compare_version(client_ver):
     except ValueError:
         logger.debug('Received invalid version tag: %r', client_ver)
         return
-    if semantic_version.Version(golem.__version__) < v_client:
+    if gconst.GOLEM_VERSION < v_client:
         dispatcher.send(
             signal='golem.p2p',
             event='new_version',
@@ -331,9 +332,6 @@ class PeerSession(BasicSafeSession):
         self._send_peers()
 
     def _react_to_peers(self, msg):
-        if not isinstance(msg.peers, list):
-            return
-
         peers_info = msg.peers[:SEND_PEERS_NUM]
         self.degree = len(peers_info)
         for pi in peers_info:
@@ -366,7 +364,9 @@ class PeerSession(BasicSafeSession):
         self.send(message.p2p.Tasks(tasks=tasks_to_send))
 
     def _react_to_tasks(self, msg):
+        logger.debug("Running handler for `Tasks`. msg=%r", msg)
         for t in msg.tasks:
+            logger.debug("Task information received. task header: %r", t)
             if not self.p2p_service.add_task_header(t):
                 self.disconnect(
                     message.base.Disconnect.REASON.BadProtocol

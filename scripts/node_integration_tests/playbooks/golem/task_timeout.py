@@ -5,6 +5,23 @@ from ..base import NodeTestPlaybook
 
 
 class TaskTimeoutAndRestart(NodeTestPlaybook):
+    """
+    Reproduces a scenario where:
+    * Requestor has a a task with 2 subtasks,
+    * on the first run, the Provider is modified to respond to a task just once
+      (it should send only one `WantToComputeTask`),
+    * because there's just one Provider who accepts only one subtask,
+      the task as a whole should time out,
+    * afterwards, the nodes are restarted, this time both as unmodified
+      Golem nodes,
+    * the timed-out task (with only one subtask successfully finished) is then
+      restarted using the `comp.task.restart_subtasks` call - the result is a
+      new task which contains one already-completed subtask and another,
+      failed one,
+    * the Provider should then be able to pick up that second subtask, thus
+      allowing the task as a whole to finish successfully this time.
+
+    """
     provider_node_script = 'provider/no_wtct_after_ttc'
     requestor_node_script = 'requestor/debug'
     task_settings = '2_short'
@@ -43,39 +60,6 @@ class TaskTimeoutAndRestart(NodeTestPlaybook):
         return self.call_requestor('comp.task', self.task_id,
                        on_success=on_success, on_error=self.print_error)
 
-    def step_stop_nodes(self):
-        if self.started:
-            print("Stopping nodes")
-            self.stop_nodes()
-
-        time.sleep(10)
-        provider_exit = self.provider_node.poll()
-        requestor_exit = self.requestor_node.poll()
-        if provider_exit is not None and requestor_exit is not None:
-            if provider_exit or requestor_exit:
-                print(
-                    "Abnormal termination provider: %s, requestor: %s",
-                    provider_exit,
-                    requestor_exit,
-                )
-                self.fail()
-            else:
-                print("Stopped nodes")
-                self.next()
-        else:
-            print("...")
-
-    def step_restart_nodes(self):
-        print("Starting nodes again")
-        # replace the failing provider node with a regular one
-        self.provider_node_script = self.provider_node_script_2
-        self.task_in_creation = False
-        time.sleep(60)
-
-        self.start_nodes()
-        print("Nodes restarted")
-        self.next()
-
     def step_restart_task(self):
         def on_success(result):
             print("Restarted task. {}".format(result))
@@ -92,30 +76,15 @@ class TaskTimeoutAndRestart(NodeTestPlaybook):
     def step_success(self):
         self.success()
 
-    steps: typing.Tuple = (
-        NodeTestPlaybook.step_get_provider_key,
-        NodeTestPlaybook.step_get_requestor_key,
-        NodeTestPlaybook.step_get_provider_network_info,
-        NodeTestPlaybook.step_connect_nodes,
-        NodeTestPlaybook.step_verify_peer_connection,
-        NodeTestPlaybook.step_wait_provider_gnt,
-        NodeTestPlaybook.step_wait_requestor_gnt,
-        NodeTestPlaybook.step_get_known_tasks,
+    steps: typing.Tuple = NodeTestPlaybook.initial_steps + (
         NodeTestPlaybook.step_create_task,
         NodeTestPlaybook.step_get_task_id,
         NodeTestPlaybook.step_get_task_status,
         step_wait_subtask_completed,
         step_wait_task_timeout,
-        step_stop_nodes,
-        step_restart_nodes,
-        NodeTestPlaybook.step_get_provider_key,
-        NodeTestPlaybook.step_get_requestor_key,
-        NodeTestPlaybook.step_get_provider_network_info,
-        NodeTestPlaybook.step_connect_nodes,
-        NodeTestPlaybook.step_verify_peer_connection,
-        NodeTestPlaybook.step_wait_provider_gnt,
-        NodeTestPlaybook.step_wait_requestor_gnt,
-        NodeTestPlaybook.step_get_known_tasks,
+        NodeTestPlaybook.step_stop_nodes,
+        NodeTestPlaybook.step_restart_nodes,
+    ) + NodeTestPlaybook.initial_steps + (
         step_restart_task,
         NodeTestPlaybook.step_get_task_id,
         NodeTestPlaybook.step_get_task_status,

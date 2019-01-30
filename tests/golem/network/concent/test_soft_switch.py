@@ -4,7 +4,7 @@ from golem.tools.testwithdatabase import TestWithDatabase
 
 class TestContentSoftSwitch(TestWithDatabase):
     def test_default_value(self):
-        self.assertTrue(soft_switch.is_on())
+        self.assertFalse(soft_switch.is_on())
 
     def test_turn_on(self):
         soft_switch.turn(True)

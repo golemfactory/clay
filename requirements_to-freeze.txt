@@ -14,7 +14,7 @@ docker==3.5.0
 enforce==0.3.4
 eth-utils==1.0.3
 ethereum==1.6.1
-Golem-Messages==2.22.1
+Golem-Messages==2.24.1
 Golem-Smart-Contracts-Interface==1.6.1
 Golem-Verificator==1.7.0
 html2text==2018.1.9
@@ -33,7 +33,7 @@ Pillow==4.2.1
 pluggy==0.6.0
 portalocker==1.2.1
 psutil==5.2.2
-py-cpuinfo==3.3.0
+py-cpuinfo==4.0.0
 pyasn1==0.4.1
 pycparser==2.17
 pydispatcher

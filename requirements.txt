@@ -33,7 +33,7 @@ eth-tester==0.1.0-beta.24
 eth-utils==1.0.3
 ethereum==1.6.1
 Flask==1.0.2
-Golem-Messages==2.22.1
+Golem-Messages==2.24.1
 Golem-Smart-Contracts-Interface==1.6.1
 Golem-Verificator==1.7.0
 greenlet==0.4.15
@@ -80,7 +80,7 @@ pluggy==0.6.0
 portalocker==1.2.1
 priority==1.3.0
 psutil==5.2.2
-py-cpuinfo==3.3.0
+py-cpuinfo==4.0.0
 py-ubjson==0.11.0
 pyasn1-modules==0.2.1
 pyasn1==0.4.1

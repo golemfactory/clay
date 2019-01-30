@@ -6,7 +6,7 @@ import enum
 import functools
 import logging
 import time
-from typing import TYPE_CHECKING, List
+from typing import TYPE_CHECKING, List, Optional
 
 from ethereum.utils import denoms
 from golem_messages import helpers as msg_helpers
@@ -208,7 +208,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
 
         def verification_finished():
+            logger.debug("Verification finished handler.")
             if not self.task_manager.verify_subtask(subtask_id):
+                logger.debug("Verification failure. subtask_id=%r", subtask_id)
                 send_verification_failure()
                 self.dropped()
                 return
@@ -450,6 +452,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     # Reactions to messages #
     #########################
 
+    # pylint: disable=too-many-return-statements
     def _react_to_want_to_compute_task(self, msg):
         def _cannot_assign(reason):
             logger.debug("Cannot assign task: %r", reason)
@@ -468,6 +471,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         if not self.task_manager.is_my_task(msg.task_id):
+            _cannot_assign(reasons.NotMyTask)
+            return
+
+        try:
+            msg.task_header.verify(self.my_public_key)
+        except msg_exceptions.InvalidSignature:
             _cannot_assign(reasons.NotMyTask)
             return
 
@@ -614,10 +623,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
         OfferPool.add(msg.task_id, offer).addCallback(_offer_chosen)
 
+    # pylint: disable=too-many-return-statements
     @handle_attr_error_with_task_computer
     @history.provider_history
     def _react_to_task_to_compute(self, msg):
-        ctd = msg.compute_task_def
+        ctd: Optional[message.tasks.ComputeTaskDef] = msg.compute_task_def
         want_to_compute_task = msg.want_to_compute_task
         if ctd is None or want_to_compute_task is None:
             logger.debug(
@@ -814,7 +824,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         ))
 
     @history.provider_history
-    def _react_to_subtask_result_accepted(
+    def _react_to_subtask_results_accepted(
             self, msg: message.tasks.SubtaskResultsAccepted):
         # The message must be verified, and verification requires self.key_id.
         # This assert is for mypy, which only knows that it's Optional[str].
@@ -830,10 +840,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.disconnect(message.base.Disconnect.REASON.BadProtocol)
             return
 
+        dispatcher.send(
+            signal='golem.message',
+            event='received',
+            message=msg
+        )
+
         self.concent_service.cancel_task_message(
             msg.subtask_id,
             'ForceSubtaskResults',
         )
+
         self.task_server.subtask_accepted(
             self.key_id,
             msg.subtask_id,
@@ -886,6 +903,12 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
 
         else:
+            dispatcher.send(
+                signal='golem.message',
+                event='received',
+                message=msg
+            )
+
             self.task_server.subtask_rejected(
                 sender_node_id=self.key_id,
                 subtask_id=subtask_id,
@@ -972,8 +995,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.subtask_id,
         )
         if not sender_is_owner:
-            logger.warning("Requestor '%r' acknowledged a computed task report "
-                           "of an unknown task (subtask_id='%s')",
+            logger.warning("Requestor '%r' acknowledged a computed task report"
+                           " of an unknown task (subtask_id='%s')",
                            self.key_id, msg.subtask_id)
             return
 
@@ -986,12 +1009,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         delayed_forcing_msg = message.concents.ForceSubtaskResults(
             ack_report_computed_task=msg,
         )
-        logger.debug('[CONCENT] ForceResults: %s', delayed_forcing_msg)
         ttc_deadline = datetime.datetime.utcfromtimestamp(
             msg.task_to_compute.compute_task_def['deadline']
         )
         svt = msg_helpers.subtask_verification_time(msg.report_computed_task)
         delay = ttc_deadline + svt - datetime.datetime.utcnow()
+        logger.debug(
+            '[CONCENT] Delayed ForceResults. msg=%r, delay=%r',
+            delayed_forcing_msg,
+            delay
+        )
         self.concent_service.submit_task_message(
             subtask_id=msg.subtask_id,
             msg=delayed_forcing_msg,
@@ -1076,7 +1103,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return False
         return True
 
-    def _set_env_params(self, ctd):
+    def _set_env_params(self, ctd: message.tasks.ComputeTaskDef):
         environment = self.task_manager.comp_task_keeper.get_task_env(
             ctd['task_id'],
         )
@@ -1130,7 +1157,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             message.resources.ResourceList:
                 self._react_to_resource_list,
             message.tasks.SubtaskResultsAccepted:
-                self._react_to_subtask_result_accepted,
+                self._react_to_subtask_results_accepted,
             message.tasks.SubtaskResultsRejected:
                 self._react_to_subtask_results_rejected,
             message.tasks.TaskFailure:

@@ -22,17 +22,15 @@ from golem_messages import helpers
 from golem_messages import serializer
 from golem_messages import utils as msg_utils
 from golem_messages.message.base import Message
-from golem_messages.message import concents as concent_msg
+from golem_messages.message import concents
 
 from golem_sci import (
     new_sci_rpc, SmartContractsInterface, JsonTransactionsStorage)
 
-
 from golem.core import variables
+from golem.ethereum.transactionsystem import tETH_faucet_donate
 from golem.network.concent import client
 from golem.utils import privkeytoaddr
-
-from golem.ethereum.transactionsystem import tETH_faucet_donate
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +54,7 @@ def dump_balance(sci: SmartContractsInterface):
     sys.stderr.write(balance_str)
 
 
-class ConcentBaseTest:
+class ConcentBaseTest(unittest.TestCase):
     @staticmethod
     def _fake_keys():
         return cryptography.ECCx(None)
@@ -68,6 +66,8 @@ class ConcentBaseTest:
         self.variant = variables.CONCENT_CHOICES[concent_variant]
         self.provider_keys = self._fake_keys()
         self.requestor_keys = self._fake_keys()
+        from golem.core import common
+        common.config_logging(suffix='concent-acceptance')
         logger.debug('Provider key: %s',
                      base64.b64encode(self.provider_pub_key).decode())
         logger.debug('Requestor key: %s',
@@ -90,18 +90,20 @@ class ConcentBaseTest:
         return self.requestor_keys.raw_pubkey
 
     def gen_ttc_kwargs(self, prefix=''):
+        encoded_requestor_pubkey = msg_utils.encode_hex(self.requestor_pub_key)
         kwargs = {
             'sign__privkey': self.requestor_priv_key,
-            'requestor_public_key': msg_utils.encode_hex(
-                self.requestor_pub_key,
-            ),
-            'requestor_ethereum_public_key': msg_utils.encode_hex(
-                self.requestor_pub_key,
-            ),
+            'ethsig__privkey': self.requestor_priv_key,
+            'requestor_public_key': encoded_requestor_pubkey,
+            'requestor_ethereum_public_key': encoded_requestor_pubkey,
             'want_to_compute_task__provider_public_key':
                 msg_utils.encode_hex(self.provider_pub_key),
             'want_to_compute_task__sign__privkey':
-                self.provider_keys.raw_privkey
+                self.provider_priv_key,
+            'want_to_compute_task__task_header__requestor_public_key':
+                encoded_requestor_pubkey,
+            'want_to_compute_task__task_header__sign__privkey':
+                self.requestor_priv_key,
         }
         return {prefix + k: v for k, v in kwargs.items()}
 
@@ -190,8 +192,17 @@ class ConcentBaseTest:
             )
         )
 
+    def assertServiceRefused(
+            self,
+            msg: concents.ServiceRefused,
+            reason=None,
+        ):
+        self.assertIsInstance(msg, concents.ServiceRefused)
+        if reason:
+            self.assertEqual(msg.reason, reason)
+
     def assertFttCorrect(self, ftt, subtask_id, client_key, operation):
-        self.assertIsInstance(ftt, concent_msg.FileTransferToken)
+        self.assertIsInstance(ftt, concents.FileTransferToken)
 
         self.assertIsNotNone(subtask_id)  # sanity check, just in case
         self.assertEqual(ftt.subtask_id, subtask_id)
@@ -214,14 +225,14 @@ class ConcentBaseTest:
         )
 
 
-class SCIBaseTest(ConcentBaseTest, unittest.TestCase):
+class SCIBaseTest(ConcentBaseTest):
     """
     Base test providing instances of TransactionSystem
     for the provider and the requestor
     """
 
     def setUp(self):
-        super(SCIBaseTest, self).setUp()
+        super().setUp()
         from golem.config.environments.testnet import EthereumConfig
         random.seed()
 

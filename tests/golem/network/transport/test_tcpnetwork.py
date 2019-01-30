@@ -114,7 +114,7 @@ class SafeProtocolTestCase(unittest.TestCase):
 
             msg = message.p2p.SetTaskSession(
                 key_id=None,
-                node_info=node.to_dict(),
+                node_info=node,
                 conn_id=None,
                 super_node_info=None)
             data = msg.serialize()
