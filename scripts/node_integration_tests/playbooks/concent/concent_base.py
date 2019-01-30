@@ -15,6 +15,66 @@ class ConcentTestPlaybook(NodeTestPlaybook):
         helpers.clear_output(self.provider_output_queue)
         self.next()
 
+    def _step_is_concent_off(self, role):
+        call_method = getattr(self, 'call_' + role)
+
+        def on_success(result):
+            if result is True:
+                print("Concent unexpectedly already enabled for %s...", role)
+            return self.next()
+
+        return call_method('golem.concent.switch', on_success=on_success)
+
+    def step_is_provider_concent_off(self):
+        return self._step_is_concent_off('provider')
+
+    def step_is_requestor_concent_off(self):
+        return self._step_is_concent_off('requestor')
+
+    def _step_enable_concent(self, role):
+        call_method = getattr(self, 'call_' + role)
+
+        def on_success(_):
+            self.next()
+
+        def on_error(result):
+            print("Error enabling Concent for %s" % role)
+            self.fail()
+
+        return call_method(
+            'golem.concent.switch.turn', 1,
+            on_success=on_success, on_error=on_error,
+        )
+
+    def step_enable_provider_concent(self):
+        return self._step_enable_concent('provider')
+
+    def step_enable_requestor_concent(self):
+        return self._step_enable_concent('requestor')
+
+    def _step_ensure_concent_on(self, role):
+        call_method = getattr(self, 'call_' + role)
+
+        def on_success(result):
+            if result is True:
+                print("Enabled Concent for %s." % role)
+                self.next()
+            else:
+                self.fail(
+                    "Failed to enable Concent for %s... (result=%r)" % (
+                        role, result
+                    )
+                )
+            return self.next()
+
+        return call_method('golem.concent.switch', on_success=on_success)
+
+    def step_ensure_provider_concent_on(self):
+        return self._step_ensure_concent_on('provider')
+
+    def step_ensure_requestor_concent_on(self):
+        return self._step_ensure_concent_on('requestor')
+
     @staticmethod
     def check_concent_logs(
             output_queue: queue.Queue,
@@ -74,6 +134,14 @@ class ConcentTestPlaybook(NodeTestPlaybook):
         return None, None
 
     initial_steps = NodeTestPlaybook.initial_steps + (
+        step_is_provider_concent_off,
+        step_enable_provider_concent,
+        step_ensure_provider_concent_on,
+
+        step_is_requestor_concent_off,
+        step_enable_requestor_concent,
+        step_ensure_requestor_concent_on,
+
         step_clear_requestor_output,
         step_clear_provider_output,
     )
