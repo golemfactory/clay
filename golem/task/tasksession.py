@@ -208,9 +208,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
 
         def verification_finished():
-            logger.debug("Verification finished handler.")
+            logger.error("Verification finished handler.")
             if not self.task_manager.verify_subtask(subtask_id):
-                logger.debug("Verification failure. subtask_id=%r", subtask_id)
+                logger.error("Verification failure. subtask_id=%r", subtask_id)
                 send_verification_failure()
                 self.dropped()
                 return
@@ -225,6 +225,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
             task_to_compute = report_computed_task.task_to_compute
 
+            logger.error("TU1")
             # FIXME Remove in 0.20
             if not task_to_compute.sig:
                 task_to_compute.sign_message(self.my_private_key)
@@ -251,7 +252,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 remote_role=Actor.Provider,
             )
             self.dropped()
-
+            logger.error('HERE2')
         self.task_manager.computed_task_received(
             subtask_id,
             result_files,

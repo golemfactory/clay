@@ -73,6 +73,11 @@ CONTAINER_SUPPORTED_CODECS = {
 }
 
 
+def is_type_of(type):
+    def f(obj):
+        return isinstance(obj, type)
+    return f
+
 
 class ffmpegException(Exception):
     pass

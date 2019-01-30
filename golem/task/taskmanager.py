@@ -612,6 +612,7 @@ class TaskManager(TaskEventListener):
                 ]
 
         def after_results_extracted(results):
+            logger.error('after_results_extracted!!!!!!!!!!')
             new_task.copy_subtask_results(
                 new_subtask_id, old_subtask, results)
 
@@ -654,11 +655,12 @@ class TaskManager(TaskEventListener):
         task_header.sign(private_key=self.keys_auth._private_key)  # noqa pylint: disable=protected-access
 
     def verify_subtask(self, subtask_id):
-        logger.debug("verify_subtask. subtask_id=%r", subtask_id)
+        logger.info("verify_subtask. subtask_id=%r", subtask_id)
         if subtask_id in self.subtask2task_mapping:
             task_id = self.subtask2task_mapping[subtask_id]
             return self.tasks[task_id].verify_subtask(subtask_id)
         else:
+            logger.info("verify_subtask. subtask_id=False")
             return False
 
     def get_node_id_for_subtask(self, subtask_id):
@@ -672,9 +674,10 @@ class TaskManager(TaskEventListener):
     def computed_task_received(self, subtask_id, result,
                                verification_finished):
         task_id = self.subtask2task_mapping[subtask_id]
-
+        logger.info('I got a result [sub_id = {}, result = {}, verification_finisged = {}]'.format(subtask_id, result, verification_finished))
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
         subtask_status = subtask_state.subtask_status
+        logger.info('subtask_status = {}'.format(subtask_status))
 
         if not subtask_status.is_computed():
             logger.warning("Result for subtask {} when subtask state is {}"
@@ -726,6 +729,7 @@ class TaskManager(TaskEventListener):
 
     @handle_subtask_key_error
     def __set_subtask_state_finished(self, subtask_id: str) -> SubtaskState:
+        logger.error('__set_subtask_state_finished!!!!!!!!!!!!')
         task_id = self.subtask2task_mapping[subtask_id]
         ss = self.tasks_states[task_id].subtask_states[subtask_id]
         ss.subtask_progress = 1.0
@@ -764,11 +768,14 @@ class TaskManager(TaskEventListener):
         return True
 
     def task_result_incoming(self, subtask_id):
+        logger.error('TU: task_result_incoming')
         node_id = self.get_node_id_for_subtask(subtask_id)
 
         if node_id and subtask_id in self.subtask2task_mapping:
+            logger.error('TU1: task_result_incoming')
             task_id = self.subtask2task_mapping[subtask_id]
             if task_id in self.tasks:
+                logger.error('TU2: task_result_incoming')
                 task = self.tasks[task_id]
                 states = self.tasks_states[task_id].subtask_states[subtask_id]
 

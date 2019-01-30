@@ -20,6 +20,7 @@ FFMPEG_RESULT_FILE = '/golem/scripts/ffmpeg_task.py'
 
 logger = logging.getLogger(__name__)
 
+
 class Commands(enum.Enum):
     SPLIT = ('split', 'split-results.json')
     TRANSCODE = ('transcode', '')

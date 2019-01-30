@@ -73,6 +73,8 @@ class TranscodingTask(CoreTask):
                            'process resulted in {} chunks.'
                            .format(self.total_tasks, len(chunks)))
         self.total_tasks = len(chunks)
+        self.task_definition.subtasks_count = len(chunks)
+
 
     def _get_next_subtask(self):
         #with self.lock:
@@ -115,12 +117,6 @@ class TranscodingTask(CoreTask):
             self) -> golem_messages.message.ComputeTaskDef:
         # TODO, FIXME
         pass
-
-    def _refresh_existing_subtask(self, subtask):
-        assert self.num_failed_subtasks > 0
-        copied = copy.deepcopy(subtask)
-
-        return copied
 
     def _get_task_computing_definition(self, sid, transcoding_params, perf_idx):
         ctd = golem_messages.message.ComputeTaskDef()
@@ -218,9 +214,10 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         return {'container': 'mp4'}
 
     @classmethod
-    def _get_required_field(cls, dict, key : str) -> str:
+    def _get_required_field(cls, dict, key: str, validator=lambda _: True) \
+            -> Any:
         v = dict.get(key)
-        if not v:
+        if not v or not validator(v):
             raise TranscodingTaskBuilderExcpetion(
                 'Field {} is required in the task definition'.format(key))
         return v
@@ -229,8 +226,11 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
     def get_output_path(cls, dictionary, definition):
         parent = super(TranscodingTaskBuilder, cls)
         path = parent.get_output_path(dictionary, definition)
-        return '{}.{}'.format(path, dictionary['options']['container'])
-
+        from apps.transcoding.common import is_type_of
+        options = cls._get_required_field(dictionary, 'options',
+                                          is_type_of(dict))
+        container = options.get('container', cls._get_presets('container'))
+        return '{}.{}'.format(path, container)
 
 
 class TranscodingTaskBuilderExcpetion(Exception):

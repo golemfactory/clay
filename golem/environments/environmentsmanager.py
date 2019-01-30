@@ -59,6 +59,7 @@ class EnvironmentsManager:
     def accept_tasks(self, env_id: str) -> bool:
         """Return information whether tasks from given environment are accepted.
         """
+        logger.error('Available environments = {}'.format(self.environments))
         if env_id not in self.environments:
             return False
         return self.environments[env_id].is_accepted()
