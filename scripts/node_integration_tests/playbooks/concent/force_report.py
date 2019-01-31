@@ -43,9 +43,10 @@ class ForceReport(ConcentTestPlaybook):
             )
         ]
 
+        unescaped_ack_rct_trigger = [ack_rct_trigger[0].replace('\\', '')]
+
         log_match_pattern = \
             '.*' + '.*|.*'.join(concent_fail_triggers + ack_rct_trigger) + '.*'
-
         log_match = helpers.search_output(
             self.provider_output_queue,
             log_match_pattern,
@@ -57,7 +58,7 @@ class ForceReport(ConcentTestPlaybook):
                 self.fail("Provider<->Concent comms failure: %s " % match)
                 return
             if any([t in match and 'Concent Message received' in match
-                    for t in ack_rct_trigger]):
+                    for t in unescaped_ack_rct_trigger]):
                 print("AckReportComputedTask received.")
                 self.ack_rct_received = True
 
