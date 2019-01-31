@@ -19,7 +19,7 @@ class ForceReport(ConcentTestPlaybook):
         def on_success(result):
             if result['status'] == 'Finished':
                 arct_delay = datetime.timedelta(minutes=3)
-                print("Task finished. Now waiting for ARCT: %s", arct_delay)
+                print("Task finished. Now waiting for ARCT: %s" % arct_delay)
                 self.task_finished = True
                 self.ack_rct_deadline = \
                     datetime.datetime.now() + arct_delay
