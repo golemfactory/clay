@@ -61,6 +61,7 @@ class ForceAccept(ConcentTestPlaybook):
             'Concent service exception',
             'Concent request failed',
             'Problem interpreting',
+            'ForceSubtaskResultsRejected',
         ]
 
         sra_trigger = [
