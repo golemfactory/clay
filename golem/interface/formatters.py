@@ -64,11 +64,11 @@ class CommandFormatter(_CommandResultFormatter):
             if self.prettify:
                 return yaml.safe_dump(result, allow_unicode=True, default_flow_style=False)
 
-            if not hasattr(result, 'keys'):
-                return str(result)
-
-            return "\n".join(f"{k}: {result[k]}" for k
-                             in sorted(result.keys())) + "\n"
+            try:
+                return "\n".join(f"{k}: {result[k]}" for k
+                                 in sorted(result.keys())) + "\n"
+            except (TypeError, AttributeError):
+                    return str(result)
 
 
 class CommandJSONFormatter(_CommandResultFormatter):
