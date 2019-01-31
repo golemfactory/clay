@@ -240,7 +240,7 @@ class Node(HardwarePresetsMixin):
     def fs_mkdir(self, path) -> [str]:
         path = str(PurePath(path))
         try:
-            self.tempfs.makedir(path)
+            self.tempfs.makedir(path, recreate=True)
         except Exception as e:
             traceback.print_stack()
             return None
