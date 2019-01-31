@@ -18,9 +18,6 @@ from golem_messages.constants import MTD
 from golem_messages.datastructures import p2p as dt_p2p
 from golem_messages.datastructures import tasks as dt_tasks
 
-import golem
-from golem import constants as gconst
-from golem import utils
 from golem.core import common
 from golem.core import golem_async
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
@@ -346,7 +343,6 @@ class TaskHeaderKeeper:
         supported = self.check_environment(header.environment)
         supported = supported.join(self.check_mask(header))
         supported = supported.join(self.check_price(header))
-        supported = supported.join(self.check_version(header))
         if not supported.is_ok():
             logger.info("Unsupported task %s, reason: %r",
                         header.task_id, supported.desc)
@@ -383,31 +379,6 @@ class TaskHeaderKeeper:
             return SupportStatus.ok()
         return SupportStatus.err(
             {UnsupportReason.MAX_PRICE: max_price})
-
-    @classmethod
-    def check_version(cls, header: dt_tasks.TaskHeader) -> SupportStatus:
-        """Check if this node has a version that isn't less than minimum
-           version described in task header.
-        :return SupportStatus: err() if node's version is lower than minimum
-                               version for this task, False otherwise.
-        """
-        min_v = getattr(header, "min_version", None)
-
-        ok = False
-        try:
-            ok = utils.is_version_compatible(
-                theirs=min_v,
-                spec=gconst.GOLEM_SPEC,
-            )
-        except ValueError:
-            logger.error(
-                "Wrong app version - app version %r, required version %r",
-                golem.__version__,
-                min_v
-            )
-        if ok:
-            return SupportStatus.ok()
-        return SupportStatus.err({UnsupportReason.APP_VERSION: min_v})
 
     def get_support_status(self, task_id) -> typing.Optional[SupportStatus]:
         """Return SupportStatus stating if and why the task is supported or not.
