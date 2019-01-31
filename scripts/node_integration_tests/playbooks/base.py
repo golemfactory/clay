@@ -126,12 +126,12 @@ class NodeTestPlaybook:
         gntb_balance = helpers.to_ether(result.get('av_gnt'))
         eth_balance = helpers.to_ether(result.get('eth'))
         if gnt_balance > 0 and eth_balance > 0 and gntb_balance > 0:
-            print("{} has {} GNT ({} GNTB) and {} ETH.".format(
+            print("{} has {} total GNT ({} GNTB) and {} ETH.".format(
                 role.capitalize(), gnt_balance, gntb_balance, eth_balance))
             self.next()
 
         else:
-            print("Waiting for {} GNT/GNTB/ETH ({}/{}/{})".format(
+            print("Waiting for {} GNT(B)/converted GNTB/ETH ({}/{}/{})".format(
                 role.capitalize(), gnt_balance, gntb_balance, eth_balance))
             time.sleep(15)
 

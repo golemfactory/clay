@@ -91,9 +91,7 @@ class ForcePayment(ConcentTestPlaybook):
 
     @staticmethod
     def _rpc_balance_to_ether(result):
-        gnt_balance = helpers.to_ether(result.get('gnt'))
-        gntb_balance = helpers.to_ether(result.get('av_gnt'))
-        return gnt_balance + gntb_balance
+        return helpers.to_ether(result.get('gnt'))
 
     def step_get_provider_balance(self):
         def on_success(result):
@@ -136,12 +134,15 @@ class ForcePayment(ConcentTestPlaybook):
                 "Provider current balance: %s, required: %s" %
                 (balance, required_balance)
             )
-            if balance >= required_balance:
+            if balance > required_balance:
                 print(
-                    "Payment received! \\o/\n"
+                    "Too much payment received...\n"
                     "Balance - Actual: %s, Required: %s" %
                     (balance, required_balance)
                 )
+                self.fail()
+            if balance == required_balance:
+                print("Payment received! \\o/ ... total: %s GNT" % balance)
                 self.success()
             else:
                 if datetime.datetime.now() > self.payment_timeout:
