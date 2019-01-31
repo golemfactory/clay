@@ -18,10 +18,11 @@ class ForceReport(ConcentTestPlaybook):
     def step_wait_task_finished_and_arct_received(self):
         def on_success(result):
             if result['status'] == 'Finished':
-                print("Task finished.")
+                arct_delay = datetime.timedelta(minutes=3)
+                print("Task finished. Now waiting for ARCT: %s" % arct_delay)
                 self.task_finished = True
                 self.ack_rct_deadline = \
-                    datetime.datetime.now() + datetime.timedelta(minutes=3)
+                    datetime.datetime.now() + arct_delay
             elif result['status'] == 'Timeout':
                 self.fail("Task timed out :( ... ")
             else:
