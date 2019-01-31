@@ -519,6 +519,9 @@ class TaskManager(TaskEventListener):
             new_task_id: str,
             subtask_ids_to_copy: Iterable[str]) -> None:
 
+        logger.debug('copy_results. old_task_id=%r, new_task_id=%r',
+                     old_task_id, new_task_id)
+
         try:
             old_task = self.tasks[old_task_id]
             new_task = self.tasks[new_task_id]
@@ -551,6 +554,8 @@ class TaskManager(TaskEventListener):
                 ctd=extra_data.ctd)
             new_subtasks_ids.append(new_subtask_id)
 
+        logger.debug('copy_results. new_subtasks_ids=%r', new_subtasks_ids)
+
         # it's important to do this step separately, to not disturb
         # 'needs_computation' condition above
         for new_subtask_id in new_subtasks_ids:
@@ -563,6 +568,7 @@ class TaskManager(TaskEventListener):
         def handle_copy_error(subtask_id, error):
             logger.error(
                 'Cannot copy result of subtask %r: %r', subtask_id, error)
+
             self.restart_subtask(subtask_id)
 
         for new_subtask_id, new_subtask in new_task.subtasks_given.items():
@@ -1155,7 +1161,8 @@ class TaskManager(TaskEventListener):
     def _update_provider_statistics(self, task_id: str,
                                     subtask_id: str,
                                     op: SubtaskOp) -> None:
-
+        logger.debug('_update_provider_statistics. task_id=%r, subtask_id=%r,'
+                     'op=%r', task_id, subtask_id, op)
         header = self.tasks[task_id].header
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
 
@@ -1186,6 +1193,10 @@ class TaskManager(TaskEventListener):
         timeout = self.tasks[task_id].header.subtask_timeout
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
         node_id = subtask_state.node_id
+
+        logger.debug('_update_provider_reputation. task_id=%r, subtask_id=%r,'
+                     'op=%r, subtask_state=%r', task_id, subtask_id, op,
+                     subtask_state)
 
         update_provider_efficacy(node_id, op)
         computation_time = ProviderComputeTimers.time(subtask_id)
