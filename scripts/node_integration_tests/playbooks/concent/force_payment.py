@@ -49,11 +49,10 @@ class ForcePayment(ConcentTestPlaybook):
         )
 
         if force_payment_test is True:
-            print(match.group(0))
             self.next()
+            return
         elif force_payment_test is False:
-            print(match.group(0))
-            self.fail()
+            self.fail(match.group(0))
 
         if datetime.datetime.now() > self.force_payment_timeout:
             self.fail("ForcePayment timed out... ")
@@ -79,11 +78,10 @@ class ForcePayment(ConcentTestPlaybook):
         )
 
         if force_payment_test is True:
-            print(match.group(0))
             self.next()
+            return
         elif force_payment_test is False:
-            print(match.group(0))
-            self.fail()
+            self.fail(match.group(0))
 
         if datetime.datetime.now() > self.force_payment_committed_timeout:
             self.fail("ForcePaymentCommitted timed out... ")
@@ -107,17 +105,16 @@ class ForcePayment(ConcentTestPlaybook):
 
     def step_get_provider_expected_payment(self):
         def on_success(result):
-            self.expected_payment = sum([
+            self.expected_payment = helpers.to_ether(sum([
                 int(p.get('value'))
                 for p in result
                 if p.get('payer') == self.requestor_key and
                    p.get('subtask') in self.subtasks
-            ])
+            ]))
             if not self.expected_payment:
                 self.fail("No expected payments found for the task.")
 
-            print("Expected payment: %s" %
-                  helpers.to_ether(self.expected_payment))
+            print("Expected payment: %s" % self.expected_payment)
             self.next()
 
         return self.call_provider(
@@ -136,11 +133,15 @@ class ForcePayment(ConcentTestPlaybook):
             balance = self._rpc_balance_to_ether(result)
             required_balance = self.pre_payment_balance + self.expected_payment
             print(
-                "Provider current balance: %s, required: %s, (%s, %s)" %
-                (balance, required_balance, type(balance), type(required_balance))
+                "Provider current balance: %s, required: %s" %
+                (balance, required_balance)
             )
             if balance >= required_balance:
-                print("Payment received! \\o/")
+                print(
+                    "Payment received! \\o/\n"
+                    "Balance - Actual: %s, Required: %s" %
+                    (balance, required_balance)
+                )
                 self.success()
             else:
                 if datetime.datetime.now() > self.payment_timeout:
