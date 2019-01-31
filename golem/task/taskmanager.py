@@ -547,9 +547,9 @@ class TaskManager(TaskEventListener):
             self.subtask2task_mapping[new_subtask_id] = \
                 new_task_id
             self.__add_subtask_to_tasks_states(
-                node_name=None,
-                node_id=None,
-                address=None,
+                node_name='',
+                node_id='',
+                address='',
                 price=0,
                 ctd=extra_data.ctd)
             new_subtasks_ids.append(new_subtask_id)
