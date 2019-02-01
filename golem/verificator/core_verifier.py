@@ -25,7 +25,6 @@ class CoreVerifier(StateVerifier):
 
     def simple_verification(self, verification_data):
         results = verification_data["results"]
-        logger.info('Results files = {}'.format(results))
         if not results:
             self.state = SubtaskVerificationState.WRONG_ANSWER
             return False

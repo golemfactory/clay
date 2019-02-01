@@ -35,7 +35,6 @@ class ffmpegTask(TranscodingTask):
     VERIFIER_CLASS = ffmpegVerifier
 
     def _get_extra_data(self, subtask_num):
-        logger.info('{}:{}'.format(subtask_num, self.task_resources))
         transcoding_options = self.task_definition.options
         video_params = transcoding_options.video_params
         audio_params = transcoding_options.audio_params
@@ -74,7 +73,6 @@ class ffmpegTask(TranscodingTask):
             'command': Commands.TRANSCODE.value[0],
             'script_filepath': FFMPEG_BASE_SCRIPT
         }
-        logger.warning(extra_data)
         return self._clear_none_values(extra_data)
 
     def _clear_none_values(self, d):

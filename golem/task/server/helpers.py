@@ -11,7 +11,6 @@ def computed_task_reported(
         report_computed_task,
         after_success=lambda: None,
         after_error=lambda: None):
-    logger.error('computed_task_reported1')
     task_manager = task_server.task_manager
     concent_service = task_server.client.concent_service
 
@@ -70,7 +69,6 @@ def computed_task_reported(
             )
         after_error()
 
-    logger.error('computed_task_reported2')
     # Actually request results
     task_manager.task_result_incoming(report_computed_task.subtask_id)
     task_manager.task_result_manager.pull_package(

@@ -959,7 +959,6 @@ class TaskServer(
 
         session.send_hello()
 
-        logger.error('__connection_for_task_verification_result_established for subtask = {}'.format(subtask_id))
         session.result_received(subtask_id, full_path_files)
 
     def __connection_for_task_verification_result_failure(  # noqa pylint:disable=no-self-use

@@ -2,4 +2,6 @@ from golem.verificator import CoreVerifier
 
 
 class ffmpegVerifier(CoreVerifier):
-    pass
+    def __init__(self, verification_data):
+        super(ffmpegVerifier, self).__init__()
+        pass

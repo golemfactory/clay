@@ -181,7 +181,6 @@ class CoreTask(Task):
                (self.num_failed_subtasks > 0)
 
     def finished_computation(self):
-        logger.error('RR is computation finished {}/{}'.format(self.num_tasks_received, self.total_tasks))
         return self.num_tasks_received == self.total_tasks
 
     def computation_failed(self, subtask_id):
@@ -189,7 +188,6 @@ class CoreTask(Task):
 
     def computation_finished(self, subtask_id, task_result,
                              verification_finished=None):
-        logger.info('Computation finished [task_result = {}, verification_finishged = {}, subtask status = {}'.format(task_result, verification_finished, self.subtasks_given[subtask_id]['status'] ))
         if not self.should_accept(subtask_id):
             logger.info("Not accepting results for %s", subtask_id)
             return
@@ -230,7 +228,6 @@ class CoreTask(Task):
     # pylint:disable=unused-argument
     def accept_results(self, subtask_id, result_files):
         subtask = self.subtasks_given[subtask_id]
-        logger.error('accept_result, subtask status = {}', subtask['status'])
         if "status" not in subtask:
             raise Exception("Subtask {} hasn't started".format(subtask_id))
         if subtask.get("status", None) == SubtaskStatus.finished:
@@ -250,7 +247,6 @@ class CoreTask(Task):
 
     @handle_key_error
     def verify_subtask(self, subtask_id):
-        logger.info('Status = {}'.format(self.subtasks_given[subtask_id]['status']))
         return self.subtasks_given[subtask_id]['status'] == \
             SubtaskStatus.finished
 
@@ -364,7 +360,6 @@ class CoreTask(Task):
 
     @handle_key_error
     def result_incoming(self, subtask_id):
-        logger.error('result_incoming')
         self.counting_nodes[self.subtasks_given[
             subtask_id]['node_id']].finish()
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.downloading
@@ -468,21 +463,17 @@ class CoreTask(Task):
         return verdict
 
     def copy_subtask_results(self, subtask_id, old_subtask_info, results):
-        logger.info('Copy results1')
         new_subtask = self.subtasks_given[subtask_id]
 
         new_subtask['node_id'] = old_subtask_info['node_id']
         new_subtask['ctd']['performance'] = \
             old_subtask_info['ctd']['performance']
-        logger.info('Copy results2')
         self.accept_client(new_subtask['node_id'])
         self.result_incoming(subtask_id)
-        logger.info('Copy results3')
         self.interpret_task_results(
             subtask_id=subtask_id,
             task_results=results,
         )
-        logger.info('Copy results4')
         self.accept_results(
             subtask_id=subtask_id,
             result_files=self.results[subtask_id])

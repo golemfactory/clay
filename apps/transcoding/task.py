@@ -76,6 +76,10 @@ class TranscodingTask(CoreTask):
         self.task_definition.subtasks_count = len(chunks)
 
 
+    def accept_results(self, subtask_id, result_files):
+        super(TranscodingTask, self).accept_results(subtask_id, result_files)
+        self.num_tasks_received += 1
+
     def _get_next_subtask(self):
         #with self.lock:
         subtasks = self.subtasks_given.values()

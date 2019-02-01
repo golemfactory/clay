@@ -77,9 +77,6 @@ class Environment():
         return SupportStatus.ok()
 
     def is_accepted(self):
-        import logging
-        logging.getLogger(__name__).error('self.accept_tasks = {}'.format(self.accept_tasks))
-
         """ Check if user wants to compute tasks from this environment
         :return bool:
         """
