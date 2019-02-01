@@ -6,6 +6,7 @@ from twisted.web.server import Site
 from twisted.web.wsgi import WSGIResource
 from typing import Dict
 from wsgidav.wsgidav_app import WsgiDAVApp
+from wsgidav.dir_browser import WsgiDavDirBrowser
 
 from golem.client import Client
 from .subscription import TaskStatus, Subscription, TaskType, InvalidTaskType, \
@@ -46,6 +47,7 @@ def _start_web_dav(port):
         "provider_mapping": {
             "/": root_path,
         },
+        'middleware_stack': [WsgiDavDirBrowser],
         # Verbose Output
         # 0 - no output
         # 1 - no output (excepting application exceptions)
