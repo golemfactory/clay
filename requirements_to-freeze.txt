@@ -16,7 +16,7 @@ eth-utils==1.0.3
 ethereum==1.6.1
 Golem-Messages==2.24.2
 Golem-Smart-Contracts-Interface==1.6.1
-Golem-Verificator==1.6.3
+Golem-Verificator==1.6.3.2
 html2text==2018.1.9
 humanize==0.5.1
 incremental==17.5.0
