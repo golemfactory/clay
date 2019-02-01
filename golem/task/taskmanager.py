@@ -547,9 +547,9 @@ class TaskManager(TaskEventListener):
             self.subtask2task_mapping[new_subtask_id] = \
                 new_task_id
             self.__add_subtask_to_tasks_states(
-                node_name=None,
-                node_id=None,
-                address=None,
+                node_name='',
+                node_id='',
+                address='',
                 price=0,
                 ctd=extra_data.ctd)
             new_subtasks_ids.append(new_subtask_id)
@@ -1171,8 +1171,9 @@ class TaskManager(TaskEventListener):
         computation_time = ProviderComputeTimers.time(subtask_id)
 
         if not computation_time:
-            raise ValueError("Invalid value for computation_time: "
-                             f"{computation_time}")
+            logger.warning("Could not obtain computation time for subtask: %r",
+                           subtask_id)
+            return
 
         computation_time = int(round(computation_time))
 
@@ -1202,7 +1203,8 @@ class TaskManager(TaskEventListener):
         computation_time = ProviderComputeTimers.time(subtask_id)
 
         if not computation_time:
-            raise ValueError("computation_time cannot be equal to "
-                             f"{computation_time}")
+            logger.warning("Could not obtain computation time for subtask: %r",
+                           subtask_id)
+            return
 
         update_provider_efficiency(node_id, timeout, computation_time)
