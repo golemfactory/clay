@@ -14,7 +14,7 @@ golem_client: Client = None
 subscriptions: Dict[str, Dict[TaskType, Subscription]] = dict()
 
 
-def start(client: Client):
+def start(client: Client) -> None:
     global golem_client
     golem_client = client
 
@@ -24,9 +24,8 @@ def start(client: Client):
     except CannotListenError:
         _start(port+1)
 
-
 # credit: https://gist.github.com/ianschenck/977379a91154fe264897
-def _start(port: int):
+def _start(port: int) -> None:
     from twisted.internet import reactor
     from twisted.web.wsgi import WSGIResource
     from twisted.web.server import Site
@@ -54,15 +53,15 @@ def _start(port: int):
 # got_request_exception.connect(log_exception)
 
 
-def _json_response(msg: str, http_status_code: int = 200):
+def _json_response(msg: str, http_status_code: int = 200) -> (str, int):
     return json.dumps({'msg': msg}), http_status_code
 
 
-def _not_found(msg: str):
+def _not_found(msg: str) -> (str, int):
     return _json_response(f'{msg} not found', 404)
 
 
-def _invalid_input(msg):
+def _invalid_input(msg) -> (str, int):
     return _json_response(f'invalid input: {msg}', 400)
 
 
@@ -73,17 +72,17 @@ def hello():
 
 
 @app.errorhandler(404)
-def page_not_found(error):
+def page_not_found(error) -> (str, int):
     return f'Not found. See <a href="/">API doc</a>', 404
 
 
 @app.route('/settings')
-def settings():
+def settings() -> str:
     return json.dumps(golem_client.get_settings())
 
 
 @app.route('/subscriptions/<node_id>', methods=['GET'])
-def all_subscriptions(node_id: str):
+def all_subscriptions(node_id: str) -> (str, int):
     """Gets subscription status"""
 
     if node_id not in subscriptions:
@@ -94,7 +93,7 @@ def all_subscriptions(node_id: str):
 
 
 @app.route('/subscriptions/<node_id>/<task_type>', methods=['PUT'])
-def subscribe(node_id: str, task_type: str):
+def subscribe(node_id: str, task_type: str) -> (str, int):
     """Creates or amends subscription to Golem Network"""
 
     status_code = 200
@@ -116,7 +115,7 @@ def subscribe(node_id: str, task_type: str):
 
 
 @app.route('/subscriptions/<node_id>/<task_type>', methods=['GET'])
-def subscription(node_id: str, task_type: str):
+def subscription(node_id: str, task_type: str) -> (str, int):
     """Gets subscription status"""
 
     if node_id not in subscriptions:
@@ -134,7 +133,7 @@ def subscription(node_id: str, task_type: str):
 
 
 @app.route('/subscriptions/<node_id>/<task_type>', methods=['DELETE'])
-def unsubscribe(node_id: str, task_type: str):
+def unsubscribe(node_id: str, task_type: str) -> (str, int):
     """Removes subscription"""
 
     if node_id not in subscriptions:
@@ -153,7 +152,7 @@ def unsubscribe(node_id: str, task_type: str):
 
 
 @app.route('/<node_id>/tasks/<task_id>', methods=['POST'])
-def want_to_compute_task(node_id, task_id):
+def want_to_compute_task(node_id, task_id) -> (str, int):
     """Sends task computation willingness"""
 
     if node_id not in subscriptions:
@@ -175,7 +174,7 @@ def want_to_compute_task(node_id, task_id):
 
 
 @app.route('/<node_id>/tasks/<task_id>', methods=['GET'])
-def task_info(node_id: str, task_id: str):
+def task_info(node_id: str, task_id: str) -> (str, int):
     """Gets task information"""
 
     try:
@@ -186,7 +185,7 @@ def task_info(node_id: str, task_id: str):
 
 
 @app.route('/<node_id>/subtasks/<uuid:subtask_id>', methods=['PUT'])
-def confirm_subtask(node_id, subtask_id):
+def confirm_subtask(node_id, subtask_id) -> (str, int):
     """Confirms subtask computation start"""
 
     if node_id not in subscriptions:
@@ -199,7 +198,7 @@ def confirm_subtask(node_id, subtask_id):
 
 
 @app.route('/<node_id>/subtasks/<uuid:subtask_id>', methods=['GET'])
-def subtask_info(node_id, subtask_id):
+def subtask_info(node_id, subtask_id) -> (str, int):
     """Gets subtask information"""
 
     if node_id not in subscriptions:
@@ -219,7 +218,7 @@ def subtask_info(node_id, subtask_id):
 
 
 @app.route('/<node_id>/subtasks/<uuid:subtask_id>', methods=['POST'])
-def subtask_result(node_id, subtask_id):
+def subtask_result(node_id, subtask_id) -> (str, int):
     """Reports subtask computation result"""
 
     if node_id not in subscriptions:
@@ -239,7 +238,7 @@ def subtask_result(node_id, subtask_id):
 
 
 @app.route('/<node_id>/subtask/<uuid:subtask_id>/cancel', methods=['POST'])
-def cancel_subtask(node_id, subtask_id):
+def cancel_subtask(node_id, subtask_id) -> (str, int):
     """Cancels subtask computation (upon failure or resignation)"""
 
     if node_id not in subscriptions:
@@ -249,7 +248,7 @@ def cancel_subtask(node_id, subtask_id):
 
 
 @app.route('/<node_id>/resources', methods=['POST'])
-def upload_resource(node_id):
+def upload_resource(node_id) -> (str, int):
     """Receives a resource file from a caller"""
     if node_id not in subscriptions:
         return _not_found('subscription')
@@ -271,7 +270,7 @@ def download_resource(node_id, resource_id):
 
 
 @app.route('/<node_id>/<task_type>/events', methods=['GET'])
-def fetch_events(node_id: str, task_type: str):
+def fetch_events(node_id: str, task_type: str) -> (str, int):
     """List events for given node id and task type; newer than last event id"""
 
     if node_id not in subscriptions:
