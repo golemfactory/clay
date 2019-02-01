@@ -208,8 +208,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
 
         def verification_finished():
-            logger.debug("Verification failure. subtask_id=%r", subtask_id)
             if not self.task_manager.verify_subtask(subtask_id):
+                logger.error("Verification failure. subtask_id=%r", subtask_id)
                 send_verification_failure()
                 self.dropped()
                 return
