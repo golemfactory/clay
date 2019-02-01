@@ -14,7 +14,7 @@ from typing import (
 
 from pathlib import Path
 from twisted.internet import threads
-from twisted.internet.defer import gatherResults, Deferred
+from twisted.internet.defer import gatherResults, Deferred, maybeDeferred
 from twisted.python.failure import Failure
 
 from apps.appsmanager import AppsManager
@@ -158,7 +158,7 @@ class Node(HardwarePresetsMixin):
             def on_rpc_ready() -> Deferred:
                 terms_ = self._check_terms()
                 keys = self._start_keys_auth()
-                docker = self._start_docker()
+                docker = maybeDeferred(self._start_docker)
                 return gatherResults([terms_, keys, docker], consumeErrors=True)
 
             chain_function(rpc, on_rpc_ready).addCallbacks(
@@ -379,7 +379,7 @@ class Node(HardwarePresetsMixin):
         return bool(task_provider_progress)
 
     @require_rpc_session()
-    def _check_terms(self) -> Optional[Deferred]:
+    def _check_terms(self) -> Deferred:
 
         def wait_for_terms():
             sleep_time = 5
@@ -393,7 +393,7 @@ class Node(HardwarePresetsMixin):
         return threads.deferToThread(wait_for_terms)
 
     @require_rpc_session()
-    def _start_keys_auth(self) -> Optional[Deferred]:
+    def _start_keys_auth(self) -> Deferred:
 
         def create_keysauth():
             # If keys_auth already exists it means we used command line flag
