@@ -1,5 +1,9 @@
 import datetime
+import re
 import time
+
+from golem_messages.message.tasks import AckReportComputedTask
+from golem_messages.register import library
 
 from scripts.node_integration_tests import helpers
 
@@ -35,12 +39,15 @@ class ForceReport(ConcentTestPlaybook):
         ]
 
         ack_rct_trigger = [
-            'AckReportComputedTask'
+            'MessageHeader(type_=' + str(
+                library.get_type(AckReportComputedTask)
+            )
         ]
 
-        log_match_pattern = \
-            '.*' + '.*|.*'.join(concent_fail_triggers + ack_rct_trigger) + '.*'
-
+        log_match_pattern = '.*' + '.*|.*'.join([
+            re.escape(t) for t in
+            (concent_fail_triggers + ack_rct_trigger)
+        ]) + '.*'
         log_match = helpers.search_output(
             self.provider_output_queue,
             log_match_pattern,

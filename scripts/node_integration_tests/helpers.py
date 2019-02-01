@@ -9,6 +9,8 @@ import threading
 import tempfile
 import typing
 
+from ethereum.utils import denoms
+
 from . import tasks
 
 
@@ -116,3 +118,11 @@ def timeout_to_seconds(timeout_str: str):
         minutes=int(components[1]),
         seconds=int(components[2])
     ).total_seconds()
+
+
+def to_ether(value):
+    return int(value) / denoms.ether
+
+
+def from_ether(value):
+    return int(value * denoms.ether)
