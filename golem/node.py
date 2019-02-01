@@ -341,6 +341,11 @@ class Node(HardwarePresetsMixin):
         path = str(PurePath(path))
         return self.tempfs.remove(path)
 
+    @rpc_utils.expose('fs.removetree')
+    def fs_removetree(self, path):
+        path = str(PurePath(path))
+        return self.tempfs.removetree(path)
+
     @rpc_utils.expose('fs.purge')
     def fs_purge(self):
         self.tempfs = TempFS()
