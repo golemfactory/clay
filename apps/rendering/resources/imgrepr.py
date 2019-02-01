@@ -172,17 +172,41 @@ class EXRImgRepr(ImgRepr):
         self.img = None
         self.type = "EXR"
         self.dw = None
-        self.pt = Imath.PixelType(Imath.PixelType.FLOAT)
+        self.pixel_type = Imath.PixelType(Imath.PixelType.FLOAT)
         self.rgb = None
         self.min = 0.0
         self.max = 1.0
         self.file_path = None
 
+    def _convert_openexr_to_opencv_rgb(self):
+        pixel_type = Imath.PixelType(Imath.PixelType.FLOAT)
+        data_window = self.img.header()['dataWindow']
+        width, height = (data_window.max.x - data_window.min.x + 1,
+                         data_window.max.y - data_window.min.y + 1)
+        bytesR, bytesG, bytesB = self.img.channels("RGB")
+        r = numpy.fromstring(bytesR, dtype=numpy.float32)
+        g = numpy.fromstring(bytesG, dtype=numpy.float32)
+        b = numpy.fromstring(bytesB, dtype=numpy.float32)
+
+        for channel in r, g, b:
+            for pixel_value in numpy.nditer(channel, op_flags=['readwrite']):
+                pixel_value[...] = round(pixel_value * 255)
+
+        opencv_img = numpy.zeros((height, width, 3), dtype=numpy.uint8)
+        r = numpy.reshape(r, (-1, width))
+        opencv_img[:, :, 0] = r
+        opencv_img[:, :, 1] = g
+        opencv_img[:, :, 2] = b
+
+
+
+
+
     def load_from_file(self, file_):
         self.img = OpenEXR.InputFile(file_)
         self.dw = self.img.header()['dataWindow']
         self.rgb = [Image.frombytes("F", self.get_size(),
-                                    self.img.channel(c, self.pt))
+                                    self.img.channel(c, self.pixel_type))
                     for c in "RGB"]
 
         self.file_path = file_
