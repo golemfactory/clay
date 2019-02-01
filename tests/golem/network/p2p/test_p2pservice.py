@@ -114,9 +114,17 @@ class TestP2PService(TestDatabaseWithReactor):
             prv_port=random.randint(1, 2 ** 16 - 1),
             pub_port=random.randint(1, 2 ** 16 - 1),
         )
+        neighbour_node_with_invalid_port = dt_p2p_factory.Node(
+            prv_addr=fake.ipv4(),
+            pub_addr=fake.ipv4(),
+            prv_port=None,
+        )
         self.service.peer_keeper.neighbours = mock.MagicMock(
             return_value=[
                 neighbour_node,
+                neighbour_node_with_invalid_port,
+
+
             ])
         expected = [{
             'address': neighbour_node.prv_addr,
