@@ -1,7 +1,11 @@
 import json
 import logging
 from flask import Flask, request, send_file
+from twisted.internet import reactor
+from twisted.web.server import Site
+from twisted.web.wsgi import WSGIResource
 from typing import Dict
+from wsgidav.wsgidav_app import WsgiDAVApp
 
 from golem.client import Client
 from .subscription import TaskStatus, Subscription, TaskType, InvalidTaskType, \
@@ -22,17 +26,50 @@ def start(client: Client) -> None:
     try:
         _start(port)
     except CannotListenError:
-        _start(port+1)
+        _start(port + 1)
+
 
 # credit: https://gist.github.com/ianschenck/977379a91154fe264897
 def _start(port: int) -> None:
-    from twisted.internet import reactor
-    from twisted.web.wsgi import WSGIResource
-    from twisted.web.server import Site
-
     logger.info(f'Starting "Golem Unlimited Gateway" on port: {port}')
     reactor.listenTCP(
         port, Site(WSGIResource(reactor, reactor.getThreadPool(), app)))
+
+    _start_web_dav(port + 10)
+
+
+def _start_web_dav(port):
+    global golem_client
+    root_path = golem_client.task_manager.root_path
+    config = {
+        "port": port,
+        "provider_mapping": {
+            "/": root_path,
+        },
+        # Verbose Output
+        # 0 - no output
+        # 1 - no output (excepting application exceptions)
+        # 2 - show warnings
+        # 3 - show single line request summaries (for HTTP logging)
+        # 4 - show additional events
+        # 5 - show full request/response header info (HTTP Logging)
+        #     request body and GET response bodies not shown
+        "verbose": 1,
+        "dir_browser": {
+            "enable": True,
+        }
+    }
+
+    try:
+        dav_app = WsgiDAVApp(config)
+    except Exception as err:
+        import traceback
+        logger.error("wsgiDav error: %r:\n%s", err, traceback.format_exc())
+        raise err
+    logger.info(f'Starting "Golem Unlimited WebDav" on port: {port} for: '
+                f'{root_path}')
+    reactor.listenTCP(
+        port, Site(WSGIResource(reactor, reactor.getThreadPool(), dav_app)))
 
 
 # from flask import after_this_request

@@ -127,6 +127,7 @@ urllib3==1.23
 watchdog==0.8.3
 web3==4.2.1
 websocket-client==0.47.0
+wsgidav==2.4.1
 wrapt==1.10.11
 zope.interface==4.4.2
 zxcvbn-python==4.4.22
