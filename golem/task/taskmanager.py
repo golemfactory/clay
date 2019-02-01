@@ -1171,8 +1171,9 @@ class TaskManager(TaskEventListener):
         computation_time = ProviderComputeTimers.time(subtask_id)
 
         if not computation_time:
-            raise ValueError("Invalid value for computation_time: "
-                             f"{computation_time}")
+            logger.warning("Could not obtain computation time for subtask: %r",
+                           subtask_id)
+            return
 
         computation_time = int(round(computation_time))
 
@@ -1202,7 +1203,8 @@ class TaskManager(TaskEventListener):
         computation_time = ProviderComputeTimers.time(subtask_id)
 
         if not computation_time:
-            raise ValueError("computation_time cannot be equal to "
-                             f"{computation_time}")
+            logger.warning("Could not obtain computation time for subtask: %r",
+                           subtask_id)
+            return
 
         update_provider_efficiency(node_id, timeout, computation_time)
