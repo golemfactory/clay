@@ -1,14 +1,16 @@
 import abc
 import copy
 import logging
-from multiprocessing import Lock
+import os
 from typing import Any, Dict, Tuple, Optional
 
 import golem_messages.message
 
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder, CoreTaskTypeInfo
 from apps.core.task.coretaskstate import Options, TaskDefinition
-from .common import AudioCodec, VideoCodec, Container
+from .common import AudioCodec, VideoCodec, Container, is_type_of, \
+    TranscodingTaskBuilderException
+
 import apps.transcoding.common
 from apps.transcoding.ffmpeg.utils import StreamOperator
 from apps.transcoding.common import TranscodingException
@@ -150,12 +152,8 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
     def build_full_definition(cls, task_type: CoreTaskTypeInfo,
                               dict: Dict[str, Any]):
         task_def = super().build_full_definition(task_type, dict)
-        resources = cls._get_required_field(dict, 'resources')
-        if not isinstance(resources, list) or len(resources) == 0:
-            raise TranscodingTaskBuilderExcpetion('resources list cannot be '
-                                                  'empty')
-        input_stream_path = resources[0]
-        presets = cls._get_presets(input_stream_path)
+
+        presets = cls._get_presets(task_def.options.input_stream_path)
         options = dict.get('options', {})
         video_options = options.get('video', {})
         audio_options = options.get('audio', {})
@@ -184,7 +182,6 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         task_def.options.audio_params = audio_params
         task_def.options.audio_params = audio_params
         task_def.options.name = dict.get('name', '')
-        task_def.options.input_stream_path = input_stream_path
         return task_def
 
     @classmethod
@@ -192,26 +189,32 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
                                         output_container):
         if audio_codec and audio_codec \
                 not in output_container.get_supported_audio_codecs():
-            raise TranscodingTaskBuilderExcpetion(
-                'Container {} does not support {}'.format(output_container,
-                                                          audio_codec))
+            raise TranscodingTaskBuilderException(
+                'Container {} does not support {}'.format(
+                    output_container.value, audio_codec.value))
 
         if video_codec and video_codec \
                 not in output_container.get_supported_video_codecs():
-            raise TranscodingTaskBuilderExcpetion(
-                'Container {} does not support {}'.format(output_container,
-                                                          video_codec))
+            raise TranscodingTaskBuilderException(
+                'Container {} does not support {}'.format(
+                    output_container.value, video_codec.value))
 
     @classmethod
     def build_minimal_definition(cls, task_type: CoreTaskTypeInfo,
                                  dict: Dict[str, Any]):
-        return super(TranscodingTaskBuilder, cls).build_minimal_definition(
+        df = super(TranscodingTaskBuilder, cls).build_minimal_definition(
             task_type, dict)
+        stream = cls._get_required_field(dict, 'resources', is_type_of(list))[0]
+        df.options.input_stream_path = stream
+        return df
 
     @classmethod
     @HandleError(ValueError, apps.transcoding.common.not_valid_json)
     @HandleError(IOError, apps.transcoding.common.file_io_error)
     def _get_presets(cls, path: str) -> Dict[str, Any]:
+        if not os.path.isfile(path):
+            raise TranscodingTaskBuilderException('{} does not exist'
+                                                  .format(path))
         # FIXME get metadata by ffmpeg docker container
         # with open(path) as f:
         # return json.load(f)
@@ -222,7 +225,7 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
             -> Any:
         v = dict.get(key)
         if not v or not validator(v):
-            raise TranscodingTaskBuilderExcpetion(
+            raise TranscodingTaskBuilderException(
                 'Field {} is required in the task definition'.format(key))
         return v
 
@@ -230,13 +233,10 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
     def get_output_path(cls, dictionary, definition):
         parent = super(TranscodingTaskBuilder, cls)
         path = parent.get_output_path(dictionary, definition)
-        from apps.transcoding.common import is_type_of
         options = cls._get_required_field(dictionary, 'options',
                                           is_type_of(dict))
-        container = options.get('container', cls._get_presets('container'))
+        container = options.get('container', cls._get_presets(
+            definition.options.input_stream_path))
         return '{}.{}'.format(path, container)
 
-
-class TranscodingTaskBuilderExcpetion(Exception):
-    pass
 

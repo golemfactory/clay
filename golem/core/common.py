@@ -204,6 +204,14 @@ class HandleKeyError(HandleError):
         )
 
 
+class HandleValueError(HandleError):
+    def __init__(self, handle_error):
+        super(HandleValueError, self).__init__(
+            ValueError,
+            handle_error
+        )
+
+
 class HandleAttributeError(HandleError):
     def __init__(self, handle_error):
         super(HandleAttributeError, self).__init__(

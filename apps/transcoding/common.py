@@ -1,8 +1,7 @@
 import logging
 from enum import Enum
 
-from golem.core.common import HandleKeyError
-
+from golem.core.common import HandleValueError
 
 logger = logging.getLogger(__name__)
 
@@ -21,17 +20,18 @@ def file_io_error(path: str):
 
 def unsupported(name: str):
     logger.warning('{} is not supported'.format(name))
-    raise TranscodingException('{} is not supported'.format(name))
+    raise TranscodingTaskBuilderException('{} is not supported'.format(name))
 
 
 class VideoCodec(Enum):
-    H_264 = 'libx264'
+    H_264 = 'LIBX264'
     MPEG_2 = 'MPEG-2'
     MPEG_4 = 'MPEG-4'
-    MPEG_4_Part_2 = 'MPEG-4 Part 2'
+    MPEG_4_Part_2 = 'MPEG-4 PART 2'
+    VP6 = 'VP6'
 
     @staticmethod
-    @HandleKeyError(unsupported)
+    @HandleValueError(unsupported)
     def from_name(name: str) -> 'VideoCodec':
         return VideoCodec(name.upper())
 
@@ -39,11 +39,12 @@ class VideoCodec(Enum):
 class AudioCodec(Enum):
     MP3 = 'MP3'
     AAC = 'AAC'
+    PCM = 'PCM'
 
     @staticmethod
-    @HandleKeyError(unsupported)
+    @HandleValueError(unsupported)
     def from_name(name: str) -> 'AudioCodec':
-        return AudioCodec(name.lower())
+        return AudioCodec(name.upper())
 
 
 class Container(Enum):
@@ -52,7 +53,7 @@ class Container(Enum):
     MKV = 'mkv'
 
     @staticmethod
-    @HandleKeyError(unsupported)
+    @HandleValueError(unsupported)
     def from_name(name: str) -> 'Container':
         return Container(name.lower())
 
@@ -84,4 +85,8 @@ class ffmpegException(Exception):
 
 
 class TranscodingException(Exception):
+    pass
+
+
+class TranscodingTaskBuilderException(Exception):
     pass
