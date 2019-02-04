@@ -56,20 +56,21 @@ def _start_web_dav(port):
         # 4 - show additional events
         # 5 - show full request/response header info (HTTP Logging)
         #     request body and GET response bodies not shown
-        "verbose": 1,
+        "verbose": 3,
         "dir_browser": {
             "enable": True,
         }
     }
 
+    logger.info(f'Starting "Golem Unlimited WebDav" on port: {port}')
     try:
+        import wsgidav
+        wsgidav._base_logger.propagate = True
         dav_app = WsgiDAVApp(config)
     except Exception as err:
         import traceback
         logger.error("wsgiDav error: %r:\n%s", err, traceback.format_exc())
         raise err
-    logger.info(f'Starting "Golem Unlimited WebDav" on port: {port} for: '
-                f'{root_path}')
     reactor.listenTCP(
         port, Site(WSGIResource(reactor, reactor.getThreadPool(), dav_app)))
 
