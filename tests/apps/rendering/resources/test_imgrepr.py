@@ -54,15 +54,6 @@ class TestImgRepr(unittest.TestCase, PEP8MixIn):
         t.set_pixel((0, 0), (0, 0, 0))
 
 
-def almost_equal(v1, v2):
-    assert abs(v1 - v2) < 0.001
-
-
-def almost_equal_pixels(pix1, pix2):
-    for c1, c2 in zip(pix1, pix2):
-        almost_equal(c1, c2)
-
-
 class TestExrImgRepr(TempDirFixture, PEP8MixIn):
     PEP8_FILES = [
         'apps/rendering/resources/imgrepr.py',
@@ -95,15 +86,9 @@ class TestExrImgRepr(TempDirFixture, PEP8MixIn):
 
         assert e.get_size() == (10, 10)
 
-        assert e.get_pixel((0, 0)) == [0.5703125,
-                                       0.53076171875,
-                                       0.432373046875]
-        assert e.get_pixel((5, 5)) == [0.6982421875,
-                                       0.73193359375,
-                                       0.70556640625]
-        assert e.get_pixel((9, 9)) == [0.461181640625,
-                                       0.52392578125,
-                                       0.560546875]
+        assert e.get_pixel((0, 0)) == [145, 135, 110]
+        assert e.get_pixel((5, 5)) == [178, 187, 180]
+        assert e.get_pixel((9, 9)) == [118, 134, 143]
 
         with self.assertRaises(Exception):
             e.get_pixel((10, 10))
@@ -111,34 +96,13 @@ class TestExrImgRepr(TempDirFixture, PEP8MixIn):
     def test_set_pixel(self):
         e = get_exr_img_repr()
 
-        val1 = [0.4, 0.3, 0.2]
+        val1 = [102, 77, 51]
         e.set_pixel((0, 0), val1)
-        val2 = [0.1, 0.131, 0.001]
+        val2 = [26, 33, 0]
         e.set_pixel((4, 4), val2)
 
-        almost_equal_pixels(e.get_pixel((0, 0)), val1)
-        almost_equal_pixels(e.get_pixel((4, 4)), val2)
-
-        e_copy = e.copy()
-
-        e.min = 0.5
-        e.set_pixel((0, 0), val1)
-        almost_equal_pixels(e.get_pixel((0, 0)), [0.5, 0.5, 0.5])
-
-        e.max = 0.8
-        val3 = [0.1, 0.6, 0.9]
-        e.set_pixel((0, 0), val3)
-        almost_equal_pixels(e.get_pixel((0, 0)), [0.5, 0.6, 0.8])
-
-        almost_equal_pixels(e_copy.get_pixel((0, 0)), val1)
-        assert e_copy.min == 0.0
-        assert e_copy.max == 1.0
-
-    def test_get_rgbf_extrema(self):
-        e = get_exr_img_repr(alt=True)
-        assert e.get_rgbf_extrema() == (0.0, 0.0)
-        e = get_exr_img_repr()
-        assert e.get_rgbf_extrema() == (3.71875, 0.10687255859375)
+        assert e.get_pixel((0, 0)) == val1
+        assert e.get_pixel((4, 4)) == val2
 
 
 class TestImgFunctions(TempDirFixture, LogTestCase):

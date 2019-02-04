@@ -7,7 +7,6 @@ import numpy
 import cv2
 import OpenEXR
 import Imath
-from PIL import Image
 
 logger = logging.getLogger("apps.rendering")
 
@@ -138,8 +137,6 @@ class OpenCVImgRepr:
                               .format(str(self.get_type()), str(mode)))
 
     def save_with_extension(self, path, extension):
-        # in PIL one can specify output name without extension
-        # format was given as a second argument
         # in OpenCV extension must be given in a filename
         # some paths are without extension, need to rename it then
 
@@ -179,14 +176,11 @@ class EXRImgRepr(ImgRepr):
         self.file_path = None
 
     def _convert_openexr_to_opencv_rgb(self):
-        pixel_type = Imath.PixelType(Imath.PixelType.FLOAT)
-        data_window = self.img.header()['dataWindow']
-        width, height = (data_window.max.x - data_window.min.x + 1,
-                         data_window.max.y - data_window.min.y + 1)
-        bytesR, bytesG, bytesB = self.img.channels("RGB")
-        r = numpy.fromstring(bytesR, dtype=numpy.float32)
-        g = numpy.fromstring(bytesG, dtype=numpy.float32)
-        b = numpy.fromstring(bytesB, dtype=numpy.float32)
+        width, height = self.get_size()
+        bytes_r, bytes_g, bytes_b = self.img.channels("RGB")
+        r = numpy.fromstring(bytes_r, dtype=numpy.float32)
+        g = numpy.fromstring(bytes_g, dtype=numpy.float32)
+        b = numpy.fromstring(bytes_b, dtype=numpy.float32)
 
         for channel in r, g, b:
             for pixel_value in numpy.nditer(channel, op_flags=['readwrite']):
@@ -194,20 +188,17 @@ class EXRImgRepr(ImgRepr):
 
         opencv_img = numpy.zeros((height, width, 3), dtype=numpy.uint8)
         r = numpy.reshape(r, (-1, width))
+        g = numpy.reshape(g, (-1, width))
+        b = numpy.reshape(b, (-1, width))
         opencv_img[:, :, 0] = r
         opencv_img[:, :, 1] = g
         opencv_img[:, :, 2] = b
-
-
-
-
+        return opencv_img
 
     def load_from_file(self, file_):
         self.img = OpenEXR.InputFile(file_)
         self.dw = self.img.header()['dataWindow']
-        self.rgb = [Image.frombytes("F", self.get_size(),
-                                    self.img.channel(c, self.pixel_type))
-                    for c in "RGB"]
+        self.rgb = self._convert_openexr_to_opencv_rgb()
 
         self.file_path = file_
         self.name = os.path.basename(file_)
@@ -217,17 +208,11 @@ class EXRImgRepr(ImgRepr):
                self.dw.max.y - self.dw.min.y + 1
 
     def get_pixel(self, xy):
-        return [c.getpixel(xy) for c in self.rgb]
+        return self.rgb[xy[::-1]].tolist()
 
     def set_pixel(self, xy, color):
-        for c in range(0, len(self.rgb)):
-            self.rgb[c].putpixel(xy, max(min(self.max, color[c]), self.min))
-
-    def get_rgbf_extrema(self):
-        extrema = [im.getextrema() for im in self.rgb]
-        darkest = min([lo for (lo, hi) in extrema])
-        lightest = max([hi for (lo, hi) in extrema])
-        return lightest, darkest
+        x, y = xy
+        self.rgb[y, x] = color
 
     def copy(self):
         e = EXRImgRepr()
