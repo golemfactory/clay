@@ -1,8 +1,5 @@
-import tempfile
-
-import pytest
-from apps.transcoding.common import TranscodingException, \
-    TranscodingTaskBuilderException, AudioCodec, VideoCodec, Container
+from apps.transcoding.common import TranscodingTaskBuilderException, \
+    AudioCodec, VideoCodec, Container
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
 from coverage.annotate import os
 from golem.testutils import TempDirFixture
@@ -119,9 +116,6 @@ class TestffmpegTask(TempDirFixture):
                 tt.task_builder_type.build_definition(tt, d)
 
     def test_valid_task_definition(self):
-        self.input_stream_path = None
-        self.output_container = None
-
         d = self._task_dictionary
         td = self.tt.task_builder_type.build_definition(self.tt, d)
         options = td.options
