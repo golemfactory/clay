@@ -108,7 +108,7 @@ setup(
 
 if not (in_appveyor() or in_travis() or
         building_wheel or building_binary):
-    DockerManager().pull_images()
+    pass
 
 if building_wheel:
     move_wheel()
