@@ -99,7 +99,9 @@ class ZipPackager(Packager):
         return zipfile.ZipFile(output_path, mode='w', compression=self.ZIP_MODE)
 
     def write_disk_file(self, obj, file_path, file_name):
-        ZipPackager.zip_append(obj, file_path.rstrip('/'))
+        relative_subdirectory = os.path.dirname(file_name)
+        ZipPackager.zip_append(obj, file_path.rstrip('/'),
+                               relative_subdirectory)
 
     @classmethod
     def package_name(cls, file_path):
