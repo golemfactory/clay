@@ -51,6 +51,7 @@ class OpenCVImgRepr:
     RGBA = 4
     IMG_F32 = numpy.float32
     IMG_U8 = numpy.uint8
+    IMG_U16 = numpy.uint16
 
     def __init__(self):
         self.img = None
@@ -137,6 +138,8 @@ class OpenCVImgRepr:
             return
         elif self.get_type() == OpenCVImgRepr.IMG_F32:
             self._img32F_to_img8U()
+        elif self.get_type() == OpenCVImgRepr.IMG_U16:
+            self._img16U_to_img8U()
         else:
             raise OpenCVError('Conversion from {} to {} is not supported'
                               .format(str(self.get_type()), str(mode)))
@@ -169,6 +172,9 @@ class OpenCVImgRepr:
 
     def _img32F_to_img8U(self):
         self.img = cv2.convertScaleAbs(self.img, alpha=255, beta=0)
+
+    def _img16U_to_img8U(self):
+        self.img = cv2.convertScaleAbs(self.img, alpha=255.0/65535.0, beta=0)
 
 
 class PILImgRepr(ImgRepr):
