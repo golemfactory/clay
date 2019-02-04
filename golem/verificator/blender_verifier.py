@@ -1,6 +1,7 @@
-import logging
+from datetime import datetime
 from typing import Type
 
+import logging
 import numpy
 import os
 import json
@@ -10,7 +11,7 @@ from golem.verificator.verifier import SubtaskVerificationState
 from .rendering_verifier import FrameRenderingVerifier
 from twisted.internet.defer import Deferred
 
-logger = logging.getLogger("apps.blender")
+logger = logging.getLogger(__name__)
 
 
 # FIXME #2086
@@ -37,8 +38,8 @@ class BlenderVerifier(FrameRenderingVerifier):
                 numpy.float32(subtask_info['resolution'][1]))))
         return subtask_info['resolution'][0], res_y
 
-    # pylint: disable-msg=too-many-arguments
-    def _verify_with_reference(self, verification_data):
+    def start_verification(self, verification_data):
+        self.time_started = datetime.utcnow()
         self.verification_data = verification_data
 
         try:
@@ -106,12 +107,8 @@ class BlenderVerifier(FrameRenderingVerifier):
             timeout=self.timeout)
 
         def error(e):
-            logger.warning(
-                "Verification exception %s, accepting task as it's likely not "
-                "providers fault",
-                e,
-            )
-            self.finished.callback(True)
+            logger.warning("Verification process exception %s", e)
+            self.finished.errback(e)
 
         def callback(*_):
             with open(os.path.join(dir_mapping.output, 'verdict.json'), 'r') \

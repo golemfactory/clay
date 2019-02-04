@@ -91,7 +91,7 @@ class TestBlenderVerifier(TempDirFixture):
             self.subtask_info['script_filepath']
         self.subtask_info['ctd']['subtask_id'] = self.subtask_info['subtask_id']
 
-    def _test_image(self, results, expected_result):
+    def _test_image(self, results, exception_regex=None):
         verification_data = {}
         verification_data['subtask_info'] = self.subtask_info
         verification_data['results'] = []
@@ -111,25 +111,36 @@ class TestBlenderVerifier(TempDirFixture):
         verification_data['paths'] = os.path.dirname(self.resources[0])
 
         verifier = BlenderVerifier(verification_data, DockerTaskThread)
-        d = verifier._verify_with_reference(verification_data)
+        d = verifier.start_verification(verification_data)
 
-        if expected_result:
+        if not exception_regex:
             sync_wait(d, self.TIMEOUT)
         else:
-            with self.assertRaisesRegex(Exception, 'result negative'):
+            with self.assertRaisesRegex(Exception, exception_regex):
                 sync_wait(d, self.TIMEOUT)
 
     def test_bad_image(self):
-        self._test_image(['very_bad_image.png'], False)
+        self._test_image(['very_bad_image.png'], 'Verification result negative')
 
     def test_good_image(self):
-        self._test_image(['GolemTask_10001.png'], True)
+        self._test_image(['GolemTask_10001.png'])
 
     def test_subsampled_image(self):
-        self._test_image(['almost_good_image.png'], False)
+        self._test_image(
+            ['almost_good_image.png'],
+            'Verification result negative',
+        )
 
     def test_multiple_frames_in_subtask(self):
         self.subtask_info['all_frames'] = [1, 2]
         self.subtask_info['frames'] = [1, 2]
         self.subtask_info['ctd']['extra_data']['frames'] = [1, 2]
-        self._test_image(['GolemTask_10001.png', 'GolemTask_10002.png'], True)
+        self._test_image(['GolemTask_10001.png', 'GolemTask_10002.png'])
+
+    def test_docker_error(self):
+        # Set na invalid param so that Docker computation fails inside
+        self.subtask_info['frames'] = None
+        self._test_image(
+            ['GolemTask_10001.png'],
+            'Subtask computation failed with exit code 1',
+        )

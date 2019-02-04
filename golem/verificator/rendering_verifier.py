@@ -1,7 +1,4 @@
 import logging
-import math
-from datetime import datetime
-from collections import Callable
 from .core_verifier import CoreVerifier
 from .imgrepr import load_img
 from .verifier import SubtaskVerificationState
@@ -17,10 +14,6 @@ class RenderingVerifier(CoreVerifier):
         self.resources = verification_data["resources"]
         self.results = verification_data["results"]
         self.state = SubtaskVerificationState.WAITING
-
-    def start_verification(self, verification_data):
-        self.time_started = datetime.utcnow()
-        return self._verify_with_reference(verification_data)
 
     @staticmethod
     def check_size(file_, res_x, res_y):
