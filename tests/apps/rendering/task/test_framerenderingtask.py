@@ -133,7 +133,9 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
 
     def test_get_output_names_with_existing_file_name(self):
         frame_task = self._get_frame_task(True)
-        mocks = [True, False] + [False for _ in frame_task.get_output_names()[1:]]
+        mocks = (
+            [True, False] + [False for _ in frame_task.get_output_names()[1:]]
+        )
         with mock.patch(
             'apps.rendering.task.framerenderingtask.os.path.exists',
             side_effect=mocks
