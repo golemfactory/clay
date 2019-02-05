@@ -47,7 +47,11 @@ def _start_web_dav(port):
         "provider_mapping": {
             "/": root_path,
         },
+        # TODO: dir browser is not secure
         'middleware_stack': [WsgiDavDirBrowser],
+        "dir_browser": {
+            "enable": True,
+        },
         # Verbose Output
         # 0 - no output
         # 1 - no output (excepting application exceptions)
@@ -57,9 +61,6 @@ def _start_web_dav(port):
         # 5 - show full request/response header info (HTTP Logging)
         #     request body and GET response bodies not shown
         "verbose": 3,
-        "dir_browser": {
-            "enable": True,
-        }
     }
 
     logger.info(f'Starting "Golem Unlimited WebDav" on port: {port}')
@@ -148,7 +149,11 @@ def subscribe(node_id: str, task_type: str) -> (str, int):
     if task_type not in subscriptions[node_id]:
         status_code = 201
 
-    subscription = Subscription(task_type, request.json)
+    try:
+        subscription = Subscription(task_type, request.json)
+    except KeyError as e:
+        return _invalid_input(f'invalid request body: key {e} is missing')
+
     subscriptions[node_id][task_type] = subscription
 
     return json.dumps(subscription.to_json_dict()), status_code

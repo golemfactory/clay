@@ -165,6 +165,8 @@ class Subscription(object):
     """ Golem Unlimited Gateway subscription"""
 
     def __init__(self, task_type: TaskType, request_body):
+        if request_body is None:
+            raise KeyError('minPrice')
         self.task_type: TaskType = task_type
         self.name = request_body.get('name', '')
         self.min_price = int(request_body['minPrice'])
