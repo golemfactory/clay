@@ -154,9 +154,29 @@ class FrameRenderingTask(RenderingTask):
     def get_output_names(self):
         if self.use_frames:
             dir_ = os.path.dirname(self.output_file)
-            return [os.path.normpath(os.path.join(dir_, self._get_output_name(frame))) for frame in self.frames]
+            output_names = [os.path.normpath(os.path.join(dir_, self._get_output_name(frame))) for frame in self.frames]
         else:
-            return super(FrameRenderingTask, self).get_output_names()
+            output_names = super(FrameRenderingTask, self).get_output_names()
+
+        return self._suffix_existing_output_names(output_names)
+
+    def _suffix_existing_output_names(self, output_names):
+        """ Checks if any of output names already exists, if yes, adds suffix to output name. """
+        assert isinstance(output_names, list)
+        assert all([isinstance(output_name, str) for output_name in output_names])
+
+        output_directory = os.path.dirname(self.output_file)
+
+        for i, output_name in enumerate(output_names):
+            suffix = 1
+            output_file_path = os.path.join(output_directory, output_name)
+
+            while os.path.exists(output_file_path):
+                output_file_name, output_file_extension = os.path.splitext(output_file_path)
+                output_names[i] = f'{output_file_name}_{suffix}{output_file_extension}'
+                suffix += 1
+
+        return output_names
 
     def get_output_states(self):
         if self.use_frames:

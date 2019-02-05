@@ -3,6 +3,7 @@ import unittest
 import uuid
 from pathlib import Path
 
+import mock
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from PIL import Image
 
@@ -129,6 +130,17 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         frame_task = self._get_frame_task(False)
         output_names = frame_task.get_output_names()
         assert len(output_names) == 0
+
+    def test_get_output_names_with_existing_file_name(self):
+        frame_task = self._get_frame_task(True)
+        mocks = [True, False] + [False for _ in frame_task.get_output_names()[1:]]
+        with mock.patch(
+            'apps.rendering.task.framerenderingtask.os.path.exists',
+            side_effect=mocks
+        ):
+            output_names = frame_task.get_output_names()
+        assert len(output_names) == len(frame_task.frames)
+        assert output_names[0].endswith('_1.PNG')
 
     def test_update_frame_preview(self):
         frame_task = self._get_frame_task()
