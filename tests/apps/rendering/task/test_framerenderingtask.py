@@ -131,18 +131,25 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         output_names = frame_task.get_output_names()
         assert len(output_names) == 0
 
-    def test_get_output_names_with_existing_file_name(self):
+    def test__get_output_dir(self):
         frame_task = self._get_frame_task(True)
-        mocks = (
-            [True, False] + [False for _ in frame_task.get_output_names()[1:]]
-        )
         with mock.patch(
             'apps.rendering.task.framerenderingtask.os.path.exists',
-            side_effect=mocks
+            return_value=False
         ):
-            output_names = frame_task.get_output_names()
-        assert len(output_names) == len(frame_task.frames)
-        assert output_names[0].endswith('_1.PNG')
+            output_dir = frame_task._get_output_dir()
+        assert output_dir == os.path.dirname(
+            frame_task.task_definition.output_file)
+
+    def test__get_output_dir_when_directory_already_exists(self):
+        frame_task = self._get_frame_task(True)
+        with mock.patch(
+            'apps.rendering.task.framerenderingtask.os.path.exists',
+            side_effect=[True, False]
+        ):
+            output_dir = frame_task._get_output_dir()
+        assert output_dir == \
+            f'{os.path.dirname(frame_task.task_definition.output_file)}_1'
 
     def test_update_frame_preview(self):
         frame_task = self._get_frame_task()
@@ -298,7 +305,11 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
         img_repr.close()
 
     def test_put_frame_together(self):
-        task = self._get_frame_task(True)
+        with mock.patch(
+            'apps.rendering.task.framerenderingtask.os.path.exists',
+            return_value=False
+        ):
+            task = self._get_frame_task(True)
         task.output_format = "exr"
         task.outfilebasename = "output"
         task.output_file = self.temp_file_name("output.exr")

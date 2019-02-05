@@ -122,6 +122,7 @@ class FrameRenderingTask(RenderingTask):
         if self.use_frames:
             self.preview_file_path = [None] * len(self.frames)
             self.preview_task_file_path = [None] * len(self.frames)
+            self.output_dir = self._get_output_dir()
         self.last_preview_path = None
 
     @CoreTask.handle_key_error
@@ -153,42 +154,13 @@ class FrameRenderingTask(RenderingTask):
 
     def get_output_names(self):
         if self.use_frames:
-            dir_ = os.path.dirname(self.output_file)
-            output_names = [
+            return [
                 os.path.normpath(
-                    os.path.join(dir_, self._get_output_name(frame))
+                    os.path.join(self.output_dir, self._get_output_name(frame))
                 ) for frame in self.frames
             ]
         else:
-            output_names = super(FrameRenderingTask, self).get_output_names()
-
-        return self._suffix_existing_output_names(output_names)
-
-    def _suffix_existing_output_names(self, output_names):
-        """
-        Checks if any of output names already exists,
-        if yes, adds suffix to output name.
-        """
-        assert isinstance(output_names, list)
-        assert all(
-            [isinstance(output_name, str) for output_name in output_names]
-        )
-
-        output_directory = os.path.dirname(self.output_file)
-
-        for i, output_name in enumerate(output_names):
-            suffix = 1
-            output_file_path = os.path.join(output_directory, output_name)
-
-            while os.path.exists(output_file_path):
-                output_file_name, output_file_extension = os.path.splitext(
-                    output_file_path
-                )
-                output_names[i] = \
-                    f'{output_file_name}_{suffix}{output_file_extension}'
-                suffix += 1
-
-        return output_names
+            return super().get_output_names()
 
     def get_output_states(self):
         if self.use_frames:
@@ -426,8 +398,9 @@ class FrameRenderingTask(RenderingTask):
                                                list(self.collected_file_names.values()), "paste")
 
     def _put_frame_together(self, frame_num, num_start):
-        directory = os.path.dirname(self.output_file)
-        output_file_name = os.path.join(directory, self._get_output_name(frame_num))
+        output_file_name = os.path.join(
+            self.output_dir, self._get_output_name(frame_num)
+        )
         frame_key = str(frame_num)
         collected = self.frames_given[frame_key]
         collected = OrderedDict(sorted(collected.items()))
@@ -503,6 +476,26 @@ class FrameRenderingTask(RenderingTask):
     def _update_preview_task_file_path(self, preview_task_file_path):
         if not self.use_frames:
             RenderingTask._update_preview_task_file_path(self, preview_task_file_path)
+
+    def _get_output_dir(self):
+        return self._add_suffix_to_existing_directory(
+            os.path.normpath(
+                os.path.join(
+                    self.task_definition.task_id,
+                    os.path.dirname(self.output_file)
+                )
+            )
+        )
+
+    def _add_suffix_to_existing_directory(self, directory):
+        assert isinstance(directory, str)
+
+        suffix = 1
+        while os.path.exists(directory):
+            directory = f'{directory}_{suffix}'
+            suffix += 1
+
+        return directory
 
 
 def get_frame_name(output_name, ext, frame_num):
