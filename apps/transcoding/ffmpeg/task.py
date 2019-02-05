@@ -14,11 +14,8 @@ from golem.docker.job import DockerJob
 
 # TODO:
 # Czy typować? Co robia inni (A?)
-# Czym sie rozni minimal definition od full?
-# poprawic impoorty
 # Co to są property?
-# Obsluga bledow
-# LOGI
+
 from golem.verificator.ffmpeg_verifier import ffmpegVerifier
 
 logger = logging.getLogger(__name__)
@@ -38,7 +35,10 @@ class ffmpegTask(TranscodingTask):
         transcoding_options = self.task_definition.options
         video_params = transcoding_options.video_params
         audio_params = transcoding_options.audio_params
-        assert subtask_num < len(self.task_resources)
+        if subtask_num >= len(self.task_resources):
+            raise AssertionError('Requested number subtask {} is greater than '
+                                 'number of resources [size={}]'
+                                 .format(subtask_num, len(self.task_resources)))
 
         stream_path = os.path.relpath(self.task_resources[subtask_num],
                                       self._get_resources_root_dir())
@@ -81,7 +81,6 @@ class ffmpegTask(TranscodingTask):
 
 
 class ffmpegDefaults(TaskDefaults):
-    """ Suggested default values for Rendering tasks"""
     def __init__(self):
         super(ffmpegDefaults, self).__init__()
 

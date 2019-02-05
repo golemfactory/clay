@@ -6,10 +6,10 @@ from golem.core.common import HandleValueError
 logger = logging.getLogger(__name__)
 
 
-def not_valid_json(exception_type, path: str): # TYPY
+def not_valid_json(exception_type, path: str):
     msg = 'File {} is not valid JSON'.format(path)
     logger.warning(msg)
-    raise TranscodingException(msg)
+    raise exception_type(msg)
 
 
 def file_io_error(path: str):

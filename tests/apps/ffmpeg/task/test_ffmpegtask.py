@@ -1,8 +1,18 @@
+import uuid
+from unittest import mock
+
 from apps.transcoding.common import TranscodingTaskBuilderException, \
     AudioCodec, VideoCodec, Container
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
+from apps.transcoding.ffmpeg.utils import Commands
 from coverage.annotate import os
+from golem.core.common import timeout_to_deadline
+from golem.docker.manager import DockerManager
+from golem.docker.task_thread import DockerTaskThread
+from golem.resource.dirmanager import DirManager
+from golem.task.taskstate import SubtaskStatus
 from golem.testutils import TempDirFixture
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
 # TODO: test invalid video file
 
@@ -14,6 +24,17 @@ class TestffmpegTask(TempDirFixture):
             os.path.dirname(os.path.realpath(__file__))), 'resources')
         self.RESOURCE_STREAM = os.path.join(self.RESOURCES, 'test_video.mp4')
         self.tt = ffmpegTaskTypeInfo()
+        dm = DockerTaskThread.docker_manager = DockerManager.install()
+        dm.update_config(
+            status_callback=mock.Mock(),
+            done_callback=mock.Mock(),
+            work_dir=self.new_path,
+            in_background=True)
+        td = self.tt.task_builder_type.build_definition(self.tt,
+                                                        self._task_dictionary)
+        self.ffmpeg_task = self.tt.task_builder_type(dt_p2p_factory.Node(), td,
+                                            DirManager(self.tempdir)).build()
+
 
     @property
     def _task_dictionary(self):
@@ -42,70 +63,61 @@ class TestffmpegTask(TempDirFixture):
         }
 
     def test_build_task_def_from_task_type(self):
-        task_type = ffmpegTaskTypeInfo()
         d = self._task_dictionary
-        task_type.task_builder_type.build_definition(task_type, d)
         for m in [True, False]:
             with self.subTest(msg='Test different level of task', p1=m):
-                task_type.task_builder_type.build_definition(task_type, d, m)
+                self.tt.task_builder_type.build_definition(self.tt, d, m)
 
 
     def test_build_task_def_no_resources(self):
-        task_type = ffmpegTaskTypeInfo()
         d = self._task_dictionary
         d['resources'] = []
         with self.assertRaises(TranscodingTaskBuilderException) as cxt:
-            task_type.task_builder_type.build_definition(task_type, d)
+            self.tt.task_builder_type.build_definition(self.tt, d)
         assert 'Field resources is required in the task definition' \
                in str(cxt.exception)
 
     def test_build_task_resource_does_not_exist(self):
-        task_type = ffmpegTaskTypeInfo()
         d = self._task_dictionary
         d['resources'] = [os.path.join(self.tempdir, 'not_exists')]
         with self.assertRaises(TranscodingTaskBuilderException) as cxt:
-            task_type.task_builder_type.build_definition(task_type, d)
+            self.tt.task_builder_type.build_definition(self.tt, d)
         self.assertIn('does not exist', str(cxt.exception))
 
     def test_build_task_video_codec_not_match_to_container(self):
         invalid_params = [('avi', 'not_supported'), ('mkv', 'not_supported'),
                           ('mp4', 'vp6')]
         d = self._task_dictionary
-        tt = ffmpegTaskTypeInfo()
 
         for container, codec in invalid_params:
             with self.subTest('Testing container and codec',
                               container=container, codec=codec):
                 d['options']['video']['codec'] = codec
                 d['options']['container'] = container
-                with self.assertRaises(TranscodingTaskBuilderException) as cxt:
-                    tt.task_builder_type.build_definition(tt, d)
+                with self.assertRaises(TranscodingTaskBuilderException):
+                    self.tt.task_builder_type.build_definition(self.tt, d)
 
     def test_build_task_audio_codec_not_match_to_container(self):
         invalid_params = [('avi', 'not_supported'), ('mkv', 'not_supported'),
                           ('mp4', 'pcm')]
         d = self._task_dictionary
-        tt = ffmpegTaskTypeInfo()
-
         for container, codec in invalid_params:
             with self.subTest('Testing container and codec',
                               container=container, codec=codec):
                 d['options']['audio']['codec'] = codec
                 d['options']['container'] = container
-                with self.assertRaises(TranscodingTaskBuilderException) as cxt:
-                    tt.task_builder_type.build_definition(tt, d)
+                with self.assertRaises(TranscodingTaskBuilderException):
+                    self.tt.task_builder_type.build_definition(self.tt, d)
 
     def test_build_task_not_supported_container(self):
         d = self._task_dictionary
-        tt = ffmpegTaskTypeInfo()
         d['options']['container'] = 'xxx'
         with self.assertRaises(TranscodingTaskBuilderException) as cxt:
-            tt.task_builder_type.build_definition(tt, d)
+            self.tt.task_builder_type.build_definition(self.tt, d)
 
     def test_build_task_different_codecs(self):
         params = [('avi', 'MPEG-4 Part 2', 'AAC'), ('mp4', 'Libx264', 'aac')]
         d = self._task_dictionary
-        tt = ffmpegTaskTypeInfo()
 
         for container, vcodec, acodec in params:
             with self.subTest('Test container and codecs', container=container,
@@ -113,7 +125,7 @@ class TestffmpegTask(TempDirFixture):
                 d['options']['audio']['codec'] = acodec
                 d['options']['video']['codec'] = vcodec
                 d['options']['container'] = container
-                tt.task_builder_type.build_definition(tt, d)
+                self.tt.task_builder_type.build_definition(self.tt, d)
 
     def test_valid_task_definition(self):
         d = self._task_dictionary
@@ -139,3 +151,88 @@ class TestffmpegTask(TempDirFixture):
 
         self.assertEqual(td.output_file, '/tmp/test task.mp4')
 
+    def test_build_ffmpeg_task(self):
+        td = self.tt.task_builder_type.build_definition(self.tt,
+                                                        self._task_dictionary)
+        builder = self.tt.task_builder_type(dt_p2p_factory.Node(), td,
+                                            DirManager(self.tempdir))
+        builder.build()
+
+    def test_invalid_extra_data(self):
+        with self.assertRaises(AssertionError):
+            self.ffmpeg_task._get_extra_data(1)
+
+    def test_extra_data(self):
+        d = self._task_dictionary
+        extra_data = self.ffmpeg_task._get_extra_data(0)
+        self.assertEqual(extra_data['command'], Commands.TRANSCODE.value[0])
+        self.assertEqual(extra_data['script_filepath'],
+                         '/golem/scripts/ffmpeg_task.py')
+        self.assertEqual(extra_data['track'],
+                         '/golem/resources/test_video_0.ts')
+        vargs = extra_data['targs']['video']
+        aargs = extra_data['targs']['audio']
+        self.assertEqual(vargs['codec'], d['options']['video']['codec'].upper())
+        self.assertEqual(vargs['bitrate'], d['options']['video']['bit_rate'])
+        self.assertEqual(extra_data['targs']['resolution'],
+                         d['options']['video']['resolution'])
+        self.assertEqual(extra_data['targs']['frame_rate'],
+                         d['options']['video']['frame_rate'])
+        self.assertEqual(aargs['codec'], d['options']['audio']['codec'].upper())
+        self.assertEqual(aargs['bitrate'], d['options']['audio']['bit_rate'])
+        self.assertIn(d['options']['container'], extra_data['output_stream'])
+
+    def test_less_subtasks_than_requested(self):
+        d = self._task_dictionary
+        d['subtasks_count'] = 2
+        td = self.tt.task_builder_type.build_definition(self.tt, d)
+        builder = self.tt.task_builder_type(dt_p2p_factory.Node(), td,
+                                            DirManager(self.tempdir))
+        from apps.transcoding.task import logger
+        with self.assertLogs(logger, level="WARNING") as log:
+            task = builder.build()
+            assert any("subtasks was requested but video splitting process"
+                       in log for log in log.output)
+
+        self.assertEqual(task.total_tasks, 1)
+
+    def test_query_extra_data(self):
+        node_id = uuid.uuid4()
+        self.ffmpeg_task.header.task_id = str(uuid.uuid4())
+        extra_data = self.ffmpeg_task.query_extra_data(0.5, node_id)
+        ctd = extra_data.ctd
+        subtask = next(iter(self.ffmpeg_task.subtasks_given.values()))
+
+        self.assertEqual(subtask['perf'], 0.5)
+        self.assertEqual(subtask['node_id'], node_id)
+        self.assertIsNotNone(subtask['subtask_id'])
+        self.assertEqual(subtask['status'], SubtaskStatus.starting)
+        self.assertEqual(subtask['subtask_num'], 0)
+
+        self.assertIsNotNone(ctd['task_id'])
+        self.assertEqual(ctd['subtask_id'], subtask['subtask_id'])
+        self.assertEqual(ctd['extra_data'], subtask['transcoding_params'])
+        self.assertEqual(ctd['docker_images'], [di.to_dict() for di in
+                                                self.ffmpeg_task.docker_images])
+        self.assertEqual(ctd['deadline'], min(timeout_to_deadline(
+            self.ffmpeg_task.header.subtask_timeout),
+            self.ffmpeg_task.header.deadline))
+
+    # TODO:
+    # At that moment only changing resolution is supported
+    # In the future add more tests
+    def test_transcoding_process_task(self):
+        extra_data = self.bt.query_extra_data(1000, "ABC", "abc")
+        self.bt.accept_client("ABC")
+        ctd = extra_data.ctd
+        assert ctd['extra_data']['start_task'] == 1
+        self.bt.last_task = self.bt.total_tasks
+        self.bt.subtasks_given[1] = {'status': SubtaskStatus.finished}
+        assert self.bt.should_accept_client("ABC") != \
+            AcceptClientVerdict.ACCEPTED
+
+    def test_failed_subtask(self):
+        d = self._task_dictionary
+        d['options']['container'] = 'xxx'
+        with self.assertRaises(TranscodingTaskBuilderException) as cxt:
+            self.tt.task_builder_type.build_definition(self.tt, d)

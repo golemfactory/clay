@@ -1,5 +1,4 @@
 import abc
-import copy
 import logging
 import os
 from typing import Any, Dict, Tuple, Optional
@@ -59,10 +58,10 @@ class TranscodingTask(CoreTask):
         super(TranscodingTask, self).__init__(task_definition=task_definition,
                                               **kwargs)
         self.task_definition = task_definition
-        # self.lock = Lock()
 
     def initialize(self, dir_manager: DirManager):
         super(TranscodingTask, self).initialize(dir_manager)
+        logger.debug('Initialization of ffmpegTask')
         if len(self.task_resources) == 0:
             raise TranscodingException('There is no specified resources')
         stream_operator = StreamOperator()
@@ -77,25 +76,27 @@ class TranscodingTask(CoreTask):
         self.total_tasks = len(chunks)
         self.task_definition.subtasks_count = len(chunks)
 
-
     def accept_results(self, subtask_id, result_files):
         super(TranscodingTask, self).accept_results(subtask_id, result_files)
         self.num_tasks_received += 1
 
     def _get_next_subtask(self):
-        #with self.lock:
+        logger.debug('Getting next task [type=trancoding, task_id={}]'.format(
+            self.task_definition.task_id))
         subtasks = self.subtasks_given.values()
         subtasks = filter(lambda sub: sub['status'] in [
             SubtaskStatus.failure, SubtaskStatus.restarted], subtasks)
         failed_subtask = next(iter(subtasks), None)
         if failed_subtask:
+            logger.debug('Subtask {} was failed, so let resent it'
+                         .format(failed_subtask['subtask_id']))
             failed_subtask['status'] = SubtaskStatus.resent
             self.num_failed_subtasks -= 1
             return failed_subtask['subtask_num']
         else:
             assert self.last_task < self.total_tasks
             curr = self.last_task + 1
-            self.last_task = curr # someone else read that field
+            self.last_task = curr
             return curr - 1
 
     def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
@@ -121,7 +122,7 @@ class TranscodingTask(CoreTask):
 
     def query_extra_data_for_test_task(
             self) -> golem_messages.message.ComputeTaskDef:
-        # TODO, FIXME
+        # TODO
         pass
 
     def _get_task_computing_definition(self, sid, transcoding_params, perf_idx):
@@ -182,6 +183,8 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         task_def.options.audio_params = audio_params
         task_def.options.audio_params = audio_params
         task_def.options.name = dict.get('name', '')
+        logger.debug('Transcoding task definition was build [definition={}]',
+                     task_def.__dict__)
         return task_def
 
     @classmethod
