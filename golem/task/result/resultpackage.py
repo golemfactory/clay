@@ -55,7 +55,11 @@ class Packager(object):
 
     @classmethod
     def _prepare_file_dict(cls, disk_files) -> Dict[str, str]:
-        prefix = common_dir(disk_files)
+
+        if len(disk_files) == 1:
+            prefix = os.path.dirname(disk_files[0])
+        else:
+            prefix = common_dir(disk_files)
 
         return {
             absolute_path: relative_path(absolute_path, prefix)
@@ -126,9 +130,11 @@ class ZipPackager(Packager):
                 break
         elif os.path.isfile(path):
             archive.write(path, os.path.join(subdirectory, basename))
+        elif not os.path.exists(path):
+            raise RuntimeError(f"{path} does not exist")
         else:
-            raise RuntimeError("Packaging supports only \
-                    directories and files, unsupported object: {}".format(path))
+            raise RuntimeError(f"Packaging supports only \
+                    directories and files, unsupported object: {path}")
 
 
 class EncryptingPackager(Packager):
