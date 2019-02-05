@@ -1,5 +1,5 @@
-import os
 import uuid
+from os import makedirs, listdir
 from os.path import basename, exists, join, relpath
 from pathlib import Path
 
@@ -23,7 +23,7 @@ class PackageDirContentsFixture(TempDirFixture):
         out_dir_file = join(out_dir, 'dir_file')
         out_file = join(res_dir, 'out_file')
 
-        os.makedirs(out_dir, exist_ok=True)
+        makedirs(out_dir, exist_ok=True)
 
         with open(out_file, 'w') as f:
             f.write("File contents")
@@ -89,9 +89,9 @@ class TestZipDirectoryPackager(TempDirFixture):
         d3_path = join(d2_path, "directory3/")
         f3_path = join(d3_path, "file3.txt")
 
-        os.makedirs(out_dir, exist_ok=True)
-        os.makedirs(d1_path, exist_ok=True)
-        os.makedirs(d3_path, exist_ok=True)
+        makedirs(out_dir, exist_ok=True)
+        makedirs(d1_path, exist_ok=True)
+        makedirs(d3_path, exist_ok=True)
 
         for path in [f0_path, f2_path, f3_path]:
             with open(path, 'w') as out:
@@ -123,8 +123,6 @@ class TestZipDirectoryPackager(TempDirFixture):
         self.assertTrue(exists(path))
 
     def testExtract(self):
-        from os.path import exists, join
-
         zp = ZipPackager()
         zp.create(self.out_path, self.disk_files)
 
@@ -197,14 +195,14 @@ class TestBackupRename(TempDirFixture):
     def test(self):
         file_dir = join(self.path, 'directory')
         file_path = join(file_dir, 'file')
-        os.makedirs(file_dir, exist_ok=True)
+        makedirs(file_dir, exist_ok=True)
 
         def create_file():
             with open(file_path, 'w') as f:
                 f.write(self.FILE_CONTENTS)
 
         def file_count():
-            return len(os.listdir(file_dir))
+            return len(listdir(file_dir))
 
         def file_contents(num):
             with open(file_path + '.{}'.format(num)) as f:
@@ -232,7 +230,7 @@ class TestBackupRename(TempDirFixture):
         backup_rename(file_path, max_iterations=2)
         assert file_count() == 3
 
-        files = os.listdir(file_dir)
+        files = listdir(file_dir)
         files.remove('file.1')
         files.remove('file.2')
 
