@@ -79,7 +79,7 @@ class Packager(object):
         pass
 
     @abc.abstractmethod
-    def write_disk_file(self, obj, file_path, file_name):
+    def write_disk_file(self, package_file, src_path, target_path):
         pass
 
 
@@ -102,9 +102,9 @@ class ZipPackager(Packager):
     def generator(self, output_path):
         return zipfile.ZipFile(output_path, mode='w', compression=self.ZIP_MODE)
 
-    def write_disk_file(self, obj, file_path, file_name):
-        relative_subdirectory = os.path.dirname(file_name)
-        ZipPackager.zip_append(obj, file_path.rstrip('/'),
+    def write_disk_file(self, package_file, src_path, zip_path):
+        relative_subdirectory = os.path.dirname(zip_path)
+        ZipPackager.zip_append(package_file, src_path.rstrip('/'),
                                relative_subdirectory)
 
     @classmethod
@@ -175,8 +175,8 @@ class EncryptingPackager(Packager):
     def package_name(self, file_path):
         return self.creator_class.package_name(file_path)
 
-    def write_disk_file(self, obj, file_path, file_name):
-        self._packager.write_disk_file(obj, file_path, file_name)
+    def write_disk_file(self, package_file, src_path, target_path):
+        self._packager.write_disk_file(package_file, src_path, target_path)
 
 
 class TaskResultPackager:
