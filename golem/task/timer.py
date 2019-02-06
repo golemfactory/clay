@@ -1,7 +1,7 @@
 import logging
 import math
 import time
-from typing import ClassVar, Optional, Dict, Tuple
+from typing import ClassVar, Optional, Dict
 
 logger = logging.getLogger(__name__)
 
@@ -81,9 +81,12 @@ class ActionTimers:
 
     def time(self, identifier: str) -> Optional[float]:
         """ Returns time spent on an action; None if action hasn't
-            been finished yet. Throws a KeyError if identifier is not known.
+            been finished yet or if the identifier is not known.
         """
-        return self._history[identifier].time
+        try:
+            return self._history[identifier].time
+        except KeyError:
+            return None
 
     def start(self, identifier: str) -> None:
         """ Initializes the start and finished (= None) timestamps.
@@ -105,10 +108,13 @@ class ActionTimers:
             timer.finish()
 
     def remove(self, identifier: str) -> Optional[float]:
-        """ Removes the identifier from history. Throws a KeyError if identifier
+        """ Removes the identifier from history. Returns None if the identifier
             is not known.
         """
-        return self._history.pop(identifier).time
+        try:
+            return self._history.pop(identifier).time
+        except KeyError:
+            return None
 
 
 ProviderTimer = ThirstTimer()  # noqa

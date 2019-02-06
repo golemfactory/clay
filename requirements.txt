@@ -33,9 +33,9 @@ eth-tester==0.1.0-beta.24
 eth-utils==1.0.3
 ethereum==1.6.1
 Flask==1.0.2
-Golem-Messages==2.24.1
+Golem-Messages==2.24.2
 Golem-Smart-Contracts-Interface==1.6.1
-Golem-Verificator==1.7.0
+Golem-Verificator==1.6.3
 greenlet==0.4.15
 h2==3.0.1
 hpack==3.0.0
@@ -101,7 +101,7 @@ pytz==2018.4
 PyYAML==3.12
 raven==6.6.0
 repoze.lru==0.7
-requests==2.21.0
+requests==2.18.4
 rlp==0.6.0
 scrypt==0.8.6
 sdnotify==0.3.2
@@ -123,11 +123,10 @@ Twisted==17.9.0
 txaio==2.8.2
 txtorcon==0.20.0
 u-msgpack-python==2.5.0
-urllib3==1.23
+urllib3==1.22
 watchdog==0.8.3
 web3==4.2.1
 websocket-client==0.47.0
-wsgidav==2.4.1
 wrapt==1.10.11
 zope.interface==4.4.2
 zxcvbn-python==4.4.22

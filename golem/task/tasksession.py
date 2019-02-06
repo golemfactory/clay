@@ -345,6 +345,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # the Requestor safely
 
         if not task_to_compute.concent_enabled:
+            logger.debug(
+                "Concent not enabled for this task, "
+                "skipping `ForceReportComputedTask`. "
+                "task_id=%r, "
+                "subtask_id=%r, ",
+                task_to_compute.task_id,
+                task_to_compute.subtask_id,
+            )
             return
 
         # we're preparing the `ForceReportComputedTask` here and

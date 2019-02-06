@@ -288,6 +288,8 @@ class CoreTask(Task):
 
     @handle_key_error
     def restart_subtask(self, subtask_id):
+        logger.debug('restart_subtask. subtask_id=%r', subtask_id)
+
         subtask_info = self.subtasks_given[subtask_id]
         was_failure_before = subtask_info['status'] in [SubtaskStatus.failure,
                                                         SubtaskStatus.resent]
@@ -443,6 +445,8 @@ class CoreTask(Task):
 
     @handle_key_error
     def _mark_subtask_failed(self, subtask_id):
+        logger.debug('_mark_subtask_failed. subtask_id=%r', subtask_id)
+
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
         node_id = self.subtasks_given[subtask_id]['node_id']
         if node_id in self.counting_nodes:

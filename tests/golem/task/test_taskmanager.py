@@ -46,12 +46,6 @@ from golem.resource.dirmanager import DirManager
 fake = Faker()
 
 
-class PickableMock(Mock):
-    # to make the mock pickable
-    def __reduce__(self):
-        return (Mock, ())
-
-
 class TaskMock(Task):
 
     def __init__(self, *args, **kwargs):
@@ -246,6 +240,36 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         assert broken_pickle_file.is_file()
         self.tm.restore_tasks()
         assert not broken_pickle_file.is_file()
+
+    def test_restore_tasks(self):
+        mock_task_id = 'not-timed-out-task'
+        mock_task_state = TaskState()
+        mock_task = self._get_task_mock(task_id=mock_task_id)
+        pickle_data = mock_task, mock_task_state
+
+        task_pickle_path = self.tm.tasks_dir / f"{mock_task_id}.pickle"
+        task_pickle_path.touch()
+
+        with patch('pickle.load', return_value=pickle_data):
+            self.tm.restore_tasks()
+
+        self.assertTrue(mock_task_id in self.tm.tasks)
+        self.assertTrue(mock_task_state in self.tm.tasks_states.values())
+
+    def test_restore_tasks_should_skip_old_tasks(self):
+        mock_task_id = 'timed-out-task'
+        mock_task_state = TaskState()
+        mock_task = self._get_task_mock(task_id=mock_task_id, timeout=-1)
+        pickle_data = mock_task, mock_task_state
+
+        task_pickle_path = self.tm.tasks_dir / f"{mock_task_id}.pickle"
+        task_pickle_path.touch()
+
+        with patch('pickle.load', return_value=pickle_data):
+            self.tm.restore_tasks()
+
+        self.assertFalse(mock_task_id in self.tm.tasks)
+        self.assertFalse(mock_task_state in self.tm.tasks_states.values())
 
     def test_got_wants_to_compute(self, *_):
         task_mock = self._get_task_mock()
