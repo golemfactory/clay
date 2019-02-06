@@ -287,6 +287,7 @@ class TaskManager(TaskEventListener):
                     task: Task
                     state: TaskState
                     task, state = pickle.load(f)
+
                 except Exception:  # pylint: disable=broad-except
                     logger.exception('Problem restoring task from: %s', path)
                     # On Windows, attempting to remove a file that is in use
@@ -294,6 +295,11 @@ class TaskManager(TaskEventListener):
                     # we'll remove broken files later
                     broken_paths.add(path)
                 else:
+                    if task.header.deadline <= time.time():
+                        logger.debug(
+                            'TASK %r SKIPPED, DEADLINE EXCEEDED', task_id)
+                        continue
+
                     TaskManager._migrate_status_to_enum(state)
 
                     task.register_listener(self)
