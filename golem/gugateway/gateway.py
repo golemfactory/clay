@@ -304,28 +304,6 @@ def cancel_subtask(node_id, subtask_id) -> (str, int):
     return _json_response('OK')
 
 
-@app.route('/<node_id>/resources', methods=['POST'])
-def upload_resource(node_id) -> (str, int):
-    """Receives a resource file from a caller"""
-    if node_id not in subscriptions:
-        return _not_found('subscription')
-
-    for (filename, file) in request.files.items():
-        # file.save(filename)
-        print(f'file {file.filename} saved as {filename}')
-
-    return _json_response(f'upload successful {request.form}, {request.files}')
-
-
-@app.route('/<node_id>/resources/<uuid:resource_id>', methods=['GET'])
-def download_resource(node_id, resource_id):
-    """Sends a binary resource to a caller"""
-    if node_id not in subscriptions:
-        return _not_found('subscription')
-
-    return send_file('foo')
-
-
 @app.route('/<node_id>/<task_type>/events', methods=['GET'])
 def fetch_events(node_id: str, task_type: str) -> (str, int):
     """List events for given node id and task type; newer than last event id"""

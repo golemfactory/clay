@@ -397,56 +397,6 @@ paths:
           description: not found
           schema:
             $ref: '#/definitions/Message'
-  '/{nodeId}/resources':
-    parameters:
-      - $ref: '#/parameters/nodeId'
-    post:
-      summary: Receives a resource file from a caller
-      operationId: uploadResource
-      consumes:
-        - multipart/form-data
-      parameters:
-        - name: metadata
-          type: string
-          in: formData
-          required: false
-          description: file metadata
-        - name: file
-          type: file
-          in: formData
-          required: true
-          description: file to upload
-      responses:
-        '201':
-          description: resource created
-          schema:
-            $ref: '#/definitions/Resource'
-        '404':
-          description: subscription not found
-          schema:
-            $ref: '#/definitions/Message'
-        '400':
-          description: invalid input
-          schema:
-            $ref: '#/definitions/Message'
-  '/{nodeId}/resources/{resourceId}':
-    parameters:
-      - $ref: '#/parameters/nodeId'
-      - $ref: '#/parameters/resourceId'
-    get:
-      summary: Sends a binary resource to a caller
-      operationId: downloadResource
-      produces:
-        - application/zip
-      responses:
-        '200':
-          description: A zipped resource file
-          schema:
-            type: file
-        '404':
-          description: not found
-          schema:
-            $ref: '#/definitions/Message'
   '/{nodeId}/{taskType}/events':
     parameters:
       - $ref: '#/parameters/nodeId'
