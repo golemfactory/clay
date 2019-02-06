@@ -159,8 +159,7 @@ class FrameRenderingTask(RenderingTask):
                     os.path.join(self.output_dir, self._get_output_name(frame))
                 ) for frame in self.frames
             ]
-        else:
-            return super().get_output_names()
+        return super().get_output_names()
 
     def get_output_states(self):
         if self.use_frames:
