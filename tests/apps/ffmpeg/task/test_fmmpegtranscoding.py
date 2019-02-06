@@ -1,4 +1,3 @@
-import pathlib
 import shutil
 import uuid
 from unittest import mock
@@ -7,7 +6,6 @@ from apps.transcoding.common import ffmpegException
 from apps.transcoding.ffmpeg.utils import StreamOperator, Commands, \
     FFMPEG_BASE_SCRIPT
 from coverage.annotate import os
-from golem.core.common import get_golem_path
 from golem.docker.job import DockerJob
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
@@ -60,16 +58,19 @@ class TestffmpegDockerJob(TestDockerJob):
             os.path.dirname(os.path.realpath(__file__))), 'resources'),
             'test_video.mp4')
         shutil.copy(str(stream_file), self.resources_dir)
-        out_stream_path = os.path.join(self.resources_dir, 'test_video2.mp4')
+        out_stream_path = os.path.join(DockerJob.OUTPUT_DIR, 'test_video2.mp4')
         params = {
-            'track': os.path.join(self.resources_dir, 'test_video.mp4'),
+            'track': os.path.join(DockerJob.RESOURCES_DIR, 'test_video.mp4'),
             'targs': {
                 'resolution': [160, 120]
             },
             'output_stream': out_stream_path,
             'command': Commands.TRANSCODE.value[0],
+            'use_playlist': 0,
             'script_filepath': FFMPEG_BASE_SCRIPT
         }
+
+        # porownac paramsy.json
 
         with self._create_test_job(script=FFMPEG_BASE_SCRIPT,
                                    params=params) as job:
@@ -78,4 +79,4 @@ class TestffmpegDockerJob(TestDockerJob):
             self.assertEqual(exit_code, 0)
 
         out_files = os.listdir(self.output_dir)
-        self.assertEqual(out_files, ['out_420001.exr'])
+        self.assertEqual(out_files, ['test_video_TC.mp4'])

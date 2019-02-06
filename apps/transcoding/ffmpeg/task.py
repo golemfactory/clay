@@ -13,9 +13,7 @@ from golem.docker.job import DockerJob
 
 
 # TODO:
-# Czy typować? Co robia inni (A?)
-# Co to są property?
-
+# REMOVE use_playlist param
 from golem.verificator.ffmpeg_verifier import ffmpegVerifier
 
 logger = logging.getLogger(__name__)
@@ -31,7 +29,7 @@ class ffmpegTask(TranscodingTask):
     ENVIRONMENT_CLASS = ffmpegEnvironment
     VERIFIER_CLASS = ffmpegVerifier
 
-    def _get_extra_data(self, subtask_num):
+    def _get_extra_data(self, subtask_num: int):
         transcoding_options = self.task_definition.options
         video_params = transcoding_options.video_params
         audio_params = transcoding_options.audio_params
@@ -75,7 +73,7 @@ class ffmpegTask(TranscodingTask):
         }
         return self._clear_none_values(extra_data)
 
-    def _clear_none_values(self, d):
+    def _clear_none_values(self, d: dict):
         return {k: v if not isinstance(v, dict) else self._clear_none_values(v)
                 for k, v in d.items() if v is not None}
 

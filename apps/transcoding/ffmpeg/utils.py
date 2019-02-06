@@ -31,7 +31,7 @@ class Commands(enum.Enum):
 class StreamOperator:
     @HandleError(ValueError, common.not_valid_json)
     def split_video(self, input_stream: str, parts: int,
-                    dir_manager: DirManager, task_id):
+                    dir_manager: DirManager, task_id: str):
         name = os.path.basename(input_stream)
         tmp_task_dir = dir_manager.get_task_temporary_dir(task_id)
         stream_container_path = os.path.join(tmp_task_dir, name)
@@ -86,7 +86,7 @@ class StreamOperator:
             raise ffmpegException(dtt.error_msg)
         return dtt.result[0] if isinstance(dtt.result, tuple) else dtt.result
 
-    def _get_dir_mapping(self, dir_manager: DirManager, task_id):
+    def _get_dir_mapping(self, dir_manager: DirManager, task_id: str):
         tmp_task_dir = dir_manager.get_task_temporary_dir(task_id)
         resources_task_dir = dir_manager.get_task_resource_dir(task_id)
         task_output_dir = dir_manager.get_task_output_dir(task_id)

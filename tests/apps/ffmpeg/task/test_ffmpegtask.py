@@ -1,3 +1,4 @@
+import os
 import uuid
 from unittest import mock
 
@@ -5,7 +6,6 @@ from apps.transcoding.common import TranscodingTaskBuilderException, \
     AudioCodec, VideoCodec, Container
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
 from apps.transcoding.ffmpeg.utils import Commands
-from coverage.annotate import os
 from golem.core.common import timeout_to_deadline
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
@@ -218,21 +218,3 @@ class TestffmpegTask(TempDirFixture):
             self.ffmpeg_task.header.subtask_timeout),
             self.ffmpeg_task.header.deadline))
 
-    # TODO:
-    # At that moment only changing resolution is supported
-    # In the future add more tests
-    def test_transcoding_process_task(self):
-        extra_data = self.bt.query_extra_data(1000, "ABC", "abc")
-        self.bt.accept_client("ABC")
-        ctd = extra_data.ctd
-        assert ctd['extra_data']['start_task'] == 1
-        self.bt.last_task = self.bt.total_tasks
-        self.bt.subtasks_given[1] = {'status': SubtaskStatus.finished}
-        assert self.bt.should_accept_client("ABC") != \
-            AcceptClientVerdict.ACCEPTED
-
-    def test_failed_subtask(self):
-        d = self._task_dictionary
-        d['options']['container'] = 'xxx'
-        with self.assertRaises(TranscodingTaskBuilderException) as cxt:
-            self.tt.task_builder_type.build_definition(self.tt, d)

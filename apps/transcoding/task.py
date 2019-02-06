@@ -107,7 +107,6 @@ class TranscodingTask(CoreTask):
         subtask_num = self._get_next_subtask()
         subtask = {}
         transcoding_params = self._get_extra_data(subtask_num)
-        # filter recursively None
         subtask['perf'] = perf_index
         subtask['node_id'] = node_id
         subtask['subtask_id'] = sid
@@ -143,7 +142,6 @@ class TranscodingTask(CoreTask):
 
 
 class TranscodingTaskBuilder(CoreTaskBuilder):
-    # jako property
     SUPPORTED_FILE_TYPES = []
     SUPPORTED_VIDEO_CODECS = []
     SUPPORTED_AUDIO_CODECS = []
@@ -183,8 +181,8 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         task_def.options.audio_params = audio_params
         task_def.options.audio_params = audio_params
         task_def.options.name = dict.get('name', '')
-        logger.debug('Transcoding task definition was build [definition={}]',
-                     task_def.__dict__)
+        logger.debug('Transcoding task definition was build [definition={}]'
+                     .format(task_def.__dict__))
         return task_def
 
     @classmethod
@@ -233,7 +231,7 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         return v
 
     @classmethod
-    def get_output_path(cls, dictionary, definition):
+    def get_output_path(cls, dictionary: dict, definition):
         parent = super(TranscodingTaskBuilder, cls)
         path = parent.get_output_path(dictionary, definition)
         options = cls._get_required_field(dictionary, 'options',
