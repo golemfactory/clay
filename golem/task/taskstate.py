@@ -78,6 +78,11 @@ class SubtaskState(object):
             'stdout': to_unicode(self.stdout),
         }
 
+    def __repr__(self):
+        return '<%s: %r>' % (
+            type(self).__name__, self.to_dictionary()
+        )
+
 
 class TaskStatus(Enum):
     notStarted = "Not started"

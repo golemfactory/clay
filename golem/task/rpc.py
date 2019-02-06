@@ -555,6 +555,8 @@ class ClientProvider:
             subtask_ids: typing.Iterable[str],
             force: bool = False,
     ):
+        logger.debug('restart_subtasks_from_task. task_id=%r, subtask_ids=%r,'
+                     'force=%r', task_id, subtask_ids, force)
 
         try:
             self.task_manager.put_task_in_restarted_state(
@@ -567,6 +569,8 @@ class ClientProvider:
                 if sub['status'] == taskstate.SubtaskStatus.finished
             )
             subtask_ids_to_copy = finished_subtask_ids - set(subtask_ids)
+            logger.debug('restart_subtasks_from_task. subtask_ids_to_copy=%r',
+                         subtask_ids_to_copy)
         except self.task_manager.AlreadyRestartedError:
             logger.error('Task already restarted: %r', task_id)
             return

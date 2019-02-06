@@ -365,10 +365,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         """
         key_id = peer_info["node"].key
         node_name = peer_info["node"].node_name
-        add_peer = force or self.__is_new_peer(key_id)
-        add_peer = add_peer and self._is_address_valid(peer_info["address"],
-                                                       peer_info["port"])
-        if not add_peer:
+        if not self._is_address_valid(peer_info["address"], peer_info["port"]):
+            return
+        if not (force or self.__is_new_peer(key_id)):
             return
 
         logger.info(
@@ -639,9 +638,21 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
         alpha = alpha or self.peer_keeper.concurrency
 
         if node_key_id is None:
-            peers = list(self.peers.values())
-            alpha = min(alpha, len(peers))
-            neighbours = random.sample(peers, alpha)
+            # PeerSession doesn't have listen_port
+            # before it receives Hello message.
+            # Also sometimes golem will send bogus Hello(port=0, …).
+            # It's taken from p2p_service.cur_port.
+            # We're not interested in such peers because
+            # they'll be rejected by ._is_address_valid() in .try_to_add_peer()
+            sessions: List[PeerSession] = [
+                peer_session for peer_session in self.peers.values()
+                if self._is_address_valid(
+                    peer_session.address,
+                    peer_session.listen_port,
+                )
+            ]
+            alpha = min(alpha, len(sessions))
+            neighbours: List[PeerSession] = random.sample(sessions, alpha)
 
             def _mapper_session(session: PeerSession) -> dt_p2p.Peer:
                 return dt_p2p.Peer({
@@ -651,7 +662,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
                 })
             return [_mapper_session(session) for session in neighbours]
 
-        neighbours = self.peer_keeper.neighbours(node_key_id, alpha)
+        node_neighbours: List[dt_p2p.Node] = self.peer_keeper.neighbours(
+            node_key_id, alpha
+        )
 
         def _mapper(peer: dt_p2p.Node) -> dt_p2p.Peer:
             return dt_p2p.Peer({
@@ -660,7 +673,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
                 "node": peer,
             })
 
-        return [_mapper(peer) for peer in neighbours]
+        return [_mapper(peer) for peer in node_neighbours if
+                self._is_address_valid(peer.prv_addr, peer.prv_port)]
 
     # Resource functions
     #############################
