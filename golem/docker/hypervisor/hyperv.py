@@ -62,8 +62,6 @@ EVENTS = {
     },
 }
 
-START_VM_RETRIES = 2
-
 
 def publish_event(event: Dict) -> None:
     dispatcher.send(
@@ -100,6 +98,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
         os.path.join(SCRIPTS_PATH, 'start-hyperv-docker-vm.ps1')
     SCRIPT_TIMEOUT = 5  # seconds
     START_VM_TIMEOUT = 60  # seconds
+    START_VM_RETRIES = 2  # retries, not start attempts
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
