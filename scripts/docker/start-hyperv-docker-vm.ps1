@@ -18,5 +18,12 @@ while (-not (Get-VM -Name $VMName).NetworkAdapters[0].IPAddresses[0]) {
 }
 $timer.Stop()
 
-docker-machine env $VMName | Invoke-Expression
+try {
+    docker-machine env $VMName | Invoke-Expression
+} catch {
+    # If the VM IP has changed certificates are invalid and need to be re-generated
+    docker-machine regenerate-certs --force $VMName
+    docker-machine env $MVName | Invoke-Expression
+}
+
 docker info

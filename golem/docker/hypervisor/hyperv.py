@@ -185,7 +185,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
                 timeout=self.START_VM_TIMEOUT
             )
             logger.info("Hyper-V: VM %s started successfully", name)
-        except subprocess.CalledProcessError:
+        except RuntimeError:
             logger.error(
                 "Hyper-V: VM failed to start, this can be caused "
                 "by insufficient RAM or HD free on the host machine")
