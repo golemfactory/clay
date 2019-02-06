@@ -151,6 +151,8 @@ def subscribe(node_id: str, task_type: str) -> (str, int):
 
     try:
         subscription = Subscription(task_type, request.json)
+    except AttributeError as e:
+        return _invalid_input('request body is required')
     except KeyError as e:
         return _invalid_input(f'invalid request body: key {e} is missing')
 
