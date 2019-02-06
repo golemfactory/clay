@@ -113,8 +113,13 @@ def hello():
 
 
 @app.errorhandler(404)
-def page_not_found(error) -> (str, int):
-    return f'Not found. See <a href="/">API doc</a>', 404
+def page_not_found(_error) -> (str, int):
+    return _json_response("Not found. See <a href='/'>API doc</a>", 404)
+
+
+@app.errorhandler(400)
+def bad_request(error) -> (str, int):
+    return _json_response(str(error), 400)
 
 
 @app.route('/settings')
@@ -149,12 +154,17 @@ def subscribe(node_id: str, task_type: str) -> (str, int):
     if task_type not in subscriptions[node_id]:
         status_code = 201
 
+    if request.json is None:
+        return _invalid_input('request body is required')
+
     try:
         subscription = Subscription(task_type, request.json)
     except AttributeError as e:
         return _invalid_input('request body is required')
     except KeyError as e:
-        return _invalid_input(f'invalid request body: key {e} is missing')
+        return _invalid_input(f'key {e} is missing in request body')
+    except ValueError as e:
+        return _invalid_input(str(e))
 
     subscriptions[node_id][task_type] = subscription
 

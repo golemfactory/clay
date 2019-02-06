@@ -164,14 +164,14 @@ class Event(object):
 class Subscription(object):
     """ Golem Unlimited Gateway subscription"""
 
-    def __init__(self, task_type: TaskType, request_body: dict):
+    def __init__(self, task_type: TaskType, request_json: dict):
         self.task_type: TaskType = task_type
-        self.name = request_body.get('name', '')
-        self.min_price = int(request_body['minPrice'])
-        self.performance = float(request_body.get('performance', 0.0))
-        self.max_cpu_cores = int(request_body['maxCpuCores'])
-        self.max_memory_size = int(request_body['maxMemorySize'])
-        self.max_disk_size = int(request_body['maxDiskSize'])
+        self.name = request_json.get('name', '')
+        self.min_price = int(request_json['minPrice'])
+        self.performance = float(request_json.get('performance', 0.0))
+        self.max_cpu_cores = int(request_json['maxCpuCores'])
+        self.max_memory_size = int(request_json['maxMemorySize'])
+        self.max_disk_size = int(request_json['maxDiskSize'])
         self.stats: Counter = Counter()
 
         self.event_counter: int = 0
