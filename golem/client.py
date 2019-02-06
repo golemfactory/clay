@@ -1070,7 +1070,13 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
-        if self._update_hw_preset:
+
+        hw_preset_present = bool(getattr(
+            new_config_desc,
+            'hardware_preset_name',
+            None,
+        ))
+        if self._update_hw_preset and hw_preset_present:
             self._update_hw_preset(
                 HardwarePresets.from_config(self.config_desc))
 

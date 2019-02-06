@@ -97,7 +97,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
     START_VM_SCRIPT_PATH = \
         os.path.join(SCRIPTS_PATH, 'start-hyperv-docker-vm.ps1')
     SCRIPT_TIMEOUT = 5  # seconds
-    START_VM_TIMEOUT = 60  # seconds
+    START_VM_TIMEOUT = 120  # seconds
     START_VM_RETRIES = 2  # retries, not start attempts
 
     def __init__(self, *args, **kwargs):

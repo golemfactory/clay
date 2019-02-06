@@ -762,6 +762,9 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         c.update_setting('node_name', new_node_name)
         self.assertEqual(c.get_setting('node_name'), new_node_name)
         self.assertEqual(c.get_settings()['node_name'], new_node_name)
+        c._update_hw_preset.assert_not_called()
+
+        c.update_setting('hardware_preset_name', 'custom')
         c._update_hw_preset.assert_called_once()
 
         newer_node_name = str(uuid.uuid4())

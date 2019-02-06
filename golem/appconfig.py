@@ -102,6 +102,12 @@ class NodeConfig:
 
 
 class AppConfig:
+    UNSAVED_PROPERTIES = (
+        'num_cores',
+        'max_resource_size',
+        'max_memory_size',
+    )
+
     __loaded_configs = set()  # type: Set[Any]
 
     @classmethod
@@ -197,11 +203,16 @@ class AppConfig:
         for var, val in list(vars(cfg_desc).items()):
             setter = "set_{}".format(var)
             if not hasattr(self, setter):
-                logger.info(
-                    "Cannot set unknown config property: %r = %r",
-                    var,
-                    val,
-                )
+                if var in self.UNSAVED_PROPERTIES:
+                    logger.debug(
+                        "Config property preserved elsewhere: %r", var
+                    )
+                else:
+                    logger.info(
+                        "Cannot set unknown config property: %r = %r",
+                        var,
+                        val,
+                    )
                 continue
 
             set_func = getattr(self, setter)
