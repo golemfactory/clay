@@ -1,15 +1,16 @@
 import logging
 from enum import Enum
+from typing import Type
 
 from golem.core.common import HandleValueError
 
 logger = logging.getLogger(__name__)
 
 
-def not_valid_json(exception_type, path: str): # TYPY
+def not_valid_json(exception_type: Type[Exception], path: str):
     msg = 'File {} is not valid JSON'.format(path)
     logger.warning(msg)
-    raise TranscodingException(msg)
+    raise exception_type(msg)
 
 
 def file_io_error(path: str):
@@ -74,9 +75,9 @@ CONTAINER_SUPPORTED_CODECS = {
 }
 
 
-def is_type_of(type):
+def is_type_of(t: Type):
     def f(obj):
-        return isinstance(obj, type)
+        return isinstance(obj, t)
     return f
 
 
