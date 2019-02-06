@@ -105,40 +105,57 @@ definitions:
         type: string
         description: minimal Golem version
     additionalProperties: true
-  Resource:
-    description: Binary content (files) required to execute subtask
-    required:
-      - resourceId
-    properties:
-      resourceId:
-        $ref: '#/definitions/Uuid'
-      metadata:
-        type: string
   Subtask:
     description: >
       Subtask is a part of task supossed to be executed by a provider,
       which submited task computation willingness.
     required:
+      - taskId
       - subtaskId
       - price
+      - deadline
     properties:
+      taskId:
+        $ref: '#/definitions/Uuid'
       subtaskId:
         $ref: '#/definitions/Uuid'
-      description:
-        type: string
-      resource:
-        $ref: '#/definitions/Resource'
+      price:
+        type: integer
+        format: int64
+        description: >
+          total subtask price in 10e-18 GNT computed as `task_max_price * subtask_timeout`
       deadline:
         type: integer
         description: >
           timestamp when computation must be finished
           to be accepted by a requestor
-      price:
-        type: integer
-        format: int64
-        description: >
-          total subtask price computed as `task_max_price * subtask_timeout`
+      docker_images:
+        type: array
+        items:
+          required:
+            - repository
+            - tag
+          properties:
+            repository:
+              type: string
+            image_id:
+              type: string
+            tag:
+              type: string
     additionalProperties: true
+  Resource:
+    description: Binary content (files) required to execute subtask
+    required:
+      - taskId
+      - subtaskId
+      - path
+    properties:
+      taskId:
+        $ref: '#/definitions/Uuid'
+      subtaskId:
+        $ref: '#/definitions/Uuid'
+      path:
+        type: string
   SubtaskResult:
     description: Subtask computation result
     required:
