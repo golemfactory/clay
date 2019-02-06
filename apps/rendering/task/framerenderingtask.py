@@ -486,7 +486,7 @@ class FrameRenderingTask(RenderingTask):
             )
         )
 
-    def _add_suffix_to_existing_directory(self, directory):
+    def _add_suffix_to_existing_directory(self, directory):  # pylint: disable=no-self-use
         assert isinstance(directory, str)
 
         suffix = 1
