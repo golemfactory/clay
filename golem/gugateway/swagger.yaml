@@ -160,6 +160,7 @@ definitions:
     description: Subtask computation result
     required:
       - status
+      - path
     properties:
       status:
         type: string
@@ -169,8 +170,8 @@ definitions:
       reason:
         type: string
         description: failure reason
-      resourceId:
-        $ref: '#/definitions/Uuid'
+      path:
+        type: string
   SubtaskVerification:
     description: Subtask verification result
     required:
@@ -228,11 +229,6 @@ parameters:
     <<: *Uuid
   subtaskId:
     name: subtaskId
-    in: path
-    required: true
-    <<: *Uuid
-  resourceId:
-    name: resourceId
     in: path
     required: true
     <<: *Uuid
@@ -358,7 +354,7 @@ paths:
       summary: Reports subtask computation result
       description: >
         In case of successful computation caller need upload resource
-        with subtask outputs first, and supply obtained resourceId here.
+        with subtask outputs first, and supply relative path here.
 
         Reason is supplied only in case of failure.
       operationId: subtaskResult
