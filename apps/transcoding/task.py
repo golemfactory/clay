@@ -1,6 +1,7 @@
 import abc
 import logging
 import os
+from threading import Lock
 from typing import Any, Dict, Tuple, Optional
 
 import golem_messages.message
@@ -58,6 +59,16 @@ class TranscodingTask(CoreTask):
         super(TranscodingTask, self).__init__(task_definition=task_definition,
                                               **kwargs)
         self.task_definition = task_definition
+        self.lock = Lock()
+
+    def __getstate__(self):
+        state = super(TranscodingTask, self).__getstate__()
+        del state['lock']
+        return state
+
+    def __setstate__(self, state):
+        super(TranscodingTask, self).__setstate__(state)
+        self.lock = Lock()
 
     def initialize(self, dir_manager: DirManager):
         super(TranscodingTask, self).initialize(dir_manager)
@@ -77,8 +88,10 @@ class TranscodingTask(CoreTask):
         self.task_definition.subtasks_count = len(chunks)
 
     def accept_results(self, subtask_id, result_files):
-        super(TranscodingTask, self).accept_results(subtask_id, result_files)
-        self.num_tasks_received += 1
+        with self.lock:
+            super(TranscodingTask, self).accept_results(subtask_id,
+                                                        result_files)
+            self.num_tasks_received += 1
 
     def _get_next_subtask(self):
         logger.debug('Getting next task [type=trancoding, task_id={}]'.format(
@@ -101,23 +114,23 @@ class TranscodingTask(CoreTask):
 
     def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
+        with self.lock:
+            sid = self.create_subtask_id()
 
-        sid = self.create_subtask_id()
+            subtask_num = self._get_next_subtask()
+            subtask = {}
+            transcoding_params = self._get_extra_data(subtask_num)
+            subtask['perf'] = perf_index
+            subtask['node_id'] = node_id
+            subtask['subtask_id'] = sid
+            subtask['transcoding_params'] = transcoding_params
+            subtask['subtask_num'] = subtask_num
+            subtask['status'] = SubtaskStatus.starting
 
-        subtask_num = self._get_next_subtask()
-        subtask = {}
-        transcoding_params = self._get_extra_data(subtask_num)
-        subtask['perf'] = perf_index
-        subtask['node_id'] = node_id
-        subtask['subtask_id'] = sid
-        subtask['transcoding_params'] = transcoding_params
-        subtask['subtask_num'] = subtask_num
-        subtask['status'] = SubtaskStatus.starting
+            self.subtasks_given[sid] = subtask
 
-        self.subtasks_given[sid] = subtask
-
-        return Task.ExtraData(ctd=self._get_task_computing_definition(
-            sid, transcoding_params, perf_index))
+            return Task.ExtraData(ctd=self._get_task_computing_definition(
+                sid, transcoding_params, perf_index))
 
     def query_extra_data_for_test_task(
             self) -> golem_messages.message.ComputeTaskDef:
