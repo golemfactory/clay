@@ -15,6 +15,13 @@ from golem.core.simpleenv import get_local_datadir
 from golem.database import Database
 from golem.model import DB_MODELS, db, DB_FIELDS
 
+from golem.resource.dirmanager import DirManager
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+from apps.core.task.coretask import CoreTask, CoreTaskBuilder, CoreTaskTypeInfo
+from golem.docker.manager import DockerManager
+from golem.docker.task_thread import DockerTaskThread
+
+
 logger = logging.getLogger(__name__)
 
 
@@ -167,3 +174,39 @@ class PEP8MixIn(object):
         result = style.check_files(absolute_files)
         self.assertEqual(result.total_errors, 0,
                          "Found code style errors (and warnings).")
+
+
+class TestTaskIntegration(TempDirFixture):
+
+    def setUp(self):
+        super(TestTaskIntegration, self).setUp()
+
+        # build mock node
+        self.node = dt_p2p_factory.Node()
+        self.task_definition = None
+        self.task = None
+        self.dir_manager = DirManager(self.root_dir)
+
+        self.dm = DockerTaskThread.docker_manager = DockerManager.install()
+
+
+    def build_task(self, task_type_info, task_dict):
+
+        builder_type = task_type_info.task_builder_type
+
+        minimal = False
+    
+        definition = builder_type.build_definition(task_type_info, task_dict, minimal)
+        #definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
+        definition.concent_enabled = task_dict.get('concent_enabled', False)
+
+        builder = builder_type(self.node, definition, self.dir_manager)
+
+        self.task_definition = definition
+        self.task = builder.build()
+
+        return self.task
+
+
+
+
