@@ -133,23 +133,31 @@ class TestFrameRenderingTask(TestDirFixture, LogTestCase):
 
     def test__get_output_dir(self):
         frame_task = self._get_frame_task(True)
+        frame_task.task_definition.task_id = 'test'
         with mock.patch(
             'apps.rendering.task.framerenderingtask.os.path.exists',
             return_value=False
         ):
             output_dir = frame_task._get_output_dir()
-        assert output_dir == os.path.dirname(
-            frame_task.task_definition.output_file)
+        expected_path = os.path.join(
+            os.path.dirname(frame_task.task_definition.output_file),
+            frame_task.task_definition.task_id
+        )
+        assert output_dir == expected_path
 
     def test__get_output_dir_when_directory_already_exists(self):
         frame_task = self._get_frame_task(True)
+        frame_task.task_definition.task_id = 'test'
         with mock.patch(
             'apps.rendering.task.framerenderingtask.os.path.exists',
             side_effect=[True, False]
         ):
             output_dir = frame_task._get_output_dir()
-        assert output_dir == \
-            f'{os.path.dirname(frame_task.task_definition.output_file)}_1'
+        base_path = os.path.join(
+            os.path.dirname(frame_task.task_definition.output_file),
+            frame_task.task_definition.task_id
+        )
+        assert output_dir == f'{base_path}_1'
 
     def test_update_frame_preview(self):
         frame_task = self._get_frame_task()

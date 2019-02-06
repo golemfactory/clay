@@ -480,8 +480,8 @@ class FrameRenderingTask(RenderingTask):
         return self._add_suffix_to_existing_directory(
             os.path.normpath(
                 os.path.join(
-                    self.task_definition.task_id,
-                    os.path.dirname(self.output_file)
+                    os.path.dirname(self.output_file),
+                    self.task_definition.task_id
                 )
             )
         )
