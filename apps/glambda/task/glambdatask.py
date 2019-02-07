@@ -77,10 +77,6 @@ class GLambdaTaskTypeInfo(TaskTypeInfo):
 
 class GLambdaTask(CoreTask):
 
-    class BasicAcceptStrategy(object):
-        def accept(self, client):
-            return True
-
     ENVIRONMENT_CLASS = GLambdaTaskEnvironment
     MAX_PENDING_CLIENT_RESULTS=1
 
