@@ -1,7 +1,6 @@
 import os
-import subprocess
-import shutil
 import re
+import subprocess
 
 FFMPEG_COMMAND = "ffmpeg"
 FFPROBE_COMMAND = "ffprobe"
@@ -111,7 +110,7 @@ def transcode_video_command(track, output_playlist_name, targs, use_playlist):
     except:
         pass
     try:
-        fps = targs['frame_rate']
+        fps = str(targs['frame_rate'])
         cmd.append("-r")
         cmd.append(fps)
     except:

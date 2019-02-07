@@ -1,25 +1,21 @@
 import abc
-import copy
 import logging
 import os
 from typing import Any, Dict, Tuple, Optional
 
 import golem_messages.message
 
+import apps.transcoding.common
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder, CoreTaskTypeInfo
 from apps.core.task.coretaskstate import Options, TaskDefinition
-from .common import AudioCodec, VideoCodec, Container, is_type_of, \
-    TranscodingTaskBuilderException
-
-import apps.transcoding.common
-from apps.transcoding.ffmpeg.utils import StreamOperator
 from apps.transcoding.common import TranscodingException
-
+from apps.transcoding.ffmpeg.utils import StreamOperator
 from golem.core.common import HandleError, timeout_to_deadline
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
 from golem.task.taskstate import SubtaskStatus
-
+from .common import AudioCodec, VideoCodec, Container, is_type_of, \
+    TranscodingTaskBuilderException
 
 logger = logging.getLogger(__name__)
 
@@ -77,13 +73,16 @@ class TranscodingTask(CoreTask):
         self.total_tasks = len(chunks)
         self.task_definition.subtasks_count = len(chunks)
 
-
     def accept_results(self, subtask_id, result_files):
         super(TranscodingTask, self).accept_results(subtask_id, result_files)
+
+        for idx, result in enumerate(result_files):
+            logger.info("Result[{}]: {}".format(idx, result))
+
         self.num_tasks_received += 1
 
     def _get_next_subtask(self):
-        #with self.lock:
+        # with self.lock:
         subtasks = self.subtasks_given.values()
         subtasks = filter(lambda sub: sub['status'] in [
             SubtaskStatus.failure, SubtaskStatus.restarted], subtasks)
@@ -95,7 +94,7 @@ class TranscodingTask(CoreTask):
         else:
             assert self.last_task < self.total_tasks
             curr = self.last_task + 1
-            self.last_task = curr # someone else read that field
+            self.last_task = curr  # someone else read that field
             return curr - 1
 
     def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
@@ -238,5 +237,3 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         container = options.get('container', cls._get_presets(
             definition.options.input_stream_path))
         return '{}.{}'.format(path, container)
-
-

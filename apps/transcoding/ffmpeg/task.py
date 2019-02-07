@@ -10,8 +10,6 @@ from apps.transcoding.ffmpeg.utils import Commands, FFMPEG_BASE_SCRIPT
 from apps.transcoding.task import TranscodingTaskOptions, \
     TranscodingTaskBuilder, TranscodingTaskDefinition, TranscodingTask
 from golem.docker.job import DockerJob
-
-
 # TODO:
 # Czy typować? Co robia inni (A?)
 # Czym sie rozni minimal definition od full?
@@ -19,7 +17,7 @@ from golem.docker.job import DockerJob
 # Co to są property?
 # Obsluga bledow
 # LOGI
-from golem.verificator.ffmpeg_verifier import ffmpegVerifier
+from golem.verificator.ffmpeg_verifier import FFmpegVerifier
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +30,7 @@ class ffmpegTaskTypeInfo(CoreTaskTypeInfo):
 
 class ffmpegTask(TranscodingTask):
     ENVIRONMENT_CLASS = ffmpegEnvironment
-    VERIFIER_CLASS = ffmpegVerifier
+    VERIFIER_CLASS = FFmpegVerifier
 
     def _get_extra_data(self, subtask_num):
         transcoding_options = self.task_definition.options
