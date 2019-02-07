@@ -228,8 +228,9 @@ def retry(exc_cls, count: int):
                     return func(*args, **kwargs)
                 except Exception as exc:  # pylint: disable=broad-except
                     last_exc = exc
-                    if type(exc) not in exc_cls:
+                    if not isinstance(exc, exc_cls):
                         break
+            # pylint: disable=raising-bad-type
             raise last_exc
         return wrapper
     return decorator
