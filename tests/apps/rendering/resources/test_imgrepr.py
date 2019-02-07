@@ -64,7 +64,7 @@ class TestExrImgRepr(TempDirFixture, PEP8MixIn):
         assert isinstance(img, ImgRepr)
         assert img.img is None
         assert img.type == "EXR"
-        assert img.rgb is None
+        assert img.bgr is None
         assert img.min == 0.0
         assert img.max == 1.0
         assert img.file_path is None
@@ -82,7 +82,7 @@ class TestExrImgRepr(TempDirFixture, PEP8MixIn):
     def test_exr_repr(self):
         e = get_exr_img_repr()
         assert e.img is not None
-        assert e.rgb is not None
+        assert e.bgr is not None
 
         assert e.get_size() == (10, 10)
 

@@ -176,12 +176,12 @@ class EXRImgRepr(ImgRepr):
         self.type = "EXR"
         self.dw = None
         self.pixel_type = Imath.PixelType(Imath.PixelType.FLOAT)
-        self.rgb = None
+        self.bgr = None
         self.min = 0.0
         self.max = 1.0
         self.file_path = None
 
-    def _convert_openexr_to_opencv_rgb(self):
+    def _convert_openexr_to_opencv_bgr(self):
         width, height = self.get_size()
         bytes_r, bytes_g, bytes_b = self.img.channels("RGB")
         r = numpy.fromstring(bytes_r, dtype=numpy.float32)
@@ -196,15 +196,15 @@ class EXRImgRepr(ImgRepr):
         r = numpy.reshape(r, (-1, width))
         g = numpy.reshape(g, (-1, width))
         b = numpy.reshape(b, (-1, width))
-        opencv_img[:, :, 0] = r
+        opencv_img[:, :, 0] = b
         opencv_img[:, :, 1] = g
-        opencv_img[:, :, 2] = b
+        opencv_img[:, :, 2] = r
         return opencv_img
 
     def load_from_file(self, file_):
         self.img = OpenEXR.InputFile(file_)
         self.dw = self.img.header()['dataWindow']
-        self.rgb = self._convert_openexr_to_opencv_rgb()
+        self.bgr = self._convert_openexr_to_opencv_bgr()
 
         self.file_path = file_
         self.name = os.path.basename(file_)
@@ -214,17 +214,17 @@ class EXRImgRepr(ImgRepr):
                self.dw.max.y - self.dw.min.y + 1
 
     def get_pixel(self, xy):
-        return self.rgb[xy[::-1]].tolist()
+        return self.bgr[xy[::-1]].tolist()[::-1]
 
     def set_pixel(self, xy, color):
         x, y = xy
-        self.rgb[y, x] = color
+        self.bgr[y, x] = color[::-1]
 
     def copy(self):
         e = EXRImgRepr()
         e.load_from_file(self.file_path)
         e.dw = deepcopy(self.dw)
-        e.rgb = deepcopy(self.rgb)
+        e.bgr = deepcopy(self.bgr)
         e.min = self.min
         e.max = self.max
         return e

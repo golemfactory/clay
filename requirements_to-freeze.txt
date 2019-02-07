@@ -28,7 +28,6 @@ os-win
 packaging
 peewee<2.11,>=2.8
 peewee_migrate==0.14.0
-Pillow==4.2.1
 pluggy==0.6.0
 portalocker==1.2.1
 psutil==5.2.2
