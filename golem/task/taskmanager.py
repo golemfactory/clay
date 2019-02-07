@@ -294,12 +294,6 @@ class TaskManager(TaskEventListener):
                     # we'll remove broken files later
                     broken_paths.add(path)
                 else:
-                    if task.header.deadline <= time.time():
-                        logger.debug('Task %r skipped, deadline exceeded.'
-                                     'deadline=%r',
-                                     task_id, task.header.deadline)
-                        continue
-
                     TaskManager._migrate_status_to_enum(state)
 
                     task.register_listener(self)
