@@ -573,8 +573,8 @@ class TestOptNode(TempDirFixture):
 
         # then
         assert self.node._docker_manager
-        assert self.node._docker_manager.check_environment.called
-        assert self.node._docker_manager.apply_config.called
+        assert self.node._docker_manager.check_environment.called  # noqa # pylint: disable=no-member
+        assert self.node._docker_manager.apply_config.called  # noqa # pylint: disable=no-member
 
     @patch('golem.node.DockerManager')
     def test_not_start_docker_mgr(self, *_):
