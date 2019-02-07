@@ -1,3 +1,4 @@
+import itertools
 import os
 import sys
 from typing import Dict
@@ -142,15 +143,11 @@ def convert_to_png_if_needed(img_path):
 
 
 def get_crops(rendered_scene, x, y, width, height):
-    crops = []
-    offsets = [0, 1, -1]
-    for x_offset in offsets:
-        for y_offset in offsets:
-            crop = rendered_scene.crop((x + x_offset,
-                                        y + y_offset,
-                                        x + width - x_offset,
-                                        y + height - y_offset))
-            crops.append(crop)
+    offsets = itertools.product([0, -1, 1], repeat=2)
+    crops = [rendered_scene.crop((x + x_offset, y + y_offset,
+                                  x + width + x_offset,
+                                  y + height + y_offset))
+             for x_offset, y_offset in offsets]
     return crops
 
 
