@@ -20,6 +20,10 @@ from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder, CoreTaskTypeInfo
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
+import uuid
+from golem.job import DockerJob
+from golem.docker.client import local_client
+import docker.errors
 
 
 logger = logging.getLogger(__name__)
@@ -189,6 +193,25 @@ class TestTaskIntegration(TempDirFixture):
 
         self.dm = DockerTaskThread.docker_manager = DockerManager.install()
 
+        self.jobs = []
+
+
+    def tearDown(self):
+        super(TestTaskIntegration, self).tearDown()
+
+        if len( self.jobs ) != 0:
+            client = local_client()
+
+            for test_job in self.jobs:
+                if test_job.container:
+                    try:
+                        client.remove_container(test_job.container_id,
+                                                force=True)
+                    except docker.errors.APIError:
+                        pass  # Already removed?
+
+            self.jobs = []
+
 
     def build_task(self, task_type_info, task_dict):
 
@@ -208,5 +231,71 @@ class TestTaskIntegration(TempDirFixture):
         return self.task
 
 
+    def execute_subtask(self, task):
+
+        node_id = uuid.uuid4()
+        node_name = str( node_id )
+
+        extra_data = task.query_extra_data(0, node_id, node_name)
+
+        subtask_dir = os.path.join(self.root_dir, node_name)
+        script_filepath = extra_data['script_filepath']
+
+        # Run docker job
+        job = self._create_test_job(image, subtask_dir, script_filepath, extra_data)
+
+        job.start()
+        exit_code = job.wait(timeout=300)
+        self.assertEqual(exit_code, 0)
 
 
+
+    def execute_subtasks(self, num_subtasks):
+
+        for i in range(num_subtasks):
+            self.execute_subtask(self.task)
+
+
+    def _create_docker_dirs(self, root_dir):
+
+        resources_dir = os.path.join(root_dir, "resources")
+        work_dir = os.path.join(root_dir, "work")
+        output_dir = os.path.join(root_dir, "output")
+
+        os.makedirs(root_dir, exist_ok=True)
+        os.makedirs(resources_dir, exist_ok=True)
+        os.makedirs(work_dir, exist_ok=True)
+        os.makedirs(output_dir, exist_ok=True)
+
+        return [ resources_dir, work_dir, output_dir ]
+
+
+    def _create_test_job(self, root_dir, script, params=None):
+
+        [ resources_dir, work_dir, output_dir ] = self._create_docker_dirs(root_dir)
+
+        test_job = DockerJob(
+            image=self.image,
+            script_filepath=script,
+            parameters=params,
+            resources_dir=resources_dir,
+            work_dir=work_dir,
+            output_dir=output_dir,
+            environment=DockerJob.get_environment(),
+            host_config={
+                'binds': {
+                    work_dir: {
+                        "bind": DockerJob.WORK_DIR,
+                        "mode": "rw"
+                    },
+                    resources_dir: {
+                        "bind": DockerJob.RESOURCES_DIR,
+                        "mode": "rw"
+                    },
+                    output_dir: {
+                        "bind": DockerJob.OUTPUT_DIR,
+                        "mode": "rw"
+                    }
+                }
+            })
+        return test_job
