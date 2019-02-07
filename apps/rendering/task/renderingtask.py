@@ -123,10 +123,10 @@ class RenderingTask(CoreTask):
 
     @handle_opencv_image_error(logger)
     def _update_preview(self, new_chunk_file_path, num_start):
-            img = OpenCVImgRepr.from_image_file(new_chunk_file_path)
-            img_current = self._open_preview()
-            img_current.add(img)
-            img_current.save_with_extension(self.preview_file_path, PREVIEW_EXT)
+        img = OpenCVImgRepr.from_image_file(new_chunk_file_path)
+        img_current = self._open_preview()
+        img_current.add(img)
+        img_current.save_with_extension(self.preview_file_path, PREVIEW_EXT)
 
     @CoreTask.handle_key_error
     def _remove_from_preview(self, subtask_id):

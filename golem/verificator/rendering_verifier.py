@@ -1,9 +1,9 @@
 import logging
 import math
 from datetime import datetime
-from collections import Callable
-from .core_verifier import CoreVerifier
+
 from apps.rendering.resources.imgrepr import load_img
+from .core_verifier import CoreVerifier
 from .verifier import SubtaskVerificationState
 
 logger = logging.getLogger("apps.rendering")
