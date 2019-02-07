@@ -21,9 +21,10 @@ from apps.core.task.coretask import CoreTask, CoreTaskBuilder, CoreTaskTypeInfo
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 import uuid
-from golem.job import DockerJob
+from golem.docker.job import DockerJob
 from golem.docker.client import local_client
 import docker.errors
+from golem.docker.image import DockerImage
 
 
 logger = logging.getLogger(__name__)
@@ -220,7 +221,7 @@ class TestTaskIntegration(TempDirFixture):
         minimal = False
     
         definition = builder_type.build_definition(task_type_info, task_dict, minimal)
-        #definition.task_id = CoreTask.create_task_id(self.keys_auth.public_key)
+        definition.task_id = str(uuid.uuid4())
         definition.concent_enabled = task_dict.get('concent_enabled', False)
 
         builder = builder_type(self.node, definition, self.dir_manager)
@@ -236,17 +237,22 @@ class TestTaskIntegration(TempDirFixture):
         node_id = uuid.uuid4()
         node_name = str( node_id )
 
-        extra_data = task.query_extra_data(0, node_id, node_name)
+        ctd = task.query_extra_data(0, node_id, node_name).ctd
+        extra_data = ctd[ "extra_data" ]
 
         subtask_dir = os.path.join(self.root_dir, node_name)
         script_filepath = extra_data['script_filepath']
 
         # Run docker job
+        
+        env = task.ENVIRONMENT_CLASS
+        image = DockerImage(env.DOCKER_IMAGE, env.DOCKER_TAG)
+
         job = self._create_test_job(image, subtask_dir, script_filepath, extra_data)
 
         job.start()
         exit_code = job.wait(timeout=300)
-        self.assertEqual(exit_code, 0)
+        self.assertEqual(exit_code, 0, "Running docker failed!")
 
 
 
@@ -270,12 +276,12 @@ class TestTaskIntegration(TempDirFixture):
         return [ resources_dir, work_dir, output_dir ]
 
 
-    def _create_test_job(self, root_dir, script, params=None):
+    def _create_test_job(self, image, root_dir, script, params=None):
 
         [ resources_dir, work_dir, output_dir ] = self._create_docker_dirs(root_dir)
 
         test_job = DockerJob(
-            image=self.image,
+            image=image,
             script_filepath=script,
             parameters=params,
             resources_dir=resources_dir,

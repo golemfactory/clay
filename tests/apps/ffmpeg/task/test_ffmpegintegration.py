@@ -43,5 +43,6 @@ class TestffmpegIntegration(TestTaskIntegration):
         }
 
         task = self.build_task(ffmpegTaskTypeInfo(), taks_dict)
+        self.execute_subtasks(1)
 
 
