@@ -14,7 +14,7 @@ from typing import (
 
 from pathlib import Path
 from twisted.internet import threads
-from twisted.internet.defer import gatherResults, Deferred, maybeDeferred
+from twisted.internet.defer import gatherResults, Deferred, succeed, fail
 from twisted.python.failure import Failure
 
 from apps.appsmanager import AppsManager
@@ -158,7 +158,7 @@ class Node(HardwarePresetsMixin):
             def on_rpc_ready() -> Deferred:
                 terms_ = self._check_terms()
                 keys = self._start_keys_auth()
-                docker = maybeDeferred(self._start_docker)
+                docker = self._start_docker()
                 return gatherResults([terms_, keys, docker], consumeErrors=True)
 
             chain_function(rpc, on_rpc_ready).addCallbacks(
@@ -233,10 +233,11 @@ class Node(HardwarePresetsMixin):
         deferred = rpc.start(self._reactor)
         return chain_function(deferred, self._start_session)
 
-    def _start_session(self) -> Optional[Deferred]:
+    def _start_session(self) -> Deferred:
         if not self.rpc_router:
-            self._stop_on_error("rpc", "RPC router is not available")
-            return None
+            msg = "RPC router is not available"
+            self._stop_on_error("rpc", msg)
+            return fail(Exception(msg))
 
         crsb_user = self.rpc_router.cert_manager.CrossbarUsers.golemapp
         self.rpc_session = Session(
@@ -421,9 +422,9 @@ class Node(HardwarePresetsMixin):
 
         return threads.deferToThread(create_keysauth)
 
-    def _start_docker(self) -> Optional[Deferred]:
+    def _start_docker(self) -> Deferred:
         if not self._use_docker_manager:
-            return None
+            return succeed(None)
 
         def start_docker():
             # pylint: disable=no-member
