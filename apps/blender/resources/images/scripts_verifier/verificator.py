@@ -4,7 +4,7 @@ from typing import List, Optional
 import blender_render as blender
 from crop_generator import WORK_DIR, OUTPUT_DIR, SubImage, Region, PixelRegion, \
     generate_single_random_crop_data, Crop
-from img_metrics_calculator import compare_crop_window
+from img_metrics_calculator import calculate_metrics
 
 def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
     for crop in crops:
@@ -78,10 +78,10 @@ def make_verdict( subtask_file_paths, crops, results ):
 
         for crop, subtask in zip(crop_data['results'], subtask_file_paths):
             crop_path = os.path.join(OUTPUT_DIR, crop)
-            results_path = compare_crop_window(crop_path,
+            results_path = calculate_metrics(crop_path,
                                 subtask,
                                 left, top,
-                                output_filename_path=os.path.join(OUTPUT_DIR, crop_data['crop']['outfilebasename'] + "metrics.txt"))
+                                metrics_output_filename=os.path.join(OUTPUT_DIR, crop_data['crop']['outfilebasename'] + "metrics.txt"))
 
             with open(results_path, 'r') as f:
                 data = json.load(f)
