@@ -5,8 +5,12 @@ from twisted.internet import reactor
 from twisted.web.server import Site
 from twisted.web.wsgi import WSGIResource
 from typing import Dict
+import wsgidav
+from wsgidav.dav_error import DAVError, get_http_status_string
 from wsgidav.wsgidav_app import WsgiDAVApp
 from wsgidav.dir_browser import WsgiDavDirBrowser
+from wsgidav.request_resolver import RequestResolver
+from wsgidav.http_authenticator import HTTPAuthenticator
 
 from golem.client import Client
 from .subscription import TaskStatus, Subscription, TaskType, InvalidTaskType, \
@@ -48,9 +52,18 @@ def _start_web_dav(port):
             "/": root_path,
         },
         # TODO: dir browser is not secure
-        'middleware_stack': [WsgiDavDirBrowser],
+        'middleware_stack': [
+            HTTPAuthenticator,
+            WsgiDavDirBrowser,
+            RequestResolver
+        ],
         "dir_browser": {
             "enable": True,
+        },
+        "simple_dc": {
+            "user_mapping": {
+                "*": True
+            }
         },
         # Verbose Output
         # 0 - no output
@@ -65,16 +78,28 @@ def _start_web_dav(port):
 
     logger.info(f'Starting "Golem Unlimited WebDav" on port: {port}')
     try:
-        import wsgidav
         wsgidav._base_logger.propagate = True
-        dav_app = WsgiDAVApp(config)
-    except Exception as err:
+        dav_app = WrappedWsgiDAVApp(WsgiDAVApp(config))
+    except DAVError as err:
         import traceback
         logger.error("wsgiDav error: %r:\n%s", err, traceback.format_exc())
         raise err
+
     reactor.listenTCP(
         port, Site(WSGIResource(reactor, reactor.getThreadPool(), dav_app)))
 
+
+class WrappedWsgiDAVApp:
+    def __init__(self, inner_app):
+        self.inner_app = inner_app
+
+    def __call__(self, environ, start_response):
+        try:
+            for v in self.inner_app(environ, start_response):
+                yield v
+        except DAVError as e:
+            start_response(get_http_status_string(e.value), [])
+            yield b""
 
 # from flask import after_this_request
 # @app.before_request
