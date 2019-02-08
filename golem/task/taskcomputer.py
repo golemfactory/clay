@@ -126,7 +126,7 @@ class TaskComputer(object):
             event='collected',
             task_id=task_id,
             subtask_id=subtask['subtask_id'],
-            path=rs_dir,
+            path=os.path.relpath(rs_dir, self.dir_manager.root_path),
         )
         # self.__compute_task(
         #     subtask['subtask_id'],
