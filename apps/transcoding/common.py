@@ -25,7 +25,7 @@ def unsupported(name: str):
 
 
 class VideoCodec(Enum):
-    H_264 = 'LIBX264'
+    H_264 = 'libx264'
     MPEG_2 = 'MPEG-2'
     MPEG_4 = 'MPEG-4'
     MPEG_4_Part_2 = 'MPEG-4 PART 2'
@@ -34,7 +34,7 @@ class VideoCodec(Enum):
     @staticmethod
     @HandleValueError(unsupported)
     def from_name(name: str) -> 'VideoCodec':
-        return VideoCodec(name.upper())
+        return VideoCodec(name)
 
 
 class AudioCodec(Enum):
@@ -45,7 +45,7 @@ class AudioCodec(Enum):
     @staticmethod
     @HandleValueError(unsupported)
     def from_name(name: str) -> 'AudioCodec':
-        return AudioCodec(name.upper())
+        return AudioCodec(name)
 
 
 class Container(Enum):
