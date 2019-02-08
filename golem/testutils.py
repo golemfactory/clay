@@ -25,6 +25,7 @@ from golem.docker.job import DockerJob
 from golem.docker.client import local_client
 import docker.errors
 from golem.docker.image import DockerImage
+import shutil
 
 
 logger = logging.getLogger(__name__)
@@ -243,23 +244,27 @@ class TestTaskIntegration(TempDirFixture):
         subtask_dir = os.path.join(self.root_dir, node_name)
         script_filepath = extra_data['script_filepath']
 
+        self._copy_resources(task, subtask_dir)
+
         # Run docker job
-        
         env = task.ENVIRONMENT_CLASS
-        image = DockerImage(env.DOCKER_IMAGE, env.DOCKER_TAG)
+        image = DockerImage(repository=env.DOCKER_IMAGE, tag=env.DOCKER_TAG)
 
-        job = self._create_test_job(image, subtask_dir, script_filepath, extra_data)
-
-        job.start()
-        exit_code = job.wait(timeout=300)
-        self.assertEqual(exit_code, 0, "Running docker failed!")
-
+        result = self._create_test_job(image, subtask_dir, script_filepath, extra_data)
 
 
     def execute_subtasks(self, num_subtasks):
 
         for i in range(num_subtasks):
             self.execute_subtask(self.task)
+
+
+    def _copy_resources(self, task, root_dir):
+
+        [ resources_dir, _, _] = self._create_docker_dirs(root_dir)
+        
+        for res in task.task_resources:
+            shutil.copy(res, resources_dir)
 
 
     def _create_docker_dirs(self, root_dir):
@@ -276,32 +281,20 @@ class TestTaskIntegration(TempDirFixture):
         return [ resources_dir, work_dir, output_dir ]
 
 
-    def _create_test_job(self, image, root_dir, script, params=None):
+    def _create_test_job(self, image, root_dir, script, params):
 
         [ resources_dir, work_dir, output_dir ] = self._create_docker_dirs(root_dir)
 
-        test_job = DockerJob(
-            image=image,
-            script_filepath=script,
-            parameters=params,
-            resources_dir=resources_dir,
-            work_dir=work_dir,
-            output_dir=output_dir,
-            environment=DockerJob.get_environment(),
-            host_config={
-                'binds': {
-                    work_dir: {
-                        "bind": DockerJob.WORK_DIR,
-                        "mode": "rw"
-                    },
-                    resources_dir: {
-                        "bind": DockerJob.RESOURCES_DIR,
-                        "mode": "rw"
-                    },
-                    output_dir: {
-                        "bind": DockerJob.OUTPUT_DIR,
-                        "mode": "rw"
-                    }
-                }
-            })
-        return test_job
+        dir_mapping = DockerTaskThread.specify_dir_mapping(
+            output=output_dir, temporary=work_dir,
+            resources=resources_dir, logs=work_dir, work=work_dir)
+
+        dtt = DockerTaskThread(docker_images=[image],
+            extra_data=params,
+            dir_mapping=dir_mapping,
+            timeout=300)
+
+        dtt.run()
+        if dtt.error:
+            raise Exception(dtt.error_msg)
+        return dtt.result[0] if isinstance(dtt.result, tuple) else dtt.result
