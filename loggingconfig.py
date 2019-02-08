@@ -95,6 +95,10 @@ LOGGING = {
             'level': 'WARNING',
             'propagate': True,
         },
+        'wsgidav.request_server': {
+            'level': 'WARNING',
+            'propagate': True,
+        },
         'golem.network': {'propagate': True},
         'golem.network.transport': {'propagate': True},
         'apps': {
