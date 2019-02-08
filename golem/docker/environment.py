@@ -33,13 +33,7 @@ class DockerEnvironment(Environment, metaclass=abc.ABCMeta):
             self.short_description = self.SHORT_DESCRIPTION
 
     def check_docker_images(self) -> SupportStatus:
-        if any(img.is_available() for img in self.docker_images):
-            return SupportStatus.ok()
-
-        return SupportStatus.err({UnsupportReason.ENVIRONMENT_UNSUPPORTED: {
-            'env_id': self.get_id(),
-            'docker_images_missing_any': self.docker_images,
-        }})
+        return SupportStatus.ok()
 
     def check_support(self) -> SupportStatus:
         return self.check_docker_images().join(Environment.check_support(self))

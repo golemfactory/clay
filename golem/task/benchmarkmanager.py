@@ -30,10 +30,6 @@ class BenchmarkManager(object):
         return ids
 
     def benchmarks_needed(self):
-        if self.benchmarks:
-            ids = self.get_saved_benchmarks_ids()
-            return not set(self.benchmarks.keys() |
-                           {DefaultEnvironment.get_id()}).issubset(ids)
         return False
 
     def run_benchmark(self, benchmark, task_builder, env_id, success=None,
