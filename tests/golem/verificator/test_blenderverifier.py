@@ -3,7 +3,7 @@ import time
 import pytest
 from unittest import mock
 
-from golem.core.common import get_golem_path
+from golem.core.common import get_golem_path, is_linux
 from golem.core.deferred import sync_wait
 from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
@@ -14,8 +14,11 @@ from golem.verificator.blender_verifier import BlenderVerifier
 
 
 @pytest.mark.slow
+@pytest.mark.skipif(
+    not is_linux(),
+    reason='Docker is only available on Linux buildbots')
 class TestBlenderVerifier(TempDirFixture):
-    TIMEOUT = 60
+    TIMEOUT = 120
 
     def setUp(self):
         # pylint: disable=R0915
