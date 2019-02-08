@@ -29,14 +29,9 @@ class TestffmpegIntegration(TestTaskIntegration):
             'options': {
                 'output_path': '/tmp/',
                 'video': {
-                    'bit_rate': 18,
                     'codec': 'libx264',
                     'resolution': [320, 240],
-                    'frame_rate': 25
-                },
-                'audio': {
-                    'bit_rate': 18,
-                    'codec': 'mp3'
+                    'frame_rate': "25"
                 },
                 'container': 'mp4'
             }
