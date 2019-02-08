@@ -129,7 +129,7 @@ definitions:
         description: >
           timestamp when computation must be finished
           to be accepted by a requestor
-      docker_images:
+      dockerImages:
         type: array
         items:
           required:

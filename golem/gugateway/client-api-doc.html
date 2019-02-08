@@ -822,10 +822,10 @@ margin-bottom: 20px;
       "type" : "integer",
       "description" : "timestamp when computation must be finished to be accepted by a requestor\n"
     },
-    "docker_images" : {
+    "dockerImages" : {
       "type" : "array",
       "items" : {
-        "$ref" : "#/definitions/Subtask_docker_images"
+        "$ref" : "#/definitions/Subtask_dockerImages"
       }
     }
   },
@@ -862,7 +862,7 @@ margin-bottom: 20px;
   },
   "description" : "Subtask verification result"
 };
-        defs["Subtask_docker_images"] = {
+        defs["Subtask_dockerImages"] = {
   "required" : [ "repository", "tag" ],
   "properties" : {
     "repository" : {

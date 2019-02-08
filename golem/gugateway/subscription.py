@@ -103,8 +103,8 @@ class Subtask(object):
             'subtaskId': self.subtask_id,
             'price': self.price,
             'deadline': self.deadline,
-            'docker_images': self.docker_images,
-            'extra_data': self.extra_data
+            'dockerImages': self.docker_images,
+            'extraData': self.extra_data
         }
 
 
