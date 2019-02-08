@@ -123,17 +123,10 @@ class TaskComputer(object):
         self.last_task_timeout_checking = time.time()
         dispatcher.send(
             signal='golem.resource',
-            event='collected',
             task_id=task_id,
             subtask_id=subtask['subtask_id'],
             path=os.path.relpath(rs_dir, self.dir_manager.root_path),
         )
-        # self.__compute_task(
-        #     subtask['subtask_id'],
-        #     subtask['docker_images'],
-        #     subtask['src_code'],
-        #     subtask['extra_data'],
-        #     subtask['deadline'])
         return True
 
     def task_resource_failure(self, task_id, reason):

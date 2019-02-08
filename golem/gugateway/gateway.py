@@ -183,7 +183,10 @@ def subscribe(node_id: str, task_type: str) -> (str, int):
         return _invalid_input('request body is required')
 
     try:
-        subscription = Subscription(task_type, request.json)
+        subscription = Subscription(
+            task_type, request.json,
+            golem_client.task_server.task_keeper.task_headers
+        )
     except AttributeError as e:
         return _invalid_input('request body is required')
     except KeyError as e:
@@ -259,11 +262,14 @@ def want_to_compute_task(node_id, task_id) -> (str, int):
 def task_info(node_id: str, task_id: str) -> (str, int):
     """Gets task information"""
 
-    try:
-        task = Task(golem_client.get_known_tasks()[task_id])
-        return json.dumps(task.to_json_dict())
-    except KeyError as e:
-        return _not_found(f'task {e}')
+    if node_id not in subscriptions:
+        return _not_found('subscription')
+
+    for s in subscriptions[node_id].values():
+        if task_id in s.events:
+            return json.dumps(s.events[task_id].task.to_json_dict())
+    else:
+        return _not_found(f'task {task_id}')
 
 
 @app.route('/<node_id>/subtasks/<uuid:subtask_id>', methods=['PUT'])
@@ -345,13 +351,6 @@ def fetch_events(node_id: str, task_type: str) -> (str, int):
         return _not_found('subscription')
 
     subscription = subscriptions[node_id][task_type]
-
-    for task_id, header in golem_client.get_known_tasks().items():
-        if header['environment'].lower() != task_type.name.lower():
-            continue
-
-        subscription.add_task_event(task_id, header)
-
     last_event_id = int(request.args.get('lastEventId', -1))
     try:
         return json.dumps([e.to_json_dict()

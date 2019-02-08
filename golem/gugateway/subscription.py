@@ -1,5 +1,7 @@
 from collections import Counter
 from enum import auto, Enum
+
+from golem_messages.datastructures.tasks import TaskHeader
 from pydispatch import dispatcher
 from typing import Union, Dict, List, Optional
 
@@ -56,15 +58,15 @@ class Task(object):
                  'resource_size', 'estimated_memory', 'max_price',
                  'min_version']
 
-    def __init__(self, header: dict):
-        self.task_id = header['task_id']
-        self.deadline = header['deadline']
-        self.subtask_timeout = header['subtask_timeout']
-        self.subtasks_count = header['subtasks_count']
-        self.resource_size = header['resource_size']
-        self.estimated_memory = header['estimated_memory']
-        self.max_price = header['max_price']
-        self.min_version = header['min_version']
+    def __init__(self, header: TaskHeader):
+        self.task_id = header.task_id
+        self.deadline = header.deadline
+        self.subtask_timeout = header.subtask_timeout
+        self.subtasks_count = header.subtasks_count
+        self.resource_size = header.resource_size
+        self.estimated_memory = header.estimated_memory
+        self.max_price = header.max_price
+        self.min_version = header.min_version
 
     def to_json_dict(self) -> dict:
         return {
@@ -136,7 +138,7 @@ class SubtaskVerification(object):
 
 
 class Event(object):
-    """Events: task, subtask, resource and subtask verification result"""
+    """ Events: task, subtask, resource and subtask verification result"""
 
     __slots__ = ['event_id', 'task', 'subtask', 'resource',
                  'subtask_verification']
@@ -164,7 +166,10 @@ class Event(object):
 class Subscription(object):
     """ Golem Unlimited Gateway subscription"""
 
-    def __init__(self, task_type: TaskType, request_json: dict):
+    def __init__(self,
+                 task_type: TaskType,
+                 request_json: dict,
+                 known_tasks: Dict[str, TaskHeader]):
         self.task_type: TaskType = task_type
         self.name = request_json.get('name', '')
         self.min_price = int(request_json['minPrice'])
@@ -178,16 +183,28 @@ class Subscription(object):
         # TODO: events TTL and cleanup
         self.events: Dict[str, Event] = dict()
 
-    def _add_event(self, event_hash: str, **kwargs):
-        event = Event(self.event_counter, **kwargs)
+        for task_id, header in known_tasks.items():
+            if header.environment.lower() != self.task_type.name.lower():
+                continue
+
+            self.add_task_event(header)
+
+        dispatcher.connect(self.add_task_event, signal='golem.task')
+        dispatcher.connect(self._remove_task_event, signal='golem.task.removed')
+
+    def _add_event(self, event_hash: str, **kw):
+        if event_hash in self.events:
+            raise Exception('duplicated event hash %r: %r' % (event_hash, kw))
+
+        event = Event(self.event_counter, **kw)
         self.event_counter += 1
         self.events[event_hash] = event
 
-    def add_task_event(self, task_id: str, header: dict):
-        if task_id in self.events:
-            return
+    def _remove_task_event(self, task_id: str):
+        del self.events[task_id]
 
-        self._add_event(task_id, task=Task(header))
+    def add_task_event(self, header: TaskHeader):
+        self._add_event(header.task_id, task=Task(header))
 
     def request_task(self, golem_client: Client, task_id: str) -> None:
         self.set_config_to(golem_client.task_server.config_desc)
@@ -205,13 +222,12 @@ class Subscription(object):
             dispatcher.connect(self.add_resource_event,
                                signal='golem.resource')
 
-    def add_resource_event(self, event='default', **kwargs) -> None:
+    def add_resource_event(self, **kwargs) -> None:
         # print(f'event: {event}, kwargs: {kwargs}')
         subtask_id = kwargs['subtask_id']
-        if event == 'collected':  # TODO and kwargs['subtask_id'] == subtask_id:
-            self._add_event(f'rs-{subtask_id}', resource=Resource(**kwargs))
-            dispatcher.disconnect(self.add_resource_event,
-                                  signal='golem.resource')
+        # TODO if kwargs['subtask_id'] == subtask_id:
+        self._add_event(f'rs-{subtask_id}', resource=Resource(**kwargs))
+        dispatcher.disconnect(self.add_resource_event, signal='golem.resource')
 
     def increment(self, status: Union[TaskStatus, str]) -> None:
         if isinstance(status, str):
@@ -244,4 +260,3 @@ class Subscription(object):
             },
             'taskStats': dict(self.stats)
         }
-

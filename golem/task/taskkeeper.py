@@ -17,6 +17,7 @@ from golem_messages import (
 from golem_messages.constants import MTD
 from golem_messages.datastructures import p2p as dt_p2p
 from golem_messages.datastructures import tasks as dt_tasks
+from pydispatch import dispatcher
 
 import golem
 from golem import constants as gconst
@@ -473,6 +474,8 @@ class TaskHeaderKeeper:
                 return True
 
             self.task_headers[task_id] = header
+            dispatcher.send(signal='golem.task', header=header)
+
             self.last_checking[task_id] = datetime.datetime.now()
 
             self._get_tasks_by_owner_set(header.task_owner.key).add(task_id)
@@ -576,6 +579,7 @@ class TaskHeaderKeeper:
             )
 
         self.removed_tasks[task_id] = time.time()
+        dispatcher.send(signal='golem.task.removed', task_id=task_id)
         return True
 
     def get_owner(self, task_id) -> typing.Optional[str]:
