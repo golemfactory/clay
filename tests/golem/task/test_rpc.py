@@ -20,6 +20,7 @@ from golem.task import taskbase
 from golem.task import taskserver
 from golem.task import taskstate
 from golem.task import tasktester
+from golem.task.rpc import ClientProvider
 from tests.golem import test_client
 from tests.golem.test_client import TestClientBase
 
@@ -109,7 +110,7 @@ class ProviderBase(test_client.TestClientBase):
 )
 class TestCreateTask(ProviderBase, TestClientBase):
     @mock.patch(
-        'golem.task.rpc._validate_lock_funds_possibility'
+        'golem.task.rpc.ClientProvider._validate_lock_funds_possibility'
     )
     def test_create_task(self, *_):
         t = dummytaskstate.DummyTaskDefinition()
@@ -141,11 +142,12 @@ class TestCreateTask(ProviderBase, TestClientBase):
                           "Task name can only contain letters, numbers, "
                           "spaces, underline, dash or dot.")
 
-    @mock.patch('golem.task.rpc._validate_lock_funds_possibility',
-                side_effect=exceptions.NotEnoughFunds(
-                    required=0.166667 * denoms.ether,
-                    available=0,
-                ))
+    @mock.patch(
+        'golem.task.rpc.ClientProvider._validate_lock_funds_possibility',
+        side_effect=exceptions.NotEnoughFunds(
+            required=0.166667 * denoms.ether,
+            available=0,
+        ))
     def test_create_task_fail_if_not_enough_gnt_available(self, mocked, *_):
         t = dummytaskstate.DummyTaskDefinition()
         t.name = "test"
@@ -163,12 +165,12 @@ class ConcentDepositLockPossibilityTest(unittest.TestCase):
     def test_validate_lock_funds_possibility_raises_if_not_enough_gnt(self):
         available = 0.0001 * denoms.ether
         required = 0.0005 * denoms.ether
-        ets = Mock()
-        ets.get_available_gnt.return_value = available
+        client = Mock()
+        client.transaction_system.get_available_gnt.return_value = available
+        client_provider = ClientProvider(client)
 
         with self.assertRaises(exceptions.NotEnoughFunds) as e:
-            rpc._validate_lock_funds_possibility(
-                transaction_system=ets,
+            client_provider._validate_lock_funds_possibility(
                 total_price_gnt=required,
                 number_of_tasks=1
             )

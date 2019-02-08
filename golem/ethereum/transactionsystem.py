@@ -597,8 +597,7 @@ class TransactionSystem(LoopingCallService):
             tasks_num: int,
             force: bool = False,
     ) -> None:
-        current_concent_deposit = self.concent_balance()
-        required_deposit_difference = required - current_concent_deposit
+        required_deposit_difference = required - self.concent_balance()
 
         gntb_balance = self.get_available_gnt()
         if gntb_balance < required_deposit_difference:
