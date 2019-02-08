@@ -272,37 +272,33 @@ def task_info(node_id: str, task_id: str) -> (str, int):
         return _not_found(f'task {task_id}')
 
 
-@app.route('/<node_id>/subtasks/<uuid:subtask_id>', methods=['PUT'])
+@app.route('/<node_id>/subtasks/<subtask_id>', methods=['PUT'])
 def confirm_subtask(node_id, subtask_id) -> (str, int):
     """Confirms subtask computation start"""
 
     if node_id not in subscriptions:
         return _not_found('subscription')
 
-    # TODO: get real task type
-    subscriptions[node_id][TaskType.Blender].increment(TaskStatus.requested)
+    for s in subscriptions[node_id].values():
+        if subtask_id in s.events:
+            s.increment(TaskStatus.subtasks_started)
+            return _json_response('OK')
+    else:
+        return _not_found(f'subtask {subtask_id}')
 
-    return _json_response('OK')
 
-
-@app.route('/<node_id>/subtasks/<uuid:subtask_id>', methods=['GET'])
+@app.route('/<node_id>/subtasks/<subtask_id>', methods=['GET'])
 def subtask_info(node_id, subtask_id) -> (str, int):
     """Gets subtask information"""
 
     if node_id not in subscriptions:
         return _not_found('subscription')
 
-    return json.dumps({
-        'subtaskId': '435bd45a-12d4-144f-233c-6e845eabffe0',
-        'description': 'some desc',
-        'resource': {
-            'resourceId': '87da97cd-234s-bc32-3d42-6e845eabffe0',
-            'metadata': '{"size": 123}'
-        },
-        'deadline': 1542903681123,
-        'price': 3,
-        'extraData': '{"foo": "bar"}'
-    })
+    for s in subscriptions[node_id].values():
+        if subtask_id in s.events:
+            return json.dumps(s.events[subtask_id].subtask.to_json_dict())
+    else:
+        return _not_found(f'subtask {subtask_id}')
 
 
 @app.route('/<node_id>/subtasks/<uuid:subtask_id>', methods=['POST'])

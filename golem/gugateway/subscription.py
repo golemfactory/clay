@@ -31,6 +31,7 @@ class InvalidTaskType(Exception):
 
 class TaskStatus(Enum):
     requested = auto()
+    subtasks_started = auto()
     succeeded = auto()
     failed = auto()
     timedout = auto()
@@ -201,6 +202,9 @@ class Subscription(object):
         self.events[event_hash] = event
 
     def _remove_task_event(self, task_id: str):
+        # TODO: remove also subtasks and resources?
+        # this is bad idea since task can be removed
+        # while subtask is still being computed
         del self.events[task_id]
 
     def add_task_event(self, header: TaskHeader):
