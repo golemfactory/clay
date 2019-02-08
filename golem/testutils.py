@@ -195,25 +195,6 @@ class TestTaskIntegration(TempDirFixture):
 
         self.dm = DockerTaskThread.docker_manager = DockerManager.install()
 
-        self.jobs = []
-
-
-    def tearDown(self):
-        super(TestTaskIntegration, self).tearDown()
-
-        if len( self.jobs ) != 0:
-            client = local_client()
-
-            for test_job in self.jobs:
-                if test_job.container:
-                    try:
-                        client.remove_container(test_job.container_id,
-                                                force=True)
-                    except docker.errors.APIError:
-                        pass  # Already removed?
-
-            self.jobs = []
-
 
     def build_task(self, task_type_info, task_dict):
 
