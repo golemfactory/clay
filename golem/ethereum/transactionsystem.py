@@ -252,7 +252,6 @@ class TransactionSystem(LoopingCallService):
                 json.dump(keystore, f)
 
     @sci_required()
-    @gnt_deposit_required()
     def _subscribe_to_events(self) -> None:
         self._sci: SmartContractsInterface
         values = model.GenericKeyValue.select().where(
@@ -272,29 +271,30 @@ class TransactionSystem(LoopingCallService):
             )
         )
 
-        self._sci.subscribe_to_forced_subtask_payments(
-            None,
-            self._sci.get_eth_address(),
-            from_block,
-            lambda event: ik.received_forced_subtask_payment(
-                event.tx_hash,
-                event.requestor,
-                str(bytes32_to_uuid(event.subtask_id)),
-                event.amount,
+        if self.deposit_contract_available:
+            self._sci.subscribe_to_forced_subtask_payments(
+                None,
+                self._sci.get_eth_address(),
+                from_block,
+                lambda event: ik.received_forced_subtask_payment(
+                    event.tx_hash,
+                    event.requestor,
+                    str(bytes32_to_uuid(event.subtask_id)),
+                    event.amount,
+                )
             )
-        )
-        self._sci.subscribe_to_forced_payments(
-            requestor_address=None,
-            provider_address=self._sci.get_eth_address(),
-            from_block=from_block,
-            cb=lambda event: ik.received_forced_payment(
-                tx_hash=event.tx_hash,
-                sender=event.requestor,
-                amount=event.amount,
-                closure_time=event.closure_time,
-            ),
-        )
-        self._schedule_concent_withdraw()
+            self._sci.subscribe_to_forced_payments(
+                requestor_address=None,
+                provider_address=self._sci.get_eth_address(),
+                from_block=from_block,
+                cb=lambda event: ik.received_forced_payment(
+                    tx_hash=event.tx_hash,
+                    sender=event.requestor,
+                    amount=event.amount,
+                    closure_time=event.closure_time,
+                ),
+            )
+            self._schedule_concent_withdraw()
 
     @sci_required()
     def _save_subscription_block_number(self) -> None:
