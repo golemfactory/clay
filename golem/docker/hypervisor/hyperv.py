@@ -94,10 +94,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
     SCRIPTS_PATH = os.path.join(get_golem_path(), 'scripts', 'docker')
     GET_VSWITCH_SCRIPT_PATH = \
         os.path.join(SCRIPTS_PATH, 'get-default-vswitch.ps1')
-    START_VM_SCRIPT_PATH = \
-        os.path.join(SCRIPTS_PATH, 'start-hyperv-docker-vm.ps1')
     SCRIPT_TIMEOUT = 5  # seconds
-    START_VM_TIMEOUT = 120  # seconds
     START_VM_RETRIES = 2  # retries, not start attempts
 
     def __init__(self, *args, **kwargs):
@@ -180,16 +177,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
 
         try:
             # The windows VM fails to start when too much memory is assigned
-            logger.info("Hyper-V: Starting VM %s ...", name)
-            run_powershell(
-                script=self.START_VM_SCRIPT_PATH,
-                args=[
-                    '-VMName', name,
-                    '-IPTimeoutSeconds', str(self.START_VM_TIMEOUT)
-                ],
-                timeout=self.START_VM_TIMEOUT
-            )
-            logger.info("Hyper-V: VM %s started successfully", name)
+            super().start_vm(name)
         except subprocess.CalledProcessError:
             logger.error(
                 "Hyper-V: VM failed to start, this can be caused "
