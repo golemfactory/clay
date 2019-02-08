@@ -1170,6 +1170,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.task_server.remove_task_header(task_id)
 
     def clean_old_tasks(self):
+        logger.debug('Cleaning old tasks ...')
         now = get_timestamp_utc()
         for task in self.get_tasks():
             deadline = task['time_started'] \

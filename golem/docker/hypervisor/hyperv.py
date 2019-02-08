@@ -15,7 +15,7 @@ import psutil
 from pydispatch import dispatcher
 
 from golem import hardware
-from golem.core.common import get_golem_path
+from golem.core.common import get_golem_path, retry
 from golem.core.windows import run_powershell
 from golem.docker import smbshare
 from golem.docker.client import local_client
@@ -95,6 +95,7 @@ class HyperVHypervisor(DockerMachineHypervisor):
     GET_VSWITCH_SCRIPT_PATH = \
         os.path.join(SCRIPTS_PATH, 'get-default-vswitch.ps1')
     SCRIPT_TIMEOUT = 5  # seconds
+    START_VM_RETRIES = 2  # retries, not start attempts
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -156,6 +157,10 @@ class HyperVHypervisor(DockerMachineHypervisor):
             'Hyper-V: VM %s cannot be restored. Booting ...', vm_name)
         self.start_vm(vm_name)
 
+    @retry(
+        (subprocess.CalledProcessError, RuntimeError),
+        count=START_VM_RETRIES
+    )
     def start_vm(self, name: Optional[str] = None) -> None:
         name = name or self._vm_name
         constr = self.constraints()
