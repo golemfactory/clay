@@ -473,9 +473,9 @@ class ConcentDepositTest(TransactionSystemBase):
         self.sci.get_deposit_value.return_value = 0
         self.ets._gntb_balance = 0
         with self.assertRaises(exceptions.NotEnoughFunds):
-            self._call_concent_deposit(
+            self.ets.validate_concent_deposit_possibility(
                 required=10,
-                expected=40,
+                tasks_num=1,
             )
 
     def _prepare_concent_deposit(
@@ -583,23 +583,28 @@ class ConcentDepositTest(TransactionSystemBase):
         self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE
         self.ets._refresh_balances()
         with self.assertRaises(exceptions.LongTransactionTime):
-            self._call_concent_deposit(
+            self.ets.validate_concent_deposit_possibility(
                 required=10,
-                expected=40,
+                tasks_num=1,
             )
 
     def test_gas_price_skyrocketing_forced(self):
         self.sci.get_current_gas_price.return_value = self.sci.GAS_PRICE
+        self.sci.GAS_TRANSFER_AND_CALL = 90000
         self._prepare_concent_deposit(
             gntb_balance=20,
             subtask_price=1,
             subtask_count=1,
             callback=self._confirm_it,
         )
+        self.ets.validate_concent_deposit_possibility(
+            required=10,
+            tasks_num=1,
+            force=True
+        )
         self._call_concent_deposit(
             required=10,
             expected=40,
-            force=True
         )
 
 
