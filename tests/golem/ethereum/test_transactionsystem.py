@@ -43,10 +43,14 @@ class TransactionSystemBase(testutils.DatabaseFixture):
             datadir: Optional[Path] = None,
             withdrawals: bool = True,
             password: str = PASSWORD,
-            just_create: bool = False):
+            just_create: bool = False,
+            provide_gntdeposit: bool = False):
         with patch('golem.ethereum.transactionsystem.NodeProcess'),\
             patch('golem.ethereum.transactionsystem.new_sci',
                   return_value=self.sci):
+            contract_addresses = {}
+            if provide_gntdeposit:
+                contract_addresses[golem_sci.contracts.GNTDeposit] = 'test addr'
             ets = TransactionSystem(
                 datadir=datadir or self.new_path,
                 config=Mock(
@@ -55,9 +59,7 @@ class TransactionSystemBase(testutils.DatabaseFixture):
                     CHAIN='test_chain',
                     FAUCET_ENABLED=False,
                     WITHDRAWALS_ENABLED=withdrawals,
-                    CONTRACT_ADDRESSES={
-                        golem_sci.contracts.GNTDeposit: 'some address',
-                    },
+                    CONTRACT_ADDRESSES=contract_addresses,
                 )
             )
             if not just_create:
@@ -432,6 +434,10 @@ class WithdrawTest(TransactionSystemBase):
 
 
 class ConcentDepositTest(TransactionSystemBase):
+    def setUp(self):
+        super().setUp()
+        self.ets = self._make_ets(provide_gntdeposit=True)
+
     def _call_concent_deposit(self, *args, **kwargs):
         errback = Mock()
         callback = Mock()
@@ -609,6 +615,10 @@ class ConcentDepositTest(TransactionSystemBase):
 
 
 class ConcentWithdrawTest(TransactionSystemBase):
+    def setUp(self):
+        super().setUp()
+        self.ets = self._make_ets(provide_gntdeposit=True)
+
     def test_timelocked(self):
         self.sci.get_deposit_locked_until.reset_mock()
         self.sci.get_deposit_locked_until.return_value = 0
@@ -639,6 +649,10 @@ class ConcentWithdrawTest(TransactionSystemBase):
 
 
 class ConcentUnlockTest(TransactionSystemBase):
+    def setUp(self):
+        super().setUp()
+        self.ets = self._make_ets(provide_gntdeposit=True)
+
     def test_empty(self):
         self.sci.get_deposit_value.return_value = 0
         self.ets.concent_unlock()
