@@ -215,7 +215,7 @@ def _ensure_task_deposit(client, task, force):
         raise
 
     logger.info(
-        "Deposit confirmed. Starting... task_id=%r",
+        "Deposit confirmed. task_id=%r",
         task_id,
     )
 
@@ -356,7 +356,7 @@ def enqueue_new_task(client, task, force=False) \
         packager_result=packager_result,
     )
 
-    logger.info("Task created. Task_id=%r", task_id)
+    logger.info("Task created. task_id=%r", task_id)
 
     try:
         yield _ensure_task_deposit(
