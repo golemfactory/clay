@@ -10,7 +10,8 @@ from unittest.mock import (
 )
 
 from click.testing import CliRunner
-from twisted.internet.defer import Deferred, succeed
+from twisted.internet.defer import Deferred, succeed, maybeDeferred
+from twisted.python.failure import Failure
 
 import golem.argsparser as argsparser
 from golem.appconfig import AppConfig
@@ -490,23 +491,19 @@ def mock_async_run(req, success=None, error=None):
     return deferred
 
 
-def done_deferred(*_):
-    deferred = Deferred()
-    deferred.callback(True)
-    return deferred
+def done_deferred(f, *args, **kwargs):
+    return succeed(f(*args, **kwargs))
 
 
-def chain_function(_, fn, *args, **kwargs):
-    result = fn(*args, **kwargs)
-    deferred = Deferred()
-    deferred.callback(result)
-    return deferred
+def chain_function(_, f, *args, **kwargs):
+    return maybeDeferred(f, *args, **kwargs)
 
 
 def set_keys_auth(obj):
     obj._keys_auth = Mock(
         key_id='a'*32,
     )
+    return succeed(None)
 
 
 def call_now(fn, *args, **kwargs):
@@ -529,13 +526,12 @@ class MockThread:
 @patch('golem.core.golem_async.start_asyncio_thread')
 @patch('golem.client.node_info_str')
 @patch('golem.node.Node._start_keys_auth', set_keys_auth)
-@patch('golem.node.Node._start_docker')
-@patch('golem.core.golem_async.async_run', mock_async_run)
 @patch('golem.node.chain_function', chain_function)
 @patch('golem.node.threads.deferToThread', done_deferred)
 @patch('golem.node.CrossbarRouter', Mock(_start_node=done_deferred))
+@patch('golem.terms.TermsOfUse.are_accepted', return_value=True)
+@patch('golem.core.golem_async.async_run')
 @patch('golem.node.Session')
-@patch('golem.node.gatherResults')
 @patch('twisted.internet.reactor', create=True)
 class TestOptNode(TempDirFixture):
 
@@ -586,12 +582,32 @@ class TestOptNode(TempDirFixture):
         assert reactor.addSystemEventTrigger.call_args[0] == (
             'before', 'shutdown', self.node.rpc_router.stop)
 
-    @patch('golem.node.TransactionSystem')
-    def test_start_creates_client(self, _ets, reactor, mock_gather_results, *_):
-        mock_gather_results.return_value = mock_gather_results
-        mock_gather_results.addCallbacks.side_effect = \
-            lambda callback, _: callback([])
+    @patch('golem.node.DockerManager')
+    def test_start_docker_mgr(self, *_):
+        # when
+        self.node_kwargs['use_docker_manager'] = True
+        self.node = Node(**self.node_kwargs)
+        self.node._setup_client = Mock()
+        self.node.start()
 
+        # then
+        assert self.node._docker_manager
+        assert self.node._docker_manager.check_environment.called  # noqa # pylint: disable=no-member
+        assert self.node._docker_manager.apply_config.called  # noqa # pylint: disable=no-member
+
+    @patch('golem.node.DockerManager')
+    def test_not_start_docker_mgr(self, *_):
+        # when
+        self.node_kwargs['use_docker_manager'] = False
+        self.node = Node(**self.node_kwargs)
+        self.node._setup_client = Mock()
+        self.node.start()
+
+        # then
+        assert not self.node._docker_manager
+
+    @patch('golem.node.TransactionSystem')
+    def test_start_creates_client(self, _ets, reactor, *_):
         # when
         self.node = Node(**self.node_kwargs)
         with patch('golem.task.taskarchiver.TaskArchiver._dump_archive'):
@@ -617,18 +633,15 @@ class TestOptNode(TempDirFixture):
             mock_run,
             _ets,
             reactor,
-            mock_gather_results,
             mock_session,
+            async_run,
             *_):
         # given
-        mock_gather_results.return_value = mock_gather_results
-        mock_gather_results.addCallbacks.side_effect = \
-            lambda callback, _: callback([Mock(), None])
-
         mock_session.return_value = mock_session
         mock_session.connect.return_value = mock_session
         mock_session.addCallbacks.side_effect = \
             lambda callback, _: callback(None)
+        async_run.side_effect = mock_async_run
 
         # when
         self.node = Node(**self.node_kwargs)
@@ -643,19 +656,8 @@ class TestOptNode(TempDirFixture):
         assert mock_run.called
         self.assertAddSystemEvent(reactor)
 
-    def test_start_starts_client(
-            self,
-            reactor,
-            mock_gather_results,
-            mock_session,
-            *_
-        ):
-
+    def test_start_starts_client(self, reactor, mock_session, async_run, *_):
         # given
-        mock_gather_results.return_value = mock_gather_results
-        mock_gather_results.addCallbacks.side_effect = \
-            lambda callback, _: callback([Mock(), None])
-
         mock_session.return_value = mock_session
         mock_session.connect.return_value = mock_session
         mock_session.addCallbacks.side_effect = \
@@ -666,6 +668,7 @@ class TestOptNode(TempDirFixture):
             None,
             ['10.0.0.10:40104'],
         )
+        async_run.side_effect = mock_async_run
 
         # when
         self.node = Node(**self.node_kwargs,
@@ -724,7 +727,7 @@ class TestOptNode(TempDirFixture):
         self.node = Node(**self.node_kwargs)
         self.node.rpc_router = None
 
-        assert self.node._start_session() is None
+        assert isinstance(self.node._start_session().result, Failure)
         reactor.callFromThread.assert_called_with(reactor.stop)
 
     def test_error(self, reactor, *_):

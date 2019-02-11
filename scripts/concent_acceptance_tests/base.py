@@ -61,13 +61,13 @@ class ConcentBaseTest(unittest.TestCase):
 
     def setUp(self):
         from golem.config.environments import set_environment
-        from golem.core import common
-        common.config_logging(suffix='concent-acceptance')
         concent_variant = os.environ.get('CONCENT_VARIANT', 'staging')
         set_environment('testnet', concent_variant)
         self.variant = variables.CONCENT_CHOICES[concent_variant]
         self.provider_keys = self._fake_keys()
         self.requestor_keys = self._fake_keys()
+        from golem.core import common
+        common.config_logging(suffix='concent-acceptance')
         logger.debug('Provider key: %s',
                      base64.b64encode(self.provider_pub_key).decode())
         logger.debug('Requestor key: %s',
