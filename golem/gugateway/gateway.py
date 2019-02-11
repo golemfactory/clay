@@ -20,6 +20,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 port: int = 55001
 app: Flask = Flask(__name__)
 golem_client: Client = None
+# TODO: persist this in case of whole gateway failure
 subscriptions: Dict[str, Dict[TaskType, Subscription]] = dict()
 
 
@@ -183,20 +184,22 @@ def subscribe(node_id: str, task_type: str) -> (str, int):
         return _invalid_input('request body is required')
 
     try:
-        subscription = Subscription(
-            task_type, request.json,
-            golem_client.task_server.task_keeper.task_headers
+        subs = Subscription(
+            node_id,
+            task_type,
+            request.json,
+            golem_client.task_server.task_keeper.task_headers,
         )
-    except AttributeError as e:
+    except AttributeError:
         return _invalid_input('request body is required')
     except KeyError as e:
         return _invalid_input(f'key {e} is missing in request body')
     except ValueError as e:
         return _invalid_input(str(e))
 
-    subscriptions[node_id][task_type] = subscription
+    subscriptions[node_id][task_type] = subs
 
-    return json.dumps(subscription.to_json_dict()), status_code
+    return json.dumps(subs.to_json_dict()), status_code
 
 
 @app.route('/subscriptions/<node_id>/<task_type>', methods=['GET'])
@@ -251,7 +254,7 @@ def want_to_compute_task(node_id, task_id) -> (str, int):
         return _not_found(f'task {task_id}')
 
     try:
-        subscription.request_task(golem_client, task_id)
+        subscription.request_subtask(golem_client, task_id)
     except KeyError as e:
         return _not_found(f'task {e}')
 
@@ -281,7 +284,7 @@ def confirm_subtask(node_id, subtask_id) -> (str, int):
 
     for s in subscriptions[node_id].values():
         if subtask_id in s.events:
-            s.increment(TaskStatus.subtasks_started)
+            s.increment(TaskStatus.started)
             return _json_response('OK')
     else:
         return _not_found(f'subtask {subtask_id}')

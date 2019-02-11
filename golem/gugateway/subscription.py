@@ -1,12 +1,15 @@
 from collections import Counter
-from enum import auto, Enum
 
+from enum import auto, Enum
 from golem_messages.datastructures.tasks import TaskHeader
+from logging import Logger, getLogger
 from pydispatch import dispatcher
 from typing import Union, Dict, List, Optional
 
 from golem.client import Client
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+
+logger: Logger = getLogger(__name__)
 
 
 class TaskType(Enum):
@@ -31,7 +34,7 @@ class InvalidTaskType(Exception):
 
 class TaskStatus(Enum):
     requested = auto()
-    subtasks_started = auto()
+    started = auto()
     succeeded = auto()
     failed = auto()
     timedout = auto()
@@ -168,9 +171,12 @@ class Subscription(object):
     """ Golem Unlimited Gateway subscription"""
 
     def __init__(self,
+                 node_id: str,
                  task_type: TaskType,
                  request_json: dict,
-                 known_tasks: Dict[str, TaskHeader]):
+                 known_tasks: Dict[str, TaskHeader]
+                 ):
+        self.node_id = node_id
         self.task_type: TaskType = task_type
         self.name = request_json.get('name', '')
         self.min_price = int(request_json['minPrice'])
@@ -254,6 +260,7 @@ class Subscription(object):
     def to_json_dict(self) -> dict:
         return {
             'taskType': self.task_type.name,
+            'nodeId': self.node_id,
             'subscription': {
                 'name': self.name,
                 'minPrice': self.min_price,
@@ -262,5 +269,5 @@ class Subscription(object):
                 'maxMemorySize': self.max_memory_size,
                 'maxDiskSize': self.max_disk_size,
             },
-            'taskStats': dict(self.stats)
+            'subtaskStats': dict(self.stats)
         }

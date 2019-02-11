@@ -731,6 +731,13 @@ margin-bottom: 20px;
     }
   }
 };
+        defs["NodeId"] = {
+  "type" : "string",
+  "minLength" : 42,
+  "maxLength" : 42,
+  "pattern" : "0x[0-9a-fA-F]{40}",
+  "description" : "ethereum address identifying node e.g., `0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b`\n"
+};
         defs["Resource"] = {
   "required" : [ "path", "subtaskId", "taskId" ],
   "properties" : {
@@ -774,22 +781,28 @@ margin-bottom: 20px;
   }
 };
         defs["SubscriptionStatus"] = {
-  "required" : [ "taskType" ],
+  "required" : [ "nodeId", "taskType" ],
   "properties" : {
+    "nodeId" : {
+      "$ref" : "#/definitions/NodeId"
+    },
     "taskType" : {
       "$ref" : "#/definitions/TaskType"
     },
     "subscription" : {
       "$ref" : "#/definitions/Subscription"
     },
-    "taskStats" : {
-      "$ref" : "#/definitions/SubscriptionStatus_taskStats"
+    "subtaskStats" : {
+      "$ref" : "#/definitions/SubscriptionStatus_subtaskStats"
     }
   }
 };
-        defs["SubscriptionStatus_taskStats"] = {
+        defs["SubscriptionStatus_subtaskStats"] = {
   "properties" : {
     "requested" : {
+      "type" : "integer"
+    },
+    "started" : {
       "type" : "integer"
     },
     "succeded" : {
