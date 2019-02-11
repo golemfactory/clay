@@ -1121,6 +1121,10 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         self.tm.tasks['old_task_id'] = old_task
         self.tm.tasks['new_task_id'] = new_task
         self.tm.tasks_states['new_task_id'] = TaskState()
+        self.tm.tasks_states['old_task_id'] = TaskState()
+        subtask_states = self.tm.tasks_states['old_task_id'].subtask_states
+        subtask_states['old_subtask_id1'] = SubtaskState()
+        subtask_states['old_subtask_id1'].node_name = 'abcabc'
 
         new_task.header = MagicMock(max_price=42)
         new_task.subtasks_given = {}
@@ -1175,6 +1179,7 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                 self.assertEqual(ss.deadline, ctd['deadline'])
                 self.assertEqual(ss.extra_data, ctd['extra_data'])
                 self.assertEqual(ss.subtask_status, SubtaskStatus.restarted)
+                self.assertEqual(ss.node_name, 'abcabc')
 
     def test_copy_results_subtasks_properly_matched(self):
         old_task = MagicMock(spec=CoreTask)

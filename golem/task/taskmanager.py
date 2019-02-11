@@ -514,7 +514,8 @@ class TaskManager(TaskEventListener):
             self,
             old_task_id: str,
             new_task_id: str,
-            subtask_ids_to_copy: Iterable[str]) -> None:
+            subtask_ids_to_copy: Iterable[str],
+            address: Optional[str] = '') -> None:
 
         try:
             old_task = self.tasks[old_task_id]
@@ -540,11 +541,14 @@ class TaskManager(TaskEventListener):
             new_subtask_id = extra_data.ctd['subtask_id']
             self.subtask2task_mapping[new_subtask_id] = \
                 new_task_id
+
+            subtask_states: SubtaskState = next(iter(
+                self.tasks_states[old_task_id].subtask_states.values()))
             self.__add_subtask_to_tasks_states(
-                node_name=None,
-                node_id=None,
-                address=None,
-                price=0,
+                node_name=subtask_states.node_name,
+                node_id=subtask_states.node_id,
+                address=address,
+                price=subtask_states.price,
                 ctd=extra_data.ctd)
             new_subtasks_ids.append(new_subtask_id)
 

@@ -173,7 +173,8 @@ def _restart_subtasks(
         client.task_manager.copy_results(
             old_task_id=old_task_id,
             new_task_id=new_task.header.task_id,
-            subtask_ids_to_copy=subtask_ids_to_copy
+            subtask_ids_to_copy=subtask_ids_to_copy,
+            address=client.node.pub_addr,
         )
     # Function passed to twisted.threads.deferToThread can't itself
     # return a deferred, that's why I defined inner deferred function
