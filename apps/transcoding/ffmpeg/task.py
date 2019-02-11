@@ -10,14 +10,8 @@ from apps.transcoding.ffmpeg.utils import Commands, FFMPEG_BASE_SCRIPT
 from apps.transcoding.task import TranscodingTaskOptions, \
     TranscodingTaskBuilder, TranscodingTaskDefinition, TranscodingTask
 from golem.docker.job import DockerJob
-# TODO:
-# Czy typować? Co robia inni (A?)
-# Czym sie rozni minimal definition od full?
-# poprawic impoorty
-# Co to są property?
-# Obsluga bledow
-# LOGI
 from golem.verificator.ffmpeg_verifier import FFmpegVerifier
+
 
 logger = logging.getLogger(__name__)
 
@@ -32,19 +26,24 @@ class ffmpegTask(TranscodingTask):
     ENVIRONMENT_CLASS = ffmpegEnvironment
     VERIFIER_CLASS = FFmpegVerifier
 
-    def _get_extra_data(self, subtask_num):
+    def _get_extra_data(self, subtask_num: int):
         transcoding_options = self.task_definition.options
         video_params = transcoding_options.video_params
         audio_params = transcoding_options.audio_params
-        assert subtask_num < len(self.task_resources)
+        if subtask_num >= len(self.task_resources) // 2:
+            raise AssertionError('Requested number subtask {} is greater than '
+                                 'number of resources [size={}]'
+                                 .format(subtask_num, len(self.task_resources)))
 
-        stream_path = os.path.relpath(self.task_resources[subtask_num],
-                                      self._get_resources_root_dir())
-        stream_path = DockerJob.get_absolute_resource_path(stream_path)
-        filename = os.path.basename(stream_path)
+        playlist_path = os.path.relpath(self.playlists[subtask_num],
+                                        self._get_resources_root_dir())
+        playlist_path = DockerJob.get_absolute_resource_path(playlist_path)
+
+        filename = os.path.splitext(os.path.basename(
+            self.streams[subtask_num]))[0]
 
         output_stream_path = pathlib.Path(os.path.join(DockerJob.OUTPUT_DIR,
-                                                       filename))
+                                                       filename + '_TC'))
         output_stream_path = str(output_stream_path.with_suffix(
             '.{}'.format(transcoding_options.output_container.value)))
 
@@ -53,7 +52,7 @@ class ffmpegTask(TranscodingTask):
         vc = video_params.codec.value if video_params.codec else None
         ac = audio_params.codec.value if audio_params.codec else None
         extra_data = {
-            'track': stream_path,
+            'track': playlist_path,
             'targs': {
                 'video': {
                     'codec': vc,
@@ -73,13 +72,12 @@ class ffmpegTask(TranscodingTask):
         }
         return self._clear_none_values(extra_data)
 
-    def _clear_none_values(self, d):
+    def _clear_none_values(self, d: dict):
         return {k: v if not isinstance(v, dict) else self._clear_none_values(v)
                 for k, v in d.items() if v is not None}
 
 
 class ffmpegDefaults(TaskDefaults):
-    """ Suggested default values for Rendering tasks"""
     def __init__(self):
         super(ffmpegDefaults, self).__init__()
 

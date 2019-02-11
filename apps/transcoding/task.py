@@ -1,10 +1,12 @@
 import abc
 import logging
 import os
+from threading import Lock
 from typing import Any, Dict, Tuple, Optional
 
 import golem_messages.message
 
+import apps.transcoding.common
 import apps.transcoding.common
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder, CoreTaskTypeInfo
 from apps.core.task.coretaskstate import Options, TaskDefinition
@@ -55,72 +57,96 @@ class TranscodingTask(CoreTask):
         super(TranscodingTask, self).__init__(task_definition=task_definition,
                                               **kwargs)
         self.task_definition = task_definition
-        # self.lock = Lock()
+        self.lock = Lock()
+        self.playlists = []
+        self.streams = []
+
+    def __getstate__(self):
+        state = super(TranscodingTask, self).__getstate__()
+        del state['lock']
+        return state
+
+    def __setstate__(self, state):
+        super(TranscodingTask, self).__setstate__(state)
+        self.lock = Lock()
 
     def initialize(self, dir_manager: DirManager):
         super(TranscodingTask, self).initialize(dir_manager)
+        logger.debug('Initialization of ffmpegTask')
+        task_id = self.task_definition.task_id
+        task_output_dir = dir_manager.get_task_output_dir(task_id)
         if len(self.task_resources) == 0:
             raise TranscodingException('There is no specified resources')
         stream_operator = StreamOperator()
         chunks = stream_operator.split_video(
             self.task_resources[0], self.task_definition.subtasks_count,
-            dir_manager, self.task_definition.task_id)
-        self.task_resources = chunks
+            dir_manager, task_id)
         if len(chunks) < self.total_tasks:
             logger.warning('{} subtasks was requested but video splitting '
                            'process resulted in {} chunks.'
                            .format(self.total_tasks, len(chunks)))
+        streams = list(map(lambda x: x[0] if os.path.isabs(x[0]) else os.path
+                           .join(task_output_dir, x[0]), chunks))
+        playlists = list(map(lambda x: x[1] if os.path.isabs(x[1]) else os.path
+                             .join(task_output_dir, x[1]), chunks))
+        self.task_resources = streams + playlists
+        self.playlists = playlists
+        self.streams = streams
         self.total_tasks = len(chunks)
         self.task_definition.subtasks_count = len(chunks)
 
     def accept_results(self, subtask_id, result_files):
-        super(TranscodingTask, self).accept_results(subtask_id, result_files)
+        with self.lock:
+            super(TranscodingTask, self).accept_results(subtask_id,
+                                                        result_files)
+            for idx, result in enumerate(result_files):
+                logger.info("Result[{}]: {}".format(idx, result))
 
-        for idx, result in enumerate(result_files):
-            logger.info("Result[{}]: {}".format(idx, result))
-
-        self.num_tasks_received += 1
+            self.num_tasks_received += 1
 
     def _get_next_subtask(self):
         # with self.lock:
+        logger.debug('Getting next task [type=trancoding, task_id={}]'.format(
+            self.task_definition.task_id))
         subtasks = self.subtasks_given.values()
         subtasks = filter(lambda sub: sub['status'] in [
             SubtaskStatus.failure, SubtaskStatus.restarted], subtasks)
         failed_subtask = next(iter(subtasks), None)
         if failed_subtask:
+            logger.debug('Subtask {} was failed, so let resent it'
+                         .format(failed_subtask['subtask_id']))
             failed_subtask['status'] = SubtaskStatus.resent
             self.num_failed_subtasks -= 1
             return failed_subtask['subtask_num']
         else:
             assert self.last_task < self.total_tasks
             curr = self.last_task + 1
-            self.last_task = curr  # someone else read that field
+            self.last_task = curr
             return curr - 1
 
     def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
+        with self.lock:
+            sid = self.create_subtask_id()
 
-        sid = self.create_subtask_id()
+            subtask_num = self._get_next_subtask()
+            subtask = {}
+            transcoding_params = self._get_extra_data(subtask_num)
+            subtask['perf'] = perf_index
+            subtask['node_id'] = node_id
+            subtask['subtask_id'] = sid
+            subtask['transcoding_params'] = transcoding_params
+            subtask['subtask_num'] = subtask_num
+            subtask['status'] = SubtaskStatus.starting
 
-        subtask_num = self._get_next_subtask()
-        subtask = {}
-        transcoding_params = self._get_extra_data(subtask_num)
-        # filter recursively None
-        subtask['perf'] = perf_index
-        subtask['node_id'] = node_id
-        subtask['subtask_id'] = sid
-        subtask['transcoding_params'] = transcoding_params
-        subtask['subtask_num'] = subtask_num
-        subtask['status'] = SubtaskStatus.starting
+            self.subtasks_given[sid] = subtask
 
-        self.subtasks_given[sid] = subtask
-
-        return Task.ExtraData(ctd=self._get_task_computing_definition(
-            sid, transcoding_params, perf_index))
+            return Task.ExtraData(ctd=self._get_task_computing_definition(
+                sid, transcoding_params, perf_index))
 
     def query_extra_data_for_test_task(
             self) -> golem_messages.message.ComputeTaskDef:
-        # TODO, FIXME
+        # TODO
         pass
 
     def _get_task_computing_definition(self, sid, transcoding_params, perf_idx):
@@ -141,7 +167,6 @@ class TranscodingTask(CoreTask):
 
 
 class TranscodingTaskBuilder(CoreTaskBuilder):
-    # jako property
     SUPPORTED_FILE_TYPES = []
     SUPPORTED_VIDEO_CODECS = []
     SUPPORTED_AUDIO_CODECS = []
@@ -181,6 +206,8 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         task_def.options.audio_params = audio_params
         task_def.options.audio_params = audio_params
         task_def.options.name = dict.get('name', '')
+        logger.debug('Transcoding task definition was build [definition={}]'
+                     .format(task_def.__dict__))
         return task_def
 
     @classmethod
@@ -217,7 +244,7 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         # FIXME get metadata by ffmpeg docker container
         # with open(path) as f:
         # return json.load(f)
-        return {'container': 'mp4'}
+        return {'container': 'ts'}
 
     @classmethod
     def _get_required_field(cls, dict, key: str, validator=lambda _: True) \
@@ -229,7 +256,7 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         return v
 
     @classmethod
-    def get_output_path(cls, dictionary, definition):
+    def get_output_path(cls, dictionary: dict, definition):
         parent = super(TranscodingTaskBuilder, cls)
         path = parent.get_output_path(dictionary, definition)
         options = cls._get_required_field(dictionary, 'options',

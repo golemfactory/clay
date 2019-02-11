@@ -8,7 +8,7 @@ class ffmpegEnvironment(DockerEnvironment):
     ENV_ID = 'FFMPEG'
     SHORT_DESCRIPTION = ''
 
-    def __init__(self, binds=None):
+    def __init__(self, binds: list = None):
         super().__init__(additional_images=[DockerImage(
             repository=self.DOCKER_IMAGE,
             tag=self.DOCKER_TAG
