@@ -33,18 +33,20 @@ class ffmpegTask(TranscodingTask):
         transcoding_options = self.task_definition.options
         video_params = transcoding_options.video_params
         audio_params = transcoding_options.audio_params
-        if subtask_num >= len(self.task_resources):
+        if subtask_num >= len(self.task_resources) // 2:
             raise AssertionError('Requested number subtask {} is greater than '
                                  'number of resources [size={}]'
                                  .format(subtask_num, len(self.task_resources)))
 
-        stream_path = os.path.relpath(self.task_resources[subtask_num],
-                                      self._get_resources_root_dir())
-        stream_path = DockerJob.get_absolute_resource_path(stream_path)
-        filename = os.path.basename(stream_path)
+        playlist_path = os.path.relpath(self.playlists[subtask_num],
+                                        self._get_resources_root_dir())
+        playlist_path = DockerJob.get_absolute_resource_path(playlist_path)
+
+        filename = os.path.splitext(os.path.basename(
+            self.streams[subtask_num]))[0]
 
         output_stream_path = pathlib.Path(os.path.join(DockerJob.OUTPUT_DIR,
-                                                       filename))
+                                                       filename + '_TC'))
         output_stream_path = str(output_stream_path.with_suffix(
             '.{}'.format(transcoding_options.output_container.value)))
 
@@ -53,7 +55,7 @@ class ffmpegTask(TranscodingTask):
         vc = video_params.codec.value if video_params.codec else None
         ac = audio_params.codec.value if audio_params.codec else None
         extra_data = {
-            'track': stream_path,
+            'track': playlist_path,
             'targs': {
                 'video': {
                     'codec': vc,

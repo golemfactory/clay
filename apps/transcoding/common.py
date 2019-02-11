@@ -52,6 +52,7 @@ class Container(Enum):
     MP4 = 'mp4'
     AVI = 'avi'
     MKV = 'mkv'
+    TS = 'ts'
 
     @staticmethod
     @HandleValueError(unsupported)

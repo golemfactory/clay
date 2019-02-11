@@ -60,6 +60,8 @@ class TranscodingTask(CoreTask):
                                               **kwargs)
         self.task_definition = task_definition
         self.lock = Lock()
+        self.playlists = []
+        self.streams = []
 
     def __getstate__(self):
         state = super(TranscodingTask, self).__getstate__()
@@ -73,17 +75,25 @@ class TranscodingTask(CoreTask):
     def initialize(self, dir_manager: DirManager):
         super(TranscodingTask, self).initialize(dir_manager)
         logger.debug('Initialization of ffmpegTask')
+        task_id = self.task_definition.task_id
+        task_output_dir = dir_manager.get_task_output_dir(task_id)
         if len(self.task_resources) == 0:
             raise TranscodingException('There is no specified resources')
         stream_operator = StreamOperator()
         chunks = stream_operator.split_video(
             self.task_resources[0], self.task_definition.subtasks_count,
-            dir_manager, self.task_definition.task_id)
-        self.task_resources = chunks
+            dir_manager, task_id)
         if len(chunks) < self.total_tasks:
             logger.warning('{} subtasks was requested but video splitting '
                            'process resulted in {} chunks.'
                            .format(self.total_tasks, len(chunks)))
+        streams = list(map(lambda x: x[0] if os.path.isabs(x[0]) else os.path
+                           .join(task_output_dir, x[0]), chunks))
+        playlists = list(map(lambda x: x[1] if os.path.isabs(x[1]) else os.path
+                             .join(task_output_dir, x[1]), chunks))
+        self.task_resources = streams + playlists
+        self.playlists = playlists
+        self.streams = streams
         self.total_tasks = len(chunks)
         self.task_definition.subtasks_count = len(chunks)
 
@@ -232,7 +242,7 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         # FIXME get metadata by ffmpeg docker container
         # with open(path) as f:
         # return json.load(f)
-        return {'container': 'mp4'}
+        return {'container': 'ts'}
 
     @classmethod
     def _get_required_field(cls, dict, key: str, validator=lambda _: True) \
