@@ -211,33 +211,44 @@ class Subscription(object):
         # TODO: remove also subtasks and resources?
         # this is bad idea since task can be removed
         # while subtask is still being computed
-        del self.events[task_id]
+        pass
+        # del self.events[task_id]
 
     def add_task_event(self, header: TaskHeader):
         self._add_event(header.task_id, task=Task(header))
 
-    def request_task(self, golem_client: Client, task_id: str) -> None:
+    def request_subtask(self, golem_client: Client, task_id: str) -> None:
         self.set_config_to(golem_client.task_server.config_desc)
         golem_client.task_server.request_task(task_id, self.performance)
         dispatcher.connect(self.add_subtask_event, signal='golem.subtask')
         self.increment(TaskStatus.requested)
 
     def add_subtask_event(self, event='default', **kwargs) -> None:
+        # TODO: persist or read existing subtasks upon start
         # print(f'sub event: {event}, {kwargs}')
-        if event == 'started':  # TODO and kwargs['ctd']['task_id'] == task_id:
-            subtask_id = kwargs['subtask_id']
-            self._add_event(subtask_id, subtask=Subtask(**kwargs))
+        subtask = Subtask(**kwargs)
+        if event == 'started' and subtask.task_id in self.events:
+            self._add_event(subtask.subtask_id, subtask=subtask)
             dispatcher.disconnect(self.add_subtask_event,
                                   signal='golem.subtask')
             dispatcher.connect(self.add_resource_event,
                                signal='golem.resource')
+        else:
+            logger.warning('unexpected subtask event for %s/%s: %r' % (
+                self.node_id, self.task_type, kwargs
+            ))
 
     def add_resource_event(self, **kwargs) -> None:
         # print(f'event: {event}, kwargs: {kwargs}')
-        subtask_id = kwargs['subtask_id']
-        # TODO if kwargs['subtask_id'] == subtask_id:
-        self._add_event(f'rs-{subtask_id}', resource=Resource(**kwargs))
-        dispatcher.disconnect(self.add_resource_event, signal='golem.resource')
+        resource = Resource(**kwargs)
+        if resource.subtask_id in self.events:
+            self._add_event(f'rs-{resource.subtask_id}', resource=resource)
+            dispatcher.disconnect(self.add_resource_event,
+                                  signal='golem.resource')
+        else:
+            logger.warning('unexpected resource event for %s/%s: %r' % (
+                self.node_id, self.task_type, kwargs
+            ))
 
     def increment(self, status: Union[TaskStatus, str]) -> None:
         if isinstance(status, str):
