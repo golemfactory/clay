@@ -35,6 +35,7 @@ class InvalidTaskType(Exception):
 class TaskStatus(Enum):
     requested = auto()
     started = auto()
+    cancelled = auto()
     succeeded = auto()
     failed = auto()
     timedout = auto()

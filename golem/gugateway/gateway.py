@@ -335,6 +335,7 @@ def cancel_subtask(node_id, subtask_id) -> (str, int):
         if subtask_id in s.events:
             session = golem_client.task_server.task_sessions[subtask_id]
             session.send_subtask_cancel(subtask_id)
+            s.increment(TaskStatus.cancelled)
             return _json_response('OK')
     else:
         return _not_found(f'subtask {subtask_id}')

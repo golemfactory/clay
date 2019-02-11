@@ -73,6 +73,8 @@ definitions:
             type: integer
           started:
             type: integer
+          cancelled:
+            type: integer
           succeded:
             type: integer
           failed:
