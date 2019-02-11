@@ -58,8 +58,7 @@ class TranscodingTask(CoreTask):
                                               **kwargs)
         self.task_definition = task_definition
         self.lock = Lock()
-        self.playlists = []
-        self.streams = []
+        self.chunks = []
 
     def __getstate__(self):
         state = super(TranscodingTask, self).__getstate__()
@@ -90,8 +89,7 @@ class TranscodingTask(CoreTask):
         playlists = list(map(lambda x: x[1] if os.path.isabs(x[1]) else os.path
                              .join(task_output_dir, x[1]), chunks))
         self.task_resources = streams + playlists
-        self.playlists = playlists
-        self.streams = streams
+        self.chunks = playlists
         self.total_tasks = len(chunks)
         self.task_definition.subtasks_count = len(chunks)
 
@@ -99,6 +97,7 @@ class TranscodingTask(CoreTask):
         with self.lock:
             super(TranscodingTask, self).accept_results(subtask_id,
                                                         result_files)
+            # TODO remove these logs
             for idx, result in enumerate(result_files):
                 logger.info("Result[{}]: {}".format(idx, result))
 

@@ -12,7 +12,6 @@ from apps.transcoding.task import TranscodingTaskOptions, \
 from golem.docker.job import DockerJob
 from golem.verificator.ffmpeg_verifier import FFmpegVerifier
 
-
 logger = logging.getLogger(__name__)
 
 
@@ -35,12 +34,12 @@ class ffmpegTask(TranscodingTask):
                                  'number of resources [size={}]'
                                  .format(subtask_num, len(self.task_resources)))
 
-        playlist_path = os.path.relpath(self.playlists[subtask_num],
-                                        self._get_resources_root_dir())
-        playlist_path = DockerJob.get_absolute_resource_path(playlist_path)
+        chunk = os.path.relpath(self.chunks[subtask_num],
+                                self._get_resources_root_dir())
+        chunk = DockerJob.get_absolute_resource_path(chunk)
 
         filename = os.path.splitext(os.path.basename(
-            self.streams[subtask_num]))[0]
+            self.chunks[subtask_num]))[0]
 
         output_stream_path = pathlib.Path(os.path.join(DockerJob.OUTPUT_DIR,
                                                        filename + '_TC'))
@@ -52,12 +51,12 @@ class ffmpegTask(TranscodingTask):
         vc = video_params.codec.value if video_params.codec else None
         ac = audio_params.codec.value if audio_params.codec else None
         extra_data = {
-            'track': playlist_path,
+            'track': chunk,
             'targs': {
                 'video': {
                     'codec': vc,
                     'bitrate': video_params.bitrate
-                    },
+                },
                 'audio': {
                     'codec': ac,
                     'bitrate': audio_params.bitrate

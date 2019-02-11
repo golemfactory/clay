@@ -8,8 +8,8 @@ from apps.transcoding import common
 from apps.transcoding.common import ffmpegException
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
 from golem.core.common import HandleError
-from golem.docker.task_thread import DockerTaskThread, DockerBind
 from golem.docker.image import DockerImage
+from golem.docker.task_thread import DockerTaskThread, DockerBind
 from golem.environments.environment import Environment
 from golem.environments.environmentsmanager import EnvironmentsManager
 from golem.resource.dirmanager import DirManager
@@ -18,7 +18,6 @@ FFMPEG_DOCKER_IMAGE = 'golemfactory/ffmpeg'
 FFMPEG_DOCKER_TAG = '1.0'
 FFMPEG_BASE_SCRIPT = '/golem/scripts/ffmpeg_task.py'
 FFMPEG_RESULT_FILE = '/golem/scripts/ffmpeg_task.py'
-
 
 logger = logging.getLogger(__name__)
 
@@ -61,8 +60,8 @@ class StreamOperator:
             if params.get('status', 'Success') is not 'Success':
                 raise ffmpegException('Splitting video failed')
             streams_list = list(map(lambda x: (x.get('video_segment'),
-                                          x.get('playlist')),
-                               params.get('segments', [])))
+                                               x.get('playlist')),
+                                    params.get('segments', [])))
             logger.info('Stream {} was successfully splitted to {}'
                         .format(input_stream, streams_list))
             return streams_list
@@ -93,5 +92,3 @@ class StreamOperator:
         return DockerTaskThread.specify_dir_mapping(
             output=task_output_dir, temporary=tmp_task_dir,
             resources=resources_task_dir, logs=tmp_task_dir, work=tmp_task_dir)
-
-

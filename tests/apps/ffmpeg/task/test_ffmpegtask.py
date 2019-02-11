@@ -2,6 +2,8 @@ import os
 import uuid
 from unittest import mock
 
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+
 from apps.transcoding.common import TranscodingTaskBuilderException, \
     AudioCodec, VideoCodec, Container
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
@@ -12,7 +14,7 @@ from golem.docker.task_thread import DockerTaskThread
 from golem.resource.dirmanager import DirManager
 from golem.task.taskstate import SubtaskStatus
 from golem.testutils import TempDirFixture
-from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+
 
 # TODO: test invalid video file
 
@@ -169,7 +171,7 @@ class TestffmpegTask(TempDirFixture):
         self.assertEqual(extra_data['script_filepath'],
                          '/golem/scripts/ffmpeg_task.py')
         self.assertEqual(extra_data['track'],
-                         '/golem/resources/test_video_0.ts')
+                         '/golem/resources/test_video[num=0].m3u8')
         vargs = extra_data['targs']['video']
         aargs = extra_data['targs']['audio']
         self.assertEqual(vargs['codec'], d['options']['video']['codec'].upper())

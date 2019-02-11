@@ -2,10 +2,11 @@ import shutil
 import uuid
 from unittest import mock
 
+from coverage.annotate import os
+
 from apps.transcoding.common import ffmpegException
 from apps.transcoding.ffmpeg.utils import StreamOperator, Commands, \
     FFMPEG_BASE_SCRIPT
-from coverage.annotate import os
 from golem.docker.job import DockerJob
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
@@ -58,7 +59,7 @@ class TestffmpegDockerJob(TestDockerJob):
             os.path.dirname(os.path.realpath(__file__))), 'resources'),
             'test_video.mp4')
         shutil.copy(str(stream_file), self.resources_dir)
-        out_stream_path = os.path.join(DockerJob.OUTPUT_DIR, 'test_video2.mp4')
+        out_stream_path = os.path.join(DockerJob.OUTPUT_DIR, 'test_video_TC.mp4')
         params = {
             'track': os.path.join(DockerJob.RESOURCES_DIR, 'test_video.mp4'),
             'targs': {
