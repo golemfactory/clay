@@ -1,6 +1,7 @@
 import json
 import logging
 from flask import Flask, request, send_file
+from pathlib import Path
 from twisted.internet import reactor
 from twisted.web.server import Site
 from twisted.web.wsgi import WSGIResource
@@ -13,8 +14,7 @@ from wsgidav.request_resolver import RequestResolver
 from wsgidav.http_authenticator import HTTPAuthenticator
 
 from golem.client import Client
-from .subscription import TaskStatus, Subscription, TaskType, InvalidTaskType, \
-    InvalidTaskStatus, Task
+from .subscription import TaskStatus, Subscription, TaskType, InvalidTaskType
 
 logger: logging.Logger = logging.getLogger(__name__)
 port: int = 55001
@@ -308,20 +308,52 @@ def subtask_info(node_id, subtask_id) -> (str, int):
 def subtask_result(node_id, subtask_id) -> (str, int):
     """Reports subtask computation result"""
 
+    if 'status' not in request.json:
+        return _invalid_input('status is required')
+
     if node_id not in subscriptions:
         return _not_found('subscription')
 
-    if 'status' not in request.json:
-        return _invalid_input('status required')
+    for s in subscriptions[node_id].values():
+        if subtask_id in s.events:
+            status = TaskStatus.match(request.json['status'])
+            subtask = s.events[subtask_id].subtask
 
-    try:
-        # TODO: get real task type
-        subscriptions[node_id][TaskType.Blender].increment(
-            request.json['status'])
-    except InvalidTaskStatus as e:
-        return _invalid_input(e)
+            if status == TaskStatus.succeeded:
+                if 'path' not in request.json:
+                    return _invalid_input('path is required')
 
-    return _json_response('OK')
+                root_path = Path(golem_client.task_manager.root_path)
+                result = {"data": [
+                    str(path) for path in
+                    root_path.joinpath(request.json['path']).glob('*')
+                ]}
+
+                try:
+                    golem_client.task_server.send_results(
+                        subtask_id,
+                        subtask.task_id,
+                        result
+                    )
+                except RuntimeError as e:
+                    _json_response(str(e), 500)
+
+                # TODO: should we call
+                # golem_client.task_server.task_computer.__task_finished(subtask)
+            else:
+                if 'reason' not in request.json:
+                    return _invalid_input('reason is required')
+
+                golem_client.task_server.send_task_failed(
+                    subtask_id,
+                    subtask.task_id,
+                    request.json['reason'],
+                )
+
+            s.increment(status)
+            return _json_response('OK')
+    else:
+        return _not_found(f'subtask {subtask_id}')
 
 
 @app.route('/<node_id>/subtasks/<subtask_id>/cancel', methods=['POST'])

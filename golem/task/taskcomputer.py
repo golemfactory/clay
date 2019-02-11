@@ -94,8 +94,8 @@ class TaskComputer(object):
 
     def task_given(self, ctd: 'ComputeTaskDef'):
         if self.assigned_subtask is not None:
-            # TODO
             logger.error("Trying to assign a task, when it's already assigned")
+            # TODO ProviderTimer is being fooled with this
             #return True
 
         ProviderTimer.start()
