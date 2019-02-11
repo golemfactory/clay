@@ -304,7 +304,7 @@ def subtask_info(node_id, subtask_id) -> (str, int):
         return _not_found(f'subtask {subtask_id}')
 
 
-@app.route('/<node_id>/subtasks/<uuid:subtask_id>', methods=['POST'])
+@app.route('/<node_id>/subtasks/<subtask_id>', methods=['POST'])
 def subtask_result(node_id, subtask_id) -> (str, int):
     """Reports subtask computation result"""
 
@@ -324,14 +324,21 @@ def subtask_result(node_id, subtask_id) -> (str, int):
     return _json_response('OK')
 
 
-@app.route('/<node_id>/subtask/<uuid:subtask_id>/cancel', methods=['POST'])
+@app.route('/<node_id>/subtasks/<subtask_id>/cancel', methods=['POST'])
 def cancel_subtask(node_id, subtask_id) -> (str, int):
     """Cancels subtask computation (upon failure or resignation)"""
 
     if node_id not in subscriptions:
         return _not_found('subscription')
 
-    return _json_response('OK')
+    for s in subscriptions[node_id].values():
+        if subtask_id in s.events:
+            session = golem_client.task_server.task_sessions[subtask_id]
+            session.send_subtask_cancel(subtask_id)
+            return _json_response('OK')
+    else:
+        return _not_found(f'subtask {subtask_id}')
+
 
 
 @app.route('/<node_id>/<task_type>/events', methods=['GET'])

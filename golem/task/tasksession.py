@@ -375,25 +375,28 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             delayed_forcing_msg,
         )
 
-    def send_task_failure(self, subtask_id, err_msg):
-        """ Inform task owner that an error occurred during task computation
-        :param str subtask_id:
-        :param err_msg: error message that occurred during computation
-        """
-
+    def get_ttc(self, subtask_id):
         task_id = self._subtask_to_task(subtask_id, Actor.Provider)
-
         task_to_compute = get_task_message(
             message_class_name='TaskToCompute',
             node_id=self.key_id,
             task_id=task_id,
             subtask_id=subtask_id
         )
+        return task_to_compute
+
+    def send_task_failure(self, subtask_id, err_msg):
+        """ Inform task owner that an error occurred during task computation
+        :param str subtask_id:
+        :param err_msg: error message that occurred during computation
+        """
+
+        task_to_compute = self.get_ttc(subtask_id)
 
         if not task_to_compute:
             logger.warning("Could not retrieve TaskToCompute"
                            " for subtask_id: %s, task_id: %s",
-                           subtask_id, task_id)
+                           subtask_id, task_to_compute.task_id)
             return
 
         self.send(
@@ -402,6 +405,23 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 err=err_msg
             )
         )
+
+    def send_subtask_cancel(self, subtask_id):
+        """ Inform task owner that we are can not compute subtask
+        :param str subtask_id:
+        """
+
+        logger.debug("Subtask %s cancelled", subtask_id)
+        task_to_compute = self.get_ttc(subtask_id)
+
+        self.send(
+            message.tasks.CannotComputeTask(
+                task_to_compute=task_to_compute,
+                reason = message.tasks.CannotComputeTask.REASON.OfferCancelled
+            ),
+        )
+        self.task_computer.session_closed()
+        self.dropped()
 
     def send_result_rejected(self, subtask_id, reason):
         """
