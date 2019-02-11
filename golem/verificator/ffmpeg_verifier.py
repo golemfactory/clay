@@ -10,6 +10,7 @@ logger = logging.getLogger("apps.ffmpeg")
 class FFmpegVerifier(CoreVerifier):
     def __init__(self, verification_data):
         super(FFmpegVerifier, self).__init__()
+        self.results = list()
 
     # def _verify_with_reference(self, verification_data):
     #     # TODO
