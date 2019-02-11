@@ -1,187 +1,209 @@
-# pylint: disable=import-error
-
 import os
 import sys
+from typing import Dict
 
-import numpy as np
-import cv2
+from PIL import Image
+
 import OpenEXR
-import pywt
-from skimage.measure import compare_ssim as ssim
 
-from .img_format_converter import \
-    ConvertTGAToPNG, ConvertEXRToPNG
-from .imgmetrics import \
-    ImgMetrics
+from . import decision_tree
+from .img_format_converter import ConvertTGAToPNG, ConvertEXRToPNG
+from .imgmetrics import ImgMetrics
+
+CROP_NAME = "scene_crop.png"
+VERIFICATION_SUCCESS = "TRUE"
+VERIFICATION_FAIL = "FALSE"
+TREE_PATH = "/golem/scripts/tree35_[crr=87.71][frr=0.92].pkl"
 
 
-def compare_crop_window(cropped_img_path,
-                        rendered_scene_path,
-                        xres, yres,
-                        output_filename_path='metrics.txt'):
+def calculate_metrics(reference_img_path,
+                      result_img_path,
+                      xres,
+                      yres,
+                      metrics_output_filename='metrics.txt'):
     """
     This is the entry point for calculation of metrics between the
     rendered_scene and the sample(cropped_img) generated for comparison.
-    :param cropped_img_path:
-    :param rendered_scene_path:
-    :param xres: to match where the cropped_img is located comparing to the
-    rendered_scene(full img)
-    :param yres: as above
-    :param output_filename_path:
+    :param reference_img_path:
+    :param result_img_path:
+    :param xres: x position of crop (left, top)
+    :param yres: y position of crop (left, top)
+    :param metrics_output_filename:
     :return:
     """
 
-    cropped_img, scene_crop = \
-        _load_and_prepare_img_for_comparison(
-            cropped_img_path,
-            rendered_scene_path,
-            xres, yres)
+    # pylint: disable=too-many-locals
 
-    img_metrics = compare_images(cropped_img, scene_crop)
-    path_to_metrics = img_metrics.write_to_file(output_filename_path)
+    cropped_img, scene_crops, _rendered_scene = \
+        _load_and_prepare_images_for_comparison(reference_img_path,
+                                                result_img_path,
+                                                xres,
+                                                yres)
 
+    best_crop = None
+    best_img_metrics = None
+    img_metrics = dict()
+    img_metrics['Label'] = VERIFICATION_FAIL
+
+    _effective_metrics, classifier, labels, available_metrics = get_metrics()
+
+    # First try not offset crop
+    # TODO this shouldn't depend on the crops' ordering
+    default_crop = scene_crops[0]
+    default_metrics = compare_images(cropped_img, default_crop,
+                                     available_metrics)
+    try:
+        label = classify_with_tree(default_metrics, classifier, labels)
+        default_metrics['Label'] = label
+    except Exception as e:  # pylint: disable=broad-except
+        print("There were errors %r" % e, file=sys.stderr)
+        default_metrics['Label'] = VERIFICATION_FAIL
+    if default_metrics['Label'] == VERIFICATION_SUCCESS:
+        default_crop.save(CROP_NAME)
+        return ImgMetrics(default_metrics).write_to_file(
+            metrics_output_filename)
+
+    # Try offset crops
+    for crop in scene_crops[1:]:
+        try:
+            img_metrics = compare_images(cropped_img, crop,
+                                         available_metrics)
+            img_metrics['Label'] = classify_with_tree(
+                img_metrics, classifier, labels)
+        except Exception as e:  # pylint: disable=broad-except
+            print("There were errors %r" % e, file=sys.stderr)
+            img_metrics['Label'] = VERIFICATION_FAIL
+        if img_metrics['Label'] == VERIFICATION_SUCCESS:
+            best_img_metrics = img_metrics
+            best_crop = crop
+            break
+    if best_crop and best_img_metrics:
+        best_crop.save(CROP_NAME)
+        return ImgMetrics(best_img_metrics).write_to_file(
+            metrics_output_filename)
+
+    # We didnt find any better match in offset crops, return
+    # the default one
+    default_crop.save(CROP_NAME)
+    path_to_metrics = ImgMetrics(default_metrics).write_to_file(
+        metrics_output_filename)
+    return path_to_metrics
+
+    # Fixme: unreachable code
+    # pylint: disable=unreachable
+
+    # This is unexpected but handle in case of errors
+    stub_data = {
+        element: -1
+        for element in get_labels_from_metrics(available_metrics)
+    }
+    stub_data['Label'] = VERIFICATION_FAIL
+    path_to_metrics = ImgMetrics(stub_data).write_to_file(
+        metrics_output_filename)
     return path_to_metrics
 
 
-def _load_and_prepare_img_for_comparison(cropped_img_path,
-                                         rendered_scene_path,
-                                         xres, yres):
+def load_classifier():
+    data = decision_tree.DecisionTree.load(TREE_PATH)
+    return data[0], data[1]
 
+
+def classify_with_tree(metrics, classifier, feature_labels):
+    features = dict()
+    for label in feature_labels:
+        features[label] = metrics[label]
+    results = classifier.classify_with_feature_vector(features, feature_labels)
+    return results[0].decode('utf-8')
+
+
+def _load_and_prepare_images_for_comparison(reference_img_path,
+                                            result_img_path, xres, yres):
     """
     This function prepares (i.e. crops) the rendered_scene so that it will
     fit the sample(cropped_img) generated for comparison.
-    :param cropped_img_path:
-    :param rendered_scene_path:
-    :param xres: to match where the cropped_img is located comparing to the
-    rendered_scene(full img)
-    :param yres: as above
+
+    :param reference_img_path:
+    :param result_img_path:
+    :param xres: x position of crop (left, top)
+    :param yres: y position of crop (left, top)
     :return:
     """
-    rendered_scene = None
-    # if rendered scene has .exr format need to convert it for .png format
-    if os.path.splitext(rendered_scene_path)[1] == ".exr":
-        check_input = OpenEXR.InputFile(rendered_scene_path).header()[
-            'channels']
-        if 'RenderLayer.Combined.R' in check_input:
+    rendered_scene = convert_to_png_if_needed(result_img_path)
+    reference_img = convert_to_png_if_needed(reference_img_path)
+    (crop_width, crop_height) = reference_img.size
+    crops = get_crops(rendered_scene, xres, yres, crop_width, crop_height)
+    return reference_img, crops, rendered_scene
+
+
+def get_file_extension_lowercase(file_path):
+    return os.path.splitext(file_path)[1][1:].lower()
+
+
+def convert_to_png_if_needed(img_path):
+    extension = get_file_extension_lowercase(img_path)
+    name = os.path.basename(img_path)
+    file_name = os.path.join("/tmp/", name)
+    if extension == "exr":
+        channels = OpenEXR.InputFile(img_path).header()['channels']
+        if 'RenderLayer.Combined.R' in channels:
             sys.exit("There is no support for OpenEXR multilayer")
-        file_name = "/tmp/scene.png"
-        ConvertEXRToPNG(rendered_scene_path, file_name)
-        rendered_scene = cv2.imread(file_name)
-    elif os.path.splitext(rendered_scene_path)[1] == ".tga":
-        file_name = "/tmp/scene.png"
-        ConvertTGAToPNG(rendered_scene_path, file_name)
-        rendered_scene = cv2.imread(file_name)
+        ConvertEXRToPNG(img_path, file_name)
+    elif extension == "tga":
+        ConvertTGAToPNG(img_path, file_name)
     else:
-        rendered_scene = cv2.imread(rendered_scene_path)
-
-    cropped_img = cv2.imread(cropped_img_path)
-    (crop_height, crop_width) = cropped_img.shape[:2]
-
-    scene_crop = rendered_scene[yres:yres + crop_height, xres:xres + crop_width]
-
-    # print("x, x + crop_width, y, y + crop_height:",
-    #       xres, xres + crop_width, yres,
-    #       yres + crop_height)
-    return cropped_img, scene_crop
+        file_name = img_path
+    return Image.open(file_name)
 
 
-def compare_images(image_a, image_b) -> ImgMetrics:
+def get_crops(rendered_scene, x, y, width, height):
+    crops = []
+    offsets = [0, 1, -1]
+    for x_offset in offsets:
+        for y_offset in offsets:
+            crop = rendered_scene.crop(
+                (x + x_offset, y + y_offset, x + width - x_offset,
+                 y + height - y_offset))
+            crops.append(crop)
+    return crops
+
+
+def get_metrics():
+    classifier, feature_labels = load_classifier()
+    available_metrics = ImgMetrics.get_metric_classes()
+    effective_metrics = []
+    for metric in available_metrics:
+        for label in feature_labels:
+            for label_part in metric.get_labels():
+                if label_part == label and metric not in effective_metrics:
+                    effective_metrics.append(metric)
+    return effective_metrics, classifier, feature_labels, available_metrics
+
+
+def get_labels_from_metrics(metrics):
+    labels = []
+    for metric in metrics:
+        labels.extend(metric.get_lables())
+    return labels
+
+
+def compare_images(image_a, image_b, metrics) -> Dict:
     """
     This the entry point for calculating metrics between image_a, image_b
     once they are cropped to the same size.
     :param image_a:
     :param image_b:
+    :param metrics:
     :return: ImgMetrics
     """
+    # imageA/B are images read by: PIL.Image.open(img.png)
+    (crop_height, crop_width) = image_a.size
+    crop_resolution = str(crop_height) + "x" + str(crop_width)
 
-    # ImageA/B are images read by: cv2.imread(img.png)
-    (crop_height, crop_width) = image_a.shape[:2]
+    data = {"crop_resolution": crop_resolution}
 
-    imageA_wavelet, imageB_wavelet = images_to_wavelet_transform(
-        image_a, image_b, mode='db1')
+    for metric_class in metrics:
+        result = metric_class.compute_metrics(image_a, image_b)
+        for key, value in result.items():
+            data[key] = value
 
-    SSIM_normal, MSE_normal = compare_mse_ssim(image_a, image_b)
-
-    SSIM_canny, MSE_canny = compare_images_transformed(
-        cv2.Canny(image_a, 0, 0), cv2.Canny(image_b, 0, 0))
-
-    SSIM_wavelet, MSE_wavelet = compare_images_transformed(
-        imageA_wavelet, imageB_wavelet)
-
-    data = {
-        "imgCorr": compare_histograms(image_a, image_b),
-        "SSIM_normal": SSIM_normal,
-        "MSE_normal": MSE_normal,
-        "SSIM_canny": SSIM_canny,
-        "MSE_canny": MSE_canny,
-        "MSE_wavelet": MSE_wavelet,
-        "SSIM_wavelet": SSIM_wavelet,
-        "crop_resolution": str(crop_height) + "x" + str(crop_width),
-    }
-
-    return ImgMetrics(data)
-
-
-# converting crop windows to histogram transfrom
-def compare_histograms(image_a, image_b):
-    color = [(255, 0, 0), (0, 255, 0), (0, 0, 255)]
-    hist_item = 0
-    hist_item1 = 0
-    for ch in range(len(color)):
-        hist_item = cv2.calcHist([image_a], [ch], None, [256], [0, 255])
-        hist_item1 = cv2.calcHist([image_b], [ch], None, [256], [0, 255])
-        cv2.normalize(hist_item, hist_item, 0, 255, cv2.NORM_MINMAX)
-        cv2.normalize(hist_item1, hist_item1, 0, 255, cv2.NORM_MINMAX)
-    result = cv2.compareHist(hist_item, hist_item1, cv2.HISTCMP_CORREL)
-    return result
-
-
-# MSE metric
-def mean_squared_error(image_a, image_b):
-    mse = np.sum((image_a.astype("float") - image_b.astype("float")) ** 2)
-    mse /= float(image_a.shape[0] * image_a.shape[1])
-    return mse
-
-
-# MSE and SSIM metric for crop windows without any transform
-def compare_mse_ssim(image_a, image_b):
-    meanSquaredError = mean_squared_error(
-        cv2.cvtColor(image_a, cv2.COLOR_BGR2GRAY),
-        cv2.cvtColor(image_b, cv2.COLOR_BGR2GRAY))
-
-    structualSim = ssim(
-        cv2.cvtColor(image_a, cv2.COLOR_BGR2GRAY),
-        cv2.cvtColor(image_b, cv2.COLOR_BGR2GRAY))
-
-    return structualSim, meanSquaredError
-
-
-# MSE and SSIM metric from crop windows with transform
-def compare_images_transformed(image_a, image_b):
-    meanSquaredError = mean_squared_error(image_a, image_b)
-    structualSim = ssim(image_a, image_b)
-
-    return structualSim, meanSquaredError
-
-
-# converting crop windows to wavelet transform
-def images_to_wavelet_transform(image_a, image_b, mode='db1'):
-    image_a = cv2.cvtColor(image_a, cv2.COLOR_BGR2GRAY)
-    image_b = cv2.cvtColor(image_b, cv2.COLOR_BGR2GRAY)
-    image_a = np.float32(image_a)
-    image_b = np.float32(image_b)
-    image_a /= 255
-    image_b /= 255
-    coeffs = pywt.dwt2(image_a, mode)
-    coeffs2 = pywt.dwt2(image_b, mode)
-    coeffs_H = list(coeffs)
-    coeffs_H2 = list(coeffs2)
-    coeffs_H[0] *= 0
-    coeffs_H2[0] *= 0
-    imArray_H = pywt.idwt2(coeffs_H, mode)
-    imArray_H *= 255
-    imArray_H = np.uint8(imArray_H)
-    imArray_H2 = pywt.idwt2(coeffs_H2, mode)
-    imArray_H2 *= 255
-    imArray_H2 = np.uint8(imArray_H2)
-    return imArray_H, imArray_H2
+    return data

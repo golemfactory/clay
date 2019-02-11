@@ -33,7 +33,6 @@ from golem.ranking.manager.database_manager import (
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
-from golem.task.taskstate import TaskState
 
 if TYPE_CHECKING:
     from .taskcomputer import TaskComputer  # noqa pylint:disable=unused-import
@@ -129,10 +128,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         """
         BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
-        self.task_server: 'TaskServer' = self.conn.server
-        self.task_manager: 'TaskManager' = self.task_server.task_manager
-        self.task_computer: 'TaskComputer' = self.task_server.task_computer
-        self.concent_service = self.task_server.client.concent_service
         self.task_id = None  # current task id
         self.subtask_id = None  # current subtask id
         self.conn_id = None  # connection id
@@ -141,7 +136,22 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.msgs_to_send = []
         self.err_msg = None  # Keep track of errors
         self.__set_msg_interpretations()
-        # self.threads = []
+
+    @property
+    def task_server(self) -> 'TaskServer':
+        return self.conn.server
+
+    @property
+    def task_manager(self) -> 'TaskManager':
+        return self.task_server.task_manager
+
+    @property
+    def task_computer(self) -> 'TaskComputer':
+        return self.task_server.task_computer
+
+    @property
+    def concent_service(self):
+        return self.task_server.client.concent_service
 
     ########################
     # BasicSession methods #

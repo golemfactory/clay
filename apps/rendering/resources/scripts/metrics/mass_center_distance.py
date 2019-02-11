@@ -1,9 +1,9 @@
-from PIL import Image
 import sys
+
+from PIL import Image
 
 
 class MetricMassCenterDistance:
-
     @staticmethod
     def compute_metrics(image1, image2):
         if image1.size != image2.size:
@@ -12,7 +12,7 @@ class MetricMassCenterDistance:
         mass_centers_2 = MetricMassCenterDistance.compute_mass_centers(image2)
         max_x_distance = 0
         max_y_distance = 0
-        for channel_index in mass_centers_1.keys():
+        for channel_index in mass_centers_1:
             x1, y1 = mass_centers_1[channel_index]
             x2, y2 = mass_centers_2[channel_index]
             x_distance = abs(x1 - x2)
@@ -22,7 +22,7 @@ class MetricMassCenterDistance:
         return {
             "max_x_mass_center_distance": max_x_distance,
             "max_y_mass_center_distance": max_y_distance
-                }
+        }
 
     @staticmethod
     def get_labels():
@@ -44,21 +44,21 @@ class MetricMassCenterDistance:
                     mass_center_x += mass * x
                     mass_center_y += mass * y
                     total_mass += mass
-                    
+
             divisor_x = (float(total_mass) * width)
             divisor_y = (float(total_mass) * height)
-               
+
             if divisor_x == 0:
                 mass_center_x = 0.5
             else:
                 mass_center_x = mass_center_x / divisor_x
-                
+
             if divisor_y == 0:
                 mass_center_y = 0.5
             else:
                 mass_center_y = mass_center_y / divisor_y
-            
-            results[channel_index] = mass_center_x, mass_center_y        
+
+            results[channel_index] = mass_center_x, mass_center_y
         return results
 
 

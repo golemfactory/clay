@@ -401,7 +401,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         # given
         conn = MagicMock()
         ts = TaskSession(conn)
-        ts.task_server = Mock()
         ts.task_server.config_desc = Mock()
         ts.task_server.config_desc.key_difficulty = 0
         ts.disconnect = Mock()
@@ -437,7 +436,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         # given
         conn = MagicMock()
         ts = TaskSession(conn)
-        ts.task_server = Mock()
         ts.task_server.config_desc = Mock()
         ts.task_server.config_desc.key_difficulty = 80
         ts.disconnect = Mock()
@@ -464,7 +462,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         difficulty = 4
         conn = MagicMock()
         ts = TaskSession(conn)
-        ts.task_server = Mock()
         ts.task_server.config_desc = Mock()
         ts.task_server.config_desc.key_difficulty = difficulty
         ts.disconnect = Mock()
@@ -490,8 +487,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         conn = Mock()
         conn.send_message.side_effect = lambda msg: msg._fake_sign()
         ts = TaskSession(conn)
-        ts.task_server = Mock()
-        ts.task_manager = Mock()
         ts.task_manager.verify_subtask.return_value = True
         keys_auth = KeysAuth(
             datadir=self.path,
@@ -603,10 +598,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         conn = Mock()
         ts = TaskSession(conn)
         ts.key_id = "KEY_ID"
-        ts.task_manager = MagicMock()
-        ts.task_computer = Mock()
         ts.task_computer.has_assigned_task.return_value = False
-        ts.task_server = Mock()
         ts.concent_service.enabled = False
         ts.send = Mock()
 
@@ -757,7 +749,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         task_keeper = CompTaskKeeper(pathlib.Path(self.path))
 
         session = self.task_session
-        session.concent_service = MagicMock()
+        session.conn.server.client.concent_service = MagicMock()
         session.task_manager.comp_task_keeper = task_keeper
         session.key_id = 'owner_id'
 
@@ -1073,7 +1065,7 @@ class SubtaskResultsAcceptedTest(TestCase):
     def setUp(self):
         self.task_session = TaskSession(Mock())
         self.task_server = Mock()
-        self.task_session.task_server = self.task_server
+        self.task_session.conn.server = self.task_server
         self.requestor_keys = cryptography.ECCx(None)
         self.requestor_key_id = encode_hex(self.requestor_keys.raw_pubkey)
         self.provider_keys = cryptography.ECCx(None)
@@ -1154,7 +1146,6 @@ class SubtaskResultsAcceptedTest(TestCase):
         def computed_task_received(*args):
             args[2]()
 
-        self.task_session.task_manager = Mock()
         self.task_session.task_manager.computed_task_received = \
             computed_task_received
 
