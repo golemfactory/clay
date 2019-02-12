@@ -1,4 +1,5 @@
 import itertools
+import logging
 import os
 import sys
 from typing import Dict
@@ -10,6 +11,12 @@ import OpenEXR
 from . import decision_tree
 from .img_format_converter import ConvertTGAToPNG, ConvertEXRToPNG
 from .imgmetrics import ImgMetrics
+
+
+logging.basicConfig(level=logging.INFO, stream=sys.stdout,
+                    format='%(levelname)-8s [%(name)-35s] %(message)s')
+logger = logging.getLogger(__name__)
+
 
 CROP_NAME = "scene_crop.png"
 VERIFICATION_SUCCESS = "TRUE"
@@ -32,76 +39,41 @@ def calculate_metrics(reference_img_path,
     :param metrics_output_filename:
     :return:
     """
-
-    # pylint: disable=too-many-locals
-
+    metrics_path = metrics_output_filename
     cropped_img, scene_crops, _rendered_scene = \
         _load_and_prepare_images_for_comparison(reference_img_path,
                                                 result_img_path,
                                                 xres,
                                                 yres)
 
-    best_crop = None
-    best_img_metrics = None
-    img_metrics = dict()
-    img_metrics['Label'] = VERIFICATION_FAIL
-
     _effective_metrics, classifier, labels, available_metrics = get_metrics()
-
-    # First try not offset crop
-    # TODO this shouldn't depend on the crops' ordering
-    default_crop = scene_crops[0]
-    default_metrics = compare_images(cropped_img, default_crop,
-                                     available_metrics)
-    try:
-        label = classify_with_tree(default_metrics, classifier, labels)
-        default_metrics['Label'] = label
-    except Exception as e:  # pylint: disable=broad-except
-        print("There were errors %r" % e, file=sys.stderr)
-        default_metrics['Label'] = VERIFICATION_FAIL
-    if default_metrics['Label'] == VERIFICATION_SUCCESS:
-        default_crop.save(CROP_NAME)
-        return ImgMetrics(default_metrics).write_to_file(
-            metrics_output_filename)
-
-    # Try offset crops
-    for crop in scene_crops[1:]:
+    default_metrics = {'Label': VERIFICATION_FAIL}
+    for crop_offset, crop_image in scene_crops.items():
         try:
-            img_metrics = compare_images(cropped_img, crop,
-                                         available_metrics)
-            img_metrics['Label'] = classify_with_tree(
-                img_metrics, classifier, labels)
-        except Exception as e:  # pylint: disable=broad-except
-            print("There were errors %r" % e, file=sys.stderr)
-            img_metrics['Label'] = VERIFICATION_FAIL
-        if img_metrics['Label'] == VERIFICATION_SUCCESS:
-            best_img_metrics = img_metrics
-            best_crop = crop
-            break
-    if best_crop and best_img_metrics:
-        best_crop.save(CROP_NAME)
-        return ImgMetrics(best_img_metrics).write_to_file(
-            metrics_output_filename)
+            crop_coords = (xres + crop_offset[0], yres + crop_offset[1])
+            logger.debug('Trying to match crop {}[offset = {}]'
+                         .format(crop_coords, crop_offset))
+            metrics = compare_images(cropped_img, crop_image, available_metrics)
+            result_label = classify_with_tree(metrics, classifier, labels)
+            if crop_offset == (0, 0):
+                default_metrics.update(metrics)
+            if result_label == VERIFICATION_SUCCESS:
+                metrics['Label'] = VERIFICATION_SUCCESS
+                logger.info('Crop {}[offset={}] was verified successfully'
+                            .format(crop_coords, crop_offset))
+                crop_image.save(CROP_NAME)
+                return ImgMetrics(metrics).write_to_file(metrics_path)
+            logger.info('Crop {}[offset={}] was verified unsuccessfully'
+                        .format(crop_coords, crop_offset))
 
-    # We didnt find any better match in offset crops, return
-    # the default one
-    default_crop.save(CROP_NAME)
-    path_to_metrics = ImgMetrics(default_metrics).write_to_file(
-        metrics_output_filename)
-    return path_to_metrics
+        except Exception as e:
+            logger.exception('Error has occurred trying to match crop '
+                             'offset={}]'.format(crop_offset), e)
+    logger.warning('No crop satisfied verification process. Returning metrics'
+                   'for default one [coordinates={}]'.format((xres, yres)))
 
-    # Fixme: unreachable code
-    # pylint: disable=unreachable
-
-    # This is unexpected but handle in case of errors
-    stub_data = {
-        element: -1
-        for element in get_labels_from_metrics(available_metrics)
-    }
-    stub_data['Label'] = VERIFICATION_FAIL
-    path_to_metrics = ImgMetrics(stub_data).write_to_file(
-        metrics_output_filename)
-    return path_to_metrics
+    scene_crops.get((0, 0)).save(CROP_NAME)
+    return ImgMetrics(default_metrics).write_to_file(metrics_path)
 
 
 def load_classifier():
@@ -158,10 +130,9 @@ def convert_to_png_if_needed(img_path):
 
 def get_crops(rendered_scene, x, y, width, height):
     offsets = itertools.product([0, -1, 1], repeat=2)
-    crops = [rendered_scene.crop((x + x_offset, y + y_offset,
-                                  x + width + x_offset,
-                                  y + height + y_offset))
-             for x_offset, y_offset in offsets]
+    crops = {(x_offset, y_offset): rendered_scene.crop(
+        (x + x_offset, y + y_offset, x + width + x_offset,
+         y + height + y_offset)) for x_offset, y_offset in offsets}
     return crops
 
 
