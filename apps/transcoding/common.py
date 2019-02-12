@@ -53,7 +53,6 @@ class Container(Enum):
     AVI = 'avi'
     MKV = 'mkv'
     TS = 'ts'
-    M3U8 = 'm3u8'
 
     @staticmethod
     @HandleValueError(unsupported)
@@ -74,8 +73,6 @@ CONTAINER_SUPPORTED_CODECS = {
     Container.MP4: ([VideoCodec.H_264, VideoCodec.MPEG_4_Part_2,
                      VideoCodec.MPEG_2],
                     [AudioCodec.AAC, AudioCodec.MP3]),
-    # TODO
-    Container.M3U8: ALL_SUPPORTED_CODECS,
 }
 
 

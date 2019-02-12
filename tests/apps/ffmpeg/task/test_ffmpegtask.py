@@ -182,7 +182,7 @@ class TestffmpegTask(TempDirFixture):
                          d['options']['video']['frame_rate'])
         self.assertEqual(aargs['codec'], d['options']['audio']['codec'].upper())
         self.assertEqual(aargs['bitrate'], d['options']['audio']['bit_rate'])
-        self.assertIn(d['options']['container'], extra_data['output_stream'])
+        self.assertIn('m3u8', extra_data['output_stream'])
 
     def test_less_subtasks_than_requested(self):
         d = self._task_dictionary

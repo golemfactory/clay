@@ -104,7 +104,6 @@ class TranscodingTask(CoreTask):
             self.num_tasks_received += 1
 
     def _get_next_subtask(self):
-        # with self.lock:
         logger.debug('Getting next task [type=trancoding, task_id={}]'.format(
             self.task_definition.task_id))
         subtasks = self.subtasks_given.values()
