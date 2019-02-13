@@ -65,7 +65,7 @@ def prepare_params(mounted_paths, subtask_border, scene_file_path, resolution, s
     return crops, params
 
 
-def make_verdict( subtask_file_paths, crops, results ):
+def make_verdict( subtask_file_paths, crops, results, output_dir ):
     verdict = True
 
     for crop_data in results:
@@ -77,23 +77,25 @@ def make_verdict( subtask_file_paths, crops, results ):
         print("top " + str(top))
 
         for crop, subtask in zip(crop_data['results'], subtask_file_paths):
-            crop_path = os.path.join(OUTPUT_DIR, crop)
+            crop_path = os.path.join(output_dir, crop)
             results_path = calculate_metrics(crop_path,
                                 subtask,
                                 left, top,
-                                metrics_output_filename=os.path.join(OUTPUT_DIR, crop_data['crop']['outfilebasename'] + "metrics.txt"))
+                                metrics_output_filename=os.path.join(output_dir, crop_data['crop']['outfilebasename'] + "metrics.txt"))
 
             with open(results_path, 'r') as f:
                 data = json.load(f)
             if data['Label'] != "TRUE":
                 verdict = False
 
-    with open(os.path.join(OUTPUT_DIR, 'verdict.json'), 'w') as f:
+    with open(os.path.join(output_dir, 'verdict.json'), 'w') as f:
         json.dump({'verdict': verdict}, f)
 
+    return verdict
 
 
 def verify(subtask_file_paths, subtask_border, scene_file_path, resolution, samples, frames, output_format, basefilename,
+           mounted_paths = {"WORK_DIR": WORK_DIR, "OUTPUT_DIR": OUTPUT_DIR},
            crops_count=3, crops_borders=None):
 
     """ Function will verifiy image with crops rendered from given blender scene file.
@@ -113,10 +115,6 @@ def verify(subtask_file_paths, subtask_border, scene_file_path, resolution, samp
                     those will be used instead of random crops, if present.
 
     """
-    mounted_paths = dict()
-    mounted_paths["WORK_DIR"] = WORK_DIR
-    mounted_paths["OUTPUT_DIR"] = OUTPUT_DIR
-
     crops, params = prepare_params(mounted_paths, subtask_border, scene_file_path,
                                     resolution, samples, frames, output_format,
                                     basefilename, crops_count, crops_borders)
@@ -125,4 +123,4 @@ def verify(subtask_file_paths, subtask_border, scene_file_path, resolution, samp
 
     print(results)
 
-    make_verdict( subtask_file_paths, crops, results )
+    return make_verdict( subtask_file_paths, crops, results, mounted_paths['OUTPUT_DIR'] )

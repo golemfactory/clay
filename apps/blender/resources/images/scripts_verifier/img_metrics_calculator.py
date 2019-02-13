@@ -10,10 +10,9 @@ import decision_tree
 from img_format_converter import ConvertTGAToPNG, ConvertEXRToPNG
 from imgmetrics import ImgMetrics
 
-CROP_NAME = "scene_crop.png"
 VERIFICATION_SUCCESS = "TRUE"
 VERIFICATION_FAIL = "FALSE"
-TREE_PATH = "/golem/scripts_verifier/tree35_[crr=87.71][frr=0.92].pkl"
+TREE_PATH = "scripts_verifier/tree35_[crr=87.71][frr=0.92].pkl"
 
 
 def calculate_metrics(reference_img_path,
@@ -56,7 +55,6 @@ def calculate_metrics(reference_img_path,
         print("There were errors %r" % e, file=sys.stderr)
         default_metrics['Label'] = VERIFICATION_FAIL
     if default_metrics['Label'] == VERIFICATION_SUCCESS:
-        default_crop.save(CROP_NAME)
         return ImgMetrics(default_metrics).write_to_file(metrics_output_filename)
     else:
         # Try offset crops
@@ -72,11 +70,9 @@ def calculate_metrics(reference_img_path,
                 best_crop = crop
                 break
         if best_crop and best_img_metrics:
-            best_crop.save(CROP_NAME)
             return ImgMetrics(best_img_metrics).write_to_file(metrics_output_filename)
         else:
             # We didnt find any better match in offset crops, return the default one
-            default_crop.save(CROP_NAME)
             path_to_metrics = ImgMetrics(default_metrics).write_to_file(metrics_output_filename)
             return path_to_metrics
 
