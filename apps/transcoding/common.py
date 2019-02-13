@@ -72,13 +72,14 @@ CONTAINER_SUPPORTED_CODECS = {
     Container.MKV: ALL_SUPPORTED_CODECS,
     Container.MP4: ([VideoCodec.H_264, VideoCodec.MPEG_4_Part_2,
                      VideoCodec.MPEG_2],
-                    [AudioCodec.AAC, AudioCodec.MP3])
+                    [AudioCodec.AAC, AudioCodec.MP3]),
 }
 
 
 def is_type_of(t: Type):
     def f(obj):
         return isinstance(obj, t)
+
     return f
 
 

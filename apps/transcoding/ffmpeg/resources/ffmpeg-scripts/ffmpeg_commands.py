@@ -1,7 +1,6 @@
 import os
-import subprocess
-import shutil
 import re
+import subprocess
 
 FFMPEG_COMMAND = "ffmpeg"
 FFPROBE_COMMAND = "ffprobe"
@@ -75,15 +74,7 @@ def split_video_command(input, output_list_file, segment_time):
 
 
 def transcode_video(track, targs, output, use_playlist):
-    output_dir = os.path.dirname(output)
-    [_, playlist] = os.path.split(track)
-    [basename, _] = os.path.splitext(playlist)
-    if int(use_playlist) == 1:
-        ext = ".m3u8"
-    else:
-        _, ext = os.path.splitext(output)
-    output_playlist_name = os.path.join(output_dir, basename + "_TC{}".format(ext))
-    cmd = transcode_video_command(track, output_playlist_name, targs, use_playlist)
+    cmd = transcode_video_command(track, output, targs, use_playlist)
     return exec_cmd(cmd)
 
 
@@ -111,7 +102,7 @@ def transcode_video_command(track, output_playlist_name, targs, use_playlist):
     except:
         pass
     try:
-        fps = targs['frame_rate']
+        fps = str(targs['frame_rate'])
         cmd.append("-r")
         cmd.append(fps)
     except:

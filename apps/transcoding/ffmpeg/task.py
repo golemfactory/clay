@@ -10,11 +10,7 @@ from apps.transcoding.ffmpeg.utils import Commands, FFMPEG_BASE_SCRIPT
 from apps.transcoding.task import TranscodingTaskOptions, \
     TranscodingTaskBuilder, TranscodingTaskDefinition, TranscodingTask
 from golem.docker.job import DockerJob
-
-
-# TODO:
-# REMOVE use_playlist param
-from golem.verificator.ffmpeg_verifier import ffmpegVerifier
+from golem.verificator.ffmpeg_verifier import FFmpegVerifier
 
 logger = logging.getLogger(__name__)
 
@@ -27,7 +23,7 @@ class ffmpegTaskTypeInfo(CoreTaskTypeInfo):
 
 class ffmpegTask(TranscodingTask):
     ENVIRONMENT_CLASS = ffmpegEnvironment
-    VERIFIER_CLASS = ffmpegVerifier
+    VERIFIER_CLASS = FFmpegVerifier
 
     def _get_extra_data(self, subtask_num: int):
         transcoding_options = self.task_definition.options
@@ -38,29 +34,29 @@ class ffmpegTask(TranscodingTask):
                                  'number of resources [size={}]'
                                  .format(subtask_num, len(self.task_resources)))
 
-        playlist_path = os.path.relpath(self.playlists[subtask_num],
-                                        self._get_resources_root_dir())
-        playlist_path = DockerJob.get_absolute_resource_path(playlist_path)
+        chunk = os.path.relpath(self.chunks[subtask_num],
+                                self._get_resources_root_dir())
+        chunk = DockerJob.get_absolute_resource_path(chunk)
 
         filename = os.path.splitext(os.path.basename(
-            self.streams[subtask_num]))[0]
+            self.chunks[subtask_num]))[0]
 
         output_stream_path = pathlib.Path(os.path.join(DockerJob.OUTPUT_DIR,
                                                        filename + '_TC'))
         output_stream_path = str(output_stream_path.with_suffix(
-            '.{}'.format(transcoding_options.output_container.value)))
+            '.{}'.format('m3u8')))
 
         resolution = video_params.resolution
         resolution = [resolution[0], resolution[1]] if resolution else None
         vc = video_params.codec.value if video_params.codec else None
         ac = audio_params.codec.value if audio_params.codec else None
         extra_data = {
-            'track': playlist_path,
+            'track': chunk,
             'targs': {
                 'video': {
                     'codec': vc,
                     'bitrate': video_params.bitrate
-                    },
+                },
                 'audio': {
                     'codec': ac,
                     'bitrate': audio_params.bitrate
