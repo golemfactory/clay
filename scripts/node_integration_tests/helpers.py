@@ -105,8 +105,8 @@ def search_output(q: queue.Queue, pattern) -> typing.Optional[typing.Match]:
 def construct_test_task(task_package_name, output_path, task_settings):
     settings = tasks.get_settings(task_settings)
     cwd = pathlib.Path(os.path.realpath(__file__)).parent
-    tasks_path = (cwd / 'tasks' / task_package_name).glob('*')
-    settings['resources'] = [str(f) for f in tasks_path]
+    tasks_path = (cwd / 'tasks' / task_package_name).glob('**/*')
+    settings['resources'] = [str(f) for f in tasks_path if f.is_file()]
     settings['options']['output_path'] = output_path
     return settings
 
