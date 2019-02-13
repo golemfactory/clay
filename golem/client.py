@@ -170,7 +170,9 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         clean_resources_older_than = \
             self.config_desc.clean_resources_older_than_seconds
-        if clean_resources_older_than > 0:
+        cleaning_enabled = self.config_desc.cleaning_enabled
+        if cleaning_enabled and clean_resources_older_than > 0:
+            logger.debug('Starting resource cleaner service ...')
             self._services.append(
                 ResourceCleanerService(
                     self,
@@ -398,7 +400,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         clean_tasks_older_than = \
             self.config_desc.clean_tasks_older_than_seconds
-        if clean_tasks_older_than > 0:
+        cleaning_enabled = self.config_desc.cleaning_enabled
+        if cleaning_enabled and clean_tasks_older_than > 0:
             self.clean_old_tasks()
 
         resource_manager = HyperdriveResourceManager(
@@ -416,7 +419,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.task_server.restore_resources()
 
         # Start service after restore_resources() to avoid race conditions
-        if clean_tasks_older_than:
+        if cleaning_enabled and clean_tasks_older_than > 0:
+            logger.debug('Starting task cleaner service ...')
             task_cleaner_service = TaskCleanerService(
                 client=self,
                 interval_seconds=max(1, clean_tasks_older_than // 10)
