@@ -274,22 +274,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.task_server.reject_result(subtask_id, self.key_id)
         self.send_result_rejected(subtask_id, reason)
 
-    def request_resource(self, task_id):
-        """Ask for a resources for a given task. Task owner should compare
-           given resource header with resources for that task and send only
-           lacking / changed resources
-        :param uuid task_id:
-        :param ResourceHeader resource_header: description of resources
-                                               that current node has
-        :return:
-        """
-        self.send(
-            message.tasks.GetResource(
-                task_id=task_id,
-                resource_header=None,  # unused slot
-            )
-        )
-
     # TODO address, port and eth_account should be in node_info
     # (or shouldn't be here at all). Issue #2403
     def send_report_computed_task(
@@ -577,6 +561,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.price, msg.max_resource_size, msg.max_memory_size,
                 self.address)
 
+            ctd["resources"] = self.task_server.get_resources(msg.task_id)
             logger.debug(
                 "task_id=%s, node=%s ctd=%s",
                 msg.task_id,
@@ -610,7 +595,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 package_hash='sha1:' + task_state.package_hash,
                 concent_enabled=msg.concent_enabled,
                 price=price,
-                size=task_state.package_size
+                size=task_state.package_size,
+                resources_options=self.task_server.get_share_options(
+                    ctd['task_id'], self.address).__dict__
             )
             ttc.generate_ethsig(self.my_private_key)
             self.send(ttc)
@@ -821,19 +808,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.port,
         )
 
-    def _react_to_get_resource(self, msg):
-        # self.last_resource_msg = msg
-        resources = self.task_server.get_resources(msg.task_id)
-        options = self.task_server.get_share_options(
-            task_id=msg.task_id,
-            address=self.address
-        )
-
-        self.send(message.resources.ResourceList(
-            resources=resources,
-            options=options.__dict__,  # This slot will be used in #1768
-        ))
-
     @history.provider_history
     def _react_to_subtask_results_accepted(
             self, msg: message.tasks.SubtaskResultsAccepted):
@@ -931,17 +905,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if self.check_provider_for_subtask(msg.subtask_id):
             self.task_server.subtask_failure(msg.subtask_id, msg.err)
         self.dropped()
-
-    def _react_to_resource_list(self, msg):
-        resource_server = self.task_server.client.resource_server
-        resource_manager = resource_server.resource_manager
-        resources = resource_manager.from_wire(msg.resources)
-
-        client_options = self.task_server.get_download_options(msg.options,
-                                                               self.task_id)
-
-        self.task_server.pull_resources(self.task_id, resources,
-                                        client_options=client_options)
 
     def _react_to_hello(self, msg):
         if not self.conn.opened:
@@ -1152,10 +1115,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self._react_to_cannot_compute_task,
             message.tasks.ReportComputedTask:
                 self._react_to_report_computed_task,
-            message.tasks.GetResource:
-                self._react_to_get_resource,
-            message.resources.ResourceList:
-                self._react_to_resource_list,
             message.tasks.SubtaskResultsAccepted:
                 self._react_to_subtask_results_accepted,
             message.tasks.SubtaskResultsRejected:

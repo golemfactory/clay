@@ -7,7 +7,7 @@ from eth_utils import encode_hex
 import faker
 from golem_messages import idgenerator
 from golem_messages.datastructures import p2p as dt_p2p
-from golem_messages.datastructures import tasks as dt_tasks
+from golem_messages.factories.datastructures.tasks import TaskHeaderFactory
 from golem_messages.message import ComputeTaskDef
 
 import golem
@@ -74,7 +74,8 @@ class DummyTask(Task):
             pub_port=owner_port,
             key=owner_key_id
         )
-        header = dt_tasks.TaskHeader(
+
+        header = TaskHeaderFactory(
             task_id=task_id,
             task_owner=task_owner,
             environment=environment,

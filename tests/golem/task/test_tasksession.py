@@ -31,6 +31,7 @@ from golem.docker.image import DockerImage
 from golem.network.hyperdrive import client as hyperdrive_client
 from golem.model import Actor
 from golem.network import history
+from golem.network.hyperdrive.client import HyperdriveClientOptions
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
 from golem.task import taskstate
@@ -90,6 +91,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         self.task_manager = Mock(tasks_states={}, tasks={})
         server = Mock(task_manager=self.task_manager)
         server.get_key_id = lambda: self.provider_key
+        server.get_share_options.return_value = None
         self.conn = Mock(server=server)
         self.use_concent = True
         self.task_id = uuid.uuid4().hex
@@ -248,6 +250,8 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts2.task_manager.should_wait_for_node.return_value = False
         ts2.conn.send_message.side_effect = \
             lambda msg: msg.sign_message(self.requestor_keys.raw_privkey)
+        options = HyperdriveClientOptions("CLI1", 0.3)
+        ts2.task_server.get_share_options.return_value = options
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.tasks.TaskToCompute)
@@ -263,6 +267,8 @@ class TaskSessionTaskToComputeTest(TestCase):
             ['price', 1],
             ['size', task_state.package_size],
             ['ethsig', ms.ethsig],
+            ['resources_options', {'client_id': 'CLI1', 'version': 0.3,
+                                   'options': {}}],
         ]
         self.assertCountEqual(ms.slots(), expected)
 
@@ -276,6 +282,8 @@ class TaskSessionTaskToComputeTest(TestCase):
 
         ts2.task_manager.get_next_subtask.return_value = ctd
         ts2.task_manager.should_wait_for_node.return_value = False
+        options = HyperdriveClientOptions("CLI1", 0.3)
+        ts2.task_server.get_share_options.return_value = options
         ts2.interpret(wtct)
         ttc = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ttc, message.tasks.TaskToCompute)
@@ -735,25 +743,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
 
-    # pylint: enable=too-many-statements
-
-    def test_get_resource(self):
-        conn = BasicProtocol()
-        conn.transport = Mock()
-        conn.server = Mock()
-
-        db = DataBuffer()
-
-        sess = TaskSession(conn)
-        sess.send = lambda m: db.append_bytes(
-            m.serialize(),
-        )
-        sess._can_send = lambda *_: True
-        sess.request_resource(str(uuid.uuid4()))
-
-        self.assertTrue(
-            message.base.Message.deserialize(db.buffered_data, lambda x: x)
-        )
 
     @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
     def test_react_to_ack_reject_report_computed_task(self):
@@ -811,36 +800,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         session._react_to_reject_report_computed_task(msg_ack)
         self.assert_concent_cancel(
             cancel.call_args[0], subtask_id, 'ForceReportComputedTask')
-
-    @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
-    def test_react_to_resource_list(self):
-        task_server = self.task_session.task_server
-
-        client = 'test_client'
-        version = 1.0
-        peers = [{'TCP': ('127.0.0.1', 3282)}]
-        msg = message.resources.ResourceList(resources=[['1'], ['2']],
-                                             options=None)
-
-        # Use locally saved hyperdrive client options
-        self.task_session._react_to_resource_list(msg)
-        call_options = task_server.pull_resources.call_args[1]
-
-        assert task_server.get_download_options.called
-        assert task_server.pull_resources.called
-        assert isinstance(call_options['client_options'], Mock)
-
-        # Use download options built by TaskServer
-        client_options = ClientOptions(client, version,
-                                       options={'peers': peers})
-        task_server.get_download_options.return_value = client_options
-
-        self.task_session.task_server.pull_resources.reset_mock()
-        self.task_session._react_to_resource_list(msg)
-        call_options = task_server.pull_resources.call_args[1]
-
-        assert not isinstance(call_options['client_options'], Mock)
-        assert call_options['client_options'].options['peers'] == peers
 
     def test_subtask_to_task(self):
         task_keeper = Mock(subtask_to_task=dict())
