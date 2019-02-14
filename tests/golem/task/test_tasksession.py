@@ -23,9 +23,9 @@ from twisted.internet.defer import Deferred
 
 import golem
 from golem import model, testutils
+from golem.core import variables
 from golem.core.databuffer import DataBuffer
 from golem.core.keysauth import KeysAuth
-from golem.core.variables import PROTOCOL_CONST
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.network.hyperdrive import client as hyperdrive_client
@@ -317,7 +317,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.task_session.send_hello()
         expected = [
             ['rand_val', self.task_session.rand_val],
-            ['proto_id', PROTOCOL_CONST.ID],
+            ['proto_id', variables.PROTOCOL_CONST.ID],
             ['node_name', None],
             ['node_info', None],
             ['port', None],
@@ -421,7 +421,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             message.base.Disconnect.REASON.ProtocolVersion)
 
         # re-given
-        msg.proto_id = PROTOCOL_CONST.ID
+        msg.proto_id = variables.PROTOCOL_CONST.ID
 
         # re-when
         with self.assertNoLogs(logger, level='INFO'):
@@ -445,7 +445,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         peer_info.key = key_id
         msg = message.base.Hello(
             port=1, node_name='node2', client_key_id=key_id,
-            node_info=peer_info, proto_id=PROTOCOL_CONST.ID)
+            node_info=peer_info, proto_id=variables.PROTOCOL_CONST.ID)
         fill_slots(msg)
 
         # when
@@ -473,7 +473,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         peer_info.key = ka.key_id
         msg = message.base.Hello(
             port=1, node_name='node2', client_key_id=ka.key_id,
-            node_info=peer_info, proto_id=PROTOCOL_CONST.ID)
+            node_info=peer_info, proto_id=variables.PROTOCOL_CONST.ID)
         fill_slots(msg)
 
         # when
@@ -1038,6 +1038,43 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         tm.check_next_subtask = Mock()
         tm.check_next_subtask.return_value = True
 
+
+class WaitingForResultsTestCase(
+        testutils.DatabaseFixture,
+        testutils.TempDirFixture,
+):
+    def setUp(self):
+        testutils.DatabaseFixture.setUp(self)
+        testutils.TempDirFixture.setUp(self)
+        history.MessageHistoryService()
+        self.ts = TaskSession(Mock())
+        self.ts.conn.send_message.side_effect = \
+            lambda msg: msg._fake_sign()
+        self.ts.task_server.get_node_name.return_value = "Zażółć gęślą jaźń"
+        self.ts.task_server.get_key_id.return_value = "key_id"
+        self.ts.key_id = 'unittest_key_id'
+        self.ts.task_server.get_share_options.return_value = \
+            hyperdrive_client.HyperdriveClientOptions('1', 1.0)
+
+        keys_auth = KeysAuth(
+            datadir=self.path,
+            difficulty=4,
+            private_key_name='prv',
+            password='',
+        )
+        self.ts.task_server.keys_auth = keys_auth
+        self.ts.concent_service.variant = variables.CONCENT_CHOICES['test']
+        self.n = dt_p2p_factory.Node()
+        self.msg = message.tasks.WaitingForResults()
+        self.ts.task_id = str(uuid.uuid4())
+
+    def test_task_server_notification(self, *_):
+        self.ts._react_to_waiting_for_results(self.msg)
+        # https://github.com/golemfactory/golem-messages/issues/320
+        self.ts.task_server.subtask_waiting.assert_called_once_with(
+            task_id=self.ts.task_id,
+            subtask_id=None,
+        )
 
 class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
                                       testutils.TempDirFixture):
