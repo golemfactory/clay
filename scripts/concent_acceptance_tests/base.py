@@ -382,6 +382,6 @@ class SCIBaseTest(ConcentBaseTest):
         return self.put_deposit(self.provider_sci, amount)
 
     @staticmethod
-    def _blockchain_sleep(sleep_time=60):
+    def blockchain_sleep(sleep_time=60):
         sys.stderr.write(f'Going to sleep for: {sleep_time} seconds...\n')
         time.sleep(sleep_time)
