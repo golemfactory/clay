@@ -753,8 +753,10 @@ class TaskManager(TaskEventListener):
         subtask_status = subtask_state.subtask_status
 
         if not subtask_status.is_computed():
-            logger.warning("Result for subtask {} when subtask state is {}"
-                           .format(subtask_id, subtask_status.value))
+            logger.warning(
+                "TaskFailure for subtask %s when subtask state is %s",
+                subtask_id, subtask_status.value
+            )
             self.notice_task_updated(task_id,
                                      subtask_id=subtask_id,
                                      op=OtherOp.UNEXPECTED)
