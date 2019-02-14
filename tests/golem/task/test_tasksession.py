@@ -655,6 +655,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 .task_headers[msg.task_id].subtasks_count = 10
             ts.task_server.client.transaction_system.get_available_gnt\
                 .return_value = msg.price * 10
+            ts.task_server.config_desc.max_resource_size = 102400
             ts._react_to_task_to_compute(msg)
             return msg
 
@@ -834,7 +835,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 ),
                 subtask_timeout=1,
                 max_price=1,
-                resource_size=1,
             ),
             20,
         )

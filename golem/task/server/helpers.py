@@ -18,7 +18,7 @@ def computed_task_reported(
     output_dir = task.tmp_dir if hasattr(task, 'tmp_dir') else None
     client_options = task_server.get_download_options(
         report_computed_task.options,
-        report_computed_task.task_id,
+        report_computed_task.size,
     )
 
     fgtr = message.concents.ForceGetTaskResult(

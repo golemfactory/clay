@@ -109,7 +109,7 @@ class TaskResourcesMixin:
 
         task_keeper = self.task_manager.comp_task_keeper
         options = task_keeper.get_resources_options(subtask_id)
-        client_options = self.get_download_options(options, task_id)
+        client_options = self.get_download_options(options)
         self.pull_resources(task_id, resources, client_options)
         return True
 
@@ -120,9 +120,8 @@ class TaskResourcesMixin:
     def get_download_options(
             self,
             received_options: Optional[Union[dict, HyperdriveClientOptions]],
-            task_id: Optional[str] = None):
+            size: Optional[int] = None):
 
-        task_keeper = getattr(self, 'task_keeper')
         resource_manager = self._get_resource_manager()
         options: Optional[HyperdriveClientOptions] = None
 
@@ -147,10 +146,9 @@ class TaskResourcesMixin:
             options = received_options
 
         options = _filter_options(options)
-        task_header = task_keeper.task_headers.get(task_id)
 
-        if task_header:
-            options.set(size=task_header.resource_size)
+        if size:
+            options.set(size=size)
         return options
 
     def get_share_options(self, task_id: str,  # noqa # pylint: disable=unused-argument

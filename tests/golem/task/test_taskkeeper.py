@@ -432,7 +432,6 @@ def get_dict_task_header(key_id_seed="kkk"):
         "subtasks_count": 1,
         "max_price": 10,
         "min_version": golem.__version__,
-        "resource_size": 0,
         "estimated_memory": 0,
         'mask': Mask().to_bytes(),
         'timestamp': 0,
@@ -464,7 +463,6 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             header = get_task_header()
             header.deadline = timeout_to_deadline(1)
             header.subtask_timeout = 3
-            header.resource_size = 1
 
             test_headers.append(header)
             price_bid = int(random.random() * 100)
@@ -480,7 +478,7 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
                 price_bid,
                 header.subtask_timeout,
             )
-            ttc = msg_factories.tasks.TaskToComputeFactory(price=price)
+            ttc = msg_factories.tasks.TaskToComputeFactory(price=price, size=1024)
             ttc.compute_task_def = ctd
             ttc.resources_options = HyperdriveClientOptions(
                 HyperdriveClient.CLIENT_ID,

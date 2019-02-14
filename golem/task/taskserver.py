@@ -698,11 +698,6 @@ class TaskServer(
                         f' < {min_accepted_perf}; {ids}')
             return False
 
-        if task.header.resource_size > (int(max_resource_size) * 1024):
-            logger.info('insufficient provider disk size: '
-                        f'{max_resource_size} KiB; {ids}')
-            return False
-
         if task.header.estimated_memory > (int(max_memory_size) * 1024):
             logger.info('insufficient provider memory size: '
                         f'{max_memory_size} KiB; {ids}')
