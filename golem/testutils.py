@@ -26,6 +26,7 @@ from golem.docker.client import local_client
 import docker.errors
 from golem.docker.image import DockerImage
 import shutil
+from golem.task.taskmanager import TaskManager
 
 
 logger = logging.getLogger(__name__)
@@ -193,23 +194,28 @@ class TestTaskIntegration(TempDirFixture):
         self.task = None
         self.dir_manager = DirManager(self.root_dir)
 
+        keys_auth = str(uuid.uuid4())
+        self.task_manager = TaskManager(self.node, keys_auth, self.root_dir)
+
         self.dm = DockerTaskThread.docker_manager = DockerManager.install()
 
 
     def build_task(self, task_type_info, task_dict):
 
-        builder_type = task_type_info.task_builder_type
+        self.task = self.task_manager.create_task( task_dict )
 
-        minimal = False
+        # builder_type = task_type_info.task_builder_type
+
+        # minimal = False
     
-        definition = builder_type.build_definition(task_type_info, task_dict, minimal)
-        definition.task_id = str(uuid.uuid4())
-        definition.concent_enabled = task_dict.get('concent_enabled', False)
+        # definition = builder_type.build_definition(task_type_info, task_dict, minimal)
+        # definition.task_id = str(uuid.uuid4())
+        # definition.concent_enabled = task_dict.get('concent_enabled', False)
 
-        builder = builder_type(self.node, definition, self.dir_manager)
+        # builder = builder_type(self.node, definition, self.dir_manager)
 
-        self.task_definition = definition
-        self.task = builder.build()
+        # self.task_definition = definition
+        # self.task = builder.build()
 
         return self.task
 
