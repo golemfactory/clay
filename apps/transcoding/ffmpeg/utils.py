@@ -28,6 +28,19 @@ class Commands(enum.Enum):
     MERGE = ('merge', '')
 
 
+def collect_files(dir, files):
+    results = []
+    for file in files:
+        if os.path.dirname(file) != dir:
+            new_path = file.replace(os.path.dirname(file), dir)
+            os.replace(file, new_path)
+            results.append(new_path)
+        else:
+            results.append(file)
+
+    return results
+
+
 class StreamOperator:
     @HandleError(ValueError, common.not_valid_json)
     def split_video(self, input_stream: str, parts: int,
@@ -67,23 +80,43 @@ class StreamOperator:
                         .format(input_stream, streams_list))
             return streams_list
 
-    def merge_video(self, filename, task_dir):
-        output_dir = os.path.join(task_dir, 'merge', 'output')
-        os.makedirs(output_dir)
-        work_dir = os.path.join(task_dir, 'merge', 'work')
-        os.makedirs(work_dir)
-        docker_filename = os.path.join('/golem/output', filename)
+    @staticmethod
+    def prepare_merge_job(task_dir, chunks):
+        try:
+            # should it be task dir?
+            resources_dir = task_dir
+            # each chunk must be in the same directory
+            output_dir = os.path.join(resources_dir, 'merge', 'output')
+            os.makedirs(output_dir)
+            work_dir = os.path.join(resources_dir, 'merge', 'work')
+            os.makedirs(work_dir)
+            files = collect_files(resources_dir, chunks)
+            return resources_dir, output_dir, work_dir, list(
+                map(lambda chunk: chunk.replace(resources_dir,
+                                                '/golem/resources'),
+                    files))
+        except OSError:
+            # TODO
+            raise RuntimeError
+
+    def merge_video(self, filename, task_dir, chunks):
+        resources_dir, output_dir, work_dir, chunks = \
+            self.prepare_merge_job(task_dir, chunks)
+
         extra_data = {
             'script_filepath': FFMPEG_BASE_SCRIPT,
             'command': Commands.MERGE.value[0],
-            'output_stream': docker_filename
+            'output_stream': os.path.join('/golem/output', filename),
+            'chunks': chunks
         }
-        logger.info('Running video merging [params = {}]'.format(extra_data))
+
+        logger.debug('Running merge [params = {}]'.format(extra_data))
+
         dir_mapping = self._specify_dir_mapping(output=output_dir, temporary=work_dir,
                                                 resources=task_dir, logs=output_dir,
                                                 work=work_dir)
-        env = ffmpegEnvironment()
-        self._do_job_in_container(dir_mapping, extra_data, env)
+        self._do_job_in_container(dir_mapping, extra_data)
+
         return os.path.join(output_dir, filename)
 
     @staticmethod

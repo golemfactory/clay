@@ -88,7 +88,7 @@ def run_ffmpeg(params):
         do_transcode(params['track'], params['targs'],
                      params['output_stream'], params['use_playlist'])
     elif params['command'] == "merge":
-        do_merge("/golem/resources/", params['output_stream'])
+        do_merge(params['chunks'], params['output_stream'])
     elif params['command'] == "compute-metrics":
         compute_metrics(params["metrics_params"])
     else:

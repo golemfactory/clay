@@ -115,7 +115,7 @@ class TranscodingTask(CoreTask):
     def _merge_video(self):
         stream_operator = StreamOperator()
         path = stream_operator.merge_video(os.path.basename(self.task_definition.output_file),
-                                           self.task_dir)
+                                           self.task_dir, self.collected_file_names)
         copy2(path, self.task_definition.output_file)
         return True
 

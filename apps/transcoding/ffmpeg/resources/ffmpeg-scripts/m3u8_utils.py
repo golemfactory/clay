@@ -20,18 +20,18 @@ def create_and_dump_m3u8(path, segment):
     return filename
 
 
-def join_playlists(playlists_dir):
-    playlists = get_playlists(playlists_dir)
-    base = m3u8.load(playlists[0])
-    for pl in playlists[1:]:
+def join_playlists(chunks):
+    sorted_playlists = get_playlists(chunks)
+    base = m3u8.load(sorted_playlists[0])
+    for pl in sorted_playlists[1:]:
         playlist = m3u8.load(pl)
         for segment in playlist.segments:
             base.add_segment(segment)
     return base
 
 
-def get_playlists(playlists_dir):
-    playlists = [os.path.join(playlists_dir, f) for f in os.listdir(playlists_dir) if f.endswith('_TC.m3u8')]
+def get_playlists(chunks):
+    playlists = [os.path.join('/golem/resources', f) for f in chunks if f.endswith('_TC.m3u8')]
     return sort_playlists(playlists)
 
 
