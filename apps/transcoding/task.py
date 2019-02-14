@@ -38,7 +38,7 @@ class TranscodingTaskOptions(Options):
             self.frame_rate = frame_rate
             self.resolution = resolution
 
-    def __init__(self, use_playlist=False):
+    def __init__(self, use_playlist=True):
         super().__init__()
         self.video_params = TranscodingTaskOptions.VideoParams()
         self.audio_params = TranscodingTaskOptions.AudioParams()

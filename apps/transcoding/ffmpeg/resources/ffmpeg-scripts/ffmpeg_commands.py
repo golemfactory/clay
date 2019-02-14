@@ -83,7 +83,7 @@ def transcode_video_command(track, output_playlist_name, targs, use_playlist):
            "{}".format(track)
            ]
 
-    if int(use_playlist) == 1:
+    if use_playlist:
         playlist_cmd = [
             # It states that all entries from list should be processed, default is 5
             "-hls_list_size", "0",
