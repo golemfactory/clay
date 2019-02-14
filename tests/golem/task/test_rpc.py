@@ -545,6 +545,112 @@ class TestRestartSubtasks(ProviderBase):
         )
 
 
+class TestRestartFrameSubtasks(ProviderBase):
+    def setUp(self):
+        super().setUp()
+        self.task = self.client.task_manager.create_task(self.t_dict)
+        with mock.patch('os.path.getsize'):
+            golem_deferred.sync_wait(
+                rpc.enqueue_new_task(self.client, self.task),
+            )
+
+    @mock.patch('golem.task.rpc.ClientProvider.restart_subtasks_from_task')
+    @mock.patch('golem.client.Client.restart_subtask')
+    def test_no_frames(self, mock_restart_single, mock_restart_multiple, *_):
+        with mock.patch(
+            'golem.task.taskmanager.TaskManager.get_frame_subtasks',
+            return_value=None
+        ):
+            self.provider.restart_frame_subtasks(
+                task_id=self.task.header.task_id,
+                frame=1
+            )
+
+        mock_restart_single.assert_not_called()
+        mock_restart_multiple.assert_not_called()
+
+    @mock.patch('golem.task.taskstate.TaskStatus.is_active', return_value=True)
+    @mock.patch('golem.task.rpc.ClientProvider.restart_subtasks_from_task')
+    @mock.patch('golem.client.Client.restart_subtask')
+    def test_task_active(self, mock_restart_single, mock_restart_multiple, *_):
+        mock_subtask_id_1 = 'mock-subtask-id-1'
+        mock_subtask_id_2 = 'mock-subtask-id-2'
+        mock_frame_subtasks = {
+            mock_subtask_id_1: Mock(),
+            mock_subtask_id_2: Mock()
+        }
+
+        with mock.patch(
+            'golem.task.taskmanager.TaskManager.get_frame_subtasks',
+            return_value=mock_frame_subtasks
+        ):
+            self.provider.restart_frame_subtasks(
+                task_id=self.task.header.task_id,
+                frame=1
+            )
+
+        mock_restart_multiple.assert_not_called()
+        mock_restart_single.assert_has_calls(
+            [mock.call(mock_subtask_id_1), mock.call(mock_subtask_id_2)]
+        )
+
+    @mock.patch('golem.task.taskstate.TaskStatus.is_active', return_value=False)
+    @mock.patch('golem.task.rpc.ClientProvider.restart_subtasks_from_task')
+    @mock.patch('golem.client.Client.restart_subtask')
+    def test_task_finished(
+            self, mock_restart_single, mock_restart_multiple, *_):
+        mock_subtask_id_1 = 'mock-subtask-id-1'
+        mock_subtask_id_2 = 'mock-subtask-id-2'
+        mock_frame_subtasks = {
+            mock_subtask_id_1: Mock(),
+            mock_subtask_id_2: Mock()
+        }
+
+        with mock.patch(
+            'golem.task.taskmanager.TaskManager.get_frame_subtasks',
+            return_value=mock_frame_subtasks
+        ):
+            self.provider.restart_frame_subtasks(
+                task_id=self.task.header.task_id,
+                frame=1
+            )
+
+        mock_restart_single.assert_not_called()
+        mock_restart_multiple.assert_called_once_with(
+            self.task.header.task_id,
+            mock_frame_subtasks
+        )
+
+    @mock.patch('golem.task.rpc.ClientProvider.restart_subtasks_from_task')
+    @mock.patch('golem.client.Client.restart_subtask')
+    @mock.patch('golem.task.rpc.logger')
+    def test_task_unknown(
+            self,
+            mock_logger,
+            mock_restart_single,
+            mock_restart_multiple,
+            *_):
+        mock_subtask_id_1 = 'mock-subtask-id-1'
+        mock_subtask_id_2 = 'mock-subtask-id-2'
+        mock_frame_subtasks = {
+            mock_subtask_id_1: Mock(),
+            mock_subtask_id_2: Mock()
+        }
+
+        with mock.patch(
+            'golem.task.taskmanager.TaskManager.get_frame_subtasks',
+            return_value=mock_frame_subtasks
+        ):
+            self.provider.restart_frame_subtasks(
+                task_id='unknown-task-id',
+                frame=1
+            )
+
+        mock_logger.error.assert_called_once()
+        mock_restart_single.assert_not_called()
+        mock_restart_multiple.assert_not_called()
+
+
 @mock.patch('os.path.getsize')
 class TestExceptionPropagation(ProviderBase):
     def setUp(self):

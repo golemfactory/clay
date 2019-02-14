@@ -20,14 +20,10 @@ from golem.core import common
 from golem.core import deferred as golem_deferred
 from golem.core import simpleserializer
 from golem.ethereum import exceptions as eth_exceptions
-from golem.ethereum.transactionsystem import TransactionSystem
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
-from golem.task import taskbase
-from golem.task import taskkeeper
-from golem.task import taskstate
-from golem.task import tasktester
-
+from golem.task import taskbase, taskkeeper, taskstate, tasktester
+from golem.task.taskstate import SubtaskState
 
 logger = logging.getLogger(__name__)
 TASK_NAME_RE = re.compile(r"(\w|[\-\. ])+$")
@@ -537,13 +533,47 @@ class ClientProvider:
         self.task_manager.put_task_in_restarted_state(task_id)
         return new_task.header.task_id, None
 
+    @rpc_utils.expose('comp.task.subtasks.frame.restart')
+    @safe_run(
+        lambda e, _self, task_id, frame: logger.error(
+            'Frame restart failed. e=%r, task_id=%r, frame=%r',
+            e, task_id, frame
+        )
+    )
+    def restart_frame_subtasks(
+            self,
+            task_id: str,
+            frame: int
+    ):
+        logger.debug('restart_frame_subtasks. task_id=%r, frame=%r',
+                     task_id, frame)
+
+        frame_subtasks: typing.Dict[str, SubtaskState] =\
+            self.task_manager.get_frame_subtasks(task_id, frame)
+
+        if not frame_subtasks:
+            logger.error('Frame restart failed, frame has no subtasks.'
+                         'task_id=%r, frame=%r', task_id, frame)
+            return
+
+        try:
+            task_state = self.client.task_manager.tasks_states[task_id]
+        except KeyError:
+            logger.error('Frame restart failed, unknown task.'
+                         'task_id=%r, frame=%r', task_id, frame)
+            return
+
+        if task_state.status.is_active():
+            for subtask_id in frame_subtasks:
+                self.client.restart_subtask(subtask_id)
+        else:
+            self.restart_subtasks_from_task(task_id, frame_subtasks)
+
     @rpc_utils.expose('comp.task.restart_subtasks')
     @safe_run(
         lambda e, _self, task_id, subtask_ids: logger.error(
             'Task restart failed. e=%s, task_id=%s subtask_ids=%s',
-            e,
-            task_id,
-            subtask_ids,
+            e, task_id, subtask_ids
         ),
     )
     def restart_subtasks_from_task(
