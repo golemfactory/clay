@@ -60,7 +60,7 @@ class TranscodingTask(CoreTask):
         self.task_definition = task_definition
         self.lock = Lock()
         self.chunks = list()
-        self.collected_file_names = list()
+        self.collected_files = list()
         self.task_dir = ""
 
     def __getstate__(self):
@@ -110,12 +110,13 @@ class TranscodingTask(CoreTask):
             self._merge_video()
 
     def _collect_results(self, results):
-        self.collected_file_names.extend(results)
+        self.collected_files.extend(results)
 
     def _merge_video(self):
         stream_operator = StreamOperator()
         path = stream_operator.merge_video(os.path.basename(self.task_definition.output_file),
-                                           self.task_dir, self.collected_file_names)
+                                           self.task_dir, self.collected_files)
+        os.makedirs(os.path.dirname(self.task_definition.output_file), exist_ok=True)
         copy2(path, self.task_definition.output_file)
         return True
 

@@ -35,8 +35,7 @@ class TestffmpegTask(TempDirFixture):
         td = self.tt.task_builder_type.build_definition(self.tt,
                                                         self._task_dictionary)
         self.ffmpeg_task = self.tt.task_builder_type(dt_p2p_factory.Node(), td,
-                                            DirManager(self.tempdir)).build()
-
+                                                     DirManager(self.tempdir)).build()
 
     @property
     def _task_dictionary(self):
@@ -69,7 +68,6 @@ class TestffmpegTask(TempDirFixture):
         for m in [True, False]:
             with self.subTest(msg='Test different level of task', p1=m):
                 self.tt.task_builder_type.build_definition(self.tt, d, m)
-
 
     def test_build_task_def_no_resources(self):
         d = self._task_dictionary
@@ -219,4 +217,3 @@ class TestffmpegTask(TempDirFixture):
         self.assertEqual(ctd['deadline'], min(timeout_to_deadline(
             self.ffmpeg_task.header.subtask_timeout),
             self.ffmpeg_task.header.deadline))
-

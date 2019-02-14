@@ -3,7 +3,7 @@ import json
 import logging
 import os
 from pathlib import Path
-
+from shutil import copy2
 from apps.transcoding import common
 from apps.transcoding.common import ffmpegException
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
@@ -30,10 +30,13 @@ class Commands(enum.Enum):
 
 def collect_files(dir, files):
     results = []
+    os.makedirs(dir, exist_ok=True)
     for file in files:
+        if not os.path.isfile(file):
+            raise FileNotFoundError
         if os.path.dirname(file) != dir:
             new_path = file.replace(os.path.dirname(file), dir)
-            os.replace(file, new_path)
+            copy2(file, new_path)
             results.append(new_path)
         else:
             results.append(file)
@@ -95,9 +98,10 @@ class StreamOperator:
                 map(lambda chunk: chunk.replace(resources_dir,
                                                 '/golem/resources'),
                     files))
+        except FileNotFoundError:
+            raise ffmpegException('Result file does not exist')
         except OSError:
-            # TODO
-            raise RuntimeError
+            raise ffmpegException("Failed to prepare merge job")
 
     def merge_video(self, filename, task_dir, chunks):
         resources_dir, output_dir, work_dir, chunks = \
