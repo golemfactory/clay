@@ -33,7 +33,7 @@ LOGGING = {
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
-            'level': 'INFO',
+            'level': 'DEBUG',
             'formatter': 'simple',
             'filters': [],
             'stream': 'ext://sys.stderr',
@@ -93,6 +93,10 @@ LOGGING = {
         },
         'twisted': {
             'level': 'WARNING',
+            'propagate': True,
+        },
+        'golem.gugateway.gateway': {
+            'level': 'DEBUG',
             'propagate': True,
         },
         'wsgidav.request_server': {
