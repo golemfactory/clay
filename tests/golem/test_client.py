@@ -405,26 +405,6 @@ class TestClientRestartSubtasks(TestClientBase):
 
         self.client.task_server = Mock()
 
-    def test_restart_by_frame(self):
-        # given
-        frame_subtasks = {
-            'subtask_id1': Mock(),
-            'subtask_id2': Mock(),
-        }
-        self.client.task_server.task_manager.get_frame_subtasks.return_value = \
-            frame_subtasks
-
-        frame = 10
-
-        # when
-        self.client.restart_frame_subtasks(self.task_id, frame)
-
-        # then
-        self.client.task_server.task_manager.restart_frame_subtasks.\
-            assert_called_with(self.task_id, frame)
-        self.ts.lock_funds_for_payments.assert_called_with(
-            self.subtask_price, len(frame_subtasks))
-
     def test_restart_subtask(self):
         # given
         self.client.task_server.task_manager.get_task_id.return_value = \

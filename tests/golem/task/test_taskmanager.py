@@ -948,51 +948,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         with self.assertRaises(self.tm.AlreadyRestartedError):
             self.tm.put_task_in_restarted_state(task_id)
 
-    def test_restart_frame_subtasks(self):
-        tm = self.tm
-        old_notice_task_updated = tm.notice_task_updated
-        tm.notice_task_updated = Mock()
-
-        # Not existing task
-        tm.restart_frame_subtasks('any_id', 1)
-        assert not tm.notice_task_updated.called
-
-        # Mock task without subtasks
-        tm.tasks['test_id'] = Mock()
-        tm.tasks['test_id'].get_subtasks.return_value = None
-        tm.restart_frame_subtasks('test_id', 1)
-        assert not tm.notice_task_updated.called
-
-        # Create tasks
-        tm.tasks.pop('test_id')
-        _, subtask_id = self.__build_tasks(tm, 3)
-
-        # Successful call
-        # Restore normal notice_task_updated and check if the event
-        # handler gets called from notice_task_updated; persistence needs to
-        # be off as Mock items don't allow it
-        tm.notice_task_updated = old_notice_task_updated
-        tm.task_persistence = False
-        for task_id in list(tm.tasks):
-            (handler, checker) = self._connect_signal_handler()
-            for i in range(3):
-                tm.restart_frame_subtasks(task_id, i + 1)
-            checker([(task_id, None, SubtaskOp.RESTARTED),
-                     (task_id, None, SubtaskOp.RESTARTED),
-                     (task_id, None, SubtaskOp.RESTARTED),
-                     (task_id, None, OtherOp.FRAME_RESTARTED)])
-            del handler
-
-        subtask_states = {}
-
-        for task in list(tm.tasks.values()):
-            task_state = tm.tasks_states[task.header.task_id]
-            assert task_state.status == TaskStatus.computing
-            subtask_states.update(task_state.subtask_states)
-
-        for subtask_id, subtask_state in list(subtask_states.items()):
-            assert subtask_state.subtask_status == SubtaskStatus.restarted
-
     def __build_tasks(self, tm, n, fixed_frames=False):
         tm.tasks = OrderedDict()
         tm.tasks_states = dict()
