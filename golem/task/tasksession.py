@@ -521,7 +521,21 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
             logger.warning("Can not accept offer: Still waiting on results."
                            "task_id=%r, node=%r", msg.task_id, node_name_id)
-            self.send(message.tasks.WaitingForResults())
+            task = self.task_manager.tasks[msg.task_id]
+            subtasks = task.get_finishing_subtasks(
+                node_id=self.key_id,
+            )
+            report_computed_task = get_task_message(
+                message_class_name='ReportComputedTask',
+                node_id=self.key_id,
+                task_id=msg.task_id,
+                subtask_id=subtasks[0]['subtask_id'],
+            )
+            self.send(
+                message.tasks.WaitingForResults(
+                    report_computed_task=report_computed_task,
+                ),
+            )
             return
 
         if self._handshake_required(self.key_id):
