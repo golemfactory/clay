@@ -210,6 +210,24 @@ class TestClient(TestClientBase):
         self.client.db = None
         self.client.quit()
 
+    @patch('golem.client.TaskCleanerService.start')
+    def test_task_cleaning_disabled(self, task_cleaner, *_):
+        self.client.config_desc.cleaning_enabled = 0
+        self.client.config_desc.clean_tasks_older_than_seconds = 0
+
+        self.client.start_network()
+
+        task_cleaner.assert_not_called()
+
+    @patch('golem.client.TaskCleanerService.start')
+    def test_task_cleaning_enabled(self, task_cleaner, *_):
+        self.client.config_desc.cleaning_enabled = 1
+        self.client.config_desc.clean_tasks_older_than_seconds = 1
+
+        self.client.start_network()
+
+        task_cleaner.assert_called()
+
     def test_collect_gossip(self, *_):
         self.client.start_network()
         self.client.collect_gossip()
@@ -762,6 +780,9 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         c.update_setting('node_name', new_node_name)
         self.assertEqual(c.get_setting('node_name'), new_node_name)
         self.assertEqual(c.get_settings()['node_name'], new_node_name)
+        c._update_hw_preset.assert_not_called()
+
+        c.update_setting('hardware_preset_name', 'custom')
         c._update_hw_preset.assert_called_once()
 
         newer_node_name = str(uuid.uuid4())

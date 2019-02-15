@@ -64,8 +64,10 @@ TASK_SESSION_TIMEOUT = 900
 RESOURCE_SESSION_TIMEOUT = 600
 WAITING_FOR_TASK_SESSION_TIMEOUT = 20
 FORWARDED_SESSION_REQUEST_TIMEOUT = 30
-CLEAN_RESOURES_OLDER_THAN_SECS = 3*24*60*60  # 3 days
-CLEAN_TASKS_OLDER_THAN_SECONDS = 3*24*60*60  # 3 days
+CLEAN_RESOURES_OLDER_THAN_SECS = 3*24*60*60     # 3 days
+CLEAN_TASKS_OLDER_THAN_SECONDS = 3*24*60*60     # 3 days
+# FIXME Issue #3862
+CLEANING_ENABLED = 0
 
 # Default max price per hour
 MAX_PRICE = int(1.0 * denoms.ether)
@@ -102,6 +104,12 @@ class NodeConfig:
 
 
 class AppConfig:
+    UNSAVED_PROPERTIES = (
+        'num_cores',
+        'max_resource_size',
+        'max_memory_size',
+    )
+
     __loaded_configs = set()  # type: Set[Any]
 
     @classmethod
@@ -162,6 +170,7 @@ class AppConfig:
             forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT,
             clean_resources_older_than_seconds=CLEAN_RESOURES_OLDER_THAN_SECS,
             clean_tasks_older_than_seconds=CLEAN_TASKS_OLDER_THAN_SECONDS,
+            cleaning_enabled=CLEANING_ENABLED,
             debug_third_party=DEBUG_THIRD_PARTY,
             # network masking
             net_masking_enabled=NET_MASKING_ENABLED,
@@ -197,11 +206,16 @@ class AppConfig:
         for var, val in list(vars(cfg_desc).items()):
             setter = "set_{}".format(var)
             if not hasattr(self, setter):
-                logger.info(
-                    "Cannot set unknown config property: %r = %r",
-                    var,
-                    val,
-                )
+                if var in self.UNSAVED_PROPERTIES:
+                    logger.debug(
+                        "Config property preserved elsewhere: %r", var
+                    )
+                else:
+                    logger.info(
+                        "Cannot set unknown config property: %r = %r",
+                        var,
+                        val,
+                    )
                 continue
 
             set_func = getattr(self, setter)

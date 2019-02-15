@@ -19,6 +19,8 @@ from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.environments.environment import Environment, UnsupportReason,\
     SupportStatus
 from golem.environments.environmentsmanager import EnvironmentsManager
+from golem.network.hyperdrive.client import HyperdriveClient, \
+        HyperdriveClientOptions
 from golem.task import taskkeeper
 from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, logger
 from golem.testutils import PEP8MixIn
@@ -480,6 +482,9 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
             )
             ttc = msg_factories.tasks.TaskToComputeFactory(price=price)
             ttc.compute_task_def = ctd
+            ttc.resources_options = HyperdriveClientOptions(
+                HyperdriveClient.CLIENT_ID,
+                HyperdriveClient.VERSION)
             self.assertTrue(ctk.receive_subtask(ttc))
             test_subtasks_ids.append(ctd['subtask_id'])
         del ctk
@@ -672,3 +677,14 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         ctk.task_package_paths = {}
         ctk.restore()
         self.assertEqual(ctk.get_package_paths(task_id), package_paths)
+
+    @mock.patch('golem.core.golem_async.async_run', async_run)
+    def test_resources_options(self):
+        task_path = Path(self.path)
+        self._dump_some_tasks(task_path)
+        ctk = CompTaskKeeper(task_path)
+
+        assert ctk.get_resources_options("unknown") is None
+        subtask_id = random.choice(list(ctk.subtask_to_task.keys()))
+        res = ctk.get_resources_options(subtask_id)
+        assert isinstance(res, HyperdriveClientOptions)

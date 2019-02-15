@@ -131,7 +131,9 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_id = task_header.task_id
         ts.add_task_header(task_header)
         self.assertEqual(ts.request_task(), task_id)
+        self.assertIn(task_id, ts.requested_tasks)
         assert ts.remove_task_header(task_id)
+        self.assertNotIn(task_id, ts.requested_tasks)
 
         task_header = get_example_task_header(keys_auth.public_key)
         task_header.task_owner.pub_port = 0
@@ -824,10 +826,9 @@ class TaskServerTaskHeaderTest(TaskServerTestBase):
         self.assertFalse(ts.add_task_header(task_header))
 
 
-
-class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
+class TaskServerBase(TestDatabaseWithReactor, testutils.TestWithClient):
     def setUp(self):
-        for parent in self.__class__.__bases__:
+        for parent in TaskServerBase.__bases__:
             parent.setUp(self)
         random.seed()
         self.ccd = self._get_config_desc()
@@ -842,27 +843,17 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         self.ts.task_computer = MagicMock()
 
     def tearDown(self):
-        for parent in self.__class__.__bases__:
+        for parent in TaskServerBase.__bases__:
             parent.tearDown(self)
 
-    def test_find_sessions(self, *_):
-        subtask_id = str(uuid.uuid4())
+    def _get_config_desc(self):
+        ccd = ClientConfigDescriptor()
+        ccd.root_path = self.path
+        return ccd
 
-        # Empty
-        self.assertEqual([], self.ts._find_sessions(subtask_id))
 
-        # Found task_id
-        task_id = str(uuid.uuid4())
-        session = MagicMock()
-        session.task_id = task_id
-        self.ts.task_manager.subtask2task_mapping[subtask_id] = task_id
-        self.ts.task_sessions_incoming.add(session)
-        self.assertEqual([session], self.ts._find_sessions(subtask_id))
-
-        # Found in task_sessions
-        subtask_session = MagicMock()
-        self.ts.task_sessions[subtask_id] = subtask_session
-        self.assertEqual([subtask_session], self.ts._find_sessions(subtask_id))
+# pylint: disable=too-many-ancestors
+class TestTaskServer2(TaskServerBase):
 
     @patch("golem.task.taskmanager.TaskManager.dump_task")
     @patch("golem.task.taskserver.Trust")
@@ -907,10 +898,15 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         self.ts.disconnect()
         assert self.ts.task_sessions['task_id'].dropped.called
 
-    def _get_config_desc(self):
-        ccd = ClientConfigDescriptor()
-        ccd.root_path = self.path
-        return ccd
+
+# pylint: disable=too-many-ancestors
+class TestSubtaskWaiting(TaskServerBase):
+    def test_requested_tasks(self, *_):
+        task_id = str(uuid.uuid4())
+        subtask_id = str(uuid.uuid4())
+        self.ts.requested_tasks.add(task_id)
+        self.ts.subtask_waiting(task_id, subtask_id)
+        self.assertNotIn(task_id, self.ts.requested_tasks)
 
 
 class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,

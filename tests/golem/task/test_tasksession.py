@@ -23,14 +23,15 @@ from twisted.internet.defer import Deferred
 
 import golem
 from golem import model, testutils
+from golem.core import variables
 from golem.core.databuffer import DataBuffer
 from golem.core.keysauth import KeysAuth
-from golem.core.variables import PROTOCOL_CONST
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
 from golem.network.hyperdrive import client as hyperdrive_client
 from golem.model import Actor
 from golem.network import history
+from golem.network.hyperdrive.client import HyperdriveClientOptions
 from golem.network.transport.tcpnetwork import BasicProtocol
 from golem.resource.client import ClientOptions
 from golem.task import taskstate
@@ -90,6 +91,7 @@ class TaskSessionTaskToComputeTest(TestCase):
         self.task_manager = Mock(tasks_states={}, tasks={})
         server = Mock(task_manager=self.task_manager)
         server.get_key_id = lambda: self.provider_key
+        server.get_share_options.return_value = None
         self.conn = Mock(server=server)
         self.use_concent = True
         self.task_id = uuid.uuid4().hex
@@ -248,6 +250,8 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts2.task_manager.should_wait_for_node.return_value = False
         ts2.conn.send_message.side_effect = \
             lambda msg: msg.sign_message(self.requestor_keys.raw_privkey)
+        options = HyperdriveClientOptions("CLI1", 0.3)
+        ts2.task_server.get_share_options.return_value = options
         ts2.interpret(mt)
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.tasks.TaskToCompute)
@@ -263,6 +267,8 @@ class TaskSessionTaskToComputeTest(TestCase):
             ['price', 1],
             ['size', task_state.package_size],
             ['ethsig', ms.ethsig],
+            ['resources_options', {'client_id': 'CLI1', 'version': 0.3,
+                                   'options': {}}],
         ]
         self.assertCountEqual(ms.slots(), expected)
 
@@ -276,6 +282,8 @@ class TaskSessionTaskToComputeTest(TestCase):
 
         ts2.task_manager.get_next_subtask.return_value = ctd
         ts2.task_manager.should_wait_for_node.return_value = False
+        options = HyperdriveClientOptions("CLI1", 0.3)
+        ts2.task_server.get_share_options.return_value = options
         ts2.interpret(wtct)
         ttc = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ttc, message.tasks.TaskToCompute)
@@ -312,7 +320,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.task_session.send_hello()
         expected = [
             ['rand_val', self.task_session.rand_val],
-            ['proto_id', PROTOCOL_CONST.ID],
+            ['proto_id', variables.PROTOCOL_CONST.ID],
             ['node_name', None],
             ['node_info', None],
             ['port', None],
@@ -393,7 +401,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         # given
         conn = MagicMock()
         ts = TaskSession(conn)
-        ts.task_server = Mock()
         ts.task_server.config_desc = Mock()
         ts.task_server.config_desc.key_difficulty = 0
         ts.disconnect = Mock()
@@ -416,7 +423,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             message.base.Disconnect.REASON.ProtocolVersion)
 
         # re-given
-        msg.proto_id = PROTOCOL_CONST.ID
+        msg.proto_id = variables.PROTOCOL_CONST.ID
 
         # re-when
         with self.assertNoLogs(logger, level='INFO'):
@@ -429,7 +436,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         # given
         conn = MagicMock()
         ts = TaskSession(conn)
-        ts.task_server = Mock()
         ts.task_server.config_desc = Mock()
         ts.task_server.config_desc.key_difficulty = 80
         ts.disconnect = Mock()
@@ -440,7 +446,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         peer_info.key = key_id
         msg = message.base.Hello(
             port=1, node_name='node2', client_key_id=key_id,
-            node_info=peer_info, proto_id=PROTOCOL_CONST.ID)
+            node_info=peer_info, proto_id=variables.PROTOCOL_CONST.ID)
         fill_slots(msg)
 
         # when
@@ -456,7 +462,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         difficulty = 4
         conn = MagicMock()
         ts = TaskSession(conn)
-        ts.task_server = Mock()
         ts.task_server.config_desc = Mock()
         ts.task_server.config_desc.key_difficulty = difficulty
         ts.disconnect = Mock()
@@ -468,7 +473,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         peer_info.key = ka.key_id
         msg = message.base.Hello(
             port=1, node_name='node2', client_key_id=ka.key_id,
-            node_info=peer_info, proto_id=PROTOCOL_CONST.ID)
+            node_info=peer_info, proto_id=variables.PROTOCOL_CONST.ID)
         fill_slots(msg)
 
         # when
@@ -482,8 +487,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         conn = Mock()
         conn.send_message.side_effect = lambda msg: msg._fake_sign()
         ts = TaskSession(conn)
-        ts.task_server = Mock()
-        ts.task_manager = Mock()
         ts.task_manager.verify_subtask.return_value = True
         keys_auth = KeysAuth(
             datadir=self.path,
@@ -595,10 +598,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         conn = Mock()
         ts = TaskSession(conn)
         ts.key_id = "KEY_ID"
-        ts.task_manager = MagicMock()
-        ts.task_computer = Mock()
         ts.task_computer.has_assigned_task.return_value = False
-        ts.task_server = Mock()
         ts.concent_service.enabled = False
         ts.send = Mock()
 
@@ -743,32 +743,13 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
 
-    # pylint: enable=too-many-statements
-
-    def test_get_resource(self):
-        conn = BasicProtocol()
-        conn.transport = Mock()
-        conn.server = Mock()
-
-        db = DataBuffer()
-
-        sess = TaskSession(conn)
-        sess.send = lambda m: db.append_bytes(
-            m.serialize(),
-        )
-        sess._can_send = lambda *_: True
-        sess.request_resource(str(uuid.uuid4()))
-
-        self.assertTrue(
-            message.base.Message.deserialize(db.buffered_data, lambda x: x)
-        )
 
     @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
     def test_react_to_ack_reject_report_computed_task(self):
         task_keeper = CompTaskKeeper(pathlib.Path(self.path))
 
         session = self.task_session
-        session.concent_service = MagicMock()
+        session.conn.server.client.concent_service = MagicMock()
         session.task_manager.comp_task_keeper = task_keeper
         session.key_id = 'owner_id'
 
@@ -819,36 +800,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         session._react_to_reject_report_computed_task(msg_ack)
         self.assert_concent_cancel(
             cancel.call_args[0], subtask_id, 'ForceReportComputedTask')
-
-    @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
-    def test_react_to_resource_list(self):
-        task_server = self.task_session.task_server
-
-        client = 'test_client'
-        version = 1.0
-        peers = [{'TCP': ('127.0.0.1', 3282)}]
-        msg = message.resources.ResourceList(resources=[['1'], ['2']],
-                                             options=None)
-
-        # Use locally saved hyperdrive client options
-        self.task_session._react_to_resource_list(msg)
-        call_options = task_server.pull_resources.call_args[1]
-
-        assert task_server.get_download_options.called
-        assert task_server.pull_resources.called
-        assert isinstance(call_options['client_options'], Mock)
-
-        # Use download options built by TaskServer
-        client_options = ClientOptions(client, version,
-                                       options={'peers': peers})
-        task_server.get_download_options.return_value = client_options
-
-        self.task_session.task_server.pull_resources.reset_mock()
-        self.task_session._react_to_resource_list(msg)
-        call_options = task_server.pull_resources.call_args[1]
-
-        assert not isinstance(call_options['client_options'], Mock)
-        assert call_options['client_options'].options['peers'] == peers
 
     def test_subtask_to_task(self):
         task_keeper = Mock(subtask_to_task=dict())
@@ -988,6 +939,43 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         tm.check_next_subtask.return_value = True
 
 
+class WaitingForResultsTestCase(
+        testutils.DatabaseFixture,
+        testutils.TempDirFixture,
+):
+    def setUp(self):
+        testutils.DatabaseFixture.setUp(self)
+        testutils.TempDirFixture.setUp(self)
+        history.MessageHistoryService()
+        self.ts = TaskSession(Mock())
+        self.ts.conn.send_message.side_effect = \
+            lambda msg: msg._fake_sign()
+        self.ts.task_server.get_node_name.return_value = "Zażółć gęślą jaźń"
+        self.ts.task_server.get_key_id.return_value = "key_id"
+        self.ts.key_id = 'unittest_key_id'
+        self.ts.task_server.get_share_options.return_value = \
+            hyperdrive_client.HyperdriveClientOptions('1', 1.0)
+
+        keys_auth = KeysAuth(
+            datadir=self.path,
+            difficulty=4,
+            private_key_name='prv',
+            password='',
+        )
+        self.ts.task_server.keys_auth = keys_auth
+        self.ts.concent_service.variant = variables.CONCENT_CHOICES['test']
+        self.n = dt_p2p_factory.Node()
+        self.msg = message.tasks.WaitingForResults()
+        self.ts.task_id = str(uuid.uuid4())
+
+    def test_task_server_notification(self, *_):
+        self.ts._react_to_waiting_for_results(self.msg)
+        # https://github.com/golemfactory/golem-messages/issues/320
+        self.ts.task_server.subtask_waiting.assert_called_once_with(
+            task_id=self.ts.task_id,
+            subtask_id=None,
+        )
+
 class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
                                       testutils.TempDirFixture):
     def setUp(self):
@@ -1114,7 +1102,7 @@ class SubtaskResultsAcceptedTest(TestCase):
     def setUp(self):
         self.task_session = TaskSession(Mock())
         self.task_server = Mock()
-        self.task_session.task_server = self.task_server
+        self.task_session.conn.server = self.task_server
         self.requestor_keys = cryptography.ECCx(None)
         self.requestor_key_id = encode_hex(self.requestor_keys.raw_pubkey)
         self.provider_keys = cryptography.ECCx(None)
@@ -1195,7 +1183,6 @@ class SubtaskResultsAcceptedTest(TestCase):
         def computed_task_received(*args):
             args[2]()
 
-        self.task_session.task_manager = Mock()
         self.task_session.task_manager.computed_task_received = \
             computed_task_received
 

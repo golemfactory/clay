@@ -2,11 +2,11 @@
 
 import os
 import unittest
-from unittest.mock import patch, ANY
+from unittest.mock import patch, ANY, Mock
 from unittest import TestCase
 
 
-from golem.core.common import to_unicode
+from golem.core.common import to_unicode, retry
 from golem.core.common import HandleKeyError, HandleAttributeError, \
     config_logging, get_timestamp_utc, timestamp_to_datetime, \
     datetime_to_timestamp, timeout_to_deadline, deadline_to_timeout
@@ -103,3 +103,32 @@ class TestTimestamps(unittest.TestCase):
         ts = timeout_to_deadline(timeout)
         new_timeout = deadline_to_timeout(ts)
         assert 0 < new_timeout <= timeout
+
+
+class TestRetry(unittest.TestCase):
+
+    def test_invalid_arguments(self):
+        func = Mock()
+
+        with self.assertRaises(AssertionError):
+            retry(exc_cls=None, count=3)(func)()
+        with self.assertRaises(AssertionError):
+            retry(ZeroDivisionError, count=-1)(func)()
+
+    def test_retry(self):
+        counter = 0
+
+        def func():
+            nonlocal counter
+            counter += 1
+            if counter == 1:
+                raise ZeroDivisionError
+
+        retry(ZeroDivisionError, 1)(func)()
+        assert counter == 2
+
+    def test_retry_raises(self):
+        func = Mock(side_effect=ZeroDivisionError)
+
+        with self.assertRaises(ZeroDivisionError):
+            retry((IndexError, ImportError), count=10)(func)()
