@@ -93,8 +93,7 @@ class TestActionTimers(unittest.TestCase):
         timer = ActionTimers()
         identifier = str(uuid.uuid4())
 
-        with self.assertRaises(KeyError):
-            assert timer.time(identifier) is None
+        assert timer.time(identifier) is None
 
         timer.start(identifier)
         frozen_time.tick(timedelta(seconds=5))
@@ -110,15 +109,13 @@ class TestActionTimers(unittest.TestCase):
         timer = ActionTimers()
         identifier = str(uuid.uuid4())
 
-        with self.assertRaises(KeyError):
-            timer.remove(identifier)
+        timer.remove(identifier)
 
         timer.start(identifier)
         frozen_time.tick(timedelta(seconds=5))
         assert timer.remove(identifier) is None
 
-        with self.assertRaises(KeyError):
-            timer.remove(identifier)
+        timer.remove(identifier)
 
         timer.start(identifier)
         frozen_time.tick(timedelta(seconds=5))

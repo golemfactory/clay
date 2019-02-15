@@ -1,23 +1,28 @@
 # pylint: disable=protected-access,too-many-ancestors
 import copy
+import unittest
 from unittest import mock
 
 import faker
+from ethereum.utils import denoms
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+from mock import Mock
 from twisted.internet import defer
 
 from apps.dummy.task import dummytaskstate
 from golem import clientconfigdescriptor
 from golem.core import common
 from golem.core import deferred as golem_deferred
+from golem.ethereum import exceptions
 from golem.network.p2p import p2pservice
 from golem.task import rpc
 from golem.task import taskbase
 from golem.task import taskserver
 from golem.task import taskstate
 from golem.task import tasktester
+from golem.task.rpc import ClientProvider
 from tests.golem import test_client
-
+from tests.golem.test_client import TestClientBase
 
 fake = faker.Faker()
 
@@ -103,7 +108,10 @@ class ProviderBase(test_client.TestClientBase):
         header=mock.MagicMock(task_id='task_id'),
     ),
 )
-class TestCreateTask(ProviderBase):
+class TestCreateTask(ProviderBase, TestClientBase):
+    @mock.patch(
+        'golem.task.rpc.ClientProvider._validate_lock_funds_possibility'
+    )
     def test_create_task(self, *_):
         t = dummytaskstate.DummyTaskDefinition()
         t.name = "test"
@@ -133,6 +141,43 @@ class TestCreateTask(ProviderBase):
         assert result == (None,
                           "Task name can only contain letters, numbers, "
                           "spaces, underline, dash or dot.")
+
+    @mock.patch(
+        'golem.task.rpc.ClientProvider._validate_lock_funds_possibility',
+        side_effect=exceptions.NotEnoughFunds(
+            required=0.166667 * denoms.ether,
+            available=0,
+        ))
+    def test_create_task_fail_if_not_enough_gnt_available(self, mocked, *_):
+        t = dummytaskstate.DummyTaskDefinition()
+        t.name = "test"
+
+        result = self.provider.create_task(t.to_dict())
+        rpc.enqueue_new_task.assert_not_called()
+        self.assertIn('validate_lock_funds_possibility', str(mocked))
+        mocked.assert_called()
+        self.assertEqual(result, (None, 'Not enough GNT available. Required: '
+                                        '0.166667, available: 0.000000'))
+
+
+class ConcentDepositLockPossibilityTest(unittest.TestCase):
+
+    def test_validate_lock_funds_possibility_raises_if_not_enough_gnt(self):
+        available = 0.0001 * denoms.ether
+        required = 0.0005 * denoms.ether
+        client = Mock()
+        client.transaction_system.get_available_gnt.return_value = available
+        client_provider = ClientProvider(client)
+
+        with self.assertRaises(exceptions.NotEnoughFunds) as e:
+            client_provider._validate_lock_funds_possibility(
+                total_price_gnt=required,
+                number_of_tasks=1
+            )
+        expected = f'Not enough GNT available. ' \
+            f'Required: {required / denoms.ether:.6f}, ' \
+            f'available: {available / denoms.ether:.6f}'
+        self.assertIn(str(e.exception), expected)
 
 
 class TestRestartTask(ProviderBase):
@@ -303,17 +348,15 @@ class TestEnqueueNewTask(ProviderBase):
         assert frames is not None
 
     def test_ensure_task_deposit(self, *_):
-        force = fake.pybool()
         self.client.concent_service = mock.Mock()
         self.client.concent_service.enabled = True
         self.t_dict['concent_enabled'] = True
         task = self.client.task_manager.create_task(self.t_dict)
-        deferred = rpc.enqueue_new_task(self.client, task, force=force)
+        deferred = rpc.enqueue_new_task(self.client, task)
         golem_deferred.sync_wait(deferred)
         self.client.transaction_system.concent_deposit.assert_called_once_with(
             required=mock.ANY,
             expected=mock.ANY,
-            force=force,
         )
 
     @mock.patch('golem.task.rpc.logger.error')

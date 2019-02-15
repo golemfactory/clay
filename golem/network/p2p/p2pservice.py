@@ -662,7 +662,9 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
                 })
             return [_mapper_session(session) for session in neighbours]
 
-        neighbours = self.peer_keeper.neighbours(node_key_id, alpha)
+        node_neighbours: List[dt_p2p.Node] = self.peer_keeper.neighbours(
+            node_key_id, alpha
+        )
 
         def _mapper(peer: dt_p2p.Node) -> dt_p2p.Peer:
             return dt_p2p.Peer({
@@ -671,7 +673,8 @@ class P2PService(tcpserver.PendingConnectionsServer, DiagnosticsProvider):  # no
                 "node": peer,
             })
 
-        return [_mapper(peer) for peer in neighbours]
+        return [_mapper(peer) for peer in node_neighbours if
+                self._is_address_valid(peer.prv_addr, peer.prv_port)]
 
     # Resource functions
     #############################

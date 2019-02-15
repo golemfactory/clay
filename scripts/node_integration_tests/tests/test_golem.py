@@ -41,3 +41,10 @@ class GolemNodeTest(NodeTestBase, unittest.TestCase):
         exit_code = self._run_test('golem.jpg.RegularRun')
         self.assertEqual(exit_code, 0)
 
+    def test_nested(self):
+        exit_code = self._run_test(
+            'golem.regular_run_stop_on_reject.RegularRun',
+            **{'task-package': 'nested'}
+        )
+        self.assertEqual(exit_code, 0)
+

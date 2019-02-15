@@ -128,8 +128,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         """
         BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
+        # FIXME: Remove task_id and use values from messages
         self.task_id = None  # current task id
-        self.subtask_id = None  # current subtask id
         self.conn_id = None  # connection id
         # messages waiting to be send (because connection hasn't been
         # verified yet)
@@ -177,8 +177,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         """ Close connection """
         BasicSafeSession.dropped(self)
         self.task_server.remove_task_session(self)
-        if self.key_id:
-            self.task_server.remove_resource_peer(self.task_id, self.key_id)
 
     #######################
     # SafeSession methods #
@@ -339,6 +337,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # the Requestor safely
 
         if not task_to_compute.concent_enabled:
+            logger.debug(
+                "Concent not enabled for this task, "
+                "skipping `ForceReportComputedTask`. "
+                "task_id=%r, "
+                "subtask_id=%r, ",
+                task_to_compute.task_id,
+                task_to_compute.subtask_id,
+            )
             return
 
         # we're preparing the `ForceReportComputedTask` here and
@@ -737,8 +743,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 return
         _cannot_compute(self.err_msg)
 
-    def _react_to_waiting_for_results(self, _):
-        self.task_server.requested_tasks.remove(self.task_id)
+    def _react_to_waiting_for_results(
+            self,
+            _msg: message.tasks.WaitingForResults,
+    ):
+        self.task_server.subtask_waiting(
+            task_id=self.task_id,
+            subtask_id=None,
+        )
         self.task_computer.session_closed()
         if not self.msgs_to_send:
             self.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
@@ -892,6 +904,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     msg=srv,
                 )
 
+            self.task_server.client.transaction_system.\
+                validate_concent_deposit_possibility(
+                    required=amount,
+                    tasks_num=1,
+                )
             self.task_server.client.transaction_system.concent_deposit(
                 required=amount,
                 expected=expected,
