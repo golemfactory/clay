@@ -10,14 +10,13 @@ import uuid
 
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 from golem_messages.message import ComputeTaskDef
-from golem_verificator.verifier import SubtaskVerificationState
+from golem.verificator.verifier import SubtaskVerificationState
 from PIL import Image
 
 
 import OpenEXR
 
-from apps.blender.task.blenderrendertask import (BlenderDefaults,
-                                                 BlenderRenderTask,
+from apps.blender.task.blenderrendertask import (BlenderRenderTask,
                                                  BlenderRenderTaskBuilder,
                                                  BlenderRendererOptions,
                                                  generate_expected_offsets,
@@ -33,13 +32,6 @@ from golem.task.taskbase import AcceptClientVerdict
 from golem.task.taskstate import SubtaskStatus, SubtaskState
 from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
-
-
-class TestBlenderDefaults(unittest.TestCase):
-
-    def test_init(self):
-        bd = BlenderDefaults()
-        self.assertTrue(path.isfile(bd.main_program_file))
 
 
 class BlenderTaskInitTest(TempDirFixture, LogTestCase):
@@ -124,9 +116,9 @@ class TestBlenderFrameTask(TempDirFixture):
         assert self.bt.total_tasks == 6
 
         # Failed compuation stays failed
-        extra_data1 = self.bt.query_extra_data(1000, 2, "ABC", "abc")
+        extra_data1 = self.bt.query_extra_data(1000, "ABC", "abc")
         assert extra_data1.ctd is not None
-        extra_data2 = self.bt.query_extra_data(1000, 2, "DEF", "def")
+        extra_data2 = self.bt.query_extra_data(1000, "DEF", "def")
         assert extra_data2.ctd is not None
 
         self.bt.computation_failed(extra_data1.ctd['subtask_id'])
@@ -136,7 +128,7 @@ class TestBlenderFrameTask(TempDirFixture):
             SubtaskStatus.failure
 
         # Successful computation
-        extra_data3 = self.bt.query_extra_data(1000, 2, "FGH", "fgh")
+        extra_data3 = self.bt.query_extra_data(1000, "FGH", "fgh")
         assert extra_data3.ctd is not None
         file_dir = path.join(self.bt.tmp_dir, extra_data3.ctd['subtask_id'])
         if not path.exists(file_dir):
@@ -158,7 +150,7 @@ class TestBlenderFrameTask(TempDirFixture):
                 SubtaskVerificationState.VERIFIED,
                 result)
 
-        with mock.patch('golem_verificator.rendering_verifier.'
+        with mock.patch('golem.verificator.rendering_verifier.'
                         'RenderingVerifier.start_verification',
                         side_effect=verification_finished1):
             self.bt.computation_finished(
@@ -182,14 +174,14 @@ class TestBlenderFrameTask(TempDirFixture):
                 SubtaskVerificationState.VERIFIED,
                 result)
 
-        extra_data4 = self.bt.query_extra_data(1000, 2, "FFF", "fff")
+        extra_data4 = self.bt.query_extra_data(1000, "FFF", "fff")
         assert extra_data4.ctd is not None
 
         file2 = path.join(file_dir, 'result2')
         img.save(file2, "PNG")
         img.close()
 
-        with mock.patch('golem_verificator.rendering_verifier.'
+        with mock.patch('golem.verificator.rendering_verifier.'
                         'RenderingVerifier.start_verification',
                         side_effect=verification_finished2):
             self.bt.computation_finished(
@@ -211,11 +203,10 @@ class TestBlenderFrameTask(TempDirFixture):
         # blender script describe whole frame
         self.bt.total_tasks = 3
         extra_data = self.bt.query_extra_data(100, node_id="node1",
-                                              node_name="node11",
-                                              num_cores=0)
+                                              node_name="node11")
         assert extra_data.ctd is not None
-        assert "border_max_y = 1" in extra_data.ctd['extra_data']['script_src']
-        assert "border_min_y = 0" in extra_data.ctd['extra_data']['script_src']
+        assert extra_data.ctd['extra_data']['crops'][0]['borders_y'] \
+            == [0.0, 1.0]
 
     def test_put_frame_together(self):
         self.bt.output_format = "EXR"
@@ -350,7 +341,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         self.assertIsInstance(self.bt, BlenderRenderTask)
         self.assertEqual(self.bt.main_scene_file,
                          path.join(self.path, "example.blend"))
-        extra_data = self.bt.query_extra_data(1000, 2, "ABC", "abc")
+        extra_data = self.bt.query_extra_data(1000, "ABC", "abc")
         self.bt.accept_client("ABC")
         ctd = extra_data.ctd
         assert ctd['extra_data']['start_task'] == 1
@@ -559,7 +550,7 @@ class TestBlenderTask(TempDirFixture, LogTestCase):
         img_task2.close()
 
     def test_query_extra_data(self):
-        extra_data = self.bt.query_extra_data(100000, num_cores=0,
+        extra_data = self.bt.query_extra_data(100000,
                                               node_id='node',
                                               node_name='node')
         assert extra_data.ctd
@@ -736,36 +727,3 @@ class TestHelpers(unittest.TestCase):
 
     def test_get_task_border_path(self):
         self._get_task_border(as_path=True)
-
-    def test_get_task_num_from_pixels(self):
-        offsets = generate_expected_offsets(30, 1920, 1080)
-        frame_offsets = generate_expected_offsets(15, 1920, 1080)
-        task_definition = RenderingTaskDefinition()
-        task_definition.options = BlenderRendererOptions()
-        task_definition.resolution = [1920, 1080]
-
-        for k in range(1, 31):
-            task_definition.options.use_frames = False
-            num = BlenderTaskTypeInfo.get_task_num_from_pixels(
-                6, offsets[k] + 1, task_definition, 30
-            )
-            assert num == k
-
-            task_definition.options.use_frames = True
-            task_definition.options.frames = list(range(30))
-            num = BlenderTaskTypeInfo.get_task_num_from_pixels(
-                1, 0, task_definition, 30, k
-            )
-            assert num == k
-
-            i = (k - 1) % 15 + 1
-            task_definition.options.frames = list(range(2))
-            num = BlenderTaskTypeInfo.get_task_num_from_pixels(
-                1, frame_offsets[i] + 3, task_definition, 30, (k - 1) // 15 + 1
-            )
-            assert num == k
-
-        task_definition.options.use_frames = False
-        assert BlenderTaskTypeInfo.get_task_num_from_pixels(
-            5, 1200, task_definition, 30
-        ) == 30

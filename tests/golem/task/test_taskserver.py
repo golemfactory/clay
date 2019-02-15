@@ -269,14 +269,14 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         session.address = "10.10.10.10"
         session.port = 1020
         ts.conn_established_for_type[TASK_CONN_TYPES['task_request']](
-            session, "abc", "nodename", "key", "xyz", 1010, 30, 3, 1, 2)
+            session, "abc", "nodename", "key", "xyz", 1010, 30, 3, 1)
         self.assertEqual(session.task_id, "xyz")
         self.assertEqual(session.key_id, "key")
         self.assertEqual(session.conn_id, "abc")
         self.assertEqual(ts.task_sessions["xyz"], session)
         session.send_hello.assert_called_with()
         session.request_task.assert_called_with("nodename", "xyz", 1010, 30, 3,
-                                                1, 2)
+                                                1)
 
     def test_change_config(self, *_):
         ts = self.ts
@@ -574,7 +574,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # then
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
-                node_id, node_name, 'tid', 27.18, 1, 1, 7)
+                node_id, node_name, 'tid', 27.18, 1, 1)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:Cannot find task in my tasks: '
@@ -582,7 +582,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
-                node_id, node_name, task_id, 27.18, 1, 1, 7)
+                node_id, node_name, task_id, 27.18, 1, 1)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:insufficient provider performance: '
@@ -590,7 +590,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
-                node_id, node_name, task_id, 99, 1.72, 1, 4)
+                node_id, node_name, task_id, 99, 1.72, 1)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:insufficient provider disk size:'
@@ -598,7 +598,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
 
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(
-                node_id, node_name, task_id, 999, 3, 2.7, 1)
+                node_id, node_name, task_id, 999, 3, 2.7)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:insufficient provider memory size:'
@@ -608,21 +608,19 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.client.get_computing_trust = Mock(return_value=0.4)
         ts.config_desc.computing_trust = 0.2
         # then
-        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4,
-                                         5)
+        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4)
 
         # given
         ts.config_desc.computing_trust = 0.4
         # then
-        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4,
-                                         5)
+        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4)
 
         # given
         ts.config_desc.computing_trust = 0.5
         # then
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(node_id, node_name, task_id,
-                                                 99, 3, 4, 5)
+                                                 99, 3, 4)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:insufficient provider trust level:'
@@ -631,13 +629,12 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # given
         ts.config_desc.computing_trust = 0.2
         # then
-        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4,
-                                         5)
+        assert ts.should_accept_provider(node_id, node_name, task_id, 99, 3, 4)
 
         task.header.mask = Mask(b'\xff' * Mask.MASK_BYTES)
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(node_id, node_name, task_id,
-                                                 99, 3, 4, 5)
+                                                 99, 3, 4)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:network mask mismatch: {ids}')
@@ -648,12 +645,11 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # then
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(node_id, node_name, task_id,
-                                                 99, 3, 4, 5)
+                                                 99, 3, 4)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:provider {node_id}'
-                f' is not allowed for this task at this moment '
-                f'(either waiting for results or previously failed)'
+                f' is not allowed for this task (it has previously failed)'
             )
 
         # given
@@ -662,7 +658,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         # then
         with self.assertLogs(logger, level='INFO') as cm:
             assert not ts.should_accept_provider(node_id, node_name, task_id,
-                                                 99, 3, 4, 5)
+                                                 99, 3, 4)
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:provider node is blacklisted; {ids}')
@@ -885,7 +881,7 @@ class TestTaskServer2(TaskServerBase):
             "DEF",
             task_id,
             1000, 10,
-            5, 10, 2,
+            5, 10,
             "10.10.10.10")
         assert subtask is not None
         expected_value = ceil(1031 * 1010 / 3600)

@@ -230,6 +230,11 @@ def _ensure_task_deposit(client, task, force):
         client.funds_locker.remove_task(task_id)
         raise
 
+    logger.info(
+        "Deposit confirmed. task_id=%r",
+        task_id,
+    )
+
 
 @defer.inlineCallbacks
 def _create_task_package(client, task):
@@ -361,18 +366,13 @@ def enqueue_new_task(client, task, force=False) \
         packager_result=packager_result,
     )
 
-    logger.info("Task created. Ensuring deposit. task_id=%r", task_id)
+    logger.info("Task created. task_id=%r", task_id)
 
     try:
         yield _ensure_task_deposit(
             client=client,
             task=task,
             force=force,
-        )
-
-        logger.info(
-            "Deposit confirmed. Starting... task_id=%r",
-            task_id,
         )
 
         yield _start_task(

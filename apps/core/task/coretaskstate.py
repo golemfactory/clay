@@ -17,7 +17,6 @@ class TaskDefaults(object):
 
     def __init__(self):
         self.output_format = ""
-        self.main_program_file = ""
         self.min_subtasks = 1
         self.max_subtasks = 50
         self.default_subtasks = 20
@@ -45,7 +44,6 @@ class TaskDefinition(object):
 
         self.subtasks_count = 0
         self.optimize_total = False
-        self.main_program_file = ""
         self.output_file = ""
         self.task_type = None
         self.name = ""
@@ -94,9 +92,6 @@ class TaskDefinition(object):
             setattr(self, key, attributes[key])
 
     def is_valid(self):
-        if not path.exists(self.main_program_file):
-            return False, "Main program file does not exist: {}".format(
-                self.main_program_file)
         return self._check_output_file(self.output_file)
 
     @staticmethod

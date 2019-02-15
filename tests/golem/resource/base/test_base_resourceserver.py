@@ -8,7 +8,6 @@ import uuid
 from twisted.internet.defer import Deferred
 
 from golem.core.deferred import sync_wait
-from golem.core.keysauth import KeysAuth
 from golem.resource.base.resourceserver import BaseResourceServer
 from golem.resource.dirmanager import DirManager
 from golem.resource.hyperdrive.resourcesmanager import DummyResourceManager
@@ -67,12 +66,10 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         shutil.copy(test_dir_file, test_dir_file_copy)
 
         self.resource_manager = DummyResourceManager(self.dir_manager)
-        self.keys_auth = KeysAuth(self.path, 'priv_key', 'password')
         self.client = MockClient()
         self.resource_server = BaseResourceServer(
             self.resource_manager,
             self.dir_manager,
-            self.keys_auth,
             self.client
         )
 
@@ -182,7 +179,6 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
         new_server = BaseResourceServer(
             DummyResourceManager(self.dir_manager),
             DirManager(self.path, '2'),
-            self.keys_auth,
             self.client
         )
 
@@ -204,13 +200,6 @@ class TestResourceServer(testwithreactor.TestDirFixtureWithReactor):
                 assert os.path.exists(new_file_path)
 
         assert self.client.downloaded
-
-    def testVerifySig(self):
-        test_str = "A test string to sign"
-        sig = self.resource_server.sign(test_str)
-        self.assertTrue(self.resource_server.verify_sig(
-            sig, test_str,
-            self.keys_auth.public_key))
 
     def testAddFilesToGet(self):
         test_files = [

@@ -99,13 +99,18 @@ class TaskResourcesMixin:
         logger.error("Cannot restore task '%s' resources: %r", task_id, error)
         self.task_manager.delete_task(task_id)
 
-    def request_resource(self, task_id, subtask_id):
+    def request_resource(self, task_id, subtask_id, resources):
         if subtask_id not in self.task_sessions:
             logger.error("Cannot map subtask_id %r to session", subtask_id)
             return False
 
-        session = self.task_sessions[subtask_id]
-        session.request_resource(task_id)
+        resource_manager = self.client.resource_server.resource_manager
+        resources = resource_manager.from_wire(resources)
+
+        task_keeper = self.task_manager.comp_task_keeper
+        options = task_keeper.get_resources_options(subtask_id)
+        client_options = self.get_download_options(options, task_id)
+        self.pull_resources(task_id, resources, client_options)
         return True
 
     def pull_resources(self, task_id, resources, client_options=None):

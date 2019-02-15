@@ -82,9 +82,8 @@ class HyperVHypervisor(DockerMachineHypervisor):
         no_virt_mem='--hyperv-disable-dynamic-memory',
         virtual_switch='--hyperv-virtual-switch'
     )
-    BOOT2DOCKER_URL = "https://s3.eu-central-1.amazonaws.com/" \
-                      "golem-bootdocker/boot2docker/v18.06.1-ce%2Bdvn-v0.35/" \
-                      "boot2docker-v18.06.1-ce%2Bdvn-v0.35-release.iso"
+    BOOT2DOCKER_URL = "https://golem-bootdocker.cdn.golem.network/boot2docker" \
+                      "/v18.09.1-golem/boot2docker-v18.09.1-golem.iso"
     DOCKER_USER = "golem-docker"
     DOCKER_PASSWORD = "golem-docker"
     VOLUME_SIZE = "5000"  # = 5GB; default was 20GB

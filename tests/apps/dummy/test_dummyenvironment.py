@@ -1,5 +1,3 @@
-from os import path
-
 from apps.dummy.dummyenvironment import DummyTaskEnvironment
 from golem.environments.minperformancemultiplier import MinPerformanceMultiplier
 from golem.model import Performance
@@ -39,6 +37,3 @@ class TestDummyEnvironment(DatabaseFixture):
         # then
         self.assertEqual(MinPerformanceMultiplier.get(), 3.141)
         self.assertEqual(self.env.get_min_accepted_performance(), 314.1)
-
-    def test_main_program_file(self):
-        assert path.isfile(DummyTaskEnvironment().main_program_file)
