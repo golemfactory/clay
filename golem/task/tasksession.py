@@ -745,11 +745,35 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def _react_to_waiting_for_results(
             self,
-            _msg: message.tasks.WaitingForResults,
+            msg: message.tasks.WaitingForResults,
     ):
+        if self.concent_service.available:
+            concent_key = self.concent_service.variant['pubkey']
+        else:
+            concent_key = None
+        try:
+            msg.verify_owners(
+                requestor_public_key=self.key_id,
+                provider_public_key=self.task_server.keys_auth.ecc.raw_pubkey,
+                concent_public_key=concent_key,
+            )
+        except msg_exceptions.MessageError:
+            node_id = common.short_node_id(self.key_id)
+            logger.info(
+                'Dropping invalid WaitingForResults.'
+                ' sender_node_id: %(node_id)s, task_id: %(task_id)s,'
+                ' subtask_id: %(subtask_id)s',
+                {
+                    'node_id': node_id,
+                    'task_id': msg.task_id,
+                    'subtask_id': msg.subtask_id,
+                },
+            )
+            logger.debug('Invalid WaitingForResults received', exc_info=True)
+            return
         self.task_server.subtask_waiting(
-            task_id=self.task_id,
-            subtask_id=None,
+            task_id=msg.task_id,
+            subtask_id=msg.subtask_id,
         )
         self.task_computer.session_closed()
         if not self.msgs_to_send:
