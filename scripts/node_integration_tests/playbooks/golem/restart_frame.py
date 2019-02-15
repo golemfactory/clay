@@ -1,4 +1,3 @@
-import time
 import typing
 
 from ..base import NodeTestPlaybook
@@ -6,12 +5,13 @@ from ..base import NodeTestPlaybook
 
 class RestartFrame(NodeTestPlaybook):
     provider_node_script = 'provider/debug'
-    requestor_node_script = 'requestor/always_accept_provider'
+    requestor_node_script = 'requestor/debug'
+    requestor_node_script_2 = 'requestor/always_accept_provider'
     task_settings = 'default'
 
     def step_restart_task_frame(self):
         def on_success(result):
-            print(f'Restarted frame. {result}')
+            print(f'Restarted frame from task: {self.task_id}.')
             self.next()
 
         return self.call_requestor('comp.task.subtasks.frame.restart',
@@ -31,9 +31,11 @@ class RestartFrame(NodeTestPlaybook):
         NodeTestPlaybook.step_stop_nodes,
         NodeTestPlaybook.step_restart_nodes,
     ) + NodeTestPlaybook.initial_steps + (
-                              step_restart_task_frame,
-                              NodeTestPlaybook.step_get_task_status,
-                              NodeTestPlaybook.step_wait_task_finished,
-                              NodeTestPlaybook.step_verify_output,
-                              step_success,
-                          )
+            NodeTestPlaybook.step_get_known_tasks,
+            step_restart_task_frame,
+            NodeTestPlaybook.step_get_task_id,
+            NodeTestPlaybook.step_get_task_status,
+            NodeTestPlaybook.step_wait_task_finished,
+            NodeTestPlaybook.step_verify_output,
+            step_success,
+        )
