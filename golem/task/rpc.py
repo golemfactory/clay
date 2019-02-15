@@ -556,12 +556,7 @@ class ClientProvider:
                          'task_id=%r, frame=%r', task_id, frame)
             return
 
-        try:
-            task_state = self.client.task_manager.tasks_states[task_id]
-        except KeyError:
-            logger.error('Frame restart failed, unknown task.'
-                         'task_id=%r, frame=%r', task_id, frame)
-            return
+        task_state = self.client.task_manager.tasks_states[task_id]
 
         if task_state.status.is_active():
             for subtask_id in frame_subtasks:
