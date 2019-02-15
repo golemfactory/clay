@@ -26,8 +26,8 @@ class NodeTestBase:
             '--provider-datadir', self.provider_datadir,
             '--requestor-datadir', self.requestor_datadir,
         ]
-        for k, v in kwargs:
-            test_args.append(k)
+        for k, v in kwargs.items():
+            test_args.append('--' + k)
             test_args.append(v)
 
         return subprocess.call(args=test_args)

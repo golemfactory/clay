@@ -40,6 +40,7 @@ class ClientConfigDescriptor(object):
         self.resource_session_timeout = 0
         self.clean_resources_older_than_seconds = 0
         self.clean_tasks_older_than_seconds = 0
+        self.cleaning_enabled = 0
         self.offer_pooling_interval = 0.0
 
         self.node_snapshot_interval = 0.0

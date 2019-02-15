@@ -36,7 +36,6 @@ datas = [
      'golem/network/concent/resources/ssl/certs/'),
     ('scripts/docker/create-share.ps1', 'scripts/docker/'),
     ('scripts/docker/get-default-vswitch.ps1', 'scripts/docker/'),
-    ('scripts/docker/start-hyperv-docker-vm.ps1', 'scripts/docker/'),
     ('scripts/virtualization/get-virtualization-state.ps1',
      'scripts/virtualization')
 ]

@@ -14,11 +14,13 @@ from twisted.internet import defer
 
 from apps.core.task import coretask
 from apps.rendering.task import framerenderingtask
+from golem.client import Client
 from golem.core import golem_async
 from golem.core import common
 from golem.core import deferred as golem_deferred
 from golem.core import simpleserializer
 from golem.ethereum import exceptions as eth_exceptions
+from golem.ethereum.transactionsystem import TransactionSystem
 from golem.resource import resource
 from golem.rpc import utils as rpc_utils
 from golem.task import taskbase
@@ -95,6 +97,15 @@ def _validate_task_dict(client, task_dict) -> None:
                     else 'disabled'
                 ),
             )
+
+
+def validate_client(client: Client):
+    if client.config_desc.in_shutdown:
+        raise CreateTaskError(
+            'Can not enqueue task: shutdown is in progress, '
+            'toggle shutdown mode off to create a new tasks.')
+    if client.task_server is None:
+        raise CreateTaskError("Golem is not ready")
 
 
 def prepare_and_validate_task_dict(client, task_dict):
@@ -178,6 +189,7 @@ def _restart_subtasks(
     # Function passed to twisted.threads.deferToThread can't itself
     # return a deferred, that's why I defined inner deferred function
     # and use sync_wait below.
+    validate_client(client)
     golem_deferred.sync_wait(deferred())
 
 
@@ -205,10 +217,14 @@ def _ensure_task_deposit(client, task, force):
     # fails. This case is most common but, the better way it to always
     # unlock them when the task fails regardless of the reason.
     try:
+        client.transaction_system.validate_concent_deposit_possibility(
+            required=min_amount,
+            tasks_num=task.get_total_tasks(),
+            force=force,
+        )
         yield client.transaction_system.concent_deposit(
             required=min_amount,
             expected=opt_amount,
-            force=force,
         )
     except eth_exceptions.EthereumError:
         client.funds_locker.remove_task(task_id)
@@ -324,13 +340,7 @@ def _start_task(client, task, resource_server_result):
 def enqueue_new_task(client, task, force=False) \
             -> typing.Generator[defer.Deferred, typing.Any, taskbase.Task]:
     """Feed a fresh Task to all golem subsystems"""
-    if client.config_desc.in_shutdown:
-        raise CreateTaskError(
-            'Can not enqueue task: shutdown is in progress, '
-            'toggle shutdown mode off to create a new tasks.')
-    if client.task_server is None:
-        raise CreateTaskError("Golem is not ready")
-
+    validate_client(client)
     task_id = task.header.task_id
     client.funds_locker.lock_funds(
         task_id,
@@ -428,11 +438,11 @@ class ClientProvider:
         :return: (task_id, None) on success; (task_id or None, error_message)
                  on failure
         """
-
+        validate_client(self.client)
         prepare_and_validate_task_dict(self.client, task_dict)
 
         task: taskbase.Task = self.task_manager.create_task(task_dict)
-
+        self._validate_enough_funds_to_pay_for_task(task, force)
         task_id = task.header.task_id
 
         deferred = enqueue_new_task(self.client, task, force=force)
@@ -447,6 +457,39 @@ class ClientProvider:
             ),
         )
         return task_id, None
+
+    def _validate_enough_funds_to_pay_for_task(
+            self, task: taskbase.Task, force: bool
+    ):
+        self._validate_lock_funds_possibility(
+            total_price_gnt=task.price,
+            number_of_tasks=task.get_total_tasks(),
+        )
+        min_amount, _ = msg_helpers.requestor_deposit_amount(task.price)
+        concent_enabled = task.header.concent_enabled
+        concent_available = self.client.concent_service.available
+        if concent_enabled and concent_available:
+            self.client.transaction_system.validate_concent_deposit_possibility(
+                required=min_amount,
+                tasks_num=task.get_total_tasks(),
+                force=force,
+            )
+
+    def _validate_lock_funds_possibility(
+            self,
+            total_price_gnt: int,
+            number_of_tasks: int) -> None:
+        transaction_system = self.client.transaction_system
+        if total_price_gnt > transaction_system.get_available_gnt():
+            raise eth_exceptions.NotEnoughFunds(
+                total_price_gnt,
+                transaction_system.get_available_gnt(), 'GNT',
+            )
+
+        eth = transaction_system.eth_for_batch_payment(number_of_tasks)
+        eth_available = transaction_system.get_available_eth()
+        if eth > eth_available:
+            raise eth_exceptions.NotEnoughFunds(eth, eth_available, 'ETH')
 
     @rpc_utils.expose('comp.task.restart')
     @safe_run(_restart_task_error)
@@ -479,6 +522,7 @@ class ClientProvider:
         task_dict.pop('id', None)
         prepare_and_validate_task_dict(self.client, task_dict)
         new_task = self.task_manager.create_task(task_dict)
+        validate_client(self.client)
         enqueue_new_task(  # pylint: disable=no-member
             client=self.client,
             task=new_task,
@@ -508,6 +552,8 @@ class ClientProvider:
             subtask_ids: typing.Iterable[str],
             force: bool = False,
     ):
+        logger.debug('restart_subtasks_from_task. task_id=%r, subtask_ids=%r,'
+                     'force=%r', task_id, subtask_ids, force)
 
         try:
             self.task_manager.put_task_in_restarted_state(
@@ -520,6 +566,8 @@ class ClientProvider:
                 if sub['status'] == taskstate.SubtaskStatus.finished
             )
             subtask_ids_to_copy = finished_subtask_ids - set(subtask_ids)
+            logger.debug('restart_subtasks_from_task. subtask_ids_to_copy=%r',
+                         subtask_ids_to_copy)
         except self.task_manager.AlreadyRestartedError:
             logger.error('Task already restarted: %r', task_id)
             return

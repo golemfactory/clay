@@ -47,12 +47,6 @@ from golem.resource.dirmanager import DirManager
 fake = Faker()
 
 
-class PickableMock(Mock):
-    # to make the mock pickable
-    def __reduce__(self):
-        return (Mock, ())
-
-
 class TaskMock(Task):
 
     def __init__(self, *args, **kwargs):
