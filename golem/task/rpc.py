@@ -562,7 +562,7 @@ class ClientProvider:
             for subtask_id in frame_subtasks:
                 self.client.restart_subtask(subtask_id)
         else:
-            self.restart_subtasks_from_task(task_id, frame_subtasks)
+            self.restart_subtasks_from_task(task_id, frame_subtasks.keys())
 
     @rpc_utils.expose('comp.task.restart_subtasks')
     @safe_run(

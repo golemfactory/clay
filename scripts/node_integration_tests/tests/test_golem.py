@@ -28,6 +28,10 @@ class GolemNodeTest(NodeTestBase, unittest.TestCase):
         exit_code = self._run_test('golem.task_timeout.TaskTimeoutAndRestart')
         self.assertEqual(exit_code, 0)
 
+    def test_frame_restart(self):
+        exit_code = self._run_test('golem.restart_frame.RestartFrame')
+        self.assertEqual(exit_code, 0)
+
     @unittest.skipIf(PROTOCOL_CONST.ID <= '29', "Known issue in 0.18.x")
     def test_exr(self):
         exit_code = self._run_test('golem.exr.RegularRun')
