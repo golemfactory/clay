@@ -644,21 +644,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         logger.debug('Aborting task "%r" ...', task_id)
         self.task_server.task_manager.abort_task(task_id)
 
-    @rpc_utils.expose('comp.task.subtasks.frame.restart')
-    def restart_frame_subtasks(self, task_id, frame):
-        logger.debug("restarting frame subtasks: task_id = %s, frame = %r",
-                     task_id, frame)
-        task_manager = self.task_server.task_manager
-
-        subtasks: Dict = task_manager.get_frame_subtasks(task_id, frame)
-        if subtasks is None:
-            logger.error("frame has no subtasks (task_id = %s, frame = %r",
-                         task_id, frame)
-            return
-
-        self.funds_locker.add_subtask(task_id, len(subtasks))
-        task_manager.restart_frame_subtasks(task_id, frame)
-
     @rpc_utils.expose('comp.task.subtask.restart')
     def restart_subtask(self, subtask_id):
         logger.debug("restarting subtask %s", subtask_id)

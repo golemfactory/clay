@@ -886,28 +886,6 @@ class TaskManager(TaskEventListener):
                                  op=SubtaskOp.RESTARTED)
 
     @handle_task_key_error
-    def restart_frame_subtasks(self, task_id, frame):
-        task = self.tasks[task_id]
-        task_state = self.tasks_states[task_id]
-        subtasks = task.get_subtasks(frame)
-
-        if not subtasks:
-            return
-
-        for subtask_id in list(subtasks.keys()):
-            task.restart_subtask(subtask_id)
-            subtask_state = task_state.subtask_states[subtask_id]
-            subtask_state.subtask_status = SubtaskStatus.restarted
-            subtask_state.stderr = "[GOLEM] Restarted"
-            self.notice_task_updated(task_id,
-                                     subtask_id=subtask_id,
-                                     op=SubtaskOp.RESTARTED,
-                                     persist=False)
-
-        task_state.status = TaskStatus.computing
-        self.notice_task_updated(task_id, op=OtherOp.FRAME_RESTARTED)
-
-    @handle_task_key_error
     def abort_task(self, task_id):
         self.tasks[task_id].abort()
         self.tasks_states[task_id].status = TaskStatus.aborted
