@@ -128,9 +128,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         """
         BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
-        # FIXME: Remove task_id and use values from messages
-        self.task_id = None  # current task id
         self.conn_id = None  # connection id
+        # set in TaskServer.new_session_prepare()
+        self.key_id: Optional[str] = None
         # messages waiting to be send (because connection hasn't been
         # verified yet)
         self.msgs_to_send = []
@@ -815,6 +815,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             logger.warning('Did not receive task_to_compute: %r', msg)
             self.dropped()
             return
+
+        self.task_server.add_task_session(
+            msg.subtask_id, self
+        )
 
         returned_msg = concent_helpers.process_report_computed_task(
             msg=msg,

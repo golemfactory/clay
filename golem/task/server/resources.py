@@ -79,10 +79,6 @@ class TaskResourcesMixin:
         self.task_manager.delete_task(task_id)
 
     def request_resource(self, task_id, subtask_id, resources):
-        if subtask_id not in self.task_sessions:
-            logger.error("Cannot map subtask_id %r to session", subtask_id)
-            return False
-
         resource_manager = self.client.resource_server.resource_manager
         resources = resource_manager.from_wire(resources)
 
