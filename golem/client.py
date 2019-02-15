@@ -1101,15 +1101,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             client_options=client_options
         )
 
-    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
-        self.resource_server.add_resource_peer(
-            node_name,
-            addr,
-            port,
-            key_id,
-            node_info
-        )
-
     @rpc_utils.expose('res.dirs')
     def get_res_dirs(self):
         return {"total received data": self.get_received_files_dir(),

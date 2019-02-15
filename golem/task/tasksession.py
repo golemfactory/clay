@@ -177,8 +177,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         """ Close connection """
         BasicSafeSession.dropped(self)
         self.task_server.remove_task_session(self)
-        if self.key_id:
-            self.task_server.remove_resource_peer(self.task_id, self.key_id)
 
     #######################
     # SafeSession methods #
