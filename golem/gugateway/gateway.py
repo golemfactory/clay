@@ -14,7 +14,8 @@ from wsgidav.request_resolver import RequestResolver
 from wsgidav.http_authenticator import HTTPAuthenticator
 
 from golem.client import Client
-from .subscription import TaskStatus, Subscription, TaskType, InvalidTaskType
+from .subscription import SubtaskStatus, Subscription, TaskType, \
+    InvalidTaskType, InvalidTaskStatus
 
 logger: logging.Logger = logging.getLogger(__name__)
 default_port: int = 55001
@@ -74,6 +75,28 @@ def _start_web_dav(port):
         # 4 - show additional events
         # 5 - show full request/response header info (HTTP Logging)
         #     request body and GET response bodies not shown
+
+        # Log Level Matrix
+        # ~~~~~~~~~~~~~~~~
+        #
+        # +---------+--------+---------------------------------------------------------------+
+        # | Verbose | Option |                       Log level                               |
+        # | level   |        +-------------+------------------------+------------------------+
+        # |         |        | base logger | module logger(default) | module logger(enabled) |
+        # +=========+========+=============+========================+========================+
+        # |    0    | -qqq   | CRITICAL    | CRITICAL               | CRITICAL               |
+        # +---------+--------+-------------+------------------------+------------------------+
+        # |    1    | -qq    | ERROR       | ERROR                  | ERROR                  |
+        # +---------+--------+-------------+------------------------+------------------------+
+        # |    2    | -q     | WARN        | WARN                   | WARN                   |
+        # +---------+--------+-------------+------------------------+------------------------+
+        # |    3    |        | INFO        | INFO                   | **DEBUG**              |
+        # +---------+--------+-------------+------------------------+------------------------+
+        # |    4    | -v     | DEBUG       | DEBUG                  | DEBUG                  |
+        # +---------+--------+-------------+------------------------+------------------------+
+        # |    5    | -vv    | DEBUG       | DEBUG                  | DEBUG                  |
+        # +---------+--------+-------------+------------------------+------------------------+
+
         "verbose": 3,
     }
 
@@ -158,8 +181,9 @@ def all_subscriptions(node_id: str) -> (str, int):
     """Gets subscription status"""
 
     if node_id not in subscriptions:
-        return _not_found('subscription')
+        return _not_found(f'subscription for {node_id}')
 
+    logger.debug('all subscriptions for %s', node_id)
     return json.dumps(
         [subs.to_json_dict() for subs in subscriptions[node_id].values()])
 
@@ -168,21 +192,6 @@ def all_subscriptions(node_id: str) -> (str, int):
 def subscribe(node_id: str, task_type: str) -> (str, int):
     """Creates or amends subscription to Golem Network"""
 
-    status_code = 200
-    if node_id not in subscriptions:
-        subscriptions[node_id] = dict()
-
-    try:
-        task_type = TaskType.match(task_type)
-    except InvalidTaskType as e:
-        return _invalid_input(e)
-
-    if task_type not in subscriptions[node_id]:
-        status_code = 201
-
-    if request.json is None:
-        return _invalid_input('request body is required')
-
     try:
         subs = Subscription(
             node_id,
@@ -190,6 +199,8 @@ def subscribe(node_id: str, task_type: str) -> (str, int):
             request.json,
             golem_client.task_server.task_keeper.task_headers,
         )
+    except InvalidTaskType as e:
+        return _invalid_input(e)
     except AttributeError:
         return _invalid_input('request body is required')
     except KeyError as e:
@@ -197,8 +208,16 @@ def subscribe(node_id: str, task_type: str) -> (str, int):
     except ValueError as e:
         return _invalid_input(str(e))
 
-    subscriptions[node_id][task_type] = subs
+    if node_id not in subscriptions:
+        subscriptions[node_id] = dict()
 
+    status_code = 200
+    if subs.task_type not in subscriptions[node_id]:
+        status_code = 201
+
+    subscriptions[node_id][subs.task_type] = subs
+
+    logger.info('%s %s', status_code == 200 and 'updated' or 'created', subs)
     return json.dumps(subs.to_json_dict()), status_code
 
 
@@ -206,36 +225,29 @@ def subscribe(node_id: str, task_type: str) -> (str, int):
 def subscription(node_id: str, task_type: str) -> (str, int):
     """Gets subscription status"""
 
-    if node_id not in subscriptions:
-        return _not_found('subscription')
-
     try:
-        task_type = TaskType.match(task_type)
+        subs = subscriptions[node_id][TaskType.match(task_type)]
     except InvalidTaskType as e:
         return _invalid_input(e)
+    except KeyError:
+        return _not_found(f'subscription for {node_id}/{task_type}')
 
-    if task_type not in subscriptions[node_id]:
-        return _not_found('subscription')
-
-    return json.dumps(subscriptions[node_id][task_type].to_json_dict())
+    logger.debug('subscription info %s', subs)
+    return json.dumps(subs.to_json_dict())
 
 
 @app.route('/subscriptions/<node_id>/<task_type>', methods=['DELETE'])
 def unsubscribe(node_id: str, task_type: str) -> (str, int):
     """Removes subscription"""
 
-    if node_id not in subscriptions:
-        return _not_found('subscription')
-
     try:
-        task_type = TaskType.match(task_type)
+        subs = subscriptions[node_id].pop(TaskType.match(task_type))
     except InvalidTaskType as e:
         return _invalid_input(e)
+    except KeyError:
+        return _not_found(f'subscription for {node_id}/{task_type}')
 
-    if task_type not in subscriptions[node_id]:
-        return _not_found('subscription')
-
-    subscriptions.pop(node_id)
+    logger.info('removed %s', subs)
     return _json_response('subscription deleted')
 
 
@@ -244,12 +256,13 @@ def want_to_compute_task(node_id, task_id) -> (str, int):
     """Sends task computation willingness"""
 
     if node_id not in subscriptions:
-        return _not_found('subscription')
+        return _not_found(f'subscription for {node_id}')
 
     for subs in subscriptions[node_id].values():
         if task_id in subs.events:
             try:
                 subs.request_subtask(golem_client, task_id)
+                logger.info('want task %s for %s', task_id, subs)
                 return _json_response('OK')
             except KeyError as e:
                 return _not_found(f'task {e}')
@@ -262,10 +275,11 @@ def task_info(node_id: str, task_id: str) -> (str, int):
     """Gets task information"""
 
     if node_id not in subscriptions:
-        return _not_found('subscription')
+        return _not_found(f'subscription for {node_id}')
 
     for subs in subscriptions[node_id].values():
         if task_id in subs.events:
+            logger.debug('task info %s for %s', task_id, subs)
             return json.dumps(subs.events[task_id].task.to_json_dict())
     else:
         return _not_found(f'task {task_id}')
@@ -276,11 +290,12 @@ def confirm_subtask(node_id, subtask_id) -> (str, int):
     """Confirms subtask computation start"""
 
     if node_id not in subscriptions:
-        return _not_found('subscription')
+        return _not_found(f'subscription for {node_id}')
 
     for subs in subscriptions[node_id].values():
         if subtask_id in subs.events:
-            subs.increment(TaskStatus.started)
+            logger.info('started subtask %s for %s', subtask_id, subs)
+            subs.increment(SubtaskStatus.started)
             return _json_response('OK')
     else:
         return _not_found(f'subtask {subtask_id}')
@@ -291,10 +306,11 @@ def subtask_info(node_id, subtask_id) -> (str, int):
     """Gets subtask information"""
 
     if node_id not in subscriptions:
-        return _not_found('subscription')
+        return _not_found(f'subscription for {node_id}')
 
     for subs in subscriptions[node_id].values():
         if subtask_id in subs.events:
+            logger.debug('subtask info %s for %s', subtask_id, subs)
             return json.dumps(subs.events[subtask_id].subtask.to_json_dict())
     else:
         return _not_found(f'subtask {subtask_id}')
@@ -304,18 +320,27 @@ def subtask_info(node_id, subtask_id) -> (str, int):
 def subtask_result(node_id, subtask_id) -> (str, int):
     """Reports subtask computation result"""
 
-    if 'status' not in request.json:
-        return _invalid_input('status is required')
+    try:
+        status = SubtaskStatus.match(request.json['status'])
+    except KeyError as e:
+        return _invalid_input('{e} is required in body')
+    except InvalidTaskStatus as e:
+        return _invalid_input(e)
+
+    # TODO: SubtaskStatus.timedout is not send(?), but should be counted
+    if status not in [SubtaskStatus.succeeded, SubtaskStatus.failed]:
+        logger.warning('wrong %s result for subtask %s', status, subtask_id)
+        return _invalid_input(f'subtask result status {status} '
+                              f'must be one of: succeeded or failed')
 
     if node_id not in subscriptions:
-        return _not_found('subscription')
+        return _not_found(f'subscription for {node_id}')
 
     for subs in subscriptions[node_id].values():
         if subtask_id in subs.events:
-            status = TaskStatus.match(request.json['status'])
             subtask = subs.events[subtask_id].subtask
 
-            if status == TaskStatus.succeeded:
+            if status == SubtaskStatus.succeeded:
                 if 'path' not in request.json:
                     return _invalid_input('path is required')
 
@@ -332,11 +357,12 @@ def subtask_result(node_id, subtask_id) -> (str, int):
                         result
                     )
                 except RuntimeError as e:
-                    _json_response(str(e), 500)
+                    return _json_response(str(e), 500)
 
                 # TODO: should we call
                 # golem_client.task_server.task_computer.__task_finished(subtask)
-            else:
+
+            else:  # status == SubtaskStatus.failed:
                 if 'reason' not in request.json:
                     return _invalid_input('reason is required')
 
@@ -347,6 +373,7 @@ def subtask_result(node_id, subtask_id) -> (str, int):
                 )
 
             subs.increment(status)
+            logger.info('%s subtask %s for %s', status, subtask_id, subs)
             return _json_response('OK')
     else:
         return _not_found(f'subtask {subtask_id}')
@@ -357,13 +384,15 @@ def cancel_subtask(node_id, subtask_id) -> (str, int):
     """Cancels subtask computation (upon failure or resignation)"""
 
     if node_id not in subscriptions:
-        return _not_found('subscription')
+        return _not_found(f'subscription for {node_id}')
 
     for subs in subscriptions[node_id].values():
-        if subtask_id in subs.events:
+        if subtask_id in subs.events and subtask_id in \
+                golem_client.task_server.task_sessions:
             session = golem_client.task_server.task_sessions[subtask_id]
             session.send_subtask_cancel(subtask_id)
-            subs.increment(TaskStatus.cancelled)
+            subs.increment(SubtaskStatus.cancelled)
+            logger.info('cancelled subtask %s for %s', subtask_id, subs)
             return _json_response('OK')
     else:
         return _not_found(f'subtask {subtask_id}')
@@ -373,17 +402,15 @@ def cancel_subtask(node_id, subtask_id) -> (str, int):
 def fetch_events(node_id: str, task_type: str) -> (str, int):
     """List events for given node id and task type; newer than last event id"""
 
+    last_event_id = int(request.args.get('lastEventId', -1))
+
     try:
-        task_type = TaskType.match(task_type)
-        subs = subscriptions[node_id][task_type]
+        subs = subscriptions[node_id][TaskType.match(task_type)]
+
+        logger.debug('events for subscription %s', subs)
+        return json.dumps([e.to_json_dict()
+                           for e in subs.events_after(last_event_id)])
     except InvalidTaskType as e:
         return _invalid_input(e)
     except KeyError as e:
         return _not_found(f'subscription for {e}')
-
-    last_event_id = int(request.args.get('lastEventId', -1))
-    try:
-        return json.dumps([e.to_json_dict()
-                           for e in subs.events_after(last_event_id)])
-    except KeyError as e:
-        return _invalid_input(e)

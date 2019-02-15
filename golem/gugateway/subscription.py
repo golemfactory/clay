@@ -32,7 +32,7 @@ class InvalidTaskType(Exception):
                f' of supported task types: {self.known_task_types}'
 
 
-class TaskStatus(Enum):
+class SubtaskStatus(Enum):
     requested = auto()
     started = auto()
     cancelled = auto()
@@ -43,7 +43,7 @@ class TaskStatus(Enum):
     @classmethod
     def match(cls, task_status: str):
         try:
-            return TaskStatus[task_status]
+            return SubtaskStatus[task_status]
         except KeyError as e:
             raise InvalidTaskStatus(str(e))
 
@@ -52,7 +52,7 @@ class InvalidTaskStatus(Exception):
     known_task_status = ', '.join(TaskType.__members__)
 
     def __str__(self):
-        return f'task status {self.args[0]} not known. Here is a list' \
+        return f'subtask status {self.args[0]} not known. Here is a list' \
                f' of supported task statuses: {self.known_task_types}'
 
 
@@ -173,12 +173,12 @@ class Subscription(object):
 
     def __init__(self,
                  node_id: str,
-                 task_type: TaskType,
+                 task_type: str,
                  request_json: dict,
                  known_tasks: Dict[str, TaskHeader]
                  ):
         self.node_id = node_id
-        self.task_type: TaskType = task_type
+        self.task_type: TaskType = TaskType.match(task_type)
         self.name = request_json.get('name', '')
         self.min_price = int(request_json['minPrice'])
         self.performance = float(request_json.get('performance', 0.0))
@@ -222,7 +222,7 @@ class Subscription(object):
         self.set_config_to(golem_client.task_server.config_desc)
         golem_client.task_server.request_task(task_id, self.performance)
         dispatcher.connect(self.add_subtask_event, signal='golem.subtask')
-        self.increment(TaskStatus.requested)
+        self.increment(SubtaskStatus.requested)
 
     def add_subtask_event(self, event='default', **kwargs) -> None:
         # TODO: persist or read existing subtasks upon start
@@ -251,9 +251,9 @@ class Subscription(object):
                 self.node_id, self.task_type, kwargs
             ))
 
-    def increment(self, status: Union[TaskStatus, str]) -> None:
+    def increment(self, status: Union[SubtaskStatus, str]) -> None:
         if isinstance(status, str):
-            status = TaskStatus.match(status)
+            status = SubtaskStatus.match(status)
         self.stats.update([status.name])
 
     def events_after(self, event_id: int) -> List[Event]:
@@ -271,8 +271,8 @@ class Subscription(object):
 
     def to_json_dict(self) -> dict:
         return {
-            'taskType': self.task_type.name,
             'nodeId': self.node_id,
+            'taskType': self.task_type.name,
             'subscription': {
                 'name': self.name,
                 'minPrice': self.min_price,
@@ -283,3 +283,6 @@ class Subscription(object):
             },
             'subtaskStats': dict(self.stats)
         }
+
+    def __str__(self):
+        return f'Subscription {self.name}({self.node_id}, {self.task_type})'
