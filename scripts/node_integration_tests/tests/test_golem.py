@@ -52,3 +52,10 @@ class GolemNodeTest(NodeTestBase, unittest.TestCase):
         )
         self.assertEqual(exit_code, 0)
 
+    def test_duplicated_file_names(self):
+        exit_code = self._run_test('golem.duplicated_files_names.DuplicatedFilesNames')
+        self.assertEqual(exit_code, 0)
+
+    def test_duplicated_file_names_multi_frame(self):
+        exit_code = self._run_test('golem.duplicated_files_names_multi_frame.DuplicatedFilesNamesMultiFrame')
+        self.assertEqual(exit_code, 0)
