@@ -17,7 +17,7 @@ from golem.client import Client
 from .subscription import TaskStatus, Subscription, TaskType, InvalidTaskType
 
 logger: logging.Logger = logging.getLogger(__name__)
-port: int = 55001
+default_port: int = 55001
 app: Flask = Flask(__name__)
 golem_client: Client = None
 # TODO: persist this in case of whole gateway failure
@@ -30,9 +30,9 @@ def start(client: Client) -> None:
 
     from twisted.internet.error import CannotListenError
     try:
-        _start(port)
+        _start(default_port)
     except CannotListenError:
-        _start(port + 1)
+        _start(default_port + 1)
 
 
 # credit: https://gist.github.com/ianschenck/977379a91154fe264897
@@ -161,7 +161,7 @@ def all_subscriptions(node_id: str) -> (str, int):
         return _not_found('subscription')
 
     return json.dumps(
-        [s.to_json_dict() for s in subscriptions[node_id].values()])
+        [subs.to_json_dict() for subs in subscriptions[node_id].values()])
 
 
 @app.route('/subscriptions/<node_id>/<task_type>', methods=['PUT'])
@@ -246,19 +246,15 @@ def want_to_compute_task(node_id, task_id) -> (str, int):
     if node_id not in subscriptions:
         return _not_found('subscription')
 
-    for s in subscriptions[node_id].values():
-        if task_id in s.events:
-            subscription = s
-            break
+    for subs in subscriptions[node_id].values():
+        if task_id in subs.events:
+            try:
+                subs.request_subtask(golem_client, task_id)
+                return _json_response('OK')
+            except KeyError as e:
+                return _not_found(f'task {e}')
     else:
         return _not_found(f'task {task_id}')
-
-    try:
-        subscription.request_subtask(golem_client, task_id)
-    except KeyError as e:
-        return _not_found(f'task {e}')
-
-    return _json_response('OK')
 
 
 @app.route('/<node_id>/tasks/<task_id>', methods=['GET'])
@@ -268,9 +264,9 @@ def task_info(node_id: str, task_id: str) -> (str, int):
     if node_id not in subscriptions:
         return _not_found('subscription')
 
-    for s in subscriptions[node_id].values():
-        if task_id in s.events:
-            return json.dumps(s.events[task_id].task.to_json_dict())
+    for subs in subscriptions[node_id].values():
+        if task_id in subs.events:
+            return json.dumps(subs.events[task_id].task.to_json_dict())
     else:
         return _not_found(f'task {task_id}')
 
@@ -282,9 +278,9 @@ def confirm_subtask(node_id, subtask_id) -> (str, int):
     if node_id not in subscriptions:
         return _not_found('subscription')
 
-    for s in subscriptions[node_id].values():
-        if subtask_id in s.events:
-            s.increment(TaskStatus.started)
+    for subs in subscriptions[node_id].values():
+        if subtask_id in subs.events:
+            subs.increment(TaskStatus.started)
             return _json_response('OK')
     else:
         return _not_found(f'subtask {subtask_id}')
@@ -297,9 +293,9 @@ def subtask_info(node_id, subtask_id) -> (str, int):
     if node_id not in subscriptions:
         return _not_found('subscription')
 
-    for s in subscriptions[node_id].values():
-        if subtask_id in s.events:
-            return json.dumps(s.events[subtask_id].subtask.to_json_dict())
+    for subs in subscriptions[node_id].values():
+        if subtask_id in subs.events:
+            return json.dumps(subs.events[subtask_id].subtask.to_json_dict())
     else:
         return _not_found(f'subtask {subtask_id}')
 
@@ -314,10 +310,10 @@ def subtask_result(node_id, subtask_id) -> (str, int):
     if node_id not in subscriptions:
         return _not_found('subscription')
 
-    for s in subscriptions[node_id].values():
-        if subtask_id in s.events:
+    for subs in subscriptions[node_id].values():
+        if subtask_id in subs.events:
             status = TaskStatus.match(request.json['status'])
-            subtask = s.events[subtask_id].subtask
+            subtask = subs.events[subtask_id].subtask
 
             if status == TaskStatus.succeeded:
                 if 'path' not in request.json:
@@ -350,7 +346,7 @@ def subtask_result(node_id, subtask_id) -> (str, int):
                     request.json['reason'],
                 )
 
-            s.increment(status)
+            subs.increment(status)
             return _json_response('OK')
     else:
         return _not_found(f'subtask {subtask_id}')
@@ -363,36 +359,31 @@ def cancel_subtask(node_id, subtask_id) -> (str, int):
     if node_id not in subscriptions:
         return _not_found('subscription')
 
-    for s in subscriptions[node_id].values():
-        if subtask_id in s.events:
+    for subs in subscriptions[node_id].values():
+        if subtask_id in subs.events:
             session = golem_client.task_server.task_sessions[subtask_id]
             session.send_subtask_cancel(subtask_id)
-            s.increment(TaskStatus.cancelled)
+            subs.increment(TaskStatus.cancelled)
             return _json_response('OK')
     else:
         return _not_found(f'subtask {subtask_id}')
-
 
 
 @app.route('/<node_id>/<task_type>/events', methods=['GET'])
 def fetch_events(node_id: str, task_type: str) -> (str, int):
     """List events for given node id and task type; newer than last event id"""
 
-    if node_id not in subscriptions:
-        return _not_found('subscription')
-
     try:
         task_type = TaskType.match(task_type)
+        subs = subscriptions[node_id][task_type]
     except InvalidTaskType as e:
         return _invalid_input(e)
+    except KeyError as e:
+        return _not_found(f'subscription for {e}')
 
-    if task_type not in subscriptions[node_id]:
-        return _not_found('subscription')
-
-    subscription = subscriptions[node_id][task_type]
     last_event_id = int(request.args.get('lastEventId', -1))
     try:
         return json.dumps([e.to_json_dict()
-                           for e in subscription.events_after(last_event_id)])
+                           for e in subs.events_after(last_event_id)])
     except KeyError as e:
         return _invalid_input(e)
