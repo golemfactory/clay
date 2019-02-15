@@ -1,24 +1,24 @@
 import abc
 import logging
 import os
+from shutil import copy2
+from threading import Lock
 from typing import Any, Dict, Tuple, Optional
 
 import golem_messages.message
 
+import apps.transcoding.common
+import apps.transcoding.common
 from apps.core.task.coretask import CoreTask, CoreTaskBuilder, CoreTaskTypeInfo
 from apps.core.task.coretaskstate import Options, TaskDefinition
-from .common import AudioCodec, VideoCodec, Container, is_type_of, \
-    TranscodingTaskBuilderException
-
-import apps.transcoding.common
-from apps.transcoding.ffmpeg.utils import StreamOperator
 from apps.transcoding.common import TranscodingException
-
+from apps.transcoding.ffmpeg.utils import StreamOperator
 from golem.core.common import HandleError, timeout_to_deadline
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task
 from golem.task.taskstate import SubtaskStatus
-
+from .common import AudioCodec, VideoCodec, Container, is_type_of, \
+    TranscodingTaskBuilderException
 
 logger = logging.getLogger(__name__)
 
@@ -38,7 +38,7 @@ class TranscodingTaskOptions(Options):
             self.frame_rate = frame_rate
             self.resolution = resolution
 
-    def __init__(self, use_playlist=False):
+    def __init__(self, use_playlist=True):
         super().__init__()
         self.video_params = TranscodingTaskOptions.VideoParams()
         self.audio_params = TranscodingTaskOptions.AudioParams()
@@ -58,27 +58,66 @@ class TranscodingTask(CoreTask):
         super(TranscodingTask, self).__init__(task_definition=task_definition,
                                               **kwargs)
         self.task_definition = task_definition
+        self.lock = Lock()
+        self.chunks = list()
+        self.collected_file_names = list()
+        self.task_dir = ""
+
+    def __getstate__(self):
+        state = super(TranscodingTask, self).__getstate__()
+        del state['lock']
+        return state
+
+    def __setstate__(self, state):
+        super(TranscodingTask, self).__setstate__(state)
+        self.lock = Lock()
 
     def initialize(self, dir_manager: DirManager):
         super(TranscodingTask, self).initialize(dir_manager)
-        logger.debug('Initialization of ffmpegTask')
+        logger.debug('Initialization of FFmpegTask')
+        task_id = self.task_definition.task_id
+        task_output_dir = dir_manager.get_task_output_dir(task_id)
+        # results from providers are collected in tmp
+        self.task_dir = dir_manager.get_task_temporary_dir(task_id)
         if len(self.task_resources) == 0:
             raise TranscodingException('There is no specified resources')
         stream_operator = StreamOperator()
         chunks = stream_operator.split_video(
             self.task_resources[0], self.task_definition.subtasks_count,
-            dir_manager, self.task_definition.task_id)
-        self.task_resources = chunks
+            dir_manager, task_id)
         if len(chunks) < self.total_tasks:
             logger.warning('{} subtasks was requested but video splitting '
                            'process resulted in {} chunks.'
                            .format(self.total_tasks, len(chunks)))
+        streams = list(map(lambda x: x[0] if os.path.isabs(x[0]) else os.path
+                           .join(task_output_dir, x[0]), chunks))
+        playlists = list(map(lambda x: x[1] if os.path.isabs(x[1]) else os.path
+                             .join(task_output_dir, x[1]), chunks))
+        self.task_resources = streams + playlists
+        self.chunks = playlists
         self.total_tasks = len(chunks)
         self.task_definition.subtasks_count = len(chunks)
 
     def accept_results(self, subtask_id, result_files):
-        super(TranscodingTask, self).accept_results(subtask_id, result_files)
-        self.num_tasks_received += 1
+        with self.lock:
+            super(TranscodingTask, self).accept_results(subtask_id,
+                                                        result_files)
+            self._collect_results(result_files)
+
+            self.num_tasks_received += 1
+
+        if self.num_tasks_received == self.total_tasks:
+            self._merge_video()
+
+    def _collect_results(self, results):
+        self.collected_file_names.extend(results)
+
+    def _merge_video(self):
+        stream_operator = StreamOperator()
+        path = stream_operator.merge_video(os.path.basename(self.task_definition.output_file),
+                                           self.task_dir, self.collected_file_names)
+        copy2(path, self.task_definition.output_file)
+        return True
 
     def _get_next_subtask(self):
         logger.debug('Getting next task [type=trancoding, task_id={}]'.format(
@@ -101,23 +140,23 @@ class TranscodingTask(CoreTask):
 
     def query_extra_data(self, perf_index: float, node_id: Optional[str] = None,
                          node_name: Optional[str] = None) -> Task.ExtraData:
+        with self.lock:
+            sid = self.create_subtask_id()
 
-        sid = self.create_subtask_id()
+            subtask_num = self._get_next_subtask()
+            subtask = {}
+            transcoding_params = self._get_extra_data(subtask_num)
+            subtask['perf'] = perf_index
+            subtask['node_id'] = node_id
+            subtask['subtask_id'] = sid
+            subtask['transcoding_params'] = transcoding_params
+            subtask['subtask_num'] = subtask_num
+            subtask['status'] = SubtaskStatus.starting
 
-        subtask_num = self._get_next_subtask()
-        subtask = {}
-        transcoding_params = self._get_extra_data(subtask_num)
-        subtask['perf'] = perf_index
-        subtask['node_id'] = node_id
-        subtask['subtask_id'] = sid
-        subtask['transcoding_params'] = transcoding_params
-        subtask['subtask_num'] = subtask_num
-        subtask['status'] = SubtaskStatus.starting
+            self.subtasks_given[sid] = subtask
 
-        self.subtasks_given[sid] = subtask
-
-        return Task.ExtraData(ctd=self._get_task_computing_definition(
-            sid, transcoding_params, perf_index))
+            return Task.ExtraData(ctd=self._get_task_computing_definition(
+                sid, transcoding_params, perf_index))
 
     def query_extra_data_for_test_task(
             self) -> golem_messages.message.ComputeTaskDef:
@@ -219,7 +258,7 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         # FIXME get metadata by ffmpeg docker container
         # with open(path) as f:
         # return json.load(f)
-        return {'container': 'mp4'}
+        return {'container': 'ts'}
 
     @classmethod
     def _get_required_field(cls, dict, key: str, validator=lambda _: True) \
@@ -239,5 +278,3 @@ class TranscodingTaskBuilder(CoreTaskBuilder):
         container = options.get('container', cls._get_presets(
             definition.options.input_stream_path))
         return '{}.{}'.format(path, container)
-
-
