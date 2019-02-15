@@ -1,4 +1,5 @@
 --extra-index-url https://builds.golem.network
+scikit-learn==0.19.1
 OpenEXR
 scipy
 six==1.5
