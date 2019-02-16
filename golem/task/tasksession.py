@@ -1031,7 +1031,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             msg.task_to_compute.compute_task_def['deadline']
         )
         svt = msg_helpers.subtask_verification_time(msg.report_computed_task)
-        delay = ttc_deadline + svt - datetime.datetime.utcnow()
+        delay = ttc_deadline + svt - datetime.datetime.utcnow() + \
+                datetime.timedelta(seconds=1)  # added for safety
         logger.debug(
             '[CONCENT] Delayed ForceResults. msg=%r, delay=%r',
             delayed_forcing_msg,
