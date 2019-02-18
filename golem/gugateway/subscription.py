@@ -1,13 +1,16 @@
 from collections import Counter
-
 from enum import auto, Enum
-from golem_messages.datastructures.tasks import TaskHeader
 from logging import Logger, getLogger
-from pydispatch import dispatcher
+from pathlib import Path
 from typing import Union, Dict, List, Optional
 
-from golem.client import Client
+from golem_messages.datastructures.tasks import TaskHeader
+from golem_messages.message.tasks import SubtaskResultsAccepted, \
+    SubtaskResultsRejected
+from pydispatch import dispatcher
+
 from golem.clientconfigdescriptor import ClientConfigDescriptor
+from golem.task.taskserver import TaskServer
 
 logger: Logger = getLogger(__name__)
 
@@ -28,7 +31,7 @@ class InvalidTaskType(Exception):
     known_task_types = ', '.join(TaskType.__members__)
 
     def __str__(self):
-        return f'task type {self.args[0]} not known. Here is a list' \
+        return f'task type {self.args[0]} not known. List' \
                f' of supported task types: {self.known_task_types}'
 
 
@@ -45,15 +48,18 @@ class SubtaskStatus(Enum):
         try:
             return SubtaskStatus[task_status]
         except KeyError as e:
-            raise InvalidTaskStatus(str(e))
+            raise InvalidSubtaskStatus(str(e))
 
 
-class InvalidTaskStatus(Exception):
-    known_task_status = ', '.join(TaskType.__members__)
+class InvalidSubtaskStatus(Exception):
+    known_task_status = ', '.join(SubtaskStatus.__members__)
 
     def __str__(self):
-        return f'subtask status {self.args[0]} not known. Here is a list' \
-               f' of supported task statuses: {self.known_task_types}'
+        if len(self.args[0].split()) == 1:
+            return f'subtask status {self.args[0]} not known. List' \
+                   f' of supported task statuses: {self.known_task_types}'
+
+        return self.args[0]
 
 
 class Task(object):
@@ -113,8 +119,11 @@ class Subtask(object):
         }
 
 
-# TODO: assign uuid for download
 class Resource(object):
+    """
+    Golem task resource(s) identified by local path relative to root
+    task manager folder.
+    """
 
     __slots__ = ['task_id', 'subtask_id', 'path']
 
@@ -133,6 +142,8 @@ class Resource(object):
 
 # TODO
 class SubtaskVerification(object):
+
+    # __slots__ = ['payment_ts', 'reason']
 
     def __init__(self, **kwargs):
         for key, value in kwargs.items():
@@ -218,11 +229,16 @@ class Subscription(object):
     def add_task_event(self, header: TaskHeader):
         self._add_event(header.task_id, task=Task(header))
 
-    def request_subtask(self, golem_client: Client, task_id: str) -> None:
-        self.set_config_to(golem_client.task_server.config_desc)
-        golem_client.task_server.request_task(task_id, self.performance)
-        dispatcher.connect(self.add_subtask_event, signal='golem.subtask')
+    def request_subtask(self, task_server: TaskServer, task_id: str) -> bool:
+        if task_id not in self.events:
+            return False
+
+        self.set_config_to(task_server.config_desc)
+        task_server.request_task(task_id, self.performance)
+        dispatcher.connect(self.add_subtask_event,
+                           signal='golem.subtask')
         self.increment(SubtaskStatus.requested)
+        return True
 
     def add_subtask_event(self, event='default', **kwargs) -> None:
         # TODO: persist or read existing subtasks upon start
@@ -239,6 +255,19 @@ class Subscription(object):
                 self.node_id, self.task_type, kwargs
             ))
 
+    # TODO: remove from events or mark cancelled
+    def cancel_subtask(self, task_server: TaskServer, subtask_id: str) -> bool:
+        if subtask_id not in self.events \
+                or subtask_id not in task_server.task_sessions:
+            return False
+
+        self.set_config_to(task_server.config_desc)
+        task_server.task_sessions[subtask_id].send_subtask_cancel(subtask_id)
+        dispatcher.disconnect(self.add_resource_event,
+                              signal='golem.resource')
+        self.increment(SubtaskStatus.cancelled)
+        return True
+
     def add_resource_event(self, **kwargs) -> None:
         # print(f'event: {event}, kwargs: {kwargs}')
         resource = Resource(**kwargs)
@@ -250,6 +279,49 @@ class Subscription(object):
             logger.warning('unexpected resource event for %s/%s: %r' % (
                 self.node_id, self.task_type, kwargs
             ))
+
+    def finish_subtask(self, task_server: TaskServer, root_path: str,
+                       subtask_id: str, request_json: dict) -> bool:
+        if subtask_id not in self.events \
+                or subtask_id not in task_server.task_sessions:
+            return False
+
+        subtask = self.events[subtask_id].subtask
+        status = SubtaskStatus.match(request_json['status'])
+        self.set_config_to(task_server.config_desc)
+
+        # TODO: SubtaskStatus.timedout is not send(?), but should be counted
+        if status == SubtaskStatus.succeeded:
+            result_path = Path(root_path).joinpath(request_json['path'])
+            result = {"data": [str(p) for p in result_path.glob('*')]}
+
+            # TODO: should we call
+            # golem_client.task_server.task_computer.__task_finished(subtask)
+            task_server.send_results(subtask_id, subtask.task_id, result)
+
+        elif status == SubtaskStatus.failed:
+            reason = request_json['reason']
+            task_server.send_task_failed(subtask_id, subtask.task_id, reason)
+
+        else:
+            logger.warning('wrong %s result for subtask %s', status, subtask_id)
+            raise InvalidSubtaskStatus(f'subtask result status {status} '
+                                       'must be one of: succeeded or failed')
+
+        dispatcher.connect(self.add_result_verification_event,
+                           signal='golem.message')
+        self.increment(status)
+        return True
+
+    def add_result_verification_event(self, **kwargs) -> None:
+        msg = kwargs['message']
+        if msg.subtask_id in self.events \
+                and (isinstance(msg, SubtaskResultsAccepted)
+                     or isinstance(msg, SubtaskResultsRejected)):
+            self._add_event(f'rv-{msg.subtask_id}', subtask_verification=(
+                SubtaskVerification(**kwargs)))
+            dispatcher.disconnect(self.add_result_verification_event,
+                                  signal='golem.message')
 
     def increment(self, status: Union[SubtaskStatus, str]) -> None:
         if isinstance(status, str):

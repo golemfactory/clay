@@ -15,7 +15,7 @@ from wsgidav.http_authenticator import HTTPAuthenticator
 
 from golem.client import Client
 from .subscription import SubtaskStatus, Subscription, TaskType, \
-    InvalidTaskType, InvalidTaskStatus
+    InvalidTaskType, InvalidSubtaskStatus
 
 logger: logging.Logger = logging.getLogger(__name__)
 default_port: int = 55001
@@ -259,13 +259,12 @@ def want_to_compute_task(node_id, task_id) -> (str, int):
         return _not_found(f'subscription for {node_id}')
 
     for subs in subscriptions[node_id].values():
-        if task_id in subs.events:
-            try:
-                subs.request_subtask(golem_client, task_id)
+        try:
+            if subs.request_subtask(golem_client.task_server, task_id):
                 logger.info('want task %s for %s', task_id, subs)
                 return _json_response('OK')
-            except KeyError as e:
-                return _not_found(f'task {e}')
+        except KeyError as e:
+            return _not_found(f'task {e}')
     else:
         return _not_found(f'task {task_id}')
 
@@ -320,61 +319,25 @@ def subtask_info(node_id, subtask_id) -> (str, int):
 def subtask_result(node_id, subtask_id) -> (str, int):
     """Reports subtask computation result"""
 
-    try:
-        status = SubtaskStatus.match(request.json['status'])
-    except KeyError as e:
-        return _invalid_input('{e} is required in body')
-    except InvalidTaskStatus as e:
-        return _invalid_input(e)
-
-    # TODO: SubtaskStatus.timedout is not send(?), but should be counted
-    if status not in [SubtaskStatus.succeeded, SubtaskStatus.failed]:
-        logger.warning('wrong %s result for subtask %s', status, subtask_id)
-        return _invalid_input(f'subtask result status {status} '
-                              f'must be one of: succeeded or failed')
-
     if node_id not in subscriptions:
         return _not_found(f'subscription for {node_id}')
 
     for subs in subscriptions[node_id].values():
-        if subtask_id in subs.events:
-            subtask = subs.events[subtask_id].subtask
+        try:
+            if subs.finish_subtask(golem_client.task_server,
+                                   golem_client.task_manager.root_path,
+                                   subtask_id,
+                                   request.json):
+                logger.info('%s subtask %s for %s', request.json['status'],
+                            subtask_id, subs)
+                return _json_response('OK')
+        except KeyError as e:
+            return _invalid_input(f'{e} is required in body')
+        except InvalidSubtaskStatus as e:
+            return _invalid_input(e)
+        except RuntimeError as e:
+            return _json_response(str(e), 500)
 
-            if status == SubtaskStatus.succeeded:
-                if 'path' not in request.json:
-                    return _invalid_input('path is required')
-
-                root_path = Path(golem_client.task_manager.root_path)
-                result = {"data": [
-                    str(path) for path in
-                    root_path.joinpath(request.json['path']).glob('*')
-                ]}
-
-                try:
-                    golem_client.task_server.send_results(
-                        subtask_id,
-                        subtask.task_id,
-                        result
-                    )
-                except RuntimeError as e:
-                    return _json_response(str(e), 500)
-
-                # TODO: should we call
-                # golem_client.task_server.task_computer.__task_finished(subtask)
-
-            else:  # status == SubtaskStatus.failed:
-                if 'reason' not in request.json:
-                    return _invalid_input('reason is required')
-
-                golem_client.task_server.send_task_failed(
-                    subtask_id,
-                    subtask.task_id,
-                    request.json['reason'],
-                )
-
-            subs.increment(status)
-            logger.info('%s subtask %s for %s', status, subtask_id, subs)
-            return _json_response('OK')
     else:
         return _not_found(f'subtask {subtask_id}')
 
@@ -387,13 +350,12 @@ def cancel_subtask(node_id, subtask_id) -> (str, int):
         return _not_found(f'subscription for {node_id}')
 
     for subs in subscriptions[node_id].values():
-        if subtask_id in subs.events and subtask_id in \
-                golem_client.task_server.task_sessions:
-            session = golem_client.task_server.task_sessions[subtask_id]
-            session.send_subtask_cancel(subtask_id)
-            subs.increment(SubtaskStatus.cancelled)
-            logger.info('cancelled subtask %s for %s', subtask_id, subs)
-            return _json_response('OK')
+        try:
+            if subs.cancel_subtask(golem_client.task_server, subtask_id):
+                logger.info('cancelled subtask %s for %s', subtask_id, subs)
+                return _json_response('OK')
+        except KeyError as e:
+            return _not_found(f'subtask {e}')
     else:
         return _not_found(f'subtask {subtask_id}')
 

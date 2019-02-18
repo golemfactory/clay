@@ -474,8 +474,6 @@ class TaskHeaderKeeper:
                 return True
 
             self.task_headers[task_id] = header
-            dispatcher.send(signal='golem.task', header=header)
-
             self.last_checking[task_id] = datetime.datetime.now()
 
             self._get_tasks_by_owner_set(header.task_owner.key).add(task_id)
@@ -503,7 +501,8 @@ class TaskHeaderKeeper:
         if not support and task_id in self.supported_tasks:
             self.supported_tasks.remove(task_id)
 
-        # TODO: consider adding dispatcher event for gu gateway
+        dispatcher.send(signal='golem.task', header=header)
+
         if support and task_id not in self.supported_tasks:
             logger.info(
                 "Adding task %r support=%r",
