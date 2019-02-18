@@ -120,8 +120,8 @@ class TaskServer(
         # Remove .task_sessions when Message Queue is implemented
         # https://github.com/golemfactory/golem/issues/2223
         self.task_sessions = {}
-        self.task_sessions_incoming = weakref.WeakSet()
-        self.task_sessions_outgoing = weakref.WeakSet()
+        self.task_sessions_incoming: weakref.WeakSet = weakref.WeakSet()
+        self.task_sessions_outgoing: weakref.WeakSet = weakref.WeakSet()
 
         OfferPool.change_interval(self.config_desc.offer_pooling_interval)
 
