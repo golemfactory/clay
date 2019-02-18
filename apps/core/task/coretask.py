@@ -446,7 +446,7 @@ class CoreTask(Task):
     @handle_key_error
     def _mark_subtask_restarted(self, subtask_id):
         logger.debug('_mark_subtask_restarted. subtask_id=%r', subtask_id)
-        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.restarted
+        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
         node_id = self.subtasks_given[subtask_id]['node_id']
         if node_id in self.counting_nodes:
             self.counting_nodes[node_id].cancel()
