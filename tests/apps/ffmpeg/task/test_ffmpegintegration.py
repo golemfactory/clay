@@ -1,10 +1,7 @@
 import os
 
-from apps.transcoding.common import TranscodingTaskBuilderException, \
-    AudioCodec, VideoCodec, Container
 from apps.transcoding.ffmpeg.task import ffmpegTaskTypeInfo
 from golem.testutils import TestTaskIntegration
-
 
 
 class TestffmpegIntegration(TestTaskIntegration):
@@ -17,7 +14,6 @@ class TestffmpegIntegration(TestTaskIntegration):
         self.tt = ffmpegTaskTypeInfo()
 
     def test_simple_case(self):
-
         taks_dict = {
             'type': 'FFMPEG',
             'name': 'test task',
@@ -27,7 +23,7 @@ class TestffmpegIntegration(TestTaskIntegration):
             'bid': 1.0,
             'resources': [self.RESOURCE_STREAM],
             'options': {
-                'output_path': '/tmp/',
+                'output_path': '/tmp/test6969',
                 'video': {
                     'codec': 'libx264',
                     'resolution': [320, 240],
@@ -39,5 +35,3 @@ class TestffmpegIntegration(TestTaskIntegration):
 
         task = self.build_task(ffmpegTaskTypeInfo(), taks_dict)
         self.execute_subtasks(1)
-
-
