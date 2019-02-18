@@ -889,9 +889,10 @@ class TestTaskServer2(TaskServerBase):
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 
     def test_disconnect(self, *_):
-        self.ts.task_sessions = {'task_id': Mock()}
+        session_mock = Mock()
+        self.ts.task_sessions_outgoing.add(session_mock)
         self.ts.disconnect()
-        assert self.ts.task_sessions['task_id'].dropped.called
+        session_mock.dropped.assert_called_once_with()
 
 
 # pylint: disable=too-many-ancestors

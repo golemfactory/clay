@@ -970,11 +970,10 @@ class WaitingForResultsTestCase(
         )
         self.ts.task_server.keys_auth = keys_auth
         self.ts.concent_service.variant = variables.CONCENT_CHOICES['test']
-        ttc_prefix = 'report_computed_task__task_to_compute'
+        ttc_prefix = 'task_to_compute'
         hdr_prefix = f'{ttc_prefix}__want_to_compute_task__task_header'
         self.msg = msg_factories.tasks.WaitingForResultsFactory(
             sign__privkey=requestor_keys.ecc.raw_privkey,
-            report_computed_task__sign__privkey=keys_auth.ecc.raw_privkey,
             **{
                 f'{ttc_prefix}__sign__privkey': requestor_keys.ecc.raw_privkey,
                 f'{ttc_prefix}__requestor_public_key':

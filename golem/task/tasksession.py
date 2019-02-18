@@ -531,15 +531,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             subtasks = task.get_finishing_subtasks(
                 node_id=self.key_id,
             )
-            report_computed_task = get_task_message(
-                message_class_name='ReportComputedTask',
+            previous_ttc = get_task_message(
+                message_class_name='TaskToCompute',
                 node_id=self.key_id,
                 task_id=msg.task_id,
                 subtask_id=subtasks[0]['subtask_id'],
             )
             self.send(
                 message.tasks.WaitingForResults(
-                    report_computed_task=report_computed_task,
+                    task_to_compute=previous_ttc,
                 ),
             )
             return
