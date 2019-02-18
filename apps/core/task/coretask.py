@@ -297,7 +297,7 @@ class CoreTask(Task):
         if subtask_info['status'].is_active():
             # TODO Restarted tasks that were waiting for verification should
             # cancel it. Issue #2423
-            self._mark_subtask_failed(subtask_id)
+            self._mark_subtask_restarted(subtask_id)
         elif subtask_info['status'] == SubtaskStatus.finished:
             self._mark_subtask_failed(subtask_id)
             self.num_tasks_received -= 1
@@ -442,6 +442,12 @@ class CoreTask(Task):
         except IOError as err:
             logger.error("Can't read file %s: %s", log, err)
             return ""
+
+    @handle_key_error
+    def _mark_subtask_restarted(self, subtask_id):
+        logger.debug('_mark_subtask_restarted. subtask_id=%r', subtask_id)
+        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.restarted
+        self.num_failed_subtasks += 1
 
     @handle_key_error
     def _mark_subtask_failed(self, subtask_id):
