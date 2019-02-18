@@ -4,30 +4,25 @@ import os.path
 import shutil
 import tempfile
 import unittest
+import uuid
 from pathlib import Path
 from time import sleep
 
 import ethereum.keys
 import pycodestyle
+from golem_messages.factories.datastructures import p2p as dt_p2p_factory
 
+from apps.appsmanager import AppsManager
 from golem.core.common import get_golem_path, is_windows, is_osx
+from golem.core.keysauth import KeysAuth
 from golem.core.simpleenv import get_local_datadir
 from golem.database import Database
-from golem.model import DB_MODELS, db, DB_FIELDS
-
-from golem.resource.dirmanager import DirManager
-from golem_messages.factories.datastructures import p2p as dt_p2p_factory
-from apps.core.task.coretask import CoreTask, CoreTaskBuilder, CoreTaskTypeInfo
+from golem.docker.image import DockerImage
 from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
-import uuid
-from golem.docker.job import DockerJob
-from golem.docker.client import local_client
-import docker.errors
-from golem.docker.image import DockerImage
-import shutil
+from golem.model import DB_MODELS, db, DB_FIELDS
+from golem.resource.dirmanager import DirManager
 from golem.task.taskmanager import TaskManager
-
 
 logger = logging.getLogger(__name__)
 
@@ -194,20 +189,26 @@ class TestTaskIntegration(TempDirFixture):
         self.task = None
         self.dir_manager = DirManager(self.root_dir)
 
-        keys_auth = str(uuid.uuid4())
-        self.task_manager = TaskManager(self.node, keys_auth, self.root_dir)
+        # load all apps to be enabled for tests
+        app_manager = AppsManager()
+        app_manager.load_all_apps()
+
+        self.keys_auth = KeysAuth(datadir=self.tempdir, private_key_name="test_key",
+                                  password="test")
+
+        self.task_manager = TaskManager(self.node, self.keys_auth, self.root_dir,
+                                        apps_manager=app_manager)
 
         self.dm = DockerTaskThread.docker_manager = DockerManager.install()
 
-
     def build_task(self, task_type_info, task_dict):
 
-        self.task = self.task_manager.create_task( task_dict )
+        self.task = self.task_manager.create_task(task_dict)
 
         # builder_type = task_type_info.task_builder_type
 
         # minimal = False
-    
+
         # definition = builder_type.build_definition(task_type_info, task_dict, minimal)
         # definition.task_id = str(uuid.uuid4())
         # definition.concent_enabled = task_dict.get('concent_enabled', False)
@@ -219,14 +220,13 @@ class TestTaskIntegration(TempDirFixture):
 
         return self.task
 
-
     def execute_subtask(self, task):
 
         node_id = uuid.uuid4()
-        node_name = str( node_id )
+        node_name = str(node_id)
 
         ctd = task.query_extra_data(0, node_id, node_name).ctd
-        extra_data = ctd[ "extra_data" ]
+        extra_data = ctd["extra_data"]
 
         subtask_dir = os.path.join(self.root_dir, node_name)
         script_filepath = extra_data['script_filepath']
@@ -239,20 +239,17 @@ class TestTaskIntegration(TempDirFixture):
 
         result = self._create_test_job(image, subtask_dir, script_filepath, extra_data)
 
-
     def execute_subtasks(self, num_subtasks):
 
         for i in range(num_subtasks):
             self.execute_subtask(self.task)
 
-
     def _copy_resources(self, task, root_dir):
 
-        [ resources_dir, _, _] = self._create_docker_dirs(root_dir)
-        
+        [resources_dir, _, _] = self._create_docker_dirs(root_dir)
+
         for res in task.task_resources:
             shutil.copy(res, resources_dir)
-
 
     def _create_docker_dirs(self, root_dir):
 
@@ -265,23 +262,26 @@ class TestTaskIntegration(TempDirFixture):
         os.makedirs(work_dir, exist_ok=True)
         os.makedirs(output_dir, exist_ok=True)
 
-        return [ resources_dir, work_dir, output_dir ]
-
+        return [resources_dir, work_dir, output_dir]
 
     def _create_test_job(self, image, root_dir, script, params):
 
-        [ resources_dir, work_dir, output_dir ] = self._create_docker_dirs(root_dir)
+        [resources_dir, work_dir, output_dir] = self._create_docker_dirs(root_dir)
 
         dir_mapping = DockerTaskThread.specify_dir_mapping(
             output=output_dir, temporary=work_dir,
             resources=resources_dir, logs=work_dir, work=work_dir)
 
         dtt = DockerTaskThread(docker_images=[image],
-            extra_data=params,
-            dir_mapping=dir_mapping,
-            timeout=300)
+                               extra_data=params,
+                               dir_mapping=dir_mapping,
+                               timeout=300)
 
         dtt.run()
         if dtt.error:
             raise Exception(dtt.error_msg)
         return dtt.result[0] if isinstance(dtt.result, tuple) else dtt.result
+
+    def tearDown(self):
+        shutil.rmtree(self.tempdir)
+        super().tearDown()
