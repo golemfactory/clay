@@ -208,9 +208,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
 
         def verification_finished():
-            logger.warning("Verification finished handler.")
+            logger.debug("Verification finished handler.")
             if not self.task_manager.verify_subtask(subtask_id):
-                logger.warning("Verification failure. subtask_id=%r", subtask_id)
+                logger.debug("Verification failure. subtask_id=%r", subtask_id)
                 send_verification_failure()
                 self.dropped()
                 return
@@ -259,7 +259,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
     def _reject_subtask_result(self, subtask_id, reason):
-        logger.warning('_reject_subtask_result(%r, %r)', subtask_id, reason)
+        logger.debug('_reject_subtask_result(%r, %r)', subtask_id, reason)
 
         self.task_server.reject_result(subtask_id, self.key_id)
         self.send_result_rejected(subtask_id, reason)
@@ -891,7 +891,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
     @history.provider_history
     def _react_to_subtask_results_rejected(
             self, msg: message.tasks.SubtaskResultsRejected):
-        logger.warning('Got result rejected %r', msg)
         subtask_id = msg.report_computed_task.subtask_id
         if self.check_requestor_for_subtask(subtask_id) != \
                 RequestorCheckResult.OK:
@@ -901,7 +900,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             subtask_id,
             'ForceSubtaskResults',
         )
-        logger.warning('Got result rejected pushing')
 
         if msg.task_to_compute.concent_enabled:
             # if the Concent is enabled for this subtask, as a provider,
@@ -938,7 +936,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 subtask_id=subtask_id,
             )
 
-        logger.warning('Got result rejected sending')
         dispatcher.send(
             signal='golem.message',
             event='received',
@@ -1001,7 +998,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
     def _react_to_rand_val(self, msg):
-        logger.warning('reacting for %r, %r', msg, self)
         # If we disconnect in react_to_hello, we still might get the RandVal
         # message
         if self.key_id is None:
@@ -1010,7 +1006,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if self.rand_val == msg.rand_val:
             self.verified = True
             self.task_server.verified_conn(self.conn_id, )
-            logger.warning('conn verif, postponed len = %s, %s', len(self.msgs_to_send), self)
             for msg_ in self.msgs_to_send:
                 self.send(msg_)
             self.msgs_to_send = []
@@ -1073,11 +1068,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                            self.key_id, msg.subtask_id)
 
     def send(self, msg, send_unverified=False):
-        logger.warning('sending %r, %r', msg, self)
         if not self.verified and not send_unverified:
-            logger.warning('postponing %r, %r', type(msg), self)
             self.msgs_to_send.append(msg)
-            logger.warning('postponed len = %s, %s', len(self.msgs_to_send), self)
             return
         BasicSafeSession.send(self, msg, send_unverified=send_unverified)
         self.task_server.set_last_message(
