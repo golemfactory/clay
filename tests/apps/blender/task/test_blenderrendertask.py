@@ -150,8 +150,8 @@ class TestBlenderFrameTask(TempDirFixture):
                 SubtaskVerificationState.VERIFIED,
                 result)
 
-        with mock.patch('golem.verificator.rendering_verifier.'
-                        'RenderingVerifier.start_verification',
+        with mock.patch('golem.verificator.blender_verifier.'
+                        'BlenderVerifier.start_verification',
                         side_effect=verification_finished1):
             self.bt.computation_finished(
                 extra_data3.ctd['subtask_id'],
@@ -181,8 +181,8 @@ class TestBlenderFrameTask(TempDirFixture):
         img.save(file2, "PNG")
         img.close()
 
-        with mock.patch('golem.verificator.rendering_verifier.'
-                        'RenderingVerifier.start_verification',
+        with mock.patch('golem.verificator.blender_verifier.'
+                        'BlenderVerifier.start_verification',
                         side_effect=verification_finished2):
             self.bt.computation_finished(
                 extra_data4.ctd['subtask_id'],
