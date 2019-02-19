@@ -444,7 +444,7 @@ class CoreTask(Task):
             return ""
 
     @handle_key_error
-    def _mark_subtask_failed(self, subtask_id, ban_node: bool = True):
+    def _mark_subtask_failed(self, subtask_id: str, ban_node: bool = True):
         logger.debug('_mark_subtask_failed. subtask_id=%r', subtask_id)
 
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
