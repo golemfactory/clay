@@ -26,16 +26,16 @@ TREE_PATH = "/golem/scripts/tree35_[crr=87.71][frr=0.92].pkl"
 
 def calculate_metrics(reference_img_path,
                       result_img_path,
-                      xres,
-                      yres,
+                      base_coord_x,
+                      base_coord_y,
                       metrics_output_filename='metrics.txt'):
     """
     This is the entry point for calculation of metrics between the
     rendered_scene and the sample(cropped_img) generated for comparison.
     :param reference_img_path:
     :param result_img_path:
-    :param xres: x position of crop (left, top)
-    :param yres: y position of crop (left, top)
+    :param base_coord_x: x position of crop (left, top)
+    :param base_coord_y: y position of crop (left, top)
     :param metrics_output_filename:
     :return:
     """
@@ -43,14 +43,14 @@ def calculate_metrics(reference_img_path,
     cropped_img, scene_crops, _rendered_scene = \
         _load_and_prepare_images_for_comparison(reference_img_path,
                                                 result_img_path,
-                                                xres,
-                                                yres)
+                                                base_coord_x,
+                                                base_coord_y)
 
     _effective_metrics, classifier, labels, available_metrics = get_metrics()
     default_metrics = {'Label': VERIFICATION_FAIL}
     for crop_offset, crop_image in scene_crops.items():
         try:
-            crop_coords = (xres + crop_offset[0], yres + crop_offset[1])
+            crop_coords = (base_coord_x + crop_offset[0], base_coord_y + crop_offset[1])
             logger.debug('Trying to match crop {}[offset = {}]'
                          .format(crop_coords, crop_offset))
             metrics = compare_images(cropped_img, crop_image, available_metrics)
@@ -70,7 +70,7 @@ def calculate_metrics(reference_img_path,
             logger.exception('Error has occurred trying to match crop '
                              'offset={}]'.format(crop_offset), e)
     logger.warning('No crop satisfied verification process. Returning metrics'
-                   'for default one [coordinates={}]'.format((xres, yres)))
+                   'for default one [coordinates={}]'.format((base_coord_x, base_coord_y)))
 
     scene_crops.get((0, 0)).save(CROP_NAME)
     return ImgMetrics(default_metrics).write_to_file(metrics_path)

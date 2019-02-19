@@ -15,7 +15,7 @@ with open('params.json', 'r') as params_file:
     params = json.load(params_file)
 
 
-def run_img_compare_task(verification_files, xres, yres):
+def run_img_compare_task(verification_files, base_coord_x, base_coord_y):
     """
     This script is run as an entry point for docker.
     It follows the flow of running docker in golem_core.
@@ -25,8 +25,8 @@ def run_img_compare_task(verification_files, xres, yres):
     they are written to 'params.json' file.
 
     :param verification_files:
-    :param xres:
-    :param yres:
+    :param base_coord_x:
+    :param base_coord_y:
     :return:
     """
 
@@ -52,8 +52,8 @@ def run_img_compare_task(verification_files, xres, yres):
         results_path = img_metrics_calculator.\
             calculate_metrics(cropped_img_path,
                               rendered_scene_path,
-                              xres,
-                              yres,
+                              base_coord_x,
+                              base_coord_y,
                               metrics_output_filename=file_path)
 
         counter += 1
