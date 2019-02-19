@@ -14,7 +14,8 @@ PARAMS_FILE = "params.json"
 def do_split(path_to_stream, parts):
     video_length = ffmpeg.get_video_len(path_to_stream)
 
-    split_file = ffmpeg.split_video(path_to_stream, OUTPUT_DIR, video_length / parts)
+    split_file = ffmpeg.split_video(path_to_stream,
+                                    OUTPUT_DIR, video_length / parts)
     m3u8_main_list = m3u8.load(split_file)
 
     results = dict()
@@ -43,9 +44,11 @@ def do_transcode(track, targs, output, use_playlist):
 
 
 def do_merge(playlists_dir, outputfilename):
-    [output_playlist, _] = os.path.splitext(os.path.basename(outputfilename))
+    [output_playlist, _] = os.path.splitext(
+        os.path.basename(outputfilename))
     merged = join_playlists(playlists_dir)
-    merged_filename = os.path.join("/golem/resources", output_playlist + ".m3u8")
+    merged_filename = os.path.join(RESOURCES_DIR,
+                                   output_playlist + ".m3u8")
     file = open(merged_filename, 'w')
     file.write(merged.dumps())
     file.close()

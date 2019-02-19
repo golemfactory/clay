@@ -106,8 +106,11 @@ class TranscodingTask(CoreTask):
 
             self.num_tasks_received += 1
 
-        if self.num_tasks_received == self.total_tasks:
-            self._merge_video()
+            logger.info("Transcoded {} of {} chunks".
+                        format(self.num_tasks_received, self.total_tasks))
+
+            if self.num_tasks_received == self.total_tasks:
+                self._merge_video()
 
     def _collect_results(self, results):
         self.collected_files.extend(results)

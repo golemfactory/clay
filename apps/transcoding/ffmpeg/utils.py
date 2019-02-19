@@ -3,12 +3,13 @@ import json
 import logging
 import os
 from pathlib import Path
-from shutil import copy2
+
 from apps.transcoding import common
 from apps.transcoding.common import ffmpegException
 from apps.transcoding.ffmpeg.environment import ffmpegEnvironment
 from golem.core.common import HandleError
 from golem.docker.image import DockerImage
+from golem.docker.job import DockerJob
 from golem.docker.task_thread import DockerTaskThread, DockerBind
 from golem.environments.environment import Environment
 from golem.environments.environmentsmanager import EnvironmentsManager
@@ -26,22 +27,6 @@ class Commands(enum.Enum):
     SPLIT = ('split', 'split-results.json')
     TRANSCODE = ('transcode', '')
     MERGE = ('merge', '')
-
-
-def collect_files(dir, files):
-    results = []
-    os.makedirs(dir, exist_ok=True)
-    for file in files:
-        if not os.path.isfile(file):
-            raise FileNotFoundError
-        if os.path.dirname(file) != dir:
-            new_path = file.replace(os.path.dirname(file), dir)
-            copy2(file, new_path)
-            results.append(new_path)
-        else:
-            results.append(file)
-
-    return results
 
 
 class StreamOperator:
@@ -83,44 +68,57 @@ class StreamOperator:
                         .format(input_stream, streams_list))
             return streams_list
 
-    @staticmethod
-    def prepare_merge_job(task_dir, chunks):
+    def _prepare_merge_job(self, task_dir, chunks):
         try:
-            # should it be task dir?
             resources_dir = task_dir
-            # each chunk must be in the same directory
             output_dir = os.path.join(resources_dir, 'merge', 'output')
             os.makedirs(output_dir)
             work_dir = os.path.join(resources_dir, 'merge', 'work')
             os.makedirs(work_dir)
-            files = collect_files(resources_dir, chunks)
-            return resources_dir, output_dir, work_dir, list(
-                map(lambda chunk: chunk.replace(resources_dir,
-                                                '/golem/resources'),
-                    files))
-        except FileNotFoundError:
-            raise ffmpegException('Result file does not exist')
         except OSError:
-            raise ffmpegException("Failed to prepare merge job")
+            raise ffmpegException("Failed to prepare video \
+                merge directory structure")
+        files = self._collect_files(resources_dir, chunks)
+        return resources_dir, output_dir, work_dir, list(
+            map(lambda chunk: chunk.replace(resources_dir,
+                                            DockerJob.RESOURCES_DIR),
+                files))
+
+    @staticmethod
+    def _collect_files(dir, files):
+        # each chunk must be in the same directory
+        results = list()
+        for file in files:
+            if not os.path.isfile(file):
+                raise ffmpegException("Missing result file: {}".format(file))
+            elif os.path.dirname(file) != dir:
+                raise ffmpegException("Result file: {} should be in the \
+                proper directory: {}".format(file, dir))
+
+            results.append(file)
+
+        return results
 
     def merge_video(self, filename, task_dir, chunks):
         resources_dir, output_dir, work_dir, chunks = \
-            self.prepare_merge_job(task_dir, chunks)
+            self._prepare_merge_job(task_dir, chunks)
 
         extra_data = {
             'script_filepath': FFMPEG_BASE_SCRIPT,
             'command': Commands.MERGE.value[0],
-            'output_stream': os.path.join('/golem/output', filename),
+            'output_stream': os.path.join(DockerJob.OUTPUT_DIR, filename),
             'chunks': chunks
         }
 
-        logger.debug('Running merge [params = {}]'.format(extra_data))
+        logger.info('Merging video')
+        logger.debug('Merge params: {}'.format(extra_data))
 
         dir_mapping = self._specify_dir_mapping(output=output_dir, temporary=work_dir,
                                                 resources=task_dir, logs=output_dir,
                                                 work=work_dir)
         self._do_job_in_container(dir_mapping, extra_data)
 
+        logger.info("Video merged successfully!")
         return os.path.join(output_dir, filename)
 
     @staticmethod
