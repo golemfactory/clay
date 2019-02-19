@@ -743,7 +743,8 @@ class TaskManager(TaskEventListener):
         return ss
 
     @handle_subtask_key_error
-    def task_computation_failure(self, subtask_id: str, err: object) -> bool:
+    def task_computation_failure(self, subtask_id: str, err: object,
+                                 ban_node: bool = True) -> bool:
         task_id = self.subtask2task_mapping[subtask_id]
         task = self.tasks[task_id]
         task_state = self.tasks_states[task_id]
@@ -760,7 +761,7 @@ class TaskManager(TaskEventListener):
                                      op=OtherOp.UNEXPECTED)
             return False
 
-        task.computation_failed(subtask_id)
+        task.computation_failed(subtask_id, ban_node)
 
         subtask_state.subtask_progress = 1.0
         subtask_state.subtask_rem_time = 0.0
@@ -778,23 +779,8 @@ class TaskManager(TaskEventListener):
         task_id = self.subtask2task_mapping[subtask_id]
         task_state = self.tasks_states[task_id]
         subtask_state = task_state.subtask_states[subtask_id]
-        subtask_status = subtask_state.subtask_status
-
-        if subtask_state.time_started + timeout < time.time():
-            return self.task_computation_failure(subtask_id, err)
-
-        if subtask_status.is_computed():
-            self.restart_subtask(subtask_id)
-            return True
-
-        logger.warning(
-            "Subtask %s cannot be cancelled (restarted) with a '%s' status",
-            subtask_id, subtask_status.value
-        )
-        self.notice_task_updated(task_id,
-                                 subtask_id=subtask_id,
-                                 op=OtherOp.UNEXPECTED)
-        return False
+        ban_node = subtask_state.time_started + timeout < time.time()
+        return self.task_computation_failure(subtask_id, err, ban_node)
 
     def task_result_incoming(self, subtask_id):
         node_id = self.get_node_id_for_subtask(subtask_id)

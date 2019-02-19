@@ -677,11 +677,11 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                                                   "computing another task",
                                                   timeout)
         ss = self.tm.tasks_states["xyz"].subtask_states["aabbcc"]
-        assert ss.subtask_status == SubtaskStatus.restarted
+        assert ss.subtask_status == SubtaskStatus.failure
         assert not self.tm.task_computation_cancelled("aabbcc",
                                                       "computing another task",
                                                       timeout)
-        checker([("xyz", "aabbcc", SubtaskOp.RESTARTED),
+        checker([("xyz", "aabbcc", SubtaskOp.FAILED),
                  ("xyz", "aabbcc", OtherOp.UNEXPECTED)])
         del handler
 

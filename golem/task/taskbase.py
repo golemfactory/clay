@@ -199,9 +199,10 @@ class Task(abc.ABC):
         return  # Implement in derived class
 
     @abc.abstractmethod
-    def computation_failed(self, subtask_id):
+    def computation_failed(self, subtask_id: str, ban_node: bool = True):
         """ Inform that computation of a task with given id has failed
         :param subtask_id:
+        :param ban_node: Whether to ban this node from this task
         """
         return  # Implement in derived class
 

@@ -241,7 +241,7 @@ class DummyTask(Task):
         """
         self.resource_parts = resource_parts
 
-    def computation_failed(self, subtask_id):
+    def computation_failed(self, subtask_id, ban_node=True):
         print('DummyTask.computation_failed called')
         self.computation_finished(subtask_id, None)
 

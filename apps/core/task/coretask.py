@@ -199,8 +199,8 @@ class CoreTask(Task):
     def finished_computation(self):
         return self.num_tasks_received == self.total_tasks
 
-    def computation_failed(self, subtask_id):
-        self._mark_subtask_failed(subtask_id)
+    def computation_failed(self, subtask_id, ban_node=True):
+        self._mark_subtask_failed(subtask_id, ban_node)
 
     def computation_finished(self, subtask_id, task_result,
                              verification_finished=None):
@@ -297,7 +297,7 @@ class CoreTask(Task):
         if subtask_info['status'].is_active():
             # TODO Restarted tasks that were waiting for verification should
             # cancel it. Issue #2423
-            self._mark_subtask_restarted(subtask_id)
+            self._mark_subtask_failed(subtask_id)
         elif subtask_info['status'] == SubtaskStatus.finished:
             self._mark_subtask_failed(subtask_id)
             self.num_tasks_received -= 1
@@ -444,22 +444,16 @@ class CoreTask(Task):
             return ""
 
     @handle_key_error
-    def _mark_subtask_restarted(self, subtask_id):
-        logger.debug('_mark_subtask_restarted. subtask_id=%r', subtask_id)
-        self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
-        node_id = self.subtasks_given[subtask_id]['node_id']
-        if node_id in self.counting_nodes:
-            self.counting_nodes[node_id].cancel()
-        self.num_failed_subtasks += 1
-
-    @handle_key_error
-    def _mark_subtask_failed(self, subtask_id):
+    def _mark_subtask_failed(self, subtask_id, ban_node: bool = True):
         logger.debug('_mark_subtask_failed. subtask_id=%r', subtask_id)
 
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
         node_id = self.subtasks_given[subtask_id]['node_id']
         if node_id in self.counting_nodes:
-            self.counting_nodes[node_id].reject()
+            if ban_node:
+                self.counting_nodes[node_id].reject()
+            else:
+                self.counting_nodes[node_id].cancel()
         self.num_failed_subtasks += 1
 
     def get_resources(self):
