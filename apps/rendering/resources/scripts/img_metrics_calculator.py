@@ -50,7 +50,8 @@ def calculate_metrics(reference_img_path,
     default_metrics = {'Label': VERIFICATION_FAIL}
     for crop_offset, crop_image in scene_crops.items():
         try:
-            crop_coords = (base_coord_x + crop_offset[0], base_coord_y + crop_offset[1])
+            crop_coords = (base_coord_x + crop_offset[0], base_coord_y +
+                           crop_offset[1])
             logger.debug('Trying to match crop {}[offset = {}]'
                          .format(crop_coords, crop_offset))
             metrics = compare_images(cropped_img, crop_image, available_metrics)
@@ -70,7 +71,8 @@ def calculate_metrics(reference_img_path,
             logger.exception('Error has occurred trying to match crop '
                              'offset={}]'.format(crop_offset), e)
     logger.warning('No crop satisfied verification process. Returning metrics'
-                   'for default one [coordinates={}]'.format((base_coord_x, base_coord_y)))
+                   'for default one [coordinates={}]'.format((base_coord_x,
+                                                              base_coord_y)))
 
     scene_crops.get((0, 0)).save(CROP_NAME)
     return ImgMetrics(default_metrics).write_to_file(metrics_path)
