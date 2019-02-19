@@ -931,16 +931,17 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             )
 
         else:
-            dispatcher.send(
-                signal='golem.message',
-                event='received',
-                message=msg
-            )
-
             self.task_server.subtask_rejected(
                 sender_node_id=self.key_id,
                 subtask_id=subtask_id,
             )
+
+        logger.warning('Got result rejected sending')
+        dispatcher.send(
+            signal='golem.message',
+            event='received',
+            message=msg
+        )
 
         self.dropped()
 

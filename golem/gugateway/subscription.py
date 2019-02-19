@@ -52,12 +52,12 @@ class SubtaskStatus(Enum):
 
 
 class InvalidSubtaskStatus(Exception):
-    known_task_status = ', '.join(SubtaskStatus.__members__)
+    known_statuses = ', '.join(SubtaskStatus.__members__)
 
     def __str__(self):
         if len(self.args[0].split()) == 1:
             return f'subtask status {self.args[0]} not known. List' \
-                   f' of supported task statuses: {self.known_task_types}'
+                   f' of supported task statuses: {self.known_statuses}'
 
         return self.args[0]
 
@@ -242,7 +242,7 @@ class Subscription(object):
 
     def add_subtask_event(self, event='default', **kwargs) -> None:
         # TODO: persist or read existing subtasks upon start
-        # print(f'sub event: {event}, {kwargs}')
+        logger.debug('event: %r, kwargs: %r', event, kwargs)
         subtask = Subtask(**kwargs)
         if event == 'started' and subtask.task_id in self.events:
             self._add_event(subtask.subtask_id, subtask=subtask)
@@ -269,7 +269,7 @@ class Subscription(object):
         return True
 
     def add_resource_event(self, **kwargs) -> None:
-        # print(f'event: {event}, kwargs: {kwargs}')
+        logger.debug('kwargs: %r ', kwargs)
         resource = Resource(**kwargs)
         if resource.subtask_id in self.events:
             self._add_event(f'rs-{resource.subtask_id}', resource=resource)
@@ -314,6 +314,7 @@ class Subscription(object):
         return True
 
     def add_result_verification_event(self, **kwargs) -> None:
+        logger.debug('kwargs: %r ', kwargs)
         msg = kwargs['message']
         if msg.subtask_id in self.events \
                 and (isinstance(msg, SubtaskResultsAccepted)
