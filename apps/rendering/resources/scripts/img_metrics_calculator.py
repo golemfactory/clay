@@ -128,11 +128,16 @@ def convert_to_png_if_needed(img_path):
     return Image.open(file_name)
 
 
+def create_crop(rendered_scene, x, y, x_offset, y_offset, width, height):
+    return rendered_scene.crop((x + x_offset, y + y_offset,
+                                x + width + x_offset, y + height + y_offset))
+
+
 def get_crops(rendered_scene, x, y, width, height):
     offsets = itertools.product([0, -1, 1], repeat=2)
-    crops = {(x_offset, y_offset): rendered_scene.crop(
-        (x + x_offset, y + y_offset, x + width + x_offset,
-         y + height + y_offset)) for x_offset, y_offset in offsets}
+    crops = {(x_offset, y_offset):  create_crop(rendered_scene, x, y, x_offset,
+                                                y_offset, width, height)
+             for x_offset, y_offset in offsets}
     return crops
 
 
