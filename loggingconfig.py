@@ -99,6 +99,10 @@ LOGGING = {
             'level': 'DEBUG',
             'propagate': True,
         },
+        'golem.gugateway.subscription': {
+            'level': 'DEBUG',
+            'propagate': True,
+        },
         'wsgidav.request_server': {
             'level': 'WARNING',
             'propagate': True,
