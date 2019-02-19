@@ -152,9 +152,11 @@ class SubtaskVerification(object):
         if isinstance(msg, SubtaskResultsAccepted):
             self.verification_result = 'OK'
             self.payment_ts = msg.payment_ts
+            self.reason = None
         elif isinstance(msg, SubtaskResultsRejected):
             self.verification_result = 'failed'
-            self.reason = msg.reason
+            self.payment_ts = None
+            self.reason = msg.reason.value
         else:
             raise RuntimeError('unsupported msg type')
 
@@ -163,8 +165,8 @@ class SubtaskVerification(object):
             'taskId': self.task_id,
             'subtaskId': self.subtask_id,
             'verificationResult': self.verification_result,
-            'paymentTs': self.payment_ts and self.payment_ts,
-            'reason': self.reason and self.reason
+            'paymentTs': self.payment_ts,
+            'reason': self.reason
         }
 
 
