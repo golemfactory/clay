@@ -1,4 +1,3 @@
-import copy
 import logging
 import os
 import pickle
@@ -10,7 +9,6 @@ from pathlib import Path
 from typing import Optional, Dict, List, Iterable
 from zipfile import ZipFile
 
-from golem_messages.datastructures import tasks as dt_tasks
 from golem_messages.message import ComputeTaskDef
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
@@ -21,7 +19,6 @@ from apps.core.task.coretask import CoreTask
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
-from golem.network.transport.tcpnetwork import SocketAddress
 from golem.ranking.manager.database_manager import update_provider_efficiency, \
     update_provider_efficacy
 from golem.resource.dirmanager import DirManager
@@ -746,33 +743,44 @@ class TaskManager(TaskEventListener):
         return ss
 
     @handle_subtask_key_error
-    def task_computation_failure(self, subtask_id, err):
+    def task_computation_failure(self, subtask_id: str, err: object,
+                                 ban_node: bool = True) -> bool:
         task_id = self.subtask2task_mapping[subtask_id]
-
-        subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
+        task = self.tasks[task_id]
+        task_state = self.tasks_states[task_id]
+        subtask_state = task_state.subtask_states[subtask_id]
         subtask_status = subtask_state.subtask_status
 
         if not subtask_status.is_computed():
             logger.warning(
-                "TaskFailure for subtask %s when subtask state is %s",
-                subtask_id, subtask_status.value
+                "Subtask %s status cannot be changed from '%s' to '%s'",
+                subtask_id, subtask_status.value, SubtaskStatus.failure,
             )
             self.notice_task_updated(task_id,
                                      subtask_id=subtask_id,
                                      op=OtherOp.UNEXPECTED)
             return False
 
-        self.tasks[task_id].computation_failed(subtask_id)
-        ss = self.tasks_states[task_id].subtask_states[subtask_id]
-        ss.subtask_progress = 1.0
-        ss.subtask_rem_time = 0.0
-        ss.subtask_status = SubtaskStatus.failure
-        ss.stderr = str(err)
+        task.computation_failed(subtask_id, ban_node)
+
+        subtask_state.subtask_progress = 1.0
+        subtask_state.subtask_rem_time = 0.0
+        subtask_state.subtask_status = SubtaskStatus.failure
+        subtask_state.stderr = str(err)
 
         self.notice_task_updated(task_id,
                                  subtask_id=subtask_id,
                                  op=SubtaskOp.FAILED)
         return True
+
+    @handle_subtask_key_error
+    def task_computation_cancelled(self, subtask_id: str, err: object,
+                                   timeout: float) -> bool:
+        task_id = self.subtask2task_mapping[subtask_id]
+        task_state = self.tasks_states[task_id]
+        subtask_state = task_state.subtask_states[subtask_id]
+        ban_node = subtask_state.time_started + timeout < time.time()
+        return self.task_computation_failure(subtask_id, err, ban_node)
 
     def task_result_incoming(self, subtask_id):
         node_id = self.get_node_id_for_subtask(subtask_id)
