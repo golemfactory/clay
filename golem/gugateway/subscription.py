@@ -147,8 +147,8 @@ class SubtaskVerification(object):
                  'reason']
 
     def __init__(self, msg):
-        self.task_id = msg.task_id()
-        self.subtask_id = msg.subtask_id()
+        self.task_id = msg.task_id
+        self.subtask_id = msg.subtask_id
         if isinstance(msg, SubtaskResultsAccepted):
             self.verification_result = 'OK'
             self.payment_ts = msg.payment_ts
@@ -163,8 +163,8 @@ class SubtaskVerification(object):
             'taskId': self.task_id,
             'subtaskId': self.subtask_id,
             'verificationResult': self.verification_result,
-            'paymentTs': self.payment_ts,
-            'reason': self.reason
+            'paymentTs': self.payment_ts and self.payment_ts,
+            'reason': self.reason and self.reason
         }
 
 
