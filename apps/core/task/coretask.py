@@ -199,7 +199,7 @@ class CoreTask(Task):
     def finished_computation(self):
         return self.num_tasks_received == self.total_tasks
 
-    def computation_failed(self, subtask_id, ban_node=True):
+    def computation_failed(self, subtask_id: str, ban_node: bool = True):
         self._mark_subtask_failed(subtask_id, ban_node)
 
     def computation_finished(self, subtask_id, task_result,

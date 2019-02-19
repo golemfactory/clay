@@ -23,7 +23,7 @@ class DummyTask(Task):
                              verification_finished):
         pass
 
-    def computation_failed(self, subtask_id, ban_node=True):
+    def computation_failed(self, subtask_id: str, ban_node: bool = True):
         pass
 
     def verify_subtask(self, subtask_id):

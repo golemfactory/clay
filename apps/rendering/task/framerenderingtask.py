@@ -125,7 +125,7 @@ class FrameRenderingTask(RenderingTask):
         self.last_preview_path = None
 
     @CoreTask.handle_key_error
-    def computation_failed(self, subtask_id, ban_node=True):
+    def computation_failed(self, subtask_id: str, ban_node: bool = True):
         CoreTask.computation_failed(self, subtask_id, ban_node)
         if self.use_frames:
             self._update_frame_task_preview()
