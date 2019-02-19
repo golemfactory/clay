@@ -7,6 +7,7 @@ import unittest
 import uuid
 from pathlib import Path
 from time import sleep
+from typing import Dict
 
 import ethereum.keys
 import pycodestyle
@@ -22,9 +23,68 @@ from golem.docker.manager import DockerManager
 from golem.docker.task_thread import DockerTaskThread
 from golem.model import DB_MODELS, db, DB_FIELDS
 from golem.resource.dirmanager import DirManager
+from golem.resource.hyperdrive.resourcesmanager import \
+    HyperdriveResourceManager
+from golem.task.result.resultmanager import EncryptedResultPackageManager
+from golem.task.taskbase import TaskEventListener, Task
 from golem.task.taskmanager import TaskManager
+from golem.task.taskstate import TaskState, TaskStatus
 
 logger = logging.getLogger(__name__)
+
+
+class TestTaskManager(TaskManager):
+    def __init__(
+            self, node, keys_auth, root_path,
+            tasks_dir="tasks", task_persistence=True,
+            apps_manager=AppsManager(), finished_cb=None):
+        super(TaskEventListener, self).__init__()
+
+        self.apps_manager = apps_manager
+        apps = list(apps_manager.apps.values())
+        task_types = [app.task_type_info() for app in apps]
+        self.task_types = {t.name.lower(): t for t in task_types}
+
+        self.node = node
+        self.keys_auth = keys_auth
+
+        self.tasks: Dict[str, Task] = {}
+        self.tasks_states: Dict[str, TaskState] = {}
+        self.subtask2task_mapping: Dict[str, str] = {}
+
+        self.task_persistence = task_persistence
+
+        tasks_dir = Path(tasks_dir)
+        self.tasks_dir = tasks_dir / "tmanager"
+        if not self.tasks_dir.is_dir():
+            self.tasks_dir.mkdir(parents=True)
+        self.root_path = root_path
+        self.dir_manager = DirManager(self.get_task_manager_root())
+
+        resource_manager = HyperdriveResourceManager(
+            self.dir_manager,
+            resource_dir_method=self.dir_manager.get_task_temporary_dir,
+        )
+        self.task_result_manager = EncryptedResultPackageManager(
+            resource_manager
+        )
+
+        self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
+                             TaskStatus.waiting]
+
+        # self.comp_task_keeper = CompTaskKeeper(
+        #     tasks_dir,
+        #     persist=self.task_persistence,
+        # )
+
+        # self.requestor_stats_manager = RequestorTaskStatsManager()
+        # self.provider_stats_manager = \
+        #     self.comp_task_keeper.provider_stats_manager
+
+        self.finished_cb = finished_cb
+
+        if self.task_persistence:
+            self.restore_tasks()
 
 
 class TempDirFixture(unittest.TestCase):
@@ -196,8 +256,8 @@ class TestTaskIntegration(TempDirFixture):
         self.keys_auth = KeysAuth(datadir=self.tempdir, private_key_name="test_key",
                                   password="test")
 
-        self.task_manager = TaskManager(self.node, self.keys_auth, self.root_dir,
-                                        apps_manager=app_manager)
+        self.task_manager = TestTaskManager(self.node, self.keys_auth, self.root_dir,
+                                            apps_manager=app_manager)
 
         self.dm = DockerTaskThread.docker_manager = DockerManager.install()
 

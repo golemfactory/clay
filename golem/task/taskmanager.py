@@ -29,7 +29,8 @@ from golem.rpc import utils as rpc_utils
 from golem.task.result.resultmanager import EncryptedResultPackageManager
 from golem.task.taskbase import TaskEventListener, Task, \
     TaskPurpose, AcceptClientVerdict
-from golem.task.taskkeeper import compute_subtask_value
+from golem.task.taskkeeper import CompTaskKeeper, compute_subtask_value
+from golem.task.taskrequestorstats import RequestorTaskStatsManager
 from golem.task.taskstate import TaskState, TaskStatus, SubtaskStatus, \
     SubtaskState, Operation, TaskOp, SubtaskOp, OtherOp
 from golem.task.timer import ProviderComputeTimers
@@ -118,14 +119,14 @@ class TaskManager(TaskEventListener):
         self.activeStatus = [TaskStatus.computing, TaskStatus.starting,
                              TaskStatus.waiting]
 
-        # self.comp_task_keeper = CompTaskKeeper(
-        #     tasks_dir,
-        #     persist=self.task_persistence,
-        # )
+        self.comp_task_keeper = CompTaskKeeper(
+            tasks_dir,
+            persist=self.task_persistence,
+        )
 
-        # self.requestor_stats_manager = RequestorTaskStatsManager()
-        # self.provider_stats_manager = \
-        #     self.comp_task_keeper.provider_stats_manager
+        self.requestor_stats_manager = RequestorTaskStatsManager()
+        self.provider_stats_manager = \
+            self.comp_task_keeper.provider_stats_manager
 
         self.finished_cb = finished_cb
 
