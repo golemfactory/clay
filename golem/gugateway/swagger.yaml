@@ -190,9 +190,12 @@ definitions:
   SubtaskVerification:
     description: Subtask verification result
     required:
+      - taskId
       - subtaskId
       - verificationResult
     properties:
+      taskId:
+        $ref: '#/definitions/Uuid'
       subtaskId:
         $ref: '#/definitions/Uuid'
       verificationResult:
@@ -200,7 +203,10 @@ definitions:
         enum:
           - OK
           - failed
-          - timedout
+      paymentTs:
+        type: int
+      reason:
+        type: string
   Events:
     description: >
       Events array.

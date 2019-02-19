@@ -99,10 +99,11 @@ class BasicSession(FileSession):
         :param string reason: Reason for disconnecting.
         """
         logger.info(
-            "Disconnecting %r:%r reason: %r",
+            "Disconnecting %r:%r reason: %r, %r",
             self.address,
             self.port,
             reason,
+            self
         )
         if self.conn.opened:
             self._send_disconnect(reason)

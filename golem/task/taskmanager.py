@@ -705,7 +705,7 @@ class TaskManager(TaskEventListener):
         def verification_finished_():
             ss = self.__set_subtask_state_finished(subtask_id)
             if not self.tasks[task_id].verify_subtask(subtask_id):
-                logger.debug("Subtask %r not accepted\n", subtask_id)
+                logger.warning("Subtask %r not accepted\n", subtask_id)
                 ss.subtask_status = SubtaskStatus.failure
                 self.notice_task_updated(
                     task_id,

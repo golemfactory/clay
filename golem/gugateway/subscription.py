@@ -140,17 +140,32 @@ class Resource(object):
         }
 
 
-# TODO
 class SubtaskVerification(object):
+    """ Golem subtask verification result"""
 
-    # __slots__ = ['payment_ts', 'reason']
+    __slots__ = ['task_id', 'subtask_id', 'verification_result', 'payment_ts',
+                 'reason']
 
-    def __init__(self, **kwargs):
-        for key, value in kwargs.items():
-            setattr(self, key, value)
+    def __init__(self, msg):
+        self.task_id = msg.task_id()
+        self.subtask_id = msg.subtask_id()
+        if isinstance(msg, SubtaskResultsAccepted):
+            self.verification_result = 'OK'
+            self.payment_ts = msg.payment_ts
+        elif isinstance(msg, SubtaskResultsRejected):
+            self.verification_result = 'failed'
+            self.reason = msg.reason
+        else:
+            raise RuntimeError('unsupported msg type')
 
     def to_json_dict(self) -> dict:
-        return self.__dict__
+        return {
+            'taskId': self.task_id,
+            'subtaskId': self.subtask_id,
+            'verificationResult': self.verification_result,
+            'paymentTs': self.payment_ts,
+            'reason': self.reason
+        }
 
 
 class Event(object):
@@ -320,7 +335,7 @@ class Subscription(object):
                 and (isinstance(msg, SubtaskResultsAccepted)
                      or isinstance(msg, SubtaskResultsRejected)):
             self._add_event(f'rv-{msg.subtask_id}', subtask_verification=(
-                SubtaskVerification(**kwargs)))
+                SubtaskVerification(msg)))
             dispatcher.disconnect(self.add_result_verification_event,
                                   signal='golem.message')
 
