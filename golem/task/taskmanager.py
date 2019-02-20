@@ -380,7 +380,7 @@ class TaskManager(TaskEventListener):
         if not self.is_my_task(task_id):
             return None
 
-        if not self.check_next_subtask(node_id, node_name, task_id, price):
+        if not self.check_next_subtask(task_id, price):
             return None
 
         if self.should_wait_for_node(task_id, node_id):
@@ -474,37 +474,30 @@ class TaskManager(TaskEventListener):
 
         return False
 
-    def check_next_subtask(  # noqa pylint: disable=too-many-arguments
-            self, node_id, node_name, task_id, price):
-        """ Check next subtask from task <task_id> to give to node with
-        id <node_id> and name. The returned tuple can be used to find the reason
-        and handle accordingly.
-        :param node_id:
-        :param node_name:
-        :param task_id:
-        :param price:
-        :return bool: Function returns a boolean.
-        The return value describes if the task is able to be assigned
-        """
+    def check_next_subtask(self, task_id: str, price: int) -> bool:
+        """Check next subtask from task <task_id> with given price limit"""
         logger.debug(
-            'check_next_subtask(%r, %r, %r, %r)',
-            node_id, node_name, task_id, price,
+            'check_next_subtask(%r, %r)',
+            task_id,
+            price,
         )
         if not self.is_my_task(task_id):
-            logger.info("Cannot find task in my tasks. task_id=%s, provider=%s",
-                        task_id, node_info_str(node_name, node_id))
+            logger.info("Cannot find task in my tasks. task_id=%s",
+                        task_id)
             return False
 
         task = self.tasks[task_id]
-
         if task.header.max_price < price:
-            return False
-
-        if not self.task_needs_computation(task_id):
-            logger.info(
-                'Task does not need computation. task_id=%s, provider=%s',
-                task_id,
-                node_info_str(node_name, node_id)
+            logger.debug(
+                'Requested price too high.'
+                ' task_id=%(task_id)s,'
+                ' task.header.max_price=%(task_price)s,'
+                ' requested_price=%(price)s',
+                {
+                    'task_id': task_id,
+                    'price': price,
+                    'task_price': task.header.max_price,
+                },
             )
             return False
 

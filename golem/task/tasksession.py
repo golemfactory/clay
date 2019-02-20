@@ -524,6 +524,15 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             _cannot_assign(reasons.NoMoreSubtasks)
             return
 
+        if not self.task_manager.task_needs_computation(msg.task_id):
+            logger.debug(
+                "TaskFinished. task_id=%s, provider=%s",
+                msg.task_id,
+                node_name_id,
+            )
+            _cannot_assign(reasons.TaskFinished)
+            return
+
         if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
             logger.warning("Can not accept offer: Still waiting on results."
                            "task_id=%r, node=%r", msg.task_id, node_name_id)
