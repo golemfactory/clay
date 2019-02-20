@@ -471,7 +471,7 @@ class TaskManager(TaskEventListener):
             logger.warning("Client has failed on subtask within this task"
                            " and is banned from it. node_id=%s, task_id=%s",
                            short_node_id(node_id), task_id)
-
+            return True
         return False
 
     def check_next_subtask(self, task_id: str, price: int) -> bool:
