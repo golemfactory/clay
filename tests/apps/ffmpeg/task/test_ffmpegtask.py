@@ -35,7 +35,8 @@ class TestffmpegTask(TempDirFixture):
         td = self.tt.task_builder_type.build_definition(self.tt,
                                                         self._task_dictionary)
         self.ffmpeg_task = self.tt.task_builder_type(dt_p2p_factory.Node(), td,
-                                                     DirManager(self.tempdir)).build()
+                                                     DirManager(
+                                                         self.tempdir)).build()
 
     @property
     def _task_dictionary(self):

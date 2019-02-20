@@ -1,7 +1,7 @@
 import abc
 import logging
 import os
-from shutil import copy2
+from shutil import move
 from threading import Lock
 from typing import Any, Dict, Tuple, Optional
 
@@ -117,10 +117,12 @@ class TranscodingTask(CoreTask):
 
     def _merge_video(self):
         stream_operator = StreamOperator()
-        path = stream_operator.merge_video(os.path.basename(self.task_definition.output_file),
-                                           self.task_dir, self.collected_files)
-        os.makedirs(os.path.dirname(self.task_definition.output_file), exist_ok=True)
-        copy2(path, self.task_definition.output_file)
+        path = stream_operator.merge_video(
+            os.path.basename(self.task_definition.output_file),
+            self.task_dir, self.collected_files)
+        os.makedirs(os.path.dirname(self.task_definition.output_file),
+                    exist_ok=True)
+        move(path, self.task_definition.output_file)
         return True
 
     def _get_next_subtask(self):

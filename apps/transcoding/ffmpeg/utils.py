@@ -47,8 +47,9 @@ class StreamOperator:
         }
         logger.debug('Running video splitting [params = {}]'.format(extra_data))
 
-        result = self._do_job_in_container(self._get_dir_mapping(dir_manager, task_id),
-                                           extra_data, env)
+        result = self._do_job_in_container(
+            self._get_dir_mapping(dir_manager, task_id),
+            extra_data, env)
         split_result_file = os.path.join(task_output_dir,
                                          Commands.SPLIT.value[1])
         output_files = result.get('data', [])
@@ -113,9 +114,12 @@ class StreamOperator:
         logger.info('Merging video')
         logger.debug('Merge params: {}'.format(extra_data))
 
-        dir_mapping = self._specify_dir_mapping(output=output_dir, temporary=work_dir,
-                                                resources=task_dir, logs=output_dir,
-                                                work=work_dir)
+        dir_mapping = DockerTaskThread.specify_dir_mapping(output=output_dir,
+                                                           temporary=work_dir,
+                                                           resources=task_dir,
+                                                           logs=output_dir,
+                                                           work=work_dir)
+
         self._do_job_in_container(dir_mapping, extra_data)
 
         logger.info("Video merged successfully!")
@@ -140,15 +144,18 @@ class StreamOperator:
             raise ffmpegException(dtt.error_msg)
         return dtt.result[0] if isinstance(dtt.result, tuple) else dtt.result
 
-    def _get_dir_mapping(self, dir_manager: DirManager, task_id: str):
+    @staticmethod
+    def _get_dir_mapping(dir_manager: DirManager, task_id: str):
         tmp_task_dir = dir_manager.get_task_temporary_dir(task_id)
         resources_task_dir = dir_manager.get_task_resource_dir(task_id)
         task_output_dir = dir_manager.get_task_output_dir(task_id)
 
-        return self._specify_dir_mapping(output=task_output_dir,
-                                         temporary=tmp_task_dir,
-                                         resources=resources_task_dir,
-                                         logs=tmp_task_dir, work=tmp_task_dir)
+        return DockerTaskThread. \
+            specify_dir_mapping(output=task_output_dir,
+                                temporary=tmp_task_dir,
+                                resources=resources_task_dir,
+                                logs=tmp_task_dir,
+                                work=tmp_task_dir)
 
     @staticmethod
     def _specify_dir_mapping(output, temporary, resources, logs, work):
