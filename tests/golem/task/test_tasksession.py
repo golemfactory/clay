@@ -24,7 +24,6 @@ from twisted.internet.defer import Deferred
 import golem
 from golem import model, testutils
 from golem.core import variables
-from golem.core.databuffer import DataBuffer
 from golem.core.keysauth import KeysAuth
 from golem.docker.environment import DockerEnvironment
 from golem.docker.image import DockerImage
@@ -32,8 +31,6 @@ from golem.network.hyperdrive import client as hyperdrive_client
 from golem.model import Actor
 from golem.network import history
 from golem.network.hyperdrive.client import HyperdriveClientOptions
-from golem.network.transport.tcpnetwork import BasicProtocol
-from golem.resource.client import ClientOptions
 from golem.task import taskstate
 from golem.task.taskkeeper import CompTaskKeeper
 from golem.task.tasksession import TaskSession, logger, get_task_message
@@ -57,7 +54,10 @@ class DockerEnvironmentMock(DockerEnvironment):
 
 
 class TestTaskSessionPep8(testutils.PEP8MixIn, TestCase):
-    PEP8_FILES = ['golem/task/tasksession.py', ]
+    PEP8_FILES = [
+        'golem/task/tasksession.py',
+        'tests/golem/task/test_tasksession.py',
+    ]
 
 
 class ConcentMessageMixin():
@@ -594,7 +594,8 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         self.assertEqual(kwargs['msg'].subtask_results_rejected, srr)
 
     # pylint: disable=too-many-statements
-    def test_react_to_task_to_compute(self):
+    @classmethod
+    def test_react_to_task_to_compute(cls):
         conn = Mock()
         ts = TaskSession(conn)
         ts.key_id = "KEY_ID"
@@ -742,7 +743,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
         ts.task_computer.session_closed.assert_called_with()
         assert conn.close.called
-
 
     @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
     def test_react_to_ack_reject_report_computed_task(self):
@@ -951,8 +951,14 @@ class WaitingForResultsTestCase(
         self.ts.conn.send_message.side_effect = \
             lambda msg: msg._fake_sign()
         self.ts.task_server.get_node_name.return_value = "Zażółć gęślą jaźń"
+        requestor_keys = KeysAuth(
+            datadir=self.path,
+            difficulty=4,
+            private_key_name='prv',
+            password='',
+        )
         self.ts.task_server.get_key_id.return_value = "key_id"
-        self.ts.key_id = 'unittest_key_id'
+        self.ts.key_id = requestor_keys.ecc.raw_pubkey
         self.ts.task_server.get_share_options.return_value = \
             hyperdrive_client.HyperdriveClientOptions('1', 1.0)
 
@@ -964,17 +970,32 @@ class WaitingForResultsTestCase(
         )
         self.ts.task_server.keys_auth = keys_auth
         self.ts.concent_service.variant = variables.CONCENT_CHOICES['test']
-        self.n = dt_p2p_factory.Node()
-        self.msg = message.tasks.WaitingForResults()
-        self.ts.task_id = str(uuid.uuid4())
+        ttc_prefix = 'task_to_compute'
+        hdr_prefix = f'{ttc_prefix}__want_to_compute_task__task_header'
+        self.msg = msg_factories.tasks.WaitingForResultsFactory(
+            sign__privkey=requestor_keys.ecc.raw_privkey,
+            **{
+                f'{ttc_prefix}__sign__privkey': requestor_keys.ecc.raw_privkey,
+                f'{ttc_prefix}__requestor_public_key':
+                    encode_hex(requestor_keys.ecc.raw_pubkey),
+                f'{ttc_prefix}__want_to_compute_task__sign__privkey':
+                    keys_auth.ecc.raw_privkey,
+                f'{ttc_prefix}__want_to_compute_task__provider_public_key':
+                    encode_hex(keys_auth.ecc.raw_pubkey),
+                f'{hdr_prefix}__sign__privkey':
+                    requestor_keys.ecc.raw_privkey,
+                f'{hdr_prefix}__requestor_public_key':
+                    encode_hex(requestor_keys.ecc.raw_pubkey),
+            },
+        )
 
     def test_task_server_notification(self, *_):
         self.ts._react_to_waiting_for_results(self.msg)
-        # https://github.com/golemfactory/golem-messages/issues/320
         self.ts.task_server.subtask_waiting.assert_called_once_with(
-            task_id=self.ts.task_id,
-            subtask_id=None,
+            task_id=self.msg.task_id,
+            subtask_id=self.msg.subtask_id,
         )
+
 
 class ForceReportComputedTaskTestCase(testutils.DatabaseFixture,
                                       testutils.TempDirFixture):
@@ -1205,7 +1226,7 @@ class SubtaskResultsAcceptedTest(TestCase):
             )
 
         assert self.task_session.send.called
-        sra = self.task_session.send.call_args[0][0] # noqa pylint:disable=unsubscriptable-object
+        sra = self.task_session.send.call_args[0][0]  # noqa pylint:disable=unsubscriptable-object
         self.assertIsInstance(sra.task_to_compute, message.tasks.TaskToCompute)
         self.assertIsInstance(sra.report_computed_task,
                               message.tasks.ReportComputedTask)

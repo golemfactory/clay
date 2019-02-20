@@ -1,144 +1,149 @@
 import os
+import time
+import pytest
 from unittest import mock
 
+from golem.core.common import get_golem_path, is_linux
+from golem.core.deferred import sync_wait
+from golem.docker.image import DockerImage
+from golem.docker.manager import DockerManager
+from golem.docker.task_thread import DockerTaskThread
+from golem.task.localcomputer import ComputerAdapter
 from golem.testutils import TempDirFixture
-from golem.tools.assertlogs import LogTestCase
-from golem.verificator.blender_verifier import BlenderVerifier, logger
-from golem.verificator.common.ci import ci_skip
+from golem.verificator.blender_verifier import BlenderVerifier
 
 
-class TestBlenderVerifier(LogTestCase, TempDirFixture):
+@pytest.mark.slow
+@pytest.mark.skipif(
+    not is_linux(),
+    reason='Docker is only available on Linux buildbots')
+class TestBlenderVerifier(TempDirFixture):
+    TIMEOUT = 120
 
-    def test_get_part_size_from_subtask_number(self):
-        subtask_info = {
-            "resolution": [800, 600],
-            "total_tasks": 20,
-            "start_task": 3,
-        }
+    def setUp(self):
+        # pylint: disable=R0915
+        super().setUp()
+        dm = DockerTaskThread.docker_manager = DockerManager.install()
+        dm.update_config(
+            status_callback=mock.Mock(),
+            done_callback=mock.Mock(),
+            work_dir=self.new_path,
+            in_background=True)
+        self.resources = [
+            os.path.join(
+                get_golem_path(),
+                'tests/apps/blender/verification/test_data/bmw.blend'),
+        ]
+        self.computer = ComputerAdapter()
 
-        verification_data = {}
-        verification_data['subtask_info'] = subtask_info
-        verification_data['results'] = []
-        verification_data['reference_data'] = []
-        verification_data['resources'] = []
-
-        blender_verifier = BlenderVerifier(verification_data,
-                             cropper_cls=mock.Mock(),
-                             docker_task_cls=mock.Mock())
-        assert blender_verifier._get_part_size_from_subtask_number(subtask_info) == 30
-        subtask_info["total_tasks"] = 13
-        subtask_info["start_task"] = 2
-        assert blender_verifier._get_part_size_from_subtask_number(subtask_info) == 47
-        subtask_info["start_task"] = 3
-        assert blender_verifier._get_part_size_from_subtask_number(subtask_info) == 46
-        subtask_info["start_task"] = 13
-        assert blender_verifier._get_part_size_from_subtask_number(subtask_info) == 46
-
-    def test_get_part_size(self):
-
-        crops = [
+        self.subtask_info = dict()
+        self.subtask_info['scene_file'] = '/golem/resources/bmw.blend'
+        self.subtask_info['resolution'] = [150, 150]
+        self.subtask_info['use_compositing'] = False
+        self.subtask_info['samples'] = 35
+        self.subtask_info['frames'] = [1]
+        self.subtask_info['output_format'] = 'PNG'
+        self.subtask_info['use_frames'] = False
+        self.subtask_info['start_task'] = 1
+        self.subtask_info['total_tasks'] = 1
+        self.subtask_info['crops'] = [
             {
-                "outfilebasename": 'test',
-                "borders_x": [0, 1],
-                "borders_y": [0.05, 1]
+                'outfilebasename':
+                    'GolemTask_{}'.format(self.subtask_info['start_task']),
+                'borders_x': [0.0, 1.0],
+                'borders_y':[0.0, 1.0]
             }
         ]
-        subtask_info = {
-            "subtask_id": "deadbeef",
-            "use_frames": False,
-            "resolution": [800, 600],
-            "total_tasks": 20,
-            "start_task": 3,
-            "crops": crops
-        }
+        self.subtask_info['crop_window'] = [0.0, 1.0, 0.0, 1.0]
+        self.subtask_info['node_id'] = 'deadbeef'
+        self.subtask_info['subtask_id'] = '250771152547690738285326338136457465'
+        self.subtask_info['all_frames'] = [1]
+        self.subtask_info['tmp_dir'] = self.tempdir
+        self.subtask_info['subtask_timeout'] = 600
+        self.subtask_info['script_filepath'] = '/golem/scripts/job.py'
 
+        self.subtask_info['path_root'] = os.path.dirname(self.resources[0])
+        self.subtask_info['parts'] = 1
+        self.subtask_info['owner'] = "deadbeef"
+        self.subtask_info['ctd'] = dict()
+        self.subtask_info['ctd']['deadline'] = time.time() + 3600
+        self.subtask_info['ctd']['docker_images'] = [DockerImage(
+            'golemfactory/blender', tag='1.8').to_dict()]
+        self.subtask_info['ctd']['extra_data'] = dict()
+        self.subtask_info['ctd']['extra_data']['scene_file'] = \
+            self.subtask_info['scene_file']
+        self.subtask_info['ctd']['extra_data']['resolution'] = \
+            self.subtask_info['resolution']
+        self.subtask_info['ctd']['extra_data']['use_compositing'] = \
+            self.subtask_info['use_compositing']
+        self.subtask_info['ctd']['extra_data']['samples'] = \
+            self.subtask_info['samples']
+        self.subtask_info['ctd']['extra_data']['frames'] = \
+            self.subtask_info['frames']
+        self.subtask_info['ctd']['extra_data']['output_format'] = \
+            self.subtask_info['output_format']
+        self.subtask_info['ctd']['extra_data']['start_task'] = \
+            self.subtask_info['start_task']
+        self.subtask_info['ctd']['extra_data']['total_tasks'] = \
+            self.subtask_info['total_tasks']
+        self.subtask_info['ctd']['extra_data']['crops'] = \
+            self.subtask_info['crops']
+        self.subtask_info['ctd']['extra_data']['path_root'] = \
+            self.subtask_info['path_root']
+        self.subtask_info['ctd']['extra_data']['script_filepath'] = \
+            self.subtask_info['script_filepath']
+        self.subtask_info['ctd']['subtask_id'] = self.subtask_info['subtask_id']
+
+    def _test_image(self, results, exception_regex=None):
         verification_data = {}
-        verification_data['subtask_info'] = subtask_info
+        verification_data['subtask_info'] = self.subtask_info
         verification_data['results'] = []
+        for result in results:
+            result_path = os.path.join(self.tempdir, result)
+            os.link(
+                os.path.join(
+                    get_golem_path(),
+                    'tests/apps/blender/verification/test_data',
+                    result,
+                ),
+                result_path,
+            )
+            verification_data['results'].append(result_path)
         verification_data['reference_data'] = []
-        verification_data['resources'] = []
+        verification_data['resources'] = self.resources
+        verification_data['paths'] = os.path.dirname(self.resources[0])
 
-        blender_verifier = BlenderVerifier(verification_data,
-                             cropper_cls=mock.Mock(),
-                             docker_task_cls=mock.Mock())
-        assert blender_verifier._get_part_size(subtask_info) == (800, 30)
-        subtask_info["use_frames"] = True
-        subtask_info["all_frames"] = list(range(40))
-        subtask_info["crops"][0]['borders_x'] = [0, 1]
-        subtask_info["crops"][0]['borders_y'] = [0, 1]
-        assert blender_verifier._get_part_size(subtask_info) == (800, 600)
-        subtask_info["all_frames"] = list(range(10))
-        subtask_info["crops"][0]['borders_x'] = [0, 1]
-        subtask_info["crops"][0]['borders_y'] = [0.5, 1]
-        assert blender_verifier._get_part_size(subtask_info) == (800, 300)
+        verifier = BlenderVerifier(verification_data, DockerTaskThread)
+        d = verifier.start_verification(verification_data)
 
-    def test_crop_render_failure(self):
-        verification_data = {}
-        verification_data['subtask_info'] = {}
-        verification_data['results'] = []
-        verification_data['reference_data'] = []
-        verification_data['resources'] = []
+        if not exception_regex:
+            sync_wait(d, self.TIMEOUT)
+        else:
+            with self.assertRaisesRegex(Exception, exception_regex):
+                sync_wait(d, self.TIMEOUT)
 
-        blender_verifier = BlenderVerifier(verification_data,
-                             cropper_cls=mock.Mock(),
-                             docker_task_cls=mock.Mock())
-        blender_verifier.failure = lambda: None
+    def test_bad_image(self):
+        self._test_image(['very_bad_image.png'], 'Verification result negative')
 
-        with self.assertLogs(logger, level="WARNING") as logs:
-            blender_verifier._crop_render_failure("There was a problem")
-        assert any("WARNING:apps.blender:Crop render for verification failure"
-                   " 'There was a problem'"
-                   in log for log in logs.output)
+    def test_good_image(self):
+        self._test_image(['GolemTask_10001.png'])
 
-    @ci_skip
-    def test_crop_rendered(self):
-        crop_path = os.path.join(self.tempdir, str(0))
+    def test_subsampled_image(self):
+        self._test_image(
+            ['almost_good_image.png'],
+            'Verification result negative',
+        )
 
-        verification_data = {}
-        verification_data['subtask_info'] = {'subtask_id': 'deadbeef'}
-        verification_data['results'] = []
-        verification_data['reference_data'] = []
-        verification_data['resources'] = []
+    def test_multiple_frames_in_subtask(self):
+        self.subtask_info['all_frames'] = [1, 2]
+        self.subtask_info['frames'] = [1, 2]
+        self.subtask_info['ctd']['extra_data']['frames'] = [1, 2]
+        self._test_image(['GolemTask_10001.png', 'GolemTask_10002.png'])
 
-        reference_generator = mock.MagicMock()
-        reference_generator.crop_counter = 3
-
-        docker_task_thread = mock.Mock()
-        docker_task_thread.return_value.output_dir_path = os.path.join(
-            self.tempdir, 'output')
-        docker_task_thread.specify_dir_mapping.return_value = \
-            mock.Mock(resources=crop_path, temporary=self.tempdir)
-
-        bv = BlenderVerifier(verification_data,
-                             cropper_cls=reference_generator,
-                             docker_task_cls=docker_task_thread)
-        bv.current_results_files = [os.path.join(self.tempdir, "none.png")]
-        open(bv.current_results_files[0], mode='a').close()
-        if not os.path.exists(crop_path):
-            os.mkdir(crop_path)
-        output_dir = os.path.join(crop_path, "output")
-        if not os.path.exists(output_dir):
-            os.mkdir(output_dir)
-        f = open(os.path.join(output_dir, "result_0.txt"), mode='a')
-        f.write("{")
-        f.write("\"MSE_canny\": 2032.03125,")
-        f.write("\"MSE_normal\": 1.171875,")
-        f.write("\"MSE_wavelet\": 5080.765625,")
-        f.write("\"SSIM_canny\": 0.9377418556022814,")
-        f.write("\"SSIM_normal\": 0.9948028194990917,")
-        f.write("\"SSIM_wavelet\": 0.7995332835184454,")
-        f.write("\"crop_resolution\": \"8x8\",")
-        f.write("\"imgCorr\": 0.7342643964262355")
-        f.write("}")
-        f.close()
-        verification_context = mock.MagicMock()
-        verification_context.get_crop_path = mock.MagicMock(return_value="0")
-        crop = mock.Mock()
-        crop.get_relative_top_left = mock.Mock(return_value=(3,5))
-        verification_context.get_crop_with_id = mock.Mock(return_value=crop)
-        with self.assertLogs(logger, level="INFO") as logs:
-            bv._crop_rendered(({"data": ["def"]}, 2913, verification_context, 0))
-        assert any("rendered for verification"
-                   in log for log in logs.output)
-        assert any("2913" in log for log in logs.output)
-
+    def test_docker_error(self):
+        # Set na invalid param so that Docker computation fails inside
+        self.subtask_info['frames'] = None
+        self._test_image(
+            ['GolemTask_10001.png'],
+            'Subtask computation failed with exit code 1',
+        )

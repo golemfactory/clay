@@ -117,8 +117,11 @@ class TaskServer(
             finished_cb=task_finished_cb)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
+        # Remove .task_sessions when Message Queue is implemented
+        # https://github.com/golemfactory/golem/issues/2223
         self.task_sessions = {}
-        self.task_sessions_incoming = weakref.WeakSet()
+        self.task_sessions_incoming: weakref.WeakSet = weakref.WeakSet()
+        self.task_sessions_outgoing: weakref.WeakSet = weakref.WeakSet()
 
         OfferPool.change_interval(self.config_desc.offer_pooling_interval)
 
@@ -163,6 +166,12 @@ class TaskServer(
         dispatcher.connect(
             self.finished_task_listener,
             signal='golem.taskmanager'
+        )
+
+    @property
+    def all_sessions(self):
+        return frozenset(
+            self.task_sessions_outgoing | self.task_sessions_incoming,
         )
 
     def sync_network(self, timeout=None):
@@ -361,13 +370,7 @@ class TaskServer(
             session.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
 
     def disconnect(self):
-        task_sessions = dict(self.task_sessions)
-        sessions_incoming = weakref.WeakSet(self.task_sessions_incoming)
-
-        for task_session in list(task_sessions.values()):
-            task_session.dropped()
-
-        for task_session in sessions_incoming:
+        for task_session in self.all_sessions:
             try:
                 task_session.dropped()
             except Exception as exc:
@@ -791,7 +794,6 @@ class TaskServer(
             estimated_performance, price, max_resource_size, max_memory_size):
         self.new_session_prepare(
             session=session,
-            subtask_id=task_id,
             key_id=key_id,
             conn_id=conn_id,
         )
@@ -824,7 +826,6 @@ class TaskServer(
                                                  waiting_task_result):
         self.new_session_prepare(
             session=session,
-            subtask_id=waiting_task_result.subtask_id,
             key_id=waiting_task_result.owner.key,
             conn_id=conn_id,
         )
@@ -857,7 +858,6 @@ class TaskServer(
                                                   key_id, subtask_id, err_msg):
         self.new_session_prepare(
             session=session,
-            subtask_id=subtask_id,
             key_id=key_id,
             conn_id=conn_id,
         )
@@ -887,7 +887,6 @@ class TaskServer(
             ans_conn_id):
         self.new_session_prepare(
             session=session,
-            subtask_id=None,
             key_id=key_id,
             conn_id=conn_id,
         )
@@ -945,17 +944,16 @@ class TaskServer(
 
     def new_session_prepare(self,
                             session: TaskSession,
-                            subtask_id: str,
                             key_id: str,
                             conn_id: str):
         self.remove_forwarded_session_request(key_id)
-        session.task_id = subtask_id
         session.key_id = key_id
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
-        self.task_sessions[subtask_id] = session
+        self.task_sessions_outgoing.add(session)
 
-    def noop(self, *args, **kwargs):
+    @classmethod
+    def noop(cls, *args, **kwargs):
         args_, kwargs_ = args, kwargs  # avoid params name collision in logger
         logger.debug('Noop(%r, %r)', args_, kwargs_)
 
@@ -970,7 +968,6 @@ class TaskServer(
         full_path_files = extracted_package.get_full_path_files()
         self.new_session_prepare(
             session=session,
-            subtask_id=subtask_id,
             key_id=key_id,
             conn_id=conn_id,
         )
@@ -995,17 +992,14 @@ class TaskServer(
 
     def __remove_old_sessions(self):
         cur_time = time.time()
-        sessions_to_remove = []
-        sessions = dict(self.task_sessions)
 
-        for subtask_id, session in sessions.items():
+        for session in self.all_sessions:
             dt = cur_time - session.last_message_time
-            if dt > self.last_message_time_threshold:
-                sessions_to_remove.append(subtask_id)
-        for subtask_id in sessions_to_remove:
-            if sessions[subtask_id].task_computer is not None:
-                sessions[subtask_id].task_computer.session_timeout()
-            sessions[subtask_id].dropped()
+            if dt < self.last_message_time_threshold:
+                continue
+            if session.task_computer is not None:
+                session.task_computer.session_timeout()
+            session.dropped()
 
     def __send_waiting_results(self):
         for subtask_id in list(self.results_to_send.keys()):

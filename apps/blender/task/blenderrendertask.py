@@ -10,7 +10,6 @@ from typing import Optional, Type
 from PIL import Image, ImageChops, ImageFile
 
 import apps.blender.resources.blenderloganalyser as log_analyser
-from apps.blender.blender_reference_generator import BlenderReferenceGenerator
 from apps.blender.blenderenvironment import BlenderEnvironment, \
     BlenderNVGPUEnvironment
 from apps.core.task.coretask import CoreTaskTypeInfo
@@ -310,7 +309,6 @@ class BlenderNVGPURendererOptions(BlenderRendererOptions):
 class BlenderRenderTask(FrameRenderingTask):
     ENVIRONMENT_CLASS: Type[BlenderEnvironment] = BlenderEnvironment
     VERIFIER_CLASS = functools.partial(BlenderVerifier,
-                                       cropper_cls=BlenderReferenceGenerator,
                                        docker_task_cls=DockerTaskThread)
 
     BLENDER_MIN_BOX = [8, 8]

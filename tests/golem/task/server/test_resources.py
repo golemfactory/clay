@@ -9,7 +9,6 @@ class TestTaskResourcesMixin(TestWithClient):
     def setUp(self):
         super().setUp()
         self.server = TaskResourcesMixin()
-        self.server.task_sessions = {}
         self.server.task_manager = self.client.task_manager
         self.server.client = self.client
         self.server.task_keeper = TaskHeaderKeeper(
@@ -18,9 +17,5 @@ class TestTaskResourcesMixin(TestWithClient):
             min_price=0
         )
 
-    def test_request_resource_no_session(self):
-        assert not self.server.request_resource("task_id1", "subtask_id2", [])
-
     def test_request_resource(self):
-        self.server.task_sessions["subtask_id"] = MagicMock()
         assert self.server.request_resource("task_id1", "subtask_id", [])

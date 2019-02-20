@@ -1,7 +1,11 @@
 import abc
 import logging
 from enum import Enum
-from typing import List, Type, Optional
+from typing import (
+    List,
+    Optional,
+    Type,
+)
 
 import golem_messages
 from golem_messages.datastructures import tasks as dt_tasks
@@ -338,3 +342,7 @@ class Task(abc.ABC):
     @abc.abstractmethod
     def accept_client(self, node_id):
         pass
+
+    # pylint: disable=unused-argument, no-self-use
+    def get_finishing_subtasks(self, node_id: str) -> List[dict]:
+        return []

@@ -128,9 +128,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         """
         BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
-        # FIXME: Remove task_id and use values from messages
-        self.task_id = None  # current task id
         self.conn_id = None  # connection id
+        # set in TaskServer.new_session_prepare()
+        self.key_id: Optional[str] = None
         # messages waiting to be send (because connection hasn't been
         # verified yet)
         self.msgs_to_send = []
@@ -536,7 +536,21 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
             logger.warning("Can not accept offer: Still waiting on results."
                            "task_id=%r, node=%r", msg.task_id, node_name_id)
-            self.send(message.tasks.WaitingForResults())
+            task = self.task_manager.tasks[msg.task_id]
+            subtasks = task.get_finishing_subtasks(
+                node_id=self.key_id,
+            )
+            previous_ttc = get_task_message(
+                message_class_name='TaskToCompute',
+                node_id=self.key_id,
+                task_id=msg.task_id,
+                subtask_id=subtasks[0]['subtask_id'],
+            )
+            self.send(
+                message.tasks.WaitingForResults(
+                    task_to_compute=previous_ttc,
+                ),
+            )
             return
 
         if self._handshake_required(self.key_id):
@@ -740,11 +754,35 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
 
     def _react_to_waiting_for_results(
             self,
-            _msg: message.tasks.WaitingForResults,
+            msg: message.tasks.WaitingForResults,
     ):
+        if self.concent_service.available:
+            concent_key = self.concent_service.variant['pubkey']
+        else:
+            concent_key = None
+        try:
+            msg.verify_owners(
+                requestor_public_key=self.key_id,
+                provider_public_key=self.task_server.keys_auth.ecc.raw_pubkey,
+                concent_public_key=concent_key,
+            )
+        except msg_exceptions.MessageError:
+            node_id = common.short_node_id(self.key_id)
+            logger.info(
+                'Dropping invalid WaitingForResults.'
+                ' sender_node_id: %(node_id)s, task_id: %(task_id)s,'
+                ' subtask_id: %(subtask_id)s',
+                {
+                    'node_id': node_id,
+                    'task_id': msg.task_id,
+                    'subtask_id': msg.subtask_id,
+                },
+            )
+            logger.debug('Invalid WaitingForResults received', exc_info=True)
+            return
         self.task_server.subtask_waiting(
-            task_id=self.task_id,
-            subtask_id=None,
+            task_id=msg.task_id,
+            subtask_id=msg.subtask_id,
         )
         self.task_computer.session_closed()
         if not self.msgs_to_send:
@@ -786,6 +824,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             logger.warning('Did not receive task_to_compute: %r', msg)
             self.dropped()
             return
+
+        self.task_server.add_task_session(
+            msg.subtask_id, self
+        )
 
         returned_msg = concent_helpers.process_report_computed_task(
             msg=msg,

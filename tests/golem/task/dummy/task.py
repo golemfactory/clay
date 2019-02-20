@@ -281,6 +281,12 @@ class DummyTask(Task):
             return AcceptClientVerdict.SHOULD_WAIT
         return AcceptClientVerdict.ACCEPTED
 
+    def get_finishing_subtasks(self, node_id):
+        try:
+            return [{'subtask_id': self.assigned_nodes[node_id]}]
+        except KeyError:
+            return []
+
     def accept_client(self, node_id):
         print('DummyTask.accept_client called node_id=%r '
               '- WIP: move more responsibilities from query_extra_data',
