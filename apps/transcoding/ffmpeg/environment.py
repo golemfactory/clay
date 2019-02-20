@@ -12,7 +12,7 @@ class ffmpegEnvironment(DockerEnvironment):
         super().__init__(additional_images=[DockerImage(
             repository=self.DOCKER_IMAGE,
             tag=self.DOCKER_TAG
-            )])
+        )])
         self.binds = binds or []
 
     def get_container_config(self):

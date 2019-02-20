@@ -1,6 +1,7 @@
 import abc
 import logging
 import os
+from shutil import move
 from threading import Lock
 from typing import Any, Dict, Tuple, Optional
 
@@ -37,7 +38,7 @@ class TranscodingTaskOptions(Options):
             self.frame_rate = frame_rate
             self.resolution = resolution
 
-    def __init__(self, use_playlist=False):
+    def __init__(self, use_playlist=True):
         super().__init__()
         self.video_params = TranscodingTaskOptions.VideoParams()
         self.audio_params = TranscodingTaskOptions.AudioParams()
@@ -58,7 +59,9 @@ class TranscodingTask(CoreTask):
                                               **kwargs)
         self.task_definition = task_definition
         self.lock = Lock()
-        self.chunks = []
+        self.chunks = list()
+        self.collected_files = list()
+        self.task_dir = ""
 
     def __getstate__(self):
         state = super(TranscodingTask, self).__getstate__()
@@ -71,9 +74,11 @@ class TranscodingTask(CoreTask):
 
     def initialize(self, dir_manager: DirManager):
         super(TranscodingTask, self).initialize(dir_manager)
-        logger.debug('Initialization of ffmpegTask')
+        logger.debug('Initialization of FFmpegTask')
         task_id = self.task_definition.task_id
         task_output_dir = dir_manager.get_task_output_dir(task_id)
+        # results from providers are collected in tmp
+        self.task_dir = dir_manager.get_task_temporary_dir(task_id)
         if len(self.task_resources) == 0:
             raise TranscodingException('There is no specified resources')
         stream_operator = StreamOperator()
@@ -97,11 +102,28 @@ class TranscodingTask(CoreTask):
         with self.lock:
             super(TranscodingTask, self).accept_results(subtask_id,
                                                         result_files)
-            # TODO remove these logs
-            for idx, result in enumerate(result_files):
-                logger.info("Result[{}]: {}".format(idx, result))
+            self._collect_results(result_files)
 
             self.num_tasks_received += 1
+
+            logger.info("Transcoded {} of {} chunks".
+                        format(self.num_tasks_received, self.total_tasks))
+
+            if self.num_tasks_received == self.total_tasks:
+                self._merge_video()
+
+    def _collect_results(self, results):
+        self.collected_files.extend(results)
+
+    def _merge_video(self):
+        stream_operator = StreamOperator()
+        path = stream_operator.merge_video(
+            os.path.basename(self.task_definition.output_file),
+            self.task_dir, self.collected_files)
+        os.makedirs(os.path.dirname(self.task_definition.output_file),
+                    exist_ok=True)
+        move(path, self.task_definition.output_file)
+        return True
 
     def _get_next_subtask(self):
         logger.debug('Getting next task [type=trancoding, task_id={}]'.format(
