@@ -79,6 +79,9 @@ class TaskResourcesMixin:
         self.task_manager.delete_task(task_id)
 
     def request_resource(self, task_id, subtask_id, resources):
+        if not self.client.resource_server:
+            logger.error("ResourceManager not ready")
+            return False
         resource_manager = self.client.resource_server.resource_manager
         resources = resource_manager.from_wire(resources)
 
