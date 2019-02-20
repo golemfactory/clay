@@ -339,7 +339,7 @@ function install_golem()
         error_msg "ERROR) Cannot extract ${ELECTRON_PACKAGE}. Exiting..."
         return 1
     fi
-    ELECTRON_DIR=$(find . -maxdepth 1 -name "golem-electron-beta-linux" -type d -print | head -n1)
+    ELECTRON_DIR=$(find . -maxdepth 1 -name "golem-electron-beta-linux*" -type d -print | head -n1)
     if [[ ! -d ${ELECTRON_DIR} ]]; then
         error_msg "Error extracting package"
         return 1
