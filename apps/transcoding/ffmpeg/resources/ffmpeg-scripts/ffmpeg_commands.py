@@ -29,7 +29,8 @@ def exec_cmd_to_file(cmd, filepath):
 
 def exec_cmd_to_string(cmd):
     # Execute command and send results to file.
-    tmp_command_result_file = os.path.join(TMP_DIR, "tmp-command-result.txt")
+    tmp_command_result_file = os.path.join(TMP_DIR,
+                                           "tmp-command-result.txt")
     exec_cmd_to_file(cmd, tmp_command_result_file)
 
     data_string = ""
@@ -51,7 +52,8 @@ def split_video(input_file, output_dir, split_len):
 
 
 def split(input, output_list_file, segment_time):
-    cmd, file_list = split_video_command(input, output_list_file, segment_time)
+    cmd, file_list = split_video_command(input, output_list_file,
+                                         segment_time)
     exec_cmd(cmd)
 
     return file_list
@@ -71,7 +73,8 @@ def split_video_command(input, output_list_file, segment_time):
 
 
 def transcode_video(track, targs, output, use_playlist):
-    cmd = transcode_video_command(track, output, targs, use_playlist)
+    cmd = transcode_video_command(track, output,
+                                  targs, use_playlist)
     return exec_cmd(cmd)
 
 
@@ -85,7 +88,7 @@ def transcode_video_command(track, output_playlist_name, targs, use_playlist):
 
     if use_playlist:
         playlist_cmd = [
-            # It states that all entries from list should be processed, default is 5
+            # It states that all entries from list should be processed
             "-hls_list_size", "0",
             "-copyts"
         ]
