@@ -516,6 +516,9 @@ class TaskManager(TaskEventListener):
             new_task_id: str,
             subtask_ids_to_copy: Iterable[str]) -> None:
 
+        logger.debug('copy_results. old_task_id=%r, new_task_id=%r',
+                     old_task_id, new_task_id)
+
         try:
             old_task = self.tasks[old_task_id]
             new_task = self.tasks[new_task_id]
@@ -541,12 +544,14 @@ class TaskManager(TaskEventListener):
             self.subtask2task_mapping[new_subtask_id] = \
                 new_task_id
             self.__add_subtask_to_tasks_states(
-                node_name=None,
-                node_id=None,
-                address=None,
+                node_name='',
+                node_id='',
+                address='',
                 price=0,
                 ctd=extra_data.ctd)
             new_subtasks_ids.append(new_subtask_id)
+
+        logger.debug('copy_results. new_subtasks_ids=%r', new_subtasks_ids)
 
         # it's important to do this step separately, to not disturb
         # 'needs_computation' condition above
@@ -560,6 +565,7 @@ class TaskManager(TaskEventListener):
         def handle_copy_error(subtask_id, error):
             logger.error(
                 'Cannot copy result of subtask %r: %r', subtask_id, error)
+
             self.restart_subtask(subtask_id)
 
         for new_subtask_id, new_subtask in new_task.subtasks_given.items():
@@ -744,8 +750,10 @@ class TaskManager(TaskEventListener):
         subtask_status = subtask_state.subtask_status
 
         if not subtask_status.is_computed():
-            logger.warning("Result for subtask {} when subtask state is {}"
-                           .format(subtask_id, subtask_status.value))
+            logger.warning(
+                "TaskFailure for subtask %s when subtask state is %s",
+                subtask_id, subtask_status.value
+            )
             self.notice_task_updated(task_id,
                                      subtask_id=subtask_id,
                                      op=OtherOp.UNEXPECTED)
@@ -876,28 +884,6 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id,
                                  subtask_id=subtask_id,
                                  op=SubtaskOp.RESTARTED)
-
-    @handle_task_key_error
-    def restart_frame_subtasks(self, task_id, frame):
-        task = self.tasks[task_id]
-        task_state = self.tasks_states[task_id]
-        subtasks = task.get_subtasks(frame)
-
-        if not subtasks:
-            return
-
-        for subtask_id in list(subtasks.keys()):
-            task.restart_subtask(subtask_id)
-            subtask_state = task_state.subtask_states[subtask_id]
-            subtask_state.subtask_status = SubtaskStatus.restarted
-            subtask_state.stderr = "[GOLEM] Restarted"
-            self.notice_task_updated(task_id,
-                                     subtask_id=subtask_id,
-                                     op=SubtaskOp.RESTARTED,
-                                     persist=False)
-
-        task_state.status = TaskStatus.computing
-        self.notice_task_updated(task_id, op=OtherOp.FRAME_RESTARTED)
 
     @handle_task_key_error
     def abort_task(self, task_id):
@@ -1152,7 +1138,8 @@ class TaskManager(TaskEventListener):
     def _update_provider_statistics(self, task_id: str,
                                     subtask_id: str,
                                     op: SubtaskOp) -> None:
-
+        logger.debug('_update_provider_statistics. task_id=%r, subtask_id=%r,'
+                     'op=%r', task_id, subtask_id, op)
         header = self.tasks[task_id].header
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
 
@@ -1161,8 +1148,9 @@ class TaskManager(TaskEventListener):
         computation_time = ProviderComputeTimers.time(subtask_id)
 
         if not computation_time:
-            raise ValueError("Invalid value for computation_time: "
-                             f"{computation_time}")
+            logger.warning("Could not obtain computation time for subtask: %r",
+                           subtask_id)
+            return
 
         computation_time = int(round(computation_time))
 
@@ -1184,11 +1172,16 @@ class TaskManager(TaskEventListener):
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
         node_id = subtask_state.node_id
 
+        logger.debug('_update_provider_reputation. task_id=%r, subtask_id=%r,'
+                     'op=%r, subtask_state=%r', task_id, subtask_id, op,
+                     subtask_state)
+
         update_provider_efficacy(node_id, op)
         computation_time = ProviderComputeTimers.time(subtask_id)
 
         if not computation_time:
-            raise ValueError("computation_time cannot be equal to "
-                             f"{computation_time}")
+            logger.warning("Could not obtain computation time for subtask: %r",
+                           subtask_id)
+            return
 
         update_provider_efficiency(node_id, timeout, computation_time)

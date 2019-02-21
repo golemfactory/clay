@@ -18,7 +18,7 @@ class SubtaskVerificationState(Enum):
 
 class Verifier:
 
-    def start_verification(self, subtask_info: dict, reference_data: list,
+    def start_verification(self, subtask_info: dict,
                            resources: list, results: list) -> None:
         raise NotImplementedError
 
@@ -31,7 +31,6 @@ class StateVerifier(Verifier):
     def __init__(self):
         super(StateVerifier, self).__init__()
         self.subtask_info = {}
-        self.reference_data = []
         self.resources = []
         self.results = []
         self.state = SubtaskVerificationState.UNKNOWN_SUBTASK
@@ -52,7 +51,7 @@ class StateVerifier(Verifier):
             self.time_started = self.time_ended = datetime.utcnow()
             self.state = SubtaskVerificationState.TIMEOUT
             self.message = "Verification never ran, task timed out"
-        
+
         state = self.state
         answer = self._get_answer()
         self._clear_state()
@@ -60,7 +59,6 @@ class StateVerifier(Verifier):
 
     def _clear_state(self):
         self.subtask_info = {}
-        self.reference_data = []
         self.resources = []
         self.results = []
         self.state = SubtaskVerificationState.UNKNOWN_SUBTASK
@@ -69,8 +67,7 @@ class StateVerifier(Verifier):
         self.extra_data = {}
 
     def _get_answer(self):
-        return {'reference_data': self.reference_data,
-                'message': self.message,
+        return {'message': self.message,
                 'time_started': self.time_started,
                 'time_ended': self.time_ended,
                 'extra_data': self.extra_data}

@@ -2,15 +2,18 @@ import decimal
 import logging
 import os
 import time
-from typing import Type, Dict, Any
+from typing import (
+    Any,
+    Dict,
+    List,
+    Type,
+)
 
 from ethereum.utils import denoms
 from golem_messages import idgenerator
 from golem_messages.datastructures import p2p as dt_p2p
 from golem_messages.datastructures import tasks as dt_tasks
 import golem_messages.message
-from golem.verificator.core_verifier import CoreVerifier
-from golem.verificator.verifier import SubtaskVerificationState
 
 from apps.core.task.coretaskstate import TaskDefinition, Options
 from apps.core.verification_queue import VerificationQueue
@@ -24,6 +27,8 @@ from golem.task.taskbase import Task, TaskBuilder, \
     TaskTypeInfo, AcceptClientVerdict
 from golem.task.taskclient import TaskClient
 from golem.task.taskstate import SubtaskStatus
+from golem.verificator.core_verifier import CoreVerifier
+from golem.verificator.verifier import SubtaskVerificationState
 
 logger = logging.getLogger("apps.core")
 
@@ -207,12 +212,7 @@ class CoreTask(Task):
                           **{'owner': self.header.task_owner.key}},
             results=result_files,
             resources=self.task_resources,
-            reference_data=self.get_reference_data()
         )
-
-    # pylint:disable=no-self-use
-    def get_reference_data(self):
-        return []
 
     def verification_finished(self, subtask_id, verdict, result):
         try:
@@ -271,6 +271,8 @@ class CoreTask(Task):
 
     @handle_key_error
     def restart_subtask(self, subtask_id):
+        logger.debug('restart_subtask. subtask_id=%r', subtask_id)
+
         subtask_info = self.subtasks_given[subtask_id]
         was_failure_before = subtask_info['status'] in [SubtaskStatus.failure,
                                                         SubtaskStatus.resent]
@@ -426,11 +428,20 @@ class CoreTask(Task):
 
     @handle_key_error
     def _mark_subtask_failed(self, subtask_id):
+        logger.debug('_mark_subtask_failed. subtask_id=%r', subtask_id)
+
         self.subtasks_given[subtask_id]['status'] = SubtaskStatus.failure
         node_id = self.subtasks_given[subtask_id]['node_id']
         if node_id in self.counting_nodes:
             self.counting_nodes[node_id].reject()
         self.num_failed_subtasks += 1
+
+    def get_finishing_subtasks(self, node_id: str) -> List[dict]:
+        return [
+            subtask for subtask in self.subtasks_given
+            if subtask['status'].is_finishing()
+            and subtask['node_id'] == node_id
+        ]
 
     def get_resources(self):
         return self.task_resources

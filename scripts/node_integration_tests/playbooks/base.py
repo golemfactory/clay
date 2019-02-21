@@ -6,8 +6,6 @@ import time
 import traceback
 import typing
 
-from ethereum.utils import denoms
-
 from twisted.internet import reactor, task
 from twisted.internet.error import ReactorNotRunning
 from twisted.internet import _sslverify  # pylint: disable=protected-access
@@ -23,6 +21,8 @@ from scripts.node_integration_tests.params import (
 from golem.rpc.cert import CertificateError
 
 _sslverify.platformTrust = lambda: None
+
+
 
 
 class NodeTestPlaybook:
@@ -122,16 +122,16 @@ class NodeTestPlaybook:
         print("Error: {}".format(error))
 
     def _wait_gnt_eth(self, role, result):
-        gnt_balance = int(result.get('gnt')) / denoms.ether
-        gntb_balance = int(result.get('av_gnt')) / denoms.ether
-        eth_balance = int(result.get('eth')) / denoms.ether
+        gnt_balance = helpers.to_ether(result.get('gnt'))
+        gntb_balance = helpers.to_ether(result.get('av_gnt'))
+        eth_balance = helpers.to_ether(result.get('eth'))
         if gnt_balance > 0 and eth_balance > 0 and gntb_balance > 0:
-            print("{} has {} GNT ({} GNTB) and {} ETH.".format(
+            print("{} has {} total GNT ({} GNTB) and {} ETH.".format(
                 role.capitalize(), gnt_balance, gntb_balance, eth_balance))
             self.next()
 
         else:
-            print("Waiting for {} GNT/GNTB/ETH ({}/{}/{})".format(
+            print("Waiting for {} GNT(B)/converted GNTB/ETH ({}/{}/{})".format(
                 role.capitalize(), gnt_balance, gntb_balance, eth_balance))
             time.sleep(15)
 

@@ -1,3 +1,4 @@
+#git+https://github.com/golemfactory/golem-messages@<branchname>
 --extra-index-url https://builds.golem.network --trusted-host build.golem.network
 appdirs==1.4.3
 argh==0.26.2

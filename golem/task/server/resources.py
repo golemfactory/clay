@@ -15,27 +15,6 @@ logger = logging.getLogger(__name__)
 
 class TaskResourcesMixin:
     """Resource management functionality of TaskServer"""
-    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
-        self.client.add_resource_peer(node_name, addr, port, key_id, node_info)
-
-    def get_resource_peer(self, key_id):
-        peer_manager = self._get_peer_manager()
-        if peer_manager:
-            return peer_manager.get(key_id)
-        return None
-
-    def get_resource_peers(self, task_id):
-        peer_manager = self._get_peer_manager()
-        if peer_manager:
-            return peer_manager.get_for_task(task_id)
-        return []
-
-    def remove_resource_peer(self, task_id, key_id):
-        peer_manager = self._get_peer_manager()
-        if peer_manager:
-            return peer_manager.remove(task_id, key_id)
-        return None
-
     def get_resources(self, task_id):
         resource_manager = self._get_resource_manager()
         resources = resource_manager.get_resources(task_id)
@@ -100,10 +79,9 @@ class TaskResourcesMixin:
         self.task_manager.delete_task(task_id)
 
     def request_resource(self, task_id, subtask_id, resources):
-        if subtask_id not in self.task_sessions:
-            logger.error("Cannot map subtask_id %r to session", subtask_id)
+        if not self.client.resource_server:
+            logger.error("ResourceManager not ready")
             return False
-
         resource_manager = self.client.resource_server.resource_manager
         resources = resource_manager.from_wire(resources)
 
@@ -192,7 +170,3 @@ class TaskResourcesMixin:
     def _get_resource_manager(self):
         resource_server = self.client.resource_server
         return resource_server.resource_manager
-
-    def _get_peer_manager(self):
-        resource_manager = self._get_resource_manager()
-        return getattr(resource_manager, 'peer_manager', None)

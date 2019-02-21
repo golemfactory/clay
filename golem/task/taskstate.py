@@ -78,6 +78,11 @@ class SubtaskState(object):
             'stdout': to_unicode(self.stdout),
         }
 
+    def __repr__(self):
+        return '<%s: %r>' % (
+            type(self).__name__, self.to_dictionary()
+        )
+
 
 class TaskStatus(Enum):
     notStarted = "Not started"
@@ -123,6 +128,9 @@ class SubtaskStatus(Enum):
 
     def is_finished(self) -> bool:
         return self == self.finished
+
+    def is_finishing(self) -> bool:
+        return self in {self.downloading, self.verifying}
 
 
 class TaskTestStatus(Enum):
