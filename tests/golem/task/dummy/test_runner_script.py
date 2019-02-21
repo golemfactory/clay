@@ -1,3 +1,5 @@
+import os
+import shutil
 from unittest import mock
 
 from golem.network.transport.tcpnetwork import SocketAddress
@@ -7,6 +9,32 @@ from tests.golem.task.dummy import runner, task
 
 class TestDummyTaskRunnerScript(DatabaseFixture):
     """Tests for the runner script"""
+
+    def setUp(self):
+        super().setUp()
+        self.client = None
+        self.addCleanup(self.__clean_files)
+
+    def __clean_files(self):
+        if self.client is not None:
+            if os.path.isdir(
+                    self.client.task_server.benchmark_manager.benchmarks
+                    ['DUMMYPOW'][0].task_definition.tmp_dir):
+                shutil.rmtree(
+                    self.client.task_server.benchmark_manager.benchmarks
+                    ['DUMMYPOW'][0].task_definition.tmp_dir)
+            if os.path.isfile(
+                    self.client.task_server.benchmark_manager.benchmarks
+                    ['BLENDER'][0].task_definition.output_file):
+                os.remove(
+                    self.client.task_server.benchmark_manager.benchmarks
+                    ['BLENDER'][0].task_definition.output_file)
+            if os.path.isfile(
+                    self.client.task_server.benchmark_manager.benchmarks
+                    ['BLENDER_NVGPU'][0].task_definition.output_file):
+                os.remove(
+                    self.client.task_server.benchmark_manager.benchmarks
+                    ['BLENDER_NVGPU'][0].task_definition.output_file)
 
     @mock.patch("tests.golem.task.dummy.runner.run_requesting_node")
     @mock.patch("tests.golem.task.dummy.runner.run_computing_node")
@@ -79,23 +107,23 @@ class TestDummyTaskRunnerScript(DatabaseFixture):
     def test_run_requesting_node(self, mock_reactor,
                                  mock_enqueue_new_task,
                                  mock_config_logging, *_):
-        client = runner.run_requesting_node(self.path, 3)
+        self.client = runner.run_requesting_node(self.path, 3)
         self.assertTrue(mock_reactor.run.called)
         self.assertTrue(mock_enqueue_new_task.called)
         self.assertTrue(mock_config_logging.called)
-        client.quit()
+        self.client.quit()
 
     @mock.patch("tests.golem.task.dummy.runner.atexit")
     @mock.patch("tests.golem.task.dummy.runner.reactor")
     @mock.patch("golem.core.common.config_logging")
     def test_run_computing_node(self, mock_config_logging, mock_reactor, _):
-        client = runner.run_computing_node(self.path,
+        self.client = runner.run_computing_node(self.path,
                                            SocketAddress("127.0.0.1", 40102))
         assert task.DummyTask.ENVIRONMENT_NAME in \
-            client.environments_manager.environments
+            self.client.environments_manager.environments
         self.assertTrue(mock_reactor.run.called)
         self.assertTrue(mock_config_logging.called)
-        client.quit()
+        self.client.quit()
 
     @mock.patch("subprocess.Popen")
     def test_run_simulation(self, mock_popen):

@@ -26,6 +26,11 @@ class TestBlenderBenchmark(unittest.TestCase, testutils.PEP8MixIn):
 
     def setUp(self):
         self.bb = BlenderBenchmark()
+        self.addCleanup(self.__clean_files)
+
+    def __clean_files(self):
+        if os.path.isfile(self.bb.task_definition.output_file):
+            os.remove(self.bb.task_definition.output_file)
 
     def test_is_instance(self):
         self.assertIsInstance(self.bb, BlenderBenchmark)

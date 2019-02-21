@@ -46,7 +46,8 @@ class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
                                     "apps",
                                     "dummy",
                                     "test_tmp")
-        os.mkdir(cls.test_tmp)
+        if not os.path.isdir(cls.test_tmp):
+            os.mkdir(cls.test_tmp)
 
         cls.code_link = os.path.join(cls.test_tmp, "code")
         cls.data_link = os.path.join(cls.test_tmp, "data")
@@ -59,6 +60,7 @@ class TestDockerDummyTask(DockerTaskTestCase[DummyTask, DummyTaskBuilder]):
         rmlink_or_rmtree(cls.code_link)
         rmlink_or_rmtree(cls.data_link)
         os.rmdir(cls.test_tmp)
+        super().tearDownClass()
 
     def _extract_results(self, computer: LocalComputer, subtask_id: str) \
             -> Path:

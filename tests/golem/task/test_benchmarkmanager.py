@@ -1,3 +1,5 @@
+import os
+import shutil
 import types
 from unittest.mock import Mock, patch
 
@@ -35,6 +37,23 @@ class TestBenchmarkManager(DatabaseFixture, PEP8MixIn):
         am._benchmark_enabled = Mock(return_value=True)
         self.b = BenchmarkManager("NODE1", Mock(), self.path,
                                   am.get_benchmarks())
+        self.addCleanup(self.__clean_files)
+
+    def __clean_files(self):
+        if os.path.isdir(
+                self.b.benchmarks['DUMMYPOW'][0].task_definition.tmp_dir):
+            shutil.rmtree(
+                self.b.benchmarks['DUMMYPOW'][0].task_definition.tmp_dir)
+        if os.path.isfile(
+                self.b.benchmarks['BLENDER'][0].task_definition.output_file):
+            os.remove(
+                self.b.benchmarks['BLENDER'][0].task_definition.output_file)
+        if os.path.isfile(
+                self.b.benchmarks['BLENDER_NVGPU'][0].
+                    task_definition.output_file):
+            os.remove(
+                self.b.benchmarks['BLENDER_NVGPU'][0].
+                    task_definition.output_file)
 
     def test_benchmarks_not_needed_wo_apps(self):
         assert not BenchmarkManager(None, None, None).benchmarks_needed()

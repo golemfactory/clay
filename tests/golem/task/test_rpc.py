@@ -1,5 +1,7 @@
 # pylint: disable=protected-access,too-many-ancestors
 import copy
+import os
+import shutil
 import unittest
 from unittest import mock
 
@@ -76,6 +78,7 @@ class ProviderBase(test_client.TestClientBase):
         self.provider = rpc.ClientProvider(self.client)
         self.t_dict = copy.deepcopy(self.T_DICT)
         self.client.resource_server = mock.Mock()
+        self.addCleanup(self.__clean_files)
 
         def create_resource_package(*_args):
             result = 'package_path', 'package_sha1'
@@ -97,6 +100,27 @@ class ProviderBase(test_client.TestClientBase):
             instance.tasks[task.header.task_id] = task
         self.client.task_server.task_manager.start_task = lambda tid: tid
         self.client.task_server.task_manager.add_new_task = add_new_task
+
+        self.benchmark_dummy_dir = (
+            self.client.task_server.benchmark_manager.
+                benchmarks['DUMMYPOW'][0].task_definition.tmp_dir
+        )
+        self.benchmark_blender_file = (
+            self.client.task_server.benchmark_manager.
+                benchmarks['BLENDER'][0].task_definition.output_file
+        )
+        self.benchmark_blender_nvgpu_file = (
+            self.client.task_server.benchmark_manager.benchmarks
+            ['BLENDER_NVGPU'][0].task_definition.output_file
+        )
+
+    def __clean_files(self):
+        if os.path.isdir(self.benchmark_dummy_dir):
+            shutil.rmtree(self.benchmark_dummy_dir)
+        if os.path.isfile(self.benchmark_blender_file):
+            os.remove(self.benchmark_blender_file)
+        if os.path.isfile(self.benchmark_blender_nvgpu_file):
+            os.remove(self.benchmark_blender_nvgpu_file)
 
 
 @mock.patch('signal.signal')
@@ -191,7 +215,8 @@ class TestRestartTask(ProviderBase):
         deferred = defer.Deferred()
         connect_to_network.side_effect = lambda *_: deferred.callback(True)
         self.client.are_terms_accepted = lambda: True
-        self.client.start()
+        with mock.patch('apps.appsmanager.AppsManager.get_benchmarks'):
+            self.client.start()
         golem_deferred.sync_wait(deferred)
 
         def create_resource_package(*_args):
@@ -232,11 +257,12 @@ class TestRestartTask(ProviderBase):
             'timeout': common.timeout_to_string(3),
             'type': 'Dummy',
         }
-
-        task = self.client.task_manager.create_task(task_dict)
+        with mock.patch('apps.dummy.task.dummytaskstate.DummyTaskDefinition.add_to_resources'):
+            task = self.client.task_manager.create_task(task_dict)
         golem_deferred.sync_wait(rpc.enqueue_new_task(self.client, task))
         with mock.patch('golem.task.rpc.enqueue_new_task') as enq_mock:
-            new_task_id, error = self.provider.restart_task(task.header.task_id)
+            with mock.patch('apps.dummy.task.dummytaskstate.DummyTaskDefinition.add_to_resources'):
+                new_task_id, error = self.provider.restart_task(task.header.task_id)
             enq_mock.assert_called_once()
         assert new_task_id
         assert not error

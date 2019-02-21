@@ -40,11 +40,11 @@ class TempDirFixture(unittest.TestCase):
                 # Select nice root temp dir exactly once.
                 cls.root_dir = tempfile.mkdtemp(prefix='golem-tests-')
 
-    # Concurrent tests will fail
-    # @classmethod
-    # def tearDownClass(cls):
-    #     if os.path.exists(cls.root_dir):
-    #         shutil.rmtree(cls.root_dir)
+    @classmethod
+    def tearDownClass(cls):
+        if cls.root_dir is not None and os.path.exists(cls.root_dir):
+            shutil.rmtree(cls.root_dir)
+            cls.root_dir = None
 
     def setUp(self):
 
@@ -58,7 +58,9 @@ class TempDirFixture(unittest.TestCase):
             os.chmod(self.tempdir, 0o770)
         self.new_path = Path(self.path)
 
-    def tearDown(self):
+        self.addCleanup(self.__clean)
+
+    def __clean(self):
         # Firstly kill Ethereum node to clean up after it later on.
         try:
             self.__remove_files()

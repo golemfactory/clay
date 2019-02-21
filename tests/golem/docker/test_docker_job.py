@@ -37,11 +37,11 @@ class TestDockerJob(DockerTestCase):
     TEST_SCRIPT = "print 'Adventure Time!'\n"
 
     def setUp(self):
-        main_dir = get_local_datadir('tests-' + str(uuid.uuid4()))
-        if not os.path.exists(main_dir):
-            os.makedirs(main_dir)
+        self.main_dir = get_local_datadir('tests-' + str(uuid.uuid4()))
+        if not os.path.exists(self.main_dir):
+            os.makedirs(self.main_dir)
 
-        self.test_dir = tempfile.mkdtemp(dir=main_dir)
+        self.test_dir = tempfile.mkdtemp(dir=self.main_dir)
         self.work_dir = tempfile.mkdtemp(prefix="golem-", dir=self.test_dir)
         self.resources_dir = tempfile.mkdtemp(
             prefix="golem-", dir=self.test_dir)
@@ -53,6 +53,8 @@ class TestDockerJob(DockerTestCase):
         self.image = DockerImage(self._get_test_repository(),
                                  tag=self._get_test_tag())
         self.test_job = None
+
+        self.addCleanup(self.__clean_files)
 
     def testDockerJobInit(self):
         with self.assertRaises(TypeError):
@@ -89,8 +91,10 @@ class TestDockerJob(DockerTestCase):
             except docker.errors.APIError:
                 pass  # Already removed?
         self.test_job = None
-        if self.test_dir:
-            shutil.rmtree(self.test_dir)
+
+    def __clean_files(self):
+        if self.main_dir and os.path.isdir(os.path.dirname(self.main_dir)):
+            shutil.rmtree(os.path.dirname(self.main_dir))
 
     def _create_test_job(self, script=TEST_SCRIPT, params=None):
         self.test_job = DockerJob(

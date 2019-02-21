@@ -634,6 +634,15 @@ class TestPreviewUpdater(TempDirFixture, LogTestCase):
 
 class TestBlenderRenderTaskBuilder(TempDirFixture):
 
+    def setUp(self):
+        super().setUp()
+        _, self.blender_file_path = tempfile.mkstemp('.blend')
+        self.addCleanup(self.__clean_files)
+
+    def __clean_files(self):
+        if os.path.isfile(self.blender_file_path):
+            os.remove(self.blender_file_path)
+
     @property
     def _task_dictionary(self):
         return {
@@ -643,7 +652,7 @@ class TestBlenderRenderTaskBuilder(TempDirFixture):
             "subtask_timeout": "0:09:50",
             "subtasks_count": 1,
             "bid": 1.0,
-            "resources": [tempfile.mkstemp('.blend')[1]],
+            "resources": [self.blender_file_path],
             "options": {
                 "output_path": '',
                 "format": "PNG",

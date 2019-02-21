@@ -1,4 +1,5 @@
 import os
+import shutil
 from unittest.mock import patch
 
 from apps.dummy.benchmark.benchmark import DummyTaskBenchmark
@@ -11,6 +12,11 @@ class TestDummyBenchmark(TempDirFixture):
     def setUp(self):
         super().setUp()
         self.db = DummyTaskBenchmark()
+        self.addCleanup(self.__clean_files)
+
+    def __clean_files(self):
+        if os.path.isdir(self.db._task_definition.tmp_dir):
+            shutil.rmtree(self.db._task_definition.tmp_dir)
 
     def test_is_instance(self):
         self.assertIsInstance(self.db, DummyTaskBenchmark)
