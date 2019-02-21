@@ -31,6 +31,8 @@ class Task:
     evt_subtask_status      = 'evt.comp.subtask.status'
     evt_task_test_status    = 'evt.comp.task.test.status'
 
+    evt_provider_rejected   = 'evt.comp.task.prov_rejected'
+
 
 class Resources:
 

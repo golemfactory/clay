@@ -1156,7 +1156,7 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         self.client.task_server.acl = Mock(spec=Acl)
         self.client.block_node('node_id')
         self.client.task_server.acl.disallow.assert_called_once_with(
-            'node_id', persist=True)
+            'node_id', -1, True)
 
     @classmethod
     def __new_incoming_peer(cls):

@@ -228,6 +228,13 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             if not task_to_compute.sig:
                 task_to_compute.sign_message(self.my_private_key)
 
+            config_desc = self.task_server.config_desc
+            self.task_server.disallow_node(
+                task_to_compute.provider_id,
+                config_desc.disallow_node_timeout_seconds, False)
+            self.task_server.disallow_ip(
+                self.address, config_desc.disallow_ip_timeout_seconds)
+
             payment_processed_ts = self.task_server.accept_result(
                 subtask_id,
                 self.key_id,
@@ -513,8 +520,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
 
         task_server_ok = self.task_server.should_accept_provider(
-            self.key_id, msg.node_name, msg.task_id, msg.perf_index,
-            msg.max_resource_size, msg.max_memory_size, msg.num_cores)
+            self.key_id, self.address, msg.node_name, msg.task_id,
+            msg.perf_index, msg.max_resource_size, msg.max_memory_size,
+            msg.num_cores)
 
         logger.debug(
             "Task server ok? should_accept_provider=%s task_id=%s node=%s",

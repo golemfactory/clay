@@ -1,5 +1,6 @@
 import logging
 import time
+from typing import Dict, TYPE_CHECKING
 
 from ethereum.utils import denoms
 
@@ -7,6 +8,9 @@ from golem.core.service import LoopingCallService
 from golem.core.variables import PAYMENT_DEADLINE
 
 from .transactionsystem import TransactionSystem
+
+if TYPE_CHECKING:
+    from .ethereumtransactionsystem import EthereumTransactionSystem  # noqa pylint:disable=unused-import
 
 logger = logging.getLogger(__name__)
 
@@ -28,8 +32,9 @@ class FundsLocker(LoopingCallService):
             transaction_system: TransactionSystem,
             interval_seconds: int = 60) -> None:
         super().__init__(interval_seconds)
-        self.task_lock: dict = {}
-        self.transaction_system = transaction_system
+        self.task_lock: Dict[str: TaskFundsLock] = {}
+        self.transaction_system: 'EthereumTransactionSystem' \
+            = transaction_system
 
     def lock_funds(
             self,
@@ -54,6 +59,18 @@ class FundsLocker(LoopingCallService):
             tfl.num_tasks,
         )
         self.task_lock[task_id] = tfl
+
+    def sum_locks(self):
+        gnt, eth = 0, 0
+        total_subtasks = 0
+        for task_lock in self.task_lock.values():
+            gnt += task_lock.gnt_lock
+            total_subtasks += task_lock.num_tasks
+        if total_subtasks > 0:
+            eth = \
+                self.transaction_system.eth_for_batch_payment(total_subtasks) +\
+                self.transaction_system._eth_base_for_batch_payment()
+        return gnt, eth
 
     def remove_old(self):
         time_ = time.time()
