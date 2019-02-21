@@ -259,13 +259,13 @@ class TestRestartTask(ProviderBase):
         }
         with mock.patch(
             'apps.dummy.task.dummytaskstate.'
-                'DummyTaskDefinition.add_to_resources'):
+            'DummyTaskDefinition.add_to_resources'):
             task = self.client.task_manager.create_task(task_dict)
         golem_deferred.sync_wait(rpc.enqueue_new_task(self.client, task))
         with mock.patch('golem.task.rpc.enqueue_new_task') as enq_mock:
             with mock.patch(
                 'apps.dummy.task.dummytaskstate.'
-                    'DummyTaskDefinition.add_to_resources'):
+                'DummyTaskDefinition.add_to_resources'):
                 new_task_id, error = self.provider.restart_task(
                     task.header.task_id)
             enq_mock.assert_called_once()
