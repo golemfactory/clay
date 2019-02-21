@@ -103,11 +103,11 @@ class ProviderBase(test_client.TestClientBase):
 
         self.benchmark_dummy_dir = (
             self.client.task_server.benchmark_manager.
-                benchmarks['DUMMYPOW'][0].task_definition.tmp_dir
+            benchmarks['DUMMYPOW'][0].task_definition.tmp_dir
         )
         self.benchmark_blender_file = (
             self.client.task_server.benchmark_manager.
-                benchmarks['BLENDER'][0].task_definition.output_file
+            benchmarks['BLENDER'][0].task_definition.output_file
         )
         self.benchmark_blender_nvgpu_file = (
             self.client.task_server.benchmark_manager.benchmarks
@@ -257,12 +257,17 @@ class TestRestartTask(ProviderBase):
             'timeout': common.timeout_to_string(3),
             'type': 'Dummy',
         }
-        with mock.patch('apps.dummy.task.dummytaskstate.DummyTaskDefinition.add_to_resources'):
+        with mock.patch(
+                'apps.dummy.task.dummytaskstate.'
+                'DummyTaskDefinition.add_to_resources'):
             task = self.client.task_manager.create_task(task_dict)
         golem_deferred.sync_wait(rpc.enqueue_new_task(self.client, task))
         with mock.patch('golem.task.rpc.enqueue_new_task') as enq_mock:
-            with mock.patch('apps.dummy.task.dummytaskstate.DummyTaskDefinition.add_to_resources'):
-                new_task_id, error = self.provider.restart_task(task.header.task_id)
+            with mock.patch(
+                    'apps.dummy.task.dummytaskstate.'
+                    'DummyTaskDefinition.add_to_resources'):
+                new_task_id, error = self.provider.restart_task(
+                    task.header.task_id)
             enq_mock.assert_called_once()
         assert new_task_id
         assert not error

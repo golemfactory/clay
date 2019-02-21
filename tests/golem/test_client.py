@@ -625,15 +625,15 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         self.client._update_hw_preset = Mock()
         self.benchmark_dummy_dir = (
             self.client.task_server.benchmark_manager.
-                benchmarks['DUMMYPOW'][0].task_definition.tmp_dir
+            benchmarks['DUMMYPOW'][0].task_definition.tmp_dir
         )
         self.benchmark_blender_file = (
             self.client.task_server.benchmark_manager.
-                benchmarks['BLENDER'][0].task_definition.output_file
+            benchmarks['BLENDER'][0].task_definition.output_file
         )
         self.benchmark_blender_nvgpu_file = (
             self.client.task_server.benchmark_manager.
-                benchmarks['BLENDER_NVGPU'][0].task_definition.output_file
+            benchmarks['BLENDER_NVGPU'][0].task_definition.output_file
         )
         self.addCleanup(self.__clean_files)
 

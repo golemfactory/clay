@@ -50,10 +50,10 @@ class TestBenchmarkManager(DatabaseFixture, PEP8MixIn):
                 self.b.benchmarks['BLENDER'][0].task_definition.output_file)
         if os.path.isfile(
                 self.b.benchmarks['BLENDER_NVGPU'][0].
-                    task_definition.output_file):
+                task_definition.output_file):
             os.remove(
                 self.b.benchmarks['BLENDER_NVGPU'][0].
-                    task_definition.output_file)
+                task_definition.output_file)
 
     def test_benchmarks_not_needed_wo_apps(self):
         assert not BenchmarkManager(None, None, None).benchmarks_needed()

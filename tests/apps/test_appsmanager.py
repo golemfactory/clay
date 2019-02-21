@@ -24,16 +24,16 @@ class TestAppsManager(TestCase):
                     self.benchmarks['DUMMYPOW'][0].task_definition.tmp_dir)
             if os.path.isfile(
                     self.benchmarks['BLENDER'][0].
-                            task_definition.output_file):
+                    task_definition.output_file):
                 os.remove(
                     self.benchmarks['BLENDER'][0].
-                        task_definition.output_file)
+                    task_definition.output_file)
             if os.path.isfile(
                     self.benchmarks['BLENDER_NVGPU'][0].
-                            task_definition.output_file):
+                    task_definition.output_file):
                 os.remove(
                     self.benchmarks['BLENDER_NVGPU'][0].
-                        task_definition.output_file)
+                    task_definition.output_file)
 
     @staticmethod
     def _get_loaded_app_manger():
