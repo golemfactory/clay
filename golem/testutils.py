@@ -4,7 +4,6 @@ import os.path
 import shutil
 import tempfile
 import unittest
-import uuid
 from pathlib import Path
 from time import sleep
 from typing import Dict
@@ -246,6 +245,8 @@ class TestTaskIntegration(TempDirFixture):
         # build mock node
         self.node = dt_p2p_factory.Node()
         self.task_definition = None
+        self.node_id = "qwertyuiop"
+        self.node_name = "aaaa"
         self.task = None
         self.dir_manager = DirManager(self.root_dir)
 
@@ -253,42 +254,45 @@ class TestTaskIntegration(TempDirFixture):
         app_manager = AppsManager()
         app_manager.load_all_apps()
 
-        self.keys_auth = KeysAuth(datadir=self.tempdir, private_key_name="test_key",
+        self.keys_auth = KeysAuth(datadir=self.tempdir,
+                                  private_key_name="test_key",
                                   password="test")
 
-        self.task_manager = TestTaskManager(self.node, self.keys_auth, self.root_dir,
+        self.task_manager = TestTaskManager(self.node, self.keys_auth,
+                                            self.root_dir,
                                             apps_manager=app_manager)
 
         self.dm = DockerTaskThread.docker_manager = DockerManager.install()
 
-    def build_task(self, task_type_info, task_dict):
+    def add_task(self, task_dict):
 
-        self.task = self.task_manager.create_task(task_dict)
+        task = self.task_manager.create_task(task_dict)
+        self.task_manager.add_new_task(task)
+        return task
 
-        # builder_type = task_type_info.task_builder_type
+    def execute_task(self, task: Task):
 
-        # minimal = False
+        self.task_manager.start_task(task.task_definition.task_id)
+        for i in range(task.task_definition.subtasks_count):
+            ctd = self.task_manager. \
+                get_next_subtask(node_id=self.node_id,
+                                 node_name=self.node_name,
+                                 task_id=task.task_definition.task_id,
+                                 estimated_performance=1000,
+                                 price=int(
+                                     task.price /
+                                     task.task_definition.subtasks_count),
+                                 max_resource_size=10000000000,
+                                 max_memory_size=10000000000,
+                                 address='127.0.0.1')
+            result = self.execute_subtask(task, ctd)
+            j = 1
 
-        # definition = builder_type.build_definition(task_type_info, task_dict, minimal)
-        # definition.task_id = str(uuid.uuid4())
-        # definition.concent_enabled = task_dict.get('concent_enabled', False)
+    def execute_subtask(self, task, ctd):
 
-        # builder = builder_type(self.node, definition, self.dir_manager)
-
-        # self.task_definition = definition
-        # self.task = builder.build()
-
-        return self.task
-
-    def execute_subtask(self, task):
-
-        node_id = uuid.uuid4()
-        node_name = str(node_id)
-
-        ctd = task.query_extra_data(0, node_id, node_name).ctd
         extra_data = ctd["extra_data"]
 
-        subtask_dir = os.path.join(self.root_dir, node_name)
+        subtask_dir = os.path.join(self.root_dir, self.node_name)
         script_filepath = extra_data['script_filepath']
 
         self._copy_resources(task, subtask_dir)
@@ -297,7 +301,8 @@ class TestTaskIntegration(TempDirFixture):
         env = task.ENVIRONMENT_CLASS
         image = DockerImage(repository=env.DOCKER_IMAGE, tag=env.DOCKER_TAG)
 
-        result = self._create_test_job(image, subtask_dir, script_filepath, extra_data)
+        return self._create_test_job(image, subtask_dir, script_filepath,
+                                     extra_data)
 
     def execute_subtasks(self, num_subtasks):
 
@@ -326,7 +331,8 @@ class TestTaskIntegration(TempDirFixture):
 
     def _create_test_job(self, image, root_dir, script, params):
 
-        [resources_dir, work_dir, output_dir] = self._create_docker_dirs(root_dir)
+        [resources_dir, work_dir, output_dir] = self._create_docker_dirs(
+            root_dir)
 
         dir_mapping = DockerTaskThread.specify_dir_mapping(
             output=output_dir, temporary=work_dir,
