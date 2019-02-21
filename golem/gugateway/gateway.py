@@ -33,7 +33,8 @@ def start(client: Client) -> None:
     try:
         _start(default_port)
     except CannotListenError:
-        _start(default_port + 1)
+        logger.warning("   NOT launching GU GATEWAY nor WebDAV - port is busy")
+        pass
 
 
 # credit: https://gist.github.com/ianschenck/977379a91154fe264897
