@@ -48,7 +48,8 @@ def gracefully_shutdown(process: subprocess.Popen, node_type: str):
         process.kill()
 
 
-def run_golem_node(node_type: str, *args, nodes_root: pathlib.Path = None):
+def run_golem_node(node_type: str, *args,
+                   nodes_root: typing.Optional[pathlib.Path] = None):
     node_file = node_type + '.py'
     cwd = nodes_root or pathlib.Path(os.path.realpath(__file__)).parent
     node_script = str(cwd / 'nodes' / node_file)
