@@ -7,9 +7,10 @@ import uuid
 from collections import deque
 from math import ceil
 from unittest.mock import Mock, MagicMock, patch, ANY
+
+from pydispatch import dispatcher
 import freezegun
 
-from eth_utils import encode_hex
 from golem_messages import idgenerator
 from golem_messages import factories as msg_factories
 from golem_messages.datastructures import tasks as dt_tasks
@@ -19,10 +20,9 @@ from golem_messages.message import ComputeTaskDef
 from golem_messages.utils import encode_hex as encode_key_id
 from requests import HTTPError
 
-import golem
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import timeout_to_deadline, node_info_str
+from golem.core.common import node_info_str
 from golem.core.keysauth import KeysAuth
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
@@ -81,9 +81,8 @@ def get_mock_task(
         estimated_memory: int = DEFAULT_ESTIMATED_MEMORY,
 ) -> Mock:
     task_mock = Mock()
-    key_id = str.encode(key_gen)
     task_mock.header = get_example_task_header(
-        key_id,
+        key_gen,
         resource_size=resource_size,
         estimated_memory=estimated_memory,
     )
@@ -577,9 +576,10 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts._sync_pending()
         assert not ts.network.connect.called
 
-    @patch('golem.task.taskserver.dispatcher.send')
-    def test_should_accept_provider_no_such_task(self, dispatcher_send: Mock):
+    def test_should_accept_provider_no_such_task(self, *_args):
         # given
+        listener = Mock()
+        dispatcher.connect(listener, signal='golem.taskserver')
         ts = self.ts
         node_id = "0xdeadbeef"
         node_name = "deadbeef"
@@ -599,7 +599,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 cm,
                 f'INFO:{logger.name}:Cannot find task in my tasks: {ids}')
 
-        dispatcher_send.assert_called_with(
+        listener.assert_called_once_with(
+            sender=ANY,
             signal='golem.taskserver',
             event='provider_rejected',
             node_id=node_id,
@@ -614,10 +615,10 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         env.get_min_accepted_performance.return_value = min_accepted_perf
         self.ts.get_environment_by_id = Mock(return_value=env)
 
-    @patch('golem.task.taskserver.dispatcher.send')
-    def test_should_accept_provider_insufficient_performance(
-            self, dispatcher_send: Mock):
+    def test_should_accept_provider_insufficient_performance(self, *_args):
         # given
+        listener = Mock()
+        dispatcher.connect(listener, signal='golem.taskserver')
         provider_perf = DEFAULT_MIN_ACCEPTED_PERF - 10
 
         ts = self.ts
@@ -647,7 +648,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 f'INFO:{logger.name}:insufficient provider performance: '
                 f'{provider_perf} < {DEFAULT_MIN_ACCEPTED_PERF}; {ids}')
 
-        dispatcher_send.assert_called_with(
+        listener.assert_called_once_with(
+            sender=ANY,
             signal='golem.taskserver',
             event='provider_rejected',
             node_id=node_id,
@@ -658,10 +660,10 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 'min_accepted_perf': DEFAULT_MIN_ACCEPTED_PERF,
             })
 
-    @patch('golem.task.taskserver.dispatcher.send')
-    def test_should_accept_provider_insufficient_disk_size(
-            self, dispatcher_send: Mock):
+    def test_should_accept_provider_insufficient_disk_size(self, *_args):
         # given
+        listener = Mock()
+        dispatcher.connect(listener, signal='golem.taskserver')
         resource_size = DEFAULT_MAX_RESOURCE_SIZE_KB*1024 + 1
 
         ts = self.ts
@@ -691,7 +693,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 f'{resource_size} B < {DEFAULT_MAX_RESOURCE_SIZE_KB} '
                 f'KiB; {ids}')
 
-        dispatcher_send.assert_called_with(
+        listener.assert_called_once_with(
+            sender=ANY,
             signal='golem.taskserver',
             event='provider_rejected',
             node_id=node_id,
@@ -702,10 +705,10 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 'max_resource_size': DEFAULT_MAX_RESOURCE_SIZE_KB*1024,
             })
 
-    @patch('golem.task.taskserver.dispatcher.send')
-    def test_should_accept_provider_insufficient_memory_size(
-            self, dispatcher_send: Mock):
+    def test_should_accept_provider_insufficient_memory_size(self, *_args):
         # given
+        listener = Mock()
+        dispatcher.connect(listener, signal='golem.taskserver')
         estimated_memory = DEFAULT_MAX_MEMORY_SIZE_KB*1024 + 1
 
         ts = self.ts
@@ -735,7 +738,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 f'{estimated_memory} B < {DEFAULT_MAX_MEMORY_SIZE_KB} '
                 f'KiB; {ids}')
 
-        dispatcher_send.assert_called_with(
+        listener.assert_called_once_with(
+            sender=ANY,
             signal='golem.taskserver',
             event='provider_rejected',
             node_id=node_id,
@@ -746,10 +750,10 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 'max_memory_size': DEFAULT_MAX_MEMORY_SIZE_KB*1024
             })
 
-    @patch('golem.task.taskserver.dispatcher.send')
-    def test_should_accept_provider_insufficient_trust(
-            self, dispatcher_send: Mock):
+    def test_should_accept_provider_insufficient_trust(self, *_args):
         # given
+        listener = Mock()
+        dispatcher.connect(listener, signal='golem.taskserver')
         ts = self.ts
         node_id = "0xdeadbeef"
         node_name = "deadbeef"
@@ -799,7 +803,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 f'INFO:{logger.name}:insufficient provider trust level:'
                 f' 0.2 < 0.4; {ids}')
 
-        dispatcher_send.assert_called_with(
+        listener.assert_called_once_with(
+            sender=ANY,
             signal='golem.taskserver',
             event='provider_rejected',
             node_id=node_id,
@@ -810,9 +815,10 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 'required_trust': ts.config_desc.computing_trust,
             })
 
-    @patch('golem.task.taskserver.dispatcher.send')
-    def test_should_accept_provider_masking(self, dispatcher_send: Mock):
+    def test_should_accept_provider_masking(self, *_args):
         # given
+        listener = Mock()
+        dispatcher.connect(listener, signal='golem.taskserver')
         ts = self.ts
         node_id = "0xdeadbeef"
         node_name = "deadbeef"
@@ -842,7 +848,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 cm,
                 f'INFO:{logger.name}:network mask mismatch: {ids}')
 
-        dispatcher_send.assert_called_with(
+        listener.assert_called_once_with(
+            sender=ANY,
             signal='golem.taskserver',
             event='provider_rejected',
             node_id=node_id,
@@ -850,9 +857,10 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             reason='netmask',
             details=None)
 
-    @patch('golem.task.taskserver.dispatcher.send')
-    def test_should_accept_provider_rejected(self, dispatcher_send: Mock):
+    def test_should_accept_provider_rejected(self, *_args):
         # given
+        listener = Mock()
+        dispatcher.connect(listener, signal='golem.taskserver')
         ts = self.ts
         node_id = "0xdeadbeef"
         node_name = "deadbeef"
@@ -882,7 +890,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 f'(either waiting for results or previously failed)'
             )
 
-        dispatcher_send.assert_called_with(
+        listener.assert_called_once_with(
+            sender=ANY,
             signal='golem.taskserver',
             event='provider_rejected',
             node_id=node_id,
@@ -892,9 +901,10 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 'verdict': AcceptClientVerdict.REJECTED.value,
             })
 
-    @patch('golem.task.taskserver.dispatcher.send')
-    def test_should_accept_provider_acl(self, dispatcher_send: Mock):
+    def test_should_accept_provider_acl(self, *_args):
         # given
+        listener = Mock()
+        dispatcher.connect(listener, signal='golem.taskserver')
         ts = self.ts
         node_id = "0xdeadbeef"
         node_name = "deadbeef"
@@ -922,14 +932,15 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
                 cm,
                 f'INFO:{logger.name}:provider is blacklisted; {ids}')
 
-        dispatcher_send.assert_called_with(
+        listener.assert_called_once_with(
+            sender=ANY,
             signal='golem.taskserver',
             event='provider_rejected',
             node_id=node_id,
             task_id=task_id,
             reason='acl',
             details={'acl_reason': AclDenyReason.blacklisted.value})
-        dispatcher_send.reset_mock()
+        listener.reset_mock()
 
         # given
         ts.acl_ip.disallow("127.0.0.1")
@@ -937,7 +948,8 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         assert not ts.should_accept_provider(
             "XYZ", "127.0.0.1", node_name, task_id, DEFAULT_PROVIDER_PERF,
             DEFAULT_MAX_RESOURCE_SIZE_KB, DEFAULT_MAX_MEMORY_SIZE_KB, 1)
-        dispatcher_send.assert_called_with(
+        listener.assert_called_once_with(
+            sender=ANY,
             signal='golem.taskserver',
             event='provider_rejected',
             node_id="XYZ",

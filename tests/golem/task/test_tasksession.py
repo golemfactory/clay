@@ -576,8 +576,6 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
     def test_result_rejected_with_concent(self):
         srr = self._get_srr(concent=True)
-        self.task_session.task_server.client.funds_locker\
-            .sum_locks.return_value = (0,)
 
         def concent_deposit(**_):
             result = Deferred()

@@ -819,7 +819,8 @@ class TaskServer(
         logger.debug('provider can be accepted %s', ids)
         return True
 
-    def notify_provider_rejected(self, node_id: str, task_id: str,
+    @classmethod
+    def notify_provider_rejected(cls, node_id: str, task_id: str,
                                  reason: RejectedReason,
                                  details: Optional[Dict[str, Any]] = None):
         dispatcher.send(

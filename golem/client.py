@@ -8,7 +8,6 @@ import time
 import uuid
 from copy import copy, deepcopy
 from datetime import timedelta
-from pathlib import Path
 from typing import Any, Dict, Hashable, Optional, Union, List, Iterable, Tuple
 
 from golem_messages import datastructures as msg_datastructures
@@ -299,9 +298,19 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             self._publish(Task.evt_task_status, kwargs['task_id'],
                           op_class_name, op_value)
 
-    def taskserver_listener(self, node_id, task_id, reason, details, **kwargs):
-        self._publish(Task.evt_provider_rejected, node_id=node_id,
-                      task_id=task_id, reason=reason, details=details)
+    def taskserver_listener(
+            self,
+            event,
+            **kwargs,
+    ):
+        if event == 'provider_rejected':
+            self._publish(
+                Task.evt_provider_rejected,
+                node_id=kwargs['node_id'],
+                task_id=kwargs['task_id'],
+                reason=kwargs['reason'],
+                details=kwargs['details'],
+            )
 
     @report_calls(Component.client, 'sync')
     def sync(self):
@@ -1046,10 +1055,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             currency,
             gas_price,
         )]
-
-    @rpc_utils.expose('pay.locked')
-    def get_funds_locked(self):
-        return self.funds_locker.sum_locks()
 
     @rpc_utils.expose('rep.comp')
     def get_computing_trust(self, node_id):

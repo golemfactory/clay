@@ -35,7 +35,7 @@ class _DenyAcl(Acl):
     _max_times: int
     # SortedList of floats = deadlines
     _deny_deadlines: Dict[str, Union[_Always, SortedList]]
-    _list_path: Path
+    _list_path: Optional[Path]
 
     def __init__(self, deny_coll: Optional[Iterable[str]] = None,
                  list_path: Optional[Path] = None, max_times: int = 1) -> None:
@@ -46,7 +46,7 @@ class _DenyAcl(Acl):
         if deny_coll is None:
             deny_coll = []
         self._max_times = max_times
-        self._deny_deadlines = dict.fromkeys(deny_coll, self._always)
+        self._deny_deadlines = dict((key, self._always) for key in deny_coll)
         self._list_path = list_path
 
     def is_allowed(self, node_id: str) -> Tuple[bool, Optional[DenyReason]]:
@@ -58,6 +58,7 @@ class _DenyAcl(Acl):
         if deadlines is self._always:
             return False, DenyReason.blacklisted
 
+        assert isinstance(deadlines, SortedList)
         now = time.time()
         while deadlines and deadlines[0] <= now:
             del deadlines[0]
@@ -77,9 +78,11 @@ class _DenyAcl(Acl):
         else:
             if node_id not in self._deny_deadlines:
                 self._deny_deadlines[node_id] = SortedList(key=operator.neg)
-            if self._deny_deadlines[node_id] is self._always:
+            node_deadlines = self._deny_deadlines[node_id]
+            if node_deadlines is self._always:
                 return
-            self._deny_deadlines[node_id].add(self._deadline(timeout_seconds))
+            assert isinstance(node_deadlines, SortedList)
+            node_deadlines.add(self._deadline(timeout_seconds))
 
         if persist and timeout_seconds == -1 and self._list_path:
             deny_set = _read_set_from_file(self._list_path)
@@ -100,6 +103,7 @@ class _AllowAcl(Acl):
             allow_set = set()
         self._allow_set = allow_set
         self._list_path = list_path
+        self._max_times = max_times
 
     def is_allowed(self, node_id: str) -> Tuple[bool, Optional[DenyReason]]:
         if node_id in self._allow_set:

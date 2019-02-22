@@ -1,3 +1,5 @@
+# pylint: disable=protected-access
+
 from freezegun import freeze_time
 
 from golem.task.acl import get_acl, DENY_LIST_NAME, ALL_EXCEPT_ALLOWED, \
@@ -48,8 +50,10 @@ class TestAcl(TempDirFixture):
         assert acl.is_allowed("Node1") == (False, DenyReason.blacklisted)
         assert acl.is_allowed("Node2") == (True, None)
 
+    # pylint: disable=no-self-argument
     @freeze_time("2018-01-01 00:00:00", as_arg=True)
     def test_deny_timeout(frozen_time, self):
+        assert isinstance(self, TestAcl)
         acl = get_acl(self.new_path)
 
         acl.disallow("Node1", timeout_seconds=10)
@@ -57,7 +61,7 @@ class TestAcl(TempDirFixture):
                          acl.is_allowed("Node1"))
         assert "Node1" in acl._deny_deadlines
 
-        frozen_time.tick(30)
+        frozen_time.tick(30)  # pylint: disable=no-member
         assert "Node1" in acl._deny_deadlines
         assert acl.is_allowed("Node1") == (True, None)
         assert "Node1" not in acl._deny_deadlines

@@ -17,6 +17,7 @@ from golem.core.common import HandleKeyError, timeout_to_deadline, to_unicode, \
     string_to_timeout
 from golem.core.fileshelper import outer_dir_path
 from golem.docker.environment import DockerEnvironment
+from golem.environments.environment import Environment
 from golem.resource.dirmanager import DirManager
 from golem.task.taskbase import Task, TaskBuilder, \
     TaskTypeInfo, AcceptClientVerdict
@@ -29,7 +30,6 @@ if TYPE_CHECKING:
     from golem_messages.datastructures import p2p as dt_p2p
     from apps.core.task.coretaskstate import \
         TaskDefaults, TaskDefinition, Options
-    from golem.environments.environment import Environment
 
 
 logger = logging.getLogger("apps.core")
@@ -93,7 +93,7 @@ class CoreTask(Task):
     VERIFIER_CLASS: Type[CoreVerifier] = CoreVerifier
     VERIFICATION_QUEUE = VerificationQueue()
 
-    ENVIRONMENT_CLASS: Type['Environment'] = None
+    ENVIRONMENT_CLASS: Type['Environment'] = Environment
 
     handle_key_error = HandleKeyError(log_key_error)
 
@@ -141,6 +141,7 @@ class CoreTask(Task):
         if task_definition.docker_images:
             self.docker_images = task_definition.docker_images
         elif isinstance(self.environment, DockerEnvironment):
+            # pylint: disable=no-member
             self.docker_images = self.environment.docker_images
         else:
             self.docker_images = None
