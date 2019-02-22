@@ -52,7 +52,7 @@ class TestffmpegTask(TempDirFixture):
                 'output_path': '/tmp/',
                 'video': {
                     'bit_rate': 18,
-                    'codec': 'libx264',
+                    'codec': 'h264',
                     'resolution': [320, 240],
                     'frame_rate': 25
                 },
@@ -117,7 +117,7 @@ class TestffmpegTask(TempDirFixture):
             self.tt.task_builder_type.build_definition(self.tt, d)
 
     def test_build_task_different_codecs(self):
-        params = [('avi', 'MPEG-4 Part 2', 'AAC'), ('mp4', 'Libx264', 'aac')]
+        params = [('avi', 'mpeg4', 'aac'), ('mp4', 'h264', 'aac')]
         d = self._task_dictionary
 
         for container, vcodec, acodec in params:
@@ -141,11 +141,11 @@ class TestffmpegTask(TempDirFixture):
         self.assertEqual(options.video_params.resolution,
                          voptions['resolution'])
         self.assertEqual(options.video_params.codec, VideoCodec(
-            voptions['codec'].upper()))
+            voptions['codec']))
 
         self.assertEqual(options.audio_params.bitrate, aoptions['bit_rate'])
         self.assertEqual(options.audio_params.codec,
-                         AudioCodec(aoptions['codec'].upper()))
+                         AudioCodec(aoptions['codec']))
 
         self.assertEqual(options.output_container,
                          Container(d['options']['container']))
@@ -173,13 +173,13 @@ class TestffmpegTask(TempDirFixture):
                          '/golem/resources/test_video[num=0].m3u8')
         vargs = extra_data['targs']['video']
         aargs = extra_data['targs']['audio']
-        self.assertEqual(vargs['codec'], d['options']['video']['codec'].upper())
+        self.assertEqual(vargs['codec'], d['options']['video']['codec'])
         self.assertEqual(vargs['bitrate'], d['options']['video']['bit_rate'])
         self.assertEqual(extra_data['targs']['resolution'],
                          d['options']['video']['resolution'])
         self.assertEqual(extra_data['targs']['frame_rate'],
                          d['options']['video']['frame_rate'])
-        self.assertEqual(aargs['codec'], d['options']['audio']['codec'].upper())
+        self.assertEqual(aargs['codec'], d['options']['audio']['codec'])
         self.assertEqual(aargs['bitrate'], d['options']['audio']['bit_rate'])
         self.assertIn('m3u8', extra_data['output_stream'])
 
