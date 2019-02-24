@@ -753,8 +753,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         max_resource_size = int(max_resource_size_kib) * 1024
         if resource_size > max_resource_size:
             logger.info('Subtask with too big resources received: '
-                        f'{resource_size}, only {max_resource_size} available'
-                        )
+                        f'{resource_size}, only {max_resource_size} available')
             return False
         return True
 

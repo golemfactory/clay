@@ -125,7 +125,7 @@ class TaskResourcesMixin:
 
         options = _filter_options(options)
 
-        if size:
+        if size and options:
             options.set(size=size)
         return options
 

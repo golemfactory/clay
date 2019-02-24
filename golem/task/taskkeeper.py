@@ -227,7 +227,7 @@ class CompTaskKeeper:
         comp_task_info.subtasks[subtask_id] = comp_task_def
         header = self.get_task_header(task_id)
         comp_task_info.keeping_deadline = comp_task_info_keeping_timeout(
-                header.subtask_timeout, task_to_compute.size)
+            header.subtask_timeout, task_to_compute.size)
 
         self.subtask_to_task[subtask_id] = task_id
         if task_to_compute.resources_options:

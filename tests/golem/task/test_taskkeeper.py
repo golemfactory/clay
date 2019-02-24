@@ -478,7 +478,10 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
                 price_bid,
                 header.subtask_timeout,
             )
-            ttc = msg_factories.tasks.TaskToComputeFactory(price=price, size=1024)
+            ttc = msg_factories.tasks.TaskToComputeFactory(
+                price=price,
+                size=1024
+            )
             ttc.compute_task_def = ctd
             ttc.resources_options = HyperdriveClientOptions(
                 HyperdriveClient.CLIENT_ID,
