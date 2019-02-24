@@ -19,8 +19,7 @@ from golem.core.common import get_timestamp_utc, timeout_to_deadline
 from golem.environments.environment import Environment, UnsupportReason,\
     SupportStatus
 from golem.environments.environmentsmanager import EnvironmentsManager
-from golem.network.hyperdrive.client import HyperdriveClient, \
-        HyperdriveClientOptions
+from golem.network.hyperdrive.client import HyperdriveClient
 from golem.task import taskkeeper
 from golem.task.taskkeeper import TaskHeaderKeeper, CompTaskKeeper, logger
 from golem.testutils import PEP8MixIn
@@ -483,9 +482,11 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
                 size=1024
             )
             ttc.compute_task_def = ctd
-            ttc.resources_options = HyperdriveClientOptions(
-                HyperdriveClient.CLIENT_ID,
-                HyperdriveClient.VERSION)
+            ttc.resources_options = {
+                'client_id': HyperdriveClient.CLIENT_ID,
+                'version': HyperdriveClient.VERSION,
+                'options': {}
+            }
             self.assertTrue(ctk.receive_subtask(ttc))
             test_subtasks_ids.append(ctd['subtask_id'])
         del ctk
@@ -688,4 +689,5 @@ class TestCompTaskKeeper(LogTestCase, PEP8MixIn, TempDirFixture):
         assert ctk.get_resources_options("unknown") is None
         subtask_id = random.choice(list(ctk.subtask_to_task.keys()))
         res = ctk.get_resources_options(subtask_id)
-        assert isinstance(res, HyperdriveClientOptions)
+        assert isinstance(res, dict)
+        assert res['client_id'] == HyperdriveClient.CLIENT_ID

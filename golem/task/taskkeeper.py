@@ -231,7 +231,8 @@ class CompTaskKeeper:
 
         self.subtask_to_task[subtask_id] = task_id
         if task_to_compute.resources_options:
-            task_to_compute.resources_options.set(size=task_to_compute.size)
+            task_to_compute.resources_options['options']['size'] = \
+                task_to_compute.size
         self.resources_options[subtask_id] = task_to_compute.resources_options
         self.dump()
         return True
