@@ -265,7 +265,7 @@ def want_to_compute_task(node_id, task_id) -> (str, int):
 
     for subs in subscriptions[node_id].values():
         try:
-            if subs.request_subtask(golem_client.task_server, task_id):
+            if subs.want_subtask(golem_client.task_server, task_id):
                 logger.info('want task %s for %s', task_id, subs)
                 return _json_response('OK')
         except KeyError as e:
@@ -338,7 +338,7 @@ def subtask_result(node_id, subtask_id) -> (str, int):
                 return _json_response('OK')
         except KeyError as e:
             return _invalid_input(f'{e} is required in body')
-        except InvalidSubtaskStatus as e:
+        except (InvalidSubtaskStatus, ValueError) as e:
             return _invalid_input(e)
         except RuntimeError as e:
             return _json_response(str(e), 500)

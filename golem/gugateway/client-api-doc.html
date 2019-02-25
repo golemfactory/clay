@@ -733,8 +733,6 @@ margin-bottom: 20px;
 };
         defs["NodeId"] = {
   "type" : "string",
-  "minLength" : 42,
-  "maxLength" : 42,
   "pattern" : "0x[0-9a-fA-F]{40}",
   "description" : "ethereum address identifying node e.g., `0x1ca0fd52dd8d0abf3a577f5b4645806f774f2f7b`\n"
 };
@@ -777,6 +775,11 @@ margin-bottom: 20px;
     "maxDiskSize" : {
       "type" : "integer",
       "description" : "max available disk in KiB"
+    },
+    "ethPubKey" : {
+      "type" : "string",
+      "description" : "ethereum public key which will be used to obtain eth address for payments (as hex wo `0x` prefix)\n",
+      "pattern" : "[0-9a-fA-F]{128}"
     }
   }
 };
@@ -866,14 +869,23 @@ margin-bottom: 20px;
   "description" : "Subtask computation result"
 };
         defs["SubtaskVerification"] = {
-  "required" : [ "subtaskId", "verificationResult" ],
+  "required" : [ "subtaskId", "taskId", "verificationResult" ],
   "properties" : {
+    "taskId" : {
+      "$ref" : "#/definitions/Uuid"
+    },
     "subtaskId" : {
       "$ref" : "#/definitions/Uuid"
     },
     "verificationResult" : {
       "type" : "string",
-      "enum" : [ "OK", "failed", "timedout" ]
+      "enum" : [ "OK", "failed" ]
+    },
+    "paymentTs" : {
+      "type" : "integer"
+    },
+    "reason" : {
+      "type" : "string"
     }
   },
   "description" : "Subtask verification result"
@@ -4980,7 +4992,8 @@ public class DefaultApiExample {
 
         UUID taskId = ; // UUID | 
         try {
-            apiInstance.wantToComputeTask(nodeId, taskId);
+            Message result = apiInstance.wantToComputeTask(nodeId, taskId);
+            System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling DefaultApi#wantToComputeTask");
             e.printStackTrace();
@@ -5000,7 +5013,8 @@ public class DefaultApiExample {
 
         UUID taskId = ; // UUID | 
         try {
-            apiInstance.wantToComputeTask(nodeId, taskId);
+            Message result = apiInstance.wantToComputeTask(nodeId, taskId);
+            System.out.println(result);
         } catch (ApiException e) {
             System.err.println("Exception when calling DefaultApi#wantToComputeTask");
             e.printStackTrace();
@@ -5022,7 +5036,10 @@ DefaultApi *apiInstance = [[DefaultApi alloc] init];
 // Sends task computation willingness
 [apiInstance wantToComputeTaskWith:nodeId
     taskId:taskId
-              completionHandler: ^(NSError* error) {
+              completionHandler: ^(Message output, NSError* error) {
+                            if (output) {
+                                NSLog(@"%@", output);
+                            }
                             if (error) {
                                 NSLog(@"Error: %@", error);
                             }
@@ -5045,7 +5062,7 @@ var callback = function(error, data, response) {
   if (error) {
     console.error(error);
   } else {
-    console.log('API called successfully.');
+    console.log('API called successfully. Returned data: ' + data);
   }
 };
 api.wantToComputeTask(nodeId, taskId, callback);
@@ -5077,7 +5094,8 @@ namespace Example
             try
             {
                 // Sends task computation willingness
-                apiInstance.wantToComputeTask(nodeId, taskId);
+                Message result = apiInstance.wantToComputeTask(nodeId, taskId);
+                Debug.WriteLine(result);
             }
             catch (Exception e)
             {
@@ -5099,7 +5117,8 @@ $nodeId = nodeId_example; // String | ethereum address identifying node e.g., `0
 $taskId = ; // UUID | 
 
 try {
-    $api_instance->wantToComputeTask($nodeId, $taskId);
+    $result = $api_instance->wantToComputeTask($nodeId, $taskId);
+    print_r($result);
 } catch (Exception $e) {
     echo 'Exception when calling DefaultApi->wantToComputeTask: ', $e->getMessage(), PHP_EOL;
 }
@@ -5117,7 +5136,8 @@ my $nodeId = nodeId_example; # String | ethereum address identifying node e.g., 
 my $taskId = ; # UUID | 
 
 eval { 
-    $api_instance->wantToComputeTask(nodeId => $nodeId, taskId => $taskId);
+    my $result = $api_instance->wantToComputeTask(nodeId => $nodeId, taskId => $taskId);
+    print Dumper($result);
 };
 if ($@) {
     warn "Exception when calling DefaultApi->wantToComputeTask: $@\n";
@@ -5139,7 +5159,8 @@ taskId =  # UUID |
 
 try: 
     # Sends task computation willingness
-    api_instance.want_to_compute_task(nodeId, taskId)
+    api_response = api_instance.want_to_compute_task(nodeId, taskId)
+    pprint(api_response)
 except ApiException as e:
     print("Exception when calling DefaultApi->wantToComputeTask: %s\n" % e)</code></pre>
                             </div>
@@ -5210,9 +5231,44 @@ except ApiException as e:
                             <h3> Status: 200 - OK </h3>
 
                             <ul class="nav nav-tabs nav-tabs-examples" >
+                                <li class="active">
+                                  <a data-toggle="tab" href="#responses-wantToComputeTask-200-schema">Schema</a>
+                                </li>
+
                             </ul>
 
                             <div class="tab-content" style='margin-bottom: 10px;'>
+                                <div class="tab-pane active" id="responses-wantToComputeTask-200-schema">
+                                  <div id='responses-wantToComputeTask-200-schema-200' style="padding: 30px; border-left: 1px solid #eee; border-right: 1px solid #eee; border-bottom: 1px solid #eee;">
+                                    <script>
+                                      $(document).ready(function() {
+                                        var schemaWrapper = {
+  "description" : "OK",
+  "schema" : {
+    "$ref" : "#/definitions/Message"
+  }
+};
+                                        var schema = schemaWrapper.schema;
+                                        if (schema.$ref != null) {
+                                          schema = defsParser.$refs.get(schema.$ref);
+                                        } else {
+                                          schemaWrapper.definitions = defs;
+                                          $RefParser.dereference(schemaWrapper).catch(function(err) {
+                                            console.log(err);
+                                          });
+                                        }
+
+                                        //console.log(JSON.stringify(schema));
+                                        var view = new JSONSchemaView(schema, 3);
+                                        $('#responses-wantToComputeTask-200-schema-data').val(stringify(schema));
+                                        var result = $('#responses-wantToComputeTask-200-schema-200');
+                                        result.empty();
+                                        result.append(view.render());
+                                      });
+                                    </script>
+                                  </div>
+                                  <input id='responses-wantToComputeTask-200-schema-data' type='hidden' value=''></input>
+                                </div>
                             </div>
 
                         </article>

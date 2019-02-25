@@ -229,6 +229,7 @@ class Subscription(object):
         self.max_cpu_cores = int(request_json['maxCpuCores'])
         self.max_memory_size = int(request_json['maxMemorySize'])
         self.max_disk_size = int(request_json['maxDiskSize'])
+        self.eth_pub_key: Optional[str] = request_json.get('ethPubKey')
 
     def _add_event(self, event_hash: str, **kw):
         if event_hash in self.events:
@@ -248,12 +249,12 @@ class Subscription(object):
     def add_task_event(self, header: TaskHeader):
         self._add_event(header.task_id, task=Task(header))
 
-    def request_subtask(self, task_server: TaskServer, task_id: str) -> bool:
+    def want_subtask(self, task_server: TaskServer, task_id: str) -> bool:
         if task_id not in self.events:
             return False
 
         self.set_config_to(task_server.config_desc)
-        task_server.request_task(task_id, self.performance)
+        task_server.request_task(task_id, self.performance, self.eth_pub_key)
         dispatcher.connect(self.add_subtask_event,
                            signal='golem.subtask')
         self.increment(SubtaskStatus.requested)
@@ -372,6 +373,7 @@ class Subscription(object):
                 'maxCpuCores': self.max_cpu_cores,
                 'maxMemorySize': self.max_memory_size,
                 'maxDiskSize': self.max_disk_size,
+                'ethPubKey': self.eth_pub_key,
             },
             'subtaskStats': dict(self.stats)
         }

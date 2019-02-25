@@ -12,8 +12,6 @@ schemes:
 definitions:
   NodeId: &NodeId
     type: string
-    minLength: 42
-    maxLength: 42
     pattern: '0x[0-9a-fA-F]{40}'
     description: >
       ethereum address identifying node e.g.,
@@ -56,6 +54,12 @@ definitions:
       maxDiskSize:
         type: integer
         description: max available disk in KiB
+      ethPubKey:
+        type: string
+        pattern: '[0-9a-fA-F]{128}'
+        description: >
+          ethereum public key which will be used to
+          obtain eth address for payments (as hex wo `0x` prefix)
   SubscriptionStatus:
     required:
       - nodeId
@@ -204,7 +208,7 @@ definitions:
           - OK
           - failed
       paymentTs:
-        type: int
+        type: integer
       reason:
         type: string
   Events:

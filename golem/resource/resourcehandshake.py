@@ -1,4 +1,6 @@
 import logging
+from typing import Optional
+
 import os
 import uuid
 
@@ -66,18 +68,27 @@ class ResourceHandshakeSessionMixin:
         self._task_request_message = None
         self._handshake_timer = None
 
-    def request_task(self, node_name, task_id, perf_index, price,
-                     max_resource_size, max_memory_size, num_cores):
+    def request_task(self,
+                     node_name: str,
+                     task_id: uuid.UUID,
+                     perf_index: float,
+                     price: float,
+                     max_resource_size: int,
+                     max_memory_size: int,
+                     num_cores: int,
+                     eth_pub_key: Optional[str] = None
+                    ) -> None:
 
         """ Inform that node wants to compute given task
         :param str node_name: name of that node
-        :param uuid task_id: if of a task that node wants to compute
+        :param uuid.UUID task_id: if of a task that node wants to compute
         :param float perf_index: benchmark result for this task type
         :param float price: price for an hour
         :param int max_resource_size: how much disk space can this node offer
         :param int max_memory_size: how much ram can this node offer
         :param int num_cores: how many cpu cores this node can offer
-        :return:
+        :param str eth_pub_key: ethereum public key which will be used to
+        obtain eth address for payments (as hex wo `0x` prefix)
         """
 
         key_id = self.key_id
@@ -99,7 +110,9 @@ class ResourceHandshakeSessionMixin:
             num_cores=num_cores,
             concent_enabled=concent_enabled,
             provider_public_key=self.task_server.get_key_id(),
-            provider_ethereum_public_key=self.task_server.get_key_id(),
+            provider_ethereum_public_key=(
+                eth_pub_key or self.task_server.get_key_id()
+            ),
             task_header=task_header,
         )
 

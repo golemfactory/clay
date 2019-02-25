@@ -212,8 +212,11 @@ class TaskServer(
             env_id)
 
     # This method chooses random task from the network to compute on our machine
-    def request_task(self, task_id: Optional[str],
-                     performance: float) -> Optional[str]:
+    def request_task(self,
+                     task_id: Optional[str] = None,
+                     performance: Optional[float] = None,
+                     eth_pub_key: Optional[str] = None,
+                    ) -> Optional[str]:
         if task_id is not None:
             theader = self.task_keeper.task_headers[task_id]
         else:
@@ -258,7 +261,8 @@ class TaskServer(
                     'price': price,
                     'max_resource_size': self.config_desc.max_resource_size,
                     'max_memory_size': self.config_desc.max_memory_size,
-                    'num_cores': self.config_desc.num_cores
+                    'num_cores': self.config_desc.num_cores,
+                    'eth_pub_key': eth_pub_key,
                 }
 
                 node = theader.task_owner
@@ -790,7 +794,7 @@ class TaskServer(
     def __connection_for_task_request_established(
             self, session: TaskSession, conn_id, node_name, key_id, task_id,
             estimated_performance, price, max_resource_size, max_memory_size,
-            num_cores):
+            num_cores, eth_pub_key):
         self.new_session_prepare(
             session=session,
             subtask_id=task_id,
@@ -799,16 +803,18 @@ class TaskServer(
         )
         session.send_hello()
         session.request_task(node_name, task_id, estimated_performance, price,
-                             max_resource_size, max_memory_size, num_cores)
+                             max_resource_size, max_memory_size, num_cores,
+                             eth_pub_key)
 
     def __connection_for_task_request_failure(
             self, conn_id, node_name, key_id, task_id, estimated_performance,
-            price, max_resource_size, max_memory_size, num_cores, *args):
+            price, max_resource_size, max_memory_size, num_cores, eth_pub_key,
+            *_args):
         def response(session):
             return self.__connection_for_task_request_established(
                 session, conn_id, node_name, key_id, task_id,
                 estimated_performance, price, max_resource_size,
-                max_memory_size, num_cores)
+                max_memory_size, num_cores, eth_pub_key)
 
         if key_id in self.response_list:
             self.response_list[conn_id].append(response)
