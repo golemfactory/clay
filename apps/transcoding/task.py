@@ -1,7 +1,7 @@
 import abc
 import logging
 import os
-from shutil import copy2
+from shutil import move
 from threading import Lock
 from typing import Any, Dict, Tuple, Optional
 
@@ -60,7 +60,7 @@ class TranscodingTask(CoreTask):
         self.task_definition = task_definition
         self.lock = Lock()
         self.chunks = list()
-        self.collected_file_names = list()
+        self.collected_files = list()
         self.task_dir = ""
 
     def __getstate__(self):
@@ -106,17 +106,23 @@ class TranscodingTask(CoreTask):
 
             self.num_tasks_received += 1
 
-        if self.num_tasks_received == self.total_tasks:
-            self._merge_video()
+            logger.info("Transcoded {} of {} chunks".
+                        format(self.num_tasks_received, self.total_tasks))
+
+            if self.num_tasks_received == self.total_tasks:
+                self._merge_video()
 
     def _collect_results(self, results):
-        self.collected_file_names.extend(results)
+        self.collected_files.extend(results)
 
     def _merge_video(self):
         stream_operator = StreamOperator()
-        path = stream_operator.merge_video(os.path.basename(self.task_definition.output_file),
-                                           self.task_dir, self.collected_file_names)
-        copy2(path, self.task_definition.output_file)
+        path = stream_operator.merge_video(
+            os.path.basename(self.task_definition.output_file),
+            self.task_dir, self.collected_files)
+        os.makedirs(os.path.dirname(self.task_definition.output_file),
+                    exist_ok=True)
+        move(path, self.task_definition.output_file)
         return True
 
     def _get_next_subtask(self):

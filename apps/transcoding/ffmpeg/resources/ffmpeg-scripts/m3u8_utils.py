@@ -3,11 +3,14 @@ import re
 
 import m3u8
 
+RESOURCES = '/golem/resources'
+
 
 def create_and_dump_m3u8(path, segment):
     [basename, _] = os.path.splitext(segment.uri)
     [basename, _, num] = basename.rpartition('_')
-    filename = os.path.join(path, basename + "[num=" + num + "]" + ".m3u8")
+    filename = os.path.join(path, basename +
+                            "[num=" + num + "]" + ".m3u8")
     file = open(filename, 'w')
     file.write("#EXTM3U\n")
     file.write("#EXT-X-VERSION:3\n")
@@ -31,7 +34,8 @@ def join_playlists(chunks):
 
 
 def get_playlists(chunks):
-    playlists = [os.path.join('/golem/resources', f) for f in chunks if f.endswith('_TC.m3u8')]
+    playlists = [os.path.join(RESOURCES, f)
+                 for f in chunks if f.endswith('_TC.m3u8')]
     return sort_playlists(playlists)
 
 

@@ -13,7 +13,11 @@ def exec_cmd(cmd, file=None):
     print(cmd)
 
     pc = subprocess.Popen(cmd, stdout=file, stderr=file)
-    return pc.wait()
+
+    ret = pc.wait()
+    if ret != 0:
+        exit(ret)
+    return ret
 
 
 def exec_cmd_to_file(cmd, filepath):
@@ -29,7 +33,8 @@ def exec_cmd_to_file(cmd, filepath):
 
 def exec_cmd_to_string(cmd):
     # Execute command and send results to file.
-    tmp_command_result_file = os.path.join(TMP_DIR, "tmp-command-result.txt")
+    tmp_command_result_file = os.path.join(TMP_DIR,
+                                           "tmp-command-result.txt")
     exec_cmd_to_file(cmd, tmp_command_result_file)
 
     data_string = ""
@@ -51,7 +56,8 @@ def split_video(input_file, output_dir, split_len):
 
 
 def split(input, output_list_file, segment_time):
-    cmd, file_list = split_video_command(input, output_list_file, segment_time)
+    cmd, file_list = split_video_command(input, output_list_file,
+                                         segment_time)
     exec_cmd(cmd)
 
     return file_list
@@ -71,7 +77,8 @@ def split_video_command(input, output_list_file, segment_time):
 
 
 def transcode_video(track, targs, output, use_playlist):
-    cmd = transcode_video_command(track, output, targs, use_playlist)
+    cmd = transcode_video_command(track, output,
+                                  targs, use_playlist)
     return exec_cmd(cmd)
 
 
@@ -85,7 +92,7 @@ def transcode_video_command(track, output_playlist_name, targs, use_playlist):
 
     if use_playlist:
         playlist_cmd = [
-            # It states that all entries from list should be processed, default is 5
+            # It states that all entries from list should be processed
             "-hls_list_size", "0",
             "-copyts"
         ]
@@ -93,9 +100,9 @@ def transcode_video_command(track, output_playlist_name, targs, use_playlist):
 
     # video settings
     try:
-        codec = targs['video']['codec']
+        vcodec = targs['video']['codec']
         cmd.append("-c:v")
-        cmd.append(codec)
+        cmd.append(get_video_encoder(vcodec))
     except:
         pass
     try:
@@ -114,7 +121,7 @@ def transcode_video_command(track, output_playlist_name, targs, use_playlist):
     try:
         acodec = targs['audio']['codec']
         cmd.append("-c:a")
-        cmd.append(acodec)
+        cmd.append(get_audio_encoder(acodec))
     except:
         pass
     try:
@@ -139,6 +146,28 @@ def transcode_video_command(track, output_playlist_name, targs, use_playlist):
     cmd.append("{}".format(output_playlist_name))
 
     return cmd
+
+
+def get_video_encoder(target_codec):
+    encoders = {
+        "h264": "libx264",
+        "h265": "libx265",
+        "HEVC": "libx265",
+        "mpeg1video": "mpeg1video",
+        "mpeg2video": "mpeg2video",
+        "mpeg4": "libxvid"
+    }
+
+    return encoders.get(target_codec, target_codec)
+
+
+def get_audio_encoder(target_codec):
+    encoders = {
+        "aac": "aac",
+        "mp3": "libmp3lame"
+    }
+
+    return encoders.get(target_codec, target_codec)
 
 
 def merge_videos(input_files, output):

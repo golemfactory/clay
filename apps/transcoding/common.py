@@ -25,27 +25,27 @@ def unsupported(name: str):
 
 
 class VideoCodec(Enum):
-    H_264 = 'LIBX264'
-    MPEG_2 = 'MPEG-2'
-    MPEG_4 = 'MPEG-4'
-    MPEG_4_Part_2 = 'MPEG-4 PART 2'
-    VP6 = 'VP6'
+    H_264 = 'h264'
+    H_265 = 'h265'
+    HEVC = 'HEVC'
+    MPEG_1 = 'mpeg1video'
+    MPEG_2 = 'mpeg2video'
+    MPEG_4 = 'mpeg4'
 
     @staticmethod
     @HandleValueError(unsupported)
     def from_name(name: str) -> 'VideoCodec':
-        return VideoCodec(name.upper())
+        return VideoCodec(name)
 
 
 class AudioCodec(Enum):
-    MP3 = 'MP3'
-    AAC = 'AAC'
-    PCM = 'PCM'
+    AAC = 'aac'
+    MP3 = 'mp3'
 
     @staticmethod
     @HandleValueError(unsupported)
     def from_name(name: str) -> 'AudioCodec':
-        return AudioCodec(name.upper())
+        return AudioCodec(name)
 
 
 class Container(Enum):
@@ -68,10 +68,10 @@ class Container(Enum):
 
 ALL_SUPPORTED_CODECS = ([c for c in VideoCodec], [c for c in AudioCodec])
 CONTAINER_SUPPORTED_CODECS = {
-    Container.AVI: ALL_SUPPORTED_CODECS,
-    Container.MKV: ALL_SUPPORTED_CODECS,
-    Container.MP4: ([VideoCodec.H_264, VideoCodec.MPEG_4_Part_2,
-                     VideoCodec.MPEG_2],
+    Container.AVI: ([VideoCodec.MPEG_4], [AudioCodec.AAC]),
+    Container.MKV: ([], []),
+    Container.MP4: ([VideoCodec.H_264, VideoCodec.H_265, VideoCodec.HEVC,
+                     VideoCodec.MPEG_1, VideoCodec.MPEG_2, VideoCodec.MPEG_4],
                     [AudioCodec.AAC, AudioCodec.MP3]),
 }
 
