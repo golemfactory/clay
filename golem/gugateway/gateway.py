@@ -192,30 +192,35 @@ def all_subscriptions(node_id: str) -> (str, int):
 def subscribe(node_id: str, task_type: str) -> (str, int):
     """Creates or amends subscription to Golem Network"""
 
-    try:
-        subs = Subscription(
-            node_id,
-            task_type,
-            request.json,
-            golem_client.task_server.task_keeper.task_headers,
-        )
-    except InvalidTaskType as e:
-        return _invalid_input(e)
-    except AttributeError:
-        return _invalid_input('request body is required')
-    except KeyError as e:
-        return _invalid_input(f'key {e} is missing in request body')
-    except ValueError as e:
-        return _invalid_input(str(e))
-
     if node_id not in subscriptions:
         subscriptions[node_id] = dict()
 
-    status_code = 200
-    if subs.task_type not in subscriptions[node_id]:
-        status_code = 201
+    try:
+        task_type = TaskType.match(task_type)
+    except InvalidTaskType as e:
+        return _invalid_input(e)
 
-    subscriptions[node_id][subs.task_type] = subs
+    if task_type in subscriptions[node_id]:
+        status_code = 200
+        subs = subscriptions[node_id][task_type]
+        subs.update(request.json)
+    else:
+        status_code = 201
+        try:
+            subs = Subscription(
+                node_id,
+                task_type,
+                request.json,
+                golem_client.task_server.task_keeper.task_headers,
+            )
+        except AttributeError:
+            return _invalid_input('request body is required')
+        except KeyError as e:
+            return _invalid_input(f'key {e} is missing in request body')
+        except ValueError as e:
+            return _invalid_input(str(e))
+
+        subscriptions[node_id][task_type] = subs
 
     logger.info('%s %s', status_code == 200 and 'updated' or 'created', subs)
     return json.dumps(subs.to_json_dict()), status_code

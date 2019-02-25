@@ -201,20 +201,14 @@ class Subscription(object):
 
     def __init__(self,
                  node_id: str,
-                 task_type: str,
+                 task_type: TaskType,
                  request_json: dict,
                  known_tasks: Dict[str, TaskHeader]
                  ):
         self.node_id = node_id
-        self.task_type: TaskType = TaskType.match(task_type)
-        self.name = request_json.get('name', '')
-        self.min_price = int(request_json['minPrice'])
-        self.performance = float(request_json.get('performance', 0.0))
-        self.max_cpu_cores = int(request_json['maxCpuCores'])
-        self.max_memory_size = int(request_json['maxMemorySize'])
-        self.max_disk_size = int(request_json['maxDiskSize'])
+        self.task_type: TaskType = task_type
+        self.update(request_json)
         self.stats: Counter = Counter()
-
         self.event_counter: int = 0
         # TODO: events TTL and cleanup
         self.events: Dict[str, Event] = dict()
@@ -227,6 +221,14 @@ class Subscription(object):
 
         dispatcher.connect(self.add_task_event, signal='golem.task')
         dispatcher.connect(self._remove_task_event, signal='golem.task.removed')
+
+    def update(self, request_json: dict):
+        self.name = request_json.get('name', '')
+        self.min_price = int(request_json['minPrice'])
+        self.performance = float(request_json.get('performance', 0.0))
+        self.max_cpu_cores = int(request_json['maxCpuCores'])
+        self.max_memory_size = int(request_json['maxMemorySize'])
+        self.max_disk_size = int(request_json['maxDiskSize'])
 
     def _add_event(self, event_hash: str, **kw):
         if event_hash in self.events:
