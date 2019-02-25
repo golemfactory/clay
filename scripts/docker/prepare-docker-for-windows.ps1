@@ -100,3 +100,5 @@ if( ! $firewallRule )
         exit 1
     }
 }
+
+exit 0
