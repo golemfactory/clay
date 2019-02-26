@@ -1,4 +1,7 @@
 from apps.blender.resources.images.commands.create_task import create_task
+from apps.blender.resources.images.commands.get_subtask import get_subtask
+from apps.blender.resources.images.commands.compute import compute
+from apps.blender.resources.images.commands.verify import verify
 
 from golem.testutils import TempDirFixture
 from golem.core.common import get_golem_path
@@ -49,4 +52,39 @@ class TestCommands(TempDirFixture):
             self.req_work,
             self.req_resources,
             self.req_net_resources,
+        )
+        subtask_id = get_subtask(
+            self.req_work,
+            self.req_resources,
+            self.req_net_resources,
+        )
+        with open(self.req_work / f'subtask{subtask_id}.json', 'r') as f:
+            subtask_params = json.load(f)
+        assert subtask_params['resources'] == [0]
+        network_resource = self.req_net_resources / '0.zip'
+        assert network_resource.exists()
+        shutil.copy2(network_resource, self.prov_net_resources)
+        shutil.copy2(
+            self.req_work / f'subtask{subtask_id}.json',
+            self.prov_work / 'params.json',
+        )
+
+        compute(
+            self.prov_work,
+            self.prov_net_resources,
+        )
+
+        result = self.prov_work / 'result.zip'
+        assert result.exists()
+        shutil.copy2(
+            result,
+            self.req_net_results / f'{subtask_id}.zip',
+        )
+
+        verify(
+            self.req_work,
+            self.req_resources,
+            self.req_net_resources,
+            self.req_results,
+            self.req_net_results,
         )

@@ -25,7 +25,7 @@ def init_tables(db, subtasks_count: int) -> None:
             [SubtaskStatus.PENDING.value] * subtasks_count,
         ))
         db.executemany(
-            'INSERT INTO subtask_status VAUES (?,?)',
+            'INSERT INTO subtask_status VALUES (?,?)',
             values,
         )
 

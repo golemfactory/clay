@@ -5,7 +5,7 @@ import time
 
 from pathlib import Path
 
-import utils
+from . import utils
 
 
 def get_subtask(
@@ -51,6 +51,8 @@ def get_subtask(
 
     with open(work_dir / f'subtask{subtask_id}.json', 'w') as f:
         json.dump(extra_data, f)
+
+    return subtask_id
 
 
 def _choose_frames(frames, start_task, total_tasks):

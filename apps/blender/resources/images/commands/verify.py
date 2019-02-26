@@ -4,7 +4,7 @@ import shutil
 import zipfile
 from pathlib import Path
 
-from scripts_verifier import verificator
+from ..scripts_verifier import verificator
 
 import utils
 from renderingtaskcollector import RenderingTaskCollector

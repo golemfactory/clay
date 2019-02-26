@@ -1,10 +1,10 @@
 import json
 import os
 from typing import List, Optional
-import blender_render as blender
-from crop_generator import WORK_DIR, OUTPUT_DIR, SubImage, Region, PixelRegion, \
+from ..scripts import blender_render as blender
+from .crop_generator import WORK_DIR, OUTPUT_DIR, SubImage, Region, PixelRegion, \
     generate_single_random_crop_data, Crop
-from img_metrics_calculator import calculate_metrics
+from .img_metrics_calculator import calculate_metrics
 
 def get_crop_with_id(id: int, crops: [List[Crop]]) -> Optional[Crop]:
     for crop in crops:

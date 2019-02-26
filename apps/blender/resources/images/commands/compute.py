@@ -3,7 +3,7 @@ import os
 import zipfile
 from pathlib import Path
 
-from scripts import blender_render
+from ..scripts import blender_render
 
 
 def compute(
