@@ -33,7 +33,6 @@ from golem.ranking.manager.database_manager import (
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
-from golem.task.taskstate import TaskState
 
 if TYPE_CHECKING:
     from .taskcomputer import TaskComputer  # noqa pylint:disable=unused-import
@@ -133,8 +132,8 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.task_manager: 'TaskManager' = self.task_server.task_manager
         self.task_computer: 'TaskComputer' = self.task_server.task_computer
         self.concent_service = self.task_server.client.concent_service
+        # FIXME: Remove task_id and use values from messages
         self.task_id = None  # current task id
-        self.subtask_id = None  # current subtask id
         self.conn_id = None  # connection id
         # messages waiting to be send (because connection hasn't been
         # verified yet)
@@ -753,8 +752,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 return
         _cannot_compute(self.err_msg)
 
-    def _react_to_waiting_for_results(self, _):
-        self.task_server.requested_tasks.remove(self.task_id)
+    def _react_to_waiting_for_results(
+            self,
+            _msg: message.tasks.WaitingForResults,
+    ):
+        self.task_server.subtask_waiting(
+            task_id=self.task_id,
+            subtask_id=None,
+        )
         self.task_computer.session_closed()
         if not self.msgs_to_send:
             self.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
@@ -766,10 +771,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.subtask_id,
                 msg.reason,
             )
-            self.task_manager.task_computation_failure(
+
+            config = self.task_server.config_desc
+            timeout = config.computation_cancellation_timeout
+
+            self.task_manager.task_computation_cancelled(
                 msg.subtask_id,
-                'Task computation rejected: {}'.format(msg.reason)
+                'Task computation rejected: {}'.format(msg.reason),
+                timeout,
             )
+
         self.dropped()
 
     @history.provider_history
@@ -921,6 +932,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     msg=srv,
                 )
 
+            self.task_server.client.transaction_system.\
+                validate_concent_deposit_possibility(
+                    required=amount,
+                    tasks_num=1,
+                )
             self.task_server.client.transaction_system.concent_deposit(
                 required=amount,
                 expected=expected,
@@ -1042,6 +1058,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
         svt = msg_helpers.subtask_verification_time(msg.report_computed_task)
         delay = ttc_deadline + svt - datetime.datetime.utcnow()
+        delay += datetime.timedelta(seconds=1)  # added for safety
         logger.debug(
             '[CONCENT] Delayed ForceResults. msg=%r, delay=%r',
             delayed_forcing_msg,

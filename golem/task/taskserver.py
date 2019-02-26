@@ -211,12 +211,12 @@ class TaskServer(
         return self.task_keeper.environments_manager.get_environment_by_id(
             env_id)
 
-    # This method chooses random task from the network to compute on our machine
     def request_task(self,
                      task_id: Optional[str] = None,
                      performance: Optional[float] = None,
                      eth_pub_key: Optional[str] = None,
                     ) -> Optional[str]:
+        """Chooses random task from network to compute on our machine"""
         if task_id is not None:
             theader = self.task_keeper.task_headers[task_id]
         else:
@@ -292,7 +292,7 @@ class TaskServer(
         except Exception as err:
             logger.warning(f'Cannot send request for task: {err}'
                            f'{err.getTracebackObject()}')
-            self.task_keeper.remove_task_header(theader.task_id)
+            self.remove_task_header(theader.task_id)
 
         return None
 
@@ -300,7 +300,7 @@ class TaskServer(
                    price: int) -> bool:
         if not self.task_computer.task_given(ctd):
             return False
-        self.requested_tasks.remove(ctd['task_id'])
+        self.requested_tasks.clear()
         update_requestor_assigned_sum(node_id, price)
         dispatcher.send(
             signal='golem.subtask',
@@ -430,6 +430,7 @@ class TaskServer(
         return True
 
     def remove_task_header(self, task_id) -> bool:
+        self.requested_tasks.discard(task_id)
         return self.task_keeper.remove_task_header(task_id)
 
     def add_task_session(self, subtask_id, session: TaskSession):
@@ -524,6 +525,18 @@ class TaskServer(
         self.task_result_sent(subtask_id)
         self.client.transaction_system.settle_income(
             sender_node_id, subtask_id, settled_ts)
+
+    def subtask_waiting(self, task_id, subtask_id=None):
+        logger.debug(
+            "Requestor waits for subtask results."
+            " task_id=%(task_id)s subtask_id=%(subtask_id)s",
+            {
+                'task_id': task_id,
+                'subtask_id': subtask_id,
+            },
+        )
+        # We can still try to request a subtask for this task next time.
+        self.requested_tasks.discard(task_id)
 
     def subtask_failure(self, subtask_id, err):
         logger.info("Computation for task %r failed: %r.", subtask_id, err)
@@ -1014,22 +1027,6 @@ class TaskServer(
             if sessions[subtask_id].task_computer is not None:
                 sessions[subtask_id].task_computer.session_timeout()
             sessions[subtask_id].dropped()
-
-    def _find_sessions(self, subtask):
-        if subtask in self.task_sessions:
-            return [self.task_sessions[subtask]]
-        for s in set(self.task_sessions_incoming):
-            logger.debug('Checking session: %r', s)
-            if s.subtask_id == subtask:
-                return [s]
-            try:
-                task_id = self.task_manager.subtask2task_mapping[subtask]
-            except KeyError:
-                pass
-            else:
-                if s.task_id == task_id:
-                    return [s]
-        return []
 
     def __send_waiting_results(self):
         for subtask_id in list(self.results_to_send.keys()):

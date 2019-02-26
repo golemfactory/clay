@@ -245,7 +245,7 @@ class TestHyperVHypervisor(TestCase):
             self.hyperv._check_smb_port()
 
         command.assert_called_once_with(
-            ['docker-machine', 'ssh'],
+            ['docker-machine', '--native-ssh', 'ssh'],
             None,
             [self.hyperv._vm_name, ANY],
             False

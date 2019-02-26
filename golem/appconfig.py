@@ -64,8 +64,11 @@ TASK_SESSION_TIMEOUT = 900
 RESOURCE_SESSION_TIMEOUT = 600
 WAITING_FOR_TASK_SESSION_TIMEOUT = 20
 FORWARDED_SESSION_REQUEST_TIMEOUT = 30
-CLEAN_RESOURES_OLDER_THAN_SECS = 3*24*60*60  # 3 days
-CLEAN_TASKS_OLDER_THAN_SECONDS = 3*24*60*60  # 3 days
+COMPUTATION_CANCELLATION_TIMEOUT = 10.0
+CLEAN_RESOURES_OLDER_THAN_SECS = 3*24*60*60     # 3 days
+CLEAN_TASKS_OLDER_THAN_SECONDS = 3*24*60*60     # 3 days
+# FIXME Issue #3862
+CLEANING_ENABLED = 0
 
 # Default max price per hour
 MAX_PRICE = int(1.0 * denoms.ether)
@@ -166,8 +169,10 @@ class AppConfig:
             resource_session_timeout=RESOURCE_SESSION_TIMEOUT,
             waiting_for_task_session_timeout=WAITING_FOR_TASK_SESSION_TIMEOUT,
             forwarded_session_request_timeout=FORWARDED_SESSION_REQUEST_TIMEOUT,
+            computation_cancellation_timeout=COMPUTATION_CANCELLATION_TIMEOUT,
             clean_resources_older_than_seconds=CLEAN_RESOURES_OLDER_THAN_SECS,
             clean_tasks_older_than_seconds=CLEAN_TASKS_OLDER_THAN_SECONDS,
+            cleaning_enabled=CLEANING_ENABLED,
             debug_third_party=DEBUG_THIRD_PARTY,
             # network masking
             net_masking_enabled=NET_MASKING_ENABLED,
