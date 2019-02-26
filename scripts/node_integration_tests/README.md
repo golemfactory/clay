@@ -171,6 +171,29 @@ environment variable, e.g.:
 GOLEM_INTEGRATION_TEST_DIR=/some/location pytest scripts/node_integration_tests
 ```
 
+There is possibility to reuse provider's and requestor's node keys. It is done 
+to make this tests faster. Only first test creates new ETH accounts, all other 
+use the same account, so there is no need to wait for ETH, tGNT and GNTB any 
+more. If you want to change this behaviour set --reuse_keys.
+
+To enable reusing keys fo all tests add --reuse_keys=no
+```
+pytest --reuse_keys=no scripts/node_integration_tests
+```
+To start all tests, each with new fresh key, without reusing keys:
+```
+pytest --reuse_keys=yes scripts/node_integration_tests
+```
+
+You can also enable or disable reusing keys for particular tests, there is 
+boolean flag on decorator on each test (in test_golem.py and test_concent.py)
+setting default behaviour. If there is no `--reuse_keys=no` or `--reuse_keys=no`
+given, tests are run with default options. Run with default options with simple:
+
+```
+pytest scripts/node_integration_tests
+```
+
 And finally, to run a single test using `pytest`, just use standard `pytest`
 syntax, e.g.:
 
