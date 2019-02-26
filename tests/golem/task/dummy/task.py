@@ -7,7 +7,7 @@ from eth_utils import encode_hex
 import faker
 from golem_messages import idgenerator
 from golem_messages.datastructures import p2p as dt_p2p
-from golem_messages.datastructures import tasks as dt_tasks
+from golem_messages.factories.datastructures.tasks import TaskHeaderFactory
 from golem_messages.message import ComputeTaskDef
 
 import golem
@@ -74,7 +74,8 @@ class DummyTask(Task):
             pub_port=owner_port,
             key=owner_key_id
         )
-        header = dt_tasks.TaskHeader(
+
+        header = TaskHeaderFactory(
             task_id=task_id,
             task_owner=task_owner,
             environment=environment,
@@ -241,7 +242,7 @@ class DummyTask(Task):
         """
         self.resource_parts = resource_parts
 
-    def computation_failed(self, subtask_id):
+    def computation_failed(self, subtask_id: str, ban_node: bool = True):
         print('DummyTask.computation_failed called')
         self.computation_finished(subtask_id, None)
 
@@ -279,6 +280,12 @@ class DummyTask(Task):
         if node_id in self.assigned_nodes:
             return AcceptClientVerdict.SHOULD_WAIT
         return AcceptClientVerdict.ACCEPTED
+
+    def get_finishing_subtasks(self, node_id):
+        try:
+            return [{'subtask_id': self.assigned_nodes[node_id]}]
+        except KeyError:
+            return []
 
     def accept_client(self, node_id):
         print('DummyTask.accept_client called node_id=%r '

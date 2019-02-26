@@ -1,4 +1,3 @@
-import copy
 import logging
 import os
 import pickle
@@ -10,7 +9,6 @@ from pathlib import Path
 from typing import Optional, Dict, List, Iterable
 from zipfile import ZipFile
 
-from golem_messages.datastructures import tasks as dt_tasks
 from golem_messages.message import ComputeTaskDef
 from pydispatch import dispatcher
 from twisted.internet.defer import Deferred
@@ -21,7 +19,6 @@ from apps.core.task.coretask import CoreTask
 from golem.core.common import get_timestamp_utc, HandleForwardedError, \
     HandleKeyError, node_info_str, short_node_id, to_unicode, update_dict
 from golem.manager.nodestatesnapshot import LocalTaskStateSnapshot
-from golem.network.transport.tcpnetwork import SocketAddress
 from golem.ranking.manager.database_manager import update_provider_efficiency, \
     update_provider_efficacy
 from golem.resource.dirmanager import DirManager
@@ -516,6 +513,9 @@ class TaskManager(TaskEventListener):
             new_task_id: str,
             subtask_ids_to_copy: Iterable[str]) -> None:
 
+        logger.debug('copy_results. old_task_id=%r, new_task_id=%r',
+                     old_task_id, new_task_id)
+
         try:
             old_task = self.tasks[old_task_id]
             new_task = self.tasks[new_task_id]
@@ -541,12 +541,14 @@ class TaskManager(TaskEventListener):
             self.subtask2task_mapping[new_subtask_id] = \
                 new_task_id
             self.__add_subtask_to_tasks_states(
-                node_name=None,
-                node_id=None,
-                address=None,
+                node_name='',
+                node_id='',
+                address='',
                 price=0,
                 ctd=extra_data.ctd)
             new_subtasks_ids.append(new_subtask_id)
+
+        logger.debug('copy_results. new_subtasks_ids=%r', new_subtasks_ids)
 
         # it's important to do this step separately, to not disturb
         # 'needs_computation' condition above
@@ -560,6 +562,7 @@ class TaskManager(TaskEventListener):
         def handle_copy_error(subtask_id, error):
             logger.error(
                 'Cannot copy result of subtask %r: %r', subtask_id, error)
+
             self.restart_subtask(subtask_id)
 
         for new_subtask_id, new_subtask in new_task.subtasks_given.items():
@@ -737,31 +740,44 @@ class TaskManager(TaskEventListener):
         return ss
 
     @handle_subtask_key_error
-    def task_computation_failure(self, subtask_id, err):
+    def task_computation_failure(self, subtask_id: str, err: object,
+                                 ban_node: bool = True) -> bool:
         task_id = self.subtask2task_mapping[subtask_id]
-
-        subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
+        task = self.tasks[task_id]
+        task_state = self.tasks_states[task_id]
+        subtask_state = task_state.subtask_states[subtask_id]
         subtask_status = subtask_state.subtask_status
 
         if not subtask_status.is_computed():
-            logger.warning("Result for subtask {} when subtask state is {}"
-                           .format(subtask_id, subtask_status.value))
+            logger.warning(
+                "Subtask %s status cannot be changed from '%s' to '%s'",
+                subtask_id, subtask_status.value, SubtaskStatus.failure,
+            )
             self.notice_task_updated(task_id,
                                      subtask_id=subtask_id,
                                      op=OtherOp.UNEXPECTED)
             return False
 
-        self.tasks[task_id].computation_failed(subtask_id)
-        ss = self.tasks_states[task_id].subtask_states[subtask_id]
-        ss.subtask_progress = 1.0
-        ss.subtask_rem_time = 0.0
-        ss.subtask_status = SubtaskStatus.failure
-        ss.stderr = str(err)
+        task.computation_failed(subtask_id, ban_node)
+
+        subtask_state.subtask_progress = 1.0
+        subtask_state.subtask_rem_time = 0.0
+        subtask_state.subtask_status = SubtaskStatus.failure
+        subtask_state.stderr = str(err)
 
         self.notice_task_updated(task_id,
                                  subtask_id=subtask_id,
                                  op=SubtaskOp.FAILED)
         return True
+
+    @handle_subtask_key_error
+    def task_computation_cancelled(self, subtask_id: str, err: object,
+                                   timeout: float) -> bool:
+        task_id = self.subtask2task_mapping[subtask_id]
+        task_state = self.tasks_states[task_id]
+        subtask_state = task_state.subtask_states[subtask_id]
+        ban_node = subtask_state.time_started + timeout < time.time()
+        return self.task_computation_failure(subtask_id, err, ban_node)
 
     def task_result_incoming(self, subtask_id):
         node_id = self.get_node_id_for_subtask(subtask_id)
@@ -876,28 +892,6 @@ class TaskManager(TaskEventListener):
         self.notice_task_updated(task_id,
                                  subtask_id=subtask_id,
                                  op=SubtaskOp.RESTARTED)
-
-    @handle_task_key_error
-    def restart_frame_subtasks(self, task_id, frame):
-        task = self.tasks[task_id]
-        task_state = self.tasks_states[task_id]
-        subtasks = task.get_subtasks(frame)
-
-        if not subtasks:
-            return
-
-        for subtask_id in list(subtasks.keys()):
-            task.restart_subtask(subtask_id)
-            subtask_state = task_state.subtask_states[subtask_id]
-            subtask_state.subtask_status = SubtaskStatus.restarted
-            subtask_state.stderr = "[GOLEM] Restarted"
-            self.notice_task_updated(task_id,
-                                     subtask_id=subtask_id,
-                                     op=SubtaskOp.RESTARTED,
-                                     persist=False)
-
-        task_state.status = TaskStatus.computing
-        self.notice_task_updated(task_id, op=OtherOp.FRAME_RESTARTED)
 
     @handle_task_key_error
     def abort_task(self, task_id):
@@ -1035,14 +1029,6 @@ class TaskManager(TaskEventListener):
         """ Add a header of a task which this node may try to compute """
         self.comp_task_keeper.add_request(theader, price)
 
-    def get_estimated_cost(self, task_type, options):
-        try:
-            subtask_value = options['price'] * options['subtask_time']
-            return options['num_subtasks'] * subtask_value
-        except (KeyError, ValueError):
-            logger.exception("Cannot estimate price, wrong params")
-            return None
-
     def __add_subtask_to_tasks_states(self, node_name, node_id,
                                       ctd, address, price: int):
 
@@ -1160,7 +1146,8 @@ class TaskManager(TaskEventListener):
     def _update_provider_statistics(self, task_id: str,
                                     subtask_id: str,
                                     op: SubtaskOp) -> None:
-
+        logger.debug('_update_provider_statistics. task_id=%r, subtask_id=%r,'
+                     'op=%r', task_id, subtask_id, op)
         header = self.tasks[task_id].header
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
 
@@ -1169,8 +1156,9 @@ class TaskManager(TaskEventListener):
         computation_time = ProviderComputeTimers.time(subtask_id)
 
         if not computation_time:
-            raise ValueError("Invalid value for computation_time: "
-                             f"{computation_time}")
+            logger.warning("Could not obtain computation time for subtask: %r",
+                           subtask_id)
+            return
 
         computation_time = int(round(computation_time))
 
@@ -1192,11 +1180,16 @@ class TaskManager(TaskEventListener):
         subtask_state = self.tasks_states[task_id].subtask_states[subtask_id]
         node_id = subtask_state.node_id
 
+        logger.debug('_update_provider_reputation. task_id=%r, subtask_id=%r,'
+                     'op=%r, subtask_state=%r', task_id, subtask_id, op,
+                     subtask_state)
+
         update_provider_efficacy(node_id, op)
         computation_time = ProviderComputeTimers.time(subtask_id)
 
         if not computation_time:
-            raise ValueError("computation_time cannot be equal to "
-                             f"{computation_time}")
+            logger.warning("Could not obtain computation time for subtask: %r",
+                           subtask_id)
+            return
 
         update_provider_efficiency(node_id, timeout, computation_time)

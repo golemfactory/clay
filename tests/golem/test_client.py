@@ -210,6 +210,24 @@ class TestClient(TestClientBase):
         self.client.db = None
         self.client.quit()
 
+    @patch('golem.client.TaskCleanerService.start')
+    def test_task_cleaning_disabled(self, task_cleaner, *_):
+        self.client.config_desc.cleaning_enabled = 0
+        self.client.config_desc.clean_tasks_older_than_seconds = 0
+
+        self.client.start_network()
+
+        task_cleaner.assert_not_called()
+
+    @patch('golem.client.TaskCleanerService.start')
+    def test_task_cleaning_enabled(self, task_cleaner, *_):
+        self.client.config_desc.cleaning_enabled = 1
+        self.client.config_desc.clean_tasks_older_than_seconds = 1
+
+        self.client.start_network()
+
+        task_cleaner.assert_called()
+
     def test_collect_gossip(self, *_):
         self.client.start_network()
         self.client.collect_gossip()
@@ -386,26 +404,6 @@ class TestClientRestartSubtasks(TestClientBase):
         )
 
         self.client.task_server = Mock()
-
-    def test_restart_by_frame(self):
-        # given
-        frame_subtasks = {
-            'subtask_id1': Mock(),
-            'subtask_id2': Mock(),
-        }
-        self.client.task_server.task_manager.get_frame_subtasks.return_value = \
-            frame_subtasks
-
-        frame = 10
-
-        # when
-        self.client.restart_frame_subtasks(self.task_id, frame)
-
-        # then
-        self.client.task_server.task_manager.restart_frame_subtasks.\
-            assert_called_with(self.task_id, frame)
-        self.ts.lock_funds_for_payments.assert_called_with(
-            self.subtask_price, len(frame_subtasks))
 
     def test_restart_subtask(self):
         # given
@@ -673,23 +671,6 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
             self.assertIsInstance(value, str)
             self.assertTrue(key in res_dirs)
 
-    def test_get_estimated_cost(self, *_):
-        self.client.transaction_system = make_mock_ets()
-        self.assertEqual(
-            self.client.get_estimated_cost(
-                "task type",
-                {
-                    "price": 150,
-                    "subtask_time": 2.5,
-                    "num_subtasks": 5,
-                },
-            ),
-            {
-                "GNT": 1875.0,
-                "ETH": 0.0001,
-            },
-        )
-
     def test_get_balance(self, *_):
         c = self.client
 
@@ -779,6 +760,9 @@ class TestClientRPCMethods(TestClientBase, LogTestCase):
         c.update_setting('node_name', new_node_name)
         self.assertEqual(c.get_setting('node_name'), new_node_name)
         self.assertEqual(c.get_settings()['node_name'], new_node_name)
+        c._update_hw_preset.assert_not_called()
+
+        c.update_setting('hardware_preset_name', 'custom')
         c._update_hw_preset.assert_called_once()
 
         newer_node_name = str(uuid.uuid4())

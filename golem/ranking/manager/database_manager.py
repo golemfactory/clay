@@ -15,6 +15,8 @@ PROVIDER_FORGETTING_FACTOR = 0.9
 
 
 def increase_positive_computed(node_id, trust_mod):
+    logger.debug('increase_positive_computed. node_id=%r, trust_mod=%r',
+                 node_id, trust_mod)
     try:
         with db.transaction():
             LocalRank.create(node_id=node_id, positive_computed=trust_mod)
@@ -25,6 +27,8 @@ def increase_positive_computed(node_id, trust_mod):
 
 
 def increase_negative_computed(node_id, trust_mod):
+    logger.debug('increase_negative_computed. node_id=%r, trust_mod=%r',
+                 node_id, trust_mod)
     try:
         with db.transaction():
             LocalRank.create(node_id=node_id, negative_computed=trust_mod)
@@ -35,6 +39,8 @@ def increase_negative_computed(node_id, trust_mod):
 
 
 def increase_wrong_computed(node_id, trust_mod):
+    logger.debug('increase_wrong_computed. node_id=%r, trust_mod=%r',
+                 node_id, trust_mod)
     try:
         with db.transaction():
             LocalRank.create(node_id=node_id, wrong_computed=trust_mod)
@@ -45,6 +51,8 @@ def increase_wrong_computed(node_id, trust_mod):
 
 
 def increase_positive_requested(node_id, trust_mod):
+    logger.debug('increase_positive_requested. node_id=%r, trust_mod=%r',
+                 node_id, trust_mod)
     try:
         with db.transaction():
             LocalRank.create(node_id=node_id, positive_requested=trust_mod)
@@ -55,6 +63,8 @@ def increase_positive_requested(node_id, trust_mod):
 
 
 def increase_negative_requested(node_id, trust_mod):
+    logger.debug('increase_negative_requested. node_id=%r, trust_mod=%r',
+                 node_id, trust_mod)
     try:
         with db.transaction():
             LocalRank.create(node_id=node_id, negative_requested=trust_mod)
@@ -65,6 +75,8 @@ def increase_negative_requested(node_id, trust_mod):
 
 
 def increase_positive_payment(node_id, trust_mod):
+    logger.debug('increase_positive_payment. node_id=%r, trust_mod=%r',
+                 node_id, trust_mod)
     try:
         with db.transaction():
             LocalRank.create(node_id=node_id, positive_payment=trust_mod)
@@ -75,6 +87,8 @@ def increase_positive_payment(node_id, trust_mod):
 
 
 def increase_negative_payment(node_id, trust_mod):
+    logger.debug('increase_negative_payment. node_id=%r, trust_mod=%r',
+                 node_id, trust_mod)
     try:
         with db.transaction():
             LocalRank.create(node_id=node_id, negative_payment=trust_mod)
@@ -85,6 +99,8 @@ def increase_negative_payment(node_id, trust_mod):
 
 
 def increase_positive_resource(node_id, trust_mod):
+    logger.debug('increase_positive_resource. node_id=%r, trust_mod=%r',
+                 node_id, trust_mod)
     try:
         with db.transaction():
             LocalRank.create(node_id=node_id, positive_resource=trust_mod)
@@ -95,6 +111,8 @@ def increase_positive_resource(node_id, trust_mod):
 
 
 def increase_negative_resource(node_id, trust_mod):
+    logger.debug('increase_negative_resource. node_id=%r, trust_mod=%r',
+                 node_id, trust_mod)
     try:
         with db.transaction():
             LocalRank.create(node_id=node_id, negative_resource=trust_mod)

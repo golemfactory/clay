@@ -9,7 +9,6 @@ from math import ceil
 from unittest.mock import Mock, MagicMock, patch, ANY
 import freezegun
 
-from eth_utils import encode_hex
 from golem_messages import idgenerator
 from golem_messages import factories as msg_factories
 from golem_messages.datastructures import tasks as dt_tasks
@@ -19,10 +18,9 @@ from golem_messages.message import ComputeTaskDef
 from golem_messages.utils import encode_hex as encode_key_id
 from requests import HTTPError
 
-import golem
 from golem import testutils
 from golem.clientconfigdescriptor import ClientConfigDescriptor
-from golem.core.common import timeout_to_deadline, node_info_str
+from golem.core.common import node_info_str
 from golem.core.keysauth import KeysAuth
 from golem.environments.environment import SupportStatus, UnsupportReason
 from golem.network.hyperdrive.client import HyperdriveClientOptions, \
@@ -131,7 +129,9 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         task_id = task_header.task_id
         ts.add_task_header(task_header)
         self.assertEqual(ts.request_task(), task_id)
+        self.assertIn(task_id, ts.requested_tasks)
         assert ts.remove_task_header(task_id)
+        self.assertNotIn(task_id, ts.requested_tasks)
 
         task_header = get_example_task_header(keys_auth.public_key)
         task_header.task_owner.pub_port = 0
@@ -268,10 +268,9 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         session.port = 1020
         ts.conn_established_for_type[TASK_CONN_TYPES['task_request']](
             session, "abc", "nodename", "key", "xyz", 1010, 30, 3, 1)
-        self.assertEqual(session.task_id, "xyz")
+        self.assertIn(session, self.ts.task_sessions_outgoing)
         self.assertEqual(session.key_id, "key")
         self.assertEqual(session.conn_id, "abc")
-        self.assertEqual(ts.task_sessions["xyz"], session)
         session.send_hello.assert_called_with()
         session.request_task.assert_called_with("nodename", "xyz", 1010, 30, 3,
                                                 1)
@@ -334,7 +333,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         ts.conn_established_for_type[TASK_CONN_TYPES['task_failure']](
             session, conn_id, key_id, subtask_id, "None"
         )
-        self.assertEqual(ts.task_sessions[subtask_id], session)
+        self.assertIn(session, ts.task_sessions_outgoing)
 
     def test_retry_sending_task_result(self, *_):
         ts = self.ts
@@ -451,7 +450,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         method(session, 'conn_id', 'key_id', 'subtask_id', 'err_msg')
 
         self.assertEqual(session.key_id, 'key_id')
-        self.assertIn('subtask_id', ts.task_sessions)
+        self.assertIn(session, ts.task_sessions_outgoing)
         self.assertTrue(session.send_hello.called)
         session.send_task_failure.assert_called_once_with('subtask_id',
                                                           'err_msg')
@@ -647,8 +646,7 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
             _assert_log_msg(
                 cm,
                 f'INFO:{logger.name}:provider {node_id}'
-                f' is not allowed for this task at this moment '
-                f'(either waiting for results or previously failed)'
+                f' is not allowed for this task (it has previously failed)'
             )
 
         # given
@@ -690,21 +688,19 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         session.address = '127.0.0.1'
         session.port = 10
 
-        subtask_id = str(uuid.uuid4())
         key_id = str(uuid.uuid4())
         conn_id = str(uuid.uuid4())
 
         self.ts.new_session_prepare(
             session=session,
-            subtask_id=subtask_id,
             key_id=key_id,
             conn_id=conn_id
         )
-        self.assertEqual(session.task_id, subtask_id)
         self.assertEqual(session.key_id, key_id)
         self.assertEqual(session.conn_id, conn_id)
         mark_mock.assert_called_once_with(conn_id, session.address,
                                           session.port)
+        self.assertIn(session, self.ts.task_sessions_outgoing)
 
     def test_new_connection(self, *_):
         ts = self.ts
@@ -825,10 +821,9 @@ class TaskServerTaskHeaderTest(TaskServerTestBase):
         self.assertFalse(ts.add_task_header(task_header))
 
 
-
-class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
+class TaskServerBase(TestDatabaseWithReactor, testutils.TestWithClient):
     def setUp(self):
-        for parent in self.__class__.__bases__:
+        for parent in TaskServerBase.__bases__:
             parent.setUp(self)
         random.seed()
         self.ccd = self._get_config_desc()
@@ -843,27 +838,17 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         self.ts.task_computer = MagicMock()
 
     def tearDown(self):
-        for parent in self.__class__.__bases__:
+        for parent in TaskServerBase.__bases__:
             parent.tearDown(self)
 
-    def test_find_sessions(self, *_):
-        subtask_id = str(uuid.uuid4())
+    def _get_config_desc(self):
+        ccd = ClientConfigDescriptor()
+        ccd.root_path = self.path
+        return ccd
 
-        # Empty
-        self.assertEqual([], self.ts._find_sessions(subtask_id))
 
-        # Found task_id
-        task_id = str(uuid.uuid4())
-        session = MagicMock()
-        session.task_id = task_id
-        self.ts.task_manager.subtask2task_mapping[subtask_id] = task_id
-        self.ts.task_sessions_incoming.add(session)
-        self.assertEqual([session], self.ts._find_sessions(subtask_id))
-
-        # Found in task_sessions
-        subtask_session = MagicMock()
-        self.ts.task_sessions[subtask_id] = subtask_session
-        self.assertEqual([subtask_session], self.ts._find_sessions(subtask_id))
+# pylint: disable=too-many-ancestors
+class TestTaskServer2(TaskServerBase):
 
     @patch("golem.task.taskmanager.TaskManager.dump_task")
     @patch("golem.task.taskserver.Trust")
@@ -904,14 +889,20 @@ class TestTaskServer2(TestDatabaseWithReactor, testutils.TestWithClient):
         self.assertGreater(trust.COMPUTED.increase.call_count, prev_calls)
 
     def test_disconnect(self, *_):
-        self.ts.task_sessions = {'task_id': Mock()}
+        session_mock = Mock()
+        self.ts.task_sessions_outgoing.add(session_mock)
         self.ts.disconnect()
-        assert self.ts.task_sessions['task_id'].dropped.called
+        session_mock.dropped.assert_called_once_with()
 
-    def _get_config_desc(self):
-        ccd = ClientConfigDescriptor()
-        ccd.root_path = self.path
-        return ccd
+
+# pylint: disable=too-many-ancestors
+class TestSubtaskWaiting(TaskServerBase):
+    def test_requested_tasks(self, *_):
+        task_id = str(uuid.uuid4())
+        subtask_id = str(uuid.uuid4())
+        self.ts.requested_tasks.add(task_id)
+        self.ts.subtask_waiting(task_id, subtask_id)
+        self.assertNotIn(task_id, self.ts.requested_tasks)
 
 
 class TestRestoreResources(LogTestCase, testutils.DatabaseFixture,
@@ -1087,10 +1078,8 @@ class TaskVerificationResultTest(TaskServerTestBase):
         self.ts.conn_established_for_type[self.conn_type](
             session, self.conn_id, extracted_package, self.key_id, subtask_id
         )
-        self.assertEqual(session.task_id, subtask_id)
         self.assertEqual(session.key_id, self.key_id)
         self.assertEqual(session.conn_id, self.conn_id)
-        self.assertEqual(self.ts.task_sessions[subtask_id], session)
         result_received_call = session.result_received.call_args[0]
         self.assertEqual(result_received_call[0], subtask_id)
 

@@ -7,7 +7,6 @@ from golem.testutils import TempDirFixture
 from golem.tools.assertlogs import LogTestCase
 from golem.verificator.rendering_verifier import (
     RenderingVerifier,
-    logger,
     FrameRenderingVerifier,
 )
 from golem.verificator.verifier import SubtaskVerificationState
@@ -76,34 +75,6 @@ class TestRenderingVerifier(TempDirFixture, LogTestCase):
         self.last_verdict = rendering_verifier.verification_completed()[1]
         assert self.last_verdict == SubtaskVerificationState.VERIFIED
 
-    def test_get_part_img_size(self):
-        subtask_info = {
-            "res_x": 800,
-            "res_y": 600,
-            "total_tasks": 30,
-            "start_task": 3
-        }
-
-        verification_data = {'subtask_info': subtask_info, 'results': ["file1"], 'reference_data': [], 'resources': []}
-
-        rendering_verifier = RenderingVerifier(verification_data)
-
-        assert rendering_verifier._get_part_img_size(subtask_info) == (0, 40, 800, 60)
-
-        subtask_info["total_tasks"] = 0
-        with self.assertLogs(logger, level="WARNING"):
-            assert rendering_verifier._get_part_img_size(subtask_info) == (0, 0, 0, 0)
-
-        subtask_info["total_tasks"] = 30
-        subtask_info["start_task"] = 34
-        with self.assertLogs(logger, level="WARNING"):
-            assert rendering_verifier._get_part_img_size(subtask_info) == (0, 0, 0, 0)
-
-        subtask_info["total_tasks"] = 11
-        subtask_info["res_y"] = 211
-        subtask_info["start_task"] = 5
-        assert rendering_verifier._get_part_img_size(subtask_info) == (0, 76, 800, 95)
-
 
 class TestFrameRenderingVerifier(TempDirFixture):
 
@@ -148,18 +119,3 @@ class TestFrameRenderingVerifier(TempDirFixture):
         frame_rendering_verifier.simple_verification(verification_data)
         frame_rendering_verifier.verification_completed()
         assert frame_rendering_verifier.state == SubtaskVerificationState.WRONG_ANSWER
-
-    def test_get_part_img_size(self):
-        verification_data = {'subtask_info': {}, 'results': [], 'reference_data': [], 'resources': []}
-        frame_rendering_verifier = FrameRenderingVerifier(verification_data)
-        subtask_info = {
-            "res_x": 600,
-            "res_y": 800,
-            "total_tasks": 20,
-            "all_frames": [5, 6, 7, 8, 9],
-            "start_task": 1,
-            "parts": 4,
-            "use_frames": True}
-        assert frame_rendering_verifier._get_part_img_size(subtask_info) == (1, 1, 599, 199)
-        subtask_info["use_frames"] = False
-        assert frame_rendering_verifier._get_part_img_size(subtask_info) == (0, 0, 600, 40)

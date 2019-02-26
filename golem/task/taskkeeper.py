@@ -25,12 +25,13 @@ from golem.core import common
 from golem.core import golem_async
 from golem.core.variables import NUM_OF_RES_TRANSFERS_NEEDED_FOR_VER
 from golem.environments.environment import SupportStatus, UnsupportReason
+from golem.network.hyperdrive.client import HyperdriveClientOptions
 from golem.task.taskproviderstats import ProviderStatsManager
 
 logger = logging.getLogger('golem.task.taskkeeper')
 
 
-def compute_subtask_value(price: int, computation_time: int):
+def compute_subtask_value(price: int, computation_time: int) -> int:
     """
     Don't use math.ceil (this is general advice, not specific to the case here)
     >>> math.ceil(10 ** 18 / 6)
@@ -111,6 +112,10 @@ class CompTaskKeeper:
         # information about tasks that this node wants to compute
         self.active_tasks: typing.Dict[str, CompTaskInfo] = {}
 
+        # information about resource options for subtask
+        self.resources_options: typing.Dict[str, typing.Optional[
+            HyperdriveClientOptions]] = {}
+
         # price information per last task request
         self.active_task_offers: typing.Dict[str, int] = {}
 
@@ -142,6 +147,7 @@ class CompTaskKeeper:
                 self.subtask_to_task,
                 self.task_package_paths,
                 self.active_task_offers,
+                self.resources_options
             )
             pickle.dump(dump_data, f)
 
@@ -159,6 +165,7 @@ class CompTaskKeeper:
                 subtask_to_task = data[1]
                 task_package_paths = data[2] if len(data) > 2 else {}
                 active_task_offers = data[3] if len(data) > 3 else {}
+                resources_options = data[4] if len(data) > 4 else {}
         except (pickle.UnpicklingError, EOFError, AttributeError, KeyError):
             logger.exception(
                 'Problem restoring dumpfile: %s; deleting broken file',
@@ -171,6 +178,7 @@ class CompTaskKeeper:
         self.subtask_to_task.update(subtask_to_task)
         self.task_package_paths.update(task_package_paths)
         self.active_task_offers.update(active_task_offers)
+        self.resources_options.update(resources_options)
 
     def add_request(self, theader: dt_tasks.TaskHeader, price: int):
         # price is task_header.max_price
@@ -219,6 +227,7 @@ class CompTaskKeeper:
         comp_task_info.subtasks[subtask_id] = comp_task_def
 
         self.subtask_to_task[subtask_id] = task_id
+        self.resources_options[subtask_id] = task_to_compute.resources_options
         self.dump()
         return True
 
@@ -258,6 +267,10 @@ class CompTaskKeeper:
     def get_node_for_task_id(self, task_id) -> typing.Optional[str]:
         return self.active_tasks[task_id].header.task_owner.key
 
+    def get_resources_options(self, subtask_id: str) -> \
+            typing.Optional[HyperdriveClientOptions]:
+        return self.resources_options.get(subtask_id)
+
     def check_task_owner_by_subtask(self, task_owner_key_id, subtask_id):
         task_id = self.subtask_to_task.get(subtask_id)
         task = self.active_tasks.get(task_id)
@@ -279,6 +292,7 @@ class CompTaskKeeper:
             logger.info("Removing comp_task after deadline: %s", task_id)
 
             for subtask_id in self.active_tasks[task_id].subtasks:
+                self.resources_options.pop(subtask_id, None)
                 self.subtask_to_task.pop(subtask_id, None)
 
             self.active_tasks.pop(task_id, None)
@@ -589,12 +603,15 @@ class TaskHeaderKeeper:
         :param exclude: Task ids to exclude
         :return: None if there are no tasks that this node may want to compute
         """
+        logger.debug("`get_task` called. exclude=%r", exclude)
         tasks = self.supported_tasks
         if exclude:
             tasks = [t for t in tasks if t not in exclude]
         if not tasks:
+            logger.debug("`get_task`: no potential task candidates found.")
             return None
         task_id = random.choice(tasks)
+        logger.debug("`get_task`: task candidate found. task_id=%r", task_id)
         return self.task_headers[task_id]
 
     def remove_old_tasks(self):

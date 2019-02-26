@@ -9,6 +9,8 @@ import threading
 import tempfile
 import typing
 
+from ethereum.utils import denoms
+
 from . import tasks
 
 
@@ -46,14 +48,17 @@ def gracefully_shutdown(process: subprocess.Popen, node_type: str):
         process.kill()
 
 
-def run_golem_node(node_type: str, *args):
+def run_golem_node(node_type: str, *args,
+                   nodes_root: typing.Optional[pathlib.Path] = None):
     node_file = node_type + '.py'
-    cwd = pathlib.Path(os.path.realpath(__file__)).parent
+    cwd = nodes_root or pathlib.Path(os.path.realpath(__file__)).parent
+    node_script = str(cwd / 'nodes' / node_file)
     node_process = subprocess.Popen(
-        args=['python', str(cwd / 'nodes' / node_file), *args],
+        args=['python', node_script, *args],
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
     )
+
     return node_process
 
 
@@ -103,8 +108,8 @@ def search_output(q: queue.Queue, pattern) -> typing.Optional[typing.Match]:
 def construct_test_task(task_package_name, output_path, task_settings):
     settings = tasks.get_settings(task_settings)
     cwd = pathlib.Path(os.path.realpath(__file__)).parent
-    tasks_path = (cwd / 'tasks' / task_package_name).glob('*')
-    settings['resources'] = [str(f) for f in tasks_path]
+    tasks_path = (cwd / 'tasks' / task_package_name).glob('**/*')
+    settings['resources'] = [str(f) for f in tasks_path if f.is_file()]
     settings['options']['output_path'] = output_path
     return settings
 
@@ -116,3 +121,11 @@ def timeout_to_seconds(timeout_str: str):
         minutes=int(components[1]),
         seconds=int(components[2])
     ).total_seconds()
+
+
+def to_ether(value):
+    return int(value) / denoms.ether
+
+
+def from_ether(value):
+    return int(value * denoms.ether)

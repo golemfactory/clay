@@ -85,8 +85,8 @@ class RenderingTask(CoreTask):
         self.test_task_res_path = None
 
     @CoreTask.handle_key_error
-    def computation_failed(self, subtask_id):
-        super().computation_failed(subtask_id)
+    def computation_failed(self, subtask_id: str, ban_node: bool = True):
+        super().computation_failed(subtask_id, ban_node)
         self._update_task_preview()
 
     def restart(self):

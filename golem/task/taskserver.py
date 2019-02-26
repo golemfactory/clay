@@ -117,8 +117,11 @@ class TaskServer(
             finished_cb=task_finished_cb)
         self.task_connections_helper = TaskConnectionsHelper()
         self.task_connections_helper.task_server = self
+        # Remove .task_sessions when Message Queue is implemented
+        # https://github.com/golemfactory/golem/issues/2223
         self.task_sessions = {}
-        self.task_sessions_incoming = weakref.WeakSet()
+        self.task_sessions_incoming: weakref.WeakSet = weakref.WeakSet()
+        self.task_sessions_outgoing: weakref.WeakSet = weakref.WeakSet()
 
         OfferPool.change_interval(self.config_desc.offer_pooling_interval)
 
@@ -163,6 +166,12 @@ class TaskServer(
         dispatcher.connect(
             self.finished_task_listener,
             signal='golem.taskmanager'
+        )
+
+    @property
+    def all_sessions(self):
+        return frozenset(
+            self.task_sessions_outgoing | self.task_sessions_incoming,
         )
 
     def sync_network(self, timeout=None):
@@ -211,8 +220,8 @@ class TaskServer(
         return self.task_keeper.environments_manager.get_environment_by_id(
             env_id)
 
-    # This method chooses random task from the network to compute on our machine
     def request_task(self) -> Optional[str]:
+        """Chooses random task from network to compute on our machine"""
         theader = self.task_keeper.get_task(self.requested_tasks)
         if theader is None:
             return None
@@ -280,7 +289,7 @@ class TaskServer(
                                                       supported)
         except Exception as err:
             logger.warning("Cannot send request for task: {}".format(err))
-            self.task_keeper.remove_task_header(theader.task_id)
+            self.remove_task_header(theader.task_id)
 
         return None
 
@@ -288,7 +297,7 @@ class TaskServer(
                    price: int) -> bool:
         if not self.task_computer.task_given(ctd):
             return False
-        self.requested_tasks.remove(ctd['task_id'])
+        self.requested_tasks.clear()
         update_requestor_assigned_sum(node_id, price)
         dispatcher.send(
             signal='golem.subtask',
@@ -361,13 +370,7 @@ class TaskServer(
             session.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
 
     def disconnect(self):
-        task_sessions = dict(self.task_sessions)
-        sessions_incoming = weakref.WeakSet(self.task_sessions_incoming)
-
-        for task_session in list(task_sessions.values()):
-            task_session.dropped()
-
-        for task_session in sessions_incoming:
+        for task_session in self.all_sessions:
             try:
                 task_session.dropped()
             except Exception as exc:
@@ -417,6 +420,7 @@ class TaskServer(
         return True
 
     def remove_task_header(self, task_id) -> bool:
+        self.requested_tasks.discard(task_id)
         return self.task_keeper.remove_task_header(task_id)
 
     def add_task_session(self, subtask_id, session: TaskSession):
@@ -511,6 +515,18 @@ class TaskServer(
         self.task_result_sent(subtask_id)
         self.client.transaction_system.settle_income(
             sender_node_id, subtask_id, settled_ts)
+
+    def subtask_waiting(self, task_id, subtask_id=None):
+        logger.debug(
+            "Requestor waits for subtask results."
+            " task_id=%(task_id)s subtask_id=%(subtask_id)s",
+            {
+                'task_id': task_id,
+                'subtask_id': subtask_id,
+            },
+        )
+        # We can still try to request a subtask for this task next time.
+        self.requested_tasks.discard(task_id)
 
     def subtask_failure(self, subtask_id, err):
         logger.info("Computation for task %r failed: %r.", subtask_id, err)
@@ -722,10 +738,9 @@ class TaskServer(
             logger.info(f'network mask mismatch: {ids}')
             return False
 
-        if task.should_accept_client(node_id) != AcceptClientVerdict.ACCEPTED:
+        if task.should_accept_client(node_id) == AcceptClientVerdict.REJECTED:
             logger.info(f'provider {node_id} is not allowed'
-                        f' for this task at this moment '
-                        f'(either waiting for results or previously failed)')
+                        f' for this task (it has previously failed)')
             return False
 
         logger.debug('provider can be accepted %s', ids)
@@ -779,7 +794,6 @@ class TaskServer(
             estimated_performance, price, max_resource_size, max_memory_size):
         self.new_session_prepare(
             session=session,
-            subtask_id=task_id,
             key_id=key_id,
             conn_id=conn_id,
         )
@@ -812,7 +826,6 @@ class TaskServer(
                                                  waiting_task_result):
         self.new_session_prepare(
             session=session,
-            subtask_id=waiting_task_result.subtask_id,
             key_id=waiting_task_result.owner.key,
             conn_id=conn_id,
         )
@@ -845,7 +858,6 @@ class TaskServer(
                                                   key_id, subtask_id, err_msg):
         self.new_session_prepare(
             session=session,
-            subtask_id=subtask_id,
             key_id=key_id,
             conn_id=conn_id,
         )
@@ -875,7 +887,6 @@ class TaskServer(
             ans_conn_id):
         self.new_session_prepare(
             session=session,
-            subtask_id=None,
             key_id=key_id,
             conn_id=conn_id,
         )
@@ -933,17 +944,16 @@ class TaskServer(
 
     def new_session_prepare(self,
                             session: TaskSession,
-                            subtask_id: str,
                             key_id: str,
                             conn_id: str):
         self.remove_forwarded_session_request(key_id)
-        session.task_id = subtask_id
         session.key_id = key_id
         session.conn_id = conn_id
         self._mark_connected(conn_id, session.address, session.port)
-        self.task_sessions[subtask_id] = session
+        self.task_sessions_outgoing.add(session)
 
-    def noop(self, *args, **kwargs):
+    @classmethod
+    def noop(cls, *args, **kwargs):
         args_, kwargs_ = args, kwargs  # avoid params name collision in logger
         logger.debug('Noop(%r, %r)', args_, kwargs_)
 
@@ -958,7 +968,6 @@ class TaskServer(
         full_path_files = extracted_package.get_full_path_files()
         self.new_session_prepare(
             session=session,
-            subtask_id=subtask_id,
             key_id=key_id,
             conn_id=conn_id,
         )
@@ -983,33 +992,14 @@ class TaskServer(
 
     def __remove_old_sessions(self):
         cur_time = time.time()
-        sessions_to_remove = []
-        sessions = dict(self.task_sessions)
 
-        for subtask_id, session in sessions.items():
+        for session in self.all_sessions:
             dt = cur_time - session.last_message_time
-            if dt > self.last_message_time_threshold:
-                sessions_to_remove.append(subtask_id)
-        for subtask_id in sessions_to_remove:
-            if sessions[subtask_id].task_computer is not None:
-                sessions[subtask_id].task_computer.session_timeout()
-            sessions[subtask_id].dropped()
-
-    def _find_sessions(self, subtask):
-        if subtask in self.task_sessions:
-            return [self.task_sessions[subtask]]
-        for s in set(self.task_sessions_incoming):
-            logger.debug('Checking session: %r', s)
-            if s.subtask_id == subtask:
-                return [s]
-            try:
-                task_id = self.task_manager.subtask2task_mapping[subtask]
-            except KeyError:
-                pass
-            else:
-                if s.task_id == task_id:
-                    return [s]
-        return []
+            if dt < self.last_message_time_threshold:
+                continue
+            if session.task_computer is not None:
+                session.task_computer.session_timeout()
+            session.dropped()
 
     def __send_waiting_results(self):
         for subtask_id in list(self.results_to_send.keys()):

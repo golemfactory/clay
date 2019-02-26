@@ -127,3 +127,17 @@ class TestHardwarePresets(testutils.DatabaseFixture):
         assert HardwarePresets.update_config(DEFAULT, self.config)
         assert self.config.max_resource_size == 7e9
         assert not HardwarePresets.update_config(DEFAULT, self.config)
+
+    def test_from_config(self, *_):
+        config = ClientConfigDescriptor()
+        config.hardware_preset_name = 'test'
+        config.num_cores = 4
+        config.max_memory_size = 4 * 1024 * 1024  # 4 GiB in kiB
+        config.max_resource_size = 10 * 1024 * 1024  # 10 GiB in kiB
+
+        preset = HardwarePresets.from_config(config)
+
+        self.assertEqual(preset.name, 'test')
+        self.assertEqual(preset.cpu_cores, 4)
+        self.assertEqual(preset.memory, 4 * 1024 * 1024)
+        self.assertEqual(preset.disk, 10 * 1024 * 1024)

@@ -5,6 +5,23 @@ from ..base import NodeTestPlaybook
 
 
 class TaskTimeoutAndRestart(NodeTestPlaybook):
+    """
+    Reproduces a scenario where:
+    * Requestor has a a task with 2 subtasks,
+    * on the first run, the Provider is modified to respond to a task just once
+      (it should send only one `WantToComputeTask`),
+    * because there's just one Provider who accepts only one subtask,
+      the task as a whole should time out,
+    * afterwards, the nodes are restarted, this time both as unmodified
+      Golem nodes,
+    * the timed-out task (with only one subtask successfully finished) is then
+      restarted using the `comp.task.restart_subtasks` call - the result is a
+      new task which contains one already-completed subtask and another,
+      failed one,
+    * the Provider should then be able to pick up that second subtask, thus
+      allowing the task as a whole to finish successfully this time.
+
+    """
     provider_node_script = 'provider/no_wtct_after_ttc'
     requestor_node_script = 'requestor/debug'
     task_settings = '2_short'

@@ -47,12 +47,6 @@ from golem.resource.dirmanager import DirManager
 fake = Faker()
 
 
-class PickableMock(Mock):
-    # to make the mock pickable
-    def __reduce__(self):
-        return (Mock, ())
-
-
 class TaskMock(Task):
 
     def __init__(self, *args, **kwargs):
@@ -667,6 +661,57 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
                  ("xyz", "aabbcc", OtherOp.UNEXPECTED)])
         del handler
 
+    @patch('golem.task.taskmanager.TaskManager.dump_task')
+    def test_task_computation_cancelled(self, *_):
+        # create a task with a single subtask, call task_computation_cancelled
+        # twice; event handler should be called twice, first notifying of
+        # subtask restart, then notifying about unexpected subtask
+        timeout = 1000.0
+        task_mock = self._get_task_mock()
+        task_mock.needs_computation = lambda: True
+        self.tm.add_new_task(task_mock)
+        self.tm.start_task(task_mock.header.task_id)
+        task_mock.query_extra_data_return_value.ctd['subtask_id'] = "aabbcc"
+        self.tm.get_next_subtask("NODE", "NODE", "xyz", 1000, 100, 10000, 10000)
+        (handler, checker) = self._connect_signal_handler()
+        assert self.tm.task_computation_cancelled("aabbcc",
+                                                  "computing another task",
+                                                  timeout)
+        ss = self.tm.tasks_states["xyz"].subtask_states["aabbcc"]
+        assert ss.subtask_status == SubtaskStatus.failure
+        assert not self.tm.task_computation_cancelled("aabbcc",
+                                                      "computing another task",
+                                                      timeout)
+        checker([("xyz", "aabbcc", SubtaskOp.FAILED),
+                 ("xyz", "aabbcc", OtherOp.UNEXPECTED)])
+        del handler
+
+    @patch('golem.task.taskmanager.TaskManager.dump_task')
+    def test_task_computation_cancelled_after_timeout(self, *_):
+        # create a task with a single subtask, call task_computation_cancelled
+        # with an invalid timeout and make sure that task_computation_failure
+        # is called; then call task_computation_cancelled again.
+        # event handler should be called twice, first notifying of
+        # subtask failure, then notifying about unexpected subtask
+        task_mock = self._get_task_mock()
+        task_mock.needs_computation = lambda: True
+        self.tm.add_new_task(task_mock)
+        self.tm.start_task(task_mock.header.task_id)
+        task_mock.query_extra_data_return_value.ctd['subtask_id'] = "aabbcc"
+        self.tm.get_next_subtask("NODE", "NODE", "xyz", 1000, 100, 10000, 10000)
+        (handler, checker) = self._connect_signal_handler()
+        assert self.tm.task_computation_cancelled("aabbcc",
+                                                  "computing another task",
+                                                  timeout=-1000)
+        ss = self.tm.tasks_states["xyz"].subtask_states["aabbcc"]
+        assert ss.subtask_status == SubtaskStatus.failure
+        assert not self.tm.task_computation_cancelled("aabbcc",
+                                                      "computing another task",
+                                                      timeout=1000)
+        checker([("xyz", "aabbcc", SubtaskOp.FAILED),
+                 ("xyz", "aabbcc", OtherOp.UNEXPECTED)])
+        del handler
+
     @patch('golem.task.taskbase.Task.needs_computation', return_value=True)
     def test_get_subtasks(self, *_):
         assert self.tm.get_subtasks("Task 1") is None
@@ -935,16 +980,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         self.tm.update_task_signatures()
         assert task.header.signature != sig
 
-    def test_get_estimated_cost(self):
-        tm = TaskManager(dt_p2p_factory.Node(), Mock(), root_path=self.path)
-        options = {'price': 100,
-                   'subtask_time': 1.5,
-                   'num_subtasks': 7
-                   }
-        assert tm.get_estimated_cost("Blender", options) == 1050
-        with self.assertLogs(logger, level="WARNING"):
-            assert tm.get_estimated_cost("Blender", {}) is None
-
     def test_errors(self):
         task_id = 'qaz123WSX'
         subtask_id = "qweasdzxc"
@@ -962,51 +997,6 @@ class TestTaskManager(LogTestCase, TestDatabaseWithReactor,  # noqa # pylint: di
         self.tm.put_task_in_restarted_state(task_id)
         with self.assertRaises(self.tm.AlreadyRestartedError):
             self.tm.put_task_in_restarted_state(task_id)
-
-    def test_restart_frame_subtasks(self):
-        tm = self.tm
-        old_notice_task_updated = tm.notice_task_updated
-        tm.notice_task_updated = Mock()
-
-        # Not existing task
-        tm.restart_frame_subtasks('any_id', 1)
-        assert not tm.notice_task_updated.called
-
-        # Mock task without subtasks
-        tm.tasks['test_id'] = Mock()
-        tm.tasks['test_id'].get_subtasks.return_value = None
-        tm.restart_frame_subtasks('test_id', 1)
-        assert not tm.notice_task_updated.called
-
-        # Create tasks
-        tm.tasks.pop('test_id')
-        _, subtask_id = self.__build_tasks(tm, 3)
-
-        # Successful call
-        # Restore normal notice_task_updated and check if the event
-        # handler gets called from notice_task_updated; persistence needs to
-        # be off as Mock items don't allow it
-        tm.notice_task_updated = old_notice_task_updated
-        tm.task_persistence = False
-        for task_id in list(tm.tasks):
-            (handler, checker) = self._connect_signal_handler()
-            for i in range(3):
-                tm.restart_frame_subtasks(task_id, i + 1)
-            checker([(task_id, None, SubtaskOp.RESTARTED),
-                     (task_id, None, SubtaskOp.RESTARTED),
-                     (task_id, None, SubtaskOp.RESTARTED),
-                     (task_id, None, OtherOp.FRAME_RESTARTED)])
-            del handler
-
-        subtask_states = {}
-
-        for task in list(tm.tasks.values()):
-            task_state = tm.tasks_states[task.header.task_id]
-            assert task_state.status == TaskStatus.computing
-            subtask_states.update(task_state.subtask_states)
-
-        for subtask_id, subtask_state in list(subtask_states.items()):
-            assert subtask_state.subtask_status == SubtaskStatus.restarted
 
     def __build_tasks(self, tm, n, fixed_frames=False):
         tm.tasks = OrderedDict()

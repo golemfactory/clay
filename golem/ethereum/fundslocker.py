@@ -28,7 +28,7 @@ class FundsLocker(LoopingCallService):
             transaction_system: TransactionSystem,
             interval_seconds: int = 60) -> None:
         super().__init__(interval_seconds)
-        self.task_lock = {}
+        self.task_lock: dict = {}
         self.transaction_system = transaction_system
 
     def lock_funds(
