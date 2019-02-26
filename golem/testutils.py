@@ -11,9 +11,11 @@ from typing import Dict
 import ethereum.keys
 import pycodestyle
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+from golem_messages.message import ComputeTaskDef
 
 from apps.appsmanager import AppsManager
 from golem.core.common import get_golem_path, is_windows, is_osx
+from golem.core.fileshelper import outer_dir_path
 from golem.core.keysauth import KeysAuth
 from golem.core.simpleenv import get_local_datadir
 from golem.database import Database
@@ -274,7 +276,7 @@ class TestTaskIntegration(TempDirFixture):
 
         self.task_manager.start_task(task.task_definition.task_id)
         for i in range(task.task_definition.subtasks_count):
-            ctd = self.task_manager. \
+            ctd: ComputeTaskDef = self.task_manager. \
                 get_next_subtask(node_id=self.node_id,
                                  node_name=self.node_name,
                                  task_id=task.task_definition.task_id,
@@ -286,53 +288,52 @@ class TestTaskIntegration(TempDirFixture):
                                  max_memory_size=10000000000,
                                  address='127.0.0.1')
             result = self.execute_subtask(task, ctd)
-            j = 1
+            self.task_manager.computed_task_received(
+                subtask_id=ctd['subtask_id'],
+                result=result,
+                verification_finished=None)
+            # all results are moved to the parent dir
+
+            task.accept_results(ctd['subtask_id'], list(
+                map(lambda res: outer_dir_path(res), result)))
 
     def execute_subtask(self, task, ctd):
 
         extra_data = ctd["extra_data"]
 
         subtask_dir = os.path.join(self.root_dir, self.node_name)
-        script_filepath = extra_data['script_filepath']
 
-        self._copy_resources(task, subtask_dir)
+        return self.run_test_job(task, subtask_dir, extra_data)
 
-        # Run docker job
-        env = task.ENVIRONMENT_CLASS
-        image = DockerImage(repository=env.DOCKER_IMAGE, tag=env.DOCKER_TAG)
-
-        return self._create_test_job(image, subtask_dir, script_filepath,
-                                     extra_data)
-
-    def execute_subtasks(self, num_subtasks):
-
-        for i in range(num_subtasks):
-            self.execute_subtask(self.task)
-
-    def _copy_resources(self, task, root_dir):
-
-        [resources_dir, _, _] = self._create_docker_dirs(root_dir)
+    @staticmethod
+    def _copy_resources(task, resources_dir):
 
         for res in task.task_resources:
             shutil.copy(res, resources_dir)
 
-    def _create_docker_dirs(self, root_dir):
+    @staticmethod
+    def _create_docker_dirs(root_dir):
 
         resources_dir = os.path.join(root_dir, "resources")
         work_dir = os.path.join(root_dir, "work")
         output_dir = os.path.join(root_dir, "output")
 
-        os.makedirs(root_dir, exist_ok=True)
-        os.makedirs(resources_dir, exist_ok=True)
-        os.makedirs(work_dir, exist_ok=True)
-        os.makedirs(output_dir, exist_ok=True)
+        dirs = [resources_dir, work_dir, output_dir]
 
-        return [resources_dir, work_dir, output_dir]
+        for docker_dir in dirs:
+            os.makedirs(docker_dir, exist_ok=True)
+        return dirs
 
-    def _create_test_job(self, image, root_dir, script, params):
+    def run_test_job(self, task, root_dir, params):
 
         [resources_dir, work_dir, output_dir] = self._create_docker_dirs(
             root_dir)
+
+        self._copy_resources(task, resources_dir)
+
+        # Run docker job
+        env = task.ENVIRONMENT_CLASS
+        image = DockerImage(repository=env.DOCKER_IMAGE, tag=env.DOCKER_TAG)
 
         dir_mapping = DockerTaskThread.specify_dir_mapping(
             output=output_dir, temporary=work_dir,
@@ -346,7 +347,7 @@ class TestTaskIntegration(TempDirFixture):
         dtt.run()
         if dtt.error:
             raise Exception(dtt.error_msg)
-        return dtt.result[0] if isinstance(dtt.result, tuple) else dtt.result
+        return dtt.result.get('data')
 
     def tearDown(self):
         shutil.rmtree(self.tempdir)
