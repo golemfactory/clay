@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 import re
 import sys
@@ -6,7 +5,6 @@ import tempfile
 import time
 import traceback
 import typing
-from shutil import copyfile
 
 from twisted.internet import reactor, task
 from twisted.internet.error import ReactorNotRunning
@@ -68,7 +66,6 @@ class NodeTestPlaybook:
     node_restart_count = 0
 
     dump_output_on_fail = False
-    reuse_node_keys = False
 
     @property
     def task_settings_dict(self) -> dict:
@@ -476,25 +473,6 @@ class NodeTestPlaybook:
             **kwargs,
         )
 
-    @staticmethod
-    def _replace_keystore_and_wallet(destination: str) -> None:
-        src = '/tmp/provider_reuse_keystore/keystore.json' if 'provider' in \
-            destination else '/tmp/requestor_reuse_keystore/keystore.json'
-        dst = destination + '/rinkeby/keys/keystore.json'
-        os.mkdir(destination+'/rinkeby')
-        os.mkdir(destination+'/rinkeby/keys')
-        copyfile(src, dst)
-
-        os.mkdir(destination + '/rinkeby/transaction_system')
-        src = '/tmp/provider_reuse_keystore/wallet.json' if 'provider' in \
-            destination else '/tmp/requestor_reuse_keystore/wallet.json'
-        dst = destination+'/rinkeby/transaction_system/wallet.json'
-        copyfile(src, dst)
-
-    def _replace_files_to_used_before(self):
-        self._replace_keystore_and_wallet(self.provider_datadir)
-        self._replace_keystore_and_wallet(self.requestor_datadir)
-
     def start_nodes(self):
         print("Provider data directory: %s" % self.provider_datadir)
         print("Requestor data directory: %s" % self.requestor_datadir)
@@ -559,8 +537,6 @@ class NodeTestPlaybook:
             output_path=self.output_path,
             task_settings=self.task_settings,
         )
-        if self.reuse_node_keys is True:
-            self._replace_files_to_used_before()
 
         self.start_nodes()
         self.started = True

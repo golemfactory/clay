@@ -6,19 +6,6 @@ from golem.config.environments import set_environment
 from scripts.node_integration_tests.playbooks import run_playbook
 from scripts.node_integration_tests.helpers import mkdatadir
 
-
-def _add_to_kwargs_reuse_node_keys_parsed_from_string_to_boolean():
-    for k, v in vars(args).items():
-        if k == 'reuse_node_keys':
-            if v == 'True':
-                playbook_kwargs.update({'reuse_node_keys': True})
-            elif v == 'False':
-                playbook_kwargs.update({'reuse_node_keys': False})
-            else:
-                raise Exception(
-                    'Unexpected problem with reuse_node_keys parameter')
-
-
 if __name__ == '__main__':
 
     parser = ArgumentParser(description="Runs a single test playbook.")
@@ -60,12 +47,6 @@ if __name__ == '__main__':
         help="use the mainnet environment to run the test "
              "(the playbook must also use mainnet)",
     )
-    parser.add_argument(
-        '--reuse_node_keys',
-        help="parameter to set if provider and requestor node keys should be "
-             "reused. It is done to avoid waiting for GNT and GNTB each time"
-        )
-
     args = parser.parse_args()
 
     if args.mainnet:
@@ -108,6 +89,5 @@ if __name__ == '__main__':
         ]
            and v
     }
-    _add_to_kwargs_reuse_node_keys_parsed_from_string_to_boolean()
 
     run_playbook(playbook, **playbook_kwargs)
