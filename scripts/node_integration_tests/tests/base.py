@@ -92,6 +92,19 @@ class NodeTestBase:
         from . import __name__ as parent_name
         return self.id().replace(parent_name + '.', '')
 
+    def _should_node_keys_be_reused(self) -> bool:
+        if self.first_test_in_set:
+            return False
+        # It should be imported locally because may be changed in command line
+        # and we need to get here updated value
+        from conftest import REUSE_NODE_KEYS_USER_OPTION
+        if REUSE_NODE_KEYS_USER_OPTION == 'yes':
+            return True
+        elif REUSE_NODE_KEYS_USER_OPTION == 'default':
+                return self.reuse_node_keys_default  # type: ignore # noqa
+        else:
+            return False
+
     def _run_test(self, playbook_class_path: str, *args, **kwargs):
         cwd = pathlib.Path(os.path.realpath(__file__)).parent.parent
         test_args = [
@@ -100,6 +113,7 @@ class NodeTestBase:
             *args,
             '--provider-datadir', self.provider_datadir,
             '--requestor-datadir', self.requestor_datadir,
+            '--reuse_node_keys', str(self._should_node_keys_be_reused()),
         ]
         for k, v in kwargs.items():
             test_args.append('--' + k)
