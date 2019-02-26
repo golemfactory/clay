@@ -3,10 +3,22 @@ import pathlib
 import shutil
 import subprocess
 import time
+from functools import wraps
 from shutil import copyfile
 from threading import Thread
+from typing import Callable
 
 from ..helpers import get_testdir
+
+
+def reuse_node_keys_default(default_option: bool)-> Callable:
+    def decorator(test_function: Callable)-> Callable:
+        @wraps(test_function)
+        def wrap(*args, **kwargs) -> None:
+            kwargs.update({'reuse_keys_default': default_option})
+            test_function(*args, **kwargs)
+        return wrap
+    return decorator
 
 
 class ReuseNodeKeys(object):
