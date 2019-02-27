@@ -43,11 +43,10 @@ def apply(obj, *initial_data, **kwargs):
 
 class ExtraDataBuilder(object):
     def __init__(self, header, subtask_id, subtask_data,
-                    short_desc, performance, docker_images=None):
+                    performance, docker_images=None):
         self.header = header
         self.subtask_id = subtask_id
         self.subtask_data = subtask_data
-        self.short_desc = short_desc
         self.performance = performance
         self.docker_images = docker_images
 
@@ -56,7 +55,6 @@ class ExtraDataBuilder(object):
         ctd['task_id'] = self.header.task_id
         ctd['subtask_id'] = self.subtask_id
         ctd['extra_data'] = self.subtask_data
-        ctd['short_description'] = self.short_desc
         ctd['performance'] = self.performance
         if self.docker_images:
             ctd['docker_images'] = [di.to_dict() for di in self.docker_images]
@@ -111,7 +109,6 @@ class GLambdaTask(CoreTask):
         }
 
         subtask_builder = ExtraDataBuilder(self.header, subtask_id, subtask_data,
-                                           self.short_extra_data_repr(subtask_data),
                                            perf_index, self.docker_images)
 
         logger.debug(
