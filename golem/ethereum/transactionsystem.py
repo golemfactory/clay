@@ -15,6 +15,7 @@ from typing import (
     Iterable,
     List,
     Optional,
+    Tuple,
 )
 
 from ethereum.utils import denoms
@@ -108,7 +109,8 @@ class TransactionSystem(LoopingCallService):
         self._payment_processor: Optional[PaymentProcessor] = None
 
         self._gnt_faucet_requested = False
-        self._gnt_conversion_status = (ConversionStatus.NONE, None)
+        self._gnt_conversion_status: Tuple[ConversionStatus, Optional[str]] = \
+            (ConversionStatus.NONE, None)
         self._concent_withdraw_requested = False
 
         self._eth_balance: int = 0
