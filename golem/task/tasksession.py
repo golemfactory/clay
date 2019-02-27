@@ -515,7 +515,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             return
 
         if not self.task_manager.check_next_subtask(
-                self.key_id, msg.node_name, msg.task_id, msg.price):
+                msg.task_id, msg.price):
             logger.debug(
                 "check_next_subtask False. task_id=%s, node=%s",
                 msg.task_id,

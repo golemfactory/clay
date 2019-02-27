@@ -214,6 +214,10 @@ class TaskSessionTaskToComputeTest(TestCase):
         ts2.task_manager.should_wait_for_node.return_value = False
         ts2.task_manager.check_next_subtask.return_value = False
         ts2.interpret(mt)
+        ts2.task_manager.check_next_subtask.assert_called_once_with(
+            mt.task_id,
+            mt.price,
+        )
         ms = ts2.conn.send_message.call_args[0][0]
         self.assertIsInstance(ms, message.tasks.CannotAssignTask)
         self.assertEqual(ms.task_id, mt.task_id)
