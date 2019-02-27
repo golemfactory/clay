@@ -158,7 +158,10 @@ class LocalComputer:
                     os.makedirs(dst_dir, exist_ok=True)
 
                     name = os.path.basename(resource)
-                    shutil.copy2(resource, os.path.join(dst_dir, name))
+                    if os.path.isdir(resource):
+                        shutil.copytree(resource, os.path.join(dst_dir, name))
+                    else:
+                        shutil.copy2(resource, os.path.join(dst_dir, name))
 
         for res in self.additional_resources:
             if not os.path.exists(self.test_task_res_path):

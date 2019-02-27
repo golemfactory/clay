@@ -1,4 +1,5 @@
 import binascii
+import logging
 import uuid
 import zipfile
 from typing import Iterable, Optional, List, Dict
@@ -11,6 +12,7 @@ from golem.core.fileshelper import common_dir, relative_path
 from golem.core.printable_object import PrintableObject
 from golem.core.simplehash import SimpleHash
 
+logger = logging.getLogger(__name__)
 
 def backup_rename(file_path, max_iterations=100):
     if not os.path.exists(file_path):
@@ -38,12 +40,13 @@ class Packager(object):
                disk_files: Iterable[str]):
 
         if not disk_files:
-            raise ValueError('No files to pack')
-
-        disk_files = self._prepare_file_dict(disk_files)
+            logger.warn('No files to pack')
+        else:
+            disk_files = self._prepare_file_dict(disk_files)
         with self.generator(output_path) as of:
-            for file_path, file_name in disk_files.items():
-                self.write_disk_file(of, file_path, file_name)
+            if disk_files:
+                for file_path, file_name in disk_files.items():
+                    self.write_disk_file(of, file_path, file_name)
 
         pkg_sha1 = self.compute_sha1(output_path)
         return output_path, pkg_sha1
