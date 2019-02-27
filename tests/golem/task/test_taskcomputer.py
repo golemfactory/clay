@@ -105,6 +105,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
             "\tcnt += 1\n" \
             "output={'data': cnt, 'result_type': 0}"
         ctd['deadline'] = timeout_to_deadline(10)
+        ctd['resources'] = ["abcd", "efgh"]
 
         task_server = self.task_server
         task_server.task_keeper.task_headers = {
@@ -128,7 +129,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertLessEqual(tc.assigned_subtask['deadline'],
                              timeout_to_deadline(10))
         tc.task_server.request_resource.assert_called_with(
-            "xyz", "xxyyzz")
+            "xyz", "xxyyzz", ["abcd", "efgh"])
 
         assert tc.task_resource_collected("xyz")
         assert tc.counting_thread is None
@@ -166,7 +167,7 @@ class TestTaskComputer(DatabaseFixture, LogTestCase):
         self.assertLessEqual(tc.assigned_subtask['deadline'],
                              timeout_to_deadline(5))
         tc.task_server.request_resource.assert_called_with(
-            "xyz", "aabbcc")
+            "xyz", "aabbcc", ["abcd", "efgh"])
         self.assertTrue(tc.task_resource_collected("xyz"))
         self.__wait_for_tasks(tc)
 

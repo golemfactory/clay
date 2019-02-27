@@ -78,7 +78,7 @@ class ConversionStatus(Enum):
     UNFINISHED = 3
 
 
-# pylint:disable=too-many-instance-attributes
+# pylint:disable=too-many-instance-attributes,too-many-public-methods
 class TransactionSystem(LoopingCallService):
     """ Transaction system connected with Ethereum """
 
@@ -252,7 +252,6 @@ class TransactionSystem(LoopingCallService):
                 json.dump(keystore, f)
 
     @sci_required()
-    @gnt_deposit_required()
     def _subscribe_to_events(self) -> None:
         self._sci: SmartContractsInterface
         values = model.GenericKeyValue.select().where(
@@ -272,29 +271,30 @@ class TransactionSystem(LoopingCallService):
             )
         )
 
-        self._sci.subscribe_to_forced_subtask_payments(
-            None,
-            self._sci.get_eth_address(),
-            from_block,
-            lambda event: ik.received_forced_subtask_payment(
-                event.tx_hash,
-                event.requestor,
-                str(bytes32_to_uuid(event.subtask_id)),
-                event.amount,
+        if self.deposit_contract_available:
+            self._sci.subscribe_to_forced_subtask_payments(
+                None,
+                self._sci.get_eth_address(),
+                from_block,
+                lambda event: ik.received_forced_subtask_payment(
+                    event.tx_hash,
+                    event.requestor,
+                    str(bytes32_to_uuid(event.subtask_id)),
+                    event.amount,
+                )
             )
-        )
-        self._sci.subscribe_to_forced_payments(
-            requestor_address=None,
-            provider_address=self._sci.get_eth_address(),
-            from_block=from_block,
-            cb=lambda event: ik.received_forced_payment(
-                tx_hash=event.tx_hash,
-                sender=event.requestor,
-                amount=event.amount,
-                closure_time=event.closure_time,
-            ),
-        )
-        self._schedule_concent_withdraw()
+            self._sci.subscribe_to_forced_payments(
+                requestor_address=None,
+                provider_address=self._sci.get_eth_address(),
+                from_block=from_block,
+                cb=lambda event: ik.received_forced_payment(
+                    tx_hash=event.tx_hash,
+                    sender=event.requestor,
+                    amount=event.amount,
+                    closure_time=event.closure_time,
+                ),
+            )
+            self._schedule_concent_withdraw()
 
     @sci_required()
     def _save_subscription_block_number(self) -> None:
@@ -440,6 +440,7 @@ class TransactionSystem(LoopingCallService):
         self._gntb_locked -= gnt
         self._payments_locked -= num
 
+    # pylint: disable=too-many-arguments
     def expect_income(
             self,
             sender_node: str,
@@ -589,14 +590,39 @@ class TransactionSystem(LoopingCallService):
             account_address=account_address,
         )
 
+    @sci_required()
+    def validate_concent_deposit_possibility(
+            self,
+            required: int,
+            tasks_num: int,
+            force: bool = False,
+    ) -> None:
+        required_deposit_difference = required - self.concent_balance()
+
+        gntb_balance = self.get_available_gnt()
+        if gntb_balance < required_deposit_difference:
+            raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
+        if self.gas_price >= self.gas_price_limit:
+            if not force:
+                raise exceptions.LongTransactionTime("Gas price too high")
+            log.warning(
+                'Gas price is high. It can take some time to mine deposit.',
+            )
+
+        eth_for_batch_payment_for_task = self.eth_for_batch_payment(tasks_num)
+        eth_required = eth_for_batch_payment_for_task + self.eth_for_deposit()
+
+        eth_available = self.get_available_eth()
+        if eth_required > eth_available:
+            raise exceptions.NotEnoughFunds(eth_required, eth_available, 'ETH')
+
     @defer.inlineCallbacks
     @gnt_deposit_required()
     @sci_required()
     def concent_deposit(
             self,
             required: int,
-            expected: int,
-            force: bool = False) \
+            expected: int) \
             -> Generator[defer.Deferred, TransactionReceipt, Optional[str]]:
         self._sci: SmartContractsInterface
         current = self.concent_balance()
@@ -607,14 +633,6 @@ class TransactionSystem(LoopingCallService):
         required -= current
         expected -= current
         gntb_balance = self.get_available_gnt()
-        if gntb_balance < required:
-            raise exceptions.NotEnoughFunds(required, gntb_balance, 'GNTB')
-        if self.gas_price >= self._sci.GAS_PRICE:
-            if not force:
-                raise exceptions.LongTransactionTime("Gas price too high")
-            log.warning(
-                'Gas price is high. It can take some time to mine deposit.',
-            )
         max_possible_amount = min(expected, gntb_balance)
         tx_hash = self._sci.deposit_payment(max_possible_amount)
         log.info(

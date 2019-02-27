@@ -101,7 +101,8 @@ class TaskComputer(object):
         self.assigned_subtask = ctd
         self.__request_resource(
             ctd['task_id'],
-            ctd['subtask_id']
+            ctd['subtask_id'],
+            ctd['resources'],
         )
         return True
 
@@ -336,8 +337,8 @@ class TaskComputer(object):
         if requested_task is not None:
             self.stats.increase_stat('tasks_requested')
 
-    def __request_resource(self, task_id, subtask_id):
-        self.task_server.request_resource(task_id, subtask_id)
+    def __request_resource(self, task_id, subtask_id, resources):
+        self.task_server.request_resource(task_id, subtask_id, resources)
 
     def __compute_task(self, subtask_id, docker_images,
                        extra_data, subtask_deadline):

@@ -170,7 +170,9 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         clean_resources_older_than = \
             self.config_desc.clean_resources_older_than_seconds
-        if clean_resources_older_than > 0:
+        cleaning_enabled = self.config_desc.cleaning_enabled
+        if cleaning_enabled and clean_resources_older_than > 0:
+            logger.debug('Starting resource cleaner service ...')
             self._services.append(
                 ResourceCleanerService(
                     self,
@@ -399,7 +401,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
         clean_tasks_older_than = \
             self.config_desc.clean_tasks_older_than_seconds
-        if clean_tasks_older_than > 0:
+        cleaning_enabled = self.config_desc.cleaning_enabled
+        if cleaning_enabled and clean_tasks_older_than > 0:
             self.clean_old_tasks()
 
         resource_manager = HyperdriveResourceManager(
@@ -416,7 +419,8 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.task_server.restore_resources()
 
         # Start service after restore_resources() to avoid race conditions
-        if clean_tasks_older_than:
+        if cleaning_enabled and clean_tasks_older_than > 0:
+            logger.debug('Starting task cleaner service ...')
             task_cleaner_service = TaskCleanerService(
                 client=self,
                 interval_seconds=max(1, clean_tasks_older_than // 10)
@@ -648,21 +652,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
     def abort_task(self, task_id):
         logger.debug('Aborting task "%r" ...', task_id)
         self.task_server.task_manager.abort_task(task_id)
-
-    @rpc_utils.expose('comp.task.subtasks.frame.restart')
-    def restart_frame_subtasks(self, task_id, frame):
-        logger.debug("restarting frame subtasks: task_id = %s, frame = %r",
-                     task_id, frame)
-        task_manager = self.task_server.task_manager
-
-        subtasks: Dict = task_manager.get_frame_subtasks(task_id, frame)
-        if subtasks is None:
-            logger.error("frame has no subtasks (task_id = %s, frame = %r",
-                         task_id, frame)
-            return
-
-        self.funds_locker.add_subtask(task_id, len(subtasks))
-        task_manager.restart_frame_subtasks(task_id, frame)
 
     @rpc_utils.expose('comp.task.subtask.restart')
     def restart_subtask(self, subtask_id):
@@ -1075,7 +1064,13 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
 
     def change_config(self, new_config_desc, run_benchmarks=False):
         self.config_desc = self.config_approver.change_config(new_config_desc)
-        if self._update_hw_preset:
+
+        hw_preset_present = bool(getattr(
+            new_config_desc,
+            'hardware_preset_name',
+            None,
+        ))
+        if self._update_hw_preset and hw_preset_present:
             self._update_hw_preset(
                 HardwarePresets.from_config(self.config_desc))
 
@@ -1108,15 +1103,6 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
             resources,
             task_id,
             client_options=client_options
-        )
-
-    def add_resource_peer(self, node_name, addr, port, key_id, node_info):
-        self.resource_server.add_resource_peer(
-            node_name,
-            addr,
-            port,
-            key_id,
-            node_info
         )
 
     @rpc_utils.expose('res.dirs')
@@ -1169,6 +1155,7 @@ class Client:  # noqa pylint: disable=too-many-instance-attributes,too-many-publ
         self.task_server.remove_task_header(task_id)
 
     def clean_old_tasks(self):
+        logger.debug('Cleaning old tasks ...')
         now = get_timestamp_utc()
         for task in self.get_tasks():
             deadline = task['time_started'] \

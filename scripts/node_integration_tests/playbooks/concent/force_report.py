@@ -1,5 +1,9 @@
 import datetime
+import re
 import time
+
+from golem_messages.message.tasks import AckReportComputedTask
+from golem_messages.register import library
 
 from scripts.node_integration_tests import helpers
 
@@ -18,10 +22,11 @@ class ForceReport(ConcentTestPlaybook):
     def step_wait_task_finished_and_arct_received(self):
         def on_success(result):
             if result['status'] == 'Finished':
-                print("Task finished.")
+                arct_delay = datetime.timedelta(minutes=3)
+                print("Task finished. Now waiting for ARCT: %s" % arct_delay)
                 self.task_finished = True
                 self.ack_rct_deadline = \
-                    datetime.datetime.now() + datetime.timedelta(minutes=3)
+                    datetime.datetime.now() + arct_delay
             elif result['status'] == 'Timeout':
                 self.fail("Task timed out :( ... ")
             else:
@@ -34,12 +39,15 @@ class ForceReport(ConcentTestPlaybook):
         ]
 
         ack_rct_trigger = [
-            'AckReportComputedTask'
+            'MessageHeader(type_=' + str(
+                library.get_type(AckReportComputedTask)
+            )
         ]
 
-        log_match_pattern = \
-            '.*' + '.*|.*'.join(concent_fail_triggers + ack_rct_trigger) + '.*'
-
+        log_match_pattern = '.*' + '.*|.*'.join([
+            re.escape(t) for t in
+            (concent_fail_triggers + ack_rct_trigger)
+        ]) + '.*'
         log_match = helpers.search_output(
             self.provider_output_queue,
             log_match_pattern,

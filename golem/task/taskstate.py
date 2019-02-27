@@ -59,7 +59,7 @@ class SubtaskState(object):
         self.extra_data = {}
         # FIXME: subtask_rem_time is always equal 0 (#2562)
         self.subtask_rem_time = 0
-        self.subtask_status: Optional[SubtaskStatus] = None
+        self.subtask_status: SubtaskStatus = SubtaskStatus.starting
         self.stdout = ""
         self.stderr = ""
         self.results = []
@@ -77,6 +77,11 @@ class SubtaskState(object):
             'stderr': to_unicode(self.stderr),
             'stdout': to_unicode(self.stdout),
         }
+
+    def __repr__(self):
+        return '<%s: %r>' % (
+            type(self).__name__, self.to_dictionary()
+        )
 
 
 class TaskStatus(Enum):
@@ -123,6 +128,9 @@ class SubtaskStatus(Enum):
 
     def is_finished(self) -> bool:
         return self == self.finished
+
+    def is_finishing(self) -> bool:
+        return self in {self.downloading, self.verifying}
 
 
 class TaskTestStatus(Enum):
