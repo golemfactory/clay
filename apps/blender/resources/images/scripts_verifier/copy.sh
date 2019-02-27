@@ -1,0 +1,9 @@
+cp /usr/lib/x86_64-linux-gnu/libXrender.so.1 /usr/local/lib/.
+cp /usr/lib/x86_64-linux-gnu/libSM.so.6 /usr/local/lib/.
+cp /usr/lib/x86_64-linux-gnu/libgthread-2.0.so.0 /usr/local/lib/.
+cp /usr/lib/x86_64-linux-gnu/libglib-2.0.so.0 /usr/local/lib/.
+cp /usr/lib/x86_64-linux-gnu/libICE.so.6 /usr/local/lib/.
+cp /usr/lib/x86_64-linux-gnu/libIex-2_2.so.12 /usr/local/lib/.
+cp /usr/lib/x86_64-linux-gnu/libIlmImf-2_2.so.22 /usr/local/lib/.
+cp /usr/lib/x86_64-linux-gnu/libHalf.so.12 /usr/local/lib/.
+cp /usr/lib/x86_64-linux-gnu/libIlmThread-2_2.so.12 /usr/local/lib/.

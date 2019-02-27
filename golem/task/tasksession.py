@@ -33,7 +33,6 @@ from golem.ranking.manager.database_manager import (
 from golem.resource.resourcehandshake import ResourceHandshakeSessionMixin
 from golem.task import taskkeeper
 from golem.task.server import helpers as task_server_helpers
-from golem.task.taskstate import TaskState
 
 if TYPE_CHECKING:
     from .taskcomputer import TaskComputer  # noqa pylint:disable=unused-import
@@ -129,20 +128,31 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         """
         BasicSafeSession.__init__(self, conn)
         ResourceHandshakeSessionMixin.__init__(self)
-        self.task_server: 'TaskServer' = self.conn.server
-        self.task_manager: 'TaskManager' = self.task_server.task_manager
-        self.task_computer: 'TaskComputer' = self.task_server.task_computer
-        self.concent_service = self.task_server.client.concent_service
-        self.task_id = None  # current task id
-        self.subtask_id = None  # current subtask id
         self.conn_id = None  # connection id
+        # set in TaskServer.new_session_prepare()
+        self.key_id: Optional[str] = None
         # messages waiting to be send (because connection hasn't been
         # verified yet)
         self.msgs_to_send = []
         self.err_msg = None  # Keep track of errors
         self.__set_msg_interpretations()
 
-        # self.threads = []
+    @property
+    def task_server(self) -> 'TaskServer':
+        return self.conn.server
+
+    @property
+    def task_manager(self) -> 'TaskManager':
+        return self.task_server.task_manager
+
+    @property
+    def task_computer(self) -> 'TaskComputer':
+        return self.task_server.task_computer
+
+    @property
+    def concent_service(self):
+        return self.task_server.client.concent_service
+
     ########################
     # BasicSession methods #
     ########################
@@ -167,8 +177,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         """ Close connection """
         BasicSafeSession.dropped(self)
         self.task_server.remove_task_session(self)
-        if self.key_id:
-            self.task_server.remove_resource_peer(self.task_id, self.key_id)
 
     #######################
     # SafeSession methods #
@@ -264,22 +272,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         self.task_server.reject_result(subtask_id, self.key_id)
         self.send_result_rejected(subtask_id, reason)
 
-    def request_resource(self, task_id):
-        """Ask for a resources for a given task. Task owner should compare
-           given resource header with resources for that task and send only
-           lacking / changed resources
-        :param uuid task_id:
-        :param ResourceHeader resource_header: description of resources
-                                               that current node has
-        :return:
-        """
-        self.send(
-            message.tasks.GetResource(
-                task_id=task_id,
-                resource_header=None,  # unused slot
-            )
-        )
-
     # TODO address, port and eth_account should be in node_info
     # (or shouldn't be here at all). Issue #2403
     def send_report_computed_task(
@@ -345,6 +337,14 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         # the Requestor safely
 
         if not task_to_compute.concent_enabled:
+            logger.debug(
+                "Concent not enabled for this task, "
+                "skipping `ForceReportComputedTask`. "
+                "task_id=%r, "
+                "subtask_id=%r, ",
+                task_to_compute.task_id,
+                task_to_compute.subtask_id,
+            )
             return
 
         # we're preparing the `ForceReportComputedTask` here and
@@ -527,7 +527,21 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if self.task_manager.should_wait_for_node(msg.task_id, self.key_id):
             logger.warning("Can not accept offer: Still waiting on results."
                            "task_id=%r, node=%r", msg.task_id, node_name_id)
-            self.send(message.tasks.WaitingForResults())
+            task = self.task_manager.tasks[msg.task_id]
+            subtasks = task.get_finishing_subtasks(
+                node_id=self.key_id,
+            )
+            previous_ttc = get_task_message(
+                message_class_name='TaskToCompute',
+                node_id=self.key_id,
+                task_id=msg.task_id,
+                subtask_id=subtasks[0]['subtask_id'],
+            )
+            self.send(
+                message.tasks.WaitingForResults(
+                    task_to_compute=previous_ttc,
+                ),
+            )
             return
 
         if self._handshake_required(self.key_id):
@@ -567,6 +581,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.price, msg.max_resource_size, msg.max_memory_size,
                 self.address)
 
+            ctd["resources"] = self.task_server.get_resources(msg.task_id)
             logger.debug(
                 "task_id=%s, node=%s ctd=%s",
                 msg.task_id,
@@ -600,7 +615,9 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 package_hash='sha1:' + task_state.package_hash,
                 concent_enabled=msg.concent_enabled,
                 price=price,
-                size=task_state.package_size
+                size=task_state.package_size,
+                resources_options=self.task_server.get_share_options(
+                    ctd['task_id'], self.address).__dict__
             )
             ttc.generate_ethsig(self.my_private_key)
             self.send(ttc)
@@ -726,8 +743,38 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 return
         _cannot_compute(self.err_msg)
 
-    def _react_to_waiting_for_results(self, _):
-        self.task_server.requested_tasks.remove(self.task_id)
+    def _react_to_waiting_for_results(
+            self,
+            msg: message.tasks.WaitingForResults,
+    ):
+        if self.concent_service.available:
+            concent_key = self.concent_service.variant['pubkey']
+        else:
+            concent_key = None
+        try:
+            msg.verify_owners(
+                requestor_public_key=self.key_id,
+                provider_public_key=self.task_server.keys_auth.ecc.raw_pubkey,
+                concent_public_key=concent_key,
+            )
+        except msg_exceptions.MessageError:
+            node_id = common.short_node_id(self.key_id)
+            logger.info(
+                'Dropping invalid WaitingForResults.'
+                ' sender_node_id: %(node_id)s, task_id: %(task_id)s,'
+                ' subtask_id: %(subtask_id)s',
+                {
+                    'node_id': node_id,
+                    'task_id': msg.task_id,
+                    'subtask_id': msg.subtask_id,
+                },
+            )
+            logger.debug('Invalid WaitingForResults received', exc_info=True)
+            return
+        self.task_server.subtask_waiting(
+            task_id=msg.task_id,
+            subtask_id=msg.subtask_id,
+        )
         self.task_computer.session_closed()
         if not self.msgs_to_send:
             self.disconnect(message.base.Disconnect.REASON.NoMoreMessages)
@@ -739,10 +786,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.subtask_id,
                 msg.reason,
             )
-            self.task_manager.task_computation_failure(
+
+            config = self.task_server.config_desc
+            timeout = config.computation_cancellation_timeout
+
+            self.task_manager.task_computation_cancelled(
                 msg.subtask_id,
-                'Task computation rejected: {}'.format(msg.reason)
+                'Task computation rejected: {}'.format(msg.reason),
+                timeout,
             )
+
         self.dropped()
 
     @history.provider_history
@@ -768,6 +821,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             logger.warning('Did not receive task_to_compute: %r', msg)
             self.dropped()
             return
+
+        self.task_server.add_task_session(
+            msg.subtask_id, self
+        )
 
         returned_msg = concent_helpers.process_report_computed_task(
             msg=msg,
@@ -810,19 +867,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             self.address,
             self.port,
         )
-
-    def _react_to_get_resource(self, msg):
-        # self.last_resource_msg = msg
-        resources = self.task_server.get_resources(msg.task_id)
-        options = self.task_server.get_share_options(
-            task_id=msg.task_id,
-            address=self.address
-        )
-
-        self.send(message.resources.ResourceList(
-            resources=resources,
-            options=options.__dict__,  # This slot will be used in #1768
-        ))
 
     @history.provider_history
     def _react_to_subtask_results_accepted(
@@ -894,6 +938,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                     msg=srv,
                 )
 
+            self.task_server.client.transaction_system.\
+                validate_concent_deposit_possibility(
+                    required=amount,
+                    tasks_num=1,
+                )
             self.task_server.client.transaction_system.concent_deposit(
                 required=amount,
                 expected=expected,
@@ -921,17 +970,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         if self.check_provider_for_subtask(msg.subtask_id):
             self.task_server.subtask_failure(msg.subtask_id, msg.err)
         self.dropped()
-
-    def _react_to_resource_list(self, msg):
-        resource_server = self.task_server.client.resource_server
-        resource_manager = resource_server.resource_manager
-        resources = resource_manager.from_wire(msg.resources)
-
-        client_options = self.task_server.get_download_options(msg.options,
-                                                               self.task_id)
-
-        self.task_server.pull_resources(self.task_id, resources,
-                                        client_options=client_options)
 
     def _react_to_hello(self, msg):
         if not self.conn.opened:
@@ -1014,6 +1052,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
         svt = msg_helpers.subtask_verification_time(msg.report_computed_task)
         delay = ttc_deadline + svt - datetime.datetime.utcnow()
+        delay += datetime.timedelta(seconds=1)  # added for safety
         logger.debug(
             '[CONCENT] Delayed ForceResults. msg=%r, delay=%r',
             delayed_forcing_msg,
@@ -1142,10 +1181,6 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 self._react_to_cannot_compute_task,
             message.tasks.ReportComputedTask:
                 self._react_to_report_computed_task,
-            message.tasks.GetResource:
-                self._react_to_get_resource,
-            message.resources.ResourceList:
-                self._react_to_resource_list,
             message.tasks.SubtaskResultsAccepted:
                 self._react_to_subtask_results_accepted,
             message.tasks.SubtaskResultsRejected:

@@ -59,7 +59,6 @@ class ResourceHandshakeSessionMixin:
     NONCE_TASK = 'nonce'
 
     def __init__(self):
-        self.task_server = getattr(self, 'task_server', None)
         self._interpretation = getattr(self, '_interpretation', dict())
         self.__set_msg_interpretations()
 

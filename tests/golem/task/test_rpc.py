@@ -1,23 +1,28 @@
 # pylint: disable=protected-access,too-many-ancestors
 import copy
+import unittest
 from unittest import mock
 
 import faker
+from ethereum.utils import denoms
 from golem_messages.factories.datastructures import p2p as dt_p2p_factory
+from mock import Mock
 from twisted.internet import defer
 
 from apps.dummy.task import dummytaskstate
 from golem import clientconfigdescriptor
 from golem.core import common
 from golem.core import deferred as golem_deferred
+from golem.ethereum import exceptions
 from golem.network.p2p import p2pservice
 from golem.task import rpc
 from golem.task import taskbase
 from golem.task import taskserver
 from golem.task import taskstate
 from golem.task import tasktester
+from golem.task.rpc import ClientProvider
 from tests.golem import test_client
-
+from tests.golem.test_client import TestClientBase
 
 fake = faker.Faker()
 
@@ -103,7 +108,10 @@ class ProviderBase(test_client.TestClientBase):
         header=mock.MagicMock(task_id='task_id'),
     ),
 )
-class TestCreateTask(ProviderBase):
+class TestCreateTask(ProviderBase, TestClientBase):
+    @mock.patch(
+        'golem.task.rpc.ClientProvider._validate_lock_funds_possibility'
+    )
     def test_create_task(self, *_):
         t = dummytaskstate.DummyTaskDefinition()
         t.name = "test"
@@ -133,6 +141,43 @@ class TestCreateTask(ProviderBase):
         assert result == (None,
                           "Task name can only contain letters, numbers, "
                           "spaces, underline, dash or dot.")
+
+    @mock.patch(
+        'golem.task.rpc.ClientProvider._validate_lock_funds_possibility',
+        side_effect=exceptions.NotEnoughFunds(
+            required=0.166667 * denoms.ether,
+            available=0,
+        ))
+    def test_create_task_fail_if_not_enough_gnt_available(self, mocked, *_):
+        t = dummytaskstate.DummyTaskDefinition()
+        t.name = "test"
+
+        result = self.provider.create_task(t.to_dict())
+        rpc.enqueue_new_task.assert_not_called()
+        self.assertIn('validate_lock_funds_possibility', str(mocked))
+        mocked.assert_called()
+        self.assertEqual(result, (None, 'Not enough GNT available. Required: '
+                                        '0.166667, available: 0.000000'))
+
+
+class ConcentDepositLockPossibilityTest(unittest.TestCase):
+
+    def test_validate_lock_funds_possibility_raises_if_not_enough_gnt(self):
+        available = 0.0001 * denoms.ether
+        required = 0.0005 * denoms.ether
+        client = Mock()
+        client.transaction_system.get_available_gnt.return_value = available
+        client_provider = ClientProvider(client)
+
+        with self.assertRaises(exceptions.NotEnoughFunds) as e:
+            client_provider._validate_lock_funds_possibility(
+                total_price_gnt=required,
+                number_of_tasks=1
+            )
+        expected = f'Not enough GNT available. ' \
+            f'Required: {required / denoms.ether:.6f}, ' \
+            f'available: {available / denoms.ether:.6f}'
+        self.assertIn(str(e.exception), expected)
 
 
 class TestRestartTask(ProviderBase):
@@ -303,17 +348,15 @@ class TestEnqueueNewTask(ProviderBase):
         assert frames is not None
 
     def test_ensure_task_deposit(self, *_):
-        force = fake.pybool()
         self.client.concent_service = mock.Mock()
         self.client.concent_service.enabled = True
         self.t_dict['concent_enabled'] = True
         task = self.client.task_manager.create_task(self.t_dict)
-        deferred = rpc.enqueue_new_task(self.client, task, force=force)
+        deferred = rpc.enqueue_new_task(self.client, task)
         golem_deferred.sync_wait(deferred)
         self.client.transaction_system.concent_deposit.assert_called_once_with(
             required=mock.ANY,
             expected=mock.ANY,
-            force=force,
         )
 
     @mock.patch('golem.task.rpc.logger.error')
@@ -500,6 +543,112 @@ class TestRestartSubtasks(ProviderBase):
             task_dict=mock.ANY,
             force=force,
         )
+
+
+class TestRestartFrameSubtasks(ProviderBase):
+    def setUp(self):
+        super().setUp()
+        self.task = self.client.task_manager.create_task(self.t_dict)
+        with mock.patch('os.path.getsize'):
+            golem_deferred.sync_wait(
+                rpc.enqueue_new_task(self.client, self.task),
+            )
+
+    @mock.patch('golem.task.rpc.ClientProvider.restart_subtasks_from_task')
+    @mock.patch('golem.client.Client.restart_subtask')
+    def test_no_frames(self, mock_restart_single, mock_restart_multiple, *_):
+        with mock.patch(
+            'golem.task.taskmanager.TaskManager.get_frame_subtasks',
+            return_value=None
+        ):
+            self.provider.restart_frame_subtasks(
+                task_id=self.task.header.task_id,
+                frame=1
+            )
+
+        mock_restart_single.assert_not_called()
+        mock_restart_multiple.assert_not_called()
+
+    @mock.patch('golem.task.taskstate.TaskStatus.is_active', return_value=True)
+    @mock.patch('golem.task.rpc.ClientProvider.restart_subtasks_from_task')
+    @mock.patch('golem.client.Client.restart_subtask')
+    def test_task_active(self, mock_restart_single, mock_restart_multiple, *_):
+        mock_subtask_id_1 = 'mock-subtask-id-1'
+        mock_subtask_id_2 = 'mock-subtask-id-2'
+        mock_frame_subtasks = {
+            mock_subtask_id_1: Mock(),
+            mock_subtask_id_2: Mock()
+        }
+
+        with mock.patch(
+            'golem.task.taskmanager.TaskManager.get_frame_subtasks',
+            return_value=mock_frame_subtasks
+        ):
+            self.provider.restart_frame_subtasks(
+                task_id=self.task.header.task_id,
+                frame=1
+            )
+
+        mock_restart_multiple.assert_not_called()
+        mock_restart_single.assert_has_calls(
+            [mock.call(mock_subtask_id_1), mock.call(mock_subtask_id_2)]
+        )
+
+    @mock.patch('golem.task.taskstate.TaskStatus.is_active', return_value=False)
+    @mock.patch('golem.task.rpc.ClientProvider.restart_subtasks_from_task')
+    @mock.patch('golem.client.Client.restart_subtask')
+    def test_task_finished(
+            self, mock_restart_single, mock_restart_multiple, *_):
+        mock_subtask_id_1 = 'mock-subtask-id-1'
+        mock_subtask_id_2 = 'mock-subtask-id-2'
+        mock_frame_subtasks = {
+            mock_subtask_id_1: Mock(),
+            mock_subtask_id_2: Mock()
+        }
+
+        with mock.patch(
+            'golem.task.taskmanager.TaskManager.get_frame_subtasks',
+            return_value=mock_frame_subtasks
+        ):
+            self.provider.restart_frame_subtasks(
+                task_id=self.task.header.task_id,
+                frame=1
+            )
+
+        mock_restart_single.assert_not_called()
+        mock_restart_multiple.assert_called_once_with(
+            self.task.header.task_id,
+            mock_frame_subtasks.keys()
+        )
+
+    @mock.patch('golem.task.rpc.ClientProvider.restart_subtasks_from_task')
+    @mock.patch('golem.client.Client.restart_subtask')
+    @mock.patch('golem.task.rpc.logger')
+    def test_task_unknown(
+            self,
+            mock_logger,
+            mock_restart_single,
+            mock_restart_multiple,
+            *_):
+        mock_subtask_id_1 = 'mock-subtask-id-1'
+        mock_subtask_id_2 = 'mock-subtask-id-2'
+        mock_frame_subtasks = {
+            mock_subtask_id_1: Mock(),
+            mock_subtask_id_2: Mock()
+        }
+
+        with mock.patch(
+            'golem.task.taskmanager.TaskManager.get_frame_subtasks',
+            return_value=mock_frame_subtasks
+        ):
+            self.provider.restart_frame_subtasks(
+                task_id='unknown-task-id',
+                frame=1
+            )
+
+        mock_logger.error.assert_called_once()
+        mock_restart_single.assert_not_called()
+        mock_restart_multiple.assert_not_called()
 
 
 @mock.patch('os.path.getsize')
