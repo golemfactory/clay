@@ -34,6 +34,28 @@ from golem.utils import privkeytoaddr
 
 logger = logging.getLogger(__name__)
 
+class Granary:
+
+    @staticmethod
+    def request_account():
+        # TODO: read from granary service
+        logger.debug("Granary called, account requested")
+        return Account(ConcentBaseTest._fake_keys())
+
+    @staticmethod
+    def return_account(account):
+        # TODO: read from granary service
+        logger.debug("Granary called, account returned")
+        logger.debug(account)
+        logger.debug(account.key)
+        logger.debug(account.transaction_store)
+        logger.debug(account.password)
+
+class Account:
+    def __init__(self, key, ts = None, password = None):
+        self.key = key
+        self.transaction_store = ts
+        self.password = password
 
 def dump_balance(sci: SmartContractsInterface):
     gnt = sci.get_gnt_balance(sci.get_eth_address())
@@ -59,19 +81,42 @@ class ConcentBaseTest(unittest.TestCase):
     def _fake_keys():
         return cryptography.ECCx(None)
 
+    @staticmethod
+    def _fake_account():
+
+        logger.debug('Requesting account from granary')
+        requested_account = Granary.request_account()
+
+        if requested_account is None:
+            logger.debug('No account received, generating one')
+            return Account(self._fake_keys())
+
+        logger.debug('Account received, re-using it')
+        return requested_account
+
+    def setUpClass(self):
+        self._provider_account = self._fake_account()
+        self._requestor_account = self._fake_account()
+        super().setUpClass()
+
     def setUp(self):
         from golem.config.environments import set_environment
         concent_variant = os.environ.get('CONCENT_VARIANT', 'staging')
         set_environment('testnet', concent_variant)
         self.variant = variables.CONCENT_CHOICES[concent_variant]
-        self.provider_keys = self._fake_keys()
-        self.requestor_keys = self._fake_keys()
+        self.provider_keys = self._provider_account.key
+        self.requestor_keys = self._requestor_account.key
         from golem.core import common
         common.config_logging(suffix='concent-acceptance')
         logger.debug('Provider key: %s',
                      base64.b64encode(self.provider_pub_key).decode())
         logger.debug('Requestor key: %s',
                      base64.b64encode(self.requestor_pub_key).decode())
+
+    def tearDownClass(self):
+        super().tearDownClass()
+        Granary.return_account(self._requestor_account)
+        Granary.return_account(self._requestor_account)
 
     @property
     def provider_priv_key(self):
@@ -239,10 +284,11 @@ class SCIBaseTest(ConcentBaseTest):
         self.transaction_timeout = datetime.timedelta(seconds=300)
         self.sleep_interval = 15
 
-        requestor_storage = JsonTransactionsStorage(
-            Path(tempfile.mkdtemp()) / 'tx.json')
-        provider_storage = JsonTransactionsStorage(
-            Path(tempfile.mkdtemp()) / 'tx.json')
+        self._requestor_ts_path = self._setup_transactions(self._requestor_account)
+        requestor_storage = JsonTransactionsStorage(self._requestor_ts_path)
+
+        self._provider_ts_path = self._setup_transactions(self._provider_account)
+        provider_storage = JsonTransactionsStorage(self._provider_ts_path)
 
         self.requestor_eth_addr = privkeytoaddr(self.requestor_keys.raw_privkey)
         self.provider_eth_addr = privkeytoaddr(self.provider_keys.raw_privkey)
@@ -263,6 +309,13 @@ class SCIBaseTest(ConcentBaseTest):
             contract_addresses=EthereumConfig.CONTRACT_ADDRESSES,
             chain=EthereumConfig.CHAIN,
         )
+
+    def tearDownClass(self):
+        self._requestor_account.transaction_store = open(self._requestor_ts_path, 'r').read()
+        self._requestor_account.transaction_store = open(self._requestor_ts_path, 'r').read()
+
+        # Requires the transaction stores to be updated before calling super
+        super().tearDownClass()
 
     # pylint: disable=too-many-arguments
     def retry_until_timeout(
@@ -385,3 +438,11 @@ class SCIBaseTest(ConcentBaseTest):
     def blockchain_sleep(sleep_time=60):
         sys.stderr.write(f'Going to sleep for: {sleep_time} seconds...\n')
         time.sleep(sleep_time)
+
+    @staticmethod
+    def _setup_transactions(account):
+        transaction_path = Path(tempfile.mkdtemp()) / 'tx.json'
+        if account.transaction_store is not None:
+            with open(transaction_path, 'rb+')  as f:
+                f.write(account.transaction_store)
+        return transaction_path
