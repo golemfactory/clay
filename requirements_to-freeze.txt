@@ -1,3 +1,4 @@
+#git+https://github.com/golemfactory/golem-messages@<branchname>
 --extra-index-url https://builds.golem.network
 appdirs>=1.4
 asn1crypto==0.22.0
@@ -14,7 +15,7 @@ docker==3.5.0
 enforce==0.3.4
 eth-utils==1.0.3
 ethereum==1.6.1
-Golem-Messages==2.23.0
+Golem-Messages==3.1.0
 Golem-Smart-Contracts-Interface==1.6.1
 html2text==2018.1.9
 humanize==0.5.1

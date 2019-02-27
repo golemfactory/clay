@@ -3,7 +3,6 @@ import logging
 import sys
 import time
 import typing
-import unittest
 
 from golem_messages import cryptography
 from golem_messages import factories as msg_factories
@@ -39,7 +38,6 @@ class ForcePaymentBase(SCIBaseTest):
             rct = msg_factories.tasks.ReportComputedTaskFactory(
                 **self.gen_rtc_kwargs(),
                 **self.gen_ttc_kwargs('task_to_compute__'),
-                task_to_compute__ethsig__privkey=self.requestor_priv_key,
             )
             sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
                 report_computed_task=rct,
@@ -91,17 +89,6 @@ class ForcePaymentBase(SCIBaseTest):
 
 
 class RequestorDoesntPayTestCase(ForcePaymentBase):
-    def test_empty_list(self):
-        fp = message.concents.ForcePayment(
-            subtask_results_accepted_list=[],
-        )
-        with self.assertRaises(concent_exceptions.ConcentRequestError):
-            self.provider_load_response(self.provider_send(fp))
-
-    @unittest.skip('Not implemented')
-    def test_provider_deposit(self):
-        pass  # TODO
-
     def test_multiple_requestors(self):
         """Test requestor sameness
 
@@ -114,7 +101,6 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
         rct = msg_factories.tasks.ReportComputedTaskFactory(
             **self.gen_rtc_kwargs(),
             **self.gen_ttc_kwargs('task_to_compute__'),
-            task_to_compute__ethsig__privkey=self.requestor_priv_key,
         )
         sra1 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             report_computed_task=rct,
@@ -132,7 +118,6 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
             'task_to_compute__requestor_ethereum_public_key': encode_key_id(
                 requestor2_keys.raw_pubkey,
             ),
-            'task_to_compute__ethsig__privkey': requestor2_keys.raw_privkey,
         })
         rct2 = msg_factories.tasks.ReportComputedTaskFactory(
             **self.gen_rtc_kwargs(),
@@ -174,7 +159,6 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
         rct = msg_factories.tasks.ReportComputedTaskFactory(
             sign__privkey=provider1_keys.privkey,
             **ttc_kwargs,
-            task_to_compute__ethsig__privkey=self.requestor_priv_key,
         )
         sra1 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             report_computed_task=rct,
@@ -193,7 +177,6 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
         rct2 = msg_factories.tasks.ReportComputedTaskFactory(
             sign__privkey=provider2_keys.privkey,
             **ttc2_kwargs,
-            task_to_compute__ethsig__privkey=self.requestor_priv_key,
         )
         sra2 = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             report_computed_task=rct2,
@@ -217,7 +200,6 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
         rct = msg_factories.tasks.ReportComputedTaskFactory(
             **self.gen_rtc_kwargs(),
             **self.gen_ttc_kwargs('task_to_compute__'),
-            task_to_compute__ethsig__privkey=self.requestor_priv_key,
         )
         sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             report_computed_task=rct,
@@ -270,7 +252,6 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
         rct = msg_factories.tasks.ReportComputedTaskFactory(
             **self.gen_rtc_kwargs(),
             **self.gen_ttc_kwargs('task_to_compute__'),
-            task_to_compute__ethsig__privkey=self.requestor_priv_key,
         )
         sra = msg_factories.tasks.SubtaskResultsAcceptedFactory(
             report_computed_task=rct,
@@ -289,8 +270,11 @@ class RequestorDoesntPayTestCase(ForcePaymentBase):
         fp = message.concents.ForcePayment(
             subtask_results_accepted_list=[],
         )
-        response = self.provider_load_response(self.provider_send(fp))
-        self.assertServiceRefused(response, sr_reasons.InvalidRequest)
+        with self.assertRaisesRegex(
+            concent_exceptions.ConcentRequestError,
+            r'Concent request exception \(400\): .*',
+        ):
+            self.provider_load_response(self.provider_send(fp))
 
     def test_provider_replay(self):
         LOA = self._prepare_list_of_acceptances()
@@ -333,10 +317,11 @@ class RequestorPaysTest(ForcePaymentBase):
         self.requestor_sci.on_transaction_confirmed(tx_hash, _on_batch)
         sys.stderr.write('Waiting for confirmation %s' % (tx_hash,))
         self.retry_until_timeout(
-            lambda: confirmed,
+            lambda: not confirmed,
             'Batch transfer timeout',
         )
         sys.stderr.write('\n')
+        self.blockchain_sleep()
         return LOA, V
 
     def test_requestor_already_paid(self):

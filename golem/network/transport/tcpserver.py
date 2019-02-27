@@ -162,6 +162,8 @@ class PendingConnectionsServer(TCPServer):
                    if self._is_address_accessible(sock)]
 
         if not sockets:
+            logger.debug(
+                "`_add_pending_request`: no sockets found. node=%r", node)
             return False
 
         logger.info("Connecting to peer. node=%s, adresses=%r",

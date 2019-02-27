@@ -14,10 +14,6 @@ datas = [
      'apps/core/resources/images/'),
     ('apps/rendering/benchmark/minilight/cornellbox.ml.txt',
      'apps/rendering/benchmark/minilight/'),
-    ('apps/rendering/resources/scripts/*.py',
-     'apps/rendering/resources/scripts/'),
-    ('apps/rendering/resources/images/*',
-     'apps/rendering/resources/images/'),
     ('apps/blender/resources/images/*.Dockerfile',
      'apps/blender/resources/images/'),
     ('apps/blender/resources/images/scripts/templates/blendercrop.py.template',
@@ -36,5 +32,6 @@ datas = [
      'golem/network/concent/resources/ssl/certs/'),
     ('scripts/docker/create-share.ps1', 'scripts/docker/'),
     ('scripts/docker/get-default-vswitch.ps1', 'scripts/docker/'),
-    ('scripts/docker/start-hyperv-docker-vm.ps1', 'scripts/docker/'),
+    ('scripts/virtualization/get-virtualization-state.ps1',
+     'scripts/virtualization')
 ]

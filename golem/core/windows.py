@@ -55,4 +55,7 @@ def run_powershell(
             .strip()
     except (subprocess.CalledProcessError,
             subprocess.TimeoutExpired) as exc:
-        raise RuntimeError(exc.stderr.decode('utf8') if exc.stderr else '')
+        stdout = f"{exc.stdout.decode('utf8')}\n" if exc.stdout else ''
+        stderr = exc.stderr.decode('utf8') if exc.stderr else ''
+
+        raise RuntimeError(stdout + stderr)

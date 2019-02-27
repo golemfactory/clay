@@ -14,7 +14,7 @@ from typing import (
 
 from pathlib import Path
 from twisted.internet import threads
-from twisted.internet.defer import gatherResults, Deferred
+from twisted.internet.defer import gatherResults, Deferred, succeed, fail
 from twisted.python.failure import Failure
 
 from apps.appsmanager import AppsManager
@@ -104,6 +104,8 @@ class Node(HardwarePresetsMixin):
             if use_talkback is None else use_talkback
 
         self._keys_auth: Optional[KeysAuth] = None
+        if geth_address:
+            EthereumConfig.NODE_LIST = [geth_address]
         self._ets = TransactionSystem(
             Path(datadir) / 'transaction_system',
             EthereumConfig,
@@ -135,7 +137,6 @@ class Node(HardwarePresetsMixin):
             use_docker_manager=use_docker_manager,
             use_monitor=self._use_monitor,
             concent_variant=concent_variant,
-            geth_address=geth_address,
             apps_manager=self.apps_manager,
             task_finished_cb=self._try_shutdown,
             update_hw_preset=self.upsert_hw_preset
@@ -232,10 +233,11 @@ class Node(HardwarePresetsMixin):
         deferred = rpc.start(self._reactor)
         return chain_function(deferred, self._start_session)
 
-    def _start_session(self) -> Optional[Deferred]:
+    def _start_session(self) -> Deferred:
         if not self.rpc_router:
-            self._stop_on_error("rpc", "RPC router is not available")
-            return None
+            msg = "RPC router is not available"
+            self._stop_on_error("rpc", msg)
+            return fail(Exception(msg))
 
         crsb_user = self.rpc_router.cert_manager.CrossbarUsers.golemapp
         self.rpc_session = Session(
@@ -378,7 +380,7 @@ class Node(HardwarePresetsMixin):
         return bool(task_provider_progress)
 
     @require_rpc_session()
-    def _check_terms(self) -> Optional[Deferred]:
+    def _check_terms(self) -> Deferred:
 
         def wait_for_terms():
             sleep_time = 5
@@ -392,7 +394,7 @@ class Node(HardwarePresetsMixin):
         return threads.deferToThread(wait_for_terms)
 
     @require_rpc_session()
-    def _start_keys_auth(self) -> Optional[Deferred]:
+    def _start_keys_auth(self) -> Deferred:
 
         def create_keysauth():
             # If keys_auth already exists it means we used command line flag
@@ -420,9 +422,9 @@ class Node(HardwarePresetsMixin):
 
         return threads.deferToThread(create_keysauth)
 
-    def _start_docker(self) -> Optional[Deferred]:
+    def _start_docker(self) -> Deferred:
         if not self._use_docker_manager:
-            return None
+            return succeed(None)
 
         def start_docker():
             # pylint: disable=no-member
@@ -507,7 +509,8 @@ class Node(HardwarePresetsMixin):
         if self._reactor.running:
             exc_info = (err.type, err.value, err.getTracebackObject()) \
                 if isinstance(err, Failure) else None
+            err_msg = str(err.value) if isinstance(err, Failure) else None
             logger.error(
-                "Stopping because of %r error, run debug for more info", msg)
+                "Stopping because of %r error: %s", msg, err_msg)
             logger.debug("%r", err, exc_info=exc_info)
             self._reactor.callFromThread(self._reactor.stop)
