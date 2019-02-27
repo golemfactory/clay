@@ -225,7 +225,7 @@ class TaskSessionTaskToComputeTest(TestCase):
             reason=message.tasks.CannotComputeTask.REASON.WrongCTD,
             task_to_compute=None,
         ))
-        assert ts2.task_manager.task_computation_failure.called
+        assert ts2.task_manager.task_computation_cancelled.called
 
     def test_cannot_compute_task_bad_subtask_id(self):
         ts2 = self._get_requestor_tasksession()

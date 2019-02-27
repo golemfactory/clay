@@ -800,10 +800,16 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 msg.subtask_id,
                 msg.reason,
             )
-            self.task_manager.task_computation_failure(
+
+            config = self.task_server.config_desc
+            timeout = config.computation_cancellation_timeout
+
+            self.task_manager.task_computation_cancelled(
                 msg.subtask_id,
-                'Task computation rejected: {}'.format(msg.reason)
+                'Task computation rejected: {}'.format(msg.reason),
+                timeout,
             )
+
         self.dropped()
 
     @history.provider_history
@@ -1060,6 +1066,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
         )
         svt = msg_helpers.subtask_verification_time(msg.report_computed_task)
         delay = ttc_deadline + svt - datetime.datetime.utcnow()
+        delay += datetime.timedelta(seconds=1)  # added for safety
         logger.debug(
             '[CONCENT] Delayed ForceResults. msg=%r, delay=%r',
             delayed_forcing_msg,
