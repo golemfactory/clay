@@ -178,7 +178,6 @@ class TranscodingTask(CoreTask):
         ctd['docker_images'] = [di.to_dict() for di in self.docker_images]
         ctd['deadline'] = min(timeout_to_deadline(self.header.subtask_timeout),
                               self.header.deadline)
-        ctd['short_description'] = ''
         return ctd
 
     @abc.abstractmethod
