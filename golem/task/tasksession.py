@@ -804,8 +804,10 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 RequestorCheckResult.OK:
             self.dropped()
             return
-        self.task_computer.task_request_rejected(msg.task_id, msg.reason)
-        self.task_server.remove_task_header(msg.task_id)
+        logger.info("Task %r request rejected: %r", msg.task_id, msg.reason)
+        reasons = message.tasks.CannotAssignTask.REASON
+        if msg.reason is reasons.TaskFinished:
+            self.task_server.remove_task_header(msg.task_id)
         self.task_manager.comp_task_keeper.request_failure(msg.task_id)
         self.task_computer.session_closed()
         self.dropped()
