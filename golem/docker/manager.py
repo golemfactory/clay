@@ -79,7 +79,6 @@ class DockerManager(DockerConfigManager):
             self.pull_images()
         except Exception as err:  # pylint: disable=broad-except
             logger.warning("Docker: error pulling images: %r", err)
-            self.build_images()
 
         return bool(self.hypervisor)
 
@@ -216,41 +215,6 @@ class DockerManager(DockerConfigManager):
         kwargs.pop('machine_name', None)
         return DockerCommandHandler.run(*args, **kwargs)
 
-    def build_images(self):
-        entries = []
-
-        for entry in self._collect_images():
-            version = self._image_version(entry)
-
-            if not self._image_supported(entry):
-                logger.warning('Image %s is not supported', version)
-                continue
-
-            if not self.command('images', args=[version]):
-                entries.append(entry)
-
-        if entries:
-            self._build_images(entries)
-
-    @report_calls(Component.docker, 'images.build')
-    def _build_images(self, entries):
-        cwd = os.getcwd()
-
-        for entry in entries:
-            image, docker_file, _, build_dir = entry[:4]
-            version = self._image_version(entry)
-
-            try:
-                os.chdir(APPS_DIR)
-                logger.warning('Docker: building image %s', version)
-
-                self.command('build', args=['-t', image,
-                                            '-f', docker_file,
-                                            build_dir])
-                self.command('tag', args=[image, version])
-            finally:
-                os.chdir(cwd)
-
     def pull_images(self):
         entries = []
 
@@ -279,18 +243,18 @@ class DockerManager(DockerConfigManager):
 
     @classmethod
     def _image_version(cls, entry):
-        image, _, tag = entry[:3]
+        image, tag = entry[:2]
         return '{}:{}'.format(image, tag)
 
     @classmethod
     def _image_supported(cls, entry):
-        if len(entry) < 5:
+        if len(entry) < 3:
             return True
 
         from importlib import import_module
 
         try:
-            path = entry[4]
+            path = entry[2]
             package, name = path.rsplit('.', 1)
             module = import_module(package)
             is_supported = getattr(module, name)
