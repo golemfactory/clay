@@ -641,7 +641,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             DockerImage("dockerix/xiii", tag="323").to_dict(),
         ]
 
-        def _prepare_and_react(compute_task_def):
+        def _prepare_and_react(compute_task_def, resource_size=102400):
             msg = msg_factories.tasks.TaskToComputeFactory(
                 compute_task_def=compute_task_def,
             )
@@ -656,7 +656,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
                 .task_headers[msg.task_id].subtasks_count = 10
             ts.task_server.client.transaction_system.get_available_gnt\
                 .return_value = msg.price * 10
-            ts.task_server.config_desc.max_resource_size = 102400
+            ts.task_server.config_desc.max_resource_size = resource_size
             ts._react_to_task_to_compute(msg)
             return msg
 
@@ -674,23 +674,24 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         )
         conn.close.assert_not_called()
 
+        def __assert_failure(ts, conn):
+            ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
+            ts.task_computer.session_closed.assert_called_with()
+            assert conn.close.called
+
         # Wrong key id -> failure
         __reset_mocks()
         header.task_owner.key = 'KEY_ID2'
 
         _prepare_and_react(ctd)
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
+        __assert_failure(ts, conn)
 
         # Wrong task owner key id -> failure
         __reset_mocks()
         header.task_owner.key = 'KEY_ID2'
 
         _prepare_and_react(ctd)
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
+        __assert_failure(ts, conn)
 
         # Wrong return port -> failure
         __reset_mocks()
@@ -698,9 +699,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         header.task_owner.pub_port = 0
 
         _prepare_and_react(ctd)
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
+        __assert_failure(ts, conn)
 
         # Proper port and key -> proper execution
         __reset_mocks()
@@ -708,6 +707,11 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
 
         _prepare_and_react(ctd)
         conn.close.assert_not_called()
+
+        # Wrong data size -> failure
+        __reset_mocks()
+        _prepare_and_react(ctd, 1024)
+        __assert_failure(ts, conn)
 
         # Allow custom code / code in ComputerTaskDef -> proper execution
         __reset_mocks()
@@ -727,9 +731,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
         ts.task_server.get_environment_by_id.return_value = None
         _prepare_and_react(ctd)
         assert ts.err_msg == reasons.WrongEnvironment
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
+        __assert_failure(ts, conn)
 
         # Envrionment is Docker environment but with different images -> failure
         __reset_mocks()
@@ -741,9 +743,7 @@ class TestTaskSession(ConcentMessageMixin, LogTestCase,
             ])
         _prepare_and_react(ctd)
         assert ts.err_msg == reasons.WrongDockerImages
-        ts.task_manager.comp_task_keeper.receive_subtask.assert_not_called()
-        ts.task_computer.session_closed.assert_called_with()
-        assert conn.close.called
+        __assert_failure(ts, conn)
 
     @patch('golem.task.taskkeeper.ProviderStatsManager', Mock())
     def test_react_to_ack_reject_report_computed_task(self):
