@@ -958,7 +958,7 @@ class WaitingForResultsTestCase(
             password='',
         )
         self.ts.task_server.get_key_id.return_value = "key_id"
-        self.ts.key_id = requestor_keys.ecc.raw_pubkey
+        self.ts.key_id = requestor_keys.key_id
         self.ts.task_server.get_share_options.return_value = \
             hyperdrive_client.HyperdriveClientOptions('1', 1.0)
 

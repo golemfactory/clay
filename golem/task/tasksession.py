@@ -9,9 +9,10 @@ import time
 from typing import TYPE_CHECKING, List, Optional
 
 from ethereum.utils import denoms
+from golem_messages import exceptions as msg_exceptions
 from golem_messages import helpers as msg_helpers
 from golem_messages import message
-from golem_messages import exceptions as msg_exceptions
+from golem_messages import utils as msg_utils
 from pydispatch import dispatcher
 
 import golem
@@ -753,7 +754,7 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
             concent_key = None
         try:
             msg.verify_owners(
-                requestor_public_key=self.key_id,
+                requestor_public_key=msg_utils.decode_hex(self.key_id),
                 provider_public_key=self.task_server.keys_auth.ecc.raw_pubkey,
                 concent_public_key=concent_key,
             )
@@ -804,7 +805,11 @@ class TaskSession(BasicSafeSession, ResourceHandshakeSessionMixin):
                 RequestorCheckResult.OK:
             self.dropped()
             return
-        logger.info("Task %r request rejected: %r", msg.task_id, msg.reason)
+        logger.info(
+            "Task request rejected. task_id: %r, reason: %r",
+            msg.task_id,
+            msg.reason,
+        )
         reasons = message.tasks.CannotAssignTask.REASON
         if msg.reason is reasons.TaskFinished:
             self.task_server.remove_task_header(msg.task_id)
