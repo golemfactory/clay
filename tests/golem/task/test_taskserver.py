@@ -502,11 +502,11 @@ class TestTaskServer(TaskServerTestBase):  # noqa pylint: disable=too-many-publi
         self.assertTrue(ts.remove_responses.called)
         self.assertTrue(ts.task_computer.session_timeout.called)
 
-        self.assertFalse(ts.task_computer.task_request_rejected.called)
+        ts.remove_pending_conn.reset_mock()
         method = ts._TaskServer__connection_for_task_request_final_failure
         method('conn_id', 'node_name', 'key_id', 'task_id', 1000, 1000, 1000,
                1024, 3)
-        self.assertTrue(ts.task_computer.task_request_rejected.called)
+        ts.remove_pending_conn.assert_called_once_with('conn_id')
 
     def test_task_result_connection_failure(self, *_):
         """Tests what happens after connection failure when sending
